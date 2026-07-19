@@ -1,41 +1,39 @@
 {
-  "hooks": {
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bd prime"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bd dolt pull || true; bd prime; nu .agents/core/scripts/check-core-freshness.nu || true"
-          }
-        ]
-      }
-    ]
+  "enabledPlugins": {
+    "worktrunk@worktrunk": true
   },
   "extraKnownMarketplaces": {
     "worktrunk": {
       "source": {
-        "source": "github",
-        "repo": "max-sixty/worktrunk"
+        "repo": "max-sixty/worktrunk",
+        "source": "github"
       }
     }
   },
-  "enabledPlugins": {
-    "worktrunk@worktrunk": true
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bd dolt pull || true; bd prime; nu .agents/core/scripts/check-core-freshness.nu || true",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime --hook-json",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ]
   },
   "statusLine": {
-    "type": "command",
-    "command": "wt list statusline --format=claude-code"
+    "command": "wt list statusline --format=claude-code",
+    "type": "command"
   }
 }
