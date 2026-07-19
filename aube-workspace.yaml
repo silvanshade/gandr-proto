@@ -1,5 +1,4 @@
 allowBuilds:
-  tree-sitter-cli: true
 jailBuilds: true
 jailBuildPermissions:
   tree-sitter-cli:
@@ -7,4 +6,3 @@ jailBuildPermissions:
 nodeLinker: isolated
 packages:
   - "."
-  - "packages/*"
