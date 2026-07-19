@@ -16,37 +16,13 @@
 # v2026.7.5+ propagates trust from the main checkout, and the opt-in
 # `mise.dev.toml` shell hooks own fail-open `wt step copy-ignored` (core H15).
 
+# Pre-start is intentionally minimal while the gandr reboot bootstraps: the
+# remaining wyrd-era steps (beads chmod, mise setup, submodule init/warmup)
+# referenced state this repo does not have yet and are re-grown alongside the
+# pieces they serve (tracker, toolchain gates, metatheory mount).
+
 [[pre-start]]
 copy-ignored = "wt step copy-ignored"
-
-[[pre-start]]
-beads-chmod = "chmod 0700 .beads"
-
-[[pre-start]]
-mise-setup = "mise run setup"
-
-# Initialize every registered submodule in the newborn worktree. The command
-# runs the helper from the already-initialized primary checkout because the
-# newborn worktree's `.agents/core` gitlink is not populated until this step
-# finishes; the helper still operates on the newborn worktree cwd.
-#
-# Top-level ONLY — nested submodules are deliberately NOT materialized. The
-# internal-univalence mount's nested checkouts (vendor/agda-stdlib, its own
-# .agents/core) serve IU's standalone gates, never wyrd's: wyrd's `agda:check`
-# resolves the whole chain against wyrd's own stdlib in metatheory/vendor/
-# (`agda:deps`), and the consumed IU kernel line is stdlib-free
-# (metatheory/README.md "Upstream integration"). A recursive init here taxed
-# every worktree creation with a remote clone of agda-stdlib history. If a
-# nested checkout is ever needed, run `git submodule update --init --recursive`
-# by hand — the current IU pin marks its nested submodules shallow.
-[[pre-start]]
-core-init = "nu {{ primary_worktree_path }}/.agents/core/scripts/init-submodules-from-primary.nu --primary {{ primary_worktree_path }}"
-
-# Warm cached internal-univalence Agda interfaces into new worktrees. `wt step
-# copy-ignored` cannot cross the gitlink, so this SHA-guarded reflink copies
-# the submodule build output from the primary when the pin matches (core H15).
-[[pre-start]]
-iu-build-warmup = "nu .agents/core/scripts/warm-submodule-build.nu --primary {{ primary_worktree_path }} --submodule-path metatheory/upstream/internal-univalence --build-dir _build"
 
 # Freshness gate (docs/HAZARDS.md H2): pull the newborn worktree's tracker
 # clone from the remote (the only synced copy). Best-effort (`|| true`) so an
