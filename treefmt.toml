@@ -7,8 +7,8 @@
 #   - .beads/**: the bd-managed issue store + passive issues.jsonl export; its
 #     canonical format is owned by `bd`.
 # node_modules/** and target/** are gitignored; the explicit excludes keep
-# `treefmt` from traversing them under `act` (local Docker CI), where the
-# git-walker's `.git` pointer is dangling and the implicit skip does not apply.
+# `treefmt` from traversing them in environments where the git-walker's `.git`
+# pointer is dangling and the implicit skip does not apply.
 #   - .agents/core/**: the vendored agentic-dev core (a submodule/gitlink) is a
 #     foreign tree with its own conventions; formatting it dirties the pin and is
 #     forbidden by the read-only-vendored-core discipline (core/HAZARDS.md H13).
@@ -95,13 +95,13 @@ includes = [
 [formatter."rumdl-format"]
 priority = 0
 command = "cargo"
-options = ["run", "--quiet", "-p", "wyrd-rust-gates", "--", "rumdl", "fmt"]
+options = ["run", "--quiet", "-p", "gandr-rust-gates", "--", "rumdl", "fmt"]
 includes = ["*.md"]
 
 [formatter."rumdl-verify"]
 priority = 1
 command = "cargo"
-options = ["run", "--quiet", "-p", "wyrd-rust-gates", "--", "rumdl", "check"]
+options = ["run", "--quiet", "-p", "gandr-rust-gates", "--", "rumdl", "check"]
 includes = ["*.md"]
 
 [formatter.rustfmt]
@@ -119,8 +119,8 @@ includes = ["*"]
 # *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
 # identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …); a content-MUTATING formatter must
 # never rewrite them (core hazard H8). Consumer-local LIVE-hazard fix — the
-# permanent fix is the core H8 exclude fragment (wyrd-lf70); this drift is
-# intentional until the core ships it.
+# permanent fix is the core H8 exclude fragment; this drift is intentional
+# until the core ships it.
 excludes = ["*.typ", "*.agda", "*.agda-lib"]
 
 [formatter."tombi-format"]
@@ -140,24 +140,14 @@ includes = ["*"]
 # Research prose (author names, technical neologisms, quoted source text) must
 # not be auto-"corrected" by typos.
 # *.typ: greenfield typst sources (Track C) carry curryst/fletcher identifiers
-# and unicode math typos must not rewrite (the fidelity risk wyrd-jyp flagged).
+# and unicode math typos must not rewrite (a flagged fidelity risk).
 # *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
 # identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …) typos must never rewrite (core hazard
 # H8). Also mirrored in typos.toml extend-exclude so a standalone `typos`
 # (editor/CLI) run — which reads that config, not treefmt's — is safe too.
-# Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment (wyrd-lf70).
+# Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment.
 excludes = ["*.typ", "*.agda", "*.agda-lib"]
 
 # [formatter.yamllint]
 # command = "yamllint"
 # includes = ["*.yaml", "*.yml"]
-
-[formatter.zizmor]
-command = "zizmor"
-options = ["--no-progress"]
-includes = [
-  ".github/workflows/*.yml",
-  ".github/workflows/*.yaml",
-  ".github/actions/**/*.yml",
-  ".github/actions/**/*.yaml",
-]

@@ -17,12 +17,17 @@
 # `mise.dev.toml` shell hooks own fail-open `wt step copy-ignored` (core H15).
 
 # Pre-start is intentionally minimal while the gandr reboot bootstraps: the
-# remaining wyrd-era steps (beads chmod, mise setup, submodule init/warmup)
-# referenced state this repo does not have yet and are re-grown alongside the
-# pieces they serve (tracker, toolchain gates, metatheory mount).
+# remaining template steps (mise setup, submodule init/warmup) reference state
+# this repo does not have yet and are re-grown alongside the pieces they serve
+# (toolchain gates, metatheory mount).
 
 [[pre-start]]
 copy-ignored = "wt step copy-ignored"
+
+# The tracker's Dolt clone is private working state, not shareable source:
+# keep every newborn worktree's .beads out of group/other reach.
+[[pre-start]]
+beads-chmod = "chmod 0700 .beads"
 
 # Freshness gate (docs/HAZARDS.md H2): pull the newborn worktree's tracker
 # clone from the remote (the only synced copy). Best-effort (`|| true`) so an

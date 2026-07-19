@@ -38,7 +38,7 @@ pass_filenames = false
 always_run = true
 stages = ["pre-commit"]
 
-# Read-only + pin discipline for the pinned internal-univalence upstream submodule (wyrd-s3tl).
+# Read-only + pin discipline for the pinned internal-univalence upstream submodule.
 [[repos.hooks]]
 id = "iu-pin"
 name = "internal-univalence submodule initialized, clean, at pin"
@@ -66,6 +66,18 @@ pass_filenames = false
 always_run = true
 stages = ["pre-commit"]
 
+# Two copies of one nightly pin (mise's [env] RUSTUP_TOOLCHAIN shadows
+# rust-toolchain.toml inside every task); keep them equal so the pin can never
+# silently drift again.
+[[repos.hooks]]
+id = "toolchain-pin"
+name = "rust-toolchain.toml and mise nightly pin agree"
+language = "system"
+entry = "mise run toolchain:pin-check"
+files.glob = ["rust-toolchain.toml", "mise.toml"]
+pass_filenames = false
+stages = ["pre-commit"]
+
 [[repos.hooks]]
 id = "cargo-fmt-check"
 name = "cargo fmt --all -- --check"
@@ -89,7 +101,7 @@ entry = "mise run docs:manifest-drift"
 files.glob = [
   "docs/gandr/**",
   "docs/adr/**",
-  "crates/wyrd-rust-gates/src/docs/**"
+  "crates/gandr-rust-gates/src/docs/**"
 ]
 pass_filenames = false
 stages = ["pre-commit"]
@@ -102,17 +114,8 @@ entry = "mise run docs:reference-integrity"
 files.glob = [
   "docs/gandr/**",
   "docs/adr/**",
-  "crates/wyrd-rust-gates/src/docs/**"
+  "crates/gandr-rust-gates/src/docs/**"
 ]
-pass_filenames = false
-stages = ["pre-commit"]
-
-[[repos.hooks]]
-id = "wrkflw-validate"
-name = "wrkflw validate"
-language = "system"
-entry = "mise run wrkflw"
-files = "^\\.github/workflows/.*\\.ya?ml$"
 pass_filenames = false
 stages = ["pre-commit"]
 
@@ -127,7 +130,7 @@ stages = [
 always_run = true
 pass_filenames = true
 
-# The PUSH tier: every configured job (wyrd-hkd6). `wt merge` already ran the cheap
+# The PUSH tier: every configured job. `wt merge` already ran the cheap
 # MERGE tier, so this adds the heavier checks — docs/graph gates, no-panic,
 # cargo-careful, llvm-cov — before anything leaves the machine. Fuzz and mutation
 # campaigns are on NEITHER tier; they are scheduled obligations (docs/WORKFLOW.md).
@@ -135,7 +138,7 @@ pass_filenames = true
 id = "workflow-push"
 name = "unified Rust workflow push gate"
 language = "system"
-entry = "cargo run -p wyrd-rust-gates -- workflow push"
+entry = "cargo run -p gandr-rust-gates -- workflow push"
 pass_filenames = false
 always_run = true
 stages = ["pre-push"]

@@ -9,7 +9,7 @@ exclude = [
   ".beads",
   ".git",
   # Vendored agentic-dev core (submodule, read-only, own conventions) + in-repo
-  # agent worktrees — foreign trees, not wyrd source (core/HAZARDS.md H13).
+  # agent worktrees — foreign trees, not gandr source (core/HAZARDS.md H13).
   ".agents/core",
   ".claude/worktrees",
   "node_modules",

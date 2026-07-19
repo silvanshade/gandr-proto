@@ -10,37 +10,61 @@
 # identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …) a standalone `typos` run — which reads
 # THIS config, not treefmt's — must never "correct". Mirrors the treefmt
 # [formatter.typos]/[formatter.sizelint] excludes so editor/CLI passes are safe
-# too (core hazard H8). Consumer-local LIVE-hazard fix; permanent fix = core H8
-# fragment (wyrd-lf70).
+# too (core hazard H8). Consumer-local LIVE-hazard fix; permanent fix = the
+# core H8 fragment.
+#
+# *.typ: greenfield typst manual sources (Track C) quote Agda/math identifiers
+# verbatim, so they get the same protection.
+#
+# docs/manual/refs.yml: bibliography citation keys and author names are
+# identifiers, not prose; typos has already "corrected" the key aks-2015 →
+# ask-2015 (the exact H8 failure mode, 2026-07-03, internal-univalence).
+#
+# vendor trees (metatheory/vendor/** = vendored agda-stdlib; vendor/** kept for
+# any future root-level vendoring) are read-only upstream: a standalone typos
+# run has already "corrected" upstream CHANGELOG spellings, dirtying the pin;
+# scoped out so editor/CLI passes leave vendored trees untouched.
 extend-exclude = [
   "secrets/",
   "treefmt.toml",
-  "zsh/.zcompdump",
   ".agents/core/",
   ".claude/worktrees/",
   "*.agda",
   "*.agda-lib",
+  "*.typ",
+  "docs/manual/refs.yml",
+  "vendor/**",
+  "metatheory/vendor/**",
 ]
 
 [default]
-# Beads issue IDs (`wyrd-<base36 suffix>`) are identifiers, not prose; their
-# random 3-4 char suffixes trip typos on fragments (`wyrd-8ot` -> "ot",
-# `wyrd-u7iz` -> "iz"). Ignore the whole token so present and future IDs are safe.
+# Beads issue IDs (`gandr-<base36 suffix>`) are identifiers, not prose; their
+# random 3-4 char suffixes trip typos on fragments (`gandr-8ot` -> "ot",
+# `gandr-u7iz` -> "iz"). Ignore the whole token so present and future IDs are safe.
 #
 # Git commit hashes are all-hex tokens, not prose; short ones trip typos on
 # fragments (a 7-char hash can contain "ba", "ef", ...). typos already auto-ignores
 # long hashes; ignore 7+ hex tokens so short hashes are safe too.
-extend-ignore-re = ['\bwyrd-[0-9a-z]+\b', '\b[0-9a-f]{7,40}\b']
+extend-ignore-re = ['\bgandr-[0-9a-z]+\b', '\b[0-9a-f]{7,40}\b']
 
+# Any word typos would "correct" into a WRONG word is pinned here as an identity
+# mapping (word = "word"). STANDING RULE: an unwanted typos rewrite is fixed by
+# growing THIS allowlist, never by rewording the prose around it — the intended
+# vocabulary always wins. Covers mathematical vocabulary (typos has ALREADY
+# tried hom→home and transfors→transforms — the H8 failure mode) AND ordinary-
+# but-uncommon words (missable→miscible). Grow deliberately as terms enter the
+# prose.
 [default.extend-words]
 Ket = "Ket"
 ket = "ket"
 Solum = "Solum"
 solum = "solum"
-# "mis" is the prose prefix in hyphenated forms like "mis-scope"; "Thm" is the
-# standard abbreviation for "Theorem" (e.g. "Thm 2.4"). Neither is a typo.
+# "mis" is the prose prefix in hyphenated forms like "mis-scope"; "Thm"/"thm"
+# is the standard abbreviation for "Theorem" (e.g. "Thm 2.4"; typos rewrites it
+# to "Them"). Neither is a typo.
 mis = "mis"
 Thm = "Thm"
+thm = "thm"
 # Used in the doc-gate scripts' "present but unparseable" error messages; a
 # valid spelling typos would otherwise rewrite to "unparsable".
 unparseable = "unparseable"
@@ -48,22 +72,33 @@ unparseable = "unparseable"
 # and Modules") and "Higher-Dimensional Algebra via Colored PROPs"; a surname,
 # not a misspelling of "You"/"Yaw".
 Yau = "Yau"
-# Rust TUI crate names (gandr-tui, wyrd-f2s4): typos rewrites "ratatui" to
-# "ratatouille", which would corrupt prose, Cargo.toml, and use statements.
-# "edtui" (editor widget) is protected pre-emptively for the same reason.
+# Rust TUI crate names (gandr-tui): typos rewrites "ratatui" to "ratatouille",
+# which would corrupt prose, Cargo.toml, and use statements. "edtui" (editor
+# widget) is protected pre-emptively for the same reason.
 ratatui = "ratatui"
 edtui = "edtui"
 # Category-theory vocabulary in *.md math prose: typos rewrites "hom" to
-# "home", corrupting "hom-set"/"hom-functor" (it bit ADR-49's "hom-set
-# operation" on main; H8-class fidelity hazard, wyrd-h1z4 pass finding).
+# "home", corrupting "hom-set"/"hom-functor" (it has bitten committed prose
+# before; H8-class fidelity hazard).
 hom = "hom"
 # "equipments" is the standard plural in formal category theory (proarrow
-# equipments, virtual equipments); typos rewrites it to "equipment"
-# (H8-class; same entry exists in the sibling internal-univalence repo).
+# equipments, virtual equipments); typos rewrites it to "equipment" (H8-class).
 equipments = "equipments"
+# "missable" is a real word; typos rewrites it to "miscible".
+missable = "missable"
+# "Nd"/"Nc" (= norm d / norm c) are the standard normalizer abbreviations in the
+# UaBase canonicalization prose (canon-⊕ʳ, partA-⊕swap); typos rewrites
+# "Nd" → "And".
+nd = "nd"
+# "transfor(s)" — the transformation-of-transformations vocabulary in the
+# VDC/equipment prose; typos rewrites "transfors" → "transforms".
+transfor = "transfor"
+transfors = "transfors"
 
 [default.extend-identifiers]
 CertiCoq = "CertiCoq"
+# Venue acronym in the bibliography: typos case-splits it and flags the
+# leading "Fo".
 FoSSaCS = "FoSSaCS"
 serie = "serie"
 shortcat = "shortcat"

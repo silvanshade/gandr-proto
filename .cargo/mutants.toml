@@ -3,8 +3,8 @@
 # cargo-mutants configuration (mutants.rs). Every key here is a CORRECTNESS or
 # SCOPE setting, never a SAFETY control: cargo-mutants is the thing being
 # constrained, so nothing it reads can be the constraint. Containment is the
-# microVM boundary in `crates/wyrd-rust-gates/src/mutants/sandbox.rs` plus the
-# fail-closed preflight in `crates/wyrd-rust-gates/src/mutants/containment.rs`.
+# microVM boundary in `crates/gandr-rust-gates/src/mutants/sandbox.rs` plus the
+# fail-closed preflight in `crates/gandr-rust-gates/src/mutants/containment.rs`.
 # See docs/HAZARDS.md.
 
 # BASELINE BLOCKER, not an optimization. `copy_vcs` defaults OFF, so the scratch
@@ -32,8 +32,8 @@ copy_target = false
 # timeout rounds down far enough to spuriously trip exit 3 (Timeout). Floor it.
 minimum_test_timeout = 30
 
-# Match CI's runner (`cargo nextest run` in .github/workflows/ci.yml), so a mutant
-# is judged caught/missed by the same harness that gates the workspace.
+# Match the gate wall's runner (`cargo nextest run`), so a mutant is judged
+# caught/missed by the same harness that gates the workspace.
 test_tool = "nextest"
 
 # Run the WHOLE workspace's tests against every mutant, not just the mutated package's.
@@ -52,7 +52,8 @@ test_workspace = true
 timeout_multiplier = 5.0
 build_timeout_multiplier = 5.0
 
-# Reviewed equivalent/non-contractual gandr-graph survivors from wyrd-4gf0.
+# Reviewed equivalent/non-contractual gandr-graph survivors from the template's
+# first baseline sweep — re-derive against this workspace's own first sweep.
 # Each pattern is fully anchored to one cargo-mutants name shape.
 exclude_re = [
   # probe-only: determinism binary stances are row labels; this probe uses a single sorted stance.

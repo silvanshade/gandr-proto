@@ -4,8 +4,8 @@
   // imports the vendored-core fragment by explicit `.mts` path
   // (`./.agents/core/fragments/commitlintrc.base.mts`); resolving that
   // specifier under nodenext needs `allowImportingTsExtensions` (hence
-  // `noEmit`). Without this project the editor reports a spurious TS2307
-  // (wyrd-g0dq); the commitlint gate itself runs via a runtime loader and is
+  // `noEmit`). Without this project the editor reports a spurious TS2307;
+  // the commitlint gate itself runs via a runtime loader and is
   // unaffected. The `packages/tree-sitter-gandr` package keeps its own
   // tsconfig — this project claims only the files it lists.
   "compilerOptions": {

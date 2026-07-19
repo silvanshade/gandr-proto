@@ -58,7 +58,7 @@ const noSessionTrailer: Rule = (parsed) => {
   return [false, `session-link trailers are contributor-concern and must not appear in commit messages:\n${offending}`];
 };
 
-const plugin: Plugin = {
+const agenticDevPlugin: Plugin = {
   rules: {
     "co-authored-by-canonical": coAuthoredByCanonical,
     "no-session-trailer": noSessionTrailer,
@@ -104,12 +104,7 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
   const allScopes: string[] = [...new Set([...CORE_SCOPES, ...scopes])];
   return {
     extends: ["@commitlint/config-conventional"],
-    plugins: [{
-      rules: {
-        "co-authored-by-canonical": coAuthoredByCanonical,
-        "no-session-trailer": noSessionTrailer,
-      },
-    }],
+    plugins: [agenticDevPlugin],
     rules: {
       // Header: a single standalone subject line, ≤ 100 chars, trimmed.
       "header-max-length": [RuleConfigSeverity.Error, "always", 100],
@@ -147,3 +142,55 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
     },
   };
 }
+
+// ── gandr consumer config ────────────────────────────────────────────────────
+// NOTE (inlined agentic-dev base): everything above this section is the
+// agentic-dev core base fragment (normally imported from
+// `./.agents/core/fragments/commitlintrc.base.mts`), inlined here because the
+// vendored `.agents/core` submodule is not wired into the reboot yet. When the
+// core is re-vendored, restore the import and keep only this consumer section.
+//
+// Fixed scope vocabulary — the library layer / repo surface a gandr commit
+// touches. Compound scopes are comma-delimited and each part must be a member;
+// new areas are added here deliberately, never by free-form invention. The
+// `gandr-*` crate scopes anticipate the planned workspace; prune/grow them
+// with the crate schema.
+export default makeConfig([
+  "analysis",
+  "coverage",
+  "crates",
+  "drift",
+  "edit",
+  "fuzz",
+  "gandr",
+  "gandr-core",
+  "gandr-corpus",
+  "gandr-data",
+  "gandr-ffi",
+  "gandr-lsp",
+  "gandr-metatheory",
+  "gandr-pipeline",
+  "gandr-polygraph",
+  "gandr-render-proto",
+  "gandr-shell",
+  "gandr-tree-sitter",
+  "gandr-tui",
+  "gandr-vdc",
+  "incremental-pipeline",
+  "kernel",
+  "knowledge",
+  "metatheory",
+  "mise",
+  "nominal",
+  "order-maintenance",
+  "pipeline",
+  "polygraphs",
+  "profiles",
+  "proptest",
+  "rustdoc",
+  "shell",
+  "spec",
+  "surface",
+  "tooling",
+  "wt",
+]);
