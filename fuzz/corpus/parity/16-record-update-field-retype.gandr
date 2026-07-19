@@ -1,0 +1,13 @@
+// A field-replacement update may change the field's TYPE (a "strong" update).
+// Because the result is a fresh value, no old observer can ever see the new
+// type through it, so retyping a field is sound (proposal-value-semantics-mvp
+// §3.1). Here `count` goes from an Integer to a String.
+def cell = #{ count = 3, label = "start" };
+
+// Replace `count` with a string. The old `cell` is unaffected; the result is a
+// new record whose `count` field is now a String.
+#{ cell | count = "three" }
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: #{count = "three", label = "start"}

@@ -1,0 +1,11 @@
+#:tombi toml-version = "v1.0.0"
+
+# Cargo discovers config from the build's CWD upward, so this file applies ONLY
+# to builds invoked from this directory — workspace-root builds never see it.
+# That is exactly the split the driver needs: `dylint_testing`'s UI build runs
+# `cargo build` with this package dir as CWD, and the cdylib must be linked by
+# `dylint-link` (which renames the artifact with the toolchain suffix Dylint
+# loads by) — while ordinary workspace builds of the crate use the default
+# linker and only need the crate to compile.
+[target."cfg(all())"]
+rustflags = ["-C", "linker=dylint-link"]

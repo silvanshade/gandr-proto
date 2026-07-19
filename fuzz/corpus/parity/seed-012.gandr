@@ -1,0 +1,3 @@
+def path = "/tmp";
+#!{echo start};
+#!{ls $(string_append(path, "/gandr"))}

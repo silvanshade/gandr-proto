@@ -1,0 +1,53 @@
+# Workflow: worktrees, merging, and agent isolation
+
+> Read when: creating or removing a worktree, merging a branch, launching a mutating sub-agent, or debugging a `wt` hook.
+> Base lifecycle (`wt switch --create` / `wt merge --no-squash main` / `wt remove`, the squash gotcha, hook approvals, governance-docs-on-main): `.agents/core/core/WORKFLOW.md` §"Worktrees and merging".
+> This file is the wyrd delta.
+
+## Layout and trust
+
+* **Worktree location.** Worktrees live under one per-repo sibling directory (`../wyrd-worktrees/<branch>`) via the `worktree-path` template in your **user** worktrunk config — never nested inside the repo (a nested worktree pulls the main `mise.toml` in as a duplicate parent layer and shows up as untracked content in main's tree).
+* **Trust.** Require mise v2026.7.5+; trust the main checkout once and let linked worktrees inherit it.
+  Never bootstrap trust from Worktrunk or agent preflight hooks (core H15).
+  Snapshot harnesses keep native CoW/reflink isolation and trust their stable root once in global mise config (OMP: `{{ env.HOME }}/.omp/wt`).
+* **Fresh worktree setup.** Run `mise run setup` before the first commit — it installs the node dependencies the treefmt pre-commit and commitlint push-range hooks need (`wyrd-r9wh`; the old `--no-verify` bypass is obsolete and agent briefs must never instruct it).
+
+## Hooks (`.config/wt.toml`)
+
+* `[[pre-start]]`: `copy-ignored` (fail-open ignored-state copy; excludes `.beads/*.jsonl`, core H11), `core-init` (submodule init from the primary's object store), `iu-build-warmup` (SHA-guarded reflink of the IU submodule `_build`, core H15), `beads-pull` (freshness, H2).
+* **`[pre-merge]` is the local CI** — any non-zero exit aborts the merge: `mise run gate:merge` (the native merge-tier composition, [ci.md](ci.md)), `adr-guard` (ADRs land on `main` only; core H5), `core-pin` (read-only vendored core at its pin), and `beads` (`bd dolt pull && bd dolt push` — make the branch's beads durable **before** the merge removes the worktree's Dolt clone; pull-then-push self-heals the sibling-push race).
+* `[post-merge]`: `beads-pull` in the primary — the merge made the branch's beads durable on DoltHub, but the primary's own clone reads stale until it pulls (the 2026-06-28 incident).
+
+Contributor notes live in the sibling `wyrd-notes` repository (a separate local git repo beside this one), so worktree lifecycle operations cannot strand them — the historical in-repo gitignored `notes/` and its `notes-guard` gate are retired.
+
+## Mutating sub-agents: the Worktrunk-owned lane
+
+A sub-agent with Bash/git access shares the live working tree unless given its own path — a stray `git checkout`/formatter/merge can revert uncommitted work (core H7; realized in wyrd during the record-rung adversarial pass).
+The lane:
+
+1. the orchestrator **commits visible state first**;
+2. pre-creates the worktree: `wt switch --create <branch> --base=@ --no-cd`;
+3. launches the agent at the returned path with harness-native worktree creation disabled;
+4. the agent commits only on its assigned branch;
+5. the orchestrator integrates with `wt merge --no-squash <target>`.
+
+A harness that cannot target the path keeps its native isolation backend and stable globally trusted root; it never emulates Worktrunk hooks or runs `mise trust` as preflight (core H15).
+Read-only no-command agents may share a tree.
+Hooks are user-preapproved with `wt config approvals add`; agents never pass blanket `--yes`.
+
+## Sub-agent briefs: tool routing is the orchestrator's job
+
+Ambient tooling guidance does not reach tool-restricted agent types, and a detailed brief displaces whatever does — so the brief itself must carry the routing.
+Before spawning any sub-agent:
+
+1. **Verify tool availability for the target agent type.** MCP tools exist only where the agent type exposes them (many types are Bash-only); a CLI fallback counts only if confirmed invocable (e.g. `codegraph --help`) from that agent's environment.
+   **If availability cannot be verified, stop and get help from the owner before launching the task** (owner rule, 2026-07-12) — this failure is routinely caught too late to respond to.
+2. **Route tools explicitly in the brief**: which tool for which step, MCP or CLI form, and any indexed tree or workspace the tool must be pointed at.
+3. **Prefer the structure-aware tools** the task's data already has an index for (codegraph for any `.codegraph`-indexed tree — including foreign checkouts; sem/weave for diffs and merges) over grep/read loops, and say so in the brief.
+
+Realized failure (2026-07-12): a boundary-analysis sub-agent ran grep/Read over a codegraph-indexed tree because the brief dropped the routing and the agent type had no MCP exposure; the gap surfaced only after the report landed.
+
+## ADRs and governance docs
+
+The governance-doc carve-out (`.agents/core/core/WORKFLOW.md` §"Governance docs land on main") covers wyrd's `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/{WORKFLOW,KNOWLEDGE,HAZARDS}.md`, the `docs/workflow/` sub-files, and `docs/adr/` — these land on `main` directly, one commit each.
+ADRs are per-decision files (`docs/adr/NNNN-slug.md`), so parallel branches no longer collide on content or manifest hash; the residual risk is a **number race** (two branches minting the same next number), which is why the `adr-guard` gate and record-on-main-first still stand.

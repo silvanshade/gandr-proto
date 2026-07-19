@@ -1,0 +1,9 @@
+# gandr design corpus registry — stub while the reboot bootstraps.
+version: 1
+hash: blake3
+nodes:
+  - path: README.md
+    role: index
+    b3: 63ae1999487dee2f72c5151e82e266408b7f81ab115d3ada2761a28176b2f17c
+    edges:
+      - { rel: orients, to: . }

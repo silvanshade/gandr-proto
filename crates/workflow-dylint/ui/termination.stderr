@@ -1,0 +1,106 @@
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:117:5
+   |
+LL | /     fn false_self_none(&self)
+LL | |     {
+LL | |         self.false_self_none();
+LL | |     }
+   | |_____^
+   |
+   = note: `#[warn(recursive_function_needs_termination)]` on by default
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:59:1
+   |
+LL | / fn false_direct_none(value: Count) -> Count
+LL | | {
+LL | |     false_direct_none(value)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:89:1
+   |
+LL | / fn false_let_none(value: Count) -> Count
+LL | | {
+LL | |     let child = value;
+LL | |     false_let_none(child)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:100:1
+   |
+LL | / fn false_match_none(value: Option<Count>) -> Count
+LL | | {
+LL | |     match value {
+LL | |         | Some(child) => false_match_none(Some(child)),
+...  |
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:69:1
+   |
+LL | / fn false_mutual_left_none(value: Count) -> Count
+LL | | {
+LL | |     false_mutual_right_none(value)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:79:1
+   |
+LL | / fn false_mutual_right_none(value: Count) -> Count
+LL | | {
+LL | |     false_mutual_left_none(value)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:15:1
+   |
+LL | / fn incomplete_direct(value: Count) -> Count
+LL | | {
+LL | |     incomplete_direct(value)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:8:1
+   |
+LL | / fn missing_direct(value: Count) -> Count
+LL | | {
+LL | |     missing_direct(value)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:20:1
+   |
+LL | / fn mutual_left(value: Count) -> Count
+LL | | {
+LL | |     mutual_right(value)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:25:1
+   |
+LL | / fn mutual_right(value: Count) -> Count
+LL | | {
+LL | |     mutual_left(value)
+LL | | }
+   | |_^
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/termination.rs:128:1
+   |
+LL | / fn ordinary_input_recursion(value: Count) -> Count
+LL | | {
+LL | |     ordinary_input_recursion(value)
+LL | | }
+   | |_^
+
+warning: 11 warnings emitted
+

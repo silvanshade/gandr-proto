@@ -1,0 +1,27 @@
+warning: single-field struct must declare #[repr(transparent)]
+  --> $DIR/repr.rs:3:8
+   |
+LL | struct MissingNamed
+   |        ^^^^^^^^^^^^
+   |
+   = note: `#[warn(single_field_struct_needs_transparent_repr)]` on by default
+
+warning: single-field struct must declare #[repr(transparent)]
+  --> $DIR/repr.rs:8:8
+   |
+LL | struct MissingTuple(u16);
+   |        ^^^^^^^^^^^^
+
+warning: single-field struct must declare #[repr(transparent)]
+  --> $DIR/repr.rs:29:16
+   |
+LL |         struct MacroGenerated(u8);
+   |                ^^^^^^^^^^^^^^
+...
+LL | generated_single_field_struct!();
+   | -------------------------------- in this macro invocation
+   |
+   = note: this warning originates in the macro `generated_single_field_struct` (in Nightly b$DIRlds, run with -Z macro-backtrace for more info)
+
+warning: 3 warnings emitted
+

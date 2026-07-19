@@ -1,0 +1,13 @@
+// Pairs: canonical data, no ceremony.
+//
+// `(x, y)` is a value built from values. Note what this file does *not*
+// contain: no constructor declaration, no allocation ritual -- structural
+// products are built in, and the machine returns them as-is.
+def point = (1, 2);
+
+ret point
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: point
+//@ expect-last-value: (1, 2)

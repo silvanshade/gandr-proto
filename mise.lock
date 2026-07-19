@@ -151,6 +151,10 @@ backend = "cargo:cargo-binstall"
 version = "0.4.10"
 backend = "cargo:cargo-careful"
 
+[[tools."cargo:cargo-dylint"]]
+version = "6.0.1"
+backend = "cargo:cargo-dylint"
+
 [[tools."cargo:cargo-llvm-cov"]]
 version = "0.8.7"
 backend = "cargo:cargo-llvm-cov"
@@ -166,6 +170,10 @@ backend = "cargo:cargo-nextest"
 [[tools."cargo:coreutils"]]
 version = "0.9.0"
 backend = "cargo:coreutils"
+
+[[tools."cargo:dylint-link"]]
+version = "6.0.1"
+backend = "cargo:dylint-link"
 
 [[tools."cargo:mergiraf"]]
 version = "0.18.0"

@@ -1,0 +1,15 @@
+// Functional record update: `#{ r | ℓ = v }` rebuilds a record with some
+// fields overridden. Value semantics means the result is a NEW record and the
+// original binding is untouched -- there is no mutation and no aliasing.
+//
+// It is pure sugar over the ADR-45 closed record (proposal-value-semantics-mvp
+// §3.1): it reads the base and overlays the overrides, so it spends no new
+// core former -- the same reason `record.insert` needed none.
+def point = #{ x = 1, y = 2 };
+
+// Override x; y is carried over unchanged. `point` still denotes #{x=1, y=2}.
+#{ point | x = 9 }
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: #{x = 9, y = 2}

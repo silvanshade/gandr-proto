@@ -1,0 +1,4 @@
+target_percent = 80.0
+
+[files]
+"crates/wyrd-rust-gates/src/main.rs" = 80.0

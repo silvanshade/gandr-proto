@@ -1,0 +1,12 @@
+// Field EXTENSION: an override label that is not already present widens the
+// record to a new closed shape. Over closed records this falls out of the same
+// overlay as replacement -- the result shape is statically known, so it needs
+// no row variable (proposal-value-semantics-mvp §3.1).
+def base = #{ a = 1 };
+
+// `b` is new, so the update extends rather than replaces.
+#{ base | b = 2 }
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: #{a = 1, b = 2}

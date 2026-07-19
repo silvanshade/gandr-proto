@@ -1,0 +1,92 @@
+# Workflow: issue tracking (beads)
+
+> Read when: creating, closing, or triaging beads; wiring dependencies; auditing tracker state.
+> Base discipline: `.agents/core/core/WORKFLOW.md` §"Issue tracking".
+> This file is the wyrd delta.
+
+## Source of truth and sync
+
+Issues live in a local Dolt database (beads, prefix `wyrd-`) syncing **out-of-band from git** to DoltHub [`silvanshade/wyrd-beads`](https://www.dolthub.com/repositories/silvanshade/wyrd-beads).
+DoltHub is the **only** synced copy; every worktree and the primary checkout hold independent Dolt clones (core/HAZARDS.md H2):
+
+* **push after every write** — `bd dolt push` immediately after `bd create`/`update`/`dep`/`close`;
+* **pull before relying on reads** — `bd dolt pull` at session start, on entering a worktree, before triage (the `wt` `beads-pull` hooks and the `SessionStart` hook mechanize this);
+* trust the remote over a local clone when they disagree.
+
+`.beads/*.jsonl` is a gitignored local-only export read by `bv`, never committed.
+
+## Filing and lifetime policy (anti-drift)
+
+The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never recurs.
+
+* **A bead is a work item, not a memory.** File a bead only for work someone will plausibly execute within the current or next program of work.
+  Insight belongs in an ADR (decision), the corpus (design), or the notes repo (contributor context) — never parked in the tracker.
+* **Consolidation-first.** Filing what would be the third bead on one topic means the topic needs ONE topic bead instead — extend or replace; never accumulate siblings an agent must reassemble.
+  Residual seams discovered during work go into the owning topic bead (a `bd comment` or a description line), not as new dangling beads, unless immediately schedulable.
+* **Research expires.** A research question gets one bead whose deliverable is a decision (adopt/defer, recorded as an ADR); when the pass completes, the bead closes and residual leads go to the single project watchlist bead.
+  A lead not promoted to a decision by the next triage sweep is deleted — it can be re-asked if it ever matters again.
+* **Triage sweep cadence.** At each sweep (weekly obligation): active beads pruned toward ≤20; off-trajectory items older than a week deleted or folded into topic beads; closed beads older than ~2 weeks purged; deferred topic beads reviewed for reactivation.
+* **Epics need children or a close date.** An epic with no active children is either done (close it) or a label (fold it into a topic bead).
+
+## Conventions
+
+* **Small graph, current graph.** The tracker is a working set, not an archive: ≲20 active beads, consolidated by topic.
+  Prefer one compact bead that carries a topic's current state over several partial beads an agent must reassemble.
+  Prune aggressively at triage; a dropped question can be re-asked later if it ever matters again (owner posture, 2026-07-12).
+* Beads cite corpus paths (`docs/gandr/spec/…`, `docs/adr/…`) so an agent lands with context.
+* Every doc-drift finding files a bead (`docs/KNOWLEDGE.md` phase 1) — drift produces work items, not silent warnings.
+* Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
+  Trust `bd show`/`bd blocked` over `bv` when they disagree.
+* `bd list` hides closed issues — use `--all` / `bd show <id>` when auditing done-ness (core/HAZARDS.md H3).
+  JSON listing commands paginate; pass `-n 0` (or use `bd export`) for complete sets.
+* **Large text fields wedge the database** (owner-confirmed 2026-07-19; formerly a hazards-doc entry, now standing workflow guidance).
+  Keep `notes` and `description` compact: standing directions plus a short pointer at most.
+  Long-form records — resolutions, decision logs, progress narration — go in issue comments (`bd comment <id>` or `bd comment <id> --file …`; retrieve with `bd comments <id>`; `bd show` surfaces only `comment_count`, so the pointer in the field is what makes the record discoverable).
+  Field updates REPLACE content (`bd update --notes`/`--description` clobber the prior value — re-paste anything that must survive); comments append, which is the second reason they are the right home for accumulating records.
+
+## Feature landing and residual closeout
+
+The base rule still governs: close a bead only when its full recorded scope is done and verified; make residual scope epic-shaped; file follow-ups `discovered-from` the parent; sweep related memory before closing. wyrd adds one **feature-landing workflow** so executable evidence, manual work, mutation campaigns, and other residuals cannot drift into separate conventions.
+
+### Demonstrability lands with the feature
+
+* **Surfaced language feature.** The implementing change includes runnable `gandr-corpus` model **and** pathological examples, harness assertions, and coverage-map registration ([corpus.md](corpus.md); `ADR-84`).
+  These examples are landing evidence, never residual work.
+  A syntax-first change includes its parse-gated `surface/` witness.
+  The semantics-graduation change promotes that witness to runnable `model/`, adds runnable pathological coverage, harness assertions, and coverage-map registration in that same change.
+* **Internal engine feature with no language surface.** The implementing change includes named runnable crate fixtures exercised by named crate tests or harness assertions and mirroring the intended future gandr programs.
+  Its closeout residuals bead names those future programs and the exact surface blocker that enables promotion.
+  The manual face says plainly that no user syntax exists yet; conformance-only support is not presented as a runnable feature.
+
+A reviewer and a user must be able to answer “what can I run to see this work?”
+from the landing itself.
+“The crate tests pass” is sufficient only when the named internal fixtures are exercised by those passing tests and the future program shape and promotion blocker are both recorded.
+
+### One residuals bead, four faces
+
+Closing work that **touches the language surface**, **adds or substantially refactors production Rust**, or **leaves any known residual** files or updates one consolidated residuals bead.
+Use four explicit faces, marking a face `not applicable` rather than silently omitting it:
+
+1. **MANUAL OBLIGATION.** Every language-surface addition or behavior change names the matching `docs/manual/` update.
+   An internal-only feature instead records the absence of user syntax and what must land before the manual may present one.
+2. **MUTATION CAMPAIGN.** New or substantially refactored production Rust names a scheduled standalone campaign over the commit range and intended scope ([mutation-adequacy.md](mutation-adequacy.md) §“Campaign lifecycle”).
+   The residuals bead retains its required `discovered-from` provenance, but no campaign or residual creates a blocking dependency back to completed implementation.
+3. **OTHER RESIDUALS AND FUTURE DIRECTIONS.** The consolidated residuals bead is the closeout index of record: record every known residual in this face.
+   When one active topic/work bead already owns execution, link that one item instead of duplicating it; never rely only on a closed parent and never create additional residual siblings.
+4. **CORPUS OBLIGATION.** For a surfaced feature, record the model/pathological witnesses, harness assertions, and coverage-map registration that already landed; this is closure evidence, not deferred example work.
+   For an internal-only feature, record the named exercised crate fixtures, intended future corpus programs, and blocker whose completion makes promotion possible.
+
+| Change shape                 | Manual face                               | Mutation face        | Other face                    | Corpus face                                    |
+| ---------------------------- | ----------------------------------------- | -------------------- | ----------------------------- | ---------------------------------------------- |
+| Surfaced language feature    | matching manual update                    | apply Rust trigger   | index every residual or `N/A` | landed runnable treatment                      |
+| Internal engine feature      | “no user syntax” + promotion prerequisite | apply Rust trigger   | index every residual or `N/A` | exercised fixtures + future programs + blocker |
+| Tooling-only production Rust | `N/A`                                     | campaign is required | index every residual or `N/A` | `N/A`                                          |
+
+Where none of the three triggers applies, file nothing.
+
+After dependency changes, regenerate the passive export as described above.
+
+## Agent-attribution metadata
+
+Bead closures carry agent attribution, stamped at close via `bd update --set-metadata`: `model=<model-id>`, `runner=<runner>`, `agent_tokens=<n>`.
+Unstamped closures surface as "unattributed" in the metrics report (`mise run metrics:agents`, lands with the code tooling), so coverage gaps stay visible.

@@ -1,0 +1,11 @@
+version: 1
+hash: blake3
+nodes:
+  - path: root.md
+    b3: 864aa0ab08c8adbf3271682ea0fb8256eb4e8323f03a45c1783210583a788ba9
+    edges:
+      - rel: reference
+        to: reference.md#reference
+  - path: reference.md
+    b3: 871a34f3fa54eaecd43c82d5cce45099a706b50b0c0840310688c116da17d33a
+    edges: []

@@ -1,0 +1,6 @@
+def classify(v: A + B) -> F Integer {
+  case v {
+    Inl(x) => ret (x : Integer),
+    Inr(_) => ret 0
+  }
+}

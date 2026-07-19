@@ -1,0 +1,56 @@
+# Workflow: documentation discipline
+
+> Read when: adding or restructuring documentation, or authoring math-dense Markdown.
+> Base statement: `.agents/core/core/WORKFLOW.md` §"Documentation economy".
+> Corpus trust machinery (MANIFEST/BLAKE3, edge vocabulary, authority): `docs/KNOWLEDGE.md`.
+
+## Documentation economy — the wyrd posture
+
+Documentation accumulation is a **named project killer**: doc bloat helped sink a predecessor, and stale accumulated context confuses agents as much as humans.
+The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
+
+* **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
+* **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
+* **Concise, scannable, chunked** — lead with a summary or table; split by concern instead of appending.
+* **Placed** — deep material stays off the agent orientation main-path (`AGENTS.md` §"Start here", `docs/gandr/VISION.md` §6): reachable from it, never inlined into it.
+* **Fidelity overrides economy** for load-bearing content: never truncate or lossily summarize it — reorganize (chunk, relocate intact, archive) instead.
+  When uncertain whether content is load-bearing, treat it as load-bearing.
+* **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the sibling `wyrd-notes` repository (a separate local git repo beside this one), never in the tracked tree.
+  What a survey _decides_ gets distilled into an ADR; the survey itself does not move into `docs/`.
+
+Per-crate `crates/*/docs/` (STATUS, crate ADR, CHANGELOG — no TODO.md; beads tracks that) are a distinct lean tier, off the design-corpus main-path and unregistered in the MANIFEST.
+
+## Proposal lifecycle (retire deliberately)
+
+A proposal file is always in exactly one state, named in its status banner, and it moves — stale ACTIVE banners were a principal drift source:
+
+* **Active** — being designed or decided; cites its bead and intended ADR.
+* **Adopted** — its decision face (ADR) landed; the banner names the ADR and the proposal becomes the design record behind it.
+  **Amend the banner with an as-built note at each implementation landing** — a proposal whose content has shipped must say so.
+  The manual presents adopted-but-unbuilt designs compactly (Part IV, decided directions); the exhaustive treatment waits for construction.
+* **Implemented** — the surface is built: the manual **absorbs the enduring content exhaustively** — the owning chapter presents it and the proposal's banner gains a `> **Manual:** …` pointer line, while the file stays in place as the authoritative design record (absorption never deletes, moves, or truncates the spec; where a chapter and the corpus disagree, the corpus is correct).
+  Crate-scoped proposals may instead move to the owning crate's `docs/` (precedent: the TUI proposal); purely historical ones are marked as such.
+  Either way the proposal stops being a to-do: its endgame is implementation plus absorption into the manual, the durable user-facing home.
+* **Dormant / retired** — no activity and no owner: mark dormant with a reader caution (precedent: skuld), or delete outright when the content is re-derivable — prefer forgetting.
+
+Research surveys never enter `docs/` at all: distill what was _decided_ into an ADR and keep the survey in the notes repo.
+
+## Formatters and linters are best-effort
+
+A formatter/linter must never be satisfied at the cost of an artifact's **fidelity**; relax or scope the tool (raise the limit, disable the rule, exclude the path), never alter content to appease it (`.agents/core/core/WORKFLOW.md` §"Formatters…" + core/HAZARDS.md H8).
+Hand-authored corpus docs (`docs/gandr/`) follow the formatter by default; the content-mutating `typos` and `sizelint` run tree-wide with targeted fidelity excludes (`*.typ`, `*.agda`, `*.agda-lib` in `treefmt.toml`, mirrored in `typos.toml` so standalone editor/CLI runs are safe).
+
+## Authoring math- and symbol-dense Markdown
+
+Markdown has no first-class math: `*`, `_`, `[`, `^` are structural tokens.
+The one **corrupting** hazard is a bare `*` used as an operator (e.g. `d*G`): CommonMark pairs intraword `*`s into emphasis and `rumdl fmt` rewrites them **silently while reporting success** — never run the formatter on a doc that still holds bare-`*` math (if you did, `git checkout` the file, wrap the math, retry).
+A capitalised name-like `[Label]` bracket is the only other trip (MD052); plain `_` subscripts (`U_r`), `^`, and standalone symbols (`Σ`, `↠`, `s²=0`) are inert.
+
+The convention (authored docs are clean by construction):
+
+* **Inline math / `*`-bearing operators** — default to `$…$` LaTeX (renders as real math, is typst-portable, rumdl-inert): `$d^{*}G$`, `$s^2 = 0$`.
+  A backtick code span is the fallback for code-like identifiers.
+  Wrap the _whole_ expression containing the `*`.
+  Math holding a literal `|` inside a pipe-table cell needs `\|`.
+* **Display math** — a fenced code block tagged `math`; **never** bare `$$…$$` (MD013 reflow joins it to one line).
+* **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.

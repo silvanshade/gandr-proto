@@ -1,0 +1,12 @@
+// Typed holes: the machine answers instead of rejecting.
+//
+// An empty block is a *hole*. gandr's pipeline lowers every parseable input
+// totally -- out-of-fragment or missing pieces become holes -- and the typing
+// machine reports each hole as a GOAL (the type it needs you to provide)
+// rather than an error. Holey items are not evaluated; the goal is the
+// answer. This is the interactive workflow the typing machine is built
+// around: write the shape, let the machine tell you what goes in the gaps.
+{ }
+
+// The harness checks:
+//@ expect: goal

@@ -25,27 +25,7 @@ stages = ["pre-commit"]
 id = "no-machine-local-paths"
 name = "no machine-local paths in committed content"
 language = "system"
-entry = "mise exec -- nu .agents/core/scripts/check-machine-local-paths.nu"
-stages = ["pre-commit"]
-
-# Read-only + pin discipline for the vendored agentic-dev core (ADR-2, .agents/core/docs/ADR.md).
-[[repos.hooks]]
-id = "core-pin"
-name = "agentic-dev core submodule initialized, clean, at pin"
-language = "system"
-entry = "mise run core:check"
-pass_filenames = false
-always_run = true
-stages = ["pre-commit"]
-
-# Read-only + pin discipline for the pinned internal-univalence upstream submodule.
-[[repos.hooks]]
-id = "iu-pin"
-name = "internal-univalence submodule initialized, clean, at pin"
-language = "system"
-entry = "mise run iu:check"
-pass_filenames = false
-always_run = true
+entry = "mise exec -- nu ./scripts/check-machine-local-paths.nu"
 stages = ["pre-commit"]
 
 [[repos.hooks]]
@@ -66,30 +46,12 @@ pass_filenames = false
 always_run = true
 stages = ["pre-commit"]
 
-# Two copies of one nightly pin (mise's [env] RUSTUP_TOOLCHAIN shadows
-# rust-toolchain.toml inside every task); keep them equal so the pin can never
-# silently drift again.
-[[repos.hooks]]
-id = "toolchain-pin"
-name = "rust-toolchain.toml and mise nightly pin agree"
-language = "system"
-entry = "mise run toolchain:pin-check"
-files.glob = ["rust-toolchain.toml", "mise.toml"]
-pass_filenames = false
-stages = ["pre-commit"]
-
 [[repos.hooks]]
 id = "cargo-fmt-check"
 name = "cargo fmt --all -- --check"
 language = "system"
 entry = "mise run cargo:fmt-check"
-files.glob = [
-  ".cargo/cargo.toml",
-  "**/Cargo.toml",
-  "**/*.rs",
-  "rust-toolchain.toml",
-  "rustfmt.toml"
-]
+files.glob = [".cargo/cargo.toml", "**/Cargo.toml", "**/*.rs", "rustfmt.toml"]
 pass_filenames = false
 stages = ["pre-commit"]
 
@@ -99,9 +61,9 @@ name = "docs manifest drift check"
 language = "system"
 entry = "mise run docs:manifest-drift"
 files.glob = [
-  "docs/gandr/**",
-  "docs/adr/**",
-  "crates/gandr-rust-gates/src/docs/**"
+  # "docs/adr/**",
+  # "docs/spec/**",
+  "crates/workflow-gates/src/docs/**"
 ]
 pass_filenames = false
 stages = ["pre-commit"]
@@ -112,9 +74,9 @@ name = "docs reference integrity check"
 language = "system"
 entry = "mise run docs:reference-integrity"
 files.glob = [
-  "docs/gandr/**",
-  "docs/adr/**",
-  "crates/gandr-rust-gates/src/docs/**"
+  # "docs/adr/**",
+  # "docs/spec/**",
+  "crates/workflow-gates/src/docs/**"
 ]
 pass_filenames = false
 stages = ["pre-commit"]
@@ -130,23 +92,22 @@ stages = [
 always_run = true
 pass_filenames = true
 
-# The PUSH tier: every configured job. `wt merge` already ran the cheap
-# MERGE tier, so this adds the heavier checks — docs/graph gates, no-panic,
-# cargo-careful, llvm-cov — before anything leaves the machine. Fuzz and mutation
-# campaigns are on NEITHER tier; they are scheduled obligations (docs/WORKFLOW.md).
-[[repos.hooks]]
-id = "workflow-push"
-name = "unified Rust workflow push gate"
-language = "system"
-entry = "cargo run -p gandr-rust-gates -- workflow push"
-pass_filenames = false
-always_run = true
-stages = ["pre-push"]
+# The PUSH tier is parked while the reboot bootstraps: `workflow push` runs
+# mise tasks that are not in place yet (core:check, grammar:test, cargo:dylint,
+# wrkflw). Re-enable once the push-tier task surface exists.
+# [[repos.hooks]]
+# id = "workflow-push"
+# name = "unified Rust workflow push gate"
+# language = "system"
+# entry = "cargo run -p gandr-workflow-gates -- workflow push"
+# pass_filenames = false
+# always_run = true
+# stages = ["pre-push"]
 
 [[repos.hooks]]
 id = "commitlint-push-range"
 name = "commitlint (push range)"
-entry = "mise exec -- nu .agents/core/scripts/commitlint-range.nu"
+entry = "mise exec -- nu ./scripts/commitlint-range.nu"
 language = "system"
 pass_filenames = false
 always_run = true
@@ -155,7 +116,7 @@ stages = ["pre-push"]
 [[repos.hooks]]
 id = "signed-commits"
 name = "signed commits (push range)"
-entry = "mise exec -- nu .agents/core/scripts/check-signed-commits.nu"
+entry = "mise exec -- nu ./scripts/check-signed-commits.nu"
 language = "system"
 pass_filenames = false
 always_run = true

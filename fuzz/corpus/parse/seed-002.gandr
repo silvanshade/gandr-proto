@@ -1,0 +1,5 @@
+def square(x: Integer) -> F Integer {
+  ret (x * x)
+}
+
+square(9)

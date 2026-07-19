@@ -1,0 +1,1 @@
+#!{echo $(string_append("prefix-", name)) ; $(print("nested"))}

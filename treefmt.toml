@@ -95,13 +95,21 @@ includes = [
 [formatter."rumdl-format"]
 priority = 0
 command = "cargo"
-options = ["run", "--quiet", "-p", "gandr-rust-gates", "--", "rumdl", "fmt"]
+options = ["run", "--quiet", "-p", "gandr-workflow-gates", "--", "rumdl", "fmt"]
 includes = ["*.md"]
 
 [formatter."rumdl-verify"]
 priority = 1
 command = "cargo"
-options = ["run", "--quiet", "-p", "gandr-rust-gates", "--", "rumdl", "check"]
+options = [
+  "run",
+  "--quiet",
+  "-p",
+  "gandr-workflow-gates",
+  "--",
+  "rumdl",
+  "check"
+]
 includes = ["*.md"]
 
 [formatter.rustfmt]

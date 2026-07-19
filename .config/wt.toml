@@ -41,14 +41,14 @@ beads-pull = "bd dolt pull || true"
 # `wt hook pre-merge`. Each one-key pipeline block runs after the previous one
 # succeeds, so local policy, validation, and durability work never overlap.
 #
-# Reject ADR-log edits before spending time on the native gate
-# (core/HAZARDS.md H5): ADRs land only on main.
-[[pre-merge]]
-adr-guard = "nu .agents/core/scripts/check-adr-on-main.nu --adr-path docs/adr"
-
-# Enforce read-only + pin discipline for the vendored agentic-dev core (ADR-2).
-[[pre-merge]]
-core-pin = "mise run core:check"
+# Parked while the reboot bootstraps: the ADR guard's script lives in the
+# unwired agentic-dev core and docs/adr does not exist yet; core-pin checks the
+# vendored core that is likewise not wired. Re-enable with their prerequisites.
+# [[pre-merge]]
+# adr-guard = "nu .agents/core/scripts/check-adr-on-main.nu --adr-path docs/adr"
+#
+# [[pre-merge]]
+# core-pin = "mise run core:check"
 
 # `gate:merge` is the single source of truth for merge checks. It runs the
 # grammar suite, build, lint wall, tests, formatting check, and workflow

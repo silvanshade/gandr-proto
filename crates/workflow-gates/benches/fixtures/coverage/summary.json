@@ -1,0 +1,23 @@
+{
+  "type": "llvm.coverage.json.export",
+  "version": "3.1.0",
+  "cargo_llvm_cov": { "version": "0.8.7" },
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "crates/demo/src/lib.rs",
+          "summary": { "lines": { "count": 100, "covered": 90, "percent": 90.0 } }
+        },
+        {
+          "filename": "crates/demo/src/parser.rs",
+          "summary": { "lines": { "count": 100, "covered": 81, "percent": 81.0 } }
+        },
+        {
+          "filename": "crates/demo/src/new.rs",
+          "summary": { "lines": { "count": 100, "covered": 42, "percent": 42.0 } }
+        }
+      ]
+    }
+  ]
+}

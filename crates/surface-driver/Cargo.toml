@@ -1,0 +1,69 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The gandr toolchain driver: the reedline shell-REPL default face, the script runner, and the tui/lsp/mcp/fmt/build subcommand namespace (ADR-62, ADR-74)"
+license.workspace = true
+publish.workspace = true
+
+# Stub: the driver's real faces depend on crates that have not been ported yet
+# (gandr-core, gandr-grammar, gandr-parser, gandr-pipeline, gandr-shell,
+# gandr-syntax, gandr-tui). The manifest below is the intended dependency
+# surface, parked until those crates land; `src/main.rs` is an empty entry
+# point so the workspace compiles in the meantime.
+#
+# [[bin]]
+# name = "gandr"
+# path = "src/bin/gandr.rs"
+#
+# [[test]]
+# name = "cli"
+# path = "tests/cli.rs"
+
+[dependencies]
+# TUI-launch error report type for the `gandr tui` face (its own restore hook is
+# installed inside `gandr_tui::run`).
+# color-eyre = { workspace = true }
+# The terminal-restore report and value/type renderer draw on the core syntax.
+# gandr-core = { path = "../gandr-core" }
+# The REPL editor surface (ADR-74): the checked built-in grammar the line
+# highlighter, validator, hinter, and completer mold against.
+# gandr-grammar = { path = "../gandr-grammar" }
+# The push-machine melder (ADR-73): `expected()`/obligation queries drive the
+# reedline validator, hinter, and completer; the shell-interior labeler seeds a
+# REPL line as if inside `#!{ … }`.
+# gandr-parser = { path = "../gandr-parser" }
+# The `Session` engine (definitions persist across REPL lines) and the canonical
+# host `Exec` signature/mode constants (ADR-63 D3 / ADR-74 D4).
+# gandr-pipeline = { path = "../gandr-pipeline" }
+# The host seam that runs shell lines and scripts (`run_source_file` /
+# `run_program`); the `gandr <file>` script-runner face.
+# gandr-shell = { path = "../gandr-shell" }
+# The checked borrowed source slice required by the parser's public label/parse
+# boundary.
+# gandr-syntax = { path = "../gandr-syntax" }
+# The full programming environment behind `gandr tui` (ADR-62 D3, ADR-74).
+# gandr-tui = { path = "../gandr-tui" }
+# reedline expresses its Highlighter/Prompt colors in `nu-ansi-term` types but
+# does not re-export them, so the mold highlighter must name them directly. This
+# is reedline's own color crate, already in the lock at the version reedline
+# resolves (no new lockfile entry, no new version) — the mechanical entailment
+# of using reedline's Highlighter, not an independent dependency.
+# nu-ansi-term = { version = "0.50.3", default-features = false }
+# The line editor for the default REPL face (ADR-74 D6): nushell's reedline,
+# pinned; MIT; pure Rust. `default-features = false` drops the optional SQLite
+# history backend; its `crossterm` is the same 0.29 the TUI already builds, so
+# no second `crossterm` major enters the tree.
+# reedline = { version = "0.49.0", default-features = false }
+# thiserror = { workspace = true }
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

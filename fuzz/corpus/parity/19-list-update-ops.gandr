@@ -1,0 +1,29 @@
+// The list functional-update builtins: each returns a NEW list, never mutating
+// in place (proposal-value-semantics-mvp §3.2). There is no `xs[i] := v` -- an
+// "updated" list is a fresh list, and the original binding is unchanged.
+//
+// As with the iteration combinators, the higher-order forms take a thunked
+// closure (`thunk { fn(x) { ... } }`): functions are computations, and only
+// values pass as arguments. A bare list literal is check-only, so the base is
+// ascribed (the list discipline of example 07).
+def xs = ([10, 20, 30] : List(Integer));
+
+// `set` replaces by index; `update_at` maps one element through a closure;
+// `insert_at` and `remove_at` change length at an index; `push`, `append`,
+// and `concat` grow by one, by another list, or by a list of lists. Each `xs`
+// here is the SAME original -- none of these edits touch it.
+def replaced = list.set(xs, 1, 99);
+def bumped = list.update_at(xs, 0, thunk { fn(n) { n + 1 } });
+def inserted = list.insert_at(xs, 1, 15);
+def removed = list.remove_at(xs, 0);
+def grown = list.push(xs, 40);
+def joined = list.append(xs, [40, 50]);
+def flattened = list.concat([xs, [40, 50]]);
+
+// `update_where` maps only the elements a predicate accepts. Only 20 and 30
+// exceed 15, so they double; 10 is kept unchanged.
+list.update_where(thunk { fn(n) { n > 15 } }, thunk { fn(n) { n * 2 } }, xs)
+
+// The harness checks (the update_where result):
+//@ expect: clean
+//@ expect-last-value: [10, 40, 60]

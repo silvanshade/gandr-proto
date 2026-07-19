@@ -26,17 +26,16 @@ uvx = true
 binstall = true
 
 [env]
-# Toolchain pins are configured ONCE here instead of repeating
-# `rustup run <version>` in every task. `get_env` keeps the ambient value when
-# a caller already set it, so an explicit override wins.
+# Toolchain pins are configured ONCE here — mise is the SOLE toolchain
+# authority. A rust-toolchain.toml would be a second copy of the same pin that
+# RUSTUP_TOOLCHAIN shadows inside every task, and two copies drifted in
+# practice (the repo template shipped mismatched pins and the stale one won).
+# `get_env` keeps the ambient value when a caller already set it, so an
+# explicit override wins.
 # RUSTUP_TOOLCHAIN preempts even an explicit `rustup run <other>` argument, so
 # nightly tasks re-export it inline (`RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" …`)
 # rather than fighting that precedence with `rustup run`.
-# NOTE: because RUSTUP_TOOLCHAIN is exported on every task, the
-# rust-toolchain.toml channel is SHADOWED inside mise — the nightly default
-# below and rust-toolchain.toml are two copies of one pin. `toolchain:pin-check`
-# (a prek pre-commit hook and the first `gate:merge` step) keeps them equal.
-RUSTUP_TOOLCHAIN = "{{ get_env(name='RUSTUP_TOOLCHAIN', default='1.96.0') }}"
+RUSTUP_TOOLCHAIN = "{{ get_env(name='RUSTUP_TOOLCHAIN', default='1.97.1') }}"
 RUSTUP_TOOLCHAIN_NIGHTLY = "{{ get_env(name='RUSTUP_TOOLCHAIN_NIGHTLY', default='nightly-2026-07-07') }}"
 # Cargo resolves external subcommand binaries (cargo-clippy, cargo-fmt,
 # rustfmt) from PATH, so a Homebrew rust install at /opt/homebrew/bin silently
@@ -47,25 +46,6 @@ RUSTUP_TOOLCHAIN_NIGHTLY = "{{ get_env(name='RUSTUP_TOOLCHAIN_NIGHTLY', default=
 _.path = [
   "{{ exec(command='dirname \"$(command -v rustup || echo \"$HOME/.cargo/bin/rustup\")\"') }}"
 ]
-
-# Pin-equality gate: rust-toolchain.toml's channel and the [env] nightly
-# default above must never drift apart again (they did in the template this
-# repo was seeded from: rust-toolchain.toml said 2026-07-07 while mise said
-# 2026-05-27, and the [env] shadowing made the stale value win in every task).
-[tasks."toolchain:pin-check"]
-description = "Fail when rust-toolchain.toml channel and mise's RUSTUP_TOOLCHAIN_NIGHTLY disagree"
-run = """
-channel="$(sed -n 's/^channel = "\\(.*\\)"$/\\1/p' rust-toolchain.toml)"
-if [ -z "$channel" ]; then
-  echo "toolchain:pin-check: no channel found in rust-toolchain.toml" >&2
-  exit 1
-fi
-if [ "$channel" != "$RUSTUP_TOOLCHAIN_NIGHTLY" ]; then
-  echo "toolchain pin drift: rust-toolchain.toml channel=$channel but mise RUSTUP_TOOLCHAIN_NIGHTLY=$RUSTUP_TOOLCHAIN_NIGHTLY" >&2
-  exit 1
-fi
-echo "toolchain pin OK: $channel"
-"""
 
 [tasks."dev:enable"]
 description = "Enable local mise development hooks"
@@ -82,30 +62,137 @@ echo "mise development config disabled"
 """
 
 [tasks.setup]
-description = "Populate fresh-worktree dependencies (root devDependencies for the treefmt/oxlint and commitlint hooks + tree-sitter grammar package)"
+description = "Populate fresh-worktree dependencies (root devDependencies for the treefmt/oxlint and commitlint hooks + the pinned Rust toolchains and components)"
 run = """
 aube ci
-aube ci --dir packages/tree-sitter-gandr
+rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component clippy,rustfmt
+rustup toolchain install "$RUSTUP_TOOLCHAIN_NIGHTLY" --profile minimal --component clippy,rustfmt,rust-src,llvm-tools-preview,rustc-dev
 """
 
-[tasks."grammar:test"]
-description = "Tree-sitter grammar suite + §7-G3 gates (corpus, coverage, recovery locality, parser.c size / STATE_COUNT budgets, zero conflicts/prec.dynamic/scanner)"
-run = """
-aube test --dir packages/tree-sitter-gandr
-aube run fuzz:smoke --dir packages/tree-sitter-gandr
-aube run parse:fuzz-seeds --dir packages/tree-sitter-gandr
-"""
+# Parked: the tree-sitter grammar package is not in the repo yet (it returns
+# with the surface-grammar port); restore this task with it.
+# [tasks."grammar:test"]
+# description = "Tree-sitter grammar suite + §7-G3 gates (corpus, coverage, recovery locality, parser.c size / STATE_COUNT budgets, zero conflicts/prec.dynamic/scanner)"
+# run = """
+# aube test --dir packages/tree-sitter-gandr
+# aube run fuzz:smoke --dir packages/tree-sitter-gandr
+# aube run parse:fuzz-seeds --dir packages/tree-sitter-gandr
+# """
 
 [tasks."cargo:build"]
 description = "Build the project"
 run = """
-cargo build --workspace --all-targets --features=full
+# The Dylint driver is nightly-only (`#![feature(rustc_private)]`); the stable
+# production build excludes it — nightly clippy/nextest passes cover it.
+cargo build --workspace --exclude gandr-workflow-dylint --all-targets --features=full
 """
 
 [tasks."cargo:clippy"]
 description = "Run clippy linter"
 run = """
-cargo clippy --workspace --all-targets --all-features -- -D warnings
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+cargo clippy --workspace --all-targets --features=full -- -D warnings
+"""
+
+[tasks."cargo:dylint"]
+description = "Run project Dylint gates"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+# Project-local driver's UI contract first.
+cargo test -p gandr-workflow-dylint ui -- --nocapture
+
+DYLINT_RUSTFLAGS="-D warnings"
+export DYLINT_RUSTFLAGS
+
+# Incremental state ICEs the dylint driver on reruns
+# (`shallow_lint_levels_on`); keep the driver runs reproducible.
+CARGO_INCREMENTAL=0
+export CARGO_INCREMENTAL
+
+# Enforce project-local semantic rules across every workspace target.
+# `gandr-workflow-gates` and the driver itself are excluded pending their
+# lint-debt triage (gandr-0ze, gandr-3yh).
+cargo dylint \
+  --lib gandr_workflow_dylint \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
+
+# Run every practical upstream example lint across every workspace target.
+cargo dylint \
+  --lib abs_home_path \
+  --lib assert_eq_arg_misordering \
+  --lib await_holding_span_guard \
+  --lib basic_dead_store \
+  --lib collapsible_unwrap \
+  --lib const_path_join \
+  --lib env_literal \
+  --lib inconsistent_qualification \
+  --lib incorrect_matches_operation \
+  --lib misleading_variable_name \
+  --lib non_thread_safe_call_in_test \
+  --lib non_topologically_sorted_functions \
+  --lib question_mark_in_expression \
+  --lib ref_aware_redundant_closure_for_method_calls \
+  --lib suboptimal_pattern \
+  --lib supplementary \
+  --lib try_io_result \
+  --lib wrong_serialize_struct_arg \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
+
+# The pinned non-local-effect rule stays isolated (upstream defect: it panicked
+# on the `gandr-core` lib-test harness; re-split per-core if that recurs when
+# the core lands).
+cargo dylint \
+  --lib non_local_effect_before_unhandled_error \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
+
+# `crate_wide_allow` deliberately omits test targets: the standard
+# `cfg_attr(test, allow(...))` lint-wall relaxation is the one approved case.
+cargo dylint \
+  --lib crate_wide_allow \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --lib \
+  --bins \
+  --benches \
+  --examples \
+  --features=full
+
+# `register_lints_warn` is warning-level by design and stays isolated so it
+# cannot weaken the deny posture of the other driver invocations.
+cargo dylint \
+  --lib register_lints_warn \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
 """
 
 [tasks."cargo:doc"]
@@ -123,42 +210,44 @@ cargo doc --no-deps --document-private-items
 [tasks."docs:manifest-drift"]
 description = "Verify docs/gandr/MANIFEST.yml BLAKE3 hashes against registered docs"
 run = """
-cargo run --quiet -p gandr-rust-gates -- docs-manifest
+cargo run --quiet -p gandr-workflow-gates -- docs-manifest
 """
 
 [tasks."docs:conflict-markers"]
 description = "Detect unresolved Git conflict markers in tracked files"
 run = """
-nu .agents/core/scripts/check-conflict-markers.nu
+nu ./scripts/check-conflict-markers.nu
 """
 
 [tasks."docs:reference-integrity"]
 description = "Verify gandr corpus cross-references (ADR/section refs, manifest anchors) all resolve"
 run = """
-cargo run --quiet -p gandr-rust-gates -- docs-reference
+cargo run --quiet -p gandr-workflow-gates -- docs-reference
 """
 
-[tasks."core:check"]
-description = "Verify the vendored agentic-dev core submodule is initialized, clean, and at the recorded pin (ADR-2)"
-run = """
-nu .agents/core/scripts/check-core-pin.nu
-"""
-
-[tasks."core:update"]
-description = "Bump the vendored agentic-dev core to upstream main (commit the new pin deliberately; ADR-2)"
-run = """
-git submodule update --remote .agents/core
-git status --short .agents/core
-"""
-
-[tasks."smoke:wt-core-init"]
-description = "Smoke-test Worktrunk core-init bootstrap in a temporary linked worktree"
-run = "nu .agents/core/scripts/smoke-wt-core-init.nu"
+# Parked: the vendored agentic-dev core (.agents/core) is not wired into the
+# reboot; restore these tasks with it.
+# [tasks."core:check"]
+# description = "Verify the vendored agentic-dev core submodule is initialized, clean, and at the recorded pin (ADR-2)"
+# run = """
+# nu .agents/core/scripts/check-core-pin.nu
+# """
+#
+# [tasks."core:update"]
+# description = "Bump the vendored agentic-dev core to upstream main (commit the new pin deliberately; ADR-2)"
+# run = """
+# git submodule update --remote .agents/core
+# git status --short .agents/core
+# """
+#
+# [tasks."smoke:wt-core-init"]
+# description = "Smoke-test Worktrunk core-init bootstrap in a temporary linked worktree"
+# run = "nu .agents/core/scripts/smoke-wt-core-init.nu"
 
 [tasks."iu:check"]
 description = "Verify the pinned internal-univalence upstream submodule is initialized, clean, and at the recorded pin (READ-ONLY)"
 run = """
-cargo run --quiet -p gandr-rust-gates -- iu-pin --workspace-root .
+cargo run --quiet -p gandr-workflow-gates -- iu-pin --workspace-root .
 """
 
 [tasks."docs:manual"]
@@ -182,7 +271,7 @@ typst watch --root . docs/manual/main.typ docs/manual/main.pdf
 [tasks."docs:balance"]
 description = "Report manual display blocks that open low on a page (informational; fails only on zero probes)"
 run = """
-cargo run --quiet -p gandr-rust-gates -- page-balance
+cargo run --quiet -p gandr-workflow-gates -- page-balance
 """
 
 [tasks."docs:spike"]
@@ -383,33 +472,33 @@ typst compile --root . docs/manual/chapters/toolchain-facets.typ docs/manual/cha
 [tasks."test:doc-gates"]
 description = "Run the Rust doc-gate regression suite"
 run = """
-cargo nextest run -p gandr-rust-gates
+cargo nextest run -p gandr-workflow-gates
 """
 
 [tasks."test:graph-gates"]
-description = "Run gandr-rust-gates Rust tests once, then both live graph gates"
+description = "Run gandr-workflow-gates Rust tests once, then both live graph gates"
 run = """
-cargo nextest run -p gandr-rust-gates
-cargo run --quiet -p gandr-rust-gates -- contracts --scope crates/gandr-graph
-cargo run --quiet -p gandr-rust-gates -- graph-boundary --workspace-root .
+cargo nextest run -p gandr-workflow-gates
+cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/gandr-graph
+cargo run --quiet -p gandr-workflow-gates -- graph-boundary --workspace-root .
 """
 
 [tasks."test:adequacy-witnesses"]
 description = "Run the live graph rustdoc Contract adequacy-witness gate"
 run = """
-cargo run --quiet -p gandr-rust-gates -- contracts --scope crates/gandr-graph
+cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/gandr-graph
 """
 
 [tasks."test:graph-boundary"]
 description = "Run the live gandr-graph façade boundary gate"
 run = """
-cargo run --quiet -p gandr-rust-gates -- graph-boundary --workspace-root .
+cargo run --quiet -p gandr-workflow-gates -- graph-boundary --workspace-root .
 """
 
 # [tasks."test:dep-graph"]
 # description = "Assert the default -e normal,build workspace graph stays tree-sitter-free (dependency gate)"
 # run = """
-# cargo run --quiet -p gandr-rust-gates -- default-graph --workspace-root .
+# cargo run --quiet -p gandr-workflow-gates -- default-graph --workspace-root .
 # """
 
 [tasks."test:tree-sitter-ref"]
@@ -421,20 +510,20 @@ cargo nextest run --all-targets --manifest-path crates/gandr-tree-sitter/Cargo.t
 [tasks."test:soundness-oracles"]
 description = "Verify every free-generator coherence oracle in the conformance suite declares a biased companion (ADR-48)"
 run = """
-cargo run --quiet -p gandr-rust-gates -- soundness-oracles --workspace-root .
+cargo run --quiet -p gandr-workflow-gates -- soundness-oracles --workspace-root .
 """
 
 [tasks."test:options-policy"]
 description = "Run the Rust OPTIONS-policy regression suite and live policy sweep"
 run = """
-cargo nextest run -p gandr-rust-gates
-cargo run --quiet -p gandr-rust-gates -- options-policy --workspace-root .
+cargo nextest run -p gandr-workflow-gates
+cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
 """
 
 [tasks."test:page-balance"]
 description = "Run the Rust page-balance regression suite"
 run = """
-cargo nextest run -p gandr-rust-gates
+cargo nextest run -p gandr-workflow-gates
 """
 
 # ── Mutation testing (cargo-mutants; docs/HAZARDS.md) ─────────────────────────
@@ -445,31 +534,31 @@ cargo nextest run -p gandr-rust-gates
 [tasks."mutants:snapshot"]
 description = "Build/refresh the reusable microVM base snapshot (toolchain + pinned tools + guest sentinel); needs network"
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants snapshot
+cargo run --quiet -p gandr-workflow-gates -- mutants snapshot
 """
 
 [tasks."mutants:changed-vs-remote"]
 description = "Run a changed-code mutation campaign for commits relative to the configured remote, inside an ephemeral microVM"
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants push
+cargo run --quiet -p gandr-workflow-gates -- mutants push
 """
 
 [tasks."mutants:push"]
 description = "Alias for the changed-code mutation campaign relative to the configured remote"
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants push
+cargo run --quiet -p gandr-workflow-gates -- mutants push
 """
 
 [tasks."mutants:changed-vs-main"]
 description = "Run a changed-code mutation campaign for this branch relative to main, inside an ephemeral microVM"
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants merge
+cargo run --quiet -p gandr-workflow-gates -- mutants merge
 """
 
 [tasks."mutants:merge"]
 description = "Alias for the changed-code mutation campaign relative to main"
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants merge
+cargo run --quiet -p gandr-workflow-gates -- mutants merge
 """
 
 [tasks."mutants:scheduled"]
@@ -479,7 +568,7 @@ flag "--from <from>" help="Base revision for the mutation range"
 flag "--to <to>" help="Head revision for the mutation range"
 '''
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants scheduled --from "${usage_from?}" --to "${usage_to?}"
+cargo run --quiet -p gandr-workflow-gates -- mutants scheduled --from "${usage_from?}" --to "${usage_to?}"
 """
 
 [tasks."mutants:clean"]
@@ -488,13 +577,13 @@ description = "Stop and remove any microVM left behind by an interrupted mutants
 # SIGTERM to the driver can skip that. The sandbox's `--max-duration` eventually
 # reaps it; this command reclaims the CPU and memory immediately.
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants clean
+cargo run --quiet -p gandr-workflow-gates -- mutants clean
 """
 
 [tasks."mutants:sweep"]
 description = "Schedule a comprehensive workspace mutation campaign in an ephemeral microVM (~2427 mutants; sets the baseline)"
 run = """
-cargo run --quiet -p gandr-rust-gates -- mutants sweep
+cargo run --quiet -p gandr-workflow-gates -- mutants sweep
 """
 
 # rustfmt.toml relies on nightly-only options (imports_granularity, wrap_comments,
@@ -523,7 +612,6 @@ cargo nextest run --all-targets --manifest-path crates/gandr-tree-sitter/Cargo.t
 description = "Run workspace and excluded gandr-tree-sitter reference-crate nextest suites under cargo-careful"
 run = """
 RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo careful nextest run --workspace --all-targets --features=full
-RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo careful nextest run --all-targets --manifest-path crates/gandr-tree-sitter/Cargo.toml
 """
 
 [tasks."cargo:llvm-cov"]
@@ -548,14 +636,14 @@ run = [
 [tasks."coverage:check:enforce"]
 description = "Fail when measured per-file coverage regresses below coverage/floors.toml"
 run = """
-cargo run --quiet -p gandr-rust-gates -- coverage check --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
+cargo run --quiet -p gandr-workflow-gates -- coverage check --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
 """
 
 [tasks."coverage:ratchet"]
 description = "Manually raise per-file coverage floors to the current measured coverage"
 depends = ["cargo:llvm-cov"]
 run = """
-cargo run --quiet -p gandr-rust-gates -- coverage ratchet --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
+cargo run --quiet -p gandr-workflow-gates -- coverage ratchet --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
 """
 
 # AFL++ fuzzing over the gandr crates. The `fuzz/` package is an independent
@@ -598,7 +686,7 @@ AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/gates -o fuzz/artifac
 [tasks."fuzz:rust-smoke"]
 description = "Deterministically replay every Rust fuzz corpus seed once"
 run = """
-cargo run --quiet -p gandr-rust-gates -- fuzz-smoke
+cargo run --quiet -p gandr-workflow-gates -- fuzz-smoke
 """
 
 [tasks."fuzz:weekly"]
@@ -638,7 +726,7 @@ usage = '''
 flag "--watermark <watermark>" help="Runner-local watermark path"
 flag "--to <to>" help="Successful upper revision" default="HEAD"
 '''
-run = 'cargo run --quiet -p gandr-rust-gates -- maintenance-range advance --watermark "{{usage.watermark}}" --to "{{usage.to}}"'
+run = 'cargo run --quiet -p gandr-workflow-gates -- maintenance-range advance --watermark "{{usage.watermark}}" --to "{{usage.to}}"'
 
 [tasks."maintenance:monthly"]
 description = "Run the monthly full contained mutation sweep"
@@ -676,13 +764,13 @@ RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci
 [tasks."test:coverage-ratchet"]
 description = "Verify per-file coverage floors, monotonicity, schema validation, and path boundaries"
 run = """
-cargo nextest run -p gandr-rust-gates
+cargo nextest run -p gandr-workflow-gates
 """
 
 [tasks."test:gate-parity"]
 description = "Verify scheduled tasks and local hooks share exact self-contained gate definitions"
 run = """
-cargo nextest run -p gandr-rust-gates
+cargo nextest run -p gandr-workflow-gates
 """
 
 [tasks."gate:merge"]
@@ -728,7 +816,7 @@ depends = ["agda:deps"]
 run = """
 aifix batch agda --fail-on-diagnostics -- -v0 -i metatheory/src -i metatheory/upstream/internal-univalence/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Everything.agda
 aifix batch agda --fail-on-diagnostics --expected-code UnsolvedInteractionMetas -- -v0 -i metatheory/src -i metatheory/upstream/internal-univalence/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Prop/Obligations.agda
-cargo run --quiet -p gandr-rust-gates -- options-policy --workspace-root .
+cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
 """
 
 [tool_alias]
@@ -747,6 +835,8 @@ weave-mcp = "github:ataraxy-labs/weave"
 # makes `cargo afl config --build` non-relocatable. This no-op feature override
 # forces mise's Cargo backend to source-build this one tool instead of binstall.
 "cargo:cargo-afl" = { version = "0.18.2", default-features = false }
+"cargo:cargo-dylint" = "6.0.1"
+"cargo:dylint-link" = "6.0.1"
 "cargo:cargo-llvm-cov" = "0.8.7"
 "cargo:cargo-mutants" = "27.1.0"
 "cargo:cargo-nextest" = "0.9.140"

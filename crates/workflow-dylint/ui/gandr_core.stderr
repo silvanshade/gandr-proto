@@ -1,0 +1,26 @@
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/gandr_core.rs:31:9
+   |
+LL | /         fn false_none(
+LL | |             &mut self,
+LL | |             term: Term,
+...  |
+LL | |             self.false_none(term);
+LL | |         }
+   | |_________^
+   |
+   = note: `#[warn(recursive_function_needs_termination)]` on by default
+
+warning: recursive function must document termination with gandr's rustdoc section
+  --> $DIR/gandr_core.rs:54:9
+   |
+LL | /         fn wrong_non_none(
+LL | |             &mut self,
+LL | |             term: Term,
+...  |
+LL | |             self.wrong_non_none(term);
+LL | |         }
+   | |_________^
+
+warning: 2 warnings emitted
+

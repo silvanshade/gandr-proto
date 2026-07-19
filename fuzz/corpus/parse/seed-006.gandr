@@ -1,0 +1,1 @@
+#!{FOO=bar ! echo 'quoted value' || [echo fallback]}

@@ -1,0 +1,10 @@
+target_percent = 80.0
+
+[files]
+"crates/demo/src/lib.rs" = 80.00
+"crates/demo/src/new.rs" = 42.00
+"crates/demo/src/parser.rs" = 80.00
+"crates/demo/src/stale.rs" = 80.00
+
+[new_file_exemptions]
+"crates/demo/src/new.rs" = "Temporary generated adapter"

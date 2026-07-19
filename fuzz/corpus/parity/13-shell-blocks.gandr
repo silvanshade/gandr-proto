@@ -1,0 +1,16 @@
+// Shell blocks: effects through the host seam.
+//
+// `#!{ ... }` embeds flat commands; each lowers to a `perform` of the host
+// `Exec` effect, and the shell driver's handlers (Exec/Fs/Proc/Env) answer
+// them. The reply is ordinary typed data -- a record with `stdout`,
+// `stderr`, and `exit_code` fields -- not magic captured text: "tools are an
+// effect signature" is the design stance, and this is its smallest witness.
+//
+// (Pipelines inside `#!{ }` are deliberately still rejected -- the pipeline
+// surface belongs to a later semantic stage; see the pathological tree.)
+#!{ printf 'hello from the host\n'; }
+
+// The harness checks (shell mode runs a single top-level item):
+//@ mode: shell
+//@ expect: clean
+//@ expect-stdout-contains: hello from the host
