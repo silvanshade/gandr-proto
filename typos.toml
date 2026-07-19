@@ -1,0 +1,69 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://raw.githubusercontent.com/crate-ci/typos/master/config.schema.json
+
+[files]
+# .agents/core/ = the vendored agentic-dev core (foreign tree, read-only, its own
+# conventions); .claude/worktrees/ = in-repo agent worktrees. Both excluded per
+# core/HAZARDS.md H13 (gitignoring is not scoping).
+#
+# *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
+# identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …) a standalone `typos` run — which reads
+# THIS config, not treefmt's — must never "correct". Mirrors the treefmt
+# [formatter.typos]/[formatter.sizelint] excludes so editor/CLI passes are safe
+# too (core hazard H8). Consumer-local LIVE-hazard fix; permanent fix = core H8
+# fragment (wyrd-lf70).
+extend-exclude = [
+  "secrets/",
+  "treefmt.toml",
+  "zsh/.zcompdump",
+  ".agents/core/",
+  ".claude/worktrees/",
+  "*.agda",
+  "*.agda-lib",
+]
+
+[default]
+# Beads issue IDs (`wyrd-<base36 suffix>`) are identifiers, not prose; their
+# random 3-4 char suffixes trip typos on fragments (`wyrd-8ot` -> "ot",
+# `wyrd-u7iz` -> "iz"). Ignore the whole token so present and future IDs are safe.
+#
+# Git commit hashes are all-hex tokens, not prose; short ones trip typos on
+# fragments (a 7-char hash can contain "ba", "ef", ...). typos already auto-ignores
+# long hashes; ignore 7+ hex tokens so short hashes are safe too.
+extend-ignore-re = ['\bwyrd-[0-9a-z]+\b', '\b[0-9a-f]{7,40}\b']
+
+[default.extend-words]
+Ket = "Ket"
+ket = "ket"
+Solum = "Solum"
+solum = "solum"
+# "mis" is the prose prefix in hyphenated forms like "mis-scope"; "Thm" is the
+# standard abbreviation for "Theorem" (e.g. "Thm 2.4"). Neither is a typo.
+mis = "mis"
+Thm = "Thm"
+# Used in the doc-gate scripts' "present but unparseable" error messages; a
+# valid spelling typos would otherwise rewrite to "unparsable".
+unparseable = "unparseable"
+# Donald Yau — author of the PROPs monograph ("A Foundation for PROPs, Algebras,
+# and Modules") and "Higher-Dimensional Algebra via Colored PROPs"; a surname,
+# not a misspelling of "You"/"Yaw".
+Yau = "Yau"
+# Rust TUI crate names (gandr-tui, wyrd-f2s4): typos rewrites "ratatui" to
+# "ratatouille", which would corrupt prose, Cargo.toml, and use statements.
+# "edtui" (editor widget) is protected pre-emptively for the same reason.
+ratatui = "ratatui"
+edtui = "edtui"
+# Category-theory vocabulary in *.md math prose: typos rewrites "hom" to
+# "home", corrupting "hom-set"/"hom-functor" (it bit ADR-49's "hom-set
+# operation" on main; H8-class fidelity hazard, wyrd-h1z4 pass finding).
+hom = "hom"
+# "equipments" is the standard plural in formal category theory (proarrow
+# equipments, virtual equipments); typos rewrites it to "equipment"
+# (H8-class; same entry exists in the sibling internal-univalence repo).
+equipments = "equipments"
+
+[default.extend-identifiers]
+CertiCoq = "CertiCoq"
+FoSSaCS = "FoSSaCS"
+serie = "serie"
+shortcat = "shortcat"

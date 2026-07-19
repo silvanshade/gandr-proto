@@ -1,0 +1,159 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://www.schemastore.org/prek.json
+
+fail_fast = false
+# commit-msg is required for the commitlint hook (commit-msg-staged) to install at
+# all — without it the gate is dormant (agentic-dev prek.base shape; core/HAZARDS.md H4).
+default_install_hook_types = ["pre-commit", "commit-msg", "pre-push"]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "prek-validate-config"
+name = "prek validate-config"
+language = "system"
+entry = "mise exec -- prek validate-config prek.toml"
+files.glob = ["prek.toml", "mise.toml", "mise.lock"]
+pass_filenames = false
+stages = ["pre-commit"]
+
+# Publishable-history backstop (core/PUBLISHABLE-HISTORY.md): machine-local home
+# paths are contributor-concern and must not land in tracked content. Script-based
+# per core ADR-4 — absolute home paths always flagged, tilde paths allowlisted in-script.
+[[repos.hooks]]
+id = "no-machine-local-paths"
+name = "no machine-local paths in committed content"
+language = "system"
+entry = "mise exec -- nu .agents/core/scripts/check-machine-local-paths.nu"
+stages = ["pre-commit"]
+
+# Read-only + pin discipline for the vendored agentic-dev core (ADR-2, .agents/core/docs/ADR.md).
+[[repos.hooks]]
+id = "core-pin"
+name = "agentic-dev core submodule initialized, clean, at pin"
+language = "system"
+entry = "mise run core:check"
+pass_filenames = false
+always_run = true
+stages = ["pre-commit"]
+
+# Read-only + pin discipline for the pinned internal-univalence upstream submodule (wyrd-s3tl).
+[[repos.hooks]]
+id = "iu-pin"
+name = "internal-univalence submodule initialized, clean, at pin"
+language = "system"
+entry = "mise run iu:check"
+pass_filenames = false
+always_run = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "docs-conflict-markers"
+name = "docs conflict-marker check"
+language = "system"
+entry = "mise run docs:conflict-markers"
+pass_filenames = false
+always_run = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "treefmt-check"
+name = "treefmt --ci"
+language = "system"
+entry = "mise run treefmt:check"
+pass_filenames = false
+always_run = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "cargo-fmt-check"
+name = "cargo fmt --all -- --check"
+language = "system"
+entry = "mise run cargo:fmt-check"
+files.glob = [
+  ".cargo/cargo.toml",
+  "**/Cargo.toml",
+  "**/*.rs",
+  "rust-toolchain.toml",
+  "rustfmt.toml"
+]
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "docs-manifest-drift"
+name = "docs manifest drift check"
+language = "system"
+entry = "mise run docs:manifest-drift"
+files.glob = [
+  "docs/gandr/**",
+  "docs/adr/**",
+  "crates/wyrd-rust-gates/src/docs/**"
+]
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "docs-reference-integrity"
+name = "docs reference integrity check"
+language = "system"
+entry = "mise run docs:reference-integrity"
+files.glob = [
+  "docs/gandr/**",
+  "docs/adr/**",
+  "crates/wyrd-rust-gates/src/docs/**"
+]
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "wrkflw-validate"
+name = "wrkflw validate"
+language = "system"
+entry = "mise run wrkflw"
+files = "^\\.github/workflows/.*\\.ya?ml$"
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "commitlint"
+name = "commitlint"
+entry = "mise x -- commitlint --edit"
+language = "system"
+stages = [
+  "commit-msg",
+]
+always_run = true
+pass_filenames = true
+
+# The PUSH tier: every configured job (wyrd-hkd6). `wt merge` already ran the cheap
+# MERGE tier, so this adds the heavier checks — docs/graph gates, no-panic,
+# cargo-careful, llvm-cov — before anything leaves the machine. Fuzz and mutation
+# campaigns are on NEITHER tier; they are scheduled obligations (docs/WORKFLOW.md).
+[[repos.hooks]]
+id = "workflow-push"
+name = "unified Rust workflow push gate"
+language = "system"
+entry = "cargo run -p wyrd-rust-gates -- workflow push"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "commitlint-push-range"
+name = "commitlint (push range)"
+entry = "mise exec -- nu .agents/core/scripts/commitlint-range.nu"
+language = "system"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "signed-commits"
+name = "signed commits (push range)"
+entry = "mise exec -- nu .agents/core/scripts/check-signed-commits.nu"
+language = "system"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]

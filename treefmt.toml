@@ -1,0 +1,163 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://www.schemastore.org/treefmt.json
+
+# Generated / fidelity-critical artifacts are exempt from the content-MUTATING
+# formatters (typos, sizelint), which must not degrade artifact fidelity — see
+# docs/workflow/docs.md "Formatters and linters are best-effort".
+#   - .beads/**: the bd-managed issue store + passive issues.jsonl export; its
+#     canonical format is owned by `bd`.
+# node_modules/** and target/** are gitignored; the explicit excludes keep
+# `treefmt` from traversing them under `act` (local Docker CI), where the
+# git-walker's `.git` pointer is dangling and the implicit skip does not apply.
+#   - .agents/core/**: the vendored agentic-dev core (a submodule/gitlink) is a
+#     foreign tree with its own conventions; formatting it dirties the pin and is
+#     forbidden by the read-only-vendored-core discipline (core/HAZARDS.md H13).
+#   - .claude/worktrees/**: in-repo agent worktrees are foreign checkouts, not
+#     source to format (H13). Gitignoring is not scoping — exclude explicitly.
+excludes = [
+  ".beads/**",
+  ".agents/core/**",
+  ".claude/worktrees/**",
+  "node_modules/**",
+  "target/**",
+  "coverage/**",
+  ".rumdl_cache/**"
+]
+
+[formatter.oxfmt]
+command = "oxfmt"
+options = ["--config", ".oxfmtrc.json"]
+includes = [
+  "*.astro",
+  "*.cjs",
+  "*.css",
+  "*.cts",
+  "*.graphql",
+  "*.grit",
+  "*.hbs",
+  "*.html",
+  "*.js",
+  "*.json",
+  "*.jsonc",
+  "*.mjs",
+  "*.mts",
+  "*.mustache",
+  "*.scss",
+  "*.svelte",
+  "*.tailwind",
+  # "*.toml",
+  "*.ts",
+  "*.tsx",
+  "*.vue",
+  "*.yaml",
+  "*.yml",
+]
+# Generated or layout-sensitive JSON a formatter must not rewrite — the same
+# fidelity discipline as the top-level .beads exclude:
+#   - tree-sitter-generated grammar.json / node-types.json (`tree-sitter generate`);
+#   - the npm-generated package-lock.json;
+#   - the contract-fixtures manifest.json, read by a bespoke layout-sensitive
+#     slice parser in gandr-grammar-contract-fixtures (reformatting breaks it).
+excludes = [
+  "packages/tree-sitter-gandr/src/grammar.json",
+  "packages/tree-sitter-gandr/src/node-types.json",
+  "packages/tree-sitter-gandr/package-lock.json",
+  "crates/gandr-grammar-contract-fixtures/fixtures/manifest.json",
+]
+
+[formatter.oxlint]
+command = "oxlint"
+options = ["--config", ".oxlintrc.json"]
+includes = [
+  "*.astro",
+  "*.cjs",
+  "*.css",
+  "*.cts",
+  "*.graphql",
+  "*.grit",
+  "*.hbs",
+  "*.html",
+  "*.js",
+  "*.jsx",
+  "*.mjs",
+  "*.mts",
+  "*.mustache",
+  "*.scss",
+  "*.svelte",
+  "*.tailwind",
+  "*.ts",
+  "*.tsx",
+  "*.vue",
+]
+
+# The mutating formatter takes the lower priority so `fmt` completes before
+# `check` when both cover the same markdown set (core fragment convention).
+[formatter."rumdl-format"]
+priority = 0
+command = "cargo"
+options = ["run", "--quiet", "-p", "wyrd-rust-gates", "--", "rumdl", "fmt"]
+includes = ["*.md"]
+
+[formatter."rumdl-verify"]
+priority = 1
+command = "cargo"
+options = ["run", "--quiet", "-p", "wyrd-rust-gates", "--", "rumdl", "check"]
+includes = ["*.md"]
+
+[formatter.rustfmt]
+command = "rustfmt"
+options = ["--edition", "2024", "--config", "skip_children=true"]
+includes = ["*.rs"]
+
+[formatter.sizelint]
+command = "sizelint"
+options = ["check"]
+includes = ["*"]
+# Fidelity-critical greenfield / generated sources are owned by their producers.
+# *.typ: greenfield typst sources under docs/manual/ (Track C) — rendered docs,
+# not size-bounded prose; typst has no treefmt formatter (vetted-dep gate first).
+# *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
+# identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …); a content-MUTATING formatter must
+# never rewrite them (core hazard H8). Consumer-local LIVE-hazard fix — the
+# permanent fix is the core H8 exclude fragment (wyrd-lf70); this drift is
+# intentional until the core ships it.
+excludes = ["*.typ", "*.agda", "*.agda-lib"]
+
+[formatter."tombi-format"]
+command = "tombi"
+options = ["format"]
+includes = ["*.toml"]
+
+[formatter."tombi-lint"]
+command = "tombi"
+options = ["lint", "--error-on-warnings"]
+includes = ["*.toml"]
+
+[formatter.typos]
+command = "typos"
+options = ["--write-changes", "--force-exclude"]
+includes = ["*"]
+# Research prose (author names, technical neologisms, quoted source text) must
+# not be auto-"corrected" by typos.
+# *.typ: greenfield typst sources (Track C) carry curryst/fletcher identifiers
+# and unicode math typos must not rewrite (the fidelity risk wyrd-jyp flagged).
+# *.agda / *.agda-lib: tracked metatheory/src/** Agda carries Unicode math
+# identifiers (tp⁺, ⊗⁺, &⁻, U_r, F, Σ, …) typos must never rewrite (core hazard
+# H8). Also mirrored in typos.toml extend-exclude so a standalone `typos`
+# (editor/CLI) run — which reads that config, not treefmt's — is safe too.
+# Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment (wyrd-lf70).
+excludes = ["*.typ", "*.agda", "*.agda-lib"]
+
+# [formatter.yamllint]
+# command = "yamllint"
+# includes = ["*.yaml", "*.yml"]
+
+[formatter.zizmor]
+command = "zizmor"
+options = ["--no-progress"]
+includes = [
+  ".github/workflows/*.yml",
+  ".github/workflows/*.yaml",
+  ".github/actions/**/*.yml",
+  ".github/actions/**/*.yaml",
+]

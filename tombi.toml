@@ -1,0 +1,8 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://raw.githubusercontent.com/tombi-toml/tombi/refs/heads/main/www.schemastore.org/tombi.json
+
+toml-version = "v1.0.0"
+
+[files]
+exclude = []
+respect-ignore-files = true

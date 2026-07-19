@@ -1,0 +1,16 @@
+#:tombi toml-version = "v1.0.0"
+
+[rules.default]
+enabled = true
+description = "Default file size check"
+suggestion = "Add the file to 'excludes' or adjust 'max_file_size' in sizelint.toml"
+check_staged = true
+check_working_tree = true
+respect_gitignore = true
+fail_on_warn = true
+
+[rules.small_files]
+enabled = true
+max_file_size = "2MB"
+warn_file_size = "1MB"
+excludes = []

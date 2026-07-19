@@ -1,0 +1,23 @@
+{
+  // Root TS project scoped to the repo's top-level config scripts so the
+  // editor's language server can resolve their imports. `.commitlintrc.mts`
+  // imports the vendored-core fragment by explicit `.mts` path
+  // (`./.agents/core/fragments/commitlintrc.base.mts`); resolving that
+  // specifier under nodenext needs `allowImportingTsExtensions` (hence
+  // `noEmit`). Without this project the editor reports a spurious TS2307
+  // (wyrd-g0dq); the commitlint gate itself runs via a runtime loader and is
+  // unaffected. The `packages/tree-sitter-gandr` package keeps its own
+  // tsconfig — this project claims only the files it lists.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": [".commitlintrc.mts"]
+}

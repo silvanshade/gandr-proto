@@ -1,0 +1,802 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise.json
+
+# Linked-worktree trust propagation replaces lifecycle trust hooks (core H15).
+# Snapshot harness roots belong in the user's global `trusted_config_paths`;
+# a project config cannot bootstrap trust for its own isolated copy.
+min_version = "2026.7.5"
+
+[settings]
+activate_aggressive = true
+experimental = true
+env_shell_expand = true
+minimum_release_age = "1d"
+lockfile = true
+
+[settings.npm]
+package_manager = "aube"
+
+[settings.pipx]
+uvx = true
+
+[settings.cargo]
+# Fetch prebuilt release binaries via cargo-binstall instead of compiling
+# cargo: tools (including coreutils) from source. `cargo:cargo-binstall` is
+# pinned in [tools], so this holds in fresh/isolated environments too.
+binstall = true
+
+[env]
+# Toolchain pins mirror .github/workflows/ci.yml `env:` — configured ONCE here
+# instead of repeating `rustup run <version>` in every task. `get_env` keeps
+# the ambient value when a caller (CI job env, act) already set it, so CI's
+# per-job nightly override wins exactly as it does on the GitHub runner.
+# RUSTUP_TOOLCHAIN preempts even an explicit `rustup run <other>` argument, so
+# nightly tasks re-export it inline (`RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" …`)
+# rather than fighting that precedence with `rustup run`.
+RUSTUP_TOOLCHAIN = "{{ get_env(name='RUSTUP_TOOLCHAIN', default='1.96.0') }}"
+RUSTUP_TOOLCHAIN_NIGHTLY = "{{ get_env(name='RUSTUP_TOOLCHAIN_NIGHTLY', default='nightly-2026-05-27') }}"
+# Cargo resolves external subcommand binaries (cargo-clippy, cargo-fmt,
+# rustfmt) from PATH, so a Homebrew rust install at /opt/homebrew/bin silently
+# shadows the pinned toolchain. Prepend the rustup PROXY directory (not a
+# resolved toolchain bin dir): the proxies dispatch on RUSTUP_TOOLCHAIN, so
+# every task — and every child a formatter spawns — follows the pin above or a
+# task's inline nightly override.
+_.path = [
+  "{{ exec(command='dirname \"$(command -v rustup || echo \"$HOME/.cargo/bin/rustup\")\"') }}"
+]
+
+[tasks."dev:enable"]
+description = "Enable local mise development hooks"
+run = """
+echo 'env = ["dev"]' > .miserc.toml
+echo "mise development config enabled"
+"""
+
+[tasks."dev:disable"]
+description = "Disable local mise development hooks"
+run = """
+rm -f .miserc.toml
+echo "mise development config disabled"
+"""
+
+[tasks.setup]
+description = "Populate fresh-worktree dependencies (root devDependencies for the treefmt/oxlint and commitlint hooks + tree-sitter grammar package)"
+run = """
+aube ci
+aube ci --dir packages/tree-sitter-gandr
+"""
+
+[tasks."grammar:test"]
+description = "Tree-sitter grammar suite + §7-G3 gates (corpus, coverage, recovery locality, parser.c size / STATE_COUNT budgets, zero conflicts/prec.dynamic/scanner)"
+run = """
+aube test --dir packages/tree-sitter-gandr
+aube run fuzz:smoke --dir packages/tree-sitter-gandr
+aube run parse:fuzz-seeds --dir packages/tree-sitter-gandr
+"""
+
+[tasks."cargo:build"]
+description = "Build the project"
+run = """
+cargo build --workspace --all-targets --features=full
+"""
+
+[tasks."cargo:clippy"]
+description = "Run clippy linter"
+run = """
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+"""
+
+[tasks."cargo:doc"]
+description = "Generate documentation"
+run = """
+cargo doc --workspace --features=full --no-deps --document-private-items --open
+"""
+
+[tasks."cargo:doc-check"]
+description = "Check private-item documentation"
+run = """
+cargo doc --no-deps --document-private-items
+"""
+
+[tasks."docs:manifest-drift"]
+description = "Verify docs/gandr/MANIFEST.yml BLAKE3 hashes against registered docs"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- docs-manifest
+"""
+
+[tasks."docs:conflict-markers"]
+description = "Detect unresolved Git conflict markers in tracked files"
+run = """
+nu .agents/core/scripts/check-conflict-markers.nu
+"""
+
+[tasks."docs:reference-integrity"]
+description = "Verify gandr corpus cross-references (ADR/section refs, manifest anchors) all resolve"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- docs-reference
+"""
+
+[tasks."core:check"]
+description = "Verify the vendored agentic-dev core submodule is initialized, clean, and at the recorded pin (ADR-2)"
+run = """
+nu .agents/core/scripts/check-core-pin.nu
+"""
+
+[tasks."core:update"]
+description = "Bump the vendored agentic-dev core to upstream main (commit the new pin deliberately; ADR-2)"
+run = """
+git submodule update --remote .agents/core
+git status --short .agents/core
+"""
+
+[tasks."smoke:wt-core-init"]
+description = "Smoke-test Worktrunk core-init bootstrap in a temporary linked worktree"
+run = "nu .agents/core/scripts/smoke-wt-core-init.nu"
+
+[tasks."iu:check"]
+description = "Verify the pinned internal-univalence upstream submodule is initialized, clean, and at the recorded pin (READ-ONLY; wyrd-s3tl)"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- iu-pin --workspace-root .
+"""
+
+[tasks."docs:manual"]
+description = "Build the gandr reference manual end-to-end (regenerate all highlight JSON, then typst-compile) -> PDF"
+run = """
+nu docs/manual/tools/build-manual.nu
+"""
+
+[tasks."docs:manual:watch"]
+description = "Regenerate all highlight JSON once, then watch + recompile the gandr reference manual on change"
+run = """
+nu docs/manual/tools/build-manual.nu regen
+typst watch --root . docs/manual/main.typ docs/manual/main.pdf
+"""
+
+# Page balance is measured mechanically (spec.typ <layout-probe> metadata +
+# typst eval query()), never by rendering and inspecting page images.
+# Informational: reports display blocks that open low on a page; fails only
+# when the probe hook itself has drifted (zero probes) or the manual does not
+# compile. Requires the derived highlight JSON (run docs:manual first).
+[tasks."docs:balance"]
+description = "Report manual display blocks that open low on a page (informational; fails only on zero probes)"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- page-balance
+"""
+
+[tasks."docs:spike"]
+description = "Compile the Track-C typst rendering spike (wyrd-7ni) -> PDF (curryst/fletcher)"
+run = """
+typst compile --root . docs/manual/spike/dictionary-spike.typ docs/manual/spike/dictionary-spike.pdf
+"""
+
+[tasks."docs:cookbook"]
+description = "Compile the Track-C diagram cookbook (wyrd-n5zi) -> PDF (fletcher/cetz/diagraph/chronos/curryst)"
+run = """
+typst compile --root . docs/manual/spike/diagram-cookbook.typ docs/manual/spike/diagram-cookbook.pdf
+"""
+
+[tasks."docs:highlight"]
+description = "Preprocess a .gandr file through tree-sitter highlights.scm -> typst token JSON (wyrd-3pkj)"
+run = """
+nu docs/manual/tools/highlight-gandr.nu {{arg(name='gandr_file')}} --out {{arg(name='out_json')}}
+"""
+
+[tasks."docs:highlight:spike"]
+description = "Regenerate the highlight token stream + compile the highlighting spike (wyrd-3pkj) -> PDF"
+run = """
+nu docs/manual/tools/highlight-gandr.nu packages/tree-sitter-gandr/test/scripts/fixtures/highlights.gandr --out docs/manual/spike/gen/highlights.json
+typst compile --root . docs/manual/spike/highlighting-spike.typ docs/manual/spike/highlighting-spike.pdf
+"""
+
+[tasks."docs:chapter:wyrd"]
+description = "Render the Wyrd-and-gandr orientation chapter (VISION.md §§1–8 + ARCHITECTURE.md scoping) from structured data -> PDF (prose/deflist/note + the cetz design-space figure)"
+run = """
+typst compile --root . docs/manual/chapters/wyrd.typ docs/manual/chapters/wyrd.pdf
+"""
+
+[tasks."docs:chapter:core"]
+description = "Render the Core-Calculus chapter from structured data (wyrd-id69) -> PDF (highlight JSON + curryst/fletcher/cetz/chronos)"
+run = """
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/core-cbpv.gandr --out docs/manual/chapters/gen/core-cbpv.highlights.json
+typst compile --root . docs/manual/chapters/core-calculus.typ docs/manual/chapters/core-calculus.pdf
+"""
+
+[tasks."docs:chapter:typesys"]
+description = "Render the Type-System features/algorithmics chapter (wyrd-7zsn, type-system §§4–12) from structured data -> PDF (curryst/fletcher)"
+run = """
+typst compile --root . docs/manual/chapters/type-system-features.typ docs/manual/chapters/type-system-features.pdf
+"""
+
+[tasks."docs:chapter:typmac"]
+description = "Render the Typing-Machine chapter (wyrd-g7nw, typing-machine.md §§1–9) from structured data -> PDF (listing/table/fletcher)"
+run = """
+typst compile --root . docs/manual/chapters/typing-machine.typ docs/manual/chapters/typing-machine.pdf
+"""
+
+[tasks."docs:chapter:incr"]
+description = "Render the Incremental-Pipeline chapter (wyrd-m6y8, incremental-pipeline.md §§1–10) from structured data -> PDF (diagraph pipeline DAG + listing/table/note)"
+run = """
+typst compile --root . docs/manual/chapters/incremental-pipeline.typ docs/manual/chapters/incremental-pipeline.pdf
+"""
+
+[tasks."docs:chapter:effects"]
+description = "Render the Effects/Control/Shell chapter (wyrd-wpq0, effects-control-shell.md §§0–6) from structured data -> PDF (grammar/rules/table/note + session-pipe & dynamics-pipeline diagrams)"
+run = """
+typst compile --root . docs/manual/chapters/effects-control-shell.typ docs/manual/chapters/effects-control-shell.pdf
+"""
+
+[tasks."docs:chapter:modules"]
+description = "Render the Modules chapter (wyrd-vzqx, modules.md §§1–11) from structured data -> PDF (grammar/rules/definition/table/listing)"
+run = """
+typst compile --root . docs/manual/chapters/modules.typ docs/manual/chapters/modules.pdf
+"""
+
+[tasks."docs:chapter:glance"]
+description = "Render the Gandr-at-a-Glance chapter (the didactic Part-II opener) from structured data -> PDF (regenerates its highlight JSON + code blocks)"
+run = """
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/at-a-glance-hello.gandr --out docs/manual/chapters/gen/at-a-glance-hello.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/at-a-glance-functions.gandr --out docs/manual/chapters/gen/at-a-glance-functions.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-sums.gandr --out docs/manual/chapters/gen/examples-sums.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/at-a-glance-shell.gandr --out docs/manual/chapters/gen/at-a-glance-shell.highlights.json
+typst compile --root . docs/manual/chapters/at-a-glance.typ docs/manual/chapters/at-a-glance.pdf
+"""
+
+[tasks."docs:chapter:surface"]
+description = "Render the Surface-Syntax & Grammar chapter (proposal-surface-syntax.md + proposal-operators.md + tree-sitter-gandr) from structured data -> PDF (highlight JSON + grammar/table/code)"
+run = """
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-overview.gandr --out docs/manual/chapters/gen/surface-syntax-overview.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-composition.gandr --out docs/manual/chapters/gen/surface-syntax-composition.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-sessions.gandr --out docs/manual/chapters/gen/surface-syntax-sessions.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-shell.gandr --out docs/manual/chapters/gen/surface-syntax-shell.highlights.json
+typst compile --root . docs/manual/chapters/surface-syntax.typ docs/manual/chapters/surface-syntax.pdf
+"""
+
+[tasks."docs:chapter:metaprog"]
+description = "Render the Metaprogramming chapter (wyrd-8dbh, proposal-metaprogramming.md §§1–7) from structured data -> PDF (table/rules/listing/note)"
+run = """
+typst compile --root . docs/manual/chapters/metaprogramming.typ docs/manual/chapters/metaprogramming.pdf
+"""
+
+[tasks."docs:chapter:solver"]
+description = "Render the Solver-Interface chapter (wyrd-44ck, proposal-solver-interface.md §§1–6) from structured data -> PDF (listing/rules/reductions/table + machine-solver diagram)"
+run = """
+typst compile --root . docs/manual/chapters/solver-interface.typ docs/manual/chapters/solver-interface.pdf
+"""
+
+[tasks."docs:chapter:examples"]
+description = "Render the Examples chapter (wyrd-ox4g, examples/examples.md) from structured data -> PDF (highlight JSON + example/derivation/trace + code)"
+run = """
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-identity.gandr --out docs/manual/chapters/gen/examples-identity.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-composition.gandr --out docs/manual/chapters/gen/examples-composition.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-sums.gandr --out docs/manual/chapters/gen/examples-sums.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-session.gandr --out docs/manual/chapters/gen/examples-session.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-records.gandr --out docs/manual/chapters/gen/examples-records.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-list-update.gandr --out docs/manual/chapters/gen/examples-list-update.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-list-oob.gandr --out docs/manual/chapters/gen/examples-list-oob.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-typed-holes.gandr --out docs/manual/chapters/gen/examples-typed-holes.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-ffi.gandr --out docs/manual/chapters/gen/examples-ffi.highlights.json
+nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-ffi-denied.gandr --out docs/manual/chapters/gen/examples-ffi-denied.highlights.json
+typst compile --root . docs/manual/chapters/examples.typ docs/manual/chapters/examples.pdf
+"""
+
+[tasks."docs:chapter:appendix"]
+description = "Render the executable-corpus appendix (every model/ + pathological/ example via gen/corpus-index.json) standalone -> PDF (regenerates the corpus highlight set first)"
+run = """
+nu docs/manual/tools/build-manual.nu regen corpus
+typst compile --root . docs/manual/chapters/appendix-corpus.typ docs/manual/chapters/appendix-corpus.pdf
+"""
+
+[tasks."docs:chapter:status"]
+description = "Render the Implementation-Status chapter (the docs/gandr/status.yml registry matrix + reading guide) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/status.typ docs/manual/chapters/status.pdf
+"""
+
+[tasks."docs:chapter:parser"]
+description = "Render the Parser-Interaction-Core chapter (proposal-graph-core.md + proposal-parser-interaction-core.md) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/parser-core.typ docs/manual/chapters/parser-core.pdf
+"""
+
+[tasks."docs:chapter:values"]
+description = "Render the Values/Data/Practical-Surface chapter (value-model ladder + Wave-0/1 usability proposals) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/values-data.typ docs/manual/chapters/values-data.pdf
+"""
+
+[tasks."docs:chapter:kernel"]
+description = "Render the Kernel-Boundary chapter (spec/kernel-boundary.md, ADR-77/78) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/kernel-boundary.typ docs/manual/chapters/kernel-boundary.pdf
+"""
+
+[tasks."docs:chapter:sequent"]
+description = "Render the Sequent-Kernel chapter (proposal-sequent-kernel.md + VDC addendum, ADR-65) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/sequent-kernel.typ docs/manual/chapters/sequent-kernel.pdf
+"""
+
+[tasks."docs:chapter:identity"]
+description = "Render the Identity/Temporal-Univalence chapter (proposal-identity-univalence.md, ADR-76) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/identity-univalence.typ docs/manual/chapters/identity-univalence.pdf
+"""
+
+[tasks."docs:chapter:levitation"]
+description = "Render the Levitation chapter (proposal-levitation.md + VDC addendum, ADR-67) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/levitation.typ docs/manual/chapters/levitation.pdf
+"""
+
+[tasks."docs:chapter:codata"]
+description = "Render the Codata/Copatterns chapter (proposal-codata-corecursion.md + VDC addendum, ADR-66) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/codata.typ docs/manual/chapters/codata.pdf
+"""
+
+[tasks."docs:chapter:vdc"]
+description = "Render the VDC-Reflection chapter (proposal-vdc-reflection.md, ADR-68/69) from structured data -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/vdc-reflection.typ docs/manual/chapters/vdc-reflection.pdf
+"""
+
+[tasks."docs:chapter:dict"]
+description = "Render the Conceptual-Dictionary chapter as a true single-source render of docs/gandr/dictionary.yml -> PDF"
+run = """
+typst compile --root . docs/manual/chapters/dictionary.typ docs/manual/chapters/dictionary.pdf
+"""
+
+[tasks."docs:chapter:roadmap"]
+description = "Render the Roadmap & References chapter (wyrd-fvhl, roadmap.md §§1–6) from structured data -> PDF (table/prose/note + dynamics-pipeline diagram)"
+run = """
+typst compile --root . docs/manual/chapters/roadmap.typ docs/manual/chapters/roadmap.pdf
+"""
+
+[tasks."docs:chapter:semantic"]
+description = "Render the Semantic Model chapter (the unifying wheeled/polarity/graded nominal PROP + directed polygraph/Squier-coherence rewriting; ADR-46 A & B / ADR-36 / ADR-32) from structured data -> PDF (section/prose/definition/table/deflist/references + squier-pillow & sigma-string-rewrite cetz figures)"
+run = """
+typst compile --root . docs/manual/chapters/semantic-model.typ docs/manual/chapters/semantic-model.pdf
+"""
+
+[tasks."docs:chapter:toolchain"]
+description = "Render the Toolchain Facets chapter (rendering/inspection surface, compilation backend, packages, wasm, self-hosting; ADR-46 Decision D + seven proposals) from structured data -> PDF (section/status/prose/deflist/note/references)"
+run = """
+typst compile --root . docs/manual/chapters/toolchain-facets.typ docs/manual/chapters/toolchain-facets.pdf
+"""
+
+[tasks."test:doc-gates"]
+description = "Run the Rust doc-gate regression suite"
+run = """
+cargo nextest run -p wyrd-rust-gates
+"""
+
+[tasks."test:graph-gates"]
+description = "Run wyrd-rust-gates Rust tests once, then both live graph gates"
+run = """
+cargo nextest run -p wyrd-rust-gates
+cargo run --quiet -p wyrd-rust-gates -- contracts --scope crates/gandr-graph
+cargo run --quiet -p wyrd-rust-gates -- graph-boundary --workspace-root .
+"""
+
+[tasks."test:adequacy-witnesses"]
+description = "Run the live graph rustdoc Contract adequacy-witness gate"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- contracts --scope crates/gandr-graph
+"""
+
+[tasks."test:graph-boundary"]
+description = "Run the live gandr-graph façade boundary gate"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- graph-boundary --workspace-root .
+"""
+
+# [tasks."test:dep-graph"]
+# description = "Assert the default -e normal,build workspace graph stays tree-sitter-free (wyrd-66jm dependency gate)"
+# run = """
+# cargo run --quiet -p wyrd-rust-gates -- default-graph --workspace-root .
+# """
+
+[tasks."test:tree-sitter-ref"]
+description = "Run the excluded gandr-tree-sitter reference-crate tests (its own independent workspace; wyrd-66jm keeps them in CI though --workspace no longer sees them)"
+run = """
+cargo nextest run --all-targets --manifest-path crates/gandr-tree-sitter/Cargo.toml
+"""
+
+[tasks."test:soundness-oracles"]
+description = "Verify every free-generator coherence oracle in the conformance suite declares a biased companion (ADR-48 / wyrd-ucks)"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- soundness-oracles --workspace-root .
+"""
+
+[tasks."test:options-policy"]
+description = "Run the Rust OPTIONS-policy regression suite and live policy sweep"
+run = """
+cargo nextest run -p wyrd-rust-gates
+cargo run --quiet -p wyrd-rust-gates -- options-policy --workspace-root .
+"""
+
+[tasks."test:page-balance"]
+description = "Run the Rust page-balance regression suite"
+run = """
+cargo nextest run -p wyrd-rust-gates
+"""
+
+# ── Mutation testing (cargo-mutants; docs/HAZARDS.md) ─────────────────────────
+# EVERY task here goes through the Rust driver's microVM containment. `cargo
+# mutants` is never invoked directly on the host, and there is deliberately no
+# task that bypasses the containment proof.
+
+[tasks."mutants:snapshot"]
+description = "Build/refresh the reusable microVM base snapshot (toolchain + pinned tools + guest sentinel); needs network"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants snapshot
+"""
+
+[tasks."mutants:changed-vs-remote"]
+description = "Run a changed-code mutation campaign for commits relative to the configured remote, inside an ephemeral microVM"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants push
+"""
+
+[tasks."mutants:push"]
+description = "Alias for the changed-code mutation campaign relative to the configured remote"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants push
+"""
+
+[tasks."mutants:changed-vs-main"]
+description = "Run a changed-code mutation campaign for this branch relative to main, inside an ephemeral microVM"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants merge
+"""
+
+[tasks."mutants:merge"]
+description = "Alias for the changed-code mutation campaign relative to main"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants merge
+"""
+
+[tasks."mutants:scheduled"]
+description = "Run a changed-code mutation campaign over an explicit revision range, inside an ephemeral microVM"
+usage = '''
+flag "--from <from>" help="Base revision for the mutation range"
+flag "--to <to>" help="Head revision for the mutation range"
+'''
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants scheduled --from "${usage_from?}" --to "${usage_to?}"
+"""
+
+[tasks."mutants:clean"]
+description = "Stop and remove any microVM left behind by an interrupted mutants run"
+# The Rust driver tears its sandbox down on both success and failure, but a
+# SIGTERM to the driver can skip that. The sandbox's `--max-duration` eventually
+# reaps it; this command reclaims the CPU and memory immediately.
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants clean
+"""
+
+[tasks."mutants:sweep"]
+description = "Schedule a comprehensive workspace mutation campaign in an ephemeral microVM (~2427 mutants; sets the baseline)"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- mutants sweep
+"""
+
+# rustfmt.toml relies on nightly-only options (imports_granularity, wrap_comments,
+# …), so fmt always runs under the pinned nightly — stable rustfmt silently
+# ignores them and would format/check differently than treefmt's rustfmt.
+[tasks."cargo:fmt"]
+description = "Run cargo fmt"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo fmt --all
+"""
+
+[tasks."cargo:fmt-check"]
+description = "Run cargo fmt in check mode (prek pre-commit hook)"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo fmt --all -- --check
+"""
+
+[tasks."cargo:nextest"]
+description = "Run workspace and excluded gandr-tree-sitter reference-crate nextest suites"
+run = """
+cargo nextest run --workspace --all-targets --features=full
+cargo nextest run --all-targets --manifest-path crates/gandr-tree-sitter/Cargo.toml
+"""
+
+[tasks."cargo:careful-nextest"]
+description = "Run workspace and excluded gandr-tree-sitter reference-crate nextest suites under cargo-careful"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo careful nextest run --workspace --all-targets --features=full
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo careful nextest run --all-targets --manifest-path crates/gandr-tree-sitter/Cargo.toml
+"""
+
+[tasks."cargo:llvm-cov"]
+description = "Generate coverage artifacts (lcov, human summary, and summary JSON) into coverage/"
+run = """
+mkdir -p coverage
+cargo llvm-cov clean --workspace
+cargo llvm-cov --no-report --workspace --all-targets --features=full
+cargo llvm-cov report --lcov --output-path coverage/lcov.info
+cargo llvm-cov report --summary-only | tee coverage/summary.txt
+cargo llvm-cov report --json --summary-only --output-path coverage/llvm-cov-summary.json
+"""
+
+[tasks."coverage:check"]
+description = "Generate coverage, verify the ratchet harness, then enforce per-file floors"
+run = [
+  { task = "cargo:llvm-cov" },
+  { task = "test:coverage-ratchet" },
+  # { task = "coverage:check:enforce" }
+]
+
+[tasks."coverage:check:enforce"]
+description = "Fail when measured per-file coverage regresses below coverage/floors.toml"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- coverage check --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
+"""
+
+[tasks."coverage:ratchet"]
+description = "Manually raise per-file coverage floors to the current measured coverage"
+depends = ["cargo:llvm-cov"]
+run = """
+cargo run --quiet -p wyrd-rust-gates -- coverage ratchet --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
+"""
+
+# AFL++ fuzzing over the gandr crates. The `fuzz/` package is an independent
+# workspace; every campaign is single-process and runs sequentially.
+[tasks."fuzz:lower"]
+description = "Fuzz the CST -> core lowerer (lower_source_total totality) with AFL++"
+run = """
+cargo afl build --manifest-path fuzz/Cargo.toml --bin lower
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/lower -o fuzz/artifacts/lower fuzz/target/debug/lower
+"""
+
+[tasks."fuzz:parse"]
+description = "Fuzz the tree-sitter parser bridge with AFL++"
+run = """
+cargo afl build --manifest-path fuzz/Cargo.toml --bin parse
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/parse -o fuzz/artifacts/parse fuzz/target/debug/parse
+"""
+
+[tasks."fuzz:check"]
+description = "Fuzz lower -> checker/machine (no panic + checker == machine) with AFL++"
+run = """
+cargo afl build --manifest-path fuzz/Cargo.toml --bin check
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/check -o fuzz/artifacts/check fuzz/target/debug/check
+"""
+
+[tasks."fuzz:parity"]
+description = "Fuzz parser and highlighting parity with AFL++"
+run = """
+cargo afl build --manifest-path fuzz/Cargo.toml --features parity --bin parity
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/parity -o fuzz/artifacts/parity fuzz/target/debug/parity
+"""
+
+[tasks."fuzz:gates"]
+description = "Fuzz the unified Rust gate suite with AFL++"
+run = """
+cargo afl build --manifest-path fuzz/Cargo.toml --features gates --bin gates
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -i fuzz/corpus/gates -o fuzz/artifacts/gates fuzz/target/debug/gates
+"""
+
+[tasks."fuzz:rust-smoke"]
+description = "Deterministically replay every Rust fuzz corpus seed once"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- fuzz-smoke
+"""
+
+[tasks."fuzz:weekly"]
+description = "Run bounded 300-second AFL++ campaigns across all five Rust targets sequentially"
+run = """
+cargo afl build --manifest-path fuzz/Cargo.toml --bin lower
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/lower -o fuzz/artifacts/lower fuzz/target/debug/lower
+cargo afl build --manifest-path fuzz/Cargo.toml --bin parse
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/parse -o fuzz/artifacts/parse fuzz/target/debug/parse
+cargo afl build --manifest-path fuzz/Cargo.toml --bin check
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/check -o fuzz/artifacts/check fuzz/target/debug/check
+cargo afl build --manifest-path fuzz/Cargo.toml --features parity --bin parity
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/parity -o fuzz/artifacts/parity fuzz/target/debug/parity
+cargo afl build --manifest-path fuzz/Cargo.toml --features gates --bin gates
+AFL_NO_UI=1 AFL_AUTORESUME=1 cargo afl fuzz -V 300 -i fuzz/corpus/gates -o fuzz/artifacts/gates fuzz/target/debug/gates
+"""
+
+[tasks."maintenance:weekly"]
+description = "Run the bounded weekly fuzz and changed-code mutation campaigns sequentially"
+usage = '''
+flag "--from <from>" help="Base revision for the mutation range"
+flag "--to <to>" help="Head revision for the mutation range"
+'''
+run = [
+  { task = "fuzz:weekly" },
+  { task = "mutants:scheduled", args = [
+    "--from",
+    "{{usage.from}}",
+    "--to",
+    "{{usage.to}}"
+  ] }
+]
+
+[tasks."maintenance:advance"]
+description = "Atomically advance the successful weekly campaign watermark"
+usage = '''
+flag "--watermark <watermark>" help="Runner-local watermark path"
+flag "--to <to>" help="Successful upper revision" default="HEAD"
+'''
+run = 'cargo run --quiet -p wyrd-rust-gates -- maintenance-range advance --watermark "{{usage.watermark}}" --to "{{usage.to}}"'
+
+[tasks."maintenance:monthly"]
+description = "Run the monthly full contained mutation sweep"
+run = [{ task = "mutants:sweep" }]
+
+# no_panic link smoke: prove Grade::{leq,plus,times} panic-free. A plain release
+# build (panic = "unwind" by default) links the annotated ops via the example, so
+# no_panic's link-time check fires; the dev release is unwind precisely so this
+# needs no extra flags. (#[no_panic] needs the unwind path — dist's abort would
+# defeat it — so the use-site cfg is `all(not(debug_assertions), panic = "unwind")`.)
+[tasks."cargo:no-panic"]
+description = "Release no_panic link smoke (Grade leaf ops)"
+run = """
+cargo build --release -p gandr-core --example no_panic_smoke
+"""
+
+[tasks."cargo:miri"]
+description = "Run the workspace test suite under Miri"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo miri test --workspace --all-targets --features=full
+"""
+
+[tasks.treefmt]
+description = "Run treefmt"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt
+"""
+
+[tasks."treefmt:check"]
+description = "Run treefmt in CI mode"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci
+"""
+
+[tasks."test:coverage-ratchet"]
+description = "Verify per-file coverage floors, monotonicity, schema validation, and path boundaries"
+run = """
+cargo nextest run -p wyrd-rust-gates
+"""
+
+[tasks."test:gate-parity"]
+description = "Verify CI tasks and local hooks share exact self-contained gate definitions"
+run = """
+cargo nextest run -p wyrd-rust-gates
+"""
+
+[tasks."test:scheduled-campaigns"]
+description = "Verify scheduled campaign triggers, containment routing, bounded aggregates, and retained artifacts"
+run = """
+cargo nextest run -p wyrd-rust-gates
+"""
+
+[tasks."ci:contracts"]
+description = "Run the unified Rust contract suite and workflow validation sequentially"
+run = [
+  { task = "test:scheduled-campaigns" },
+  { task = "ci:contracts:workflow" }
+]
+
+[tasks."ci:contracts:workflow"]
+description = "Enforce CI workflow real-work commands are routed through self-contained mise tasks"
+run = """
+cargo run --quiet -p wyrd-rust-gates -- ci-contracts --workflow .github/workflows/ci.yml
+"""
+
+[tasks.wrkflw]
+description = "Validate GitHub workflows"
+depends = ["ci:contracts"]
+run = """
+wrkflw validate
+"""
+
+[tasks."gate:merge"]
+description = "Run the native pre-merge gate"
+run = [
+  { task = "grammar:test" },
+  { task = "cargo:build" },
+  { task = "cargo:clippy" },
+  { task = "cargo:nextest" },
+  { task = "treefmt:check" },
+  { task = "wrkflw" }
+]
+
+# ── Agda metatheory (metatheory/; ADR-30 — Agda is the sole proof vehicle) ──────
+# Agda 2.8.0 (pinned above) + agda-stdlib v2.4 (verified under 2.8.0), vendored by
+# `agda:deps`. Adding an Agda dependency is vetted first — see docs/WORKFLOW.md
+# "External research artifacts and dependency discipline".
+# The IU engine (Internal.Graph / Internal.Rewriting[.Confluence] / Internal.Prelude)
+# is consumed from the pinned submodule metatheory/upstream/internal-univalence,
+# included on both gate lines via `-i …/internal-univalence/src` (pin gate: iu:check;
+# provenance: metatheory/README.md "Upstream integration"; wyrd-s3tl).
+#
+# Strict root / holey leaf (docs/WORKFLOW.md "Agda house style"): the first
+# `agda:check` line gates the strict root (Gandr.Everything, 0 diagnostics);
+# each DECLARED holey leaf — a module the root does not import, carrying the
+# R3 in-progress proof obligations as interaction holes — gets its own line
+# with `--expected-code UnsolvedInteractionMetas`, so exactly the declared
+# holes are tolerated and anything else still fails. Current leaves:
+#   * metatheory/src/Gandr/Prop/Obligations.agda (wyrd-842e: canonicity
+#     existence/uniqueness + decidable equality on canonical forms). Keeps
+#     full OPTIONS (--safe coexists with interaction holes), so it needs NO
+#     exemption in the unified Rust OPTIONS-policy gate.
+
+[tasks."agda:deps"]
+description = "Vendor the Agda dependencies (agda-stdlib v2.4) via the gandr driver's script runner"
+run = """
+cargo run -q -p gandr -- scripts/agda-deps.gandr
+"""
+
+[tasks."agda:check"]
+description = "Type-check the gandr Agda metatheory under Agda 2.8.0 (strict root + declared holey leaf via aifix + OPTIONS policy sweep)"
+depends = ["agda:deps"]
+run = """
+aifix batch agda --fail-on-diagnostics -- -v0 -i metatheory/src -i metatheory/upstream/internal-univalence/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Everything.agda
+aifix batch agda --fail-on-diagnostics --expected-code UnsolvedInteractionMetas -- -v0 -i metatheory/src -i metatheory/upstream/internal-univalence/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Prop/Obligations.agda
+cargo run --quiet -p wyrd-rust-gates -- options-policy --workspace-root .
+"""
+
+[tool_alias]
+weave-cli = "github:ataraxy-labs/weave"
+weave-mcp = "github:ataraxy-labs/weave"
+
+[tools]
+"aqua:anchore/grype" = "0.116.0"
+"aqua:anchore/syft" = "1.48.0"
+"cargo:adrs" = "0.10.0"
+"cargo:b3sum" = "1.8.5"
+"cargo:cargo-autoinherit" = "0.1.6"
+"cargo:cargo-binstall" = "1.21.0"
+"cargo:cargo-careful" = "0.4.10"
+# cargo-afl's release binary embeds its build host's cargo registry path, which
+# makes `cargo afl config --build` non-relocatable. This no-op feature override
+# forces mise's Cargo backend to source-build this one tool instead of binstall.
+"cargo:cargo-afl" = { version = "0.18.2", default-features = false }
+"cargo:cargo-llvm-cov" = "0.8.7"
+"cargo:cargo-mutants" = "27.1.0"
+"cargo:cargo-nextest" = "0.9.140"
+# uutils coreutils — monolithic multicall binary, invoked `coreutils cp`.
+# Gives uniform reflink copy (`coreutils cp --reflink=auto`) on macOS AND Linux
+# for any local CI cache artifact warmup/copying.
+"cargo:coreutils" = "0.9.0"
+"cargo:mergiraf" = "0.18.0"
+"cargo:nu" = "0.113.1"  # NOTE: nu stays pinned at =0.113.1
+"cargo:prek" = "0.4.10"
+"cargo:rumdl" = "0.2.34"
+"cargo:sizelint" = "0.1.5"
+"cargo:typos-cli" = "1.48.0"
+"cargo:uv" = "0.11.29"
+"cargo:worktrunk" = "0.68.0"
+"cargo:wrkflw" = "0.8.0"
+"cargo:zizmor" = "1.26.1"
+"github:agda/agda" = "2.8.0"
+"github:bytecodealliance/wit-bindgen" = "0.59.0"
+"github:Dicklesworthstone/beads_viewer" = "0.18.0"
+"github:numtide/treefmt" = "2.5.0"
+# microsandbox (`msb`): libkrun microVM runner, the containment substrate for
+# cargo-mutants. The regex is load-bearing and ANCHORED: it
+# selects the BUNDLE `microsandbox-<os>-<arch>.tar.gz`, which carries both `msb` and
+# the `libkrunfw.5.dylib` kernel payload that `msb` dlopens at VM boot. The bare
+# `msb-*` asset installs cleanly and then fails on first boot; unanchored,
+# `microsandbox-` also matches `libmicrosandbox_go_ffi-*`. mise extracts the bundle
+# flat, and `msb` resolves libkrunfw "beside the resolved msb binary", so no
+# MSB_LIBKRUNFW_PATH is needed. macOS support is Apple Silicon only.
+"github:superradcompany/microsandbox" = { version = "0.6.6", matching_regex = "^microsandbox-" }
+"github:tombi-toml/tombi" = "1.2.1"
+"npm:@commitlint/cli" = "21.2.1"
+"npm:oxfmt" = "0.59.0"
+"npm:oxlint" = "1.74.0"
+"npm:oxlint-tsgolint" = "0.25.0"
+"npm:tsdown" = "0.22.9"
+"pipx:yamllint" = "1.38.0"
+act = "0.2.89"
+aube = "1.29.1"
+node = "26.5.0"
+typst = "0.15.1"
+weave-cli = { version = "v0.3.6", matching = "weave-cli", rename_exe = "weave" }
+weave-mcp = { version = "v0.3.6", matching = "weave-mcp", rename_exe = "weave-mcp" }

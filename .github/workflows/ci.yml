@@ -1,0 +1,476 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - tasks
+  pull_request: {}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  MISE_ENV: "ci"
+  MISE_ENABLE_TOOLS: "aube,node"
+  RUSTUP_TOOLCHAIN: 1.96.0
+  RUSTUP_TOOLCHAIN_NIGHTLY: nightly-2026-05-27
+  RUSTUP_COMPONENTS: clippy
+  RUSTUP_COMPONENTS_NIGHTLY: rustfmt
+  CI_VERSION_AUBE: 1.26.0
+  CI_VERSION_MISE: 2026.7.5
+  CI_VERSION_NODE: 26.5.0
+
+jobs:
+  template:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - &git-checkout
+        name: git checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - &init-core-submodule
+        name: initialize public core submodule
+        run: |
+          if [ ! -f .agents/core/core/WORKFLOW.md ]; then
+            git submodule update --init --depth 1 -- .agents/core
+          fi
+      - &prepare-act-rustup-cache
+        name: prepare act rustup cache mount
+        if: ${{ env.ACT == 'true' }}
+        run: |
+          sudo mkdir -p "$HOME/.rustup"
+          sudo chown -R "$(id -u):$(id -g)" "$HOME/.rustup"
+      - &cache-rustup-stable
+        id: rustup-stable-restore
+        name: restore rustup toolchain
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.rustup/toolchains/${{ env.RUSTUP_TOOLCHAIN }}-*
+          key: rustup-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ env.RUSTUP_COMPONENTS }}
+      - &save-rustup-stable
+        name: save rustup toolchain
+        if: ${{ steps.rustup-stable-restore.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.rustup/toolchains/${{ env.RUSTUP_TOOLCHAIN }}-*
+          key: ${{ steps.rustup-stable-restore.outputs.cache-primary-key }}
+      - &cache-rustup-nightly
+        id: rustup-nightly-restore
+        name: restore rustup toolchain (nightly)
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.rustup/toolchains/${{ env.RUSTUP_TOOLCHAIN_NIGHTLY }}-*
+          key: rustup-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.RUSTUP_TOOLCHAIN_NIGHTLY }}-${{ env.RUSTUP_COMPONENTS }}
+      - &save-rustup-nightly
+        name: save rustup toolchain (nightly)
+        if: ${{ steps.rustup-nightly-restore.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.rustup/toolchains/${{ env.RUSTUP_TOOLCHAIN_NIGHTLY }}-*
+          key: ${{ steps.rustup-nightly-restore.outputs.cache-primary-key }}
+      - &install-rust-tools
+        name: install rust tools
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
+        with:
+          toolchain: ${{ env.RUSTUP_TOOLCHAIN }}
+          components: ${{ env.RUSTUP_COMPONENTS }}
+      - &cache-rust-stable
+        name: cache Rust dependencies
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+        with:
+          prefix-key: wyrd-v2-rust-deps
+          shared-key: stable
+          workspaces: |
+            . -> target
+            crates/gandr-tree-sitter -> target
+          cache-all-crates: false
+          cache-workspace-crates: false
+          cache-on-failure: false
+          save-if: ${{ github.job == 'cargo-build-crates-stable' }}
+      - &override-rustup-toolchain-nightly
+        name: override RUSTUP_TOOLCHAIN
+        run: |
+          echo "RUSTUP_TOOLCHAIN=${{ env.RUSTUP_TOOLCHAIN_NIGHTLY }}" >> "$GITHUB_ENV"
+          echo "RUSTUP_COMPONENTS=${{ env.RUSTUP_COMPONENTS_NIGHTLY }}" >> "$GITHUB_ENV"
+      - &cache-rust-nightly
+        name: cache Rust dependencies (nightly)
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+        with:
+          prefix-key: wyrd-v2-rust-deps
+          shared-key: nightly
+          key: cargo-careful-${{ hashFiles('mise.lock') }}
+          workspaces: |
+            . -> target
+            crates/gandr-tree-sitter -> target
+          cache-directories: ~/.cache/cargo-careful
+          cache-all-crates: false
+          cache-workspace-crates: false
+          cache-on-failure: false
+          save-if: ${{ github.job == 'cargo-careful-nextest-crates' }}
+      - &prepare-act-rust-cache
+        name: prepare act Rust cache mounts
+        if: ${{ env.ACT == 'true' }}
+        run: |
+          sudo mkdir -p "$CARGO_HOME/registry" "$CARGO_HOME/git" "$HOME/.cache/aube" "$HOME/.cache/cargo-careful" "$HOME/.cache/mise" "$HOME/.cache/tree-sitter" "$HOME/.local/share/aube" "$HOME/.local/share/mise" "$HOME/.local/state/mise" "packages/tree-sitter-gandr/node_modules"
+          if [ -n "${CARGO_TARGET_DIR:-}" ]; then
+            sudo mkdir -p "$CARGO_TARGET_DIR"
+            sudo chown -R "$(id -u):$(id -g)" "$CARGO_TARGET_DIR"
+          fi
+          sudo chown -R "$(id -u):$(id -g)" "$CARGO_HOME/registry" "$CARGO_HOME/git" "$HOME/.cache/aube" "$HOME/.cache/cargo-careful" "$HOME/.cache/mise" "$HOME/.cache/tree-sitter" "$HOME/.local/share/aube" "$HOME/.local/share/mise" "$HOME/.local/state/mise" "packages/tree-sitter-gandr/node_modules"
+      - &cargo-binstall
+        name: install rust tools
+        uses: taiki-e/install-action@cde8c9e634f4a17bc06b61413ac0ef75450eac46
+        with:
+          tool: cargo-binstall
+      - &install-mise-tools
+        name: install mise tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151
+        with:
+          version: ${{ env.CI_VERSION_MISE }}
+          cache: true
+          experimental: true
+          cache_key: "{{default}}-{{env.MISE_ENABLE_TOOLS}}"
+      - &prepare-act-tool-cache
+        name: prepare act tool cache mounts
+        if: ${{ env.ACT == 'true' }}
+        run: |
+          sudo mkdir -p "$HOME/.cache/aube" "$HOME/.cache/mise" "$HOME/.cache/tree-sitter" "$HOME/.local/share/aube" "$HOME/.local/share/mise" "$HOME/.local/state/mise" "packages/tree-sitter-gandr/node_modules"
+          sudo chown -R "$(id -u):$(id -g)" "$HOME/.cache/aube" "$HOME/.cache/mise" "$HOME/.cache/tree-sitter" "$HOME/.local/share/aube" "$HOME/.local/share/mise" "$HOME/.local/state/mise" "packages/tree-sitter-gandr/node_modules"
+      - &cache-aube-packages
+        id: aube-packages-restore
+        name: restore aube package caches
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cache/aube
+            ~/.local/share/aube
+            ~/.cache/tree-sitter
+            packages/tree-sitter-gandr/node_modules
+          key: aube-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CI_VERSION_AUBE }}-node-${{ env.CI_VERSION_NODE }}-${{ hashFiles('mise.lock', 'packages/tree-sitter-gandr/package-lock.json') }}
+      - &save-aube-packages
+        name: save aube package caches
+        if: ${{ steps.aube-packages-restore.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cache/aube
+            ~/.local/share/aube
+            ~/.cache/tree-sitter
+            packages/tree-sitter-gandr/node_modules
+          key: ${{ steps.aube-packages-restore.outputs.cache-primary-key }}
+      - &install-aube-packages
+        name: aube ci --recursive
+        run: aube ci --recursive
+
+  aube-build-grammar:
+    name: build and test gandr tree-sitter grammar
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *prepare-act-tool-cache
+      - *install-mise-tools
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run grammar:test
+        run: mise run grammar:test
+      - *save-aube-packages
+
+  cargo-build-crates-stable:
+    name: build project crates
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *install-mise-tools
+      - *prepare-act-rustup-cache
+      - *cache-rustup-stable
+      - *install-rust-tools
+      - *save-rustup-stable
+      - *cache-rust-stable
+      - *prepare-act-rust-cache
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run cargo:build
+        run: mise run cargo:build
+
+  cargo-doc-crates:
+    name: cargo doc --no-deps --document-private-items
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *install-mise-tools
+      - *prepare-act-rustup-cache
+      - *cache-rustup-stable
+      - *install-rust-tools
+      - *cache-rust-stable
+      - *prepare-act-rust-cache
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run cargo:doc-check
+        run: mise run cargo:doc-check
+
+  docs-manifest-drift:
+    name: check docs gates (conflict markers + manifest drift + reference integrity + graph gates)
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *prepare-act-rustup-cache
+      - *cache-rustup-stable
+      - *install-rust-tools
+      - *cache-rust-stable
+      - *prepare-act-rust-cache
+      - *cargo-binstall
+      - name: enable mise tools
+        run: |
+          tools=()
+          tools+=("cargo:b3sum")
+          tools+=("cargo:nu")
+          tools+=("cargo:cargo-nextest")
+          IFS=,; echo "MISE_ENABLE_TOOLS=${tools[*]}" >> $GITHUB_ENV
+      - *install-mise-tools
+      - name: check unresolved conflict markers
+        run: mise run docs:conflict-markers
+      - name: check docs manifest drift
+        run: mise run docs:manifest-drift
+      - name: check docs reference integrity
+        run: mise run docs:reference-integrity
+      - name: check soundness-oracle companions (ADR-48)
+        run: mise run test:soundness-oracles
+      - name: run doc-gate test harness
+        run: mise run test:doc-gates
+      - name: run page-balance test harness
+        run: mise run test:page-balance
+      - name: run graph gates
+        run: mise run test:graph-gates
+      # - name: check default graph is tree-sitter-free
+      #   run: mise run test:dep-graph
+
+  project-lint:
+    name: check project lints
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *override-rustup-toolchain-nightly
+      - *prepare-act-rustup-cache
+      - *cache-rustup-nightly
+      - *install-rust-tools
+      - *save-rustup-nightly
+      - *cache-rust-nightly
+      - *prepare-act-rust-cache
+      - *cargo-binstall
+      - name: enable mise tools
+        run: |
+          tools=()
+          tools+=("cargo:rumdl")
+          tools+=("cargo:typos-cli")
+          tools+=("cargo:sizelint")
+          tools+=("cargo:wrkflw")
+          tools+=("cargo:zizmor")
+          tools+=("github:numtide/treefmt")
+          tools+=("github:tombi-toml/tombi")
+          tools+=("aube")
+          tools+=("node")
+          tools+=("npm:oxfmt")
+          tools+=("npm:oxlint")
+          tools+=("npm:oxlint-tsgolint")
+          IFS=,; echo "MISE_ENABLE_TOOLS=${tools[*]}" >> $GITHUB_ENV
+      - *install-mise-tools
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run treefmt:check
+        run: mise run treefmt:check
+      - name: mise run wrkflw
+        run: mise run wrkflw
+
+  cargo-clippy-crates:
+    name: cargo clippy --workspace --all-targets --all-features
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *prepare-act-rustup-cache
+      - *cache-rustup-stable
+      - *install-rust-tools
+      - *cache-rust-stable
+      - *prepare-act-rust-cache
+      # - *cargo-binstall
+      - *install-mise-tools
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run cargo:clippy
+        run: mise run cargo:clippy
+
+  cargo-nextest-crates:
+    name: cargo nextest run --workspace --all-targets --features=full
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *prepare-act-rustup-cache
+      - *cache-rustup-stable
+      - *install-rust-tools
+      - *cache-rust-stable
+      - *prepare-act-rust-cache
+      # - *cargo-binstall
+      - *cargo-binstall
+      - name: enable mise tools
+        run: |
+          tools=()
+          tools+=("cargo:cargo-nextest")
+          tools+=("aube")
+          tools+=("node")
+          IFS=,; echo "MISE_ENABLE_TOOLS=${tools[*]}" >> $GITHUB_ENV
+      - *install-mise-tools
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run cargo:nextest
+        run: mise run cargo:nextest
+
+  cargo-llvm-cov-crates:
+    name: cargo llvm-cov --workspace --all-targets --features=full
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *prepare-act-rustup-cache
+      - *cache-rustup-stable
+      - *install-rust-tools
+      - *cache-rust-stable
+      - *prepare-act-rust-cache
+      - *cargo-binstall
+      - name: enable mise tools
+        run: |
+          tools=()
+          tools+=("cargo:cargo-llvm-cov")
+          tools+=("aube")
+          tools+=("node")
+          IFS=,; echo "MISE_ENABLE_TOOLS=${tools[*]}" >> $GITHUB_ENV
+      - *install-mise-tools
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run coverage:check
+        env:
+          COVERAGE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before || env.PRE_PUSH_BASE_REF }}
+        run: mise run coverage:check
+      - name: upload coverage artifact
+        # act does not provide GitHub's artifact runtime token; the coverage
+        # command above still validates locally, and GitHub uploads the artifact.
+        if: ${{ always() && env.ACT != 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: coverage-lcov
+          path: coverage/
+          retention-days: 7
+
+  cargo-careful-nextest-crates:
+    name: cargo careful nextest run --workspace --all-targets --features=full
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *override-rustup-toolchain-nightly
+      - *prepare-act-rustup-cache
+      - *cache-rustup-nightly
+      - *install-rust-tools
+      - *cache-rust-nightly
+      - *prepare-act-rust-cache
+      - *cargo-binstall
+      - name: enable mise tools
+        run: |
+          tools=()
+          tools+=("cargo:cargo-careful")
+          tools+=("cargo:cargo-nextest")
+          tools+=("aube")
+          tools+=("node")
+          IFS=,; echo "MISE_ENABLE_TOOLS=${tools[*]}" >> $GITHUB_ENV
+      - *install-mise-tools
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run cargo:careful-nextest
+        run: mise run cargo:careful-nextest
+
+  # AFL++ is DELIBERATELY not a job here (wyrd-qh6a). It is a scheduled,
+  # standalone campaign — `mise run fuzz:rust-smoke` is bounded, while
+  # `fuzz:lower` / `fuzz:parse` / `fuzz:check` / `fuzz:parity` / `fuzz:gates`
+  # are campaign entrypoints. The bounded weekly task runs all five targets
+  # sequentially, just as mutation testing remains a standalone sweep.
+  # Fuzzing's signal is "given more time, does anything fall over", not "did
+  # THIS diff regress". As a gate it measured 89s per run, so running it at both
+  # pre-merge and pre-push cost ~178s on every landing while telling us nothing
+  # about the change being landed.
+  #
+  # The tree-sitter grammar's own fuzz (`aube run fuzz:smoke`, `parse:fuzz-seeds`)
+  # is a DIFFERENT thing and stays on the gate inside `grammar:test` — that whole
+  # job is 7s.
+
+  cargo-no-panic-smoke:
+    name: no_panic release smoke (grade ops)
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *prepare-act-rustup-cache
+      - *cache-rustup-stable
+      - *install-rust-tools
+      - *cache-rust-stable
+      - *prepare-act-rust-cache
+      - *install-mise-tools
+      # `release` defaults to panic=unwind, which no_panic's link-time detection
+      # needs (dist's abort would defeat it); no_panic works on stable.
+      - name: mise run cargo:no-panic
+        run: mise run cargo:no-panic
+
+  agda-check:
+    name: type-check the gandr Agda metatheory skeletons
+    # DISABLED for now: the Agda gate currently cannot pass in CI; re-enable when
+    # the metatheory/tooling path is ready for the GitHub runner surface.
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - name: enable mise tools
+        run: |
+          tools=()
+          tools+=("github:agda/agda")
+          IFS=,; echo "MISE_ENABLE_TOOLS=${tools[*]}" >> $GITHUB_ENV
+      - *install-mise-tools
+      # agda:check runs agda:deps first (shallow-clones agda-stdlib v2.4 into
+      # metatheory/vendor/), then type-checks the skeletons.
+      - name: mise run agda:check
+        run: mise run agda:check
+
+  cargo-miri-test-crates:
+    name: cargo miri test --workspace --all-targets --features=full
+    # DISABLED for now (wyrd-1bqb): miri ran unrestricted (~2.5h/run, the dominant
+    # private-repo minutes burn). Decide whether/how to run it appropriately
+    # (main-only / nightly / reduced subset / local-only) before re-enabling —
+    # remove this `if: false` to restore.
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - *git-checkout
+      - *init-core-submodule
+      - *override-rustup-toolchain-nightly
+      - name: extend nightly rustup component set
+        run: echo "RUSTUP_COMPONENTS=${{ env.RUSTUP_COMPONENTS_NIGHTLY }},miri" >> "$GITHUB_ENV"
+      - *prepare-act-rustup-cache
+      - *cache-rustup-nightly
+      - *install-rust-tools
+      - *cache-rust-nightly
+      - *prepare-act-rust-cache
+      - *cargo-binstall
+      - *install-mise-tools
+      - *cache-aube-packages
+      - *install-aube-packages
+      - name: mise run cargo:miri
+        run: mise run cargo:miri

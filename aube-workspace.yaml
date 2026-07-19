@@ -1,0 +1,10 @@
+allowBuilds:
+  tree-sitter-cli: true
+jailBuilds: true
+jailBuildPermissions:
+  tree-sitter-cli:
+    network: true
+nodeLinker: isolated
+packages:
+  - "."
+  - "packages/*"

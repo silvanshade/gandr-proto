@@ -1,0 +1,19 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise.json
+
+# Mise v2026.7.5+ inherits trust from the main checkout into linked worktrees,
+# so trust is not bootstrapped by a Worktrunk or harness preflight hook (H15).
+# Copy ignored state opportunistically. `leave` bootstraps a newborn linked
+# worktree while the previous checkout's dev config is still active; `enter`
+# covers an already opted-in worktree. Both fail open elsewhere.
+[hooks]
+enter = """
+if command -v wt >/dev/null 2>&1; then
+  wt -C "${MISE_ORIGINAL_CWD:-.}" step copy-ignored --yes || true
+fi
+"""
+leave = """
+if command -v wt >/dev/null 2>&1; then
+  wt -C "${MISE_ORIGINAL_CWD:-.}" step copy-ignored --yes || true
+fi
+"""

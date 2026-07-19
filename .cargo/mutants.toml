@@ -1,0 +1,80 @@
+#:tombi toml-version = "v1.0.0"
+
+# cargo-mutants configuration (mutants.rs). Every key here is a CORRECTNESS or
+# SCOPE setting, never a SAFETY control: cargo-mutants is the thing being
+# constrained, so nothing it reads can be the constraint. Containment is the
+# microVM boundary in `crates/wyrd-rust-gates/src/mutants/sandbox.rs` plus the
+# fail-closed preflight in `crates/wyrd-rust-gates/src/mutants/containment.rs`.
+# See docs/HAZARDS.md.
+
+# BASELINE BLOCKER, not an optimization. `copy_vcs` defaults OFF, so the scratch
+# tree has no `.git` — and `gandr-shell`'s `fs_ls_files_lists_the_tracked_repo_root`
+# (crates/gandr-shell/src/driver.rs) shells out to `git ls-files`. Without this the
+# unmutated baseline fails and cargo-mutants exits 4 (BaselineFailed) having tested
+# nothing. In the guest the tree is a `git archive` extract, so the Rust mutation
+# driver synthesizes a repo (`git init`) before invoking cargo-mutants; a
+# worktree's `.git` is a POINTER FILE into the host gitdir and would not survive
+# the boundary.
+copy_vcs = true
+
+# `gitignore` defaults OFF since cargo-mutants 25.0.2, meaning gitignored files ARE
+# copied into every scratch build dir. For this repo that would drag `target/`,
+# `notes/`, and the `.beads` Dolt clone into each one. Turn it back on.
+gitignore = true
+
+# Leave `target/` out of the scratch copies. The guest tree is a `git archive`
+# extract with no `target/` at all, so copying it is inert; and if one were present,
+# the copy would be a multi-GB per-job-slot cost. Each build dir instead pays one
+# cold compile against the warm CARGO_HOME on the btrfs cache volume.
+copy_target = false
+
+# The gandr-shell baseline test measures ~0s, so cargo-mutants' auto-derived test
+# timeout rounds down far enough to spuriously trip exit 3 (Timeout). Floor it.
+minimum_test_timeout = 30
+
+# Match CI's runner (`cargo nextest run` in .github/workflows/ci.yml), so a mutant
+# is judged caught/missed by the same harness that gates the workspace.
+test_tool = "nextest"
+
+# Run the WHOLE workspace's tests against every mutant, not just the mutated package's.
+# cargo-mutants defaults to `--package=<mutated crate>`, which is wrong here: gandr-core's
+# behavior is exercised chiefly by gandr-pipeline's conformance suite, so a package-scoped
+# run reports mutants as "missed" that the workspace suite — what CI actually gates on —
+# does catch. Measured on the first baseline sweep (2026-07-09), package-scoped gave
+# 290 missed / 427 caught / 1706 unviable. The cost is small: nextest runs all 628 tests
+# in ~1s, and 70% of mutants are unviable and never reach the test step at all.
+test_workspace = true
+
+# gandr-shell's `Exec` effect spawns programs with NO timeout and NO output cap (a
+# documented v0 trust assumption, crates/gandr-shell/src/handler.rs), and a mutated
+# `glob_walk` can descend unbounded. Generous multipliers keep honest slow builds
+# from being misreported as timeouts; the microVM's `--timeout` is the real bound.
+timeout_multiplier = 5.0
+build_timeout_multiplier = 5.0
+
+# Reviewed equivalent/non-contractual gandr-graph survivors from wyrd-4gf0.
+# Each pattern is fully anchored to one cargo-mutants name shape.
+exclude_re = [
+  # probe-only: determinism binary stances are row labels; this probe uses a single sorted stance.
+  '^crates/gandr-graph/src/bin/gandr-graph-determinism\.rs:[0-9]+:9: replace <impl WalkSym for ProbeWalkSym>::stance_tile_sorted -> bool with true$',
+  # probe-only: determinism label/mold projection is absent in the constructed probe rows.
+  '^crates/gandr-graph/src/bin/gandr-graph-determinism\.rs:[0-9]+:9: replace <impl WalkSym for ProbeWalkSym>::label_mold -> Option<\(Self::Label, Self::Mold\)> with Some\(\(Default::default\(\), Default::default\(\)\)\)$',
+  # hasher: explicit zero state and derived `Default` construct the same NodeIdHasher.
+  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:9: replace <impl BuildHasher for NodeIdBuildHasher>::build_hasher -> Self::Hasher with Default::default\(\)$',
+  # hasher: constant-zero finish only changes collision distribution; Eq still decides node identity.
+  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:9: replace <impl Hasher for NodeIdHasher>::finish -> u64 with 0$',
+  # hasher: OR preserves the dense-u32 hash path's only nonzero byte.
+  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:24: replace \^= with \|= in <impl Hasher for NodeIdHasher>::write$',
+  # hasher: AND preserves the dense-u32 hash path's zero high bytes.
+  '^crates/gandr-graph/src/algorithms\.rs:[0-9]+:24: replace \^= with &= in <impl Hasher for NodeIdHasher>::write$',
+  # invalid-id guard: this exact `|| -> &&` mutation only admits two-invalid-id inputs.
+  '^crates/gandr-graph/src/prec\.rs:[0-9]+:35: replace \|\| with && in PrecDag::lt$',
+  # invalid-id guard: this exact `|| -> &&` mutation only admits two-invalid-id inputs.
+  '^crates/gandr-graph/src/prec\.rs:[0-9]+:35: replace \|\| with && in PrecDag::gt$',
+  # invalid-id guard: this exact `|| -> &&` mutation only admits two-invalid-id inputs.
+  '^crates/gandr-graph/src/prec\.rs:[0-9]+:35: replace \|\| with && in PrecDag::comparable$',
+  # unit weight: petgraph's unit edge weight has only one observable value.
+  '^crates/gandr-graph/src/view\.rs:[0-9]+:9: replace <impl EdgeRef for EdgeReference>::weight -> &Self::Weight with Box::leak\(Box::new\(Default::default\(\)\)\)$',
+  # minimal bottom-bound: `count <= height` is guaranteed after guarded increments.
+  '^crates/gandr-graph/src/walk\.rs:[0-9]+:22: replace < with <= in minimal$',
+]
