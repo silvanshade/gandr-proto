@@ -8,11 +8,12 @@ import { type Plugin, type Rule, RuleConfigSeverity, type UserConfig } from "@co
 // agent attribution uniform across the publishable history. Agent attribution
 // itself is project-concern (honest provenance); extend the registry upstream
 // in agentic-dev, not per consumer.
-const AGENT_EMAIL_HOSTS: readonly string[] = ["anthropic.com", "openai.com"];
+const AGENT_EMAIL_HOSTS: readonly string[] = ["anthropic.com", "moonshot.ai", "openai.com"];
 
 const CANONICAL_AGENT_TRAILERS: readonly string[] = [
-  "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
   "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+  "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+  "Co-Authored-By: Kimi k3 (kimi-code) <noreply@moonshot.ai>",
   "Co-Authored-By: OpenAI Codex GPT-5.5 <noreply@openai.com>",
   "Co-Authored-By: OpenAI Codex GPT-5.6 Sol <noreply@openai.com>",
 ];
