@@ -33,6 +33,7 @@ extend-exclude = [
   "*.agda-lib",
   "*.typ",
   "docs/manual/refs.yml",
+  "docs/research/*.md",
   "vendor/**",
   "metatheory/vendor/**",
 ]

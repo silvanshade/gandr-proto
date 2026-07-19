@@ -154,7 +154,9 @@ includes = ["*"]
 # H8). Also mirrored in typos.toml extend-exclude so a standalone `typos`
 # (editor/CLI) run — which reads that config, not treefmt's — is safe too.
 # Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment.
-excludes = ["*.typ", "*.agda", "*.agda-lib"]
+# docs/research/*.md: literature-register prose is dense with author names and
+# citation keys (identifiers, not prose) — the refs.yml failure mode.
+excludes = ["*.typ", "*.agda", "*.agda-lib", "docs/research/*.md"]
 
 # [formatter.yamllint]
 # command = "yamllint"
