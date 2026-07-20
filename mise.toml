@@ -275,6 +275,18 @@ run = """
 cargo run --quiet -p gandr-workflow-gates -- page-balance
 """
 
+[tasks."docs:check"]
+description = "Parse=validate the specification corpus in docs/spec with the doc tool (gandr-fcw.8): id uniqueness, define-once, term/cite/provenance resolution, status presence"
+run = """
+cargo run --quiet -p gandr-workflow-docs --features=full -- check
+"""
+
+[tasks."docs:build"]
+description = "Build the no-JavaScript static HTML spec corpus into target/docs-spec (typst math/diagram leaves compiled to SVG via the pinned CLI)"
+run = """
+cargo run --quiet -p gandr-workflow-docs --features=full -- build
+"""
+
 [tasks."docs:spike"]
 description = "Compile the Track-C typst rendering spike -> PDF (curryst/fletcher)"
 run = """
