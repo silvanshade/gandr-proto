@@ -21,19 +21,19 @@ export def curated-entries []: nothing -> list {
     {id: "A-8a" type: "article" title: "Type Directed Compilation of Row-Typed Algebraic Effects" author: "Leijen" date: 2017 venue: "POPL" vtype: "proceedings" note: "Koka"}
     {id: "A-8b" type: "article" title: "Koka: Programming with Row Polymorphic Effect Types" author: "Leijen" date: 2014 venue: "MSFP" vtype: "proceedings"}
     {id: "A-9" type: "article" title: "Do Be Do Be Do" author: "Lindley, McBride & McLaughlin" date: 2017 venue: "POPL" vtype: "proceedings" note: "Frank"}
-    {id: "A-10" type: "article" title: "handlers ⇄ delimited-control equivalence" author: "Forster, Kammar, Lindley & Pretnar" date: 2017}
+    {id: "A-10" type: "article" title: "On the expressive power of user-defined effects: effect handlers, monadic reflection, delimited control" author: "Forster, Kammar, Lindley & Pretnar" date: 2017}
     {id: "A-11a" type: "article" title: "Continuation Passing Style for Effect Handlers" author: "Hillerström, Lindley, Atkey & Sivaramakrishnan" date: 2017 venue: "FSCD" vtype: "proceedings"}
     {id: "A-11b" type: "article" title: "Effect Handlers via Generalised Continuations" author: "Hillerström, Lindley & Atkey" date: 2020 venue: "JFP" vtype: "periodical"}
     {id: "A-12a" type: "article" title: "Abstracting Control" author: "Danvy & Filinski" date: 1990 venue: "LFP" vtype: "proceedings" note: "answer types"}
     {id: "A-12b" type: "article" title: "The Theory and Practice of First-Class Prompts" author: "Felleisen" date: 1988 venue: "POPL" vtype: "proceedings"}
     {id: "A-12c" type: "article" title: "Subtyping Delimited Continuations" author: "Materzok & Biernacki" date: 2011 venue: "ICFP" vtype: "proceedings"}
-    {id: "A-13" type: "article" title: "one-shot continuations" author: "Bruggeman, Waddell & Dybvig" date: 1996}
-    {id: "A-14" type: "article" title: "asynchronous effects (signals as interrupts)" author: "Ahman & Pretnar" date: 2021}
+    {id: "A-13" type: "article" title: "Representing control in the presence of one-shot continuations" author: "Bruggeman, Waddell & Dybvig" date: 1996}
+    {id: "A-14" type: "article" title: "Asynchronous effects" author: "Ahman & Pretnar" date: 2021}
     {id: "A-15a" type: "article" title: "Models of a Non-Associative Composition" author: "Munch-Maccagnoni" date: 2014 venue: "FoSSaCS" vtype: "proceedings" note: "duploids"}
     {id: "A-15b" type: "article" title: "Formulae-as-Types for an Involutive Negation" author: "Munch-Maccagnoni" date: 2014 venue: "CSL-LICS" vtype: "proceedings"}
     {id: "A-16" type: "thesis" title: "Syntax and Models of a non-Associative Composition of Programs and Proofs" author: "Munch-Maccagnoni" date: 2013 genre: "PhD thesis" org: "Univ. Paris Diderot–Paris 7"}
-    {id: "A-17" type: "article" title: "adjunction model of effects and resources (F⊣U + linear CBPV)" author: "Curien, Fiore & Munch-Maccagnoni" date: 2016 venue: "POPL" vtype: "proceedings"}
-    {id: "A-18" type: "article" title: "Curry–Howard destructors & resource-safe stack unwinding" author: "Congard, Munch-Maccagnoni & Douence" date: 2026}
+    {id: "A-17" type: "article" title: "A theory of effects and resources: adjunction models and polarised calculi" author: "Curien, Fiore & Munch-Maccagnoni" date: 2016 venue: "POPL" vtype: "proceedings"}
+    {id: "A-18" type: "article" title: "Linear effects, exceptions, and resource safety: a Curry-Howard correspondence for destructors" author: "Congard, Munch-Maccagnoni & Douence" date: 2026}
     {id: "A-19" type: "article" title: "The Duality of Computation" author: "Curien & Herbelin" date: 2000 venue: "ICFP" vtype: "proceedings" note: "λμμ̃"}
     {id: "A-20" type: "article" title: "Grokking the Sequent Calculus" author: "Binder, Tzschentke, Müller & Ostermann" date: 2024 venue: "ICFP" vtype: "proceedings" note: "art. 250"}
     {id: "A-21" type: "article" title: "Sequent Core" author: "Downen, Maurer, Ariola & Peyton Jones" date: 2016 venue: "ICFP" vtype: "proceedings"}
@@ -46,9 +46,9 @@ export def curated-entries []: nothing -> list {
     {id: "A-26b" type: "article" title: "Abstracting Algebraic Effects" author: "Biernacki, Piróg, Polesiuk & Sieczkowski" date: 2019 venue: "POPL" vtype: "proceedings" note: "art. 6"}
     {id: "A-27" type: "article" title: "A General Fine-Grained Reduction Theory for Effect Handlers" author: "Sieczkowski, Pyzik & Biernacki" date: 2023 venue: "ICFP" vtype: "proceedings" note: "art. 234"}
     {id: "A-28" type: "article" title: "\"Blaze\"" date: 2026 venue: "POPL" vtype: "proceedings" note: "relational handler compilation template"}
-    {id: "A-29" type: "article" title: "CertiCoq — safe closure conversion / comp-opt" author: "Appel et al."}
-    {id: "A-30" type: "article" title: "typed closure conversion for CoC" author: "Bowman & Ahmed" date: 2018}
-    {id: "A-31" type: "article" title: "sequent-machine work" author: "Caspar & Munch-Maccagnoni" date: 2026 venue: "PEPM" vtype: "proceedings"}
+    {id: "A-29" type: "article" title: "Closure Conversion Is Safe for Space" author: "Appel et al."}
+    {id: "A-30" type: "article" title: "Typed Closure Conversion for the Calculus of Constructions" author: "Bowman & Ahmed" date: 2018}
+    {id: "A-31" type: "article" title: "S4 modal sequent calculus as intermediate logic and intermediate language" author: "Caspar & Munch-Maccagnoni" date: 2026 venue: "PEPM" vtype: "proceedings"}
     {id: "A-32" type: "article" title: "Controlling Copatterns" author: "Downen" date: 2025 note: "copatterns ≡ delimited control"}
     {id: "A-33" type: "article" title: "Rows and Capabilities as Modal Effects" author: "Tang & Lindley"}
     {id: "A-34" type: "article" title: "Type, Ability, and Effect Systems" author: "Bao & Rompf"}
@@ -96,7 +96,7 @@ export def curated-entries []: nothing -> list {
     {id: "D-6" type: "article" title: "Manifest Sharing with Session Types" author: "Balzer & Pfenning" date: 2017 venue: "ICFP" vtype: "proceedings"}
     {id: "D-7" type: "article" title: "Manifest Deadlock-Freedom for Shared Session Types" author: "Balzer, Toninho & Pfenning" date: 2019 venue: "ESOP" vtype: "proceedings"}
     {id: "D-8" type: "article" title: "Session Coalgebras" author: "Keizer, Basold & Pérez" date: 2021 venue: "ESOP" vtype: "proceedings"}
-    {id: "D-9" type: "article" title: "refinement multiparty sessions" author: "Zhou et al." date: 2020 venue: "OOPSLA" vtype: "proceedings"}
+    {id: "D-9" type: "article" title: "Statically Verified Refinements for Multiparty Protocols" author: "Zhou et al." date: 2020 venue: "OOPSLA" vtype: "proceedings"}
     {id: "D-10" type: "article" title: "A Message-Passing Interpretation of Adjoint Logic" author: "Pruiksma & Pfenning" date: 2019 venue: "PLACES" vtype: "proceedings"}
     {id: "D-11" type: "thesis" title: "Adjoint Logic with Applications" author: "Pruiksma" date: 2024 genre: "PhD thesis" org: "Carnegie Mellon University" note: "CMU-CS-24-103"}
     {id: "D-12" type: "article" title: "Formalizing π-Calculus in Guarded Cubical Agda" author: "Veltri & Vezzosi" date: 2020 venue: "CPP" vtype: "proceedings"}
@@ -129,8 +129,8 @@ export def curated-entries []: nothing -> list {
     {id: "G-2" type: "article" title: "A Symmetric Modal Lambda Calculus for Distributed Computing" author: "Murphy, Crary, Harper & Pfenning" date: 2004 venue: "LICS" vtype: "proceedings"}
     {id: "G-3" type: "article" title: "Type-Safe Distributed Programming with ML5" author: "Murphy, Crary & Harper" date: 2007 venue: "TGC" vtype: "proceedings"}
     {id: "G-4" type: "thesis" title: "Modal Types for Mobile Code" author: "Murphy" date: 2008 genre: "PhD thesis" org: "CMU"}
-    {id: "G-5" type: "article" title: "modal staging (λ○)" author: "Davies & Pfenning" date: 2001 venue: "JACM" vtype: "periodical"}
-    {id: "G-6" type: "article" title: "contextual modal type theory" author: "Nanevski, Pfenning & Pientka" date: 2008 venue: "TOCL" vtype: "periodical"}
+    {id: "G-5" type: "article" title: "A Modal Analysis of Staged Computation" author: "Davies & Pfenning" date: 2001 venue: "JACM" vtype: "periodical"}
+    {id: "G-6" type: "article" title: "Contextual modal type theory" author: "Nanevski, Pfenning & Pientka" date: 2008 venue: "TOCL" vtype: "periodical"}
     {id: "G-7" type: "article" title: "Mœbius" author: "Jang, Gélineau, Monnier & Pientka" date: 2022 venue: "POPL" vtype: "proceedings"}
     {id: "G-8" type: "article" title: "Multimodal Dependent Type Theory" author: "Gratzer, Kavvos, Nuyts & Birkedal" date: 2020 venue: "LICS/LMCS" vtype: "proceedings" note: "2020/21"}
 
@@ -182,14 +182,14 @@ export def curated-entries []: nothing -> list {
     {id: "J-18" type: "article" title: "The category of 3-computads is not cartesian closed" author: "Makkai & Zawadowski"}
     {id: "J-19" type: "article" title: "Convergent presentations and polygraphic resolutions of associative algebras" author: "Guiraud, Hoffbeck & Malbos" date: 2019 venue: "Math. Z." vtype: "periodical"}
     {id: "J-20" type: "article" title: "Higher-dimensional categories with finite derivation type" author: "Guiraud & Malbos" date: 2009 venue: "TAC" vtype: "periodical"}
-    {id: "J-21" type: "article" title: "Homotopical completion" author: "Guiraud, Malbos & Mimram" date: 2013 venue: "RTA" vtype: "proceedings"}
-    {id: "J-23" type: "article" title: "inductive-type computad that is a presheaf category" author: "Dean, Finster, Markakis, Reutter & Vicary"}
+    {id: "J-21" type: "article" title: "A Homotopical Completion Procedure with Applications to Coherence of Monoids" author: "Guiraud, Malbos & Mimram" date: 2013 venue: "RTA" vtype: "proceedings"}
+    {id: "J-23" type: "article" title: "Computads for weak ω-categories as an inductive type" author: "Dean, Finster, Markakis, Reutter & Vicary"}
     {id: "J-24" type: "article" title: "Coherent confluence modulo" author: "Dupont & Malbos"}
     {id: "J-25a" type: "article" title: "Simple Word Problems in Universal Algebras" author: "Knuth & Bendix" date: 1970}
     {id: "J-25b" type: "article" title: "Word Problems and a Homological Finiteness Condition for Monoids" author: "Squier" date: 1987 venue: "JPAA" vtype: "periodical"}
     {id: "J-25c" type: "article" title: "A Finiteness Condition for Rewriting Systems" author: "Squier, Otto & Kobayashi" date: 1994 venue: "TCS" vtype: "periodical"}
     {id: "J-26" type: "article" title: "Fundamentals of Compositional Rewriting Theory" author: "Behr, Harmer & Krivine" date: 2022}
-    {id: "J-27" type: "article" title: "rule-algebra / convolution" author: "Behr–Melliès–Zeilberger"}
+    {id: "J-27" type: "article" title: "Convolution Products on Double Categories and Categorification of Rule Algebras" author: "Behr–Melliès–Zeilberger"}
     {id: "J-28" type: "thesis" title: "Rewriting methods in higher algebra" author: "Guiraud" date: 2019 genre: "Habilitation" org: "Univ. Paris 7"}
     {id: "J-29" type: "thesis" title: "Cubical categories for homotopy and rewriting" author: "Lucas" date: 2017 genre: "PhD thesis" org: "Univ. Paris Diderot"}
     {id: "J-30" type: "article" title: "Circuit Algebras are Wheeled Props" author: "Dancso, Halacheva & Robertson" date: 2021 venue: "JPAA" vtype: "periodical" note: "preliminary version titled: Wheeled PROPs and Circuit Algebras"}
@@ -236,17 +236,17 @@ export def curated-entries []: nothing -> list {
     {id: "L-9" type: "article" title: "Generic Level Polymorphic N-ary Functions" author: "Allais et al." date: 2021}
 
     # M. Universe stratification
-    {id: "M-1" type: "article" title: "loop-checking / level word problem" author: "Bezem & Coquand" date: 2022 venue: "TCS" vtype: "periodical"}
+    {id: "M-1" type: "article" title: "Loop-checking and the uniform word problem for join-semilattices with an inflationary endomorphism" author: "Bezem & Coquand" date: 2022 venue: "TCS" vtype: "periodical"}
     {id: "M-2a" type: "article" title: "Type Theory with Explicit Universe Polymorphism" author: "Bezem, Coquand, Dybjer & Escardó"}
-    {id: "M-2b" type: "article" title: "GAT companion to M-2a" author: "Bezem, Coquand, Dybjer & Escardó" date: 2026}
+    {id: "M-2b" type: "article" title: "A Generalized Algebraic Theory for Type Theory with Explicit Universe Polymorphism" author: "Bezem, Coquand, Dybjer & Escardó" date: 2026}
     {id: "M-3" type: "article" title: "An Order-Theoretic Analysis of Universe Polymorphism" author: "Hou (Favonia), Angiuli & Mullanix" date: 2023 venue: "POPL" vtype: "proceedings" note: "displacement algebras"}
     {id: "M-4" type: "article" title: "StraTT" author: "Chan & Weirich" note: "stratified type theory"}
-    {id: "M-5" type: "article" title: "first-class levels / higher-rank universe polymorphism" author: "Danielsson, Favier & Kubánek" date: 2026 venue: "POPL" vtype: "proceedings"}
+    {id: "M-5" type: "article" title: "Normalisation for First-Class Universe Levels" author: "Danielsson, Favier & Kubánek" date: 2026 venue: "POPL" vtype: "proceedings"}
     {id: "M-6" type: "article" title: "Fast Computations on Ordered Nominal Sets" author: "Venhoek, Moerman & Rot" date: 2018 venue: "ICTAC" vtype: "proceedings" note: "TCS 2022"}
     {id: "M-7" type: "misc" title: "Algebraic Universes and Variances For All" author: "Sozeau & Bezem" date: 2025 venue: "TYPES" vtype: "proceedings" note: "TYPES 2025 abstract + Rocq branch"}
     {id: "M-8" type: "article" title: "All Your Base" author: "Poiret et al." date: 2025 venue: "POPL" vtype: "proceedings" note: "prenex sort polymorphism"}
     {id: "M-9" type: "article" title: "Definitional Proof-Irrelevance without K" author: "Gilbert, Cockx, Sozeau & Tabareau" date: 2019 venue: "POPL" vtype: "proceedings" note: "SProp"}
-    {id: "M-10" type: "article" title: "TTBFL / bounded levels as types" author: "Chan" date: 2025}
+    {id: "M-10" type: "article" title: "Bounded First-Class Universe Levels in Dependent Type Theory" author: "Chan" date: 2025}
     {id: "M-11a" type: "article" title: "Generalized Universe Hierarchies and First-Class Universe Levels" author: "Kovács" date: 2022 venue: "CSL" vtype: "proceedings"}
     {id: "M-11b" type: "article" title: "Canonicity for Indexed Inductive-Recursive Types" author: "Kovács" date: 2026 venue: "POPL" vtype: "proceedings"}
     {id: "M-12a" type: "article" title: "Coq Coq Correct!" author: "Sozeau, Boulier, Forster, Tabareau & Winterhalter" date: 2020 venue: "POPL" vtype: "proceedings" note: "MetaCoq verified checker; universe-constraint checking via longest-simple-paths"}
@@ -305,9 +305,9 @@ export def curated-entries []: nothing -> list {
     {id: "Q-7b" type: "thesis" title: "A Formal Calculus for Categories" author: "Cáccamo" date: 2003 genre: "PhD dissertation" org: "Aarhus" note: "BRICS DS-03-7"}
     {id: "Q-8" type: "article" title: "A Unified Framework for Generalized Multicategories" author: "Cruttwell & Shulman" date: 2010 venue: "TAC" vtype: "periodical" note: "virtual double categories"}
     {id: "Q-9" type: "article" title: "Enriched Indexed Categories" author: "Shulman" note: "corrected title (owner round-1 reversal); arXiv:1212.3914 is the work used at the citation site"}
-    {id: "Q-10" type: "article" title: "proof nets / correctness criterion" author: "Danos & Regnier"}
+    {id: "Q-10" type: "article" title: "The structure of multiplicatives" author: "Danos & Regnier"}
     {id: "Q-11" type: "article" title: "Univalent Double Categories" author: "van der Weide, Rasekh, Ahrens & North"}
-    {id: "Q-12" type: "article" title: "relative monads in virtual equipments" author: "Arkor & McDermott"}
+    {id: "Q-12" type: "article" title: "The formal theory of relative monads" author: "Arkor & McDermott"}
     {id: "Q-13" type: "article" title: "Framed Bicategories and Monoidal Fibrations" author: "Shulman" note: "split from Q-9 (title/id conflation), owner round-1 decision"}
     {id: "Q-14" type: "article" title: "Symmetries in Reversible Programming: From Symmetric Rig Groupoids to Reversible Programming Languages" author: "Choudhury, Karwowski & Sabry" date: 2022 venue: "POPL" vtype: "proceedings"}
     {id: "Q-15" type: "article" title: "Directed Univalence in Simplicial Homotopy Type Theory" author: "Gratzer, Weinberger & Buchholtz" date: 2024}
@@ -387,7 +387,7 @@ export def curated-entries []: nothing -> list {
     {id: "S-3" type: "misc" title: "Presentations of Premonoidal Categories by Devices" author: "Earnshaw, Nester & Román" date: 2023 note: "NWPT 2023 slides"}
     {id: "S-4" type: "article" title: "Monoidal categories graded by partial commutative monoids" author: "Earnshaw, Nester & Román"}
     {id: "S-5" type: "article" title: "Dialogue Categories and Chiralities" author: "Melliès"}
-    {id: "S-6" type: "thesis" title: "SMAC thesis" author: "Munch-Maccagnoni" date: 2013 genre: "PhD thesis" note: "same work as A-16 (Syntax and Models of a non-Associative Composition of Programs and Proofs)"}
+    {id: "S-6" type: "thesis" title: "Syntax and Models of a non-Associative Composition of Programs and Proofs" author: "Munch-Maccagnoni" date: 2013 genre: "PhD thesis" note: "same work as A-16 (Syntax and Models of a non-Associative Composition of Programs and Proofs)"}
     {id: "S-7" type: "misc" title: "Polar Shuffles" author: "Román et al." date: 2024 note: "slides (2024) / Polar Interleavings for Deadlock-Free Message Passing"}
     {id: "S-8" type: "article" title: "The Produoidal Algebra of Process Decomposition" author: "Earnshaw, Hefford & Román" date: 2024 note: "CSL 2024"}
     {id: "S-9" type: "thesis" title: "Monoidal Context Theory" author: "Román" date: 2023 genre: "PhD thesis" org: "TalTech"}

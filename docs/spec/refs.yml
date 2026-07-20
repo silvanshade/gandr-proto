@@ -146,7 +146,7 @@ A-9:
   note: Frank — (arXiv:1611.09259)
 A-10:
   type: article
-  title: handlers ⇄ delimited-control equivalence
+  title: "On the expressive power of user-defined effects: effect handlers, monadic reflection, delimited control"
   author: Forster, Kammar, Lindley & Pretnar
   date: 2017
   serial-number:
@@ -204,14 +204,14 @@ A-12c:
     doi: 10.1145/2034773.2034786
 A-13:
   type: article
-  title: one-shot continuations
+  title: Representing control in the presence of one-shot continuations
   author: Bruggeman, Waddell & Dybvig
   date: 1996
   serial-number:
     doi: 10.1145/231379.231395
 A-14:
   type: article
-  title: asynchronous effects (signals as interrupts)
+  title: Asynchronous effects
   author: Ahman & Pretnar
   date: 2021
   serial-number:
@@ -247,7 +247,7 @@ A-16:
   url: https://theses.hal.science/tel-00918642
 A-17:
   type: article
-  title: adjunction model of effects and resources (F⊣U + linear CBPV)
+  title: "A theory of effects and resources: adjunction models and polarised calculi"
   author: Curien, Fiore & Munch-Maccagnoni
   date: 2016
   parent:
@@ -257,7 +257,7 @@ A-17:
     doi: 10.1145/2837614.2837652
 A-18:
   type: article
-  title: Curry–Howard destructors & resource-safe stack unwinding
+  title: "Linear effects, exceptions, and resource safety: a Curry-Howard correspondence for destructors"
   author: Congard, Munch-Maccagnoni & Douence
   date: 2026
   serial-number:
@@ -387,19 +387,19 @@ A-28:
   note: relational handler compilation template
 A-29:
   type: article
-  title: CertiCoq — safe closure conversion / comp-opt
+  title: Closure Conversion Is Safe for Space
   author: Appel et al.
   url: https://www.cs.princeton.edu/~appel/papers/safe-closure.pdf
 A-30:
   type: article
-  title: typed closure conversion for CoC
+  title: Typed Closure Conversion for the Calculus of Constructions
   author: Bowman & Ahmed
   date: 2018
   serial-number:
     arxiv: "1808.04006"
 A-31:
   type: article
-  title: sequent-machine work
+  title: S4 modal sequent calculus as intermediate logic and intermediate language
   author: Caspar & Munch-Maccagnoni
   date: 2026
   parent:
@@ -796,7 +796,7 @@ D-8:
     arxiv: "2011.05712"
 D-9:
   type: article
-  title: refinement multiparty sessions
+  title: Statically Verified Refinements for Multiparty Protocols
   author: Zhou et al.
   date: 2020
   parent:
@@ -1054,7 +1054,7 @@ G-4:
   url: http://tom7.org/papers/modal-types-for-mobile-code.pdf
 G-5:
   type: article
-  title: modal staging (λ○)
+  title: A Modal Analysis of Staged Computation
   author: Davies & Pfenning
   date: 2001
   parent:
@@ -1064,7 +1064,7 @@ G-5:
     doi: 10.1145/382780.382785
 G-6:
   type: article
-  title: contextual modal type theory
+  title: Contextual modal type theory
   author: Nanevski, Pfenning & Pientka
   date: 2008
   parent:
@@ -1469,7 +1469,7 @@ J-20:
     arxiv: "0810.1442"
 J-21:
   type: article
-  title: Homotopical completion
+  title: A Homotopical Completion Procedure with Applications to Coherence of Monoids
   author: Guiraud, Malbos & Mimram
   date: 2013
   parent:
@@ -1479,7 +1479,7 @@ J-21:
     doi: 10.4230/LIPIcs.RTA.2013.223
 J-23:
   type: article
-  title: inductive-type computad that is a presheaf category
+  title: Computads for weak ω-categories as an inductive type
   author: Dean, Finster, Markakis, Reutter & Vicary
   serial-number:
     arxiv: "2208.08719"
@@ -1525,7 +1525,7 @@ J-26:
     arxiv: "2204.07175"
 J-27:
   type: article
-  title: rule-algebra / convolution
+  title: Convolution Products on Double Categories and Categorification of Rule Algebras
   author: Behr–Melliès–Zeilberger
   serial-number:
     doi: 10.4230/LIPIcs.FSCD.2023.17
@@ -1889,7 +1889,7 @@ L-9:
     arxiv: "2110.06107"
 M-1:
   type: article
-  title: loop-checking / level word problem
+  title: Loop-checking and the uniform word problem for join-semilattices with an inflationary endomorphism
   author: Bezem & Coquand
   date: 2022
   parent:
@@ -1905,7 +1905,7 @@ M-2a:
     arxiv: "2212.03284"
 M-2b:
   type: article
-  title: GAT companion to M-2a
+  title: A Generalized Algebraic Theory for Type Theory with Explicit Universe Polymorphism
   author: Bezem, Coquand, Dybjer & Escardó
   date: 2026
   serial-number:
@@ -1931,7 +1931,7 @@ M-4:
   note: stratified type theory
 M-5:
   type: article
-  title: first-class levels / higher-rank universe polymorphism
+  title: Normalisation for First-Class Universe Levels
   author: Danielsson, Favier & Kubánek
   date: 2026
   parent:
@@ -1984,7 +1984,7 @@ M-9:
   note: SProp
 M-10:
   type: article
-  title: TTBFL / bounded levels as types
+  title: Bounded First-Class Universe Levels in Dependent Type Theory
   author: Chan
   date: 2025
   serial-number:
@@ -2461,7 +2461,7 @@ Q-9:
   note: corrected title (owner round-1 reversal); arXiv:1212.3914 is the work used at the citation site
 Q-10:
   type: article
-  title: proof nets / correctness criterion
+  title: The structure of multiplicatives
   author: Danos & Regnier
   serial-number:
     doi: 10.1007/BF01622878
@@ -2473,7 +2473,7 @@ Q-11:
     arxiv: "2310.09220"
 Q-12:
   type: article
-  title: relative monads in virtual equipments
+  title: The formal theory of relative monads
   author: Arkor & McDermott
   serial-number:
     arxiv: "2302.14014"
@@ -3052,7 +3052,7 @@ S-5:
     doi: 10.4171/PRIMS/185
 S-6:
   type: thesis
-  title: SMAC thesis
+  title: Syntax and Models of a non-Associative Composition of Programs and Proofs
   author: Munch-Maccagnoni
   date: 2013
   genre: PhD thesis
