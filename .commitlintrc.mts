@@ -172,6 +172,7 @@ export default makeConfig([
   "fuzz",
   "gandr",
   "kernel",
+  "kernel-core",
   "kernel-strata",
   "knowledge",
   "metatheory",
