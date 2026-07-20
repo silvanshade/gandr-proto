@@ -9,6 +9,11 @@
 //! obligation**: the unit universal property's bijectivity requires the
 //! instance notion to be closed under path action — a saturation invariant on
 //! the future cell store (instances-as-modules over the rewrite-path relation).
+//! In metatheory terms this saturation is the store being a **profunctor**: the
+//! left/right path action (`actˡ`/`actʳ`) with its module laws is exactly this
+//! closure, a `SaturatedInstance` is a free module element, and the value the
+//! probe computes is the co-Yoneda (density) reduction of the right action
+//! (Loregian, *Coend calculus*, arXiv:1501.02503).
 //! The saturation probe shows that with path absorption the induced value is
 //! defined and β-compatible, so the invariant is sufficient, not merely
 //! necessary.
