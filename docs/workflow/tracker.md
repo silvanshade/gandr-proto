@@ -2,11 +2,11 @@
 
 > Read when: creating, closing, or triaging beads; wiring dependencies; auditing tracker state.
 > Base discipline: `.agents/core/core/WORKFLOW.md` §"Issue tracking".
-> This file is the wyrd delta.
+> This file is the gandr delta.
 
 ## Source of truth and sync
 
-Issues live in a local Dolt database (beads, prefix `wyrd-`) syncing **out-of-band from git** to DoltHub [`silvanshade/wyrd-beads`](https://www.dolthub.com/repositories/silvanshade/wyrd-beads).
+Issues live in a local Dolt database (beads, prefix `gandr-`) syncing **out-of-band from git** to DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) (the `origin` Dolt remote).
 DoltHub is the **only** synced copy; every worktree and the primary checkout hold independent Dolt clones (core/HAZARDS.md H2):
 
 * **push after every write** — `bd dolt push` immediately after `bd create`/`update`/`dep`/`close`;
@@ -46,7 +46,7 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 
 ## Feature landing and residual closeout
 
-The base rule still governs: close a bead only when its full recorded scope is done and verified; make residual scope epic-shaped; file follow-ups `discovered-from` the parent; sweep related memory before closing. wyrd adds one **feature-landing workflow** so executable evidence, manual work, mutation campaigns, and other residuals cannot drift into separate conventions.
+The base rule still governs: close a bead only when its full recorded scope is done and verified; make residual scope epic-shaped; file follow-ups `discovered-from` the parent; sweep related memory before closing. gandr adds one **feature-landing workflow** so executable evidence, manual work, mutation campaigns, and other residuals cannot drift into separate conventions.
 
 ### Demonstrability lands with the feature
 
