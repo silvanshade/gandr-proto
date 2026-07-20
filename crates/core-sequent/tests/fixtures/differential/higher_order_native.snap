@@ -1,0 +1,14 @@
+; gandr differential L-outcome snapshot (B1 exit gate): higher_order_native
+; cases: 12
+Ret(List([Int(2), Int(3), Int(4)]))
+Ret(List([]))
+Ret(Pair(List([Int(20), Int(40)]), List([Int(20), Int(40)])))
+Ret(List([Int(1)]))
+Ret(Int(10))
+Ret(Inj(Fst, Unit))
+Ret(Inj(Fst, Unit))
+Ret(List([Int(101), Int(102), Int(3), Int(4)]))
+Ret(List([Int(10), Int(25), Int(30)]))
+Ret(List([Int(1), Int(2)]))
+Blame(Hole)
+Ret(List([Int(6), Int(7)]))

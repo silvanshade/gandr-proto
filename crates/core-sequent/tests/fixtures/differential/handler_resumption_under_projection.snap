@@ -1,0 +1,3 @@
+; gandr differential L-outcome snapshot (B1 exit gate): handler_resumption_under_projection
+; cases: 1
+Ret(Unit)

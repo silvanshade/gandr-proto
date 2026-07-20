@@ -1,0 +1,16 @@
+; gandr differential L-outcome snapshot (B1 exit gate): native
+; cases: 14
+Ret(Int(5))
+Ret(Int(20))
+Ret(Inj(Fst, Unit))
+Ret(Int(-7))
+Ret(Pair(Int(1), Int(2)))
+Native(Add, [])
+Native(Add, [Int(1)])
+Ret(Int(30))
+Ret(Thunk(Fin(1), Ret(Unit)))
+Ret(Int(7))
+Ret(Int(9))
+Ret(Int(1))
+Blame(Hole)
+Ret(Pair(Int(3), Int(3)))

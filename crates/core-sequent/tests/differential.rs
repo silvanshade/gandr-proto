@@ -1,22 +1,32 @@
-//! The phase-L1 gate (`proposal-sequent-kernel.md` §9, phase L1): the L machine
-//! agrees with the CEK oracle — `L-run ∘ 𝓕 ≡ run`.
+//! The phase-L1 property gate (`proposal-sequent-kernel.md` §9, phase L1),
+//! re-anchored on the L machine's own outcomes.
 //!
-//! # Adequacy discipline (ADR-71)
+//! # From oracle agreement to L-outcome regression (ADR-71)
 //!
-//! The **external oracle** is the CEK machine
-//! (`gandr_core_checker::eval::run_comp`): a distinct implementation of the
-//! same operational semantics, sharing no step code with the L machine
-//! (`gandr_core_sequent::machine::run_comp`). The **adequacy hypothesis**: for
-//! a checked-core computation `t`, `run(t)` and `L-run(𝓕(t))` denote the same
-//! observable outcome, so agreement is evidence for the L
-//! machine's correctness. Comparison is on the canonicalized [`Eval`] outcome
+//! Through stage E this was an L-vs-CEK **agreement** differential: the CEK
+//! machine (`gandr_core_checker::eval::run_comp`) was the external oracle — a
+//! distinct implementation of the same operational semantics, sharing no step
+//! code with the L machine (`gandr_core_sequent::machine::run_comp`) — and each
+//! case asserted the two canonicalized [`Eval`] outcomes were equal. With the
+//! CEK retiring (B1 phase-3 stage F), the differential's evidence is preserved
+//! by **freezing** the L machine's own canonical outcome for each hand-built
+//! case — captured once from the final oracle-agreeing run — into a checked-in
+//! regression ([`Check`], `tests/fixtures/differential/<label>.snap`), and by
+//! keeping the **intrinsic** L-machine properties the generated lane witnesses:
+//! every run reaches a **defined** outcome and is **deterministic**
+//! ([`l_machine_is_total_and_deterministic`]). The frozen snapshots *are* the
+//! retired oracle for the hand-built fragment; the corpus outcome-snapshot
+//! sweep ([`crate::corpus_differential`]) anchors the adequacy hypothesis over
+//! the whole corpus.
+//!
+//! Comparison stays on the canonicalized [`Eval`] outcome
 //! ([`gandr_core_sequent::differential::canonical`]) — the outcome kind, the
 //! stuck reason, and the returned value exactly on the first-order fragment
 //! (the observable fragment the corpus checks); higher-order terminals
-//! (returned thunks, bare functions / lazy pairs, partial natives) are now
-//! compared **structurally** through the un-focusing readback `𝓕⁻¹`, only a
-//! returned reified stack staying at kind granularity (the k-in-value residual;
-//! see the module docs).
+//! (returned thunks, bare functions / lazy pairs, partial natives) are compared
+//! **structurally** through the un-focusing readback `𝓕⁻¹`, only a returned
+//! reified stack staying at kind granularity (the k-in-value residual; see the
+//! module docs of [`gandr_core_sequent::differential`]).
 //!
 //! # Coverage at this checkpoint
 //!
@@ -63,10 +73,6 @@ mod tests
     use gandr_core_checker::effect::EffectSig;
     use gandr_core_checker::eval::Blame;
     use gandr_core_checker::eval::Eval;
-    use gandr_core_checker::eval::Prelude;
-    use gandr_core_checker::eval::run_comp;
-    use gandr_core_checker::eval::run_comp_with_prelude;
-    use gandr_core_checker::eval::run_with_host;
     use gandr_core_checker::grade::Grade;
     use gandr_core_checker::host::HostHandler;
     use gandr_core_checker::host::HostReply;
@@ -489,33 +495,35 @@ mod tests
         const PINNED_RETURN_INTEGER: i64 = 42;
         const BETA_ARGUMENT: i64 = 11;
 
+        let mut check = Check::load("pure_spine");
+
         // ret + first-order data.
-        assert_agree(&Comp::ret(Value::int(PINNED_RETURN_INTEGER)));
-        assert_agree(&Comp::ret(Value::pair(Value::int(1), Value::string("s"))));
-        assert_agree(&Comp::ret(Value::inj1(Value::Unit)));
-        assert_agree(&Comp::ret(Value::list(vec![
+        check.pin(&Comp::ret(Value::int(PINNED_RETURN_INTEGER)));
+        check.pin(&Comp::ret(Value::pair(Value::int(1), Value::string("s"))));
+        check.pin(&Comp::ret(Value::inj1(Value::Unit)));
+        check.pin(&Comp::ret(Value::list(vec![
             Value::int(1),
             Value::int(2),
             Value::int(3),
         ])));
-        assert_agree(&Comp::ret(Value::record([(
+        check.pin(&Comp::ret(Value::record([(
             String::from("a"),
             Value::int(7),
         )])));
 
         // bind threads a value.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::ret(Value::int(3)),
             "y",
             Comp::ret(Value::var("y")),
         ));
 
         // force a thunk (call-by-need) and a re-forced (shared) thunk.
-        assert_agree(&Comp::force(Value::thunk(
+        check.pin(&Comp::force(Value::thunk(
             Grade::ONE,
             Comp::ret(Value::int(5)),
         )));
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::ret(Value::thunk(Grade::OMEGA, Comp::ret(Value::int(9)))),
             "t",
             Comp::bind(
@@ -530,11 +538,11 @@ mod tests
         ));
 
         // application (β), curried, and higher-order.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::lam("x", Comp::ret(Value::var("x"))),
             Value::int(BETA_ARGUMENT),
         ));
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(
                 Comp::lam("x", Comp::lam("y", Comp::ret(Value::var("x")))),
                 Value::int(1),
@@ -543,14 +551,14 @@ mod tests
         ));
 
         // case on both injections.
-        assert_agree(&Comp::case(
+        check.pin(&Comp::case(
             Value::inj1(Value::int(1)),
             "l",
             Comp::ret(Value::var("l")),
             "r",
             Comp::ret(Value::int(0)),
         ));
-        assert_agree(&Comp::case(
+        check.pin(&Comp::case(
             Value::inj2(Value::int(2)),
             "l",
             Comp::ret(Value::int(0)),
@@ -559,7 +567,7 @@ mod tests
         ));
 
         // split a pair.
-        assert_agree(&Comp::split(
+        check.pin(&Comp::split(
             Value::pair(Value::int(1), Value::int(2)),
             "a",
             "b",
@@ -567,14 +575,14 @@ mod tests
         ));
 
         // listcase (nil and cons).
-        assert_agree(&Comp::list_case(
+        check.pin(&Comp::list_case(
             Value::list(vec![]),
             Comp::ret(Value::int(0)),
             "h",
             "t",
             Comp::ret(Value::var("h")),
         ));
-        assert_agree(&Comp::list_case(
+        check.pin(&Comp::list_case(
             Value::list(vec![Value::int(1), Value::int(2)]),
             Comp::ret(Value::int(0)),
             "h",
@@ -583,34 +591,34 @@ mod tests
         ));
 
         // record projection.
-        assert_agree(&Comp::record_proj(
+        check.pin(&Comp::record_proj(
             Value::record([(String::from("a"), Value::int(8))]),
             "a",
         ));
 
         // lazy pair projection (both sides).
-        assert_agree(&Comp::prj1(Comp::with(
+        check.pin(&Comp::prj1(Comp::with(
             Comp::ret(Value::int(1)),
             Comp::ret(Value::int(2)),
         )));
-        assert_agree(&Comp::prj2(Comp::with(
+        check.pin(&Comp::prj2(Comp::with(
             Comp::ret(Value::int(1)),
             Comp::ret(Value::int(2)),
         )));
 
         // dup / drop (grade structural ops).
-        assert_agree(&Comp::dup(Value::int(4)));
-        assert_agree(&Comp::drop(Value::int(4)));
+        check.pin(&Comp::dup(Value::int(4)));
+        check.pin(&Comp::drop(Value::int(4)));
 
         // holes: a computation hole blames; a returned value hole is a value.
-        assert_agree(&Comp::hole(0));
-        assert_agree(&Comp::ret(Value::hole(0)));
-        assert_agree(&Comp::bind(Comp::hole(0), "y", Comp::ret(Value::var("y"))));
+        check.pin(&Comp::hole(0));
+        check.pin(&Comp::ret(Value::hole(0)));
+        check.pin(&Comp::bind(Comp::hole(0), "y", Comp::ret(Value::var("y"))));
 
         // ill-typed redexes must reach the same stuck reason on both machines.
-        assert_agree(&Comp::app(Comp::ret(Value::int(1)), Value::int(2)));
-        assert_agree(&Comp::force(Value::int(1)));
-        assert_agree(&Comp::case(
+        check.pin(&Comp::app(Comp::ret(Value::int(1)), Value::int(2)));
+        check.pin(&Comp::force(Value::int(1)));
+        check.pin(&Comp::case(
             Value::int(1),
             "l",
             Comp::ret(Value::Unit),
@@ -620,21 +628,27 @@ mod tests
     }
 
     proptest! {
-        // A wider case budget than the default — the differential is the phase's
-        // core gate, and the pure-spine generator is cheap to sample.
+        // A wider case budget than the default — the property gate is the
+        // phase's core generated coverage, and the pure-spine generator is cheap
+        // to sample.
         #![proptest_config(ProptestConfig::with_cases(4096))]
 
-        /// `L-run ∘ 𝓕 ≡ run` on generated closed pure-spine computations.
+        /// The intrinsic L-machine properties over generated closed pure-spine
+        /// computations: every run reaches a **defined** outcome (it does not
+        /// panic, and canonicalizes) and is **deterministic** across two runs.
+        /// The step-budget net (`STEP_BUDGET`) guarantees termination, so a
+        /// returned outcome witnesses budget discipline. The L ≡ CEK agreement
+        /// property this generator once drove retired with the oracle; the
+        /// L machine's operational adequacy is now anchored by the corpus
+        /// outcome-snapshot sweep and the hand-built L-outcome regressions above.
         #[test]
-        fn l_machine_agrees_with_the_cek_oracle(comp in arb_comp(&[], gen_depth()))
+        fn l_machine_is_total_and_deterministic(comp in arb_comp(&[], gen_depth()))
         {
-            let oracle = run_comp(comp.clone());
-            let machine = machine::run_comp(&comp);
-            prop_assert!(
-                bool::from(agree(&oracle, &machine)),
-                "L-run ∘ 𝓕 ≢ run on {comp:?}\n  oracle    = {:?}\n  L machine = {:?}",
-                canonical(&oracle),
-                canonical(&machine)
+            let first = canonical(&machine::run_comp(&comp));
+            let second = canonical(&machine::run_comp(&comp));
+            prop_assert_eq!(
+                &first, &second,
+                "the L machine is non-deterministic on {:?}", comp
             );
         }
     }
@@ -646,23 +660,24 @@ mod tests
     #[test]
     fn hand_built_identity_cases_agree()
     {
+        let mut check = Check::load("identity");
         // Walk-β threads the WITNESS into the base binder: `(x). ret x` on
         // `here(7)` yields `ret 7`.
-        assert_agree(&Comp::walk(
+        check.pin(&Comp::walk(
             Value::here(Value::int(7)),
             walk_motive(),
             WalkBase::new("x", Comp::ret(Value::var("x"))),
         ));
         // The base body may rebuild the proof: `(x). ret here(x)` yields
         // `ret here(7)` — a returned identity value, compared opaquely on both.
-        assert_agree(&Comp::walk(
+        check.pin(&Comp::walk(
             Value::here(Value::int(7)),
             walk_motive(),
             WalkBase::new("x", Comp::ret(Value::here(Value::var("x")))),
         ));
         // A structured witness threads through and is eliminated: `here((1, 2))`
         // splits to 1.
-        assert_agree(&Comp::walk(
+        check.pin(&Comp::walk(
             Value::here(Value::pair(Value::int(1), Value::int(2))),
             walk_motive(),
             WalkBase::new(
@@ -671,7 +686,7 @@ mod tests
             ),
         ));
         // Walk-β under a bind continues: `bind (walk here(5) …) y (ret (y, y))`.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::walk(
                 Value::here(Value::int(5)),
                 walk_motive(),
@@ -681,16 +696,16 @@ mod tests
             Comp::ret(Value::pair(Value::var("y"), Value::var("y"))),
         ));
         // A bare returned identity proof compares opaquely (kind granularity).
-        assert_agree(&Comp::ret(Value::here(Value::int(9))));
+        check.pin(&Comp::ret(Value::here(Value::int(9))));
         // A non-`here` scrutinee is `WalkOnNonHere` on both (ill-typed input;
         // a well-typed closed `Path` scrutinee is always a `here`).
-        assert_agree(&Comp::walk(
+        check.pin(&Comp::walk(
             Value::int(1),
             walk_motive(),
             WalkBase::new("x", Comp::ret(Value::var("x"))),
         ));
         // A hole scrutinee blames on both.
-        assert_agree(&Comp::walk(
+        check.pin(&Comp::walk(
             Value::hole(0),
             walk_motive(),
             WalkBase::new("x", Comp::ret(Value::var("x"))),
@@ -718,8 +733,9 @@ mod tests
     #[test]
     fn hand_built_declared_data_cases_agree()
     {
+        let mut check = Check::load("declared_data");
         // Selects the matching arm and binds the payload: tag 0 yields 7.
-        assert_agree(&Comp::data_case(
+        check.pin(&Comp::data_case(
             Value::ctor(did(), 0_usize, Value::int(7)),
             vec![
                 (String::from("y"), Comp::ret(Value::var("y"))),
@@ -727,7 +743,7 @@ mod tests
             ],
         ));
         // Selects a later arm by position: tag 1 yields 5.
-        assert_agree(&Comp::data_case(
+        check.pin(&Comp::data_case(
             Value::ctor(did(), 1_usize, Value::int(5)),
             vec![
                 (String::from("y"), Comp::ret(Value::int(0))),
@@ -735,13 +751,13 @@ mod tests
             ],
         ));
         // A nullary constructor binds its unit payload.
-        assert_agree(&Comp::data_case(
+        check.pin(&Comp::data_case(
             Value::ctor(did(), 0_usize, Value::Unit),
             vec![(String::from("y"), Comp::ret(Value::int(99)))],
         ));
         // A structured payload threads through and is eliminated: `(1, 2)`
         // splits to 2.
-        assert_agree(&Comp::data_case(
+        check.pin(&Comp::data_case(
             Value::ctor(did(), 0_usize, Value::pair(Value::int(1), Value::int(2))),
             vec![(
                 String::from("p"),
@@ -749,7 +765,7 @@ mod tests
             )],
         ));
         // Continued evaluation after the selection.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::data_case(Value::ctor(did(), 0_usize, Value::int(3)), vec![(
                 String::from("y"),
                 Comp::ret(Value::var("y")),
@@ -758,19 +774,19 @@ mod tests
             Comp::ret(Value::pair(Value::var("w"), Value::var("w"))),
         ));
         // A bare returned constructor compares opaquely (kind granularity).
-        assert_agree(&Comp::ret(Value::ctor(did(), 0_usize, Value::int(4))));
+        check.pin(&Comp::ret(Value::ctor(did(), 0_usize, Value::int(4))));
         // A non-`Ctor` scrutinee is `DataCasedNonCtor` on both.
-        assert_agree(&Comp::data_case(Value::int(1), vec![(
+        check.pin(&Comp::data_case(Value::int(1), vec![(
             String::from("y"),
             Comp::ret(Value::var("y")),
         )]));
         // A hole scrutinee blames on both.
-        assert_agree(&Comp::data_case(Value::hole(0), vec![(
+        check.pin(&Comp::data_case(Value::hole(0), vec![(
             String::from("y"),
             Comp::ret(Value::var("y")),
         )]));
         // An out-of-range tag (tag 2 over a 2-arm case) is `DataCasedNonCtor`.
-        assert_agree(&Comp::data_case(
+        check.pin(&Comp::data_case(
             Value::ctor(did(), 2_usize, Value::Unit),
             vec![
                 (String::from("y"), Comp::ret(Value::var("y"))),
@@ -779,11 +795,11 @@ mod tests
         ));
         // The absurd (empty) match: a `Ctor` and a non-`Ctor` scrutinee both
         // reach `DataCasedNonCtor` (the empty-arm case classifies as data).
-        assert_agree(&Comp::data_case(
+        check.pin(&Comp::data_case(
             Value::ctor(did(), 0_usize, Value::Unit),
             vec![],
         ));
-        assert_agree(&Comp::data_case(Value::int(1), vec![]));
+        check.pin(&Comp::data_case(Value::int(1), vec![]));
     }
 
     /// A fixed declared-data nominal id (the serial and name are render-only —
@@ -801,32 +817,34 @@ mod tests
         const FIRST_NATIVE_ARGUMENT: i64 = 10;
         const SECOND_NATIVE_ARGUMENT: i64 = 20;
 
+        let mut check = Check::load("native");
+
         // Saturated arithmetic and comparison.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(Comp::native(NativePrim::Add), Value::int(2)),
             Value::int(3),
         ));
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(Comp::native(NativePrim::Mul), Value::int(4)),
             Value::int(5),
         ));
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(Comp::native(NativePrim::Lt), Value::int(1)),
             Value::int(2),
         ));
         // Unary native.
-        assert_agree(&Comp::app(Comp::native(NativePrim::Neg), Value::int(7)));
+        check.pin(&Comp::app(Comp::native(NativePrim::Neg), Value::int(7)));
         // Identity passing through a first-order value.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::native(NativePrim::Id),
             Value::pair(Value::int(1), Value::int(2)),
         ));
         // Bare and partial natives are curried function terminals.
-        assert_agree(&Comp::native(NativePrim::Add));
-        assert_agree(&Comp::app(Comp::native(NativePrim::Add), Value::int(1)));
+        check.pin(&Comp::native(NativePrim::Add));
+        check.pin(&Comp::app(Comp::native(NativePrim::Add), Value::int(1)));
         // A native forced from a bound thunk, then applied (the prelude-free
         // higher-order path).
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::ret(Value::thunk(Grade::OMEGA, Comp::native(NativePrim::Add))),
             "f",
             Comp::app(
@@ -840,13 +858,13 @@ mod tests
         // SEQUENT-001: a first-order native's result may carry an argument
         // thunk (bare or nested); the marker round trip must resolve it back
         // to the original machine thunk instead of declining.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::native(NativePrim::Id),
             Value::thunk(Grade::ONE, Comp::ret(Value::Unit)),
         ));
         // ... and the survivor must still FORCE with its real body (a
         // placeholder-body corruption would blame or diverge here).
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::app(
                 Comp::native(NativePrim::Id),
                 Value::thunk(Grade::ONE, Comp::ret(Value::int(7))),
@@ -856,7 +874,7 @@ mod tests
         ));
         // Nested resolution: a thunk inside a record, rearranged by the
         // native, projected back out, and forced.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::app(
                 Comp::native(NativePrim::Id),
                 Value::record([
@@ -876,7 +894,7 @@ mod tests
         ));
         // Multi-mark resolution: `const` keeps its FIRST thunk and discards
         // the second — the marker indices must not cross.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::app(
                 Comp::app(
                     Comp::native(NativePrim::Const),
@@ -888,12 +906,12 @@ mod tests
             Comp::force(Value::var("x")),
         ));
         // Bad-shape arguments blame the same gradual hole on both machines.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(Comp::native(NativePrim::Add), Value::string("x")),
             Value::Unit,
         ));
         // Sequencing through a saturated native result.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::app(
                 Comp::app(Comp::native(NativePrim::Add), Value::int(1)),
                 Value::int(2),
@@ -948,8 +966,9 @@ mod tests
     #[test]
     fn hand_built_higher_order_native_cases_agree()
     {
+        let mut check = Check::load("higher_order_native");
         // `each (\x. x + 1) [1, 2, 3]` maps to `[2, 3, 4]`.
-        assert_agree(&each(
+        check.pin(&each(
             closure1(
                 "x",
                 Comp::app(
@@ -960,12 +979,12 @@ mod tests
             int_list(&[1, 2, 3]),
         ));
         // `each` over the empty list is the empty list.
-        assert_agree(&each(
+        check.pin(&each(
             closure1("x", Comp::ret(Value::var("x"))),
             int_list(&[]),
         ));
         // The mapped result threads into an enclosing bind.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             each(
                 closure1(
                     "x",
@@ -981,7 +1000,7 @@ mod tests
         ));
 
         // `where (\x. x < 2) [1, 2, 3]` keeps `[1]`.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(
                 Comp::native(NativePrim::Where),
                 closure1(
@@ -996,7 +1015,7 @@ mod tests
         ));
 
         // `reduce (\a x. a + x) 0 [1, 2, 3, 4]` folds to `10`.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(
                 Comp::app(
                     Comp::native(NativePrim::Reduce),
@@ -1015,7 +1034,7 @@ mod tests
         ));
 
         // `any (\x. x == 2) [1, 2, 3]` is `true` (short-circuits).
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(
                 Comp::native(NativePrim::Any),
                 closure1(
@@ -1030,7 +1049,7 @@ mod tests
         ));
 
         // `all (\x. x < 5) [1, 2, 3]` is `true`.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(
                 Comp::native(NativePrim::All),
                 closure1(
@@ -1046,7 +1065,7 @@ mod tests
 
         // `update_where (\x. x < 3) (\x. x + 100) [1, 2, 3, 4]` transforms the
         // matched elements to `[101, 102, 3, 4]`.
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(
                 Comp::app(
                     Comp::native(NativePrim::UpdateWhere),
@@ -1071,7 +1090,7 @@ mod tests
 
         // `update_at [10, 20, 30] 1 (\x. x + 5)` transforms the element at
         // index 1, yielding `[10, 25, 30]` (the closure-taking list update).
-        assert_agree(&Comp::app(
+        check.pin(&Comp::app(
             Comp::app(
                 Comp::app(Comp::native(NativePrim::UpdateAt), int_list(&[10, 20, 30])),
                 Value::int(1),
@@ -1088,7 +1107,7 @@ mod tests
         // An **effectful** closure under a handler: `each (\x. perform op x)`
         // performs per element; the handler resumes with `p + 10`, so the map
         // runs against the ambient continuation and yields `[11, 12]`.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             each(
                 Value::thunk(
@@ -1113,7 +1132,7 @@ mod tests
         // A **blaming** closure: applying `Add` to a non-numeric argument is the
         // gradual hole, so `each` over a non-empty list blames `Blame::Hole` on
         // both machines (the closure body runs against the continuation).
-        assert_agree(&each(
+        check.pin(&each(
             closure1(
                 "x",
                 Comp::app(
@@ -1127,7 +1146,7 @@ mod tests
         // A higher-order combinator whose list carries a bound value (the
         // closure closes over the outer environment): `let n <- ret 5; each (\x.
         // x + n) [1, 2]` maps to `[6, 7]` — the un-focused closure closes `n`.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::ret(Value::int(5)),
             "n",
             each(
@@ -1153,13 +1172,14 @@ mod tests
     #[test]
     fn hand_built_exact_readback_cases_agree()
     {
+        let mut check = Check::load("exact_readback");
         // A returned thunk — its body compared exactly.
-        assert_agree(&Comp::ret(Value::thunk(
+        check.pin(&Comp::ret(Value::thunk(
             Grade::ONE,
             Comp::ret(Value::int(5)),
         )));
         // A returned thunk with a compound body (a bind through a native).
-        assert_agree(&Comp::ret(Value::thunk(
+        check.pin(&Comp::ret(Value::thunk(
             Grade::OMEGA,
             Comp::bind(
                 Comp::app(
@@ -1172,17 +1192,17 @@ mod tests
         )));
         // A returned thunk that closes over an outer binding: `let n <- ret 9;
         // ret (thunk { ret n })` returns `thunk { ret 9 }` on both machines.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::ret(Value::int(9)),
             "n",
             Comp::ret(Value::thunk(Grade::ONE, Comp::ret(Value::var("n")))),
         ));
 
         // A bare function terminal — its body compared exactly.
-        assert_agree(&Comp::lam("x", Comp::ret(Value::var("x"))));
+        check.pin(&Comp::lam("x", Comp::ret(Value::var("x"))));
         // A function terminal that closes over an outer binding: `let n <- ret 3;
         // \x. x + n` is the function `\x. x + 3` on both machines.
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::ret(Value::int(3)),
             "n",
             Comp::lam(
@@ -1195,13 +1215,13 @@ mod tests
         ));
 
         // A bare lazy-pair terminal — both components compared exactly.
-        assert_agree(&Comp::with(
+        check.pin(&Comp::with(
             Comp::ret(Value::int(1)),
             Comp::lam("z", Comp::ret(Value::var("z"))),
         ));
 
         // A partial native terminal — its accumulated argument compared exactly.
-        assert_agree(&Comp::app(Comp::native(NativePrim::Add), Value::int(7)));
+        check.pin(&Comp::app(Comp::native(NativePrim::Add), Value::int(7)));
 
         // The intentional-difference probe: the L machine's readback
         // distinguishes structurally different terminals that the retired
@@ -1246,6 +1266,7 @@ mod tests
     #[test]
     fn hand_built_higher_order_prelude_case_agrees()
     {
+        let mut check = Check::load("higher_order_prelude");
         let program = each(
             closure1(
                 "x",
@@ -1256,7 +1277,7 @@ mod tests
             ),
             int_list(&[1, 2, 3]),
         );
-        assert_agree_with_prelude(&Comp::force(Value::var("g")), &[(
+        check.pin_with_prelude(&Comp::force(Value::var("g")), &[(
             String::from("g"),
             Value::thunk(Grade::OMEGA, program),
         )]);
@@ -1272,13 +1293,14 @@ mod tests
     #[test]
     fn hand_built_prelude_cases_agree()
     {
+        let mut check = Check::load("prelude");
         // A hit: a thunk-valued name forces to its body, which continues.
-        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[(
+        check.pin_with_prelude(&Comp::force(Value::var("f")), &[(
             String::from("f"),
             Value::thunk(Grade::ONE, Comp::ret(Value::int(42))),
         )]);
         // The forced body's value threads into the continuation.
-        assert_agree_with_prelude(
+        check.pin_with_prelude(
             &Comp::bind(
                 Comp::force(Value::var("f")),
                 "x",
@@ -1291,7 +1313,7 @@ mod tests
         );
         // A name-bound native: force it, then apply it (the prelude'd
         // higher-order path — a thunk wrapping a builtin, as the CEK's prelude).
-        assert_agree_with_prelude(
+        check.pin_with_prelude(
             &Comp::app(
                 Comp::app(Comp::force(Value::var("plus")), Value::int(3)),
                 Value::int(4),
@@ -1302,17 +1324,17 @@ mod tests
             )],
         );
         // A miss: the name is absent from the prelude — `ForcedNonThunk` on both.
-        assert_agree_with_prelude(&Comp::force(Value::var("missing")), &[(
+        check.pin_with_prelude(&Comp::force(Value::var("missing")), &[(
             String::from("f"),
             Value::thunk(Grade::ONE, Comp::ret(Value::int(1))),
         )]);
         // A miss: the winning binding is NOT a thunk — `ForcedNonThunk` on both.
-        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[(
+        check.pin_with_prelude(&Comp::force(Value::var("f")), &[(
             String::from("f"),
             Value::int(5),
         )]);
         // Shadowing: the LAST binding wins (a later thunk resolves to 2).
-        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[
+        check.pin_with_prelude(&Comp::force(Value::var("f")), &[
             (
                 String::from("f"),
                 Value::thunk(Grade::ONE, Comp::ret(Value::int(1))),
@@ -1324,7 +1346,7 @@ mod tests
         ]);
         // Shadowing: a later NON-thunk shadows an earlier thunk —
         // `ForcedNonThunk`.
-        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[
+        check.pin_with_prelude(&Comp::force(Value::var("f")), &[
             (
                 String::from("f"),
                 Value::thunk(Grade::ONE, Comp::ret(Value::int(1))),
@@ -1332,7 +1354,7 @@ mod tests
             (String::from("f"), Value::int(9)),
         ]);
         // The empty prelude is a force miss (`ForcedNonThunk`), as no-prelude.
-        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[]);
+        check.pin_with_prelude(&Comp::force(Value::var("f")), &[]);
 
         // A prelude body that itself performs: unhandled blames
         // `PerformNoHandler` on both.
@@ -1343,14 +1365,14 @@ mod tests
                 Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
             ),
         );
-        assert_agree_with_prelude(
+        check.pin_with_prelude(
             &Comp::force(Value::var("eff")),
             core::slice::from_ref(&eff_binding),
         );
         // ... and under a handler the performed operation is caught (the
         // keep-continuation force path): `resume k (ret 8)`, so the handle
         // yields 8 on both machines.
-        assert_agree_with_prelude(
+        check.pin_with_prelude(
             &Comp::handle(
                 sig("E".into(), "op".into()),
                 Comp::force(Value::var("eff")),
@@ -1377,21 +1399,6 @@ mod tests
 
     /// Drives `comp` under the SAME prelude `bindings` on the CEK oracle and
     /// the L machine, asserting they agree on the canonicalized outcome.
-    fn assert_agree_with_prelude(
-        comp: &Comp,
-        bindings: &[(String, Value)],
-    )
-    {
-        let oracle = run_comp_with_prelude(comp.clone(), Prelude::from_bindings(bindings.to_vec()));
-        let machine = machine::run_comp_with_prelude(comp, bindings);
-        assert!(
-            bool::from(agree(&oracle, &machine)),
-            "L-run ∘ 𝓕 ≢ run under prelude on {comp:?}\n  oracle    = {:?}\n  L machine = {:?}",
-            canonical(&oracle),
-            canonical(&machine)
-        );
-    }
-
     /// A handler under an outer eliminator must consume that continuation once.
     ///
     /// The delimiter entry installs the projection on the live L-machine stack.
@@ -1401,7 +1408,8 @@ mod tests
     #[test]
     fn handler_resumption_under_projection_uses_the_ambient_continuation_once()
     {
-        assert_agree(&Comp::prj1(Comp::handle(
+        let mut check = Check::load("handler_resumption_under_projection");
+        check.pin(&Comp::prj1(Comp::handle(
             sig("E".into(), "op".into()),
             Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
             "x",
@@ -1422,15 +1430,16 @@ mod tests
     #[test]
     fn hand_built_effect_cases_agree()
     {
+        let mut check = Check::load("effect");
         // An unhandled perform blames PerformNoHandler on both.
-        assert_agree(&Comp::perform(
+        check.pin(&Comp::perform(
             sig("E".into(), "op".into()),
             "op",
             Value::Unit,
         ));
         // ... including one buried under a bind (the operation propagates past
         // the μ̃ to search for a handler, finds none).
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
             "x",
             Comp::ret(Value::var("x")),
@@ -1438,7 +1447,7 @@ mod tests
 
         // A handled perform, non-resuming clause: the handle's value is the
         // clause's (the continuation is discarded).
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
             "x",
@@ -1448,7 +1457,7 @@ mod tests
 
         // A resuming clause: `resume k (ret 42)` feeds the resumption, so the
         // perform "returns" 42 to the scrutinee, then the return clause.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
             "x",
@@ -1463,7 +1472,7 @@ mod tests
 
         // The payload flows to the clause: `resume k (ret p)` returns the
         // performed payload.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
             "x",
@@ -1477,7 +1486,7 @@ mod tests
         ));
 
         // The return clause transforms the scrutinee's value (no perform).
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::ret(Value::int(7)),
             "x",
@@ -1487,7 +1496,7 @@ mod tests
 
         // A perform buried under a bind inside the handled scrutinee: resume
         // returns 7 to bind `x`, then `ret x`.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::bind(
                 Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
@@ -1507,7 +1516,7 @@ mod tests
         // Deep re-entry: a resumed continuation re-installs the handler, so a
         // SECOND perform in the resumption is caught again — `a` and `b` both
         // resume with 1.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::bind(
                 Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
@@ -1530,7 +1539,7 @@ mod tests
 
         // Nested handlers route by operation name: `perform op2` is caught by the
         // inner E2 handler, not the outer E1 one.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E1".into(), "op1".into()),
             Comp::handle(
                 sig("E2".into(), "op2".into()),
@@ -1558,7 +1567,7 @@ mod tests
         // declare the operation blocks the search — `perform op1` reaches the
         // inner E2 handler first, which does not handle it, so both blame
         // PerformNoHandler.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E1".into(), "op1".into()),
             Comp::handle(
                 sig("E2".into(), "op2".into()),
@@ -1573,10 +1582,10 @@ mod tests
         ));
 
         // `reset` is transparent to a returning value.
-        assert_agree(&Comp::reset(Comp::ret(Value::int(5))));
+        check.pin(&Comp::reset(Comp::ret(Value::int(5))));
         // A `reset` delimiter blocks a `perform` from reaching an outer handler
         // (the v0 single-handler scope), so both blame PerformNoHandler.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::reset(Comp::perform(
                 sig("E".into(), "op".into()),
@@ -1590,7 +1599,7 @@ mod tests
 
         // A handler whose clause reuses one name for the payload and the
         // resumption: the resumption binds innermost and wins.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
             "x",
@@ -1605,7 +1614,7 @@ mod tests
 
         // A handled effect forced from a thunk body (the keep-continuation force
         // path): the perform inside the forced thunk must still find the handler.
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::force(Value::thunk(
                 Grade::OMEGA,
@@ -1630,25 +1639,26 @@ mod tests
     #[test]
     fn hand_built_shift_cases_agree()
     {
+        let mut check = Check::load("shift");
         // Discard the captured continuation: the shift's value is the reset's.
-        assert_agree(&Comp::reset(Comp::shift("k", Comp::ret(Value::int(5)))));
+        check.pin(&Comp::reset(Comp::shift("k", Comp::ret(Value::int(5)))));
         // Discard across a bind: the enclosing `let x <- []; ret (x, x)`
         // continuation is dropped, so the reset yields the shift body's value.
-        assert_agree(&Comp::reset(Comp::bind(
+        check.pin(&Comp::reset(Comp::bind(
             Comp::shift("k", Comp::ret(Value::int(9))),
             "x",
             Comp::ret(Value::pair(Value::var("x"), Value::var("x"))),
         )));
         // Resume once (identity-shaped): `resume k (ret 3)` re-invokes the
         // captured `let x <- []; ret (x, x)`, so x = 3.
-        assert_agree(&Comp::reset(Comp::bind(
+        check.pin(&Comp::reset(Comp::bind(
             Comp::shift("k", Comp::resume(Value::var("k"), Comp::ret(Value::int(3)))),
             "x",
             Comp::ret(Value::pair(Value::var("x"), Value::var("x"))),
         )));
         // The resumed continuation runs real work: the native `Add` inside the
         // captured continuation computes 3 + 4 = 7.
-        assert_agree(&Comp::reset(Comp::bind(
+        check.pin(&Comp::reset(Comp::bind(
             Comp::shift("k", Comp::resume(Value::var("k"), Comp::ret(Value::int(3)))),
             "x",
             Comp::bind(
@@ -1662,7 +1672,7 @@ mod tests
         )));
         // Multi-shot: the captured continuation is invoked twice; the second
         // (innermost) invocation is the reset's value (2).
-        assert_agree(&Comp::reset(Comp::bind(
+        check.pin(&Comp::reset(Comp::bind(
             Comp::shift(
                 "k",
                 Comp::bind(
@@ -1676,13 +1686,13 @@ mod tests
         )));
         // Nested prompts: the shift captures up to the INNER reset only; the
         // value returns transparently through both.
-        assert_agree(&Comp::reset(Comp::reset(Comp::shift(
+        check.pin(&Comp::reset(Comp::reset(Comp::shift(
             "k",
             Comp::ret(Value::int(4)),
         ))));
         // A shift under an outer reset but an inner-most bind, resuming, then the
         // reset delimits: x = 6, result (6, 6).
-        assert_agree(&Comp::reset(Comp::bind(
+        check.pin(&Comp::reset(Comp::bind(
             Comp::shift("k", Comp::resume(Value::var("k"), Comp::ret(Value::int(6)))),
             "x",
             Comp::ret(Value::pair(Value::var("x"), Value::var("x"))),
@@ -1690,9 +1700,9 @@ mod tests
 
         // Undelimited: a bare `shift` reaches no prompt, so both blame
         // ShiftNoReset.
-        assert_agree(&Comp::shift("k", Comp::ret(Value::int(1))));
+        check.pin(&Comp::shift("k", Comp::ret(Value::int(1))));
         // ... including one buried under a bind (still no enclosing prompt).
-        assert_agree(&Comp::bind(
+        check.pin(&Comp::bind(
             Comp::shift("k", Comp::ret(Value::int(1))),
             "x",
             Comp::ret(Value::var("x")),
@@ -1700,7 +1710,7 @@ mod tests
         // Across a handler: the capture would cross a `KHandle` frame, which the
         // v0 structural model cannot reify, so both blame ShiftNoReset (a handler
         // is not a prompt).
-        assert_agree(&Comp::handle(
+        check.pin(&Comp::handle(
             sig("E".into(), "op".into()),
             Comp::shift("k", Comp::ret(Value::int(1))),
             "x",
@@ -1770,10 +1780,10 @@ mod tests
         }
     }
 
-    /// Drives `comp` with the same scripted host on the CEK oracle and the L
-    /// machine, asserting they agree on the final outcome AND on the host log,
-    /// which must equal `expected_log`; the shared final must also match
-    /// `expected_final`.
+    /// Drives `comp` with the scripted host on the L machine, asserting its
+    /// final outcome matches `expected_final` and its host offer log equals
+    /// `expected_log`. Each case carries its own expected outcome, so the CEK
+    /// leg this cross-checked against retired with the oracle.
     fn assert_host_seam(
         comp: &Comp,
         replies: &[HostReply],
@@ -1781,22 +1791,13 @@ mod tests
         expected_final: &Eval,
     )
     {
-        let mut cek_host = ScriptedHost::new(replies);
-        let oracle = run_with_host(comp.clone(), &mut cek_host);
-
         let mut l_host = ScriptedHost::new(replies);
         let machine = machine::run_comp_with_host(comp, &mut l_host);
 
         assert!(
-            bool::from(agree(&oracle, &machine)),
-            "host-seam L-run ≢ run on {comp:?}\n  oracle    = {:?}\n  L machine = {:?}",
-            canonical(&oracle),
-            canonical(&machine)
-        );
-        assert!(
-            bool::from(agree(&oracle, expected_final)),
+            bool::from(agree(&machine, expected_final)),
             "host-seam final mismatch on {comp:?}\n  got      = {:?}\n  expected = {:?}",
-            canonical(&oracle),
+            canonical(&machine),
             canonical(expected_final)
         );
 
@@ -1804,7 +1805,6 @@ mod tests
             .iter()
             .map(|&(sig, op, ref payload)| (sig.to_owned(), op.to_owned(), payload.clone()))
             .collect();
-        assert_eq!(cek_host.log, expected, "CEK host log mismatch on {comp:?}");
         assert_eq!(l_host.log, expected, "L host log mismatch on {comp:?}");
     }
 
@@ -2018,16 +2018,189 @@ mod tests
 
     /// Asserts the two machines agree on `comp`, panicking with the disagreeing
     /// canonicalization otherwise.
-    fn assert_agree(comp: &Comp)
+    /// The regeneration switch for the hand-built differential L-outcome
+    /// snapshots.
+    const BLESS_ENV: &str = "GANDR_BLESS_DIFFERENTIAL_OUTCOMES";
+
+    /// An ordered **L-outcome regression** check for a hand-built case suite.
+    ///
+    /// Through stage E each hand-built case asserted `canonical(L) ==
+    /// canonical(CEK)` against the retiring oracle. With the CEK gone, each
+    /// case instead pins the L machine's own canonical outcome — frozen
+    /// once from the final oracle-agreeing run — as a checked-in
+    /// regression, and re-verifies the outcome is deterministic across two
+    /// runs (an intrinsic L-machine property). The snapshots live under
+    /// `tests/fixtures/differential/<label>.snap`, one canonical outcome per
+    /// case in call order; regenerate them with
+    /// `GANDR_BLESS_DIFFERENTIAL_OUTCOMES=1`. The [`Drop`] guard checks that a
+    /// non-blessing run consumed exactly the recorded outcomes (so a
+    /// removed / added case is caught), and writes the file on a blessing run.
+    struct Check
     {
-        let oracle = run_comp(comp.clone());
-        let machine = machine::run_comp(comp);
-        assert!(
-            bool::from(agree(&oracle, &machine)),
-            "L-run ∘ 𝓕 ≢ run on {comp:?}\n  oracle    = {:?}\n  L machine = {:?}",
-            canonical(&oracle),
-            canonical(&machine)
-        );
+        /// The snapshot file stem under `tests/fixtures/differential`.
+        label: &'static str,
+        /// The recorded per-case canonical outcomes, in call order (empty while
+        /// blessing).
+        expected: Vec<String>,
+        /// The next expected-outcome index.
+        cursor: usize,
+        /// Whether this run regenerates the snapshot instead of checking it.
+        blessing: bool,
+        /// The outcomes observed this run (written back only when blessing).
+        recorded: Vec<String>,
+    }
+
+    impl Check
+    {
+        /// Loads (or, when blessing, prepares to regenerate) the snapshot suite
+        /// `label`.
+        fn load(label: &'static str) -> Self
+        {
+            let blessing = std::env::var_os(BLESS_ENV).is_some();
+            let expected = if blessing {
+                Vec::new()
+            }
+            else {
+                read_snapshot(label)
+            };
+            Self {
+                label,
+                expected,
+                cursor: 0,
+                blessing,
+                recorded: Vec::new(),
+            }
+        }
+
+        /// Pins the L machine's canonical outcome of `comp` (empty prelude)
+        /// against the recorded regression, checking determinism.
+        fn pin(
+            &mut self,
+            comp: &Comp,
+        )
+        {
+            self.record(comp, &machine::run_comp(comp), &machine::run_comp(comp));
+        }
+
+        /// Pins the L outcome of `comp` under a prelude binding-environment
+        /// (ADR-42).
+        fn pin_with_prelude(
+            &mut self,
+            comp: &Comp,
+            bindings: &[(String, Value)],
+        )
+        {
+            self.record(
+                comp,
+                &machine::run_comp_with_prelude(comp, bindings),
+                &machine::run_comp_with_prelude(comp, bindings),
+            );
+        }
+
+        /// Records / checks one case: the two runs must canonicalize equally
+        /// (determinism), and the outcome must match the recorded regression.
+        fn record(
+            &mut self,
+            comp: &Comp,
+            first: &Eval,
+            second: &Eval,
+        )
+        {
+            let outcome = canonical(first);
+            assert_eq!(
+                outcome,
+                canonical(second),
+                "the L machine is non-deterministic on {comp:?}"
+            );
+            let rendered = format!("{outcome:?}");
+            if self.blessing {
+                self.recorded.push(rendered);
+                return;
+            }
+            let expected = self.expected.get(self.cursor).unwrap_or_else(|| {
+                panic!(
+                    "differential snapshot `{}` has no outcome for case {} ({comp:?}); regenerate \
+                     with {BLESS_ENV}=1",
+                    self.label, self.cursor
+                )
+            });
+            assert_eq!(
+                &rendered, expected,
+                "L-outcome regression on {comp:?} (case {} of `{}`); regenerate with {BLESS_ENV}=1 \
+                 if the change is intended",
+                self.cursor, self.label
+            );
+            self.cursor = self.cursor.saturating_add(1);
+        }
+    }
+
+    impl Drop for Check
+    {
+        fn drop(&mut self)
+        {
+            // Never assert while unwinding a case failure — that would abort on
+            // a double panic and hide the real assertion.
+            if std::thread::panicking() {
+                return;
+            }
+            if self.blessing {
+                write_snapshot(self.label, &self.recorded);
+                return;
+            }
+            assert_eq!(
+                self.cursor,
+                self.expected.len(),
+                "differential snapshot `{}` records {} outcomes but the suite pinned {}; \
+                 regenerate with {BLESS_ENV}=1",
+                self.label,
+                self.expected.len(),
+                self.cursor
+            );
+        }
+    }
+
+    /// The snapshot path for a hand-built case suite.
+    fn snapshot_path(label: &str) -> std::path::PathBuf
+    {
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/differential")
+            .join(format!("{label}.snap"))
+    }
+
+    /// Reads a suite's recorded canonical outcomes, in order.
+    fn read_snapshot(label: &str) -> Vec<String>
+    {
+        let path = snapshot_path(label);
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|error| {
+            panic!(
+                "cannot read differential snapshot `{}` ({error}); regenerate with {BLESS_ENV}=1",
+                path.display()
+            )
+        });
+        text.lines()
+            .filter(|line| !line.starts_with(';'))
+            .map(str::to_owned)
+            .collect()
+    }
+
+    /// Writes a suite's canonical outcomes (blessing path).
+    fn write_snapshot(
+        label: &str,
+        outcomes: &[String],
+    )
+    {
+        let path = snapshot_path(label);
+        std::fs::create_dir_all(path.parent().expect("snapshot has a parent"))
+            .unwrap_or_else(|error| panic!("cannot create fixture dir: {error}"));
+        let mut lines = vec![
+            format!("; gandr differential L-outcome snapshot (B1 exit gate): {label}"),
+            format!("; cases: {}", outcomes.len()),
+        ];
+        lines.extend(outcomes.iter().cloned());
+        let mut out = lines.join("\n");
+        out.push('\n');
+        std::fs::write(&path, out)
+            .unwrap_or_else(|error| panic!("cannot write `{}`: {error}", path.display()));
     }
 
     /// A one-operation effect signature (the sig's operation types are inert to

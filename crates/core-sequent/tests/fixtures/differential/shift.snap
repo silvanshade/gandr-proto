@@ -1,0 +1,12 @@
+; gandr differential L-outcome snapshot (B1 exit gate): shift
+; cases: 10
+Ret(Int(5))
+Ret(Int(9))
+Ret(Pair(Int(3), Int(3)))
+Ret(Int(7))
+Ret(Int(2))
+Ret(Int(4))
+Ret(Pair(Int(6), Int(6)))
+Blame(ShiftNoReset)
+Blame(ShiftNoReset)
+Blame(ShiftNoReset)

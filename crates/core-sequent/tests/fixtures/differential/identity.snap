@@ -1,0 +1,9 @@
+; gandr differential L-outcome snapshot (B1 exit gate): identity
+; cases: 7
+Ret(Int(7))
+Ret(Other)
+Ret(Int(1))
+Ret(Pair(Int(5), Int(5)))
+Ret(Other)
+Stuck(WalkOnNonHere)
+Blame(Hole)

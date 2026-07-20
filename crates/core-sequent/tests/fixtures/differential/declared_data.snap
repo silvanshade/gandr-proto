@@ -1,0 +1,13 @@
+; gandr differential L-outcome snapshot (B1 exit gate): declared_data
+; cases: 11
+Ret(Int(7))
+Ret(Int(5))
+Ret(Int(99))
+Ret(Int(2))
+Ret(Pair(Int(3), Int(3)))
+Ret(Other)
+Stuck(DataCasedNonCtor)
+Blame(Hole)
+Stuck(DataCasedNonCtor)
+Stuck(DataCasedNonCtor)
+Stuck(DataCasedNonCtor)

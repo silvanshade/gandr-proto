@@ -1,0 +1,12 @@
+; gandr differential L-outcome snapshot (B1 exit gate): prelude
+; cases: 10
+Ret(Int(42))
+Ret(Pair(Int(7), Int(7)))
+Ret(Int(7))
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Ret(Int(2))
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Blame(PerformNoHandler)
+Ret(Int(8))

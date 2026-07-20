@@ -1,0 +1,9 @@
+; gandr differential L-outcome snapshot (B1 exit gate): exact_readback
+; cases: 7
+Ret(Thunk(Fin(1), Ret(Int(5))))
+Ret(Thunk(Omega, Bind(App(App(Native { prim: Add, args: [] }, Int(1)), Int(2)), "y", Ret(Pair(Var("y"), Var("y"))))))
+Ret(Thunk(Fin(1), Ret(Int(9))))
+Function(Abs("x", None, Ret(Var("x"))))
+Function(Abs("x", None, App(App(Native { prim: Add, args: [] }, Var("x")), Int(3))))
+LazyPair(With(Ret(Int(1)), Abs("z", None, Ret(Var("z")))))
+Native(Add, [Int(7)])

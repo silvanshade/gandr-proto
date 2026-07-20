@@ -1,0 +1,16 @@
+; gandr differential L-outcome snapshot (B1 exit gate): effect
+; cases: 14
+Blame(PerformNoHandler)
+Blame(PerformNoHandler)
+Ret(Int(99))
+Ret(Int(42))
+Ret(Int(5))
+Ret(Pair(Int(7), Int(7)))
+Ret(Int(7))
+Ret(Pair(Int(1), Int(1)))
+Ret(Int(20))
+Blame(PerformNoHandler)
+Ret(Int(5))
+Blame(PerformNoHandler)
+Ret(Int(3))
+Ret(Int(8))
