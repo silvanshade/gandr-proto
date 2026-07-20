@@ -56,7 +56,9 @@ mod tests
     use gandr_core_checker::effect::EffectSig;
     use gandr_core_checker::eval::Blame;
     use gandr_core_checker::eval::Eval;
+    use gandr_core_checker::eval::Prelude;
     use gandr_core_checker::eval::run_comp;
+    use gandr_core_checker::eval::run_comp_with_prelude;
     use gandr_core_checker::eval::run_with_host;
     use gandr_core_checker::grade::Grade;
     use gandr_core_checker::host::HostHandler;
@@ -728,6 +730,136 @@ mod tests
             "s",
             Comp::ret(Value::pair(Value::var("s"), Value::var("s"))),
         ));
+    }
+
+    /// Hand-built prelude cases (ADR-42) pinning force-position free-name
+    /// resolution against the oracle. Both machines drive the SAME prelude:
+    /// a thunk-valued name forces to its body under the empty environment (a
+    /// hit), an absent or non-thunk name stays `ForcedNonThunk` (a miss), the
+    /// last binding shadows earlier ones, and a performing prelude body walks
+    /// the live continuation to an enclosing handler exactly as a thunk body
+    /// does.
+    #[test]
+    fn hand_built_prelude_cases_agree()
+    {
+        // A hit: a thunk-valued name forces to its body, which continues.
+        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[(
+            String::from("f"),
+            Value::thunk(Grade::ONE, Comp::ret(Value::int(42))),
+        )]);
+        // The forced body's value threads into the continuation.
+        assert_agree_with_prelude(
+            &Comp::bind(
+                Comp::force(Value::var("f")),
+                "x",
+                Comp::ret(Value::pair(Value::var("x"), Value::var("x"))),
+            ),
+            &[(
+                String::from("f"),
+                Value::thunk(Grade::OMEGA, Comp::ret(Value::int(7))),
+            )],
+        );
+        // A name-bound native: force it, then apply it (the prelude'd
+        // higher-order path — a thunk wrapping a builtin, as the CEK's prelude).
+        assert_agree_with_prelude(
+            &Comp::app(
+                Comp::app(Comp::force(Value::var("plus")), Value::int(3)),
+                Value::int(4),
+            ),
+            &[(
+                String::from("plus"),
+                Value::thunk(Grade::OMEGA, Comp::native(NativePrim::Add)),
+            )],
+        );
+        // A miss: the name is absent from the prelude — `ForcedNonThunk` on both.
+        assert_agree_with_prelude(&Comp::force(Value::var("missing")), &[(
+            String::from("f"),
+            Value::thunk(Grade::ONE, Comp::ret(Value::int(1))),
+        )]);
+        // A miss: the winning binding is NOT a thunk — `ForcedNonThunk` on both.
+        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[(
+            String::from("f"),
+            Value::int(5),
+        )]);
+        // Shadowing: the LAST binding wins (a later thunk resolves to 2).
+        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[
+            (
+                String::from("f"),
+                Value::thunk(Grade::ONE, Comp::ret(Value::int(1))),
+            ),
+            (
+                String::from("f"),
+                Value::thunk(Grade::ONE, Comp::ret(Value::int(2))),
+            ),
+        ]);
+        // Shadowing: a later NON-thunk shadows an earlier thunk —
+        // `ForcedNonThunk`.
+        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[
+            (
+                String::from("f"),
+                Value::thunk(Grade::ONE, Comp::ret(Value::int(1))),
+            ),
+            (String::from("f"), Value::int(9)),
+        ]);
+        // The empty prelude is a force miss (`ForcedNonThunk`), as no-prelude.
+        assert_agree_with_prelude(&Comp::force(Value::var("f")), &[]);
+
+        // A prelude body that itself performs: unhandled blames
+        // `PerformNoHandler` on both.
+        let eff_binding = (
+            String::from("eff"),
+            Value::thunk(
+                Grade::OMEGA,
+                Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
+            ),
+        );
+        assert_agree_with_prelude(
+            &Comp::force(Value::var("eff")),
+            core::slice::from_ref(&eff_binding),
+        );
+        // ... and under a handler the performed operation is caught (the
+        // keep-continuation force path): `resume k (ret 8)`, so the handle
+        // yields 8 on both machines.
+        assert_agree_with_prelude(
+            &Comp::handle(
+                sig("E".into(), "op".into()),
+                Comp::force(Value::var("eff")),
+                "x",
+                Comp::ret(Value::var("x")),
+                vec![OpClause::new(
+                    "op",
+                    "p",
+                    "k",
+                    Comp::resume(Value::var("k"), Comp::ret(Value::int(8))),
+                )],
+            ),
+            core::slice::from_ref(&eff_binding),
+        );
+
+        // The empty prelude does not perturb the plain L run (byte-identical).
+        let plain = Comp::force(Value::var("f"));
+        assert_eq!(
+            canonical(&machine::run_comp(&plain)),
+            canonical(&machine::run_comp_with_prelude(&plain, &[])),
+            "the empty prelude perturbs the plain L run"
+        );
+    }
+
+    /// Drives `comp` under the SAME prelude `bindings` on the CEK oracle and
+    /// the L machine, asserting they agree on the canonicalized outcome.
+    fn assert_agree_with_prelude(
+        comp: &Comp,
+        bindings: &[(String, Value)],
+    )
+    {
+        let oracle = run_comp_with_prelude(comp.clone(), Prelude::from_bindings(bindings.to_vec()));
+        let machine = machine::run_comp_with_prelude(comp, bindings);
+        assert!(
+            bool::from(agree(&oracle, &machine)),
+            "L-run ∘ 𝓕 ≢ run under prelude on {comp:?}\n  oracle    = {:?}\n  L machine = {:?}",
+            canonical(&oracle),
+            canonical(&machine)
+        );
     }
 
     /// A handler under an outer eliminator must consume that continuation once.

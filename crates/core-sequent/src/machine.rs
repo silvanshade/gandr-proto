@@ -477,6 +477,13 @@ pub struct LMachine
     origins: BTreeMap<CommandId, FocusOrigin>,
     /// The two-region store (heap cells + frame region).
     store: Store,
+    /// The read-only prelude resolution table (ADR-42), consulted on a
+    /// force-position free name (`⟨x | force(…)⟩` with `x` unbound): a name
+    /// resolves to the fresh cobinder its thunk body computes against and the
+    /// arena-resident body command, mirroring the CEK's `Force(Var …)` prelude
+    /// lookup. Empty for [`Self::new`] (the no-prelude default the corpus and
+    /// the plain entries drive), so a force miss stays `ForcedNonThunk`.
+    prelude: BTreeMap<String, (CoName, CommandId)>,
 }
 
 impl LMachine
@@ -493,6 +500,30 @@ impl LMachine
             arena,
             origins,
             store: Store::new(),
+            prelude: BTreeMap::new(),
+        }
+    }
+
+    /// Builds a machine over `arena` with its focusing provenance and a prelude
+    /// resolution table (ADR-42) — the [`Self::new`] companion the
+    /// prelude'd entry ([`run_comp_with_prelude`]) drives. A force-position
+    /// free name in `prelude` resolves to its thunk body (both arena-resident,
+    /// so the table's command ids are valid on this machine); a name absent
+    /// from the table stays a `ForcedNonThunk` force miss, exactly the empty
+    /// prelude of [`Self::new`].
+    #[inline]
+    #[must_use]
+    pub fn new_with_prelude(
+        arena: CommandArena,
+        origins: BTreeMap<CommandId, FocusOrigin>,
+        prelude: BTreeMap<String, (CoName, CommandId)>,
+    ) -> Self
+    {
+        Self {
+            arena,
+            origins,
+            store: Store::new(),
+            prelude,
         }
     }
 
@@ -1505,8 +1536,19 @@ impl LMachine
                 ..
             } => self.force(cobinder.into(), body, env, coenv, cell, cont),
             | LValue::Lit(Lit::Hole(_)) => Flow::Final(Eval::Blame(Blame::Hole)),
-            // A free name in force position resolves against the prelude (ADR-42)
-            // — not yet wired at this checkpoint, so a miss is `ForcedNonThunk`.
+            // A free name in force position resolves against the prelude
+            // (ADR-42), mirroring the CEK's `Force(Var …)`: a hit is a thunk
+            // body focused under the EMPTY environment (the builtin is closed),
+            // run inline against the live continuation (each occurrence
+            // re-focuses the body — no cross-occurrence memo, exactly the CEK,
+            // which re-runs the body on every force of the name); a miss (name
+            // absent, or its winning binding not a thunk) stays `ForcedNonThunk`.
+            | LValue::Var(ref name) => match self.prelude.get(name.as_str()) {
+                | Some(&(ref cobinder, body)) => {
+                    Self::force_inline(cobinder.into(), body, &LEnv::empty(), &LContEnv::empty())
+                },
+                | None => Flow::Final(Eval::Stuck(StuckReason::ForcedNonThunk)),
+            },
             | _ => Flow::Final(Eval::Stuck(StuckReason::ForcedNonThunk)),
         }
     }
@@ -1881,6 +1923,38 @@ where
         | Ok(focused) => {
             let (arena, root, origins) = focused.into_parts();
             LMachine::new(arena, origins).run_with_host(root, handler)
+        },
+        | Err(_) => Eval::Stuck(StuckReason::InvalidClosureBody),
+    }
+}
+
+/// Focuses a checked-core computation under a prelude binding-environment
+/// (ADR-42) and runs it on a fresh L machine to a terminal.
+///
+/// The `run_comp` companion mirroring the CEK's
+/// [`gandr_core_checker::eval::run_comp_with_prelude`].
+///
+/// `bindings` is the prelude as name → value pairs (later bindings shadow
+/// earlier — the CEK's reverse lookup); a force-position free name resolves
+/// against the thunk-valued bindings, a miss stays `ForcedNonThunk`. The empty
+/// prelude reproduces [`run_comp`] exactly.
+///
+/// # Contract
+/// - ensures: `L-run(𝓕(comp))` under `bindings` as an [`Eval`]; a focusing
+///   failure surfaces as a defined stuck rather than a panic.
+/// - panics: none.
+#[inline]
+#[must_use]
+pub fn run_comp_with_prelude(
+    comp: &Comp,
+    bindings: &[(String, Value)],
+) -> Eval
+{
+    match crate::focus::focus_comp_with_prelude(comp, bindings) {
+        | Ok(prepared) => {
+            let (focused, prelude) = prepared.into_parts();
+            let (arena, root, origins) = focused.into_parts();
+            LMachine::new_with_prelude(arena, origins, prelude).run(root)
         },
         | Err(_) => Eval::Stuck(StuckReason::InvalidClosureBody),
     }

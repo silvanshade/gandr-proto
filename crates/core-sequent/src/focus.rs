@@ -1668,6 +1668,97 @@ pub fn focus_comp(comp: &Comp) -> Result<Focused, FocusError>
     Ok(finalize(focuser, root))
 }
 
+/// A completed focusing paired with its prelude resolution table (ADR-42).
+///
+/// The [`focus_comp_with_prelude`] result: the focused program plus a
+/// `name → (cobinder, body)` table for the prelude names, each thunk body
+/// focused into the **same** arena, so its command id is valid on the L
+/// machine that owns the arena. A force-position free name resolves against
+/// this table, mirroring the CEK's `Force(Var …)` prelude lookup
+/// (`gandr_core_checker::eval`).
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct PreludeFocused
+{
+    /// The focused program (arena, root, provenance).
+    focused: Focused,
+    /// The prelude resolution table: a name resolves to the fresh cobinder its
+    /// thunk body computes against and the body command, both arena-resident.
+    prelude: BTreeMap<String, (CoName, CommandId)>,
+}
+
+impl PreludeFocused
+{
+    /// The focused program.
+    #[inline]
+    #[must_use]
+    pub fn focused(&self) -> &Focused
+    {
+        &self.focused
+    }
+
+    /// Consumes into the focused program and its prelude resolution table.
+    #[inline]
+    #[must_use]
+    pub fn into_parts(self) -> (Focused, BTreeMap<String, (CoName, CommandId)>)
+    {
+        (self.focused, self.prelude)
+    }
+}
+
+/// Focuses `comp` together with a prelude binding-environment (ADR-42).
+///
+/// Each thunk-valued prelude binding's body is focused into the **same** arena,
+/// so a force-position free name resolves against it exactly as the CEK's
+/// `Force(Var …)` consults its `Prelude`
+/// (`gandr_core_checker::eval::run_comp_with_prelude`).
+///
+/// Later bindings shadow earlier ones (the CEK's reverse lookup); a binding
+/// whose winning value is not a thunk does not resolve (a force miss stays
+/// [`gandr_core_checker::eval::StuckReason::ForcedNonThunk`], as the CEK). The
+/// empty prelude reproduces [`focus_comp`] exactly — an empty table, so every
+/// force-position free name still halts at `ForcedNonThunk`.
+///
+/// # Errors
+/// [`FocusError::ArenaFull`] only on arena exhaustion.
+#[inline]
+pub fn focus_comp_with_prelude(
+    comp: &Comp,
+    bindings: &[(String, Value)],
+) -> Result<PreludeFocused, FocusError>
+{
+    if bool::from(comp_mentions_unsupported_former(comp)) {
+        return Ok(PreludeFocused {
+            focused: unsupported_program()?,
+            prelude: BTreeMap::new(),
+        });
+    }
+    let mut focuser = Focuser::new();
+    let top = focuser.new_consumer(ConsumerNode::Top)?;
+    let root = focuser.focus_comp(comp, top)?;
+    // Resolve each name to its LAST binding (later shadows earlier — the CEK's
+    // reverse lookup); only a thunk-valued winner focuses into the table, so a
+    // non-thunk winner leaves a force-position miss at `ForcedNonThunk`.
+    let mut winners: BTreeMap<&str, &Value> = BTreeMap::new();
+    for binding in bindings {
+        let (ref name, ref value) = *binding;
+        let _previous = winners.insert(name.as_str(), value);
+    }
+    let mut prelude: BTreeMap<String, (CoName, CommandId)> = BTreeMap::new();
+    for (name, value) in winners {
+        if let Value::Thunk(_, ref body) = *value {
+            let cobinder = focuser.fresh_covar();
+            let cobinder_cons = focuser.new_consumer(ConsumerNode::CoVar(cobinder.clone()))?;
+            let body_cmd = focuser.focus_comp(body.as_ref(), cobinder_cons)?;
+            let _previous = prelude.insert(String::from(name), (cobinder, body_cmd));
+        }
+    }
+    Ok(PreludeFocused {
+        focused: finalize(focuser, root),
+        prelude,
+    })
+}
+
 /// Whether a computation mentions an identity former (`Value::Here` /
 /// `Comp::Walk`, ADR-76) anywhere — the whole-program decline predicate of
 /// [`focus_comp`] / [`focus_value`]. Iterative (an explicit worklist, ADR-47):
