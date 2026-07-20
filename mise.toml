@@ -296,6 +296,15 @@ run = """
 cargo run --quiet -p gandr-workflow-docs --features=full -- build
 """
 
+[tasks."docs:refs-yml"]
+description = "Regenerate the derived docs/spec/refs.yml Hayagriva bibliography from the register (docs/research/bibliography-v2.md; gandr-fcw.10): extract register rows then build+oxfmt-normalize. refs.yml is derived — never hand-edit it; edit the register and re-derive"
+run = """
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+REG_PATH=docs/research/bibliography-v2.md OUT_PATH="$tmp/rows.nuon" nu ./scripts/refs-yml/extract.nu
+ROWS_PATH="$tmp/rows.nuon" OUT_PATH=docs/spec/refs.yml nu ./scripts/refs-yml/build-refs.nu
+"""
+
 # Parked with the manual family (docs/manual/** aspirational; see docs:manual).
 # [tasks."docs:spike"]
 # description = "Compile the Track-C typst rendering spike -> PDF (curryst/fletcher)"

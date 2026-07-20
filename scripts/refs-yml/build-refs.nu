@@ -3,8 +3,11 @@
 # register extraction); TITLE/AUTHOR/DATE/VENUE come from data.nu (curated by
 # reading the register citation column). The provenance header is prepended.
 #
-# Two-stage derivation — there is no driver; invoke each stage with its env vars
-# set, from the repository root:
+# Two-stage derivation orchestrated by `mise run docs:refs-yml`, which runs both
+# stages with the canonical paths (a private temp file carries the intermediate
+# rows.nuon). That task is the entry point (docs/workflow/scripting.md: typed
+# scripts are reached through their named mise task, never inlined). To drive the
+# stages by hand, set each stage's env vars, from the repository root:
 #   1. REG_PATH=docs/research/bibliography-v2.md OUT_PATH=$tmp/rows.nuon \
 #        nu scripts/refs-yml/extract.nu
 #   2. ROWS_PATH=$tmp/rows.nuon OUT_PATH=docs/spec/refs.yml \
