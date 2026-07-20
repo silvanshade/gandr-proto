@@ -582,6 +582,13 @@ name = "gandr"
 version = "0.0.0"
 
 [[package]]
+name = "gandr-theory-nominal-automata"
+version = "0.0.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "gandr-workflow-dylint"
 version = "0.0.0"
 dependencies = [

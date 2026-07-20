@@ -5,6 +5,7 @@
 resolver = "3"
 members = [
   "crates/surface-driver",
+  "crates/theory-nominal-automata",
   "crates/workflow-dylint",
   "crates/workflow-gates",
 ]
