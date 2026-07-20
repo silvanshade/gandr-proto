@@ -27,7 +27,12 @@ proptest = { workspace = true }
 
 [features]
 default = []
-full = []
+full = ["gandr_feat_regex"]
+# Passthrough of core-checker's regex-backed builtins so the ported conformance
+# soundness rows (`tests/conformance_soundness.rs`) can exercise `regex.extract`
+# on the L machine under `--features=full`, exactly as the core-checker
+# conformance suite gated them.
+gandr_feat_regex = ["gandr-core-checker/gandr_feat_regex"]
 
 [lints]
 workspace = true

@@ -2,6 +2,7 @@
 
 mod corpus_fixtures;
 
+mod conformance_soundness;
 mod corpus_differential;
 mod corpus_totality;
 mod differential;
