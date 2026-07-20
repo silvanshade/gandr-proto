@@ -1069,6 +1069,22 @@ mod tests
             int_list(&[1, 2, 3, 4]),
         ));
 
+        // `update_at [10, 20, 30] 1 (\x. x + 5)` transforms the element at
+        // index 1, yielding `[10, 25, 30]` (the closure-taking list update).
+        assert_agree(&Comp::app(
+            Comp::app(
+                Comp::app(Comp::native(NativePrim::UpdateAt), int_list(&[10, 20, 30])),
+                Value::int(1),
+            ),
+            closure1(
+                "x",
+                Comp::app(
+                    Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                    Value::int(5),
+                ),
+            ),
+        ));
+
         // An **effectful** closure under a handler: `each (\x. perform op x)`
         // performs per element; the handler resumes with `p + 10`, so the map
         // runs against the ambient continuation and yields `[11, 12]`.

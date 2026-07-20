@@ -2238,9 +2238,9 @@ fn non_ctor_stuck(arms: &[Arm]) -> StuckReason
 
 /// Whether a native is a **higher-order combinator** — one that forces and
 /// applies a thunk argument (`each` / `where` / `reduce` / `any` / `all` /
-/// `update_where`). These need the argument thunk's source body, which the
-/// focused IL no longer retains, so the L machine routes them through the
-/// un-focusing readback ([`LMachine::dispatch_native_higher_order`]); every
+/// `update_at` / `update_where`). These need the argument thunk's source body,
+/// which the focused IL no longer retains, so the L machine routes them through
+/// the un-focusing readback ([`LMachine::dispatch_native_higher_order`]); every
 /// other native takes the first-order structural path
 /// ([`LMachine::dispatch_native`]).
 fn native_needs_unfocus(prim: NativePrim) -> UnfocusRequirement
@@ -2252,6 +2252,7 @@ fn native_needs_unfocus(prim: NativePrim) -> UnfocusRequirement
             | NativePrim::Reduce
             | NativePrim::Any
             | NativePrim::All
+            | NativePrim::UpdateAt
             | NativePrim::UpdateWhere
     )
     .into()
