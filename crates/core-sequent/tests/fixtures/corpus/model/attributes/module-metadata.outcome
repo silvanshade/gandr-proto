@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/attributes/module-metadata.gandr
+; sexp-b3sum: cadd4dcba267da43e003db32852279b58f94c834a093b37bd601bcc15a8f1bd8
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Unit)

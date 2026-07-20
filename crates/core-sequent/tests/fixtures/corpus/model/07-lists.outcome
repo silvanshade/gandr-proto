@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/07-lists.gandr
+; sexp-b3sum: 069cb253a1bd727867c52a9d13370597f98940366e169922e21ec2015345a289
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(List([Int(1), Int(2), Int(3)]))
+Stuck(ForcedNonThunk)

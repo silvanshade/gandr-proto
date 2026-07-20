@@ -1,0 +1,8 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/type-associativity.gandr
+; sexp-b3sum: f2542de0b835773d26c69ed037b1f087162b916c896922a197dd396cc8ff4259
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 3
+Ret(Int(1))
+Ret(Int(1))
+Ret(Int(1))

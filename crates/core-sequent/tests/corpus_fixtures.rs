@@ -69,6 +69,10 @@ use gandr_core_checker::types::ValueType;
 /// One corpus fixture: the provenance source path plus its lowered items.
 pub struct Fixture
 {
+    /// The absolute path of the `.sexp` fixture this was read from, used by the
+    /// outcome-snapshot sweep to locate the sibling `.outcome` record and to
+    /// digest the fixture bytes for the snapshot's provenance guard.
+    pub path: PathBuf,
     /// The source-relative `.gandr` path (from the fixture provenance header),
     /// used verbatim in the sweeps' diagnostics so their output matches the
     /// pre-fixture spelling.
@@ -127,7 +131,11 @@ fn parse_fixture(
         .find_map(|line| line.strip_prefix("; source:"))
         .map_or_else(|| path.display().to_string(), |rest| rest.trim().to_owned());
     let items = parse_all(text).iter().map(de_term).collect();
-    Fixture { source, items }
+    Fixture {
+        path: path.to_path_buf(),
+        source,
+        items,
+    }
 }
 
 // ------------------------------------------------------------------ Sexp

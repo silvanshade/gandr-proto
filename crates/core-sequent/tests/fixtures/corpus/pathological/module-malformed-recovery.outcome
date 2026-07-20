@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/module-malformed-recovery.gandr
+; sexp-b3sum: 12fee2521b21ea7b8f9d23114f93abbdb3425d4d740216ceb71647390710696a
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Record([("broken", Hole(0)), ("ok", Int(2))]))

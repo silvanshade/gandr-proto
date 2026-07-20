@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/attributes/missing-payload.gandr
+; sexp-b3sum: d68f3a95e6bbfa873d150fb7cade0d05765d40cc1d458d39039f04cca53b9bd4
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Int(42))

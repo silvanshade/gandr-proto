@@ -608,6 +608,7 @@ dependencies = [
 name = "gandr-core-sequent"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "gandr-core-checker",
  "proptest",
 ]

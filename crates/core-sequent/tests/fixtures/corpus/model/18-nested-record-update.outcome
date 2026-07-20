@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/18-nested-record-update.gandr
+; sexp-b3sum: 0a2295dff598e0760d69aae6ea1513fd73039754fed36b6bd67d03e245957053
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Record([("inner", Record([("x", Int(1)), ("y", Int(2))])), ("tag", Str("t"))]))
+Stuck(RecordProjNonRecord)

@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/05-pairs.gandr
+; sexp-b3sum: 3d6c252d86a207f61bd5ff95d7f2143655600689eae9bd5028b578711ccbd6eb
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Pair(Int(1), Int(2)))
+Ret(Var("point"))

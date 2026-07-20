@@ -19,6 +19,10 @@ path = "tests/sequent.rs"
 gandr-core-checker = { path = "../core-checker" }
 
 [dev-dependencies]
+# BLAKE3 digests the corpus `.sexp` fixtures for the outcome-snapshot sweep's
+# provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
+# provenance convention the pre-lowered corpus fixtures already carry.
+blake3 = { workspace = true }
 proptest = { workspace = true }
 
 [features]

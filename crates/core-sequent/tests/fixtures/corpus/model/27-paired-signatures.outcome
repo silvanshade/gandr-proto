@@ -1,0 +1,8 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/27-paired-signatures.gandr
+; sexp-b3sum: b0d6498a65f64fb1986d131cc26faeb46396a26542aec9d0d6468551e35398a1
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 3
+Stuck(ForcedNonThunk)
+Ret(Thunk(Omega, Abs("x", None, Bind(App(App(Force(Var("add")), Var("x")), Int(2)), "%tmp1", Ret(Var("%tmp1"))))))
+Stuck(ForcedNonThunk)

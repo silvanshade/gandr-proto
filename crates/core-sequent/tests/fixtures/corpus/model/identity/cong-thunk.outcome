@@ -1,0 +1,8 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/identity/cong-thunk.gandr
+; sexp-b3sum: b3de3d35f051f53648bf80c14955fe11654f719db6548a3cd0f97b64c11c8ffe
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 3
+Ret(Thunk(Omega, Abs("x", None, Bind(App(App(Force(Var("add")), Var("x")), Var("x")), "%tmp0", Ret(Var("%tmp0"))))))
+Ret(Thunk(Omega, Abs("p", None, Walk { scrut: Var("p"), motive: WalkMotive { x: "x", y: "y", q: "q", body: F(Unknown) }, base: WalkBase { x: "x", body: Ret(Here(Thunk(Omega, App(Force(Var("double")), Var("x"))))) } })))
+Stuck(ForcedNonThunk)

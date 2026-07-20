@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/attributes/effectful-payload.gandr
+; sexp-b3sum: 8982b45075cf0011e7875ba3dcb0b3f640bb5041f33cce0e94f5b60a8ec9d759
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Int(42))

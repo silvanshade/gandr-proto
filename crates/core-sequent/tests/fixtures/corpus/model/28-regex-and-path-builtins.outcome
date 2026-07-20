@@ -1,0 +1,10 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/28-regex-and-path-builtins.gandr
+; sexp-b3sum: f3d3a6fe85b6d97f96347302fb962a8327ebbe0f932acbf3daa8dbffa0a8c84b
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 5
+Stuck(RecordProjNonRecord)
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Ret(Record([("capture", Var("caps")), ("leaf", Var("leaf")), ("path_ext", Var("suffix"))]))

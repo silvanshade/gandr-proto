@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/02-definitions.gandr
+; sexp-b3sum: fe2aaf98ebaafcc1fbba321951d468ba2dd7b104536b8efb48349b9da35e2d50
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Str("the value zone"))
+Ret(Var("greeting"))

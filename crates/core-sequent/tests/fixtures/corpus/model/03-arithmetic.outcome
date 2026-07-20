@@ -1,0 +1,8 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/03-arithmetic.gandr
+; sexp-b3sum: 045397ca968c50ae5e62e9df7afd6b7baa3e6c9f13eaae85a30d0668df621f37
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 3
+Stuck(ForcedNonThunk)
+Ret(Pair(Num(U32(1)), Pair(Num(U64(2)), Pair(Num(I32(3)), Pair(Num(I64(4)), Pair(Num(F32(1.5)), Num(F64(2.5))))))))
+Ret(Var("total"))

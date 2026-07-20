@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/attributes/duplicate-attribute.gandr
+; sexp-b3sum: 2f6db01f98b31ae16d2e0d6ae829b8ad489cb84bb3a1fc7e47d4107f4f12370b
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Int(42))

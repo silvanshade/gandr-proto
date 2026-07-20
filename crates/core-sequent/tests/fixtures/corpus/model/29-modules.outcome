@@ -1,0 +1,9 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/29-modules.gandr
+; sexp-b3sum: a525df492c388690a74f3d50c25ded9b2f6de20fad3995b2d591d688aaaae561
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 4
+Ret(Int(40))
+Blame(PerformNoHandler)
+Stuck(RecordProjNonRecord)
+Stuck(RecordProjNonRecord)

@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/16-record-update-field-retype.gandr
+; sexp-b3sum: 2cd94d7e3bbad91720bbff5e4e4e90405efd9c2363ca912f517c7363491619e7
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Record([("count", Int(3)), ("label", Str("start"))]))
+Blame(Hole)

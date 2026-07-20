@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/ffi-wrong-arity.gandr
+; sexp-b3sum: 7d2496429cfb57e1b777faf5db4507bf3d40e595e6c1f46e6b4c85ed47598156
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Blame(Hole)

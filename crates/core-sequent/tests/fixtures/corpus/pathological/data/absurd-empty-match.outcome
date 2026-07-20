@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/data/absurd-empty-match.gandr
+; sexp-b3sum: 11369a5fd7b52f23c8c8e872248eff520b5cca707007cd865b2578b56d97d634
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Thunk(Omega, Abs("v", None, DataCase(Var("v"), []))))

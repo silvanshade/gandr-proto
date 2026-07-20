@@ -1,0 +1,12 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/08-list-combinators.gandr
+; sexp-b3sum: 096e2365afa87d143261491dddc5d3ecb3b55533ffe512443e663b3e842b7172
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 7
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)
+Stuck(ForcedNonThunk)

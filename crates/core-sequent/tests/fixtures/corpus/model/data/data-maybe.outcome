@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/data/data-maybe.gandr
+; sexp-b3sum: 8ef4995cb0741a617b86e56f34849a8493217e6ac0b886644beddc8781e28dbc
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, DataCase(Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 1, payload: Int(3) }, [("_", Ret(Int(0))), ("x", Ret(Var("x")))])))
+Stuck(ForcedNonThunk)

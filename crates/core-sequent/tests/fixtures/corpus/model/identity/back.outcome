@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/identity/back.gandr
+; sexp-b3sum: faee7224617c3ebe9c858277019685b75cc306101524846063e8ef214f8d6e8f
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Other)
+Stuck(WalkOnNonHere)

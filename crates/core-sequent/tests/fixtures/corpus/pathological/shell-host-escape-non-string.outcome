@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/shell-host-escape-non-string.gandr
+; sexp-b3sum: ad5c65e046479c2315f5165bc6113512d2b208866a41d8d2f8ca2ab49ac99850
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Blame(PerformNoHandler)

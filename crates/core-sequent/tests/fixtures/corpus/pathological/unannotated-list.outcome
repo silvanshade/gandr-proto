@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/unannotated-list.gandr
+; sexp-b3sum: 1bad3dff1f526a76f9f93cac0c9f96f9977a3e76a849c6d8fb6a8e3a3bc03777
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(List([Int(1), Int(2), Int(3)]))

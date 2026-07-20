@@ -1,0 +1,6 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/data/nominal-distinctness.gandr
+; sexp-b3sum: 9a8da65562d5b5dea8f555d1975f43a0467e574ae94a8bd161f89d8b53e0dbd3
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 1
+Ret(Other)

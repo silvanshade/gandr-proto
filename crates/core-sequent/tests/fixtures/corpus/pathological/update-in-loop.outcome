@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/update-in-loop.gandr
+; sexp-b3sum: 13fb54a441cb6bc7a6e1787737415b0c395d2f8a90efeda053aee4a9eaeab251
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(List([Int(1), Int(2), Int(3), Int(4)]))
+Stuck(ForcedNonThunk)

@@ -1,0 +1,7 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: model/data/data-nested-type.gandr
+; sexp-b3sum: 146ff1d10dbbb3489cbc19c387618e3ef81d8885b642378e2734794c6ab4c539
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 2
+Ret(Thunk(Omega, Bind(Ret(List([Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 1, payload: Int(1) }, Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 0, payload: Unit }, Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 1, payload: Int(3) }])), "items", Ret(Int(7)))))
+Stuck(ForcedNonThunk)
