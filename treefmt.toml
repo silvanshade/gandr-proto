@@ -172,10 +172,20 @@ includes = ["*"]
 # Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment.
 # docs/research/*.md: literature-register prose is dense with author names and
 # citation keys (identifiers, not prose) — the refs.yml failure mode.
+# docs/spec/refs.yml: the gandr central citation register (hayagriva, derived
+# from docs/research/bibliography-v2.md) — author names and citation ids are
+# identifiers; the realized refs.yml failure mode. Mirrored in typos.toml.
 # PLAN.html: generated export carrying bibliography author names and register/
 # tracker ids (Tye, FoPSS, wyrd-8ot, …) — the same class; mirrored in
 # typos.toml extend-exclude.
-excludes = ["*.typ", "*.agda", "*.agda-lib", "docs/research/*.md", "PLAN.html"]
+excludes = [
+  "*.typ",
+  "*.agda",
+  "*.agda-lib",
+  "docs/research/*.md",
+  "docs/spec/refs.yml",
+  "PLAN.html"
+]
 
 # [formatter.yamllint]
 # command = "yamllint"

@@ -16,9 +16,11 @@
 # *.typ: greenfield typst manual sources (Track C) quote Agda/math identifiers
 # verbatim, so they get the same protection.
 #
-# docs/manual/refs.yml: bibliography citation keys and author names are
-# identifiers, not prose; typos has already "corrected" the key aks-2015 →
-# ask-2015 (the exact H8 failure mode, 2026-07-03, internal-univalence).
+# docs/manual/refs.yml, docs/spec/refs.yml: bibliography citation keys and
+# author names are identifiers, not prose; typos has already "corrected" the key
+# aks-2015 → ask-2015 (the exact H8 failure mode, 2026-07-03, internal-univalence).
+# docs/spec/refs.yml is the gandr central citation register (hayagriva, derived
+# from docs/research/bibliography-v2.md) — the same identifier false-positive class.
 #
 # vendor trees (metatheory/vendor/** = vendored agda-stdlib; vendor/** kept for
 # any future root-level vendoring) are read-only upstream: a standalone typos
