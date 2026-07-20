@@ -8,7 +8,7 @@
 
 * **Keep crates boring and explicit.** One job per crate, a flat data path (parser → CST → lowering → core IR → checker/machine).
   Prefer a clean cutover over a compatibility shim; no aliases or dead paths unless an accepted ADR requires them.
-  General/reusable machinery gets its own crate (precedents: `gandr-order-maintenance`, `gandr-nominal`) — a design pass owes the crate/module-boundary judgement, not only the edits (modularity-first, `.agents/core/core/PRINCIPLES.md` §"Working posture").
+  General/reusable machinery gets its own crate (precedents: `gandr-theory-orders`, `gandr-theory-nominal-automata`) — a design pass owes the crate/module-boundary judgement, not only the edits (modularity-first, `.agents/core/core/PRINCIPLES.md` §"Working posture").
 * **Choose architecture with performance in view.** Before concrete implementation, enumerate the plausible architectures and compare their runtime and memory profiles alongside correctness, extensibility, maintainability, and implementation complexity.
   Prefer the best-performing design that does not materially sacrifice those other qualities.
   Do not default to the most direct design when improving it later would require an expensive change to ownership, representation, interfaces, persistence, or other foundations; equally, do not micro-optimize local code without evidence.
@@ -58,7 +58,7 @@
   Primitive detection follows aliases and non-nominal structural/generic containers; a semantically named transparent wrapper is the boundary, with explicit utility traits.
   The sole signature exception is a method implementing a trait defined in an external crate.
   Project-local rules also enforce source-grounded recursive `# Termination` contracts and reject false `input recursion: none` claims.
-  `non_local_effect_before_unhandled_error` remains isolated because the pinned upstream rule panics on a `gandr-core` lib-test target; the required state-consistency audit is a tracked follow-up.
+  `non_local_effect_before_unhandled_error` remains isolated because the pinned upstream rule panics on a `gandr-core-checker` lib-test target; the required state-consistency audit is a tracked follow-up.
 
 ### Dylint adoption and residual ledger
 
@@ -66,9 +66,9 @@ The 2026-07-17 restoration re-enabled every Rust workspace crate and removed the
 
 * build, documentation, nextest, careful, coverage, Miri, live graph-gate discovery, Clippy, and Dylint now address the complete enabled workspace;
 * `cargo:clippy` checks every enabled workspace target with `features=full`, including the in-workspace `gandr-workflow-dylint` driver;
-* every workspace-wide `cargo:dylint` pass uses the same enabled-workspace scope; the pinned non-local-effect lint retains only its documented `gandr-core` lib-test split;
+* every workspace-wide `cargo:dylint` pass uses the same enabled-workspace scope; the pinned non-local-effect lint retains only its documented `gandr-core-checker` lib-test split;
 * `gandr-workflow-gates` carries parked crate-local lint-wall overrides instead of a lint exemption, triaged by `gandr-0ze`;
-* GitHub CI runs Clippy and Dylint as separate dependency-free jobs, while the rust-gates workflow contract locks their job independence and exact package scopes.
+* Clippy and Dylint run as the local `mise run cargo:clippy` and `mise run cargo:dylint` gates over that enabled-workspace scope; the hosted CI that ran them as separate dependency-free jobs — and the `ci_contracts` test locking their job independence and exact package scopes — is parked for the reboot, returning with the `.github/workflows/` surface (`gandr-kk7`; [ci.md](ci.md)).
 
 New untracked package allowlists or exclusions are prohibited.
 
@@ -79,7 +79,7 @@ The rollout established these durable findings and actions:
    Do not restore compatibility with generic `Into`, inherent primitive getters, or primitive `PartialEq`.
 2. **Recursion claims require call-graph evidence.** Free functions and methods are checked by recursive SCC, including nested calls and generic arguments.
    Recursion over caller-owned input must become an explicit bounded worklist; documentation alone cannot relabel it as non-recursive.
-3. **Mutation-before-error paths are architectural evidence.** Preserve the isolated upstream non-local-effect pass and investigate its `gandr-core` lib-test panic; never disable the lint globally.
+3. **Mutation-before-error paths are architectural evidence.** Preserve the isolated upstream non-local-effect pass and investigate its `gandr-core-checker` lib-test panic; never disable the lint globally.
 4. **Future rules should encode cross-module invariants.** Tracked follow-up candidates: checker/machine constructor parity, atomic force-state transitions, subprocess-boundary policy, nominal-id replay provenance, and semantic-wrapper escape prevention.
 
 * **Dependencies.** Use the `find-best-rust-crates` skill before adding a nontrivial crate, but treat external implementations as design references rather than automatic dependencies.
@@ -147,7 +147,7 @@ Every nontrivial item (public or private — `missing_docs_in_private_items` is 
   /// - input recursion: none.
   ```
 
-  `- input recursion: none.` is required everywhere except the model recursive checker in `gandr-core::checker::Rec`, if that implementation is still recursive.
+  `- input recursion: none.` is required everywhere except the model recursive checker in `gandr-core-checker::checker::Rec`, if that implementation is still recursive.
   That checker may instead name structural descent through the finite checked term, because serving as the direct recursive reference model is its purpose; the defunctionalized machine remains the adversarial-depth path.
   Tail-call position does not remove this obligation because Rust does not guarantee tail-call optimization; a genuinely iterative implementation is not recursive and needs no termination section.
 * `# Adequacy`: `- hypothesis:` — a falsifiable claim naming which adequacy-ladder rung kills each decision surface's mutants, plus the distinguishing inputs and observations for the pointwise residue — then one `- witness:` bullet per witnessing test (crate-qualified when it lives in another crate).
