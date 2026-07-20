@@ -697,7 +697,7 @@ fn top_level_command_inventory_is_exact() -> TestResult
     // Search within the commands tail: the binary name itself
     // (`gandr-workflow-gates`) contains `workflow`, which would false-positive
     // the order assertion.
-    let commands_tail = usage.get(usage.find("commands: ").map_or(0, |position| position) ..);
+    let commands_tail = usage.get(usage.find("commands: ").unwrap_or(0) ..);
     let mut previous_position = None;
     for command in EXPECTED_COMMANDS {
         let Some(tail) = commands_tail
