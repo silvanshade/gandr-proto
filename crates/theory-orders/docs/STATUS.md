@@ -19,4 +19,4 @@ Coverage is ~98% lines / ~95% regions (`mise run cargo:llvm-cov`); the uncovered
 A criterion `order` bench (`harness = false`) measures sequential append, endpoint comparison, and the adversarial same-spot insertion that maximizes relabeling.
 
 This crate is **only** the order structure and its interval query.
-The lowest-enclosing-binder lookup / binding pointers, the per-node dual-type + mark + dirty-bit layout for the marked CBPV core, and the tree-sitter node-identity resync are separate bricks that _consume_ this one; none lives here.
+The lowest-enclosing-binder lookup / binding pointers, the per-node dual-type + mark + dirty-bit layout for the marked CBPV core, and the merkle-CST `OriginEntry` resync are separate bricks that _consume_ this one; none lives here.

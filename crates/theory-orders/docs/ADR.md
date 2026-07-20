@@ -47,7 +47,7 @@ Decision: `OrderMaintenance<T>` carries a caller payload; the only structure bui
 
 Rationale: the order structure is generic and reusable.
 The interval query is the one O(1) consumer of the order that is purely a function of it.
-Everything else that the Porter synthesis layers on order maintenance — binding pointers / lowest-binder lookup, per-node mark/dirty-bit layout, the tree-sitter node-identity resync — has its own invariants and belongs in its own brick.
+Everything else that the Porter synthesis layers on order maintenance — binding pointers / lowest-binder lookup, per-node mark/dirty-bit layout, the OM-over-CST resync onto the merkle CST's `OriginEntry` identity — has its own invariants and belongs in its own brick.
 
 ## designed direction
 
@@ -56,9 +56,10 @@ Everything else that the Porter synthesis layers on order maintenance — bindin
 The single-level scheme's O(log² n) amortized insertion can be improved to O(1) amortized with the two-level structure of Bender et al. (a top list of O(log n) sublists).
 Deferred until profiling on real edit traces shows insertion cost matters; tracked in `OPTIMIZATION.md`.
 
-### Tree-sitter node-identity resync (out of scope here)
+### Merkle-CST `OriginEntry` resync (out of scope here)
 
-Wiring order points to tree-sitter node identity across a reparse — when byte ranges shift but subtrees are unchanged — is a real, unsolved sync problem.
+Wiring order points to the merkle CST's reproducible `OriginEntry` identity across a reparse — when byte ranges shift but subtrees are unchanged — is a real, unsolved sync problem.
+The tree-sitter node-address seam this was once framed against is retired (see `lib.rs`): a reparse now recognizes unchanged subtrees by merkle content hash, not parser-carried node addresses.
 It lands where this structure meets the parser bridge, not here; this crate's handles are deliberately reparse-agnostic.
 
 ## open decision
