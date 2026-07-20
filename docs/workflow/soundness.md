@@ -3,13 +3,13 @@
 > Read when: changing the checker, the typing machine, the subtype relation, effect/grade arithmetic, or an evaluator the differentials compare.
 
 The `checker ≡ machine` differential suite (ADR-9) proves the recursive checker and the typing machine **agree**, not that either is **correct**: a soundness bug both share — the common case, since they are derived from each other — leaves them agreeing on the wrong answer, invisible at any case count.
-The same holds for every differential in the project (`eval ≡ run`, the L≡run sequent rows).
+The same holds for every differential in the project; the CEK-oracle differentials (`eval ≡ run`, the `L ≡ run` sequent rows) retired with the CEK at B1 stage F, leaving the L machine (`crates/core-sequent`) the sole operational driver, now pinned by checked-in snapshots captured from the final CEK-agreeing run (the corpus outcome-snapshot sweep plus the property differential, `crates/core-sequent/tests/differential.rs`).
 A change to any compared surface earns these practices on top of the differential suite (the motivating seam: the A3.2 check-mode `bind` row-escape):
 
 * **Directed coherence oracle.** Relate the two _modes_, not the two implementations: if a term both infers `B'` and checks against `B`, then `B'` must be a consistent subtype of `B` — independent of the differential suite, which structurally cannot see a shared bug.
 * **Biased companion — a gate, not a convention (ADR-48).** A free generator is too sparse to bite: the suspect construct reaches check mode against a violating answer only by accident (over the known A3.2 bug the free cross stayed green across tens of thousands of cases).
   Pair every free-generator `*coherence*` oracle with a **biased generator** routing the construct through check mode, plus a **near-miss** that strips the just-added index (an effect row, a grade).
-  Worked example: `effectful_bind_subsumption_coherence` in `crates/gandr-core/src/conformance.rs`.
+  Worked example: `effectful_bind_subsumption_coherence`, a typing companion in `crates/core-checker/src/conformance.rs` — which since B1 stage F carries only the `checker ≡ machine` typing rows, the executable observable-outcome soundness rows having re-homed to `crates/core-sequent/tests/conformance_soundness.rs` on the L machine (bead `gandr-wvd.23`).
   The Rust `source_policy::run_default_soundness_oracles` gate (`mise run test:soundness-oracles`; CLI subcommand `soundness-oracles`) fails if an oracle lacks a declared companion — tag the oracle `SOUNDNESS-ORACLE-WITNESS: <companion>[, …]` and each companion `SOUNDNESS-ORACLE-COMPANION`.
   Existing companions: the effect-row, integer-literal-defaulting (ADR-39 D4), and graded-thunk legs; the oracle relates modes through `coherence_{value,comp}_subtype` (consistent subtype plus the covariant `Integer ⊑ sized-int` literal relaxation, effect-row and grade legs strict), and a guard test pins that a _variable_ of type `Integer` never widens to a sized-int atom.
 * **Both-directions discipline.** Exercise every directed rule in both `Dir::Infer` and `Dir::Check`: the A3.2 hole hid in check mode only.
