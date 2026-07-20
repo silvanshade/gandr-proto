@@ -52,17 +52,20 @@ includes = [
   "*.yaml",
   "*.yml",
 ]
-# Generated or layout-sensitive JSON a formatter must not rewrite — the same
+# Generated or layout-sensitive artifacts a formatter must not rewrite — the same
 # fidelity discipline as the top-level .beads exclude:
 #   - tree-sitter-generated grammar.json / node-types.json (`tree-sitter generate`);
 #   - the npm-generated package-lock.json;
 #   - the contract-fixtures manifest.json, read by a bespoke layout-sensitive
-#     slice parser in gandr-grammar-contract-fixtures (reformatting breaks it).
+#     slice parser in gandr-grammar-contract-fixtures (reformatting breaks it);
+#   - PLAN.html: generated export of the approved wayfinder plan (gandr-fcw.14);
+#     reformatting balloons it and degrades the reviewed artifact.
 excludes = [
   "packages/tree-sitter-gandr/src/grammar.json",
   "packages/tree-sitter-gandr/src/node-types.json",
   "packages/tree-sitter-gandr/package-lock.json",
   "crates/gandr-grammar-contract-fixtures/fixtures/manifest.json",
+  "PLAN.html",
 ]
 
 [formatter.oxlint]
@@ -89,6 +92,8 @@ includes = [
   "*.tsx",
   "*.vue",
 ]
+# PLAN.html: generated export (see oxfmt excludes) — not lintable source.
+excludes = ["PLAN.html"]
 
 # The mutating formatter takes the lower priority so `fmt` completes before
 # `check` when both cover the same markdown set (core fragment convention).
@@ -129,7 +134,9 @@ includes = ["*"]
 # never rewrite them (core hazard H8). Consumer-local LIVE-hazard fix — the
 # permanent fix is the core H8 exclude fragment; this drift is intentional
 # until the core ships it.
-excludes = ["*.typ", "*.agda", "*.agda-lib"]
+# PLAN.html: generated 550KB+ export of the approved wayfinder plan — size is
+# inherent to the artifact (embedded inventory + bibliography), not prose bloat.
+excludes = ["*.typ", "*.agda", "*.agda-lib", "PLAN.html"]
 
 [formatter."tombi-format"]
 command = "tombi"
@@ -156,7 +163,10 @@ includes = ["*"]
 # Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment.
 # docs/research/*.md: literature-register prose is dense with author names and
 # citation keys (identifiers, not prose) — the refs.yml failure mode.
-excludes = ["*.typ", "*.agda", "*.agda-lib", "docs/research/*.md"]
+# PLAN.html: generated export carrying bibliography author names and register/
+# tracker ids (Tye, FoPSS, wyrd-8ot, …) — the same class; mirrored in
+# typos.toml extend-exclude.
+excludes = ["*.typ", "*.agda", "*.agda-lib", "docs/research/*.md", "PLAN.html"]
 
 # [formatter.yamllint]
 # command = "yamllint"

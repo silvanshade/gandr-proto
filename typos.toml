@@ -24,7 +24,13 @@
 # any future root-level vendoring) are read-only upstream: a standalone typos
 # run has already "corrected" upstream CHANGELOG spellings, dirtying the pin;
 # scoped out so editor/CLI passes leave vendored trees untouched.
+#
+# PLAN.html: generated export of the approved wayfinder plan (gandr-fcw.14),
+# carrying bibliography author names and register/tracker ids (Tye, FoPSS,
+# wyrd-8ot, …) — the refs.yml class of identifier false positives. Mirrors the
+# treefmt [formatter.typos]/[formatter.sizelint]/[formatter.oxfmt] excludes.
 extend-exclude = [
+  "PLAN.html",
   "secrets/",
   "treefmt.toml",
   ".agents/core/",
