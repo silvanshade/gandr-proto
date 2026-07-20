@@ -39,11 +39,14 @@
 //! | **U3.0a — `CodeIso` certificates** | PASS | replay-equivalence (ADR-69 D1) | paired translators with `generic_eq`-replayed round trips; the invertible-mode groupoid (identity, inverse, `compose_invertible`) is unital, associative, and inverse-cancelling up to replay; composition declines only on a boundary mismatch (ADR-69 D3 — no acyclicity gate in this mode) | `u30a::*` |
 //! | **U3.0b — generic-consumer transport** | PASS | — | `generic_eq` agreement, `serialize_value` naturality up to re-encoding, and interner coherence across every certificate — transport-of-structure with zero new machinery | `u30b::*` |
 //! | **U3.0c — the permanent negation guard** | PASS (standing guard) | replay-equivalence vs. code equality | `CodeIso(Boolean, Boolean)` has ≥ 2 replay-inequivalent members (identity, negation) though their boundary codes coincide; realizing `⤳` as decidable code equality would collapse them — kill signal **P-c**, which this test makes fail loudly | `u30c::*` |
+//! | **U3.0d — the permanent leaf-shift guard** | PASS (standing guard) | replay-equivalence vs. the leaf-natural stock | over `IntBox` (`Box = Integer`, an infinite leaf) the successor/predecessor `leaf_shift` round-trips yet is replay-distinct from the identity, and `IntBox`'s single constructor makes the structural auto-iso group trivial — so the shift has no leaf-natural preimage; ua-base's O2 completeness quantifier must range over the leaf-natural stock, which this guard keeps load-bearing | `u30d::*` |
 //!
-//! Net: U3.0a/b PASS on the landed structures; U3.0c is the informative
-//! **permanent** guard — a checked refutation of the false floor (decidable
-//! code equality), kept in-tree per the iu `BlanketBase` pattern, not a
-//! design-note footnote.
+//! Net: U3.0a/b PASS on the landed structures; U3.0c and U3.0d are the
+//! informative **permanent** guards — checked refutations of, respectively, the
+//! false floor (decidable code equality, pinching completeness from below) and
+//! the over-wide completeness quantifier (the unrestricted iso stock, pinching
+//! it from above), kept in-tree per the iu `BlanketBase` pattern, not
+//! design-note footnotes.
 //!
 //! ## The honest scoping this suite encodes (design note §4.1–§4.2)
 //!
@@ -51,9 +54,12 @@
 //! *not* stage 1; the **certificate half is executable now**, which is this
 //! suite. The cardinality witness that keeps `ua-base` honest — a nontrivial
 //! auto-iso of `Boolean` with no code-path preimage under a code-equality `⤳` —
-//! is `u30c`. "Set-level" describes the *objects* (codes are an h-set under
-//! Hedberg); it never describes the *protypes*, whose instance set at
-//! `(Boolean, Boolean)` is provably not a singleton here.
+//! is `u30c`. The dual witness that keeps `ua-base`'s *completeness* honest —
+//! an `Integer`-leaf auto-iso with no leaf-natural preimage, forcing the O2
+//! quantifier onto the leaf-natural stock — is `u30d`. "Set-level" describes
+//! the *objects* (codes are an h-set under Hedberg); it never describes the
+//! *protypes*, whose instance set at `(Boolean, Boolean)` is provably not a
+//! singleton here.
 
 #![allow(
     clippy::arithmetic_side_effects,
@@ -69,5 +75,6 @@ extern crate alloc;
 mod certificates;
 mod fixtures;
 mod harness;
+mod leaf_shift_guard;
 mod negation_guard;
 mod transport;

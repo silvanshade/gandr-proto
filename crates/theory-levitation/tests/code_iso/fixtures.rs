@@ -11,6 +11,7 @@
 
 use alloc::rc::Rc;
 
+use gandr_core_checker::grade::Grade;
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::Code;
 use gandr_theory_levitation::CtorDesc;
@@ -20,7 +21,9 @@ use gandr_theory_levitation::DescValue;
 use gandr_theory_levitation::NameRef;
 use gandr_theory_levitation::NominalId;
 use gandr_theory_levitation::Payload;
+use gandr_theory_levitation::PrimTy;
 use gandr_theory_levitation::Side;
+use gandr_theory_levitation::ValueTypeRef;
 use gandr_theory_levitation::builtin::bool_desc;
 
 use crate::harness::CodeIso;
@@ -203,3 +206,87 @@ pub fn rgb_values() -> Vec<DescValue>
 // ======================================================================
 // Named certificates
 // ======================================================================
+
+// ======================================================================
+// The infinite-leaf boundary (U3.0d — the leaf-shift guard)
+// ======================================================================
+
+/// The single-constructor **`IntBox`** description (`Box = Integer`) — one
+/// field over the unbounded primitive leaf [`PrimTy::Integer`]. A monomorphic
+/// endo-boundary whose only degree of freedom is *leaf content*: with exactly
+/// one constructor, the structural (constructor-permuting) auto-iso group is
+/// trivial, so any nontrivial auto-iso must move the leaf. The carrier for the
+/// [`leaf_shift`] witness.
+pub fn int_box() -> DataDesc
+{
+    DataDesc::new(
+        NominalId::new(3.into(), "IntBox"),
+        Vec::new(),
+        [CtorDesc::new(
+            "Box",
+            Code::field(
+                ValueTypeRef::Prim(PrimTy::Integer),
+                Grade::ONE,
+                Attrs::empty(),
+            ),
+            None,
+            Attrs::empty(),
+        )],
+        Vec::new(),
+        Vec::new(),
+        DeclPolarity::Data,
+        Attrs::empty(),
+    )
+}
+
+/// An [`int_box`] value carrying the integer `n` — constructor `Box` (index 0)
+/// over the canonical decimal-ASCII leaf encoding of `n`. The decimal spelling
+/// is unbounded-length, faithful to `Integer`'s unbounded leaf (the finite
+/// `i64` here bounds only the *sampled* range, never the leaf type).
+pub fn int_leaf(n: i64) -> DescValue
+{
+    DescValue::new(0.into(), Payload::Leaf(n.to_string().into_bytes().into()))
+}
+
+/// A finite sample of [`int_box`] leaf values, `0` first (so the earliest
+/// replay disagreement with the identity is inspectable at `0`), staying well
+/// inside the `i64` sample bound.
+pub fn int_box_values() -> Vec<DescValue>
+{
+    [0_i64, 1, 2, -1, -2].into_iter().map(int_leaf).collect()
+}
+
+/// The **identity** auto-iso on [`int_box`] — the sole leaf-natural member of
+/// the endo-boundary (the structural auto-iso group is trivial), against which
+/// [`leaf_shift`] is pinned replay-distinct.
+pub fn int_box_identity() -> CodeIso
+{
+    CodeIso::identity("id[IntBox]", int_box())
+}
+
+/// The **leaf-shift** auto-iso on [`int_box`]: forward is the integer successor
+/// (`n ↦ n + 1`), backward the predecessor (`n ↦ n − 1`). A genuine `CodeIso`
+/// member — its round trips hold on every integer — that is nonetheless
+/// **replay-distinct from the identity** (it disagrees on every leaf). Unlike a
+/// constructor permutation, it reads and rewrites the leaf *content*, so no
+/// leaf-natural (structural) certificate replays it — the U3.0d witness.
+pub fn leaf_shift() -> CodeIso
+{
+    let forward: Translate = Rc::new(|value: &DescValue| int_leaf(read_int_leaf(value) + 1));
+    let backward: Translate = Rc::new(|value: &DescValue| int_leaf(read_int_leaf(value) - 1));
+    CodeIso::new("leaf-shift", int_box(), int_box(), forward, backward)
+}
+
+/// Read the integer an [`int_box`] value carries, parsing its decimal-ASCII
+/// leaf (the inverse of [`int_leaf`]).
+fn read_int_leaf(value: &DescValue) -> i64
+{
+    let Payload::Leaf(ref bytes) = value.payload
+    else {
+        panic!("an IntBox value carries a Leaf payload");
+    };
+    core::str::from_utf8(bytes)
+        .expect("the IntBox leaf is decimal-ASCII")
+        .parse::<i64>()
+        .expect("the IntBox leaf parses as an integer")
+}
