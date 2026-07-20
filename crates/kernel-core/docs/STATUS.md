@@ -1,7 +1,7 @@
 # Status
 
-The crate is slice 3 of the minimal certified kernel (`docs/gandr/spec/kernel-boundary.md` §8), stage B2.1: the **S1 pure polarized core** — term/type language, declaration vocabulary, environment + choke point, checker, and the C5-quarantined conversion — complete and green.
-The export writer/reader (B2.2), the core-checker bridge and corpus gate (B2.3), and the fcw.8 spec components (B2.4) are the remaining B2 stages.
+The crate is slice 3 of the minimal certified kernel (`docs/gandr/spec/kernel-boundary.md` §8), stages B2.1 and B2.2: the **S1 pure polarized core** — term/type language, declaration vocabulary, environment + choke point, checker, and the C5-quarantined conversion (B2.1) — plus the **K5 export writer and validating reader** (B2.2) — complete and green.
+The core-checker bridge and corpus gate (B2.3) and the fcw.8 spec components (B2.4) are the remaining B2 stages.
 
 Implemented (B2.1, slice 3):
 
@@ -24,7 +24,18 @@ Implemented (B2.1, slice 3):
 * **Errors** (`error`) — the closed, honest `KernelError` vocabulary; level and universe failures carry the `gandr_kernel_strata` refutation evidence they rest on.
   There is deliberately no non-canonical-level variant: an in-memory `Level` is canonical by construction, so the "reject non-canonical input" obligation is discharged by construction here and re-armed at the decode boundary in B2.2.
 
-Tests are green under `cargo test -p gandr-kernel-core` (63 total): per-module unit goldens (each checker rule, each error arm, the audit closure, the universe rule and its irreflexivity, landmark admission both ways, the depth-budget totality guard), plus `tests/conversion.rs` (reflexivity/symmetry/separation property differentials over generated types and terms) and `tests/checker.rs` (the kernel-native golden corpus of well-typed and ill-typed declarations, plus a totality-and-determinism property over arbitrary bodies).
+Implemented (B2.2, slice 3):
+
+* **Export writer/reader** (`export`) — the K5 re-checkable export (kernel-boundary.md §5, E1–E6).
+  `write` serializes an `Environment` to self-contained, deterministic canonical bytes: a version header, the reserved sections, then the admission-ordered declaration sequence, iterating declarations in admission order and level atoms in `BTreeMap`-sorted order (never hash-order) so an identical environment yields byte-identical output (E1/E2/E4/E5).
+  Each declaration carries its admission mark (checked vs unchecked-bypass) and `Axiom`s serialize as `Axiom`s, so the §3 audit survives (E6); the precomputed transitive `rested_on` sets are **not** written — the reader recomputes them by re-admitting through the environment (E3).
+  `decode` is the validating reader: a total, closed-vocabulary parser with the rejection triple as a closed error vocabulary (`DecodeError`: truncation / an unknown tag / a structural violation), extended by named refusals for the reserved declaration kinds (R1), non-empty reserved slots/sections (R2/R3/R4), and an unknown version (E5).
+  It decodes through constructors: levels rebuild through the `gandr-kernel-strata` smart constructors (canonical by construction), and a whole-artifact canonical-bytes check rejects any non-canonical _encoding_ — re-arming the B2.1 non-canonical-level obligation at the decode boundary.
+  Term and type trees decode **iteratively** over an explicit frame worklist (the `conv` precedent), never input-scaled recursion, and the writer is likewise iterative, so an adversarially deep artifact (admissible through the bypass) never overflows the stack.
+  `read` replays the decoded sequence through the choke point — `add_decl` for a checked mark, `add_decl_unchecked` for a bypass mark — reproducing the environment with its audits recomputed (E2/E3/E6); `ReadError` holds the decode plane (`DecodeError`) and the re-admission plane (`KernelError`) distinct.
+  All seven ratified reservations are present in the v0 format and format-plane only (zero S1 typing consequence): the R1 reserved declaration-kind tags (`AbstractType`=2/`ModuleSig`=3/`ModuleDef`=4/`FunctorDef`=5, rejected distinctly), the R2 structured (segment-sequence) name pinned empty, the four R3 per-`Def` annotation slots pinned empty, and the R4 reserved minted-atom table pinned empty.
+
+Tests are green under `cargo test -p gandr-kernel-core` (82 total): per-module unit goldens (each checker rule, each error arm, the audit closure, the universe rule and its irreflexivity, landmark admission both ways, the depth-budget totality guard), plus `tests/conversion.rs` (reflexivity/symmetry/separation property differentials over generated types and terms), `tests/checker.rs` (the kernel-native golden corpus of well-typed and ill-typed declarations, plus a totality-and-determinism property over arbitrary bodies), and `tests/export.rs` (the round-trip, determinism, and rejection-totality differentials: `read(write(env))` reproduces declarations, marks, and recomputed audits; truncation at every prefix and arbitrary random bytes always return; the reserved kinds/slots, an unknown version, and a non-canonical level/literal encoding each reject).
 
 ## Design decisions recorded for review
 
@@ -42,7 +53,26 @@ Tests are green under `cargo test -p gandr-kernel-core` (63 total): per-module u
 * **Base-type atoms are `{ Integer, String, Numeric }`** — the three the S1 literal stock (`int/str/num`) names, taken as a closed, rigid set.
   Literal payloads are inert to checking at S1 (no type embeds a value term); the exact numeric-literal grammar is a v0 placeholder.
 
+Export (B2.2) design decisions recorded for review:
+
+* **The transitive audit sets are recomputed, never exported (E3).** The precomputed `rested_on` sets are omitted from the bytes; the reader recomputes them by re-admitting each declaration through the choke point.
+  Alternative: serialize the audit as a claim and re-validate it — rejected, because re-admission already recomputes it and shipping derived data invites trusting it (K4/E3).
+* **Decode failure is a distinct type from typing failure.** `DecodeError` (format plane) is separate from `KernelError` (typing plane); `ReadError` unions the two for `read`.
+  Alternative: widen `KernelError` with decode variants — rejected, because a malformed byte is not a typing judgment and the two planes must not blur.
+* **A reserved declaration kind rejects distinctly (R1).** A reserved kind byte is `DecodeError::ReservedDeclarationKind`, not a generic unknown-tag rejection.
+  Alternative: fold reserved kinds into the bad-tag arm — rejected as less honest and less diagnostic.
+* **Structured names are a segment sequence pinned empty at v0 (R2).** The per-declaration name record is a segment count (zero at v0), never a flat dotted `M.l` string; a non-empty name is rejected, since S1 declarations are nameless and `add_decl` takes no name (a name could not round-trip).
+  Alternative: omit the name field until names arrive — rejected, because R2 requires the structured shape present from birth.
+* **Level decode is bounded by an offset cap.** Strata exposes no `O(1)` `var + offset` constructor, so a variable atom `x + o` is rebuilt through `o` applications of `succ`; a decode-time cap (`MAX_DECODED_LEVEL_OFFSET = 4096`) bounds that work, the same totality posture as the checker's depth budget.
+  Consequence: a level whose _variable-atom_ offset meets the cap does not round-trip (implausible — real offsets are `0`/`1`; universe _constants_ are uncapped and `O(1)`).
+  Alternative: an unbounded `succ` loop (rejected — not bounded work on adversarial input) or a fallible writer that refuses such levels (rejected — the task fixes the writer's return as `Vec<u8>`).
+  The cap lifts when strata exposes an `O(1)` offset constructor (carry-note for a future strata slice; strata is out of B2.2 scope).
+* **Canonical bytes are enforced by a whole-artifact re-encode-compare.** The decoder is tolerant (it normalizes through the constructors) and a single `encode(decode(bytes)) == bytes` check rejects every non-canonical encoding — a padded literal, an unsorted or dominated level atom, an overlong varint — as `DecodeError::Malformed { NonCanonical }`.
+  Alternative: per-field canonical checks scattered through the decoder — rejected as more code with more room to leave a gap.
+* **The writer reads the environment's admission log through a `pub(crate)` surface.** `Environment::admitted` (and the widened `Admission` visibility) expose the admission-ordered declarations and their marks to the same-crate writer without a public leak; the `to_digits`/`to_content` literal-payload accessors were added to `base` for the same reason.
+  The byte-plumbing helpers (`ByteReader`, varints) traffic in `u8`/`usize` rather than nominal wrappers, a small deviation from the crate's primitive-wall discipline scoped to the codec interior; the domain surface (public API, tags-as-sites, error payloads) stays nominal.
+
 Deliberately **not** here (kernel-boundary.md §7 S1 exclusions): effects/handlers, the control fragment, general recursion/natives, datatype declarations and description codes, `Sigma`/`Split`, `Path`/identity, `List`/`Record`/`With`, holes, marks, annotations, `dup`/`drop`.
-The export format's seven ratified reservations are format-plane only and land in B2.2 — nothing is reserved inside the S1 types.
+The export format's seven ratified reservations are format-plane only and landed in B2.2 (`export`) — nothing is reserved inside the S1 types.
 
 The crate is `#![no_std]` over `core`/`alloc`, depending only on `gandr-kernel-strata` — the design record's TCB dependency wall (kernel-boundary.md §2) in its sharpest form.

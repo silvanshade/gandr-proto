@@ -33,8 +33,11 @@
 //! * **K4 — derived schemes are never trusted.** No derived scheme exists at S1
 //!   (datatypes and their eliminators arrive as description codes at S2); the
 //!   discipline is honoured by there being nothing to trust yet.
-//! * **K5 — re-checkable export.** The export writer/reader is slice B2.2; this
-//!   slice fixes the term language and environment it will serialize.
+//! * **K5 — re-checkable export.** The [`write()`] export writer serializes an
+//!   [`Environment`] to canonical, self-contained bytes and the [`read`]
+//!   validating reader replays them through the choke point (slice B2.2, the
+//!   kernel-boundary.md §5 obligations E1–E6); the [`decode`] structural parser
+//!   rejects a non-canonical artifact over a closed error vocabulary.
 //!
 //! # The S1 surface
 //!
@@ -76,6 +79,7 @@ mod conv;
 mod decl;
 mod env;
 mod error;
+mod export;
 mod levels;
 mod term;
 mod types;
@@ -107,6 +111,17 @@ pub use error::LevelOrderRefutation;
 pub use error::NonInferableForm;
 pub use error::UniverseViolation;
 pub use error::ValueTypeMismatch;
+pub use export::AdmissionMark;
+pub use export::DecodeError;
+pub use export::DecodedDeclaration;
+pub use export::MalformedSite;
+pub use export::ReadError;
+pub use export::ReservedKind;
+pub use export::ReservedSlot;
+pub use export::TagSite;
+pub use export::decode;
+pub use export::read;
+pub use export::write;
 pub use levels::LevelContext;
 pub use levels::LevelParamCount;
 pub use term::Computation;

@@ -91,6 +91,15 @@ impl Magnitude
             | None => Some(Self::zero()),
         }
     }
+
+    /// The canonical decimal digits, as owned text — the export writer's
+    /// serialization source (kernel-boundary.md §5 E1).
+    #[inline]
+    #[must_use]
+    pub(crate) fn to_digits(&self) -> String
+    {
+        self.0.clone()
+    }
 }
 
 /// A canonical fractional-digit sequence: ASCII decimal digits with no
@@ -130,6 +139,16 @@ impl FractionDigits
         let trimmed_len = text.trim_end_matches('0').len();
         text.truncate(trimmed_len);
         Some(Self(text))
+    }
+
+    /// The canonical fractional digits, as owned text (empty for an integral
+    /// value) — the export writer's serialization source (kernel-boundary.md
+    /// §5 E1).
+    #[inline]
+    #[must_use]
+    pub(crate) fn to_digits(&self) -> String
+    {
+        self.0.clone()
     }
 }
 
@@ -205,6 +224,15 @@ impl StringLiteral
     pub fn new(content: String) -> Self
     {
         Self(content)
+    }
+
+    /// The string content, as owned text — the export writer's serialization
+    /// source (kernel-boundary.md §5 E1).
+    #[inline]
+    #[must_use]
+    pub(crate) fn to_content(&self) -> String
+    {
+        self.0.clone()
     }
 }
 

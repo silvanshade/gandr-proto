@@ -53,7 +53,7 @@ impl CheckedId
 /// How a declaration was admitted: through the checked choke point or the
 /// warned bypass. A single bit — never a trust lattice (K3).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Admission
+pub enum Admission
 {
     /// Admitted through [`Environment::add_decl`] — fully checked.
     Checked,
@@ -263,6 +263,27 @@ impl Environment
             }
         }
         AxiomReport { axioms, unchecked }
+    }
+
+    /// The admitted declarations in admission order, each paired with its
+    /// admission mark — the export writer's E2/E6 source (kernel-boundary.md
+    /// §5).
+    ///
+    /// # Contract
+    /// - requires: nothing.
+    /// - ensures: yields every admitted declaration exactly once, in admission
+    ///   order, with its checked/unchecked mark; the precomputed transitive
+    ///   audit sets are **not** exposed (E3: derived data is recomputed on
+    ///   replay, never serialized and trusted).
+    /// - provides: the export writer's read access to the append-only log.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    pub(crate) fn admitted(&self) -> impl Iterator<Item = (Admission, &Declaration)> + '_
+    {
+        self.entries
+            .iter()
+            .map(|entry| (entry.admission, &entry.declaration))
     }
 
     /// The declared value type of a prior admitted declaration, for the
