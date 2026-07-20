@@ -47,6 +47,21 @@ Before spawning any sub-agent:
 
 Realized failure (2026-07-12): a boundary-analysis sub-agent ran grep/Read over a codegraph-indexed tree because the brief dropped the routing and the agent type had no MCP exposure; the gap surfaced only after the report landed.
 
+## End-of-work lifecycle: no branch or worktree left in an unclear state
+
+Work routinely finishes while its branch and worktree linger, and nobody can later tell whether they hold anything unlanded (owner rule, 2026-07-19).
+The finishing session disposes of what it created, in the same session the work concludes:
+
+1. **Integrate or record.** Deliverable branches merge to `main` once approved; a branch that deliberately does not merge gets its supersession/decline rationale recorded (tracker comment or doc) before deletion.
+2. **Remove the worktree** with a plain `git worktree remove` / `wt remove` — never `--force` on the first attempt: a refusal means uncommitted state, which is triaged (commit, salvage to a bead, or deliberately discard with the rationale written down), not clobbered.
+3. **Delete the branch** with `git branch -d`; `-D` only for a branch whose content is formally superseded, with the rationale recorded where the supersession was decided.
+4. **If disposal cannot happen yet** (awaiting review, unmerged residue, blocked integration), **file a residual bead** naming the branch/worktree, its exact state, and the condition under which it becomes safe to remove.
+   The bead is the handoff — a branch's status must never live only in a session's memory.
+5. **Automation-spawned worktrees and branches** (workflow `wf_*`, agent `agent-*`) are disposed by the orchestrating session at task close.
+   A later session that finds strays treats them as triage under rule 2: verify clean, then remove; anything dirty gets a bead before any deletion.
+
+Realized instance (2026-07-19): 36 stale worktrees and 44 dead branches had accumulated across one research cycle because sessions ended without disposal; the cleanup consumed a closeout session that rules 1–5 make unnecessary.
+
 ## ADRs and governance docs
 
 The governance-doc carve-out (`.agents/core/core/WORKFLOW.md` §"Governance docs land on main") covers wyrd's `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/{WORKFLOW,KNOWLEDGE,HAZARDS}.md`, the `docs/workflow/` sub-files, and `docs/adr/` — these land on `main` directly, one commit each.
