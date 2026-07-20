@@ -1,0 +1,175 @@
+<component derives="spec-index" grounds="data-patterns" id="vdc-reflection" spec-version="1" status="partial" title="The VDC reflection face: the rewrite layer as a virtual double category, FVDblTT and the LLV directed fragment">
+  <section id="vdcr-overview" title="Overview and decisions">
+    <prose>
+      The
+      <term-def key="reflection-face">reflection face</term-def>
+      reads gandr's rewrite layer — the described signatures and the certificate-backed cells of the completion engine — through a single formal lens: it is a
+      <term-def key="virtual-double-category">virtual double category</term-def>
+      (VDC), and FVDblTT is adopted as its internal language. The face is a checker plus a query API over the engine, never a second engine: every cell datum is a reflected object whose meaning is delegated back to the certificate machinery. Its home in the reboot is crate theory-virtual-doctrines, strictly additive over crate theory-computads (cells, tracelets, replay, two-mode composition) and crate theory-levitation (descriptions and free terms). The decisions are recorded as ADR-68 (the formal reading and the reflection face) and ADR-69 (certificate identity and composition).
+    </prose>
+    <prose>
+      Two facts make this line fit rather than merely adjoin. The austerity matches: FVDblTT and the LLV system are deliberately first-order — no dependent types, no functor categories in the core
+      <cite key="Q-2"/>
+      <cite key="Q-3"/>
+      — which is exactly gandr's budget before levitation stage 1. The semantics matches: virtual double categories are the established frame for categories, maps, relations that may not compose, and multi-input transformations
+      <cite key="Q-8"/>
+      , and the rewrite layer already has that shape, with the
+      <term key="virtual-double-category"/>
+      's virtual weakening landing on the engine's own honest limit — non-linear overlap fan-out means loose composites exist only as families. The successor line the face rides repairs the witness-erasure defect of the origin calculus
+      <cite key="Q-7a"/>
+      : that calculus erased its isomorphism witnesses, so distinct derivations of one judgment could denote different maps — existence without a certificate, the opposite of gandr's replay-checked bet.
+    </prose>
+    <prose>The reboot carries the engineering face as built: the dictionary reading and its test, the two-mode certificate composition, the first-order judgment layer and its checker, the query API, and the four directed rungs, each a total checker with property tests. What is not made in Rust — the theorem-grade claims — rides the Agda face on the internal-univalence substrate; every section below states its own status honestly.</prose>
+  </section>
+  <section id="vdcr-dictionary" title="The dictionary (F1)">
+    <prose>
+      The reading, stated precisely enough to test. Objects are described signatures: a datatype description or a finite product of them. A
+      <term-def key="tight-arrow">tight arrow</term-def>
+      is a signature morphism — a sort- and arity-respecting map of generators — and composes by function composition, strictly associative and unital. A
+      <term-def key="loose-arrow">loose arrow</term-def>
+      is a relation interface over term syntax: a named set of generating cells whose faces are pairs of free terms, expressing how source-shaped terms rewrite or relate to target-shaped terms; the engine's homogeneous case is a datatype's own rule set.
+    </prose>
+    <prose>
+      A
+      <term-def key="vdc-cell">multi-ary cell</term-def>
+      is a certificate-backed derived transformation: given instances chained along a sequence of loose arrows, it produces an instance of the codomain relation — concretely a derivation object whose leaves are generating cells and whose validity is replayable. Cell composition is grafting (substitution of a derivation for a leaf), checked by replay. A
+      <term-def key="restriction">restriction</term-def>
+      precomposes the faces along signature morphisms; because syntax is content-addressed, restriction is split and strict, so the fibrationality condition the semantics assumes comes for free. The path unit is the rewrite-path relation (finite reduction sequences, including the empty path as reflexivity); a
+      <term-def key="tabulator">tabulator</term-def>
+      is the instantiation table of a relation — the signature of its instances with two projections, the two-sided category of elements the inspection protocol renders.
+    </prose>
+    <prose>
+      Virtual is the honest structure, and load-bearing. The compositional-rewriting frame demands fibrational structure precisely to compose rules
+      <cite key="J-26"/>
+      ; the VDC reading asks for strictly less — loose composites may simply fail to exist — while what it does demand (restrictions, identity cells, multicategorical cell composition) is exactly what content-addressed syntax supplies strictly. Loose composition therefore exists only as the overlap-indexed family (the multi-sum); where that family is a singleton (linear seams) the composite exists on the nose. The extra fibrational axioms of the compositional frame are deliberately not claimed. The convergent, Squier-degenerate slice
+      <cite key="J-1"/>
+      is where this face lives.
+    </prose>
+  </section>
+  <section id="vdcr-dictionary-test" status="built" title="The dictionary test (F2)">
+    <prose>The stage-0 go/no-go: a property-test suite over the real cell-store structures checking the VDC laws, plus a verdict recording which hold strictly and which up to replay-equivalence. The laws are the tight category (identity and associativity of signature-morphism composition, strict), multicategorical cell composition (grafting associative and unital with respect to identity cells, up to replay-equivalence), the restriction laws (identity and the substitution split, definitional on content-addressed faces, with the universal factorization by construction), the cartesian laws (local products of relations satisfy pairing and projection, preserved by restriction), and the unit law (a cell out of the path relation is determined by its value on reflexivity). Failure is informative: each failing law names a missing invariant in the cell-store design. The suite is realized as the laws test of theory-virtual-doctrines.</prose>
+  </section>
+  <section id="vdcr-certificates" status="built" title="The certificate-composition theory (F3, F4)">
+    <prose>
+      Certificate identity is
+      <term-def key="replay-equivalence">replay-equivalence</term-def>
+      : raw derivation objects compose strictly but are too fine — two derivations can witness the same transformation — so the principled quotient is FVDblTT's proterm-equality judgment, and the engine already decides it: replay both, compare. A
+      <term-def key="certificate">certificate</term-def>
+      is the replayable derivation object; its identity is fixed by replay, not by structural equality.
+    </prose>
+    <prose>
+      Certificate composition ships in two modes, because the categorical line proves the two situations behave differently. Covariant duplication — a metavariable used several times on one side — is cartesian and benign for coherence; its cost is canonicity, not correctness, and the composite fans out per overlap. This is the ordered-linear corner the successor systems buy completeness by dropping, so the linearity fence is a corner, not a kludge. Mixed-variance occurrence — a metavariable crossing the cut, in both producer and consumer positions — has a dinaturality-shaped certificate, and dinatural transformations do not compose in general
+      <cite key="Q-3"/>
+      ; composition is safe under a loop-freeness criterion (acyclicity of the variable-flow graph across the composed seams, a criterion with a proof-net pedigree
+      <cite key="Q-10"/>
+      ) and unconditionally safe when the composed cells are invertible (over groupoids, dinaturals always compose).
+    </prose>
+    <prose>
+      Each cell therefore carries derived — never user-declared — metadata: a per-metavariable
+      <term-def key="variance">variance</term-def>
+      (producer, consumer, or mixed) with a linearity flag, and an invertibility flag that is true for completion-emitted joinability certificates (both paths reduce, the cell witnesses an equality in the convergent quotient) and false for oriented optimization cells. The elaborator computes the variance from the faces. This metadata is the input the composition gate, the overlap enumerator's fan-out reporting, and the reflected contexts all read. The two modes are realized in theory-computads:
+    </prose>
+    <code language="text">compose_invertible(a, b)        -- coherence lane: both certificates invertible ⇒ unconditional
+compose_directed(a, b, store)   -- directed lane: build the variable-flow graph across the shared seam
+                                --   (nodes: metavariable occurrences; edges: face-internal flows,
+                                --    both directions for a mixed hole) and reject on a cycle —
+                                --   the cycle IS the diagnostic (decline-with-report)</code>
+    <prose>The gate applies to certificate composition (chaining derived transformations), not to cell application (a single rewrite firing needs nothing). For first-order command patterns the graph is small and the check is linear-ish in pattern size — a static check, not a theory.</prose>
+  </section>
+  <section id="vdcr-face" status="built" title="The reflection face: FVDblTT as the internal language (F5)">
+    <prose>
+      FVDblTT
+      <cite key="Q-2"/>
+      <cite key="Q-1"/>
+      is adopted as the reflection face's internal language: a first-order judgment layer over the described signatures, implemented as a checker plus query API. Its four judgment families are data the checker validates against the cell-store instance. A
+      <term-def key="protype">protype</term-def>
+      is a loose-arrow type — a path, a relation face, a seam composite, a right or left extension, a tabulator, a product, or the unit; a
+      <term-def key="proterm">proterm</term-def>
+      is a cell inhabiting a protype. No dependent types appear anywhere: the reflection face does not pull the dependent-core bill forward.
+    </prose>
+    <grammar>
+      <production symbol="protype">path(s ⤳ t) | rel(R, s # t) | protype ⊙ protype | protype ⊲ protype | protype ⊳ protype | tabulate(R) | protype × protype | unit</production>
+      <production symbol="proterm">var | refl | path-induction | pair(via) | seam-induction | lam | app | cert(derivation)</production>
+    </grammar>
+    <prose>The cert constructor is the point: engine-produced derivations are proterms, so everything the completion loop emits is already a term of the reflection face, and conversely every closed proterm elaborates back down to a derivation the engine can replay. Checking is bidirectional over the two-sided contexts, the FVDblTT proterm judgment shape verbatim — a protype checked against a two-sided object context, and a proterm checked against a seam-composable chain of protype hypotheses:</prose>
+    <code language="text">Γ # Δ ⊢ α protype        -- protype well-formedness over a two-sided object context
+Φ ⊢ μ : β                -- a proterm against a seam-composable hypothesis chain Φ</code>
+    <prose>
+      A
+      <term-def key="protype-isomorphism">protype isomorphism</term-def>
+      is the certificate surface: it is a pair of mutually-inverse replayable witnesses, well-formed exactly when both round-trips replay to the identity. The groupoid laws (identity, inverse, composition) are constructions on that pair, composed in the invertible mode — unconditional, by design. This is the retained-coherence answer that repairs the erasure defect: an isomorphism in the reflection face is its pair of mutually-inverse witnesses; there is nothing to lose. The layer is realized across the syntax, check, and iso modules of theory-virtual-doctrines as a total, structural, replay-anchored checker that rejects reflexivity off the diagonal, non-replaying certificates, shape-mismatched eliminators, and terms over undeclared object variables.
+    </prose>
+  </section>
+  <section id="vdcr-query" status="built" title="What the face buys: the query surface (F6)">
+    <prose>The FVDblTT constructor menu is the query API's specification, with each constructor's rules fixed by the source system rather than designed ad hoc. The path unit answers "is there a rewrite path from s to t?" with path induction over reduction traces; seam composition answers "compose these rule interfaces at a seam", returning the overlap-indexed family (never a single collapsed rule — the query is honest about the virtual weakening); the extensions answer the Kan-shaped "best consumer completing this seam" as derived-frame synthesis against the completion engine; the tabulator is the inspection protocol's instantiation view; and a protype isomorphism answers "are these two rule interfaces equivalent?" with paired certificates that replay decides. The payoff is uniformity: stream-fusion laws, data-block rules, closure-conversion cells, and completion-derived cells all become loose-arrow generators of one structure, queried and related through one judgment layer. The API is realized as the query module of theory-virtual-doctrines.</prose>
+  </section>
+  <section id="vdcr-theorem" status="partial" title="The theorem shape (F6.3) and the division of labor">
+    <prose>
+      The completeness theorem is the inspection protocol's theorem shape: FVDblTT's syntax-semantics biadjunction with cartesian fibrational virtual double categories
+      <cite key="Q-2"/>
+      is the formal statement that reflecting the rewrite layer through the judgment face loses nothing. Once the cell-store instance is verified a cartesian fibrational VDC (the dictionary test), interpreting the judgment layer in it is sound by the source theorem's pattern, and the judgment layer is expressive enough to reflect it faithfully. gandr's implementation obligation is checkers and property tests, not the biadjunction; the theorem-grade statements ride the Agda face on the internal-univalence substrate, whose sibling-repo work spikes the internal (setoid-level) cartesian fibrational VDC construction, and whose first theorem target is the groupoid-fragment composition theorem (invertible cells compose unconditionally — the semantic warrant for the invertible mode) while the directed case remains the research edge. The related ordered-linear system
+      <cite key="Q-5"/>
+      is the reading this line supersedes on the linearity corner. This section is partial: the checkers are built, the biadjunction is cited and not re-proven.
+    </prose>
+  </section>
+  <section id="vdcr-directed" title="The LLV directed fragment (F7)">
+    <prose>
+      What FVDblTT cannot express is exactly what the polygraph program eventually wants to say: statements about endo-relations with a variable at both polarities, dinaturality-shaped coherence, quantification over all instantiations of a seam. That is the territory of first-order directed type theory via dinaturality
+      <cite key="Q-3"/>
+      : (co)ends as quantifiers, hom as directed equality with a J-eliminator restricted by polarity so symmetry is underivable, entailments proof-relevant. The fragment stages behind levitation stage 1 (the universe, sigma, and decode of ADR-81, landed), because dipresheaf-shaped protypes over reflected signatures need the typed description layer. It is strictly additive over the undirected face and read-only against the engine, realized in the directed submodule of theory-virtual-doctrines. Its known obstruction — entailments do not compose in general — is the same fact as the certificate gate, and its groupoid escape is the Agda face's first theorem target.
+    </prose>
+    <section id="vdcr-l1" status="built" title="Ł1 — variance-sorted reflected contexts">
+      <prose>
+        Reflected object variables carry a variance: a
+        <term-def key="directed-variance">directed variance</term-def>
+        sorts a variable as covariant (a target or producer slot) or contravariant (a source or consumer slot). This is the closed two-way polarity vocabulary; the engine's third case, a mixed hole spanning both polarities, is not a directed variance (it is the dinaturality shape the next rung protects) and maps to none. The involution op — the same underlying signature at the flipped variance — lives exclusively on the reflected signature; the frozen-core signature is untouched, so the engine's object layer stays exactly the undirected VDC. The payoff is that the derived cell
+        <term key="variance"/>
+        becomes checkable rather than merely derived: a directed context rejects an engine cell whose hole occurs at a polarity the context did not sort it at, and a mixed hole naming a declared variable cannot inhabit a single directed variance at all.
+      </prose>
+    </section>
+    <section id="vdcr-l2" status="built" title="Ł2 — hom as directed equality">
+      <prose>
+        The undirected path protype is symmetric — a rewrite path reads either way. Its directed refinement is the
+        <term-def key="directed-hom">directed hom</term-def>
+        , where the source stands in the contravariant slot and the target in the covariant slot, and the two endpoints are not interchangeable. The eliminator is a
+        <term-def key="directed-j">directed J</term-def>
+        whose motive is restricted by polarity: it transports a witness forward along the moving covariant endpoint, so a motive that keeps that endpoint covariant is admissible while a motive that would place it in the contravariant source slot is the symmetry shape the polarity side condition refuses. Symmetry is therefore underivable by construction, and semantically sound: a directed cell with no inverse has no backward transport — an oriented engine cell that does not replay in reverse witnesses the forward hom but not the reverse (property-tested against the engine). This is the same design decision as the without-K unifier one level down in the pattern elaborator (a K or UIP unifier would collapse orientation exactly as a contravariant motive would); the two are one decision at two altitudes, recorded also in
+        <term key="without-k-unification"/>
+        <cite key="Q-4"/>
+        . The theorem-grade statement (directed J is sound and symmetry is not admissible) rides the Agda face; this rung carries the total polarity checker and the property tests.
+      </prose>
+    </section>
+    <section id="vdcr-l3" status="built" title="Ł3 — (co)ends as quantifiers">
+      <prose>
+        The binder is read as a quantifier over a signature's objects. Over finite reflected signatures a diagram is a finite functor, an
+        <term-def key="coend">end</term-def>
+        its product-shaped universal quantifier and a coend its coproduct-shaped existential. Fubini (swap the two binders) and (co)Yoneda (collapse the density coend to the diagonal component) are derived, not primitive, as the source development derives them — realized as checked transformations with property tests over finite carriers. Two honesty boundaries are stated precisely. Finite carriers: the (co)end is the literal product or coproduct over a finite carrier, and the theorem-grade statement (arbitrary reflected signatures, the dinaturality wedge quotient in full) rides the Agda face. Discrete hom: at this rung the reflected signature's hom is reflexivity-generated (inhabited only on the diagonal), so every off-diagonal summand is empty and the density collapse is exact; the general non-discrete co-Yoneda, where non-identity morphisms carry summands the wedge quotient then identifies, is Agda-face territory. Cut remains restricted — the certificate gate is its operational face.
+      </prose>
+    </section>
+    <section id="vdcr-l4" status="built" title="Ł4 — the boundary theorem">
+      <prose>
+        The directed lane gates certificate composition on variable-flow acyclicity; the
+        <term-def key="boundary-theorem">boundary theorem</term-def>
+        says that on invertible-cell signatures the gate is unnecessary — full cut is admissible, because over groupoids dinaturals always compose. The directed cut realizes exactly that operational content: when every participating cell of both certificates is invertible it routes to the ungated invertible composition and admits the cut unconditionally, never declined; otherwise it consults the acyclicity gate, admitting an acyclic seam and declining a cyclic one with the flow cycle as the diagnostic. A stale cell (absent from the store) is conservatively not invertible — invertibility cannot be certified for a cell that is not there. What is realized here is the rule (cut needs no gate on the invertible lane) exercised over finite fixtures; the theorem-grade statement (cut admissible for every invertible signature, the internal groupoid theorem) rides the Agda face on the internal-univalence groupoid tower.
+      </prose>
+    </section>
+    <section id="vdcr-directed-scope" title="Out of scope (direction only)">
+      <prose>Directed univalence (the reflected hom type equivalent to the reflected function space) — the second-order step the source's own future work names — is not scoped here: it would need the directed-hom type to be an object of the reflected universe and a transport law relating it to the reflected function space, neither of which this fragment builds. It is recorded as a reflected residual.</prose>
+    </section>
+  </section>
+  <section id="vdcr-additivity" title="The reflection face gates nothing (F8)">
+    <prose>The lane is additive. The sequent kernel, the certificate engine, and the levitation ladder proceed exactly as specified elsewhere in the corpus; the reflection face rides on top of the cell store and the described signatures, reflecting the structure they already have rather than constraining how they are built. Its first steps (the dictionary test and the cell metadata) are days not months, and every later step is evidence-gated on the dictionary verdict.</prose>
+  </section>
+  <references>
+    <cite key="Q-1"/>
+    <cite key="Q-2"/>
+    <cite key="Q-3"/>
+    <cite key="Q-4"/>
+    <cite key="Q-5"/>
+    <cite key="Q-7a"/>
+    <cite key="Q-8"/>
+    <cite key="Q-10"/>
+    <cite key="J-1"/>
+    <cite key="J-26"/>
+  </references>
+</component>
