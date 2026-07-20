@@ -55,7 +55,7 @@ crate::semantic_copy!(pub struct AsciiBytesEqIgnoreCaseFlag(bool));
 pub const DEFAULT_OPTIONS_ROOTS: [&str; 1] = ["metatheory/src"];
 
 /// Default Rust conformance source governed by the soundness-oracle policy.
-pub const DEFAULT_SOUNDNESS_ORACLE_FILE: &str = "crates/gandr-core/src/conformance.rs";
+pub const DEFAULT_SOUNDNESS_ORACLE_FILE: &str = "crates/core-checker/src/conformance.rs";
 
 /// Empty exemption table shared by default Agda policy rows.
 const NO_OPTIONS_EXEMPTIONS: &[&str] = &[];
@@ -1229,7 +1229,10 @@ mod tests
     -> GateResult
     {
         let source = source.into().0;
-        return analyze_soundness_source(Path::new("crates/gandr-core/src/conformance.rs"), source);
+        return analyze_soundness_source(
+            Path::new("crates/core-checker/src/conformance.rs"),
+            source,
+        );
     }
 
     /// Prove missing and untagged witness findings are deterministic.
