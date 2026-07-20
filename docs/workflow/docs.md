@@ -4,7 +4,7 @@
 > Base statement: `.agents/core/core/WORKFLOW.md` §"Documentation economy".
 > Corpus trust machinery (MANIFEST/BLAKE3, edge vocabulary, authority): `docs/KNOWLEDGE.md`.
 
-## Documentation economy — the wyrd posture
+## Documentation economy — the gandr posture
 
 Documentation accumulation is a **named project killer**: doc bloat helped sink a predecessor, and stale accumulated context confuses agents as much as humans.
 The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
@@ -19,6 +19,27 @@ The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A
   What a survey _decides_ gets distilled into an ADR; the survey itself does not move into `docs/`.
 
 Per-crate `crates/*/docs/` (STATUS, crate ADR, CHANGELOG — no TODO.md; beads tracks that) are a distinct lean tier, off the design-corpus main-path and unregistered in the MANIFEST.
+
+## Specification corpus and the doc tool
+
+The design corpus is migrating to a validated XML component model (`gandr-fcw.8`, owner-confirmed).
+What has landed:
+
+* **The doc tool.** `crates/workflow-docs` (package `gandr-workflow-docs`, a **provisional** name — owner ratification is pending, `gandr-wvd.17`) holds the typed model, parser/validator, and canonical XML formatter.
+  Parsing _is_ validation: it enforces define-once, `term`/`cite`/`ref` resolution, ID uniqueness, and status presence.
+* **The corpus root.** `docs/spec/` holds the component files plus the shared `component-vocabulary.xml` and `index.xml`.
+  Canonical XML formatting is wired into treefmt as the `docs-xml` formatter (`gandr-workflow-docs fmt` over `docs/spec/*.xml`).
+* **The citation register.** `docs/spec/refs.yml` is the central Hayagriva bibliography — 379 entries, one per row of the register `docs/research/bibliography-v2.md` (`gandr-fcw.10`).
+  It is a **derived artifact**: the generator is `scripts/refs-yml/` (typed Nushell); to change a citation, edit the register and re-derive, never hand-edit `refs.yml`.
+
+The static-HTML render pipeline the resolution specifies — Typst math compiled to MathML Core, `typst-fletcher` diagrams to SVG, progressive-enhancement WebComponent islands — is the design target, not yet built; describe it as design, not as a shipped capability.
+The pre-`gandr-fcw.8` proposal-lifecycle model below (proposal files as document classes, manual absorption) is superseded by that status-attributed component model, and is retained only until the tool subsumes it.
+
+### Cite with a resolvable locator
+
+Every external-literature citation in a notes, analysis, or spec doc records a **resolvable locator** — a DOI, arXiv id, or stable URL — at first mention.
+Name-only citations are the recorded hazard that forced `gandr-fcw.10`'s bulk re-verification of the register; a locator at first citation is what keeps a claim checkable without archaeology.
+`refs.yml` is the canonical home for those locators: a doc cites the register key and the register carries the DOI/arXiv/URL.
 
 ## Proposal lifecycle (retire deliberately)
 
