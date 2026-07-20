@@ -320,4 +320,64 @@ mod tests
             drop(decoded);
         });
     }
+
+    /// A depth for the checker-totality witnesses (gandr-98o): the machine
+    /// descends this far, well past the retired 512 depth budget, and the old
+    /// recursive descent would overflow the small thread stack here.
+    const CHECK_DEPTH: usize = 200_000;
+
+    /// A bind chain of the given depth: `bind _ <- return unit; ...; return
+    /// unit` (each step wraps the prior chain as the bind body).
+    fn deep_bind(depth: usize) -> Computation
+    {
+        let mut computation = Computation::Return(Box::new(Value::Unit));
+        for _step in 0 .. depth {
+            computation = Computation::Bind(
+                Box::new(Computation::Return(Box::new(Value::Unit))),
+                Box::new(computation),
+            );
+        }
+        computation
+    }
+
+    #[test]
+    fn a_deep_pair_definition_checks_totally()
+    {
+        // Inverts the retired depth-budget test (gandr-98o): a term nested past
+        // the old 512 budget is now CHECKED totally rather than rejected with
+        // DepthLimitExceeded. A ~200k-deep well-typed pair : product admits
+        // inside a small-stack thread where the old recursive descent overflows.
+        in_small_stack(|| {
+            let mut environment = Environment::new();
+            let admitted = environment.add_decl(Declaration::def(
+                LevelSignature::monomorphic(),
+                deep_value_type(CHECK_DEPTH),
+                deep_value(CHECK_DEPTH),
+            ));
+            assert!(
+                admitted.is_ok(),
+                "the deep well-typed pair definition admits totally"
+            );
+        });
+    }
+
+    #[test]
+    fn a_deep_bind_definition_checks_totally()
+    {
+        // A ~200k-deep bind chain checked against U (F Unit): the machine's
+        // explicit typing-context stack grows and unwinds 200k deep through
+        // scope-exit frames without overflowing the small thread stack.
+        in_small_stack(|| {
+            let mut environment = Environment::new();
+            let declared =
+                ValueType::Thunk(Box::new(CompType::Returner(Box::new(ValueType::Unit))));
+            let body = Value::Thunk(Box::new(deep_bind(CHECK_DEPTH)));
+            let admitted = environment.add_decl(Declaration::def(
+                LevelSignature::monomorphic(),
+                declared,
+                body,
+            ));
+            assert!(admitted.is_ok(), "the deep bind definition admits totally");
+        });
+    }
 }

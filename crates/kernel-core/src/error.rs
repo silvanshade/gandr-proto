@@ -307,12 +307,6 @@ pub enum KernelError
     /// poset does not loop) — surfaced rather than trusted, per the strata
     /// contract.
     LevelOracleFault(PosetError),
-    /// Checking descended past the checker's recursion-depth budget. The
-    /// declaration is rejected rather than risking a stack overflow — the
-    /// kernel stays total on adversarial-depth input. (The defunctionalized,
-    /// budget-free adversarial-depth machine is the tracked follow-up; see the
-    /// crate STATUS.)
-    DepthLimitExceeded,
 }
 
 impl From<LevelError> for KernelError
@@ -392,9 +386,6 @@ impl fmt::Display for KernelError
             },
             | Self::LevelOracleFault(_) => {
                 f.write_str("the landmark-entailment oracle reported a fault the theory excludes")
-            },
-            | Self::DepthLimitExceeded => {
-                f.write_str("checking descended past the recursion-depth budget")
             },
         }
     }

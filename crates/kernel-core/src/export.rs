@@ -90,11 +90,11 @@ pub const FORMAT_VERSION_V0: u16 = 0;
 /// constructors, and the only way to raise a variable atom to offset `o` is `o`
 /// applications of `succ` (strata exposes no direct offset constructor). A
 /// small adversarial varint could otherwise demand unbounded reconstruction
-/// work, so an atom offset at or above this cap is rejected at decode — the
-/// same totality posture as the checker's depth budget. Real universe levels
-/// carry variable offsets of `0` or `1`; a level beyond the cap is a documented
-/// non-round-tripping case (crate STATUS), liftable when strata exposes an
-/// `O(1)` offset constructor.
+/// work, so an atom offset at or above this cap is rejected at decode — bounded
+/// work on adversarial input, the reader's totality posture. Real universe
+/// levels carry variable offsets of `0` or `1`; a level beyond the cap is a
+/// documented non-round-tripping case (crate STATUS), liftable when strata
+/// exposes an `O(1)` offset constructor.
 pub const MAX_DECODED_LEVEL_OFFSET: u64 = 4096;
 
 /// Admission-mark byte: admitted through the checked choke point (E6).
