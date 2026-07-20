@@ -58,7 +58,7 @@
   Primitive detection follows aliases and non-nominal structural/generic containers; a semantically named transparent wrapper is the boundary, with explicit utility traits.
   The sole signature exception is a method implementing a trait defined in an external crate.
   Project-local rules also enforce source-grounded recursive `# Termination` contracts and reject false `input recursion: none` claims.
-  `non_local_effect_before_unhandled_error` remains isolated because the pinned upstream rule panics on a `gandr-core` lib-test target (`wyrd-2a2f`); `wyrd-o73c` owns the required state-consistency audit.
+  `non_local_effect_before_unhandled_error` remains isolated because the pinned upstream rule panics on a `gandr-core` lib-test target; the required state-consistency audit is a tracked follow-up.
 
 ### Dylint adoption and residual ledger
 
@@ -79,8 +79,8 @@ The rollout established these durable findings and actions:
    Do not restore compatibility with generic `Into`, inherent primitive getters, or primitive `PartialEq`.
 2. **Recursion claims require call-graph evidence.** Free functions and methods are checked by recursive SCC, including nested calls and generic arguments.
    Recursion over caller-owned input must become an explicit bounded worklist; documentation alone cannot relabel it as non-recursive.
-3. **Mutation-before-error paths are architectural evidence.** Preserve the isolated upstream non-local-effect pass and investigate its `gandr-core` lib-test panic under `wyrd-2a2f`; never disable the lint globally.
-4. **Future rules should encode cross-module invariants.** `wyrd-5fb5` owns the follow-up candidates: checker/machine constructor parity, atomic force-state transitions, subprocess-boundary policy, nominal-id replay provenance, and semantic-wrapper escape prevention.
+3. **Mutation-before-error paths are architectural evidence.** Preserve the isolated upstream non-local-effect pass and investigate its `gandr-core` lib-test panic; never disable the lint globally.
+4. **Future rules should encode cross-module invariants.** Tracked follow-up candidates: checker/machine constructor parity, atomic force-state transitions, subprocess-boundary policy, nominal-id replay provenance, and semantic-wrapper escape prevention.
 
 * **Dependencies.** Use the `find-best-rust-crates` skill before adding a nontrivial crate, but treat external implementations as design references rather than automatic dependencies.
   Machinery that is load-bearing for the core or certified-kernel boundary — including recursion/control runtimes, graph representations and algorithms, proof-state machinery, and semantic normalization — stays gandr-owned even when reimplementation costs more.
