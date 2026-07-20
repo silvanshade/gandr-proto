@@ -603,10 +603,14 @@ RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo fmt --all -- --check
 """
 
 [tasks."cargo:nextest"]
-description = "Run workspace and excluded gandr-tree-sitter reference-crate nextest suites"
+description = "Run the workspace nextest suite"
 run = """
-cargo nextest run --workspace --all-targets --features=full
-cargo nextest run --all-targets --manifest-path crates/gandr-tree-sitter/Cargo.toml
+# The Dylint driver is nightly-only (`#![feature(rustc_private)]`); the stable
+# nextest lane excludes it — the nightly cargo:dylint/careful lanes cover it.
+# Parked: the excluded tree-sitter reference-crate suite
+# (`--manifest-path crates/tree-sitter/Cargo.toml`) returns with the
+# tree-sitter lane.
+cargo nextest run --workspace --exclude gandr-workflow-dylint --all-targets --features=full
 """
 
 [tasks."cargo:careful-nextest"]
