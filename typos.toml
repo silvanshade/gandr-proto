@@ -39,6 +39,12 @@ extend-exclude = [
   "*.agda-lib",
   "*.typ",
   "docs/manual/refs.yml",
+  # docs/spec/refs.yml: hayagriva bibliography for the spec corpus (gandr-fcw.8),
+  # same class as docs/manual/refs.yml — citation keys and author names are
+  # identifiers, not prose. The spec *.xml component files stay covered; only
+  # this bibliography YAML is scoped out. (The XML currently passes typos; the
+  # exclude is here for the refs.yml failure mode as the register grows.)
+  "docs/spec/refs.yml",
   "docs/research/*.md",
   "vendor/**",
   "metatheory/vendor/**",

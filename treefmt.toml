@@ -117,6 +117,15 @@ options = [
 ]
 includes = ["*.md"]
 
+# Canonical XML formatting for the specification corpus, owned by the doc tool
+# (gandr-fcw.8): `gandr-workflow-docs fmt` re-emits each component file in
+# canonical form (sorted attributes, two-space indentation, idempotent). Scoped
+# to docs/spec so it does not touch tree-sitter/grammar XML elsewhere.
+[formatter."docs-xml"]
+command = "cargo"
+options = ["run", "--quiet", "-p", "gandr-workflow-docs", "--", "fmt"]
+includes = ["docs/spec/*.xml"]
+
 [formatter.rustfmt]
 command = "rustfmt"
 options = ["--edition", "2024", "--config", "skip_children=true"]
