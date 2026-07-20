@@ -5,8 +5,8 @@
 
 ## Keep the ownership boundary explicit
 
-Project-local gates and landing orchestration live in the Rust crate `crates/wyrd-rust-gates`.
-Its stable human, hook, and CI entrypoints are the task names in `mise.toml`; task bodies route into `cargo run --quiet -p wyrd-rust-gates -- <subcommand>`.
+Project-local gates and landing orchestration live in the Rust crate `crates/workflow-gates`.
+Its stable human, hook, and CI entrypoints are the task names in `mise.toml`; task bodies route into `cargo run --quiet -p gandr-workflow-gates -- <subcommand>`.
 Use a stable `mise run <task>` at callsites so command spelling, arguments, and prerequisites have one owner; invoke the CLI directly when implementing or diagnosing that boundary.
 
 The vendored agentic-dev core is a separate ownership domain.
@@ -25,7 +25,7 @@ Prefer the narrow stable task that proves the change:
 * `mise run docs:manifest-drift` and `mise run docs:reference-integrity` for corpus documentation;
 * `mise run test:options-policy`, `mise run test:soundness-oracles`, `mise run test:graph-gates`, and `mise run test:dep-graph` for policy surfaces;
 * `mise run coverage:check` and `mise run coverage:ratchet` for per-file coverage policy;
-* the `mise run mutants:*` family for mutation modes, and `cargo run --quiet -p wyrd-rust-gates -- workflow {merge|push}` for fixed landing tiers.
+* the `mise run mutants:*` family for mutation modes, and `cargo run --quiet -p gandr-workflow-gates -- workflow {merge|push}` for fixed landing tiers.
 
 Semantic violations are stable Rust `Finding` values; malformed input, I/O, subprocess, and containment failures are typed errors.
 Both paths fail closed at the CLI boundary.
@@ -34,8 +34,8 @@ Both paths fail closed at the CLI boundary.
 
 The crate's regression surface is Rust:
 
-* `cargo nextest run -p wyrd-rust-gates` runs its composed integration suite; the stable `mise run test:*` tasks add live fixtures where the policy requires them.
-* `cargo bench -p wyrd-rust-gates --bench commands` measures representative command surfaces without turning performance numbers into gate semantics.
+* `cargo nextest run -p gandr-workflow-gates` runs its composed integration suite; the stable `mise run test:*` tasks add live fixtures where the policy requires them.
+* `cargo bench -p gandr-workflow-gates --bench commands` measures representative command surfaces without turning performance numbers into gate semantics.
 * The feature-gated parser facade feeds the independent AFL++ `gates` target.
   `mise run fuzz:gates` runs that campaign, while `mise run fuzz:rust-smoke` deterministically replays every committed seed across all five Rust targets.
 
