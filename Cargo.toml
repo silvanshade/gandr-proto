@@ -7,6 +7,7 @@ members = [
   "crates/surface-driver",
   "crates/theory-nominal-automata",
   "crates/theory-orders",
+  "crates/theory-recursion",
   "crates/workflow-dylint",
   "crates/workflow-gates",
 ]

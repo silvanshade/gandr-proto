@@ -1,0 +1,18 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-recursion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Safe first-order recursion engine for gandr semantic machinery"
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true
