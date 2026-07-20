@@ -5,14 +5,22 @@
 
 ## Keep the ownership boundary explicit
 
-Project-local gates and landing orchestration live in the Rust crate `crates/workflow-gates`.
-Its stable human, hook, and CI entrypoints are the task names in `mise.toml`; task bodies route into `cargo run --quiet -p gandr-workflow-gates -- <subcommand>`.
-Use a stable `mise run <task>` at callsites so command spelling, arguments, and prerequisites have one owner; invoke the CLI directly when implementing or diagnosing that boundary.
+Project gate policy and landing orchestration live in the Rust crate `crates/workflow-gates` (package `gandr-workflow-gates`).
+Its stable human, hook, and (future) CI entrypoints are the task names in `mise.toml`; task bodies route into `cargo run --quiet -p gandr-workflow-gates -- <subcommand>`.
+Use a stable `mise run <task>` at callsites so command spelling, arguments, and prerequisites have one owner; invoke the CLI directly only when implementing or diagnosing that boundary.
 
-The vendored agentic-dev core is a separate ownership domain.
-Calls under `.agents/core/scripts/*.nu` remain live Nushell — for example `docs:conflict-markers`, `core:check`, and the Worktrunk ADR guard — and are not candidates for project-local rewrites.
-Format-specific helpers that remain outside the gate crate, such as the reference-manual builders under `docs/manual/tools/`, are likewise reached through their named tasks; they do not own project gate policy.
-Do not revive retired project gate scripts or copy shared-core Nushell into the Rust crate.
+Small and pipeline-shaped work that is **not** gate policy stays in typed **Nushell** under `scripts/` (project policy: typed only — Nushell for small/pipeline scripts, TypeScript for larger; no untyped `bash`/`sh`).
+Each is reached through its named `mise` task or `prek` hook, never inlined:
+
+* `scripts/check-conflict-markers.nu` — the `docs:conflict-markers` gate and its pre-commit hook;
+* `scripts/check-machine-local-paths.nu` — the `no-machine-local-paths` pre-commit hook (publishable-history backstop);
+* `scripts/commitlint-range.nu` and `scripts/check-signed-commits.nu` — the pre-push range checks;
+* `scripts/lib/git.nu`, `scripts/lib/push-range.nu` — shared helpers;
+* `scripts/refs-yml/*.nu` — the `docs/spec/refs.yml` generator ([docs.md](docs.md)).
+
+The vendored agentic-dev core is a separate ownership domain that is **not yet vendored in the reboot**: `.agents/core` does not exist, so its shared-core calls (`core:check`, `core-init`, the Worktrunk ADR guard) are parked and re-grow with the core.
+Until then, the checks that would delegate to the core run as the project-local Nushell above.
+Do not revive retired project gate scripts, and do not fold a typed helper into the Rust crate ad hoc — graduate one into `gandr-workflow-gates` only when it becomes gate policy.
 
 ## One typed CLI, domain-owned modules
 
@@ -25,7 +33,7 @@ Prefer the narrow stable task that proves the change:
 * `mise run docs:manifest-drift` and `mise run docs:reference-integrity` for corpus documentation;
 * `mise run test:options-policy`, `mise run test:soundness-oracles`, `mise run test:graph-gates`, and `mise run test:dep-graph` for policy surfaces;
 * `mise run coverage:check` and `mise run coverage:ratchet` for per-file coverage policy;
-* the `mise run mutants:*` family for mutation modes, and `cargo run --quiet -p gandr-workflow-gates -- workflow {merge|push}` for fixed landing tiers.
+* the fixed landing tiers — `mise run gate:merge` for the merge wall, and the `cargo run --quiet -p gandr-workflow-gates -- workflow push` plan (parked during the reboot, [ci.md](ci.md)) — plus the `mise run mutants:*` family for mutation modes.
 
 Semantic violations are stable Rust `Finding` values; malformed input, I/O, subprocess, and containment failures are typed errors.
 Both paths fail closed at the CLI boundary.
@@ -46,7 +54,7 @@ Every fix needs a regression witness for its observable contract; do not recreat
 
 Hook runners can export `GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, and object/ref overrides that redirect a child Git process away from its requested working directory.
 Project Rust domains therefore pass exact argv vectors through the shared support boundary and request Git sanitization; repository-control variables are removed before spawn.
-Shared-core Nushell continues to use `.agents/core/scripts/lib/git.nu` for the same reason.
+The project-local Nushell helpers use `scripts/lib/git.nu` for the same reason.
 
 Do not add shell-string interpolation or an ad hoc `Command` wrapper.
 Use the shared status path when output is purely live, and the shared output path when a domain must parse stdout: stdout is streamed while a bounded semantic copy is retained, stderr remains live, and over-limit output is drained before returning a typed failure.
