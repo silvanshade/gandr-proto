@@ -1,0 +1,31 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-virtual-doctrines"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "The VDC reflection face (FVDblTT-shaped): the Vdc dictionary reading of the rewrite layer, a first-order reflected judgment layer (protypes/proterms with embedded engine certificates), bidirectional checking over two-sided contexts, protype-isomorphism certificates with groupoid laws, and the constructor-menu query API over the cell store (ADR-68/69; proposal-vdc-reflection.md sections 5-6)"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "vdc"
+path = "tests/vdc.rs"
+
+[dependencies]
+gandr-theory-computads = { path = "../theory-computads" }
+gandr-theory-levitation = { path = "../theory-levitation" }
+
+[dev-dependencies]
+gandr-core-sequent = { path = "../core-sequent" }
+proptest = { workspace = true }
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

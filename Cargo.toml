@@ -14,6 +14,7 @@ members = [
   "crates/theory-nominal-automata",
   "crates/theory-orders",
   "crates/theory-recursion",
+  "crates/theory-virtual-doctrines",
   "crates/workflow-docs",
   "crates/workflow-dylint",
   "crates/workflow-gates",

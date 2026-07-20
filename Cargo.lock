@@ -667,6 +667,16 @@ name = "gandr-theory-recursion"
 version = "0.0.0"
 
 [[package]]
+name = "gandr-theory-virtual-doctrines"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-sequent",
+ "gandr-theory-computads",
+ "gandr-theory-levitation",
+ "proptest",
+]
+
+[[package]]
 name = "gandr-workflow-docs"
 version = "0.0.0"
 dependencies = [
