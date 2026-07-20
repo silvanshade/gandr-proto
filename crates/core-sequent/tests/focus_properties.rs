@@ -39,6 +39,9 @@ mod tests
     use gandr_core_checker::syntax::OpClause;
     use gandr_core_checker::syntax::Stack;
     use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::syntax::WalkBase;
+    use gandr_core_checker::syntax::WalkMotive;
+    use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::ValueType;
     use gandr_core_sequent::FocusOrigin;
     use gandr_core_sequent::focus_comp;
@@ -373,6 +376,16 @@ mod tests
                 Comp::record_proj(Value::record([(String::from("a"), Value::int(1))]), "a"),
                 FocusOrigin::RecordProj,
                 ".a(",
+            ),
+            (
+                "walk",
+                Comp::walk(
+                    Value::here(Value::int(7)),
+                    WalkMotive::new("x", "y", "q", CompType::returner(ValueType::integer())),
+                    WalkBase::new("x", Comp::ret(Value::var("x"))),
+                ),
+                FocusOrigin::Walk,
+                "Here(x; ) ⇒",
             ),
             (
                 "stk-value",

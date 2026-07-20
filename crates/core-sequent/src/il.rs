@@ -132,6 +132,11 @@ pub enum CtorTag
         /// The operation's own name.
         op: String,
     },
+    /// The identity-proof constructor `Here(w)` — the reflexivity witness of
+    /// the identity type (ADR-76; the `Value::Here` intro). One producer
+    /// argument (the witness `w`); the eliminator [`crate::machine`] fires
+    /// Walk-β on it.
+    Here,
 }
 
 impl CtorTag
@@ -149,7 +154,7 @@ impl CtorTag
     {
         match *self {
             | Self::Nil => 0_usize.into(),
-            | Self::Inj(_) | Self::Op { .. } => 1_usize.into(),
+            | Self::Inj(_) | Self::Op { .. } | Self::Here => 1_usize.into(),
             | Self::Pair | Self::Cons => 2_usize.into(),
             | Self::Record(ref labels) => labels.len().into(),
         }

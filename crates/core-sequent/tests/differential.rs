@@ -67,6 +67,9 @@ mod tests
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::OpClause;
     use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::syntax::WalkBase;
+    use gandr_core_checker::syntax::WalkMotive;
+    use gandr_core_checker::types::CompType;
     use gandr_core_sequent::differential::agree;
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
@@ -620,6 +623,76 @@ mod tests
                 canonical(&machine)
             );
         }
+    }
+
+    /// Hand-built identity-former cases (ADR-76) pinning Walk-β against the
+    /// oracle: the eliminator fires on `here(w)` binding the diagonal base
+    /// binder to the WITNESS (not the whole proof), a non-`here` scrutinee is
+    /// `WalkOnNonHere`, a hole blames, and a returned `here` compares opaquely.
+    #[test]
+    fn hand_built_identity_cases_agree()
+    {
+        // Walk-β threads the WITNESS into the base binder: `(x). ret x` on
+        // `here(7)` yields `ret 7`.
+        assert_agree(&Comp::walk(
+            Value::here(Value::int(7)),
+            walk_motive(),
+            WalkBase::new("x", Comp::ret(Value::var("x"))),
+        ));
+        // The base body may rebuild the proof: `(x). ret here(x)` yields
+        // `ret here(7)` — a returned identity value, compared opaquely on both.
+        assert_agree(&Comp::walk(
+            Value::here(Value::int(7)),
+            walk_motive(),
+            WalkBase::new("x", Comp::ret(Value::here(Value::var("x")))),
+        ));
+        // A structured witness threads through and is eliminated: `here((1, 2))`
+        // splits to 1.
+        assert_agree(&Comp::walk(
+            Value::here(Value::pair(Value::int(1), Value::int(2))),
+            walk_motive(),
+            WalkBase::new(
+                "x",
+                Comp::split(Value::var("x"), "a", "b", Comp::ret(Value::var("a"))),
+            ),
+        ));
+        // Walk-β under a bind continues: `bind (walk here(5) …) y (ret (y, y))`.
+        assert_agree(&Comp::bind(
+            Comp::walk(
+                Value::here(Value::int(5)),
+                walk_motive(),
+                WalkBase::new("x", Comp::ret(Value::var("x"))),
+            ),
+            "y",
+            Comp::ret(Value::pair(Value::var("y"), Value::var("y"))),
+        ));
+        // A bare returned identity proof compares opaquely (kind granularity).
+        assert_agree(&Comp::ret(Value::here(Value::int(9))));
+        // A non-`here` scrutinee is `WalkOnNonHere` on both (ill-typed input;
+        // a well-typed closed `Path` scrutinee is always a `here`).
+        assert_agree(&Comp::walk(
+            Value::int(1),
+            walk_motive(),
+            WalkBase::new("x", Comp::ret(Value::var("x"))),
+        ));
+        // A hole scrutinee blames on both.
+        assert_agree(&Comp::walk(
+            Value::hole(0),
+            walk_motive(),
+            WalkBase::new("x", Comp::ret(Value::var("x"))),
+        ));
+    }
+
+    /// A trivial (runtime-erased) Walk motive `(x y q). F Integer` — the
+    /// identity β-rule ignores it, so its shape is inert to both machines.
+    fn walk_motive() -> WalkMotive
+    {
+        WalkMotive::new(
+            "x",
+            "y",
+            "q",
+            CompType::returner(gandr_core_checker::types::ValueType::integer()),
+        )
     }
 
     /// Hand-built native-dispatch cases pinning the currying registry against

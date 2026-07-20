@@ -156,6 +156,9 @@ pub enum FocusOrigin
     ListCase,
     /// `split v as (x, y)` — a cut against a `Pair` `case` (A-SPLIT).
     Split,
+    /// `walk(p, C, (x). c)` — the identity eliminator as a cut against a
+    /// single-`Here`-arm `case` (ADR-76; the motive is runtime-erased).
+    Walk,
     /// `r.ℓ` — a cut against a record-projection frame (A-RECORDPROJ).
     RecordProj,
     /// `⟨t, u⟩` — a cut of the lazy-pair cocase (A-WITH).
@@ -482,6 +485,10 @@ impl Focuser
                         work.push(FocusTask::BuildBoxed);
                         work.push(FocusTask::Stack(stack.as_ref()));
                     },
+                    | Value::Here(ref witness) => {
+                        work.push(FocusTask::BuildHere);
+                        work.push(FocusTask::Value(witness.as_ref()));
+                    },
                     | _ => {
                         let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
                         results.push(FocusResult::Producer(producer));
@@ -698,6 +705,25 @@ impl Focuser
                         for arg in args.iter().rev() {
                             work.push(FocusTask::Value(arg.as_ref()));
                         }
+                    },
+                    | Comp::Walk {
+                        ref scrut,
+                        ref base,
+                        ..
+                    } => {
+                        // The identity eliminator is a single-`Here`-arm case:
+                        // Walk-β binds the diagonal base binder to the witness and
+                        // runs the base body (ADR-76). The motive is a type child,
+                        // runtime-erased, so `𝓕` drops it — exactly the CEK, whose
+                        // Walk reduction reads only the scrutinee and base.
+                        work.push(FocusTask::BuildWalk {
+                            base_binder: &base.x,
+                        });
+                        work.push(FocusTask::Comp {
+                            comp: base.body.as_ref(),
+                            cont,
+                        });
+                        work.push(FocusTask::Value(scrut.as_ref()));
                     },
                     | _ => {
                         let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
@@ -927,6 +953,29 @@ impl Focuser
                     let case = self.new_consumer(ConsumerNode::Case { arms })?;
                     let command =
                         self.cut(Polarity::Positive, producer, case, FocusOrigin::Split)?;
+                    results.push(FocusResult::Command(command));
+                },
+                | FocusTask::BuildHere => {
+                    let witness = pop_producer(&mut results);
+                    let producer = self.new_producer(ProducerNode::Ctor {
+                        tag: CtorTag::Here,
+                        ps: Box::from([witness]),
+                        cs: Box::from([]),
+                    })?;
+                    results.push(FocusResult::Producer(producer));
+                },
+                | FocusTask::BuildWalk { base_binder } => {
+                    let body = pop_command(&mut results);
+                    let producer = pop_producer(&mut results);
+                    let arms = Box::from([Arm {
+                        ctor: CtorTag::Here,
+                        binders: Box::from([base_binder.clone()]),
+                        cobinders: Box::from([]),
+                        body,
+                    }]);
+                    let case = self.new_consumer(ConsumerNode::Case { arms })?;
+                    let command =
+                        self.cut(Polarity::Positive, producer, case, FocusOrigin::Walk)?;
                     results.push(FocusResult::Command(command));
                 },
                 | FocusTask::BuildRecordProj { label, cont } => {
@@ -1296,6 +1345,16 @@ enum FocusTask<'src>
         fst_binder: &'src String,
         /// The second-component binder.
         snd_binder: &'src String,
+    },
+    /// Assembles the identity-proof constructor `Here(w)` from the top producer
+    /// result (ADR-76; the `Value::Here` intro).
+    BuildHere,
+    /// Assembles the identity eliminator's single-`Here`-arm case and cuts the
+    /// scrutinee against it (ADR-76; the motive is runtime-erased).
+    BuildWalk
+    {
+        /// The diagonal base binder `x` the witness is bound to.
+        base_binder: &'src String,
     },
     /// Cuts the top producer result against a record-projection destructor.
     BuildRecordProj
@@ -1788,9 +1847,20 @@ fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStat
     while let Some(node) = work.pop() {
         match node {
             | Node::Comp(comp_node) => match *comp_node {
-                // The identity eliminator (ADR-76) and the declared-data
-                // eliminator (ADR-80) both decline whole (see below).
-                | Comp::Walk { .. } | Comp::DataCase(..) => return true.into(),
+                // The declared-data eliminator (ADR-80) still declines whole
+                // (its realization lands in a later seam). The identity
+                // eliminator `Walk` (ADR-76) is realized — scan THROUGH it (its
+                // scrutinee and base body) so a not-yet-realized former nested
+                // inside still triggers the whole-program decline.
+                | Comp::DataCase(..) => return true.into(),
+                | Comp::Walk {
+                    ref scrut,
+                    ref base,
+                    ..
+                } => {
+                    work.push(Node::Value(scrut));
+                    work.push(Node::Comp(base.body.as_ref()));
+                },
                 | Comp::Abs(_, _, ref body)
                 | Comp::Reset(ref body)
                 | Comp::Shift(_, ref body)
@@ -1867,9 +1937,11 @@ fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStat
                 | _ => {},
             },
             | Node::Value(value_node) => match *value_node {
-                // The identity-proof value (ADR-76) and the declared-data
-                // constructor value (ADR-80) both decline whole.
-                | Value::Here(_) | Value::Ctor { .. } => return true.into(),
+                // The declared-data constructor value (ADR-80) still declines
+                // whole. The identity-proof value `Here` (ADR-76) is realized —
+                // scan THROUGH its witness.
+                | Value::Ctor { .. } => return true.into(),
+                | Value::Here(ref witness) => work.push(Node::Value(witness)),
                 | Value::Pair(ref fst, ref snd) => {
                     work.push(Node::Value(fst));
                     work.push(Node::Value(snd));

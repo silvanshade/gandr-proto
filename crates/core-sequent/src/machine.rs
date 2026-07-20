@@ -2094,6 +2094,9 @@ fn non_ctor_stuck(arms: &[Arm]) -> StuckReason
     match arms.first().map(|arm| &arm.ctor) {
         | Some(&CtorTag::Pair) => StuckReason::SplitNonProduct,
         | Some(&CtorTag::Nil | &CtorTag::Cons) => StuckReason::ListCasedNonList,
+        // A single-`Here`-arm case is a focused `Walk`: a non-`here` scrutinee
+        // is the CEK's `WalkOnNonHere` (ADR-76).
+        | Some(&CtorTag::Here) => StuckReason::WalkOnNonHere,
         | _ => StuckReason::CasedNonSum,
     }
 }
@@ -2324,6 +2327,13 @@ fn read_value(
                         }
                     },
                     | CtorTag::Op { .. } => return None,
+                    // An identity proof `here(w)` (ADR-76). The differential
+                    // canonicalizes a returned `Value::Here` opaquely (kind
+                    // granularity, like a thunk / function terminal — it does
+                    // NOT descend into the witness), so the readback is a
+                    // representative with a placeholder witness rather than a
+                    // recursive quote that could fail on a higher-order witness.
+                    | CtorTag::Here => values.push(Value::here(Value::Unit)),
                 },
                 | LValue::Thunk { grade, .. } => {
                     let index = u32::try_from(marks.len()).ok()?;
