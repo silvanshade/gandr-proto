@@ -68,7 +68,7 @@ Binding rules (ADR-71 D3–D6):
   Fingerprints compare pairs of live computations, never serve as pinned goldens.
 * **Extensional completeness.** Every `- fails:`/`- ensures:` bullet has a witness asserting the **exact variant or value** on a triggering input.
   `is_err()`-only checks do not witness; `#[should_panic]` is disqualified (it passes on _any_ panic and rewards the mutant).
-* **Boundary-biased inputs.** For dense decision surfaces, one boundary-biased property test over scattered unit cases; finite classes enumerated exhaustively (shared combinator home: `wyrd-xegj`).
+* **Boundary-biased inputs.** For dense decision surfaces, one boundary-biased property test over scattered unit cases; finite classes enumerated exhaustively (a shared combinator home is a tracked follow-up).
 * **Design for adequacy.** Prefer the API shape that returns evidence — mutants become self-incriminating and trust concentrates in small validators, where the L3 rigor is spent.
 * **Per-file coverage floors.** Crate-level coverage judgment is banned (`docs/HAZARDS.md`).
 
@@ -92,8 +92,8 @@ Each clause compiles to a test obligation:
 
 cargo-mutants has no argument-swap or wrong-algorithm operator, so the score under-measures the fault model this discipline defends against (agent-authored code's characteristic faults) — judge the intensional face by the external-oracle rule, not the score.
 
-Gates, staged: **G0** (`wyrd-lgih`) — every `- witness:` path resolves and `# Adequacy` is present on nontrivial new/refactored items; **G1** (`wyrd-an6r`) — survivors joined span-to-item and classified (per-line hit data is ground truth for reachedness).
-Per-file floors: `wyrd-ad5h`.
+Gates, staged: **G0** — every `- witness:` path resolves and `# Adequacy` is present on nontrivial new/refactored items; **G1** — survivors joined span-to-item and classified (per-line hit data is ground truth for reachedness).
+Per-file floors are a further staged gate.
 
 Scope: mandatory for new or substantially refactored production Rust; existing survivor hotspots stay in the triage lane — no blanket retrofit.
 ADR-71 D8's metric: at the first sweep after `gandr-graph` lands, new-crate survival < 5% (baseline 30.8%) with every survivor classified — else the reversal triggers fire.
