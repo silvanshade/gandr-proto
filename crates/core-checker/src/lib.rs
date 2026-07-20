@@ -34,6 +34,15 @@
 //!   unparseable/unsupported regions to holes and the checker accepts every
 //!   editor state.
 //!
+//! Riding on the checker, this crate also carries the **A2.3 checkpoint base**
+//! ([`checkpoint`], [`footprint`], [`region`]): the item-granular,
+//! dependency-validated incremental typer of `incremental-pipeline.md` §§4-6,
+//! over the order-maintenance substrate (`gandr_theory_orders`). It re-types
+//! only the edited region and adopts the validated remainder, its
+//! `resume ≡ from-scratch` gate the standing soundness check. Changed-region
+//! detection sits behind the parser-agnostic [`region::ItemSource`] seam — no
+//! parser is named here; the surface lane supplies the real lowering front end.
+//!
 //! No grade *constraints* beyond the inline `1 ⊑ r` force check of §3.3
 //! (matched-`U` operations emit none), no unions/intersections, no
 //! polymorphism, sessions, sharing, or worlds. The representations are kept
@@ -56,10 +65,12 @@ extern crate alloc;
 
 pub mod boundary;
 pub mod checker;
+pub mod checkpoint;
 pub mod control;
 pub mod ctx;
 pub mod effect;
 pub mod error;
+pub mod footprint;
 pub mod grade;
 pub mod host;
 pub mod identity;
@@ -69,6 +80,7 @@ pub mod mark;
 pub mod nominal;
 pub mod outcome;
 pub mod prim;
+pub mod region;
 pub mod stack;
 pub mod subst;
 pub mod subtype;

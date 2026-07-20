@@ -598,6 +598,7 @@ name = "gandr-core-checker"
 version = "0.0.0"
 dependencies = [
  "gandr-theory-nominal-automata",
+ "gandr-theory-orders",
  "no-panic",
  "proptest",
  "regex",

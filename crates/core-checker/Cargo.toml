@@ -14,6 +14,10 @@ publish.workspace = true
 # The nominal atom substrate (ADR-41): runtime continuation-key minting routes
 # through its `Gensym`/`Atom` instead of a bare counter.
 gandr-theory-nominal-automata = { path = "../theory-nominal-automata" }
+# The order-maintenance substrate (`incremental-pipeline.md` §7, the Porter
+# disposition): the A2.3 checkpoint base splices the item order onto it so a
+# matched item keeps its stable identity across insert/delete edits.
+gandr-theory-orders = { path = "../theory-orders" }
 no-panic = { workspace = true }
 proptest = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
