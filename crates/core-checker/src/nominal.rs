@@ -22,9 +22,9 @@ use gandr_theory_nominal_automata::Unifiability;
 #[non_exhaustive]
 pub enum GandrSort
 {
-    /// **Atom-role.** A CEK-machine continuation-environment key (rendered
+    /// **Atom-role.** A machine continuation-environment key (rendered
     /// `%k{id}`): the fresh name `shift` / `perform` α-rename their captured
-    /// binder to, so distinct captures never collide ([`crate::eval`]).
+    /// binder to, so distinct captures never collide.
     ContKey,
     /// **Atom-role.** A pipeline hoist binder (rendered `%tmp{n}`): the fresh
     /// name a synthesized `Bind` introduces when a value position is lifted to

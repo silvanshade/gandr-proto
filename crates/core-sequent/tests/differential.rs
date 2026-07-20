@@ -71,11 +71,11 @@ mod tests
     use gandr_core_checker::boundary::NameRef;
     use gandr_core_checker::boundary::OperationName;
     use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::eval::Blame;
-    use gandr_core_checker::eval::Eval;
     use gandr_core_checker::grade::Grade;
     use gandr_core_checker::host::HostHandler;
     use gandr_core_checker::host::HostReply;
+    use gandr_core_checker::outcome::Blame;
+    use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::prim::NativePrim;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::OpClause;

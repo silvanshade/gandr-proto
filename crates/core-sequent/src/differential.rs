@@ -1,16 +1,18 @@
-//! The `L-run ∘ 𝓕 ≡ run` differential comparison (`proposal-sequent-kernel.md`
-//! §9, phase **L1** gate).
+//! The `𝓕`-outcome canonicalization (`proposal-sequent-kernel.md` §9, phase
+//! **L1** gate).
 //!
-//! The CEK machine (`gandr_core_checker::eval::run` and friends) is the
-//! **external oracle** (ADR-71 adequacy discipline): a distinct,
-//! independently-maintained implementation of the same operational semantics,
-//! so agreement between it and the L machine is evidence for the L machine's
-//! correctness (the two share no step code — the CEK drives `Comp`, the L
-//! machine drives the focused command IL). The **adequacy hypothesis** the
-//! differential rests on: for a checked core computation `t`, `run(t)` and
-//! `L-run(𝓕(t))` denote the same observable outcome; a disagreement is a
-//! genuine defect in one machine (a finding for the orchestrator), never a
-//! tolerated divergence.
+//! Through the L1 migration the CEK machine was the **external oracle** (ADR-71
+//! adequacy discipline): a distinct, independently-maintained implementation of
+//! the same operational semantics, so agreement between it and the L machine
+//! was evidence for the L machine's correctness (the two shared no step code —
+//! the CEK drove `Comp`, the L machine drives the focused command IL). The
+//! **adequacy hypothesis** the differential rested on: for a checked core
+//! computation `t`, `run(t)` and `L-run(𝓕(t))` denote the same observable
+//! outcome. The CEK retired at B1 stage F; this module's [`canonical`] /
+//! [`agree`] now compare the L machine's outcome against the frozen outcome
+//! snapshots (`tests/differential.rs`, `tests/corpus_differential.rs`) that
+//! captured the final oracle-agreeing run — the same canonicalization, its
+//! reference now a fixture rather than a live second machine.
 //!
 //! # What is compared
 //!
@@ -46,10 +48,10 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gandr_core_checker::eval::Blame;
-use gandr_core_checker::eval::Eval;
-use gandr_core_checker::eval::StuckReason;
 use gandr_core_checker::grade::Grade;
+use gandr_core_checker::outcome::Blame;
+use gandr_core_checker::outcome::Eval;
+use gandr_core_checker::outcome::StuckReason;
 use gandr_core_checker::prim::NativePrim;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::HoleId;
@@ -61,8 +63,9 @@ use gandr_core_checker::types::DataId;
 
 use crate::boundary::DifferentialAgreement;
 
-/// A canonicalized evaluation outcome — the comparison target both the CEK
-/// oracle and the L machine map onto (see the module docs for the granularity).
+/// A canonicalized evaluation outcome — the comparison target the L machine's
+/// outcome maps onto (as the retired CEK oracle's did; see the module docs for
+/// the granularity).
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum CanonOutcome
@@ -126,8 +129,9 @@ pub enum CanonValue
     Other,
 }
 
-/// Whether the CEK oracle and the L machine agree on an outcome (their
-/// canonicalization are equal).
+/// Whether two evaluation outcomes agree (they canonicalize equally) — the L
+/// machine's outcome against a recorded snapshot, or, through the L1 migration,
+/// against the retired CEK oracle.
 ///
 /// # Contract
 /// - ensures: `true` iff `canonical(oracle) == canonical(machine)`.
@@ -380,7 +384,7 @@ fn canonical_data_id() -> DataId
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::eval::Eval;
+    use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::Value;
 

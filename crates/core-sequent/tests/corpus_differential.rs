@@ -48,14 +48,11 @@
 //! `.sexp` fixtures document their own capture. The records here were blessed
 //! from the final oracle-agreeing run.
 //!
-//! # Transitional oracle cross-check
-//!
-//! While the CEK still exists (through stage F), the sweep additionally proves
-//! the frozen snapshot still mirrors the retiring oracle — every item's CEK
-//! outcome must also render to the recorded snapshot — so this commit shows
-//! both anchors (L and CEK) agreeing with the fixture before the CEK is
-//! removed. That cross-check ([`tests::assert_oracle_matches_snapshot`])
-//! retires with the CEK.
+//! When these snapshots were first frozen (B1 stage F) the sweep additionally
+//! cross-checked that each item's retiring-CEK-oracle outcome rendered to the
+//! same snapshot, so both anchors (L and the oracle) agreed with the fixture
+//! before the CEK was removed. That cross-check retired with the CEK; the sweep
+//! is now L-vs-snapshot only.
 //!
 //! The items are read from the pre-lowered corpus fixtures
 //! ([`crate::corpus_fixtures`]) rather than lowered live: the front-end that
@@ -79,12 +76,8 @@ mod tests
     use std::fs;
     use std::path::PathBuf;
 
-    // TRANSITIONAL: the retiring CEK oracle, used only by the cross-check that
-    // proves the frozen snapshots still mirror it. Removed with the CEK at
-    // stage F, leaving the pure L-vs-snapshot sweep.
-    use gandr_core_checker::eval::Eval;
-    use gandr_core_checker::eval::StuckReason;
-    use gandr_core_checker::eval::run_comp as cek_run_comp;
+    use gandr_core_checker::outcome::Eval;
+    use gandr_core_checker::outcome::StuckReason;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::Term;
     use gandr_core_sequent::boundary::CorpusItemCount;
@@ -206,34 +199,9 @@ mod tests
                         fixture.source
                     ));
                 }
-                assert_oracle_matches_snapshot(&comp, snapshot, &fixture.source, index);
             }
         }
         outcome
-    }
-
-    /// TRANSITIONAL (retires with the CEK at stage F): the retiring CEK
-    /// oracle's canonical outcome must also render to the recorded
-    /// snapshot, proving the frozen fixture still mirrors the oracle it was
-    /// blessed from.
-    fn assert_oracle_matches_snapshot(
-        comp: &Comp,
-        expected: &str,
-        source: &str,
-        index: usize,
-    )
-    {
-        let oracle = cek_run_comp(comp.clone());
-        assert!(
-            !bool::from(is_unsupported(&oracle)),
-            "{source} item {index}: the retiring CEK oracle declined a corpus item"
-        );
-        assert_eq!(
-            format!("{:?}", canonical(&oracle)),
-            expected,
-            "{source} item {index}: the retiring CEK oracle disagrees with the recorded \
-             snapshot; the snapshot provenance is broken"
-        );
     }
 
     /// Regenerates every `.outcome` snapshot from the current L machine when

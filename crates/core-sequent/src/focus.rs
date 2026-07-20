@@ -1876,8 +1876,8 @@ pub fn focus_comp(comp: &Comp) -> Result<Focused, FocusError>
 /// `name → (cobinder, body)` table for the prelude names, each thunk body
 /// focused into the **same** arena, so its command id is valid on the L
 /// machine that owns the arena. A force-position free name resolves against
-/// this table, mirroring the CEK's `Force(Var …)` prelude lookup
-/// (`gandr_core_checker::eval`).
+/// this table, mirroring the retired CEK oracle's `Force(Var …)` prelude
+/// lookup.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct PreludeFocused
@@ -1911,15 +1911,14 @@ impl PreludeFocused
 /// Focuses `comp` together with a prelude binding-environment (ADR-42).
 ///
 /// Each thunk-valued prelude binding's body is focused into the **same** arena,
-/// so a force-position free name resolves against it exactly as the CEK's
-/// `Force(Var …)` consults its `Prelude`
-/// (`gandr_core_checker::eval::run_comp_with_prelude`).
+/// so a force-position free name resolves against it exactly as the retired
+/// CEK oracle's `Force(Var …)` consulted its prelude table.
 ///
 /// Later bindings shadow earlier ones (the CEK's reverse lookup); a binding
 /// whose winning value is not a thunk does not resolve (a force miss stays
-/// [`gandr_core_checker::eval::StuckReason::ForcedNonThunk`], as the CEK). The
-/// empty prelude reproduces [`focus_comp`] exactly — an empty table, so every
-/// force-position free name still halts at `ForcedNonThunk`.
+/// [`gandr_core_checker::outcome::StuckReason::ForcedNonThunk`], as the CEK).
+/// The empty prelude reproduces [`focus_comp`] exactly — an empty table, so
+/// every force-position free name still halts at `ForcedNonThunk`.
 ///
 /// # Errors
 /// [`FocusError::ArenaFull`] only on arena exhaustion.

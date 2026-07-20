@@ -5,18 +5,17 @@
 //! This is a **preserved boundary**: it is expressed over the public
 //! [`Value`] / [`EffectSig`] surface and the operation *name* only — never a
 //! machine continuation frame — so it stays representation-independent across
-//! the evaluator that realizes it. That representation-independence is what
-//! lets the seam survive the port from the CEK oracle ([`crate::eval`]) to its
-//! successor: the two machines present the *identical* seam to the host, and
-//! the L machine realization in `gandr_core_sequent` is the durable driver the
-//! runtime-host binds against (the CEK drivers retire with the CEK).
+//! the evaluator that realizes it. That representation-independence is what let
+//! the seam survive the port from the CEK oracle to its successor: the two
+//! machines presented the *identical* seam to the host, and the L machine
+//! realization in `gandr_core_sequent` (`machine::run_comp_with_host`) is the
+//! durable driver the runtime-host binds against — the CEK drivers retired with
+//! the CEK at B1 stage F.
 //!
 //! The three types here are the seam's whole public vocabulary: a [`HostOp`]
 //! the machine hands out, a [`HostReply`] the host hands back, and the
-//! [`HostHandler`] that mediates. The CEK drivers that offer them
-//! ([`crate::eval::run_with_host`] / [`crate::eval::run_state_with_host`], via
-//! [`crate::eval::State::pending_host_op`] /
-//! [`crate::eval::State::resume_host`]) stay with the CEK and die with it; this
+//! [`HostHandler`] that mediates. The L machine offers each host-interceptable
+//! `perform` to a [`HostHandler`] and either resumes or declines it; this
 //! module is the seam's durable home precisely because the boundary outlives
 //! any one machine.
 //!
@@ -35,7 +34,7 @@ use crate::syntax::Value;
 ///
 /// A [`HostHandler`] either resumes the operation with a value or declines it,
 /// leaving the machine to take its ordinary step (which blames
-/// [`crate::eval::Blame::PerformNoHandler`] on an unclaimed `perform`).
+/// [`crate::outcome::Blame::PerformNoHandler`] on an unclaimed `perform`).
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum HostReply
@@ -49,8 +48,8 @@ pub enum HostReply
         Value,
     ),
     /// Decline the operation — the machine takes its ordinary step, blaming
-    /// [`crate::eval::Blame::PerformNoHandler`] when no in-term handler catches
-    /// it.
+    /// [`crate::outcome::Blame::PerformNoHandler`] when no in-term handler
+    /// catches it.
     Unhandled,
 }
 
@@ -58,23 +57,23 @@ pub enum HostReply
 /// claims — the host-effect seam (ADR-35 D4; the earliest bootstrap gate).
 ///
 /// **Invariant.** The host intercepts EXACTLY the operations that would
-/// otherwise [`crate::eval::Blame::PerformNoHandler`] — those no source-level
-/// handler claims across the structural prefix (see
-/// [`crate::eval::State::pending_host_op`]). This equals an identity-return,
-/// always-resume ambient handler ONLY in the absence of a `reset` and of
-/// intervening non-matching handlers: a `perform` cut off from its in-term
-/// handler by an intervening [`crate::eval::Cont::Reset`] or a non-matching
-/// [`crate::eval::Cont::Handle`] is host-interceptable here even though that
-/// handler encloses it in a from-the-outside reading (the v0 structural
-/// single-handler scope, pinned by `host_seam_intercepts_across_a_reset` and
-/// `host_seam_intercepts_across_an_intervening_handler`).
+/// otherwise [`crate::outcome::Blame::PerformNoHandler`] — those no
+/// source-level handler claims across the structural prefix. This equals an
+/// identity-return, always-resume ambient handler ONLY in the absence of a
+/// `reset` and of intervening non-matching handlers: a `perform` cut off from
+/// its in-term handler by an intervening `reset` or a non-matching `handle` is
+/// host-interceptable here even though that handler encloses it in a
+/// from-the-outside reading (the v0 structural single-handler scope, pinned by
+/// the L machine's host-seam differential cases
+/// `host_seam_intercepts_across_a_reset`
+/// and `host_seam_intercepts_across_an_intervening_handler`).
 ///
-/// [`crate::eval::run_state_with_host`] offers the host every such `perform`
-/// (see [`crate::eval::State::pending_host_op`]) and either resumes
-/// ([`HostReply::Resume`]) or declines ([`HostReply::Unhandled`]). The handler
-/// sees only the public [`Value`] / [`EffectSig`] surface and the operation
-/// *name* — never a continuation frame — so the seam stays
-/// representation-independent across machine/arena changes.
+/// The L machine (`gandr_core_sequent::machine::run_comp_with_host`) offers the
+/// host every such `perform` and either resumes ([`HostReply::Resume`]) or
+/// declines ([`HostReply::Unhandled`]). The handler sees only the public
+/// [`Value`] / [`EffectSig`] surface and the operation *name* — never a
+/// continuation frame — so the seam stays representation-independent across
+/// machine/arena changes.
 ///
 /// Any `FnMut(&EffectSig, &str, &Value) -> HostReply` is a `HostHandler` via
 /// the blanket impl below, so a closure suffices for the common case.
@@ -117,7 +116,7 @@ where
 }
 
 /// A host-interceptable effect operation carried out of the machine as an
-/// **owned** payload (ADR-35 D4; see [`crate::eval::State::pending_host_op`]).
+/// **owned** payload (ADR-35 D4).
 ///
 /// Owned by design: under the coming arena the payload is a node with no
 /// `&Value` to borrow, so the seam hands the host a self-contained operation
@@ -140,10 +139,9 @@ impl HostOp
     ///
     /// [`HostOp`] is `#[non_exhaustive]`, so this constructor is how a machine
     /// *outside* this crate — the L machine realization in `gandr_core_sequent`
-    /// — builds the offer it hands to a [`HostHandler`], the same triple the
-    /// CEK packages in [`crate::eval::State::pending_host_op`]. This is
-    /// what keeps the seam a single shared boundary across the two machines
-    /// rather than two parallel vocabularies.
+    /// — builds the offer it hands to a [`HostHandler`]. This is what keeps the
+    /// seam a single shared boundary across machines rather than two parallel
+    /// vocabularies (the retired CEK oracle packaged the same triple).
     ///
     /// # Contract
     /// - ensures: a [`HostOp`] carrying `sig`, the owned operation name of

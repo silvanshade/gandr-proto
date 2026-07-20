@@ -1694,9 +1694,9 @@ pub enum Comp
     /// traces exactly like `Case`.
     ///
     /// Its sole computation rule is the definitional β on `here`:
-    /// `walk(here(v), C, (x). c) ↦ c[v/x]` — realized in both the CEK machine
-    /// and the reference evaluator ([`crate::eval`]). A non-`here`,
-    /// non-hole scrutinee is [`crate::eval::StuckReason::WalkOnNonHere`]; a
+    /// `walk(here(v), C, (x). c) ↦ c[v/x]` — realized on the L machine (and, up
+    /// to B1 stage F, the retired CEK oracle). A non-`here`,
+    /// non-hole scrutinee is [`crate::outcome::StuckReason::WalkOnNonHere`]; a
     /// hole scrutinee blames (the `Case` discipline). No K, no η.
     Walk
     {

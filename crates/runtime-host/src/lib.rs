@@ -8,7 +8,7 @@
 //! The durable driver is the **L machine**
 //! ([`gandr_core_sequent::machine::run_comp_with_host`]): [`run_program`] hands
 //! a lowered program and a host handler to it and reads back an
-//! [`Eval`](gandr_core_checker::eval::Eval). The seam it binds is the
+//! [`Eval`](gandr_core_checker::outcome::Eval). The seam it binds is the
 //! representation-independent host-effect boundary in
 //! [`gandr_core_checker::host`] — the `(signature name, operation name,
 //! payload)` projection both the L machine and the retiring CEK oracle present

@@ -3,12 +3,15 @@
 //! **L1**).
 //!
 //! The machine is the sequent-shaped **re-presentation** of the CEK machine
-//! (`gandr_core_checker::eval`): the CEK is the oracle, and this machine is
-//! differentially anchored to it — `L-run ∘ 𝓕 ≡ run` (§9 L1 gate;
-//! [`crate::differential`]). It is a flat loop over commands (ADR-47 — no
-//! recursion in the step), environment-extension only (never textual
-//! substitution), and every transition is one budgeted step against the single
-//! shared [`gandr_core_checker::eval::STEP_BUDGET`].
+//! that was gandr's operational oracle through the L1 migration: it was
+//! differentially anchored to the CEK — `L-run ∘ 𝓕 ≡ run` — until the CEK
+//! retired at B1 stage F, and is now the live driver, anchored by the frozen
+//! outcome snapshots (the [`crate::differential`] canonicalization drives both
+//! the corpus and the hand-built regression sweeps).
+//! It is a flat loop over commands (ADR-47 — no recursion in the step),
+//! environment-extension only (never textual substitution), and every
+//! transition is one budgeted step against the single shared
+//! [`gandr_core_checker::outcome::STEP_BUDGET`].
 //!
 //! # Configuration (§4.1)
 //!
@@ -96,14 +99,14 @@ use gandr_core_checker::boundary::FieldName;
 use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::boundary::OperationName;
 use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::eval::Blame;
-use gandr_core_checker::eval::Eval;
-use gandr_core_checker::eval::STEP_BUDGET;
-use gandr_core_checker::eval::StuckReason;
 use gandr_core_checker::grade::Grade;
 use gandr_core_checker::host::HostHandler;
 use gandr_core_checker::host::HostOp;
 use gandr_core_checker::host::HostReply;
+use gandr_core_checker::outcome::Blame;
+use gandr_core_checker::outcome::Eval;
+use gandr_core_checker::outcome::STEP_BUDGET;
+use gandr_core_checker::outcome::StuckReason;
 use gandr_core_checker::prim::NativePrim;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Side;
@@ -623,8 +626,8 @@ impl LMachine
     /// host-interceptable operation to `handler` first — the host-effect seam
     /// (ADR-35 D4).
     ///
-    /// This is [`Self::run`] wired to the host seam, mirroring the CEK's
-    /// [`gandr_core_checker::eval::run_state_with_host`]: at the point an
+    /// This is [`Self::run`] wired to the host seam, mirroring the retired CEK
+    /// oracle's host-seam driver: at the point an
     /// unclaimed `perform` would blame [`Blame::PerformNoHandler`]
     /// ([`Flow::Host`]), the operation is offered to `handler` over the public
     /// [`Value`] / signature surface. On [`HostReply::Resume`] the reply is
@@ -2030,8 +2033,7 @@ pub fn run_comp(comp: &Comp) -> Eval
 ///
 /// The [`run_comp`] companion wired to the host seam
 /// ([`LMachine::run_with_host`]), the empty-continuation entry the host
-/// differential drives; it mirrors the
-/// CEK's [`gandr_core_checker::eval::run_with_host`].
+/// differential drives; it mirrors the retired CEK oracle's host-seam driver.
 ///
 /// # Contract
 /// - ensures: `L-run(𝓕(comp))` as an [`Eval`], with every handler-less
@@ -2060,8 +2062,7 @@ where
 /// Focuses a checked-core computation under a prelude binding-environment
 /// (ADR-42) and runs it on a fresh L machine to a terminal.
 ///
-/// The `run_comp` companion mirroring the CEK's
-/// [`gandr_core_checker::eval::run_comp_with_prelude`].
+/// The `run_comp` companion mirroring the retired CEK oracle's prelude entry.
 ///
 /// `bindings` is the prelude as name → value pairs (later bindings shadow
 /// earlier — the CEK's reverse lookup); a force-position free name resolves
@@ -2530,8 +2531,8 @@ fn read_lit(lit: &Lit) -> Value
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_checker::eval::Eval;
     use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::Value;
 

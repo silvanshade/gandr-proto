@@ -23,7 +23,7 @@
 //! (`Path A x y` does not bind `x`/`y` — they are value *occurrences*), so type
 //! substitution is capture-free structural recursion that delegates the one
 //! binder-bearing case — a value under a thunk — to the proven capture-avoiding
-//! engine [`crate::eval::subst_value`]. Both `value_eq` and the type
+//! engine [`crate::subst::subst_value`]. Both `value_eq` and the type
 //! substitution engine run as explicit heap worklists (the ADR-47 iterative
 //! discipline), so even an adversarially deep value or type compares and
 //! substitutes without overflowing the host call stack.
@@ -34,8 +34,8 @@ use alloc::rc::Rc;
 use crate::boundary::NameRef;
 use crate::boundary::ValueEquality;
 use crate::effect::EffectRow;
-use crate::eval::subst_value;
 use crate::grade::Grade;
+use crate::subst::subst_value;
 use crate::syntax::Value;
 use crate::types::CompType;
 use crate::types::ValueType;
@@ -162,7 +162,7 @@ fn peel(value: &Value) -> &Value
 /// Types carry no binders, so this is capture-free structural recursion; the
 /// only place a value occurs inside a type is an [`ValueType::Path`] endpoint
 /// (and its carrier), where the substitution delegates to the capture-avoiding
-/// value engine [`crate::eval::subst_value`]. Every non-`Path` former simply
+/// value engine [`crate::subst::subst_value`]. Every non-`Path` former simply
 /// rebuilds its children.
 ///
 /// # Contract

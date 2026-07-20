@@ -132,8 +132,7 @@ impl Piece
 }
 
 /// Reads a runtime machine value [`LValue`] back to a source [`Value`] — the
-/// value-level `𝓕⁻¹`, mirroring the CEK's
-/// [`gandr_core_checker::eval::quote_value`].
+/// value-level `𝓕⁻¹`, mirroring the retired CEK oracle's value readback.
 ///
 /// A thunk closure's body is un-focused ([`decode_command`]) then **closed**
 /// under the thunk's captured environment (each free environment variable

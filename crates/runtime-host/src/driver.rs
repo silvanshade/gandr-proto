@@ -7,9 +7,8 @@
 //! [`Eval`]. That entry offers every host-interceptable `perform` to the
 //! handler over the ADR-35 D4 host-effect seam
 //! ([`gandr_core_checker::host`]) — the same `(signature name, operation name,
-//! payload)` projection the retiring CEK oracle
-//! ([`gandr_core_checker::eval::run_with_host`]) presents — and enforces the
-//! same [`gandr_core_checker::eval::StuckReason::StepLimit`] guard, so a
+//! payload)` projection the retired CEK oracle presented — and enforces the
+//! same [`gandr_core_checker::outcome::StuckReason::StepLimit`] guard, so a
 //! non-terminating program halts rather than hangs.
 //!
 //! # The seam adaptation
@@ -34,10 +33,10 @@
 
 use gandr_core_checker::boundary::OperationName;
 use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::eval::Eval;
 use gandr_core_checker::host::HostHandler;
 use gandr_core_checker::host::HostOp;
 use gandr_core_checker::host::HostReply;
+use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Value;
 use gandr_core_sequent::machine::run_comp_with_host;
@@ -107,15 +106,14 @@ pub fn run_program(comp: &Comp) -> ShellOutcome
     run_with_driver(|driver| run_comp_with_host(comp, driver))
 }
 
-/// Runs a program under a fresh [`ShellDriver`] using `run` to select the host
-/// driver (the L machine in production; the retiring CEK in the differential
-/// test), then surfaces any recorded early outcome in place of the terminal
-/// [`Eval`].
+/// Runs a program on the L machine under a fresh [`ShellDriver`] via `run`,
+/// then surfaces any recorded early outcome in place of the terminal [`Eval`].
 ///
-/// Factoring the seam adaptation here keeps the two host paths comparable: both
-/// adapt [`HostAction`] to [`HostReply`] and capture `Proc::exit` / fatal
-/// aborts identically, so a differential test can hold the machines to the same
-/// observable [`ShellOutcome`].
+/// Factoring the seam adaptation here keeps the driver's [`HostAction`] →
+/// [`HostReply`] mapping and its `Proc::exit` / fatal-abort capture in one
+/// place. (Through the L1 migration a second `run` closure drove the retiring
+/// CEK host path, so the two were held to the same observable [`ShellOutcome`];
+/// that differential leg retired with the CEK at B1 stage F.)
 #[inline]
 fn run_with_driver<R>(run: R) -> ShellOutcome
 where
@@ -203,10 +201,10 @@ mod tests
     use gandr_core_checker::boundary::OperationName;
     use gandr_core_checker::effect::EffectOp;
     use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::eval::Blame;
-    use gandr_core_checker::eval::Eval;
-    use gandr_core_checker::eval::StuckReason;
     use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::outcome::Blame;
+    use gandr_core_checker::outcome::Eval;
+    use gandr_core_checker::outcome::StuckReason;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::Value;
     use gandr_core_checker::types::ValueType;
@@ -930,8 +928,8 @@ mod l_host_outcomes
 {
     use gandr_core_checker::effect::EffectOp;
     use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::eval::Blame;
-    use gandr_core_checker::eval::Eval;
+    use gandr_core_checker::outcome::Blame;
+    use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::Value;
     use gandr_core_checker::types::ValueType;

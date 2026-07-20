@@ -118,7 +118,8 @@ copy_wrapper!(SequentNodeCount, usize, "Number of command-IL arena nodes.");
 
 bool_wrapper!(
     DifferentialAgreement,
-    "Whether the CEK oracle and L machine agree."
+    "Whether two evaluation outcomes agree (the L machine's against a recorded \
+     snapshot, or the retired CEK oracle)."
 );
 bool_wrapper!(
     CommandHoleStatus,

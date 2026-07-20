@@ -50,7 +50,6 @@ use proptest::strategy::NewTree;
 use proptest::strategy::Union;
 use proptest::strategy::ValueTree;
 
-use crate::boundary::BooleanAtom;
 use crate::boundary::CoherenceDecision;
 use crate::boundary::GenerationDepth;
 use crate::boundary::I64Slice;
@@ -310,16 +309,14 @@ fn value_supertype(ty: &ValueType) -> BoxedStrategy<ValueType>
 }
 
 /// Declared-data conformance (ADR-80): the frozen-core `Ctor` / `DataCase`
-/// forms are exercised by the two live differentials — checker ≡ typing
-/// machine (via [`agree_value`] / [`agree_comp`]) and big-step reference ≡ CEK
-/// machine (via [`eval::eval_comp`] ≡ [`eval::run_comp`]) — so the new forms
-/// stay lock-step exactly as the sum family they sit beside.
+/// forms are exercised by the checker ≡ typing machine differential (via
+/// [`agree_value`] / [`agree_comp`]), so the new forms stay lock-step exactly
+/// as the sum family they sit beside. Their β-reduction outcomes are pinned on
+/// the L machine in `gandr_core_sequent::conformance_soundness` (the CEK
+/// evaluator that once cross-checked them retired at B1 stage F).
 mod declared_data
 {
     use super::*;
-    use crate::eval;
-    use crate::eval::Eval;
-    use crate::eval::StuckReason;
     use crate::types::DataId;
 
     /// A nullary declared-data constructor checks against its data type, and
@@ -397,60 +394,25 @@ mod declared_data
         assert_eq!(result, Ok(Ty::Comp(expected)));
     }
 
-    /// The β-rule selects the arm at the constructor's tag and binds the
-    /// field-tuple payload; the big-step reference and the CEK machine agree,
-    /// and `Some(3)` matched by its arm returns `3`.
-    #[test]
-    fn data_case_selects_arm_reference_equals_cek()
-    {
-        let maybe = DataId::new(0, "Maybe");
-        let some3 = Value::ctor(maybe, 1, Value::int(3));
-        let data_case = Comp::data_case(some3, vec![
-            ("_none".to_owned(), Comp::ret(Value::int(0))),
-            ("x".to_owned(), Comp::ret(Value::var("x"))),
-        ]);
-        assert_eq!(
-            eval::eval_comp(data_case.clone()),
-            eval::run_comp(data_case.clone()),
-            "big-step reference and CEK machine must agree on a declared-data case"
-        );
-        assert_eq!(
-            eval::run_comp(data_case),
-            Eval::Value(Comp::ret(Value::int(3)))
-        );
-    }
-
-    /// A declared-data `case` on a non-constructor scrutinee is an undefined
-    /// stuck (an ill-typed elimination), never a panic.
-    #[test]
-    fn data_case_on_non_ctor_is_stuck()
-    {
-        let data_case = Comp::data_case(Value::int(5), vec![(
-            "x".to_owned(),
-            Comp::ret(Value::var("x")),
-        )]);
-        assert_eq!(
-            Eval::Stuck(StuckReason::DataCasedNonCtor),
-            eval::run_comp(data_case)
-        );
-    }
+    // The declared-data β-rule and its non-`Ctor` stuck are pinned on the L
+    // machine in `gandr_core_sequent::conformance_soundness` (the CEK evaluator
+    // that once cross-checked them here retired at B1 stage F).
 }
 
 /// Levitation stage-1 conformance (ADR-81; `proposal-levitation.md` §6): the
 /// frozen-core dependent pair `Σ` (feature 2) and the code universe `Universe`
 /// (feature 1). The `Σ` intro (a pair checked against a `Σ`) and elimination (a
-/// `split` over a `Σ`-typed scrutinee) forms are exercised by the two live
-/// differentials — checker ≡ typing machine (via [`agree_value`] /
-/// [`agree_comp`]) and big-step reference ≡ CEK machine (via [`eval`]) —
-/// exactly as the declared-data forms beside them. The genuinely *dependent*
+/// `split` over a `Σ`-typed scrutinee) forms are exercised by the checker ≡
+/// typing machine differential (via [`agree_value`] / [`agree_comp`]), exactly
+/// as the declared-data forms beside them; their runtime β is pinned on the L
+/// machine in `gandr_core_sequent::conformance_soundness`. The genuinely
+/// *dependent*
 /// tail is the load-bearing witness: `Σ(x : Integer). Path Integer x x` is a
 /// family whose tail mentions the bound value, so a well-typed second component
 /// depends on the first.
 mod levitation
 {
     use super::*;
-    use crate::eval;
-    use crate::eval::Eval;
     use crate::subtype::value_subtype;
     /// A pair whose second component is a reflexivity proof *of its first*
     /// checks against the dependent pair, checker ≡ machine (rule Sigma⇓): the
@@ -495,21 +457,9 @@ mod levitation
         assert_eq!(result, Ok(Ty::Comp(expected)));
     }
 
-    /// The β-rule of `split` runs a `Σ`-typed pair exactly as a product one
-    /// (the runtime is type-erased): `split (3, here(3)) as (x, q) in ret
-    /// x` reduces to `ret 3`, big-step reference ≡ CEK machine.
-    #[test]
-    fn sigma_split_evaluates_reference_equals_cek()
-    {
-        let pair = Value::pair(Value::int(3), Value::here(Value::int(3)));
-        let split = Comp::split(pair, "x", "q", Comp::ret(Value::var("x")));
-        assert_eq!(
-            eval::eval_comp(split.clone()),
-            eval::run_comp(split.clone()),
-            "big-step reference and CEK machine must agree on a Σ-typed split"
-        );
-        assert_eq!(eval::run_comp(split), Eval::Value(Comp::ret(Value::int(3))));
-    }
+    // The Σ-typed split's β-rule (`split (3, here 3) as (x, q) in ret x` ↦
+    // `ret 3`) is pinned on the L machine in
+    // `gandr_core_sequent::conformance_soundness`.
 
     /// The code universe is its own subtype and nothing else's (ADR-81 feature
     /// 1; no cumulativity per ADR-78): `Universe <: Universe`, but `Universe`
@@ -579,24 +529,21 @@ mod levitation
 /// The dependent split motive (ADR-82): the motive-bearing split *infers*
 /// (rule `SplitMotive`⇑), the motive-less split is *check-only* (rule Split⇓),
 /// and the binder-escape hazard reported by ADR-81 is closed at the rule. The
-/// two live differentials — checker ≡ typing machine (via [`agree_comp`]) and
-/// big-step reference ≡ CEK machine (via [`eval::eval_comp`] ≡
-/// [`eval::run_comp`]) — hold for the new forms exactly as for the `Σ` family
-/// they sit beside.
+/// checker ≡ typing machine differential (via [`agree_comp`]) holds for the new
+/// forms exactly as for the `Σ` family they sit beside; the split-β evaluation
+/// is pinned on the L machine in `gandr_core_sequent::conformance_soundness`.
 mod split_motive
 {
     use super::*;
-    use crate::eval;
-    use crate::eval::Eval;
     /// (a) A **dependent-motive** split over a `Prod` scrutinee infers, checker
-    /// ≡ machine, and reduces identically in both evaluators (rule
-    /// `SplitMotive`⇑): `split (3, 4) as (x, y) [z. F (Path (Int×Int) z z)] in
-    /// ret (here (x, y))` infers `F (Path (Int×Int) (3, 4) (3, 4))` — the
-    /// answer is `M[v/z]`, substituted from the outer motive and the
-    /// scrutinee, so no binder occurs in it — and evaluates to `ret (here
-    /// (3, 4))`.
+    /// ≡ machine (rule `SplitMotive`⇑): `split (3, 4) as (x, y) [z. F (Path
+    /// (Int×Int) z z)] in ret (here (x, y))` infers `F (Path (Int×Int) (3, 4)
+    /// (3, 4))` — the answer is `M[v/z]`, substituted from the outer motive and
+    /// the scrutinee, so no binder occurs in it. The split-β evaluation
+    /// (`↦ ret (here (3, 4))`) is pinned on the L machine in
+    /// `gandr_core_sequent::conformance_soundness`.
     #[test]
-    fn dependent_split_over_prod_infers_agrees_and_evaluates()
+    fn dependent_split_over_prod_infers_and_agrees()
     {
         let scrut = Value::pair(Value::int(3), Value::int(4));
         let motive = SplitMotive::new(
@@ -614,31 +561,21 @@ mod split_motive
             motive,
             Comp::ret(Value::here(Value::pair(Value::var("x"), Value::var("y")))),
         );
-        let answer = CompType::returner(ValueType::path(int_prod(), scrut.clone(), scrut.clone()));
+        let answer = CompType::returner(ValueType::path(int_prod(), scrut.clone(), scrut));
         assert_eq!(
             agree_comp(&Ctx::new(), &split, &Dir::Infer),
             Ok(Ty::Comp(answer)),
             "the delivered answer is the substituted M[v/z], binder-free"
         );
-        assert_eq!(
-            eval::eval_comp(split.clone()),
-            eval::run_comp(split.clone()),
-            "big-step reference and CEK machine must agree on a motive-bearing split"
-        );
-        assert_eq!(
-            eval::run_comp(split),
-            Eval::Value(Comp::ret(Value::here(scrut))),
-            "split-β is type-erased: the motive is inert"
-        );
     }
     /// (a) A **motive-bearing** split over a `Σ`-typed scrutinee infers,
-    /// checker ≡ machine, and reduces identically (rule `SplitMotive`⇑):
-    /// the constant motive `(z). F Integer` supplies the answer, the `Σ`
-    /// tail's dependency is discharged at the binder, and `split ((3, here
-    /// 3) : Σ(x:Int). Path Int x x) as (x, q) [z. F Integer] in ret x`
-    /// infers `F Integer` and evaluates to `ret 3`.
+    /// checker ≡ machine (rule `SplitMotive`⇑): the constant motive `(z). F
+    /// Integer` supplies the answer, the `Σ` tail's dependency is discharged at
+    /// the binder, and `split ((3, here 3) : Σ(x:Int). Path Int x x) as (x, q)
+    /// [z. F Integer] in ret x` infers `F Integer`. Its `↦ ret 3` evaluation is
+    /// pinned on the L machine in `gandr_core_sequent::conformance_soundness`.
     #[test]
-    fn motive_split_over_sigma_infers_agrees_and_evaluates()
+    fn motive_split_over_sigma_infers_and_agrees()
     {
         let scrut = Value::annot(
             Value::pair(Value::int(3), Value::here(Value::int(3))),
@@ -656,11 +593,6 @@ mod split_motive
             agree_comp(&Ctx::new(), &split, &Dir::Infer),
             Ok(Ty::Comp(answer))
         );
-        assert_eq!(
-            eval::eval_comp(split.clone()),
-            eval::run_comp(split.clone())
-        );
-        assert_eq!(eval::run_comp(split), Eval::Value(Comp::ret(Value::int(3))));
     }
 
     /// (b) The **regression witness** (ADR-82 D5b): a split in inference
@@ -6418,299 +6350,18 @@ proptest! {
     }
 }
 
-/// The CEK machine's operational soundness oracle (A5.1; ADR-34
-/// D4; `docs/workflow/soundness.md`).
+/// Lock-step typing coverage of the native-builtin substrate [`Comp::Native`]
+/// (ADR-42; the MVP module layer): the typing axiom (`checker ≡ machine`, via
+/// [`agree_comp`]) over source and partially-applied native nodes, including
+/// the residual-type preservation the argument-accumulating reduction rests on.
 ///
-/// The runtime analogue of the `checker ≡ machine` differential. Three kinds of
-/// evidence on top of the directed reduction / effect / control round-trips
-/// (which live in [`crate::eval`]'s own tests, since they build effect
-/// signatures inline):
-///
-/// - **Soundness via evaluation** — a closed well-typed `F A` computation runs
-///   to a returner `ret v` that still type-checks against `F A` (preservation +
-///   progress packaged), or to a *defined* blame (the gradual-hole arm), and
-///   **never** to an undefined stuck. This is type-soundness for the dynamics.
-/// - **evaluator ≡ machine** — the recursive reference
-///   [`crate::eval::eval_comp`] and the CEK machine [`crate::eval::run_comp`]
-///   agree on every well-typed returner (the pure spine the type-directed
-///   generators produce; control / effects are CEK-machine-only,
-///   directed-tested in [`crate::eval`]).
-/// - **Per-step subject reduction** — directed configurations whose
-///   reconstructed term infers the same type at every machine step.
-///
-/// The type-directed generators emit the pure CBPV spine + holes (no
-/// `perform` / `handle` / `reset` / `shift` / `resume` / `dup` / `drop`), so
-/// the generated lane exercises the pure dynamics; the directed [`crate::eval`]
-/// tests cover the effect / control operators (including the escaping-`shift` →
-/// `ShiftNoReset` flag — the over-accepted set ADR-34 D5 defers).
-#[cfg(test)]
-mod operational
-{
-    use super::*;
-    use crate::eval;
-    use crate::eval::Eval;
-    /// Per-step SR: `force (thunk (ret 0))` preserves `F Integer` to `ret 0`.
-    #[test]
-    fn sr_force_thunk()
-    {
-        let comp = Comp::force(Value::thunk(Grade::ONE, Comp::ret(Value::int(0))));
-        subject_reduction_holds(comp, &CompType::returner(integer()));
-    }
-
-    /// Per-step SR: `(λx:Integer. ret x) 5` preserves `F Integer` across the
-    /// push and the β-step.
-    #[test]
-    fn sr_application()
-    {
-        let comp = Comp::app(
-            Comp::lam_ann("x", integer(), Comp::ret(Value::var("x"))),
-            Value::int(5),
-        );
-        subject_reduction_holds(comp, &CompType::returner(integer()));
-    }
-
-    /// Per-step SR: `ret 5 >>= x. ret x` preserves `F Integer` across the
-    /// bind-frame push and environment extension/readback.
-    #[test]
-    fn sr_bind()
-    {
-        let comp = Comp::bind(Comp::ret(Value::int(5)), "x", Comp::ret(Value::var("x")));
-        subject_reduction_holds(comp, &CompType::returner(integer()));
-    }
-
-    /// Per-step SR: `split (1, 2) as (x, y) [z. F Integer] in ret x` preserves
-    /// `F Integer`. The subject-reduction harness *infers* the reconstructed
-    /// term, so the split carries a (constant) motive (rule `SplitMotive`⇑,
-    /// ADR-82) — the motive-less form no longer infers.
-    #[test]
-    fn sr_split()
-    {
-        let comp = Comp::split_motive(
-            Value::pair(Value::int(1), Value::int(2)),
-            "x",
-            "y",
-            SplitMotive::new("z", CompType::returner(integer())),
-            Comp::ret(Value::var("x")),
-        );
-        subject_reduction_holds(comp, &CompType::returner(integer()));
-    }
-
-    /// Per-step SR: a forced thunk of an application — `force (thunk
-    /// ((λx:Integer. ret x) 5))` — preserves `F Integer` through forcing,
-    /// push, and β.
-    #[test]
-    fn sr_force_of_application()
-    {
-        let inner = Comp::app(
-            Comp::lam_ann("x", integer(), Comp::ret(Value::var("x"))),
-            Value::int(5),
-        );
-        let comp = Comp::force(Value::thunk(Grade::ONE, inner));
-        subject_reduction_holds(comp, &CompType::returner(integer()));
-    }
-
-    /// Drives `comp` step by step, asserting the reconstructed configuration
-    /// infers `expected` at every step (per-step subject reduction).
-    ///
-    /// Now that the machine is environment-based (ADR-50 Decision C), the
-    /// mid-run configuration `⟨focus | ρ | K⟩` is reconstructed as a closed
-    /// term by [`eval::State::reconstruct`] — closing the focus and each
-    /// frame's captured environment — rather than the old `plug` (which
-    /// pieced together a term from a substitution-carrying focus and
-    /// frames).
-    fn subject_reduction_holds(
-        comp: Comp,
-        expected: &CompType,
-    )
-    {
-        let mut state = eval::State::new(comp);
-        loop {
-            let reconstructed = state.reconstruct();
-            let inferred = checker::infer_comp(Ctx::new(), reconstructed.clone());
-            assert_eq!(
-                inferred.as_ref(),
-                Ok(expected),
-                "subject reduction: {reconstructed:?} must infer {expected:?}, got {inferred:?}"
-            );
-            match eval::step(state) {
-                | eval::Outcome::Step(next) => state = next,
-                | eval::Outcome::Final(_) => break,
-            }
-        }
-    }
-
-    /// A rigid (`Unknown`-free) value type up to a depth, every node
-    /// closed-inhabited (so the empty scope realizes it): the leaves plus eager
-    /// products / sums and graded thunks (grade `ω`).
-    /// # Termination
-    /// - reason: generators mirror finite grammar productions.
-    /// - measure: generation depth fuel or rebuilt type-tree height.
-    /// - boundedness: finite `u32` fuel reaches leaf strategies at zero.
-    /// - input recursion: none.
-    fn rigid_value_type<D>(depth: D) -> BoxedStrategy<ValueType>
-    where
-        D: Into<GenerationDepth>,
-    {
-        rigid_value_type_strategy(depth)
-    }
-
-    fn rigid_value_type_strategy<D>(depth: D) -> BoxedStrategy<ValueType>
-    where
-        D: Into<GenerationDepth>,
-    {
-        let depth = u32::from(depth.into());
-        let mut value = rigid_leaf_type().boxed();
-        let mut comp = rigid_leaf_type().prop_map(CompType::returner).boxed();
-        for _ in 0 .. depth {
-            let sub_value = value.clone();
-            let sub_comp = comp.clone();
-            let next_value = prop_oneof![
-                rigid_leaf_type(),
-                (sub_value.clone(), sub_value.clone())
-                    .prop_map(|(fst, snd)| ValueType::prod(fst, snd)),
-                (sub_value.clone(), sub_value.clone())
-                    .prop_map(|(lhs, rhs)| ValueType::sum(lhs, rhs)),
-                sub_value.clone().prop_map(ValueType::list),
-                proptest::collection::btree_map(record_label(), sub_value.clone(), 0 ..= 3)
-                    .prop_map(ValueType::record),
-                sub_comp
-                    .clone()
-                    .prop_map(|body| ValueType::thunk(Grade::OMEGA, body)),
-            ]
-            .boxed();
-            let next_comp = prop_oneof![
-                sub_value.clone().prop_map(CompType::returner),
-                (sub_value, sub_comp).prop_map(|(arg, res)| CompType::arrow(arg, res)),
-            ]
-            .boxed();
-            value = next_value;
-            comp = next_comp;
-        }
-        value
-    }
-
-    /// A closed rigid computation that **checks** against `ty`: the type's
-    /// introduction (an unannotated `λ` for an arrow, a `ret` for a returner, a
-    /// lazy pair for a `with`) plus the spine eliminations in check mode (the
-    /// rigid eval analogue of [`comp_check_strategy`]).
-    /// # Termination
-    /// - reason: `TypedCompStrategy` generates terms with an explicit worklist.
-    /// - measure: pending generation tasks and result frames.
-    /// - boundedness: type inputs and `u32` depth fuel are finite.
-    /// - input recursion: none.
-    fn rigid_check<D>(
-        ty: CompType,
-        scope: Scope,
-        depth: D,
-    ) -> BoxedStrategy<Comp>
-    where
-        D: Into<GenerationDepth>,
-    {
-        TypedCompStrategy {
-            mode: TypedCompMode::RigidCheck,
-            ty,
-            scope,
-            depth: u32::from(depth.into()),
-        }
-        .boxed()
-    }
-
-    /// A rigid leaf value type — `Unit`, `Integer`, `String`, or one of the six
-    /// numeric primitive atoms (ADR-39): the atoms inhabited by a closed value
-    /// over the empty scope (`()` / a literal).
-    fn rigid_leaf_type() -> impl Strategy<Value = ValueType>
-    {
-        rigid_leaf_value_type()
-    }
-
-    proptest! {
-        #![proptest_config(conformance_proptest_config())]
-
-        /// The rigid `CoreSafety` oracle (ADR-34 D4): a closed well-typed,
-        /// **rigid** (`Unknown`-free, hole-free) `F A` computation evaluates to a
-        /// returner `ret v` whose value `v` has type `A` — progress (it reaches a
-        /// returner) and preservation (the value is well-typed at `A`) packaged as
-        /// type-soundness via evaluation. Over the rigid fragment there is no
-        /// gradual layer, so it must **never** blame and **never** get stuck.
-        ///
-        /// Generated over an **empty** scope (genuinely closed: `Unit`/`Integer`
-        /// leaves realize every rigid type). The gradual fragment is deliberately
-        /// excluded here — v0 inserts no runtime casts, so a value typed `Unknown`
-        /// and annotated to a concrete former is an unchecked downcast that can get
-        /// stuck (pinned by [`crate::eval`]'s `gradual_downcast_without_a_cast_is_stuck`);
-        /// the gradual-cast / blame-on-boundary dynamics is the deferred residual.
-        #[test]
-        fn rigid_returner_evaluates_to_a_typed_value(
-            (ty, comp) in rigid_value_type(2_u32).prop_flat_map(|payload| {
-                let returner = CompType::returner(payload.clone());
-                rigid_check(returner, Vec::new(), 2_u32).prop_map(move |comp| (payload.clone(), comp))
-            }),
-        )
-        {
-            match eval::run_comp(comp) {
-                | Eval::Value(terminal) => match terminal {
-                    | Comp::Ret(value) => {
-                        let typed =
-                            checker::check_value(Ctx::new(), Rc::unwrap_or_clone(value), ty.clone());
-                        prop_assert!(
-                            typed.is_ok(),
-                            "rigid preservation: the returned value must have type {ty:?}, got {typed:?}"
-                        );
-                    },
-                    | other => prop_assert!(
-                        false,
-                        "rigid progress: a well-typed F A must evaluate to ret v, got {other:?}"
-                    ),
-                },
-                | Eval::Blame(blame) => {
-                    prop_assert!(false, "a rigid (hole-free) term must not blame: {blame:?}");
-                },
-                | Eval::Stuck(reason) => {
-                    prop_assert!(false, "a rigid well-typed term must not get stuck: {reason:?}");
-                },
-            }
-        }
-
-        /// evaluator ≡ machine (ADR-9 differential, eval side): the recursive
-        /// reference [`crate::eval::eval_comp`] and the CEK machine
-        /// [`crate::eval::run_comp`] agree — value, blame, *and* the by-frame
-        /// stuck classification — over the full generated returner fragment
-        /// (rigid + gradual; control / effects are CEK-machine-only and
-        /// directed-tested in `crate::eval`). The runtime analogue of the
-        /// `checker ≡ machine` differential.
-        #[test]
-        fn evaluator_agrees_with_machine(
-            comp in arb_value_type(2_u32).prop_flat_map(|payload| {
-                comp_check_strategy(CompType::returner(payload), Vec::new(), 2_u32)
-            }),
-        )
-        {
-            prop_assert_eq!(eval::eval_comp(comp.clone()), eval::run_comp(comp));
-        }
-    }
-}
-
-/// Lock-step coverage of the native-builtin substrate [`Comp::Native`] (ADR-42;
-/// the MVP module layer): the typing axiom (`checker ≡ machine`,
-/// via [`agree_comp`]), the argument-accumulating reduction on the CEK machine
-/// (including currying and the residual-type preservation of a
-/// partially-applied node), and the prelude binding-environment that resolves a
-/// forced free name to its builtin.
-///
-/// The native node is **machine-only** for evaluation — the reference
-/// [`crate::eval::eval_comp`] returns `UnsupportedByReference`, like control /
-/// effects — so it is deliberately kept OUT of the type-directed generators
-/// that feed the `eval ≡ run` differential (`evaluator_agrees_with_machine`,
-/// which would otherwise disagree: the reference declines, the machine runs);
-/// its operational behavior is pinned by the directed tests here instead.
+/// The native node's **evaluation** — the argument-accumulating reduction,
+/// currying, and the prelude free-name resolution — is machine-only and pinned
+/// on the L machine in `gandr_core_sequent::conformance_soundness` (the CEK
+/// evaluator that once ran these directed cases retired at B1 stage F).
 mod native
 {
     use super::*;
-    use crate::eval;
-    use crate::eval::Blame;
-    use crate::eval::Eval;
-    use crate::eval::Prelude;
-    use crate::eval::StuckReason;
     use crate::prim::NativePrim;
     /// Rule Native⇑: a source (argument-free) native infers its declared type,
     /// and the recursive checker and the typing machine agree.
@@ -6786,561 +6437,26 @@ mod native
     {
         CompType::arrow(integer(), CompType::returner(integer()))
     }
-
-    /// `I 5` evaluates to `ret 5` on the CEK machine (no prelude — the native
-    /// is directly in focus).
-    #[test]
-    fn identity_applied_returns_its_argument()
-    {
-        let comp = Comp::app(Comp::native(NativePrim::Id), Value::int(5));
-        assert_eq!(eval::run_comp(comp), Eval::Value(Comp::ret(Value::int(5))));
-    }
-
-    /// `K 7 9` evaluates to `ret 7` — currying: the native stays a terminal
-    /// awaiting its second argument, then reduces in Rust.
-    #[test]
-    fn const_applied_returns_its_first_argument()
-    {
-        let comp = Comp::app(
-            Comp::app(Comp::native(NativePrim::Const), Value::int(7)),
-            Value::int(9),
-        );
-        assert_eq!(eval::run_comp(comp), Eval::Value(Comp::ret(Value::int(7))));
-    }
-
-    /// Native integer addition is checked and reduces on the CEK machine:
-    /// `1 + 2 -> ret 3`.
-    #[test]
-    fn native_integer_addition_returns_sum()
-    {
-        let term = native_binary(NativePrim::Add, Value::int(1), Value::int(2));
-        assert_eq!(eval::run_comp(term), Eval::Value(Comp::ret(Value::int(3))));
-    }
-
-    /// Mismatched numeric tags and checked integer overflow both lower to the
-    /// gradual hole computation, which the CEK machine reports as defined
-    /// blame.
-    #[test]
-    fn native_numeric_mismatch_and_overflow_blame_via_hole()
-    {
-        let mixed_tags = native_binary(NativePrim::Add, Value::u32(1), Value::u64(2));
-        assert_eq!(Eval::Blame(Blame::Hole), eval::run_comp(mixed_tags));
-
-        let overflow = native_binary(NativePrim::Add, Value::int(i64::MAX), Value::int(1));
-        assert_eq!(Eval::Blame(Blame::Hole), eval::run_comp(overflow));
-    }
-
-    /// Same-tag suffixed numeric addition preserves the numeric tag:
-    /// `1u32 + 2u32 -> ret 3u32`.
-    #[test]
-    fn native_u32_addition_returns_u32_sum()
-    {
-        let term = native_binary(NativePrim::Add, Value::u32(1), Value::u32(2));
-        assert_eq!(eval::run_comp(term), Eval::Value(Comp::ret(Value::u32(3))));
-    }
-
-    /// Native comparison returns an annotated canonical boolean:
-    /// `1 < 2 -> ret true`.
-    #[test]
-    fn native_integer_less_than_returns_true()
-    {
-        let term = native_binary(NativePrim::Lt, Value::int(1), Value::int(2));
-        assert_eq!(
-            eval::run_comp(term),
-            Eval::Value(Comp::ret(bool_value(true)))
-        );
-    }
-
-    /// Native boolean conjunction accepts annotated boolean injections and
-    /// returns an annotated canonical boolean: `true && false -> ret false`.
-    #[test]
-    fn native_boolean_and_returns_false()
-    {
-        let term = native_binary(NativePrim::And, bool_value(true), bool_value(false));
-        assert_eq!(
-            eval::run_comp(term),
-            Eval::Value(Comp::ret(bool_value(false)))
-        );
-    }
-
-    /// Direct `Comp::native(NativePrim::ListConcat)` application concatenates
-    /// list vectors: `[1] ++ [2] -> ret [1, 2]`.
-    #[test]
-    fn native_list_concat_returns_concatenated_list()
-    {
-        let term = native_binary(
-            NativePrim::ListConcat,
-            Value::list(vec![Value::int(1)]),
-            Value::list(vec![Value::int(2)]),
-        );
-        assert_eq!(
-            eval::run_comp(term),
-            Eval::Value(Comp::ret(Value::list(vec![Value::int(1), Value::int(2)])))
-        );
-    }
-
-    fn native_binary(
-        prim: NativePrim,
-        lhs: Value,
-        rhs: Value,
-    ) -> Comp
-    {
-        Comp::app(Comp::app(Comp::native(prim), lhs), rhs)
-    }
-
-    /// Canonical annotated boolean value used by native comparison / boolean
-    /// primitives: `true = (inj1 () : 1 + 1)`, `false = (inj2 () : 1 + 1)`.
-    fn bool_value<B>(value: B) -> Value
-    where
-        B: Into<BooleanAtom>,
-    {
-        let inj = if bool::from(value.into()) {
-            Value::inj1(Value::Unit)
-        }
-        else {
-            Value::inj2(Value::Unit)
-        };
-        Value::annot(inj, ValueType::sum(ValueType::Unit, ValueType::Unit))
-    }
-
-    /// The prelude binding-environment: forcing a free name `id` bound to a
-    /// thunk wrapping `Native{Id}` resolves it, so `force(id) 5` evaluates to
-    /// `ret 5` — the seam the REPL's operator / module preludes ride.
-    #[test]
-    fn a_forced_prelude_name_resolves_to_its_builtin()
-    {
-        let prelude = Prelude::from_bindings(vec![(
-            "id".to_owned(),
-            Value::thunk(Grade::OMEGA, Comp::native(NativePrim::Id)),
-        )]);
-        let comp = Comp::app(Comp::force(Value::var("id")), Value::int(5));
-        assert_eq!(
-            eval::run_comp_with_prelude(comp, prelude),
-            Eval::Value(Comp::ret(Value::int(5)))
-        );
-    }
-
-    /// A forced name absent from the prelude is the ordinary `ForcedNonThunk`
-    /// stuck — the prelude widens resolution without masking a
-    /// genuinely-unbound name.
-    #[test]
-    fn an_unbound_forced_name_is_still_stuck()
-    {
-        let comp = Comp::app(Comp::force(Value::var("nope")), Value::int(5));
-        assert_eq!(
-            Eval::Stuck(StuckReason::ForcedNonThunk),
-            eval::run_comp_with_prelude(comp, Prelude::empty())
-        );
-    }
 }
 
 /// The source-facing combinators (list iteration/update, record
-/// access/update, string helpers, regex extraction, and path helpers), the
-/// typing axiom (`checker ≡ machine`), and the **assert + deep-handler
-/// test runner** dogfooding A3 (`perform` / `handle` / `resume`, run by the A5
-/// CEK machine) — including a mock `Exec` handler standing in for a
-/// PATH-shadow fake.
+/// access/update, string helpers, regex extraction, and path helpers): the
+/// typing axiom (`checker ≡ machine`, via [`agree_comp`]) that a v0 combinator
+/// closure is pure, so an effectful closure is rejected at the pure-returner
+/// row leg.
 ///
-/// The higher-order combinators are **machine-only** for evaluation (they
-/// unroll into a closed term the CEK machine runs; the reference
-/// [`crate::eval::eval_comp`] declines a `Native`, like the base natives), so
-/// their operational behavior is pinned by these directed tests, and they are
-/// kept out of the `eval ≡ run` differential generators — exactly as `mod
-/// native`.
+/// The higher-order combinators' **evaluation** — their unroll into a closed
+/// term, the string / path / regex builtins, and the assert + deep-handler
+/// test runner dogfooding A3 (`perform` / `handle` / `resume`) — is
+/// machine-only and pinned on the L machine in
+/// `gandr_core_sequent::conformance_soundness` (the CEK evaluator that once ran
+/// these directed cases retired at B1 stage F).
 mod combinators
 {
     use super::*;
     use crate::effect::EffectOp;
     use crate::effect::EffectSig;
-    use crate::eval;
-    use crate::eval::Blame;
-    use crate::eval::Eval;
     use crate::prim::NativePrim;
-    use crate::syntax::OpClause;
-    /// Regex extraction returns named captures as a manifest record.
-    #[test]
-    #[cfg(feature = "gandr_feat_regex")]
-    fn regex_extract_returns_named_capture_record()
-    {
-        assert_eq!(
-            run(NativePrim::RegexExtract, vec![
-                Value::string(r"^(?<marker><{7}|={7}|>{7}|\|{7})(?<label>$|[ \t].*)"),
-                Value::string("<<<<<<< HEAD"),
-            ],),
-            Eval::Value(Comp::ret(Value::record([
-                ("label".to_owned(), Value::string(" HEAD")),
-                ("marker".to_owned(), Value::string("<<<<<<<")),
-            ]))),
-        );
-    }
-    /// Invalid patterns and no-match searches degrade to gradual-hole blame.
-    #[test]
-    #[cfg(feature = "gandr_feat_regex")]
-    fn regex_extract_failures_blame_a_hole()
-    {
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::RegexExtract, vec![
-                Value::string("("),
-                Value::string("anything")
-            ],),
-            "an invalid regex is a gradual failure",
-        );
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::RegexExtract, vec![
-                Value::string("needle"),
-                Value::string("haystack")
-            ],),
-            "no match is a gradual failure",
-        );
-    }
-    /// Regex escaping and conflict-marker string scanning primitives are direct
-    /// natives.
-    #[test]
-    fn string_builtins_escape_and_scan_conflict_markers()
-    {
-        assert_eq!(
-            run(NativePrim::StringEscape, vec![Value::string("a+b.txt")]),
-            Eval::Value(Comp::ret(Value::string(r"a\+b\.txt"))),
-        );
-        assert_eq!(
-            run(NativePrim::StringContains, vec![
-                Value::string("<<<<<<< HEAD"),
-                Value::string("<<<<<<<")
-            ],),
-            Eval::Value(Comp::ret(boolean(true))),
-        );
-    }
-    /// `string.eq` decides string equality on the `1 + 1` carrier;
-    /// a non-string argument degrades to gradual-hole blame
-    /// like every other wrong-shape native application.
-    #[test]
-    fn string_eq_decides_equality_and_blames_non_strings()
-    {
-        assert_eq!(
-            run(NativePrim::StringEq, vec![
-                Value::string("agda"),
-                Value::string("agda")
-            ],),
-            Eval::Value(Comp::ret(boolean(true))),
-        );
-        assert_eq!(
-            run(NativePrim::StringEq, vec![
-                Value::string("agda"),
-                Value::string("agdA")
-            ],),
-            Eval::Value(Comp::ret(boolean(false))),
-        );
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::StringEq, vec![
-                Value::string("agda"),
-                Value::int(1)
-            ],),
-            "a non-string operand is a gradual failure",
-        );
-    }
-    /// Pure UTF-8 path helpers cover the gate-script path joins and filename
-    /// checks.
-    #[test]
-    fn path_builtins_join_and_read_components()
-    {
-        assert_eq!(
-            run(NativePrim::PathJoin, vec![
-                Value::string("docs"),
-                Value::string("guide.md")
-            ],),
-            Eval::Value(Comp::ret(Value::string("docs/guide.md"))),
-        );
-        assert_eq!(
-            run(NativePrim::PathBasename, vec![Value::string(
-                "docs/guide.md"
-            )],),
-            Eval::Value(Comp::ret(Value::string("guide.md"))),
-        );
-        assert_eq!(
-            run(NativePrim::PathExtension, vec![Value::string(
-                "docs/guide.md"
-            )],),
-            Eval::Value(Comp::ret(Value::string("md"))),
-        );
-    }
-
-    /// `each inc [1,2,3] -> [2,3,4]`; the empty and singleton lists are the
-    /// unroll's base and one-step cases.
-    #[test]
-    fn each_maps_a_pure_closure_over_a_list()
-    {
-        let inc = || unary_op(NativePrim::Add, Value::int(1));
-        assert_eq!(
-            run(NativePrim::Each, vec![inc(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(ints(&[2, 3, 4])))
-        );
-        assert_eq!(
-            run(NativePrim::Each, vec![inc(), ints(&[])]),
-            Eval::Value(Comp::ret(ints(&[]))),
-            "the empty list is mapped to the empty list"
-        );
-        assert_eq!(
-            run(NativePrim::Each, vec![inc(), ints(&[9])]),
-            Eval::Value(Comp::ret(ints(&[10]))),
-            "a singleton exercises the one-step unroll"
-        );
-    }
-
-    /// A nested combinator: `each (λx. each inc x) [[1,2],[3]] ->
-    /// [[2,3],[4]]` — a combinator inside a combinator's closure.
-    #[test]
-    fn combinators_nest_inside_closures()
-    {
-        let inc = unary_op(NativePrim::Add, Value::int(1));
-        let map_inc = closure1(Comp::app(
-            Comp::app(Comp::native(NativePrim::Each), inc),
-            Value::var("x"),
-        ));
-        let nested = Value::list(vec![ints(&[1, 2]), ints(&[3])]);
-        assert_eq!(
-            run(NativePrim::Each, vec![map_inc, nested]),
-            Eval::Value(Comp::ret(Value::list(vec![ints(&[2, 3]), ints(&[4])])))
-        );
-    }
-
-    /// `where (λx. x > 1) [1,2,3] -> [2,3]` — the filter keeps order; the
-    /// empty list is the base case.
-    #[test]
-    fn where_filters_by_a_pure_predicate()
-    {
-        let gt1 = || unary_op(NativePrim::Gt, Value::int(1));
-        assert_eq!(
-            run(NativePrim::Where, vec![gt1(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(ints(&[2, 3])))
-        );
-        assert_eq!(
-            run(NativePrim::Where, vec![gt1(), ints(&[])]),
-            Eval::Value(Comp::ret(ints(&[]))),
-            "the empty filter is the empty list"
-        );
-        // The head-of-the-list element is kept iff its predicate is true — a
-        // regression guard on the right-to-left cons ordering.
-        assert_eq!(
-            run(NativePrim::Where, vec![gt1(), ints(&[2, 1, 3])]),
-            Eval::Value(Comp::ret(ints(&[2, 3])))
-        );
-    }
-
-    /// `reduce (+) 0 [1,2,3] -> 6` (a left fold); the empty list returns the
-    /// seed unchanged.
-    #[test]
-    fn reduce_left_folds_a_list()
-    {
-        let add = || {
-            closure2(Comp::app(
-                Comp::app(Comp::native(NativePrim::Add), Value::var("acc")),
-                Value::var("x"),
-            ))
-        };
-        assert_eq!(
-            run(NativePrim::Reduce, vec![
-                add(),
-                Value::int(0),
-                ints(&[1, 2, 3])
-            ]),
-            Eval::Value(Comp::ret(Value::int(6)))
-        );
-        assert_eq!(
-            run(NativePrim::Reduce, vec![add(), Value::int(42), ints(&[])]),
-            Eval::Value(Comp::ret(Value::int(42))),
-            "the empty fold is the seed"
-        );
-    }
-
-    /// `any (λx. x > 2)` short-circuits to `true` on the first witness and is
-    /// `false` over the empty list.
-    #[test]
-    fn any_short_circuits_to_true()
-    {
-        let gt2 = || unary_op(NativePrim::Gt, Value::int(2));
-        assert_eq!(
-            run(NativePrim::Any, vec![gt2(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(boolean(true)))
-        );
-        assert_eq!(
-            run(NativePrim::Any, vec![gt2(), ints(&[1, 2])]),
-            Eval::Value(Comp::ret(boolean(false)))
-        );
-        assert_eq!(
-            run(NativePrim::Any, vec![gt2(), ints(&[])]),
-            Eval::Value(Comp::ret(boolean(false))),
-            "`any` over the empty list is false"
-        );
-    }
-
-    /// `all (λx. x > 0)` short-circuits to `false` on the first failure and is
-    /// `true` over the empty list.
-    #[test]
-    fn all_short_circuits_to_false()
-    {
-        let gt0 = || unary_op(NativePrim::Gt, Value::int(0));
-        assert_eq!(
-            run(NativePrim::All, vec![gt0(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(boolean(true)))
-        );
-        assert_eq!(
-            run(NativePrim::All, vec![gt0(), ints(&[1, 0, 3])]),
-            Eval::Value(Comp::ret(boolean(false)))
-        );
-        assert_eq!(
-            run(NativePrim::All, vec![gt0(), ints(&[])]),
-            Eval::Value(Comp::ret(boolean(true))),
-            "`all` over the empty list is true"
-        );
-    }
-
-    /// `flatten [[1,2],[3]] -> [1,2,3]`; a non-list element blames a hole.
-    #[test]
-    fn flatten_concatenates_manifest_sublists()
-    {
-        let nested = Value::list(vec![ints(&[1, 2]), ints(&[3])]);
-        assert_eq!(
-            run(NativePrim::Flatten, vec![nested]),
-            Eval::Value(Comp::ret(ints(&[1, 2, 3])))
-        );
-        assert_eq!(
-            run(NativePrim::Flatten, vec![Value::list(vec![])]),
-            Eval::Value(Comp::ret(ints(&[]))),
-            "flattening the empty list is the empty list"
-        );
-        let ragged = Value::list(vec![ints(&[1]), Value::int(5)]);
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::Flatten, vec![ragged]),
-            "a non-list element is a wrong-shape hole"
-        );
-    }
-
-    /// `uniq [1,2,1,3,2] -> [1,2,3]` — first occurrence wins.
-    #[test]
-    fn uniq_drops_later_structural_duplicates()
-    {
-        assert_eq!(
-            run(NativePrim::Uniq, vec![ints(&[1, 2, 1, 3, 2])]),
-            Eval::Value(Comp::ret(ints(&[1, 2, 3])))
-        );
-    }
-
-    /// `sort` orders homogeneous integer / string lists; a heterogeneous or
-    /// non-orderable (float) list blames a hole.
-    #[test]
-    fn sort_orders_homogeneous_orderable_atoms()
-    {
-        assert_eq!(
-            run(NativePrim::Sort, vec![ints(&[3, 1, 2])]),
-            Eval::Value(Comp::ret(ints(&[1, 2, 3])))
-        );
-        let strings = Value::list(vec![
-            Value::string("b"),
-            Value::string("a"),
-            Value::string("c"),
-        ]);
-        let sorted = Value::list(vec![
-            Value::string("a"),
-            Value::string("b"),
-            Value::string("c"),
-        ]);
-        assert_eq!(
-            run(NativePrim::Sort, vec![strings]),
-            Eval::Value(Comp::ret(sorted))
-        );
-        let mixed = Value::list(vec![Value::int(1), Value::string("a")]);
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::Sort, vec![mixed]),
-            "a heterogeneous list has no shared order"
-        );
-        let floats = Value::list(vec![Value::f64(1.5_f64), Value::f64(0.5_f64)]);
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::Sort, vec![floats]),
-            "floats are excluded (no total order over NaN)"
-        );
-        // A singleton is returned unchanged without consulting the order.
-        assert_eq!(
-            run(NativePrim::Sort, vec![Value::list(vec![Value::f64(
-                1.5_f64
-            )])]),
-            Eval::Value(Comp::ret(Value::list(vec![Value::f64(1.5_f64)]))),
-            "a singleton short-circuits the order check"
-        );
-    }
-
-    /// `get` on a manifest record returns `Some` for a present field and
-    /// `None` for an absent one (the dynamic-label access `RecordProj` cannot
-    /// express).
-    #[test]
-    fn get_returns_an_optional_cell()
-    {
-        let record = Value::record([
-            ("a".to_owned(), Value::int(1)),
-            ("b".to_owned(), Value::int(2)),
-        ]);
-        assert_eq!(
-            run(NativePrim::Get, vec![record.clone(), Value::string("a")]),
-            Eval::Value(Comp::ret(some(Value::int(1))))
-        );
-        assert_eq!(
-            run(NativePrim::Get, vec![record, Value::string("z")]),
-            Eval::Value(Comp::ret(none())),
-            "an absent field is None"
-        );
-    }
-
-    /// `insert` extends a record with a new field and overrides an existing
-    /// one.
-    #[test]
-    fn insert_extends_and_overrides_a_record()
-    {
-        let record = Value::record([("a".to_owned(), Value::int(1))]);
-        assert_eq!(
-            run(NativePrim::Insert, vec![
-                record.clone(),
-                Value::string("b"),
-                Value::int(2)
-            ]),
-            Eval::Value(Comp::ret(Value::record([
-                ("a".to_owned(), Value::int(1)),
-                ("b".to_owned(), Value::int(2)),
-            ])))
-        );
-        assert_eq!(
-            run(NativePrim::Insert, vec![
-                record,
-                Value::string("a"),
-                Value::int(9)
-            ]),
-            Eval::Value(Comp::ret(Value::record([("a".to_owned(), Value::int(9))]))),
-            "inserting an existing label overrides it"
-        );
-    }
-
-    /// A wrong-shape (non-manifest-list) argument reduces to a defined blame,
-    /// not a panic — the gradual-hole discipline of the base natives.
-    #[test]
-    fn a_wrong_shape_argument_blames_a_hole()
-    {
-        let inc = unary_op(NativePrim::Add, Value::int(1));
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::Each, vec![inc, Value::int(5)]),
-            "`each` over a non-list is a wrong-shape hole"
-        );
-        assert_eq!(
-            Eval::Blame(Blame::Hole),
-            run(NativePrim::Get, vec![Value::int(5), Value::string("a")]),
-            "`get` on a non-record is a wrong-shape hole"
-        );
-    }
-
     /// A v0 combinator closure is **pure**: its codomain is a pure returner `F
     /// ?` (empty row), so an *effectful* closure fails the row leg of subtyping
     /// (`⟨E⟩ ⊄ ⟨⟩`) — a type error, not a silently dropped effect. (Effect
@@ -7367,106 +6483,6 @@ mod combinators
         assert!(
             agree_comp(&Ctx::new(), &app, &Dir::Infer).is_err(),
             "an effectful closure violates the pure-returner row leg (checker ≡ machine)"
-        );
-    }
-
-    /// A length-64 filter must unroll linearly. The pre-fix `native_where`
-    /// inlined the filtered tail into BOTH `case` arms, so substitution
-    /// duplicated it per level → a Θ(2ⁿ) term that OOMs long before n = 64;
-    /// this pins the bound-once (linear) unroll.
-    #[test]
-    fn where_over_a_long_list_is_linear()
-    {
-        const LONG_LIST_THRESHOLD: i64 = 31;
-        let input: Vec<i64> = (0 .. 64).collect();
-        let expected: Vec<i64> = (0 .. 64)
-            .filter(|&value| value > LONG_LIST_THRESHOLD)
-            .collect();
-        let gt31 = unary_op(NativePrim::Gt, Value::int(LONG_LIST_THRESHOLD));
-        assert_eq!(
-            run(NativePrim::Where, vec![gt31, ints(&input)]),
-            Eval::Value(Comp::ret(ints(&expected)))
-        );
-    }
-
-    /// `reduce` / `any` / `all` build their unrolls with an explicit loop
-    /// (not the pre-fix host recursion of depth = list length). This exercises
-    /// that loop far past the n ≤ 3 the other tests use, pinning the iterative
-    /// builder's correctness. NOTE the scale is deliberately modest: the
-    /// substitution-based evaluator recurses O(list-length) in `subst_comp`
-    /// when it runs the unrolled term, so evaluating ANY combinator over a
-    /// large list overflows the (2 MB) test-thread stack around a few hundred
-    /// elements — an eval-engine ceiling orthogonal to the build-time
-    /// linearisation and tracked separately.
-    #[test]
-    fn fold_and_quantifiers_are_correct_at_moderate_scale()
-    {
-        let count: i64 = 64;
-        let input: Vec<i64> = (1 ..= count).collect();
-        let add = closure2(Comp::app(
-            Comp::app(Comp::native(NativePrim::Add), Value::var("acc")),
-            Value::var("x"),
-        ));
-        let expected_sum: i64 = input.iter().copied().sum();
-        assert_eq!(
-            run(NativePrim::Reduce, vec![add, Value::int(0), ints(&input)]),
-            Eval::Value(Comp::ret(Value::int(expected_sum))),
-            "reduce sums 1..=64 via the iterative left-fold builder"
-        );
-        assert_eq!(
-            run(NativePrim::All, vec![
-                unary_op(NativePrim::Gt, Value::int(0)),
-                ints(&input),
-            ]),
-            Eval::Value(Comp::ret(boolean(true))),
-            "`all (> 0)` holds across the long list"
-        );
-        assert_eq!(
-            run(NativePrim::Any, vec![
-                unary_op(NativePrim::Gt, Value::int(count)),
-                ints(&input),
-            ]),
-            Eval::Value(Comp::ret(boolean(false))),
-            "`any (> max)` finds no witness"
-        );
-    }
-
-    /// A pure binary closure `thunk_ω (λacc. λx. body)` — the shape `reduce`
-    /// consumes.
-    fn closure2(body: Comp) -> Value
-    {
-        Value::thunk(Grade::OMEGA, Comp::lam("acc", Comp::lam("x", body)))
-    }
-
-    /// `sort` orders the sized-integer atoms (`u32`/`u64`/`i32`/`i64`), not
-    /// only bare integer literals and strings — the `order_kind` capability
-    /// the variant doc now states.
-    #[test]
-    fn sort_orders_sized_integer_atoms()
-    {
-        assert_eq!(
-            run(NativePrim::Sort, vec![Value::list(vec![
-                Value::u32(3),
-                Value::u32(1),
-                Value::u32(2),
-            ])]),
-            Eval::Value(Comp::ret(Value::list(vec![
-                Value::u32(1),
-                Value::u32(2),
-                Value::u32(3),
-            ])))
-        );
-        assert_eq!(
-            run(NativePrim::Sort, vec![Value::list(vec![
-                Value::i64(2),
-                Value::i64(-5),
-                Value::i64(0),
-            ])]),
-            Eval::Value(Comp::ret(Value::list(vec![
-                Value::i64(-5),
-                Value::i64(0),
-                Value::i64(2),
-            ])))
         );
     }
 
@@ -7542,131 +6558,6 @@ mod combinators
             );
         }
     }
-    /// The deep handler resumes past each passing assertion and reports overall
-    /// success; a combinator result feeds the assertion (`all (λx. x > 0)
-    /// [1,2,3]` then `any (λx. x > 2) [1,2,3]`, both true → the runner passes).
-    #[test]
-    fn the_assert_handler_runs_combinator_assertions()
-    {
-        let all_positive = Comp::app(
-            Comp::app(
-                Comp::native(NativePrim::All),
-                unary_op(NativePrim::Gt, Value::int(0)),
-            ),
-            ints(&[1, 2, 3]),
-        );
-        let any_big = Comp::app(
-            Comp::app(
-                Comp::native(NativePrim::Any),
-                unary_op(NativePrim::Gt, Value::int(2)),
-            ),
-            ints(&[1, 2, 3]),
-        );
-        // all_positive >>= b1. assert b1 >>= _. any_big >>= b2. assert b2 >>= _. ret ()
-        let body = Comp::bind(
-            all_positive,
-            "$b1",
-            Comp::bind(
-                assert_that(Value::var("$b1")),
-                "$u1",
-                Comp::bind(
-                    any_big,
-                    "$b2",
-                    Comp::bind(
-                        assert_that(Value::var("$b2")),
-                        "$u2",
-                        Comp::ret(Value::Unit),
-                    ),
-                ),
-            ),
-        );
-        assert_eq!(
-            run_assertions(body),
-            Eval::Value(Comp::ret(boolean(true))),
-            "both assertions pass, so the runner reports success"
-        );
-    }
-    /// A failing assertion short-circuits the runner to `false` — the handler
-    /// declines to resume.
-    #[test]
-    fn the_assert_handler_reports_a_failure()
-    {
-        // `all (λx. x > 5) [1,2,3]` is false, so the single assertion fails.
-        let all_big = Comp::app(
-            Comp::app(
-                Comp::native(NativePrim::All),
-                unary_op(NativePrim::Gt, Value::int(5)),
-            ),
-            ints(&[1, 2, 3]),
-        );
-        let body = Comp::bind(
-            all_big,
-            "$b",
-            Comp::bind(assert_that(Value::var("$b")), "$u", Comp::ret(Value::Unit)),
-        );
-        assert_eq!(
-            run_assertions(body),
-            Eval::Value(Comp::ret(boolean(false))),
-            "a failed assertion short-circuits to failure"
-        );
-    }
-
-    /// The unary closure `λx. x ⊕ operand` over a native binary primitive.
-    fn unary_op(
-        prim: NativePrim,
-        operand: Value,
-    ) -> Value
-    {
-        closure1(Comp::app(
-            Comp::app(Comp::native(prim), Value::var("x")),
-            operand,
-        ))
-    }
-
-    /// A pure unary closure `thunk_ω (λx. body)` — the shape `each` / `where`
-    /// / `any` / `all` consume.
-    fn closure1(body: Comp) -> Value
-    {
-        Value::thunk(Grade::OMEGA, Comp::lam("x", body))
-    }
-
-    /// Applies a saturated combinator directly (no prelude needed — the natives
-    /// are in focus) and runs it on the CEK machine.
-    fn run(
-        prim: NativePrim,
-        args: Vec<Value>,
-    ) -> Eval
-    {
-        let mut comp = Comp::native(prim);
-        for arg in args {
-            comp = Comp::app(comp, arg);
-        }
-        eval::run_comp(comp)
-    }
-
-    /// The `Optional` values `get` returns (`Some v = inj1 v`, `None = inj2
-    /// ()`), annotated `? + 1`.
-    fn some(value: Value) -> Value
-    {
-        Value::annot(
-            Value::inj1(value),
-            ValueType::sum(ValueType::Unknown, ValueType::Unit),
-        )
-    }
-
-    // ── pre-land review regression guards ──────────────────────────
-    // The adversarial review found the `where` Θ(2ⁿ) unroll and the
-    // `reduce`, `any`, and `all` host-stack recursion. Every combinator test above
-    // uses n ≤ 3, which masked both cliffs; these pin the linear / iterative
-    // unrolls plus the widened sort / purity coverage.
-
-    fn none() -> Value
-    {
-        Value::annot(
-            Value::inj2(Value::Unit),
-            ValueType::sum(ValueType::Unknown, ValueType::Unit),
-        )
-    }
 
     /// A list value from bare integers.
     fn ints<'source, V>(values: V) -> Value
@@ -7675,102 +6566,6 @@ mod combinators
     {
         let values = values.into();
         Value::list(values.as_ref().iter().copied().map(Value::int).collect())
-    }
-
-    /// `perform Assert.assert p` on a bool `p`.
-    fn assert_that(condition: Value) -> Comp
-    {
-        Comp::perform(assert_sig(), "assert", condition)
-    }
-
-    /// Wraps a body performing `Assert.assert` calls in a **deep** handler that
-    /// resumes on `true` and short-circuits to `false` on the first failed
-    /// assertion — a minimal handler-based test runner. The answer is `Bool`
-    /// (`true` = every assertion passed).
-    fn run_assertions(body: Comp) -> Eval
-    {
-        let clause = OpClause::new(
-            "assert",
-            "$p",
-            "$k",
-            Comp::case(
-                Value::var("$p"),
-                "$ok",
-                Comp::resume(Value::var("$k"), Comp::ret(Value::Unit)),
-                "$bad",
-                Comp::ret(boolean(false)),
-            ),
-        );
-        let handler = Comp::handle(assert_sig(), body, "$done", Comp::ret(boolean(true)), vec![
-            clause,
-        ]);
-        eval::run_comp(handler)
-    }
-
-    /// The canonical annotated boolean (`true = inj1 ()`, `false = inj2 ()`).
-    fn boolean<B>(value: B) -> Value
-    where
-        B: Into<BooleanAtom>,
-    {
-        let inj = if bool::from(value.into()) {
-            Value::inj1(Value::Unit)
-        }
-        else {
-            Value::inj2(Value::Unit)
-        };
-        Value::annot(inj, ValueType::sum(ValueType::Unit, ValueType::Unit))
-    }
-
-    // ── assert + deep-handler test runner (dogfooding A3) ────────────────────
-
-    /// The `Assert` effect: `assert : Bool ↠ 1` — perform an assertion, resume
-    /// on success.
-    fn assert_sig() -> EffectSig
-    {
-        EffectSig::new(crate::boundary::EffectSignatureName::from("Assert"), vec![
-            EffectOp::new(
-                crate::boundary::OperationName::from("assert"),
-                ValueType::sum(ValueType::Unit, ValueType::Unit),
-                ValueType::Unit,
-            ),
-        ])
-    }
-
-    /// The mock `Exec` handler stands in for a PATH-shadow fake: an `exec :
-    /// String ↠ String` effect handled by a deep handler that returns canned
-    /// output instead of running a real command, so a shell-flavored program is
-    /// testable with no external process.
-    #[test]
-    fn a_mock_exec_handler_replaces_a_real_command()
-    {
-        let exec_sig = EffectSig::new(crate::boundary::EffectSignatureName::from("Exec"), vec![
-            EffectOp::new(
-                crate::boundary::OperationName::from("exec"),
-                ValueType::string(),
-                ValueType::string(),
-            ),
-        ]);
-        // handle { perform Exec.exec "ls" >>= out. ret out }
-        //   { ret x => ret x | exec cmd k => resume k (ret "mocked-output") }
-        let body = Comp::bind(
-            Comp::perform(exec_sig.clone(), "exec", Value::string("ls")),
-            "$out",
-            Comp::ret(Value::var("$out")),
-        );
-        let clause = OpClause::new(
-            "exec",
-            "$cmd",
-            "$k",
-            Comp::resume(Value::var("$k"), Comp::ret(Value::string("mocked-output"))),
-        );
-        let handler = Comp::handle(exec_sig, body, "$x", Comp::ret(Value::var("$x")), vec![
-            clause,
-        ]);
-        assert_eq!(
-            eval::run_comp(handler),
-            Eval::Value(Comp::ret(Value::string("mocked-output"))),
-            "the mock handler returns canned output for the command"
-        );
     }
 }
 

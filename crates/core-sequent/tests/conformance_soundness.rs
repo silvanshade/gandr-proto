@@ -17,8 +17,8 @@
 //! dev-dependency cycle; while Cargo *permits* that cycle for the library
 //! build, the crate's own unit-test target is a **distinct compilation** of
 //! `gandr-core-checker` from the one the L machine (through the dev-dep) links,
-//! so `crate::syntax::Comp` / `crate::eval::Eval` (the unit-test instance) and
-//! the `gandr_core_checker::…` types the L machine consumes are *different
+//! so `crate::syntax::Comp` / `crate::outcome::Eval` (the unit-test instance)
+//! and the `gandr_core_checker::…` types the L machine consumes are *different
 //! types* — the program cannot be handed to `machine::run_comp`, nor its
 //! outcome compared, without an `E0308` two-instances mismatch. The rows
 //! therefore move to `gandr-core-sequent`, which depends on
@@ -67,10 +67,10 @@ mod tests
     use gandr_core_checker::boundary::OperationName;
     use gandr_core_checker::effect::EffectOp;
     use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::eval::Blame;
-    use gandr_core_checker::eval::Eval;
-    use gandr_core_checker::eval::StuckReason;
     use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::outcome::Blame;
+    use gandr_core_checker::outcome::Eval;
+    use gandr_core_checker::outcome::StuckReason;
     use gandr_core_checker::prim::NativePrim;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::OpClause;
