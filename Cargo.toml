@@ -4,6 +4,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/core-checker",
   "crates/kernel-strata",
   "crates/surface-driver",
   "crates/theory-graphs",
@@ -113,6 +114,16 @@ default-features = false
 [workspace.dependencies.libloading]
 version = "0.9.0"
 default-features = false
+
+# dtolnay `#[no_panic]`: a link-time proof that an annotated function cannot
+# panic. Used on the grade leaf ops, gated at the use site on
+# `all(not(debug_assertions), panic = "unwind")` — active in a dev release
+# build, inert in debug (cannot prove) and under the dist abort profile. The
+# macro is a no-op where the cfg is false, so it adds no codegen there.
+# consumers:
+# - gandr-core-checker
+[workspace.dependencies.no-panic]
+version = "0.1.36"
 
 # Fuzzy ranking for the completion popup (`gandr-tui`): the helix-org matcher,
 # matcher-only (no worker machinery — that is the full `nucleo` crate, deferred

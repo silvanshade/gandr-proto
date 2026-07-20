@@ -1,0 +1,40 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-core-checker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Core CBPV bidirectional type checker and defunctionalized typing machine for the gandr language"
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The nominal atom substrate (ADR-41): runtime continuation-key minting routes
+# through its `Gensym`/`Atom` instead of a bare counter.
+gandr-theory-nominal-automata = { path = "../theory-nominal-automata" }
+no-panic = { workspace = true }
+proptest = { workspace = true, optional = true }
+regex = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# proptest is also an optional regular dep (for the feature-gated `strategies`
+# module): this dev-dep makes it available to the crate's own `#[cfg(test)]`
+# conformance suite under a bare `cargo test` (feature off), while the optional
+# regular dep above is what an external consumer pulls in via the feature.
+proptest = { workspace = true }
+
+[features]
+default = []
+full = ["gandr_feat_regex"]
+# Regex-backed builtins (`regex.extract`, `string.escape`); pulls in the
+# workspace `regex`. Off by default.
+gandr_feat_regex = ["dep:regex"]
+# Expose `strategies` (the free proptest generators) to other crates; off by
+# default so the normal dependency graph and `cargo build` are unaffected.
+gandr_test_strategies = ["dep:proptest"]
+
+[lints]
+workspace = true

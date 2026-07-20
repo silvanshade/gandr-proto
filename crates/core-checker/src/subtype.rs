@@ -1,0 +1,518 @@
+//! Structural subtyping and the subsumption rule (`type-system.md` §3.3 Sub,
+//! §10.2 core decompositions).
+//!
+//! Stage 1 has no unification variables, unions, or intersections, so the
+//! §10 worklist solver degenerates to a direct structural decision procedure:
+//! goals are decomposed by the §10.2 rules for the core constructors
+//! (covariant `×`, `+`, `F`; contravariant arrow argument; `s ⊑ r` on `U`),
+//! and reflexivity/transitivity are admissible, never rules. Goals are decided
+//! depth-first from an explicit worklist ([`SubtypeGoal`]), which with no
+//! metavariables in play is observationally the in-order structural recursion
+//! (ADR-27 decision 1 records this timing and its reversal when the solver
+//! lands).
+//!
+//! # `Unknown` and consistent subtyping (A2.2 holes extension)
+//!
+//! With the hole type ([`ValueType::Unknown`] / [`CompType::Unknown`], D5 of
+//! `A2-PLAN.md`; `incremental-pipeline.md` §7), the relation decided here is
+//! **consistent subtyping** (Siek–Taha gradual typing): `Unknown` relates to
+//! every type *in both directions*. On `Unknown`-free ("static") types the
+//! relation is exactly the old structural subtyping.
+//!
+//! **Decision tree** for `Unknown`'s relationship to other types
+//! [SPECULATIVE DECISION, recorded per the A2.2 mandate]:
+//!
+//! - *Bidirectional wildcard (consistent subtyping)* — **adopted**. D5 says it
+//!   verbatim ("subsumption treats `Unknown` as consistent in both
+//!   directions"), and §7's "a hole checks against any `A` / a hole's type
+//!   flows anywhere without spurious errors" needs flow in both directions: a
+//!   hole-typed head must feed argument positions of known type *and* known
+//!   terms must check against elided (`Unknown`) ascriptions.
+//! - *`Unknown` as top* — rejected: an `Unknown`-typed result could never
+//!   subsume to a concrete expectation, so every use of a hole's output would
+//!   cascade a `TypeMismatch` — exactly the spurious-error cascade §7 exists to
+//!   remove.
+//! - *`Unknown` as bottom* — rejected, symmetric: nothing would check against
+//!   an elided ascription.
+//! - *A separate consistency relation alongside subtyping* — rejected for Stage
+//!   1: subsumption is the only consumer, so a second relation buys nothing but
+//!   surface. **Reversal triggers**: (a) the Stage 3 solver lands — "fresh α,
+//!   no constraints" un-degenerates into real metavariables and consistency
+//!   must be split from subtyping before σ exists (the AGT/Siek–Taha shape);
+//!   (b) ADR-17 marks promotion — marked terms carry their own consistency
+//!   discipline.
+//!
+//! **Cost, recorded**: with `Unknown` in play the relation is reflexive but
+//! **not transitive** (`Int ≲ Unknown ≲ Str` yet `Int ⋦ Str`) — the
+//! well-known price of gradual consistency. The conformance suite pins
+//! transitivity on static types only, plus an explicit non-transitivity
+//! witness.
+
+use alloc::rc::Rc;
+
+use crate::boundary::IntegerLiteral;
+use crate::boundary::NameRef;
+use crate::boundary::SubtypeDecision;
+use crate::control::Dir;
+use crate::error::TypeError;
+use crate::types::CompType;
+use crate::types::Ty;
+use crate::types::ValueType;
+
+/// Completes the integer-literal rule under a direction (ADR-39 D4) — the
+/// checking-mode-polymorphic counterpart of [`finish_value`] for
+/// [`crate::syntax::Value::Int`].
+///
+/// In inference mode an integer literal is the rigid `Integer` atom (frozen,
+/// A2.1). In checking mode it additionally accepts any integer numeric atom it
+/// is representable in ([`int_literal_fits`]) — the Rust `{integer}` literal
+/// rule — and otherwise falls back to the ordinary `Integer` subsumption, so a
+/// `: Integer` check, an `Unknown` goal, and a genuine mismatch behave exactly
+/// as before. The checker, machine, and mark all complete the integer literal
+/// through this one function (mark through its own marking variant), keeping
+/// the three passes lock-step.
+///
+/// # Contract
+/// - ensures: `Dir::Infer` returns `Integer`; `Dir::Check(expected)` returns
+///   `expected` when `int_literal_fits(n, &expected)`, else the
+///   [`finish_value`] result for `Integer` against `expected`.
+/// - fails: `TypeError::TypeMismatch` exactly when `finish_value(Integer,
+///   Check(expected))` would (i.e. `expected` is neither a fitting integer atom
+///   nor a supertype of `Integer`).
+/// - panics: none.
+///
+/// # Errors
+///
+/// Returns [`TypeError::TypeMismatch`] when neither the literal fit nor the
+/// `Integer` subsumption holds.
+#[inline]
+pub fn finish_int_literal(
+    n: IntegerLiteral,
+    dir: Dir<ValueType>,
+) -> Result<ValueType, TypeError>
+{
+    match dir {
+        | Dir::Infer => Ok(ValueType::integer()),
+        | Dir::Check(expected) => {
+            if bool::from(int_literal_fits(n, &expected)) {
+                Ok(expected)
+            }
+            else {
+                finish_value(ValueType::integer(), Dir::Check(expected))
+            }
+        },
+    }
+}
+
+/// True when the rigid atom `expected` is one of the four *integer* numeric
+/// primitives (ADR-39) and the integer literal value `n` is representable in
+/// it — the Rust `{integer}` literal rule (ADR-39 D4).
+///
+/// This is a **literal-only** relation, not subtyping: a *variable* of type
+/// `Integer` never widens to `u32`, only an integer literal does, so it is
+/// consulted from the integer-literal rule ([`finish_int_literal`]) and **not**
+/// from [`value_subtype`] (whose atoms relate only by equality).
+#[must_use]
+pub(crate) fn int_literal_fits(
+    n: IntegerLiteral,
+    expected: &ValueType,
+) -> SubtypeDecision
+{
+    let ValueType::Atom(ref name) = *expected
+    else {
+        return false.into();
+    };
+    match name.as_str() {
+        | "u32" => u32::try_from(i64::from(n)).is_ok().into(),
+        | "u64" => u64::try_from(i64::from(n)).is_ok().into(),
+        | "i32" => i32::try_from(i64::from(n)).is_ok().into(),
+        | "i64" => true.into(),
+        | _ => false.into(),
+    }
+}
+
+/// Completes a value rule under a direction (the Sub rule, inlined).
+///
+/// In inference mode the constructed type is the result; in checking mode the
+/// constructed type must be a subtype of the expected type, and the expected
+/// type is the result (matching the machine, whose check-mode `Return`
+/// carries the expected type).
+///
+/// # Contract
+/// - ensures: in `Dir::Infer` returns `constructed` unchanged (infallible); in
+///   `Dir::Check(expected)` returns `expected` when `value_subtype(constructed,
+///   expected)` holds.
+/// - fails: `TypeError::TypeMismatch { expected, actual }` (with `actual` =
+///   `constructed`) when the check-mode subsumption fails.
+/// - panics: none.
+///
+/// # Errors
+///
+/// Returns [`TypeError::TypeMismatch`] when subsumption fails.
+#[inline]
+pub fn finish_value(
+    constructed: ValueType,
+    dir: Dir<ValueType>,
+) -> Result<ValueType, TypeError>
+{
+    match dir {
+        | Dir::Infer => Ok(constructed),
+        | Dir::Check(expected) => {
+            if bool::from(value_subtype(&constructed, &expected)) {
+                Ok(expected)
+            }
+            else {
+                Err(TypeError::TypeMismatch {
+                    expected: Ty::Value(expected),
+                    actual: Ty::Value(constructed),
+                })
+            }
+        },
+    }
+}
+
+/// Decides `sub ≲ sup` on value types: consistent subtyping (see the module
+/// doc) — structural subtyping with [`ValueType::Unknown`] consistent in
+/// both directions.
+///
+/// # Contract
+/// - ensures: returns `true` iff `sub` is a consistent subtype of `sup` —
+///   structural on the constructors (covariant `Prod` and `Sum`, contravariant
+///   grade plus covariant body on `Thunk`, where the grade leg is
+///   `hi_grade.leq(lo_grade)`), with `ValueType::Unknown` consistent with every
+///   type in both directions. The relation is reflexive (`value_subtype(t, t)`
+///   for every `t`) but NOT transitive once `Unknown` participates (`Int ≲
+///   Unknown` and `Unknown ≲ Str`, yet `Int ⋦ Str`); transitivity holds only on
+///   `Unknown`-free types.
+/// - panics: none.
+#[inline]
+#[must_use]
+/// # Termination
+/// - reason: subtyping follows finite type-tree structure.
+/// - measure: remaining pair of type children under comparison.
+/// - boundedness: compared types are finite Rust values.
+/// - input recursion: none.
+pub fn value_subtype(
+    sub: &ValueType,
+    sup: &ValueType,
+) -> SubtypeDecision
+{
+    subtype_goals(vec![SubtypeGoal::Value(
+        Rc::new(sub.clone()),
+        Rc::new(sup.clone()),
+    )])
+}
+
+/// A pending subtyping obligation: one pair of types to relate (`sub ≲ sup`).
+///
+/// The goal unit of the degenerate §10 worklist solver (see the module doc):
+/// goals sit in the worklist until popped, decided against the §10.2
+/// decompositions, and replaced by their child goals — with no metavariables
+/// in play a LIFO queue is observationally the in-order structural recursion.
+enum SubtypeGoal
+{
+    /// Relates two value types (`sub ≲ sup`).
+    Value(Rc<ValueType>, Rc<ValueType>),
+    /// Relates two computation types (`sub ≲ sup`).
+    Comp(Rc<CompType>, Rc<CompType>),
+}
+
+/// Completes a computation rule under a direction (the Sub rule, inlined).
+///
+/// # Contract
+/// - ensures: in `Dir::Infer` returns `constructed` unchanged (infallible); in
+///   `Dir::Check(expected)` returns `expected` when `comp_subtype(constructed,
+///   expected)` holds.
+/// - fails: `TypeError::TypeMismatch { expected, actual }` (with `actual` =
+///   `constructed`) when the check-mode subsumption fails.
+/// - panics: none.
+///
+/// # Errors
+///
+/// Returns [`TypeError::TypeMismatch`] when subsumption fails.
+#[inline]
+pub fn finish_comp(
+    constructed: CompType,
+    dir: Dir<CompType>,
+) -> Result<CompType, TypeError>
+{
+    match dir {
+        | Dir::Infer => Ok(constructed),
+        | Dir::Check(expected) => {
+            if bool::from(comp_subtype(&constructed, &expected)) {
+                Ok(expected)
+            }
+            else {
+                Err(TypeError::TypeMismatch {
+                    expected: Ty::Comp(expected),
+                    actual: Ty::Comp(constructed),
+                })
+            }
+        },
+    }
+}
+
+/// Decides `sub ≲ sup` on computation types: consistent subtyping, as
+/// [`value_subtype`].
+///
+/// # Contract
+/// - ensures: returns `true` iff `sub` is a consistent subtype of `sup` —
+///   structural on the constructors (covariant `F`, contravariant argument plus
+///   covariant result on `Arrow`, covariant `With`), with `CompType::Unknown`
+///   consistent with every type in both directions. Reflexive but NOT
+///   transitive once `Unknown` participates, exactly as `value_subtype`.
+/// - panics: none.
+#[inline]
+#[must_use]
+/// # Termination
+/// - reason: subtyping follows finite type-tree structure.
+/// - measure: remaining pair of type children under comparison.
+/// - boundedness: compared types are finite Rust values.
+/// - input recursion: none.
+pub fn comp_subtype(
+    sub: &CompType,
+    sup: &CompType,
+) -> SubtypeDecision
+{
+    subtype_goals(vec![SubtypeGoal::Comp(
+        Rc::new(sub.clone()),
+        Rc::new(sup.clone()),
+    )])
+}
+
+/// Decides a conjunction of subtyping goals from an explicit worklist — the
+/// degenerate §10 solver of the module doc, made iterative so the decision
+/// procedure carries no input recursion.
+///
+/// Each pop short-circuits on pointer equality (ADR-50 Decision B) or an
+/// `Unknown` side (the consistent-subtyping wildcard, D5), then decomposes
+/// the pair by the §10.2 rules — covariant `×`, `+`, `List`, record, `F`, and
+/// `With`; contravariant arrow argument, `Stk` answer, and `Thunk` grade;
+/// both directions on `Path` and `Sigma` — and pushes the child goals.
+///
+/// # Contract
+/// - ensures: returns `true` iff every goal the initial goals decompose into
+///   holds; `false.into()` at the first unsatisfiable goal.
+/// - panics: none.
+///
+/// # Termination
+/// - reason: each popped goal decomposes a type pair into strictly smaller
+///   child pairs, or succeeds/fails without pushing.
+/// - measure: the summed type-tree size of the queued goals.
+/// - boundedness: compared types are finite Rust values.
+/// - input recursion: none.
+fn subtype_goals(mut goals: Vec<SubtypeGoal>) -> SubtypeDecision
+{
+    while let Some(goal) = goals.pop() {
+        match goal {
+            | SubtypeGoal::Value(sub, sup) => {
+                if core::ptr::eq(sub.as_ref(), sup.as_ref())
+                    || matches!(sub.as_ref(), ValueType::Unknown)
+                    || matches!(sup.as_ref(), ValueType::Unknown)
+                {
+                    continue;
+                }
+                match (sub.as_ref(), sup.as_ref()) {
+                    | (&ValueType::Atom(ref lhs), &ValueType::Atom(ref rhs)) if lhs == rhs => {},
+                    | (&ValueType::Unit, &ValueType::Unit)
+                    | (&ValueType::Universe, &ValueType::Universe) => {},
+                    | (
+                        &ValueType::Prod(ref lo_fst, ref lo_snd),
+                        &ValueType::Prod(ref hi_fst, ref hi_snd),
+                    )
+                    | (
+                        &ValueType::Sum(ref lo_fst, ref lo_snd),
+                        &ValueType::Sum(ref hi_fst, ref hi_snd),
+                    ) => {
+                        goals.push(SubtypeGoal::Value(Rc::clone(lo_snd), Rc::clone(hi_snd)));
+                        goals.push(SubtypeGoal::Value(Rc::clone(lo_fst), Rc::clone(hi_fst)));
+                    },
+                    | (&ValueType::List(ref lo_elem), &ValueType::List(ref hi_elem)) => {
+                        goals.push(SubtypeGoal::Value(Rc::clone(lo_elem), Rc::clone(hi_elem)));
+                    },
+                    | (&ValueType::Record(ref lo_fields), &ValueType::Record(ref hi_fields)) => {
+                        for (label, hi_ty) in hi_fields {
+                            let Some(lo_ty) = lo_fields.get(label)
+                            else {
+                                return false.into();
+                            };
+                            goals.push(SubtypeGoal::Value(Rc::clone(lo_ty), Rc::clone(hi_ty)));
+                        }
+                    },
+                    | (
+                        &ValueType::Thunk(ref lo_grade, ref lo_body),
+                        &ValueType::Thunk(ref hi_grade, ref hi_body),
+                    ) => {
+                        if !bool::from(hi_grade.leq(*lo_grade)) {
+                            return false.into();
+                        }
+                        goals.push(SubtypeGoal::Comp(Rc::clone(lo_body), Rc::clone(hi_body)));
+                    },
+                    | (
+                        &ValueType::Stk(ref lo_b, ref lo_c),
+                        &ValueType::Stk(ref hi_b, ref hi_c),
+                    ) => {
+                        goals.push(SubtypeGoal::Comp(Rc::clone(lo_c), Rc::clone(hi_c)));
+                        goals.push(SubtypeGoal::Comp(Rc::clone(hi_b), Rc::clone(lo_b)));
+                    },
+                    | (
+                        &ValueType::Path {
+                            ty: ref lo_ty,
+                            lhs: ref lo_lhs,
+                            rhs: ref lo_rhs,
+                        },
+                        &ValueType::Path {
+                            ty: ref hi_ty,
+                            lhs: ref hi_lhs,
+                            rhs: ref hi_rhs,
+                        },
+                    ) => {
+                        if !bool::from(crate::identity::value_eq(lo_lhs, hi_lhs))
+                            || !bool::from(crate::identity::value_eq(lo_rhs, hi_rhs))
+                        {
+                            return false.into();
+                        }
+                        goals.push(SubtypeGoal::Value(Rc::clone(hi_ty), Rc::clone(lo_ty)));
+                        goals.push(SubtypeGoal::Value(Rc::clone(lo_ty), Rc::clone(hi_ty)));
+                    },
+                    | (
+                        &ValueType::Data {
+                            id: ref lo_id,
+                            args: ref lo_args,
+                        },
+                        &ValueType::Data {
+                            id: ref hi_id,
+                            args: ref hi_args,
+                        },
+                    ) => {
+                        if lo_id != hi_id {
+                            return false.into();
+                        }
+                        if !lo_args.is_empty() && !hi_args.is_empty() {
+                            if lo_args.len() != hi_args.len() {
+                                return false.into();
+                            }
+                            for (lo, hi) in lo_args.iter().zip(hi_args.iter()) {
+                                goals.push(SubtypeGoal::Value(Rc::clone(lo), Rc::clone(hi)));
+                            }
+                        }
+                    },
+                    | (
+                        &ValueType::Sigma {
+                            fst: ref lo_fst,
+                            binder: ref lo_binder,
+                            snd: ref lo_snd,
+                        },
+                        &ValueType::Sigma {
+                            fst: ref hi_fst,
+                            binder: ref hi_binder,
+                            snd: ref hi_snd,
+                        },
+                    ) => {
+                        let lo_snd_aligned = if lo_binder == hi_binder {
+                            Rc::clone(lo_snd)
+                        }
+                        else {
+                            Rc::new(crate::identity::subst_valuetype(
+                                lo_snd,
+                                NameRef::from(lo_binder.as_str()),
+                                &crate::syntax::Value::var(NameRef::from(hi_binder.as_str())),
+                            ))
+                        };
+                        goals.push(SubtypeGoal::Value(
+                            Rc::clone(hi_snd),
+                            Rc::clone(&lo_snd_aligned),
+                        ));
+                        goals.push(SubtypeGoal::Value(lo_snd_aligned, Rc::clone(hi_snd)));
+                        goals.push(SubtypeGoal::Value(Rc::clone(hi_fst), Rc::clone(lo_fst)));
+                        goals.push(SubtypeGoal::Value(Rc::clone(lo_fst), Rc::clone(hi_fst)));
+                    },
+                    | _ => return false.into(),
+                }
+            },
+            | SubtypeGoal::Comp(sub, sup) => {
+                if core::ptr::eq(sub.as_ref(), sup.as_ref())
+                    || matches!(sub.as_ref(), CompType::Unknown)
+                    || matches!(sup.as_ref(), CompType::Unknown)
+                {
+                    continue;
+                }
+                match (sub.as_ref(), sup.as_ref()) {
+                    | (
+                        &CompType::F(ref lo_of, ref lo_row),
+                        &CompType::F(ref hi_of, ref hi_row),
+                    ) => {
+                        if !bool::from(lo_row.is_subset(hi_row)) {
+                            return false.into();
+                        }
+                        goals.push(SubtypeGoal::Value(Rc::clone(lo_of), Rc::clone(hi_of)));
+                    },
+                    | (
+                        &CompType::Arrow(ref lo_arg, ref lo_res),
+                        &CompType::Arrow(ref hi_arg, ref hi_res),
+                    ) => {
+                        goals.push(SubtypeGoal::Comp(Rc::clone(lo_res), Rc::clone(hi_res)));
+                        goals.push(SubtypeGoal::Value(Rc::clone(hi_arg), Rc::clone(lo_arg)));
+                    },
+                    | (
+                        &CompType::With(ref lo_fst, ref lo_snd),
+                        &CompType::With(ref hi_fst, ref hi_snd),
+                    ) => {
+                        goals.push(SubtypeGoal::Comp(Rc::clone(lo_snd), Rc::clone(hi_snd)));
+                        goals.push(SubtypeGoal::Comp(Rc::clone(lo_fst), Rc::clone(hi_fst)));
+                    },
+                    | _ => return false.into(),
+                }
+            },
+        }
+    }
+    true.into()
+}
+
+/// Picks a summand or component by side, cloning out of the pair of children.
+#[inline]
+#[must_use]
+pub(crate) fn pick<T>(
+    side: crate::syntax::Side,
+    fst: &Rc<T>,
+    snd: &Rc<T>,
+) -> T
+where
+    T: Clone,
+{
+    match side {
+        | crate::syntax::Side::Fst => fst.as_ref().clone(),
+        | crate::syntax::Side::Snd => snd.as_ref().clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::rc::Rc;
+
+    use super::value_subtype;
+    use crate::types::ValueType;
+
+    /// The top-level reflexive entry `value_subtype(&x, &x)` short-circuits
+    /// through the `core::ptr::eq` fast-path (ADR-50 Decision B).
+    #[test]
+    fn value_subtype_reflexive_entry_short_circuits()
+    {
+        let value_type = ValueType::atom("Foo");
+        assert!(bool::from(value_subtype(&value_type, &value_type)));
+    }
+
+    /// Two clones of the SAME `Rc` deref to a common address, so the
+    /// pointer-equality fast-path fires on aliased children too — pinning the
+    /// aliased-`Rc` case the recursive descent exploits.
+    #[test]
+    fn value_subtype_aliased_rc_short_circuits()
+    {
+        let shared = Rc::new(ValueType::atom("Foo"));
+        let clone = Rc::clone(&shared);
+        // Shared allocation ⇒ the two inner references have equal addresses.
+        assert!(core::ptr::eq(shared.as_ref(), clone.as_ref()));
+        assert!(bool::from(value_subtype(shared.as_ref(), clone.as_ref())));
+    }
+}

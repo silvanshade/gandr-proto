@@ -594,6 +594,17 @@ name = "gandr"
 version = "0.0.0"
 
 [[package]]
+name = "gandr-core-checker"
+version = "0.0.0"
+dependencies = [
+ "gandr-theory-nominal-automata",
+ "no-panic",
+ "proptest",
+ "regex",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "gandr-kernel-strata"
 version = "0.0.0"
 dependencies = [
@@ -1071,6 +1082,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "536bfad37a309d62069485248eeaba1e8d9853aaf951caaeaed0585a95346f08"
 dependencies = [
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "no-panic"
+version = "0.1.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc80370b4544f28ffa317e3c3474ee3ecbfe269196c01ae657d9f837a7d944a1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.0",
 ]
 
 [[package]]
