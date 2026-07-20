@@ -40,6 +40,7 @@ The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles
 
 Every commit additionally passes the `prek` **pre-commit** hooks — `treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `no-machine-local-paths`, `cargo:fmt-check` — and the **commit-msg** `commitlint` hook.
 `prek install` arms these once per clone in the primary checkout (`core/HAZARDS.md` H4).
+One commitlint gotcha recurs: any commit-body line **beginning** `word:` is parsed as a git trailer, so a sentence or wrapped line that opens with e.g. `D1:` trips `footer-leading-blank` against the `Co-Authored-By` footer — keep colon-suffixed tokens off line starts in commit bodies.
 
 ## Parked: the push tier and scheduled campaigns
 
