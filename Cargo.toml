@@ -7,6 +7,7 @@ members = [
   "crates/core-checker",
   "crates/core-sequent",
   "crates/kernel-strata",
+  "crates/runtime-host",
   "crates/surface-driver",
   "crates/theory-computads",
   "crates/theory-graphs",
