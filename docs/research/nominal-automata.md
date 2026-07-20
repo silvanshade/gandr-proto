@@ -33,7 +33,8 @@ Substrate & context: `wyrd@failed-refactor:crates/gandr-nominal/src/lib.rs` (ADR
    Both are _elementary_ — the whole point, since full register/alternating models are usually non-elementary or undecidable (RNTA §1; NDA §1).
    For gandr this means: decisions stay tractable whenever the number of simultaneously-open endpoints/capabilities is bounded — the realistic session/shell regime.
 
-6. **The crate's scope is the Σ-class only.** Per `wyrd@failed-refactor:docs/adr/0046-*.md` (line 54), a name-allocation automaton "genuinely unifies **only** the Σ-class (channels/caps/worlds/ roles) — it is _not_ the universal fabric"; macro-hygiene supports and CMTT-Ψ keep their own machines.
+6. **The crate's historically recorded scope was the Σ-class.** Per `wyrd@failed-refactor:docs/adr/0046-*.md` (line 54), a name-allocation automaton "genuinely unifies **only** the Σ-class (channels/caps/worlds/ roles) — it is _not_ the universal fabric", with macro-hygiene supports and CMTT-Ψ on their own machines.
+   **That confinement is superseded as a standing posture** (owner direction at PLAN review, `bd comments gandr-fcw.14` amendment 2): nominal-automata adoption is re-evaluated **opportunistically at every build-out stage** as substantially new, potentially performance- and capability-enabling technology — explicitly including whether the automata machinery can **generalize** to encompass what ADR-46 left to separate machines (macro-hygiene supports, CMTT-Ψ).
    The theory-nominal-automata crate is the decision-procedure engine for the Σ / session / resource-lifecycle axis, built _on top of_ `gandr-nominal`'s `Atom`/`Gensym`.
 
 7. **What it needs from substrates:** an **order-theory** layer (finite support as `BTreeSet<Atom>` with native `⊆`-poset; the term/word ordering `⊑` for local-freshness downward closure) and a **graph-theory** layer (orbit-finite state sets and transition relations are labeled graphs; the classical NFA/NFTA back-end needs reachability = emptiness, product/subset = inclusion, powerset = determinization).
@@ -360,7 +361,7 @@ The shell spec (§3 table) elaborates POSIX onto Σ constructs — every row is 
 * **Redirection = endpoint delegation = the nominal renaming action** — this is precisely why the Σ-lifecycle wants a _nominal_ substrate: rebinding a name is `Perm`/α-renaming, and "every shell footgun lands on a static discipline: dangling pipes → linear Σ" (spec §3, obs. 2).
   Open/close of fds and pipe endpoints = NDA `⟦a`/`a⟧`; **degree = number of simultaneously-open fds/endpoints**.
 * The spec's own claim — "POSIX job control **literally is** first-class one-shot stacks; a terminated job with open pipes = exactly the unwind-obligation discipline of §2.4" — is the same memory-safety/leak-freedom property NDA's _disciplined words_ formalize (§7.2).
-* **Scope boundary:** word-expansion/globbing is macro-phase (phase 0) and is **not** the automata crate's job — consistent with ADR-46 (l.54) confining the allocation automaton to the Σ-class.
+* **Scope boundary:** word-expansion/globbing is macro-phase (phase 0) and is **not** the automata crate's job today — ADR-46's (l.54) original Σ-class confinement; whether the automata machinery should absorb such sites is part of the standing per-phase re-evaluation (finding 6).
 
 ---
 
@@ -408,9 +409,8 @@ The shell spec (§3 table) elaborates POSIX onto Σ constructs — every row is 
 8. **ADJACENT (not in the two papers, from the corpus).** The **alternation** paper (arXiv:2408.03658, Frank–Hausmann–Milius–Schröder–Urbat) gives _elementary_ non-emptiness + inclusion **even with unbounded registers** (EXPSPACE global / 2EXPSPACE local, per `wyrd-notes:archive/digest/ props-deepread-verified.md` l.89–90).
    If gandr wants fixpoint/temporal properties over names, that line — plus the **nominal μ-calculus** ([16] linear-time, [23] scalar/vectorial) both papers point to — is the next corpus to deep-read.
    Flagged, not chased.
-9. **Scope discipline confirmed.** ADR-46 (l.54) already records that the allocation automaton unifies **only** the Σ-class, and CMTT-Ψ / macro-hygiene keep their own machines (`wyrd-u00z` half-win).
-   The papers corroborate this: RNTA/NDA model _data languages / resource lifecycles_, with no apparatus for typed contextual metavariables or overlapping macro scopes.
-   The crate should not be over-scoped into a "universal name fabric."
+9. **Scope posture updated.** ADR-46 (l.54) recorded the allocation automaton as unifying **only** the Σ-class, with CMTT-Ψ / macro-hygiene on their own machines; the owner's standing direction (PLAN review, `bd comments gandr-fcw.14` amendment 2) replaces that confinement with **opportunistic re-evaluation at every build-out stage**, explicitly open to generalizing the automata machinery over those sites.
+   What the papers themselves establish is narrower and stands as evidence, not as a boundary: RNTA/NDA as published model _data languages / resource lifecycles_ and ship no apparatus for typed contextual metavariables or overlapping macro scopes — so any generalization is design work to be argued at the phase that attempts it, not a free import.
 10. **Representation lock-step opportunity.** The papers' strong-nominal-set representation (`Σ 𝔸^{#Xᵢ}`, injective register stores) is the same shape as the ADR-41 `Atom`/`Gensym` + `BTreeSet<Atom>` support the corpus already commits to, and matches the Agda/Rocq `FinPerm` transposition rep (`wyrd-notes:archive/digest/props-successors-handoff.md` l.31, l.49) — a Rust↔Agda lock-step asset for the eventual metatheory.
 
 ---
