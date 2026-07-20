@@ -5,10 +5,11 @@
 //! on BOTH the CEK oracle (`gandr_core_checker::eval::run_comp`) and the L
 //! machine (`gandr_core_sequent::machine::run_comp`), under the same empty
 //! prelude. Wherever the L machine realizes the program (it does not report the
-//! defined `UnsupportedByReference` sentinel it uses for the not-yet-built
-//! surface — the prelude resolution, the higher-order combinators, and the
-//! ADR-76 identity formers), the two must **agree** on the canonicalized
-//! outcome; a disagreement is a genuine machine defect, never tolerated. The
+//! defined `UnsupportedByReference` sentinel it reserves for a not-yet-built
+//! surface), the two must **agree** on the canonicalized outcome; a
+//! disagreement is a genuine machine defect, never tolerated. With the ADR-76
+//! identity formers and ADR-80 declared data now realized, no corpus item
+//! declines — the full corpus (model and pathological) realizes and agrees. The
 //! effect / control surface realizes fully: every corpus `perform` (shell / ffi
 //! / host lowering) is unhandled under the empty prelude, so both machines
 //! agree on the `PerformNoHandler` blame; `shift` / `reset` are faithful on the
@@ -74,19 +75,20 @@ mod tests
             outcome.items,
             outcome.disagreements.join("\n")
         );
-        // Realization ratchet: 69 (pure spine) → 81 (faithful `perform`) → 84 at
-        // this effects / control (`shift`) checkpoint — the measured realization
-        // over the current corpus with zero disagreements. The corpus expresses
-        // no `shift` / `reset` (the surface carries no delimited-control syntax),
-        // so faithful `shift` is gated by the property differential
-        // (`tests/differential.rs`), not the corpus; this ratchet tightens the
-        // floor to the actual realized count. The remaining declines are the
-        // ADR-76 identity formers (whole-program), the prelude resolution, and
-        // the higher-order combinators. Raise (never lower) as those land.
+        // Realization ratchet: 69 (pure spine) → 81 (faithful `perform`) → 84
+        // (effects / control `shift`) → 106, the full model corpus (106 of 106)
+        // now realizing with zero disagreements. The B1 phase-3 seams landed the
+        // remainder: prelude free-name resolution (ADR-42) leaves the empty-
+        // prelude force miss at `ForcedNonThunk` on both machines, and the
+        // ADR-76 identity formers and ADR-80 declared data are realized, so no
+        // corpus item declines. A higher-order-native program still reaches the
+        // native at the empty prelude only via a force miss, so it realizes as
+        // that shared `ForcedNonThunk` rather than declining. Raise (never
+        // lower) as later work lands.
         assert!(
-            usize::from(outcome.realized) >= 84,
+            usize::from(outcome.realized) >= 106,
             "the L machine's model-corpus realization regressed below the pinned \
-             checkpoint floor (84), got {} of {}",
+             checkpoint floor (106), got {} of {}",
             outcome.realized,
             outcome.items
         );
@@ -109,15 +111,17 @@ mod tests
             outcome.disagreements.join("\n")
         );
         // Realization ratchet, as for the model corpus: 32 → 33 (faithful
-        // `perform`) → 34, the full pathological corpus (34 of 34) now realizing
-        // with zero disagreements. The ADR-76 K-rejection witness's rejected
-        // `case` item realizes — both machines agree on the holed arms; its
-        // identity ANNOTATIONS are type-side only. Raise (never lower) as later
-        // checkpoints land.
+        // `perform`) → 54, the full pathological corpus (54 of 54) now realizing
+        // with zero disagreements once the B1 phase-3 seams land the ADR-76
+        // identity formers and ADR-80 declared data (the fixtures carrying
+        // `Here` / `Walk` / `Ctor` / `DataCase` were the residual declines). The
+        // ADR-76 K-rejection witness's rejected `case` item realizes — both
+        // machines agree on the holed arms; its identity ANNOTATIONS are
+        // type-side only. Raise (never lower) as later checkpoints land.
         assert!(
-            usize::from(outcome.realized) >= 34,
+            usize::from(outcome.realized) >= 54,
             "the L machine's pathological-corpus realization regressed below the \
-             pinned checkpoint floor (34), got {} of {}",
+             pinned checkpoint floor (54), got {} of {}",
             outcome.realized,
             outcome.items
         );

@@ -32,8 +32,10 @@
 //! `shift` (agreeing on the `ShiftNoReset` blame). A captured continuation used
 //! in *value* position stays excluded (its representation diverges from the
 //! CEK's α-renamed side-table name; a listed residual), so a generated `shift`
-//! body only ever `resume`s `k` or ignores it. The prelude resolution and the
-//! higher-order combinators grow the differential in later checkpoints.
+//! body only ever `resume`s `k` or ignores it. Hand-built cases now pin the
+//! prelude free-name resolution (ADR-42), the ADR-76 identity formers, and the
+//! ADR-80 declared data against the oracle; the higher-order combinators grow
+//! the differential in a later checkpoint.
 
 #![cfg_attr(
     test,
