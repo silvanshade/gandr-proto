@@ -1,0 +1,13 @@
+<component id="spec-index" spec-version="1" status="partial" title="gandr specification corpus">
+  <section title="About this corpus">
+    <prose>This is the central index of the gandr specification corpus. Each
+      component is a status-attributed unit authored in the custom component
+      vocabulary and validated by the doc tool (parse equals validate).</prose>
+  </section>
+  <section title="Conventions">
+    <prose>Every component declares a required status, defines its terms inline
+      (define-once corpus-wide), declares its cite keys, and records typed
+      provenance edges. The build renders no-JavaScript static pages; math and
+      diagram leaves compile to inline vector graphics.</prose>
+  </section>
+</component>

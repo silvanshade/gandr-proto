@@ -1,0 +1,30 @@
+# gandr specification references (hayagriva format).
+#
+# Provenance discipline: every key is an id that resolves in the consolidated
+# literature register (docs/research/bibliography-v2.md, gandr-fcw.10); this file
+# is a STUB carrying only the keys the current demo component cites. The full
+# register derivation (all ~381 rows) is a later rung — do not hand-expand here.
+
+A-1a:
+  type: article
+  title: "Call-By-Push-Value: A Subsuming Paradigm"
+  author: "Levy, Paul Blain"
+  date: 1999
+  parent:
+    type: proceedings
+    title: "Typed Lambda Calculi and Applications (TLCA 1999)"
+  serial-number:
+    doi: "10.1007/3-540-48959-2_17"
+
+P-2:
+  type: article
+  title: "Beyond Notations: Hygienic Macro Expansion for Theorem Proving Languages"
+  author:
+    - "Ullrich, Sebastian"
+    - "de Moura, Leonardo"
+  date: 2020
+  parent:
+    type: proceedings
+    title: "Automated Reasoning (IJCAR 2020)"
+  serial-number:
+    doi: "10.1007/978-3-030-51054-1_10"
