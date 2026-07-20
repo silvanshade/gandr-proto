@@ -17,12 +17,12 @@
 
 The four decisions interlock: decode-retains-sharing (D2, the format) is impossible without a shared in-memory term (D1, the representation), and the CAS layer (D4) chunks on the format's declaration segments.
 
-| #              | Decision                   | Recommendation                                                                                                                                                                   | Owner posture                                                                              |
-| -------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| D1             | Kernel term representation | **(B)** `Rc` children + a pointer-equality fast path, adopted now (before B2.3 bakes bridge/corpus/exit-gate against the representation)                                         | **owner-veto** (gandr-3ln plane 1)                                                         |
-| D2-format      | Export v1 sharing          | One per-artifact **tagged** subterm table over all four families, **maximal** structural sharing, declaration-segmented, decode-retains-sharing with an **expanded-work budget** | ratify (E5 bump-vs-amend is the one open sub-call)                                         |
-| D2-compression | Compression posture        | Compression is a storage/transport concern, never a format concern; canonical bytes remain THE bytes                                                                             | ratify now (already ratified by direction, gandr-3ln)                                      |
-| D4             | CAS revival                | **Layered both**: inner canonical declaration encoding with the subterm table (E4 plane) + outer prolly-style keyed Merkle over declaration records (untrusted plumbing)         | ratify; placement (`storage-*` tier) and the `storage-chunker` name already owner-ratified |
+| #              | Decision                   | Recommendation                                                                                                                                                                                                                                                 | Owner posture                                                                              |
+| -------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| D1             | Kernel term representation | **(C)** per-environment append-only arena + typed node ids + an id-equality fast path, adopted now (before B2.3 bakes bridge/corpus/exit-gate against the representation) — **re-cut 2026-07-20** after owner steer; (B) `Rc` recorded as the lighter fallback | **owner-veto** (gandr-3ln plane 1)                                                         |
+| D2-format      | Export v1 sharing          | One per-artifact **tagged** subterm table over all four families, **maximal** structural sharing, declaration-segmented, decode-retains-sharing with an **expanded-work budget**                                                                               | ratify (E5 bump-vs-amend is the one open sub-call)                                         |
+| D2-compression | Compression posture        | Compression is a storage/transport concern, never a format concern; canonical bytes remain THE bytes                                                                                                                                                           | ratify now (already ratified by direction, gandr-3ln)                                      |
+| D4             | CAS revival                | **Layered both**: inner canonical declaration encoding with the subterm table (E4 plane) + outer prolly-style keyed Merkle over declaration records (untrusted plumbing)                                                                                       | ratify; placement (`storage-*` tier) and the `storage-chunker` name already owner-ratified |
 
 The single load-bearing consequence that governs the reader design: **decode-retains-sharing moves the billion-laughs attack from memory to checker time.** A shared DAG walked by the recursive S1 checker re-checks each shared subterm once per reference — exponential work from a small artifact, uncaught by the depth budget.
 The reader's expanded-work budget is the S1-priced defence (§4.4).
@@ -100,7 +100,11 @@ Carried from the reuse determination as coordinator synthesis, not independently
 
 ## 3. Decision D1 — kernel term representation (owner-veto)
 
-**Recommendation: (B) `Rc` children with a pointer-equality fast path, adopted now.**
+**Recommendation: (C) a per-environment append-only arena with typed node ids and an id-equality fast path, adopted now.**
+
+> **RE-CUT (2026-07-20).** An earlier draft of this pass recommended (B) `Rc` children; an owner steer mid-session recalled the predecessor program's deliberate move to flat/arena + stable ids — recursive owned trees, and `Drop` specifically, were the original hazard — and asked whether `Rc` is needed at all given an arena and stable ids.
+> Re-evaluation: it is not; (C) subsumes (B)'s benefits and **eliminates, rather than manages,** the recursive-ownership hazard family.
+> The full re-cut record is the 2026-07-20 "D1 RE-CUT" comment on `gandr-bvf`.
 
 ### 3.1 The options
 
@@ -108,14 +112,18 @@ Carried from the reuse determination as coordinator synthesis, not independently
   Costs: O(size) recomputation on repeated subterms; deep `Clone` on the conversion error paths (§2.2); and — decisive — **decode-retains-sharing is impossible**.
   Without a shared in-memory form, the v1 reader would have to expand the DAG into a tree, which is precisely the amplification surface v1 exists to close.
   Reject: it forecloses the format decision it is supposed to be independent of.
-* **(B) `Rc` children (recommended).** Replace `Box` with `alloc::rc::Rc` in the four enums' child positions (§2.1).
+* **(B) `Rc` children (the lighter fallback — not recommended after the re-cut).** Replace `Box` with `alloc::rc::Rc` in the four enums' child positions (§2.1).
   On immutable data, pointer equality implies structural equality, so a `Rc::ptr_eq` short-circuit is a **trivially sound** conversion fast path that admits **no table into the TCB** — the Lean-kernel `is_eqp`-first posture (digest §2.1), exactly ADR-50 B's "ptr-eq first".
   `Clone` becomes O(1) (closes the deep-clone hazard structurally).
   Single-threaded ⇒ `Rc`, not `Arc` (document it).
-  Costs: two refcount words per node; constructors take `Rc::new` (the public-field API change).
-  The worklist-`Drop` obligation stands (§3.3).
-* **(C) Arena indices (`u32` ids + an intrusive cached `u64` word — the Lean/ADR-50 end-state).** The right S2+/performance-era answer, but a whole-crate TCB restructure with **no S1 consumer for the cached word** (S1 conversion is type-only and structural — `conv.rs:1–27`, `STATUS.md:17–19`).
-  Reject **for now**; record as the S2-era successor, with Lean's intrusive cached-word (hash + flags + `looseBVarRange`, O(1) guards) as the named template.
+  Costs: two refcount words per node; constructors take `Rc::new` (the public-field API change); the recursive-ownership hazard family is **managed, not eliminated** — the worklist-`Drop` obligation stands permanently in the TCB (§3.3) and the derived `PartialEq`/`Hash`/`Debug` traversals stay deep; and since the arena remains the acknowledged end-state, (B) buys a **second** representation migration later (`Box`→`Rc`→arena), each churning format/bridge/corpus.
+* **(C) Per-environment append-only arena with typed node ids (recommended; re-cut 2026-07-20).** Terms and types become `u32`-backed ids into an arena owned by the `Environment`; **four typed id families** (`ValueId`, `ComputationId`, `ValueTypeId`, `CompTypeId`) keep the polarity discipline static, as the four enums do today.
+  Sharing is a DAG of shared ids; the conversion fast path is **id-equality** (same id in the same arena ⇒ same node ⇒ structural equality) — the same trivially sound Lean `is_eqp` posture, with no refcounts and still no table in the TCB (C3 held).
+  The recursive-ownership hazard family **closes structurally**: ids are `Copy` (no deep `Clone` exists to make iterative), arena teardown is a flat `Vec` drop (no recursive drop glue, no manual `Drop` worklists to maintain and audit in the TCB, no E0509 friction), and the derived `PartialEq`/`Hash`/`Debug` instances are shallow over ids.
+  The v1 format and the representation stop being two designs: a subterm-table entry ≅ an arena id, **decode IS arena construction**, and §4.3's post-order first-completion order is exactly allocation order.
+  Discipline: ids are minted **only by arena constructors over already-allocated children** (dangling ids impossible within an arena by construction); `add_decl` takes an **admission watermark** — checker intermediates allocate past the mark and are truncated after the verdict (on rejection _and_ after success), so the persistent arena holds only admitted content.
+  Honest costs, to weigh at ratification: a **K1 weakening** — an out-of-range or cross-arena id is _representable_ where an owned tree could not be ill-formed (mitigated by constructor-only minting, one-arena-per-environment, checked `get` with a typed error per the rust.md no-indexing rule, and decode-side validation); a **larger one-time kernel-core restructure** than the `Rc` swap (every construction site, checker, conversion, codec, tests); and a new `add_decl`/builder API surface, which the B2.3 bridge consumes once.
+  Lean's intrusive cached `u64` word (hash + flags + `looseBVarRange`, O(1) guards) gets a natural per-node slot whenever S2 wants it — no longer a separate migration.
 
 ### 3.2 Two soundness clarifications the retype must respect
 
@@ -132,10 +140,14 @@ Iterative decode and iterative conversion do not cover deallocation.
 The fix is an iterative `Drop` per the Lean recipe; with `Rc` it **gates extraction on uniqueness** (`Rc::into_inner` yields the child only at refcount 1 — a shared handle merely decrements), so the worklist walks the uniquely-owned spine and stops at the first shared node.
 This is gandr-i3i's scope; D1(B) makes it a hard prerequisite of the same landing rather than a deferred residual.
 **Under D1(A) the same hazard exists for `Box` chains** — the retype does not create it, but it does bring it forward.
+**Under the re-cut recommendation D1(C) this obligation dissolves structurally**: arena teardown is a flat `Vec` drop and no recursive owned type remains in the kernel vocabulary. gandr-i3i still lands now against the v0 `Box` representation — the hazard is live today, and its deep-drop/deep-clone tests are durable totality witnesses that survive the arena unchanged — with its manual `Drop`/`Clone` impls recorded as removable at the 5t3 arena landing.
 
 ---
 
 ## 4. Decision D2 — export v1 sharing format (the inner E4 plane)
+
+> **Representation note (re-cut 2026-07-20).** This section was drafted against D1(B); under the re-cut D1(C) recommendation, read "`Rc` handle" as "arena id" throughout: a table entry ≅ an arena id, decode IS arena construction (§4.3's post-order first-completion is allocation order), decode-retains-sharing means shared entries decode to one node id, and the sharing-retention witnesses (§7) assert id-equality instead of `Rc::ptr_eq`.
+> Nothing else changes: the byte layout, the budgets, and the canonicality machinery are representation-independent.
 
 ### 4.1 The subterm table (proposal (a)–(d), formalized)
 
@@ -352,7 +364,7 @@ Inventory verified in `crates/kernel-core/tests/{export,conversion,checker}.rs`.
 
 Per the owner sequencing directive (representation and format changes land while surface area is minimal — B2.3 would bake corpus/exit-gate/bridge against them):
 
-* **gandr-5t3 (this ratification's implementation):** the D1 representation change (per RQ-1); the inner v1 writer/reader with decode-retains-sharing + the budgets; the updated round-trip/rejection/determinism property suites + the sharing-retention and amplification goldens (§7); the worklist-`Drop` hardening (gandr-i3i, now a prerequisite under D1(B)); and the `storage-chunker` + `storage-prolly-trees` absorption **as skeleton only** (contract suites land; no export wiring).
+* **gandr-5t3 (this ratification's implementation):** the D1 representation change (per RQ-1); the inner v1 writer/reader with decode-retains-sharing + the budgets; the updated round-trip/rejection/determinism property suites + the sharing-retention and amplification goldens (§7); the gandr-i3i hardening disposition (its deep-drop/clone tests persist either way; under D1(C) its manual `Drop`/`Clone` impls retire with the arena, under D1(B) they become a permanent prerequisite); and the `storage-chunker` + `storage-prolly-trees` absorption **as skeleton only** (contract suites land; no export wiring).
 * **B2.3 and later:** outer-layer wiring, the manifest identity, the D3 size/decode-time telemetry floors per corpus item, and the exit-gate harness.
 * **Parallel (gandr-1hu rkyv spike):** feeds only the tree/store API surface (state-as-view: get-by-hash returning verified blobs); its findings join this ratification package.
 
@@ -406,8 +418,8 @@ So this file needs no MANIFEST b3sum entry and its cross-references are not gate
 Each item: the decision, its options, the recommendation, and what **gandr-5t3** does under each outcome.
 RQ-numbered to avoid collision with the R1–R4 format reservations.
 
-**RQ-1 — D1 kernel term representation (OWNER-VETO).** Options: **(A)** Box trees (status quo) · **(B)** `Rc` children + `Rc::ptr_eq` fast path · **(C)** arena indices + intrusive cached word.
-Recommendation: **(B)**, adopted now. 5t3 under **(B)**: retype the four enums' child positions `Box`→`Rc` (§2.1), add the `Rc::ptr_eq` early-out in `converge_*`, land the iterative worklist-`Drop` (gandr-i3i) as a prerequisite, document `Rc`-not-`Arc`; decode builds `Rc` DAGs (enables §4 decode-retains-sharing). 5t3 under **(A)**: keep `Box`; **decode-retains-sharing is impossible**, so the v1 reader must either expand (reintroducing the amplification surface) or D2 is descoped to a non-sharing format — i.e. (A) largely forecloses D2. gandr-i3i still lands (the `Box`-chain drop hazard is independent). 5t3 under **(C)**: out of scope for this landing (whole-TCB restructure); recorded as the S2-era successor.
+**RQ-1 — D1 kernel term representation (OWNER-VETO; re-cut 2026-07-20).** Options: **(A)** Box trees (status quo) · **(B)** `Rc` children + `Rc::ptr_eq` fast path (lighter fallback) · **(C)** per-environment append-only arena + typed node ids + id-equality fast path.
+Recommendation: **(C)**, adopted now (§3.1; re-cut after owner steer — the arena eliminates rather than manages the recursive-ownership hazard family, and it is the acknowledged end-state, so adopting it now avoids a second migration). 5t3 under **(C)**: restructure the four vocabularies to typed arena ids with constructor-only minting and the admission-watermark discipline; id-equality early-out in `converge_*`; decode allocates table entries directly into the arena (entry ≅ id); the gandr-i3i manual `Drop`/`Clone` impls retire (their deep tests persist as totality witnesses); the gandr-98o machine re-types its goal/produced stacks over ids. 5t3 under **(B)**: retype the four enums' child positions `Box`→`Rc` (§2.1), add the `Rc::ptr_eq` early-out in `converge_*`, keep the iterative worklist-`Drop` (gandr-i3i) as a permanent TCB fixture, document `Rc`-not-`Arc`; decode builds `Rc` DAGs; the arena migration remains queued for the S2 era. 5t3 under **(A)**: keep `Box`; **decode-retains-sharing is impossible**, so the v1 reader must either expand (reintroducing the amplification surface) or D2 is descoped to a non-sharing format — i.e. (A) largely forecloses D2. gandr-i3i still lands (the `Box`-chain drop hazard is independent).
 
 **RQ-2 — E5 posture: version bump vs amend-in-place (OPEN OWNER CALL).** Options: **(bump)** `version = 1`, refuse v0 · **(amend)** reuse `version = 0`, redefine the bytes.
 Recommendation: **(bump)** — exercises E5 refusal live, keeps v0 goldens as refusal fixtures. 5t3 under **(bump)**: set `FORMAT_VERSION` to 1; add the v0-refusal golden (§7 item 6); repurpose existing v0 goldens. 5t3 under **(amend)**: leave the version constant at 0; drop the v0-refusal golden; no v0/v1 boundary tests.
@@ -438,5 +450,5 @@ Outer-layer wiring + manifest identity + history-independence differential are B
 
 ## 13. Summary of recommendations
 
-Adopt **D1(B)** (`Rc` + ptr-eq, now), the **unified maximal-shared declaration-segmented subterm table** with the **expanded-work budget** and a **v1 version bump**, the **compression-outside-format** posture, and the **layered-both CAS** with the `storage-chunker`/`storage-prolly-trees` vendor plan as a skeleton in gandr-5t3.
+Adopt **D1(C)** (per-environment arena + typed node ids + id-equality fast path, now; re-cut 2026-07-20, with (B) `Rc` recorded as the lighter fallback), the **unified maximal-shared declaration-segmented subterm table** with the **expanded-work budget** and a **v1 version bump**, the **compression-outside-format** posture, and the **layered-both CAS** with the `storage-chunker`/`storage-prolly-trees` vendor plan as a skeleton in gandr-5t3.
 The owner's live calls are **RQ-1** (D1 veto), **RQ-2** (E5 bump vs amend), **RQ-5** (budget magnitudes), and confirmation of the **RQ-8** ordering fix; the remainder are recommended-with-alternatives-recorded or already ratified by direction.
