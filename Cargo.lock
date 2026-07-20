@@ -589,6 +589,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-theory-orders"
+version = "0.0.0"
+dependencies = [
+ "criterion",
+ "proptest",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "gandr-workflow-dylint"
 version = "0.0.0"
 dependencies = [
