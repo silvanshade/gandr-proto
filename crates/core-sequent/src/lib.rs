@@ -1,17 +1,25 @@
-//! The polarized command IL and the static focusing translation — phase **L0**
-//! of the sequent-machines kernel
-//! (`docs/gandr/spec/proposal-sequent-kernel.md`; decisions K1/K7, ADR-65).
+//! The polarized command IL, the static focusing translation, and the
+//! operational **L machine** — phases **L0** and **L1** of the sequent-machines
+//! kernel (`docs/gandr/spec/proposal-sequent-kernel.md`; decisions K1/K7,
+//! ADR-65).
 //!
-//! This crate is the first, purely-additive phase of the sequent kernel: it
-//! reifies the polarized System-L / λμμ̃ **command IL** (§2) as arena-resident,
-//! inspectable IR beside the frozen CBPV core, and gives the **static focusing
-//! translation `𝓕`** (§3) that bridges the checked core into it. It builds
-//! nothing operational — no L machine (that is phase L1), no
-//! store, no effect execution, no fusion engine (phase L2) — and it touches no
-//! frozen-core code: it consumes the public [`gandr_core_checker`] surface
-//! only.
+//! This crate carries the sequent kernel through its operational phase, beside
+//! the frozen CBPV core and touching no frozen-core code: it consumes the
+//! public [`gandr_core_checker`] surface only.
 //!
-//! # The two halves
+//! - **L0** reifies the polarized System-L / λμμ̃ **command IL** (§2) as
+//!   arena-resident, inspectable IR and gives the **static focusing translation
+//!   `𝓕`** (§3) that bridges the checked core into it.
+//! - **L1** runs the focused IL: the iterative [`machine::LMachine`] (§4, §6)
+//!   over the two-region [`store::Store`] (call-by-need cells + a frame
+//!   region), executing the full effect / control surface — `perform` /
+//!   `handle` / `resume` / `reset` / `shift` — gated against the CEK oracle by
+//!   the `L-run ∘ 𝓕 ≡ run` [`differential`] (§9).
+//!
+//! What remains is the phase-**L2** fusion engine (2-cells on command seams)
+//! and the listed L1 readback residuals (the un-focusing `𝓕⁻¹`, §7a).
+//!
+//! # L0 — the command IL and the focusing translation
 //!
 //! - [`il`] — the three node families ([`il::ProducerNode`],
 //!   [`il::ConsumerNode`], [`il::CommandNode`]) over an arena
