@@ -1,8 +1,23 @@
 # Derive docs/spec/refs.yml (hayagriva) from the register extraction + curated
 # citation fields. IDs and LOCATORS come verbatim from rows.nuon (the mechanical
 # register extraction); TITLE/AUTHOR/DATE/VENUE come from data.nu (curated by
-# reading the register citation column). Emitted via `to yaml` (safe escaping),
-# with the provenance header prepended.
+# reading the register citation column). The provenance header is prepended.
+#
+# Two-stage derivation — there is no driver; invoke each stage with its env vars
+# set, from the repository root:
+#   1. REG_PATH=docs/research/bibliography-v2.md OUT_PATH=$tmp/rows.nuon \
+#        nu scripts/refs-yml/extract.nu
+#   2. ROWS_PATH=$tmp/rows.nuon OUT_PATH=docs/spec/refs.yml \
+#        nu scripts/refs-yml/build-refs.nu
+#
+# Serialization is `to yaml` FOLLOWED BY oxfmt (see the tail of this script).
+# `to yaml`'s string-quote style (single vs double) is non-deterministic across
+# cold nu processes, so this script normalizes its own output through oxfmt —
+# the SAME formatter treefmt runs on *.yml (treefmt.toml [formatter.oxfmt], with
+# .oxfmtrc.json) — as its final step. oxfmt is idempotent on its canonical form,
+# so the artifact is a stable fixed point: byte-reproducible from any cold run
+# here and left unchanged by a later `treefmt` pass. Without this step refs.yml
+# is byte-reproducible only by accident of a subsequent treefmt run.
 
 use data.nu curated-entries
 
@@ -115,6 +130,22 @@ const header = "# gandr central citation register — hayagriva bibliography (Ty
 #   DECLINED / EXCLUDED candidate works (never register rows).
 "
 
+# Repository root, resolved from this script's own location (cwd-independent) so
+# the oxfmt config below is found no matter where the generator is invoked.
+const script_dir = (path self | path dirname)
+
 let body = (build | to yaml)
 $"($header)($body)" | save -f $env.OUT_PATH
+
+# Normalize the quote style deterministically through the treefmt *.yml formatter
+# (see the header). `to yaml` alone is not byte-reproducible across cold nu
+# processes; oxfmt projects any quote style onto a single canonical fixed point.
+if (which oxfmt | is-empty) {
+    error make {msg: 'oxfmt not found on PATH — the refs.yml generator normalizes its output with oxfmt (the treefmt *.yml formatter); run inside the project mise environment'}
+}
+let oxfmtrc = ($script_dir | path join '..' '..' '.oxfmtrc.json' | path expand)
+let fmt = (^oxfmt --config $oxfmtrc $env.OUT_PATH | complete)
+if $fmt.exit_code != 0 {
+    error make {msg: $'oxfmt normalization failed for ($env.OUT_PATH): ($fmt.stderr)'}
+}
 print $'wrote ($env.OUT_PATH)'
