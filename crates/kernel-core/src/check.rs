@@ -36,6 +36,7 @@
 //! entry allocates nothing.
 
 use alloc::boxed::Box;
+use core::mem;
 
 use gandr_kernel_strata::Level;
 
@@ -148,6 +149,120 @@ impl<'ctx> Context<'ctx>
                 },
             }
         }
+    }
+}
+
+/// Extract an owned arrow's domain and codomain by placeholder-swap.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `Ok((domain, codomain))` when `comp_type` is an arrow, with its
+///   child boxes moved out and replaced in place by placeholder leaves so the
+///   drained husk drops in `O(1)`; `Err(comp_type)` returns the value unchanged
+///   otherwise.
+/// - provides: the by-value arrow elimination the synthesizing checker needs
+///   without moving a field out of a `Drop` type (the E0509 interlock the
+///   worklist `Drop` forces, gandr-i3i).
+/// - fails: `Err(comp_type)` when the type is not an arrow.
+/// - panics: none.
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "matching a mutable borrow of the owned type to swap its child boxes in place; the binding is a mutable reference by intent"
+)]
+fn take_arrow(mut comp_type: CompType) -> Result<(Box<ValueType>, Box<CompType>), CompType>
+{
+    if let CompType::Arrow { domain, codomain } = &mut comp_type {
+        let domain = mem::replace(domain, Box::new(ValueType::Unit));
+        let codomain = mem::replace(
+            codomain,
+            Box::new(CompType::Returner(Box::new(ValueType::Unit))),
+        );
+        Ok((domain, codomain))
+    }
+    else {
+        Err(comp_type)
+    }
+}
+
+/// Extract an owned returner's result type by placeholder-swap.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `Ok(result)` when `comp_type` is a returner, its child box moved
+///   out and replaced by a placeholder leaf; `Err(comp_type)` unchanged
+///   otherwise.
+/// - provides: the by-value returner elimination the checker needs without an
+///   E0509 move out of a `Drop` type.
+/// - fails: `Err(comp_type)` when the type is not a returner.
+/// - panics: none.
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "matching a mutable borrow of the owned type to swap its child box in place; the binding is a mutable reference by intent"
+)]
+fn take_returner(mut comp_type: CompType) -> Result<Box<ValueType>, CompType>
+{
+    if let CompType::Returner(result) = &mut comp_type {
+        let result = mem::replace(result, Box::new(ValueType::Unit));
+        Ok(result)
+    }
+    else {
+        Err(comp_type)
+    }
+}
+
+/// Extract an owned thunk type's computation type by placeholder-swap.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `Ok(codomain)` when `value_type` is a thunk, its child box moved
+///   out and replaced by a placeholder leaf; `Err(value_type)` unchanged
+///   otherwise.
+/// - provides: the by-value thunk elimination the checker needs without an
+///   E0509 move out of a `Drop` type.
+/// - fails: `Err(value_type)` when the type is not a thunk.
+/// - panics: none.
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "matching a mutable borrow of the owned type to swap its child box in place; the binding is a mutable reference by intent"
+)]
+fn take_thunk(mut value_type: ValueType) -> Result<Box<CompType>, ValueType>
+{
+    if let ValueType::Thunk(codomain) = &mut value_type {
+        let codomain = mem::replace(
+            codomain,
+            Box::new(CompType::Returner(Box::new(ValueType::Unit))),
+        );
+        Ok(codomain)
+    }
+    else {
+        Err(value_type)
+    }
+}
+
+/// Extract an owned sum type's two summands by placeholder-swap.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `Ok((left, right))` when `value_type` is a sum, its child boxes
+///   moved out and replaced by placeholder leaves; `Err(value_type)` unchanged
+///   otherwise.
+/// - provides: the by-value sum elimination the checker needs without an E0509
+///   move out of a `Drop` type.
+/// - fails: `Err(value_type)` when the type is not a sum.
+/// - panics: none.
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "matching a mutable borrow of the owned type to swap its child boxes in place; the binding is a mutable reference by intent"
+)]
+fn take_sum(mut value_type: ValueType) -> Result<(Box<ValueType>, Box<ValueType>), ValueType>
+{
+    if let ValueType::Sum(left, right) = &mut value_type {
+        let left = mem::replace(left, Box::new(ValueType::Unit));
+        let right = mem::replace(right, Box::new(ValueType::Unit));
+        Ok((left, right))
+    }
+    else {
+        Err(value_type)
     }
 }
 
@@ -521,12 +636,12 @@ impl<'kernel> Checker<'kernel>
         match computation {
             | Computation::Application(head, argument) => {
                 let head_type = self.synth_comp(context, depth, head)?;
-                match head_type {
-                    | CompType::Arrow { domain, codomain } => {
+                match take_arrow(head_type) {
+                    | Ok((domain, codomain)) => {
                         self.check_value(context, depth, argument, &domain)?;
                         Ok(*codomain)
                     },
-                    | other => Err(KernelError::ComputationShapeMismatch {
+                    | Err(other) => Err(KernelError::ComputationShapeMismatch {
                         expected: ExpectedComputationShape::Arrow,
                         actual: Box::new(other),
                     }),
@@ -534,9 +649,9 @@ impl<'kernel> Checker<'kernel>
             },
             | Computation::Force(value) => {
                 let value_type = self.synth_value(context, depth, value)?;
-                match value_type {
-                    | ValueType::Thunk(codomain) => Ok(*codomain),
-                    | other => Err(KernelError::ValueShapeMismatch {
+                match take_thunk(value_type) {
+                    | Ok(codomain) => Ok(*codomain),
+                    | Err(other) => Err(KernelError::ValueShapeMismatch {
                         expected: ExpectedValueShape::Thunk,
                         actual: Box::new(other),
                     }),
@@ -548,15 +663,15 @@ impl<'kernel> Checker<'kernel>
             },
             | Computation::Bind(bound, body) => {
                 let bound_type = self.synth_comp(context, depth, bound)?;
-                match bound_type {
-                    | CompType::Returner(result) => {
+                match take_returner(bound_type) {
+                    | Ok(result) => {
                         let extended = Context::Bound {
                             ty: &result,
                             outer: context,
                         };
                         self.synth_comp(&extended, depth, body)
                     },
-                    | other => Err(KernelError::ComputationShapeMismatch {
+                    | Err(other) => Err(KernelError::ComputationShapeMismatch {
                         expected: ExpectedComputationShape::Returner,
                         actual: Box::new(other),
                     }),
@@ -568,8 +683,8 @@ impl<'kernel> Checker<'kernel>
                 on_right,
             } => {
                 let scrutinee_type = self.synth_value(context, depth, scrutinee)?;
-                match scrutinee_type {
-                    | ValueType::Sum(left, right) => {
+                match take_sum(scrutinee_type) {
+                    | Ok((left, right)) => {
                         let left_context = Context::Bound {
                             ty: &left,
                             outer: context,
@@ -587,7 +702,7 @@ impl<'kernel> Checker<'kernel>
                             )),
                         }
                     },
-                    | other => Err(KernelError::ValueShapeMismatch {
+                    | Err(other) => Err(KernelError::ValueShapeMismatch {
                         expected: ExpectedValueShape::Sum,
                         actual: Box::new(other),
                     }),
@@ -659,15 +774,15 @@ impl<'kernel> Checker<'kernel>
             },
             | Computation::Bind(bound, body) => {
                 let bound_type = self.synth_comp(context, depth, bound)?;
-                match bound_type {
-                    | CompType::Returner(result) => {
+                match take_returner(bound_type) {
+                    | Ok(result) => {
                         let extended = Context::Bound {
                             ty: &result,
                             outer: context,
                         };
                         self.check_comp(&extended, depth, body, expected)
                     },
-                    | other => Err(KernelError::ComputationShapeMismatch {
+                    | Err(other) => Err(KernelError::ComputationShapeMismatch {
                         expected: ExpectedComputationShape::Returner,
                         actual: Box::new(other),
                     }),
@@ -679,8 +794,8 @@ impl<'kernel> Checker<'kernel>
                 on_right,
             } => {
                 let scrutinee_type = self.synth_value(context, depth, scrutinee)?;
-                match scrutinee_type {
-                    | ValueType::Sum(left, right) => {
+                match take_sum(scrutinee_type) {
+                    | Ok((left, right)) => {
                         let left_context = Context::Bound {
                             ty: &left,
                             outer: context,
@@ -692,7 +807,7 @@ impl<'kernel> Checker<'kernel>
                         };
                         self.check_comp(&right_context, depth, on_right, expected)
                     },
-                    | other => Err(KernelError::ValueShapeMismatch {
+                    | Err(other) => Err(KernelError::ValueShapeMismatch {
                         expected: ExpectedValueShape::Sum,
                         actual: Box::new(other),
                     }),
