@@ -45,9 +45,12 @@
 //! curried native accumulates its arguments from the `ap` frames and dispatches
 //! to `gandr_core_checker::prim` on saturation, reading its (first-order)
 //! arguments back to source values. The **higher-order combinators** (`each` /
-//! `where` / `reduce` / `any` / `all` / `update_where`) inspect a thunk
-//! argument's body, which the focused IL no longer retains, so they decline
-//! pending the un-focusing readback (see [`native_needs_unfocus`]).
+//! `where` / `reduce` / `any` / `all` / `update_where`) force and apply a thunk
+//! argument's body, which the focused IL no longer retains; they now dispatch
+//! through the **un-focusing readback** `𝓕⁻¹` ([`crate::unfocus`]) —
+//! un-focusing each closure argument to a source value, invoking the builtin,
+//! and re-focusing the unrolled result against the ambient continuation
+//! ([`LMachine::dispatch_native_higher_order`]), exactly as the CEK does.
 //!
 //! The **effect and control** surface is live: `perform` propagates its
 //! operation up the reified frame stack to its handler
@@ -64,9 +67,9 @@
 //! delimiter — an undelimited `shift` is a defined [`Blame::ShiftNoReset`],
 //! never a panic. The prelude resolution (a free name in force position) is
 //! realized ([`run_comp_with_prelude`], mirroring the CEK); the higher-order
-//! combinators still grow in a later checkpoint, reporting a defined
-//! [`gandr_core_checker::eval::StuckReason::UnsupportedByReference`] (never a
-//! panic).
+//! combinators are realized through the un-focusing readback
+//! ([`LMachine::dispatch_native_higher_order`]), agreeing with the CEK on pure,
+//! effectful, and blaming closures alike.
 //!
 //! The **host-effect seam** (ADR-35 D4) is presented at the same point: an
 //! operation no source-level handler claims — where [`LMachine::run`] blames
@@ -77,8 +80,10 @@
 //! the same `PerformNoHandler` blame. The seam is realized at the driver — the
 //! L machine's configuration is the run loop's locals, not a reified state — so
 //! the offered signature carries its name only and the payload is read back
-//! over the public surface (first-order exact, higher-order pending the
-//! un-focusing readback `𝓕⁻¹`, §7a).
+//! over the public surface through the un-focusing readback `𝓕⁻¹`
+//! ([`crate::unfocus`], §7a) — exact on the first-order fragment AND on
+//! higher-order payloads (a thunk closure closes under its captured
+//! environment).
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
@@ -337,6 +342,28 @@ impl LEnv
         }
         None
     }
+
+    /// Collects the bindings innermost-first — the order the un-focusing
+    /// readback closes a thunk body under, mirroring the CEK's environment
+    /// walk (a later binding of a name shadows an earlier one, so an
+    /// innermost-first fold of the closing substitution reproduces it).
+    ///
+    /// # Contract
+    /// - ensures: each `name ↦ value` pair in innermost-first order (most
+    ///   recently bound first).
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn bindings(&self) -> Vec<(Name, Rc<LValue>)>
+    {
+        let mut out = Vec::new();
+        let mut cursor = self.0.as_deref();
+        while let Some(node) = cursor {
+            out.push((node.name.clone(), Rc::clone(&node.value)));
+            cursor = node.rest.as_deref();
+        }
+        out
+    }
 }
 
 impl Default for LEnv
@@ -486,6 +513,10 @@ pub struct LMachine
     /// lookup. Empty for [`Self::new`] (the no-prelude default the corpus and
     /// the plain entries drive), so a force miss stays `ForcedNonThunk`.
     prelude: BTreeMap<String, (CoName, CommandId)>,
+    /// The fresh-covariable counter for re-focusing a higher-order native's
+    /// result term into this arena ([`Self::refocus`]), threaded across
+    /// dispatches so freshly minted covariables stay distinct.
+    next_fresh: u64,
 }
 
 impl LMachine
@@ -503,6 +534,7 @@ impl LMachine
             origins,
             store: Store::new(),
             prelude: BTreeMap::new(),
+            next_fresh: 0,
         }
     }
 
@@ -526,6 +558,7 @@ impl LMachine
             origins,
             store: Store::new(),
             prelude,
+            next_fresh: 0,
         }
     }
 
@@ -619,10 +652,11 @@ impl LMachine
     ///   name and an empty operation list. The observable seam contract is
     ///   `(name, operation, payload)`, which both machines present identically.
     /// - **Payload.** The payload is read back over the public [`Value`]
-    ///   surface ([`read_value`]): exact on the first-order fragment, and —
-    ///   pending the un-focusing readback `𝓕⁻¹` (§7a) — a placeholder for
-    ///   higher-order payloads (thunks / functions). The host differential is
-    ///   therefore exercised on first-order payloads only.
+    ///   surface through the un-focusing readback `𝓕⁻¹`
+    ///   ([`crate::unfocus::unfocus_value`], §7a): exact on the first-order
+    ///   fragment AND on higher-order payloads (a thunk closure closes under
+    ///   its captured environment, mirroring the CEK's `quote_value`), so the
+    ///   host differential exercises higher-order payloads too.
     ///
     /// # Contract
     /// - ensures: the terminal [`Eval`] of driving `root`, with every
@@ -666,11 +700,15 @@ impl LMachine
                     },
                     | Flow::Host { sig, op, payload } => {
                         // Read the performed payload back to the public `Value`
-                        // surface (the L-side quote); exact on the first-order
-                        // fragment, a placeholder otherwise (the un-focusing
-                        // readback residual, matching `read_terminal`).
+                        // surface through the un-focusing readback `𝓕⁻¹`
+                        // ([`crate::unfocus::unfocus_value`], mirroring the CEK's
+                        // `quote_value`): exact on the first-order fragment AND on
+                        // higher-order payloads (a thunk closure closes under its
+                        // captured environment), so the host sees the identical
+                        // value both machines present.
                         let payload =
-                            read_value(&payload, &mut Vec::new()).unwrap_or_else(|| Value::hole(0));
+                            crate::unfocus::unfocus_value(&payload, &self.arena, &self.origins)
+                                .unwrap_or_else(|| Value::hole(0));
                         let host_op = HostOp::new(
                             EffectSig::new(EffectSignatureName::from(sig.as_str()), Vec::new()),
                             OperationName::from(op.as_str()),
@@ -1215,7 +1253,7 @@ impl LMachine
                 | LFrame::Case { arms, env, coenv } => {
                     return Self::meet_case(&value, &arms, &env, &coenv);
                 },
-                | LFrame::Arg(arg) => return Self::meet_arg(&value, &arg),
+                | LFrame::Arg(arg) => return self.meet_arg(&value, &arg),
                 | LFrame::Prj(side) => return Self::meet_prj(&value, side),
                 | LFrame::RecordProj(label) => {
                     // Record projection scrutinizes a VALUE (the record), so a
@@ -1260,7 +1298,7 @@ impl LMachine
             }
         }
         // The empty continuation: read the terminal value back.
-        Flow::Final(Self::read_terminal(&value))
+        Flow::Final(self.read_terminal(&value))
     }
 
     /// Feeds a reified computation to a reified stack (`resume`, §6; the CEK's
@@ -1351,6 +1389,7 @@ impl LMachine
     /// Meets a value with an argument frame — codata application (`ap`) or
     /// native-argument accumulation.
     fn meet_arg(
+        &mut self,
         value: &LValue,
         arg: &Rc<LValue>,
     ) -> Flow
@@ -1364,12 +1403,22 @@ impl LMachine
             // A native accumulates the argument; once it saturates its arity it
             // dispatches, otherwise it continues as a partial application meeting
             // the rest of the continuation (the CEK's currying-native discipline,
-            // dispatched only on meeting an argument frame).
+            // dispatched only on meeting an argument frame). A **higher-order**
+            // combinator (one taking a thunk closure) un-focuses its arguments
+            // to source values and dispatches through the un-focusing readback
+            // ([`Self::dispatch_native_higher_order`]); every other native reads
+            // its first-order arguments back structurally
+            // ([`Self::dispatch_native`]).
             | LValue::Native { prim, ref args } => {
                 let mut next = args.clone();
                 next.push(Rc::clone(arg));
                 if next.len() >= usize::from(prim.arity()) {
-                    Self::dispatch_native(prim, &next)
+                    if bool::from(native_needs_unfocus(prim)) {
+                        self.dispatch_native_higher_order(prim, &next)
+                    }
+                    else {
+                        Self::dispatch_native(prim, &next)
+                    }
                 }
                 else {
                     Flow::Meet {
@@ -1384,24 +1433,98 @@ impl LMachine
         }
     }
 
+    /// Dispatches a saturated **higher-order** native combinator (`each` /
+    /// `where` / `reduce` / `any` / `all` / `update_where`) through the
+    /// un-focusing readback `𝓕⁻¹` — exactly the CEK's `Comp::Native`
+    /// saturation.
+    ///
+    /// The accumulated arguments (including the thunk-closure arguments the
+    /// combinator forces and applies) are un-focused to source [`Value`]s
+    /// ([`crate::unfocus::unfocus_value`], mirroring the CEK's `quote_value`),
+    /// the builtin is invoked over the shared `gandr_core_checker::prim`
+    /// registry, and its result term — an **unrolled** closed CBPV computation
+    /// over the manifest list — is re-focused into the live arena and run
+    /// against the ambient continuation ([`crate::focus::focus_comp_into`]).
+    /// This mirrors the CEK's `Transition::Focus(prim.apply(&args),
+    /// Env::empty())`: the result runs under the empty environment against the
+    /// current continuation, so an effectful / blaming closure body reaches the
+    /// same enclosing handler / blame the CEK's does.
+    ///
+    /// # Contract
+    /// - ensures: the [`Flow`] of running the native's result against the
+    ///   ambient continuation — a returned value meets the continuation, a
+    ///   gradual-hole result blames [`Blame::Hole`], an argument the readback
+    ///   cannot reconstruct is a defined
+    ///   [`StuckReason::UnsupportedByReference`].
+    /// - panics: none.
+    fn dispatch_native_higher_order(
+        &mut self,
+        prim: NativePrim,
+        args: &[Rc<LValue>],
+    ) -> Flow
+    {
+        let mut values: Vec<Rc<Value>> = Vec::with_capacity(args.len());
+        for arg in args {
+            match crate::unfocus::unfocus_value(arg, &self.arena, &self.origins) {
+                | Some(value) => values.push(Rc::new(value)),
+                | None => return Flow::Final(Eval::Stuck(StuckReason::UnsupportedByReference)),
+            }
+        }
+        // The builtin steps to a closed result computation (an unrolled term for
+        // a well-shaped list, or a gradual hole for a bad shape). Re-focus it and
+        // run it against the ambient continuation — a `Comp::Hole` re-focuses to
+        // the defined `Blame::Hole` cut, exactly as the CEK drives it.
+        let result = prim.apply(&values);
+        match self.refocus(&result) {
+            | Some((root, cobinder)) => Flow::Focus {
+                command: root,
+                env: LEnv::empty(),
+                coenv: LContEnv::empty().extend(cobinder, empty_cont()),
+            },
+            | None => Flow::Final(Eval::Stuck(StuckReason::InvalidClosureBody)),
+        }
+    }
+
+    /// Re-focuses a source computation into the live arena against a fresh
+    /// fall-through covariable (the native re-focusing path;
+    /// [`crate::focus::focus_comp_into`]).
+    fn refocus(
+        &mut self,
+        comp: &Comp,
+    ) -> Option<(CommandId, CoName)>
+    {
+        crate::focus::focus_comp_into(
+            &mut self.arena,
+            &mut self.origins,
+            &mut self.next_fresh,
+            comp,
+        )
+        .ok()
+    }
+
     /// Dispatches a saturated native to the Rust registry: read its first-order
     /// arguments back to source values, run the builtin (`prim.apply`), and
     /// feed the result to the continuation. The host seam is unchanged —
     /// the native registry is the CEK's own (`gandr_core_checker::prim`).
     ///
-    /// A **higher-order** combinator (one taking a thunk argument — `each` /
-    /// `where` / `reduce` / `any` / `all` / `update_where`) needs the argument
-    /// thunk's source body, which the focused IL no longer retains; reading it
-    /// back needs the un-focusing residual, so those decline with a defined
-    /// [`StuckReason::UnsupportedByReference`] until un-focusing lands.
+    /// This is the **first-order** dispatch path: a scalar / structural prim
+    /// (`id` / `const`, arithmetic, list and record rearrangement) that never
+    /// inspects a thunk body. A **higher-order** combinator (one forcing a
+    /// thunk argument — `each` / `where` / `reduce` / `any` / `all` /
+    /// `update_where`) is routed to [`Self::dispatch_native_higher_order`]
+    /// by the caller; it reaches this path only from the pure-whnf force
+    /// probe ([`Self::force_probe`]), where it declines with a defined
+    /// [`StuckReason::UnsupportedByReference`] so the probe falls back to the
+    /// real (higher-order-dispatching) inline run.
     fn dispatch_native(
         prim: NativePrim,
         args: &[Rc<LValue>],
     ) -> Flow
     {
-        // A higher-order combinator inspects its thunk argument's body, which the
-        // focused IL no longer retains — decline until un-focusing lands. A
-        // scalar / first-order prim never inspects a thunk body: it either
+        // A higher-order combinator only reaches this first-order path from the
+        // force probe; decline so the probe runs the body inline (where the
+        // caller routes it to the un-focusing dispatch). A scalar / first-order
+        // prim never inspects a thunk body: it either
         // rejects the shape (a gradual hole, identically on both machines) or
         // passes the thunk through structurally (`id` / `const` / record and
         // list rearrangement). So argument thunks cross the host seam as
@@ -1782,19 +1905,29 @@ impl LMachine
     }
 
     /// Reads a terminal machine value back to an [`Eval`] (the readback /
-    /// quote, ADR-50 Decision D). A positive value is a returner (`ret v`);
-    /// a codata object is a `λ` / lazy-pair terminal; a native is a partial
-    /// application.
-    fn read_terminal(value: &Rc<LValue>) -> Eval
+    /// quote, ADR-50 Decision D) through the un-focusing readback `𝓕⁻¹`
+    /// ([`crate::unfocus::unfocus_terminal`]): a positive value is a returner
+    /// (`ret v`); a codata object reads back to its exact `λ` / lazy-pair
+    /// intro (closed under its captured environment); a native to a partial
+    /// application with its exact accumulated arguments. This is the exact
+    /// readback the differential compares structurally against the CEK's
+    /// `read_terminal`.
+    ///
+    /// A declined readback (a shape `𝓕⁻¹` cannot reconstruct — e.g. a reified
+    /// stack's divergent representation) falls back to the prior kind-granular
+    /// placeholder so totality never regresses.
+    fn read_terminal(
+        &self,
+        value: &Rc<LValue>,
+    ) -> Eval
     {
+        if let Some(comp) = crate::unfocus::unfocus_terminal(value, &self.arena, &self.origins) {
+            return Eval::Value(comp);
+        }
+        // Defensive fallback: the prior kind-granular placeholder readback,
+        // reached only if `𝓕⁻¹` declines (never for a well-formed terminal).
         match **value {
             | LValue::Cocase { ref arms, .. } => {
-                // A negative terminal — a `λ` (an `ap` copattern) or a lazy pair
-                // (`prj` copatterns). Exact structural readback needs un-focusing
-                // the arm bodies (the un-focusing residual); the differential
-                // compares such terminals at outcome-kind granularity (see
-                // `crate::differential`), and the KIND is fixed by the arm's
-                // destructor. Holes stand in for the un-focused bodies.
                 if matches!(arms.first().map(|arm| &arm.dtor), Some(&DtorTag::Prj(_))) {
                     Eval::Value(Comp::with(Comp::hole(0), Comp::hole(0)))
                 }
@@ -1803,10 +1936,6 @@ impl LMachine
                 }
             },
             | LValue::Native { prim, ref args } => {
-                // A partial-application terminal. The differential compares a
-                // native by its primitive and accumulated-argument count, so the
-                // readback preserves the count with placeholder arguments (the
-                // argument values are not observable at a partial native).
                 let placeholder = core::iter::repeat_with(|| Rc::new(Value::Unit))
                     .take(args.len())
                     .collect();
@@ -1815,8 +1944,6 @@ impl LMachine
                     args: placeholder,
                 })
             },
-            // The terminal readback only feeds kind-granular comparison, so
-            // the marker table is discarded here.
             | _ => match read_value(value, &mut Vec::new()) {
                 | Some(v) => Eval::Value(Comp::ret(v)),
                 | None => Eval::Value(Comp::ret(Value::hole(0))),
@@ -2112,8 +2239,10 @@ fn non_ctor_stuck(arms: &[Arm]) -> StuckReason
 /// Whether a native is a **higher-order combinator** — one that forces and
 /// applies a thunk argument (`each` / `where` / `reduce` / `any` / `all` /
 /// `update_where`). These need the argument thunk's source body, which the
-/// focused IL no longer retains, so the L machine declines them until the
-/// un-focusing readback lands; every other native is dispatched.
+/// focused IL no longer retains, so the L machine routes them through the
+/// un-focusing readback ([`LMachine::dispatch_native_higher_order`]); every
+/// other native takes the first-order structural path
+/// ([`LMachine::dispatch_native`]).
 fn native_needs_unfocus(prim: NativePrim) -> UnfocusRequirement
 {
     matches!(

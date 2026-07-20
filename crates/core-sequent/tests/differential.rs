@@ -892,6 +892,253 @@ mod tests
         ));
     }
 
+    /// A pure unary closure `U(? → F ?)` — a thunk over `λx. body`, the shape a
+    /// higher-order combinator forces and applies.
+    fn closure1(
+        binder: &str,
+        body: Comp,
+    ) -> Value
+    {
+        Value::thunk(Grade::OMEGA, Comp::lam(binder, body))
+    }
+
+    /// A pure binary closure `U(? → ? → F ?)` — the shape `reduce` folds with.
+    fn closure2(
+        fst: &str,
+        snd: &str,
+        body: Comp,
+    ) -> Value
+    {
+        Value::thunk(Grade::OMEGA, Comp::lam(fst, Comp::lam(snd, body)))
+    }
+
+    /// A small integer list value.
+    fn int_list(values: &[i64]) -> Value
+    {
+        Value::list(values.iter().copied().map(Value::int).collect())
+    }
+
+    /// A saturated `each f xs` computation.
+    fn each(
+        closure: Value,
+        list: Value,
+    ) -> Comp
+    {
+        Comp::app(Comp::app(Comp::native(NativePrim::Each), closure), list)
+    }
+
+    /// Hand-built **higher-order native** cases pinning the un-focusing
+    /// dispatch (`𝓕⁻¹`) of every closure-taking combinator against the CEK
+    /// oracle. The L machine un-focuses each thunk-closure argument to a
+    /// source value, invokes the builtin exactly as the CEK does, and
+    /// re-focuses the unrolled result against the ambient continuation — so
+    /// a pure, an effectful (handled), and a blaming closure all reach the
+    /// identical outcome the oracle does.
+    #[test]
+    fn hand_built_higher_order_native_cases_agree()
+    {
+        // `each (\x. x + 1) [1, 2, 3]` maps to `[2, 3, 4]`.
+        assert_agree(&each(
+            closure1(
+                "x",
+                Comp::app(
+                    Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                    Value::int(1),
+                ),
+            ),
+            int_list(&[1, 2, 3]),
+        ));
+        // `each` over the empty list is the empty list.
+        assert_agree(&each(
+            closure1("x", Comp::ret(Value::var("x"))),
+            int_list(&[]),
+        ));
+        // The mapped result threads into an enclosing bind.
+        assert_agree(&Comp::bind(
+            each(
+                closure1(
+                    "x",
+                    Comp::app(
+                        Comp::app(Comp::native(NativePrim::Mul), Value::var("x")),
+                        Value::int(2),
+                    ),
+                ),
+                int_list(&[10, 20]),
+            ),
+            "ys",
+            Comp::ret(Value::pair(Value::var("ys"), Value::var("ys"))),
+        ));
+
+        // `where (\x. x < 2) [1, 2, 3]` keeps `[1]`.
+        assert_agree(&Comp::app(
+            Comp::app(
+                Comp::native(NativePrim::Where),
+                closure1(
+                    "x",
+                    Comp::app(
+                        Comp::app(Comp::native(NativePrim::Lt), Value::var("x")),
+                        Value::int(2),
+                    ),
+                ),
+            ),
+            int_list(&[1, 2, 3]),
+        ));
+
+        // `reduce (\a x. a + x) 0 [1, 2, 3, 4]` folds to `10`.
+        assert_agree(&Comp::app(
+            Comp::app(
+                Comp::app(
+                    Comp::native(NativePrim::Reduce),
+                    closure2(
+                        "a",
+                        "x",
+                        Comp::app(
+                            Comp::app(Comp::native(NativePrim::Add), Value::var("a")),
+                            Value::var("x"),
+                        ),
+                    ),
+                ),
+                Value::int(0),
+            ),
+            int_list(&[1, 2, 3, 4]),
+        ));
+
+        // `any (\x. x == 2) [1, 2, 3]` is `true` (short-circuits).
+        assert_agree(&Comp::app(
+            Comp::app(
+                Comp::native(NativePrim::Any),
+                closure1(
+                    "x",
+                    Comp::app(
+                        Comp::app(Comp::native(NativePrim::Eq), Value::var("x")),
+                        Value::int(2),
+                    ),
+                ),
+            ),
+            int_list(&[1, 2, 3]),
+        ));
+
+        // `all (\x. x < 5) [1, 2, 3]` is `true`.
+        assert_agree(&Comp::app(
+            Comp::app(
+                Comp::native(NativePrim::All),
+                closure1(
+                    "x",
+                    Comp::app(
+                        Comp::app(Comp::native(NativePrim::Lt), Value::var("x")),
+                        Value::int(5),
+                    ),
+                ),
+            ),
+            int_list(&[1, 2, 3]),
+        ));
+
+        // `update_where (\x. x < 3) (\x. x + 100) [1, 2, 3, 4]` transforms the
+        // matched elements to `[101, 102, 3, 4]`.
+        assert_agree(&Comp::app(
+            Comp::app(
+                Comp::app(
+                    Comp::native(NativePrim::UpdateWhere),
+                    closure1(
+                        "x",
+                        Comp::app(
+                            Comp::app(Comp::native(NativePrim::Lt), Value::var("x")),
+                            Value::int(3),
+                        ),
+                    ),
+                ),
+                closure1(
+                    "x",
+                    Comp::app(
+                        Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                        Value::int(100),
+                    ),
+                ),
+            ),
+            int_list(&[1, 2, 3, 4]),
+        ));
+
+        // An **effectful** closure under a handler: `each (\x. perform op x)`
+        // performs per element; the handler resumes with `p + 10`, so the map
+        // runs against the ambient continuation and yields `[11, 12]`.
+        assert_agree(&Comp::handle(
+            sig("E".into(), "op".into()),
+            each(
+                Value::thunk(
+                    Grade::OMEGA,
+                    Comp::lam(
+                        "x",
+                        Comp::perform(sig("E".into(), "op".into()), "op", Value::var("x")),
+                    ),
+                ),
+                int_list(&[1, 2]),
+            ),
+            "r",
+            Comp::ret(Value::var("r")),
+            vec![OpClause::new(
+                "op",
+                "p",
+                "k",
+                Comp::resume(Value::var("k"), Comp::ret(Value::var("p"))),
+            )],
+        ));
+
+        // A **blaming** closure: applying `Add` to a non-numeric argument is the
+        // gradual hole, so `each` over a non-empty list blames `Blame::Hole` on
+        // both machines (the closure body runs against the continuation).
+        assert_agree(&each(
+            closure1(
+                "x",
+                Comp::app(
+                    Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                    Value::Unit,
+                ),
+            ),
+            int_list(&[1, 2]),
+        ));
+
+        // A higher-order combinator whose list carries a bound value (the
+        // closure closes over the outer environment): `let n <- ret 5; each (\x.
+        // x + n) [1, 2]` maps to `[6, 7]` — the un-focused closure closes `n`.
+        assert_agree(&Comp::bind(
+            Comp::ret(Value::int(5)),
+            "n",
+            each(
+                closure1(
+                    "x",
+                    Comp::app(
+                        Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                        Value::var("n"),
+                    ),
+                ),
+                int_list(&[1, 2]),
+            ),
+        ));
+    }
+
+    /// A higher-order combinator resolved through a **non-empty prelude** (the
+    /// stage-D prelude path end to end): the force-position free name `g`
+    /// resolves to a thunk whose body is an `each` program, so the prelude
+    /// resolution drives the un-focusing native dispatch.
+    #[test]
+    fn hand_built_higher_order_prelude_case_agrees()
+    {
+        let program = each(
+            closure1(
+                "x",
+                Comp::app(
+                    Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                    Value::int(1),
+                ),
+            ),
+            int_list(&[1, 2, 3]),
+        );
+        assert_agree_with_prelude(&Comp::force(Value::var("g")), &[(
+            String::from("g"),
+            Value::thunk(Grade::OMEGA, program),
+        )]);
+    }
+
     /// Hand-built prelude cases (ADR-42) pinning force-position free-name
     /// resolution against the oracle. Both machines drive the SAME prelude:
     /// a thunk-valued name forces to its body under the empty environment (a
@@ -1346,9 +1593,10 @@ mod tests
     // that the CEK oracle (`eval::run_with_host`) does. These cases drive a
     // scripted host on both machines and require (a) the machines agree on the
     // final outcome and (b) the host received the same ordered log of offers
-    // (signature name, operation, payload) on both. Payloads stay first-order,
-    // where readback is exact on both sides (higher-order payloads await the
-    // un-focusing readback `𝓕⁻¹` — a listed residual, not exercised here).
+    // (signature name, operation, payload) on both. The payload reads back
+    // through the un-focusing readback `𝓕⁻¹` — exact on the first-order fragment
+    // AND on higher-order payloads (a thunk closure closes under its captured
+    // environment) — so both are exercised below and match byte-for-byte.
 
     /// A scripted host: it answers offers from a fixed reply queue (declining
     /// once exhausted) and records the `(signature-name, operation, payload)`
@@ -1596,6 +1844,50 @@ mod tests
                     (String::from("a"), Value::int(1)),
                     (String::from("b"), Value::string("hi")),
                 ]),
+            )],
+            &Eval::Value(Comp::ret(Value::Unit)),
+        );
+    }
+
+    /// (h) A **higher-order** payload (a thunk closure) reads back to the
+    /// identical public `Value` on both machines, so the host log matches
+    /// byte-for-byte — the un-focusing readback `𝓕⁻¹` closes the thunk body
+    /// under its captured environment exactly as the CEK's `quote_value` does.
+    #[test]
+    fn host_seam_higher_order_payload_reads_back_exactly()
+    {
+        // A bare thunk payload.
+        assert_host_seam(
+            &Comp::perform(
+                sig("E".into(), "op".into()),
+                "op",
+                Value::thunk(Grade::ONE, Comp::ret(Value::int(5))),
+            ),
+            &[HostReply::Resume(Value::Unit)],
+            &[(
+                "E",
+                "op",
+                Value::thunk(Grade::ONE, Comp::ret(Value::int(5))),
+            )],
+            &Eval::Value(Comp::ret(Value::Unit)),
+        );
+        // A thunk closure that closes over an outer binding: the readback closes
+        // `n ↦ 7` into the body, so both machines present `thunk { ret 7 }`.
+        assert_host_seam(
+            &Comp::bind(
+                Comp::ret(Value::int(7)),
+                "n",
+                Comp::perform(
+                    sig("E".into(), "op".into()),
+                    "op",
+                    Value::thunk(Grade::OMEGA, Comp::ret(Value::var("n"))),
+                ),
+            ),
+            &[HostReply::Resume(Value::Unit)],
+            &[(
+                "E",
+                "op",
+                Value::thunk(Grade::OMEGA, Comp::ret(Value::int(7))),
             )],
             &Eval::Value(Comp::ret(Value::Unit)),
         );

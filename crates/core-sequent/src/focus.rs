@@ -1265,6 +1265,74 @@ impl Focuser
             origins: self.origins,
         }
     }
+
+    /// Rebuilds a translation state over an existing arena and provenance
+    /// table, resuming the fresh-covariable counter — the seed for
+    /// re-focusing a native's result term into a live machine arena
+    /// ([`focus_comp_into`]).
+    fn from_parts(
+        arena: CommandArena,
+        fresh: u64,
+        origins: BTreeMap<CommandId, FocusOrigin>,
+    ) -> Self
+    {
+        Self {
+            arena,
+            fresh,
+            origins,
+        }
+    }
+
+    /// Consumes the state into its raw arena, fresh counter, and provenance
+    /// table (the companion of [`Self::from_parts`]).
+    fn into_raw_parts(self) -> (CommandArena, u64, BTreeMap<CommandId, FocusOrigin>)
+    {
+        (self.arena, self.fresh, self.origins)
+    }
+}
+
+/// Focuses a checked-core computation into an **existing** command arena.
+///
+/// The re-focusing entry the L machine drives when a saturated higher-order
+/// native's result term (`gandr_core_checker::prim`) must be lowered back into
+/// the live machine arena and run against the ambient continuation
+/// ([`crate::machine`] `dispatch_native_higher_order`).
+///
+/// The result is focused against a freshly-minted covariable (not `★`), so a
+/// machine binding that covariable to the empty continuation lets the result's
+/// returning tail **fall through** to the ambient frame stack — exactly the
+/// CEK's `Transition::Focus(prim.apply(&args), Env::empty())` continuing
+/// against its live continuation.
+///
+/// `fresh` threads the covariable-name counter across re-focuses so freshly
+/// minted covariables stay distinct within the arena.
+///
+/// # Contract
+/// - ensures: on success, `arena` / `origins` gain the focused nodes, `fresh`
+///   is advanced past the covariables minted, and the returned `(root,
+///   cobinder)` is a well-formed command whose returning tail cuts against
+///   `cobinder`.
+/// - panics: none.
+///
+/// # Errors
+/// [`FocusError::ArenaFull`] only on arena exhaustion.
+#[inline]
+pub fn focus_comp_into(
+    arena: &mut CommandArena,
+    origins: &mut BTreeMap<CommandId, FocusOrigin>,
+    fresh: &mut u64,
+    comp: &Comp,
+) -> Result<(CommandId, CoName), FocusError>
+{
+    let mut focuser = Focuser::from_parts(core::mem::take(arena), *fresh, core::mem::take(origins));
+    let cobinder = focuser.fresh_covar();
+    let cobinder_cons = focuser.new_consumer(ConsumerNode::CoVar(cobinder.clone()))?;
+    let root = focuser.focus_comp(comp, cobinder_cons)?;
+    let (out_arena, out_fresh, out_origins) = focuser.into_raw_parts();
+    *arena = out_arena;
+    *fresh = out_fresh;
+    *origins = out_origins;
+    Ok((root, cobinder))
 }
 
 /// One focusing work-stack entry (ADR-47): either a source node to translate

@@ -89,6 +89,7 @@ pub mod inspect;
 pub mod machine;
 pub mod pretty;
 pub mod store;
+pub mod unfocus;
 
 pub use crate::check::CheckError;
 pub use crate::check::Frees;
