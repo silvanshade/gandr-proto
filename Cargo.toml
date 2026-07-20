@@ -5,6 +5,7 @@
 resolver = "3"
 members = [
   "crates/core-checker",
+  "crates/core-sequent",
   "crates/kernel-strata",
   "crates/surface-driver",
   "crates/theory-graphs",

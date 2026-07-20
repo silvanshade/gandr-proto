@@ -605,6 +605,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-core-sequent"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "proptest",
+]
+
+[[package]]
 name = "gandr-kernel-strata"
 version = "0.0.0"
 dependencies = [
