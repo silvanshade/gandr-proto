@@ -42,6 +42,7 @@ mod tests
     use gandr_core_checker::syntax::WalkBase;
     use gandr_core_checker::syntax::WalkMotive;
     use gandr_core_checker::types::CompType;
+    use gandr_core_checker::types::DataId;
     use gandr_core_checker::types::ValueType;
     use gandr_core_sequent::FocusOrigin;
     use gandr_core_sequent::focus_comp;
@@ -386,6 +387,15 @@ mod tests
                 ),
                 FocusOrigin::Walk,
                 "Here(x; ) ⇒",
+            ),
+            (
+                "data-case",
+                Comp::data_case(
+                    Value::ctor(DataId::new(0_u64, "D"), 0_usize, Value::int(1)),
+                    vec![(String::from("y"), Comp::ret(Value::var("y")))],
+                ),
+                FocusOrigin::DataCase,
+                "Data[0](y; ) ⇒",
             ),
             (
                 "stk-value",

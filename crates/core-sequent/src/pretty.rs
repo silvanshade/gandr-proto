@@ -613,6 +613,7 @@ fn ctor_tag(tag: &CtorTag) -> String
         | CtorTag::Record(ref labels) => format!("Record{{{}}}", labels.join(", ")),
         | CtorTag::Op { ref sig, ref op } => format!("Op[{sig}.{op}]"),
         | CtorTag::Here => String::from("Here"),
+        | CtorTag::Data(tag) => format!("Data[{tag}]"),
     }
 }
 

@@ -159,6 +159,9 @@ pub enum FocusOrigin
     /// `walk(p, C, (x). c)` — the identity eliminator as a cut against a
     /// single-`Here`-arm `case` (ADR-76; the motive is runtime-erased).
     Walk,
+    /// `case v { C₀(x₀) ⇒ t₀ | … }` — the declared-data eliminator as a cut
+    /// against a positional `Data` `case` (ADR-80).
+    DataCase,
     /// `r.ℓ` — a cut against a record-projection frame (A-RECORDPROJ).
     RecordProj,
     /// `⟨t, u⟩` — a cut of the lazy-pair cocase (A-WITH).
@@ -489,6 +492,15 @@ impl Focuser
                         work.push(FocusTask::BuildHere);
                         work.push(FocusTask::Value(witness.as_ref()));
                     },
+                    | Value::Ctor {
+                        tag, ref payload, ..
+                    } => {
+                        // A declared-data constructor is a unary positive intro
+                        // keyed by its position (ADR-80); the nominal id is
+                        // render-only, erased by `𝓕`.
+                        work.push(FocusTask::BuildDataCtor { tag });
+                        work.push(FocusTask::Value(payload.as_ref()));
+                    },
                     | _ => {
                         let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
                         results.push(FocusResult::Producer(producer));
@@ -723,6 +735,24 @@ impl Focuser
                             comp: base.body.as_ref(),
                             cont,
                         });
+                        work.push(FocusTask::Value(scrut.as_ref()));
+                    },
+                    | Comp::DataCase(ref scrut, ref arms) => {
+                        // The declared-data eliminator is a positional `Data`
+                        // case: arm `i` matches tag `i`, binding its single
+                        // binder to the WHOLE field-tuple payload and running the
+                        // arm body — exactly the CEK's `arms.nth(tag)` selecting
+                        // by position (ADR-80). An empty `arms` is the absurd
+                        // match. The scrutinee focuses first, then each arm body
+                        // in order (pushed in reverse so they pop source-order).
+                        let binders: Vec<&String> = arms.iter().map(|arm| &arm.0).collect();
+                        work.push(FocusTask::BuildDataCase { binders });
+                        for arm in arms.iter().rev() {
+                            work.push(FocusTask::Comp {
+                                comp: arm.1.as_ref(),
+                                cont,
+                            });
+                        }
                         work.push(FocusTask::Value(scrut.as_ref()));
                     },
                     | _ => {
@@ -976,6 +1006,35 @@ impl Focuser
                     let case = self.new_consumer(ConsumerNode::Case { arms })?;
                     let command =
                         self.cut(Polarity::Positive, producer, case, FocusOrigin::Walk)?;
+                    results.push(FocusResult::Command(command));
+                },
+                | FocusTask::BuildDataCtor { tag } => {
+                    let payload = pop_producer(&mut results);
+                    let producer = self.new_producer(ProducerNode::Ctor {
+                        tag: CtorTag::Data(tag),
+                        ps: Box::from([payload]),
+                        cs: Box::from([]),
+                    })?;
+                    results.push(FocusResult::Producer(producer));
+                },
+                | FocusTask::BuildDataCase { binders } => {
+                    let bodies = pop_commands(&mut results, FocusResultCount::from(binders.len()));
+                    let producer = pop_producer(&mut results);
+                    let arms = binders
+                        .into_iter()
+                        .zip(bodies)
+                        .enumerate()
+                        .map(|(index, (binder, body))| Arm {
+                            ctor: CtorTag::Data(index),
+                            binders: Box::from([binder.clone()]),
+                            cobinders: Box::from([]),
+                            body,
+                        })
+                        .collect::<Vec<_>>()
+                        .into_boxed_slice();
+                    let case = self.new_consumer(ConsumerNode::Case { arms })?;
+                    let command =
+                        self.cut(Polarity::Positive, producer, case, FocusOrigin::DataCase)?;
                     results.push(FocusResult::Command(command));
                 },
                 | FocusTask::BuildRecordProj { label, cont } => {
@@ -1355,6 +1414,20 @@ enum FocusTask<'src>
     {
         /// The diagonal base binder `x` the witness is bound to.
         base_binder: &'src String,
+    },
+    /// Assembles a declared-data constructor `Data[i](w)` from the top producer
+    /// result (ADR-80; the `Value::Ctor` intro), keyed by position `i`.
+    BuildDataCtor
+    {
+        /// The constructor's position in the decl-table `ctors` list.
+        tag: usize,
+    },
+    /// Assembles the declared-data eliminator's positional `Data` case and cuts
+    /// the scrutinee against it (ADR-80). Arm `i` matches tag `i`.
+    BuildDataCase
+    {
+        /// One payload binder per constructor, in `ctors` order.
+        binders: Vec<&'src String>,
     },
     /// Cuts the top producer result against a record-projection destructor.
     BuildRecordProj
@@ -1847,12 +1920,17 @@ fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStat
     while let Some(node) = work.pop() {
         match node {
             | Node::Comp(comp_node) => match *comp_node {
-                // The declared-data eliminator (ADR-80) still declines whole
-                // (its realization lands in a later seam). The identity
-                // eliminator `Walk` (ADR-76) is realized — scan THROUGH it (its
-                // scrutinee and base body) so a not-yet-realized former nested
-                // inside still triggers the whole-program decline.
-                | Comp::DataCase(..) => return true.into(),
+                // The identity eliminator `Walk` (ADR-76) and the declared-data
+                // eliminator `DataCase` (ADR-80) are both realized — scan
+                // THROUGH them (scrutinee and arm/base bodies) so a not-yet-
+                // realized former nested inside still triggers the whole-program
+                // decline, rather than declining on the eliminator itself.
+                | Comp::DataCase(ref scrut, ref arms) => {
+                    work.push(Node::Value(scrut));
+                    for arm in arms {
+                        work.push(Node::Comp(&arm.1));
+                    }
+                },
                 | Comp::Walk {
                     ref scrut,
                     ref base,
@@ -1927,20 +2005,18 @@ fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStat
                         work.push(Node::Value(arg));
                     }
                 },
-                // A declared-data eliminator declines whole (ADR-80): this lane
-                // builds no L-machine `DataCase`, so a program mentioning one
-                // is an Unsupported decline, not a partial per-node realization
-                // that would disagree with the CEK oracle.
                 // A hole is a leaf; a future former this predicate does not
                 // know is NOT an unsupported former (the focusing fallback arms
-                // own it).
+                // own it — the whole-program decline is reserved for a former
+                // known-but-not-yet-realized, of which there are currently none).
                 | _ => {},
             },
             | Node::Value(value_node) => match *value_node {
-                // The declared-data constructor value (ADR-80) still declines
-                // whole. The identity-proof value `Here` (ADR-76) is realized —
-                // scan THROUGH its witness.
-                | Value::Ctor { .. } => return true.into(),
+                // The identity-proof value `Here` (ADR-76) and the declared-data
+                // constructor value `Ctor` (ADR-80) are both realized — scan
+                // THROUGH their witness / payload for a nested unsupported
+                // former, rather than declining on the constructor itself.
+                | Value::Ctor { ref payload, .. } => work.push(Node::Value(payload)),
                 | Value::Here(ref witness) => work.push(Node::Value(witness)),
                 | Value::Pair(ref fst, ref snd) => {
                     work.push(Node::Value(fst));

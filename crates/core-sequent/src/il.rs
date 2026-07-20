@@ -137,6 +137,14 @@ pub enum CtorTag
     /// argument (the witness `w`); the eliminator [`crate::machine`] fires
     /// Walk-β on it.
     Here,
+    /// A **declared-data constructor** `Data[i](w)` (ADR-80; the `Value::Ctor`
+    /// intro), keyed by the constructor's position `i` in the decl-table
+    /// `ctors` list (the [`Side`] analogue for a `k`-constructor datatype). One
+    /// producer argument (the field-tuple payload `w`). The nominal
+    /// [`gandr_core_checker::types::DataId`] is erased by `𝓕`: the L machine
+    /// selects a `DataCase` arm by position, exactly as the CEK's
+    /// `arms.nth(tag)`, so the render-only id is never matched on.
+    Data(usize),
 }
 
 impl CtorTag
@@ -154,7 +162,7 @@ impl CtorTag
     {
         match *self {
             | Self::Nil => 0_usize.into(),
-            | Self::Inj(_) | Self::Op { .. } | Self::Here => 1_usize.into(),
+            | Self::Inj(_) | Self::Op { .. } | Self::Here | Self::Data(_) => 1_usize.into(),
             | Self::Pair | Self::Cons => 2_usize.into(),
             | Self::Record(ref labels) => labels.len().into(),
         }

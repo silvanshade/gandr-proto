@@ -70,6 +70,7 @@ mod tests
     use gandr_core_checker::syntax::WalkBase;
     use gandr_core_checker::syntax::WalkMotive;
     use gandr_core_checker::types::CompType;
+    use gandr_core_checker::types::DataId;
     use gandr_core_sequent::differential::agree;
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
@@ -693,6 +694,90 @@ mod tests
             "q",
             CompType::returner(gandr_core_checker::types::ValueType::integer()),
         )
+    }
+
+    /// Hand-built declared-data cases (ADR-80) pinning the case-over-tag
+    /// reduction against the oracle: `DataCase` selects the arm at the
+    /// constructor's position and binds its single binder to the WHOLE payload
+    /// (exactly the CEK's `arms.nth(tag)`), a non-`Ctor` scrutinee or an
+    /// out-of-range tag is `DataCasedNonCtor`, a hole blames, and a returned
+    /// `Ctor` compares opaquely.
+    #[test]
+    fn hand_built_declared_data_cases_agree()
+    {
+        // Selects the matching arm and binds the payload: tag 0 yields 7.
+        assert_agree(&Comp::data_case(
+            Value::ctor(did(), 0_usize, Value::int(7)),
+            vec![
+                (String::from("y"), Comp::ret(Value::var("y"))),
+                (String::from("z"), Comp::ret(Value::int(0))),
+            ],
+        ));
+        // Selects a later arm by position: tag 1 yields 5.
+        assert_agree(&Comp::data_case(
+            Value::ctor(did(), 1_usize, Value::int(5)),
+            vec![
+                (String::from("y"), Comp::ret(Value::int(0))),
+                (String::from("z"), Comp::ret(Value::var("z"))),
+            ],
+        ));
+        // A nullary constructor binds its unit payload.
+        assert_agree(&Comp::data_case(
+            Value::ctor(did(), 0_usize, Value::Unit),
+            vec![(String::from("y"), Comp::ret(Value::int(99)))],
+        ));
+        // A structured payload threads through and is eliminated: `(1, 2)`
+        // splits to 2.
+        assert_agree(&Comp::data_case(
+            Value::ctor(did(), 0_usize, Value::pair(Value::int(1), Value::int(2))),
+            vec![(
+                String::from("p"),
+                Comp::split(Value::var("p"), "a", "b", Comp::ret(Value::var("b"))),
+            )],
+        ));
+        // Continued evaluation after the selection.
+        assert_agree(&Comp::bind(
+            Comp::data_case(Value::ctor(did(), 0_usize, Value::int(3)), vec![(
+                String::from("y"),
+                Comp::ret(Value::var("y")),
+            )]),
+            "w",
+            Comp::ret(Value::pair(Value::var("w"), Value::var("w"))),
+        ));
+        // A bare returned constructor compares opaquely (kind granularity).
+        assert_agree(&Comp::ret(Value::ctor(did(), 0_usize, Value::int(4))));
+        // A non-`Ctor` scrutinee is `DataCasedNonCtor` on both.
+        assert_agree(&Comp::data_case(Value::int(1), vec![(
+            String::from("y"),
+            Comp::ret(Value::var("y")),
+        )]));
+        // A hole scrutinee blames on both.
+        assert_agree(&Comp::data_case(Value::hole(0), vec![(
+            String::from("y"),
+            Comp::ret(Value::var("y")),
+        )]));
+        // An out-of-range tag (tag 2 over a 2-arm case) is `DataCasedNonCtor`.
+        assert_agree(&Comp::data_case(
+            Value::ctor(did(), 2_usize, Value::Unit),
+            vec![
+                (String::from("y"), Comp::ret(Value::var("y"))),
+                (String::from("z"), Comp::ret(Value::var("z"))),
+            ],
+        ));
+        // The absurd (empty) match: a `Ctor` and a non-`Ctor` scrutinee both
+        // reach `DataCasedNonCtor` (the empty-arm case classifies as data).
+        assert_agree(&Comp::data_case(
+            Value::ctor(did(), 0_usize, Value::Unit),
+            vec![],
+        ));
+        assert_agree(&Comp::data_case(Value::int(1), vec![]));
+    }
+
+    /// A fixed declared-data nominal id (the serial and name are render-only —
+    /// erased by `𝓕`, invisible to the differential).
+    fn did() -> DataId
+    {
+        DataId::new(0_u64, "D")
     }
 
     /// Hand-built native-dispatch cases pinning the currying registry against

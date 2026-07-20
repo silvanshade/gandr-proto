@@ -103,6 +103,7 @@ use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Side;
 use gandr_core_checker::syntax::Term;
 use gandr_core_checker::syntax::Value;
+use gandr_core_checker::types::DataId;
 
 use crate::boundary::CommandHoleStatus;
 use crate::boundary::CommandUnsupportedStatus;
@@ -2097,6 +2098,12 @@ fn non_ctor_stuck(arms: &[Arm]) -> StuckReason
         // A single-`Here`-arm case is a focused `Walk`: a non-`here` scrutinee
         // is the CEK's `WalkOnNonHere` (ADR-76).
         | Some(&CtorTag::Here) => StuckReason::WalkOnNonHere,
+        // A `Data`-arm case is a focused `DataCase`: a non-`Ctor` scrutinee (or
+        // an out-of-range tag, which the arm loop misses) is the CEK's
+        // `DataCasedNonCtor` (ADR-80). An EMPTY case is the absurd `DataCase`
+        // (its arms are the only focused case with no arm — every other has a
+        // fixed non-zero arity), so a `None` head is likewise `DataCasedNonCtor`.
+        | Some(&CtorTag::Data(_)) | None => StuckReason::DataCasedNonCtor,
         | _ => StuckReason::CasedNonSum,
     }
 }
@@ -2334,6 +2341,17 @@ fn read_value(
                     // representative with a placeholder witness rather than a
                     // recursive quote that could fail on a higher-order witness.
                     | CtorTag::Here => values.push(Value::here(Value::Unit)),
+                    // A declared-data constructor `Ctor { id, tag, w }` (ADR-80).
+                    // Canonicalized opaquely as `Here` is — the id (erased by
+                    // `𝓕`), the tag, and the payload are all invisible to the
+                    // differential — so the readback is a representative with a
+                    // placeholder id and payload (matching the render-only role
+                    // of the nominal id).
+                    | CtorTag::Data(tag) => values.push(Value::Ctor {
+                        id: DataId::new(0_u64, ""),
+                        tag,
+                        payload: Rc::new(Value::Unit),
+                    }),
                 },
                 | LValue::Thunk { grade, .. } => {
                     let index = u32::try_from(marks.len()).ok()?;

@@ -119,6 +119,7 @@ fn origin_label(origin: FocusOrigin) -> RenderToken<'static>
         | FocusOrigin::ListCase => "list-case",
         | FocusOrigin::Split => "split",
         | FocusOrigin::Walk => "walk",
+        | FocusOrigin::DataCase => "data-case",
         | FocusOrigin::RecordProj => "record-proj",
         | FocusOrigin::With => "with",
         | FocusOrigin::Perform => "perform",
