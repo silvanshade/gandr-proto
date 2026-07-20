@@ -70,7 +70,8 @@ rustup toolchain install "$RUSTUP_TOOLCHAIN_NIGHTLY" --profile minimal --compone
 """
 
 # Parked: the tree-sitter grammar package is not in the repo yet (it returns
-# with the surface-grammar port); restore this task with it.
+# with the surface-grammar port); restore this task — and its gate:merge
+# entry — with it.
 # [tasks."grammar:test"]
 # description = "Tree-sitter grammar suite + §7-G3 gates (corpus, coverage, recovery locality, parser.c size / STATE_COUNT budgets, zero conflicts/prec.dynamic/scanner)"
 # run = """
@@ -773,11 +774,12 @@ run = """
 cargo nextest run -p gandr-workflow-gates
 """
 
+# Parked gate entries, restored with the pieces they check: toolchain:pin-check
+# returns when the fcw.13 toolchain pin gate is rebuilt; grammar:test returns
+# with the surface-grammar port (see the parked task above).
 [tasks."gate:merge"]
 description = "Run the native pre-merge gate"
 run = [
-  { task = "toolchain:pin-check" },
-  { task = "grammar:test" },
   { task = "cargo:build" },
   { task = "cargo:clippy" },
   { task = "cargo:nextest" },
