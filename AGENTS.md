@@ -71,7 +71,7 @@ Backstops are lexical and incomplete; the classification is the rule, the hooks 
 
 ## Project delta (kept thin)
 
-* **Tracker**: beads, prefix `wyrd-`; sync rides DoltHub [`silvanshade/wyrd-beads`](https://www.dolthub.com/repositories/silvanshade/wyrd-beads) via `bd dolt push` / `pull` (out-of-band from git — push after every write, pull before reads; core/HAZARDS.md H2).
+* **Tracker**: beads, prefix `gandr-`; sync rides DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) via `bd dolt push` / `pull` (out-of-band from git — push after every write, pull before reads; core/HAZARDS.md H2).
   No TodoWrite / markdown TODOs / ad-hoc `MEMORY.md`.
   `bv --robot-*` for triage (bare `bv` blocks the session); confirm with `bd show` (`bd list` hides closed — use `--all` when auditing, core/HAZARDS.md H3).
 * **Gates** (run the narrowest that proves your change): `mise run treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift` (MANIFEST.yml BLAKE3), `docs:reference-integrity`, `wrkflw` (workflow edits); Rust — `cargo:clippy` (pass/fail gate only), `cargo:nextest`; Agda — `agda:check`.
@@ -91,7 +91,7 @@ Backstops are lexical and incomplete; the classification is the rule, the hooks 
   `mise run cargo:clippy` is only the pass/fail gate.
   `docs/workflow/scripting.md` §"Diagnostics go through aifix".
 * **Scripts**: typed only — Nushell for small/pipeline scripts, TypeScript (type-stripping Node, no build) for larger; no untyped `bash`/`sh`; a bare `any`/`unknown` needs explicit sign-off.
-  `core/WORKFLOW.md` §Scripting; wyrd worked-examples (doc-gate scripts, `std/assert` shadowing, nutest) in `docs/workflow/scripting.md`.
+  `core/WORKFLOW.md` §Scripting; worked examples (doc-gate scripts, `std/assert` shadowing, nutest) in `docs/workflow/scripting.md`.
 * **External research = reference only; Agda deps vetted**: research artifacts (companion code, mechanizations) are for understanding only — never vendored / ported / depended-on, any license; adding an **Agda** dependency needs maintainer sign-off first (stricter than the Rust/TS trees, where the finder skills give latitude).
   The sister **internal-univalence** library is in-house, not external: its engine is consumed as a pinned, read-only git submodule at `metatheory/upstream/internal-univalence` (`iu:check` guards the pin) per `docs/gandr/spec/proposal-metatheory-relaunch.md`, with the integration record in `metatheory/README.md` §"Upstream integration" and the house style in `docs/workflow/agda.md`.
   The reference-only rule and the Agda vetting bar are both in `docs/workflow/agda.md`.
@@ -104,7 +104,7 @@ Backstops are lexical and incomplete; the classification is the rule, the hooks 
   The governance-doc carve-out (core/WORKFLOW.md) covers wyrd's `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/{WORKFLOW,KNOWLEDGE,HAZARDS}.md`, `docs/workflow/`, and `docs/adr/` — those land on `main` directly.
 * **Contributor notes**: contributor-concern material (session forensics, handoffs, machine-local scratch, salvage narratives) lives in the sibling `wyrd-notes` repository, not here — there is no in-repo `notes/` directory and no stranded-notes guard.
   Classify per `.agents/core/core/PUBLISHABLE-HISTORY.md` before every commit; when contributor context explains a project decision, distill the project-relevant part into `docs/adr/` and leave the rest in wyrd-notes.
-* **Session close**: `origin` = github.com/silvanshade/wyrd, the source of truth; reviewed work is committed and pushed to `main` with **signed** commits (conservative — push reviewed work, not speculative/unrequested).
+* **Session close**: no git remote is configured during the reboot bootstrap — history is local-only until the gandr remote lands; once it does, reviewed work is committed and pushed to `main` with **signed** commits (conservative — push reviewed work, not speculative/unrequested).
   Pushes are **arc-boundary events**: push after a full arc of work has merged to `main` (typically a `wt merge` landing), never per-commit — the pre-push tier deliberately runs the complete act-CI simulation (minutes; `docs/workflow/ci.md` §"Gate tiers"), so batching an arc's commits into one push is the intended shape.
   Full lifecycle: `core/WORKFLOW.md` §"Session close".
   At closeout file the **residuals bead** — manual, mutation-adequacy, other-residual, and corpus faces folded into one, with `not applicable` explicit (`docs/workflow/tracker.md` §"Feature landing and residual closeout").
