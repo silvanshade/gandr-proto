@@ -1728,12 +1728,14 @@ pub fn focus_term(term: &Term) -> Result<Focused, FocusError>
 
 /// Focuses a checked-core value against `★` (`⟨𝓥⟦v⟧ | ★⟩`).
 ///
-/// A value containing an identity former declines whole, as [`focus_comp`].
+/// A value mentioning a known-but-not-yet-realized former declines whole, as
+/// [`focus_comp`]; currently no such former exists (the ADR-76/80 formers are
+/// realized), so the scan is the forward-compat guard, not an active decline.
 ///
 /// # Contract
 /// - ensures: total on well-formed core values; the root is a positive cut of
-///   the value's producer against `★` (an identity-former value yields the
-///   Unsupported decline command).
+///   the value's producer against `★` (a future unsupported former would yield
+///   the Unsupported decline command).
 ///
 /// # Errors
 /// [`FocusError::ArenaFull`] only on arena exhaustion.
@@ -1750,7 +1752,7 @@ pub fn focus_value(value: &Value) -> Result<Focused, FocusError>
     Ok(finalize(focuser, root))
 }
 
-/// One node on the identity-scan worklist (see
+/// One node on the unsupported-former scan worklist (see
 /// [`comp_mentions_unsupported_former`]).
 enum ScanNode<'src>
 {
@@ -1762,7 +1764,7 @@ enum ScanNode<'src>
     Stack(&'src Stack),
 }
 
-/// Whether a value mentions an identity former (see
+/// Whether a value mentions a known-but-not-yet-realized former (see
 /// [`comp_mentions_unsupported_former`]).
 fn value_mentions_unsupported_former(value: &Value) -> UnsupportedFormerStatus
 {
@@ -1772,19 +1774,19 @@ fn value_mentions_unsupported_former(value: &Value) -> UnsupportedFormerStatus
 /// Focuses a checked-core computation against the terminal consumer `★`
 /// (`𝓕⟦t⟧ ★`).
 ///
-/// A computation containing an identity former (`Value::Here` / `Comp::Walk`,
-/// ADR-76) focuses as one whole-program [`FocusOrigin::Unsupported`] decline —
-/// the cross-lane rule: this lane does not build L-machine Walk-β, and a
-/// partial per-node fallback (a hole producer for the value former) would
-/// silently disagree with the CEK oracle on realized items rather than
-/// declining. The L-machine realization of the identity fragment is the
-/// parallel sequent lane's (phase-L1-era) work.
+/// A computation containing a known-but-not-yet-realized former focuses as one
+/// whole-program [`FocusOrigin::Unsupported`] decline — the cross-lane rule
+/// preferring a whole-program decline over a partial per-node fallback (a hole
+/// producer) that would silently disagree with the CEK oracle on realized
+/// items. The ADR-76 identity formers and ADR-80 declared data that once
+/// declined here are now realized, so currently no former triggers the decline
+/// — the scan is the forward-compat guard for a future former.
 ///
 /// # Contract
 /// - ensures: on success, `focused.root()` is a well-formed focused command
 ///   with no free covariables (`★` is not a covariable and every mint is
-///   bound); the result is total on well-formed core computations (an
-///   identity-former program yields the Unsupported decline command).
+///   bound); the result is total on well-formed core computations (a future
+///   unsupported former would yield the Unsupported decline command).
 ///
 /// # Errors
 /// [`FocusError::ArenaFull`] only if a node arena exhausts its `u32` id space.
@@ -1891,10 +1893,12 @@ pub fn focus_comp_with_prelude(
     })
 }
 
-/// Whether a computation mentions an identity former (`Value::Here` /
-/// `Comp::Walk`, ADR-76) anywhere — the whole-program decline predicate of
-/// [`focus_comp`] / [`focus_value`]. Iterative (an explicit worklist, ADR-47):
-/// depth follows the heap, not the host stack.
+/// Whether a computation mentions a known-but-not-yet-realized former anywhere
+/// — the whole-program decline predicate of [`focus_comp`] / [`focus_value`].
+/// The ADR-76 identity formers and ADR-80 declared data are realized, so the
+/// scan traverses THROUGH them and currently declines on nothing; it is the
+/// forward-compat guard for a future former. Iterative (an explicit worklist,
+/// ADR-47): depth follows the heap, not the host stack.
 fn comp_mentions_unsupported_former(comp: &Comp) -> UnsupportedFormerStatus
 {
     unsupported_former_scan(alloc::vec![ScanNode::Comp(comp)])
@@ -1912,8 +1916,11 @@ fn unsupported_program() -> Result<Focused, FocusError>
     Ok(finalize(focuser, root))
 }
 
-/// Drains the identity-scan worklist: `true` iff any reachable node is a
-/// `Value::Here` or `Comp::Walk` (ADR-76).
+/// Drains the unsupported-former scan worklist: `true` iff any reachable node
+/// is a known-but-not-yet-realized former. The ADR-76 identity formers and
+/// ADR-80 declared data are realized, so it traverses THROUGH them and (with no
+/// former currently unrealized) always returns `false`; a future former added
+/// to the decline set would trip it.
 fn unsupported_former_scan(mut work: Vec<ScanNode<'_>>) -> UnsupportedFormerStatus
 {
     use ScanNode as Node;

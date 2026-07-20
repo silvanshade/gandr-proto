@@ -62,10 +62,11 @@
 //! to the enclosing prompt ([`capture_to_reset`]), binds the captured
 //! continuation (prompt included) to `k`, and runs the body below the
 //! delimiter — an undelimited `shift` is a defined [`Blame::ShiftNoReset`],
-//! never a panic. The prelude resolution (a free name in force position) and
-//! the higher-order combinators still grow in later checkpoints, reporting a
-//! defined [`gandr_core_checker::eval::StuckReason::UnsupportedByReference`]
-//! (never a panic).
+//! never a panic. The prelude resolution (a free name in force position) is
+//! realized ([`run_comp_with_prelude`], mirroring the CEK); the higher-order
+//! combinators still grow in a later checkpoint, reporting a defined
+//! [`gandr_core_checker::eval::StuckReason::UnsupportedByReference`] (never a
+//! panic).
 //!
 //! The **host-effect seam** (ADR-35 D4) is presented at the same point: an
 //! operation no source-level handler claims — where [`LMachine::run`] blames
