@@ -629,6 +629,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-theory-levitation"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "proptest",
+]
+
+[[package]]
 name = "gandr-theory-nominal-automata"
 version = "0.0.0"
 dependencies = [
