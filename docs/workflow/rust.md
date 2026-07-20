@@ -12,6 +12,9 @@
 * **Choose architecture with performance in view.** Before concrete implementation, enumerate the plausible architectures and compare their runtime and memory profiles alongside correctness, extensibility, maintainability, and implementation complexity.
   Prefer the best-performing design that does not materially sacrifice those other qualities.
   Do not default to the most direct design when improving it later would require an expensive change to ownership, representation, interfaces, persistence, or other foundations; equally, do not micro-optimize local code without evidence.
+* **Consult the implementation-model record before design decisions (owner directive, 2026-07-20).** [`docs/research/impl-models-deep-read.md`](../research/impl-models-deep-read.md) — the source-grounded Idris 2 / Lean 4 / Agda / smalltt internals map, the performance program's primary record — is a mandatory consult before any concrete decision about term/value representation, sharing or interning, evaluation/machine shape, conversion/def-eq, erasure, serialization, or incrementality.
+  Cite the sections consulted in the decision record (design doc, bead comment, or ADR); a decision in these areas that does not engage the record is a review-blocking finding.
+  Standing per-node reminders live in the tracker notes of the pending design beads.
 * **Design memory behavior deliberately.** Prefer zero-copy data flow and borrowed views where they do not impose disproportionate lifetime or API complexity.
   When allocation is necessary, minimize allocation count and copying through appropriate capacity planning, arenas, interning, buffer or object reuse, and workload-justified caching.
   Account for invalidation, retained memory, and synchronization in the cost of a cache.
