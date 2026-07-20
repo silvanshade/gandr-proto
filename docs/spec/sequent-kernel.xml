@@ -1,4 +1,4 @@
-<component derives="spec-index" grounds="host-effect-seam" id="sequent-kernel" spec-version="1" status="partial" title="The sequent kernel: the polarized L command IL and machine (phases L0-L1)">
+<component derives="spec-index" grounds="host-effect-seam vdc-reflection" id="sequent-kernel" spec-version="1" status="partial" title="The sequent kernel: the polarized L command IL, machine, and fusion engine (phases L0-L2)">
   <section id="sk-overview" title="Overview and decisions">
     <prose>
       The sequent kernel adopts a
@@ -13,11 +13,11 @@
       .
     </prose>
     <prose>
-      This component absorbs the two operational phases the kernel work builds on. Phase L0 reifies the command IL and the focusing translation; phase L1 runs the focused IL on the
+      This component absorbs the three additive phases the kernel work builds on. Phase L0 reifies the command IL and the focusing translation; phase L1 runs the focused IL on the
       <term-def key="l-machine">L machine</term-def>
-      — the iterative, first-order, arena-native driver — over a two-region store, executing the full effect and control surface. The later phases are named here but their design is not absorbed in this pass: phase L2 is a fusion engine over command seams (2-cells completed with replayable certificates), and phase L3 is an explicit, evidence-gated promotion decision. No phase touches the frozen core before L3.
+      — the iterative, first-order, arena-native driver — over a two-region store, executing the full effect and control surface; phase L2 is a fusion engine over command seams, the reserved rule 2-cells completed into a convergent system whose derived cells carry replayable certificates. Phase L3, named but not decided, is an explicit, evidence-gated promotion decision. No phase touches the frozen core before L3. A deferred glued-NbE re-sequencing rides the same machine.
     </prose>
-    <prose>The reboot carries L0 as built and L1 as partial (crate core-sequent), beside the frozen core and touching no frozen-core code: it consumes the public core-checker surface only.</prose>
+    <prose>The reboot carries L0 as built and L1 as partial (crate core-sequent) and the L2 fusion engine as built (crate theory-computads), beside the frozen core and touching no frozen-core code: the kernel consumes the public core-checker surface, and the fusion engine consumes the public command-IL vocabulary, read-only. The later closures lane and glued NbE are absorbed here as design records, not yet shipped code.</prose>
   </section>
   <section id="sk-il" title="The kernel IL">
     <prose>
@@ -75,6 +75,17 @@ f(𝔭̄; c̄)          ↦  the body of f with env[params]        (a jump; no c
       . The store keeps the machine's own call-by-need semantics — a memo cell (unforced, in-progress, forced, with black-holing) is a stored negative binding with update-on-force. Residency is a per-cell store property, never a type former: grades inform initial placement (a heuristic) while an escape-promotion barrier carries soundness. L1 ships heap-everything behind a region-shaped API, so the machine differential measures the machine and not placement; the refined grade-to-region map is a gated follow-on.
     </prose>
   </section>
+  <section id="sk-glued-nbe" status="design-pass" title="Glued NbE re-sequenced onto the L machine">
+    <prose>
+      Glued normalization-by-evaluation — the two-mechanism split of a syntactic face beside a semantic face — is re-sequenced onto the
+      <term key="l-machine"/>
+      rather than the retired CEK oracle it was first framed against. The
+      <term key="two-region-store"/>
+      is the glue table: the syntactic face is the arena node graph, the semantic face is the forced-cell layer. Conversion checking, when it arrives with the levitation-stage-1 descriptions and the sized-types discipline of the negative surface, quotients size annotations under size-irrelevance. Building gluing once, on the machine that will keep it, avoids a CEK retrofit the L machine would immediately obsolete; the design takes the polarized-call-by-push-value NbE line as its reference
+      <cite key="A-37"/>
+      . It is deferred, not built: no NbE face exists in the reboot yet, and the item stays queued behind the machine and the levitation-stage-1 landing.
+    </prose>
+  </section>
   <section id="sk-strategy" title="Strategy as polarity orientation">
     <prose>
       The command ⟨μα.s₁ | μ̃x.s₂⟩ is the fundamental critical pair: μ wants to capture the consumer, μ̃ wants to bind the producer, and the two results differ. The resolution is typed and local —
@@ -95,6 +106,133 @@ reset    = a prompt covalue; shift captures the consumer up to it (μ-capture)</
       : the L machine must present the identical host seam the earlier machine did, over the public value and effect-signature surface, so the headless host-effect runtime binds against the same contract regardless of which machine drives it.
     </prose>
   </section>
+  <section id="sk-fusion" title="Fusion by completion (phase L2)">
+    <prose>
+      Program transformation is ordinary rewriting in the IL, with certificates. The kernel's optimization layer is
+      <term-def key="fusion-by-completion">fusion by completion</term-def>
+      : the reserved rule 2-cells of a data block — the surface
+      <term key="directed-rewrite"/>
+      faces — elaborate to command rewrites; overlaps where two rewrites meet at a cut are bona-fide critical pairs; and a completion engine synthesizes derived, fused cells carrying replayable certificates, differential-tested against the two-step composite. There are no rewrite pragmas — the anti-pragma posture of the polygraph program (decision K5). This is completion over the convergent slice of a
+      <term key="polygraph-presentation"/>
+      , and it is the optimization-time twin of the runtime
+      <term key="matching-modulo"/>
+      stance. It is engineered in crate theory-computads, the third purely-additive phase of the kernel: it consumes the public command-IL vocabulary read-only and touches no frozen-core code.
+    </prose>
+    <section id="sk-fusion-rules" status="built" title="What a rule becomes">
+      <prose>
+        A data block reserves op and rule productions (the anti-retrofit guard of the data surface); their elaboration target is the cell store. An operation op f(…) reifies as an
+        <term-def key="operation-frame">operation frame</term-def>
+        family f(remaining-args; return-consumer) — an f-application waiting at the seam — and a rule (an oriented left-to-right arrow) elaborates to an oriented command
+        <term-def key="command-cell">cell</term-def>
+        whose left side is a cut between a constructor pattern and an operation frame. The running example is a Nat block with add and double:
+      </prose>
+      <code language="text">(add-Z)  ⟨Zero    | add(n; α)⟩  ⇝  ⟨n | α⟩
+(add-S)  ⟨Succ(m) | add(n; α)⟩  ⇝  ⟨m | add(n; Succ⁻(α))⟩
+(dbl-Z)  ⟨Zero    | double(α)⟩  ⇝  ⟨Zero | α⟩
+(dbl-S)  ⟨Succ(m) | double(α)⟩  ⇝  ⟨m | double(Succ⁻(Succ⁻(α)))⟩</code>
+      <prose>
+        Here Succ⁻(α) := μ̃x.⟨Succ(x) | α⟩ is the return-side constructor frame — definable, not primitive. Elaborating recursion on the argument into an accumulator frame is the standard sequent-machine flattening
+        <cite key="A-20"/>
+        : no rule ever searches a term tree; every redex sits at the cut. The elaboration of the reserved rule faces into cells is built in theory-computads (its elaborate layer), the acceptance target that flips rule from parse-and-decline to accepted-behind-gate.
+      </prose>
+    </section>
+    <section id="sk-fusion-overlaps" status="built" title="Critical pairs at the seam">
+      <prose>
+        A pipeline add(double(x), n) focuses to ⟨x | double(add(n; α))⟩ — the consumer is a composition of frames. An
+        <term-def key="overlap">overlap</term-def>
+        arises where one cell's right side materializes a pattern another cell's left side matches: (dbl-S) produces Succ⁻ frames that feed add's left side one constructor at a time. The composite worth fusing is the frame pair Succ⁻(add(n; α)), whose one-step behavior is derivable:
+      </prose>
+      <code language="text">⟨v | Succ⁻(add(n; α))⟩ ≡ ⟨Succ(v) | add(n; α)⟩ ⇝ ⟨v | add(n; Succ⁻(α))⟩</code>
+      <prose>
+        Completion therefore synthesizes the consumer-level commutation cell (fuse-S⁻-add), Succ⁻(add(n; α)) ⇝ add(n; Succ⁻(α)), which eliminates the intermediate Succ allocation entirely — deforestation as a derived 2-cell, with the derivation above as its certificate. (A consumer cell K₁ ⇝ K₂ abbreviates the producer-quantified command cell ⟨v | K₁⟩ ⇝ ⟨v | K₂⟩; the engine stores the quantified form.) First-class consumers are what make the overlap syntactically visible — under CPS the same overlap hides behind a lambda. That the fused cell is the two-step composite of its parts is the concurrency-theorem reading, adopted as the differential contract
+        <cite key="J-26"/>
+        .
+      </prose>
+    </section>
+    <section id="sk-fusion-engine" status="built" title="The engine: cell store, overlap enumeration, completion">
+      <prose>
+        The engine has four built parts. A
+        <term-def key="cell-store">cell store</term-def>
+        holds cells as content-addressed inspectable IR, pattern identity keyed on node hashes. Overlap enumeration returns, for each cell pair, the complete family of left-side unifications at a
+        <term key="cut"/>
+        — the multi-sum shape: every overlap, never a single chosen one. Cuts make overlaps shallow (the seam is the root), which is exactly why this is tractable where tree rewriting needs full subterm traversal
+        <cite key="J-26"/>
+        . The
+        <term-def key="completion">completion</term-def>
+        loop runs Knuth–Bendix / Squier completion over the convergent slice
+        <cite key="J-25a"/>
+        <cite key="J-25b"/>
+        <cite key="J-1"/>
+        : it normalizes both reducts of each critical pair, emits a
+        <term-def key="tracelet">tracelet</term-def>
+        (the 3-cell
+        <term key="certificate"/>
+        ) for a joinable pair, and turns a requested fusion shortcut into a derived cell whose certificate is the pair of joining paths. Termination is bounded by a completion budget with decline-and-report, the same posture as the machine step budget: exhausting the step or cell ceiling is a defined decline carrying the pending overlaps, never divergence or a panic.
+      </prose>
+      <prose>
+        Correctness is differential plus replay, not trust. Every derived cell is property-tested — applying the fused cell agrees with applying the constituent path over generated ground configurations, the concurrency theorem adopted as a test, its category-theoretic proof machinery explicitly not implemented — and every certificate is replayed, re-executing both paths and comparing, rather than trusted. Replay is promoted to the identity criterion: two tracelets are the same transformation when they replay equal (
+        <term key="replay-equivalence"/>
+        ), which is what makes tracelet grafting associative and unital in the formal reading.
+      </prose>
+      <prose>
+        Each cell carries derived — never user-declared — metadata: a per-metavariable
+        <term key="variance"/>
+        with a linearity flag, and an invertibility flag (true for completion-emitted joinability certificates, false for oriented optimization cells), computed at elaboration. That metadata is what the two-mode certificate composition reads — an unconditional coherence lane for invertible certificates, and a directed lane gated by variable-flow acyclicity across the composed seam that declines a cycle with the cycle as diagnostic. The metadata and the two composition modes are the VDC-reflection deltas to this engine; their formal reading is homed in the reflection-face component, and this engine is the cell store that face grounds.
+      </prose>
+    </section>
+    <section id="sk-fusion-scope" status="built" title="Scope and honest limits">
+      <prose>
+        Three limits, stated honestly. Natives are opaque: a prim command reduces in Rust and has no seam a cell can see through, so every fusion claim is scoped to the
+        <term-def key="cell-visible-fragment">cell-visible fragment</term-def>
+        — the symbolic command-pattern IL of datatype constructors, operations, and the two return-side frames — and re-expressing hot natives as cells is future work. Non-linear overlaps fan out: completion returns overlap-indexed families of composites, and a single canonical fused rule exists only on a linear seam. This fan-out is not a shortfall but the mathematically forced behavior — it is the virtual in the reflection face's virtual double category, where loose composites need not exist and, under duplication, exist only as the multi-sum-indexed family. Finally, the η discipline binds completion: a joining path may use codata-η only at a negative cut and data-η only at a positive cut, checked against the
+        <term key="polarity-orientation"/>
+        of the seam — the strategy-tied η vocabulary is realized as the cell's η-kind.
+      </prose>
+    </section>
+    <section id="sk-fusion-record" status="built" title="Why completion beats pragmas, and the gate">
+      <prose>
+        Pragma systems bolt unverified, unoriented equations onto a fixed evaluator, out of band from the datatype. Here the cells are declared in the data block as siblings of constructors (the anti-retrofit guard), oriented by the same
+        <term key="polarity-orientation"/>
+        discipline that runs the machine, completed into a convergent system with machine-checkable certificates, and differential-tested. The folklore that lazy languages get obvious fusions for free is explained rather than envied: call-by-name orientation makes the seam demand-transparent, and the polarized kernel gives both orientations locally, per type, instead of globally per language. The same localization move recurs across the design — where a global gluing property fails, localize the choice per cut and restrict the global operation — and the composition gate is its correctness side. The list combinators are the obvious first fusion targets; the engine's bridge reifies exactly that frozen fragment (the Nil / Cons / Pair correspondences) into the command arena.
+      </prose>
+      <prose>The phase-L2 gate is the fused-equals-two-step differential over generated ground configurations, certificate replay, and the η-polarity pathological pins — an η-step at the wrong polarity must be rejected by the engine. A disagreement is a genuine defect in the matching, substitution, or splicing engine — a finding, never a tolerated divergence — the same posture as the L1 differential.</prose>
+    </section>
+  </section>
+  <section id="sk-closures" status="adopted-unbuilt" title="Closures as rewrites (the closures lane, design)">
+    <prose>Closure conversion is an in-IL rewrite, adopted at exactly one site — the U/force boundary (gandr's lambda is a computation and is never bound, so no lambda-site closures exist). An environment-carrying thunk captures part of the ambient context; the closure cell fires like any other seam rule, and a confluent CC rewrite drives every free variable into the explicit environment:</prose>
+    <code language="text">ς ::= ε | ς, v/x                                -- explicit environments (IL syntax)
+(βU)  ⟨{ς, force → M} | force(K)⟩ ⇝ ⟨M[ς] | K⟩   -- the closure cell, a seam rule like any other
+(CC)  {ς, force → M} ⇝ {(ς, x/x), force → M}      -- for x ∈ FV(M) ∖ Dom(ς); oriented, confluent
+                                                 --   modulo environment reordering</code>
+    <prose>
+      <term-def key="cc-normal-form">CC-normal form</term-def>
+      — no free variable outside the environment — is the lowering gate: pre-lowering runs CC to normal form, and each closure lowers to a flat (env-struct, code-pointer) pair, the runtime closure shape the arena machine already builds. The adequacy result — a capturing machine agrees with a lookup-only machine on CC-normal programs — upgrades the jit-equals-eval correspondence from a test to a theorem on the closure fragment, with the differential retained regardless
+      <cite key="A-22a"/>
+      <cite key="A-22b"/>
+      . Grades refine capture (a grade-0 variable need not be captured at all), and environment sharing and lambda-lifting are derived cells in the same store, with environments hashconsed after CC-normalization so canonical minimal environments deduplicate. The proof-debt ledger is named, not hidden: confluence of CC is modulo environment reordering — the Agda face needs a permutation quotient to sit in the Squier-degenerate slice — and the source theory covers pure and call-by-need but not effects.
+    </prose>
+    <prose>
+      The effects-and-closure-conversion composite is staged, because the two literatures are disjoint: every closure-conversion correctness proof is pure or state-only, every handler-compilation result performs no closure conversion, so the intersection is empty and the composite is genuinely open. The staged posture states the closure equalities now on the pure and call-by-need fragment (Sullivan's backward simulation and Kripke-heap logical relation apply essentially verbatim); adopts capability / evidence-passing as the handler-elimination leg with citable correctness, modeling gandr's op-keyed deep handlers on multi-prompt delimited control rather than single-prompt shift/reset
+      <cite key="A-24"/>
+      <cite key="A-25"/>
+      ; and names as staged proof debt the composite theorem — upgrading the Kripke-heap relation to a biorthogonal step-indexed logical relation for handlers over the sharing heap
+      <cite key="A-26a"/>
+      <cite key="A-26b"/>
+      , cohered against the confluent fine-grained handler reduction theory the completion engine's cells must respect
+      <cite key="A-27"/>
+      . No published work combines all three, so gandr's stage would be a first — recorded as debt, never claimed early; a fallback pure-lambda handler translation
+      <cite key="A-11a"/>
+      <cite key="A-11b"/>
+      and the nearest closure-conversion-under-effects result (state only)
+      <cite key="A-23"/>
+      bound the boundary, and the jit-equals-eval differential over effectful corpus programs covers the composite meanwhile.
+    </prose>
+    <prose>
+      This is design, not built. The closure producer is deliberately absent at L0 — the focusing translation emits the pre-closure-conversion codata form instead, and closure conversion lands later as an in-IL rewrite. The lane is also where a copattern / handler unification would eventually sit, since compositional copatterns and delimited control are one mechanism
+      <cite key="A-32"/>
+      .
+    </prose>
+  </section>
   <section id="sk-phases" title="Phases and gates">
     <prose>
       The kernel lands in four gated
@@ -107,23 +245,43 @@ reset    = a prompt covalue; shift captures the consumer up to it (μ-capture)</
     <section id="sk-phase-l1" status="partial" title="Phase L1 — the L machine and its differential">
       <prose>The L machine: transitions, store, memo write-back, and a single step budget. Its gate was the differential L-run of the focused image agreeing with the driver on the full corpus plus property strategies. Through the migration the CEK machine was the external oracle: an independently-maintained implementation of the same operational semantics, so agreement was evidence for the L machine's correctness. The CEK retired at B1 stage F, so the L machine is now the sole driver; the differential's reference is the frozen outcome snapshots that captured the final oracle-agreeing run — the same canonicalization, its reference now a fixture rather than a live second machine — and the conformance soundness rows are re-anchored on L outcomes. L1 is partial: the readback residuals stay tracked (the un-focusing translation, prelude free-name resolution in force position, the whole-program identity-former decline, and the declared-data eliminator decline), each reporting a defined unsupported-by-reference outcome rather than a panic.</prose>
     </section>
-    <section id="sk-phase-l2" status="adopted-unbuilt" title="Phase L2 — the fusion engine">
-      <prose>A cell store, overlap enumeration at cut seams, Squier completion, and replayable certificates, flipping rewrite rules from parse-and-decline to accepted-behind-gate. Its design is not absorbed in this pass and remains queued.</prose>
+    <section id="sk-phase-l2" status="built" title="Phase L2 — the fusion engine">
+      <prose>The cell store, overlap enumeration at cut seams, Knuth–Bendix / Squier completion, replayable tracelet certificates, and the two-mode certificate composition, flipping rewrite rules from parse-and-decline to accepted-behind-gate. Its design is absorbed in the fusion section above and its engineering face is built in crate theory-computads; the phase-L2 gate — the fused-equals-two-step differential, certificate replay, and the η-polarity pathological pins — is realized as that crate's differential harness. The category-theoretic proof machinery of the concurrency theorem is explicitly not implemented; the differential is its witness.</prose>
     </section>
     <section id="sk-phase-l3" status="design-pass" title="Phase L3 — the promotion decision">
       <prose>
-        The promotion decision, an ADR either way: L stays the runtime and optimization IL with the call-by-push-value core canonical (the Sequent Core position
+        The last phase is the
+        <term-def key="promotion-decision">promotion decision</term-def>
+        , an ADR either way and the only phase that may touch the frozen core. Position (a): L stays the runtime and optimization IL with the call-by-push-value core canonical — the Sequent Core position
         <cite key="A-21"/>
-        ), or command syntax enters the frozen core. It is explicit, evidence-based, and reversible until taken; its design is not absorbed here.
+        . Position (b): command syntax enters the frozen core (an ADR plus a dictionary entry plus an Agda face, competing for the post-arena window with the data surface's nominal tag). The decision is explicit, evidence-based, and reversible until taken, gated on the evidence L1 and L2 accumulate plus the codata and lowering experience; until it is taken everything the kernel adds is additive, touching no frozen-core code. Its design is recorded here; the decision itself is deferred. The fusion engine already takes a related boundary — that its cells range over the symbolic
+        <term key="cell-visible-fragment"/>
+        rather than the arena command IL directly — as a draft-ADR candidate rather than minting an ADR: if position (b) is chosen, the relationship between the two should be pinned by an ADR.
       </prose>
     </section>
   </section>
   <references>
     <cite key="A-1a"/>
+    <cite key="A-11a"/>
+    <cite key="A-11b"/>
     <cite key="A-17"/>
     <cite key="A-19"/>
     <cite key="A-20"/>
     <cite key="A-21"/>
+    <cite key="A-22a"/>
+    <cite key="A-22b"/>
+    <cite key="A-23"/>
+    <cite key="A-24"/>
+    <cite key="A-25"/>
+    <cite key="A-26a"/>
+    <cite key="A-26b"/>
+    <cite key="A-27"/>
     <cite key="A-31"/>
+    <cite key="A-32"/>
+    <cite key="A-37"/>
+    <cite key="J-1"/>
+    <cite key="J-25a"/>
+    <cite key="J-25b"/>
+    <cite key="J-26"/>
   </references>
 </component>
