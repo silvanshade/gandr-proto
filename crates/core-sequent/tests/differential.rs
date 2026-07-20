@@ -12,9 +12,11 @@
 //! machine's correctness. Comparison is on the canonicalized [`Eval`] outcome
 //! ([`gandr_core_sequent::differential::canonical`]) — the outcome kind, the
 //! stuck reason, and the returned value exactly on the first-order fragment
-//! (the observable fragment the corpus checks), with higher-order terminals
-//! (returned thunks, bare functions / lazy pairs) compared at kind granularity
-//! (the un-focusing readback residual; see the module docs).
+//! (the observable fragment the corpus checks); higher-order terminals
+//! (returned thunks, bare functions / lazy pairs, partial natives) are now
+//! compared **structurally** through the un-focusing readback `𝓕⁻¹`, only a
+//! returned reified stack staying at kind granularity (the k-in-value residual;
+//! see the module docs).
 //!
 //! # Coverage at this checkpoint
 //!
@@ -31,11 +33,14 @@
 //! that discards or `resume`s its captured continuation, and an undelimited
 //! `shift` (agreeing on the `ShiftNoReset` blame). A captured continuation used
 //! in *value* position stays excluded (its representation diverges from the
-//! CEK's α-renamed side-table name; a listed residual), so a generated `shift`
-//! body only ever `resume`s `k` or ignores it. Hand-built cases now pin the
-//! prelude free-name resolution (ADR-42), the ADR-76 identity formers, and the
-//! ADR-80 declared data against the oracle; the higher-order combinators grow
-//! the differential in a later checkpoint.
+//! CEK's α-renamed side-table name; the k-in-value residual), so a generated
+//! `shift` body only ever `resume`s `k` or ignores it. Hand-built cases pin the
+//! prelude free-name resolution (ADR-42), the ADR-76 identity formers, the
+//! ADR-80 declared data, the **higher-order native combinators** (`each` /
+//! `where` / `reduce` / `any` / `all` / `update_where` over pure, effectful,
+//! and blaming closures — now dispatched through the un-focusing readback), the
+//! higher-order **host payloads**, and the **exact structural readback** of
+//! thunk / function / lazy-pair / partial-native terminals against the oracle.
 
 #![cfg_attr(
     test,
@@ -1114,6 +1119,102 @@ mod tests
                 int_list(&[1, 2]),
             ),
         ));
+    }
+
+    /// Hand-built **exact readback** cases: a returned thunk / function / lazy
+    /// pair / partial native reads back to an exact source term on both
+    /// machines and compares **structurally** (retiring the kind-granularity
+    /// arms). These would have agreed vacuously under kind granularity; they
+    /// now exercise the body comparison, and an **intentional-difference
+    /// probe** pins that the L machine's readback distinguishes
+    /// structurally different terminals the old comparison called equal.
+    #[test]
+    fn hand_built_exact_readback_cases_agree()
+    {
+        // A returned thunk — its body compared exactly.
+        assert_agree(&Comp::ret(Value::thunk(
+            Grade::ONE,
+            Comp::ret(Value::int(5)),
+        )));
+        // A returned thunk with a compound body (a bind through a native).
+        assert_agree(&Comp::ret(Value::thunk(
+            Grade::OMEGA,
+            Comp::bind(
+                Comp::app(
+                    Comp::app(Comp::native(NativePrim::Add), Value::int(1)),
+                    Value::int(2),
+                ),
+                "y",
+                Comp::ret(Value::pair(Value::var("y"), Value::var("y"))),
+            ),
+        )));
+        // A returned thunk that closes over an outer binding: `let n <- ret 9;
+        // ret (thunk { ret n })` returns `thunk { ret 9 }` on both machines.
+        assert_agree(&Comp::bind(
+            Comp::ret(Value::int(9)),
+            "n",
+            Comp::ret(Value::thunk(Grade::ONE, Comp::ret(Value::var("n")))),
+        ));
+
+        // A bare function terminal — its body compared exactly.
+        assert_agree(&Comp::lam("x", Comp::ret(Value::var("x"))));
+        // A function terminal that closes over an outer binding: `let n <- ret 3;
+        // \x. x + n` is the function `\x. x + 3` on both machines.
+        assert_agree(&Comp::bind(
+            Comp::ret(Value::int(3)),
+            "n",
+            Comp::lam(
+                "x",
+                Comp::app(
+                    Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                    Value::var("n"),
+                ),
+            ),
+        ));
+
+        // A bare lazy-pair terminal — both components compared exactly.
+        assert_agree(&Comp::with(
+            Comp::ret(Value::int(1)),
+            Comp::lam("z", Comp::ret(Value::var("z"))),
+        ));
+
+        // A partial native terminal — its accumulated argument compared exactly.
+        assert_agree(&Comp::app(Comp::native(NativePrim::Add), Value::int(7)));
+
+        // The intentional-difference probe: the L machine's readback
+        // distinguishes structurally different terminals that the retired
+        // kind-granularity comparison would have called equal.
+        let thunk_one = machine::run_comp(&Comp::ret(Value::thunk(
+            Grade::ONE,
+            Comp::ret(Value::int(1)),
+        )));
+        let thunk_two = machine::run_comp(&Comp::ret(Value::thunk(
+            Grade::ONE,
+            Comp::ret(Value::int(2)),
+        )));
+        assert_ne!(
+            canonical(&thunk_one),
+            canonical(&thunk_two),
+            "the readback distinguishes same-grade thunks with different bodies"
+        );
+
+        let fn_id = machine::run_comp(&Comp::lam("x", Comp::ret(Value::var("x"))));
+        let fn_const = machine::run_comp(&Comp::lam("x", Comp::ret(Value::int(0))));
+        assert_ne!(
+            canonical(&fn_id),
+            canonical(&fn_const),
+            "the readback distinguishes functions with different bodies"
+        );
+
+        let native_seven =
+            machine::run_comp(&Comp::app(Comp::native(NativePrim::Add), Value::int(7)));
+        let native_eight =
+            machine::run_comp(&Comp::app(Comp::native(NativePrim::Add), Value::int(8)));
+        assert_ne!(
+            canonical(&native_seven),
+            canonical(&native_eight),
+            "the readback distinguishes partial natives with different arguments"
+        );
     }
 
     /// A higher-order combinator resolved through a **non-empty prelude** (the

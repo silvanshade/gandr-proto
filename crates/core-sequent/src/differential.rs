@@ -12,7 +12,7 @@
 //! genuine defect in one machine (a finding for the orchestrator), never a
 //! tolerated divergence.
 //!
-//! # What is compared, and the one principled granularity choice
+//! # What is compared
 //!
 //! Comparison is on the [`Eval`] outcome — the outcome KIND (value / blame /
 //! stuck), the stuck reason, and the returned value — through [`canonical`],
@@ -20,22 +20,29 @@
 //!
 //! - a returned **first-order value** (unit / integer / string / numeric atom /
 //!   hole / neutral variable, and pairs / injections / lists / records nested
-//!   over them) is compared EXACTLY — this is the observable fragment the
-//!   corpus `expect-last-value` directives check;
-//! - a returned **thunk** or **reified stack**, a bare **function** / **lazy
-//!   pair** terminal, and a **partial native** are compared at KIND granularity
-//!   (a thunk vs a thunk, a function vs a function, …). Their exact structural
-//!   readback needs *un-focusing* the IL back to source syntax (the inverse of
-//!   `𝓕`), which is a listed residual seam, not a semantic divergence: the
-//!   machines still agree that the outcome IS a thunk / function / etc. A
-//!   thunk's **grade** is compared exactly (carried end-to-end); only its body
-//!   stays opaque pending the un-focusing readback.
+//!   over them) is compared EXACTLY — the observable fragment the corpus
+//!   `expect-last-value` directives check;
+//! - a returned **thunk**, a bare **function** / **lazy pair** terminal, and a
+//!   **partial native** are now compared **structurally** through the
+//!   un-focusing readback `𝓕⁻¹` ([`crate::unfocus`]): both machines read the
+//!   terminal back to an exact source term, which [`normalize_comp`] carries to
+//!   its **commuting normal form** (re-focusing then un-focusing, which erases
+//!   the annotations / effect-signature operation lists / motives / nominal ids
+//!   `𝓕` drops and commutes the administrative redexes `𝓕` commutes) so the
+//!   CEK's un-commuted source and the L machine's commuted un-focusing
+//!   converge. A thunk's grade is compared exactly, as before, and now so is
+//!   its body.
+//! - a returned **reified stack** stays at KIND granularity
+//!   ([`CanonValue::Stk`] opaque): a captured continuation crossing into value
+//!   position has a runtime frame representation that diverges from the CEK's
+//!   α-renamed side-table continuation, an un-reconcilable readback residual
+//!   (§7a). The machines still agree that the outcome IS a reified stack.
 //!
 //! Both sides pass through the same [`canonical`], so the comparison is
-//! symmetric and cannot hide a disagreement in the compared (first-order)
-//! fragment.
+//! symmetric and cannot hide a disagreement in the compared fragment.
 
 use alloc::boxed::Box;
+use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -48,7 +55,9 @@ use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::HoleId;
 use gandr_core_checker::syntax::NumLit;
 use gandr_core_checker::syntax::Side;
+use gandr_core_checker::syntax::Stack;
 use gandr_core_checker::syntax::Value;
+use gandr_core_checker::types::DataId;
 
 use crate::boundary::DifferentialAgreement;
 
@@ -60,14 +69,17 @@ pub enum CanonOutcome
 {
     /// A returned value `ret v`.
     Ret(CanonValue),
-    /// A bare function terminal (`λx. t`) — compared opaquely (un-focusing
-    /// residual).
-    Function,
-    /// A bare lazy-pair terminal (`⟨t, u⟩`) — compared opaquely.
-    LazyPair,
+    /// A bare function terminal (`λx. t`) — compared **structurally** through
+    /// the un-focusing readback `𝓕⁻¹`, its body normalized past the data `𝓕`
+    /// erases (see [`normalize_comp`]).
+    Function(Box<Comp>),
+    /// A bare lazy-pair terminal (`⟨t, u⟩`) — compared structurally through
+    /// `𝓕⁻¹` (see [`normalize_comp`]).
+    LazyPair(Box<Comp>),
     /// A partial native (a curried builtin awaiting arguments) — compared by
-    /// its primitive and accumulated-argument count.
-    Native(NativePrim, usize),
+    /// its primitive and its accumulated arguments (read back exactly through
+    /// `𝓕⁻¹` and normalized).
+    Native(NativePrim, Vec<Value>),
     /// Any other computation terminal — compared opaquely.
     OtherComp,
     /// A defined runtime halt.
@@ -102,10 +114,13 @@ pub enum CanonValue
     List(Vec<Self>),
     /// A record.
     Record(Vec<(String, Self)>),
-    /// A thunk — its **grade** compared exactly (carried end-to-end), its
-    /// body opaque (the un-focusing readback residual).
-    Thunk(Grade),
-    /// A reified stack — compared opaquely.
+    /// A thunk — its **grade** and its **body** both compared exactly (the body
+    /// un-focused through `𝓕⁻¹` and normalized past the data `𝓕` erases; see
+    /// [`normalize_comp`]).
+    Thunk(Grade, Box<Comp>),
+    /// A reified stack — compared opaquely (the k-in-value residual: the
+    /// runtime frame representation diverges from the CEK's α-renamed
+    /// side-table continuation, so its content stays coarse).
     Stk,
     /// A future value former — compared opaquely (both machines map it here).
     Other,
@@ -147,14 +162,18 @@ pub fn canonical(eval: &Eval) -> CanonOutcome
     }
 }
 
-/// Canonicalizes a terminal computation whnf.
+/// Canonicalizes a terminal computation whnf. A codata / native terminal is now
+/// compared structurally through the un-focusing readback `𝓕⁻¹` (both machines
+/// read it back to an exact source term), normalized past the data `𝓕` erases.
 fn canonical_terminal(comp: &Comp) -> CanonOutcome
 {
     match *comp {
         | Comp::Ret(ref value) => CanonOutcome::Ret(canonical_value(value)),
-        | Comp::Abs(..) => CanonOutcome::Function,
-        | Comp::With(..) => CanonOutcome::LazyPair,
-        | Comp::Native { prim, ref args } => CanonOutcome::Native(prim, args.len()),
+        | Comp::Abs(..) => CanonOutcome::Function(Box::new(normalize_comp(comp))),
+        | Comp::With(..) => CanonOutcome::LazyPair(Box::new(normalize_comp(comp))),
+        | Comp::Native { prim, ref args } => {
+            CanonOutcome::Native(prim, args.iter().map(|arg| normalize_value(arg)).collect())
+        },
         | _ => CanonOutcome::OtherComp,
     }
 }
@@ -216,7 +235,9 @@ fn canonical_value(value: &Value) -> CanonValue
                     }
                 },
                 | Value::Annot(ref inner, _) => frames.push(Frame::Enter(inner.as_ref())),
-                | Value::Thunk(grade, _) => values.push(CanonValue::Thunk(grade)),
+                | Value::Thunk(grade, ref body) => {
+                    values.push(CanonValue::Thunk(grade, Box::new(normalize_comp(body))));
+                },
                 | Value::Stk(_) => values.push(CanonValue::Stk),
                 | _ => values.push(CanonValue::Other),
             },
@@ -269,6 +290,93 @@ fn pop_canon(values: &mut Vec<CanonValue>) -> CanonValue
     value.unwrap_or(CanonValue::Other)
 }
 
+/// Normalizes a source computation to the **commuting normal form** `𝓕⁻¹ ∘ 𝓕`,
+/// so a CEK-side readback (the un-commuted source, retaining annotations /
+/// effect-signature operation lists / motives / nominal ids) and an L-side
+/// un-focusing readback (already commuted, with those erased) compare
+/// structurally equal.
+///
+/// `𝓕` is the canonical form: it commutes administrative redexes — `App` of a
+/// `Bind` / `Case` threads the eliminator through the binder, `t v` becomes an
+/// `ap`-frame spine — and erases the four things `𝓕⁻¹` cannot recover (type
+/// annotations, an effect signature's operation list, a `Walk` / `Split`
+/// motive, a declared-data nominal id). Re-focusing then un-focusing therefore
+/// lands both readbacks on the same term. It is idempotent on an
+/// already-normalized computation, and falls back to the raw term only when the
+/// readback declines (a reified stack in value position — the k-in-value
+/// residual).
+#[must_use]
+fn normalize_comp(comp: &Comp) -> Comp
+{
+    crate::focus::focus_comp(comp)
+        .ok()
+        .and_then(|focused| crate::unfocus::unfocus_comp(&focused))
+        .unwrap_or_else(|| comp.clone())
+}
+
+/// Normalizes a source value past the data `𝓕` erases (see [`normalize_comp`]).
+///
+/// # Termination
+/// - reason: descends a finite source value, each node visited once.
+/// - measure: the source value node the recursion descends into.
+/// - boundedness: source values are finite `Rc` trees.
+/// - input recursion: sub-values and thunk bodies flow into recursion; each
+///   descends into a strictly smaller node.
+#[cfg_attr(
+    dylint_lib = "gandr_workflow_dylint",
+    allow(
+        unknown_lints,
+        recursive_function_needs_termination,
+        reason = "descends a finite source value; termination is proved above"
+    )
+)]
+#[must_use]
+fn normalize_value(value: &Value) -> Value
+{
+    match *value {
+        | Value::Pair(ref fst, ref snd) => {
+            Value::Pair(Rc::new(normalize_value(fst)), Rc::new(normalize_value(snd)))
+        },
+        | Value::Inj(side, ref payload) => Value::Inj(side, Rc::new(normalize_value(payload))),
+        | Value::List(ref elements) => Value::List(
+            elements
+                .iter()
+                .map(|element| Rc::new(normalize_value(element)))
+                .collect(),
+        ),
+        | Value::Record(ref fields) => Value::Record(
+            fields
+                .iter()
+                .map(|(label, field)| (label.clone(), Rc::new(normalize_value(field))))
+                .collect(),
+        ),
+        | Value::Thunk(grade, ref body) => Value::Thunk(grade, Rc::new(normalize_comp(body))),
+        // Strip a type annotation — `𝓕` focuses through it.
+        | Value::Annot(ref inner, _) => normalize_value(inner),
+        | Value::Here(ref witness) => Value::Here(Rc::new(normalize_value(witness))),
+        | Value::Ctor {
+            tag, ref payload, ..
+        } => Value::Ctor {
+            // The nominal id is render-only (`𝓕` erases it).
+            id: canonical_data_id(),
+            tag,
+            payload: Rc::new(normalize_value(payload)),
+        },
+        // Drop a reified stack's content — the k-in-value residual stays coarse.
+        | Value::Stk(_) => Value::stk(Stack::Empty),
+        // Scalars, holes, variables, and any future value former pass through.
+        | _ => value.clone(),
+    }
+}
+
+/// A canonical render-only declared-data id (`𝓕` erases the nominal id;
+/// ADR-80).
+#[must_use]
+fn canonical_data_id() -> DataId
+{
+    DataId::new(0_u64, "")
+}
+
 #[cfg(test)]
 mod tests
 {
@@ -296,23 +404,51 @@ mod tests
         );
     }
 
-    /// Thunks compare by grade with an opaque body (the un-focusing residual):
-    /// same grade + different bodies agree, a differing grade does not, and a
-    /// thunk vs an integer does not.
+    /// Thunks compare **structurally** through the un-focusing readback: same
+    /// grade + same body agree, same grade + DIFFERENT bodies now DISAGREE (the
+    /// intentional-difference probe — the retired kind-granularity arm would
+    /// have called these equal), a differing grade disagrees, and a thunk vs an
+    /// integer disagrees. A type annotation on the body is erased by `𝓕`, so it
+    /// does not perturb agreement.
     #[test]
-    fn thunks_compare_by_grade_with_opaque_body()
+    fn thunks_compare_structurally_through_readback()
     {
         let thunk_a = Eval::Value(Comp::ret(Value::thunk(
             Grade::ONE,
             Comp::ret(Value::int(1)),
         )));
+        let thunk_a_again = Eval::Value(Comp::ret(Value::thunk(
+            Grade::ONE,
+            Comp::ret(Value::int(1)),
+        )));
+        assert!(
+            bool::from(agree(&thunk_a, &thunk_a_again)),
+            "same-grade, same-body thunks agree"
+        );
+
+        // The intentional-difference probe: two structurally different bodies
+        // the old kind-granularity comparison called equal are now DISTINGUISHED.
         let thunk_b = Eval::Value(Comp::ret(Value::thunk(
             Grade::ONE,
             Comp::ret(Value::int(2)),
         )));
         assert!(
-            bool::from(agree(&thunk_a, &thunk_b)),
-            "same-grade thunks agree though their bodies differ"
+            !bool::from(agree(&thunk_a, &thunk_b)),
+            "same-grade thunks with different bodies are now distinguished"
+        );
+
+        // An annotation on the body is `𝓕`-erased, so it is invisible to the
+        // comparison — the readback normalizes it away on both sides.
+        let thunk_annotated = Eval::Value(Comp::ret(Value::thunk(
+            Grade::ONE,
+            Comp::ret(Value::annot(
+                Value::int(1),
+                gandr_core_checker::types::ValueType::integer(),
+            )),
+        )));
+        assert!(
+            bool::from(agree(&thunk_a, &thunk_annotated)),
+            "a `𝓕`-erased annotation does not perturb thunk agreement"
         );
 
         let thunk_omega = Eval::Value(Comp::ret(Value::thunk(

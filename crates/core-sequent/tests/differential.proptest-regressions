@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 181f7211e700daba8f73f4d867aa8faab54249ac0bb2e4c9df090ebd32a135e4 # shrinks to comp = Handle { sig: EffectSig { name: "E", ops: [EffectOp { name: "op", payload: Atom("Integer"), reply: Atom("Integer") }] }, scrutinee: Perform(EffectSig { name: "E", ops: [EffectOp { name: "op", payload: Atom("Integer"), reply: Atom("Integer") }] }, "op", Unit), ret: ("ex", Bind(Ret(Unit), "y", Split { scrut: Unit, fst_name: "a", snd_name: "b", motive: None, body: Ret(Int(1695649549)) })), ops: [OpClause { op: "op", payload: "ep", resume: "ek", body: Abs("x", None, Native { prim: Add, args: [] }) }] }
+cc 9f58759094a47d5fd0be1ec0c78e0859e917db04295201c280c1a498d5709c70 # shrinks to comp = With(App(Bind(Ret(Unit), "y", Ret(Unit)), Unit), App(Prj(Snd, Force(Int(-5421333325843156))), Pair(Hole(0), Int(-100063869272332320))))
+cc 0ce9d991db2a43ceec9e720525eea783a4a71be5a4f2276c0e9d0aed68460cb5 # shrinks to comp = With(App(Ret(Unit), Unit), Abs("x", None, Ret(Inj(Fst, Int(-239607868)))))

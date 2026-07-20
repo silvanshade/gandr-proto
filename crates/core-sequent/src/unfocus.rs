@@ -185,9 +185,16 @@ pub fn unfocus_value(
             let closed = close_comp(decoded, env, arena, origins)?;
             Some(Value::thunk(grade, closed))
         },
-        // Codata, a partial native, and a reified stack are not source values
-        // (they appear only at a terminal, handled by `unfocus_terminal`).
-        | LValue::Cocase { .. } | LValue::Native { .. } | LValue::Boxed(_) => None,
+        // A reified stack (a captured continuation crossing into value
+        // position — e.g. a handler resumption `k` bound in a captured
+        // environment) reads back as an opaque carrier: the k-in-value residual
+        // (§7a). Declining instead would fail the closing substitution on an
+        // *unused* continuation binding — the CEK reads such a binding back as a
+        // harmless neutral, so the readback must not choke on it.
+        | LValue::Boxed(_) => Some(Value::stk(Stack::Empty)),
+        // Codata and a partial native are not source values (they appear only
+        // at a terminal, handled by `unfocus_terminal`).
+        | LValue::Cocase { .. } | LValue::Native { .. } => None,
     }
 }
 
@@ -233,6 +240,31 @@ pub fn unfocus_terminal(
         | LValue::Boxed(_) => Some(Comp::ret(Value::stk(Stack::Empty))),
         | _ => Some(Comp::ret(unfocus_value(value, arena, origins)?)),
     }
+}
+
+/// Un-focuses a whole **focused program** back to a source computation — the
+/// program-level `𝓕⁻¹`, decoding the root command against the terminal `★`.
+///
+/// This is the inverse of [`crate::focus::focus_comp`] up to the data `𝓕`
+/// erases and the administrative redexes `𝓕` commutes, so `𝓕⁻¹ ∘ 𝓕` is a
+/// **commuting normal form**: the differential drives it on both readbacks
+/// ([`crate::differential`]) to converge the CEK's un-commuted source and the L
+/// machine's commuted un-focusing onto the same term.
+///
+/// # Contract
+/// - ensures: `Some(comp)` when the program inverts; `None` for a shape the
+///   readback cannot reconstruct (a reified stack in value position).
+/// - panics: none.
+#[inline]
+#[must_use]
+pub fn unfocus_comp(focused: &crate::focus::Focused) -> Option<Comp>
+{
+    decode_command(
+        focused.arena(),
+        focused.origins(),
+        focused.root(),
+        &Tail::ByTop,
+    )
 }
 
 /// Reconstructs a source [`Value`] from a runtime constructor.
@@ -536,19 +568,15 @@ fn apply_frame(
             Some(Piece::Comp(Comp::resume(stack, reified)))
         },
         | DtorTag::Ap => {
-            let head = match current {
-                | Piece::Comp(comp) => comp,
-                // A bare value meeting an `ap` frame is not a shape `𝓕` emits.
-                | Piece::Value(_) => return None,
-            };
+            // A bare value meeting an `ap` frame is an applied returner
+            // (`App(ret v, arg)` — an ill-typed application `𝓕` still emits);
+            // wrap it through `ret` so the elimination re-focuses identically.
+            let head = current.into_comp();
             let arg = decode_value(arena, origins, *ps.first()?)?;
             Some(Piece::Comp(Comp::app(head, arg)))
         },
         | DtorTag::Prj(side) => {
-            let head = match current {
-                | Piece::Comp(comp) => comp,
-                | Piece::Value(_) => return None,
-            };
+            let head = current.into_comp();
             Some(Piece::Comp(match side {
                 | Side::Fst => Comp::prj1(head),
                 | Side::Snd => Comp::prj2(head),
