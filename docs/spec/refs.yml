@@ -540,7 +540,7 @@ B-4:
   date: 2021
   parent:
     type: periodical
-    title: ACM Compute. Surveys
+    title: ACM Comput. Surveys
   serial-number:
     arxiv: "1908.05839"
 B-5:
@@ -1744,7 +1744,7 @@ K-9:
   date: 1990
   parent:
     type: periodical
-    title: SIAM J. Compute.
+    title: SIAM J. Comput.
   serial-number:
     doi: 10.1137/0219027
 K-10:

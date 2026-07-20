@@ -65,7 +65,7 @@ export def curated-entries []: nothing -> list {
     {id: "B-1" type: "article" title: "Local Type Inference" author: "Pierce & Turner" date: 2000 venue: "TOPLAS" vtype: "periodical"}
     {id: "B-2" type: "article" title: "Complete and Easy Bidirectional Typechecking for Higher-Rank Polymorphism" author: "Dunfield & Krishnaswami" date: 2013 venue: "ICFP" vtype: "proceedings"}
     {id: "B-3" type: "article" title: "A Mechanical Formalization of Higher-Ranked Polymorphic Type Inference" author: "Zhao, Oliveira & Schrijvers" date: 2019 venue: "ICFP" vtype: "proceedings"}
-    {id: "B-4" type: "article" title: "Bidirectional Typing" author: "Dunfield & Krishnaswami" date: 2021 venue: "ACM Compute. Surveys" vtype: "periodical"}
+    {id: "B-4" type: "article" title: "Bidirectional Typing" author: "Dunfield & Krishnaswami" date: 2021 venue: "ACM Comput. Surveys" vtype: "periodical"}
     {id: "B-5" type: "article" title: "Polymorphism, Subtyping, and Type Inference in MLsub" author: "Dolan & Mycroft" date: 2017 venue: "POPL" vtype: "proceedings"}
     {id: "B-6" type: "article" title: "The Simple Essence of Algebraic Subtyping" author: "Parreaux" date: 2020 venue: "ICFP" vtype: "proceedings"}
     {id: "B-7" type: "article" title: "MLstruct" author: "Parreaux & Chau" date: 2022 venue: "OOPSLA" vtype: "proceedings"}
@@ -216,7 +216,7 @@ export def curated-entries []: nothing -> list {
     {id: "K-6" type: "article" title: "Nominal Tree Automata with Name Allocation" author: "Prucker & Schröder"}
     {id: "K-7" type: "article" title: "Nominal Automata with Name Binding" author: "Schröder, Kozen, Milius & Wißmann" date: 2017 venue: "FoSSaCS" vtype: "proceedings" note: "RNNA"}
     {id: "K-8" type: "article" title: "A Robust Class of Data Languages and an Application to Learning" author: "Bollig, Habermehl, Leucker & Monmege" date: 2014 venue: "LMCS" vtype: "periodical" note: "session automata"}
-    {id: "K-9" type: "article" title: "Deciding Equivalence of Finite Tree Automata" author: "Seidl" date: 1990 venue: "SIAM J. Compute." vtype: "periodical"}
+    {id: "K-9" type: "article" title: "Deciding Equivalence of Finite Tree Automata" author: "Seidl" date: 1990 venue: "SIAM J. Comput." vtype: "periodical"}
     {id: "K-10" type: "article" title: "Tree Automata over Infinite Alphabets" author: "Kaminski & Tan" date: 2008}
     {id: "K-11" type: "article" title: "A Linear-Time Nominal μ-Calculus with Name Allocation" author: "Hausmann, Milius & Schröder" date: 2021 venue: "MFCS" vtype: "proceedings"}
     {id: "K-12" type: "article" title: "Scalar and Vectorial μ-Calculus with Atoms" author: "Klin & Łełyk" date: 2019 venue: "LMCS" vtype: "periodical"}
