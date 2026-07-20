@@ -916,17 +916,17 @@ mod tests
     }
 }
 
-/// Differential insurance that the L-machine retarget preserves shell
-/// semantics: [`run_program`] (the L path, `run_comp_with_host`) and the
-/// retiring CEK path ([`gandr_core_checker::eval::run_with_host`]) must agree
-/// on a program's [`ShellOutcome`].
+/// L-driver shell-outcome insurance: [`run_program`] (the L path,
+/// `run_comp_with_host`) preserves the observable [`ShellOutcome`] of a
+/// resuming host op and of an unhandled decline.
 ///
-/// The CEK leg **retires with the CEK at stage F**; until then it is cheap
-/// insurance that the retarget from the CEK binding to the L driver did not
-/// change any observable outcome. Both legs go through the same
-/// [`run_with_driver`] seam adaptation, so they are directly comparable.
+/// Through stage E these were an L-vs-CEK **differential** — each case also ran
+/// the retiring CEK host path (`gandr_core_checker::eval::run_with_host`) and
+/// asserted the two agreed, cheap insurance that the retarget from the CEK
+/// binding to the L driver changed no observable outcome. The CEK leg **retired
+/// with the CEK at stage F**; each case keeps its own expected L outcome.
 #[cfg(test)]
-mod differential
+mod l_host_outcomes
 {
     use gandr_core_checker::effect::EffectOp;
     use gandr_core_checker::effect::EffectSig;
@@ -940,20 +940,12 @@ mod differential
     use super::run_program;
     use crate::sig;
 
-    /// Runs `comp` through the retiring CEK host seam, adapted by the same
-    /// [`super::run_with_driver`] the L path uses, so the two outcomes compare
-    /// directly.
-    fn run_program_cek(comp: Comp) -> ShellOutcome
-    {
-        super::run_with_driver(|driver| gandr_core_checker::eval::run_with_host(comp, driver))
-    }
-
     #[test]
-    fn l_and_cek_agree_on_a_resuming_handler()
+    fn resuming_host_op_takes_the_reply_as_the_outcome()
     {
         // A deterministic resuming op: `Env::get` of an unset variable resumes
-        // with the empty string on both machines (no filesystem or process
-        // nondeterminism, unlike `tempdir` or `exec`).
+        // with the empty string (no filesystem or process nondeterminism,
+        // unlike `tempdir` or `exec`).
         let program = Comp::bind(
             Comp::perform(
                 sig::env(),
@@ -964,11 +956,6 @@ mod differential
             Comp::ret(Value::var("reply")),
         );
         let l = run_program(&program);
-        let cek = run_program_cek(program);
-        assert_eq!(
-            l, cek,
-            "the L and CEK host paths agree on a resuming handler"
-        );
         assert_eq!(
             Some(""),
             l.returned().and_then(Value::as_str).map(<&str>::from),
@@ -977,10 +964,10 @@ mod differential
     }
 
     #[test]
-    fn l_and_cek_agree_on_an_unhandled_decline()
+    fn unhandled_perform_blames_perform_no_handler()
     {
-        // A foreign signature the shell host does not claim: declined on both
-        // machines, blaming `PerformNoHandler`.
+        // A foreign signature the shell host does not claim: declined, blaming
+        // `PerformNoHandler`.
         let other = EffectSig::new("Other".into(), vec![EffectOp::new(
             "beep".into(),
             ValueType::Unit,
@@ -992,11 +979,6 @@ mod differential
             Comp::ret(Value::Unit),
         );
         let l = run_program(&program);
-        let cek = run_program_cek(program);
-        assert_eq!(
-            l, cek,
-            "the L and CEK host paths agree on an unhandled decline"
-        );
         assert!(
             matches!(
                 l,
