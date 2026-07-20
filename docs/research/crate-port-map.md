@@ -187,6 +187,10 @@ The concentrated-risk stacks:
 
 Context: `gandr-sequent` is sequent-machine phase **L0** (command IL + focusing `𝓕`), with the **L1** iterative arena machine _partial_ — the two-region store and pure-spine checkpoint landed behind the `L-run ∘ 𝓕 ≡ run` differential, effects/ control/native "substantially advanced" but not full L1 promotion (`wyrd@failed-refactor:docs/gandr/spec/proposal-sequent-kernel.md:3–8`, tracked on `wyrd-4xtv` / `wyrd-5qdq.1`).
 The CEK evaluator (`gandr_core::eval::run`) is the external oracle (`…/gandr-sequent/src/differential.rs:1–12`).
+
+**Currency (B1 stage F):** the CEK evaluator above has since retired in the reboot port — the L machine (`crates/core-sequent`, `machine.rs`) is now the sole operational driver, anchored by checked-in corpus outcome snapshots and property-differential snapshots rather than a live CEK oracle.
+The CEK-oracle references in this subsection — this one and the A3 cross-lane rule below — describe the `wyrd@failed-refactor` source tree as read at port-planning time, not current gandr reality.
+
 Three named residual seams — each a _defined_ `StuckReason::UnsupportedByReference`, never a panic:
 
 **A1 — the un-focusing readback residual.** The focused IL discards the source- syntax bodies `𝓕` consumed, so anything that is not a first-order value cannot be structurally read back; the inverse translation ("un-focusing", `𝓕⁻¹`) is unbuilt.
@@ -205,6 +209,7 @@ Concretely:
 
 **A3 — ADR-76 identity formers declined by the focusing translation.** Before focusing, `focus_comp`/`focus_value` scan the _entire_ program for identity formers (`Value::Here` / `Comp::Walk`, ADR-76); if any is reachable, the whole program focuses to **one** `FocusOrigin::Unsupported` decline — a hole producer cut against `★`, which the L machine runs to `UnsupportedByReference` (`…/focus.rs:1644–1706`: `focus_comp` at `1662–1672`, `unsupported_program` builder at `1681–1693`, `unsupported_former_scan` worklist at `1694+`).
 This is a deliberate **cross-lane rule**: this lane does not build L-machine Walk-β, and a partial per-node hole fallback "would silently disagree with the CEK oracle on realized items rather than declining" — so it declines whole and defers the identity fragment's realization to the parallel sequent lane (`…/focus.rs:1644–1653`; proposal `…/proposal-sequent-kernel.md:7`).
+That quoted "CEK oracle" retired at B1 stage F (subsection note above), leaving the L machine the sole driver.
 **Closing it:** build the L-machine Walk-β / identity-former realization so `𝓕` translates `Here`/`Walk` node-by-node instead of declining the program.
 
 **Adjacent (worth flagging).** The **ADR-80 declared-data eliminator** `Comp::DataCase` and the declared-data constructor value ride the _same_ whole-program decline as the identity formers (`…/focus.rs:1701–1703`, `1770–1781`).
