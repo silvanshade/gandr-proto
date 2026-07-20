@@ -10,6 +10,7 @@ members = [
   "crates/theory-nominal-automata",
   "crates/theory-orders",
   "crates/theory-recursion",
+  "crates/workflow-docs",
   "crates/workflow-dylint",
   "crates/workflow-gates",
 ]
@@ -33,6 +34,7 @@ default-features = false
 # BLAKE3 hashing for content and manifest digests.
 # consumers:
 # - gandr-workflow-gates
+# - gandr-workflow-docs (content-hash cache keys for compiled math/diagram SVG)
 [workspace.dependencies.blake3]
 version = "1.8.5"
 default-features = false
@@ -155,6 +157,16 @@ version = "1.12.4"
 default-features = false
 features = ["std", "unicode-perl"]
 
+# Read-only XML DOM for the spec doc tool's parse=validate pass. Pure Rust
+# (roxmltree -> xmlparser only; no regex family, no tree-sitter), so it stays
+# clear of the forbidden-default-graph gate (crates/workflow-gates/src/project.rs).
+# consumers:
+# - gandr-workflow-docs
+[workspace.dependencies.roxmltree]
+version = "0.20.0"
+default-features = false
+features = ["std"]
+
 # Serialization framework.
 # consumers:
 # - gandr-workflow-gates
@@ -214,6 +226,7 @@ default-features = false
 # YAML codec (pure-Rust YAML 1.2).
 # consumers:
 # - gandr-workflow-gates
+# - gandr-workflow-docs (reads the hayagriva refs.yml key set for cite resolution)
 [workspace.dependencies.yaml-rust2]
 version = "0.11.0"
 default-features = false
