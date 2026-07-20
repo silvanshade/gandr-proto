@@ -1,0 +1,30 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-graphs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Deterministic dense-u32 graph algorithms for gandr without exposing the petgraph adapter boundary"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "graph"
+path = "tests/graph.rs"
+
+[dependencies]
+fixedbitset = { workspace = true }
+petgraph = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true
