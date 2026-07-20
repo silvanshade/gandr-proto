@@ -47,6 +47,10 @@ extend-exclude = [
   # this bibliography YAML is scoped out. (The XML currently passes typos; the
   # exclude is here for the refs.yml failure mode as the register grows.)
   "docs/spec/refs.yml",
+  # scripts/refs-yml/data.nu embeds the register's citation rows verbatim (the
+  # refs.yml generator's data stage) — same identifier-not-prose class; typos
+  # has already auto-"corrected" author names in it (Tye, ISSE) when covered.
+  "scripts/refs-yml/data.nu",
   "docs/research/*.md",
   "vendor/**",
   "metatheory/vendor/**",
