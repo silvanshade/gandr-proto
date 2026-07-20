@@ -316,11 +316,16 @@ mod tests
             );
             // The clause bodies bind the payload `ep` (an ordinary value, bound
             // identically on both machines) but NOT the resumption `ek`: `ek` is
-            // a captured continuation, whose representation in *value* position
-            // diverges (the CEK α-renames it to a fresh neutral name in a side
-            // table; the L machine binds it a boxed stack), so returning `ek` as
-            // data is a listed residual — the resumption is exercised only in
-            // `resume ek …` position (the explicit resuming clause below).
+            // a captured continuation whose representation in *value* position
+            // the un-focusing readback `𝓕⁻¹` CANNOT reconcile — the CEK
+            // α-renames it to a fresh, run-unique side-table neutral (so its
+            // readback is a nondeterministic `Value::Var("%k…")`), while the L
+            // machine binds it a boxed continuation (whose readback is an opaque
+            // `Value::Stk`). The two carriers disagree by construction and the
+            // CEK's is not even stable across runs, so returning `ek` as data
+            // stays the k-in-value residual (§7a); the resumption is exercised
+            // only in `resume ek …` position (the explicit resuming clause
+            // below), where both machines agree.
             let clause_scope = extended(scope, &["ep".into()]);
             let ret_scope = extended(scope, &["ex".into()]);
             choices.push(
@@ -357,14 +362,15 @@ mod tests
             );
             choices.push(arb_comp(scope, below).prop_map(Comp::reset).boxed());
 
-            // `shift` — now faithful. Two safe shapes (a captured
-            // continuation in *value* position is a listed residual, so `k` is
-            // never returned as data): (1) `shift k. body` whose body is a pure
-            // comp under `scope` (WITHOUT `k`, so the capture is discarded); and
-            // (2) `shift k. resume k (ret fed)` (the captured continuation is
-            // re-invoked once with a pure value). Under an enclosing `reset` the
-            // capture reaches the prompt; undelimited (or across a handler) both
-            // machines agree on the `ShiftNoReset` blame.
+            // `shift` — now faithful. Two safe shapes (a captured continuation
+            // in *value* position is the k-in-value residual the un-focusing
+            // readback `𝓕⁻¹` cannot reconcile — see the `perform` clause above —
+            // so `k` is never returned as data): (1) `shift k. body` whose body
+            // is a pure comp under `scope` (WITHOUT `k`, so the capture is
+            // discarded); and (2) `shift k. resume k (ret fed)` (the captured
+            // continuation is re-invoked once with a pure value). Under an
+            // enclosing `reset` the capture reaches the prompt; undelimited (or
+            // across a handler) both machines agree on the `ShiftNoReset` blame.
             choices.push(
                 arb_comp(scope, below)
                     .prop_map(|body| Comp::shift("k", body))
