@@ -151,47 +151,48 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
 // vendored `.agents/core` submodule is not wired into the reboot yet. When the
 // core is re-vendored, restore the import and keep only this consumer section.
 //
-// Fixed scope vocabulary — the library layer / repo surface a gandr commit
-// touches. Compound scopes are comma-delimited and each part must be a member;
-// new areas are added here deliberately, never by free-form invention. The
-// `gandr-*` crate scopes anticipate the planned workspace; prune/grow them
-// with the crate schema.
+// Fixed scope vocabulary — the PROJECT-SPECIFIC library layer / repo surfaces a
+// gandr commit touches. makeConfig unions (and dedupes) this list with the base
+// CORE_SCOPES above, so process scopes (adr, ci, config, docs, format, gate,
+// repo, scripts, workflow, …) are core-provided and are NOT restated here.
+// Compound scopes are comma-delimited and each part must be a member; new areas
+// are added deliberately, never by free-form invention. Crate scopes track the
+// reboot's real crate directories (crates/<dir>); forward category scopes
+// (core-checker, core-sequent, runtime-host, theory-levitation/computads/
+// virtual-doctrines) anticipate the imminent buildout — prune/grow with the
+// crate schema.
 export default makeConfig([
   "analysis",
+  "core-checker",
+  "core-sequent",
   "coverage",
   "crates",
   "drift",
   "edit",
   "fuzz",
   "gandr",
-  "gandr-core",
-  "gandr-corpus",
-  "gandr-data",
-  "gandr-ffi",
-  "gandr-lsp",
-  "gandr-metatheory",
-  "gandr-pipeline",
-  "gandr-polygraph",
-  "gandr-render-proto",
-  "gandr-shell",
-  "gandr-tree-sitter",
-  "gandr-tui",
-  "gandr-vdc",
-  "incremental-pipeline",
   "kernel",
+  "kernel-strata",
   "knowledge",
   "metatheory",
   "mise",
-  "nominal",
-  "order-maintenance",
-  "pipeline",
-  "polygraphs",
   "profiles",
   "proptest",
+  "runtime-host",
   "rustdoc",
-  "shell",
   "spec",
   "surface",
+  "surface-driver",
+  "theory-computads",
+  "theory-graphs",
+  "theory-levitation",
+  "theory-nominal-automata",
+  "theory-orders",
+  "theory-recursion",
+  "theory-virtual-doctrines",
   "tooling",
+  "workflow-docs",
+  "workflow-dylint",
+  "workflow-gates",
   "wt",
 ]);

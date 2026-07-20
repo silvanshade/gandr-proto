@@ -81,7 +81,10 @@ beads-pull = "bd dolt pull"
 exclude = [
   ".beads/*.jsonl",
   "target/**",
-  "crates/gandr-tree-sitter/target/**",
+  # tree-sitter reference crate returns under crates/tree-sitter (not yet in the
+  # repo); the generic target/** above is root-anchored, so its nested target dir
+  # needs this explicit pattern — pre-retargeted ahead of the tree-sitter port.
+  "crates/tree-sitter/target/**",
   "fuzz/target/**",
   "fuzz/artifacts/**",
   "coverage/**",

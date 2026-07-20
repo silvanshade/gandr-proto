@@ -29,7 +29,7 @@
 #
 # PLAN.html: generated export of the approved wayfinder plan (gandr-fcw.14),
 # carrying bibliography author names and register/tracker ids (Tye, FoPSS,
-# wyrd-8ot, …) — the refs.yml class of identifier false positives. Mirrors the
+# gandr-8ot, …) — the refs.yml class of identifier false positives. Mirrors the
 # treefmt [formatter.typos]/[formatter.sizelint]/[formatter.oxfmt] excludes.
 extend-exclude = [
   "PLAN.html",

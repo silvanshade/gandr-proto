@@ -64,7 +64,10 @@ excludes = [
   "packages/tree-sitter-gandr/src/grammar.json",
   "packages/tree-sitter-gandr/src/node-types.json",
   "packages/tree-sitter-gandr/package-lock.json",
-  "crates/gandr-grammar-contract-fixtures/fixtures/manifest.json",
+  # Parked: the contract-fixtures crate is not in the repo yet, and its reboot
+  # dir name is unsettled (the crates/gandr-* prefix is retired) — restore or
+  # retarget this exclude with the surface-grammar/fixtures port.
+  # "crates/gandr-grammar-contract-fixtures/fixtures/manifest.json",
   "PLAN.html",
 ]
 
@@ -176,7 +179,7 @@ includes = ["*"]
 # from docs/research/bibliography-v2.md) — author names and citation ids are
 # identifiers; the realized refs.yml failure mode. Mirrored in typos.toml.
 # PLAN.html: generated export carrying bibliography author names and register/
-# tracker ids (Tye, FoPSS, wyrd-8ot, …) — the same class; mirrored in
+# tracker ids (Tye, FoPSS, gandr-8ot, …) — the same class; mirrored in
 # typos.toml extend-exclude.
 excludes = [
   "*.typ",
