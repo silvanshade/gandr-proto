@@ -8,6 +8,7 @@ members = [
   "crates/core-sequent",
   "crates/kernel-strata",
   "crates/surface-driver",
+  "crates/theory-computads",
   "crates/theory-graphs",
   "crates/theory-levitation",
   "crates/theory-nominal-automata",

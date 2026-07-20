@@ -1,0 +1,31 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-theory-computads"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Fusion by Squier completion over the command IL: an oriented cell store, cut-seam overlap enumeration, budgeted Knuth-Bendix/Squier completion, and replayable tracelet 3-cell certificates (sequent-machines phase L2; ADR-65/68/69, proposal-sequent-kernel.md section 7 + VDC addendum)"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "polygraph"
+path = "tests/polygraph.rs"
+
+[dependencies]
+gandr-core-sequent = { path = "../core-sequent" }
+gandr-theory-graphs = { path = "../theory-graphs" }
+gandr-theory-levitation = { path = "../theory-levitation" }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

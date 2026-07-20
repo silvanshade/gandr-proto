@@ -1,0 +1,466 @@
+//! **Two-mode certificate composition** and the **acyclicity gate** (ADR-69 D3;
+//! `proposal-vdc-reflection.md` §4.1, §4.3; VDC addendum §A).
+//!
+//! Chaining derived transformations (certificates) has two costs, and the
+//! categorical line proves they behave differently:
+//!
+//! - **invertible / coherence lane** ([`compose_invertible`]): both
+//!   certificates live in the groupoid fragment (completion-emitted joinability
+//!   certificates), where dinaturals *always* compose (LLV Thm 4.5).
+//!   Composition is **unconditional** — no gate.
+//! - **directed lane** ([`compose_directed`]): oriented certificates are
+//!   dinaturality-shaped, and dinaturals compose only under **loop-freeness**
+//!   (LLV Thm 5.3's no-full-cut, the Danos–Regnier proof-net pedigree of §4.3).
+//!   The gate builds the **variable-flow graph** across the composed seam,
+//!   preserving *both* face-internal directions for `Mixed`-variance holes, and
+//!   [`cycle_witness`] it **once**: a cycle DECLINES the composition, carrying
+//!   the cycle as the diagnostic (the completion-budget posture —
+//!   decline-with-report, never divergence or panic).
+//!
+//! Both modes glue the certificates **sequentially**: `a`'s certified output
+//! (`a.joins_at`) is `b`'s certified input (`b.overlap.peak`), and the
+//! composite certificate replays as `a`'s recorded derivation followed by `b`'s
+//! (the identity that keeps grafting associative/unital is replay-equivalence,
+//! [`crate::tracelet::replay_equivalent`], ADR-69 D1).
+//!
+//! # The graph seam
+//!
+//! Nodes are `(CellId, MetaVar)` — the metavariable holes of the cells the two
+//! certificates fire, restricted to those the **seam variables** (the holes of
+//! `a.joins_at`) touch. Edges carry the face-internal flow across the seam:
+//!
+//! - a **producer** hole flows forward, `a`-side → `b`-side;
+//! - a **consumer** hole flows backward, `b`-side → `a`-side;
+//! - a **`Mixed`** hole (a name at both polarities — `μ`/`μ̃` and cocase create
+//!   it) flows **both** ways, so a shared `Mixed` seam hole closes a loop.
+//!
+//! The criterion is a **sufficient** loop-freeness check (conservative by
+//! design: the reversal trigger of ADR-69 is "refine the criterion, never
+//! remove the gate"). A single cell is never gated — with no seam there are no
+//! edges, so cell *application* (as opposed to certificate *composition*) is
+//! untouched.
+
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
+
+use gandr_theory_graphs::CycleWitness;
+use gandr_theory_graphs::EdgeSource;
+use gandr_theory_graphs::NodeCount;
+use gandr_theory_graphs::NodeId;
+use gandr_theory_graphs::cycle_witness;
+
+use crate::boundary::HoleNameRef;
+use crate::boundary::VarianceFlowRole;
+use crate::cell::CellId;
+use crate::cell::CellStore;
+use crate::cell::CellVariance;
+use crate::pattern::CmdPat;
+use crate::pattern::MetaVar;
+use crate::pattern::collect_cmd_metavars;
+use crate::tracelet::Tracelet;
+
+/// A **variable-flow cycle** obstructing directed certificate composition
+/// (`proposal-vdc-reflection.md` §4.3; ADR-69 D3).
+///
+/// The `cycle` is the closed walk of `(CellId, MetaVar)` holes whose seam flow
+/// loops — the decline diagnostic. A `Mixed`-variance seam hole (shared across
+/// the composed seam) is the canonical cause: it flows both ways, so it closes
+/// a loop the directed lane cannot admit (over groupoids it could —
+/// [`compose_invertible`]).
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[expect(
+    clippy::exhaustive_structs,
+    reason = "a composition obstruction is exactly its variable-flow cycle; it is produced by compose_directed and read by the decline diagnostic"
+)]
+pub struct CompositionObstruction
+{
+    /// The closed walk of `(cell, hole)` nodes the seam flow loops through.
+    pub cycle: Vec<(CellId, MetaVar)>,
+}
+
+/// **Compose two invertible certificates** — the coherence lane, unconditional
+/// (LLV Thm 4.5: over groupoids, dinaturals always compose).
+///
+/// The composite certifies `a.overlap.peak ~> b.joins_at` by replaying `a`'s
+/// derivation then `b`'s; it reuses `a`'s overlap (whose peak is the
+/// composite's input boundary) and concatenates the recorded paths. No
+/// acyclicity gate: the invertible flag ([`crate::cell::CellMeta::invertible`])
+/// is the caller's warrant that both certificates live in the groupoid
+/// fragment.
+///
+/// # Contract
+/// - requires: `a.joins_at == b.overlap.peak` (`a`'s certified output is `b`'s
+///   certified input — the sequential seam), and both certificates are
+///   invertible joinability certificates (the coherence lane); under the seam
+///   precondition the result replays (paths concatenate positionally, since
+///   `a`'s derivation lands exactly on `b`'s peak).
+/// - ensures: a tracelet whose `path_a` / `path_b` are `a`'s followed by `b`'s
+///   and whose `joins_at` is `b.joins_at`.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the linear ground chain fixture composes two
+///   real fused certificates and the composite replays over the store; the
+///   paths are the concatenation.
+/// - witness: `composition::tests::invertible_composition_of_a_ground_chain_replays`
+#[inline]
+#[must_use]
+pub fn compose_invertible(
+    a: &Tracelet,
+    b: &Tracelet,
+) -> Tracelet
+{
+    graft(a, b)
+}
+
+/// **Compose two directed certificates**, gated by variable-flow acyclicity
+/// across the composed seam (ADR-69 D3; the decline-with-report posture).
+///
+/// Builds the seam variable-flow graph (nodes `(CellId, MetaVar)`, edges the
+/// face-internal flow with both directions for `Mixed` holes), calls
+/// [`cycle_witness`] **once**, and either declines
+/// (a validated closed walk mapped back to `(CellId, MetaVar)`) or composes
+/// (the sequential graft, as [`compose_invertible`]).
+///
+/// # Contract
+/// - requires: `a.joins_at == b.overlap.peak` (the sequential seam) for the
+///   `Ok` composite to replay; the `Err` path (a cycle) needs no seam agreement
+///   — the loop is read from the cells' variance alone.
+/// - ensures: `Ok(tracelet)` (the graft) when the seam variable-flow graph is
+///   acyclic; `Err(obstruction)` carrying the closed `(cell, hole)` cycle when
+///   a shared seam hole (canonically `Mixed`) loops the flow. Never diverges or
+///   panics — the gate is a bounded static check.
+/// - panics: none.
+///
+/// # Errors
+/// Returns [`CompositionObstruction`] when the composed seam variable-flow
+/// graph contains a directed cycle.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the mixed-variance cycle fixture drives this
+///   function to `Err` and validates the returned cycle is a closed walk of
+///   `(CellId, MetaVar)` nodes over the participating cells with the `Mixed`
+///   hole `r`; the linear ground chain drives it to `Ok` and the composite
+///   replays.
+/// - witness: `composition::tests::directed_composition_declines_a_mixed_variance_cycle`
+/// - witness: `composition::tests::directed_composition_of_a_ground_chain_replays`
+#[inline]
+pub fn compose_directed(
+    a: &Tracelet,
+    b: &Tracelet,
+    store: &CellStore,
+) -> Result<Tracelet, CompositionObstruction>
+{
+    let graph = VarFlowGraph::build(a, b, store);
+    // One call; a well-formed dense graph never surfaces a validation error, so
+    // an (unreachable) boundary failure is read as "no cycle found".
+    match cycle_witness(&graph).ok().flatten() {
+        | Some(witness) => Err(graph.obstruction(&witness)),
+        | None => Ok(graft(a, b)),
+    }
+}
+
+/// Graft `b`'s derivation onto `a`'s: the sequential composite certificate.
+///
+/// # Contract
+/// - requires: `a.joins_at == b.overlap.peak` for the result to replay.
+/// - ensures: a tracelet reusing `a.overlap`, with each path the concatenation
+///   of `a`'s and `b`'s, joining at `b.joins_at`.
+/// - panics: none.
+#[inline]
+fn graft(
+    a: &Tracelet,
+    b: &Tracelet,
+) -> Tracelet
+{
+    let mut path_a = a.path_a.clone();
+    path_a.extend(b.path_a.iter().cloned());
+    let mut path_b = a.path_b.clone();
+    path_b.extend(b.path_b.iter().cloned());
+    Tracelet {
+        overlap: a.overlap.clone(),
+        path_a,
+        path_b,
+        joins_at: b.joins_at.clone(),
+    }
+}
+
+/// The dense **variable-flow graph** of a composed seam — an
+/// [`EdgeSource`] over `(CellId, MetaVar)` nodes.
+struct VarFlowGraph
+{
+    /// The nodes, densely indexed; dense id `i` is node `nodes[i]`.
+    nodes: Vec<(CellId, MetaVar)>,
+    /// Outgoing successor dense ids per node, indexed by dense id.
+    adjacency: Vec<Vec<NodeId>>,
+}
+
+impl VarFlowGraph
+{
+    /// Build the seam variable-flow graph for composing `a` then `b`.
+    ///
+    /// # Contract
+    /// - ensures: a dense graph whose nodes are the `(cell, hole)` endpoints
+    ///   the seam variables (the holes of `a.joins_at`) touch across `a`'s and
+    ///   `b`'s participating cells, and whose edges are the face-internal flow
+    ///   — `a`→`b` for a producer role, `b`→`a` for a consumer role, both for a
+    ///   `Mixed` role; every edge target is a valid node index.
+    /// - panics: none.
+    #[inline]
+    fn build(
+        a: &Tracelet,
+        b: &Tracelet,
+        store: &CellStore,
+    ) -> Self
+    {
+        let a_cells = participating_cells(a);
+        let b_cells = participating_cells(b);
+        let mut builder = GraphBuilder::default();
+        for name in seam_names(&a.joins_at).0 {
+            let a_endpoints = endpoints(&a_cells, name.as_ref().into(), store);
+            let b_endpoints = endpoints(&b_cells, name.as_ref().into(), store);
+            if a_endpoints.is_empty() || b_endpoints.is_empty() {
+                // Not shared across the seam — no cross flow.
+                continue;
+            }
+            let forward = a_endpoints
+                .iter()
+                .chain(&b_endpoints)
+                .any(|&(_, _, variance)| bool::from(producer_role(variance)));
+            let backward = a_endpoints
+                .iter()
+                .chain(&b_endpoints)
+                .any(|&(_, _, variance)| bool::from(consumer_role(variance)));
+            for a_endpoint in &a_endpoints {
+                for b_endpoint in &b_endpoints {
+                    let node_a = builder.intern(a_endpoint.0, &a_endpoint.1);
+                    let node_b = builder.intern(b_endpoint.0, &b_endpoint.1);
+                    if forward {
+                        builder.edge(node_a, node_b);
+                    }
+                    if backward {
+                        builder.edge(node_b, node_a);
+                    }
+                }
+            }
+        }
+        builder.finish()
+    }
+
+    /// Map a validated cycle witness back to the semantic `(CellId, MetaVar)`
+    /// obstruction.
+    ///
+    /// # Contract
+    /// - ensures: the witness node walk (its closing duplicate dropped) mapped
+    ///   through [`VarFlowGraph::nodes`]; ids outside the node range are
+    ///   skipped (a defensive guard — a well-formed witness stays in range).
+    /// - panics: none.
+    #[inline]
+    fn obstruction(
+        &self,
+        witness: &CycleWitness,
+    ) -> CompositionObstruction
+    {
+        // Drop the trailing node that closes the walk (`first == last`).
+        let walk = witness
+            .nodes
+            .split_last()
+            .map_or(witness.nodes.as_slice(), |(_, rest)| rest);
+        let mut cycle = Vec::with_capacity(walk.len());
+        for &node in walk {
+            if let Some(entry) = usize::try_from(u32::from(node))
+                .ok()
+                .and_then(|index| self.nodes.get(index))
+            {
+                cycle.push(entry.clone());
+            }
+        }
+        CompositionObstruction { cycle }
+    }
+}
+
+impl EdgeSource for VarFlowGraph
+{
+    type Successors<'successors>
+        = core::iter::Copied<core::slice::Iter<'successors, NodeId>>
+    where
+        Self: 'successors;
+
+    #[inline]
+    fn node_count(&self) -> NodeCount
+    {
+        NodeCount::from(u32::try_from(self.nodes.len()).unwrap_or(u32::MAX))
+    }
+
+    #[inline]
+    fn successors(
+        &self,
+        node: NodeId,
+    ) -> Self::Successors<'_>
+    {
+        let empty: &[NodeId] = &[];
+        usize::try_from(u32::from(node))
+            .ok()
+            .and_then(|index| self.adjacency.get(index))
+            .map_or(empty, Vec::as_slice)
+            .iter()
+            .copied()
+    }
+}
+
+/// Accumulates the dense node table and edge set of a [`VarFlowGraph`].
+#[derive(Default)]
+struct GraphBuilder
+{
+    /// The interned nodes, in allocation order (dense id order).
+    nodes: Vec<(CellId, MetaVar)>,
+    /// The dense id assigned to each `(cell, hole name)` key.
+    index: BTreeMap<(CellId, Box<str>), NodeId>,
+    /// Outgoing successor dense ids per node, indexed by dense id.
+    adjacency: Vec<Vec<NodeId>>,
+}
+
+impl GraphBuilder
+{
+    /// The dense id for `(cell, hole)`, allocating one on first sight.
+    #[inline]
+    fn intern(
+        &mut self,
+        cell: CellId,
+        var: &MetaVar,
+    ) -> NodeId
+    {
+        let key = (cell, var.name.clone());
+        if let Some(&id) = self.index.get(&key) {
+            return id;
+        }
+        let id = NodeId::from(u32::try_from(self.nodes.len()).unwrap_or(u32::MAX));
+        self.nodes.push((cell, var.clone()));
+        self.adjacency.push(Vec::new());
+        self.index.insert(key, id);
+        id
+    }
+
+    /// Add a directed edge, deduplicating parallel edges.
+    #[inline]
+    fn edge(
+        &mut self,
+        from: NodeId,
+        to: NodeId,
+    )
+    {
+        if let Some(row) = usize::try_from(u32::from(from))
+            .ok()
+            .and_then(|index| self.adjacency.get_mut(index))
+            && !row.contains(&to)
+        {
+            row.push(to);
+        }
+    }
+
+    /// The finished graph.
+    #[inline]
+    fn finish(self) -> VarFlowGraph
+    {
+        VarFlowGraph {
+            nodes: self.nodes,
+            adjacency: self.adjacency,
+        }
+    }
+}
+
+/// Whether a variance contributes a **producer** (forward) flow role.
+#[inline]
+fn producer_role(variance: CellVariance) -> VarianceFlowRole
+{
+    VarianceFlowRole::from(matches!(
+        variance,
+        CellVariance::Producer | CellVariance::Mixed
+    ))
+}
+
+/// Whether a variance contributes a **consumer** (backward) flow role.
+#[inline]
+fn consumer_role(variance: CellVariance) -> VarianceFlowRole
+{
+    VarianceFlowRole::from(matches!(
+        variance,
+        CellVariance::Consumer | CellVariance::Mixed
+    ))
+}
+
+/// The distinct cells a certificate fires, in first-appearance order over
+/// `path_a` then `path_b` (deterministic).
+///
+/// # Contract
+/// - ensures: each [`CellId`] in `path_a`/`path_b` once, in first-appearance
+///   order.
+/// - panics: none.
+#[inline]
+fn participating_cells(tracelet: &Tracelet) -> Vec<CellId>
+{
+    let mut cells = Vec::new();
+    for step in tracelet.path_a.iter().chain(&tracelet.path_b) {
+        if !cells.contains(&step.cell) {
+            cells.push(step.cell);
+        }
+    }
+    cells
+}
+
+/// Distinct seam-hole names in first-occurrence order.
+#[repr(transparent)]
+struct SeamNames(Vec<Box<str>>);
+
+/// The distinct hole names of a command pattern (the seam variables), in
+/// first-occurrence order.
+///
+/// # Contract
+/// - ensures: one entry per distinct [`MetaVar::name`], preserving first
+///   occurrence.
+/// - panics: none.
+#[inline]
+fn seam_names(cmd: &CmdPat) -> SeamNames
+{
+    let mut occurrences = Vec::new();
+    collect_cmd_metavars(cmd, &mut occurrences);
+    let mut names: Vec<Box<str>> = Vec::new();
+    for mv in occurrences {
+        if !names.iter().any(|name| **name == *mv.name) {
+            names.push(mv.name);
+        }
+    }
+    SeamNames(names)
+}
+
+/// The `(cell, hole, variance)` endpoints among `cells` whose derived metadata
+/// carries the hole `name`.
+///
+/// # Contract
+/// - ensures: one endpoint per `(cell, matching hole)`, reading the live
+///   [`crate::cell::CellMeta`] ([`crate::cell::CellMeta::derive`]) of each
+///   present cell; a stale id contributes nothing.
+/// - panics: none.
+#[inline]
+fn endpoints(
+    cells: &[CellId],
+    name: HoleNameRef<'_>,
+    store: &CellStore,
+) -> Vec<(CellId, MetaVar, CellVariance)>
+{
+    let mut out = Vec::new();
+    for &cell in cells {
+        let Some(entry) = store.get(cell)
+        else {
+            continue;
+        };
+        for var_meta in &entry.meta.vars {
+            if var_meta.var.name.as_ref() == name.as_ref() {
+                out.push((cell, var_meta.var.clone(), var_meta.variance));
+            }
+        }
+    }
+    out
+}
