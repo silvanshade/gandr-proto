@@ -1,0 +1,129 @@
+<component derives="spec-index" grounds="host-effect-seam" id="sequent-kernel" spec-version="1" status="partial" title="The sequent kernel: the polarized L command IL and machine (phases L0-L1)">
+  <section id="sk-overview" title="Overview and decisions">
+    <prose>
+      The sequent kernel adopts a
+      <term-def key="command-il">polarized command IL</term-def>
+      — a System-L (lambda-mu-mu-tilde) intermediate language whose producers, consumers, and commands are first-class, arena-resident, inspectable IR — as gandr's machine-and-optimization IL, beside the frozen call-by-push-value core
+      <cite key="A-1a"/>
+      , which remains the source and typing calculus. A static focusing translation bridges them. The correspondence is established: polarized L is call-by-push-value in sequent form
+      <cite key="A-19"/>
+      <cite key="A-17"/>
+      , and the machine gandr already had is sequent-shaped, so the kernel reifies existing structure rather than replacing it
+      <cite key="A-20"/>
+      .
+    </prose>
+    <prose>
+      This component absorbs the two operational phases the kernel work builds on. Phase L0 reifies the command IL and the focusing translation; phase L1 runs the focused IL on the
+      <term-def key="l-machine">L machine</term-def>
+      — the iterative, first-order, arena-native driver — over a two-region store, executing the full effect and control surface. The later phases are named here but their design is not absorbed in this pass: phase L2 is a fusion engine over command seams (2-cells completed with replayable certificates), and phase L3 is an explicit, evidence-gated promotion decision. No phase touches the frozen core before L3.
+    </prose>
+    <prose>The reboot carries L0 as built and L1 as partial (crate core-sequent), beside the frozen core and touching no frozen-core code: it consumes the public core-checker surface only.</prose>
+  </section>
+  <section id="sk-il" title="The kernel IL">
+    <prose>
+      Three syntactic categories. A
+      <term-def key="producer">producer</term-def>
+      p introduces values and captures contexts; a
+      <term-def key="consumer">consumer</term-def>
+      c is a covariable, a binder, a destructor frame, a pattern match, or the terminal consumer; a
+      <term-def key="command">command</term-def>
+      s is a cut carrying a polarity, a native operation, or a top-level jump. Every node is arena-resident and binders close over environments, never host closures.
+    </prose>
+    <grammar>
+      <production symbol="p">x | lit | μα. s | K(p̄; c̄) | cocase { D(x̄; ᾱ) ⇒ s, … }</production>
+      <production symbol="c">α | μ̃x. s | D(p̄; c̄) | case { K(x̄; ᾱ) ⇒ s, … } | ★</production>
+      <production symbol="s">⟨p |ε c⟩ | prim(p̄; c̄) | f(p̄; c̄)</production>
+    </grammar>
+    <prose>
+      A
+      <term-def key="cut">cut</term-def>
+      ⟨p |ε c⟩ is the machine's redex site: it carries a polarity ε and requires the producer and consumer to meet at the same type, with ε matching that type's polarity. Mixed argument lists are semicolon-separated (producers before consumers); a destructor's trailing consumer is its return continuation, so a stack frame is a covalue. The IL's own discipline is the two-sided sequent (internal to core-sequent, a debug-assertion face used by the differential harness, not the user-facing gate):
+    </prose>
+    <judgements title="Two-sided IL typing">
+      <math>Gamma tack.r p : A | Delta</math>
+      <math>Gamma | c : A tack.r Delta</math>
+      <math>Gamma tack.r s tack.r Delta</math>
+    </judgements>
+  </section>
+  <section id="sk-focusing" title="Focusing: the core-to-command translation">
+    <prose>
+      Surface elaboration continues to target the frozen core. A static
+      <term-def key="focusing">focusing</term-def>
+      translation takes checked core computations to focused commands; it is the only entry into the IL, so the machine only ever sees focused states (progress holds only for focused commands — un-focused input can be stuck). Focusing is administrative-redex-avoiding and total on well-formed core terms — a phase-L0 gate — and is itself differentially anchored (a checked term and its focused image denote the same observable outcome).
+    </prose>
+    <code language="text">𝓕⟦ret v⟧ α          = ⟨𝓥⟦v⟧ | α⟩
+𝓕⟦let x ← t; u⟧ α   = 𝓕⟦t⟧ (μ̃x. 𝓕⟦u⟧ α)          -- Bind is μ̃
+𝓕⟦t v⟧ α            = 𝓕⟦t⟧ (ap(𝓥⟦v⟧; α))          -- application is the ap destructor
+𝓕⟦λx. t⟧            = cocase { ap(x; α) ⇒ 𝓕⟦t⟧ α } -- the IL-internal function representation
+𝓕⟦force v⟧ α        = ⟨𝓥⟦v⟧ | force(α)⟩           -- the U-shift destructor
+𝓕⟦case v {…}⟧ α     = ⟨𝓥⟦v⟧ | case { K(x̄) ⇒ 𝓕⟦tᵢ⟧ α, … }⟩</code>
+    <prose>Two spec-anchored correspondences the reboot pins: a stack frame is a consumer (the argument coterm is ap, the bind continuation is μ̃, a projection is a destructor), and a lambda or lazy pair is a cocase (negative introduction eliminated by copatterns). Two classical wins arrive free: case-of-case (commuting conversions are plain μ-reductions, no pass) and label/goto as derived forms (μ is lexically-scoped context capture).</prose>
+  </section>
+  <section id="sk-machine" title="The L machine and its store">
+    <prose>The L machine is a flat loop over the cut cases — iterative by construction, serializable and inspectable at every step (commands, consumers, and the store are all IR data). Each transition extends the environment; none substitutes textually. A terminal state is ⟨𝔭 | ★⟩.</prose>
+    <code language="text">⟨μα.s |ε c⟩       ↦  s  with env[α ↦ eval_c(c)]           (fires first when ε = +)
+⟨𝔭 |ε μ̃x.s⟩       ↦  s  with env[x ↦ eval_p(𝔭)]           (fires first when ε = −)
+⟨K(𝔭̄;𝔠̄) | case {…, K(x̄;ᾱ) ⇒ s, …}⟩  ↦  s  with env[x̄↦𝔭̄, ᾱ↦𝔠̄]
+⟨cocase {…, D(x̄;ᾱ) ⇒ s, …} | D(𝔭̄;𝔠̄)⟩ ↦  s  with env[x̄↦𝔭̄, ᾱ↦𝔠̄]
+prim(𝔭̄; c̄)       ↦  dispatch to the native registry, feeding results to c̄
+f(𝔭̄; c̄)          ↦  the body of f with env[params]        (a jump; no call stack)</code>
+    <prose>
+      The
+      <term-def key="two-region-store">two-region store</term-def>
+      pairs a persistent heap for duplicable values with a frame stack of addressable equation frames, under a shrink rule (returning through a covalue drops every frame allocated after it)
+      <cite key="A-31"/>
+      . The store keeps the machine's own call-by-need semantics — a memo cell (unforced, in-progress, forced, with black-holing) is a stored negative binding with update-on-force. Residency is a per-cell store property, never a type former: grades inform initial placement (a heuristic) while an escape-promotion barrier carries soundness. L1 ships heap-everything behind a region-shaped API, so the machine differential measures the machine and not placement; the refined grade-to-region map is a gated follow-on.
+    </prose>
+  </section>
+  <section id="sk-strategy" title="Strategy as polarity orientation">
+    <prose>
+      The command ⟨μα.s₁ | μ̃x.s₂⟩ is the fundamental critical pair: μ wants to capture the consumer, μ̃ wants to bind the producer, and the two results differ. The resolution is typed and local —
+      <term-def key="polarity-orientation">polarity orientation</term-def>
+      : every cut carries ε, positive cuts give μ priority (call-by-value, data flows), negative cuts give μ̃ priority (call-by-name, demand flows). The type fixes ε, so determinism is restored per seam rather than by a global language switch, and an evaluation strategy becomes an orientation choice on a cell. Two consequences bind the engine: η-laws are strategy-tied (codata η only under call-by-name, data η only under call-by-value), and ε is always derivable from the type at elaboration, so the IL never guesses.
+    </prose>
+  </section>
+  <section id="sk-effects" title="Effects and control as consumer patterns">
+    <prose>The three existing control mechanisms translate into one shape — case analysis on the consumer side. A deep handler is a consumer case on operation constructors binding the resumption as a covalue; reset is a prompt covalue; shift captures the consumer up to it (μ-capture); break and continue are effect operations caught by loop handlers. Deep handlers re-install themselves in the captured resumption exactly as before, and the captured slice is first-class IL data rather than a name-keyed side table — strictly more inspectable.</prose>
+    <code language="text">handler  H = handler { opᵢ(x̄; k) ⇒ sᵢ, …, return(x) ⇒ s₀ }   (a consumer)
+perform  ⟨op(𝔭̄) | H⟩  ↦  sᵢ with x̄ ↦ 𝔭̄, k ↦ the delimited resumption covalue
+reset    = a prompt covalue; shift captures the consumer up to it (μ-capture)</code>
+    <prose>
+      The posture is translate, don't redesign: the surface (perform, handle, reset, shift, and the loop operations) is unchanged; only the machine realization becomes consumer-shaped. The
+      <term key="host-effect-seam"/>
+      is unchanged by this translation. It is a
+      <term key="preserved-boundary"/>
+      : the L machine must present the identical host seam the earlier machine did, over the public value and effect-signature surface, so the headless host-effect runtime binds against the same contract regardless of which machine drives it.
+    </prose>
+  </section>
+  <section id="sk-phases" title="Phases and gates">
+    <prose>
+      The kernel lands in four gated
+      <term-def key="phase-gates">phase gates</term-def>
+      , none touching the frozen core before the last. Each phase carries its own status below.
+    </prose>
+    <section id="sk-phase-l0" status="built" title="Phase L0 — the command IR and focusing">
+      <prose>The command IR, the focusing translation, a pretty-printer, and inspection hooks. Its gate: focusing is total on the corpus and the typed-IL debug assertions pass.</prose>
+    </section>
+    <section id="sk-phase-l1" status="partial" title="Phase L1 — the L machine and its differential">
+      <prose>The L machine: transitions, store, memo write-back, and a single step budget. Its gate was the differential L-run of the focused image agreeing with the driver on the full corpus plus property strategies. Through the migration the CEK machine was the external oracle: an independently-maintained implementation of the same operational semantics, so agreement was evidence for the L machine's correctness. The CEK retired at B1 stage F, so the L machine is now the sole driver; the differential's reference is the frozen outcome snapshots that captured the final oracle-agreeing run — the same canonicalization, its reference now a fixture rather than a live second machine — and the conformance soundness rows are re-anchored on L outcomes. L1 is partial: the readback residuals stay tracked (the un-focusing translation, prelude free-name resolution in force position, the whole-program identity-former decline, and the declared-data eliminator decline), each reporting a defined unsupported-by-reference outcome rather than a panic.</prose>
+    </section>
+    <section id="sk-phase-l2" status="adopted-unbuilt" title="Phase L2 — the fusion engine">
+      <prose>A cell store, overlap enumeration at cut seams, Squier completion, and replayable certificates, flipping rewrite rules from parse-and-decline to accepted-behind-gate. Its design is not absorbed in this pass and remains queued.</prose>
+    </section>
+    <section id="sk-phase-l3" status="design-pass" title="Phase L3 — the promotion decision">
+      <prose>
+        The promotion decision, an ADR either way: L stays the runtime and optimization IL with the call-by-push-value core canonical (the Sequent Core position
+        <cite key="A-21"/>
+        ), or command syntax enters the frozen core. It is explicit, evidence-based, and reversible until taken; its design is not absorbed here.
+      </prose>
+    </section>
+  </section>
+  <references>
+    <cite key="A-1a"/>
+    <cite key="A-17"/>
+    <cite key="A-19"/>
+    <cite key="A-20"/>
+    <cite key="A-21"/>
+    <cite key="A-31"/>
+  </references>
+</component>
