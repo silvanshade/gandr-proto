@@ -2012,107 +2012,13 @@ pub fn eval_comp(comp: Comp) -> Eval
     }
 }
 
-/// The host's reply to an intercepted effect operation — the host-effect seam
-/// (ADR-35 D4).
-///
-/// A [`HostHandler`] either resumes the operation with a value or declines it,
-/// leaving the machine to take its ordinary step (which blames
-/// [`Blame::PerformNoHandler`] on an unclaimed `perform`).
-#[derive(Clone, Debug)]
-#[non_exhaustive]
-pub enum HostReply
-{
-    /// Resume the intercepted operation with this reply value — the machine
-    /// continues as if an always-resume ambient handler resumed the
-    /// continuation (see [`HostHandler`] for the exact intercept-set
-    /// invariant).
-    Resume(
-        /// The value delivered to the performing continuation.
-        Value,
-    ),
-    /// Decline the operation — the machine takes its ordinary step, blaming
-    /// [`Blame::PerformNoHandler`] when no in-term handler catches it.
-    Unhandled,
-}
-
-/// A host-side interpreter for the effect operations no source-level handler
-/// claims — the host-effect seam (ADR-35 D4; the earliest bootstrap gate).
-///
-/// **Invariant.** The host intercepts EXACTLY the operations that would
-/// otherwise [`Blame::PerformNoHandler`] — those no source-level handler claims
-/// across the structural prefix (see [`State::pending_host_op`]). This equals
-/// an identity-return, always-resume ambient handler ONLY in the absence of a
-/// `reset` and of intervening non-matching handlers: a `perform` cut off from
-/// its in-term handler by an intervening [`Cont::Reset`] or a non-matching
-/// [`Cont::Handle`] is host-interceptable here even though that handler
-/// encloses it in a from-the-outside reading (the v0 structural single-handler
-/// scope, pinned by `host_seam_intercepts_across_a_reset` and
-/// `host_seam_intercepts_across_an_intervening_handler`).
-///
-/// [`run_state_with_host`] offers the host every such `perform` (see
-/// [`State::pending_host_op`]) and either resumes ([`HostReply::Resume`]) or
-/// declines ([`HostReply::Unhandled`]). The handler sees only the public
-/// [`Value`] / [`EffectSig`] surface and the operation *name* — never a
-/// continuation frame — so the seam stays representation-independent across
-/// machine/arena changes.
-///
-/// Any `FnMut(&EffectSig, &str, &Value) -> HostReply` is a `HostHandler` via
-/// the blanket impl below, so a closure suffices for the common case.
-pub trait HostHandler
-{
-    /// Handles the operation `op` of signature `sig` performed with `payload`,
-    /// returning the host's [`HostReply`].
-    ///
-    /// # Contract
-    /// - ensures: [`HostReply::Resume`] to continue the machine with a reply,
-    ///   or [`HostReply::Unhandled`] to let it take its ordinary (blaming)
-    ///   step.
-    fn handle<'source, O>(
-        &mut self,
-        sig: &EffectSig,
-        op: O,
-        payload: &Value,
-    ) -> HostReply
-    where
-        O: Into<OperationName<'source>>;
-}
-
-impl<F> HostHandler for F
-where
-    F: FnMut(&EffectSig, &str, &Value) -> HostReply,
-{
-    #[inline]
-    fn handle<'source, O>(
-        &mut self,
-        sig: &EffectSig,
-        op: O,
-        payload: &Value,
-    ) -> HostReply
-    where
-        O: Into<OperationName<'source>>,
-    {
-        let op = op.into();
-        self(sig, op.as_ref(), payload)
-    }
-}
-
-/// A host-interceptable effect operation carried out of the machine as an
-/// **owned** payload (ADR-35 D4; see [`State::pending_host_op`]).
-///
-/// Owned by design: under the coming arena the payload is a node with no
-/// `&Value` to borrow, so the seam hands the host a self-contained operation
-/// over the public [`Value`] API rather than a borrow into machine internals.
-#[derive(Clone, Debug)]
-#[non_exhaustive]
-pub struct HostOp
-{
-    /// The effect signature `E` the operation belongs to.
-    pub sig: EffectSig,
-    /// The operation's name (an operation of `sig`).
-    pub op: String,
-    /// The performed payload, with type annotations stripped.
-    pub payload: Value,
-}
+// The host-effect seam types (`HostOp`, `HostReply`, `HostHandler`) live in
+// `crate::host` — their durable home, outliving the CEK (ADR-35 D4; coordinator
+// decision D1). The CEK drivers below still offer them, so they are re-exported
+// here for the CEK's public surface and its tests.
+pub use crate::host::HostHandler;
+pub use crate::host::HostOp;
+pub use crate::host::HostReply;
 
 /// Clones a reference-counted computation node into an owned term.
 #[inline]

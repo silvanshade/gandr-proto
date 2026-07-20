@@ -62,6 +62,7 @@ pub mod effect;
 pub mod error;
 pub mod eval;
 pub mod grade;
+pub mod host;
 pub mod identity;
 pub mod intern;
 pub mod machine;
