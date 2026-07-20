@@ -7,7 +7,7 @@ The rules live in IU's `docs/spec/ADR.md` §ADR-2 and are cited bare (`HS-n`) fr
 
 **gandr deltas.**
 
-* Vocabulary is the dictionary's, not IU's: construct names come from the calf/decalf line via `docs/gandr/dictionary.yml` (the `agda_module:` column); IU's ∞-graph layer letters are not transliterated onto gandr constructs.
+* Vocabulary is the dictionary's, not IU's: construct names come from the calf/decalf line via the dictionary's `agda_module:` column (the `docs/gandr/dictionary.yml` artifact is retired under `gandr-fcw.8` Y1, unported with the rest of the metatheory tree); IU's ∞-graph layer letters are not transliterated onto gandr constructs.
 * The engine layer is consumed from IU as a pinned, read-only git submodule (`metatheory/upstream/internal-univalence`; the `iu:check` gate guards initialized-clean-at-pin).
   Improvements land upstream, then the pin bumps — integration record in `metatheory/README.md` §"Upstream integration".
 
