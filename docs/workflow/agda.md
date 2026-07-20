@@ -3,9 +3,9 @@
 > Read when: touching `metatheory/` (Agda is the sole proof vehicle, ADR-30).
 
 **House-style rules: IU ADR-2, adopted by reference.** The `metatheory/` tree adopts the sister **internal-univalence** (IU) library's numbered `HS-n` discipline wholesale (purpose-built records over raw Σ; explicit record instances; record types imported at file top, projections opened at use site; `hiding`/`using` one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder; every definition carries a comment).
-The rules live in IU's `docs/spec/ADR.md` §ADR-2 and are cited bare (`HS-n`) from wyrd comments.
+The rules live in IU's `docs/spec/ADR.md` §ADR-2 and are cited bare (`HS-n`) from gandr comments.
 
-**wyrd deltas.**
+**gandr deltas.**
 
 * Vocabulary is the dictionary's, not IU's: construct names come from the calf/decalf line via `docs/gandr/dictionary.yml` (the `agda_module:` column); IU's ∞-graph layer letters are not transliterated onto gandr constructs.
 * The engine layer is consumed from IU as a pinned, read-only git submodule (`metatheory/upstream/internal-univalence`; the `iu:check` gate guards initialized-clean-at-pin).
