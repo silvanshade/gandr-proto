@@ -21,6 +21,21 @@
 //! identity/composition are quotiented by **replay-equivalence**
 //! ([`gandr_theory_computads::replay_equivalent`], ADR-69 D1) rather than
 //! structural equality. No rewriting is re-implemented here.
+//!
+//! # Store schema — which cells are storable, and their identity
+//!
+//! The store the reflection reads holds exactly the storable generators:
+//! former rules, the invertibility overlay, and completion fillers. The
+//! monoidal-class coherence cells are graft-lemmas — with canonical trees they
+//! are derivable and never stored — which is why a [`RelationRef`] is a *set of
+//! generating cells* rather than an arbitrary cell set, and why the "pure"
+//! sublanguage keeps the rules (the doctrine-level `VCoh ⊇ rule` marking):
+//! completion runs one dimension up over that rule alphabet. This sharpens the
+//! replay-equivalence identity above — because rule-composites are the
+//! completion's alphabet, decidable normal-form identity on a **convergent**
+//! fragment compares rule-words, not raw [`Derivation`] trees; the
+//! replay-equivalence quotient becomes rule-word equality wherever the fragment
+//! converges.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
