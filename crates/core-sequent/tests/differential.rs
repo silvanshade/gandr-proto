@@ -53,8 +53,14 @@ mod tests
     use gandr_core_checker::boundary::GenerationDepth;
     use gandr_core_checker::boundary::NameRef;
     use gandr_core_checker::boundary::OperationName;
+    use gandr_core_checker::effect::EffectSig;
+    use gandr_core_checker::eval::Blame;
+    use gandr_core_checker::eval::Eval;
     use gandr_core_checker::eval::run_comp;
+    use gandr_core_checker::eval::run_with_host;
     use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::host::HostHandler;
+    use gandr_core_checker::host::HostReply;
     use gandr_core_checker::prim::NativePrim;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::OpClause;
@@ -1039,6 +1045,268 @@ mod tests
             Comp::ret(Value::var("x")),
             vec![OpClause::new("op", "p", "j", Comp::ret(Value::int(0)))],
         ));
+    }
+
+    // ── The host-effect seam (ADR-35 D4) ─────────────────────────────────────
+    //
+    // The seam is a preserved boundary: the L machine
+    // (`machine::run_comp_with_host`) must present the *identical* seam to a host
+    // that the CEK oracle (`eval::run_with_host`) does. These cases drive a
+    // scripted host on both machines and require (a) the machines agree on the
+    // final outcome and (b) the host received the same ordered log of offers
+    // (signature name, operation, payload) on both. Payloads stay first-order,
+    // where readback is exact on both sides (higher-order payloads await the
+    // un-focusing readback `𝓕⁻¹` — a listed residual, not exercised here).
+
+    /// A scripted host: it answers offers from a fixed reply queue (declining
+    /// once exhausted) and records the `(signature-name, operation, payload)`
+    /// of every offer it receives, so two machines' logs can be compared.
+    struct ScriptedHost
+    {
+        replies: Vec<HostReply>,
+        next: usize,
+        log: Vec<(String, String, Value)>,
+    }
+
+    impl ScriptedHost
+    {
+        fn new(replies: &[HostReply]) -> Self
+        {
+            Self {
+                replies: replies.to_vec(),
+                next: 0,
+                log: Vec::new(),
+            }
+        }
+    }
+
+    impl HostHandler for ScriptedHost
+    {
+        fn handle<'source, O>(
+            &mut self,
+            sig: &EffectSig,
+            op: O,
+            payload: &Value,
+        ) -> HostReply
+        where
+            O: Into<OperationName<'source>>,
+        {
+            let op = op.into();
+            self.log.push((
+                sig.name().as_ref().to_owned(),
+                op.as_ref().to_owned(),
+                payload.clone(),
+            ));
+            let reply = self
+                .replies
+                .get(self.next)
+                .cloned()
+                .unwrap_or(HostReply::Unhandled);
+            self.next = self.next.saturating_add(1);
+            reply
+        }
+    }
+
+    /// Drives `comp` with the same scripted host on the CEK oracle and the L
+    /// machine, asserting they agree on the final outcome AND on the host log,
+    /// which must equal `expected_log`; the shared final must also match
+    /// `expected_final`.
+    fn assert_host_seam(
+        comp: &Comp,
+        replies: &[HostReply],
+        expected_log: &[(&str, &str, Value)],
+        expected_final: &Eval,
+    )
+    {
+        let mut cek_host = ScriptedHost::new(replies);
+        let oracle = run_with_host(comp.clone(), &mut cek_host);
+
+        let mut l_host = ScriptedHost::new(replies);
+        let machine = machine::run_comp_with_host(comp, &mut l_host);
+
+        assert!(
+            bool::from(agree(&oracle, &machine)),
+            "host-seam L-run ≢ run on {comp:?}\n  oracle    = {:?}\n  L machine = {:?}",
+            canonical(&oracle),
+            canonical(&machine)
+        );
+        assert!(
+            bool::from(agree(&oracle, expected_final)),
+            "host-seam final mismatch on {comp:?}\n  got      = {:?}\n  expected = {:?}",
+            canonical(&oracle),
+            canonical(expected_final)
+        );
+
+        let expected: Vec<(String, String, Value)> = expected_log
+            .iter()
+            .map(|&(sig, op, ref payload)| (sig.to_owned(), op.to_owned(), payload.clone()))
+            .collect();
+        assert_eq!(cek_host.log, expected, "CEK host log mismatch on {comp:?}");
+        assert_eq!(l_host.log, expected, "L host log mismatch on {comp:?}");
+    }
+
+    /// (a) A single unhandled `perform`, resumed by the host: both machines
+    /// take the reply as the outcome.
+    #[test]
+    fn host_seam_resumes_a_single_unhandled_perform()
+    {
+        assert_host_seam(
+            &Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
+            &[HostReply::Resume(Value::int(42))],
+            &[("E", "op", Value::int(5))],
+            &Eval::Value(Comp::ret(Value::int(42))),
+        );
+    }
+
+    /// (b) The host declines the offer: both machines blame `PerformNoHandler`.
+    #[test]
+    fn host_seam_decline_blames_perform_no_handler()
+    {
+        assert_host_seam(
+            &Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
+            &[HostReply::Unhandled],
+            &[("E", "op", Value::int(5))],
+            &Eval::Blame(Blame::PerformNoHandler),
+        );
+    }
+
+    /// (c) Sequential performs with deep re-entry: the resumed continuation
+    /// performs again and is offered again, in execution order, and the second
+    /// offer's payload is the value the first reply bound.
+    #[test]
+    fn host_seam_offers_deep_re_entry_in_order()
+    {
+        assert_host_seam(
+            &Comp::bind(
+                Comp::perform(sig("E".into(), "op".into()), "op", Value::int(1)),
+                "x",
+                Comp::perform(sig("E".into(), "op".into()), "op", Value::var("x")),
+            ),
+            &[
+                HostReply::Resume(Value::int(10)),
+                HostReply::Resume(Value::int(99)),
+            ],
+            &[("E", "op", Value::int(1)), ("E", "op", Value::int(10))],
+            &Eval::Value(Comp::ret(Value::int(99))),
+        );
+    }
+
+    /// (d) A `perform` under a source handler that claims a DIFFERENT operation
+    /// reaches the host; the source handler still claims its own operation
+    /// (which never reaches the host).
+    #[test]
+    fn host_seam_offers_across_a_non_matching_handler()
+    {
+        assert_host_seam(
+            &Comp::handle(
+                sig("E".into(), "keep".into()),
+                Comp::bind(
+                    Comp::perform(sig("E".into(), "esc".into()), "esc", Value::int(7)),
+                    "x",
+                    Comp::perform(sig("E".into(), "keep".into()), "keep", Value::int(8)),
+                ),
+                "r",
+                Comp::ret(Value::var("r")),
+                vec![OpClause::new("keep", "p", "k", Comp::ret(Value::int(555)))],
+            ),
+            &[HostReply::Resume(Value::int(20))],
+            // Only the escaping `esc` reaches the host; the source handler claims
+            // `keep` itself, so it is never offered.
+            &[("E", "esc", Value::int(7))],
+            &Eval::Value(Comp::ret(Value::int(555))),
+        );
+    }
+
+    /// (e) A `perform` a source handler claims never consults the host (empty
+    /// log).
+    #[test]
+    fn host_seam_never_consulted_for_a_claimed_perform()
+    {
+        assert_host_seam(
+            &Comp::handle(
+                sig("E".into(), "op".into()),
+                Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
+                "r",
+                Comp::ret(Value::var("r")),
+                vec![OpClause::new("op", "p", "k", Comp::ret(Value::int(77)))],
+            ),
+            // A non-empty script would be a bug magnet; the host must not be
+            // consulted at all.
+            &[HostReply::Resume(Value::int(0))],
+            &[],
+            &Eval::Value(Comp::ret(Value::int(77))),
+        );
+    }
+
+    /// (f) The reply value flows into the subsequent computation (a native
+    /// add).
+    #[test]
+    fn host_seam_reply_flows_into_subsequent_computation()
+    {
+        assert_host_seam(
+            &Comp::bind(
+                Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
+                "x",
+                Comp::app(
+                    Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
+                    Value::int(1),
+                ),
+            ),
+            &[HostReply::Resume(Value::int(9))],
+            &[("E", "op", Value::Unit)],
+            &Eval::Value(Comp::ret(Value::int(10))),
+        );
+    }
+
+    /// (g) First-order structured payloads read back to the identical public
+    /// `Value` on both machines (pair / list / record).
+    #[test]
+    fn host_seam_first_order_payloads_read_back_identically()
+    {
+        assert_host_seam(
+            &Comp::perform(
+                sig("E".into(), "op".into()),
+                "op",
+                Value::pair(Value::int(1), Value::int(2)),
+            ),
+            &[HostReply::Resume(Value::Unit)],
+            &[("E", "op", Value::pair(Value::int(1), Value::int(2)))],
+            &Eval::Value(Comp::ret(Value::Unit)),
+        );
+        assert_host_seam(
+            &Comp::perform(
+                sig("E".into(), "op".into()),
+                "op",
+                Value::list(vec![Value::int(1), Value::int(2), Value::int(3)]),
+            ),
+            &[HostReply::Resume(Value::Unit)],
+            &[(
+                "E",
+                "op",
+                Value::list(vec![Value::int(1), Value::int(2), Value::int(3)]),
+            )],
+            &Eval::Value(Comp::ret(Value::Unit)),
+        );
+        assert_host_seam(
+            &Comp::perform(
+                sig("E".into(), "op".into()),
+                "op",
+                Value::record(vec![
+                    (String::from("a"), Value::int(1)),
+                    (String::from("b"), Value::string("hi")),
+                ]),
+            ),
+            &[HostReply::Resume(Value::Unit)],
+            &[(
+                "E",
+                "op",
+                Value::record(vec![
+                    (String::from("a"), Value::int(1)),
+                    (String::from("b"), Value::string("hi")),
+                ]),
+            )],
+            &Eval::Value(Comp::ret(Value::Unit)),
+        );
     }
 
     /// Asserts the two machines agree on `comp`, panicking with the disagreeing

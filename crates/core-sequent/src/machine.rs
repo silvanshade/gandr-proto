@@ -66,6 +66,18 @@
 //! the higher-order combinators still grow in later checkpoints, reporting a
 //! defined [`gandr_core_checker::eval::StuckReason::UnsupportedByReference`]
 //! (never a panic).
+//!
+//! The **host-effect seam** (ADR-35 D4) is presented at the same point: an
+//! operation no source-level handler claims — where [`LMachine::run`] blames
+//! [`Blame::PerformNoHandler`] — is instead offered to an ambient host by
+//! [`LMachine::run_with_host`] over the public [`Value`] / signature surface
+//! ([`gandr_core_checker::host`]), the *identical* seam the CEK presents. On a
+//! resume the reply flows into the perform's continuation (deep); a decline is
+//! the same `PerformNoHandler` blame. The seam is realized at the driver — the
+//! L machine's configuration is the run loop's locals, not a reified state — so
+//! the offered signature carries its name only and the payload is read back
+//! over the public surface (first-order exact, higher-order pending the
+//! un-focusing readback `𝓕⁻¹`, §7a).
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
@@ -73,14 +85,19 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use gandr_core_checker::boundary::ContinuationName;
+use gandr_core_checker::boundary::EffectSignatureName;
 use gandr_core_checker::boundary::FieldName;
 use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::boundary::OperationName;
+use gandr_core_checker::effect::EffectSig;
 use gandr_core_checker::eval::Blame;
 use gandr_core_checker::eval::Eval;
 use gandr_core_checker::eval::STEP_BUDGET;
 use gandr_core_checker::eval::StuckReason;
 use gandr_core_checker::grade::Grade;
+use gandr_core_checker::host::HostHandler;
+use gandr_core_checker::host::HostOp;
+use gandr_core_checker::host::HostReply;
 use gandr_core_checker::prim::NativePrim;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Side;
@@ -422,6 +439,23 @@ enum Flow
         /// The value about to meet the current continuation.
         value: Rc<LValue>,
     },
+    /// Offer a host-interceptable operation — a `perform` that no source-level
+    /// handler claims across the continuation, exactly the point the CEK's
+    /// `pending_host_op` intercepts. The host-run driver
+    /// ([`LMachine::run_with_host`]) consults its handler here; the plain
+    /// [`LMachine::run`] maps it straight to [`Blame::PerformNoHandler`], so
+    /// the bare machine's behavior is unchanged.
+    Host
+    {
+        /// The signature (effect) name the operation belongs to (the focused IL
+        /// retains the name only; `𝓕` erases the operation list).
+        sig: String,
+        /// The operation's name.
+        op: String,
+        /// The already-evaluated payload, read back to the public [`Value`]
+        /// surface only when the host is actually offered the operation.
+        payload: Rc<LValue>,
+    },
     /// Halt with this outcome.
     Final(Eval),
 }
@@ -508,6 +542,131 @@ impl LMachine
                         env = next_env;
                         coenv = next_coenv;
                         break;
+                    },
+                    // With no host, an unclaimed `perform` takes its ordinary
+                    // step: the defined `PerformNoHandler` blame (identical to
+                    // the pre-seam behavior — the offer is simply declined).
+                    | Flow::Host { .. } => return Eval::Blame(Blame::PerformNoHandler),
+                    | Flow::Final(eval) => return eval,
+                }
+            }
+        }
+    }
+
+    /// Runs the machine from `root` to a terminal [`Eval`], offering each
+    /// host-interceptable operation to `handler` first — the host-effect seam
+    /// (ADR-35 D4).
+    ///
+    /// This is [`Self::run`] wired to the host seam, mirroring the CEK's
+    /// [`gandr_core_checker::eval::run_state_with_host`]: at the point an
+    /// unclaimed `perform` would blame [`Blame::PerformNoHandler`]
+    /// ([`Flow::Host`]), the operation is offered to `handler` over the public
+    /// [`Value`] / signature surface. On [`HostReply::Resume`] the reply is
+    /// delivered to the perform's continuation (deep discipline — the
+    /// un-truncated `cont` means a later `perform` in it is offered again); on
+    /// [`HostReply::Unhandled`] the machine takes its ordinary step, the same
+    /// `PerformNoHandler` blame (returned directly rather than re-driving the
+    /// perform — the CEK's documented perf residual). A perform a source-level
+    /// handler claims never reaches the host.
+    ///
+    /// # Public-surface shape (driver-level seam)
+    ///
+    /// The seam is realized at the driver, not as stepwise public machine
+    /// state: the L machine's configuration (`command` / `env` / `coenv` /
+    /// `cont`) is the run loop's locals rather than a reified value, so a
+    /// stepwise `pending_host_op` / `resume_host` pair over public state
+    /// (the CEK's shape) would first have to reify that loop. Interception
+    /// inside the loop keeps the seam faithful without that refactor; the
+    /// runtime-host port binds this driver entry.
+    ///
+    /// # Residues (ADR-35 D4 seam over the L representation)
+    ///
+    /// - **Signature.** The focused IL retains only the signature *name* (`𝓕`
+    ///   erases the operation list), so the offered [`EffectSig`] carries the
+    ///   name and an empty operation list. The observable seam contract is
+    ///   `(name, operation, payload)`, which both machines present identically.
+    /// - **Payload.** The payload is read back over the public [`Value`]
+    ///   surface ([`read_value`]): exact on the first-order fragment, and —
+    ///   pending the un-focusing readback `𝓕⁻¹` (§7a) — a placeholder for
+    ///   higher-order payloads (thunks / functions). The host differential is
+    ///   therefore exercised on first-order payloads only.
+    ///
+    /// # Contract
+    /// - ensures: the terminal [`Eval`] of driving `root`, with every
+    ///   handler-less `perform` routed to `handler` — a resumed one continues,
+    ///   a declined one blames as in [`Self::run`]; [`StuckReason::StepLimit`]
+    ///   guards a pathological input exactly as [`Self::run`].
+    /// - panics: none (barring a panic thrown by `handler` itself).
+    #[inline]
+    #[must_use]
+    pub fn run_with_host<H>(
+        &mut self,
+        root: CommandId,
+        handler: &mut H,
+    ) -> Eval
+    where
+        H: HostHandler,
+    {
+        let mut command = root;
+        let mut env = LEnv::empty();
+        let mut coenv = LContEnv::empty();
+        let mut cont: Vec<LFrame> = Vec::new();
+        let mut steps: u64 = 0;
+        loop {
+            if steps >= STEP_BUDGET {
+                return Eval::Stuck(StuckReason::StepLimit);
+            }
+            steps = steps.saturating_add(1);
+            let mut flow = self.drive(command, &env, &coenv, &mut cont);
+            loop {
+                match flow {
+                    | Flow::Meet { value } => flow = self.meet(value, &mut cont),
+                    | Flow::Focus {
+                        command: next,
+                        env: next_env,
+                        coenv: next_coenv,
+                    } => {
+                        command = next;
+                        env = next_env;
+                        coenv = next_coenv;
+                        break;
+                    },
+                    | Flow::Host { sig, op, payload } => {
+                        // Read the performed payload back to the public `Value`
+                        // surface (the L-side quote); exact on the first-order
+                        // fragment, a placeholder otherwise (the un-focusing
+                        // readback residual, matching `read_terminal`).
+                        let payload =
+                            read_value(&payload, &mut Vec::new()).unwrap_or_else(|| Value::hole(0));
+                        let host_op = HostOp::new(
+                            EffectSig::new(EffectSignatureName::from(sig.as_str()), Vec::new()),
+                            OperationName::from(op.as_str()),
+                            payload,
+                        );
+                        match handler.handle(&host_op.sig, &host_op.op, &host_op.payload) {
+                            | HostReply::Resume(reply) => {
+                                // Deliver the reply to the perform's continuation
+                                // (deep discipline: `cont` is un-truncated). The
+                                // host reply is a closed value from the host.
+                                match value_to_lvalue(&reply, &[]) {
+                                    | Some(lvalue) => flow = self.meet(lvalue, &mut cont),
+                                    | None => {
+                                        return Eval::Stuck(StuckReason::UnsupportedByReference);
+                                    },
+                                }
+                            },
+                            // Decline: the ordinary step of an unclaimed `perform`
+                            // is exactly `PerformNoHandler`. Return it directly
+                            // rather than re-driving the perform (the CEK's
+                            // documented perf residual).
+                            | HostReply::Unhandled => {
+                                return Eval::Blame(Blame::PerformNoHandler);
+                            },
+                            // `HostReply` is `#[non_exhaustive]`: a reply variant
+                            // this machine does not yet realize declines to a
+                            // defined stuck, never a panic.
+                            | _ => return Eval::Stuck(StuckReason::UnsupportedByReference),
+                        }
                     },
                     | Flow::Final(eval) => return eval,
                 }
@@ -613,13 +772,17 @@ impl LMachine
     /// reinstalled** ([`LValue::Boxed`], so `resume k …` re-enters the
     /// handler — deep, ADR-33 D4). A miss — no such handler, or the search
     /// crosses a [`LFrame::Reset`] delimiter or an intervening handler not
-    /// declaring `op` (the v0 single-handler scope) — is a defined
-    /// [`Blame::PerformNoHandler`].
+    /// declaring `op` (the v0 single-handler scope) — is the host-effect seam
+    /// offer ([`Flow::Host`], ADR-35 D4): exactly the point the CEK's
+    /// `pending_host_op` intercepts, which the bare [`LMachine::run`] resolves
+    /// to a defined [`Blame::PerformNoHandler`] and [`LMachine::run_with_host`]
+    /// hands to its handler.
     ///
     /// # Contract
     /// - requires: `op_value` is an operation constructor ([`is_operation`]).
-    /// - ensures: the clause focus on a hit, else the `PerformNoHandler` blame;
-    ///   `cont` is truncated to below the handler on a hit.
+    /// - ensures: the clause focus on a hit (with `cont` truncated to below the
+    ///   handler), else a [`Flow::Host`] offer carrying the signature name, the
+    ///   operation, and the un-truncated payload.
     /// - panics: none.
     fn drive_perform(
         op_value: &LValue,
@@ -627,7 +790,7 @@ impl LMachine
     ) -> Flow
     {
         let LValue::Ctor {
-            tag: CtorTag::Op { ref op, .. },
+            tag: CtorTag::Op { ref sig, ref op },
             ref args,
         } = *op_value
         else {
@@ -639,7 +802,16 @@ impl LMachine
             .map_or_else(|| Rc::new(LValue::unit()), Rc::clone);
         let Some(index) = capture_to_handler(cont, op.into())
         else {
-            return Flow::Final(Eval::Blame(Blame::PerformNoHandler));
+            // No source-level handler claims the operation across the
+            // continuation: offer it to the host seam. `cont` is NOT truncated —
+            // the host sits below the whole continuation (deep), so a resumed
+            // reply flows into the perform's continuation and a later `perform`
+            // there is offered again.
+            return Flow::Host {
+                sig: sig.clone(),
+                op: op.clone(),
+                payload,
+            };
         };
         // The captured delimited continuation includes the handler frame (deep):
         // a later `resume k …` re-installs it. Extract the handler-site data,
@@ -1555,7 +1727,11 @@ impl LMachine
                         coenv = next_coenv;
                         break;
                     },
-                    | Flow::Final(_) => return None,
+                    // A host-interceptable `perform` is not pure spine (it is
+                    // declined above at `is_operation`), so it never reaches this
+                    // probe; decline defensively, exactly as the probe declines
+                    // any non-whnf outcome.
+                    | Flow::Host { .. } | Flow::Final(_) => return None,
                 }
             }
         }
@@ -1672,6 +1848,39 @@ pub fn run_comp(comp: &Comp) -> Eval
         | Ok(focused) => {
             let (arena, root, origins) = focused.into_parts();
             LMachine::new(arena, origins).run(root)
+        },
+        | Err(_) => Eval::Stuck(StuckReason::InvalidClosureBody),
+    }
+}
+
+/// Focuses a checked-core computation and runs it on a fresh L machine to a
+/// terminal, offering each host-interceptable operation to `handler` first —
+/// the host-effect seam (ADR-35 D4).
+///
+/// The [`run_comp`] companion wired to the host seam
+/// ([`LMachine::run_with_host`]), the empty-continuation entry the host
+/// differential drives; it mirrors the
+/// CEK's [`gandr_core_checker::eval::run_with_host`].
+///
+/// # Contract
+/// - ensures: `L-run(𝓕(comp))` as an [`Eval`], with every handler-less
+///   `perform` routed to `handler` — a resumed one continues (deep discipline),
+///   a declined one blames [`Blame::PerformNoHandler`]; a focusing failure
+///   surfaces as a defined stuck rather than a panic.
+/// - panics: none (barring a panic thrown by `handler`).
+#[inline]
+#[must_use]
+pub fn run_comp_with_host<H>(
+    comp: &Comp,
+    handler: &mut H,
+) -> Eval
+where
+    H: HostHandler,
+{
+    match crate::focus::focus_comp(comp) {
+        | Ok(focused) => {
+            let (arena, root, origins) = focused.into_parts();
+            LMachine::new(arena, origins).run_with_host(root, handler)
         },
         | Err(_) => Eval::Stuck(StuckReason::InvalidClosureBody),
     }
