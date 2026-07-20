@@ -1665,9 +1665,12 @@ J-43:
   title: Certified Normalization of Generalized Traces
   author: Maarand & Uustalu
   date: 2019
+  parent:
+    type: periodical
+    title: ISSE
   serial-number:
     doi: 10.1007/s11334-019-00347-1
-  note: venue reads "ISSUE 15" in the register (likely ISSE vol. 15)
+  note: Innovations in Systems and Software Engineering, vol. 15
 K-1:
   type: book
   title: "Nominal Sets: Names and Symmetry in Computer Science"

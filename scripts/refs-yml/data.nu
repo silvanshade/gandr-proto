@@ -205,7 +205,7 @@ export def curated-entries []: nothing -> list {
     {id: "J-40" type: "article" title: "Towards 3-Dimensional Rewriting Theory" author: "Mimram" date: 2014 venue: "LMCS" vtype: "periodical"}
     {id: "J-41" type: "article" title: "String Diagrams for Non-Strict Monoidal Categories" author: "Wilson et al." date: 2023 venue: "CSL" vtype: "proceedings"}
     {id: "J-42" type: "article" title: "The Free Bifibration on a Functor" author: "Clarke et al." date: 2025}
-    {id: "J-43" type: "article" title: "Certified Normalization of Generalized Traces" author: "Maarand & Uustalu" date: 2019 note: "venue reads \"ISSUE 15\" in the register (likely ISSE vol. 15)"}
+    {id: "J-43" type: "article" title: "Certified Normalization of Generalized Traces" author: "Maarand & Uustalu" date: 2019 venue: "ISSE" vtype: "periodical" note: "Innovations in Systems and Software Engineering, vol. 15"}
 
     # K. Nominal sets & names
     {id: "K-1" type: "book" title: "Nominal Sets: Names and Symmetry in Computer Science" author: "Pitts" date: 2013 publisher: "Cambridge University Press"}
