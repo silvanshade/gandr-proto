@@ -1,0 +1,1028 @@
+//! The order oracle over canonical levels — [`Level::leq_with_evidence`] and
+//! [`Level::lt_with_evidence`] — together with the evidence vocabulary and
+//! the validators that check evidence against its levels.
+//!
+//! The decision is **domination** on canonical forms: `l ≤ m` at every
+//! valuation exactly when (i) each atom `x + a` of `l` has a same-variable
+//! atom `x + b` in `m` with `a ≤ b` (a spike valuation on `x` refutes
+//! anything less), and (ii) `l`'s constant part is at most `m`'s value at the
+//! zero valuation (which is where a constant violation shows). Strict order
+//! is the same comparison with the left side shifted up by one — `l < m` iff
+//! `l + 1 ≤ m` over the naturals.
+
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
+use core::error::Error;
+use core::fmt;
+use core::ops::Not;
+
+use crate::level::Level;
+use crate::level::LevelOffset;
+use crate::level::LevelValue;
+use crate::level::LevelVar;
+
+/// Whether an order query is strict (`left < right`) or non-strict (`left ≤
+/// right`).
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Strictness(bool);
+
+impl Strictness
+{
+    /// Non-strict comparison mode.
+    pub const NON_STRICT: Self = Self(false);
+
+    /// Strict comparison mode.
+    pub const STRICT: Self = Self(true);
+}
+
+impl From<bool> for Strictness
+{
+    #[inline]
+    fn from(strict: bool) -> Self
+    {
+        Self(strict)
+    }
+}
+
+impl From<Strictness> for bool
+{
+    #[inline]
+    fn from(strict: Strictness) -> Self
+    {
+        strict.0
+    }
+}
+
+/// The truth value returned by the boolean face of the free order oracle.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct OrderComparison(bool);
+
+impl From<bool> for OrderComparison
+{
+    #[inline]
+    fn from(holds: bool) -> Self
+    {
+        Self(holds)
+    }
+}
+
+impl From<OrderComparison> for bool
+{
+    #[inline]
+    fn from(holds: OrderComparison) -> Self
+    {
+        holds.0
+    }
+}
+
+impl Not for OrderComparison
+{
+    type Output = Self;
+
+    #[inline]
+    fn not(self) -> Self::Output
+    {
+        Self::from(!bool::from(self))
+    }
+}
+
+/// What bounds the left level's constant part within the right level.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[expect(
+    clippy::exhaustive_enums,
+    reason = "the evidence vocabulary is closed by design (kernel-boundary.md K1)"
+)]
+pub enum ConstantBound
+{
+    /// The right level's own constant part dominates it.
+    Constant,
+    /// The right level's atom over this variable dominates it: that atom's
+    /// offset is a pointwise lower bound of the atom, hence of the right
+    /// level.
+    Atom(LevelVar),
+}
+
+/// One step of a domination witness.
+///
+/// The left atom over `variable` is dominated by the right level's
+/// same-variable atom. Offsets are recorded so a reviewer or validator can
+/// check the claim against the levels directly.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AtomBound
+{
+    /// The variable both atoms range over.
+    variable: LevelVar,
+    /// The left atom's offset, as recorded from the left level.
+    left_offset: LevelOffset,
+    /// The dominating right atom's offset, as recorded from the right level.
+    right_offset: LevelOffset,
+}
+
+impl AtomBound
+{
+    /// The variable both atoms range over.
+    #[inline]
+    #[must_use]
+    pub const fn variable(&self) -> LevelVar
+    {
+        self.variable
+    }
+
+    /// The left atom's recorded offset.
+    #[inline]
+    #[must_use]
+    pub const fn left_offset(&self) -> LevelOffset
+    {
+        self.left_offset
+    }
+
+    /// The dominating right atom's recorded offset.
+    #[inline]
+    #[must_use]
+    pub const fn right_offset(&self) -> LevelOffset
+    {
+        self.right_offset
+    }
+}
+
+/// A checkable **domination witness** for `left ≤ right` (or `left < right`
+/// when [`Self::strict`] holds).
+///
+/// It carries one [`AtomBound`] per left atom in ascending variable order,
+/// plus the [`ConstantBound`] for the left constant part.
+///
+/// Witnesses are constructed only by the oracle (fields are private); they
+/// are inspected through the accessors and checked by
+/// [`validate_witness`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LeqWitness
+{
+    /// Whether this witnesses the strict order (`left + 1 ≤ right`).
+    strict: Strictness,
+    /// Per-atom domination bounds, in ascending variable order.
+    atoms: Vec<AtomBound>,
+    /// The bound on the left constant part.
+    constant: ConstantBound,
+}
+
+impl LeqWitness
+{
+    /// Whether this witnesses the strict order (`left < right`).
+    #[inline]
+    #[must_use]
+    pub const fn strict(&self) -> Strictness
+    {
+        self.strict
+    }
+
+    /// The per-atom domination bounds, in ascending variable order.
+    #[inline]
+    #[must_use]
+    pub fn atom_bounds(&self) -> &[AtomBound]
+    {
+        &self.atoms
+    }
+
+    /// The bound on the left constant part.
+    #[inline]
+    #[must_use]
+    pub const fn constant_bound(&self) -> ConstantBound
+    {
+        self.constant
+    }
+}
+
+/// A checkable **refutation** of `left ≤ right` (or of `left < right` when
+/// [`Self::strict`] holds): a concrete counter-valuation under which the
+/// claimed order fails. Absent variables read as `0`.
+///
+/// Refutations are constructed only by the oracle (fields are private); they
+/// are inspected through the accessors and checked by
+/// [`validate_refutation`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LeqRefutation
+{
+    /// Whether this refutes the strict order (`left < right`).
+    strict: Strictness,
+    /// The counter-valuation (absent variables read as `0`).
+    valuation: BTreeMap<LevelVar, LevelValue>,
+}
+
+impl LeqRefutation
+{
+    /// Whether this refutes the strict order (`left < right`).
+    #[inline]
+    #[must_use]
+    pub const fn strict(&self) -> Strictness
+    {
+        self.strict
+    }
+
+    /// The counter-valuation (absent variables read as `0`).
+    #[inline]
+    #[must_use]
+    pub const fn valuation(&self) -> &BTreeMap<LevelVar, LevelValue>
+    {
+        &self.valuation
+    }
+}
+
+/// Rejection vocabulary of the evidence validators: exactly why a piece of
+/// evidence fails to check against its levels.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[expect(
+    clippy::exhaustive_enums,
+    reason = "the rejection vocabulary is closed by design (kernel-boundary.md K1)"
+)]
+pub enum EvidenceError
+{
+    /// A left atom has no bound in the witness.
+    MissingAtomBound
+    {
+        /// The uncovered left variable.
+        variable: LevelVar,
+    },
+    /// The witness carries a bound for an atom the left level lacks (or a
+    /// duplicate / out-of-order bound).
+    StrayAtomBound
+    {
+        /// The offending bound's variable.
+        variable: LevelVar,
+    },
+    /// A bound's recorded offsets differ from the levels' actual offsets.
+    AtomOffsetMismatch
+    {
+        /// The variable whose recorded offsets are wrong.
+        variable: LevelVar,
+    },
+    /// A bound's offsets are accurate but do not dominate (the recorded
+    /// left offset, plus one when strict, exceeds the right offset).
+    InsufficientAtomBound
+    {
+        /// The variable whose bound fails.
+        variable: LevelVar,
+    },
+    /// The constant bound names a right atom that does not exist.
+    MissingConstantBound
+    {
+        /// The named absent variable.
+        variable: LevelVar,
+    },
+    /// The constant bound exists but does not dominate the left constant
+    /// part.
+    InsufficientConstantBound,
+    /// The refutation's valuation does not actually order the two levels the
+    /// wrong way.
+    NotRefuting,
+    /// Evaluating under the (adversarial) valuation overflowed; the evidence
+    /// is rejected rather than wrapped.
+    Overflow,
+}
+
+impl fmt::Display for EvidenceError
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
+    {
+        match *self {
+            | Self::MissingAtomBound { variable } => {
+                write!(
+                    f,
+                    "no bound covers the left atom over variable {}",
+                    variable.index()
+                )
+            },
+            | Self::StrayAtomBound { variable } => {
+                write!(
+                    f,
+                    "a bound names variable {} outside the left level's atoms",
+                    variable.index()
+                )
+            },
+            | Self::AtomOffsetMismatch { variable } => {
+                write!(
+                    f,
+                    "recorded offsets for variable {} differ from the levels",
+                    variable.index()
+                )
+            },
+            | Self::InsufficientAtomBound { variable } => {
+                write!(
+                    f,
+                    "the bound for variable {} does not dominate",
+                    variable.index()
+                )
+            },
+            | Self::MissingConstantBound { variable } => {
+                write!(
+                    f,
+                    "the constant bound names absent variable {}",
+                    variable.index()
+                )
+            },
+            | Self::InsufficientConstantBound => {
+                f.write_str("the constant bound does not dominate")
+            },
+            | Self::NotRefuting => f.write_str("the valuation does not refute the claimed order"),
+            | Self::Overflow => f.write_str("evaluating the valuation overflowed"),
+        }
+    }
+}
+
+impl Error for EvidenceError
+{
+}
+
+impl Level
+{
+    /// Decide `self ≤ other` over all valuations, returning checkable
+    /// evidence either way.
+    ///
+    /// # Contract
+    /// - requires: nothing beyond canonical inputs (guaranteed by
+    ///   construction).
+    /// - ensures: `Ok(witness)` exactly when `self ≤ other` at every valuation
+    ///   of the variables, with the witness passing [`validate_witness`];
+    ///   `Err(refutation)` otherwise, with a concrete counter-valuation passing
+    ///   [`validate_refutation`].
+    /// - provides: the kernel's level-order oracle (ADR-78), free fragment.
+    /// - fails: never — the refutation branch is a negative answer, not a
+    ///   failure.
+    /// - panics: none.
+    /// - intension: when several right atoms dominate the left constant part,
+    ///   the witness names the least such variable; refutations use the zero
+    ///   valuation for constant violations and a single-variable spike (one
+    ///   past the right level's largest component) for atom violations. Both
+    ///   choices are deterministic and observable through the evidence
+    ///   accessors.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 against the independent semantic reference (direct AST
+    ///   evaluation over the provably complete zero-plus-spikes valuation
+    ///   family) on generated term pairs, plus L1 — returned evidence must
+    ///   validate against the inputs, so a mutant deciding wrongly must also
+    ///   forge coherent evidence; the L3 residue is the boundary pairs (`x ≤
+    ///   x+1` vs `x+1 ≰ x`, constant-vs-atom domination, distinct-variable
+    ///   incomparability).
+    /// - witness: `differential::tests::prop_leq_agrees_with_semantic_reference`
+    /// - witness: `differential::tests::prop_evidence_validates`
+    /// - witness: `order::tests::*`
+    ///
+    /// # Errors
+    /// The `Err` branch is the checkable refutation, not an operational
+    /// failure.
+    #[inline]
+    pub fn leq_with_evidence(
+        &self,
+        other: &Self,
+    ) -> Result<LeqWitness, LeqRefutation>
+    {
+        compare(self, other, Strictness::NON_STRICT)
+    }
+
+    /// Decide the strict order `self < other` (that is, `self + 1 ≤ other`
+    /// over the naturals), returning checkable evidence either way.
+    ///
+    /// # Contract
+    /// - requires: nothing beyond canonical inputs (guaranteed by
+    ///   construction).
+    /// - ensures: `Ok(witness)` exactly when `self < other` at every valuation;
+    ///   agrees with `self.succ()?.leq_with_evidence(other)` whenever the
+    ///   successor is representable, and is total even where it is not (the
+    ///   shift happens in wide arithmetic).
+    /// - provides: the consistency-bearing comparison of the universe rule
+    ///   (`U_l : U_m` iff `l < m`; irreflexivity is the invariant — ADR-78).
+    /// - fails: never — the refutation branch is a negative answer.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 — semantic agreement plus the `lt ≡ leq ∘ succ`
+    ///   internal consistency law on generated pairs; the L3 residue is
+    ///   irreflexivity on composite levels (the soundness boundary) and the `x
+    ///   < x+1` / `x ≮ x` pair.
+    /// - witness: `differential::tests::prop_lt_agrees_with_semantic_reference`
+    /// - witness: `differential::tests::prop_lt_equals_succ_leq`
+    /// - witness: `order::tests::lt_is_irreflexive`
+    ///
+    /// # Errors
+    /// The `Err` branch is the checkable refutation, not an operational
+    /// failure.
+    #[inline]
+    pub fn lt_with_evidence(
+        &self,
+        other: &Self,
+    ) -> Result<LeqWitness, LeqRefutation>
+    {
+        compare(self, other, Strictness::STRICT)
+    }
+
+    /// The boolean face of [`Self::leq_with_evidence`].
+    ///
+    /// # Contract
+    /// - ensures: `true` iff [`Self::leq_with_evidence`] returns `Ok`.
+    #[inline]
+    #[must_use]
+    pub fn leq(
+        &self,
+        other: &Self,
+    ) -> OrderComparison
+    {
+        OrderComparison::from(self.leq_with_evidence(other).is_ok())
+    }
+
+    /// The boolean face of [`Self::lt_with_evidence`].
+    ///
+    /// # Contract
+    /// - ensures: `true` iff [`Self::lt_with_evidence`] returns `Ok`.
+    #[inline]
+    #[must_use]
+    pub fn lt(
+        &self,
+        other: &Self,
+    ) -> OrderComparison
+    {
+        OrderComparison::from(self.lt_with_evidence(other).is_ok())
+    }
+}
+
+/// The shared comparison: decide `left + shift ≤ right` pointwise, where
+/// `shift` is one exactly when `strict`.
+///
+/// # Contract
+/// - requires: canonical inputs (guaranteed by construction).
+/// - ensures: `Ok` exactly when domination holds — each left atom bounded by a
+///   same-variable right atom under the shift, and the shifted left constant
+///   bounded by the right level's value at the zero valuation.
+/// - provides: the single decision path both public comparisons share.
+/// - fails: never; the `Err` branch carries the counter-valuation.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: carried by the public faces' witnesses (this is their whole
+///   body); the shift arithmetic is wide (`u128`) so no representable input can
+///   make it overflow, which the ceiling unit case pins.
+/// - witness: `order::tests::comparison_is_total_at_the_offset_ceiling`
+fn compare(
+    left: &Level,
+    right: &Level,
+    strict: Strictness,
+) -> Result<LeqWitness, LeqRefutation>
+{
+    let shift = u128::from(bool::from(strict));
+    let mut atoms = Vec::with_capacity(left.atoms_map().len());
+    for (&variable, &left_offset) in left.atoms_map() {
+        match right.atoms_map().get(&variable) {
+            | Some(&right_offset)
+                if u128::from(left_offset).saturating_add(shift) <= u128::from(right_offset) =>
+            {
+                atoms.push(AtomBound {
+                    variable,
+                    left_offset,
+                    right_offset,
+                });
+            },
+            | _ => {
+                let mut valuation = BTreeMap::new();
+                let _previous = valuation.insert(variable, spike_value(right));
+                return Err(LeqRefutation { strict, valuation });
+            },
+        }
+    }
+    let shifted_constant = u128::from(left.constant_part()).saturating_add(shift);
+    let constant = if shifted_constant <= u128::from(right.constant_part()) {
+        ConstantBound::Constant
+    }
+    else {
+        let dominating = right
+            .atoms()
+            .find(|&(_variable, offset)| shifted_constant <= u128::from(offset));
+        match dominating {
+            | Some((variable, _offset)) => ConstantBound::Atom(variable),
+            | None => {
+                return Err(LeqRefutation {
+                    strict,
+                    valuation: BTreeMap::new(),
+                });
+            },
+        }
+    };
+    Ok(LeqWitness {
+        strict,
+        atoms,
+        constant,
+    })
+}
+
+/// One past the right level's largest component: a spike this high makes a
+/// non-dominated left atom overtake everything the right level can reach on
+/// that variable.
+fn spike_value(right: &Level) -> LevelValue
+{
+    let mut ceiling = u128::from(right.constant_part());
+    for (_variable, offset) in right.atoms() {
+        ceiling = ceiling.max(u128::from(offset));
+    }
+    LevelValue::from(ceiling.saturating_add(1_u128))
+}
+
+/// Check a domination witness against its two levels.
+///
+/// # Contract
+/// - requires: `witness` claims `left ≤ right` (or `left < right` when its
+///   `strict` flag holds); the claim direction is read from the witness.
+/// - ensures: `Ok(())` exactly when the witness proves the claim — every left
+///   atom is covered in order by an accurate, dominating bound, no bound is
+///   stray, and the constant bound exists and dominates the (shifted) left
+///   constant part.
+/// - provides: the trusted half of the evidence discipline — a validator small
+///   enough to audit, against which the decision procedure is
+///   self-incriminating.
+/// - fails: the first [`EvidenceError`] encountered, walking atoms in ascending
+///   variable order and the constant bound last.
+/// - panics: none.
+///
+/// # Errors
+/// Every variant of [`EvidenceError`] except [`EvidenceError::NotRefuting`]
+/// and [`EvidenceError::Overflow`] (those belong to
+/// [`validate_refutation`]).
+///
+/// # Adequacy
+/// - hypothesis: L3 — the validator is itself an oracle, so each rejection arm
+///   is pinned by a hand-perturbed witness asserting the exact variant, and
+///   acceptance is pinned by the property that every oracle-produced witness
+///   validates.
+/// - witness: `order::tests::perturbed_witness_missing_bound_is_rejected`
+/// - witness: `order::tests::perturbed_witness_stray_bound_is_rejected`
+/// - witness: `order::tests::perturbed_witness_offset_mismatch_is_rejected`
+/// - witness: `order::tests::false_witness_insufficient_bound_is_rejected`
+/// - witness: `order::tests::perturbed_witness_absent_constant_atom_is_rejected`
+/// - witness: `order::tests::false_witness_insufficient_constant_is_rejected`
+/// - witness: `differential::tests::prop_evidence_validates`
+#[inline]
+pub fn validate_witness(
+    left: &Level,
+    right: &Level,
+    witness: &LeqWitness,
+) -> Result<(), EvidenceError>
+{
+    let shift = u128::from(bool::from(witness.strict));
+    let mut bounds = witness.atoms.iter();
+    for (variable, left_offset) in left.atoms() {
+        let Some(bound) = bounds.next()
+        else {
+            return Err(EvidenceError::MissingAtomBound { variable });
+        };
+        if bound.variable != variable {
+            return Err(if bound.variable < variable {
+                EvidenceError::StrayAtomBound {
+                    variable: bound.variable,
+                }
+            }
+            else {
+                EvidenceError::MissingAtomBound { variable }
+            });
+        }
+        let actual_right = right.offset_of(variable);
+        if bound.left_offset != left_offset || actual_right != Some(bound.right_offset) {
+            return Err(EvidenceError::AtomOffsetMismatch { variable });
+        }
+        if u128::from(bound.left_offset).saturating_add(shift) > u128::from(bound.right_offset) {
+            return Err(EvidenceError::InsufficientAtomBound { variable });
+        }
+    }
+    if let Some(stray) = bounds.next() {
+        return Err(EvidenceError::StrayAtomBound {
+            variable: stray.variable,
+        });
+    }
+    let shifted_constant = u128::from(left.constant_part()).saturating_add(shift);
+    match witness.constant {
+        | ConstantBound::Constant => {
+            if shifted_constant > u128::from(right.constant_part()) {
+                return Err(EvidenceError::InsufficientConstantBound);
+            }
+        },
+        | ConstantBound::Atom(variable) => {
+            let Some(offset) = right.offset_of(variable)
+            else {
+                return Err(EvidenceError::MissingConstantBound { variable });
+            };
+            if shifted_constant > u128::from(offset) {
+                return Err(EvidenceError::InsufficientConstantBound);
+            }
+        },
+    }
+    Ok(())
+}
+
+/// Check a refutation against its two levels by direct evaluation.
+///
+/// # Contract
+/// - requires: `refutation` claims `left ≤ right` fails (or `left < right`
+///   fails when its `strict` flag holds); the claim direction is read from the
+///   refutation.
+/// - ensures: `Ok(())` exactly when the valuation orders the levels the wrong
+///   way — strictly greater for a non-strict claim, at-least for a strict one.
+/// - provides: the semantic check on counter-valuations, independent of the
+///   domination machinery (it only evaluates).
+/// - fails: [`EvidenceError::NotRefuting`] when the valuation does not refute;
+///   [`EvidenceError::Overflow`] when an adversarial valuation overflows
+///   evaluation (rejected, never wrapped).
+/// - panics: none.
+///
+/// # Errors
+/// [`EvidenceError::NotRefuting`] and [`EvidenceError::Overflow`].
+///
+/// # Adequacy
+/// - hypothesis: L3 — both rejection arms pinned by exact-variant cases (a
+///   non-refuting valuation, an overflowing valuation), acceptance pinned by
+///   the property that every oracle-produced refutation validates.
+/// - witness: `order::tests::non_refuting_valuation_is_rejected`
+/// - witness: `order::tests::overflowing_valuation_is_rejected`
+/// - witness: `differential::tests::prop_evidence_validates`
+#[inline]
+pub fn validate_refutation(
+    left: &Level,
+    right: &Level,
+    refutation: &LeqRefutation,
+) -> Result<(), EvidenceError>
+{
+    let left_value = left
+        .eval(&refutation.valuation)
+        .map_err(|_error| EvidenceError::Overflow)?;
+    let right_value = right
+        .eval(&refutation.valuation)
+        .map_err(|_error| EvidenceError::Overflow)?;
+    let refutes = if bool::from(refutation.strict) {
+        left_value >= right_value
+    }
+    else {
+        left_value > right_value
+    };
+    if refutes {
+        Ok(())
+    }
+    else {
+        Err(EvidenceError::NotRefuting)
+    }
+}
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::collections::BTreeMap;
+    use alloc::vec;
+
+    use super::AtomBound;
+    use super::ConstantBound;
+    use super::EvidenceError;
+    use super::LeqRefutation;
+    use super::LeqWitness;
+    use super::Strictness;
+    use super::validate_refutation;
+    use super::validate_witness;
+    use crate::level::Level;
+    use crate::level::LevelConstant;
+    use crate::level::LevelOffset;
+    use crate::level::LevelValue;
+    use crate::level::LevelVar;
+    use crate::level::LevelVarIndex;
+
+    #[test]
+    fn zero_is_leq_everything()
+    {
+        let composite = Level::constant(LevelConstant::from(5_u64))
+            .max(&var_plus(x(), LevelOffset::from(3_u64)));
+        assert!(
+            bool::from(Level::zero().leq(&composite)),
+            "zero is a global lower bound"
+        );
+        assert!(
+            bool::from(Level::zero().leq(&Level::zero())),
+            "zero is below itself"
+        );
+    }
+
+    #[test]
+    fn leq_is_reflexive_and_lt_is_irreflexive_on_atoms()
+    {
+        let atom = var_plus(x(), LevelOffset::from(2_u64));
+        assert!(bool::from(atom.leq(&atom)), "leq must be reflexive");
+        assert!(!bool::from(atom.lt(&atom)), "lt must be irreflexive");
+    }
+
+    #[test]
+    fn lt_is_irreflexive()
+    {
+        let composite = Level::constant(LevelConstant::from(7_u64))
+            .max(&var_plus(x(), LevelOffset::from(3_u64)))
+            .max(&var_plus(y(), LevelOffset::from(5_u64)));
+        assert!(
+            !bool::from(composite.lt(&composite)),
+            "lt must be irreflexive on composites"
+        );
+    }
+
+    #[test]
+    fn var_is_strictly_below_its_successor()
+    {
+        let base = Level::var(x());
+        let above = var_plus(x(), LevelOffset::from(1_u64));
+        assert!(bool::from(base.lt(&above)), "x < x+1 must hold");
+        assert!(!bool::from(above.leq(&base)), "x+1 <= x must fail");
+    }
+
+    #[test]
+    fn distinct_variables_are_incomparable()
+    {
+        let left = Level::var(x());
+        let right = Level::var(y());
+        let refutation = left.leq_with_evidence(&right).unwrap_err();
+        assert_eq!(
+            Ok(()),
+            validate_refutation(&left, &right, &refutation),
+            "the refutation must validate"
+        );
+        let reverse = right.leq_with_evidence(&left).unwrap_err();
+        assert_eq!(
+            Ok(()),
+            validate_refutation(&right, &left, &reverse),
+            "the reverse refutation must validate"
+        );
+    }
+
+    #[test]
+    fn max_is_an_upper_bound()
+    {
+        let left = var_plus(x(), LevelOffset::from(1_u64));
+        let right = var_plus(y(), LevelOffset::from(4_u64));
+        let joined = left.max(&right);
+        assert!(
+            bool::from(left.leq(&joined)),
+            "the left component is below the join"
+        );
+        assert!(
+            bool::from(right.leq(&joined)),
+            "the right component is below the join"
+        );
+    }
+
+    #[test]
+    fn constant_dominated_by_atom_offset()
+    {
+        let constant = Level::constant(LevelConstant::from(3_u64));
+        let atom = var_plus(x(), LevelOffset::from(3_u64));
+        let witness = constant.leq_with_evidence(&atom).unwrap();
+        assert_eq!(
+            witness.constant_bound(),
+            ConstantBound::Atom(x()),
+            "3 <= x+3 rests on the atom bound"
+        );
+        assert_eq!(
+            Ok(()),
+            validate_witness(&constant, &atom, &witness),
+            "the witness must validate"
+        );
+    }
+
+    #[test]
+    fn constant_past_atom_offset_is_refuted_at_zero()
+    {
+        let constant = Level::constant(LevelConstant::from(4_u64));
+        let atom = var_plus(x(), LevelOffset::from(3_u64));
+        let refutation = constant.leq_with_evidence(&atom).unwrap_err();
+        assert!(
+            refutation.valuation().is_empty(),
+            "constant violations refute at the zero valuation"
+        );
+        assert_eq!(
+            Ok(()),
+            validate_refutation(&constant, &atom, &refutation),
+            "the refutation must validate"
+        );
+    }
+
+    #[test]
+    fn constant_bound_names_the_least_dominating_variable()
+    {
+        let right =
+            var_plus(x(), LevelOffset::from(5_u64)).max(&var_plus(y(), LevelOffset::from(5_u64)));
+        let left = Level::constant(LevelConstant::from(3_u64));
+        let witness = left.leq_with_evidence(&right).unwrap();
+        assert_eq!(
+            witness.constant_bound(),
+            ConstantBound::Atom(x()),
+            "the least dominating variable is named"
+        );
+    }
+
+    #[test]
+    fn perturbed_witness_absent_constant_atom_is_rejected()
+    {
+        let left = Level::constant(LevelConstant::from(3_u64));
+        let right = var_plus(x(), LevelOffset::from(3_u64));
+        let mut witness = left.leq_with_evidence(&right).unwrap();
+        witness.constant = ConstantBound::Atom(y());
+        assert_eq!(
+            validate_witness(&left, &right, &witness),
+            Err(EvidenceError::MissingConstantBound { variable: y() }),
+            "a constant bound naming an absent atom must be rejected"
+        );
+    }
+
+    #[test]
+    fn overflowing_valuation_is_rejected()
+    {
+        let left = var_plus(x(), LevelOffset::from(1_u64));
+        let right = Level::zero();
+        let mut valuation = BTreeMap::new();
+        valuation.insert(x(), LevelValue::from(u128::MAX));
+        let forged = LeqRefutation {
+            strict: Strictness::NON_STRICT,
+            valuation,
+        };
+        assert_eq!(
+            Err(EvidenceError::Overflow),
+            validate_refutation(&left, &right, &forged),
+            "an overflowing valuation must be rejected, never wrapped"
+        );
+    }
+
+    #[test]
+    fn witness_records_accurate_offsets()
+    {
+        let left = var_plus(x(), LevelOffset::from(1_u64));
+        let right = var_plus(x(), LevelOffset::from(4_u64));
+        let witness = left.leq_with_evidence(&right).unwrap();
+        let bounds = witness.atom_bounds();
+        assert_eq!(1_usize, bounds.len(), "one atom, one bound");
+        assert_eq!(
+            bounds[0].variable(),
+            x(),
+            "the bound names the atom's variable"
+        );
+        assert_eq!(
+            LevelOffset::from(1_u64),
+            bounds[0].left_offset(),
+            "the left offset is recorded"
+        );
+        assert_eq!(
+            LevelOffset::from(4_u64),
+            bounds[0].right_offset(),
+            "the right offset is recorded"
+        );
+    }
+
+    #[test]
+    fn perturbed_witness_offset_mismatch_is_rejected()
+    {
+        let left = var_plus(x(), LevelOffset::from(1_u64));
+        let right = var_plus(x(), LevelOffset::from(4_u64));
+        let mut witness = left.leq_with_evidence(&right).unwrap();
+        witness.atoms = vec![AtomBound {
+            variable: x(),
+            left_offset: LevelOffset::from(0_u64),
+            right_offset: LevelOffset::from(4_u64),
+        }];
+        assert_eq!(
+            validate_witness(&left, &right, &witness),
+            Err(EvidenceError::AtomOffsetMismatch { variable: x() }),
+            "tampered offsets must be rejected"
+        );
+    }
+
+    #[test]
+    fn false_witness_insufficient_bound_is_rejected()
+    {
+        let left = var_plus(x(), LevelOffset::from(1_u64));
+        let right = Level::var(x());
+        let forged = LeqWitness {
+            strict: Strictness::NON_STRICT,
+            atoms: vec![AtomBound {
+                variable: x(),
+                left_offset: LevelOffset::from(1_u64),
+                right_offset: LevelOffset::from(0_u64),
+            }],
+            constant: ConstantBound::Atom(x()),
+        };
+        assert_eq!(
+            validate_witness(&left, &right, &forged),
+            Err(EvidenceError::InsufficientAtomBound { variable: x() }),
+            "an accurate but non-dominating bound must be rejected"
+        );
+    }
+
+    /// `var + n` built through the public constructors.
+    fn var_plus(
+        variable: LevelVar,
+        offset: LevelOffset,
+    ) -> Level
+    {
+        let mut level = Level::var(variable);
+        for _step in 0_u64 .. u64::from(offset) {
+            level = level.succ().unwrap();
+        }
+        level
+    }
+
+    #[test]
+    fn perturbed_witness_missing_bound_is_rejected()
+    {
+        let left = Level::var(x());
+        let right = Level::var(x());
+        let forged = LeqWitness {
+            strict: Strictness::NON_STRICT,
+            atoms: vec![],
+            constant: ConstantBound::Constant,
+        };
+        assert_eq!(
+            validate_witness(&left, &right, &forged),
+            Err(EvidenceError::MissingAtomBound { variable: x() }),
+            "an uncovered atom must be rejected"
+        );
+    }
+
+    #[test]
+    fn perturbed_witness_stray_bound_is_rejected()
+    {
+        let left = Level::zero();
+        let right = Level::var(x());
+        let forged = LeqWitness {
+            strict: Strictness::NON_STRICT,
+            atoms: vec![AtomBound {
+                variable: x(),
+                left_offset: LevelOffset::from(0_u64),
+                right_offset: LevelOffset::from(0_u64),
+            }],
+            constant: ConstantBound::Atom(x()),
+        };
+        assert_eq!(
+            validate_witness(&left, &right, &forged),
+            Err(EvidenceError::StrayAtomBound { variable: x() }),
+            "a bound over an absent left atom must be rejected"
+        );
+    }
+
+    #[test]
+    fn non_refuting_valuation_is_rejected()
+    {
+        let level = Level::var(x());
+        let forged = LeqRefutation {
+            strict: Strictness::NON_STRICT,
+            valuation: BTreeMap::new(),
+        };
+        assert_eq!(
+            Err(EvidenceError::NotRefuting),
+            validate_refutation(&level, &level, &forged),
+            "a valuation that does not refute must be rejected"
+        );
+    }
+
+    /// The first test variable.
+    fn x() -> LevelVar
+    {
+        LevelVar::new(LevelVarIndex::from(0_u32))
+    }
+
+    /// The second test variable.
+    fn y() -> LevelVar
+    {
+        LevelVar::new(LevelVarIndex::from(1_u32))
+    }
+
+    #[test]
+    fn comparison_is_total_at_the_offset_ceiling()
+    {
+        let ceiling = Level::constant(LevelConstant::from(u64::MAX));
+        assert!(
+            bool::from(ceiling.leq(&ceiling)),
+            "leq stays total at the ceiling"
+        );
+        assert!(
+            !bool::from(ceiling.lt(&ceiling)),
+            "lt stays total (and irreflexive) at the ceiling"
+        );
+    }
+
+    #[test]
+    fn false_witness_insufficient_constant_is_rejected()
+    {
+        let left = Level::constant(LevelConstant::from(4_u64));
+        let right = Level::constant(LevelConstant::from(3_u64));
+        let forged = LeqWitness {
+            strict: Strictness::NON_STRICT,
+            atoms: vec![],
+            constant: ConstantBound::Constant,
+        };
+        assert_eq!(
+            Err(EvidenceError::InsufficientConstantBound),
+            validate_witness(&left, &right, &forged),
+            "a non-dominating constant bound must be rejected"
+        );
+    }
+}

@@ -623,6 +623,13 @@ name = "gandr-theory-recursion"
 version = "0.0.0"
 
 [[package]]
+name = "gandr-kernel-strata"
+version = "0.0.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "gandr-workflow-dylint"
 version = "0.0.0"
 dependencies = [

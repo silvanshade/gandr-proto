@@ -4,6 +4,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/kernel-strata",
   "crates/surface-driver",
   "crates/theory-graphs",
   "crates/theory-nominal-automata",
