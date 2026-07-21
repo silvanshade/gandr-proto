@@ -14,17 +14,18 @@ Every check has one canonical `mise` task body; hooks invoke that same task rath
 
 Run the **narrowest gate that proves your change** before any commit; the merge wall runs the composed sweep automatically.
 
-| Gate                                | Proves                                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `mise run treefmt:check`            | formatting + lint across docs/config/Rust (the pre-commit hook runs this)                         |
-| `mise run docs:conflict-markers`    | no unresolved Git conflict markers (`scripts/check-conflict-markers.nu`)                          |
-| `mise run docs:manifest-drift`      | `docs/gandr/MANIFEST.yml` BLAKE3 hashes match registered docs                                     |
-| `mise run docs:reference-integrity` | corpus cross-references (edges, ADR refs, section refs) resolve                                   |
-| `mise run cargo:clippy`             | the strict nightly Clippy scope (pass/fail only — triage via aifix, [scripting.md](scripting.md)) |
-| `mise run cargo:nextest`            | the current Rust test scope                                                                       |
-| `mise run cargo:dylint:recursion`   | merge-tier project-local recursion contracts across Dylint-covered workspace targets              |
-| `mise run cargo:dylint`             | strict project-local plus pinned upstream rules across Dylint-covered workspace targets           |
-| `mise run agda:check`               | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                |
+| Gate                                | Proves                                                                                                |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `mise run treefmt:check`            | formatting + lint across docs/config/Rust (the pre-commit hook runs this)                             |
+| `mise run docs:conflict-markers`    | no unresolved Git conflict markers (`scripts/check-conflict-markers.nu`)                              |
+| `mise run docs:manifest-drift`      | `docs/gandr/MANIFEST.yml` BLAKE3 hashes match registered docs                                         |
+| `mise run docs:reference-integrity` | corpus cross-references (edges, ADR refs, section refs) resolve                                       |
+| `mise run cargo:clippy`             | the strict nightly Clippy scope (pass/fail only — triage via aifix, [scripting.md](scripting.md))     |
+| `mise run cargo:nextest`            | the current Rust test scope                                                                           |
+| `mise run cargo:doc-check`          | workspace rustdoc builds with intra-doc links resolved (private items, `-D warnings`, pinned nightly) |
+| `mise run cargo:dylint:recursion`   | merge-tier project-local recursion contracts across Dylint-covered workspace targets                  |
+| `mise run cargo:dylint`             | strict project-local plus pinned upstream rules across Dylint-covered workspace targets               |
+| `mise run agda:check`               | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                    |
 
 The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles`, `test:options-policy`, coverage, no-panic, cargo-careful) exists as tasks but is not on the current merge wall; several return with the subject they check as the reboot ports it.
 
@@ -32,9 +33,11 @@ The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles
 
 `.config/wt.toml` `[pre-merge]` is the merge wall — any non-zero exit aborts `wt merge`:
 
-* **`gate:merge`** — the composed merge check, ordered: `cargo:build`, `cargo:clippy`, `cargo:dylint:recursion`, `cargo:nextest`, `treefmt:check`.
+* **`gate:merge`** — the composed merge check, ordered: `cargo:build`, `cargo:clippy`, `cargo:dylint:recursion`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
   The recursion task loads only `gandr-workflow-dylint` over the existing Dylint-covered package scope; `gandr-workflow-gates` and the driver itself remain excluded under `gandr-0ze` and `gandr-3yh`.
   The full upstream Dylint inventory remains on-demand and in the parked push tier.
+  `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently; it documents the whole workspace including the nightly-only `gandr-workflow-dylint` driver (like `cargo:clippy`) and so carries no `--exclude` set.
+  It sits between `cargo:dylint:recursion` and `cargo:nextest` because it is a compile-class static check whose failures are cheap and localized, and grouping it with the other static analyzers surfaces doc breakage before the more expensive test run.
   This is the deterministic set a normal diff can realistically break.
   Parked entries return with their prerequisites: `toolchain:pin-check` (the `gandr-fcw.13` pin-drift gate, rebuild tracked in `gandr-wvd.20`) and `grammar:test` (returns with the tree-sitter grammar port).
 * **`beads`** (`bd dolt pull && bd dolt push`) — makes the branch's beads durable on DoltHub **before** the merge removes the worktree's Dolt clone; pull-then-push self-heals the sibling-push race ([tracker.md](tracker.md); `core/HAZARDS.md` H2).
