@@ -77,8 +77,8 @@ Backstops are lexical and incomplete; the classification is the rule, the hooks 
 * **Corpus treatment**: every new surfaced gandr feature lands runnable literate model examples, runnable pathological coverage, harness assertions, and coverage-map registration in the SAME change (`crates/gandr-corpus`; ADR-84 supersedes ADR-52 Decision B and Decision C's two-tree cardinality; `docs/workflow/corpus.md`).
   A syntax-only landing gets a parse-gated `surface/` witness; its semantics-graduation change promotes that witness and adds the full treatment in that same change.
   Internal-only work lands named fixtures exercised by named tests plus an explicit corpus-promotion blocker.
-* **gandr-pro skill**: load the `gandr-pro` skill BEFORE any gandr-related work — writing or reviewing `.gandr` programs, corpus examples, or reasoning about gandr semantics.
-  Source of truth: `crates/gandr-corpus/skills/gandr-pro/SKILL.md` (ADR-52 Decision E), surfaced via `.claude/skills/` + `.omp/skills/` symlinks, maintained on the corpus-treatment train.
+<!--* **gandr-pro skill**: load the `gandr-pro` skill BEFORE any gandr-related work — writing or reviewing `.gandr` programs, corpus examples, or reasoning about gandr semantics.
+  Source of truth: `crates/gandr-corpus/skills/gandr-pro/SKILL.md` (ADR-52 Decision E), surfaced via `.claude/skills/` + `.omp/skills/` symlinks, maintained on the corpus-treatment train.-->
 * **ADR log**: wyrd's is `docs/adr/` (b3sum-hashed, sequentially numbered — the hard ADR-on-main case; the `adr-guard` `[pre-merge]` gate rejects branch ADR edits, core/HAZARDS.md H5).
   Record an ADR on `main` first, then rebase.
 * **Agda in its own commit**: keep `metatheory/**` (Agda) work in a separate commit from the Rust it mirrors (distinct artifact whose history may be reorganized; the `docs/gandr/**` dictionary face may ride with either).
