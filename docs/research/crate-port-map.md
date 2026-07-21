@@ -345,3 +345,41 @@ Tiers by dependency depth, external/unsafe surface, and coupling.
 | Crate (gandr)              | Origin              | Role                                                                                                       | Key public surface                                                                                      | External deps                                                                   | Features  |
 | -------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------- |
 | **gandr-storage-artifact** | gandr-native (B2.3) | Outer-layer CAS wiring: v1 export artifacts as sorted keyed declaration records + BLAKE3 manifest identity | `ArtifactRecord`, `ArtifactRecordSet`, `ArtifactManifest`, `ArtifactIdentity`, `BuiltArtifact`, `build` | `blake3`, `thiserror`, `kernel-core`, `storage-chunker`, `storage-prolly-trees` | `default` |
+
+## 12. Naming authority — the wyrd → reboot rename table (owner-ratified 2026-07-21)
+
+Adapted from the owner's original `PROMPT.md` rename table (repo root, the reboot commissioning prompt), reconciled against what is actually built, and generalized in `docs/workflow/rust.md` §conventions ("Crate naming follows the category schema").
+**Consult this table before minting any crate**; a crate not listed derives its name from the schema (`<category>-<name>` directory, `gandr-<directory>` package) and adds a row here in the same change.
+Divergences from the original suggestion are recorded, not smoothed.
+
+| wyrd crate                        | reboot directory                 | status / note                                                                                                    |
+| --------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `gandr-core`                      | `core-checker`                   | built (B1)                                                                                                       |
+| `gandr-sequent`                   | `core-sequent`                   | built (B1); "should sequent stay a separate crate?" remains an open owner note from `PROMPT.md`                  |
+| `gandr-kernel-levels`             | `kernel-strata`                  | built (B2); **diverges** from the suggested `theory-universes` — the level oracle is TCB substrate, kernel-side  |
+| —                                 | `kernel-core`                    | reboot-native (B2), no wyrd source                                                                               |
+| `gandr-nominal`                   | `theory-nominal-automata`        | built                                                                                                            |
+| `gandr-graph`                     | `theory-graphs`                  | built                                                                                                            |
+| `gandr-desc`                      | `theory-levitation`              | built                                                                                                            |
+| `gandr-recursion`                 | `theory-recursion`               | built; schema-derived (not in the original table)                                                                |
+| `gandr-order-maintenance`         | `theory-orders`                  | built                                                                                                            |
+| `gandr-polygraph`                 | `theory-computads`               | built                                                                                                            |
+| `gandr-vdc`                       | `theory-virtual-doctrines`       | built                                                                                                            |
+| —                                 | `theory-stone-duality`           | planned (original table), no wyrd source                                                                         |
+| `gandr-shell`                     | `runtime-host`                   | built (B1); **diverges** from the suggested `runtime-effects`; source-runner faces re-wire at the front-end port |
+| `gandr-data`                      | `runtime-codecs`                 | unported (shell/self-hosting lane)                                                                               |
+| `gandr-ffi`                       | `runtime-ffi`                    | unported, deferred                                                                                               |
+| `gandr-syntax`                    | `surface-syntax`                 | porting (front-end F0); schema-derived                                                                           |
+| `gandr-render-proto`              | `surface-render-remote`          | porting (front-end F0); the remote/wire face beside the future `surface-render`                                  |
+| `gandr-pretty`                    | `surface-render`                 | future — spec-planned presentation printer, no wyrd code; whether formatting also lives here is an open question |
+| `gandr-grammar`                   | `surface-grammar`                | front-end F1; absorbs `gandr-grammar-contract-fixtures`                                                          |
+| `gandr-parser`                    | `surface-parser`                 | front-end F2; schema-derived                                                                                     |
+| `gandr-pipeline`                  | `surface-engine`                 | front-end F3; "clearer intent" over `-pipeline`                                                                  |
+| `gandr-corpus`                    | `surface-corpus`                 | front-end F4                                                                                                     |
+| `gandr` (driver)                  | `surface-driver`                 | stub built; un-stub at front-end F5                                                                              |
+| `gandr-lsp`                       | `surface-lsp`                    | deferred                                                                                                         |
+| `gandr-tui`                       | `surface-tui`                    | deferred                                                                                                         |
+| `gandr-tree-sitter`               | `surface-tree-sitter`            | deferred (parity reference, F6); schema-derived                                                                  |
+| `gandr-grammar-contract-fixtures` | — (folds into `surface-grammar`) | front-end F1                                                                                                     |
+| `wyrd-rust-gates`                 | `workflow-gates`                 | re-homed reboot-native (not a port)                                                                              |
+| `wyrd-dylint`                     | `workflow-dylint`                | re-homed reboot-native                                                                                           |

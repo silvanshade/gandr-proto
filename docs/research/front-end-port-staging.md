@@ -6,6 +6,9 @@
 > Port-plan authority is `docs/research/crate-port-map.md` (per-crate inventory §3, topology §2, tiers §8, the §7d tree-sitter demotion, the §7e formatting-crates finding).
 > Reboot ground truth is the B3.0 stage record (`gandr-wvd.3.2`) plus the in-tree crate schema; the wyrd source tree is read ONLY via `git -C …/wyrd show failed-refactor:<path>` (shared, on `main`, never mutated).
 > Prose is sentence-per-line (treefmt discipline); citations are `path §sec` in-repo and `wyrd@failed-refactor:crates/<crate>/<path>[:line]` source-side.
+>
+> **Naming amendment (owner, 2026-07-21):** the `PROMPT.md` rename table is the crate-naming authority (codified: `docs/workflow/rust.md` §conventions + `crate-port-map.md` §12 "Naming authority") — the render-proto leaf ports as **`surface-render-remote`** (the remote/wire face beside the future `surface-render`, the planned presentation printer) and the pipeline hub ports as **`surface-engine`**.
+> Read this study's `surface-render-proto` / `surface-pipeline` occurrences accordingly; staging calls O1/O2 stand with those names substituted.
 
 ---
 
