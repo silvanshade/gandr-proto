@@ -80,6 +80,7 @@ use core::fmt;
 pub use self::read::decode;
 pub use self::read::read;
 pub use self::write::write;
+pub use self::write::write_segmented;
 use crate::arena::TermArena;
 use crate::decl::Declaration;
 use crate::error::KernelError;
@@ -87,10 +88,12 @@ use crate::error::KernelError;
 /// The four-byte artifact magic — Gandr Kernel eXport, v-family `1`.
 pub const MAGIC: [u8; 4] = *b"GKX1";
 
-/// The current format version tag: v1, the maximal-sharing subterm-table format
-/// (E5: a real bump from v0 — a v0 `version = 0` artifact is refused
+/// The current format version tag: v1, the maximal-sharing subterm-table
+/// format.
+///
+/// E5: a real bump from v0 — a v0 `version = 0` artifact is refused
 /// `UnsupportedVersion { found: 0 }`, exercising the refusal machinery against
-/// a real predecessor; the old v0 goldens are repurposed as refusal fixtures).
+/// a real predecessor; the old v0 goldens are repurposed as refusal fixtures.
 pub const FORMAT_VERSION_V1: u16 = 1;
 
 /// The decode-time cap on the expanded (tree) size of a declaration root — the
@@ -296,7 +299,7 @@ impl DecodedDeclaration
 /// decoded into, and the admission-ordered declaration sequence addressing it.
 ///
 /// [`decode`] yields this self-contained structure (the term/type content lives
-/// in [`Self::arena`], not in owned trees); [`read`] re-admits it through the
+/// in [`Self::arena`], not in owned trees); [`read()`] re-admits it through the
 /// choke point by importing each declaration's content into a fresh
 /// environment.
 #[derive(Clone, Debug, Default)]
@@ -339,6 +342,149 @@ impl DecodedArtifact
     {
         &self.declarations
     }
+}
+
+/// A canonical v1 export artifact together with the byte boundaries of its
+/// admission-ordered declaration segments — the outer-layer record grain
+/// (massive-term design §6).
+///
+/// [`write_segmented`] yields this as a purely structural companion to
+/// [`write()`]: [`Self::bytes`] is byte-identical to `write(env)`, and
+/// [`Self::segments`] exposes where each declaration's self-delimiting segment
+/// begins and ends so an outer content-addressed layer can key each declaration
+/// by its admission index without re-parsing the framing. It carries **no**
+/// hashes and interprets **none** of the payload bytes — offsets and lengths
+/// only, the TCB-wall discipline (hashing is untrusted plumbing outside
+/// kernel-core). A declaration segment may reference subterm-table entries an
+/// earlier segment introduced (cross-declaration sharing), so a segment is a
+/// content-addressing grain, **not** an independently replayable unit — replay
+/// is whole-artifact ([`read()`]) over the reassembled bytes.
+#[derive(Clone, Debug)]
+pub struct SegmentedArtifact
+{
+    /// The full canonical artifact bytes (identical to [`write()`]).
+    bytes: alloc::vec::Vec<u8>,
+    /// The length of the header preceding the first declaration segment; the
+    /// declaration segments cover `bytes[header_len..]`.
+    header_len: usize,
+    /// Exclusive end offset of each declaration segment, strictly ascending,
+    /// the last equal to `bytes.len()`; segment `k` is
+    /// `bytes[prev_end .. segment_ends[k]]` with `prev_end` the previous end or
+    /// `header_len`.
+    segment_ends: alloc::vec::Vec<usize>,
+}
+
+impl SegmentedArtifact
+{
+    /// Pair canonical artifact bytes with their declaration-segment framing.
+    #[inline]
+    #[must_use]
+    pub(crate) fn new(
+        bytes: alloc::vec::Vec<u8>,
+        header_len: usize,
+        segment_ends: alloc::vec::Vec<usize>,
+    ) -> Self
+    {
+        Self {
+            bytes,
+            header_len,
+            segment_ends,
+        }
+    }
+
+    /// The full canonical artifact bytes — byte-identical to [`write()`].
+    #[inline]
+    #[must_use]
+    pub fn bytes(&self) -> &[u8]
+    {
+        &self.bytes
+    }
+
+    /// The header bytes preceding the first declaration segment (magic,
+    /// version, the reserved minted-atom table, and the declaration count).
+    ///
+    /// Reassembly is `header()` followed by every [`Self::segments`] slice in
+    /// admission order; that concatenation is [`Self::bytes`].
+    #[inline]
+    #[must_use]
+    pub fn header(&self) -> &[u8]
+    {
+        self.bytes.get(.. self.header_len).unwrap_or(&[])
+    }
+
+    /// The number of declaration segments (the artifact's declaration count).
+    #[inline]
+    #[must_use]
+    pub fn segment_count(&self) -> usize
+    {
+        self.segment_ends.len()
+    }
+
+    /// The declaration segments' bytes, in admission order.
+    ///
+    /// # Contract
+    /// - requires: nothing.
+    /// - ensures: yields each declaration's self-delimiting segment slice, in
+    ///   admission order; concatenated after [`Self::header`] they reproduce
+    ///   [`Self::bytes`].
+    /// - provides: the outer CAS layer's per-declaration record values.
+    /// - fails: never — a malformed internal offset yields no further segment
+    ///   rather than panicking (fail-safe, though `write_segmented` never
+    ///   produces one).
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub fn segments(&self) -> Segments<'_>
+    {
+        Segments {
+            bytes: &self.bytes,
+            ends: &self.segment_ends,
+            start: self.header_len,
+            next: 0,
+        }
+    }
+}
+
+/// An iterator over a [`SegmentedArtifact`]'s declaration segments, in
+/// admission order (each item the segment's bytes).
+#[derive(Clone, Debug)]
+pub struct Segments<'artifact>
+{
+    /// The full canonical artifact bytes being sliced.
+    bytes: &'artifact [u8],
+    /// The exclusive segment end offsets.
+    ends: &'artifact [usize],
+    /// The start offset of the next segment (the previous segment's end, or the
+    /// header length initially).
+    start: usize,
+    /// The index of the next segment end to consume.
+    next: usize,
+}
+
+impl<'artifact> Iterator for Segments<'artifact>
+{
+    type Item = &'artifact [u8];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item>
+    {
+        let end = *self.ends.get(self.next)?;
+        let segment = self.bytes.get(self.start .. end)?;
+        self.start = end;
+        self.next = self.next.saturating_add(1);
+        Some(segment)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>)
+    {
+        let remaining = self.ends.len().saturating_sub(self.next);
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for Segments<'_>
+{
 }
 
 /// One of the four R1 reserved declaration kinds — a shape the writer never

@@ -75,6 +75,7 @@ use super::SIDE_LEFT;
 use super::SIDE_RIGHT;
 use super::SIGN_NEGATIVE;
 use super::SIGN_NON_NEGATIVE;
+use super::SegmentedArtifact;
 use crate::arena::CompTypeId;
 use crate::arena::ComputationId;
 use crate::arena::TermArena;
@@ -130,6 +131,46 @@ pub fn write(environment: &Environment) -> Vec<u8>
     encode_artifact(environment.arena(), &declarations)
 }
 
+/// Serialize an [`Environment`] to canonical v1 bytes and the byte boundaries
+/// of its declaration segments.
+///
+/// This is the structural companion to [`write()`] the outer content-addressed
+/// layer consumes (massive-term design §6, B2.3).
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `bytes` equals `write(environment)`; the returned framing splits
+///   `bytes` into the header (magic, version, reserved minted-atom table,
+///   declaration count) and one self-delimiting segment per admitted
+///   declaration in admission order, so the outer layer keys each declaration
+///   by its admission index without re-parsing the format (E1/E4). No hash is
+///   computed and no payload byte is interpreted — offsets and lengths only,
+///   the TCB-wall discipline.
+/// - provides: the K5 v1 export artifact plus its declaration-record grain.
+/// - fails: never — serialization is total.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L2 — the byte-identity differential pins that
+///   [`SegmentedArtifact::bytes`] equals `write(env)`, and the reassembly
+///   differential pins that the header followed by every segment reproduces the
+///   artifact; the L3 residue is the empty environment (a header, no segments).
+/// - witness: `export::tests::write_segmented_matches_write`
+/// - witness: `export::tests::segments_reassemble_the_artifact`
+/// - witness: `export::tests::the_empty_environment_segments_to_a_header`
+#[inline]
+#[must_use]
+pub fn write_segmented(environment: &Environment) -> SegmentedArtifact
+{
+    let declarations: Vec<(AdmissionMark, &Declaration)> = environment
+        .admitted()
+        .map(|(admission, declaration)| (mark_of(admission), declaration))
+        .collect();
+    let (bytes, header_len, segment_ends) =
+        encode_artifact_framed(environment.arena(), &declarations);
+    SegmentedArtifact::new(bytes, header_len, segment_ends)
+}
+
 /// Encode a marked declaration sequence (its content in `arena`) into the
 /// canonical v1 artifact bytes — the shared engine of [`write()`] and the
 /// reader's sharing-aware canonical-bytes check (§4.6).
@@ -148,17 +189,43 @@ pub(super) fn encode_artifact(
     declarations: &[(AdmissionMark, &Declaration)],
 ) -> Vec<u8>
 {
+    let (bytes, _header_len, _segment_ends) = encode_artifact_framed(arena, declarations);
+    bytes
+}
+
+/// Encode a marked declaration sequence into canonical v1 bytes, recording the
+/// header length and each declaration segment's exclusive end offset — the
+/// shared engine of [`encode_artifact`] and [`write_segmented`].
+///
+/// # Contract
+/// - requires: `declarations` is in admission order and their content roots
+///   resolve in `arena`.
+/// - ensures: the returned bytes are the canonical artifact; `header_len` is
+///   the offset of the first declaration segment; `segment_ends[k]` is
+///   declaration `k`'s exclusive end (strictly ascending, the last equal to the
+///   byte length), so segment `k` is `bytes[prev_end .. segment_ends[k]]`.
+/// - provides: the canonical byte image plus its declaration-segment framing.
+/// - fails: never.
+/// - panics: none.
+fn encode_artifact_framed(
+    arena: &TermArena,
+    declarations: &[(AdmissionMark, &Declaration)],
+) -> (Vec<u8>, usize, Vec<usize>)
+{
     let mut out = Vec::new();
     out.extend_from_slice(&MAGIC);
     out.extend_from_slice(&FORMAT_VERSION_V1.to_be_bytes());
     // R4: the reserved minted-atom table, admission-ordered and empty at v1.
     put_uvarint(&mut out, 0_u64);
     put_uvarint(&mut out, usize_to_u64(declarations.len()));
+    let header_len = out.len();
+    let mut segment_ends: Vec<usize> = Vec::with_capacity(declarations.len());
     let mut interner = Interner::new();
     for &(mark, declaration) in declarations {
         encode_declaration(&mut out, arena, &mut interner, mark, declaration);
+        segment_ends.push(out.len());
     }
-    out
+    (out, header_len, segment_ends)
 }
 
 /// Map an environment admission to its wire mark (E6).

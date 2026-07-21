@@ -54,6 +54,7 @@ mod tests
     use gandr_kernel_core::decode;
     use gandr_kernel_core::read;
     use gandr_kernel_core::write;
+    use gandr_kernel_core::write_segmented;
     use gandr_kernel_strata::LandmarkConstraint;
     use gandr_kernel_strata::Level;
     use gandr_kernel_strata::LevelConstant;
@@ -268,6 +269,61 @@ mod tests
                 "every rich declaration was checked-admitted"
             );
         }
+    }
+
+    #[test]
+    fn write_segmented_matches_write()
+    {
+        let environment = rich_checked_environment();
+        let segmented = write_segmented(&environment);
+        assert_eq!(
+            segmented.bytes(),
+            write(&environment).as_slice(),
+            "write_segmented's bytes are byte-identical to write (B2.3 outer layer)"
+        );
+        assert_eq!(
+            segmented.segment_count(),
+            9,
+            "one declaration segment per admitted declaration"
+        );
+    }
+
+    #[test]
+    fn segments_reassemble_the_artifact()
+    {
+        let environment = rich_checked_environment();
+        let segmented = write_segmented(&environment);
+        let mut reassembled = segmented.header().to_vec();
+        for segment in segmented.segments() {
+            reassembled.extend_from_slice(segment);
+        }
+        assert_eq!(
+            reassembled,
+            segmented.bytes(),
+            "header followed by every declaration segment reproduces the artifact"
+        );
+    }
+
+    #[test]
+    fn the_empty_environment_segments_to_a_header()
+    {
+        let environment = Environment::new();
+        let segmented = write_segmented(&environment);
+        assert_eq!(
+            segmented.segment_count(),
+            0,
+            "the empty environment has no declaration segments"
+        );
+        assert_eq!(
+            segmented.header(),
+            segmented.bytes(),
+            "the empty artifact is exactly its header"
+        );
+        assert_eq!(
+            segmented.segments().count(),
+            0,
+            "iterating the empty artifact's segments yields nothing"
+        );
     }
 
     #[test]
