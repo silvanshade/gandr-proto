@@ -1,0 +1,40 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-surface-grammar"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Checked precedence-bounded grammar core over gandr precedence DAGs"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "surface"
+path = "tests/surface.rs"
+
+[[bench]]
+harness = false
+name = "walk_index"
+
+[dependencies]
+# The shared highlight-role vocabulary (`HlRole`/`HlSpan`) the mold highlighter
+# classifies into. `default-features = false` drops the wire codecs —
+# highlighting is in-process plain data; wire consumers re-enable them.
+gandr-surface-render-remote = { path = "../surface-render-remote", default-features = false }
+gandr-surface-syntax = { path = "../surface-syntax" }
+# The precedence DAG (`prec::*`) plus the finite walk-machine engine the
+# generative walk-index front-end instantiates for the real gandr PBG.
+gandr-theory-graphs = { path = "../theory-graphs" }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true
