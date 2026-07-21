@@ -131,6 +131,35 @@ fn core_forms_are_clean() -> Result<(), Box<dyn Error>>
     }
     Ok(())
 }
+
+#[test]
+fn bind_statement_uses_run_keyword() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let renamed = [
+        "run value <- action;",
+        "def bind() -> F Integer { run value <- action; ret value }",
+    ];
+    for src in renamed {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "`run PAT <- E;` molds clean in {src:?}; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    let retired = parse(pbg, SourceSlice::from("let value <- action;"))?;
+    assert!(
+        !bool::from(retired.is_clean()),
+        "the retired `let PAT <- E;` spelling must require repair"
+    );
+    Ok(())
+}
 /// The corpus gate, spanning **all three** committed
 /// corpus trees: `model/`, `pathological/`, and the W4d `surface/`
 /// fold-in fixtures. The candidate pre-filter and the

@@ -65,8 +65,9 @@ mod contracts
     /// pairwise-incomparable right-associative set tier
     /// (union / intersection / lazy-product); and the keyword-led `module` Item
     /// form with its optional transparent record-type ascription and body-local
-    /// non-recursive def/signature member family.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xfd00_2ee0_a085_9dd8);
+    /// non-recursive def/signature member family; and the distinct
+    /// `run PAT <- E` bind form.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xe483_9d05_a39a_a11b);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -85,8 +86,9 @@ mod contracts
     /// lexeme's type realisation; and the `module M (: #{ … })? { def … }`
     /// Item form contributes its keyword-led opener, its inline record-type
     /// ascription, and one body-local copy of the non-recursive
-    /// def/signature family.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1456);
+    /// def/signature family. The distinct `run`-led bind rule contributes one
+    /// keyword mold in each of its 19 expanded statement contexts.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1475);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -219,6 +221,7 @@ mod contracts
         ("release", 19),
         ("ret", 1),
         ("rule", 4),
+        ("run", 19),
         ("select", 1),
         ("send", 1),
         ("shebang", 1),
@@ -647,9 +650,9 @@ mod contracts
     #[test]
     fn reachable_multi_mold_metric_and_seen_key() -> Result<(), Box<dyn Error>>
     {
-        // The reachable multi-mold metric and the seen-key verdict, pinned to
-        // `docs/METRICS.md`. The count reflects the labels that carry more than
-        // one reachable mold across the built-in surface: deleting the dead
+        // The reachable multi-mold metric and the seen-key verdict are pinned
+        // here. The count reflects the labels that carry more than one
+        // reachable mold across the built-in surface: deleting the dead
         // composite shell rules holds `shell_word`, `command_name`,
         // `file_descriptor`, `environment_assignment`, and `negation` to a
         // single reachable mold each (the molder's sole-admissible fast path
@@ -667,9 +670,9 @@ mod contracts
 
         let multi = reachable.values().filter(|molds| molds.len() > 1).count();
         assert_eq!(
-            63,
+            64,
             multi,
-            "reachable multi-mold labels (docs/METRICS.md, PBG {fingerprint:#018x})",
+            "reachable multi-mold labels (PBG {fingerprint:#018x})",
             fingerprint = BUILT_IN_FINGERPRINT.0
         );
 

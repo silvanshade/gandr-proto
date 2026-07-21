@@ -607,19 +607,20 @@ fn statements(
 )
 {
     let s = Sort::Item;
-    let mut let_family = r(
+    out.push(r(
         RuleName("let_statement"),
         Provenance("let_statement"),
         s,
         p,
-        let_or_bind(),
-    );
-    let_family.adaptations.push(Adaptation::new(
-        RuleName("let_statement"),
-        SurfaceForm("bind_statement"),
-        AdaptationReason("factored into the let family: the bind tail `<- E ;` shares the `let PAT` prefix and discriminates on the leading `<-` tile"),
+        let_statement(),
     ));
-    out.push(let_family);
+    out.push(r(
+        RuleName("bind_statement"),
+        Provenance("bind_statement"),
+        s,
+        p,
+        bind_statement(),
+    ));
     out.push(r(
         RuleName("leta_statement"),
         Provenance("leta_statement"),
@@ -1191,7 +1192,8 @@ fn session_stmt(keyword: TileLabel) -> Regex
 fn statement_alt() -> Regex
 {
     alt([
-        let_or_bind(),
+        let_statement(),
+        bind_statement(),
         seq([
             t(TileLabel("leta")),
             t(TileLabel("identifier")),
@@ -1229,24 +1231,27 @@ fn statement_alt() -> Regex
     ])
 }
 
-/// Build the factored `let` statement family: `let PAT (= E | <- E) ;`.
-///
-/// A binding `let PAT = E ;` and a bind `let PAT <- E ;` share the `let PAT`
-/// prefix and diverge only at the `=` vs `<-` tile — which sits past an
-/// arbitrarily complex pattern, out of a bounded lookahead's reach. Factoring
-/// the tail alternation gives `let` one mold whose `≐`-successors are `{=,
-/// <-}`, so the discriminating tile continues exactly one branch and the choice
-/// is locally decidable (no lookahead), the `def`-family treatment applied to
-/// statements (`proposal-parser-interaction-core` §5.2).
-fn let_or_bind() -> Regex
+/// Build a variable-binding statement: `let PAT = E ;`.
+fn let_statement() -> Regex
 {
     seq([
         t(TileLabel("let")),
         h(Sort::Pattern),
-        alt([
-            seq([t(TileLabel("=")), h(Sort::Expression), t(TileLabel(";"))]),
-            seq([t(TileLabel("<-")), h(Sort::Expression), t(TileLabel(";"))]),
-        ]),
+        t(TileLabel("=")),
+        h(Sort::Expression),
+        t(TileLabel(";")),
+    ])
+}
+
+/// Build a computation-binding statement: `run PAT <- E ;`.
+fn bind_statement() -> Regex
+{
+    seq([
+        t(TileLabel("run")),
+        h(Sort::Pattern),
+        t(TileLabel("<-")),
+        h(Sort::Expression),
+        t(TileLabel(";")),
     ])
 }
 

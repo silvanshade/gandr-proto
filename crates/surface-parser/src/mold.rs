@@ -252,10 +252,12 @@ fn source_slice(src: SourceText<'_>) -> SourceSlice<'_>
 /// deliberately NOT reserved: they mold as contextual tiles only where the
 /// `op`-led fixity form expects them, so they remain ordinary identifiers
 /// everywhere else.
+/// `run` is reserved as the distinct lead of computation-binding statements;
+/// it therefore never enters the ordinary identifier menu.
 const KEYWORDS: &[&str] = &[
-    "def", "let", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force", "case",
-    "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer", "fork",
-    "acquire", "release", "migrate", "at", "true", "false", "forall", "mu", "end", "data",
+    "def", "let", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
+    "case", "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer",
+    "fork", "acquire", "release", "migrate", "at", "true", "false", "forall", "mu", "end", "data",
     "codata", "rec", "op", "rule", "for", "in", "while", "loop", "break", "continue", "with",
     "import", "module",
 ];
@@ -1209,6 +1211,10 @@ mod tests
         assert_eq!(
             candidate_labels(Lexeme::LowerWord, TokenText::from("def")),
             vec![CandidateLabel::from("def")]
+        );
+        assert_eq!(
+            candidate_labels(Lexeme::LowerWord, TokenText::from("run")),
+            vec![CandidateLabel::from("run")]
         );
         // An ordinary lowercase word gets the wide identifier menu, plus the
         // `hole_name` tile — admissible only after a `?` hole frontier, so it

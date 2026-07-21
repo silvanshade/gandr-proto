@@ -118,9 +118,9 @@ pub fn highlight(
 /// syntax-growth keywords that the live highlighter must keep honest on the
 /// surface corpus.
 const KEYWORDS: &[&str] = &[
-    "def", "let", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force", "case",
-    "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer", "fork",
-    "acquire", "release", "migrate", "at", "forall", "F", "U", "mu", "end",
+    "def", "let", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
+    "case", "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer",
+    "fork", "acquire", "release", "migrate", "at", "forall", "F", "U", "mu", "end",
     // W4d/W4e syntax-growth keywords; `module` is now mirrored by tree-sitter,
     // while the rest remain PBG-only/parity-exempt (`crate::PBG_ONLY_KINDS`).
     "data", "codata", "for", "while", "loop", "break", "continue", "import", "module", "in", "rec",
