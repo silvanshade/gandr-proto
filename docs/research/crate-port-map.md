@@ -20,7 +20,7 @@
   `gandr-core` sits on `gandr-nominal` only; `gandr-pipeline` is the hub (8 inbound-ish workspace deps).
   Driver `gandr` sits on top.
 * **Two orphan crates with no inbound workspace edges** (question c): `gandr-data` and `gandr-kernel-levels`.
-  Both are _intentional_ leaves awaiting a consumer that is not built yet (§7c).
+  Both are _intentional_ leaves awaiting a consumer that is not built yet (§7c). (Reboot update, B2: the kernel-levels consumer now exists — see the §7c update note.)
 * **tree-sitter is demoted, not deleted** (question d): `gandr-tree-sitter` is workspace-`exclude`d and reachable only through `gandr-grammar`'s optional `parity` feature; the tree-sitter grammar package (`packages/tree-sitter-gandr/`) still exists as the differential-parity reference.
   The Rust default graph is tree-sitter-free, enforced by a `wyrd-rust-gates` gate (§7d).
 * **Formatting is designed as three crates that do not exist yet** (question e): `proposal-pretty-printing.md` plans `gandr-doc` (layout VM), `gandr-fmt` (CST formatter), and **`gandr-pretty`** (core presentation printer).
@@ -241,6 +241,8 @@ Both are **intentional orphans awaiting an unbuilt consumer** — not dead code.
 * **gandr-kernel-levels** is the _first_ `gandr-kernel-*` subcrate (kernel-boundary slice 1+2, ADR-78), deliberately holding **levels only** with a hard TCB dependency wall — "no terms, no types, no universe rule (the rule `U_l : U_m` iff `l < m` is one call into `Level::lt`, and belongs to the **kernel-core crate**)" (`wyrd@failed-refactor:crates/gandr-kernel-levels/src/lib.rs:1–24`).
   The consumer is the future certified **kernel-core** crate, which is not built: the frozen interpreter core (`gandr-core`) carries only the `{0,+1}` _former_, "no first-class `Γ ⊢ A : U_l` type-formation judgment (that judgment is the kernel's S2 job)" (`…/docs/gandr/spec/core-ir-contract.md:102`; ADR-81 reconciliation `…/docs/adr/0081-…:11,19`; `…/docs/gandr/spec/kernel-boundary.md:6–8,45,139–140`).
   So the missing inbound edge is expected: it awaits kernel S2.
+  **Reboot update (B2, 2026-07-21):** the awaited consumer now exists — `gandr-kernel-core` (`crates/kernel-core`, landed B2.1) consumes `gandr-kernel-strata`, the reboot home of the kernel-levels content (`Level`/`lt`/`LandmarkPoset`, ADR-78), as its only dependency per the kernel-boundary §2 TCB wall.
+  The orphan status is discharged in the reboot tree; the `wyrd@failed-refactor` description above stands as source-material history.
 * **gandr-data** is a pure codec crate (JSON/TOML/YAML ↔ typed gandr `Value` over the **public** value constructors only; ADR-35 D6 renderer/encoder firewall), touching no part of the calculus (`wyrd@failed-refactor:crates/gandr-data/src/lib.rs:1–34`).
   Its intended consumer is the **shell / self-hosting bootstrap** lane: porting `scripts/*.nu` to gandr is what exercises the codecs (`…/docs/gandr/spec/proposal-shell-usage-surface.md:30,35,89`; `…/docs/gandr/spec/proposal-self-hosting.md:50,87`).
   That lane's driver does not yet depend on it, so it currently dangles. (Note: `gandr-data` cites **zero** `wyrd-*` bead IDs — clean to port.)
