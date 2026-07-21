@@ -121,6 +121,11 @@ Manifest source is `wyrd@failed-refactor:crates/<crate>/Cargo.toml`; module sour
 | **wyrd-rust-gates**                 | 37.2k | Rust-AST contract + graph-boundary gates for the workspace                                                   | `contracts`, `coverage`, `graph_boundary`, `mutants`, `docs`, `project`, `source_policy`, `workflow`, `maintenance`, `parser_facade`, `support`, opt `fuzzing`                          | `blake3`, `serde`, `serde_json`, `syn`, `toml`, `yaml-rust2`, `criterion`/`insta`/`proptest`(dev)                               | `default`, `full=[]`, **`fuzzing`** (only crate with it)               |
 | **wyrd-dylint**                     |  1.3k | Project-local Dylint rules for wyrd Rust type boundaries                                                     | cdylib; loaded via `dylint_lib="wyrd_dylint"`                                                                                                                                           | `clippy_utils`(git pin `9fca3bc9`), `dylint_linting`, `dylint_testing`(dev). **rustc_private**, standalone `[workspace]`        | **none** ⚠ (§5)                                                        |
 
+**Reboot update (F0, 2026-07-21):** the two front-end leaves in this inventory are ported.
+`gandr-syntax` landed as `gandr-surface-syntax` (`crates/surface-syntax`); `gandr-render-proto` landed as `gandr-surface-render-remote` (`crates/surface-render-remote`) — the owner renamed it from the `surface-render-proto` recommendation to the _remote_ render face, dovetailing the planned `surface-render` printer (wyrd-era `gandr-pretty`).
+Both are verbatim ports with the retired bead-ID and wyrd ADR citations dropped (staging call O3 plus the current-terms provenance rule) and a `docs/STATUS.md` + `docs/CHANGELOG.md` pair each.
+See `front-end-port-staging.md` §4 (reconciliation) and §9 (rung F0).
+
 ---
 
 ## 4. Wyrd coupling inventory
