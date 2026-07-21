@@ -61,21 +61,24 @@
   Primitive detection follows aliases and non-nominal structural/generic containers; a semantically named transparent wrapper is the boundary, with explicit utility traits.
   The sole signature exception is a method implementing a trait defined in an external crate.
   Project-local rules also enforce source-grounded recursive `# Termination` contracts and reject false `input recursion: none` claims.
+  `mise run cargo:dylint:recursion` puts that rule on the merge wall by running only the project-local driver over the Dylint-covered workspace targets; `gandr-workflow-gates` and the driver itself retain the same explicit exclusions as the strict lane.
+  It denies every warning except the unrelated `primitive_signature` and `single_field_struct_needs_transparent_repr` debt tracked in `gandr-vp8`; the strict `cargo:dylint:local` and full `cargo:dylint` tasks retain `-D warnings` and therefore do not claim those rules are clean.
+  The strict and recursion-relaxed passes use distinct Cargo target directories because `DYLINT_RUSTFLAGS` does not distinguish Cargo fingerprints; sharing artifacts could make one policy incorrectly reuse the other's result.
   **Known blind spot (2026-07-20):** the recursion rule sees only crate-local source-level call edges — derived-trait recursion (`Clone`/`PartialEq`/`Hash`/`Debug` on a recursive owned type routes through non-local std generics such as `Box<T>: Clone`, so no crate-local edge ever exists) and compiler-generated drop glue (no HIR function at all) are structurally invisible to it.
   Destruction/duplication totality on recursive owned types is therefore **not gate-proven**; the mitigations are flat/arena representations or manual worklist impls, and a complementary type-plane lint is tracked as `gandr-cfo`.
-  `non_local_effect_before_unhandled_error` remains isolated because the pinned upstream rule panics on a `gandr-core-checker` lib-test target; the required state-consistency audit is a tracked follow-up.
+  `non_local_effect_before_unhandled_error` remains a separate driver invocation after a historical upstream panic on a core lib-test target; it currently shares the standard Dylint package scope and `--all-targets` selection, and must be re-split per-core if that defect recurs.
 
 ### Dylint adoption and residual ledger
 
-The 2026-07-17 restoration re-enabled every Rust workspace crate and removed the phased package allowlists from both canonical lint tasks:
+The 2026-07-17 restoration re-enabled the Rust workspace and removed phased package allowlists from the canonical lint tasks, while retaining two explicit Dylint exclusions:
 
-* build, documentation, nextest, careful, coverage, Miri, live graph-gate discovery, Clippy, and Dylint now address the complete enabled workspace;
+* build, documentation, nextest, careful, coverage, Miri, live graph-gate discovery, and Clippy address the complete enabled workspace; Dylint addresses the complete Dylint-covered subset;
 * `cargo:clippy` checks every enabled workspace target with `features=full`, including the in-workspace `gandr-workflow-dylint` driver;
-* every workspace-wide `cargo:dylint` pass uses the same enabled-workspace scope; the pinned non-local-effect lint retains only its documented `gandr-core-checker` lib-test split;
-* `gandr-workflow-gates` carries parked crate-local lint-wall overrides instead of a lint exemption, triaged by `gandr-0ze`;
-* Clippy and Dylint run as the local `mise run cargo:clippy` and `mise run cargo:dylint` gates over that enabled-workspace scope; the hosted CI that ran them as separate dependency-free jobs — and the `ci_contracts` test locking their job independence and exact package scopes — is parked for the reboot, returning with the `.github/workflows/` surface (`gandr-kk7`; [ci.md](ci.md)).
+* every workspace-wide Dylint pass uses the same package scope, excluding `gandr-workflow-gates` and `gandr-workflow-dylint`; the pinned non-local-effect lint remains a separate driver invocation but uses the same package and target selection;
+* `gandr-workflow-gates` remains excluded while its crate-local lint-wall overrides are triaged by `gandr-0ze`; the driver remains excluded pending workspace lint-wall adoption under `gandr-3yh`;
+* Clippy and Dylint run as the local `mise run cargo:clippy` and `mise run cargo:dylint` gates over those respective scopes; the hosted CI that ran them as separate dependency-free jobs — and the `ci_contracts` test locking their job independence and exact package scopes — is parked for the reboot, returning with the `.github/workflows/` surface (`gandr-kk7`; [ci.md](ci.md)).
 
-New untracked package allowlists or exclusions are prohibited.
+New untracked package allowlists or exclusions are prohibited; the two tracked Dylint exclusions above remain visible until their owning beads close.
 
 The rollout established these durable findings and actions:
 
