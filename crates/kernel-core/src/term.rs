@@ -19,7 +19,8 @@
 //! # Arena representation (D1(C), gandr-5t3)
 //!
 //! A node's children are **typed arena ids** ([`ValueId`], [`ComputationId`]),
-//! not owned `Box`es: the node lives in the environment's [`TermArena`] and
+//! not owned `Box`es: the node lives in the environment's
+//! [`TermArena`](crate::TermArena) and
 //! names its children by id. Leaf payloads ([`Literal`], [`DeBruijnIndex`],
 //! [`ConstantIndex`], [`Side`]) stay inline. Because children are `Copy` ids,
 //! the derived `Clone`/`Drop`/`PartialEq`/`Eq`/`Hash` are **shallow** — no
@@ -114,7 +115,8 @@ pub enum Side
 /// computation effect; the only value that embeds a computation is
 /// [`Self::Thunk`], and a thunk suspends rather than runs it.
 ///
-/// Children are [`ValueId`]/[`ComputationId`] into the owning [`TermArena`];
+/// Children are [`ValueId`]/[`ComputationId`] into the owning
+/// [`TermArena`](crate::TermArena);
 /// the derived traits are shallow (the module docs), so no manual
 /// `Clone`/`Drop` is needed.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

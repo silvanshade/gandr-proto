@@ -21,7 +21,8 @@
 //! # Arena representation (D1(C), gandr-5t3)
 //!
 //! A type node's children are **typed arena ids** ([`ValueTypeId`],
-//! [`CompTypeId`]) into the owning [`TermArena`], not owned `Box`es; the
+//! [`CompTypeId`]) into the owning [`TermArena`](crate::TermArena), not owned
+//! `Box`es; the
 //! embedded `Level` at [`ValueType::Universe`]/[`ValueType::Lift`] stays
 //! inline. Children are `Copy`, so the derived
 //! `Clone`/`Drop`/`PartialEq`/`Eq`/`Hash` are **shallow** and the hand-written

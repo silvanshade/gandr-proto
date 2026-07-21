@@ -32,9 +32,10 @@
 //! * **Checked `get`.** Resolution is [`TermArena::value`] &c. — a
 //!   bounds-checked [`Option`] read (never indexing, per
 //!   docs/workflow/rust.md), so a dangling id fails closed (the checker maps it
-//!   to [`KernelError::ArenaFault`], the conversion walk to
-//!   [`Convertibility::Distinct`](crate::Convertibility)) — the
-//!   [`KernelError::CheckerRegisterFault`] "surface, never trust" posture.
+//!   to [`KernelError::ArenaFault`](crate::KernelError::ArenaFault), the
+//!   conversion walk to [`Convertibility::Distinct`](crate::Convertibility)) —
+//!   the [`KernelError::CheckerRegisterFault`](crate::KernelError::CheckerRegisterFault)
+//!   "surface, never trust" posture.
 //! * **Decode-side validation.** The export reader (commit 2) validates every
 //!   child reference (strictly-earlier and polarity-correct) before it mints,
 //!   so a decoded arena is well-formed by the same invariant.
@@ -42,15 +43,15 @@
 //! # Admission watermark discipline (the Idris staging overlay, impl-models §1.4/§5.3)
 //!
 //! A declaration's content is built into the environment arena by a
-//! [`DeclarationBuilder`], which records the arena's lengths at the point
-//! building began (the **content-start** watermark). Admission
-//! ([`Environment::add_decl`](crate::Environment::add_decl)) reads a second
-//! mark on entry (the **content-end**, past which the checker's synthesized
-//! intermediates allocate) and truncates after the verdict: to content-end on
-//! success (dropping intermediates, keeping content) or to content-start on
-//! rejection (dropping both). This is the transactional commit-on-success
-//! overlay of the Idris-2 `branchDepth`/`staging` context, adapted to the flat
-//! arena.
+//! [`DeclarationBuilder`](crate::DeclarationBuilder), which records the arena's
+//! lengths at the point building began (the **content-start** watermark).
+//! Admission ([`Environment::add_decl`](crate::Environment::add_decl)) reads a
+//! second mark on entry (the **content-end**, past which the checker's
+//! synthesized intermediates allocate) and truncates after the verdict: to
+//! content-end on success (dropping intermediates, keeping content) or to
+//! content-start on rejection (dropping both). This is the transactional
+//! commit-on-success overlay of the Idris-2 `branchDepth`/`staging` context,
+//! adapted to the flat arena.
 
 use alloc::vec::Vec;
 
@@ -93,8 +94,8 @@ pub struct CompTypeId(u32);
 /// # Contract
 /// - requires: `length` is a `Vec` length within an arena.
 /// - ensures: the equal `u32`, or `u32::MAX` if the arena exceeded the id space
-///   (~4 billion nodes — far above [`crate::MAX_TABLE_ENTRIES`], the decode
-///   cap; an in-memory arena beyond it would alias, a documented ceiling).
+///   (~4 billion nodes — far above `MAX_TABLE_ENTRIES`, the decode cap; an
+///   in-memory arena beyond it would alias, a documented ceiling).
 /// - provides: the total, panic-free length→id-index widening.
 /// - fails: never (saturates).
 /// - panics: none.
