@@ -1001,7 +1001,6 @@ mod tests
     use std::env;
     use std::path::Path;
     use std::path::PathBuf;
-    use std::process::Command;
 
     use super::*;
 
@@ -1748,14 +1747,10 @@ mod tests
         Args: IntoIterator,
         Args::Item: Into<OsString>,
     {
-        let converted = args.into_iter().map(Into::into).collect::<Vec<_>>();
-        let mut command = Command::new("git");
+        let mut command = support::stateless_git_command();
         command
-            .args(&converted)
-            .current_dir(cwd)
-            .env("GIT_CONFIG_NOSYSTEM", "1")
-            .env("GIT_TERMINAL_PROMPT", "0");
-        support::sanitize_git_environment(&mut command);
+            .args(args.into_iter().map(Into::into))
+            .current_dir(cwd);
         let output = command
             .output()
             .map_err(|error| GateError::operational(error.to_string()))?;
@@ -1775,23 +1770,12 @@ mod tests
     ) -> Result<String, GateError>
     {
         let message = message.into().0;
-        let mut command = Command::new("git");
+        let mut command = support::stateless_git_command();
         command
-            .args([
-                "-c",
-                "user.name=Gandr Workflow Gate Tests",
-                "-c",
-                "user.email=gandr-gates@example.invalid",
-                "commit",
-                "-m",
-                message,
-            ])
+            .args(["commit", "-m", message])
             .current_dir(cwd)
-            .env("GIT_CONFIG_NOSYSTEM", "1")
-            .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_AUTHOR_DATE", "1000000000 +0000")
             .env("GIT_COMMITTER_DATE", "1000000000 +0000");
-        support::sanitize_git_environment(&mut command);
         let output = command
             .output()
             .map_err(|error| GateError::operational(error.to_string()))?;

@@ -630,6 +630,15 @@ const GIT_ENVIRONMENT_KEYS: [&str; 9] = [
     "GIT_REPLACE_REF_BASE",
     "GIT_WORK_TREE",
 ];
+/// Per-invocation Git configuration for generated commits.
+const STATELESS_GIT_CONFIG_ARGUMENTS: [&str; 6] = [
+    "-c",
+    "user.name=gandr-agent",
+    "-c",
+    "user.email=gandr-agent@gandr.invalid",
+    "-c",
+    "commit.gpgsign=false",
+];
 
 /// Number of deterministic temporary-name candidates tried before reporting a
 /// collision failure.
@@ -1231,6 +1240,48 @@ pub(crate) fn sanitize_git_environment(command: &mut Command)
     }
 }
 
+/// Build a Git command with stateless identity and signing policy.
+///
+/// # Contract
+/// - ensures: every invocation uses `gandr-agent <gandr-agent@gandr.invalid>`
+///   and disables commit signing through command-line configuration.
+/// - provides: a repository-neutral Git command whose identity and signing
+///   policy do not mutate local or global Git configuration.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 only — a hostile global identity plus mandatory signing
+///   distinguishes command-line overrides from ambient or repository-local
+///   configuration.
+/// - witness: `gandr_workflow_gates::support::tests::stateless_git_command_overrides_ambient_identity_and_signing`
+#[cfg(test)]
+pub(crate) fn stateless_git_command() -> Command
+{
+    let mut command = Command::new("git");
+    command
+        .args(STATELESS_GIT_CONFIG_ARGUMENTS)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_TERMINAL_PROMPT", "0");
+    sanitize_git_environment(&mut command);
+    command
+}
+
+/// Prefix owned Git arguments with the stateless identity and signing policy.
+///
+/// # Contract
+/// - ensures: returns command-line configuration before every argument in
+///   `command_args`.
+/// - provides: the slice-backed adapter for injected Git command hosts.
+/// - panics: none.
+pub(crate) fn stateless_git_args(command_args: &[OsString]) -> Vec<OsString>
+{
+    STATELESS_GIT_CONFIG_ARGUMENTS
+        .into_iter()
+        .map(OsString::from)
+        .chain(command_args.iter().cloned())
+        .collect()
+}
+
 /// Return symlink metadata with a gate I/O error on failure.
 ///
 /// # Contract
@@ -1551,6 +1602,77 @@ mod tests
             Some(CommandEnvEntry::Set(OsString::from("keep.fixture"))),
             explicit_command_env(&command, "GANDRWORKFLOWGATES_SUPPORT_KEEP")
         );
+    }
+
+    /// Stateless Git overrides hostile identity and signing without local
+    /// configuration.
+    #[test]
+    fn stateless_git_command_overrides_ambient_identity_and_signing() -> Result<(), Box<dyn Error>>
+    {
+        let fixture = TestWorkspace::create("stateless-git")?;
+        let hostile_config = fixture.path().join("host.gitconfig");
+        HOST_FILESYSTEM.write(
+            &hostile_config,
+            "[user]\n\tname = Host User\n\temail = host@example.invalid\n\tsigningKey = \
+             /missing/signing-key.pub\n[commit]\n\tgpgSign = true\n[gpg]\n\tformat = ssh\n",
+        )?;
+        let repo = fixture.path().join("repo");
+        HOST_FILESYSTEM.create_dir_all(&repo)?;
+
+        let mut init = stateless_git_command();
+        init.args(["init", "--quiet"])
+            .current_dir(&repo)
+            .env("GIT_CONFIG_GLOBAL", &hostile_config);
+        let init = init.output()?;
+        assert!(
+            init.status.success(),
+            "git init failed: {}",
+            String::from_utf8_lossy(&init.stderr)
+        );
+
+        HOST_FILESYSTEM.write(repo.join("README.md"), "fixture\n")?;
+        let mut add = stateless_git_command();
+        add.args(["add", "README.md"])
+            .current_dir(&repo)
+            .env("GIT_CONFIG_GLOBAL", &hostile_config);
+        let add = add.output()?;
+        assert!(
+            add.status.success(),
+            "git add failed: {}",
+            String::from_utf8_lossy(&add.stderr)
+        );
+
+        let mut commit = stateless_git_command();
+        commit
+            .args(["commit", "--quiet", "-m", "fixture"])
+            .current_dir(&repo)
+            .env("GIT_CONFIG_GLOBAL", &hostile_config);
+        let commit = commit.output()?;
+        assert!(
+            commit.status.success(),
+            "git commit failed: {}",
+            String::from_utf8_lossy(&commit.stderr)
+        );
+
+        let mut show = stateless_git_command();
+        show.args(["show", "--no-patch", "--format=%an%x00%ae%x00%G?", "HEAD"])
+            .current_dir(&repo)
+            .env("GIT_CONFIG_GLOBAL", &hostile_config);
+        let show = show.output()?;
+        assert!(
+            show.status.success(),
+            "git show failed: {}",
+            String::from_utf8_lossy(&show.stderr)
+        );
+        assert_eq!(
+            b"gandr-agent\0gandr-agent@gandr.invalid\0N\n",
+            show.stdout.as_slice()
+        );
+
+        let local_config = std::fs::read_to_string(repo.join(".git/config"))?;
+        assert!(!local_config.contains("[user]"));
+        assert!(!local_config.contains("gpgsign"));
+        Ok(())
     }
 
     /// The environment-printing child fixture reports unset keys

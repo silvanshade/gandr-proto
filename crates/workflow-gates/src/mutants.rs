@@ -8,7 +8,6 @@ extern crate alloc;
 
 use alloc::format;
 use alloc::string::String;
-use alloc::vec;
 use alloc::vec::Vec;
 use std::env;
 use std::ffi::OsStr;
@@ -1277,18 +1276,17 @@ fn ensure_guest_git_repo() -> Result<(), GateError>
         "mutants-guest: git init failed",
     )?;
     run_git_status_checked(
-        &git_identity_args(&[os("add"), os("--all")]),
+        &[os("add"), os("--all")],
         None,
         "mutants-guest: git add failed",
     )?;
     run_git_status_checked(
-        &git_identity_args(&[
+        &[
             os("commit"),
             os("--quiet"),
-            os("--no-gpg-sign"),
             os("-m"),
             os("mutants baseline"),
-        ]),
+        ],
         None,
         "mutants-guest: git commit failed",
     )
@@ -1447,8 +1445,9 @@ fn run_git_status_checked<'semantic>(
 ) -> Result<(), GateError>
 {
     let context = context.into().0;
+    let args = support::stateless_git_args(args);
     let mut host = SupportMutantsHost;
-    run_git_status_checked_with_host(&mut host, args, cwd, context)
+    run_git_status_checked_with_host(&mut host, &args, cwd, context)
 }
 
 /// Run a sanitized Git status command through an injected host and require
@@ -1644,19 +1643,6 @@ fn os<'semantic>(value: impl Into<ValueText<'semantic>>) -> OsString
 {
     let value = value.into().0;
     OsString::from(value)
-}
-
-/// Prefix Git command arguments with the throwaway identity used in the guest.
-fn git_identity_args(command: &[OsString]) -> Vec<OsString>
-{
-    let mut args = vec![
-        os("-c"),
-        os("user.email=mutants@gandr.invalid"),
-        os("-c"),
-        os("user.name=mutants"),
-    ];
-    args.extend_from_slice(command);
-    args
 }
 
 /// Immutable inputs identifying one contained mutation campaign.
@@ -2568,19 +2554,9 @@ mod tests
             "test git init failed",
         )?;
         crate::support::HOST_FILESYSTEM.write(root.join("lib.rs"), b"pub fn marker() {}\n")?;
+        run_git_status_checked(&[os("add"), os("--all")], Some(root), "test git add failed")?;
         run_git_status_checked(
-            &git_identity_args(&[os("add"), os("--all")]),
-            Some(root),
-            "test git add failed",
-        )?;
-        run_git_status_checked(
-            &git_identity_args(&[
-                os("commit"),
-                os("--quiet"),
-                os("--no-gpg-sign"),
-                os("-m"),
-                os("initial"),
-            ]),
+            &[os("commit"), os("--quiet"), os("-m"), os("initial")],
             Some(root),
             "test git commit failed",
         )?;

@@ -1407,7 +1407,6 @@ mod tests
     use std::env;
     use std::path::Path;
     use std::path::PathBuf;
-    use std::process::Command;
 
     use super::*;
 
@@ -2134,23 +2133,12 @@ mod tests
             .map_err(|error| GateError::operational(error.to_string()))?;
         let _stdout = fixture_git(repo, ["add", name])?;
         let date = format!("{timestamp} +0000");
-        let mut command = Command::new("git");
+        let mut command = support::stateless_git_command();
         command
-            .args([
-                "-c",
-                "user.name=Gandr Workflow Gate Tests",
-                "-c",
-                "user.email=gandr-workflow-gates@example.invalid",
-                "commit",
-                "-m",
-                name,
-            ])
+            .args(["commit", "-m", name])
             .current_dir(repo)
-            .env("GIT_CONFIG_NOSYSTEM", "1")
-            .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_AUTHOR_DATE", &date)
             .env("GIT_COMMITTER_DATE", &date);
-        support::sanitize_git_environment(&mut command);
         let output = command
             .output()
             .map_err(|error| GateError::operational(error.to_string()))?;
@@ -2173,13 +2161,8 @@ mod tests
         Args: IntoIterator,
         Args::Item: AsRef<OsStr>,
     {
-        let mut command = Command::new("git");
-        command
-            .args(args)
-            .current_dir(cwd)
-            .env("GIT_CONFIG_NOSYSTEM", "1")
-            .env("GIT_TERMINAL_PROMPT", "0");
-        support::sanitize_git_environment(&mut command);
+        let mut command = support::stateless_git_command();
+        command.args(args).current_dir(cwd);
         let output = command
             .output()
             .map_err(|error| GateError::operational(error.to_string()))?;

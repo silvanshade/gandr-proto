@@ -1445,7 +1445,6 @@ mod tests
     use std::fs;
     use std::path::Path;
     use std::path::PathBuf;
-    use std::process::Command;
     use std::time::SystemTime;
     use std::time::UNIX_EPOCH;
 
@@ -2750,9 +2749,8 @@ target_percent = 80.00
             .into_iter()
             .map(|arg| std::ffi::OsString::from(arg.into().text))
             .collect::<Vec<_>>();
-        let mut command = Command::new("git");
+        let mut command = crate::support::stateless_git_command();
         command.args(&args).current_dir(repo);
-        crate::support::sanitize_git_environment(&mut command);
         let status = command.status().expect("git should be runnable");
         assert!(status.success(), "git {args:?} should succeed");
     }

@@ -2432,7 +2432,12 @@ mod tests
         args: &[OsString],
     ) -> TestResult
     {
-        let status = crate::support::run_status(OsStr::new("git"), args, cwd, true)?;
+        let mut command = crate::support::stateless_git_command();
+        command.args(args);
+        if let Some(directory) = cwd {
+            command.current_dir(directory);
+        }
+        let status = command.status()?;
         if status.success() {
             return Ok(());
         }
@@ -2759,21 +2764,6 @@ mod tests
                 repo.as_os_str().to_os_string(),
             ])?;
             git_status(Some(&repo), &[os("checkout"), os("-b"), os("main")])?;
-            git_status(Some(&repo), &[
-                os("config"),
-                os("user.email"),
-                os("workflow@example.invalid"),
-            ])?;
-            git_status(Some(&repo), &[
-                os("config"),
-                os("user.name"),
-                os("workflow test"),
-            ])?;
-            git_status(Some(&repo), &[
-                os("config"),
-                os("commit.gpgsign"),
-                os("false"),
-            ])?;
             crate::support::HOST_FILESYSTEM.write(repo.join("README.md"), "workflow fixture\n")?;
             git_status(Some(&repo), &[os("add"), os("README.md")])?;
             git_status(Some(&repo), &[
