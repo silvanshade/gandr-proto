@@ -5,7 +5,8 @@
   A distilled first form is the 2026-07-20 comment on `iu-26l`; this document is the full statement, with the saturation mechanism worked on a concrete example (§5) and the vindication/philosophical reading priced as gloss (§9).
   **Home**: gandr proper (owner direction, 2026-07-20) — the analysis is carried and maintained here; the iu side keeps the `iu-26l` distilled comment as its pointer.
 * **Provenance**: the CCHM claims were verified against the primary source — Cohen, Coquand, Huber, Mörtberg, _Cubical Type Theory: a constructive interpretation of the univalence axiom_ (`cchm-2018`; section/page refs to arXiv:1611.02108v1) — §2–§4.1, §9.1 read directly; Appendix C is cited through §9.1's own pointer, not independently re-derived here.
-  The full document then passed an adversarial per-claim verification pass (every § attribution, quoted string, symbol name, and bead reference checked against the sources; findings applied; the record is on `gandr-dyh`). iu-side anchors, all read this session: `iu:docs/spec/DESIGN-ua-base-vocabulary.md` §§1–7 and its execution record; `iu:src/Internal/UaBase/` (in particular `Edit`, `Rules`, `Faithful`, `Negation`); `iu:src/Internal/Profunctor/Yoneda.agda`; `iu:src/Internal/Profunctor/Tabulator/Path.agda`. wyrd-side anchors: the F0 VDC dictionary suite `wyrd:crates/gandr-desc/tests/vdc_dictionary/` (`main.rs` verdict header, `law5_units.rs`, `harness.rs`; bead `wyrd-0krj`) and the U3.0c negation guard (`wyrd:crates/gandr-desc/tests/code_iso`, `wyrd-2fyz`).
+  The full document then passed an adversarial per-claim verification pass (every § attribution, quoted string, symbol name, and bead reference checked against the sources; findings applied; the record is on `gandr-dyh`).
+  A second adversarial pass (2026-07-20) verified the Cubical Agda evaluator and face-machinery claims (V1–V5) directly against the Agda implementation; the source checkout of record and the per-claim verdicts are §11. iu-side anchors, all read this session: `iu:docs/spec/DESIGN-ua-base-vocabulary.md` §§1–7 and its execution record; `iu:src/Internal/UaBase/` (in particular `Edit`, `Rules`, `Faithful`, `Negation`); `iu:src/Internal/Profunctor/Yoneda.agda`; `iu:src/Internal/Profunctor/Tabulator/Path.agda`. wyrd-side anchors: the F0 VDC dictionary suite `wyrd:crates/gandr-desc/tests/vdc_dictionary/` (`main.rs` verdict header, `law5_units.rs`, `harness.rs`; bead `wyrd-0krj`) and the U3.0c negation guard (`wyrd:crates/gandr-desc/tests/code_iso`, `wyrd-2fyz`).
   The trusted-surface pricing of cubical systems follows the iu manual's landscape chapter rows (`iu:docs/manual/chapters/08-landscape.typ`; refs keys `cchm-2018`, `xtt-2022`, `ggms-2024`, `grubmuller-2026`, all also resolved by `docs/spec/refs.yml` here) and is not re-argued here.
 * **Tracking**: `gandr-dyh` (this document; the iu-side `iu-7r6` was relocated here and closed); iu-side feedback items route through `iu-ij6`.
 * **Honesty gates**: §9(c) is interpretive gloss and is labeled as such where it stands; iu manual consumption (§10) stays behind the `iu-huy` pass on the iu side.
@@ -108,6 +109,10 @@ CCHM's singleton contractibility is the same Yoneda extension rendered in the in
 The economic difference is wholesale versus retail: the free De Morgan algebra makes _every_ degenerate square exist at once — an infinite coherence machine bought with the shape — while the polygraph pays coherence per stratum as finitely many completed 2-cells: R-cancel/R-comm/R-coxeter/R-coh, plus the three ratified errata that itemize the bill (`coh-dist-⊗unit`/`coh-dist-⊗assoc`, then `coh-dist-⊗comm`, then `coh-dist-⊕assoc` — the Laplaza cells landed erratum by erratum under explicit φ- and free-move analyses; design §4 and the execution record).
 That itemized bill is the honest cost of the ua-base side, and the Squier completion tranche (`iu-c2h.1`) is where it is being paid.
 
+**The placement, operationally — the face algebra runs inside the evaluator.** The wholesale-versus-retail contrast has a runtime face, and it is the sharpest form of the §3 placement thesis.
+In Cubical Agda the decidable face algebra is consulted _inside the evaluator_: reducing `transp`/`hcomp` evaluates the cofibration and, on `Glue` and datatype lines, decomposes it into disjunctive normal form to fire the Kan step, while the type-checker's system-coverage check compares clause bodies on every pairwise face _overlap_ — the lattice meet. ua-base consults its decidable algebra only in the proof-equality _decision layer_: replay and realization are structural recursion on generators, and nothing in the transport loop calls an entailment procedure.
+The primary-source verification of the Cubical Agda side, against the Agda `2.9.0`-nightly sources, is the register in §11 (claims V1–V4); the efficiency reading it licenses is §8.
+
 ## 7. Symmetry, directedness, and the temporal reading
 
 CCHM's path reversal is the involution `(i/1−i)`: symmetry is baked into the shape algebra, every path is invertible structurally, and the theory cannot decline it — a directed cubical theory has to rebuild its interval.
@@ -133,6 +138,18 @@ Two calibration notes.
 CCHM's own Kleene-algebra remark (§3, Remark: adding `i ∧ (1−i) ≤ j ∨ (1−j)` validates more judgmental equalities, still decidably) is the "which equalities are judgmental" dial turned inside the shape algebra; the ua-base grade discipline — β at `≈ʳ`, η at `≈ᶜ`, never `≡` — is the same dial made explicit in the statement (design §1).
 And the decidable code universe is not the setoid/h-set retreat: codes are h-sets, but the protypes over them are not, the negation guard is the permanent in-tree witness (§5), and UIP-by-stealth is a named kill signal — the ua-base analogue of univalence keeping the universe from being a set.
 
+**The efficiency reading (belief-grade; Agda-verified where cited).** Conditional on the Cubical Agda evaluator behaving as verified in §11, the efficiency edge of the ua-base placement is _architectural_, on three legs that degrade independently.
+L1 — no constraint solving in the evaluator: ua-base replay/realization is structural recursion on generators plus concatenation, whereas every Cubical `transp`/`hcomp` step potentially runs the face decomposition and the `∀i` elimination (§11, V1–V4).
+L2 — `refl` collapses definitionally: J-β is the empty-word constructor match (§3), so there is no analogue of degenerate transports left stuck as neutrals; the cubical side pays here in the documented, related forms of _empty systems_ (fought inside the evaluator by `ghcomp`) and composition-depth blow-up, with the geometrically-unavoidable failure of regularity underneath (§11, V5).
+L3 — path-proof equality is excluded from conversion: β at replay grade, η at rule grade, never `≡` (design §1), so the word problem is pay-per-use, whereas cubical path equality _is_ definitional equality and every conversion check may pay for it.
+L2 and L3 stand on the grade discipline and the constructor form of `refl` regardless of the evaluator details; L1 rests on the verified `transp`/`hcomp` reduction (§11, V2/V3).
+The qualifiers stand unchanged by the verification: no benchmarks exist, the demonstrator is the leaf-free `{𝟙, ⊗, ⊕}` toy, and the claim is workload-relative — cubical's uniform overhead buys uniform generality over an open universe, and a workload that genuinely compares long path proofs stresses _our_ decision layer instead; decision-layer scaling at richer strata (μ-codes, binders, S2) is open.
+
+The two systems' efficiency costs sit on opposite sides of the trust boundary — the price-ledger form of the placement thesis.
+Cubical Agda's face machinery lives inside the trusted evaluator, so every optimization there is permanent trusted surface (its instance of the `xtt-2022`/Lean-GMP budgeted-fast-path lesson the landscape chapter already prices); ua-base's decision-layer costs live outside the TCB, or TCB-adjacent behind explicit witnesses, so the efficiency program can proceed without growing trust.
+A concrete datum for the asymmetry: the cubical kernel _did_ carry Swan's `Id` as trusted surface — the `primIdJ` eliminator that makes J compute on `refl` (§4) — and has since shed it, removing `primIdJ` in Agda 2.6.3 (PR agda/agda#6032, "in favour of matching on the cubical identity type") and then the whole cubical `Id` type in Agda 2.8.0 (PR agda/agda#7652 with agda/cubical#1005, its "computational behaviour … exactly replicated by the user-definable identity type").
+The retrofit §4 prices as the cubical concession to a computing J was, in the implementation, a trusted primitive the kernel ultimately preferred to retire (§11).
+
 ## 9. The unintended vindication, and a Brouwerian gloss
 
 **(a) Levitation and polygraphs, vindicated together.** Neither ingredient was adopted for the identity story: levitation entered for datatype declarations (description codes; the S2 bill on the wyrd side), polygraphs for rewriting and fusion (the doctrine fragment; the L2 engine on the gandr side).
@@ -154,3 +171,42 @@ Read this way, the closed universe is not a concession extracted by decidability
 * **The iu manual** (gated behind `iu-huy`, iu-side): candidate chapter content for the same explanation there; the landscape chapter keeps the pricing table.
 * **wyrd Track B** (`wyrd-kcg2`): §5 is the exposition-grade form of the saturation invariant the F2 cell-store schema constraint encodes.
 * The `iu-26l` comment of 2026-07-20 remains the distilled form; this document supersedes it as the citable statement.
+
+## 11. Verification register — the Cubical Agda evaluator claims (V1–V5)
+
+Adversarial per-claim verification of the belief-grade performance thesis (the `gandr-dyh` FULL CONSOLIDATED RECORD, 2026-07-20) against primary sources: the Agda implementation, the Cubical Agda paper, and the Agda issue tracker.
+Each claim was attacked for refutation, not confirmed from secondary summaries.
+This register is hand-maintained: `docs/research/` is outside the corpus MANIFEST, so every citation is by-hand exact.
+
+* **Source checkout of record.** Agda `2.9.0`-nightly at commit `6e4d6e954367874c21b7f2bd5961a695a12e7f4e` (`git describe`: `nightly`), read-only; file paths are under `src/full/Agda/`, line numbers at that commit.
+  Paper: Vezzosi, Mörtberg & Abel, _Cubical Agda: A Dependently Typed Programming Language with Univalence and Higher Inductive Types_, Proceedings of the ACM on Programming Languages, volume 3 (ICFP), Article 87 (2019), doi:10.1145/3341691 (author PDF: `staff.math.su.se/anders.mortberg/papers/cubicalagda.pdf`).
+
+* **V1 — CONFIRMED.** Partial/system clauses are checked for pairwise compatibility on face overlaps (lattice meets) at type-checking time, entailment decided over the face-constraint representation.
+  `checkSystemCoverage` (`TypeChecking/Rules/Def.hs:574–678`) does coverage at line 632 (`equalTerm interval φ (orI φⱼ)`) and the pairwise overlap check at lines 634–651: for each clause pair it forms the meet `phi12 ← reduce (imin φ₁ φ₂)` (637) and requires the bodies to agree (`equalTerm t' v1 v2`, 651).
+  The face-constraint representation is DNF: `decomposeInterval'` (`TypeChecking/Primitive/Cubical/Base.hs:354–382`; `IMin` = ∧ cartesian product, `IMax` = ∨ union, `INeg` = invert), with inconsistent maps discarded by `decomposeInterval` (342–348) and iterated by `forallFaceMaps` (`TypeChecking/Conversion.hs:2174–2213`).
+  Precisification: the checked object is the _system_ (extended-lambda clauses over an `IsOne` constraint); `primPOr` is the term-level combiner whose well-formedness this underwrites.
+
+* **V2 — CONFIRMED.** `transp` carries a φ constancy cofibration; `transp A i1 a = a` is definitional; φ is consulted during reduction, not only at checking time.
+  `primTransHComp` (`TypeChecking/Primitive/Cubical/Cubical.hs:413–437`) runs in `ReduceM`: it takes `(DoTransp, [l, bA, φ, u0])` (416), reduces φ (`reduceB'` then `intervalView`, 419–420), and on φ = i1 returns the base unchanged (`DoTransp → pure (unArg u0)`, 434–437); non-constant lines fall through to the type-directed Kan step (491–582).
+  Paper corroboration: §2.1.1, p. 7 — "exploiting that `transp (…)` is the identity function when applied to `i1`".
+
+* **V3 — CONFIRMED.** `hcomp [φ ↦ u] u0` reduces to `u(i1)` when φ = i1.
+  `primTransHComp` (`…/Cubical.hs:424–433`): on the `IOne` view, `DoHComp → u <@> builtinIOne <..> builtinItIsOne` — i.e. `u i1` fed the canonical `1 = 1` proof.
+
+* **V4 — CONFIRMED (lands on the CHM refinement).** The `∀i` face-quantifier elimination runs inside the `Glue` transport/composition.
+  `doGlueKanOp (TranspOp …) (IsFam …)` (`TypeChecking/Primitive/Cubical/Glue.hs:142–201`) fetches `builtinFaceForall` (150) and computes `forallphi = tForall <@> φ` (200–201, comment "compute forall. phi"); the primitive is `primFaceForall'` (`…/Cubical.hs:776–831`), which keeps the DNF components not mentioning the bound interval variable.
+  Same primitive is fetched in `TypeChecking/Primitive/Cubical/HCompU.hs`.
+  Correction to the belief's "CCHM Appendix A or its CHM refinement": the Glue transport follows Huber's CHM-style refinement, not CCHM Appendix A verbatim — the module cites S. Huber, _A Cubical Type Theory for Higher Inductive Types_ (Feb 2022) at `Glue.hs:182–188`.
+
+* **V5 — PARTIAL.** Confirmed halves: regularity is absent and geometrically unavoidable, and transp/hcomp term build-up is a documented contributor to Cubical Agda's slowdowns.
+  Correction: the issue tracker documents the slowdowns as _empty systems_ and _composition-depth_ blow-up, not in the exact "unreduced chains accumulate on degenerate lines absent regularity" form the belief states; the degenerate-line/regularity attribution is the mechanism, not the shape in which the tracker records the cost.
+  Absence of regularity: CCHM §9.1 (already §4/§8); Swan (2018) impossibility counterexamples.
+  In-library cost of that absence: `agda/cubical`, `Cubical/Foundations/Univalence.agda` carries the comment "If we would have regularity this would be refl", forcing an explicit `transp`/path where `refl` would otherwise suffice.
+  Documented slowdowns: agda/agda#3558 (filling high-dimensional cubes — a 6d cube ≈ 100 s, a 7d cube > 16 GB and non-terminating, vs < 2 s in redtt); agda/agda#3599 (`pathToEquiv`, > 22 s).
+  Empty-system litter: agda/agda#3415 (the `ghcomp` proposal, Mörtberg with the definition credited to Saizan — "to get rid of empty systems … computing faster, especially for HITs"), implemented in the evaluator as `mkGComp` (`Glue.hs:45–81`, "the point of this is that gcomp does not produce any empty systems").
+
+* **Additional finding — Swan `Id` status (the belief's "also confirm" clause).** Cubical Agda implemented Swan's `Id` with a computing J and has since removed it: the `primIdJ` eliminator in Agda 2.6.3 (PR agda/agda#6032, removed "in favour of matching on the cubical identity type"), then the whole cubical `Id` type in Agda 2.8.0 (PR agda/agda#7652 with agda/cubical#1005, whose "computational behaviour … [is] exactly replicated by the user-definable identity type").
+  So at the checkout there is no Swan-`Id` primitive in the kernel; §4's table row describes the CCHM _paper_ construction, whose in-kernel realisation was retired (priced in §8).
+
+* **Not independently re-verified this pass (carried; flagged where used).** The CCHM §9.1 regularity quote and its Appendix C impossibility were verified byte-exact in the first `gandr-dyh` pass and are not re-fetched here; the efficiency-thesis qualifiers (no benchmarks, toy scale, workload-relativity) are belief-grade by construction rather than falsifiable claims; the ua-base (`iu:`) anchors are unchanged from the first pass.
+  Net effect on the thesis: all three legs L1–L3 survive — V1–V4 confirmed leaves L1 intact, and L2/L3 never depended on the evaluator details; only V5's precise phrasing is corrected, sharpening rather than weakening L2 (§8).
