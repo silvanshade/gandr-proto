@@ -1,4 +1,4 @@
-<component derives="spec-index" id="data-patterns" spec-version="1" status="adopted-unbuilt" title="The joint data-declarations and pattern-matching surface">
+<component derives="spec-index" grounds="core-ir" id="data-patterns" spec-version="1" status="adopted-unbuilt" title="The joint data-declarations and pattern-matching surface">
   <section id="dp-overview" title="Overview and the load-bearing asymmetry">
     <prose>
       gandr has no user data declarations today: only built-in structural formers (pairs, sums, lists, closed records, numeric and string atoms) and shallow single-level constructor matching. This design covers the two areas a usability MVP requires in tandem — a

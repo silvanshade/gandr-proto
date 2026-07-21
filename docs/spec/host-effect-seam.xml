@@ -1,4 +1,4 @@
-<component derives="spec-index" id="host-effect-seam" spec-version="1" status="built" title="The host-effect seam">
+<component derives="spec-index" grounds="core-ir" id="host-effect-seam" spec-version="1" status="built" title="The host-effect seam">
   <section id="hes-overview" title="The seam">
     <prose>
       The

@@ -1,4 +1,4 @@
-<component derives="spec-index" grounds="host-effect-seam vdc-reflection" id="sequent-kernel" spec-version="1" status="partial" title="The sequent kernel: the polarized L command IL, machine, and fusion engine (phases L0-L2)">
+<component derives="spec-index" grounds="core-ir host-effect-seam vdc-reflection" id="sequent-kernel" spec-version="1" status="partial" title="The sequent kernel: the polarized L command IL, machine, and fusion engine (phases L0-L2)">
   <section id="sk-overview" title="Overview and decisions">
     <prose>
       The sequent kernel adopts a

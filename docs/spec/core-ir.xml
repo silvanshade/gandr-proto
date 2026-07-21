@@ -1,0 +1,261 @@
+<component derives="spec-index" id="core-ir" spec-version="1" status="partial" title="The core IR contract: the frozen call-by-push-value substrate">
+  <section id="ci-overview" title="The contract and its discipline">
+    <prose>
+      The
+      <term-def key="core-ir">core IR</term-def>
+      is the frozen coupling-point substrate of gandr: the value, computation, and stack node shapes the surface lowers into, the checker and the typing machine range over, the machine runs, and the metatheory states its theorems about. The core is call-by-push-value
+      <cite key="A-1a"/>
+      with grades on the thunk modal, an effect row on the returner, first-class control stacks, identity and dependent-pair formers, declared-data nominal handles, and a predicative code universe. This component is the contract's home: it fixes the data shapes those rules range over and declares what is frozen, what is a staged extension point, and what is a decided-direction hook.
+    </prose>
+    <prose>
+      The shapes below are the
+      <term-def key="frozen-core">frozen core</term-def>
+      : stable by declaration, so every lane can build against them concurrently. A change to a
+      <term-def key="substrate-shape">substrate shape</term-def>
+      is expensive to retrofit, so it is decided in the open — a backbone decision recorded in the plan of record until the decision index exists — never a unilateral edit inside one lane. Additions are extensions, landing at their named slot without reshaping the frozen fragment. Re-sync is periodic, on contract change, not continuous. And one source owns each fact: a typing rule lives in its home component while this contract owns the frozen-data view; drift between them is a tracker item, not a tolerated state.
+    </prose>
+    <prose>Absorbed from the pre-reboot core-IR/type contract and rewritten against the realized reboot core: the implementation-status table is now the realization map below, the machine face names the sole driver honestly, and the conversion-firewall section carries the recorded staleness correction — dependent elimination is realized, so the firewall holds by shape, not by absence. Where this component and a ported doc-comment disagree, this component is the contract; the doc-comment has drifted.</prose>
+  </section>
+  <section id="ci-realization" status="built" title="The realization map">
+    <prose>The frozen fragment is realized across five reboot crates. Crate core-checker carries the checker, the defunctionalized typing machine, the type and term node families, subtyping, the grade carrier, the effect layer, the control fragment, the identity layer, and the host-seam types. Crate core-sequent carries the focusing translation and the L machine, the sole operational driver since the CEK oracle retired. Crates kernel-core and kernel-strata carry the certified-kernel slice: arena-resident terms, the universe-level algebra, and the quarantined structural conversion. Crate theory-levitation carries the description decoder whose codomain is the code universe.</prose>
+    <code language="text">shape                                                        realized at
+value/computation sorts, contexts, subtyping               core-checker (types, syntax, ctx, subtype)
+the value-model ladder (literals, lists, records)          core-checker (Value::Int/Str/Num/List/Record)
+grade carrier 0/1/ω + dup/drop                             core-checker (grade)
+effect signatures + sealed rows, perform / deep handle     core-checker (effect)
+reified stacks Stk(B,C), resume, reset / shift, Γ; Σ        core-checker (stack, control, ctx)
+Path / here / walk, structural value equality              core-checker (identity) + core-sequent (focus)
+declared data D(ā) / C(v̄) / case-over-tag                  core-checker (Data, Ctor, DataCase)
+code universe Type + dependent pair Σ + split motive       core-checker (Universe, Sigma, SplitMotive)
+the description decoder (Desc → Type)                      theory-levitation
+native builtins + the host binding environment             core-checker (prim) + runtime-host
+the operational driver over the focused image              core-sequent (the L machine and its store)
+the certified-kernel slice: levels, S1 conversion          kernel-core + kernel-strata</code>
+    <prose>Two cores, two altitudes, one contract. The interpreter core (core-checker) realizes the full frozen fragment including the dependent formers; the certified kernel (kernel-core) is the deliberately smaller trusted slice — at its current stage it quarantines the dependent pair, the path type, effects, control, holes, and the list and record formers to its own later stage, so its conversion never descends into a term. The decl-table half of declared data (the constructor field types) is the data surface's job and stays adopted-unbuilt; the frozen core carries only the nominal tag and its arguments.</prose>
+  </section>
+  <section id="ci-polarity" status="built" title="Polarity: two sorts and the adjunction">
+    <prose>
+      Two type sorts. A
+      <term-def key="value-type">value type</term-def>
+      A (positive) is what is: it classifies values. A
+      <term-def key="computation-type">computation type</term-def>
+      B (negative) is what does: it classifies computations. The F ⊣ U adjunction connects them: U_r B is a value (a thunk of a computation), F^ε A is a computation (a returner of a value), and thunk/force and ret/&gt;&gt;= mediate. This is the cartesian-calf substrate shape
+      <cite key="A-1a"/>
+      , with grades on U and an effect row on F as gandr's additions over the calf base. A third syntactic category, stacks (evaluation contexts), is internalized as the value type Stk(B, C); there is deliberately no value-level function type.
+    </prose>
+    <prose>
+      The adopted unifying semantic model is the wheeled, polarity-sorted, graded nominal PROP: a unification of already-adopted axes rather than a greenfield bet, built on the nominal substrate whose atom representation is filled by supported sets
+      <cite key="K-2"/>
+      — finite, serializable, bridging to de Bruijn. It reshapes none of the frozen shapes: a decided direction whose construction is the open obligation, pointed at here and homed in the theory crates.
+    </prose>
+  </section>
+  <section id="ci-value-types" status="built" title="Value-type shapes">
+    <grammar>
+      <production symbol="A">X | 1 | A × A′ | A + A′ | List A | {ℓᵢ:Aᵢ} | U_r B | Stk(B, C) | Path A x y | D(ā) | Type | Σ(x:A). B | Unknown</production>
+    </grammar>
+    <prose>
+      Decomposition for
+      <term-def key="structural-subtyping">structural subtyping</term-def>
+      is structural: products, sums, and lists covariant; the closed record {ℓᵢ:Aᵢ} width plus depth (a wider record is a subtype, each shared field covariant); the graded thunk contravariant in its grade (U_r B &lt;: U_s B′ iff s ⊑ r and B &lt;: B′). The
+      <term-def key="path-type">path type</term-def>
+      Path A x y is the first dependent former — its endpoints are value terms — and is invariant in all three positions: the carrier by two-way subtyping, the endpoints under the
+      <term-def key="structural-value-equality">no-reduction structural value equality</term-def>
+      (α-respecting, annotation-transparent, hole-consistent, with no reduction inside types). The declared-data handle D(ā) is
+      <term key="generative-nominal"/>
+      : its minted nominal id compares before any structural carrier, so two structurally-identical declarations are distinct types, with ā then covariant and positional and an empty ā consistent with any instantiation; the carrier itself lives in the decl table the data surface holds, not in the core type. The
+      <term-def key="code-universe">code universe</term-def>
+      Type is the predicative sort the description decoder targets
+      <cite key="N-1a"/>
+      and the sort at which the
+      <term-def key="sigma-type">dependent pair</term-def>
+      Σ(x:A). B binds its head: one predicative bump, reflexive-only in subtyping, with Type : Type refused by construction of the first-order fragment; the judgmental level algebra behind it lives in kernel-strata, and the frozen interpreter core carries the former without a first-class type-formation judgment. Σ's head is a small value type (a Σ over Type is families territory, outside the fragment); subtyping is invariant up to α-renaming of the binder. The
+      <term-def key="gradual-hole">gradual hole</term-def>
+      Unknown
+      <cite key="I-3a"/>
+      is consistent with every type in both directions, so transitivity is deliberately not admissible once it participates — reflexivity stays admissible, never a node shape.
+    </prose>
+  </section>
+  <section id="ci-comp-types" status="built" title="Computation-type shapes">
+    <grammar>
+      <production symbol="B">F^ε A | A → B | B &amp; B′ | Unknown</production>
+    </grammar>
+    <prose>
+      The
+      <term-def key="effect-graded-returner">effect-graded returner</term-def>
+      F^ε A pairs a payload value type with a sealed effect row; F A ≡ F^⟨⟩ A is the empty-row, pure case. The function type A → B (value argument, computation result) is contravariant in the argument and covariant in the result; the lazy product B &amp; B′ ("with") is componentwise; F^ε A decomposes to A &lt;: A′ together with the row relation on ε. Staged extension points — the intersection B ∩ B′ and polymorphism ∀X. B — attach at this grammar without reshaping it; session types are not computation types but live in the linear zone of the context.
+    </prose>
+  </section>
+  <section id="ci-grades" status="built" title="Grades on U">
+    <prose>
+      A
+      <term-def key="grade">grade</term-def>
+      counts how many times a thunk may be forced — a coeffect on U, the symmetric dual of the effect on F
+      <cite key="F-7"/>
+      . Grades appear in exactly one type constructor, U_r B, and in the term forms thunk_r t, dup, and drop; linearity is structural (the linear zone), never grade-policed — grades and the linear zone are independent disciplines. The algebra is a preordered semiring with default carrier ℕ ∪ {ω}, r ⊑ s iff r ≤ s or s = ω; + is alternative, accumulated demand, · nested, sequential demand.
+    </prose>
+    <prose>
+      The
+      <term-def key="grade-carrier">grade carrier</term-def>
+      is a single concrete, representation-sealed type, not a parameter: its entire surface is the semiring signature (constants 0/1/ω, constructor fin, order leq, algebra plus/times), rendered for diagnostics through Debug only, so swapping the semiring is a one-module edit and no IR node, frame, or error ever names a semiring parameter. An unannotated thunk elaborates to grade ω (U B ≡ U_ω B). The graded thunk is orthogonal to the effect row: U_r (F^ε A) reads "a thunk forceable r times of a computation that may do ε."
+    </prose>
+  </section>
+  <section id="ci-effects" status="built" title="The effect row on F">
+    <prose>
+      An
+      <term-def key="effect-signature">effect signature</term-def>
+      E names a family of operations, each with a payload and a reply type; an
+      <term-def key="effect-row">effect row</term-def>
+      ε is a finite composition of signatures, ⟨⟩ | ⟨E | ε⟩, with a row variable reserved for polymorphism. Effects sit on F, the dual of grades on U: the implemented returner node carries the row inline, and the pure returner is the empty-row case. Signatures are environment-free — carried inline on the perform node, an operation named by identity, never captured as a closure.
+    </prose>
+    <prose>
+      Two presentations of the same row, both kept. The kernel presentation carries ε explicitly; the ambient presentation threads one implicit current row through the judgment, adjusted at handling positions — Frank's ambient ability
+      <cite key="A-9"/>
+      . The surface uses the ambient presentation; lowering is responsible for the ambient-to-kernel translation, and the checker and metatheory see the kernel. Row constraints are solved by deterministic Rémy-style row unification — a constraint domain, not a node shape. Sessions are not effects: session actions are structural, so session fidelity cannot be handled away — an effect operation may be implemented over a session, but a session action never appears in ε.
+    </prose>
+  </section>
+  <section id="ci-terms" status="built" title="Term node shapes">
+    <prose>Three node categories mirror the three sorts.</prose>
+    <grammar>
+      <production symbol="v">x | () | n | s | n_T | (v, v′) | inj₁ v | inj₂ v | [v₀, …, vₙ] | {ℓ₁=v₁, …} | thunk_r t | stk K | here v | C(v̄) | (v : A) | hole</production>
+      <production symbol="t">λx. t | λx:A. t | t v | ret v | t &gt;&gt;= x. u | force v | case v { inj₁ x → t | inj₂ y → u } | case v { Cᵢ(x̄ᵢ) → tᵢ } | case v { Nil → t | Cons(h,t) → u } | split v as (x, y) [z. M] in t | r.ℓ | ⟨t, u⟩ | prj₁ t | prj₂ t | dup v | drop v | perform op v | handle t { ret x ⇒ tᵣ | opᵢ p k ⇒ tᵢ } | resume v t | reset t | shift k. t | native p v̄ | walk(p, (x y q). C, (x). c) | hole</production>
+      <production symbol="K">ε | v :: K | (x. u) :: K | prjᵢ :: K | KReset(C) | KHandle(clauses, depth)</production>
+    </grammar>
+    <prose>
+      The
+      <term-def key="native-builtin">native builtin</term-def>
+      native p v̄ is a Rust-backed builtin: an axiom typed by the primitive's declared type with its accumulated arguments peeled, and a function-like terminal that reduces in Rust once saturated; p is an opaque tag resolved in a registry, the same inline-name discipline as perform's operation — machine-minted names ride one nominal atom substrate
+      <cite key="K-2"/>
+      . Sequencing t &gt;&gt;= x. u is the sole union-elimination site by construction, and handlers and shift share one mechanism: the captured prefix is the stack handed to a clause.
+    </prose>
+    <prose>
+      The
+      <term-def key="identity-eliminator">identity eliminator</term-def>
+      walk(p, (x y q). C, (x). c) is the sole primitive eliminator of the path type, in the full Martin-Löf form: the motive C is a computation type binding both endpoints and the path, the base c answers the diagonal, and both binder structures are part of the walk syntax form, like case arms. Its one computation rule is definitional β on here — walk(here(v), C, (x). c) ↦ c[v/x] — with no η and no K; a case on a path scrutinee is rejected with the without-K reservation diagnostic, and the Paulin-Mohring based variants are derived, never primitive. The
+      <term-def key="split-motive">split motive</term-def>
+      is the same discipline one rung down: split v as (x, y) [z. M] in t eliminates a product or a Σ-typed scrutinee, taking an optional dependent motive (z). M — motive-bearing infers (the body checks against M[(p,q)/z], delivering the outer-scoped M[v/z], so no binder escapes), motive-less is check-only — and the runtime is type-erased, so the machine runs a Σ-typed or motive-bearing split exactly as a product one and the checker–machine differentials cover it with no new evaluation rule.
+    </prose>
+    <prose>
+      A
+      <term-def key="reified-stack">reified stack</term-def>
+      stk K is a value of type Stk(B, C), consumed by resume v t. The one-shot discipline is a typing-side property, not a node shape: a stack capturing linear-zone obligations is itself linear-zone-resident — discarding it without resume is a linearity error unless a discard runs the recorded unwind obligations, and duplication is permitted only when the captured zone is empty.
+    </prose>
+  </section>
+  <section id="ci-contexts" status="built" title="Contexts and the machine inventory">
+    <prose>
+      The judgment ranges over a
+      <term-def key="two-zone-context">two-zone context</term-def>
+      Γ; Σ: Γ intuitionistic (world-annotated value hypotheses when worlds land), Σ linear — stack-owned obligations now, endpoints and capabilities when sessions land. In the realized core Σ is present but vacuous: no typing rule populates it yet, a conformance meta-invariant pins it empty across every run, and its one-shot laws are unit-tested directly.
+    </prose>
+    <judgements title="Bidirectional typing over the two zones">
+      <math>Gamma semi Sigma tack.r v ⇐ A</math>
+      <math>Gamma semi Sigma tack.r t ⇒ B</math>
+    </judgements>
+    <prose>
+      The machine inventory is downstream of this contract, derived rather than transcribed. The defunctionalized typing machine is derived from the recursive checker by the functional correspondence
+      <cite key="E-3"/>
+      , property-tested for checker–machine agreement. The operational driver is the
+      <term key="l-machine"/>
+      over the focused image of these nodes, the sole driver since the CEK oracle retired; its frame inventory is the sequent kernel's, and the
+      <term key="host-effect-seam"/>
+      it presents to the host is a
+      <term key="preserved-boundary"/>
+      , expressed over the public value and effect-signature surface of this contract and nothing else.
+    </prose>
+  </section>
+  <section id="ci-hooks" title="Decided-direction hooks">
+    <prose>These features are decided directions built by no frozen-core node; each hook names the forward-compatibility slot the decided construction lands in, and each lands additively, without reshaping the frozen fragment. The slot mechanism is the same discipline that seals the grade carrier behind an upgrade path; what waits on the far side of each slot is a decided direction, not a reserved option.</prose>
+    <section id="ci-hooks-cost" status="adopted-unbuilt" title="The phase modality and the cost effect">
+      <prose>
+        The calf-lineage
+        <cite key="L-1"/>
+        phase modality (open and closed phases, with noninterference) and the primitive cost effect step^c — a cost-monoid-indexed effect on F, distinct from the U_r grade — are adopted as the tail's user-facing effects slot: tier-1 step^c on effect rows, a cost/behavior phase distinction with noninterference, and tier-2 erasure elaboration sharing the phase/relevance/erasure infrastructure with the erasure hook below. The directed refinement — an intrinsic preorder in which a cost bound is a program — rides the same design pass, with the directed cost-aware framework as its reference
+        <cite key="L-2"/>
+        . Both are distinct from the compilation-staging phase, from subtyping, and from the grade order.
+      </prose>
+    </section>
+    <section id="ci-hooks-dependent" status="partial" title="Dependent elimination and conversion">
+      <prose>
+        Partially realized, and the realization is the firewall correction of the next section. The interpreter core already carries the dependent fragment of this hook: the
+        <term key="path-type"/>
+        with its
+        <term key="identity-eliminator"/>
+        over a full dependent motive, and the
+        <term key="sigma-type"/>
+        with the
+        <term key="split-motive"/>
+        discipline. The certified kernel quarantines those formers to its own next stage, so its conversion today never descends into a term. The remainder — Π formers, full motives, the elaborator — rides the dependent-core backbone phase.
+      </prose>
+    </section>
+    <section id="ci-hooks-erasure" status="adopted-unbuilt" title="The erasure functor">
+      <prose>The phase-erasure functor takes the dependent layer to its non-dependent shadow — this contract's shapes are that shadow. It is a meta-level map, not a node, and holds the tail's final slot; the kernel reserves trusted-code annotation slots for erasure and modes so the landing stays additive rather than a kernel-format rewrite.</prose>
+    </section>
+  </section>
+  <section id="ci-firewall" status="partial" title="The conversion firewall, corrected">
+    <prose>
+      The
+      <term-def key="conversion-firewall">conversion firewall</term-def>
+      is the construction discipline the dependent layer inherits: three defaults answering the Fire-Triangle negative result — substitution, dependent elimination, and observable effects are jointly inconsistent
+      <cite key="L-7"/>
+      . Conversion does not observe effects: no conversion step evaluates an effectful F^ε A into a conversion-visible value, and F^ε stays abstract under conversion. Dependent indices are pure value types only: U_r (F^ε A) and Stk(B, C) are excluded from conversion-reaching index positions — polarity alone is insufficient, U_r B being itself a value type. And the conversion-relevant fragment exposes no full-dependent catch.
+    </prose>
+    <prose>
+      Correction, recorded at absorption. The pre-reboot contract asserted the core satisfied the three defaults by absence — no conversion, no dependent elimination. The absence claim is stale: the realized reboot core realizes dependent elimination directly, the
+      <term key="identity-eliminator"/>
+      over a dependent motive and the
+      <term key="split-motive"/>
+      split, alongside the
+      <term key="path-type"/>
+      and
+      <term key="sigma-type"/>
+      formers. The firewall survives by shape, not by absence. Conversion is a
+      <term key="structural-value-equality"/>
+      : in the interpreter core, value equality is α-respecting, annotation-transparent, and hole-consistent with no reduction inside types; in the certified kernel, definitional equality is an id-equality early-out plus α-structural equality plus canonical level equality, with no β law firing and no computation evaluated — and since no kernel type former is yet indexed by a value term, the effects quarantine holds vacuously there. Dependent elimination at the term level with a conversion that never evaluates is exactly the configuration the negative result permits; when a term-indexed type former lands in the kernel, the β laws of the value fragment become load-bearing, and the three defaults above are the discipline it is built under.
+    </prose>
+    <prose>
+      The data layer reads the core's datatypes as the Squier-degenerate — convergent — fragment of a
+      <term key="polygraph-presentation"/>
+      : sorts, constructors, and directed rewrites where higher coherence is automatic. That convergent slice is realized in crate theory-computads as the
+      <term key="fusion-by-completion"/>
+      engine; the untruncated directed higher-coherence tower is the adopted polygraphical-data direction whose coherence-computability vehicle is the sister internal-univalence formalization — a live in-house program, not a completed proof. The tower stays outside this frozen contract; the direction is decided, the tower is the work.
+    </prose>
+  </section>
+  <section id="ci-staged" status="adopted-unbuilt" title="Staged extension points">
+    <prose>Specified features that are not frozen-core; each lowers at its named home into the slots noted, without reshaping the frozen fragment. The map records the reboot home of each.</prose>
+    <code language="text">feature            adds                                                   reboot home
+unions             A ∪ A′ (value); union-elim at &gt;&gt;=                  tail, after sessions/worlds
+intersections      B ∩ B′ (computation)                                tail, after sessions/worlds
+polymorphism       ∀X. B, ΛX. t, t [A]; kinds                          unscheduled; the row tail of ε is reserved for it
+sessions           endpoints c : S in Σ; send/recv/close/select/offer  tail sessions/worlds slot (linear typestate codata)
+sharing            shared Θ; acquire/release; stratified lift          tail sessions/worlds slot family
+multiparty         global/local types; projection                      tail sessions/worlds slot family
+worlds             @w A; hold/leta/migrate; located Γ/Σ                tail sessions/worlds slot
+modules            signatures, functors, implicits                     backbone phase B3 (in flight)
+dynamics           the concurrent runtime face                         sequential face realized; concurrency rides the tail</code>
+    <prose>
+      Union and intersection land as an extension, not a rewrite — the dependent-core phase records the polarity-anticipation constraint so the frozen subtyping discipline survives their arrival. Session subtyping follows the coinductive line
+      <cite key="D-2"/>
+      ; worlds follow the ML5 design
+      <cite key="G-3"/>
+      ; modules follow the first-class-modules line
+      <cite key="H-2"/>
+      , their MVP face a compile-time namespace that elaborates without touching this contract. The sequential operational face is no longer staged at all: it is realized by the
+      <term key="l-machine"/>
+      , and what remains staged is the concurrent process face, riding the tail's value-semantics and threading design passes.
+    </prose>
+  </section>
+  <references>
+    <cite key="A-1a"/>
+    <cite key="A-9"/>
+    <cite key="D-2"/>
+    <cite key="E-3"/>
+    <cite key="F-7"/>
+    <cite key="G-3"/>
+    <cite key="H-2"/>
+    <cite key="I-3a"/>
+    <cite key="K-2"/>
+    <cite key="L-1"/>
+    <cite key="L-2"/>
+    <cite key="L-7"/>
+    <cite key="N-1a"/>
+  </references>
+</component>
