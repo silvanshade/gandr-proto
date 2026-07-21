@@ -41,7 +41,13 @@ Every external-literature citation in a notes, analysis, or spec doc records a *
 Name-only citations are the recorded hazard that forced `gandr-fcw.10`'s bulk re-verification of the register; a locator at first citation is what keeps a claim checkable without archaeology.
 `refs.yml` is the canonical home for those locators: a doc cites the register key and the register carries the DOI/arXiv/URL.
 
-## Proposal lifecycle (retire deliberately)
+### Wyrd ADRs are source material, never citable authorities
+
+New gandr docs and specs do **not** cite wyrd ADR numbers (`ADR-NN`) or wyrd bead ids (owner rule, 2026-07-21).
+Much of the wyrd decision record is superseded by reboot decisions; a numbered citation quietly codifies the retired idea into the new corpus and forces every reader through stale context to resolve it (the motivating case: a wyrd-era "evidence layer" reservation rode two reboot design studies verbatim before it was caught — the concept had been superseded by the B6/B7 backbone).
+Where wyrd ADR content is load-bearing, **inline the applicable content restated in current terms**, and only where it actually applies to the current context.
+If provenance matters, a distilled prose line ("adapted from the wyrd interpreter-architecture record") suffices; the wyrd tree stays readable as source-material history through the checkout, and `docs/research/crate-port-map.md` carries the wyrd→reboot reconciliation.
+Landed research records that already carry `ADR-NN` citations are historical documents — sync them opportunistically when touched; do not mass-rewrite them.
 
 A proposal file is always in exactly one state, named in its status banner, and it moves — stale ACTIVE banners were a principal drift source:
 
