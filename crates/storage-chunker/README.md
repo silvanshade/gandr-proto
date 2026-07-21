@@ -3,7 +3,7 @@
 > **Provenance.** This crate (`gandr-storage-chunker`) is a storage-tier skeleton absorbed directly from the owner's unpublished `mach` `prolly-bao-chunker` crate (Apache-2.0, same owner; source commit `fb78601`).
 > It is a direct source absorption adapted to gandr's storage tier and lint discipline — not an external dependency — per the ratified vendor plan in `docs/research/massive-term-design.md` §6.1.
 > The crate stays `#![no_std]` with zero runtime dependencies (empty `[dependencies]`); the design-lineage name "Prolly-Bao" is retained in the prose below as absorbed.
-> Line-number anchors in this doc set are carried from the source and are approximate after absorption.
+> Symbol-qualified names, rather than numeric line anchors, identify source evidence in this doc set.
 
 `storage-chunker` is the boundary-detection crate for Prolly-Bao record streams.
 
@@ -31,7 +31,6 @@ Downstream code may bind `ChunkerParams::commitment_bytes` into a root or proof 
 * `current`: FastCDC-2020-inspired Gear scanning is the only implemented runtime profile.
 * `open decision`: Chonkers is a possible future benchmark and profile candidate for stricter edit locality and bounded propagation.
 * `open decision`: VectorCDC is a possible future benchmark and profile candidate for throughput-oriented hashless boundary detection.
-* `current`: UltraCDC is rejected for Mach planning because the available sources do not pin full operational semantics and public implementations diverge.
 * `designed direction`: Dolt/Okra-style boundary ideas are possible future benchmark candidates, not current runtime behavior and not Prolly-Bao proof semantics.
 
 No benchmark target, comparator dependency, or candidate row currently ships.

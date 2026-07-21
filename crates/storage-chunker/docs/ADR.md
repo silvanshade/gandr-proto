@@ -5,10 +5,10 @@ It documents architecture changes/refinements, not a per-task diary.
 
 Source anchors used for this document:
 
-* `crates/storage-chunker/src/lib.rs:4`: deterministic record-safe chunk boundary detection for future Prolly-Bao.
-* `crates/storage-chunker/src/lib.rs:6`: the crate owns boundary detection over already-canonical ordered records only.
-* `crates/storage-chunker/src/lib.rs:11`: callers are expected to commit `ChunkerParams::commitment_bytes` into Prolly-Bao root/proof context as a designed direction outside this crate.
-* `crates/storage-chunker/src/lib.rs:15`: stronger adversarial boundary-grinding mitigations are an open decision.
+* `crates/storage-chunker/src/lib.rs` module documentation: deterministic record-safe boundary detection over already-canonical ordered records only.
+* `AlgorithmVersion::FASTCDC_2020` and `GearTableVersion::MACH_V1`: the only implemented runtime profile.
+* `ChunkerParams::commitment_bytes`: stable parameter bytes for downstream root/proof contexts.
+* Module `designed direction` / `open decision` documentation: future committed profiles may address stronger adversarial boundary-grinding mitigations.
 
 ## ADR-001: Keep boundary detection Mach-local and record-safe
 
@@ -131,6 +131,8 @@ A future FastCDC comparator would scan raw byte slices and would not enforce Mac
 
 If a FastCDC comparator is added, keep it in an executable development-only benchmark target.
 It must not become a runtime dependency or the source of this crate's boundary semantics.
+A future benchmark target must include low-entropy and local-edit fixtures, report chunk-count, byte-distribution, cap-hit, and trigger-reason summaries, and keep point-in-time release baselines outside correctness gates until reproducible thresholds are selected.
+Fixture serialization and analysis are separate tooling concerns; this crate does not reserve `rkyv` or Arrow dependencies without a concrete need.
 
 ### Rationale (ADR-005)
 
@@ -154,6 +156,8 @@ None currently ships as benchmark code or a runtime profile.
 
 If implemented, keep prior-art candidates in executable benchmark targets labelled as non-consensus and not Prolly-Bao proof equivalence.
 They must not change the runtime/default chunker profile, public committed parameter profile, proof semantics, or node identity semantics.
+Before any candidate becomes a runtime profile, downstream tree construction must compare proof size and edit propagation against the current record-safe profile.
+Key-only chunking remains unselected pending that evidence.
 
 ### Rationale (ADR-006)
 

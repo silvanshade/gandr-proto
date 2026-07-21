@@ -1,6 +1,6 @@
 # Status
 
-Stage 1 (milestone A1) is complete: the core CBPV bidirectional type system of `docs/gandr/spec/type-system.md` §3, realized as both the recursive `checker` and the defunctionalized `machine`, with the two held in step-for-step conformance.
+Stage 1 (milestone A1) is complete: the core CBPV bidirectional type system is realized as both the recursive `checker` and the defunctionalized `machine`, with the two held in step-for-step conformance.
 
 Implemented:
 

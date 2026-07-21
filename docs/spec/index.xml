@@ -7,7 +7,7 @@
   <section title="Conventions">
     <prose>Every component declares a required status, defines its terms inline
       (define-once corpus-wide), declares its cite keys, and records typed
-      provenance edges. The build renders no-JavaScript static pages; math and
-      diagram leaves compile to inline vector graphics.</prose>
+      provenance edges. The designed build will render no-JavaScript static
+      pages; math and diagram leaves will compile to inline vector graphics.</prose>
   </section>
 </component>

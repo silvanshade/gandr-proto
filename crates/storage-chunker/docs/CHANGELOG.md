@@ -10,8 +10,3 @@
 
 * `current`: `ChunkScan` now copies immutable scan-local limits, initial Gear state, and cut mask instead of retaining a `ChunkerParams` borrow for repeated hot-loop access.
 * `current`: No runtime/default chunker profile, public API, parameter commitment, proof semantics, or dependency changed.
-
-## 2026-06-05 - Gear table hot-path cleanup
-
-* `current`: Replaced the unreachable `gear_for(u8)` fallback branch with an invariant-justified unchecked read from the 256-entry Mach v1 Gear table.
-* `current`: No runtime/default chunker profile, public API, parameter commitment, proof semantics, or dependency changed.
