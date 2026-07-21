@@ -96,6 +96,7 @@ use crate::error::ExpectedComputationShape;
 use crate::error::ExpectedValueShape;
 use crate::error::KernelError;
 use crate::error::NonInferableForm;
+use crate::error::RegisterFault;
 use crate::levels::LevelContext;
 use crate::term::Computation;
 use crate::term::DeBruijnIndex;
@@ -620,18 +621,32 @@ enum Produced
 ///
 /// # Contract
 /// - requires: the register was set by a `SynthValue` goal — its variant
-///   matches by construction (a value goal produces a value type).
-/// - ensures: the produced value type.
-/// - provides: the total register projection the value-consuming frames need.
-/// - fails: never — a non-value register is unreachable here; the fallback is
-///   the unit type, guarded by the correspondence table and the corpus goldens.
+///   matches by construction (a value goal produces a value type; the module
+///   correspondence table is the wiring audit).
+/// - ensures: `Ok(value_type)` — the produced value type.
+/// - provides: the fail-closed register projection the value-consuming frames
+///   need: a polarity mismatch is unreachable when the machine is wired
+///   correctly, and is surfaced rather than trusted (the
+///   [`KernelError::LevelOracleFault`] posture) so a wiring defect rejects the
+///   declaration instead of fabricating a type that could wrongly convert.
+/// - fails: [`KernelError::CheckerRegisterFault`] on a non-value register.
 /// - panics: none.
+///
+/// # Errors
+/// [`KernelError::CheckerRegisterFault`].
+///
+/// # Adequacy
+/// - hypothesis: L3 — the fault arm is unreachable through the public surface
+///   by construction; it is pinned directly at the projection.
+/// - witness: `check::tests::register_polarity_faults_fail_closed`
 #[inline]
-fn produced_value_type(produced: Produced) -> ValueType
+fn produced_value_type(produced: Produced) -> Result<ValueType, KernelError>
 {
     match produced {
-        | Produced::ValueType(value_type) => value_type,
-        | Produced::CompType(_) | Produced::Checked => ValueType::Unit,
+        | Produced::ValueType(value_type) => Ok(value_type),
+        | Produced::CompType(_) | Produced::Checked => Err(KernelError::CheckerRegisterFault(
+            RegisterFault::ExpectedValueType,
+        )),
     }
 }
 
@@ -640,20 +655,27 @@ fn produced_value_type(produced: Produced) -> ValueType
 /// # Contract
 /// - requires: the register was set by a `SynthComp` goal (its variant matches
 ///   by construction, as in [`produced_value_type`]).
-/// - ensures: the produced computation type.
-/// - provides: the total register projection the computation-consuming frames
-///   need.
-/// - fails: never — a non-computation register is unreachable; the fallback is
-///   the unit returner.
+/// - ensures: `Ok(comp_type)` — the produced computation type.
+/// - provides: the fail-closed register projection the computation-consuming
+///   frames need (see [`produced_value_type`] for the posture).
+/// - fails: [`KernelError::CheckerRegisterFault`] on a non-computation
+///   register.
 /// - panics: none.
+///
+/// # Errors
+/// [`KernelError::CheckerRegisterFault`].
+///
+/// # Adequacy
+/// - hypothesis: L3 — as [`produced_value_type`].
+/// - witness: `check::tests::register_polarity_faults_fail_closed`
 #[inline]
-fn produced_comp_type(produced: Produced) -> CompType
+fn produced_comp_type(produced: Produced) -> Result<CompType, KernelError>
 {
     match produced {
-        | Produced::CompType(comp_type) => comp_type,
-        | Produced::ValueType(_) | Produced::Checked => {
-            CompType::Returner(Box::new(ValueType::Unit))
-        },
+        | Produced::CompType(comp_type) => Ok(comp_type),
+        | Produced::ValueType(_) | Produced::Checked => Err(KernelError::CheckerRegisterFault(
+            RegisterFault::ExpectedCompType,
+        )),
     }
 }
 
@@ -1011,24 +1033,24 @@ fn run<'decl>(
             };
             match frame {
                 | Frame::SynthPairFirst(second) => {
-                    let first_type = produced_value_type(produced);
+                    let first_type = produced_value_type(produced)?;
                     frames.push(Frame::SynthPairSecond(first_type));
                     goal = Goal::SynthValue(second);
                     continue 'expand;
                 },
                 | Frame::SynthPairSecond(first_type) => {
-                    let second_type = produced_value_type(produced);
+                    let second_type = produced_value_type(produced)?;
                     produced = Produced::ValueType(ValueType::Product(
                         Box::new(first_type),
                         Box::new(second_type),
                     ));
                 },
                 | Frame::SynthThunk => {
-                    let body_type = produced_comp_type(produced);
+                    let body_type = produced_comp_type(produced)?;
                     produced = Produced::ValueType(ValueType::Thunk(Box::new(body_type)));
                 },
                 | Frame::SynthLift(target) => {
-                    let body_type = produced_value_type(produced);
+                    let body_type = produced_value_type(produced)?;
                     let body_level = type_level(levels, TypeLevelGoal::Value(&body_type))?;
                     levels.check_level_scope(target)?;
                     levels.check_universe_below(&body_level, target)?;
@@ -1042,12 +1064,12 @@ fn run<'decl>(
                     continue 'expand;
                 },
                 | Frame::ConvertValue(expected) => {
-                    let synthesized = produced_value_type(produced);
+                    let synthesized = produced_value_type(produced)?;
                     convert_value_type(expected.get(), &synthesized)?;
                     produced = Produced::Checked;
                 },
                 | Frame::SynthApply(argument) => {
-                    let head_type = produced_comp_type(produced);
+                    let head_type = produced_comp_type(produced)?;
                     match take_arrow(head_type) {
                         | Ok((domain, codomain)) => {
                             frames.push(Frame::ProduceComp(*codomain));
@@ -1066,7 +1088,7 @@ fn run<'decl>(
                     produced = Produced::CompType(codomain);
                 },
                 | Frame::SynthForce => {
-                    let value_type = produced_value_type(produced);
+                    let value_type = produced_value_type(produced)?;
                     match take_thunk(value_type) {
                         | Ok(codomain) => produced = Produced::CompType(*codomain),
                         | Err(other) => {
@@ -1078,11 +1100,11 @@ fn run<'decl>(
                     }
                 },
                 | Frame::SynthReturn => {
-                    let result_type = produced_value_type(produced);
+                    let result_type = produced_value_type(produced)?;
                     produced = Produced::CompType(CompType::Returner(Box::new(result_type)));
                 },
                 | Frame::SynthBind(body) => {
-                    let bound_type = produced_comp_type(produced);
+                    let bound_type = produced_comp_type(produced)?;
                     match take_returner(bound_type) {
                         | Ok(result) => {
                             context.push(Held::Owned(*result));
@@ -1099,7 +1121,7 @@ fn run<'decl>(
                     }
                 },
                 | Frame::SynthCaseScrutinee(on_left, on_right) => {
-                    let scrutinee_type = produced_value_type(produced);
+                    let scrutinee_type = produced_value_type(produced)?;
                     match take_sum(scrutinee_type) {
                         | Ok((left, right)) => {
                             context.push(Held::Owned(*left));
@@ -1120,7 +1142,7 @@ fn run<'decl>(
                     }
                 },
                 | Frame::SynthCaseAfterLeft { on_right, right } => {
-                    let left_type = produced_comp_type(produced);
+                    let left_type = produced_comp_type(produced)?;
                     context.push(Held::Owned(right));
                     frames.push(Frame::SynthCaseAfterRight { left_type });
                     frames.push(Frame::ScopeExit);
@@ -1128,7 +1150,7 @@ fn run<'decl>(
                     continue 'expand;
                 },
                 | Frame::SynthCaseAfterRight { left_type } => {
-                    let right_type = produced_comp_type(produced);
+                    let right_type = produced_comp_type(produced)?;
                     match convertible_comp_types(&left_type, &right_type) {
                         | Convertibility::Convertible => {
                             produced = Produced::CompType(left_type);
@@ -1141,12 +1163,12 @@ fn run<'decl>(
                     }
                 },
                 | Frame::ConvertComp(expected) => {
-                    let synthesized = produced_comp_type(produced);
+                    let synthesized = produced_comp_type(produced)?;
                     convert_comp_type(expected.get(), &synthesized)?;
                     produced = Produced::Checked;
                 },
                 | Frame::CheckBind(body, expected) => {
-                    let bound_type = produced_comp_type(produced);
+                    let bound_type = produced_comp_type(produced)?;
                     match take_returner(bound_type) {
                         | Ok(result) => {
                             context.push(Held::Owned(*result));
@@ -1167,7 +1189,7 @@ fn run<'decl>(
                     on_right,
                     expected,
                 } => {
-                    let scrutinee_type = produced_value_type(produced);
+                    let scrutinee_type = produced_value_type(produced)?;
                     match take_sum(scrutinee_type) {
                         | Ok((left, right)) => {
                             let expected_left = expected.dup();
@@ -1655,6 +1677,33 @@ mod tests
             type_level(&levels, TypeLevelGoal::Comp(&arrow)).unwrap(),
             Level::constant(LevelConstant::from(3_u64)),
             "the arrow forms at the join of its parts' levels"
+        );
+    }
+
+    #[test]
+    fn register_polarity_faults_fail_closed()
+    {
+        // The register projections are unreachable with a mismatched polarity
+        // when the machine is wired per the correspondence table; pinned
+        // directly here so a wiring defect rejects (fail-closed) rather than
+        // fabricating a type that could wrongly convert.
+        assert!(
+            matches!(
+                super::produced_value_type(super::Produced::Checked),
+                Err(KernelError::CheckerRegisterFault(
+                    crate::error::RegisterFault::ExpectedValueType
+                ))
+            ),
+            "a non-value register is a surfaced fault, not a fabricated type"
+        );
+        assert!(
+            matches!(
+                super::produced_comp_type(super::Produced::ValueType(ValueType::Unit)),
+                Err(KernelError::CheckerRegisterFault(
+                    crate::error::RegisterFault::ExpectedCompType
+                ))
+            ),
+            "a non-computation register is a surfaced fault, not a fabricated type"
         );
     }
 }

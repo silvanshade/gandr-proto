@@ -47,6 +47,22 @@ pub enum NonInferableForm
     Lambda,
 }
 
+/// The register polarity a checker-machine frame required — the payload of
+/// [`KernelError::CheckerRegisterFault`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[expect(
+    clippy::exhaustive_enums,
+    reason = "the checker machine has exactly two typed register polarities by design"
+)]
+pub enum RegisterFault
+{
+    /// A value-consuming frame found a non-value produced register.
+    ExpectedValueType,
+    /// A computation-consuming frame found a non-computation produced
+    /// register.
+    ExpectedCompType,
+}
+
 /// The value-type shape an eliminator or checking rule required.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[expect(
@@ -307,6 +323,13 @@ pub enum KernelError
     /// poset does not loop) — surfaced rather than trusted, per the strata
     /// contract.
     LevelOracleFault(PosetError),
+    /// The checker machine's produced register held the wrong polarity for its
+    /// consuming frame. Unreachable when the goal↔frame correspondence (the
+    /// `crate::check` module table) is wired correctly — surfaced rather than
+    /// trusted, so a machine wiring defect rejects the declaration
+    /// (fail-closed) instead of fabricating a type, which could wrongly accept
+    /// an ill-typed declaration (fail-open).
+    CheckerRegisterFault(RegisterFault),
 }
 
 impl From<LevelError> for KernelError
@@ -386,6 +409,14 @@ impl fmt::Display for KernelError
             },
             | Self::LevelOracleFault(_) => {
                 f.write_str("the landmark-entailment oracle reported a fault the theory excludes")
+            },
+            | Self::CheckerRegisterFault(fault) => match fault {
+                | RegisterFault::ExpectedValueType => f.write_str(
+                    "checker-machine register fault: a value-consuming frame found a non-value register",
+                ),
+                | RegisterFault::ExpectedCompType => f.write_str(
+                    "checker-machine register fault: a computation-consuming frame found a non-computation register",
+                ),
             },
         }
     }

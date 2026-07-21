@@ -10,6 +10,7 @@ The format is hand-maintained and grows only with real changes; it is not auto-g
   The `Depth::LIMIT` recursion budget and `KernelError::DepthLimitExceeded` are **removed** — totality on adversarial depth is now structural (no recursion, no stack to overflow), meeting the `docs/workflow/rust.md` "input recursion: none" discipline for the kernel checker.
   The public API (`Environment::add_decl`, `Checker::check_value_type`, `Checker::check_definition`) is unchanged; the module docs carry an old-arm ↔ machine-step correspondence table for TCB audit.
   The retired depth-budget rejection test inverts into small-stack totality witnesses: the machine now admits a ~200k-deep well-typed pair definition and a ~200k-deep bind definition rather than rejecting them.
+  The machine's produced-register projections are fail-closed: a goal↔frame polarity mismatch (unreachable under correct wiring) surfaces as the new `KernelError::CheckerRegisterFault` rejection rather than a fabricated type, so a wiring defect can never accept an ill-typed declaration.
 
 ### Fixed
 

@@ -109,6 +109,7 @@ pub use error::ExpectedValueShape;
 pub use error::KernelError;
 pub use error::LevelOrderRefutation;
 pub use error::NonInferableForm;
+pub use error::RegisterFault;
 pub use error::UniverseViolation;
 pub use error::ValueTypeMismatch;
 pub use export::AdmissionMark;
