@@ -8,3 +8,4 @@ mod corpus_totality;
 mod differential;
 mod focus_properties;
 mod kernel_corpus_partition;
+mod kernel_export_gate;

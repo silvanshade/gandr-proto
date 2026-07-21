@@ -97,6 +97,33 @@ pub fn read_tree(tree: &str) -> Vec<Fixture>
     fixtures
 }
 
+/// A BLAKE3 fixture-provenance digest over one or more corpus trees — the
+/// exact-fixture guard shared by the single-manifest sweeps (the S1 partition
+/// and the export exit gate) that fold **many** fixtures into **one** manifest.
+///
+/// It folds, in the deterministic sorted read order, each fixture's
+/// source-relative path and the BLAKE3 of its `.sexp` bytes, so any change to a
+/// fixture's bytes, its path, or the set membership changes the digest and
+/// forces a re-bless. This is the `corpus_differential` per-file `sexp-b3sum`
+/// guard (which pins one fixture per sibling record) generalized to the whole
+/// consumed set, so a single header line guards every fixture a sweep reads.
+pub fn corpus_fixtures_b3sum(trees: &[&str]) -> String
+{
+    let mut hasher = blake3::Hasher::new();
+    for tree in trees {
+        for fixture in &read_tree(tree) {
+            let bytes = fs::read(&fixture.path).unwrap_or_else(|error| {
+                panic!("cannot read `{}`: {error}", fixture.path.display())
+            });
+            hasher.update(fixture.source.as_bytes());
+            hasher.update(&[0x00]);
+            hasher.update(blake3::hash(&bytes).to_hex().as_bytes());
+            hasher.update(&[0x0a]);
+        }
+    }
+    String::from(hasher.finalize().to_hex().as_str())
+}
+
 /// Collects every `.sexp` fixture under `dir`, recursively, sorted.
 fn sexp_files(dir: &Path) -> Vec<PathBuf>
 {

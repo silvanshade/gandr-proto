@@ -57,6 +57,7 @@ mod tests
     use gandr_kernel_core::write;
 
     use self::alloc::collections::BTreeMap;
+    use crate::corpus_fixtures::corpus_fixtures_b3sum;
     use crate::corpus_fixtures::read_tree;
 
     /// The environment variable that switches the sweep from verify to bless.
@@ -64,6 +65,9 @@ mod tests
 
     /// The eligible-class tag.
     const ELIGIBLE: &str = "eligible";
+
+    /// The corpus trees the sweep classifies (also the b3sum-provenance scope).
+    const TREES: [&str; 2] = ["model", "pathological"];
 
     /// One classified corpus item.
     struct Classified
@@ -81,7 +85,7 @@ mod tests
     fn sweep() -> Vec<Classified>
     {
         let mut rows = Vec::new();
-        for tree in ["model", "pathological"] {
+        for tree in TREES {
             for fixture in &read_tree(tree) {
                 for (index, term) in fixture.items.iter().enumerate() {
                     let class = match classify(term) {
@@ -206,6 +210,18 @@ mod tests
             .collect()
     }
 
+    /// The value of a `; <name>: <value>` provenance header line, trimmed.
+    fn header_value(
+        text: &str,
+        name: &str,
+    ) -> Option<String>
+    {
+        let needle = format!("; {name}:");
+        text.lines()
+            .find_map(|line| line.strip_prefix(&needle))
+            .map(|rest| rest.trim().to_owned())
+    }
+
     /// The per-class cardinalities, ascending by class.
     fn cardinalities(rows: &[Classified]) -> BTreeMap<String, usize>
     {
@@ -242,6 +258,23 @@ mod tests
                 path.display()
             )
         });
+        // The b3sum fixture-provenance guard (W-A H3): the manifest couples to
+        // the exact corpus bytes it was classified from, so a fixture edit forces
+        // a re-bless rather than silently comparing against a stale partition.
+        let recorded_b3sum = header_value(&text, "corpus-fixtures-b3sum").unwrap_or_else(|| {
+            panic!(
+                "partition manifest `{}` is missing its `corpus-fixtures-b3sum` provenance header; \
+                 regenerate with {BLESS_ENV}=1",
+                path.display()
+            )
+        });
+        assert_eq!(
+            recorded_b3sum,
+            corpus_fixtures_b3sum(&TREES),
+            "partition manifest `{}` is stale (recorded corpus b3sum != live); regenerate with \
+             {BLESS_ENV}=1",
+            path.display()
+        );
         let expected = data_lines(&text);
         assert_eq!(
             live,
@@ -275,6 +308,7 @@ mod tests
                  (GANDR_BLESS_KERNEL_PARTITION=1)",
             ),
             format!("; items: {}", rows.len()),
+            format!("; corpus-fixtures-b3sum: {}", corpus_fixtures_b3sum(&TREES)),
         ];
         for (class, count) in counts {
             lines.push(format!("; class {class}: {count}"));

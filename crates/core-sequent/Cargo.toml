@@ -29,6 +29,18 @@ blake3 = { workspace = true }
 # A test-only edge — the section-2 TCB wall constrains kernel-core's own
 # dependencies, never its consumers.
 gandr-kernel-core = { path = "../kernel-core" }
+# The strata level oracle: the B2.3 export exit-gate harness
+# (`tests/kernel_export_gate.rs`) reconstructs the kernel-native C5 goldens
+# (universe/lift), whose `Level` payloads are strata-typed. A test-only edge,
+# parallel to the kernel-core edge above (both crates sit below this one).
+gandr-kernel-strata = { path = "../kernel-strata" }
+# The outer content-addressed layer: the exit-gate harness records each item's
+# `ArtifactIdentity` (massive-term design §6 — the b3sum-provenance successor)
+# as artifact-level provenance, and `storage-prolly-trees` supplies the
+# `BlockStore`/`TreeParams` the identity build needs. Test-only edges; both
+# storage crates consume kernel-core, never the reverse (acyclic).
+gandr-storage-artifact = { path = "../storage-artifact" }
+gandr-storage-prolly-trees = { path = "../storage-prolly-trees" }
 proptest = { workspace = true }
 
 [features]

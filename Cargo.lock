@@ -623,6 +623,9 @@ dependencies = [
  "blake3",
  "gandr-core-checker",
  "gandr-kernel-core",
+ "gandr-kernel-strata",
+ "gandr-storage-artifact",
+ "gandr-storage-prolly-trees",
  "proptest",
 ]
 
