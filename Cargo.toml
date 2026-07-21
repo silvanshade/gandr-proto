@@ -14,6 +14,7 @@ members = [
   "crates/storage-prolly-trees",
   "crates/surface-driver",
   "crates/surface-grammar",
+  "crates/surface-parser",
   "crates/surface-render-remote",
   "crates/surface-syntax",
   "crates/theory-computads",
