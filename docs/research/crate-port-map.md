@@ -378,7 +378,7 @@ Divergences from the original suggestion are recorded, not smoothed.
 | `gandr-render-proto`              | `surface-render-remote`          | ported (F0, 2026-07-21); the remote/wire face beside the future `surface-render`                                 |
 | `gandr-pretty`                    | `surface-render`                 | future — spec-planned presentation printer, no wyrd code; whether formatting also lives here is an open question |
 | `gandr-grammar`                   | `surface-grammar`                | ported (F1, 2026-07-21); the contract-fixtures fold (O4) deferred to F6                                          |
-| `gandr-parser`                    | `surface-parser`                 | front-end F2; schema-derived                                                                                     |
+| `gandr-parser`                    | `surface-parser`                 | ported (F2, 2026-07-21); schema-derived                                                                          |
 | `gandr-pipeline`                  | `surface-engine`                 | front-end F3; "clearer intent" over `-pipeline`                                                                  |
 | `gandr-corpus`                    | `surface-corpus`                 | front-end F4                                                                                                     |
 | `gandr` (driver)                  | `surface-driver`                 | stub built; un-stub at front-end F5                                                                              |
