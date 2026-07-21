@@ -535,7 +535,7 @@ fn parse_inline(
 }
 
 /// Read a required attribute, pushing a diagnostic when it is absent.
-fn required_attribute(
+pub(crate) fn required_attribute(
     node: Node<'_, '_>,
     name: &str,
     path_text: &str,
@@ -558,7 +558,7 @@ fn required_attribute(
 
 /// Read the required status attribute, pushing a diagnostic when absent or
 /// malformed.
-fn required_status(
+pub(crate) fn required_status(
     node: Node<'_, '_>,
     path_text: &str,
     element: &str,
@@ -604,7 +604,7 @@ fn parse_status_value(
 }
 
 /// Concatenate the descendant text of an element, trimming outer whitespace.
-fn element_text(node: Node<'_, '_>) -> String
+pub(crate) fn element_text(node: Node<'_, '_>) -> String
 {
     let mut text = String::new();
     for descendant in node.descendants().filter(Node::is_text) {
@@ -615,7 +615,7 @@ fn element_text(node: Node<'_, '_>) -> String
 
 /// Collapse internal whitespace runs to single spaces, preserving boundary
 /// spacing.
-fn collapse_whitespace(input: &str) -> String
+pub(crate) fn collapse_whitespace(input: &str) -> String
 {
     let core: String = input.split_whitespace().collect::<Vec<&str>>().join(" ");
     if core.is_empty() {
@@ -655,7 +655,7 @@ fn cite_list(value: Option<&str>) -> Vec<CiteKey>
 }
 
 /// Build a diagnostic location string from a path and element name.
-fn element_location(
+pub(crate) fn element_location(
     path_text: &str,
     element: &str,
 ) -> String

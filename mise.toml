@@ -331,6 +331,12 @@ run = """
 cargo run --quiet -p gandr-workflow-docs --features=full -- check
 """
 
+[tasks."docs:check-classes"]
+description = "Parse=validate the prose document classes (gandr-712) with the doc tool: research records (docs/research), workflow docs (docs/workflow), per-crate status (crates/*/docs) — banner presence, status presence, label define-once, label/cite resolution, class schema. XML only; .md tail is skipped"
+run = """
+cargo run --quiet -p gandr-workflow-docs --features=full -- check-docs
+"""
+
 [tasks."docs:build"]
 description = "Build the no-JavaScript static HTML spec corpus into target/docs-spec (typst math/diagram leaves compiled to SVG via the pinned CLI)"
 run = """

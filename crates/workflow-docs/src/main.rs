@@ -15,6 +15,9 @@ use gandr_workflow_docs::corpus;
 const DEFAULT_SPEC_DIR: &str = "docs/spec";
 /// Default build output directory relative to the working directory.
 const DEFAULT_OUT_DIR: &str = "target/docs-spec";
+/// Default workspace root relative to the working directory (used by
+/// `check-docs` to discover the prose-document roots).
+const DEFAULT_ROOT_DIR: &str = ".";
 /// References-file basename inside the spec directory.
 const REFS_BASENAME: &str = "refs.yml";
 
@@ -23,6 +26,8 @@ struct Options
 {
     /// Spec directory to scan for component files.
     spec: PathBuf,
+    /// Workspace root to scan for prose-document classes.
+    root: PathBuf,
     /// References file; defaults to `<spec>/refs.yml`.
     refs: Option<PathBuf>,
     /// Build output directory.
@@ -61,16 +66,17 @@ fn run(args: &[String]) -> Result<ExitCode, DocError>
     let Some((command, rest)) = args.split_first()
     else {
         return Err(DocError::usage(
-            "expected a subcommand: check | build | fmt",
+            "expected a subcommand: check | check-docs | build | fmt",
         ));
     };
     let options = parse_options(rest)?;
     match command.as_str() {
         | "check" => run_check(&options),
+        | "check-docs" => run_check_docs(&options),
         | "build" => run_build(&options),
         | "fmt" => run_fmt(&options),
         | other => Err(DocError::usage(format!(
-            "unknown subcommand '{other}' (expected check | build | fmt)"
+            "unknown subcommand '{other}' (expected check | check-docs | build | fmt)"
         ))),
     }
 }
@@ -79,6 +85,7 @@ fn run(args: &[String]) -> Result<ExitCode, DocError>
 fn parse_options(args: &[String]) -> Result<Options, DocError>
 {
     let mut spec = PathBuf::from(DEFAULT_SPEC_DIR);
+    let mut root = PathBuf::from(DEFAULT_ROOT_DIR);
     let mut refs: Option<PathBuf> = None;
     let mut out = PathBuf::from(DEFAULT_OUT_DIR);
     let mut files = Vec::new();
@@ -86,6 +93,7 @@ fn parse_options(args: &[String]) -> Result<Options, DocError>
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             | "--spec" => spec = PathBuf::from(expect_value(&mut iter, "--spec")?),
+            | "--root" => root = PathBuf::from(expect_value(&mut iter, "--root")?),
             | "--refs" => refs = Some(PathBuf::from(expect_value(&mut iter, "--refs")?)),
             | "--out" => out = PathBuf::from(expect_value(&mut iter, "--out")?),
             | flag if flag.starts_with("--") => {
@@ -96,6 +104,7 @@ fn parse_options(args: &[String]) -> Result<Options, DocError>
     }
     Ok(Options {
         spec,
+        root,
         refs,
         out,
         files,
@@ -131,6 +140,25 @@ fn run_check(options: &Options) -> Result<ExitCode, DocError>
         eprintln!("{diagnostic}");
     }
     eprintln!("check: {} diagnostic(s)", report.diagnostics.len());
+    Ok(ExitCode::FAILURE)
+}
+
+/// Run the `check-docs` subcommand.
+fn run_check_docs(options: &Options) -> Result<ExitCode, DocError>
+{
+    let report = corpus::check_docs(&options.root, &options.refs_path())?;
+    if report.diagnostics.is_empty() {
+        println!(
+            "check-docs: ok ({} document(s), {})",
+            report.record_count,
+            options.root.display(),
+        );
+        return Ok(ExitCode::SUCCESS);
+    }
+    for diagnostic in &report.diagnostics {
+        eprintln!("{diagnostic}");
+    }
+    eprintln!("check-docs: {} diagnostic(s)", report.diagnostics.len());
     Ok(ExitCode::FAILURE)
 }
 

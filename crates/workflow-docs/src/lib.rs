@@ -19,6 +19,9 @@ use std::path::PathBuf;
 
 /// Corpus discovery and the `check`, `build`, and `fmt` orchestration.
 pub mod corpus;
+/// The prose document classes, a minimal family alongside the [`model`]
+/// component vocabulary.
+pub mod doc;
 /// Canonical `XML` formatting (idempotent), used as the doc-tool formatter.
 pub mod format;
 /// Typed model of the component vocabulary (the normative schema).
