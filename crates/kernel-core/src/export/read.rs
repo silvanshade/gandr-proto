@@ -18,11 +18,15 @@
 //!   `expect_value_term`/`expect_comp_term`); [`MAX_TABLE_ENTRIES`] enforced as
 //!   entries accrue.
 //! * **The amplification defence (§4.4)**: after the whole table, one forward
-//!   scan computes each entry's memoized `expanded_size` (a saturating `u64`),
-//!   and any declaration whose declared-type or body root exceeds
-//!   [`MAX_EXPANDED_TERM_WORK`] is rejected **before replay** — bounding the
-//!   recursive checker's tree-expanded work over the shared DAG without
-//!   touching the checker.
+//!   scan computes each entry's memoized `expanded_size` (a saturating `u64`);
+//!   any declaration whose declared-type or body root exceeds
+//!   [`MAX_EXPANDED_TERM_WORK`], **or** whose artifact-total (the saturating
+//!   sum over every declaration root) exceeds [`MAX_ARTIFACT_EXPANDED_WORK`]
+//!   (gandr-4p3 — the many-cheap-segments-sharing-one-root amplification), is
+//!   rejected **before replay** — bounding the recursive checker's
+//!   tree-expanded work over the shared DAG without touching the checker. The
+//!   scan also yields the deterministic [`DecodeMetrics`] the B2.3 exit gate
+//!   records.
 //! * **Canonical form (E4, §4.6)**: the whole-artifact **sharing-aware**
 //!   re-encode-compare (the maximal-sharing writer is the re-encoder,
 //!   `O(entries)`) rejects any non-canonical table — a non-maximally-shared
@@ -52,6 +56,7 @@ use super::BASE_INTEGER;
 use super::BASE_NUMERIC;
 use super::BASE_STRING;
 use super::DecodeError;
+use super::DecodeMetrics;
 use super::DecodedArtifact;
 use super::DecodedDeclaration;
 use super::FORMAT_VERSION_V1;
@@ -65,6 +70,7 @@ use super::LITERAL_INTEGER;
 use super::LITERAL_NUMERIC;
 use super::LITERAL_TEXT;
 use super::MAGIC;
+use super::MAX_ARTIFACT_EXPANDED_WORK;
 use super::MAX_DECODED_LEVEL_OFFSET;
 use super::MAX_EXPANDED_TERM_WORK;
 use super::MAX_TABLE_ENTRIES;
@@ -215,16 +221,19 @@ struct DeclMeta
 ///   maximal-shared subterm table and whose declarations carry their admission
 ///   mark (E6) — exactly when the bytes are the canonical v1 encoding of an
 ///   artifact whose entries all validate (known tag, strictly-earlier and
-///   polarity-correct children, within the table and expanded-work caps) and
-///   whose levels, constraints, and literals rebuild through their constructors
-///   (E4).
+///   polarity-correct children, within the table, per-declaration
+///   expanded-work, and artifact-total expanded-work caps) and whose levels,
+///   constraints, and literals rebuild through their constructors (E4). The
+///   returned artifact carries the deterministic [`DecodeMetrics`] (D3
+///   telemetry) computed en route.
 /// - provides: the K5 re-checkable decode — a total parser over the closed
 ///   vocabulary.
 /// - fails: [`DecodeError`] — the rejection triple (truncation, an unknown tag,
 ///   a structural violation including non-canonical, child-order, table-size,
-///   and expanded-work), a reserved declaration kind (R1), a non-empty reserved
-///   slot/section (R2/R3/R4), or an unsupported version (E5, including v0).
-///   Never panics, never loops unboundedly.
+///   per-declaration expanded-work, and artifact-total expanded-work), a
+///   reserved declaration kind (R1), a non-empty reserved slot/section
+///   (R2/R3/R4), or an unsupported version (E5, including v0). Never panics,
+///   never loops unboundedly.
 /// - panics: none.
 ///
 /// # Errors
@@ -235,10 +244,12 @@ struct DeclMeta
 ///   every prefix and arbitrary random bytes return (never panic), and the
 ///   round-trip differential pins acceptance of every genuine artifact; the L3
 ///   residues are each named rejection (v0 refusal, non-canonical, child-order,
-///   table-size, expanded-work), pinned by hand-crafted goldens.
+///   table-size, per-declaration expanded-work, artifact-total expanded-work),
+///   pinned by hand-crafted goldens.
 /// - witness: `export::tests::truncation_at_every_prefix_is_rejected`
 /// - witness: `export::tests::arbitrary_bytes_never_panic`
 /// - witness: `export::tests::a_repeated_diamond_dag_is_rejected_before_the_checker`
+/// - witness: `export::tests::the_artifact_work_boundary_accepts_just_under_and_rejects_just_over`
 /// - witness: `export::tests::a_v0_artifact_is_refused`
 #[inline]
 pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
@@ -261,7 +272,8 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
             site: MalformedSite::TrailingBytes,
         });
     }
-    reject_over_budget(&table, &metas)?;
+    let metrics = budget_report(&table, &metas);
+    check_budget(&metrics)?;
     let declarations = build_declarations(&mut table, &metas);
     let pairs: Vec<(AdmissionMark, &Declaration)> = declarations
         .iter()
@@ -272,26 +284,28 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
             site: MalformedSite::NonCanonical,
         });
     }
-    Ok(DecodedArtifact::new(table.arena, declarations))
+    Ok(DecodedArtifact::new(table.arena, declarations, metrics))
 }
 
-/// Reject any declaration whose declared-type or body root exceeds
-/// [`MAX_EXPANDED_TERM_WORK`], computed by one forward scan of memoized
-/// saturating `expanded_size` — the amplification defence, before replay
-/// (§4.4).
+/// Compute the artifact's decode-budget report in one forward scan of memoized
+/// saturating `expanded_size` — the deterministic D3 telemetry the
+/// amplification defence rides (§4.4).
 ///
 /// # Contract
 /// - requires: every entry's children are strictly-earlier (checked at decode),
 ///   so a forward scan resolves each child's size before the parent's.
-/// - ensures: `Ok(())` exactly when every declaration root's expanded (tree)
-///   size is at or below the cap.
-/// - provides: the checker-time bound, enforced structurally on the table.
-/// - fails: [`DecodeError::Malformed`] (`ExpandedWork`).
+/// - ensures: a [`DecodeMetrics`] whose `table_entries` is the table size,
+///   `max_declaration_expanded_work` is the maximum expanded (tree) size over
+///   every declaration root, and `artifact_expanded_work` is the saturating sum
+///   of those root sizes — all functions of the canonical bytes alone.
+/// - provides: the one scan both [`check_budget`] (the acceptance gate) and the
+///   exit-gate telemetry read; there is no second descent.
+/// - fails: never (a saturating scan is total).
 /// - panics: none.
-fn reject_over_budget(
+fn budget_report(
     table: &Table,
     metas: &[DeclMeta],
-) -> Result<(), DecodeError>
+) -> DecodeMetrics
 {
     let mut expanded: Vec<u64> = Vec::with_capacity(table.children.len());
     for child_globals in &table.children {
@@ -305,24 +319,58 @@ fn reject_over_budget(
         }
         expanded.push(size);
     }
-    let over = DecodeError::Malformed {
-        site: MalformedSite::ExpandedWork,
-    };
     let size_of = |global: u32| -> u64 {
         expanded
             .get(usize::try_from(global).unwrap_or(usize::MAX))
             .copied()
             .unwrap_or(u64::MAX)
     };
+    let mut max_declaration_expanded_work: u64 = 0;
+    let mut artifact_expanded_work: u64 = 0;
     for meta in metas {
-        if size_of(meta.root_declared) > MAX_EXPANDED_TERM_WORK {
-            return Err(over);
+        let declared = size_of(meta.root_declared);
+        max_declaration_expanded_work = max_declaration_expanded_work.max(declared);
+        artifact_expanded_work = artifact_expanded_work.saturating_add(declared);
+        if let Some(root_body) = meta.root_body {
+            let body = size_of(root_body);
+            max_declaration_expanded_work = max_declaration_expanded_work.max(body);
+            artifact_expanded_work = artifact_expanded_work.saturating_add(body);
         }
-        if let Some(root_body) = meta.root_body
-            && size_of(root_body) > MAX_EXPANDED_TERM_WORK
-        {
-            return Err(over);
-        }
+    }
+    DecodeMetrics::new(
+        table.nodes.len(),
+        max_declaration_expanded_work,
+        artifact_expanded_work,
+    )
+}
+
+/// Reject an artifact whose expanded work exceeds either the per-declaration
+/// cap [`MAX_EXPANDED_TERM_WORK`] or the artifact-total cap
+/// [`MAX_ARTIFACT_EXPANDED_WORK`] (gandr-4p3) — the amplification defence,
+/// before replay (§4.4).
+///
+/// # Contract
+/// - requires: `metrics` is the [`budget_report`] of the decoded table.
+/// - ensures: `Ok(())` exactly when the maximum per-declaration-root expanded
+///   size is within [`MAX_EXPANDED_TERM_WORK`] **and** the artifact-total
+///   expanded size is within [`MAX_ARTIFACT_EXPANDED_WORK`].
+/// - provides: the checker-time bound, enforced structurally on the table — the
+///   per-declaration cap first (the tighter, more specific rejection), then the
+///   artifact-total cap.
+/// - fails: [`DecodeError::Malformed`] (`ExpandedWork` or
+///   `ArtifactExpandedWork`).
+/// - panics: none.
+fn check_budget(metrics: &DecodeMetrics) -> Result<(), DecodeError>
+{
+    if metrics.max_declaration_expanded_work() > MAX_EXPANDED_TERM_WORK {
+        return Err(DecodeError::Malformed {
+            site: MalformedSite::ExpandedWork,
+        });
+    }
+    if metrics.artifact_expanded_work() > MAX_ARTIFACT_EXPANDED_WORK {
+        return Err(DecodeError::Malformed {
+            site: MalformedSite::ArtifactExpandedWork,
+        });
     }
     Ok(())
 }

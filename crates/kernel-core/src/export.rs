@@ -49,10 +49,13 @@
 //! list, never input-scaled recursion. Because decode retains sharing, a small
 //! artifact can name a DAG of astronomical *expanded* (tree) size — the
 //! billion-laughs attack moved from memory to checker time. The reader carries
-//! two budgets, enforced before replay: [`MAX_TABLE_ENTRIES`] (as entries
-//! accrue) and [`MAX_EXPANDED_TERM_WORK`] (one forward scan of memoized
-//! saturating `expanded_size`, rejecting any declaration root over the cap).
-//! Level reconstruction is bounded by [`MAX_DECODED_LEVEL_OFFSET`].
+//! three expanded-work budgets, enforced before replay: [`MAX_TABLE_ENTRIES`]
+//! (as entries accrue), [`MAX_EXPANDED_TERM_WORK`] (per declaration root), and
+//! [`MAX_ARTIFACT_EXPANDED_WORK`] (the artifact-total, closing the many-cheap-
+//! segments-sharing-one-root amplification, gandr-4p3) — the last two off one
+//! forward scan of memoized saturating `expanded_size`. Level reconstruction is
+//! bounded by [`MAX_DECODED_LEVEL_OFFSET`]. The same scan yields the
+//! deterministic [`DecodeMetrics`] the B2.3 exit gate records (D3 telemetry).
 //!
 //! # The seven ratified reservations (format-plane, zero S1 typing consequence)
 //!
@@ -106,15 +109,61 @@ pub const FORMAT_VERSION_V1: u16 = 1;
 /// not bound. Before replay, the reader computes each entry's memoized
 /// `expanded_size` (a saturating `u64`) in one forward scan and rejects any
 /// declaration whose declared-type or body root exceeds this cap — bounding
-/// checker time without touching the checker. **D3-tunable at B2.3** (telemetry
-/// floors measure real corpus sizes); this is a conservative launch value.
-pub const MAX_EXPANDED_TERM_WORK: u64 = 1 << 24;
+/// checker time without touching the checker.
+///
+/// **D3-tunable; retuned at B2.3** from `1 << 24` to `1 << 20`. The binding
+/// floor is **not** the S1 corpus (max per-declaration expanded work `5` over
+/// the 21-eligible + 6-golden exit-gate corpus) but the deepest artifact the
+/// kernel itself round-trips: the `tests/hardening.rs`
+/// `deep_decoded_declaration_drop_is_total` witness decodes a ~200k-deep
+/// declaration whose expanded work is ~400k, and the reader must accept every
+/// artifact the kernel legitimately admits and round-trips. `1 << 20`
+/// (1,048,576) clears that ~400k floor with ~2.6× headroom (and is `> 2 ×`
+/// [`MAX_TABLE_ENTRIES`], so a maximal flat table stays under it), yet rejects
+/// an obvious billion-laughs (`2^30` expanded) with a 1,024× margin. See the
+/// crate STATUS "reader budgets" table.
+pub const MAX_EXPANDED_TERM_WORK: u64 = 1 << 20;
 
 /// The decode-time cap on the number of subterm-table entries in an artifact —
 /// the table-size defence (massive-term design §4.4), enforced as entries
-/// accrue (truncation-cheap). **D3-tunable at B2.3**; a conservative launch
-/// value.
-pub const MAX_TABLE_ENTRIES: usize = 1 << 20;
+/// accrue (truncation-cheap).
+///
+/// **D3-tunable; retuned at B2.3** from `1 << 20` to `1 << 18`. This is the
+/// distinct-DAG-node axis, naturally below [`MAX_EXPANDED_TERM_WORK`] since
+/// sharing makes *expanded* work exceed the *distinct*-entry count, and it is
+/// input-linear (each entry costs ≥ 1 wire byte) so it carries no
+/// amplification. Its floor, like its sibling's, is the ~200k-entry table of
+/// the deepest kernel-round-tripped artifact (the `hardening.rs` decode
+/// witness), not the S1 corpus (max `6` distinct entries); `1 << 18` (262,144)
+/// clears that floor. It is the budget most likely to want raising first when a
+/// genuinely large theory lands.
+pub const MAX_TABLE_ENTRIES: usize = 1 << 18;
+
+/// The decode-time cap on the **artifact-total** expanded (tree) work — the
+/// per-artifact amplification defence (gandr-4p3, massive-term design §4.4).
+///
+/// [`MAX_EXPANDED_TERM_WORK`] bounds each declaration root in isolation, but
+/// nothing there bounds the *sum* across declarations: a declaration count is
+/// unbounded, a declaration segment costs ~10 wire bytes at minimum, and
+/// declaration roots may **share** subterm-table entries across declarations
+/// (the format's cross-declaration sharing), so `N` cheap segments each
+/// referencing the same near-`MAX_EXPANDED_TERM_WORK` root force `N ×
+/// MAX_EXPANDED_TERM_WORK` checker work — total replay work `∝ bytes × 10^6`
+/// where v0 was linear in bytes. The reader closes this by accumulating a
+/// **saturating** artifact-total over every declaration root's expanded size
+/// (declared-type and, for a `Def`, body) — riding the same one forward scan as
+/// the per-declaration check, a single extra compare — and rejecting any
+/// artifact over this cap **before replay**. Reader acceptance policy only; no
+/// wire-format or E4 consequence. **D3-tunable** like its two siblings, set at
+/// B2.3 to `1 << 24` (16,777,216). It clears both the S1 corpus (max
+/// artifact-total expanded work `7`) and a single deepest-round-tripped
+/// declaration (~400k, the `hardening.rs` decode witness) — ~42× over the
+/// latter, admitting tens of such declarations — while, with
+/// [`MAX_EXPANDED_TERM_WORK`] at `1 << 20`, capping a single artifact's total
+/// replay work at `2^24` tree-nodes: it catches the
+/// N-cheap-segments-sharing-one-near-cap-root amplification (≈16 near-cap
+/// sharing roots trip it) that no per-declaration bound sees.
+pub const MAX_ARTIFACT_EXPANDED_WORK: u64 = 1 << 24;
 
 /// The decode-time cap on a level variable atom's successor offset.
 ///
@@ -295,8 +344,79 @@ impl DecodedDeclaration
     }
 }
 
+/// The deterministic decode-budget metrics of an artifact — the D3 telemetry
+/// floors (massive-term design §4.4; the B2.3 exit-gate size/work records).
+///
+/// Every field is a **function of the canonical bytes alone**, so recording it
+/// per corpus item pins the size/work profile the day it moves: an S2 inflation
+/// changes a metric and re-blessing is forced. They are computed by the same
+/// memoized forward scan the budget check rides — the Lean cached-word-per-node
+/// discipline (impl-models-deep-read §2.1): a read off an already-computed
+/// `expanded_size` vector, never a second descent — so exposing them costs
+/// nothing beyond the check already paid.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct DecodeMetrics
+{
+    /// The number of subterm-table entries (bounded by [`MAX_TABLE_ENTRIES`]).
+    table_entries: usize,
+    /// The maximum expanded (tree) size over every declaration root — the
+    /// quantity [`MAX_EXPANDED_TERM_WORK`] caps (a saturating `u64`).
+    max_declaration_expanded_work: u64,
+    /// The saturating sum of expanded (tree) size over every declaration root —
+    /// the quantity [`MAX_ARTIFACT_EXPANDED_WORK`] caps (gandr-4p3).
+    artifact_expanded_work: u64,
+}
+
+impl DecodeMetrics
+{
+    /// Pair the three deterministic decode-budget quantities.
+    #[inline]
+    #[must_use]
+    pub(crate) const fn new(
+        table_entries: usize,
+        max_declaration_expanded_work: u64,
+        artifact_expanded_work: u64,
+    ) -> Self
+    {
+        Self {
+            table_entries,
+            max_declaration_expanded_work,
+            artifact_expanded_work,
+        }
+    }
+
+    /// The number of subterm-table entries.
+    #[inline]
+    #[must_use]
+    pub const fn table_entries(&self) -> usize
+    {
+        self.table_entries
+    }
+
+    /// The maximum per-declaration-root expanded (tree) size.
+    #[inline]
+    #[must_use]
+    pub const fn max_declaration_expanded_work(&self) -> u64
+    {
+        self.max_declaration_expanded_work
+    }
+
+    /// The artifact-total expanded (tree) size (the saturating sum over
+    /// declaration roots).
+    #[inline]
+    #[must_use]
+    pub const fn artifact_expanded_work(&self) -> u64
+    {
+        self.artifact_expanded_work
+    }
+}
+
 /// A fully decoded artifact: the [`TermArena`] its declarations' content was
 /// decoded into, and the admission-ordered declaration sequence addressing it.
+///
+/// It also carries the deterministic [`DecodeMetrics`] computed en route (D3
+/// telemetry).
 ///
 /// [`decode`] yields this self-contained structure (the term/type content lives
 /// in [`Self::arena`], not in owned trees); [`read()`] re-admits it through the
@@ -309,21 +429,26 @@ pub struct DecodedArtifact
     arena: TermArena,
     /// The decoded declarations, in admission order.
     declarations: alloc::vec::Vec<DecodedDeclaration>,
+    /// The deterministic decode-budget metrics (D3 telemetry).
+    metrics: DecodeMetrics,
 }
 
 impl DecodedArtifact
 {
-    /// Pair a decode arena with its admission-ordered declaration sequence.
+    /// Pair a decode arena with its admission-ordered declaration sequence and
+    /// the decode-budget metrics computed en route.
     #[inline]
     #[must_use]
     pub(crate) fn new(
         arena: TermArena,
         declarations: alloc::vec::Vec<DecodedDeclaration>,
+        metrics: DecodeMetrics,
     ) -> Self
     {
         Self {
             arena,
             declarations,
+            metrics,
         }
     }
 
@@ -341,6 +466,15 @@ impl DecodedArtifact
     pub fn declarations(&self) -> &[DecodedDeclaration]
     {
         &self.declarations
+    }
+
+    /// The deterministic decode-budget metrics (D3 telemetry: table entries,
+    /// max per-declaration expanded work, and artifact-total expanded work).
+    #[inline]
+    #[must_use]
+    pub const fn metrics(&self) -> DecodeMetrics
+    {
+        self.metrics
     }
 }
 
@@ -651,6 +785,11 @@ pub enum MalformedSite
     /// A declaration root's memoized expanded (tree) size exceeded
     /// [`MAX_EXPANDED_TERM_WORK`] — the amplification defence (§4.4).
     ExpandedWork,
+    /// The artifact-total expanded (tree) work — the saturating sum over every
+    /// declaration root's expanded size — exceeded
+    /// [`MAX_ARTIFACT_EXPANDED_WORK`] (the per-artifact amplification
+    /// defence, gandr-4p3 / §4.4).
+    ArtifactExpandedWork,
     /// The bytes decoded but were not the canonical encoding of the recovered
     /// artifact (E4: a non-canonical encoding — a non-maximally-shared,
     /// mis-ordered, or dead-entry table — is rejected).
@@ -678,6 +817,9 @@ impl fmt::Display for MalformedSite
             | Self::ChildOrder => "a child index was not strictly earlier than its entry",
             | Self::TableSize => "the subterm table exceeded the entry cap",
             | Self::ExpandedWork => "a declaration's expanded size exceeded the work cap",
+            | Self::ArtifactExpandedWork => {
+                "the artifact-total expanded size exceeded the artifact work cap"
+            },
             | Self::NonCanonical => "the bytes were not the canonical encoding",
             | Self::TrailingBytes => "bytes remained after a complete artifact",
         })

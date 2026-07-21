@@ -9,9 +9,10 @@
 //! refusal: the v0 version refusal (E5), the reserved kinds/slots, a
 //! non-canonical level/literal, the canonical-form violations (a duplicate,
 //! mis-ordered, or dead entry, a forward/self child reference), and the
-//! amplification defences (a repeated- diamond DAG rejected by the
-//! expanded-work budget before the checker, and the table-size cap), with
-//! boundary goldens for both budget constants.
+//! amplification defences (a repeated-diamond DAG rejected by the per-
+//! declaration expanded-work budget before the checker, a many-cheap-segments
+//! DAG rejected by the artifact-total budget, and the table-size cap), with
+//! boundary goldens for all three budget constants.
 
 #![cfg_attr(
     test,
@@ -22,12 +23,13 @@
         clippy::default_numeric_fallback,
         clippy::expect_used,
         clippy::indexing_slicing,
+        clippy::integer_division,
         clippy::panic,
         clippy::pattern_type_mismatch,
         clippy::semicolon_outside_block,
         clippy::unwrap_used,
         dead_code,
-        reason = "the standard test-allow set plus the byte-crafting helpers' numeric-literal and block-scoping ergonomics (docs/workflow/rust.md)"
+        reason = "the standard test-allow set plus the byte-crafting helpers' numeric-literal and block-scoping ergonomics, and the exact power-of-two budget arithmetic in the boundary goldens (docs/workflow/rust.md)"
     )
 )]
 
@@ -45,6 +47,9 @@ mod tests
     use gandr_kernel_core::LevelParamCount;
     use gandr_kernel_core::LevelSignature;
     use gandr_kernel_core::Literal;
+    use gandr_kernel_core::MAX_ARTIFACT_EXPANDED_WORK;
+    use gandr_kernel_core::MAX_EXPANDED_TERM_WORK;
+    use gandr_kernel_core::MAX_TABLE_ENTRIES;
     use gandr_kernel_core::Magnitude;
     use gandr_kernel_core::MalformedSite;
     use gandr_kernel_core::ReadError;
@@ -820,10 +825,18 @@ mod tests
     #[test]
     fn the_expanded_work_boundary_accepts_just_under_and_rejects_just_over()
     {
-        // A 23-level diamond has expanded size 2^24 - 1 = MAX_EXPANDED_TERM_WORK -
-        // 1 (accepted); wrapping it in one more pair with a unit pushes it to
-        // MAX + 1 (rejected). Tests the decode plane (structure + budget).
-        let under = write(&diamond_environment(23));
+        // A `depth`-level diamond has expanded size 2^(depth+1) - 1; with the
+        // cap a power of two, `depth = log2(cap) - 1` lands the diamond exactly
+        // at MAX_EXPANDED_TERM_WORK - 1 (accepted), and wrapping it in one more
+        // pair with a unit pushes it to MAX + 1 (rejected). Tests the decode
+        // plane (structure + budget); the depth tracks the D3-tuned constant.
+        assert!(
+            MAX_EXPANDED_TERM_WORK.is_power_of_two(),
+            "the boundary golden assumes a power-of-two expanded-work cap"
+        );
+        let depth =
+            usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 1).expect("the depth fits");
+        let under = write(&diamond_environment(depth));
         assert!(
             decode(&under).is_ok(),
             "expanded size just under the cap decodes"
@@ -833,11 +846,11 @@ mod tests
             let mut builder = over_env.stage();
             let arena = builder.arena();
             let mut node = arena.value_unit();
-            for _step in 0 .. 23 {
+            for _step in 0 .. depth {
                 node = arena.value_pair(node, node);
             }
             let extra = arena.value_unit();
-            let body = arena.value_pair(node, extra); // expanded = (2^24 - 1) + 1 + 1
+            let body = arena.value_pair(node, extra); // expanded = (cap - 1) + 1 + 1 = cap + 1
             let declared = arena.value_type_unit();
             let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
             over_env.add_decl_unchecked(declaration);
@@ -856,8 +869,11 @@ mod tests
     fn the_table_size_boundary_accepts_at_the_cap_and_rejects_over()
     {
         // A left-nested pair chain of distinct entries: the accept case has
-        // exactly MAX_TABLE_ENTRIES entries, the reject case one more.
-        let cap = 1_usize << 20;
+        // exactly MAX_TABLE_ENTRIES entries, the reject case one more. The chain
+        // expands to ~2·cap tree-nodes, which stays under MAX_EXPANDED_TERM_WORK
+        // (the table cap is the smaller, distinct-node axis), so only the
+        // table-size arm fires. Tracks the D3-tuned constant.
+        let cap = MAX_TABLE_ENTRIES;
         let build = |entries: usize| -> Vec<u8> {
             let mut environment = Environment::new();
             let mut builder = environment.stage();
@@ -885,6 +901,109 @@ mod tests
             },
             "a table one entry over the cap is rejected"
         );
+    }
+
+    // ----- The artifact-total amplification defence (§4.4, gandr-4p3). -----
+
+    /// Build a bypass-admitted environment of `count` declarations, each a
+    /// `def unit = <a fresh depth-`depth` pair diamond>`. The diamonds are
+    /// structurally identical, so the content-keyed writer shares one diamond
+    /// and every declaration root references it (cross-declaration sharing) —
+    /// the `N`-cheap-segments-sharing-one-near-cap-root shape gandr-4p3
+    /// defends.
+    fn shared_diamond_environment(
+        count: usize,
+        depth: usize,
+    ) -> Environment
+    {
+        let mut environment = Environment::new();
+        for _decl in 0 .. count {
+            let mut builder = environment.stage();
+            let body = {
+                let arena = builder.arena();
+                let mut node = arena.value_unit();
+                for _step in 0 .. depth {
+                    node = arena.value_pair(node, node);
+                }
+                node
+            };
+            let declared = builder.arena().value_type_unit();
+            let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
+            environment.add_decl_unchecked(declaration);
+        }
+        environment
+    }
+
+    #[test]
+    fn the_artifact_work_boundary_accepts_just_under_and_rejects_just_over()
+    {
+        // Each `def unit = diamond(depth)` contributes 1 (declared unit) +
+        // (2^(depth+1) - 1) (shared body) = 2^(depth+1) to the artifact-total.
+        // With `depth = log2(MAX_EXPANDED_TERM_WORK) - 2` the per-declaration
+        // body (2^(depth+1) - 1) stays strictly under MAX_EXPANDED_TERM_WORK, so
+        // the per-declaration arm never fires; `count` declarations sum to
+        // count·2^(depth+1), and choosing count so the sum is exactly
+        // MAX_ARTIFACT_EXPANDED_WORK accepts, one more rejects. Both parameters
+        // track the D3-tuned constants.
+        assert!(
+            MAX_ARTIFACT_EXPANDED_WORK.is_power_of_two()
+                && MAX_EXPANDED_TERM_WORK.is_power_of_two(),
+            "the boundary golden assumes power-of-two work caps"
+        );
+        let depth =
+            usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 2).expect("the depth fits");
+        let contribution = 1_u64 << (depth + 1); // = MAX_EXPANDED_TERM_WORK / 2
+        let count = usize::try_from(MAX_ARTIFACT_EXPANDED_WORK / contribution).expect("count fits");
+        // Just at the cap: accepts (the artifact arm rejects strictly over).
+        let at_cap = write(&shared_diamond_environment(count, depth));
+        assert!(
+            decode(&at_cap).is_ok(),
+            "artifact-total work at exactly the cap decodes"
+        );
+        // One more declaration pushes the total over.
+        let over = write(&shared_diamond_environment(count + 1, depth));
+        assert_eq!(
+            decode(&over).unwrap_err(),
+            DecodeError::Malformed {
+                site: MalformedSite::ArtifactExpandedWork,
+            },
+            "artifact-total work over the cap is rejected"
+        );
+    }
+
+    #[test]
+    fn a_many_segment_amplification_is_rejected_before_the_checker()
+    {
+        // Many cheap declaration segments sharing one near-per-declaration-cap
+        // diamond: the artifact is small in bytes but its artifact-total
+        // expanded work is astronomical. The reader rejects it on the DECODE
+        // plane by the artifact-total budget BEFORE any replay reaches the
+        // checker (the gandr-4p3 differential).
+        let depth =
+            usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 1).expect("the depth fits");
+        let bytes = write(&shared_diamond_environment(512, depth));
+        assert!(
+            bytes.len() < 8192,
+            "the many-segment artifact is small ({} bytes) despite astronomical artifact work",
+            bytes.len()
+        );
+        assert_eq!(
+            decode(&bytes).unwrap_err(),
+            DecodeError::Malformed {
+                site: MalformedSite::ArtifactExpandedWork,
+            },
+            "the many-segment amplification is rejected by the artifact-total budget"
+        );
+        match read(&bytes) {
+            | Err(ReadError::Decode(DecodeError::Malformed {
+                site: MalformedSite::ArtifactExpandedWork,
+            })) => {},
+            | other => {
+                panic!(
+                    "the amplification must fail on the decode plane, not the checker: {other:?}"
+                )
+            },
+        }
     }
 
     // ----- Reader totality on adversarial bytes. -----
