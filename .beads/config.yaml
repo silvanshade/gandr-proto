@@ -66,11 +66,7 @@
 # - github.token    → use GITHUB_TOKEN env var instead
 
 create.require-description: true
-
 dolt.auto-commit: on
-
-export.git-add: false
-
-sync.remote: "silvanshade/gandr-beads"
-
 export.auto: false
+export.git-add: false
+sync.remote: "https://www.dolthub.com/repositories/silvanshade/gandr-beads"
