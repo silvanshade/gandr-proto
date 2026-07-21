@@ -9,6 +9,7 @@ members = [
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-host",
+  "crates/storage-artifact",
   "crates/storage-chunker",
   "crates/storage-prolly-trees",
   "crates/surface-driver",
@@ -50,6 +51,7 @@ default-features = false
 
 # BLAKE3 hashing for content and manifest digests.
 # consumers:
+# - gandr-storage-artifact (BLAKE3 artifact manifest identity)
 # - gandr-storage-prolly-trees (NodeHash = BLAKE3 node identity; snapshot/witness digests)
 # - gandr-workflow-gates
 # - gandr-workflow-docs (content-hash cache keys for compiled math/diagram SVG)
@@ -166,6 +168,7 @@ default-features = false
 
 # Property-based testing framework.
 # consumers:
+# - gandr-storage-artifact (dev)
 # - gandr-workflow-gates (dev)
 [workspace.dependencies.proptest]
 version = "1.11.0"
@@ -229,6 +232,7 @@ features = ["full", "parsing", "visit"]
 # consumers:
 # - gandr-core-checker
 # - gandr-runtime-host
+# - gandr-storage-artifact
 # - gandr-storage-prolly-trees
 # - gandr-theory-orders
 [workspace.dependencies.thiserror]

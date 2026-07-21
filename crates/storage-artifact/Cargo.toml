@@ -1,0 +1,28 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-storage-artifact"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Outer-layer CAS wiring: v1 export artifacts as sorted keyed declaration records through the prolly tree, with a canonical BLAKE3 manifest identity (storage tier; untrusted plumbing)"
+readme.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+blake3 = { workspace = true }
+gandr-kernel-core = { path = "../kernel-core" }
+gandr-storage-chunker = { path = "../storage-chunker" }
+gandr-storage-prolly-trees = { path = "../storage-prolly-trees" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[features]
+default = []
+
+[lints]
+workspace = true
