@@ -1,0 +1,59 @@
+<component derives="spec-index vdc-reflection" id="correspondence" spec-version="1" status="partial" title="The literature correspondence: gandr's lineage and citation record">
+  <section id="corr-overview" title="The correspondence record">
+    <prose>
+      A
+      <term-def key="literature-correspondence">literature correspondence</term-def>
+      is a one-line entry binding a gandr construct to the external categorical or type-theoretic line it descends from, is contrasted against, or is bounded by. This component is the standing home for the lineage and citation notes routed out of the internal-univalence feedback ledger under the owner's all-absorb decision: it records where a construct's design is authorized by, corrected against, or fenced by published work, kept apart from the technical components so a citation lands as one honest sentence rather than a re-derivation. It is a growing record — each correspondence lands when the track it annotates is next touched — so its status is partial by construction.
+    </prose>
+  </section>
+  <section id="corr-vdc-lineage" title="Lineage of the reflection face: the virtual line, not Ruit's">
+    <prose>
+      gandr's
+      <term key="reflection-face"/>
+      — an inert reflection layer with no protype-composition primitive — descends from the
+      <term-def key="virtual-line">virtual line</term-def>
+      : the Cruttwell–Shulman generalized multicategories that first presented the
+      <term key="virtual-double-category"/>
+      by its units-and-restrictions universal property
+      <cite key="Q-8"/>
+      , and the New–Licata VETT hyperdoctrine of virtual equipments
+      <cite key="Q-5"/>
+      , with the Riehl–Verity §11.3 virtual-equipment presentation in the same pedigree. It is specifically not Ruit's multiple ∞-categories
+      <cite key="Q-16"/>
+      <cite key="Q-17"/>
+      , which are symmetric — every direction Segal-composes — so the composition primitive they carry is exactly the one the virtual line, and gandr's reflection face after it, deliberately withholds. internal-univalence made the same correction to its own design record on 2026-07-15.
+    </prose>
+  </section>
+  <section id="corr-universe-axis" title="The universe axis is not a Π-former">
+    <prose>
+      For a future "models of the conjectured type theory" story, the missing ingredient is not a fixed universe level. Ruit's α-power object
+      <cite key="Q-16"/>
+      is a classifier — a free α-cocompletion — not a Π-former, so the universe axis instead wants a
+      <term-def key="scale-as-ideal">scale-as-ideal</term-def>
+      : a
+      <term key="protype"/>
+      class closed under ⊙ and restriction, together with a classifying protype. The tabularity half of that structure is already gandr's
+      <term key="tabulator"/>
+      and its comprehension. Honest note: the power-object axis is unfinished upstream too — the construction is Ruit's outlook, in a paper in preparation — and the scale-as-ideal axis is parked on the internal-univalence side.
+    </prose>
+  </section>
+  <section id="corr-structure-univalence" title="The structure-univalence statement-shape precedent">
+    <prose>
+      Petrakis's univalent typoids
+      <cite key="Q-20"/>
+      are the canonical MLTT-native statement-shape precedent for the faithfulness half of gandr's ua-base:
+      <term-def key="structure-univalence">structure-univalence</term-def>
+      — univalence-of-a-structure realized per type former as a J-only, axiom-free theorem (Def 4.1's round-trip map Ua : x≃y → x=y, with the closure theorems product Thm 4.7 and exponential Prop 5.1). It is a template and a vocabulary, not an import, under one load-bearing caveat: Def 4.1 targets the carrier's ambient identity type, which is degenerate over decidable codes — Hedberg's theorem makes that identity type propositional and collapses the proof-relevant ≃ — so the direction relevant to gandr is the typoid-function-as-equivalence (Rezk-completion) one the paper names but does not develop; no normal-form, decidability, or coherence machinery is inherited from it. This work is registered in the consolidated literature register (bibliography-v2 Q-20); this entry cites that registration rather than duplicating it.
+    </prose>
+  </section>
+  <section id="corr-scope" title="Scope and non-goals">
+    <prose>The entries here are correspondences and lineage, never specifications: each records a relationship to external work, and the authoritative design for any construct remains in its technical component and the ADRs behind it. The record is partial by design — it carries the lineage and citation entries whose tracks have been touched, and further correspondences land as their tracks do. Where a routed source is not present in the consolidated literature register (for instance the Riehl–Verity virtual-equipment presentation named above), it appears as prose lineage rather than a formal citation, and its registration is a separate register decision.</prose>
+  </section>
+  <references>
+    <cite key="Q-5"/>
+    <cite key="Q-8"/>
+    <cite key="Q-16"/>
+    <cite key="Q-17"/>
+    <cite key="Q-20"/>
+  </references>
+</component>
