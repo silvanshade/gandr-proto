@@ -131,6 +131,16 @@ const EXPECTED_CLIPPY_WORKSPACE_COMMAND: &[&str] = &[
     "warnings",
 ];
 
+/// Cargo invocation the merge-wall rustdoc gate must run over the workspace.
+const EXPECTED_DOC_CHECK_COMMAND: &[&str] = &[
+    "cargo",
+    "doc",
+    "--workspace",
+    "--features=full",
+    "--no-deps",
+    "--document-private-items",
+];
+
 /// Cargo metadata plugin-library paths for the supported upstream Dylint sets.
 const EXPECTED_DYLINT_PLUGIN_PATHS: &[&str] = &[
     "examples/general/abs_home_path",
@@ -1571,10 +1581,46 @@ fn merge_gate_task_order_is_locked() -> TestResult
             "cargo:build",
             "cargo:clippy",
             "cargo:dylint:recursion",
+            "cargo:doc-check",
             "cargo:nextest",
             "treefmt:check",
         ],
         "gate:merge task order changed",
+    );
+    Ok(())
+}
+
+/// The merge-wall rustdoc gate documents the whole workspace on the pinned
+/// nightly with every rustdoc lint denied.
+#[test]
+fn doc_check_task_policy_is_locked() -> TestResult
+{
+    let workspace = workspace_root()?;
+    let mise = parse_toml_file(&workspace.join("mise.toml"))?;
+    let cargo_doc_check = toml_table_at(&mise, &["tasks", "cargo:doc-check"])?;
+    let doc_check_script = toml_table_string(cargo_doc_check, "run")?;
+    assert!(
+        doc_check_script
+            .0
+            .contains("RUSTUP_TOOLCHAIN=\"$RUSTUP_TOOLCHAIN_NIGHTLY\""),
+        "cargo:doc-check must run rustdoc on the pinned nightly toolchain"
+    );
+    assert!(
+        doc_check_script.0.contains("RUSTDOCFLAGS=\"-D warnings\""),
+        "cargo:doc-check must deny every rustdoc warning"
+    );
+    let doc_commands = parse_cargo_invocations(doc_check_script);
+    let [doc_pass] = doc_commands.as_slice()
+    else {
+        return Err(Box::new(std::io::Error::other(format!(
+            "expected one cargo:doc-check invocation, found {}",
+            doc_commands.len()
+        ))));
+    };
+    assert_string_sequence(
+        doc_pass,
+        EXPECTED_DOC_CHECK_COMMAND,
+        "cargo:doc-check workspace documentation scope changed",
     );
     Ok(())
 }

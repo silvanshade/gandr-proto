@@ -4,6 +4,8 @@
 //! (see [`crate::parse`]) is the only constructor path, so a value of
 //! [`Document`] is a structurally well-formed component; corpus-level semantic
 //! checks live in [`crate::validate`].
+//!
+//! [`Document`]: crate::model::Document
 
 use alloc::string::String;
 use alloc::vec::Vec;

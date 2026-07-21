@@ -232,9 +232,21 @@ cargo doc --workspace --features=full --no-deps --document-private-items --open
 """
 
 [tasks."cargo:doc-check"]
-description = "Check private-item documentation"
+description = "Check workspace private-item rustdoc with intra-doc links denied"
 run = """
-cargo doc --no-deps --document-private-items
+# rustdoc runs on the pinned nightly like cargo:clippy so the nightly-only
+# `gandr-workflow-dylint` driver documents in the same pass; the merge-wall
+# doc gate therefore needs no `--exclude` set (unlike the stable cargo:build /
+# cargo:nextest lanes, whose exclusion exists only for the stable/nightly split).
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+# `RUSTDOCFLAGS="-D warnings"` makes every rustdoc lint (broken/redundant
+# intra-doc links &c.) fatal so doc breakage cannot land silently.
+RUSTDOCFLAGS="-D warnings"
+export RUSTDOCFLAGS
+
+cargo doc --workspace --features=full --no-deps --document-private-items
 """
 
 [tasks."docs:manifest-drift"]
@@ -859,6 +871,7 @@ run = [
   { task = "cargo:build" },
   { task = "cargo:clippy" },
   { task = "cargo:dylint:recursion" },
+  { task = "cargo:doc-check" },
   { task = "cargo:nextest" },
   { task = "treefmt:check" }
 ]

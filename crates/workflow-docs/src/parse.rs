@@ -1,10 +1,12 @@
-//! Parse-equals-validate pass: `XML` text to a [`Document`] with structural
-//! diagnostics.
+//! The parse-equals-validate pass, with structural diagnostics.
 //!
-//! Well-formedness failures are operational ([`DocError::Xml`]); structural
-//! violations (wrong root, missing required attribute, unknown element,
-//! malformed status) are [`Diagnostic`] values. A file that yields any
-//! structural diagnostic produces no [`Document`], so the run fails on it.
+//! `XML` text becomes a [`Document`] — well-formedness failures are operational
+//! ([`DocError::Xml`]); structural violations (wrong root, missing required
+//! attribute, unknown element, malformed status) are [`Diagnostic`] values. A
+//! file that yields any structural diagnostic produces no [`Document`], so the
+//! run fails on it.
+//!
+//! [`Document`]: crate::model::Document
 
 use alloc::string::String;
 use alloc::vec::Vec;

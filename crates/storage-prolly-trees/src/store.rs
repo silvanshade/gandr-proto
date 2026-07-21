@@ -39,8 +39,7 @@ use crate::types::StoredNodeRef;
 ///
 /// - **Verified-blob guarantee.** [`load`](BlockStore::load) returns only blobs
 ///   whose [`NodeHash`] identity has been verified. An implementor MUST run (or
-///   have provably already run)
-///   [`verify_stored_node`](crate::verify_stored_node) — recomputing
+///   have provably already run) [`verify_stored_node`] — recomputing
 ///   `BLAKE3(encoded node bytes)` and rejecting any mismatch — before handing
 ///   bytes out, so a caller cannot obtain unverified bytes by this path. Both
 ///   bundled stores verify on every `insert` and every `load`.

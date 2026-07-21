@@ -19,8 +19,7 @@
 //! # Arena representation (D1(C), gandr-5t3)
 //!
 //! A node's children are **typed arena ids** ([`ValueId`], [`ComputationId`]),
-//! not owned `Box`es: the node lives in the environment's
-//! [`TermArena`](crate::TermArena) and
+//! not owned `Box`es: the node lives in the environment's [`TermArena`] and
 //! names its children by id. Leaf payloads ([`Literal`], [`DeBruijnIndex`],
 //! [`ConstantIndex`], [`Side`]) stay inline. Because children are `Copy` ids,
 //! the derived `Clone`/`Drop`/`PartialEq`/`Eq`/`Hash` are **shallow** — no
@@ -39,6 +38,8 @@
 //! derived equality (leaves have no id children); the export writer keys dedup
 //! on explicit content keys, never derived node equality; any deep structural
 //! comparison is an explicit id-resolving walk.
+//!
+//! [`TermArena`]: crate::TermArena
 
 use gandr_kernel_strata::Level;
 
@@ -115,10 +116,11 @@ pub enum Side
 /// computation effect; the only value that embeds a computation is
 /// [`Self::Thunk`], and a thunk suspends rather than runs it.
 ///
-/// Children are [`ValueId`]/[`ComputationId`] into the owning
-/// [`TermArena`](crate::TermArena);
+/// Children are [`ValueId`]/[`ComputationId`] into the owning [`TermArena`];
 /// the derived traits are shallow (the module docs), so no manual
 /// `Clone`/`Drop` is needed.
+///
+/// [`TermArena`]: crate::TermArena
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[expect(
     clippy::exhaustive_enums,
