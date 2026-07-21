@@ -20,9 +20,12 @@ Implemented:
   Out-of-S1 nodes are rejected structurally with a precise `BridgeRejection`; `Annot`/`dup`/`drop` are erased (C4); names resolve to de Bruijn indices or cross-declaration `Value::Constant` admission indices; a computation definition enters the single-polarity kernel as a thunk (`U C`, B2.1 decision 3).
   This crate now depends on `gandr-kernel-core` — the permitted direction (the section-2 TCB wall forbids the reverse).
   The kernel re-derives every obligation (K2); the bridge is untrusted.
+* The **A2.3 incremental checkpoint/validated-resume engine** (`checkpoint`) is implemented.
+  `checkpoint_program` records per-item terms, dependency footprints, and typings; `resume` internally aligns edited items, invalidates changed-binding dependents, adopts only structurally identical and footprint-clean checkpoints, and degrades to full re-typing on an order anomaly.
+  `tests/incremental.rs` differentially checks adoption, invalidation, insertion, deletion, rename, and generated edits against from-scratch typing.
 
 Tests are green (the conformance and marking suites run under `mise run cargo:nextest`).
 
 Not yet built: the linear context `Σ` is the committed shape but **vacuous in v0** (no obligation source; the discipline is unit-tested over `Sigma` directly); its obligation sources (sessions, sharing, worlds) are deferred `+feature`s.
-The A2.3 incremental checkpoint/diff engine, process-soup dynamics (`fork` / `acquire` / `migrate` and async signals), unions / intersections, polymorphism, and the row-polymorphic open tail `ρ` remain frozen in `docs/gandr/spec/core-ir-contract.md` §0.
+Process-soup dynamics (`fork` / `acquire` / `migrate` and async signals), unions / intersections, polymorphism, and the row-polymorphic open tail `ρ` are not yet built.
 L1 realization and promotion belong to `gandr-sequent`; they are not missing frozen-core forms.

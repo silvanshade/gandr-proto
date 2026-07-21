@@ -29,13 +29,13 @@ Downstream code may bind `ChunkerParams::commitment_bytes` into a root or proof 
 ## Prior art and profile status
 
 * `current`: FastCDC-2020-inspired Gear scanning is the only implemented runtime profile.
-* `open decision`: Chonkers is a benchmark and possible future profile candidate for stricter edit locality and bounded propagation.
-* `open decision`: VectorCDC is a benchmark and possible future profile candidate for throughput-oriented hashless boundary detection.
+* `open decision`: Chonkers is a possible future benchmark and profile candidate for stricter edit locality and bounded propagation.
+* `open decision`: VectorCDC is a possible future benchmark and profile candidate for throughput-oriented hashless boundary detection.
 * `current`: UltraCDC is rejected for Mach planning because the available sources do not pin full operational semantics and public implementations diverge.
-* `designed direction`: Dolt/Okra-style boundary ideas are useful benchmark candidates, not current runtime behavior and not Prolly-Bao proof semantics.
+* `designed direction`: Dolt/Okra-style boundary ideas are possible future benchmark candidates, not current runtime behavior and not Prolly-Bao proof semantics.
 
-Benchmark comparators and candidate rows are comparison surfaces only.
-They do not change the committed runtime profile or make external CDC behavior consensus-equivalent to Mach boundary semantics.
+No benchmark target, comparator dependency, or candidate row currently ships.
+Any future comparison surface must land as executable benchmark code and remain separate from the committed runtime profile.
 
 ## Distinctive contract
 
@@ -49,7 +49,7 @@ They do not change the committed runtime profile or make external CDC behavior c
 
 * `current`: output is allocated as a `Vec<ChunkSpan>`.
 * `current`: the only supported algorithm/table profile is the local FastCDC-2020-inspired Mach Gear profile.
-* `current`: benchmark rows cover prior-art candidates, but those candidates are non-consensus and not proof equivalence.
+* `current`: no benchmark target, comparator dependency, or prior-art candidate row currently ships.
 * `designed direction`: Prolly-Bao should commit chunker parameter bytes in its own root or proof context.
 * `designed direction`: boundary-only metrics should remain separate from payload chunking, storage, hashing, proof, and tree-construction metrics.
 * `open decision`: stronger adversarial boundary-grinding mitigations may add explicit committed algorithm profiles later.

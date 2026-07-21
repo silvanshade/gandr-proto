@@ -9,9 +9,6 @@ Source anchors used for this document:
 * `crates/storage-chunker/src/lib.rs:6`: the crate owns boundary detection over already-canonical ordered records only.
 * `crates/storage-chunker/src/lib.rs:11`: callers are expected to commit `ChunkerParams::commitment_bytes` into Prolly-Bao root/proof context as a designed direction outside this crate.
 * `crates/storage-chunker/src/lib.rs:15`: stronger adversarial boundary-grinding mitigations are an open decision.
-* `crates/storage-chunker/docs/CHANGELOG.md:38`: the scanner is Mach-local and FastCDC-inspired.
-* `crates/storage-chunker/docs/METRICS.md:147`: Criterion and `fastcdc` are dev-only benchmark dependencies.
-* `crates/storage-chunker/benches/chunker.rs:101`: deterministic prior-art candidate row labels for the benchmark-only comparison surface.
 
 ## ADR-001: Keep boundary detection Mach-local and record-safe
 
@@ -121,58 +118,50 @@ It also keeps this crate focused on deterministic scanning while leaving integri
 * `ChunkSpan` output must be paired with proof, identity, or storage systems from other crates when those properties are required.
 * Boundary reproducibility is not the same thing as content authenticity.
 
-## ADR-005: Keep `fastcdc` as a dev-only comparator
+## ADR-005: Keep any `fastcdc` comparator dev-only
 
-**Status:** current
+**Status:** designed direction
 
 ### Context (ADR-005)
 
-The crate needs performance context for a FastCDC-inspired scanner, but the available comparator scans raw byte slices and does not enforce Mach's between-record boundary rule.
+The current crate has no benchmark target or benchmark-only development dependencies.
+A future FastCDC comparator would scan raw byte slices and would not enforce Mach's between-record boundary rule.
 
 ### Decision (ADR-005)
 
-`fastcdc` is used only as a dev-only Criterion benchmark comparator for raw byte-slice CDC throughput.
-It is not a runtime dependency and is not the source of this crate's boundary semantics.
-
-2026-06-05 refinement: the benchmark also includes `mach-record-safe/flattened-spans/...` rows that call the public `chunk_spans` API over one canonical byte buffer plus record spans.
-These rows make the Mach scanner/input-layout comparison closer to the raw-byte FastCDC fixture shape without changing the runtime/default profile or treating FastCDC as semantic equivalence evidence.
+If a FastCDC comparator is added, keep it in an executable development-only benchmark target.
+It must not become a runtime dependency or the source of this crate's boundary semantics.
 
 ### Rationale (ADR-005)
 
-A comparator gives maintainers a useful performance reference without importing a generic raw-byte chunking model into the runtime contract.
+A comparator can give maintainers useful performance context without importing a generic raw-byte chunking model into the runtime contract.
 
 ### Trade-offs (ADR-005)
 
-* Existing comparator rows are not apples-to-apples semantic comparisons against Mach record-safe scanning.
-* Benchmark interpretation must remain explicit: raw-byte CDC throughput does not prove Prolly-Bao tree/proof equivalence or record-boundary safety.
-* The flattened-span rows are better input-layout evidence than scattered record-slice rows, but they still return Mach `ChunkSpan` metadata and enforce between-record cuts.
+* The current tree provides no FastCDC comparison measurements.
+* Raw-byte CDC throughput would not prove Prolly-Bao tree/proof equivalence or record-boundary safety.
 
-## ADR-006: Keep prior-art candidates benchmark-only
+## ADR-006: Keep any prior-art candidates benchmark-only
 
-**Status:** current
+**Status:** designed direction
 
 ### Context (ADR-006)
 
-The chunker benchmark now includes deterministic prior-art candidate rows for Okra-style complete-record hash-threshold, Dolt-style key-only salted hash/CDF-like size pressure, and hybrid Mach Gear hard-cap profiles.
-These rows exercise source-file-like, task-record-like, low-entropy key, fixed-width value update, large-value-reference, and adversarial boundary-seeking records.
+Okra-style complete-record hash thresholds, Dolt-style key-only size pressure, and hybrid Mach Gear hard-cap profiles are possible comparison candidates.
+None currently ships as benchmark code or a runtime profile.
 
 ### Decision (ADR-006)
 
-Keep the prior-art candidates benchmark-only.
-They remain Criterion rows labelled as non-consensus and not Prolly-Bao proof equivalence.
-They do not change the runtime/default chunker profile, public committed parameter profile, proof semantics, or node identity semantics.
-
-2026-06-05 refinement: the Okra-style row is now a dev-only unkeyed BLAKE3 complete-record comparator using Okra's reviewed `u32(hash[0..4]) < 2^32 / Q`, `Q = 32` predicate.
-This makes the benchmark basis more concrete without selecting Okra as a runtime profile.
+If implemented, keep prior-art candidates in executable benchmark targets labelled as non-consensus and not Prolly-Bao proof equivalence.
+They must not change the runtime/default chunker profile, public committed parameter profile, proof semantics, or node identity semantics.
 
 ### Rationale (ADR-006)
 
-The rows are useful comparison surfaces for reasoning about record-shape and candidate-boundary behavior, but they are stand-ins rather than selected consensus algorithms.
-Keeping them out of the runtime contract avoids accidentally making exploratory benchmark candidates part of Prolly-Bao proof equivalence.
+Candidate comparisons can inform record-shape and boundary behavior without accidentally making exploratory algorithms part of Prolly-Bao proof equivalence.
 
 ### Trade-offs (ADR-006)
 
-* Benchmark readers must keep candidate rows separate from implemented runtime behavior.
+* The current tree provides no candidate-row measurements.
 * Selecting any candidate for runtime use still requires a separate architecture decision and committed profile values.
 
 ## ADR-007: Exclude proof, identity, storage, and adapter concerns

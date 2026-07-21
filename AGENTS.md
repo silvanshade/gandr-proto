@@ -2,12 +2,9 @@
 
 ## Map
 
-* `ARCHITECTURE.md` — the project map: domains, repo layout, package layering, invariants.
-  Read before any structural change.
-* `docs/` — the authoritative design corpus.
-* `docs/KNOWLEDGE.md` — how the doc corpus is kept trustworthy (the MANIFEST/BLAKE3 drift discipline).
-* `docs/WORKFLOW.md` — the workflow **routing layer**: read it first, then open only the task-scoped sub-file it points you to under `docs/workflow/` (tracker, worktrees, ci, scripting, rust, mutation-adequacy, soundness, corpus, agda, review, docs).
-* `docs/HAZARDS.md` — gandr's realized-incident residue over the shared core catalogue.
+* `PLAN.html` — the approved reboot roadmap and current project wayfinder.
+* `docs/spec/index.xml` — the entry point to the status-attributed, tool-validated specification corpus.
+* `docs/WORKFLOW.md` — the workflow **routing layer**: read it first, then open only the task-scoped sub-file it points to under `docs/workflow/` (tracker, worktrees, ci, scripting, rust, mutation-adequacy, soundness, corpus, agda, review, docs).
 
 ## Working posture
 
@@ -76,7 +73,7 @@ Backstops are lexical and incomplete; the classification is the rule, the hooks 
   `bv --robot-*` for triage (bare `bv` blocks the session); confirm with `bd show` (`bd list` hides closed — use `--all` when auditing, core/HAZARDS.md H3).
 * **Gates** (run the narrowest that proves your change): `mise run treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift` (MANIFEST.yml BLAKE3), `docs:reference-integrity`, `wrkflw` (workflow edits); Rust — `cargo:clippy` (pass/fail gate only), `cargo:nextest`; Agda — `agda:check`.
   These run in CI (the gate of record) and locally via `prek` once you `prek install` (once per clone, primary checkout; core/HAZARDS.md H4).
-* **gandr corpus firewall**: editing a registered corpus doc updates its `docs/gandr/MANIFEST.yml` b3sum (`b3sum <path>`) in the SAME commit; where any doc conflicts with the gandr corpus, the corpus wins (`docs/KNOWLEDGE.md` §Authority).
+* **Specification corpus**: `docs/spec/index.xml` is the entry point to status-attributed XML components validated by `gandr-workflow-docs`; `docs/spec/refs.yml` is derived and must be regenerated rather than edited by hand (`docs/workflow/docs.md`).
 * **Corpus treatment**: every new surfaced gandr feature lands runnable literate model examples, runnable pathological coverage, harness assertions, and coverage-map registration in the SAME change (`crates/gandr-corpus`; ADR-84 supersedes ADR-52 Decision B and Decision C's two-tree cardinality; `docs/workflow/corpus.md`).
   A syntax-only landing gets a parse-gated `surface/` witness; its semantics-graduation change promotes that witness and adds the full treatment in that same change.
   Internal-only work lands named fixtures exercised by named tests plus an explicit corpus-promotion blocker.
