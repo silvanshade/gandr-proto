@@ -190,7 +190,11 @@ Instead the v1 reader carries an **expanded-work budget**, enforced _before_ rep
   Because indices are post-order (§4.3), a single forward scan over the table computes the whole vector in O(entries).
 * Reject any declaration whose **declared-type root or body root** has `expanded_size` exceeding `MAX_EXPANDED_TERM_WORK`.
   This bounds checker time without touching the checker (cheap, deterministic, one pass over the table).
+* **[B2.3, gandr-4p3]** Reject any artifact whose **artifact-total** — the saturating sum of `expanded_size` over every declaration root — exceeds `MAX_ARTIFACT_EXPANDED_WORK`.
+  The per-declaration cap alone leaves a residual: `N` cheap declaration segments (~10 wire bytes each) sharing one near-cap root (cross-declaration sharing) force `N × MAX_EXPANDED_TERM_WORK` checker work, which no per-declaration bound sees.
+  This rides the same forward scan as a single extra accumulator + compare; reader acceptance policy only, no wire-format or E4 impact.
 * `MAX_TABLE_ENTRIES` caps the table size (truncation-cheap, enforced as entries accrue).
+* The same forward scan yields the deterministic **`DecodeMetrics`** (table entries, max per-declaration expanded work, artifact-total) that the B2.3 exit gate records as D3 size/work telemetry.
 * Per-entry child count is **implicit in the node tag** (fixed arity).
 * `MAX_DECODED_LEVEL_OFFSET = 4096` carries over unchanged (levels stay inline, §4.7).
 
@@ -351,8 +355,9 @@ Inventory verified in `crates/kernel-core/tests/{export,conversion,checker}.rs`.
 1. **Sharing round-trip.** An environment whose declarations share subterms (across and within declarations) round-trips byte-identically, and the decoded in-memory form **retains** the sharing (assert `Rc::ptr_eq` on the shared nodes — or, if D1(A), a structural-equality witness).
 2. **Sharing determinism / maximality.** Two structurally-equal-but-differently-`Rc`-shared inputs write to **identical** bytes (content-keyed, not ptr-keyed, §4.2).
 3. **Canonical-form rejections [v1]:** a non-maximally-shared table (a redundant duplicate entry), a mis-ordered table (non-post-order), a dead (unreferenced) entry, and a forward/self child reference each reject as `Malformed{NonCanonical}` or the acyclicity arm.
-4. **Amplification goldens (the point of v1):** a small artifact whose _expanded_ size is astronomical (a repeated-diamond DAG) is **rejected** by `MAX_EXPANDED_TERM_WORK` **before** replay — and, as a differential, is confirmed to _not_ reach the checker; a table exceeding `MAX_TABLE_ENTRIES` rejects.
-5. **Sharing-retention budget:** an artifact at the boundary of each budget constant (`MAX_TABLE_ENTRIES`, `MAX_EXPANDED_TERM_WORK`) — accept just under, reject just over (the `MAX_DECODED_LEVEL_OFFSET` golden posture generalized).
+4. **Amplification goldens (the point of v1):** a small artifact whose _expanded_ size is astronomical (a repeated-diamond DAG) is **rejected** by `MAX_EXPANDED_TERM_WORK` **before** replay — and, as a differential, is confirmed to _not_ reach the checker; a table exceeding `MAX_TABLE_ENTRIES` rejects; **[B2.3, gandr-4p3]** a small artifact of many cheap declaration segments sharing one near-cap root is rejected by `MAX_ARTIFACT_EXPANDED_WORK` before the checker (the same decode-plane differential).
+5. **Sharing-retention budget:** an artifact at the boundary of each budget constant (`MAX_TABLE_ENTRIES`, `MAX_EXPANDED_TERM_WORK`, **[B2.3]** `MAX_ARTIFACT_EXPANDED_WORK`) — accept just under/at, reject just over (the `MAX_DECODED_LEVEL_OFFSET` golden posture generalized).
+   The goldens derive their diamond depth / entry count from the constants, so a D3 retune to another power of two needs no hand-editing.
 6. **E5 boundary [v1, if RQ-2 = bump]:** a v0-magic/v0-version artifact is refused `UnsupportedVersion{found:0}`, with the old v0 goldens repurposed as the refusal fixtures.
 7. **Worklist-`Drop` totality (gandr-i3i):** a decoded-then-rejected deep DAG drops without stack overflow (the targeted deep-tree drop test).
 
@@ -396,9 +401,10 @@ So this file needs no MANIFEST b3sum entry and its cross-references are not gate
 
 ## 11. Open questions (deliverable 5)
 
-1. **Budget constants have no data yet.** `MAX_EXPANDED_TERM_WORK` and `MAX_TABLE_ENTRIES` are set blind until B2.3's D3 telemetry floors measure real corpus sizes.
-   Recommendation: pick conservative launch values (generous enough for the S1 corpus, tight enough to reject obvious billion-laughs), pin + golden-test them, and record them as D3-tunable.
-   Owner input welcome on the launch magnitudes.
+1. ~~**Budget constants have no data yet.**~~ **Resolved at B2.3 (RQ-5 retune).** The D3 exit-gate telemetry (the 21 S1-eligible corpus items + 6 kernel-native C5 goldens) measured the real sizes: max per-declaration expanded work `5`, max table entries `6`, max artifact-total `7`, max artifact bytes `51`.
+   The blind launch values were retuned on that data — but the **binding floor is the deepest artifact the kernel round-trips** (the `hardening.rs` ~200k-deep decode witness: ~400k expanded, ~200k entries), not the corpus, since the reader must accept every artifact the kernel legitimately admits and round-trips.
+   Landed: `MAX_EXPANDED_TERM_WORK 1<<24 → 1<<20`, `MAX_TABLE_ENTRIES 1<<20 → 1<<18`, and the new gandr-4p3 `MAX_ARTIFACT_EXPANDED_WORK = 1<<24` — each above the hardening floor with headroom, each rejecting an obvious billion-laughs (`2^30`) by three-plus orders of magnitude, boundary-golden-tested (the goldens derive their depth/count from the constants).
+   D3-tunable; the table cap is the one most likely to want raising first when a large theory lands.
 2. **The unified-tag byte assignment is a public wire commitment.** Once chosen it is frozen under v1 (E5 protects evolution, but churn is churn).
    The banded contiguous scheme (§4.5) is proposed; the owner may prefer reserved gaps per family for the anticipated S2 formers (description codes, `Sigma`, `Path`) to keep future tags family-local.
 3. **Does the checker-time bound belong at the reader forever, or migrate into a sharing-aware checker at S2?** The reader budget is the S1 answer (no TCB table). gandr-3ln plane 3 already flags the S2 conversion pass must state its fast-path posture against C3; the ptr-keyed checker memo is the natural S2 successor, at which point the reader budget becomes a defence-in-depth outer bound rather than the sole bound.
@@ -433,8 +439,15 @@ Not recommended.
 Under none: v1 degenerates to v0-shaped trees-in-a-table with no dedup — pointless.
 No middle option is canonical (any non-maximal choice needs an arbitrary rule and breaks E4 determinism).
 
-**RQ-5 — reader budget constants (RATIFICATION ITEMS; D3-tunable).** `MAX_EXPANDED_TERM_WORK`, `MAX_TABLE_ENTRIES` (`MAX_DECODED_LEVEL_OFFSET = 4096` unchanged).
-Recommendation: conservative launch values, pinned + golden-tested at the boundary, flagged D3-tunable. 5t3: define the constants, add the boundary goldens (§7 items 4–5); B2.3 D3 telemetry re-tunes.
+**RQ-5 — reader budget constants (RATIFICATION ITEMS; D3-tunable).** **LANDED at B2.3.** `MAX_EXPANDED_TERM_WORK`, `MAX_TABLE_ENTRIES`, and (gandr-4p3) `MAX_ARTIFACT_EXPANDED_WORK` (`MAX_DECODED_LEVEL_OFFSET = 4096` unchanged). 5t3 defined the launch constants + the §7 item-4/5 boundary goldens; **B2.3's D3 telemetry retuned them** off the export exit gate:
+
+| constant                     | launch  | B2.3    | corpus max | rationale                                                                                                                |
+| ---------------------------- | ------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `MAX_EXPANDED_TERM_WORK`     | `1<<24` | `1<<20` | `5`        | per-declaration tree-work; `~2.6×` over the ~400k hardening decode floor, `>2×` the table cap, rejects `2^30` at `1024×` |
+| `MAX_TABLE_ENTRIES`          | `1<<20` | `1<<18` | `6`        | distinct-DAG-node axis (input-linear); `~1.3×` over the ~200k hardening floor                                            |
+| `MAX_ARTIFACT_EXPANDED_WORK` | new     | `1<<24` | `7`        | artifact-total (gandr-4p3); `~42×` over a single deep declaration, catches the N-shared-root amplification               |
+
+The binding floor is the deepest artifact the kernel round-trips (the `hardening.rs` ~200k decode witness), not the corpus; the boundary goldens derive their diamond depth / entry count from the constants, so the next retune to another power of two needs no hand-editing.
 
 **RQ-6 — unified node-tag byte assignment.** Recommendation: contiguous `0x00..=0x16`, banded by family (§4.5). 5t3: freeze the `NODE_*` constants; alternative = reserved per-family gaps (owner preference, open question 2).
 Either way the values are a wire commitment under v1.
