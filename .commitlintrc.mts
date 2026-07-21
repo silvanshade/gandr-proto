@@ -182,6 +182,7 @@ export default makeConfig([
   "runtime-host",
   "rustdoc",
   "spec",
+  "storage-artifact",
   "storage-chunker",
   "storage-prolly-trees",
   "surface",
