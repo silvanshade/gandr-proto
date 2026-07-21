@@ -374,10 +374,10 @@ Divergences from the original suggestion are recorded, not smoothed.
 | `gandr-shell`                     | `runtime-host`                   | built (B1); **diverges** from the suggested `runtime-effects`; source-runner faces re-wire at the front-end port |
 | `gandr-data`                      | `runtime-codecs`                 | unported (shell/self-hosting lane)                                                                               |
 | `gandr-ffi`                       | `runtime-ffi`                    | unported, deferred                                                                                               |
-| `gandr-syntax`                    | `surface-syntax`                 | porting (front-end F0); schema-derived                                                                           |
-| `gandr-render-proto`              | `surface-render-remote`          | porting (front-end F0); the remote/wire face beside the future `surface-render`                                  |
+| `gandr-syntax`                    | `surface-syntax`                 | ported (F0, 2026-07-21); schema-derived                                                                          |
+| `gandr-render-proto`              | `surface-render-remote`          | ported (F0, 2026-07-21); the remote/wire face beside the future `surface-render`                                 |
 | `gandr-pretty`                    | `surface-render`                 | future — spec-planned presentation printer, no wyrd code; whether formatting also lives here is an open question |
-| `gandr-grammar`                   | `surface-grammar`                | front-end F1; absorbs `gandr-grammar-contract-fixtures`                                                          |
+| `gandr-grammar`                   | `surface-grammar`                | ported (F1, 2026-07-21); the contract-fixtures fold (O4) deferred to F6                                          |
 | `gandr-parser`                    | `surface-parser`                 | front-end F2; schema-derived                                                                                     |
 | `gandr-pipeline`                  | `surface-engine`                 | front-end F3; "clearer intent" over `-pipeline`                                                                  |
 | `gandr-corpus`                    | `surface-corpus`                 | front-end F4                                                                                                     |
@@ -385,6 +385,6 @@ Divergences from the original suggestion are recorded, not smoothed.
 | `gandr-lsp`                       | `surface-lsp`                    | deferred                                                                                                         |
 | `gandr-tui`                       | `surface-tui`                    | deferred                                                                                                         |
 | `gandr-tree-sitter`               | `surface-tree-sitter`            | deferred (parity reference, F6); schema-derived                                                                  |
-| `gandr-grammar-contract-fixtures` | — (folds into `surface-grammar`) | front-end F1                                                                                                     |
+| `gandr-grammar-contract-fixtures` | — (folds into `surface-grammar`) | fold deferred to F6 (front-end F1 flagged it; Node-coupled manifest)                                             |
 | `wyrd-rust-gates`                 | `workflow-gates`                 | re-homed reboot-native (not a port)                                                                              |
 | `wyrd-dylint`                     | `workflow-dylint`                | re-homed reboot-native                                                                                           |
