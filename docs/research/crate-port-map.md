@@ -323,3 +323,14 @@ Tiers by dependency depth, external/unsafe surface, and coupling.
 
 ```text
 ```
+
+## 10. Storage-tier absorptions (mach prolly-bao → gandr `storage-*`, gandr-5t3 RQ-9)
+
+> Not `wyrd@failed-refactor` ports: these two crates are absorbed directly from the owner's unpublished `mach` `prolly-bao` work (Apache-2.0, same owner; source commit `fb78601`) into the ratified `storage-*` tier (`massive-term-design.md` §6.1).
+> Skeleton landing — crates plus their contract suites, no export-path wiring, no `rkyv` crate, no new features.
+> `prolly-bao-cli` is dropped (its dogfood value lives in the carried contract suites).
+
+| Crate (gandr)                  | Source (`mach@fb78601`)     | Role                                                               | Key public surface                                                                                                       | External deps                            | Features                       |
+| ------------------------------ | --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- | ------------------------------ |
+| **gandr-storage-chunker**      | `crates/prolly-bao-chunker` | `no_std`, zero-runtime-dep record-safe chunker; 85-byte commitment | `ChunkerParams`, `ChunkLimits`, `chunk_record_slices`, `chunk_spans`, `PARAMETER_COMMITMENT_LEN`                         | none (empty `[dependencies]`)            | `default`                      |
+| **gandr-storage-prolly-trees** | `crates/prolly-bao`         | `alloc` ordered-record Merkle tree, proofs, and block stores       | `ProllyTree`, `BlockStore`, `InMemoryBlockStore`, `PackedSegmentStore`, `NodeHash`, `TreeParams`; proofs (feat `proofs`) | `blake3`, `thiserror`, `storage-chunker` | `default = [proofs]`, `proofs` |

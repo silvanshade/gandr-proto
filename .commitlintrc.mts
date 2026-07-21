@@ -182,6 +182,8 @@ export default makeConfig([
   "runtime-host",
   "rustdoc",
   "spec",
+  "storage-chunker",
+  "storage-prolly-trees",
   "surface",
   "surface-driver",
   "theory-computads",
