@@ -31,6 +31,10 @@ gandr-theory-graphs = { path = "../theory-graphs" }
 
 [dev-dependencies]
 criterion = { workspace = true }
+# DEV-ONLY, and only ever dev-only: the parser depends on the grammar, so the
+# reverse edge is the deliberate cycle-break — it exists solely to drive the
+# restored surface-acceptance `contracts` suite (tests/contracts.rs).
+gandr-surface-parser = { path = "../surface-parser" }
 
 [features]
 default = []

@@ -2,6 +2,11 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-07-21 — Restore the parser-coupled surface-acceptance contracts suite (F2)
+
+* `current`: Re-added `gandr-surface-parser` as a **dev-only** dependency (the deliberate parser↔grammar cycle-break — normal dep parser→grammar, dev dep grammar→parser) and restored the six parser-coupled surface-acceptance `contracts` tests parked at F1, now in `tests/contracts.rs` and wired into the `tests/surface.rs` aggregator.
+* `current`: The suite is green unchanged — the F1 scrub-adjusted golden data verified safe on restore — bringing the grammar aggregator to 34 tests under nextest.
+
 ## 2026-07-21 — Port the checked PBG grammar core + mold highlighter from wyrd (F1)
 
 * `current`: Landed `gandr-surface-grammar`, the front-end's checked precedence-bounded grammar (PBG) core plus the mold-driven highlighter (rung F1 of `docs/research/front-end-port-staging.md` §9), ported from the wyrd `gandr-grammar` crate.
