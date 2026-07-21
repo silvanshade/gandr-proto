@@ -187,6 +187,8 @@ export default makeConfig([
   "storage-prolly-trees",
   "surface",
   "surface-driver",
+  "surface-render-remote",
+  "surface-syntax",
   "theory-computads",
   "theory-graphs",
   "theory-levitation",
