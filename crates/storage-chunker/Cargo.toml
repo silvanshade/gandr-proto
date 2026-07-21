@@ -1,0 +1,22 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-storage-chunker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Deterministic record-safe chunk boundary detection with a fixed-order parameter commitment (storage-tier skeleton; no_std, zero runtime dependencies)"
+readme.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+
+[features]
+default = []
+
+[lints]
+workspace = true

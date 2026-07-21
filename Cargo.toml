@@ -9,6 +9,7 @@ members = [
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-host",
+  "crates/storage-chunker",
   "crates/surface-driver",
   "crates/theory-computads",
   "crates/theory-graphs",
