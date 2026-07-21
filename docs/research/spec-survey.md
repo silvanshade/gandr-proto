@@ -178,6 +178,11 @@ That truncation is the drift in §7.1.
 | `erasible-evidence` — phase-distinct evidence → non-dependent core | `spec/proposal-vdc-reflection.md`; `type-system.md` §12; `core-ir-contract.md` §8          | ADR-46-C    |
 | `temporal-univalence` — staged certificate-carrying                | `spec/proposal-identity-univalence.md` + `spec/proposal-vdc-reflection.md`; `VISION.md` §8 | ADR-76      |
 
+**Absorption correction (core-ir-contract §8 staleness).** The two rows above cite `core-ir-contract.md` §8, whose firewall prose claims the core has "no conversion and no dependent elimination"; against the realized reboot core the "no dependent elimination" half is stale.
+The reboot core realizes dependent elimination directly — `Walk` over a dependent motive and `Split`/`SplitMotive`, alongside the `Path` and `Σ` formers — in `crates/core-sequent/src/focus.rs` (`Comp::Walk`, `Comp::Split`) and `crates/kernel-core` (`Sigma`/`Split`), which are the very shapes `core-ir-contract.md` §§2/6 already list as realized, so §8 contradicts its own document.
+The only surviving reading of §8's "no conversion" half is that value equality is a no-reduction structural comparison (the kernel-core value-equality path), not a definitional-conversion check driven by reduction.
+When this material is absorbed into a spec component, the realized reboot core is authoritative and the §8 firewall prose is not; this correction was recorded during the absorption recon (2026-07-20).
+
 ### 4.8 Toolchain facets (ADR-46 D + companions)
 
 | Area                                                          | Stance                                                         | Authoritative source                                                                          | ADRs / notes                                             |
