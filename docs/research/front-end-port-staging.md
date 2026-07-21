@@ -272,9 +272,9 @@ Cross-cutting reconciliation the port must price once:
 The six-task merge wall is `gate:merge` (`mise.toml:868`): `cargo:build`, `cargo:clippy`, `cargo:dylint:recursion`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
 Per-crate obligations the coordinator mints into each rung:
 
-* **Commitlint scopes — the `wvd.23` trap.** `.commitlintrc.mts` `makeConfig([...])` (`:164`) is the fixed scope vocabulary; it currently carries `surface` and `surface-driver` but **not** `surface-syntax`/`-grammar`/`-parser`/`-pipeline`/`-corpus`/`-render-proto`.
-  Each new crate's dir-scope must be added to that list **before that crate's first commit**, or the commit is rejected (the hardcoded-config carry trap).
-  This study's own commits use `docs(analysis)` — `analysis` is already registered (`:165`), so no scope change is needed here.
+* **Commitlint scopes — RETIRED OBLIGATION (owner consolidation, 2026-07-21).** The per-crate scope registration this bullet originally prescribed (the `wvd.23` trap: each new crate's dir-scope added before its first commit) is superseded: the vocabulary is now CLOSED at eleven broad scopes (`GANDR_SCOPES` in `.commitlintrc.mts` — the seven crate-category prefixes + `analysis`/`docs`/`repo`/`spec`), and per-crate scopes no longer exist.
+  Port rungs commit under their category prefix (`feat(surface): …`); no scope-registration commits from F2 on.
+  Do not add scopes without owner authorization.
 * **`doc-check`** (`cargo doc --workspace -D warnings`): every new crate must be rustdoc-clean.
   The wyrd sources carry rich `# Contract` rustdoc, but the 126 wyrd-bead-ID / `wyrd@failed-refactor` locator comments (O3) are the likely `-D warnings` failure surface — resolve the H7 policy per crate before its doc-check turns green.
 * **`dylint:recursion`**: gates iterative style (no input recursion) on new code.

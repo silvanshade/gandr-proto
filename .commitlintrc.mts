@@ -149,57 +149,48 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
 // agentic-dev core base fragment (normally imported from
 // `./.agents/core/fragments/commitlintrc.base.mts`), inlined here because the
 // vendored `.agents/core` submodule is not wired into the reboot yet. When the
-// core is re-vendored, restore the import and keep only this consumer section.
+// core is re-vendored, restore the import and keep only this consumer section —
+// and reconcile the closed-vocabulary override below (gandr deliberately
+// narrows the base's additive CORE_SCOPES union; upstream the narrowing).
+
+// Fixed scope vocabulary — CLOSED and deliberately small (owner, 2026-07-21).
+// Scopes are broad areas, never per-crate labels: the seven crate-category
+// prefixes of the naming schema (docs/workflow/rust.md §conventions) plus four
+// documentation/config areas. The subject line and the diff carry crate-level
+// specificity; compound scopes are comma-delimited and each part must be a
+// member.
 //
-// Fixed scope vocabulary — the PROJECT-SPECIFIC library layer / repo surfaces a
-// gandr commit touches. makeConfig unions (and dedupes) this list with the base
-// CORE_SCOPES above, so process scopes (adr, ci, config, docs, format, gate,
-// repo, scripts, workflow, …) are core-provided and are NOT restated here.
-// Compound scopes are comma-delimited and each part must be a member; new areas
-// are added deliberately, never by free-form invention. Crate scopes track the
-// reboot's real crate directories (crates/<dir>); forward category scopes
-// (core-checker, core-sequent, runtime-host, theory-levitation/computads/
-// virtual-doctrines) anticipate the imminent buildout — prune/grow with the
-// crate schema.
-export default makeConfig([
-  "analysis",
-  "core-checker",
-  "core-sequent",
-  "coverage",
-  "crates",
-  "drift",
-  "edit",
-  "fuzz",
-  "gandr",
+// Do NOT add scopes without OWNER AUTHORIZATION FIRST — a small fixed set is
+// what makes scopes useful; per-surface growth is the failure mode this list
+// replaced (57 effective scopes, one per crate, pruned 2026-07-21).
+const GANDR_SCOPES: readonly string[] = [
+  // crate categories (crates/<category>-*)
+  "core",
   "kernel",
-  "kernel-core",
-  "kernel-strata",
-  "knowledge",
-  "metatheory",
-  "mise",
-  "profiles",
-  "proptest",
-  "runtime-host",
-  "rustdoc",
-  "spec",
-  "storage-artifact",
-  "storage-chunker",
-  "storage-prolly-trees",
+  "runtime",
+  "storage",
   "surface",
-  "surface-driver",
-  "surface-grammar",
-  "surface-render-remote",
-  "surface-syntax",
-  "theory-computads",
-  "theory-graphs",
-  "theory-levitation",
-  "theory-nominal-automata",
-  "theory-orders",
-  "theory-recursion",
-  "theory-virtual-doctrines",
-  "tooling",
-  "workflow-docs",
-  "workflow-dylint",
-  "workflow-gates",
-  "wt",
-]);
+  "theory",
+  // also covers docs/workflow process docs — both are how-we-work machinery
+  "workflow",
+  // documentation / config areas
+  // docs/research records
+  "analysis",
+  // guidance + documentation not otherwise homed (AGENTS, README, KNOWLEDGE, …)
+  "docs",
+  // workspace config, hooks, mise, treefmt, commitlint, CI, scripts, wt, fuzz
+  "repo",
+  // docs/spec corpus
+  "spec",
+];
+
+// The base's makeConfig unions CORE_SCOPES additively; gandr's vocabulary is
+// CLOSED, so the scope-enum rule is overridden to exactly GANDR_SCOPES.
+const base = makeConfig(GANDR_SCOPES);
+export default {
+  ...base,
+  rules: {
+    ...base.rules,
+    "scope-enum": [RuleConfigSeverity.Error, "always", { scopes: [...GANDR_SCOPES], delimiters: [","] }],
+  },
+} satisfies UserConfig;
