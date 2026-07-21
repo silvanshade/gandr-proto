@@ -105,25 +105,17 @@ export RUSTUP_TOOLCHAIN
 cargo clippy --workspace --all-targets --features=full -- -D warnings
 """
 
-[tasks."cargo:dylint"]
-description = "Run project Dylint gates"
+[tasks."cargo:dylint:local"]
+description = "Run project-local Dylint rules across covered workspace targets"
 depends = ["toolchain:materialize"]
+env = { CARGO_TARGET_DIR = "{{ config_root }}/target/dylint-local", DYLINT_RUSTFLAGS = "-D warnings" }
 run = """
-RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
-export RUSTUP_TOOLCHAIN
-
-# Project-local driver's UI contract first.
-cargo test -p gandr-workflow-dylint ui -- --nocapture
-
-DYLINT_RUSTFLAGS="-D warnings"
-export DYLINT_RUSTFLAGS
-
 # Incremental state ICEs the dylint driver on reruns
-# (`shallow_lint_levels_on`); keep the driver runs reproducible.
+# (`shallow_lint_levels_on`); keep the driver run reproducible.
 CARGO_INCREMENTAL=0
 export CARGO_INCREMENTAL
 
-# Enforce project-local semantic rules across every workspace target.
+
 # `gandr-workflow-gates` and the driver itself are excluded pending their
 # lint-debt triage (gandr-0ze, gandr-3yh).
 cargo dylint \
@@ -135,6 +127,34 @@ cargo dylint \
   --exclude gandr-workflow-dylint \
   --all-targets \
   --features=full
+"""
+
+[tasks."cargo:dylint:recursion"]
+description = "Gate recursion across the Dylint-covered workspace targets"
+# `DYLINT_RUSTFLAGS` does not distinguish Cargo fingerprints; isolate the
+# recursion-relaxed artifacts from the strict local/full lane.
+depends = [
+  { task = "cargo:dylint:local", env = { CARGO_TARGET_DIR = "{{ config_root }}/target/dylint-recursion", DYLINT_RUSTFLAGS = "-D warnings -A primitive-signature -A single-field-struct-needs-transparent-repr" } }
+]
+
+[tasks."cargo:dylint"]
+description = "Run full project-local and upstream Dylint gates"
+depends = ["cargo:dylint:local"]
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+# Verify the project-local driver's UI contract before upstream rules.
+cargo test -p gandr-workflow-dylint ui -- --nocapture
+
+DYLINT_RUSTFLAGS="-D warnings"
+export DYLINT_RUSTFLAGS
+
+# Incremental state ICEs the dylint driver on reruns
+# (`shallow_lint_levels_on`); keep the driver runs reproducible.
+CARGO_INCREMENTAL=0
+export CARGO_INCREMENTAL
+
 
 # Run every practical upstream example lint across every workspace target.
 cargo dylint \
@@ -164,9 +184,9 @@ cargo dylint \
   --all-targets \
   --features=full
 
-# The pinned non-local-effect rule stays isolated (upstream defect: it panicked
-# on the `gandr-core` lib-test harness; re-split per-core if that recurs when
-# the core lands).
+# The pinned non-local-effect rule stays in its own driver invocation after an
+# upstream panic on a core lib-test target. The shared workspace scope is
+# intentional; re-split per-core if that defect recurs.
 cargo dylint \
   --lib non_local_effect_before_unhandled_error \
   --no-deps \
@@ -838,6 +858,7 @@ description = "Run the native pre-merge gate"
 run = [
   { task = "cargo:build" },
   { task = "cargo:clippy" },
+  { task = "cargo:dylint:recursion" },
   { task = "cargo:nextest" },
   { task = "treefmt:check" }
 ]

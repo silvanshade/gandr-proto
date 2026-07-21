@@ -859,7 +859,24 @@ fn expr_for_hir_id<'tcx>(
     }
 }
 
-/// Return whether `def_id` is an inherent method on `gandr_core::checker::Rec`.
+/// Return whether `def_id` is an inherent method on
+/// `gandr_core_checker::checker::Rec`.
+///
+/// # Contract
+///
+/// - requires: `def_id` names a local function definition visited by the late
+///   lint pass.
+/// - ensures: returns `true` exactly when the item is an inherent method whose
+///   fully peeled receiver `ADT` is `gandr_core_checker::checker::Rec`.
+/// - provides: the sole model-checker exception to the input-recursion policy.
+/// - panics: none under rustc's late-lint function-definition invariants.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — the UI matrix accepts the exact checker
+///   receiver and rejects free functions plus similarly named or prefixed
+///   paths.
+/// - witness: `ui`.
 fn allows_model_checker_input_recursion(
     cx: &LateContext<'_>,
     def_id: LocalDefId,
@@ -920,7 +937,7 @@ fn absolute_def_path(
 /// Return whether `path` is the one allowed checker recursion receiver path.
 fn is_model_checker_rec_path(path: &str) -> bool
 {
-    path == "gandr_core::checker::Rec"
+    path == "gandr_core_checker::checker::Rec"
 }
 
 /// Check every input and explicit output type in one function declaration.
@@ -1270,9 +1287,11 @@ fn ui()
 #[test]
 fn ui_model_checker_rec_path_scope()
 {
-    assert!(is_model_checker_rec_path("gandr_core::checker::Rec"));
-    assert!(!is_model_checker_rec_path("gandr_core::mark::Rec"));
+    assert!(is_model_checker_rec_path(
+        "gandr_core_checker::checker::Rec"
+    ));
+    assert!(!is_model_checker_rec_path("gandr_core_checker::mark::Rec"));
     assert!(!is_model_checker_rec_path(
-        "termination::gandr_core::checker::Rec"
+        "termination::gandr_core_checker::checker::Rec"
     ));
 }

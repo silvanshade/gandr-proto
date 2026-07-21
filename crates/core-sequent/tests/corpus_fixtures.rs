@@ -33,10 +33,10 @@
         clippy::panic,
         clippy::pattern_type_mismatch,
         clippy::unwrap_used,
-        reason = "a recursive-descent reader over trusted, self-generated \
-                  fixtures: the positional slice indexing, the tag-shape \
-                  assertions, and the by-ref enum-match binding modes are \
-                  intrinsic to a compact parser (docs/workflow/rust.md)"
+        reason = "an iterative reader over trusted, self-generated fixtures: \
+                  the positional slice indexing, tag-shape assertions, and \
+                  by-ref enum-match binding modes are intrinsic to the compact \
+                  decoder (docs/workflow/rust.md)"
     )
 )]
 
@@ -130,7 +130,7 @@ fn parse_fixture(
         .lines()
         .find_map(|line| line.strip_prefix("; source:"))
         .map_or_else(|| path.display().to_string(), |rest| rest.trim().to_owned());
-    let items = parse_all(text).iter().map(de_term).collect();
+    let items = parse_all(text).iter().map(decode_term).collect();
     Fixture {
         path: path.to_path_buf(),
         source,
@@ -246,43 +246,55 @@ fn read_unicode_escape(chars: &mut core::iter::Peekable<core::str::Chars<'_>>) -
 }
 
 /// Parses fixture text into its sequence of top-level s-expression forms.
+///
+/// # Contract
+///
+/// - requires: `input` is trusted fixture text containing balanced
+///   s-expressions.
+/// - ensures: returns every top-level form and nested list element exactly once
+///   in source order.
+/// - provides: the parsed s-expression forest consumed by the checker decoder.
+/// - panics: unmatched closing or opening parentheses.
+/// - intension: tokenization is finite and each token is consumed once by
+///   explicit list frames.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — an exact nested parse tree distinguishes
+///   missing, duplicated, or reordered top-level and child forms.
+/// - witness: `fixture_reader_contracts::parse_all_preserves_nested_and_top_level_order`.
 fn parse_all(input: &str) -> Vec<Sexp>
 {
-    let toks = tokenize(input);
-    let mut pos = 0;
     let mut forms = Vec::new();
-    while pos < toks.len() {
-        forms.push(read_form(&toks, &mut pos));
-    }
-    forms
-}
-
-/// Reads one form from the token stream at `pos`, recursing into lists.
-fn read_form(
-    toks: &[Sexp],
-    pos: &mut usize,
-) -> Sexp
-{
-    let head = toks[*pos].clone();
-    *pos += 1;
-    match head {
-        | Sexp::Sym(ref s) if s == "(" => {
-            let mut items = Vec::new();
-            loop {
-                match &toks[*pos] {
-                    | Sexp::Sym(s) if s == ")" => {
-                        *pos += 1;
-                        break;
-                    },
-                    | _ => items.push(read_form(toks, pos)),
+    let mut lists: Vec<Vec<Sexp>> = Vec::new();
+    for token in tokenize(input) {
+        match token {
+            | Sexp::Sym(ref symbol) if symbol == "(" => lists.push(Vec::new()),
+            | Sexp::Sym(ref symbol) if symbol == ")" => {
+                let Some(items) = lists.pop()
+                else {
+                    panic!("unexpected )");
+                };
+                let form = Sexp::List(items);
+                if let Some(parent) = lists.last_mut() {
+                    parent.push(form);
                 }
-            }
-            Sexp::List(items)
-        },
-        | Sexp::Sym(s) => Sexp::Sym(s),
-        | Sexp::Str(s) => Sexp::Str(s),
-        | Sexp::List(_) => panic!("tokenizer emits no lists"),
+                else {
+                    forms.push(form);
+                }
+            },
+            | form => {
+                if let Some(parent) = lists.last_mut() {
+                    parent.push(form);
+                }
+                else {
+                    forms.push(form);
+                }
+            },
+        }
     }
+    assert!(lists.is_empty(), "unclosed list");
+    forms
 }
 
 /// The bare-symbol text of a form, or a panic on the wrong shape.
@@ -372,266 +384,1216 @@ fn de_prim(s: &Sexp) -> NativePrim
     }
 }
 
-/// Rebuilds an effect operation `(op "name" payload reply)`.
-fn de_effop(s: &Sexp) -> EffectOp
+/// One typed request handled by the iterative fixture decoder.
+enum DecodeRequest<'fixture>
 {
-    let v = as_list(s);
-    assert_eq!(as_sym(&v[0]), "op");
-    EffectOp::new(as_str(&v[1]).into(), de_vtype(&v[2]), de_vtype(&v[3]))
+    EffectOp(&'fixture Sexp),
+    EffectSig(&'fixture Sexp),
+    EffectRow(&'fixture Sexp),
+    ValueType(&'fixture Sexp),
+    CompType(&'fixture Sexp),
+    OptionalValueType(&'fixture Sexp),
+    SplitMotive(&'fixture Sexp),
+    WalkMotive(&'fixture Sexp),
+    WalkBase(&'fixture Sexp),
+    OpClause(&'fixture Sexp),
+    Value(&'fixture Sexp),
+    Comp(&'fixture Sexp),
+    Term(&'fixture Sexp),
 }
 
-/// Rebuilds an effect signature `(sig "name" op...)`.
-fn de_effsig(s: &Sexp) -> EffectSig
+/// A deferred parent constructor whose children are decoded first.
+enum DecodeBuild<'fixture>
 {
-    let v = as_list(s);
-    assert_eq!(as_sym(&v[0]), "sig");
-    let ops = v[2 ..].iter().map(de_effop).collect();
-    EffectSig::new(as_str(&v[1]).into(), ops)
+    EffectOp
+    {
+        name: &'fixture str,
+    },
+    EffectSig
+    {
+        name: &'fixture str,
+        operation_count: usize,
+    },
+    EffectRow
+    {
+        signature_count: usize,
+    },
+    ValueTypeProd,
+    ValueTypeSum,
+    ValueTypeList,
+    ValueTypeRecord
+    {
+        fields: &'fixture [Sexp],
+    },
+    ValueTypeThunk
+    {
+        grade: Grade,
+    },
+    ValueTypeStack,
+    ValueTypePath,
+    ValueTypeData
+    {
+        id: DataId,
+        argument_count: usize,
+    },
+    CompTypeF,
+    CompTypeArrow,
+    CompTypeWith,
+    OptionalValueTypeSome,
+    SplitMotiveSome
+    {
+        binder: &'fixture str,
+    },
+    WalkMotive
+    {
+        value_binder: &'fixture str,
+        path_binder: &'fixture str,
+        proof_binder: &'fixture str,
+    },
+    WalkBase
+    {
+        binder: &'fixture str,
+    },
+    OpClause
+    {
+        operation: &'fixture str,
+        payload: &'fixture str,
+        resume: &'fixture str,
+    },
+    ValuePair,
+    ValueInjection
+    {
+        side: Side,
+    },
+    ValueList
+    {
+        element_count: usize,
+    },
+    ValueRecord
+    {
+        fields: &'fixture [Sexp],
+    },
+    ValueThunk
+    {
+        grade: Grade,
+    },
+    ValueAnnotation,
+    ValueHere,
+    ValueConstructor
+    {
+        id: DataId,
+        tag: usize,
+    },
+    CompAbstraction
+    {
+        binder: &'fixture str,
+    },
+    CompApplication,
+    CompReturn,
+    CompBind
+    {
+        binder: &'fixture str,
+    },
+    CompForce,
+    CompCase
+    {
+        left_binder: &'fixture str,
+        right_binder: &'fixture str,
+    },
+    CompDataCase
+    {
+        arms: &'fixture [Sexp],
+    },
+    CompListCase
+    {
+        head_binder: &'fixture str,
+        tail_binder: &'fixture str,
+    },
+    CompSplit
+    {
+        first_binder: &'fixture str,
+        second_binder: &'fixture str,
+    },
+    CompRecordProjection
+    {
+        label: &'fixture str,
+    },
+    CompWith,
+    CompProjection
+    {
+        side: Side,
+    },
+    CompDup,
+    CompDrop,
+    CompPerform
+    {
+        operation: &'fixture str,
+    },
+    CompHandle
+    {
+        return_binder: &'fixture str,
+        operation_count: usize,
+    },
+    CompResume,
+    CompReset,
+    CompShift
+    {
+        resume_binder: &'fixture str,
+    },
+    CompNative
+    {
+        primitive: NativePrim,
+        argument_count: usize,
+    },
+    CompWalk,
+    TermValue,
+    TermComp,
 }
 
-/// Rebuilds an effect row `(row sig...)` by unioning singletons over `EMPTY`.
-fn de_effrow(s: &Sexp) -> EffectRow
+/// One pending decoder action.
+enum DecodeTask<'fixture>
 {
-    let v = as_list(s);
-    assert_eq!(as_sym(&v[0]), "row");
-    v[1 ..].iter().fold(EffectRow::EMPTY, |acc, sig| {
-        acc.union(&EffectRow::singleton(de_effsig(sig)))
-    })
+    Request(DecodeRequest<'fixture>),
+    Build(DecodeBuild<'fixture>),
 }
 
-/// Rebuilds a value type.
-fn de_vtype(s: &Sexp) -> ValueType
+/// A completed child value awaiting its parent constructor.
+enum Decoded
 {
-    match s {
-        | Sexp::Sym(t) => match t.as_str() {
-            | "tunit" => ValueType::Unit,
-            | "tuniverse" => ValueType::Universe,
-            | "tunknown" => ValueType::Unknown,
-            | other => panic!("bad vtype sym {other}"),
-        },
-        | Sexp::List(v) => match as_sym(&v[0]) {
-            | "tatom" => ValueType::Atom(as_str(&v[1]).to_owned()),
-            | "tprod" => ValueType::Prod(Rc::new(de_vtype(&v[1])), Rc::new(de_vtype(&v[2]))),
-            | "tsum" => ValueType::Sum(Rc::new(de_vtype(&v[1])), Rc::new(de_vtype(&v[2]))),
-            | "tlist" => ValueType::List(Rc::new(de_vtype(&v[1]))),
-            | "trec" => {
-                let mut m = BTreeMap::new();
-                for field in &v[1 ..] {
-                    let f = as_list(field);
-                    m.insert(as_str(&f[0]).to_owned(), Rc::new(de_vtype(&f[1])));
-                }
-                ValueType::Record(m)
+    EffectOp(EffectOp),
+    EffectSig(EffectSig),
+    EffectRow(EffectRow),
+    ValueType(ValueType),
+    CompType(CompType),
+    OptionalValueType(Option<Rc<ValueType>>),
+    SplitMotive(Option<Box<SplitMotive>>),
+    WalkMotive(WalkMotive),
+    WalkBase(WalkBase),
+    OpClause(OpClause),
+    Value(Value),
+    Comp(Comp),
+    Term(Term),
+}
+
+/// Define one checked projection from the decoder's heterogeneous value stack.
+macro_rules! decoded_projection {
+    ($method:ident, $variant:ident, $output:ty, $panic:literal) => {
+        /// Extract the typed result expected by this projection.
+        ///
+        /// # Contract
+        ///
+        /// - ensures: returns the enclosed child when `self` has this projection's
+        ///   declared variant.
+        /// - provides: the typed child required by the active decoder build.
+        /// - panics: when decoder scheduling supplies a different child variant.
+        /// - intension: performs one constant-time enum projection.
+        ///
+        /// # Adequacy
+        ///
+        /// - hypothesis: L3 residue — the exact stack witness distinguishes projection
+        ///   and LIFO drift; both corpus outcome sweeps exercise the generated
+        ///   projection family across registered fixture forms.
+        /// - witness: `fixture_reader_contracts::pop_decoded_returns_latest_child`.
+        /// - witness: `l_machine_matches_the_outcome_snapshots_on_the_model_corpus`.
+        /// - witness: `l_machine_matches_the_outcome_snapshots_on_the_pathological_corpus`.
+        fn $method(self) -> $output
+        {
+            let Self::$variant(value) = self
+            else {
+                panic!($panic);
+            };
+            value
+        }
+    };
+}
+
+impl Decoded
+{
+    decoded_projection!(
+        into_effect_op,
+        EffectOp,
+        EffectOp,
+        "decoder stack expected an effect operation"
+    );
+    decoded_projection!(
+        into_effect_sig,
+        EffectSig,
+        EffectSig,
+        "decoder stack expected an effect signature"
+    );
+    decoded_projection!(
+        into_effect_row,
+        EffectRow,
+        EffectRow,
+        "decoder stack expected an effect row"
+    );
+    decoded_projection!(
+        into_value_type,
+        ValueType,
+        ValueType,
+        "decoder stack expected a value type"
+    );
+    decoded_projection!(
+        into_comp_type,
+        CompType,
+        CompType,
+        "decoder stack expected a computation type"
+    );
+    decoded_projection!(
+        into_optional_value_type,
+        OptionalValueType,
+        Option<Rc<ValueType>>,
+        "decoder stack expected an optional value type"
+    );
+    decoded_projection!(
+        into_split_motive,
+        SplitMotive,
+        Option<Box<SplitMotive>>,
+        "decoder stack expected a split motive"
+    );
+    decoded_projection!(
+        into_walk_motive,
+        WalkMotive,
+        WalkMotive,
+        "decoder stack expected a Walk motive"
+    );
+    decoded_projection!(
+        into_walk_base,
+        WalkBase,
+        WalkBase,
+        "decoder stack expected a Walk base"
+    );
+    decoded_projection!(
+        into_op_clause,
+        OpClause,
+        OpClause,
+        "decoder stack expected an operation clause"
+    );
+    decoded_projection!(into_value, Value, Value, "decoder stack expected a value");
+    decoded_projection!(
+        into_comp,
+        Comp,
+        Comp,
+        "decoder stack expected a computation"
+    );
+    decoded_projection!(into_term, Term, Term, "decoder stack expected a term");
+}
+
+/// Pops one completed child from the decoder's value stack.
+///
+/// # Contract
+///
+/// - requires: `completed` contains the children already produced for the
+///   active build action.
+/// - ensures: removes and returns the most recently completed child while
+///   leaving every earlier child in place.
+/// - provides: the next typed projection consumed by the active build action.
+/// - panics: when the stack is empty because a build ran before its children.
+/// - intension: performs one constant-time stack pop.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — an exact two-child stack witness distinguishes
+///   newest-child selection, removal, and preservation of the earlier child.
+/// - witness: `fixture_reader_contracts::pop_decoded_returns_latest_child`.
+fn pop_decoded(completed: &mut Vec<Decoded>) -> Decoded
+{
+    let Some(value) = completed.pop()
+    else {
+        panic!("decoder build ran before all children completed");
+    };
+    value
+}
+
+/// Rebuilds one fixture term with explicit request and continuation stacks.
+///
+/// # Contract
+///
+/// - requires: `root` is trusted fixture syntax rooted at `(v value)` or `(c
+///   comp)`.
+/// - ensures: for registered model and pathological fixtures, the rebuilt term
+///   yields the pinned canonical machine outcome.
+/// - provides: one checker [`Term`] for the fixture harness.
+/// - panics: malformed tags, fields, or child-stack invariants in trusted
+///   input.
+/// - intension: every loop step consumes one request/build action and each
+///   request schedules only the finite children present in its s-expression;
+///   native stack use is independent of term depth.
+///
+/// # Adequacy
+///
+/// - hypothesis: L2 pinned-golden — the behavioral contract deliberately makes
+///   no syntax-tree identity claim; independent model and pathological outcome
+///   snapshots cover every registered fixture.
+/// - witness: `l_machine_matches_the_outcome_snapshots_on_the_model_corpus`.
+/// - witness: `l_machine_matches_the_outcome_snapshots_on_the_pathological_corpus`.
+fn decode_term(root: &Sexp) -> Term
+{
+    let mut work = vec![DecodeTask::Request(DecodeRequest::Term(root))];
+    let mut completed = Vec::new();
+    while let Some(task) = work.pop() {
+        match task {
+            | DecodeTask::Request(request) => match request {
+                | DecodeRequest::EffectOp(s) => {
+                    let v = as_list(s);
+                    assert_eq!(as_sym(&v[0]), "op");
+                    work.push(DecodeTask::Build(DecodeBuild::EffectOp {
+                        name: as_str(&v[1]),
+                    }));
+                    work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[3])));
+                    work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[2])));
+                },
+                | DecodeRequest::EffectSig(s) => {
+                    let v = as_list(s);
+                    assert_eq!(as_sym(&v[0]), "sig");
+                    let operations = &v[2 ..];
+                    work.push(DecodeTask::Build(DecodeBuild::EffectSig {
+                        name: as_str(&v[1]),
+                        operation_count: operations.len(),
+                    }));
+                    for operation in operations.iter().rev() {
+                        work.push(DecodeTask::Request(DecodeRequest::EffectOp(operation)));
+                    }
+                },
+                | DecodeRequest::EffectRow(s) => {
+                    let v = as_list(s);
+                    assert_eq!(as_sym(&v[0]), "row");
+                    let signatures = &v[1 ..];
+                    work.push(DecodeTask::Build(DecodeBuild::EffectRow {
+                        signature_count: signatures.len(),
+                    }));
+                    for signature in signatures.iter().rev() {
+                        work.push(DecodeTask::Request(DecodeRequest::EffectSig(signature)));
+                    }
+                },
+                | DecodeRequest::ValueType(s) => match s {
+                    | Sexp::Sym(tag) => {
+                        let value_type = match tag.as_str() {
+                            | "tunit" => ValueType::Unit,
+                            | "tuniverse" => ValueType::Universe,
+                            | "tunknown" => ValueType::Unknown,
+                            | other => panic!("bad vtype sym {other}"),
+                        };
+                        completed.push(Decoded::ValueType(value_type));
+                    },
+                    | Sexp::List(v) => match as_sym(&v[0]) {
+                        | "tatom" => completed.push(Decoded::ValueType(ValueType::Atom(
+                            as_str(&v[1]).to_owned(),
+                        ))),
+                        | "tprod" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypeProd));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[1])));
+                        },
+                        | "tsum" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypeSum));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[1])));
+                        },
+                        | "tlist" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypeList));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[1])));
+                        },
+                        | "trec" => {
+                            let fields = &v[1 ..];
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypeRecord { fields }));
+                            for field in fields.iter().rev() {
+                                let field = as_list(field);
+                                work.push(DecodeTask::Request(DecodeRequest::ValueType(&field[1])));
+                            }
+                        },
+                        | "tthunk" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypeThunk {
+                                grade: de_grade(&v[1]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::CompType(&v[2])));
+                        },
+                        | "tstk" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypeStack));
+                            work.push(DecodeTask::Request(DecodeRequest::CompType(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::CompType(&v[1])));
+                        },
+                        | "tpath" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypePath));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[3])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[1])));
+                        },
+                        | "tdata" => {
+                            let arguments = &v[2 ..];
+                            work.push(DecodeTask::Build(DecodeBuild::ValueTypeData {
+                                id: de_dataid(&v[1]),
+                                argument_count: arguments.len(),
+                            }));
+                            for argument in arguments.iter().rev() {
+                                work.push(DecodeTask::Request(DecodeRequest::ValueType(argument)));
+                            }
+                        },
+                        | other => panic!("bad vtype list {other}"),
+                    },
+                    | other => panic!("bad vtype {other:?}"),
+                },
+                | DecodeRequest::CompType(s) => match s {
+                    | Sexp::Sym(tag) if tag == "ctunknown" => {
+                        completed.push(Decoded::CompType(CompType::Unknown));
+                    },
+                    | Sexp::List(v) => match as_sym(&v[0]) {
+                        | "ctf" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompTypeF));
+                            work.push(DecodeTask::Request(DecodeRequest::EffectRow(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[1])));
+                        },
+                        | "ctarrow" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompTypeArrow));
+                            work.push(DecodeTask::Request(DecodeRequest::CompType(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[1])));
+                        },
+                        | "ctwith" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompTypeWith));
+                            work.push(DecodeTask::Request(DecodeRequest::CompType(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::CompType(&v[1])));
+                        },
+                        | other => panic!("bad ctype list {other}"),
+                    },
+                    | other => panic!("bad ctype {other:?}"),
+                },
+                | DecodeRequest::OptionalValueType(s) => match s {
+                    | Sexp::Sym(tag) if tag == "none" => {
+                        completed.push(Decoded::OptionalValueType(None));
+                    },
+                    | Sexp::List(v) => {
+                        assert_eq!(as_sym(&v[0]), "some");
+                        work.push(DecodeTask::Build(DecodeBuild::OptionalValueTypeSome));
+                        work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[1])));
+                    },
+                    | other => panic!("bad opt vtype {other:?}"),
+                },
+                | DecodeRequest::SplitMotive(s) => match s {
+                    | Sexp::Sym(tag) if tag == "none" => {
+                        completed.push(Decoded::SplitMotive(None));
+                    },
+                    | Sexp::List(v) => {
+                        assert_eq!(as_sym(&v[0]), "some");
+                        work.push(DecodeTask::Build(DecodeBuild::SplitMotiveSome {
+                            binder: as_str(&v[1]),
+                        }));
+                        work.push(DecodeTask::Request(DecodeRequest::CompType(&v[2])));
+                    },
+                    | other => panic!("bad split motive {other:?}"),
+                },
+                | DecodeRequest::WalkMotive(s) => {
+                    let v = as_list(s);
+                    assert_eq!(as_sym(&v[0]), "wmotive");
+                    work.push(DecodeTask::Build(DecodeBuild::WalkMotive {
+                        value_binder: as_str(&v[1]),
+                        path_binder: as_str(&v[2]),
+                        proof_binder: as_str(&v[3]),
+                    }));
+                    work.push(DecodeTask::Request(DecodeRequest::CompType(&v[4])));
+                },
+                | DecodeRequest::WalkBase(s) => {
+                    let v = as_list(s);
+                    assert_eq!(as_sym(&v[0]), "wbase");
+                    work.push(DecodeTask::Build(DecodeBuild::WalkBase {
+                        binder: as_str(&v[1]),
+                    }));
+                    work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                },
+                | DecodeRequest::OpClause(s) => {
+                    let v = as_list(s);
+                    assert_eq!(as_sym(&v[0]), "opclause");
+                    work.push(DecodeTask::Build(DecodeBuild::OpClause {
+                        operation: as_str(&v[1]),
+                        payload: as_str(&v[2]),
+                        resume: as_str(&v[3]),
+                    }));
+                    work.push(DecodeTask::Request(DecodeRequest::Comp(&v[4])));
+                },
+                | DecodeRequest::Value(s) => match s {
+                    | Sexp::Sym(tag) if tag == "u" => {
+                        completed.push(Decoded::Value(Value::Unit));
+                    },
+                    | Sexp::List(v) => match as_sym(&v[0]) {
+                        | "var" => {
+                            completed.push(Decoded::Value(Value::Var(as_str(&v[1]).to_owned())));
+                        },
+                        | "i" => completed
+                            .push(Decoded::Value(Value::Int(as_sym(&v[1]).parse().unwrap()))),
+                        | "s" => {
+                            completed.push(Decoded::Value(Value::Str(as_str(&v[1]).to_owned())));
+                        },
+                        | "n" => completed.push(Decoded::Value(Value::Num(de_numlit(&v[1])))),
+                        | "pair" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValuePair));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "inj" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueInjection {
+                                side: de_side(&v[1]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[2])));
+                        },
+                        | "vlist" => {
+                            let elements = &v[1 ..];
+                            work.push(DecodeTask::Build(DecodeBuild::ValueList {
+                                element_count: elements.len(),
+                            }));
+                            for element in elements.iter().rev() {
+                                work.push(DecodeTask::Request(DecodeRequest::Value(element)));
+                            }
+                        },
+                        | "vrec" => {
+                            let fields = &v[1 ..];
+                            work.push(DecodeTask::Build(DecodeBuild::ValueRecord { fields }));
+                            for field in fields.iter().rev() {
+                                let field = as_list(field);
+                                work.push(DecodeTask::Request(DecodeRequest::Value(&field[1])));
+                            }
+                        },
+                        | "thunk" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueThunk {
+                                grade: de_grade(&v[1]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                        },
+                        | "annot" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueAnnotation));
+                            work.push(DecodeTask::Request(DecodeRequest::ValueType(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "vhole" => completed
+                            .push(Decoded::Value(Value::Hole(as_sym(&v[1]).parse().unwrap()))),
+                        | "here" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueHere));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "ctor" => {
+                            work.push(DecodeTask::Build(DecodeBuild::ValueConstructor {
+                                id: de_dataid(&v[1]),
+                                tag: as_sym(&v[2]).parse().unwrap(),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[3])));
+                        },
+                        | other => panic!("bad value list {other}"),
+                    },
+                    | other => panic!("bad value {other:?}"),
+                },
+                | DecodeRequest::Comp(s) => {
+                    let v = as_list(s);
+                    match as_sym(&v[0]) {
+                        | "abs" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompAbstraction {
+                                binder: as_str(&v[1]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[3])));
+                            work.push(DecodeTask::Request(DecodeRequest::OptionalValueType(&v[2])));
+                        },
+                        | "app" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompApplication));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[1])));
+                        },
+                        | "ret" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompReturn));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "bind" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompBind {
+                                binder: as_str(&v[2]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[3])));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[1])));
+                        },
+                        | "force" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompForce));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "case" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompCase {
+                                left_binder: as_str(&v[2]),
+                                right_binder: as_str(&v[4]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[5])));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[3])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "datacase" => {
+                            let arms = &v[2 ..];
+                            work.push(DecodeTask::Build(DecodeBuild::CompDataCase { arms }));
+                            for arm in arms.iter().rev() {
+                                let arm = as_list(arm);
+                                assert_eq!(as_sym(&arm[0]), "arm");
+                                work.push(DecodeTask::Request(DecodeRequest::Comp(&arm[2])));
+                            }
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "listcase" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompListCase {
+                                head_binder: as_str(&v[3]),
+                                tail_binder: as_str(&v[4]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[5])));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "split" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompSplit {
+                                first_binder: as_str(&v[2]),
+                                second_binder: as_str(&v[3]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[5])));
+                            work.push(DecodeTask::Request(DecodeRequest::SplitMotive(&v[4])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "recordproj" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompRecordProjection {
+                                label: as_str(&v[2]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "cwith" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompWith));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[1])));
+                        },
+                        | "prj" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompProjection {
+                                side: de_side(&v[1]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                        },
+                        | "dup" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompDup));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "drop" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompDrop));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "perform" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompPerform {
+                                operation: as_str(&v[2]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[3])));
+                            work.push(DecodeTask::Request(DecodeRequest::EffectSig(&v[1])));
+                        },
+                        | "handle" => {
+                            let operations = &v[5 ..];
+                            work.push(DecodeTask::Build(DecodeBuild::CompHandle {
+                                return_binder: as_str(&v[3]),
+                                operation_count: operations.len(),
+                            }));
+                            for operation in operations.iter().rev() {
+                                work.push(DecodeTask::Request(DecodeRequest::OpClause(operation)));
+                            }
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[4])));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::EffectSig(&v[1])));
+                        },
+                        | "resume" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompResume));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "reset" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompReset));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[1])));
+                        },
+                        | "shift" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompShift {
+                                resume_binder: as_str(&v[1]),
+                            }));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[2])));
+                        },
+                        | "chole" => completed
+                            .push(Decoded::Comp(Comp::Hole(as_sym(&v[1]).parse().unwrap()))),
+                        | "native" => {
+                            let arguments = &v[2 ..];
+                            work.push(DecodeTask::Build(DecodeBuild::CompNative {
+                                primitive: de_prim(&v[1]),
+                                argument_count: arguments.len(),
+                            }));
+                            for argument in arguments.iter().rev() {
+                                work.push(DecodeTask::Request(DecodeRequest::Value(argument)));
+                            }
+                        },
+                        | "walk" => {
+                            work.push(DecodeTask::Build(DecodeBuild::CompWalk));
+                            work.push(DecodeTask::Request(DecodeRequest::WalkBase(&v[3])));
+                            work.push(DecodeTask::Request(DecodeRequest::WalkMotive(&v[2])));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | other => panic!("bad comp {other}"),
+                    }
+                },
+                | DecodeRequest::Term(s) => {
+                    let v = as_list(s);
+                    match as_sym(&v[0]) {
+                        | "v" => {
+                            work.push(DecodeTask::Build(DecodeBuild::TermValue));
+                            work.push(DecodeTask::Request(DecodeRequest::Value(&v[1])));
+                        },
+                        | "c" => {
+                            work.push(DecodeTask::Build(DecodeBuild::TermComp));
+                            work.push(DecodeTask::Request(DecodeRequest::Comp(&v[1])));
+                        },
+                        | other => panic!("bad term {other}"),
+                    }
+                },
             },
-            | "tthunk" => ValueType::Thunk(de_grade(&v[1]), Rc::new(de_ctype(&v[2]))),
-            | "tstk" => ValueType::Stk(Rc::new(de_ctype(&v[1])), Rc::new(de_ctype(&v[2]))),
-            | "tpath" => ValueType::path(de_vtype(&v[1]), de_value(&v[2]), de_value(&v[3])),
-            | "tdata" => {
-                let id = de_dataid(&v[1]);
-                let args = v[2 ..].iter().map(de_vtype).collect();
-                ValueType::data(id, args)
+            | DecodeTask::Build(build) => match build {
+                | DecodeBuild::EffectOp { name } => {
+                    let reply = pop_decoded(&mut completed).into_value_type();
+                    let payload = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::EffectOp(EffectOp::new(
+                        name.into(),
+                        payload,
+                        reply,
+                    )));
+                },
+                | DecodeBuild::EffectSig {
+                    name,
+                    operation_count,
+                } => {
+                    let mut operations = Vec::with_capacity(operation_count);
+                    for _ in 0 .. operation_count {
+                        operations.push(pop_decoded(&mut completed).into_effect_op());
+                    }
+                    operations.reverse();
+                    completed.push(Decoded::EffectSig(EffectSig::new(name.into(), operations)));
+                },
+                | DecodeBuild::EffectRow { signature_count } => {
+                    let mut signatures = Vec::with_capacity(signature_count);
+                    for _ in 0 .. signature_count {
+                        signatures.push(pop_decoded(&mut completed).into_effect_sig());
+                    }
+                    signatures.reverse();
+                    let mut row = EffectRow::EMPTY;
+                    for signature in signatures {
+                        row = row.union(&EffectRow::singleton(signature));
+                    }
+                    completed.push(Decoded::EffectRow(row));
+                },
+                | DecodeBuild::ValueTypeProd => {
+                    let right = pop_decoded(&mut completed).into_value_type();
+                    let left = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::ValueType(ValueType::Prod(
+                        Rc::new(left),
+                        Rc::new(right),
+                    )));
+                },
+                | DecodeBuild::ValueTypeSum => {
+                    let right = pop_decoded(&mut completed).into_value_type();
+                    let left = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::ValueType(ValueType::Sum(
+                        Rc::new(left),
+                        Rc::new(right),
+                    )));
+                },
+                | DecodeBuild::ValueTypeList => {
+                    let element = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::ValueType(ValueType::List(Rc::new(element))));
+                },
+                | DecodeBuild::ValueTypeRecord { fields } => {
+                    let mut values = Vec::with_capacity(fields.len());
+                    for _ in 0 .. fields.len() {
+                        values.push(pop_decoded(&mut completed).into_value_type());
+                    }
+                    values.reverse();
+                    let mut record = BTreeMap::new();
+                    for (field, value) in fields.iter().zip(values) {
+                        let field = as_list(field);
+                        record.insert(as_str(&field[0]).to_owned(), Rc::new(value));
+                    }
+                    completed.push(Decoded::ValueType(ValueType::Record(record)));
+                },
+                | DecodeBuild::ValueTypeThunk { grade } => {
+                    let body = pop_decoded(&mut completed).into_comp_type();
+                    completed.push(Decoded::ValueType(ValueType::Thunk(grade, Rc::new(body))));
+                },
+                | DecodeBuild::ValueTypeStack => {
+                    let right = pop_decoded(&mut completed).into_comp_type();
+                    let left = pop_decoded(&mut completed).into_comp_type();
+                    completed.push(Decoded::ValueType(ValueType::Stk(
+                        Rc::new(left),
+                        Rc::new(right),
+                    )));
+                },
+                | DecodeBuild::ValueTypePath => {
+                    let right = pop_decoded(&mut completed).into_value();
+                    let left = pop_decoded(&mut completed).into_value();
+                    let carrier = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::ValueType(ValueType::path(carrier, left, right)));
+                },
+                | DecodeBuild::ValueTypeData { id, argument_count } => {
+                    let mut arguments = Vec::with_capacity(argument_count);
+                    for _ in 0 .. argument_count {
+                        arguments.push(pop_decoded(&mut completed).into_value_type());
+                    }
+                    arguments.reverse();
+                    completed.push(Decoded::ValueType(ValueType::data(id, arguments)));
+                },
+                | DecodeBuild::CompTypeF => {
+                    let effects = pop_decoded(&mut completed).into_effect_row();
+                    let value_type = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::CompType(CompType::F(Rc::new(value_type), effects)));
+                },
+                | DecodeBuild::CompTypeArrow => {
+                    let body = pop_decoded(&mut completed).into_comp_type();
+                    let parameter = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::CompType(CompType::Arrow(
+                        Rc::new(parameter),
+                        Rc::new(body),
+                    )));
+                },
+                | DecodeBuild::CompTypeWith => {
+                    let right = pop_decoded(&mut completed).into_comp_type();
+                    let left = pop_decoded(&mut completed).into_comp_type();
+                    completed.push(Decoded::CompType(CompType::With(
+                        Rc::new(left),
+                        Rc::new(right),
+                    )));
+                },
+                | DecodeBuild::OptionalValueTypeSome => {
+                    let value_type = pop_decoded(&mut completed).into_value_type();
+                    completed.push(Decoded::OptionalValueType(Some(Rc::new(value_type))));
+                },
+                | DecodeBuild::SplitMotiveSome { binder } => {
+                    let body = pop_decoded(&mut completed).into_comp_type();
+                    completed.push(Decoded::SplitMotive(Some(Box::new(SplitMotive::new(
+                        binder, body,
+                    )))));
+                },
+                | DecodeBuild::WalkMotive {
+                    value_binder,
+                    path_binder,
+                    proof_binder,
+                } => {
+                    let body = pop_decoded(&mut completed).into_comp_type();
+                    completed.push(Decoded::WalkMotive(WalkMotive::new(
+                        value_binder,
+                        path_binder,
+                        proof_binder,
+                        body,
+                    )));
+                },
+                | DecodeBuild::WalkBase { binder } => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::WalkBase(WalkBase::new(binder, body)));
+                },
+                | DecodeBuild::OpClause {
+                    operation,
+                    payload,
+                    resume,
+                } => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::OpClause(OpClause::new(
+                        operation, payload, resume, body,
+                    )));
+                },
+                | DecodeBuild::ValuePair => {
+                    let right = pop_decoded(&mut completed).into_value();
+                    let left = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Value(Value::Pair(Rc::new(left), Rc::new(right))));
+                },
+                | DecodeBuild::ValueInjection { side } => {
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Value(Value::Inj(side, Rc::new(value))));
+                },
+                | DecodeBuild::ValueList { element_count } => {
+                    let mut elements = Vec::with_capacity(element_count);
+                    for _ in 0 .. element_count {
+                        elements.push(Rc::new(pop_decoded(&mut completed).into_value()));
+                    }
+                    elements.reverse();
+                    completed.push(Decoded::Value(Value::List(elements)));
+                },
+                | DecodeBuild::ValueRecord { fields } => {
+                    let mut values = Vec::with_capacity(fields.len());
+                    for _ in 0 .. fields.len() {
+                        values.push(pop_decoded(&mut completed).into_value());
+                    }
+                    values.reverse();
+                    let mut record = BTreeMap::new();
+                    for (field, value) in fields.iter().zip(values) {
+                        let field = as_list(field);
+                        record.insert(as_str(&field[0]).to_owned(), Rc::new(value));
+                    }
+                    completed.push(Decoded::Value(Value::Record(record)));
+                },
+                | DecodeBuild::ValueThunk { grade } => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Value(Value::Thunk(grade, Rc::new(body))));
+                },
+                | DecodeBuild::ValueAnnotation => {
+                    let value_type = pop_decoded(&mut completed).into_value_type();
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Value(Value::Annot(
+                        Rc::new(value),
+                        Rc::new(value_type),
+                    )));
+                },
+                | DecodeBuild::ValueHere => {
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Value(Value::Here(Rc::new(value))));
+                },
+                | DecodeBuild::ValueConstructor { id, tag } => {
+                    let payload = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Value(Value::Ctor {
+                        id,
+                        tag,
+                        payload: Rc::new(payload),
+                    }));
+                },
+                | DecodeBuild::CompAbstraction { binder } => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    let annotation = pop_decoded(&mut completed).into_optional_value_type();
+                    completed.push(Decoded::Comp(Comp::Abs(
+                        binder.to_owned(),
+                        annotation,
+                        Rc::new(body),
+                    )));
+                },
+                | DecodeBuild::CompApplication => {
+                    let argument = pop_decoded(&mut completed).into_value();
+                    let function = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Comp(Comp::App(
+                        Rc::new(function),
+                        Rc::new(argument),
+                    )));
+                },
+                | DecodeBuild::CompReturn => {
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Ret(Rc::new(value))));
+                },
+                | DecodeBuild::CompBind { binder } => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    let scrutinee = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Comp(Comp::Bind(
+                        Rc::new(scrutinee),
+                        binder.to_owned(),
+                        Rc::new(body),
+                    )));
+                },
+                | DecodeBuild::CompForce => {
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Force(Rc::new(value))));
+                },
+                | DecodeBuild::CompCase {
+                    left_binder,
+                    right_binder,
+                } => {
+                    let right_body = pop_decoded(&mut completed).into_comp();
+                    let left_body = pop_decoded(&mut completed).into_comp();
+                    let scrutinee = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Case(
+                        Rc::new(scrutinee),
+                        (left_binder.to_owned(), Rc::new(left_body)),
+                        (right_binder.to_owned(), Rc::new(right_body)),
+                    )));
+                },
+                | DecodeBuild::CompDataCase { arms } => {
+                    let mut bodies = Vec::with_capacity(arms.len());
+                    for _ in 0 .. arms.len() {
+                        bodies.push(pop_decoded(&mut completed).into_comp());
+                    }
+                    bodies.reverse();
+                    let scrutinee = pop_decoded(&mut completed).into_value();
+                    let decoded_arms = arms
+                        .iter()
+                        .zip(bodies)
+                        .map(|(arm, body)| {
+                            let arm = as_list(arm);
+                            (as_str(&arm[1]).to_owned(), Rc::new(body))
+                        })
+                        .collect();
+                    completed.push(Decoded::Comp(Comp::DataCase(
+                        Rc::new(scrutinee),
+                        decoded_arms,
+                    )));
+                },
+                | DecodeBuild::CompListCase {
+                    head_binder,
+                    tail_binder,
+                } => {
+                    let cons = pop_decoded(&mut completed).into_comp();
+                    let nil = pop_decoded(&mut completed).into_comp();
+                    let scrutinee = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::ListCase {
+                        scrut: Rc::new(scrutinee),
+                        nil: Rc::new(nil),
+                        head: head_binder.to_owned(),
+                        tail: tail_binder.to_owned(),
+                        cons: Rc::new(cons),
+                    }));
+                },
+                | DecodeBuild::CompSplit {
+                    first_binder,
+                    second_binder,
+                } => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    let motive = pop_decoded(&mut completed).into_split_motive();
+                    let scrutinee = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Split {
+                        scrut: Rc::new(scrutinee),
+                        fst_name: first_binder.to_owned(),
+                        snd_name: second_binder.to_owned(),
+                        motive,
+                        body: Rc::new(body),
+                    }));
+                },
+                | DecodeBuild::CompRecordProjection { label } => {
+                    let record = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::RecordProj {
+                        record: Rc::new(record),
+                        label: label.to_owned(),
+                    }));
+                },
+                | DecodeBuild::CompWith => {
+                    let right = pop_decoded(&mut completed).into_comp();
+                    let left = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Comp(Comp::With(Rc::new(left), Rc::new(right))));
+                },
+                | DecodeBuild::CompProjection { side } => {
+                    let comp = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Comp(Comp::Prj(side, Rc::new(comp))));
+                },
+                | DecodeBuild::CompDup => {
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Dup(Rc::new(value))));
+                },
+                | DecodeBuild::CompDrop => {
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Drop(Rc::new(value))));
+                },
+                | DecodeBuild::CompPerform { operation } => {
+                    let payload = pop_decoded(&mut completed).into_value();
+                    let signature = pop_decoded(&mut completed).into_effect_sig();
+                    completed.push(Decoded::Comp(Comp::Perform(
+                        Box::new(signature),
+                        operation.to_owned(),
+                        Rc::new(payload),
+                    )));
+                },
+                | DecodeBuild::CompHandle {
+                    return_binder,
+                    operation_count,
+                } => {
+                    let mut operations = Vec::with_capacity(operation_count);
+                    for _ in 0 .. operation_count {
+                        operations.push(pop_decoded(&mut completed).into_op_clause());
+                    }
+                    operations.reverse();
+                    let return_body = pop_decoded(&mut completed).into_comp();
+                    let scrutinee = pop_decoded(&mut completed).into_comp();
+                    let signature = pop_decoded(&mut completed).into_effect_sig();
+                    completed.push(Decoded::Comp(Comp::Handle {
+                        sig: Box::new(signature),
+                        scrutinee: Rc::new(scrutinee),
+                        ret: (return_binder.to_owned(), Rc::new(return_body)),
+                        ops: operations,
+                    }));
+                },
+                | DecodeBuild::CompResume => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Resume(Rc::new(value), Rc::new(body))));
+                },
+                | DecodeBuild::CompReset => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Comp(Comp::Reset(Rc::new(body))));
+                },
+                | DecodeBuild::CompShift { resume_binder } => {
+                    let body = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Comp(Comp::Shift(
+                        resume_binder.to_owned(),
+                        Rc::new(body),
+                    )));
+                },
+                | DecodeBuild::CompNative {
+                    primitive,
+                    argument_count,
+                } => {
+                    let mut arguments = Vec::with_capacity(argument_count);
+                    for _ in 0 .. argument_count {
+                        arguments.push(Rc::new(pop_decoded(&mut completed).into_value()));
+                    }
+                    arguments.reverse();
+                    completed.push(Decoded::Comp(Comp::Native {
+                        prim: primitive,
+                        args: arguments,
+                    }));
+                },
+                | DecodeBuild::CompWalk => {
+                    let base = pop_decoded(&mut completed).into_walk_base();
+                    let motive = pop_decoded(&mut completed).into_walk_motive();
+                    let scrutinee = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Comp(Comp::Walk {
+                        scrut: Rc::new(scrutinee),
+                        motive: Box::new(motive),
+                        base,
+                    }));
+                },
+                | DecodeBuild::TermValue => {
+                    let value = pop_decoded(&mut completed).into_value();
+                    completed.push(Decoded::Term(Term::Value(value)));
+                },
+                | DecodeBuild::TermComp => {
+                    let comp = pop_decoded(&mut completed).into_comp();
+                    completed.push(Decoded::Term(Term::Comp(comp)));
+                },
             },
-            | other => panic!("bad vtype list {other}"),
-        },
-        | other => panic!("bad vtype {other:?}"),
+        }
     }
+    let result = pop_decoded(&mut completed).into_term();
+    assert!(completed.is_empty(), "decoder left unattached child values");
+    result
 }
 
-/// Rebuilds a computation type.
-fn de_ctype(s: &Sexp) -> CompType
+#[cfg(test)]
+mod fixture_reader_contracts
 {
-    match s {
-        | Sexp::Sym(t) if t == "ctunknown" => CompType::Unknown,
-        | Sexp::List(v) => match as_sym(&v[0]) {
-            | "ctf" => CompType::F(Rc::new(de_vtype(&v[1])), de_effrow(&v[2])),
-            | "ctarrow" => CompType::Arrow(Rc::new(de_vtype(&v[1])), Rc::new(de_ctype(&v[2]))),
-            | "ctwith" => CompType::With(Rc::new(de_ctype(&v[1])), Rc::new(de_ctype(&v[2]))),
-            | other => panic!("bad ctype list {other}"),
-        },
-        | other => panic!("bad ctype {other:?}"),
+    use super::Decoded;
+    use super::Sexp;
+    use super::Value;
+    use super::parse_all;
+    use super::pop_decoded;
+
+    /// Parsing preserves both nested child order and top-level form order.
+    #[test]
+    fn parse_all_preserves_nested_and_top_level_order()
+    {
+        let parsed = parse_all("(first (second third)) fourth");
+
+        assert_eq!(parsed, [
+            Sexp::List(vec![
+                Sexp::Sym("first".to_owned()),
+                Sexp::List(vec![
+                    Sexp::Sym("second".to_owned()),
+                    Sexp::Sym("third".to_owned()),
+                ]),
+            ]),
+            Sexp::Sym("fourth".to_owned()),
+        ],);
     }
-}
 
-/// Rebuilds an optional binder annotation `none` / `(some vtype)`.
-fn de_opt_vtype(s: &Sexp) -> Option<Rc<ValueType>>
-{
-    match s {
-        | Sexp::Sym(t) if t == "none" => None,
-        | Sexp::List(v) => {
-            assert_eq!(as_sym(&v[0]), "some");
-            Some(Rc::new(de_vtype(&v[1])))
-        },
-        | other => panic!("bad opt vtype {other:?}"),
-    }
-}
+    /// Completed-child projection consumes the newest child and preserves prior
+    /// children.
+    #[test]
+    fn pop_decoded_returns_latest_child()
+    {
+        let mut completed = vec![
+            Decoded::Value(Value::Var("first".to_owned())),
+            Decoded::Value(Value::Var("second".to_owned())),
+        ];
 
-/// Rebuilds an optional split motive `none` / `(some "binder" ctype)`.
-fn de_splitmotive(s: &Sexp) -> Option<Box<SplitMotive>>
-{
-    match s {
-        | Sexp::Sym(t) if t == "none" => None,
-        | Sexp::List(v) => {
-            assert_eq!(as_sym(&v[0]), "some");
-            Some(Box::new(SplitMotive::new(as_str(&v[1]), de_ctype(&v[2]))))
-        },
-        | other => panic!("bad split motive {other:?}"),
-    }
-}
+        let newest = pop_decoded(&mut completed).into_value();
+        assert_eq!(newest, Value::Var("second".to_owned()));
+        assert_eq!(completed.len(), 1usize);
 
-/// Rebuilds a Walk motive `(wmotive "x" "y" "q" ctype)`.
-fn de_walkmotive(s: &Sexp) -> WalkMotive
-{
-    let v = as_list(s);
-    assert_eq!(as_sym(&v[0]), "wmotive");
-    WalkMotive::new(as_str(&v[1]), as_str(&v[2]), as_str(&v[3]), de_ctype(&v[4]))
-}
-
-/// Rebuilds a Walk base `(wbase "x" comp)`.
-fn de_walkbase(s: &Sexp) -> WalkBase
-{
-    let v = as_list(s);
-    assert_eq!(as_sym(&v[0]), "wbase");
-    WalkBase::new(as_str(&v[1]), de_comp(&v[2]))
-}
-
-/// Rebuilds a handler operation clause `(opclause "op" "p" "k" body)`.
-fn de_opclause(s: &Sexp) -> OpClause
-{
-    let v = as_list(s);
-    assert_eq!(as_sym(&v[0]), "opclause");
-    OpClause::new(as_str(&v[1]), as_str(&v[2]), as_str(&v[3]), de_comp(&v[4]))
-}
-
-/// Rebuilds a value.
-fn de_value(s: &Sexp) -> Value
-{
-    match s {
-        | Sexp::Sym(t) if t == "u" => Value::Unit,
-        | Sexp::List(v) => match as_sym(&v[0]) {
-            | "var" => Value::Var(as_str(&v[1]).to_owned()),
-            | "i" => Value::Int(as_sym(&v[1]).parse().unwrap()),
-            | "s" => Value::Str(as_str(&v[1]).to_owned()),
-            | "n" => Value::Num(de_numlit(&v[1])),
-            | "pair" => Value::Pair(Rc::new(de_value(&v[1])), Rc::new(de_value(&v[2]))),
-            | "inj" => Value::Inj(de_side(&v[1]), Rc::new(de_value(&v[2]))),
-            | "vlist" => Value::List(v[1 ..].iter().map(|e| Rc::new(de_value(e))).collect()),
-            | "vrec" => {
-                let mut m = BTreeMap::new();
-                for field in &v[1 ..] {
-                    let f = as_list(field);
-                    m.insert(as_str(&f[0]).to_owned(), Rc::new(de_value(&f[1])));
-                }
-                Value::Record(m)
-            },
-            | "thunk" => Value::Thunk(de_grade(&v[1]), Rc::new(de_comp(&v[2]))),
-            | "annot" => Value::Annot(Rc::new(de_value(&v[1])), Rc::new(de_vtype(&v[2]))),
-            | "vhole" => Value::Hole(as_sym(&v[1]).parse().unwrap()),
-            | "here" => Value::Here(Rc::new(de_value(&v[1]))),
-            | "ctor" => Value::Ctor {
-                id: de_dataid(&v[1]),
-                tag: as_sym(&v[2]).parse().unwrap(),
-                payload: Rc::new(de_value(&v[3])),
-            },
-            | other => panic!("bad value list {other}"),
-        },
-        | other => panic!("bad value {other:?}"),
-    }
-}
-
-/// Rebuilds a computation.
-fn de_comp(s: &Sexp) -> Comp
-{
-    let v = as_list(s);
-    match as_sym(&v[0]) {
-        | "abs" => Comp::Abs(
-            as_str(&v[1]).to_owned(),
-            de_opt_vtype(&v[2]),
-            Rc::new(de_comp(&v[3])),
-        ),
-        | "app" => Comp::App(Rc::new(de_comp(&v[1])), Rc::new(de_value(&v[2]))),
-        | "ret" => Comp::Ret(Rc::new(de_value(&v[1]))),
-        | "bind" => Comp::Bind(
-            Rc::new(de_comp(&v[1])),
-            as_str(&v[2]).to_owned(),
-            Rc::new(de_comp(&v[3])),
-        ),
-        | "force" => Comp::Force(Rc::new(de_value(&v[1]))),
-        | "case" => Comp::Case(
-            Rc::new(de_value(&v[1])),
-            (as_str(&v[2]).to_owned(), Rc::new(de_comp(&v[3]))),
-            (as_str(&v[4]).to_owned(), Rc::new(de_comp(&v[5]))),
-        ),
-        | "datacase" => {
-            let scrut = Rc::new(de_value(&v[1]));
-            let arms = v[2 ..]
-                .iter()
-                .map(|arm| {
-                    let a = as_list(arm);
-                    assert_eq!(as_sym(&a[0]), "arm");
-                    (as_str(&a[1]).to_owned(), Rc::new(de_comp(&a[2])))
-                })
-                .collect();
-            Comp::DataCase(scrut, arms)
-        },
-        | "listcase" => Comp::ListCase {
-            scrut: Rc::new(de_value(&v[1])),
-            nil: Rc::new(de_comp(&v[2])),
-            head: as_str(&v[3]).to_owned(),
-            tail: as_str(&v[4]).to_owned(),
-            cons: Rc::new(de_comp(&v[5])),
-        },
-        | "split" => Comp::Split {
-            scrut: Rc::new(de_value(&v[1])),
-            fst_name: as_str(&v[2]).to_owned(),
-            snd_name: as_str(&v[3]).to_owned(),
-            motive: de_splitmotive(&v[4]),
-            body: Rc::new(de_comp(&v[5])),
-        },
-        | "recordproj" => Comp::RecordProj {
-            record: Rc::new(de_value(&v[1])),
-            label: as_str(&v[2]).to_owned(),
-        },
-        | "cwith" => Comp::With(Rc::new(de_comp(&v[1])), Rc::new(de_comp(&v[2]))),
-        | "prj" => Comp::Prj(de_side(&v[1]), Rc::new(de_comp(&v[2]))),
-        | "dup" => Comp::Dup(Rc::new(de_value(&v[1]))),
-        | "drop" => Comp::Drop(Rc::new(de_value(&v[1]))),
-        | "perform" => Comp::Perform(
-            Box::new(de_effsig(&v[1])),
-            as_str(&v[2]).to_owned(),
-            Rc::new(de_value(&v[3])),
-        ),
-        | "handle" => {
-            let ops = v[5 ..].iter().map(de_opclause).collect();
-            Comp::Handle {
-                sig: Box::new(de_effsig(&v[1])),
-                scrutinee: Rc::new(de_comp(&v[2])),
-                ret: (as_str(&v[3]).to_owned(), Rc::new(de_comp(&v[4]))),
-                ops,
-            }
-        },
-        | "resume" => Comp::Resume(Rc::new(de_value(&v[1])), Rc::new(de_comp(&v[2]))),
-        | "reset" => Comp::Reset(Rc::new(de_comp(&v[1]))),
-        | "shift" => Comp::Shift(as_str(&v[1]).to_owned(), Rc::new(de_comp(&v[2]))),
-        | "chole" => Comp::Hole(as_sym(&v[1]).parse().unwrap()),
-        | "native" => Comp::Native {
-            prim: de_prim(&v[1]),
-            args: v[2 ..].iter().map(|a| Rc::new(de_value(a))).collect(),
-        },
-        | "walk" => Comp::Walk {
-            scrut: Rc::new(de_value(&v[1])),
-            motive: Box::new(de_walkmotive(&v[2])),
-            base: de_walkbase(&v[3]),
-        },
-        | other => panic!("bad comp {other}"),
-    }
-}
-
-/// Rebuilds a top-level term `(v value)` / `(c comp)`.
-fn de_term(s: &Sexp) -> Term
-{
-    let v = as_list(s);
-    match as_sym(&v[0]) {
-        | "v" => Term::Value(de_value(&v[1])),
-        | "c" => Term::Comp(de_comp(&v[1])),
-        | other => panic!("bad term {other}"),
+        let earlier = pop_decoded(&mut completed).into_value();
+        assert_eq!(earlier, Value::Var("first".to_owned()));
+        assert!(completed.is_empty());
     }
 }

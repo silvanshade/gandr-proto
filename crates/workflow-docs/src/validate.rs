@@ -169,59 +169,72 @@ impl Collector
         }
     }
 
-    /// Visit one block, recursing into nested blocks and inline content.
+    /// Visit one block and its nested content in document order.
+    ///
+    /// # Contract
+    ///
+    /// - requires: `block` is a finite, structurally well-formed block tree.
+    /// - ensures: applies the leaf validation rules to the root and every
+    ///   descendant exactly once while retaining the first declaration seen.
+    /// - provides: updated identifier, term, cite, provenance, and diagnostic
+    ///   state in this collector.
+    /// - panics: none.
+    /// - intension: [`Block::walk`] supplies depth-first document order without
+    ///   input-scaled native-stack recursion.
+    ///
+    /// # Adequacy
+    ///
+    /// - hypothesis: L3 pointwise — a duplicate nested identifier exposes
+    ///   missing, repeated, or reordered traversal through the exact diagnostic
+    ///   count, code, and first-declaration location.
+    /// - witness: `tests::nested_block_validation_preserves_document_order`.
     fn visit_block(
         &mut self,
         block: &Block,
         path: &str,
     )
     {
-        match *block {
-            | Block::Section(ref section) => {
-                if let Some(ref id) = section.id {
-                    self.record_id(id, &format!("{path}:<section#{id}>"));
-                }
-                for nested in &section.blocks {
-                    self.visit_block(nested, path);
-                }
-            },
-            | Block::Example(ref example) => {
-                for nested in &example.blocks {
-                    self.visit_block(nested, path);
-                }
-            },
-            | Block::Prose(ref inlines) => {
-                for inline in inlines {
-                    self.visit_inline(inline, path);
-                }
-            },
-            | Block::Definition(ref definition) => {
-                if let Some(ref id) = definition.id {
-                    self.record_id(id, &format!("{path}:<definition#{id}>"));
-                }
-                for inline in &definition.body {
-                    self.visit_inline(inline, path);
-                }
-            },
-            | Block::Rule(ref rule) => {
-                if let Some(ref id) = rule.id {
-                    self.record_id(id, &format!("{path}:<rule#{id}>"));
-                }
-            },
-            | Block::Diagram(ref diagram) => {
-                self.record_id(&diagram.id, &format!("{path}:<diagram#{}>", diagram.id));
-                for cite in &diagram.cites {
-                    self.cites
-                        .push((cite.key.clone(), format!("{path}:<diagram#{}>", diagram.id)));
-                }
-            },
-            | Block::References(ref keys) => {
-                for cite in keys {
-                    self.cites
-                        .push((cite.key.clone(), format!("{path}:<references>")));
-                }
-            },
-            | Block::Judgements(_) | Block::Grammar(_) | Block::Code(_) => {},
+        for block in block.walk() {
+            match *block {
+                | Block::Section(ref section) => {
+                    if let Some(ref id) = section.id {
+                        self.record_id(id, &format!("{path}:<section#{id}>"));
+                    }
+                },
+                | Block::Prose(ref inlines) => {
+                    for inline in inlines {
+                        self.visit_inline(inline, path);
+                    }
+                },
+                | Block::Definition(ref definition) => {
+                    if let Some(ref id) = definition.id {
+                        self.record_id(id, &format!("{path}:<definition#{id}>"));
+                    }
+                    for inline in &definition.body {
+                        self.visit_inline(inline, path);
+                    }
+                },
+                | Block::Rule(ref rule) => {
+                    if let Some(ref id) = rule.id {
+                        self.record_id(id, &format!("{path}:<rule#{id}>"));
+                    }
+                },
+                | Block::Diagram(ref diagram) => {
+                    self.record_id(&diagram.id, &format!("{path}:<diagram#{}>", diagram.id));
+                    for cite in &diagram.cites {
+                        self.cites
+                            .push((cite.key.clone(), format!("{path}:<diagram#{}>", diagram.id)));
+                    }
+                },
+                | Block::References(ref keys) => {
+                    for cite in keys {
+                        self.cites
+                            .push((cite.key.clone(), format!("{path}:<references>")));
+                    }
+                },
+                | Block::Judgements(_) | Block::Grammar(_) | Block::Code(_) | Block::Example(_) => {
+                },
+            }
         }
     }
 
@@ -319,8 +332,11 @@ mod tests
     use crate::Diagnostic;
     use crate::model::Block;
     use crate::model::CiteKey;
+    use crate::model::Definition;
     use crate::model::Document;
+    use crate::model::Example;
     use crate::model::Inline;
+    use crate::model::Section;
     use crate::model::Status;
     use crate::model::TermDef;
     use crate::model::TermRef;
@@ -468,5 +484,43 @@ mod tests
             summary(&parsed.diagnostics),
         );
         Ok(())
+    }
+
+    /// Nested validation retains the first identifier in document order.
+    #[test]
+    fn nested_block_validation_preserves_document_order()
+    {
+        let root = Block::Section(Section {
+            id: Some("shared".to_owned()),
+            status: None,
+            title: "S".to_owned(),
+            blocks: alloc::vec![Block::Example(Example {
+                title: "E".to_owned(),
+                blocks: alloc::vec![Block::Definition(Definition {
+                    id: Some("shared".to_owned()),
+                    term: "T".to_owned(),
+                    body: Vec::new(),
+                })],
+            })],
+        });
+        let corpus = Corpus::new(
+            alloc::vec![component("c", alloc::vec![root])],
+            BTreeSet::new(),
+        );
+
+        let diagnostics = validate_corpus(&corpus);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics.first().map(|diagnostic| diagnostic.code),
+            Some("duplicate-id"),
+        );
+        assert!(
+            diagnostics
+                .first()
+                .is_some_and(|diagnostic| diagnostic.message.contains("<section#shared>")),
+            "section must remain the first declaration: {}",
+            summary(&diagnostics),
+        );
     }
 }

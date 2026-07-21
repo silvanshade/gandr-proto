@@ -73,31 +73,43 @@ pub fn term_map(documents: &[Document]) -> BTreeMap<String, String>
     terms
 }
 
-/// Recursively collect term definitions from a block.
+/// Collect term definitions from a block in document order.
+///
+/// # Contract
+///
+/// - requires: `block` is a finite, structurally well-formed block tree.
+/// - ensures: inserts every nested term definition only when its key is absent,
+///   so the earliest definition remains authoritative.
+/// - provides: the updated corpus term map in `terms`.
+/// - panics: none.
+/// - intension: [`Block::walk`] supplies depth-first document order without
+///   input-scaled native-stack recursion.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — duplicate nested definitions distinguish
+///   traversal order through the exact retained display text.
+/// - witness: `tests::term_map_prefers_first_nested_definition`.
 fn collect_terms(
     block: &Block,
     terms: &mut BTreeMap<String, String>,
 )
 {
-    match *block {
-        | Block::Section(ref section) => {
-            for nested in &section.blocks {
-                collect_terms(nested, terms);
-            }
-        },
-        | Block::Example(ref example) => {
-            for nested in &example.blocks {
-                collect_terms(nested, terms);
-            }
-        },
-        | Block::Prose(ref inlines) => collect_inline_terms(inlines, terms),
-        | Block::Definition(ref definition) => collect_inline_terms(&definition.body, terms),
-        | Block::Judgements(_)
-        | Block::Grammar(_)
-        | Block::Rule(_)
-        | Block::Diagram(_)
-        | Block::Code(_)
-        | Block::References(_) => {},
+    for block in block.walk() {
+        match *block {
+            | Block::Prose(ref inlines) => collect_inline_terms(inlines, terms),
+            | Block::Definition(ref definition) => {
+                collect_inline_terms(&definition.body, terms);
+            },
+            | Block::Section(_)
+            | Block::Judgements(_)
+            | Block::Grammar(_)
+            | Block::Rule(_)
+            | Block::Diagram(_)
+            | Block::Code(_)
+            | Block::Example(_)
+            | Block::References(_) => {},
+        }
     }
 }
 
@@ -154,11 +166,7 @@ pub fn render_document(
     else {
         render_provenance(document)
     };
-    let blocks = document
-        .blocks
-        .iter()
-        .map(|block| render_block(block, 2usize, ctx, notes))
-        .collect::<Result<String, DocError>>()?;
+    let blocks = render_blocks(&document.blocks, 2usize, ctx, notes)?;
     let body = format!(
         "<p><a href=\"index.html\">&larr; corpus</a></p>\n<h1>{title}</h1>\n\
          <p class=\"status\">{status}</p>\n{provenance}{blocks}",
@@ -186,123 +194,206 @@ fn render_provenance(document: &Document) -> String
     format!("<p class=\"mono\">{grounds}{derives}</p>\n")
 }
 
-/// Render one block at the given heading level.
-fn render_block(
-    block: &Block,
+/// One pending action in the iterative block renderer.
+enum RenderTask<'block>
+{
+    /// Render one block at the supplied heading level.
+    Block
+    {
+        /// Block whose opening markup or leaf content is next.
+        block: &'block Block,
+        /// Heading level inherited from the containing document block.
+        level: usize,
+    },
+    /// Emit the closing markup for a container after all of its children.
+    Close(&'static str),
+}
+
+/// Render a block sequence at the given initial heading level.
+///
+/// # Errors
+///
+/// Returns [`DocError`] when a math or diagram leaf cannot be rendered.
+///
+/// # Contract
+///
+/// - requires: `blocks` is a finite, structurally well-formed block forest.
+/// - ensures: emits every block exactly once in depth-first document order and
+///   closes each section/example after all of its children.
+/// - provides: concatenated `HTML` for the supplied block forest.
+/// - fails: propagates [`DocError`] from fallible math or diagram leaf
+///   rendering.
+/// - panics: none.
+/// - intension: an explicit enter/close worklist bounds native stack use
+///   independently of document nesting depth.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — the exact markup distinguishes sibling order,
+///   container nesting, heading depth, and escaped leaf content.
+/// - witness: `nested_blocks_render_in_document_order`.
+fn render_blocks(
+    blocks: &[Block],
     level: usize,
     ctx: &RenderContext<'_>,
     notes: &mut Vec<String>,
 ) -> Result<String, DocError>
 {
-    match *block {
-        | Block::Section(ref section) => {
-            let heading = level.min(6usize);
-            let inner = section
-                .blocks
-                .iter()
-                .map(|nested| render_block(nested, level.saturating_add(1), ctx, notes))
-                .collect::<Result<String, DocError>>()?;
-            Ok(format!(
-                "<section>\n<h{heading}>{title}</h{heading}>\n{inner}</section>\n",
-                title = escape(&section.title),
-            ))
-        },
-        | Block::Example(ref example) => {
-            let heading = level.min(6usize);
-            let inner = example
-                .blocks
-                .iter()
-                .map(|nested| render_block(nested, level.saturating_add(1), ctx, notes))
-                .collect::<Result<String, DocError>>()?;
-            Ok(format!(
-                "<div class=\"example\">\n<h{heading}>Example: {title}</h{heading}>\n{inner}</div>\n",
-                title = escape(&example.title),
-            ))
-        },
-        | Block::Prose(ref inlines) => {
-            Ok(format!("<p>{}</p>\n", render_inlines(inlines, ctx, notes)?))
-        },
-        | Block::Definition(ref definition) => Ok(format!(
-            "<dl>\n<dt>{term}</dt>\n<dd>{body}</dd>\n</dl>\n",
-            term = escape(&definition.term),
-            body = render_inlines(&definition.body, ctx, notes)?,
-        )),
-        | Block::Judgements(ref judgements) => {
-            let heading = level.min(6usize);
-            let forms = judgements
-                .forms
-                .iter()
-                .map(|form| render_math(form, ctx, notes).map(|svg| format!("<div>{svg}</div>\n")))
-                .collect::<Result<String, DocError>>()?;
-            Ok(format!(
-                "<div class=\"judgements\">\n<h{heading}>{title}</h{heading}>\n{forms}</div>\n",
-                title = escape(&judgements.title),
-            ))
-        },
-        | Block::Grammar(ref productions) => {
-            let rows: String = productions
-                .iter()
-                .map(|production| {
-                    format!(
-                        "<dt>{symbol}</dt>\n<dd class=\"mono\">::= {definition}</dd>\n",
-                        symbol = escape(&production.symbol),
-                        definition = escape(&production.definition),
-                    )
-                })
-                .collect::<Vec<String>>()
-                .concat();
-            Ok(format!("<dl class=\"grammar\">\n{rows}</dl>\n"))
-        },
-        | Block::Rule(ref rule) => {
-            let premises = rule
-                .premises
-                .iter()
-                .map(|math| math.source.clone())
-                .collect::<Vec<String>>()
-                .join(" quad ");
-            let leaf = typst_leaf::compile_rule(&premises, &rule.conclusion.source, ctx.cache_dir)?;
-            Ok(format!(
-                "<figure class=\"rule\">\n{svg}\n<figcaption>{name}</figcaption>\n</figure>\n",
-                svg = leaf_markup(leaf, "rule", notes),
-                name = escape(&rule.name),
-            ))
-        },
-        | Block::Diagram(ref diagram) => {
-            let leaf = typst_leaf::compile_diagram(&diagram.source, ctx.cache_dir)?;
-            Ok(format!(
-                "<figure id=\"{id}\">\n{svg}\n<figcaption>{caption}</figcaption>\n</figure>\n",
-                id = escape(&diagram.id),
-                svg = leaf_markup(leaf, "diagram", notes),
-                caption = escape(&diagram.caption),
-            ))
-        },
-        | Block::Code(ref code) => {
-            let output = code
-                .expect_output
-                .as_ref()
-                .map_or_else(String::new, |expected| {
-                    format!(
-                        "<p class=\"expect\">expected output: <code>{}</code></p>\n",
-                        escape(expected),
-                    )
-                });
-            let error = code
-                .expect_error
-                .as_ref()
-                .map_or_else(String::new, |expected| {
-                    format!(
-                        "<p class=\"expect\">expected error: <code>{}</code></p>\n",
-                        escape(expected),
-                    )
-                });
-            Ok(format!(
-                "<pre><code class=\"lang-{lang}\">{text}</code></pre>\n{output}{error}",
-                lang = escape(&code.language),
-                text = escape(&code.text),
-            ))
-        },
-        | Block::References(ref keys) => Ok(render_references(keys)),
+    let mut pending = blocks
+        .iter()
+        .rev()
+        .map(|block| RenderTask::Block { block, level })
+        .collect::<Vec<_>>();
+    let mut output = String::new();
+
+    while let Some(task) = pending.pop() {
+        match task {
+            | RenderTask::Close(markup) => output.push_str(markup),
+            | RenderTask::Block { block, level } => match *block {
+                | Block::Section(ref section) => {
+                    let heading = level.min(6usize).to_string();
+                    output.push_str("<section>\n<h");
+                    output.push_str(&heading);
+                    output.push('>');
+                    output.push_str(&escape(&section.title));
+                    output.push_str("</h");
+                    output.push_str(&heading);
+                    output.push_str(">\n");
+                    pending.push(RenderTask::Close("</section>\n"));
+                    let child_level = level.saturating_add(1usize);
+                    pending.extend(section.blocks.iter().rev().map(|block| RenderTask::Block {
+                        block,
+                        level: child_level,
+                    }));
+                },
+                | Block::Example(ref example) => {
+                    let heading = level.min(6usize).to_string();
+                    output.push_str("<div class=\"example\">\n<h");
+                    output.push_str(&heading);
+                    output.push_str(">Example: ");
+                    output.push_str(&escape(&example.title));
+                    output.push_str("</h");
+                    output.push_str(&heading);
+                    output.push_str(">\n");
+                    pending.push(RenderTask::Close("</div>\n"));
+                    let child_level = level.saturating_add(1usize);
+                    pending.extend(example.blocks.iter().rev().map(|block| RenderTask::Block {
+                        block,
+                        level: child_level,
+                    }));
+                },
+                | Block::Prose(ref inlines) => {
+                    let body = render_inlines(inlines, ctx, notes)?;
+                    output.push_str("<p>");
+                    output.push_str(&body);
+                    output.push_str("</p>\n");
+                },
+                | Block::Definition(ref definition) => {
+                    let body = render_inlines(&definition.body, ctx, notes)?;
+                    output.push_str("<dl>\n<dt>");
+                    output.push_str(&escape(&definition.term));
+                    output.push_str("</dt>\n<dd>");
+                    output.push_str(&body);
+                    output.push_str("</dd>\n</dl>\n");
+                },
+                | Block::Judgements(ref judgements) => {
+                    let heading = level.min(6usize).to_string();
+                    let forms = judgements
+                        .forms
+                        .iter()
+                        .map(|form| {
+                            render_math(form, ctx, notes).map(|svg| format!("<div>{svg}</div>\n"))
+                        })
+                        .collect::<Result<String, DocError>>()?;
+                    output.push_str("<div class=\"judgements\">\n<h");
+                    output.push_str(&heading);
+                    output.push('>');
+                    output.push_str(&escape(&judgements.title));
+                    output.push_str("</h");
+                    output.push_str(&heading);
+                    output.push_str(">\n");
+                    output.push_str(&forms);
+                    output.push_str("</div>\n");
+                },
+                | Block::Grammar(ref productions) => {
+                    let rows: String = productions
+                        .iter()
+                        .map(|production| {
+                            format!(
+                                "<dt>{symbol}</dt>\n<dd class=\"mono\">::= {definition}</dd>\n",
+                                symbol = escape(&production.symbol),
+                                definition = escape(&production.definition),
+                            )
+                        })
+                        .collect::<Vec<String>>()
+                        .concat();
+                    output.push_str("<dl class=\"grammar\">\n");
+                    output.push_str(&rows);
+                    output.push_str("</dl>\n");
+                },
+                | Block::Rule(ref rule) => {
+                    let premises = rule
+                        .premises
+                        .iter()
+                        .map(|math| math.source.clone())
+                        .collect::<Vec<String>>()
+                        .join(" quad ");
+                    let leaf = typst_leaf::compile_rule(
+                        &premises,
+                        &rule.conclusion.source,
+                        ctx.cache_dir,
+                    )?;
+                    output.push_str("<figure class=\"rule\">\n");
+                    output.push_str(&leaf_markup(leaf, "rule", notes));
+                    output.push_str("\n<figcaption>");
+                    output.push_str(&escape(&rule.name));
+                    output.push_str("</figcaption>\n</figure>\n");
+                },
+                | Block::Diagram(ref diagram) => {
+                    let leaf = typst_leaf::compile_diagram(&diagram.source, ctx.cache_dir)?;
+                    output.push_str("<figure id=\"");
+                    output.push_str(&escape(&diagram.id));
+                    output.push_str("\">\n");
+                    output.push_str(&leaf_markup(leaf, "diagram", notes));
+                    output.push_str("\n<figcaption>");
+                    output.push_str(&escape(&diagram.caption));
+                    output.push_str("</figcaption>\n</figure>\n");
+                },
+                | Block::Code(ref code) => {
+                    let expected_output =
+                        code.expect_output
+                            .as_ref()
+                            .map_or_else(String::new, |expected| {
+                                format!(
+                                    "<p class=\"expect\">expected output: \
+                                     <code>{}</code></p>\n",
+                                    escape(expected),
+                                )
+                            });
+                    let expected_error =
+                        code.expect_error
+                            .as_ref()
+                            .map_or_else(String::new, |expected| {
+                                format!(
+                                    "<p class=\"expect\">expected error: \
+                                     <code>{}</code></p>\n",
+                                    escape(expected),
+                                )
+                            });
+                    output.push_str("<pre><code class=\"lang-");
+                    output.push_str(&escape(&code.language));
+                    output.push_str("\">");
+                    output.push_str(&escape(&code.text));
+                    output.push_str("</code></pre>\n");
+                    output.push_str(&expected_output);
+                    output.push_str(&expected_error);
+                },
+                | Block::References(ref keys) => output.push_str(&render_references(keys)),
+            },
+        }
     }
+
+    Ok(output)
 }
 
 /// Render a per-component references list.
@@ -435,4 +526,111 @@ fn escape(text: &str) -> String
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::collections::BTreeMap;
+    use std::path::Path;
+
+    use super::RenderContext;
+    use super::render_blocks;
+    use super::term_map;
+    use crate::model::Block;
+    use crate::model::Definition;
+    use crate::model::Document;
+    use crate::model::Example;
+    use crate::model::Inline;
+    use crate::model::Section;
+    use crate::model::Status;
+    use crate::model::TermDef;
+
+    /// The first nested definition remains authoritative in document order.
+    #[test]
+    fn term_map_prefers_first_nested_definition()
+    {
+        let definition = |text: &str| {
+            Block::Definition(Definition {
+                id: None,
+                term: "term".to_owned(),
+                body: alloc::vec![Inline::TermDef(TermDef {
+                    key: "shared".to_owned(),
+                    text: text.to_owned(),
+                })],
+            })
+        };
+        let document = Document {
+            id: "component".to_owned(),
+            spec_version: "1".to_owned(),
+            title: "Component".to_owned(),
+            status: Status::Partial,
+            grounds: Vec::new(),
+            derives: Vec::new(),
+            blocks: alloc::vec![Block::Section(Section {
+                id: None,
+                status: None,
+                title: "Section".to_owned(),
+                blocks: alloc::vec![
+                    definition("first"),
+                    Block::Example(Example {
+                        title: "Example".to_owned(),
+                        blocks: alloc::vec![definition("second")],
+                    }),
+                ],
+            })],
+            source_path: "mem:component.xml".to_owned(),
+        };
+
+        let terms = term_map(&[document]);
+
+        assert_eq!(terms.get("shared").map(String::as_str), Some("first"));
+    }
+    /// Nested containers render with balanced markup in document order.
+    #[test]
+    fn nested_blocks_render_in_document_order() -> Result<(), crate::DocError>
+    {
+        let blocks = alloc::vec![Block::Section(Section {
+            id: None,
+            status: None,
+            title: "Outer".to_owned(),
+            blocks: alloc::vec![
+                Block::Example(Example {
+                    title: "Inner".to_owned(),
+                    blocks: alloc::vec![Block::Prose(alloc::vec![Inline::Text(
+                        "body & more".to_owned(),
+                    )])],
+                }),
+                Block::Definition(Definition {
+                    id: None,
+                    term: "Last".to_owned(),
+                    body: alloc::vec![Inline::Text("tail".to_owned())],
+                }),
+            ],
+        })];
+        let terms = BTreeMap::new();
+        let context = RenderContext::new(Path::new("unused"), &terms);
+        let mut notes = Vec::new();
+
+        let rendered = render_blocks(&blocks, 2usize, &context, &mut notes)?;
+
+        assert_eq!(
+            rendered,
+            concat!(
+                "<section>\n",
+                "<h2>Outer</h2>\n",
+                "<div class=\"example\">\n",
+                "<h3>Example: Inner</h3>\n",
+                "<p>body &amp; more</p>\n",
+                "</div>\n",
+                "<dl>\n",
+                "<dt>Last</dt>\n",
+                "<dd>tail</dd>\n",
+                "</dl>\n",
+                "</section>\n",
+            ),
+        );
+        assert!(notes.is_empty());
+        Ok(())
+    }
 }

@@ -1314,7 +1314,92 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         "cargo:clippy enabled-workspace scope changed",
     );
 
+    let cargo_dylint_local = toml_table_at(&mise, &["tasks", "cargo:dylint:local"])?;
+    assert_string_sequence(
+        &toml_table_string_array(cargo_dylint_local, "depends")?,
+        ["toolchain:materialize"],
+        "cargo:dylint:local must materialize the pinned driver toolchain",
+    );
+    let Some(local_dylint_env) = cargo_dylint_local
+        .get("env")
+        .and_then(toml::Value::as_table)
+    else {
+        return Err(Box::new(std::io::Error::other(
+            "cargo:dylint:local has no environment table",
+        )));
+    };
+    assert_eq!(
+        toml_table_string(local_dylint_env, "CARGO_TARGET_DIR")?.0,
+        "{{ config_root }}/target/dylint-local",
+        "strict project-local artifacts must use their own target directory"
+    );
+    assert_eq!(
+        toml_table_string(local_dylint_env, "DYLINT_RUSTFLAGS")?.0,
+        "-D warnings",
+        "strict project-local Dylint must deny every warning"
+    );
+    let cargo_dylint_local_script = toml_table_string(cargo_dylint_local, "run")?;
+    let local_invocations = parse_dylint_invocations(cargo_dylint_local_script)?;
+    let [custom_pass] = local_invocations.as_slice()
+    else {
+        return Err(Box::new(std::io::Error::other(format!(
+            "expected one cargo:dylint:local invocation, found {}",
+            local_invocations.len()
+        ))));
+    };
+
+    let cargo_dylint_recursion = toml_table_at(&mise, &["tasks", "cargo:dylint:recursion"])?;
+    let Some(recursion_dependencies) = cargo_dylint_recursion
+        .get("depends")
+        .and_then(toml::Value::as_array)
+    else {
+        return Err(Box::new(std::io::Error::other(
+            "cargo:dylint:recursion dependencies are not an array",
+        )));
+    };
+    let [recursion_dependency] = recursion_dependencies.as_slice()
+    else {
+        return Err(Box::new(std::io::Error::other(format!(
+            "expected one cargo:dylint:recursion dependency, found {}",
+            recursion_dependencies.len()
+        ))));
+    };
+    let Some(recursion_dependency) = recursion_dependency.as_table()
+    else {
+        return Err(Box::new(std::io::Error::other(
+            "cargo:dylint:recursion dependency is not an inline table",
+        )));
+    };
+    assert_eq!(
+        toml_table_string(recursion_dependency, "task")?.0,
+        "cargo:dylint:local",
+        "recursion gate must reuse the project-local driver task"
+    );
+    let Some(recursion_env) = recursion_dependency
+        .get("env")
+        .and_then(toml::Value::as_table)
+    else {
+        return Err(Box::new(std::io::Error::other(
+            "cargo:dylint:recursion dependency has no environment table",
+        )));
+    };
+    assert_eq!(
+        toml_table_string(recursion_env, "CARGO_TARGET_DIR")?.0,
+        "{{ config_root }}/target/dylint-recursion",
+        "recursion-relaxed artifacts must be isolated from the strict lane"
+    );
+    assert_eq!(
+        toml_table_string(recursion_env, "DYLINT_RUSTFLAGS")?.0,
+        "-D warnings -A primitive-signature -A single-field-struct-needs-transparent-repr",
+        "recursion gate may allow only the two tracked unrelated local lints"
+    );
+
     let cargo_dylint = toml_table_at(&mise, &["tasks", "cargo:dylint"])?;
+    assert_string_sequence(
+        &toml_table_string_array(cargo_dylint, "depends")?,
+        ["cargo:dylint:local"],
+        "full cargo:dylint must depend on the strict project-local pass",
+    );
     let cargo_dylint_script = toml_table_string(cargo_dylint, "run")?;
     let cargo_commands = parse_cargo_invocations(cargo_dylint_script);
     let Some(ui_test_command) = cargo_commands.first()
@@ -1333,7 +1418,6 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     let invocation_count = invocations.len();
     let mut invocations = invocations.iter();
     let (
-        Some(custom_pass),
         Some(upstream_pass),
         Some(non_local_pass),
         Some(crate_wide_pass),
@@ -1345,11 +1429,10 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         invocations.next(),
         invocations.next(),
         invocations.next(),
-        invocations.next(),
     )
     else {
         return Err(Box::new(std::io::Error::other(format!(
-            "expected five cargo:dylint invocations, found {invocation_count}"
+            "expected four upstream cargo:dylint invocations, found {invocation_count}"
         ))));
     };
 
@@ -1456,6 +1539,43 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         "register-lints-warn Dylint pass package scope changed",
     );
 
+    Ok(())
+}
+
+/// The merge wall runs the deterministic native gates in their policy order.
+#[test]
+fn merge_gate_task_order_is_locked() -> TestResult
+{
+    let workspace = workspace_root()?;
+    let mise = parse_toml_file(&workspace.join("mise.toml"))?;
+    let gate_merge = toml_table_at(&mise, &["tasks", "gate:merge"])?;
+    let Some(merge_steps) = gate_merge.get("run").and_then(toml::Value::as_array)
+    else {
+        return Err(Box::new(std::io::Error::other(
+            "gate:merge run plan is not an array",
+        )));
+    };
+    let mut merge_tasks = Vec::with_capacity(merge_steps.len());
+    for step in merge_steps {
+        let Some(step) = step.as_table()
+        else {
+            return Err(Box::new(std::io::Error::other(
+                "gate:merge run step is not an inline table",
+            )));
+        };
+        merge_tasks.push(toml_table_string(step, "task")?.0.to_owned());
+    }
+    assert_string_sequence(
+        &merge_tasks,
+        [
+            "cargo:build",
+            "cargo:clippy",
+            "cargo:dylint:recursion",
+            "cargo:nextest",
+            "treefmt:check",
+        ],
+        "gate:merge task order changed",
+    );
     Ok(())
 }
 

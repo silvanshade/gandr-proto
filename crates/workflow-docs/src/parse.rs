@@ -43,6 +43,38 @@ pub struct Parsed
     pub diagnostics: Vec<Diagnostic>,
 }
 
+/// A nested block container awaiting its parsed children.
+enum BlockContainer
+{
+    /// A section's metadata.
+    Section
+    {
+        /// Optional document-local anchor.
+        id: Option<String>,
+        /// Optional lifecycle status.
+        status: Option<Status>,
+        /// Human-facing title.
+        title: String,
+    },
+    /// A worked example's metadata.
+    Example
+    {
+        /// Human-facing title.
+        title: String,
+    },
+}
+
+/// A suspended parent while the iterative block parser visits one container.
+struct BlockParseFrame<'tree, 'input>
+{
+    /// Parent nodes still awaiting parsing, in reverse document order.
+    pending: Vec<Node<'tree, 'input>>,
+    /// Parent blocks already parsed in document order.
+    blocks: Vec<Block>,
+    /// Container whose children are currently being parsed.
+    container: BlockContainer,
+}
+
 /// Parse one component file into a model plus structural diagnostics.
 ///
 /// # Errors
@@ -104,23 +136,123 @@ fn parse_component(
 }
 
 /// Parse the block children of an element in document order.
+///
+/// # Contract
+///
+/// - requires: `parent` belongs to a finite, well-formed `XML` document.
+/// - ensures: returns every recognized child exactly once in source order with
+///   section/example nesting and metadata preserved; structural violations are
+///   appended to `diagnostics`.
+/// - provides: the typed block forest rooted immediately below `parent`.
+/// - panics: none.
+/// - intension: explicit suspended-parent frames reconstruct containers while
+///   bounding native stack use independently of document nesting depth.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — an exact expected block tree distinguishes
+///   container kind, metadata, nesting, sibling order, and leaf identity.
+/// - witness: `tests::nested_blocks_parse_exact_tree`.
 fn parse_blocks(
     parent: Node<'_, '_>,
     path_text: &str,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Vec<Block>
 {
+    let mut pending = pending_block_children(parent);
     let mut blocks = Vec::new();
-    for child in parent.children().filter(Node::is_element) {
-        if let Some(block) = parse_block(child, path_text, diagnostics) {
-            blocks.push(block);
+    let mut frames = Vec::new();
+
+    loop {
+        while let Some(node) = pending.pop() {
+            let container = match node.tag_name().name() {
+                | "section" => Some(BlockContainer::Section {
+                    id: node.attribute("id").map(str::to_owned),
+                    status: optional_status(node, path_text, "section", diagnostics),
+                    title: node
+                        .attribute("title")
+                        .map_or_else(String::new, str::to_owned),
+                }),
+                | "example" => Some(BlockContainer::Example {
+                    title: node
+                        .attribute("title")
+                        .map_or_else(String::new, str::to_owned),
+                }),
+                | _ => None,
+            };
+
+            if let Some(container) = container {
+                frames.push(BlockParseFrame {
+                    pending,
+                    blocks,
+                    container,
+                });
+                pending = pending_block_children(node);
+                blocks = Vec::new();
+            }
+            else if let Some(block) = parse_leaf_block(node, path_text, diagnostics) {
+                blocks.push(block);
+            }
         }
+
+        let Some(frame) = frames.pop()
+        else {
+            return blocks;
+        };
+        let BlockParseFrame {
+            pending: parent_pending,
+            blocks: mut parent_blocks,
+            container,
+        } = frame;
+        parent_blocks.push(finish_block_container(container, blocks));
+        pending = parent_pending;
+        blocks = parent_blocks;
     }
-    blocks
 }
 
-/// Parse one block element.
-fn parse_block(
+/// Collect element children for LIFO traversal in source order.
+///
+/// # Contract
+///
+/// - requires: `parent` belongs to a finite, well-formed `XML` document.
+/// - ensures: returns each element child exactly once in reverse source order.
+/// - provides: a stack schedule whose repeated `pop` visits children in source
+///   order.
+/// - panics: none.
+/// - intension: reversal occurs once when a parent is entered.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — the exact parsed block tree distinguishes
+///   missing, duplicated, or reordered child nodes.
+/// - witness: `tests::nested_blocks_parse_exact_tree`.
+fn pending_block_children<'tree, 'input>(parent: Node<'tree, 'input>) -> Vec<Node<'tree, 'input>>
+{
+    let mut children: Vec<Node<'tree, 'input>> =
+        parent.children().filter(Node::is_element).collect();
+    children.reverse();
+    children
+}
+
+/// Finish a nested container once all of its children have been parsed.
+fn finish_block_container(
+    container: BlockContainer,
+    blocks: Vec<Block>,
+) -> Block
+{
+    match container {
+        | BlockContainer::Section { id, status, title } => Block::Section(Section {
+            id,
+            status,
+            title,
+            blocks,
+        }),
+        | BlockContainer::Example { title } => Block::Example(Example { title, blocks }),
+    }
+}
+
+/// Parse one non-container block element.
+fn parse_leaf_block(
     node: Node<'_, '_>,
     path_text: &str,
     diagnostics: &mut Vec<Diagnostic>,
@@ -128,7 +260,6 @@ fn parse_block(
 {
     let name = node.tag_name().name();
     match name {
-        | "section" => Some(Block::Section(parse_section(node, path_text, diagnostics))),
         | "prose" => Some(Block::Prose(parse_inlines(node, path_text, diagnostics))),
         | "judgements" => Some(Block::Judgements(parse_judgements(
             node,
@@ -144,7 +275,6 @@ fn parse_block(
         ))),
         | "diagram" => parse_diagram(node, path_text, diagnostics).map(Block::Diagram),
         | "code" => Some(Block::Code(parse_code(node, path_text, diagnostics))),
-        | "example" => Some(Block::Example(parse_example(node, path_text, diagnostics))),
         | "references" => Some(Block::References(parse_references(node))),
         | other => {
             diagnostics.push(Diagnostic::new(
@@ -154,24 +284,6 @@ fn parse_block(
             ));
             None
         },
-    }
-}
-
-/// Parse a section block.
-fn parse_section(
-    node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
-) -> Section
-{
-    let title = node
-        .attribute("title")
-        .map_or_else(String::new, str::to_owned);
-    Section {
-        id: node.attribute("id").map(str::to_owned),
-        status: optional_status(node, path_text, "section", diagnostics),
-        title,
-        blocks: parse_blocks(node, path_text, diagnostics),
     }
 }
 
@@ -339,22 +451,6 @@ fn parse_code(
         text: element_text(node),
         expect_output,
         expect_error,
-    }
-}
-
-/// Parse an example block.
-fn parse_example(
-    node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
-) -> Example
-{
-    let title = node
-        .attribute("title")
-        .map_or_else(String::new, str::to_owned);
-    Example {
-        title,
-        blocks: parse_blocks(node, path_text, diagnostics),
     }
 }
 
@@ -563,4 +659,66 @@ fn element_location(
 ) -> String
 {
     format!("{path_text}:<{element}>")
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::parse_document;
+    use crate::model::Block;
+    use crate::model::Definition;
+    use crate::model::Example;
+    use crate::model::Section;
+    use crate::model::Status;
+
+    /// Parsing preserves the exact nested block tree and container metadata.
+    #[test]
+    fn nested_blocks_parse_exact_tree() -> Result<(), crate::DocError>
+    {
+        let xml = r#"<component id="c" spec-version="1" title="T" status="partial">
+            <section id="s" title="S" status="built">
+                <definition id="d1" term="first" />
+                <example title="E"><definition id="d2" term="second" /></example>
+            </section>
+            <definition id="d3" term="third" />
+        </component>"#;
+        let parsed = parse_document(std::path::Path::new("mem:c.xml"), xml)?;
+
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "expected valid nested blocks, got {:?}",
+            parsed.diagnostics,
+        );
+        assert_eq!(
+            parsed.document.map(|document| document.blocks),
+            Some(alloc::vec![
+                Block::Section(Section {
+                    id: Some("s".to_owned()),
+                    status: Some(Status::Built),
+                    title: "S".to_owned(),
+                    blocks: alloc::vec![
+                        Block::Definition(Definition {
+                            id: Some("d1".to_owned()),
+                            term: "first".to_owned(),
+                            body: Vec::new(),
+                        }),
+                        Block::Example(Example {
+                            title: "E".to_owned(),
+                            blocks: alloc::vec![Block::Definition(Definition {
+                                id: Some("d2".to_owned()),
+                                term: "second".to_owned(),
+                                body: Vec::new(),
+                            })],
+                        }),
+                    ],
+                }),
+                Block::Definition(Definition {
+                    id: Some("d3".to_owned()),
+                    term: "third".to_owned(),
+                    body: Vec::new(),
+                }),
+            ]),
+        );
+        Ok(())
+    }
 }

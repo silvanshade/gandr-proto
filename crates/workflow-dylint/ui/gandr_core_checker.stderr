@@ -1,5 +1,5 @@
 warning: recursive function must document termination with gandr's rustdoc section
-  --> $DIR/gandr_core.rs:31:9
+  --> $DIR/gandr_core_checker.rs:30:9
    |
 LL | /         fn false_none(
 LL | |             &mut self,
@@ -12,7 +12,7 @@ LL | |         }
    = note: `#[warn(recursive_function_needs_termination)]` on by default
 
 warning: recursive function must document termination with gandr's rustdoc section
-  --> $DIR/gandr_core.rs:54:9
+  --> $DIR/gandr_core_checker.rs:53:9
    |
 LL | /         fn wrong_non_none(
 LL | |             &mut self,

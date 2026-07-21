@@ -1,4 +1,3 @@
-#![crate_name = "gandr_core"]
 #![allow(dead_code)]
 #![allow(unconditional_recursion)]
 

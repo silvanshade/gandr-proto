@@ -129,6 +129,48 @@ pub enum Block
     References(Vec<CiteKey>),
 }
 
+impl Block
+{
+    /// Visit this block and every nested block in document order.
+    ///
+    /// # Contract
+    ///
+    /// - ensures: yields the root followed by every descendant exactly once in
+    ///   depth-first document order.
+    /// - provides: a borrowing iterator over the complete block tree.
+    /// - panics: none.
+    /// - intension: reverse child scheduling on an explicit LIFO worklist
+    ///   preserves source order while bounding native stack use independently
+    ///   of tree depth.
+    ///
+    /// # Adequacy
+    ///
+    /// - hypothesis: L3 pointwise — the exact projected visit stream
+    ///   distinguishes missing, duplicated, or reordered root/container/leaf
+    ///   nodes.
+    /// - witness: `block_walk_preserves_document_order`.
+    pub(crate) fn walk(&self) -> impl Iterator<Item = &Self>
+    {
+        let mut pending = alloc::vec![self];
+        core::iter::from_fn(move || {
+            let block = pending.pop()?;
+            match *block {
+                | Self::Section(ref section) => pending.extend(section.blocks.iter().rev()),
+                | Self::Example(ref example) => pending.extend(example.blocks.iter().rev()),
+                | Self::Prose(_)
+                | Self::Judgements(_)
+                | Self::Grammar(_)
+                | Self::Rule(_)
+                | Self::Definition(_)
+                | Self::Diagram(_)
+                | Self::Code(_)
+                | Self::References(_) => {},
+            }
+            Some(block)
+        })
+    }
+}
+
 /// A titled grouping of nested blocks.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -304,4 +346,63 @@ pub enum MathDisplay
     Inline,
     /// Rendered as a centered display block.
     Block,
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::Block;
+    use super::Definition;
+    use super::Example;
+    use super::Section;
+
+    /// Nested traversal visits each root, container, and leaf exactly once.
+    #[test]
+    fn block_walk_preserves_document_order()
+    {
+        let definition = |term: &str| {
+            Block::Definition(Definition {
+                id: None,
+                term: term.to_owned(),
+                body: Vec::new(),
+            })
+        };
+        let root = Block::Section(Section {
+            id: None,
+            status: None,
+            title: "root".to_owned(),
+            blocks: alloc::vec![
+                definition("first"),
+                Block::Example(Example {
+                    title: "nested".to_owned(),
+                    blocks: alloc::vec![definition("second")],
+                }),
+                definition("third"),
+            ],
+        });
+
+        let visits = root
+            .walk()
+            .map(|block| match *block {
+                | Block::Section(ref section) => ("section", section.title.as_str()),
+                | Block::Prose(_) => ("prose", ""),
+                | Block::Judgements(ref judgements) => ("judgements", judgements.title.as_str()),
+                | Block::Grammar(_) => ("grammar", ""),
+                | Block::Rule(ref rule) => ("rule", rule.name.as_str()),
+                | Block::Definition(ref definition) => ("definition", definition.term.as_str()),
+                | Block::Diagram(ref diagram) => ("diagram", diagram.id.as_str()),
+                | Block::Code(ref code) => ("code", code.language.as_str()),
+                | Block::Example(ref example) => ("example", example.title.as_str()),
+                | Block::References(_) => ("references", ""),
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(visits, [
+            ("section", "root"),
+            ("definition", "first"),
+            ("example", "nested"),
+            ("definition", "second"),
+            ("definition", "third"),
+        ],);
+    }
 }
