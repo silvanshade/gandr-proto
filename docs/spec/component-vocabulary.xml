@@ -59,7 +59,7 @@
     <example title="A code block anticipating output">
       <prose>Code blocks structurally anticipate checked examples. The tool
         validates the shape of the expectation but never executes it.</prose>
-      <code expect-output="6" language="gandr">let x = 1 + 2 + 3 in x</code>
+      <code expect-output="6" language="gandr">{ val x = 1 + 2 + 3; x }</code>
     </example>
   </section>
   <references>

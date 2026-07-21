@@ -118,7 +118,7 @@ pub fn highlight(
 /// syntax-growth keywords that the live highlighter must keep honest on the
 /// surface corpus.
 const KEYWORDS: &[&str] = &[
-    "def", "let", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
+    "def", "val", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
     "case", "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer",
     "fork", "acquire", "release", "migrate", "at", "forall", "F", "U", "mu", "end",
     // W4d/W4e syntax-growth keywords; `module` is now mirrored by tree-sitter,
@@ -260,7 +260,7 @@ enum Bracket
     /// A `( … )` parameter list opened right after a `def`/`extern` name or
     /// `fn`: its `identifier` tiles are parameter binders.
     Params,
-    /// A `( … )` tuple pattern opened immediately after `let`: its `identifier`
+    /// A `( … )` tuple pattern opened immediately after `val`: its `identifier`
     /// tiles are value binders, not expression references.
     Pattern,
     /// An `@[ … ]` attribute block: its `identifier` tiles are attribute names.
@@ -408,7 +408,7 @@ fn walk(
                     }
                     else {
                         let pattern_child = enclosing == Bracket::Pattern
-                            || prev == Some(TileLabel("let"))
+                            || prev == Some(TileLabel("val"))
                             || next == Some(TileLabel("=>"));
                         let child_inherited = if pattern_child {
                             Bracket::Pattern
@@ -636,7 +636,7 @@ fn identifier_role(
         | Some(TileLabel("?")) => Some(HlRole::Label),
         | Some(TileLabel(".")) => Some(HlRole::Member),
         | Some(TileLabel("def")) if def_shape_is_function.0 => Some(HlRole::FunctionDef),
-        | Some(TileLabel("let" | "leta" | "as" | "def")) => Some(HlRole::VariableDef),
+        | Some(TileLabel("val" | "leta" | "as" | "def")) => Some(HlRole::VariableDef),
         | _ if next == Some(TileLabel("(")) => Some(HlRole::FunctionCall),
         | _ => None,
     }
@@ -656,7 +656,7 @@ fn open_bracket(
             let params = prev == Some(TileLabel("fn"))
                 || (prev == Some(TileLabel("identifier"))
                     && matches!(prev2, Some(TileLabel("def" | "extern"))));
-            let pattern = prev == Some(TileLabel("let"));
+            let pattern = prev == Some(TileLabel("val"));
             Some(if params {
                 Bracket::Params
             }
@@ -919,6 +919,11 @@ mod tests
             Some(HlRole::Keyword),
             role_of(TileLabel("def"), Provenance("def_value"))
         );
+        assert_eq!(
+            Some(HlRole::Keyword),
+            role_of(TileLabel("val"), Provenance("let_statement"))
+        );
+        assert_eq!(None, role_of(TileLabel("let"), Provenance("let_statement")));
         assert_eq!(
             Some(HlRole::Operator),
             role_of(TileLabel("->"), Provenance("function_type"))

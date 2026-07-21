@@ -27,7 +27,7 @@
 //! bare labels with no lexical regexes (some are placeholders no labeler token
 //! carries), rules have no tree-sitter field concept (the generated
 //! `node-types.json` declares 40 fields, all from `grammar.js` `field(…)`
-//! annotations), and the surface is deliberately factored (the `def` / `let` /
+//! annotations), and the surface is deliberately factored (the `def` / `val` /
 //! `(`-atom families) where the committed grammar keeps distinct fielded named
 //! nodes — so a faithful projection is not derivable from it. The two parsers
 //! are instead kept honest by testing at this boundary: this inventory plus

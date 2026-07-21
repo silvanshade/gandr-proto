@@ -1395,7 +1395,7 @@ impl<'pbg> MeldState<'pbg>
     ///
     /// The molder ranks a fresh atom / form-start candidate by whether its sort
     /// matches this expectation, so `"hi"` reads as the expression string at an
-    /// expression slot and the pattern string in a `let`/`case` pattern slot,
+    /// expression slot and the pattern string in a `val`/`case` pattern slot,
     /// without a completion traversal (proposal §5.2 sort-compatibility). The
     /// expectation is the nearest unsaturated operator's right-hole sort, or
     /// the nearest open form frontier's right-hole sort, defaulting to

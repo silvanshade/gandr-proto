@@ -133,6 +133,35 @@ fn core_forms_are_clean() -> Result<(), Box<dyn Error>>
 }
 
 #[test]
+fn value_statement_uses_val_keyword() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let renamed = [
+        "val value = expression;",
+        "def use() -> F Integer { val value = expression; ret value }",
+    ];
+    for src in renamed {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "`val PAT = E;` molds clean in {src:?}; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    let retired = parse(pbg, SourceSlice::from("let value = expression;"))?;
+    assert!(
+        !bool::from(retired.is_clean()),
+        "the retired `let PAT = E;` spelling must require repair"
+    );
+    Ok(())
+}
+
+#[test]
 fn bind_statement_uses_run_keyword() -> Result<(), Box<dyn Error>>
 {
     let pbg = built();
@@ -157,6 +186,12 @@ fn bind_statement_uses_run_keyword() -> Result<(), Box<dyn Error>>
     assert!(
         !bool::from(retired.is_clean()),
         "the retired `let PAT <- E;` spelling must require repair"
+    );
+
+    let bare = parse(pbg, SourceSlice::from("value <- action;"))?;
+    assert!(
+        !bool::from(bare.is_clean()),
+        "a binding arrow without the `run` lead must require repair"
     );
     Ok(())
 }

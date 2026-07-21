@@ -68,9 +68,11 @@
       .
     </prose>
     <prose>
-      Current state: the run half landed mid-triage as commit ddb86c2 (syntax-only; ordinary
-      <inline-code>let p = v;</inline-code>
-      unchanged), closing gandr-55v with residuals on gandr-6re. The remainder is minted: gandr-07e (val half) and gandr-wu4 (annotation lane), with the family linkage recorded on gandr-6re. F3 (gandr-wvd.24.4) and F4 (gandr-wvd.24.5) are unaffected in scope; the rename family is sequenced after F4 so the corpus-regeneration harness proves lowering-invariance — a discipline the run-half landing skipped by landing syntax-first ahead of F4, leaving its byte-identity verification in gandr-6re's OTHER face.
+      Current state: the binder rename is syntax-complete. The
+      <inline-code>run</inline-code>
+      half landed as commit ddb86c2 and the
+      <inline-code>val</inline-code>
+      half landed through gandr-07e. Both preceded F4 (gandr-wvd.24.5), so the post-F4 parser-golden and documentation migration plus the byte-identical lowering proof remain consolidated on gandr-6re. The sibling annotation lane remains gandr-wu4; F3 (gandr-wvd.24.4) and F4 are unchanged in scope.
     </prose>
   </section>
   <section id="wtt-minted" title="Minted gandr beads (the inherit set)">
@@ -299,7 +301,7 @@
     <list ordered="false">
       <item lead="Go-public mutation baseline">The wyrd-era scheduled campaigns never ran over much of the code that later ported, and the reboot's campaign clock is parked until go-public (ci.md). When the clock returns, the first campaign should be a fresh whole-workspace baseline over the ported crates — the wyrd baseline does not transfer. Rides the owner's out-of-band go-public call.</item>
       <item lead="Wyrd ADR citations in ported crate comments">Ported crates still carry extensive wyrd ADR-number citations in rustdoc (100+ files; e.g. theory-virtual-doctrines module headers). This is the known H7 residue: the tracker-provenance policy rewrites as touched, F0 set the drop-with-distilled-provenance precedent, and gandr-mf8 tracks the doc-comment citation re-pointing. No new bead filed.</item>
-      <item lead="F3/F4/B3/B4 bearings">Decisions touching the in-flight ladder were given special attention per the charter. Findings: the binder-rename family sequences after F4 by design (gandr-07e, gandr-wu4); the computation-sort Unknown spelling touches the F3 lowering hub (gandr-89k); the rule 2-cell lowering is the F3-era gateway to the computads layer and B11 (gandr-0rb); B3's module design (b3-module-system-design.md) already inventories every M1-lite bead and the package-import question, so nothing module-side needed minting; B4's predesign records the erasure-shape fork that two wyrd research threads fed into.</item>
+      <item lead="F3/F4/B3/B4 bearings">Decisions touching the in-flight ladder were given special attention per the charter. Findings: the binder rename landed syntax-first before F4, with its post-F4 migration and lowering-invariance proof consolidated on gandr-6re; the annotation sibling remains gandr-wu4; the computation-sort Unknown spelling touches the F3 lowering hub (gandr-89k); the rule 2-cell lowering is the F3-era gateway to the computads layer and B11 (gandr-0rb); B3's module design (b3-module-system-design.md) already inventories every M1-lite bead and the package-import question, so nothing module-side needed minting; B4's predesign records the erasure-shape fork that two wyrd research threads fed into.</item>
     </list>
   </section>
   <section id="wtt-table" title="The full triage table (365 rows)">

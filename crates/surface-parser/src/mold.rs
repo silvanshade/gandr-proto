@@ -28,7 +28,7 @@
 //!   tile (an `Inl` atom vs an `Inl(x)` constructor pattern, a `List` type
 //!   identifier vs a `List(T)` application). It is settled by a bounded greedy
 //!   lookahead over the next tokens; the grammar factors the wider families
-//!   (`def`, `let`, `fn`, the `(` group, and the `#{` record) so they need
+//!   (`def`, `val`, `fn`, the `(` group, and the `#{` record) so they need
 //!   none.
 //! * **Determinism is HARD.** Candidates are visited in ascending [`MoldId`]
 //!   order under a strict `<`, so an exact tie keeps the smaller `MoldId`
@@ -65,7 +65,7 @@ const MAX_LABELS: usize = 4;
 /// After the admissibility pre-filter collapses the menu, the only residual
 /// ambiguity is a shared-prefix form family whose opener molds tie on the local
 /// key — a `constructor` atom vs a `constructor(…)` pattern, a
-/// `type_identifier` vs a `type_identifier(T)` application (the `def` / `let` /
+/// `type_identifier` vs a `type_identifier(T)` application (the `def` / `val` /
 /// `fn` / `(` / `#{` families are factored, so they never reach here). Each is
 /// LL(k) decidable within a few tiles of the shared prefix, so the molder
 /// dry-runs each tied opener followed by a greedy molding of the next window
@@ -252,10 +252,11 @@ fn source_slice(src: SourceText<'_>) -> SourceSlice<'_>
 /// deliberately NOT reserved: they mold as contextual tiles only where the
 /// `op`-led fixity form expects them, so they remain ordinary identifiers
 /// everywhere else.
-/// `run` is reserved as the distinct lead of computation-binding statements;
-/// it therefore never enters the ordinary identifier menu.
+/// `run` and `val` are reserved as the distinct leads of computation-result
+/// and value-binding statements; neither enters the ordinary identifier menu.
+/// The retired standalone `let` spelling is deliberately not reserved.
 const KEYWORDS: &[&str] = &[
-    "def", "let", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
+    "def", "val", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
     "case", "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer",
     "fork", "acquire", "release", "migrate", "at", "true", "false", "forall", "mu", "end", "data",
     "codata", "rec", "op", "rule", "for", "in", "while", "loop", "break", "continue", "with",
@@ -952,7 +953,7 @@ impl<'pbg> Molder<'pbg>
     /// decision with a unique minimum. What survives is a **shared-prefix**
     /// tie: a bare atom versus a form-start over the same lexeme (`Inl` alone
     /// versus `Inl(x)` opening a constructor pattern, `List` versus `List(T)`
-    /// opening a type application) — the wider form families (`def`, `let`,
+    /// opening a type application) — the wider form families (`def`, `val`,
     /// `fn`, the `(` group, the `#{` record) are factored at the grammar, so
     /// they tie on the local key (zero
     /// streaming delta, equal continuation and sort ranks). The completion
@@ -1211,6 +1212,19 @@ mod tests
         assert_eq!(
             candidate_labels(Lexeme::LowerWord, TokenText::from("def")),
             vec![CandidateLabel::from("def")]
+        );
+        assert_eq!(
+            candidate_labels(Lexeme::LowerWord, TokenText::from("val")),
+            vec![CandidateLabel::from("val")]
+        );
+        assert_eq!(
+            candidate_labels(Lexeme::LowerWord, TokenText::from("let")),
+            vec![
+                CandidateLabel::from("let"),
+                CandidateLabel::from("identifier"),
+                CandidateLabel::from("type_variable"),
+                CandidateLabel::from("hole_name")
+            ]
         );
         assert_eq!(
             candidate_labels(Lexeme::LowerWord, TokenText::from("run")),

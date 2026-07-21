@@ -124,9 +124,9 @@ fn items(
 /// datatypes and their members, the `import` module MVP, the reserved
 /// operator-fixity declaration, and the reserved mutual-recursion `rec` block.
 ///
-/// All land at `item.singleton` beside the def / let families. Every form is
+/// All land at `item.singleton` beside the def / val families. Every form is
 /// keyword-led (a fresh first-token discriminator with zero lookahead vs `def`
-/// / `let` / `import` / …), so no new shared-prefix window is opened. These
+/// / `val` / `import` / …), so no new shared-prefix window is opened. These
 /// constructs are **PBG-only** — the committed tree-sitter grammar does not
 /// produce them — so their provenance names live in
 /// [`crate::surface::PBG_ONLY_KINDS`] and they are parity-exempt (they never
@@ -612,7 +612,7 @@ fn statements(
         Provenance("let_statement"),
         s,
         p,
-        let_statement(),
+        val_statement(),
     ));
     out.push(r(
         RuleName("bind_statement"),
@@ -1192,7 +1192,7 @@ fn session_stmt(keyword: TileLabel) -> Regex
 fn statement_alt() -> Regex
 {
     alt([
-        let_statement(),
+        val_statement(),
         bind_statement(),
         seq([
             t(TileLabel("leta")),
@@ -1231,11 +1231,11 @@ fn statement_alt() -> Regex
     ])
 }
 
-/// Build a variable-binding statement: `let PAT = E ;`.
-fn let_statement() -> Regex
+/// Build a variable-binding statement: `val PAT = E ;`.
+fn val_statement() -> Regex
 {
     seq([
-        t(TileLabel("let")),
+        t(TileLabel("val")),
         h(Sort::Pattern),
         t(TileLabel("=")),
         h(Sort::Expression),
@@ -1686,7 +1686,7 @@ fn primary_expressions(
     // after it — `(` versus `[`. Declaring them as two rules gives `fn` two molds
     // that tie on the molder's local key and fire a lookahead window per `fn`;
     // they are factored into one form whose tail alternates on that discriminating
-    // tile (the `def` / `let` idiom), so `fn` owns one mold and the choice is
+    // tile (the `def` / `val` idiom), so `fn` owns one mold and the choice is
     // locally decidable. The folded kind is an adaptation for the parity inventory.
     let mut lambda = r(
         RuleName("lambda_expression"),

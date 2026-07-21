@@ -65,9 +65,9 @@ mod contracts
     /// pairwise-incomparable right-associative set tier
     /// (union / intersection / lazy-product); and the keyword-led `module` Item
     /// form with its optional transparent record-type ascription and body-local
-    /// non-recursive def/signature member family; and the distinct
-    /// `run PAT <- E` bind form.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xe483_9d05_a39a_a11b);
+    /// non-recursive def/signature member family; the distinct
+    /// `run PAT <- E` computation bind; and the `val PAT = E` value bind.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x1536_6770_bac1_933d);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -86,8 +86,8 @@ mod contracts
     /// lexeme's type realisation; and the `module M (: #{ … })? { def … }`
     /// Item form contributes its keyword-led opener, its inline record-type
     /// ascription, and one body-local copy of the non-recursive
-    /// def/signature family. The distinct `run`-led bind rule contributes one
-    /// keyword mold in each of its 19 expanded statement contexts.
+    /// def/signature family. The distinct `run`- and `val`-led bind rules each
+    /// contribute one keyword mold in their 19 expanded statement contexts.
     const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1475);
 
     /// The declared per-label candidate inventory, sorted and exact.
@@ -200,7 +200,6 @@ mod contracts
         ("infix", 1),
         ("infixl", 1),
         ("infixr", 1),
-        ("let", 19),
         ("leta", 19),
         ("line_comment", 1),
         ("list_operator", 3),
@@ -241,6 +240,7 @@ mod contracts
         ("typed_number", 3),
         ("u32", 1),
         ("u64", 1),
+        ("val", 19),
         ("variable_name", 5),
         ("while", 1),
         ("with", 1),
