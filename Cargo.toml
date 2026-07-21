@@ -10,6 +10,7 @@ members = [
   "crates/kernel-strata",
   "crates/runtime-host",
   "crates/storage-chunker",
+  "crates/storage-prolly-trees",
   "crates/surface-driver",
   "crates/theory-computads",
   "crates/theory-graphs",
@@ -39,8 +40,17 @@ publish = false
 version = "=0.18.2"
 default-features = false
 
+# Bao verified-streaming codec (BLAKE3 Merkle tree) — a storage-tier interop
+# comparator exercised only by the prolly-trees contract suite.
+# consumers:
+# - gandr-storage-prolly-trees (dev)
+[workspace.dependencies.bao]
+version = "0.13.1"
+default-features = false
+
 # BLAKE3 hashing for content and manifest digests.
 # consumers:
+# - gandr-storage-prolly-trees (NodeHash = BLAKE3 node identity; snapshot/witness digests)
 # - gandr-workflow-gates
 # - gandr-workflow-docs (content-hash cache keys for compiled math/diagram SVG)
 [workspace.dependencies.blake3]
@@ -215,6 +225,12 @@ version = "2.0"
 default-features = false
 features = ["full", "parsing", "visit"]
 
+# Typed error derive (`thiserror::Error`) for crate error vocabularies.
+# consumers:
+# - gandr-core-checker
+# - gandr-runtime-host
+# - gandr-storage-prolly-trees
+# - gandr-theory-orders
 [workspace.dependencies.thiserror]
 version = "2.0.18"
 default-features = false

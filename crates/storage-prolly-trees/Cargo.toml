@@ -1,0 +1,31 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-storage-prolly-trees"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Ordered-record Merkle search tree with membership/non-membership/range proofs and content-addressed block stores (storage-tier skeleton; proof machinery feature-gated)"
+readme.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+blake3 = { workspace = true }
+gandr-storage-chunker = { path = "../storage-chunker" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+bao = { workspace = true }
+
+[features]
+default = ["proofs"]
+# Gates the membership / non-membership / range proof machinery and the native
+# witness-transcript surface. Enabled by default so the carried contract suites
+# run; consumers that only need tree construction, lookup/range queries, node
+# hashing, and the block stores can disable it.
+proofs = []
+
+[lints]
+workspace = true
