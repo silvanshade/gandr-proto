@@ -13,14 +13,26 @@
 //! used through `force`. This keeps the declaration vocabulary single-polarity
 //! (one `add_decl` shape, no polarity-mismatch error) and matches CBPV's
 //! treatment of top-level bindings as thunkable values.
+//!
+//! # Arena content and the builder (D1(C), gandr-5t3)
+//!
+//! A declaration's term/type content lives in the environment's
+//! [`TermArena`], so [`DeclarationContent`] holds **root ids**
+//! ([`ValueTypeId`] for the declared type, [`ValueId`] for a `Def` body). The
+//! content is built through a [`DeclarationBuilder`] that borrows the arena and
+//! records the **content-start** watermark; the finished [`Declaration`]
+//! carries that watermark for the admission truncation discipline
+//! ([`crate::arena`], [`Environment::add_decl`](crate::Environment::add_decl)).
 
 use alloc::vec::Vec;
 
 use gandr_kernel_strata::LandmarkConstraint;
 
+use crate::arena::ArenaWatermark;
+use crate::arena::TermArena;
+use crate::arena::ValueId;
+use crate::arena::ValueTypeId;
 use crate::levels::LevelParamCount;
-use crate::term::Value;
-use crate::types::ValueType;
 
 /// A declaration's prenex level interface: its parameter count and its
 /// declared landmark constraints (ADR-78 — the declaration is generalized over
@@ -79,87 +91,67 @@ impl LevelSignature
     }
 }
 
-/// The content of a declaration: a definition or an axiom.
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// The content of a declaration: a definition or an axiom, addressing its
+/// term/type content by root id into the environment arena.
+///
+/// The derived equality is **child-id (same-arena) equality, not structural**
+/// (the [`crate::term`] caveat); consuming code that needs structural agreement
+/// across arenas re-encodes or walks explicitly.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[expect(
     clippy::exhaustive_enums,
     reason = "the kernel's declaration vocabulary is closed by design (kernel-boundary.md §3)"
 )]
 pub enum DeclarationContent
 {
-    /// A typed definition: a declared value type and a fully-elaborated value
-    /// body, which the checker verifies against the type.
+    /// A typed definition: a declared value-type root and a fully-elaborated
+    /// value-body root, which the checker verifies against the type.
     Def
     {
-        /// The declared value type.
-        declared: ValueType,
-        /// The fully-elaborated value body.
-        body: Value,
+        /// The declared value type's root id.
+        declared: ValueTypeId,
+        /// The fully-elaborated value body's root id.
+        body: ValueId,
     },
     /// A tracked typed hole: a declared value type with no body. Everything
     /// resting on it is flagged by the choke-point audit.
     Axiom
     {
-        /// The declared value type.
-        declared: ValueType,
+        /// The declared value type's root id.
+        declared: ValueTypeId,
     },
 }
 
 impl DeclarationContent
 {
-    /// The declared value type, common to both a definition and an axiom.
+    /// The declared value-type root id, common to both a definition and an
+    /// axiom.
     #[inline]
     #[must_use]
-    pub const fn declared_type(&self) -> &ValueType
+    pub const fn declared_id(&self) -> ValueTypeId
     {
         match *self {
-            | Self::Def { ref declared, .. } | Self::Axiom { ref declared } => declared,
+            | Self::Def { declared, .. } | Self::Axiom { declared } => declared,
         }
     }
 }
 
 /// A declaration entering the kernel through the choke point: a level
-/// signature and a definition or axiom.
+/// signature, its content roots, and the arena watermark its content begins at.
 #[derive(Clone, Debug)]
 pub struct Declaration
 {
     /// The prenex level interface.
     levels: LevelSignature,
-    /// The definition or axiom content.
+    /// The definition or axiom content (root ids into the environment arena).
     content: DeclarationContent,
+    /// The arena watermark at which this declaration's content began — the
+    /// pre-admission mark the choke point truncates to on rejection.
+    content_start: ArenaWatermark,
 }
 
 impl Declaration
 {
-    /// Build a definition declaration.
-    #[inline]
-    #[must_use]
-    pub fn def(
-        levels: LevelSignature,
-        declared: ValueType,
-        body: Value,
-    ) -> Self
-    {
-        Self {
-            levels,
-            content: DeclarationContent::Def { declared, body },
-        }
-    }
-
-    /// Build an axiom declaration.
-    #[inline]
-    #[must_use]
-    pub fn axiom(
-        levels: LevelSignature,
-        declared: ValueType,
-    ) -> Self
-    {
-        Self {
-            levels,
-            content: DeclarationContent::Axiom { declared },
-        }
-    }
-
     /// The prenex level interface.
     #[inline]
     #[must_use]
@@ -176,11 +168,97 @@ impl Declaration
         &self.content
     }
 
-    /// The declared value type.
+    /// The declared value-type root id.
     #[inline]
     #[must_use]
-    pub const fn declared_type(&self) -> &ValueType
+    pub const fn declared_id(&self) -> ValueTypeId
     {
-        self.content.declared_type()
+        self.content.declared_id()
+    }
+
+    /// The content-start watermark (the pre-admission arena mark).
+    #[inline]
+    #[must_use]
+    pub(crate) const fn content_start(&self) -> ArenaWatermark
+    {
+        self.content_start
+    }
+}
+
+/// A borrowing builder for one declaration's content.
+///
+/// It lends the environment arena for minting the declared type and body, then
+/// finalizes a [`Declaration`] carrying the recorded content-start watermark.
+///
+/// # Contract
+/// - requires: content for exactly one declaration is minted through
+///   [`Self::arena`] between construction and a `def`/`axiom` finisher, with no
+///   other allocation into the arena interleaved (the content-start watermark
+///   records the arena length at construction).
+/// - ensures: the finisher yields a [`Declaration`] whose content roots and
+///   watermark describe a contiguous suffix of the arena.
+/// - provides: the minimal construction surface tests and the B2.3 bridge use.
+/// - fails: never — minting is total.
+/// - panics: none.
+pub struct DeclarationBuilder<'arena>
+{
+    /// The borrowed environment arena.
+    arena: &'arena mut TermArena,
+    /// The arena watermark at construction (where this content begins).
+    content_start: ArenaWatermark,
+}
+
+impl<'arena> DeclarationBuilder<'arena>
+{
+    /// Begin building a declaration's content into `arena`, recording the
+    /// content-start watermark.
+    #[inline]
+    pub(crate) fn new(arena: &'arena mut TermArena) -> Self
+    {
+        let content_start = arena.watermark();
+        Self {
+            arena,
+            content_start,
+        }
+    }
+
+    /// The borrowed arena, for minting this declaration's content nodes.
+    #[inline]
+    pub fn arena(&mut self) -> &mut TermArena
+    {
+        self.arena
+    }
+
+    /// Finalize a definition over an already-minted declared type and body.
+    #[inline]
+    #[must_use]
+    pub fn def(
+        self,
+        levels: LevelSignature,
+        declared: ValueTypeId,
+        body: ValueId,
+    ) -> Declaration
+    {
+        Declaration {
+            levels,
+            content: DeclarationContent::Def { declared, body },
+            content_start: self.content_start,
+        }
+    }
+
+    /// Finalize an axiom over an already-minted declared type.
+    #[inline]
+    #[must_use]
+    pub fn axiom(
+        self,
+        levels: LevelSignature,
+        declared: ValueTypeId,
+    ) -> Declaration
+    {
+        Declaration {
+            levels,
+            content: DeclarationContent::Axiom { declared },
+            content_start: self.content_start,
+        }
     }
 }

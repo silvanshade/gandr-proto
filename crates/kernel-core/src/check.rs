@@ -13,6 +13,19 @@
 //! expected triggers a **conversion** ([`crate::conv`]) at the mode switch.
 //! This needs no metavariables and no inference — exactly K2.
 //!
+//! # Arena-native, ids not owned types (D1(C), gandr-5t3)
+//!
+//! Every type the machine touches — the declared type, a context slot, a
+//! synthesized type, an expected type flowing into a check — is a **`Copy`
+//! [`ValueTypeId`]/[`CompTypeId`]** into the environment [`TermArena`]. The
+//! borrowed/owned `Held` split and its clone-on-lookup dissolve: an expected
+//! type is one id (no clone to propagate into both `case` branches), a context
+//! slot is one id, and eliminating a type former is a **read of its child ids**
+//! (`arena.comp_type(id)` matched to `Arrow { domain, codomain }`) — no
+//! placeholder-swap, no E0509 interlock. Synthesized types are **minted into
+//! the arena** as checker intermediates; the choke point truncates them after
+//! the verdict (the admission watermark discipline, [`crate::arena`]).
+//!
 //! # No term-into-type substitution
 //!
 //! At S1 no type former embeds a value term (`Product` is non-dependent, the
@@ -24,31 +37,24 @@
 //!
 //! # Totality via defunctionalization (no depth budget)
 //!
-//! The checker descends structurally through the finite checked term. To stay
-//! **total on adversarial depth** (the kernel never diverges — a stack overflow
-//! is divergence, and export decode can build an arbitrarily deep term from
-//! bytes) it runs as an explicit **defunctionalized machine** ([`run`]) over a
-//! goal register, a produced register, a heap frame stack, and an explicit
-//! typing-context stack — never mutually recursive methods bounded by a depth
-//! budget. This is the standard adversarial-depth machine that
-//! [`crate::conv`] and [`crate::export`] already use; it meets the
-//! docs/workflow/rust.md "input recursion: none" discipline (gandr-98o).
-//!
-//! Two self-contained clusters call each other directly, never recursively:
-//! [`type_level`] (value-/computation-type formation) is its own iterative walk
-//! the machine calls directly, exactly as it calls the already-iterative
-//! [`crate::conv`]; the machine defunctionalizes only the term-level
-//! self-recursion of synthesis and checking. The context is an explicit `Vec`
-//! of [`Held`] slots — `Borrowed` for a declaration-derived type, `Owned` for a
-//! type synthesized and bound by `Bind`/`Case` — with explicit scope-exit
-//! frames popping it; lookup clones the slot (total via the iterative `Clone`
-//! of gandr-i3i).
+//! The checker runs as an explicit **defunctionalized machine** ([`run`]) over
+//! a goal register, a produced register, a heap frame stack, and an explicit
+//! typing-context stack of [`ValueTypeId`] slots — never mutually recursive
+//! methods bounded by a depth budget — so it is **total on adversarial depth**
+//! (export decode can build an arbitrarily deep term from bytes). This is the
+//! standard adversarial-depth machine [`crate::conv`] and [`crate::export`]
+//! already use; it meets the docs/workflow/rust.md "input recursion: none"
+//! discipline (gandr-98o). A node is read out of the arena by a shallow clone
+//! (its children are `Copy` ids, so the clone is `O(1)`), releasing the arena
+//! borrow before synthesis mints into it. [`type_level`] (value-/computation-
+//! type formation) is its own iterative walk the machine calls directly, as it
+//! calls the already-iterative [`crate::conv`].
 //!
 //! ## Correspondence — old recursive arm ↔ machine step
 //!
 //! Each arm of the former recursive presentation maps to exactly one goal
 //! expansion plus (for a multi-child arm) one continuation frame. The reviewer
-//! walks this table:
+//! walks this table (a TCB audit artifact):
 //!
 //! | recursive arm                    | goal push(es)                         | frame(s)                              |
 //! | -------------------------------- | ------------------------------------- | ------------------------------------- |
@@ -59,10 +65,10 @@
 //! | `value_type_level` Lift          | `Value(inner)`                        | `LiftCheck`                           |
 //! | `comp_type_level` Returner       | `Value(result)` (passes through)      | —                                     |
 //! | `comp_type_level` Arrow          | `Value(domain)`                       | `MaxSecondComp`, `MaxWith`            |
-//! | `synth_value` Var/Const/Unit/Lit | leaf → lookup / clone                 | —                                     |
+//! | `synth_value` Var/Const/Unit/Lit | leaf → lookup / resolve               | —                                     |
 //! | `synth_value` Pair               | `SynthValue(first)`                   | `SynthPairFirst`, `SynthPairSecond`   |
 //! | `synth_value` Thunk              | `SynthComp(body)`                     | `SynthThunk`                          |
-//! | `synth_value` Lift               | `SynthValue(body)`                    | `SynthLift`                           |
+//! | `synth_value` Lift              | `SynthValue(body)`                    | `SynthLift`                           |
 //! | `synth_value` Injection          | leaf → `NotInferable`                 | —                                     |
 //! | `check_value` Injection          | `CheckValue(body, summand)`           | —                                     |
 //! | `check_value` Pair               | `CheckValue(first, ft)`               | `CheckPairSecond`                     |
@@ -80,23 +86,30 @@
 //! | `check_comp` Case               | `SynthValue(scrutinee)`               | `CheckCaseScrutinee/AfterLeft`, `ScopeExit` |
 //! | `check_comp` synth-fallthrough  | `SynthComp(computation)`              | `ConvertComp`                         |
 
-use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::mem;
 
 use gandr_kernel_strata::Level;
 
+use crate::arena::CompTypeId;
+use crate::arena::ComputationId;
+use crate::arena::TermArena;
+use crate::arena::ValueId;
+use crate::arena::ValueTypeId;
 use crate::conv::Convertibility;
 use crate::conv::convert_comp_type;
 use crate::conv::convert_value_type;
 use crate::conv::convertible_comp_types;
-use crate::env::Environment;
+use crate::decl::Declaration;
+use crate::decl::DeclarationContent;
+use crate::env::AdmittedDeclaration;
+use crate::error::CompTypeSnapshot;
 use crate::error::ComputationTypeMismatch;
 use crate::error::ExpectedComputationShape;
 use crate::error::ExpectedValueShape;
 use crate::error::KernelError;
 use crate::error::NonInferableForm;
 use crate::error::RegisterFault;
+use crate::error::ValueTypeSnapshot;
 use crate::levels::LevelContext;
 use crate::term::Computation;
 use crate::term::DeBruijnIndex;
@@ -105,416 +118,109 @@ use crate::term::Value;
 use crate::types::CompType;
 use crate::types::ValueType;
 
-/// A type held either as a borrow into the checked declaration (`Borrowed`,
-/// costing nothing) or as an owned type synthesized during checking (`Owned`).
-///
-/// The context slots and the check-mode expected types are `Held`: a
-/// declaration-derived type is a cheap borrow, and a type produced by synthesis
-/// (a `Bind`/`Case` binder, or an application's domain) is owned in place.
-enum Held<'held, T>
-{
-    /// A borrow into the declaration being checked.
-    Borrowed(&'held T),
-    /// A type owned by the machine (synthesized during checking).
-    Owned(T),
-}
-
-impl<T> Held<'_, T>
-{
-    /// Borrow the held type, whichever way it is held.
-    ///
-    /// # Contract
-    /// - requires: nothing.
-    /// - ensures: a shared reference to the held type.
-    /// - provides: the uniform read the conversion faces need.
-    /// - fails: never.
-    /// - panics: none.
-    #[inline]
-    #[expect(
-        clippy::match_same_arms,
-        reason = "the two arms bind a reference of different provenance (a copied 'held borrow vs a fresh borrow of an owned value) that an or-pattern cannot unify"
-    )]
-    fn get(&self) -> &T
-    {
-        match *self {
-            | Held::Borrowed(inner) => inner,
-            | Held::Owned(ref inner) => inner,
-        }
-    }
-}
-
-impl Held<'_, ValueType>
-{
-    /// Take ownership of the held value type, cloning a borrow.
-    ///
-    /// # Contract
-    /// - requires: nothing.
-    /// - ensures: the owned value type (a `Borrowed` is cloned iteratively).
-    /// - provides: the owned type a shape-mismatch error payload boxes.
-    /// - fails: never.
-    /// - panics: none.
-    #[inline]
-    fn into_owned(self) -> ValueType
-    {
-        match self {
-            | Held::Borrowed(inner) => inner.clone(),
-            | Held::Owned(inner) => inner,
-        }
-    }
-}
-
-impl Held<'_, CompType>
-{
-    /// Take ownership of the held computation type, cloning a borrow.
-    ///
-    /// # Contract
-    /// - requires: nothing.
-    /// - ensures: the owned computation type (a `Borrowed` is cloned).
-    /// - provides: the owned type a shape-mismatch error payload boxes.
-    /// - fails: never.
-    /// - panics: none.
-    #[inline]
-    fn into_owned(self) -> CompType
-    {
-        match self {
-            | Held::Borrowed(inner) => inner.clone(),
-            | Held::Owned(inner) => inner,
-        }
-    }
-
-    /// A second held reference to the same computation type: a `Borrowed`
-    /// reference is copied, an `Owned` type is cloned. Used to check both
-    /// `case` branches against one expected type.
-    ///
-    /// # Contract
-    /// - requires: nothing.
-    /// - ensures: a `Held` denoting the same type; no clone for a `Borrowed`
-    ///   expected (the common declaration-check path), one clone for an
-    ///   `Owned`.
-    /// - provides: the shared expected the case-check propagates to both
-    ///   branches without an unbounded clone blow-up.
-    /// - fails: never.
-    /// - panics: none.
-    #[inline]
-    fn dup(&self) -> Self
-    {
-        match *self {
-            | Held::Borrowed(inner) => Held::Borrowed(inner),
-            | Held::Owned(ref inner) => Held::Owned(inner.clone()),
-        }
-    }
-}
-
-/// Split a held product into its two component value types.
+/// Resolve a value id to a shallow-cloned node, or the fail-closed arena fault.
 ///
 /// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok((first, second))` when the held type is a product — each a
-///   `Held` of the same provenance (a borrow of a `Borrowed`, an owned
-///   placeholder-swap of an `Owned`); `Err(held)` unchanged otherwise.
-/// - provides: the by-value product elimination the pair-check needs.
-/// - fails: `Err(held)` when the type is not a product.
+/// - requires: `id` was minted into `arena`.
+/// - ensures: `Ok(value)` — a shallow (`O(1)`) clone whose children are `Copy`
+///   ids, releasing the arena borrow so synthesis may mint into it.
+/// - provides: the machine's total node read.
+/// - fails: [`KernelError::ArenaFault`] on a dangling id (unreachable under the
+///   minting invariant; surfaced not trusted).
 /// - panics: none.
-fn held_take_product(
-    held: Held<'_, ValueType>
-) -> Result<(Held<'_, ValueType>, Held<'_, ValueType>), Held<'_, ValueType>>
+#[inline]
+fn read_value(
+    arena: &TermArena,
+    id: ValueId,
+) -> Result<Value, KernelError>
 {
-    match held {
-        | Held::Borrowed(value_type) => match *value_type {
-            | ValueType::Product(ref first, ref second) => {
-                Ok((Held::Borrowed(first), Held::Borrowed(second)))
-            },
-            | _ => Err(Held::Borrowed(value_type)),
-        },
-        | Held::Owned(value_type) => match take_product(value_type) {
-            | Ok((first, second)) => Ok((Held::Owned(*first), Held::Owned(*second))),
-            | Err(value_type) => Err(Held::Owned(value_type)),
-        },
+    arena.value(id).cloned().ok_or(KernelError::ArenaFault)
+}
+
+/// Resolve a computation id to a shallow-cloned node, or the arena fault.
+#[inline]
+fn read_computation(
+    arena: &TermArena,
+    id: ComputationId,
+) -> Result<Computation, KernelError>
+{
+    arena
+        .computation(id)
+        .cloned()
+        .ok_or(KernelError::ArenaFault)
+}
+
+/// A value-type shape mismatch: snapshot the offending type and name the shape.
+#[inline]
+fn value_shape_mismatch(
+    arena: &TermArena,
+    expected: ExpectedValueShape,
+    actual: ValueTypeId,
+) -> KernelError
+{
+    let (snapshot, root) = arena.snapshot_value_type(actual);
+    KernelError::ValueShapeMismatch {
+        expected,
+        actual: alloc::boxed::Box::new(ValueTypeSnapshot::new(snapshot, root)),
     }
 }
 
-/// Split a held sum into its two summand value types.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok((left, right))` when the held type is a sum; `Err(held)`
-///   unchanged otherwise.
-/// - provides: the by-value sum elimination the injection-check needs.
-/// - fails: `Err(held)` when the type is not a sum.
-/// - panics: none.
-fn held_take_sum(
-    held: Held<'_, ValueType>
-) -> Result<(Held<'_, ValueType>, Held<'_, ValueType>), Held<'_, ValueType>>
+/// A computation-type shape mismatch: snapshot the offending type.
+#[inline]
+fn comp_shape_mismatch(
+    arena: &TermArena,
+    expected: ExpectedComputationShape,
+    actual: CompTypeId,
+) -> KernelError
 {
-    match held {
-        | Held::Borrowed(value_type) => match *value_type {
-            | ValueType::Sum(ref left, ref right) => {
-                Ok((Held::Borrowed(left), Held::Borrowed(right)))
-            },
-            | _ => Err(Held::Borrowed(value_type)),
-        },
-        | Held::Owned(value_type) => match take_sum(value_type) {
-            | Ok((left, right)) => Ok((Held::Owned(*left), Held::Owned(*right))),
-            | Err(value_type) => Err(Held::Owned(value_type)),
-        },
+    let (snapshot, root) = arena.snapshot_comp_type(actual);
+    KernelError::ComputationShapeMismatch {
+        expected,
+        actual: alloc::boxed::Box::new(CompTypeSnapshot::new(snapshot, root)),
     }
 }
 
-/// Take a held thunk type's computation type.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok(codomain)` when the held type is a thunk; `Err(held)`
-///   unchanged otherwise.
-/// - provides: the by-value thunk elimination the thunk-check needs.
-/// - fails: `Err(held)` when the type is not a thunk.
-/// - panics: none.
-fn held_take_thunk(held: Held<'_, ValueType>) -> Result<Held<'_, CompType>, Held<'_, ValueType>>
-{
-    match held {
-        | Held::Borrowed(value_type) => match *value_type {
-            | ValueType::Thunk(ref body) => Ok(Held::Borrowed(body)),
-            | _ => Err(Held::Borrowed(value_type)),
-        },
-        | Held::Owned(value_type) => match take_thunk(value_type) {
-            | Ok(body) => Ok(Held::Owned(*body)),
-            | Err(value_type) => Err(Held::Owned(value_type)),
-        },
-    }
-}
-
-/// Split a held arrow into its domain value type and codomain computation type.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok((domain, codomain))` when the held type is an arrow;
-///   `Err(held)` unchanged otherwise.
-/// - provides: the by-value arrow elimination the lambda-check needs.
-/// - fails: `Err(held)` when the type is not an arrow.
-/// - panics: none.
-fn held_take_arrow(
-    held: Held<'_, CompType>
-) -> Result<(Held<'_, ValueType>, Held<'_, CompType>), Held<'_, CompType>>
-{
-    match held {
-        | Held::Borrowed(comp_type) => match *comp_type {
-            | CompType::Arrow {
-                ref domain,
-                ref codomain,
-            } => Ok((Held::Borrowed(domain), Held::Borrowed(codomain))),
-            | _ => Err(Held::Borrowed(comp_type)),
-        },
-        | Held::Owned(comp_type) => match take_arrow(comp_type) {
-            | Ok((domain, codomain)) => Ok((Held::Owned(*domain), Held::Owned(*codomain))),
-            | Err(comp_type) => Err(Held::Owned(comp_type)),
-        },
-    }
-}
-
-/// Take a held returner type's result value type.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok(result)` when the held type is a returner; `Err(held)`
-///   unchanged otherwise.
-/// - provides: the by-value returner elimination the return-check needs.
-/// - fails: `Err(held)` when the type is not a returner.
-/// - panics: none.
-fn held_take_returner(held: Held<'_, CompType>) -> Result<Held<'_, ValueType>, Held<'_, CompType>>
-{
-    match held {
-        | Held::Borrowed(comp_type) => match *comp_type {
-            | CompType::Returner(ref result) => Ok(Held::Borrowed(result)),
-            | _ => Err(Held::Borrowed(comp_type)),
-        },
-        | Held::Owned(comp_type) => match take_returner(comp_type) {
-            | Ok(result) => Ok(Held::Owned(*result)),
-            | Err(comp_type) => Err(Held::Owned(comp_type)),
-        },
-    }
-}
-
-/// Extract an owned product's two components by placeholder-swap.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok((first, second))` when `value_type` is a product, its child
-///   boxes moved out and replaced by placeholder leaves; `Err(value_type)`
-///   unchanged otherwise.
-/// - provides: the owned-product elimination [`held_take_product`] needs
-///   without an E0509 move out of a `Drop` type.
-/// - fails: `Err(value_type)` when the type is not a product.
-/// - panics: none.
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "matching a mutable borrow of the owned type to swap its child boxes in place; the binding is a mutable reference by intent"
-)]
-fn take_product(mut value_type: ValueType) -> Result<(Box<ValueType>, Box<ValueType>), ValueType>
-{
-    if let ValueType::Product(first, second) = &mut value_type {
-        let first = mem::replace(first, Box::new(ValueType::Unit));
-        let second = mem::replace(second, Box::new(ValueType::Unit));
-        Ok((first, second))
-    }
-    else {
-        Err(value_type)
-    }
-}
-
-/// Extract an owned arrow's domain and codomain by placeholder-swap.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok((domain, codomain))` when `comp_type` is an arrow, with its
-///   child boxes moved out and replaced in place by placeholder leaves so the
-///   drained husk drops in `O(1)`; `Err(comp_type)` returns the value unchanged
-///   otherwise.
-/// - provides: the by-value arrow elimination the synthesizing checker needs
-///   without moving a field out of a `Drop` type (the E0509 interlock the
-///   worklist `Drop` forces, gandr-i3i).
-/// - fails: `Err(comp_type)` when the type is not an arrow.
-/// - panics: none.
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "matching a mutable borrow of the owned type to swap its child boxes in place; the binding is a mutable reference by intent"
-)]
-fn take_arrow(mut comp_type: CompType) -> Result<(Box<ValueType>, Box<CompType>), CompType>
-{
-    if let CompType::Arrow { domain, codomain } = &mut comp_type {
-        let domain = mem::replace(domain, Box::new(ValueType::Unit));
-        let codomain = mem::replace(
-            codomain,
-            Box::new(CompType::Returner(Box::new(ValueType::Unit))),
-        );
-        Ok((domain, codomain))
-    }
-    else {
-        Err(comp_type)
-    }
-}
-
-/// Extract an owned returner's result type by placeholder-swap.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok(result)` when `comp_type` is a returner, its child box moved
-///   out and replaced by a placeholder leaf; `Err(comp_type)` unchanged
-///   otherwise.
-/// - provides: the by-value returner elimination the checker needs without an
-///   E0509 move out of a `Drop` type.
-/// - fails: `Err(comp_type)` when the type is not a returner.
-/// - panics: none.
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "matching a mutable borrow of the owned type to swap its child box in place; the binding is a mutable reference by intent"
-)]
-fn take_returner(mut comp_type: CompType) -> Result<Box<ValueType>, CompType>
-{
-    if let CompType::Returner(result) = &mut comp_type {
-        let result = mem::replace(result, Box::new(ValueType::Unit));
-        Ok(result)
-    }
-    else {
-        Err(comp_type)
-    }
-}
-
-/// Extract an owned thunk type's computation type by placeholder-swap.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok(codomain)` when `value_type` is a thunk, its child box moved
-///   out and replaced by a placeholder leaf; `Err(value_type)` unchanged
-///   otherwise.
-/// - provides: the by-value thunk elimination the checker needs without an
-///   E0509 move out of a `Drop` type.
-/// - fails: `Err(value_type)` when the type is not a thunk.
-/// - panics: none.
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "matching a mutable borrow of the owned type to swap its child box in place; the binding is a mutable reference by intent"
-)]
-fn take_thunk(mut value_type: ValueType) -> Result<Box<CompType>, ValueType>
-{
-    if let ValueType::Thunk(codomain) = &mut value_type {
-        let codomain = mem::replace(
-            codomain,
-            Box::new(CompType::Returner(Box::new(ValueType::Unit))),
-        );
-        Ok(codomain)
-    }
-    else {
-        Err(value_type)
-    }
-}
-
-/// Extract an owned sum type's two summands by placeholder-swap.
-///
-/// # Contract
-/// - requires: nothing.
-/// - ensures: `Ok((left, right))` when `value_type` is a sum, its child boxes
-///   moved out and replaced by placeholder leaves; `Err(value_type)` unchanged
-///   otherwise.
-/// - provides: the by-value sum elimination the checker needs without an E0509
-///   move out of a `Drop` type.
-/// - fails: `Err(value_type)` when the type is not a sum.
-/// - panics: none.
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "matching a mutable borrow of the owned type to swap its child boxes in place; the binding is a mutable reference by intent"
-)]
-fn take_sum(mut value_type: ValueType) -> Result<(Box<ValueType>, Box<ValueType>), ValueType>
-{
-    if let ValueType::Sum(left, right) = &mut value_type {
-        let left = mem::replace(left, Box::new(ValueType::Unit));
-        let right = mem::replace(right, Box::new(ValueType::Unit));
-        Ok((left, right))
-    }
-    else {
-        Err(value_type)
-    }
-}
-
-/// A pending type-formation obligation over a borrowed type node — the goal of
-/// the iterative [`type_level`] walk.
-enum TypeLevelGoal<'ty>
+/// A pending type-formation obligation over a type-node id — the goal of the
+/// iterative [`type_level`] walk.
+#[derive(Clone, Copy)]
+enum TypeLevelGoal
 {
     /// The level of a value type.
-    Value(&'ty ValueType),
+    Value(ValueTypeId),
     /// The level of a computation type.
-    Comp(&'ty CompType),
+    Comp(CompTypeId),
 }
 
 /// A continuation of the iterative type-formation walk.
-enum TypeLevelFrame<'ty>
+enum TypeLevelFrame
 {
     /// The first (value-type) operand's level is in the register; compute the
     /// second value-type operand's level next (a product or sum).
-    MaxSecondValue(&'ty ValueType),
+    MaxSecondValue(ValueTypeId),
     /// The first (value-type) operand's level is in the register; compute the
     /// second (computation-type) operand's level next (an arrow).
-    MaxSecondComp(&'ty CompType),
+    MaxSecondComp(CompTypeId),
     /// The second operand's level is in the register; join with the first.
     MaxWith(Level),
     /// The inner level is in the register; check the lift's strictness and
     /// replace it with the target level.
-    LiftCheck(&'ty Level),
+    LiftCheck(Level),
 }
 
 /// The universe level of a well-formed value or computation type — the K1
 /// well-formedness gate, computed iteratively so it is total on any depth.
 ///
 /// # Contract
-/// - requires: nothing.
+/// - requires: the root id resolves in `arena`.
 /// - ensures: `Ok(level)` — the minimal universe level of the type — exactly
 ///   when every embedded level is in scope, every lift strictly raises, and no
 ///   successor overflows; a bare `Universe(l)` forms at `l + 1`. The walk is
 ///   iterative over an explicit heap frame stack, so it is total on any depth.
-/// - provides: value-/computation-type formation for
-///   [`Checker::check_value_type`] and the machine's `Lift` synthesis.
+/// - provides: value-/computation-type formation for [`check_value_type`] and
+///   the machine's `Lift` synthesis.
 /// - fails: [`KernelError::LevelVariableOutOfScope`],
 ///   [`KernelError::LevelArithmetic`], [`KernelError::UniverseViolation`],
-///   [`KernelError::LevelOracleFault`].
+///   [`KernelError::LevelOracleFault`], [`KernelError::ArenaFault`].
 /// - panics: none.
 ///
 /// # Errors
@@ -529,52 +235,52 @@ enum TypeLevelFrame<'ty>
 /// - witness: `check::tests::lift_requires_a_strictly_higher_target`
 /// - witness: `check::tests::arrow_level_is_the_join`
 fn type_level(
+    arena: &TermArena,
     levels: &LevelContext,
-    root: TypeLevelGoal<'_>,
+    root: TypeLevelGoal,
 ) -> Result<Level, KernelError>
 {
-    let mut frames: Vec<TypeLevelFrame<'_>> = Vec::new();
+    let mut frames: Vec<TypeLevelFrame> = Vec::new();
     let mut goal = root;
     'expand: loop {
         let mut produced: Level = match goal {
-            | TypeLevelGoal::Value(value_type) => match *value_type {
-                | ValueType::Base(_) | ValueType::Unit => Level::zero(),
-                | ValueType::Universe(ref level) => {
-                    levels.check_level_scope(level)?;
-                    level.succ()?
-                },
-                | ValueType::Product(ref first, ref second)
-                | ValueType::Sum(ref first, ref second) => {
-                    frames.push(TypeLevelFrame::MaxSecondValue(second));
-                    goal = TypeLevelGoal::Value(first);
-                    continue 'expand;
-                },
-                | ValueType::Thunk(ref body) => {
-                    goal = TypeLevelGoal::Comp(body);
-                    continue 'expand;
-                },
-                | ValueType::Lift {
-                    ref inner,
-                    ref target,
-                } => {
-                    frames.push(TypeLevelFrame::LiftCheck(target));
-                    goal = TypeLevelGoal::Value(inner);
-                    continue 'expand;
-                },
+            | TypeLevelGoal::Value(id) => {
+                let value_type = arena.value_type(id).ok_or(KernelError::ArenaFault)?;
+                match *value_type {
+                    | ValueType::Base(_) | ValueType::Unit => Level::zero(),
+                    | ValueType::Universe(ref level) => {
+                        levels.check_level_scope(level)?;
+                        level.succ()?
+                    },
+                    | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
+                        frames.push(TypeLevelFrame::MaxSecondValue(second));
+                        goal = TypeLevelGoal::Value(first);
+                        continue 'expand;
+                    },
+                    | ValueType::Thunk(body) => {
+                        goal = TypeLevelGoal::Comp(body);
+                        continue 'expand;
+                    },
+                    | ValueType::Lift { inner, ref target } => {
+                        frames.push(TypeLevelFrame::LiftCheck(target.clone()));
+                        goal = TypeLevelGoal::Value(inner);
+                        continue 'expand;
+                    },
+                }
             },
-            | TypeLevelGoal::Comp(comp_type) => match *comp_type {
-                | CompType::Returner(ref result) => {
-                    goal = TypeLevelGoal::Value(result);
-                    continue 'expand;
-                },
-                | CompType::Arrow {
-                    ref domain,
-                    ref codomain,
-                } => {
-                    frames.push(TypeLevelFrame::MaxSecondComp(codomain));
-                    goal = TypeLevelGoal::Value(domain);
-                    continue 'expand;
-                },
+            | TypeLevelGoal::Comp(id) => {
+                let comp_type = arena.comp_type(id).ok_or(KernelError::ArenaFault)?;
+                match *comp_type {
+                    | CompType::Returner(result) => {
+                        goal = TypeLevelGoal::Value(result);
+                        continue 'expand;
+                    },
+                    | CompType::Arrow { domain, codomain } => {
+                        frames.push(TypeLevelFrame::MaxSecondComp(codomain));
+                        goal = TypeLevelGoal::Value(domain);
+                        continue 'expand;
+                    },
+                }
             },
         };
         loop {
@@ -597,9 +303,9 @@ fn type_level(
                     produced = first.max(&produced);
                 },
                 | TypeLevelFrame::LiftCheck(target) => {
-                    levels.check_level_scope(target)?;
-                    levels.check_universe_below(&produced, target)?;
-                    produced = target.clone();
+                    levels.check_level_scope(&target)?;
+                    levels.check_universe_below(&produced, &target)?;
+                    produced = target;
                 },
             }
         }
@@ -607,28 +313,28 @@ fn type_level(
 }
 
 /// A result produced by the checker machine into its register.
+#[derive(Clone, Copy)]
 enum Produced
 {
-    /// A synthesized value type.
-    ValueType(ValueType),
-    /// A synthesized computation type.
-    CompType(CompType),
+    /// A synthesized value type (root id into the arena).
+    ValueType(ValueTypeId),
+    /// A synthesized computation type (root id into the arena).
+    CompType(CompTypeId),
     /// A check succeeded (no type is carried).
     Checked,
 }
 
-/// Project a synthesized value type out of the produced register.
+/// Project a synthesized value-type id out of the produced register.
 ///
 /// # Contract
 /// - requires: the register was set by a `SynthValue` goal — its variant
-///   matches by construction (a value goal produces a value type; the module
-///   correspondence table is the wiring audit).
-/// - ensures: `Ok(value_type)` — the produced value type.
+///   matches by construction (the module correspondence table is the wiring
+///   audit).
+/// - ensures: `Ok(id)` — the produced value-type id.
 /// - provides: the fail-closed register projection the value-consuming frames
 ///   need: a polarity mismatch is unreachable when the machine is wired
-///   correctly, and is surfaced rather than trusted (the
-///   [`KernelError::LevelOracleFault`] posture) so a wiring defect rejects the
-///   declaration instead of fabricating a type that could wrongly convert.
+///   correctly, and is surfaced rather than trusted so a wiring defect rejects
+///   the declaration instead of fabricating a type that could wrongly convert.
 /// - fails: [`KernelError::CheckerRegisterFault`] on a non-value register.
 /// - panics: none.
 ///
@@ -640,22 +346,22 @@ enum Produced
 ///   by construction; it is pinned directly at the projection.
 /// - witness: `check::tests::register_polarity_faults_fail_closed`
 #[inline]
-fn produced_value_type(produced: Produced) -> Result<ValueType, KernelError>
+fn produced_value_type(produced: Produced) -> Result<ValueTypeId, KernelError>
 {
     match produced {
-        | Produced::ValueType(value_type) => Ok(value_type),
+        | Produced::ValueType(id) => Ok(id),
         | Produced::CompType(_) | Produced::Checked => Err(KernelError::CheckerRegisterFault(
             RegisterFault::ExpectedValueType,
         )),
     }
 }
 
-/// Project a synthesized computation type out of the produced register.
+/// Project a synthesized computation-type id out of the produced register.
 ///
 /// # Contract
 /// - requires: the register was set by a `SynthComp` goal (its variant matches
 ///   by construction, as in [`produced_value_type`]).
-/// - ensures: `Ok(comp_type)` — the produced computation type.
+/// - ensures: `Ok(id)` — the produced computation-type id.
 /// - provides: the fail-closed register projection the computation-consuming
 ///   frames need (see [`produced_value_type`] for the posture).
 /// - fails: [`KernelError::CheckerRegisterFault`] on a non-computation
@@ -669,147 +375,171 @@ fn produced_value_type(produced: Produced) -> Result<ValueType, KernelError>
 /// - hypothesis: L3 — as [`produced_value_type`].
 /// - witness: `check::tests::register_polarity_faults_fail_closed`
 #[inline]
-fn produced_comp_type(produced: Produced) -> Result<CompType, KernelError>
+fn produced_comp_type(produced: Produced) -> Result<CompTypeId, KernelError>
 {
     match produced {
-        | Produced::CompType(comp_type) => Ok(comp_type),
+        | Produced::CompType(id) => Ok(id),
         | Produced::ValueType(_) | Produced::Checked => Err(KernelError::CheckerRegisterFault(
             RegisterFault::ExpectedCompType,
         )),
     }
 }
 
-/// A checking obligation over a borrowed term node — the goal of the machine.
-enum Goal<'decl>
+/// A checking obligation over a term-node id — the goal of the machine.
+#[derive(Clone, Copy)]
+enum Goal
 {
     /// Synthesize a value's type.
-    SynthValue(&'decl Value),
+    SynthValue(ValueId),
     /// Check a value against an expected value type.
-    CheckValue(&'decl Value, Held<'decl, ValueType>),
+    CheckValue(ValueId, ValueTypeId),
     /// Synthesize a computation's type.
-    SynthComp(&'decl Computation),
+    SynthComp(ComputationId),
     /// Check a computation against an expected computation type.
-    CheckComp(&'decl Computation, Held<'decl, CompType>),
+    CheckComp(ComputationId, CompTypeId),
 }
 
-/// A continuation of the checker machine.
-enum Frame<'decl>
+/// A continuation of the checker machine (every held type is a `Copy` id).
+enum Frame
 {
     /// A pair synth: the first component is synthesizing; the second source is
     /// held.
-    SynthPairFirst(&'decl Value),
+    SynthPairFirst(ValueId),
     /// A pair synth: the first component is synthesized; the second is
     /// synthesizing.
-    SynthPairSecond(ValueType),
+    SynthPairSecond(ValueTypeId),
     /// A thunk synth: the body computation is synthesizing.
     SynthThunk,
     /// A lift synth: the body is synthesizing; the target level is held.
-    SynthLift(&'decl Level),
+    SynthLift(Level),
     /// A pair check: the first component checked; check the second against the
     /// held component type.
-    CheckPairSecond(&'decl Value, Held<'decl, ValueType>),
+    CheckPairSecond(ValueId, ValueTypeId),
     /// A mode-switch value conversion: the value synthesized; convert against
     /// the held expected type.
-    ConvertValue(Held<'decl, ValueType>),
+    ConvertValue(ValueTypeId),
     /// An application: the head is synthesized; the argument source is held.
-    SynthApply(&'decl Value),
+    SynthApply(ValueId),
     /// An application: the argument checked; produce the held codomain.
-    ProduceComp(CompType),
+    ProduceComp(CompTypeId),
     /// A force: the value is synthesized.
     SynthForce,
     /// A returner synth: the value is synthesized.
     SynthReturn,
     /// A bind synth: the bound computation is synthesized; the body source is
     /// held. The body's synthesized type becomes the bind's type.
-    SynthBind(&'decl Computation),
+    SynthBind(ComputationId),
     /// A case synth: the scrutinee is synthesized; both branch sources are
     /// held.
-    SynthCaseScrutinee(&'decl Computation, &'decl Computation),
+    SynthCaseScrutinee(ComputationId, ComputationId),
     /// A case synth: the left branch synthesized; its type and the right
     /// summand are held while the right branch synthesizes.
     SynthCaseAfterLeft
     {
         /// The right branch source.
-        on_right: &'decl Computation,
+        on_right: ComputationId,
         /// The right summand type (a context slot for the right branch).
-        right: ValueType,
+        right: ValueTypeId,
     },
     /// A case synth: both branches synthesized; the left type is held for the
     /// convergence check.
     SynthCaseAfterRight
     {
         /// The left branch's synthesized type.
-        left_type: CompType,
+        left_type: CompTypeId,
     },
     /// A mode-switch computation conversion: the computation synthesized;
     /// convert against the held expected type.
-    ConvertComp(Held<'decl, CompType>),
+    ConvertComp(CompTypeId),
     /// A bind check: the bound computation synthesized; the body source and the
     /// expected type are held.
-    CheckBind(&'decl Computation, Held<'decl, CompType>),
+    CheckBind(ComputationId, CompTypeId),
     /// A case check: the scrutinee synthesized; the branch sources and expected
     /// type are held.
     CheckCaseScrutinee
     {
         /// The left branch source.
-        on_left: &'decl Computation,
+        on_left: ComputationId,
         /// The right branch source.
-        on_right: &'decl Computation,
+        on_right: ComputationId,
         /// The expected type both branches check against.
-        expected: Held<'decl, CompType>,
+        expected: CompTypeId,
     },
     /// A case check: the left branch checked; the right source, right summand,
     /// and expected type are held.
     CheckCaseAfterLeft
     {
         /// The right branch source.
-        on_right: &'decl Computation,
+        on_right: ComputationId,
         /// The right summand type (a context slot for the right branch).
-        right: ValueType,
+        right: ValueTypeId,
         /// The expected type the right branch checks against.
-        expected: Held<'decl, CompType>,
+        expected: CompTypeId,
     },
     /// A binder scope closes: pop the innermost context slot.
     ScopeExit,
 }
 
-/// The value type bound at de Bruijn `index` in the explicit context, if in
+/// The value-type id bound at de Bruijn `index` in the explicit context, if in
 /// scope. The context head (last slot) is index `0`.
 ///
 /// # Contract
 /// - requires: nothing.
-/// - ensures: `Some(ty)` — an owned clone of the slot — when `index` names a
-///   binding, walking `index` slots inward from the top; `None` when it escapes
-///   the context. Iterative and closed over the finite context.
+/// - ensures: `Some(id)` when `index` names a binding, walking `index` slots
+///   inward from the top; `None` when it escapes the context. Iterative and
+///   closed over the finite context.
 /// - provides: the variable rule's lookup.
 /// - fails: `None` on an out-of-scope index.
 /// - panics: none.
 #[inline]
 fn lookup(
-    context: &[Held<'_, ValueType>],
+    context: &[ValueTypeId],
     index: DeBruijnIndex,
-) -> Option<ValueType>
+) -> Option<ValueTypeId>
 {
     let steps = usize::try_from(u32::from(index)).ok()?;
     let position = context.len().checked_sub(1)?.checked_sub(steps)?;
-    context.get(position).map(|slot| slot.get().clone())
+    context.get(position).copied()
+}
+
+/// Resolve a constant reference to the declared value-type id of a prior
+/// admitted declaration.
+///
+/// # Contract
+/// - requires: nothing.
+/// - ensures: `Some(id)` when `index` names an admitted declaration.
+/// - provides: the constant rule's resolver (a not-yet-admitted index is
+///   `None`, which the machine turns into `UnboundConstant`).
+/// - fails: `None` for an out-of-range index.
+/// - panics: none.
+#[inline]
+fn resolve_constant(
+    entries: &[AdmittedDeclaration],
+    index: crate::term::ConstantIndex,
+) -> Option<ValueTypeId>
+{
+    entries
+        .get(usize::from(index))
+        .map(AdmittedDeclaration::declared_id)
 }
 
 /// Run the defunctionalized checker machine from an initial goal and context to
-/// a verdict.
+/// a verdict, minting synthesized types into `arena`.
 ///
 /// # Contract
 /// - requires: `context` is the initial typing context (empty for a declaration
-///   body); `initial` is the root goal.
-/// - ensures: `Ok(produced)` — a synthesized type for a synth goal, or
+///   body); `initial`'s ids resolve in `arena`; `entries` is the environment's
+///   admission log (for constant resolution).
+/// - ensures: `Ok(produced)` — a synthesized type id for a synth goal, or
 ///   [`Produced::Checked`] for a check goal — exactly when the term checks or
 ///   synthesizes under the S1 rules; the walk is iterative over a heap frame
 ///   stack and an explicit context stack, so it is total on any term depth (no
-///   input-scaled recursion; gandr-98o).
+///   input-scaled recursion; gandr-98o). Synthesized types are minted into
+///   `arena` as intermediates the caller truncates after the verdict.
 /// - provides: the shared engine of every S1 checking and synthesis judgment.
 /// - fails: any [`KernelError`] a rule surfaces (shape mismatch, non-inferable
-///   form, unbound reference, conversion failure, case-branch divergence, or a
-///   level fault).
+///   form, unbound reference, conversion failure, case-branch divergence, a
+///   level fault, or the fail-closed arena/register faults).
 /// - panics: none.
 ///
 /// # Errors
@@ -818,11 +548,9 @@ fn lookup(
 /// # Adequacy
 /// - hypothesis: L2/L3 — the golden corpus checks well-typed declarations and
 ///   rejects ill-typed mutations, and the totality property confirms a verdict
-///   on any generated body; the L3 residues are each rule's failure arm (shape
-///   mismatch, conversion failure, unbound reference, non-inferable form, case
-///   divergence), pinned by negative unit goldens; the defunctionalized walk's
-///   totality on adversarial depth is pinned by a small-stack deep-chain
-///   witness.
+///   on any generated body; the L3 residues are each rule's failure arm, pinned
+///   by negative unit goldens; the defunctionalized walk's totality on
+///   adversarial depth is pinned by a small-stack deep-chain witness.
 /// - witness: `check::tests::variable_synthesizes_its_context_type`
 /// - witness: `check::tests::injection_is_not_inferable`
 /// - witness: `check::tests::injection_checks_against_its_sum`
@@ -838,48 +566,44 @@ fn lookup(
     clippy::too_many_lines,
     reason = "the flat defunctionalized checker enumerates every synthesis and checking arm in one goal/frame loop; splitting it would obscure the single machine the correspondence table audits"
 )]
-fn run<'decl>(
-    environment: &'decl Environment,
-    levels: &'decl LevelContext,
-    mut context: Vec<Held<'decl, ValueType>>,
-    initial: Goal<'decl>,
+fn run(
+    arena: &mut TermArena,
+    entries: &[AdmittedDeclaration],
+    levels: &LevelContext,
+    mut context: Vec<ValueTypeId>,
+    initial: Goal,
 ) -> Result<Produced, KernelError>
 {
-    let mut frames: Vec<Frame<'decl>> = Vec::new();
+    let mut frames: Vec<Frame> = Vec::new();
     let mut goal = initial;
     'expand: loop {
         let mut produced: Produced = match goal {
-            | Goal::SynthValue(value) => match *value {
+            | Goal::SynthValue(id) => match read_value(arena, id)? {
                 | Value::Variable(index) => {
                     let synthesized =
                         lookup(&context, index).ok_or(KernelError::UnboundVariable { index })?;
                     Produced::ValueType(synthesized)
                 },
                 | Value::Constant(index) => {
-                    let synthesized = environment
-                        .declared_value_type(index)
-                        .ok_or(KernelError::UnboundConstant { index })?
-                        .clone();
+                    let synthesized = resolve_constant(entries, index)
+                        .ok_or(KernelError::UnboundConstant { index })?;
                     Produced::ValueType(synthesized)
                 },
-                | Value::Unit => Produced::ValueType(ValueType::Unit),
+                | Value::Unit => Produced::ValueType(arena.value_type_unit()),
                 | Value::Literal(ref literal) => {
-                    Produced::ValueType(ValueType::Base(literal.base_type()))
+                    Produced::ValueType(arena.value_type_base(literal.base_type()))
                 },
-                | Value::Pair(ref first, ref second) => {
+                | Value::Pair(first, second) => {
                     frames.push(Frame::SynthPairFirst(second));
                     goal = Goal::SynthValue(first);
                     continue 'expand;
                 },
-                | Value::Thunk(ref body) => {
+                | Value::Thunk(body) => {
                     frames.push(Frame::SynthThunk);
                     goal = Goal::SynthComp(body);
                     continue 'expand;
                 },
-                | Value::Lift {
-                    ref target,
-                    ref body,
-                } => {
+                | Value::Lift { target, body } => {
                     frames.push(Frame::SynthLift(target));
                     goal = Goal::SynthValue(body);
                     continue 'expand;
@@ -890,9 +614,9 @@ fn run<'decl>(
                     });
                 },
             },
-            | Goal::CheckValue(value, expected) => match *value {
-                | Value::Injection(side, ref body) => match held_take_sum(expected) {
-                    | Ok((left, right)) => {
+            | Goal::CheckValue(id, expected) => match read_value(arena, id)? {
+                | Value::Injection(side, body) => match arena.value_type(expected) {
+                    | Some(&ValueType::Sum(left, right)) => {
                         let summand = match side {
                             | Side::Left => left,
                             | Side::Right => right,
@@ -900,69 +624,76 @@ fn run<'decl>(
                         goal = Goal::CheckValue(body, summand);
                         continue 'expand;
                     },
-                    | Err(expected) => {
-                        return Err(KernelError::ValueShapeMismatch {
-                            expected: ExpectedValueShape::Sum,
-                            actual: Box::new(expected.into_owned()),
-                        });
+                    | _ => {
+                        return Err(value_shape_mismatch(
+                            arena,
+                            ExpectedValueShape::Sum,
+                            expected,
+                        ));
                     },
                 },
-                | Value::Pair(ref first, ref second) => match held_take_product(expected) {
-                    | Ok((first_type, second_type)) => {
+                | Value::Pair(first, second) => match arena.value_type(expected) {
+                    | Some(&ValueType::Product(first_type, second_type)) => {
                         frames.push(Frame::CheckPairSecond(second, second_type));
                         goal = Goal::CheckValue(first, first_type);
                         continue 'expand;
                     },
-                    | Err(expected) => {
-                        return Err(KernelError::ValueShapeMismatch {
-                            expected: ExpectedValueShape::Product,
-                            actual: Box::new(expected.into_owned()),
-                        });
+                    | _ => {
+                        return Err(value_shape_mismatch(
+                            arena,
+                            ExpectedValueShape::Product,
+                            expected,
+                        ));
                     },
                 },
-                | Value::Thunk(ref body) => match held_take_thunk(expected) {
-                    | Ok(codomain) => {
+                | Value::Thunk(body) => match arena.value_type(expected) {
+                    | Some(&ValueType::Thunk(codomain)) => {
                         goal = Goal::CheckComp(body, codomain);
                         continue 'expand;
                     },
-                    | Err(expected) => {
-                        return Err(KernelError::ValueShapeMismatch {
-                            expected: ExpectedValueShape::Thunk,
-                            actual: Box::new(expected.into_owned()),
-                        });
+                    | _ => {
+                        return Err(value_shape_mismatch(
+                            arena,
+                            ExpectedValueShape::Thunk,
+                            expected,
+                        ));
                     },
                 },
-                | _ => {
+                | Value::Variable(_)
+                | Value::Constant(_)
+                | Value::Unit
+                | Value::Literal(_)
+                | Value::Lift { .. } => {
                     frames.push(Frame::ConvertValue(expected));
-                    goal = Goal::SynthValue(value);
+                    goal = Goal::SynthValue(id);
                     continue 'expand;
                 },
             },
-            | Goal::SynthComp(computation) => match *computation {
-                | Computation::Application(ref head, ref argument) => {
+            | Goal::SynthComp(id) => match read_computation(arena, id)? {
+                | Computation::Application(head, argument) => {
                     frames.push(Frame::SynthApply(argument));
                     goal = Goal::SynthComp(head);
                     continue 'expand;
                 },
-                | Computation::Force(ref value) => {
+                | Computation::Force(value) => {
                     frames.push(Frame::SynthForce);
                     goal = Goal::SynthValue(value);
                     continue 'expand;
                 },
-                | Computation::Return(ref value) => {
+                | Computation::Return(value) => {
                     frames.push(Frame::SynthReturn);
                     goal = Goal::SynthValue(value);
                     continue 'expand;
                 },
-                | Computation::Bind(ref bound, ref body) => {
+                | Computation::Bind(bound, body) => {
                     frames.push(Frame::SynthBind(body));
                     goal = Goal::SynthComp(bound);
                     continue 'expand;
                 },
                 | Computation::Case {
-                    ref scrutinee,
-                    ref on_left,
-                    ref on_right,
+                    scrutinee,
+                    on_left,
+                    on_right,
                 } => {
                     frames.push(Frame::SynthCaseScrutinee(on_left, on_right));
                     goal = Goal::SynthValue(scrutinee);
@@ -974,42 +705,44 @@ fn run<'decl>(
                     });
                 },
             },
-            | Goal::CheckComp(computation, expected) => match *computation {
-                | Computation::Lambda(ref body) => match held_take_arrow(expected) {
-                    | Ok((domain, codomain)) => {
+            | Goal::CheckComp(id, expected) => match read_computation(arena, id)? {
+                | Computation::Lambda(body) => match arena.comp_type(expected) {
+                    | Some(&CompType::Arrow { domain, codomain }) => {
                         context.push(domain);
                         frames.push(Frame::ScopeExit);
                         goal = Goal::CheckComp(body, codomain);
                         continue 'expand;
                     },
-                    | Err(expected) => {
-                        return Err(KernelError::ComputationShapeMismatch {
-                            expected: ExpectedComputationShape::Arrow,
-                            actual: Box::new(expected.into_owned()),
-                        });
+                    | _ => {
+                        return Err(comp_shape_mismatch(
+                            arena,
+                            ExpectedComputationShape::Arrow,
+                            expected,
+                        ));
                     },
                 },
-                | Computation::Return(ref value) => match held_take_returner(expected) {
-                    | Ok(result) => {
+                | Computation::Return(value) => match arena.comp_type(expected) {
+                    | Some(&CompType::Returner(result)) => {
                         goal = Goal::CheckValue(value, result);
                         continue 'expand;
                     },
-                    | Err(expected) => {
-                        return Err(KernelError::ComputationShapeMismatch {
-                            expected: ExpectedComputationShape::Returner,
-                            actual: Box::new(expected.into_owned()),
-                        });
+                    | _ => {
+                        return Err(comp_shape_mismatch(
+                            arena,
+                            ExpectedComputationShape::Returner,
+                            expected,
+                        ));
                     },
                 },
-                | Computation::Bind(ref bound, ref body) => {
+                | Computation::Bind(bound, body) => {
                     frames.push(Frame::CheckBind(body, expected));
                     goal = Goal::SynthComp(bound);
                     continue 'expand;
                 },
                 | Computation::Case {
-                    ref scrutinee,
-                    ref on_left,
-                    ref on_right,
+                    scrutinee,
+                    on_left,
+                    on_right,
                 } => {
                     frames.push(Frame::CheckCaseScrutinee {
                         on_left,
@@ -1019,9 +752,9 @@ fn run<'decl>(
                     goal = Goal::SynthValue(scrutinee);
                     continue 'expand;
                 },
-                | _ => {
+                | Computation::Application(..) | Computation::Force(_) => {
                     frames.push(Frame::ConvertComp(expected));
-                    goal = Goal::SynthComp(computation);
+                    goal = Goal::SynthComp(id);
                     continue 'expand;
                 },
             },
@@ -1040,24 +773,19 @@ fn run<'decl>(
                 },
                 | Frame::SynthPairSecond(first_type) => {
                     let second_type = produced_value_type(produced)?;
-                    produced = Produced::ValueType(ValueType::Product(
-                        Box::new(first_type),
-                        Box::new(second_type),
-                    ));
+                    produced =
+                        Produced::ValueType(arena.value_type_product(first_type, second_type));
                 },
                 | Frame::SynthThunk => {
                     let body_type = produced_comp_type(produced)?;
-                    produced = Produced::ValueType(ValueType::Thunk(Box::new(body_type)));
+                    produced = Produced::ValueType(arena.value_type_thunk(body_type));
                 },
                 | Frame::SynthLift(target) => {
                     let body_type = produced_value_type(produced)?;
-                    let body_level = type_level(levels, TypeLevelGoal::Value(&body_type))?;
-                    levels.check_level_scope(target)?;
-                    levels.check_universe_below(&body_level, target)?;
-                    produced = Produced::ValueType(ValueType::Lift {
-                        inner: Box::new(body_type),
-                        target: target.clone(),
-                    });
+                    let body_level = type_level(arena, levels, TypeLevelGoal::Value(body_type))?;
+                    levels.check_level_scope(&target)?;
+                    levels.check_universe_below(&body_level, &target)?;
+                    produced = Produced::ValueType(arena.value_type_lift(body_type, target));
                 },
                 | Frame::CheckPairSecond(second, second_type) => {
                     goal = Goal::CheckValue(second, second_type);
@@ -1065,22 +793,23 @@ fn run<'decl>(
                 },
                 | Frame::ConvertValue(expected) => {
                     let synthesized = produced_value_type(produced)?;
-                    convert_value_type(expected.get(), &synthesized)?;
+                    convert_value_type(arena, expected, synthesized)?;
                     produced = Produced::Checked;
                 },
                 | Frame::SynthApply(argument) => {
                     let head_type = produced_comp_type(produced)?;
-                    match take_arrow(head_type) {
-                        | Ok((domain, codomain)) => {
-                            frames.push(Frame::ProduceComp(*codomain));
-                            goal = Goal::CheckValue(argument, Held::Owned(*domain));
+                    match arena.comp_type(head_type) {
+                        | Some(&CompType::Arrow { domain, codomain }) => {
+                            frames.push(Frame::ProduceComp(codomain));
+                            goal = Goal::CheckValue(argument, domain);
                             continue 'expand;
                         },
-                        | Err(other) => {
-                            return Err(KernelError::ComputationShapeMismatch {
-                                expected: ExpectedComputationShape::Arrow,
-                                actual: Box::new(other),
-                            });
+                        | _ => {
+                            return Err(comp_shape_mismatch(
+                                arena,
+                                ExpectedComputationShape::Arrow,
+                                head_type,
+                            ));
                         },
                     }
                 },
@@ -1089,61 +818,63 @@ fn run<'decl>(
                 },
                 | Frame::SynthForce => {
                     let value_type = produced_value_type(produced)?;
-                    match take_thunk(value_type) {
-                        | Ok(codomain) => produced = Produced::CompType(*codomain),
-                        | Err(other) => {
-                            return Err(KernelError::ValueShapeMismatch {
-                                expected: ExpectedValueShape::Thunk,
-                                actual: Box::new(other),
-                            });
+                    match arena.value_type(value_type) {
+                        | Some(&ValueType::Thunk(codomain)) => {
+                            produced = Produced::CompType(codomain);
+                        },
+                        | _ => {
+                            return Err(value_shape_mismatch(
+                                arena,
+                                ExpectedValueShape::Thunk,
+                                value_type,
+                            ));
                         },
                     }
                 },
                 | Frame::SynthReturn => {
                     let result_type = produced_value_type(produced)?;
-                    produced = Produced::CompType(CompType::Returner(Box::new(result_type)));
+                    produced = Produced::CompType(arena.comp_type_returner(result_type));
                 },
                 | Frame::SynthBind(body) => {
                     let bound_type = produced_comp_type(produced)?;
-                    match take_returner(bound_type) {
-                        | Ok(result) => {
-                            context.push(Held::Owned(*result));
+                    match arena.comp_type(bound_type) {
+                        | Some(&CompType::Returner(result)) => {
+                            context.push(result);
                             frames.push(Frame::ScopeExit);
                             goal = Goal::SynthComp(body);
                             continue 'expand;
                         },
-                        | Err(other) => {
-                            return Err(KernelError::ComputationShapeMismatch {
-                                expected: ExpectedComputationShape::Returner,
-                                actual: Box::new(other),
-                            });
+                        | _ => {
+                            return Err(comp_shape_mismatch(
+                                arena,
+                                ExpectedComputationShape::Returner,
+                                bound_type,
+                            ));
                         },
                     }
                 },
                 | Frame::SynthCaseScrutinee(on_left, on_right) => {
                     let scrutinee_type = produced_value_type(produced)?;
-                    match take_sum(scrutinee_type) {
-                        | Ok((left, right)) => {
-                            context.push(Held::Owned(*left));
-                            frames.push(Frame::SynthCaseAfterLeft {
-                                on_right,
-                                right: *right,
-                            });
+                    match arena.value_type(scrutinee_type) {
+                        | Some(&ValueType::Sum(left, right)) => {
+                            context.push(left);
+                            frames.push(Frame::SynthCaseAfterLeft { on_right, right });
                             frames.push(Frame::ScopeExit);
                             goal = Goal::SynthComp(on_left);
                             continue 'expand;
                         },
-                        | Err(other) => {
-                            return Err(KernelError::ValueShapeMismatch {
-                                expected: ExpectedValueShape::Sum,
-                                actual: Box::new(other),
-                            });
+                        | _ => {
+                            return Err(value_shape_mismatch(
+                                arena,
+                                ExpectedValueShape::Sum,
+                                scrutinee_type,
+                            ));
                         },
                     }
                 },
                 | Frame::SynthCaseAfterLeft { on_right, right } => {
                     let left_type = produced_comp_type(produced)?;
-                    context.push(Held::Owned(right));
+                    context.push(right);
                     frames.push(Frame::SynthCaseAfterRight { left_type });
                     frames.push(Frame::ScopeExit);
                     goal = Goal::SynthComp(on_right);
@@ -1151,36 +882,39 @@ fn run<'decl>(
                 },
                 | Frame::SynthCaseAfterRight { left_type } => {
                     let right_type = produced_comp_type(produced)?;
-                    match convertible_comp_types(&left_type, &right_type) {
+                    match convertible_comp_types(arena, left_type, right_type) {
                         | Convertibility::Convertible => {
                             produced = Produced::CompType(left_type);
                         },
                         | Convertibility::Distinct => {
-                            return Err(KernelError::CaseBranchMismatch(Box::new(
-                                ComputationTypeMismatch::new(left_type, right_type),
+                            let (snapshot, left, right) =
+                                arena.snapshot_comp_types(left_type, right_type);
+                            return Err(KernelError::CaseBranchMismatch(alloc::boxed::Box::new(
+                                ComputationTypeMismatch::new(snapshot, left, right),
                             )));
                         },
                     }
                 },
                 | Frame::ConvertComp(expected) => {
                     let synthesized = produced_comp_type(produced)?;
-                    convert_comp_type(expected.get(), &synthesized)?;
+                    convert_comp_type(arena, expected, synthesized)?;
                     produced = Produced::Checked;
                 },
                 | Frame::CheckBind(body, expected) => {
                     let bound_type = produced_comp_type(produced)?;
-                    match take_returner(bound_type) {
-                        | Ok(result) => {
-                            context.push(Held::Owned(*result));
+                    match arena.comp_type(bound_type) {
+                        | Some(&CompType::Returner(result)) => {
+                            context.push(result);
                             frames.push(Frame::ScopeExit);
                             goal = Goal::CheckComp(body, expected);
                             continue 'expand;
                         },
-                        | Err(other) => {
-                            return Err(KernelError::ComputationShapeMismatch {
-                                expected: ExpectedComputationShape::Returner,
-                                actual: Box::new(other),
-                            });
+                        | _ => {
+                            return Err(comp_shape_mismatch(
+                                arena,
+                                ExpectedComputationShape::Returner,
+                                bound_type,
+                            ));
                         },
                     }
                 },
@@ -1190,24 +924,24 @@ fn run<'decl>(
                     expected,
                 } => {
                     let scrutinee_type = produced_value_type(produced)?;
-                    match take_sum(scrutinee_type) {
-                        | Ok((left, right)) => {
-                            let expected_left = expected.dup();
-                            context.push(Held::Owned(*left));
+                    match arena.value_type(scrutinee_type) {
+                        | Some(&ValueType::Sum(left, right)) => {
+                            context.push(left);
                             frames.push(Frame::CheckCaseAfterLeft {
                                 on_right,
-                                right: *right,
+                                right,
                                 expected,
                             });
                             frames.push(Frame::ScopeExit);
-                            goal = Goal::CheckComp(on_left, expected_left);
+                            goal = Goal::CheckComp(on_left, expected);
                             continue 'expand;
                         },
-                        | Err(other) => {
-                            return Err(KernelError::ValueShapeMismatch {
-                                expected: ExpectedValueShape::Sum,
-                                actual: Box::new(other),
-                            });
+                        | _ => {
+                            return Err(value_shape_mismatch(
+                                arena,
+                                ExpectedValueShape::Sum,
+                                scrutinee_type,
+                            ));
                         },
                     }
                 },
@@ -1216,7 +950,7 @@ fn run<'decl>(
                     right,
                     expected,
                 } => {
-                    context.push(Held::Owned(right));
+                    context.push(right);
                     frames.push(Frame::ScopeExit);
                     goal = Goal::CheckComp(on_right, expected);
                     continue 'expand;
@@ -1229,128 +963,107 @@ fn run<'decl>(
     }
 }
 
-/// A fresh checker over the environment and level context of one declaration
-/// (kernel-boundary.md §3: per-declaration checking spins up a fresh checker;
-/// no checker state survives across declarations except the environment).
-pub struct Checker<'kernel>
+/// Check that a value type is well-formed (embedded levels in scope, lift
+/// strictness, no level overflow), discarding its level.
+///
+/// # Contract
+/// - requires: `declared` resolves in `arena`.
+/// - ensures: `Ok(())` exactly when [`type_level`] succeeds on the type.
+/// - provides: the K1 well-formedness gate for a declared type.
+/// - fails: any [`KernelError`] `type_level` surfaces.
+/// - panics: none.
+///
+/// # Errors
+/// [`KernelError::LevelVariableOutOfScope`], [`KernelError::LevelArithmetic`],
+/// [`KernelError::UniverseViolation`], [`KernelError::LevelOracleFault`],
+/// [`KernelError::ArenaFault`].
+#[inline]
+fn check_value_type(
+    arena: &TermArena,
+    levels: &LevelContext,
+    declared: ValueTypeId,
+) -> Result<(), KernelError>
 {
-    /// The append-only environment, for resolving constant references.
-    environment: &'kernel Environment,
-    /// The declaration's admitted level context.
-    levels: &'kernel LevelContext,
+    let _level = type_level(arena, levels, TypeLevelGoal::Value(declared))?;
+    Ok(())
 }
 
-impl<'kernel> Checker<'kernel>
+/// Check a declaration's content: its declared type is well-formed and, for a
+/// `Def`, its body checks against that type.
+///
+/// # Contract
+/// - requires: `declaration`'s content roots resolve in `arena`; `entries` is
+///   the environment's admission log for constant resolution.
+/// - ensures: `Ok(())` exactly when the declared type forms and a `Def` body
+///   checks against it in the empty context (an `Axiom` checks only its type);
+///   synthesized intermediates are minted into `arena` for the caller to
+///   truncate.
+/// - provides: the K2 body check the choke point runs.
+/// - fails: any [`KernelError`] the checker surfaces.
+/// - panics: none.
+///
+/// # Errors
+/// Any [`KernelError`].
+///
+/// # Adequacy
+/// - hypothesis: L2 — the golden corpus checks well-typed declarations and
+///   rejects ill-typed mutations; the L3 residues are each rule's failure arm,
+///   pinned by the negative unit goldens.
+/// - witness: `check::tests::identity_thunk_checks`
+/// - witness: `checker::tests` (the integration corpus)
+#[inline]
+pub fn check_declaration(
+    arena: &mut TermArena,
+    entries: &[AdmittedDeclaration],
+    levels: &LevelContext,
+    declaration: &Declaration,
+) -> Result<(), KernelError>
 {
-    /// A fresh checker for one declaration.
-    #[inline]
-    pub fn new(
-        environment: &'kernel Environment,
-        levels: &'kernel LevelContext,
-    ) -> Self
-    {
-        Self {
-            environment,
-            levels,
-        }
-    }
-
-    /// Check that a value type is well-formed (embedded levels in scope, lift
-    /// strictness, no level overflow), discarding its level.
-    ///
-    /// # Contract
-    /// - requires: nothing.
-    /// - ensures: `Ok(())` exactly when [`type_level`] succeeds on the type.
-    /// - provides: the K1 well-formedness gate for a declared type.
-    /// - fails: any [`KernelError`] `type_level` surfaces.
-    /// - panics: none.
-    ///
-    /// # Errors
-    /// [`KernelError::LevelVariableOutOfScope`],
-    /// [`KernelError::LevelArithmetic`],
-    /// [`KernelError::UniverseViolation`], [`KernelError::LevelOracleFault`].
-    #[inline]
-    pub fn check_value_type(
-        &self,
-        ty: &ValueType,
-    ) -> Result<(), KernelError>
-    {
-        let _level = type_level(self.levels, TypeLevelGoal::Value(ty))?;
-        Ok(())
-    }
-
-    /// Check a definition body against its declared value type.
-    ///
-    /// # Contract
-    /// - requires: `declared` is already well-formed
-    ///   ([`Self::check_value_type`]).
-    /// - ensures: `Ok(())` exactly when `body` checks against `declared` in the
-    ///   empty context, via the defunctionalized machine (total on any depth).
-    /// - provides: the K2 body check of a `Def`.
-    /// - fails: any [`KernelError`] the checker surfaces.
-    /// - panics: none.
-    ///
-    /// # Errors
-    /// Any [`KernelError`].
-    ///
-    /// # Adequacy
-    /// - hypothesis: L2 — the golden corpus checks well-typed declarations and
-    ///   rejects ill-typed mutations; the L3 residues are each rule's failure
-    ///   arm, pinned by the negative unit goldens (shape mismatch, conversion
-    ///   failure, unbound reference).
-    /// - witness: `check::tests::identity_thunk_checks`
-    /// - witness: `check::tests::application_result_is_the_codomain`
-    /// - witness: `check::tests::case_requires_convergent_branches`
-    /// - witness: `checker::tests` (the integration corpus)
-    #[inline]
-    pub fn check_definition(
-        &self,
-        declared: &ValueType,
-        body: &Value,
-    ) -> Result<(), KernelError>
-    {
-        let context: Vec<Held<'_, ValueType>> = Vec::new();
-        let _checked = run(
-            self.environment,
-            self.levels,
-            context,
-            Goal::CheckValue(body, Held::Borrowed(declared)),
-        )?;
-        Ok(())
+    check_value_type(arena, levels, declaration.declared_id())?;
+    match *declaration.content() {
+        | DeclarationContent::Def { declared, body } => {
+            let context: Vec<ValueTypeId> = Vec::new();
+            let _checked = run(
+                arena,
+                entries,
+                levels,
+                context,
+                Goal::CheckValue(body, declared),
+            )?;
+            Ok(())
+        },
+        | DeclarationContent::Axiom { .. } => Ok(()),
     }
 }
 
 #[cfg(test)]
 mod tests
 {
-    use alloc::boxed::Box;
     use alloc::vec::Vec;
 
     use gandr_kernel_strata::Level;
     use gandr_kernel_strata::LevelConstant;
 
-    use super::Checker;
     use super::Goal;
-    use super::Held;
     use super::Produced;
     use super::TypeLevelGoal;
     use super::run;
     use super::type_level;
-    use crate::env::Environment;
+    use crate::arena::CompTypeId;
+    use crate::arena::TermArena;
+    use crate::arena::ValueId;
+    use crate::arena::ValueTypeId;
+    use crate::env::AdmittedDeclaration;
     use crate::error::KernelError;
     use crate::levels::LevelContext;
     use crate::levels::LevelParamCount;
-    use crate::term::Computation;
     use crate::term::DeBruijnIndex;
     use crate::term::Side;
-    use crate::term::Value;
-    use crate::types::CompType;
-    use crate::types::ValueType;
 
-    /// An empty environment.
-    fn environment() -> Environment
+    /// No prior declarations.
+    fn no_entries() -> Vec<AdmittedDeclaration>
     {
-        Environment::new()
+        Vec::new()
     }
 
     /// An empty level context over `params` prenex parameters.
@@ -1359,111 +1072,70 @@ mod tests
         LevelContext::admit(LevelParamCount::from(params), Vec::new()).unwrap()
     }
 
-    /// The universe former at constant level `value`.
-    fn universe(value: u64) -> ValueType
-    {
-        ValueType::Universe(Level::constant(LevelConstant::from(value)))
-    }
-
-    /// Build the initial context (the head slot is de Bruijn index `0`).
-    fn context<'ctx>(slots: &[&'ctx ValueType]) -> Vec<Held<'ctx, ValueType>>
-    {
-        slots.iter().map(|slot| Held::Borrowed(*slot)).collect()
-    }
-
-    /// Synthesize a value's type in a given context.
+    /// Synthesize a value's type from an initial context, returning the id.
     fn synth_value(
-        environment: &Environment,
+        arena: &mut TermArena,
+        entries: &[AdmittedDeclaration],
         levels: &LevelContext,
-        slots: &[&ValueType],
-        value: &Value,
-    ) -> Result<ValueType, KernelError>
+        context: Vec<ValueTypeId>,
+        value: ValueId,
+    ) -> Result<ValueTypeId, KernelError>
     {
-        match run(environment, levels, context(slots), Goal::SynthValue(value))? {
-            | Produced::ValueType(value_type) => Ok(value_type),
+        match run(arena, entries, levels, context, Goal::SynthValue(value))? {
+            | Produced::ValueType(id) => Ok(id),
             | _ => panic!("a value goal must produce a value type"),
         }
     }
 
-    /// Synthesize a computation's type in a given context.
+    /// Synthesize a computation's type, returning the id.
     fn synth_comp(
-        environment: &Environment,
+        arena: &mut TermArena,
+        entries: &[AdmittedDeclaration],
         levels: &LevelContext,
-        slots: &[&ValueType],
-        computation: &Computation,
-    ) -> Result<CompType, KernelError>
+        context: Vec<ValueTypeId>,
+        computation: crate::arena::ComputationId,
+    ) -> Result<CompTypeId, KernelError>
     {
         match run(
-            environment,
+            arena,
+            entries,
             levels,
-            context(slots),
+            context,
             Goal::SynthComp(computation),
         )? {
-            | Produced::CompType(comp_type) => Ok(comp_type),
+            | Produced::CompType(id) => Ok(id),
             | _ => panic!("a computation goal must produce a computation type"),
         }
-    }
-
-    /// Check a value against an expected type in a given context.
-    fn check_value(
-        environment: &Environment,
-        levels: &LevelContext,
-        slots: &[&ValueType],
-        value: &Value,
-        expected: &ValueType,
-    ) -> Result<(), KernelError>
-    {
-        run(
-            environment,
-            levels,
-            context(slots),
-            Goal::CheckValue(value, Held::Borrowed(expected)),
-        )
-        .map(|_produced| ())
-    }
-
-    /// Check a computation against an expected type in a given context.
-    fn check_comp(
-        environment: &Environment,
-        levels: &LevelContext,
-        slots: &[&ValueType],
-        computation: &Computation,
-        expected: &CompType,
-    ) -> Result<(), KernelError>
-    {
-        run(
-            environment,
-            levels,
-            context(slots),
-            Goal::CheckComp(computation, Held::Borrowed(expected)),
-        )
-        .map(|_produced| ())
     }
 
     #[test]
     fn variable_synthesizes_its_context_type()
     {
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let synthesized = synth_value(
-            &environment,
-            &levels,
-            &[&ValueType::Unit],
-            &Value::Variable(DeBruijnIndex::from(0_u32)),
-        )
-        .unwrap();
-        assert_eq!(synthesized, ValueType::Unit, "variable 0 has the head type");
+        let entries = no_entries();
+        let unit = arena.value_type_unit();
+        let variable = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let synthesized =
+            synth_value(&mut arena, &entries, &levels, alloc::vec![unit], variable).unwrap();
+        assert_eq!(
+            arena.value_type(synthesized),
+            Some(&crate::types::ValueType::Unit),
+            "variable 0 has the head type"
+        );
     }
 
     #[test]
     fn injection_is_not_inferable()
     {
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let injection = Value::Injection(Side::Left, Box::new(Value::Unit));
+        let entries = no_entries();
+        let unit = arena.value_unit();
+        let injection = arena.value_injection(Side::Left, unit);
         assert!(
             matches!(
-                synth_value(&environment, &levels, &[], &injection),
+                synth_value(&mut arena, &entries, &levels, Vec::new(), injection),
                 Err(KernelError::NotInferable { .. })
             ),
             "an injection has no synthesizable type"
@@ -1473,16 +1145,23 @@ mod tests
     #[test]
     fn injection_checks_against_its_sum()
     {
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let sum = ValueType::Sum(
-            Box::new(ValueType::Unit),
-            Box::new(ValueType::Base(crate::base::BaseType::Integer)),
-        );
-        let left = Value::Injection(Side::Left, Box::new(Value::Unit));
-        assert_eq!(
-            Ok(()),
-            check_value(&environment, &levels, &[], &left, &sum),
+        let entries = no_entries();
+        let unit_type = arena.value_type_unit();
+        let integer = arena.value_type_base(crate::base::BaseType::Integer);
+        let sum = arena.value_type_sum(unit_type, integer);
+        let unit = arena.value_unit();
+        let left = arena.value_injection(Side::Left, unit);
+        assert!(
+            run(
+                &mut arena,
+                &entries,
+                &levels,
+                Vec::new(),
+                Goal::CheckValue(left, sum)
+            )
+            .is_ok(),
             "inl unit checks against Unit + Integer"
         );
     }
@@ -1492,40 +1171,28 @@ mod tests
     {
         // A pair whose first component is an injection (check-only) checks
         // against a product, exercising the propagation.
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let sum = ValueType::Sum(Box::new(ValueType::Unit), Box::new(ValueType::Unit));
-        let product = ValueType::Product(Box::new(sum), Box::new(ValueType::Unit));
-        let pair = Value::Pair(
-            Box::new(Value::Injection(Side::Right, Box::new(Value::Unit))),
-            Box::new(Value::Unit),
-        );
-        assert_eq!(
-            Ok(()),
-            check_value(&environment, &levels, &[], &pair, &product),
+        let entries = no_entries();
+        let unit_a = arena.value_type_unit();
+        let unit_b = arena.value_type_unit();
+        let sum = arena.value_type_sum(unit_a, unit_b);
+        let unit_c = arena.value_type_unit();
+        let product = arena.value_type_product(sum, unit_c);
+        let inner_unit = arena.value_unit();
+        let injection = arena.value_injection(Side::Right, inner_unit);
+        let second_unit = arena.value_unit();
+        let pair = arena.value_pair(injection, second_unit);
+        assert!(
+            run(
+                &mut arena,
+                &entries,
+                &levels,
+                Vec::new(),
+                Goal::CheckValue(pair, product)
+            )
+            .is_ok(),
             "a pair propagates the expected product into a checking component"
-        );
-    }
-
-    #[test]
-    fn identity_thunk_checks()
-    {
-        // thunk (λ. return v0) : U (Unit → F Unit)
-        let environment = environment();
-        let levels = level_context(0);
-        let checker = Checker::new(&environment, &levels);
-        let arrow = CompType::Arrow {
-            domain: Box::new(ValueType::Unit),
-            codomain: Box::new(CompType::Returner(Box::new(ValueType::Unit))),
-        };
-        let declared = ValueType::Thunk(Box::new(arrow));
-        let body = Value::Thunk(Box::new(Computation::Lambda(Box::new(
-            Computation::Return(Box::new(Value::Variable(DeBruijnIndex::from(0_u32)))),
-        ))));
-        assert_eq!(
-            Ok(()),
-            checker.check_definition(&declared, &body),
-            "the identity thunk checks against its declared type"
         );
     }
 
@@ -1533,24 +1200,31 @@ mod tests
     fn application_result_is_the_codomain()
     {
         // (force v0) applied to unit, where v0 : U (Unit → F Unit).
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let arrow = CompType::Arrow {
-            domain: Box::new(ValueType::Unit),
-            codomain: Box::new(CompType::Returner(Box::new(ValueType::Unit))),
-        };
-        let context_type = ValueType::Thunk(Box::new(arrow));
-        let application = Computation::Application(
-            Box::new(Computation::Force(Box::new(Value::Variable(
-                DeBruijnIndex::from(0_u32),
-            )))),
-            Box::new(Value::Unit),
-        );
-        let synthesized =
-            synth_comp(&environment, &levels, &[&context_type], &application).unwrap();
-        assert_eq!(
-            synthesized,
-            CompType::Returner(Box::new(ValueType::Unit)),
+        let entries = no_entries();
+        let domain = arena.value_type_unit();
+        let result = arena.value_type_unit();
+        let returner = arena.comp_type_returner(result);
+        let arrow = arena.comp_type_arrow(domain, returner);
+        let context_type = arena.value_type_thunk(arrow);
+        let variable = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let force = arena.computation_force(variable);
+        let unit = arena.value_unit();
+        let application = arena.computation_application(force, unit);
+        let synthesized = synth_comp(
+            &mut arena,
+            &entries,
+            &levels,
+            alloc::vec![context_type],
+            application,
+        )
+        .unwrap();
+        assert!(
+            matches!(
+                arena.comp_type(synthesized),
+                Some(&crate::types::CompType::Returner(_))
+            ),
             "applying the forced thunk yields the codomain F Unit"
         );
     }
@@ -1558,36 +1232,56 @@ mod tests
     #[test]
     fn force_unwraps_a_thunk()
     {
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let returner = CompType::Returner(Box::new(ValueType::Unit));
-        let context_type = ValueType::Thunk(Box::new(returner.clone()));
-        let force = Computation::Force(Box::new(Value::Variable(DeBruijnIndex::from(0_u32))));
+        let entries = no_entries();
+        let result = arena.value_type_unit();
+        let returner = arena.comp_type_returner(result);
+        let context_type = arena.value_type_thunk(returner);
+        let variable = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let force = arena.computation_force(variable);
+        let synthesized = synth_comp(
+            &mut arena,
+            &entries,
+            &levels,
+            alloc::vec![context_type],
+            force,
+        )
+        .unwrap();
         assert_eq!(
-            synth_comp(&environment, &levels, &[&context_type], &force).unwrap(),
-            returner,
-            "forcing a thunk unwraps its computation type"
+            synthesized, returner,
+            "forcing a thunk unwraps its computation type (the same thunk-body id)"
         );
     }
 
     #[test]
     fn case_requires_convergent_branches()
     {
-        // case v0 { inl ⇒ return unit | inr ⇒ return (λ...) } — branches at
+        // case v0 { inl ⇒ return unit | inr ⇒ return (thunk ...) } — branches at
         // distinct types must be rejected in synth mode.
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let context_type = ValueType::Sum(Box::new(ValueType::Unit), Box::new(ValueType::Unit));
-        let case = Computation::Case {
-            scrutinee: Box::new(Value::Variable(DeBruijnIndex::from(0_u32))),
-            on_left: Box::new(Computation::Return(Box::new(Value::Unit))),
-            on_right: Box::new(Computation::Return(Box::new(Value::Thunk(Box::new(
-                Computation::Return(Box::new(Value::Unit)),
-            ))))),
-        };
+        let entries = no_entries();
+        let unit_a = arena.value_type_unit();
+        let unit_b = arena.value_type_unit();
+        let context_type = arena.value_type_sum(unit_a, unit_b);
+        let scrutinee = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let left_unit = arena.value_unit();
+        let on_left = arena.computation_return(left_unit);
+        let inner_unit = arena.value_unit();
+        let inner_return = arena.computation_return(inner_unit);
+        let thunk = arena.value_thunk(inner_return);
+        let on_right = arena.computation_return(thunk);
+        let case = arena.computation_case(scrutinee, on_left, on_right);
         assert!(
             matches!(
-                synth_comp(&environment, &levels, &[&context_type], &case),
+                synth_comp(
+                    &mut arena,
+                    &entries,
+                    &levels,
+                    alloc::vec![context_type],
+                    case
+                ),
                 Err(KernelError::CaseBranchMismatch(_))
             ),
             "synth-mode case with divergent branch types is rejected"
@@ -1599,27 +1293,33 @@ mod tests
     {
         // In check mode both branches are checked against the expected type,
         // so an injection branch (check-only) is admissible.
-        let environment = environment();
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let context_type = ValueType::Sum(Box::new(ValueType::Unit), Box::new(ValueType::Unit));
-        let expected = CompType::Returner(Box::new(ValueType::Sum(
-            Box::new(ValueType::Unit),
-            Box::new(ValueType::Unit),
-        )));
-        let case = Computation::Case {
-            scrutinee: Box::new(Value::Variable(DeBruijnIndex::from(0_u32))),
-            on_left: Box::new(Computation::Return(Box::new(Value::Injection(
-                Side::Left,
-                Box::new(Value::Unit),
-            )))),
-            on_right: Box::new(Computation::Return(Box::new(Value::Injection(
-                Side::Right,
-                Box::new(Value::Unit),
-            )))),
-        };
-        assert_eq!(
-            Ok(()),
-            check_comp(&environment, &levels, &[&context_type], &case, &expected),
+        let entries = no_entries();
+        let unit_a = arena.value_type_unit();
+        let unit_b = arena.value_type_unit();
+        let context_type = arena.value_type_sum(unit_a, unit_b);
+        let sum_a = arena.value_type_unit();
+        let sum_b = arena.value_type_unit();
+        let expected_sum = arena.value_type_sum(sum_a, sum_b);
+        let expected = arena.comp_type_returner(expected_sum);
+        let scrutinee = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let left_unit = arena.value_unit();
+        let left_injection = arena.value_injection(Side::Left, left_unit);
+        let on_left = arena.computation_return(left_injection);
+        let right_unit = arena.value_unit();
+        let right_injection = arena.value_injection(Side::Right, right_unit);
+        let on_right = arena.computation_return(right_injection);
+        let case = arena.computation_case(scrutinee, on_left, on_right);
+        assert!(
+            run(
+                &mut arena,
+                &entries,
+                &levels,
+                alloc::vec![context_type],
+                Goal::CheckComp(case, expected),
+            )
+            .is_ok(),
             "check-mode case propagates the expected type into both branches"
         );
     }
@@ -1627,8 +1327,10 @@ mod tests
     #[test]
     fn universe_forms_one_level_up()
     {
+        let mut arena = TermArena::new();
         let levels = level_context(0);
-        let level = type_level(&levels, TypeLevelGoal::Value(&universe(0))).unwrap();
+        let universe = arena.value_type_universe(Level::constant(LevelConstant::from(0_u64)));
+        let level = type_level(&arena, &levels, TypeLevelGoal::Value(universe)).unwrap();
         assert_eq!(
             level,
             Level::constant(LevelConstant::from(1_u64)),
@@ -1639,25 +1341,22 @@ mod tests
     #[test]
     fn lift_requires_a_strictly_higher_target()
     {
+        let mut arena = TermArena::new();
         let levels = level_context(0);
         // Lift Unit to level 1: Unit is at level 0, 0 < 1, so this is well-formed.
-        let lifted = ValueType::Lift {
-            inner: Box::new(ValueType::Unit),
-            target: Level::constant(LevelConstant::from(1_u64)),
-        };
+        let inner = arena.value_type_unit();
+        let lifted = arena.value_type_lift(inner, Level::constant(LevelConstant::from(1_u64)));
         assert_eq!(
-            type_level(&levels, TypeLevelGoal::Value(&lifted)).unwrap(),
+            type_level(&arena, &levels, TypeLevelGoal::Value(lifted)).unwrap(),
             Level::constant(LevelConstant::from(1_u64)),
             "lifting Unit to level 1 forms at level 1"
         );
         // Lift Unit to level 0: 0 < 0 fails.
-        let degenerate = ValueType::Lift {
-            inner: Box::new(ValueType::Unit),
-            target: Level::constant(LevelConstant::from(0_u64)),
-        };
+        let inner2 = arena.value_type_unit();
+        let degenerate = arena.value_type_lift(inner2, Level::constant(LevelConstant::from(0_u64)));
         assert!(
             matches!(
-                type_level(&levels, TypeLevelGoal::Value(&degenerate)),
+                type_level(&arena, &levels, TypeLevelGoal::Value(degenerate)),
                 Err(KernelError::UniverseViolation(_))
             ),
             "a lift that does not strictly raise the level is rejected"
@@ -1667,14 +1366,15 @@ mod tests
     #[test]
     fn arrow_level_is_the_join()
     {
+        let mut arena = TermArena::new();
         let levels = level_context(0);
         // (U_2 → F Unit): domain level 3, codomain level 0, join 3.
-        let arrow = CompType::Arrow {
-            domain: Box::new(universe(2)),
-            codomain: Box::new(CompType::Returner(Box::new(ValueType::Unit))),
-        };
+        let domain = arena.value_type_universe(Level::constant(LevelConstant::from(2_u64)));
+        let result = arena.value_type_unit();
+        let returner = arena.comp_type_returner(result);
+        let arrow = arena.comp_type_arrow(domain, returner);
         assert_eq!(
-            type_level(&levels, TypeLevelGoal::Comp(&arrow)).unwrap(),
+            type_level(&arena, &levels, TypeLevelGoal::Comp(arrow)).unwrap(),
             Level::constant(LevelConstant::from(3_u64)),
             "the arrow forms at the join of its parts' levels"
         );
@@ -1687,6 +1387,8 @@ mod tests
         // when the machine is wired per the correspondence table; pinned
         // directly here so a wiring defect rejects (fail-closed) rather than
         // fabricating a type that could wrongly convert.
+        let mut arena = TermArena::new();
+        let unit = arena.value_type_unit();
         assert!(
             matches!(
                 super::produced_value_type(super::Produced::Checked),
@@ -1698,7 +1400,7 @@ mod tests
         );
         assert!(
             matches!(
-                super::produced_comp_type(super::Produced::ValueType(ValueType::Unit)),
+                super::produced_comp_type(super::Produced::ValueType(unit)),
                 Err(KernelError::CheckerRegisterFault(
                     crate::error::RegisterFault::ExpectedCompType
                 ))

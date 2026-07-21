@@ -4,11 +4,18 @@
 //! The encoding iterates the environment in admission order (E2) and each
 //! level's atoms in `BTreeMap`-sorted order (E4) — never a hash-order
 //! iteration — so an identical environment yields a byte-identical artifact.
-//! Term and type trees are walked **iteratively** over an explicit borrowed
-//! stack (never input-scaled recursion), so an environment holding a deeply
-//! nested term (admissible through the bypass) is serialized without risking a
-//! stack overflow. Every field is length-prefixed or tagged so the reader can
-//! validate structurally.
+//! Term and type trees are walked **iteratively** over an explicit id stack
+//! (never input-scaled recursion), resolving each child through the arena, so
+//! an environment holding a deeply nested term (admissible through the bypass)
+//! is serialized without risking a stack overflow.
+//!
+//! # v0 codec over the arena (gandr-5t3)
+//!
+//! The D1(C) arena restructure retypes the walk from owned `Box` children to
+//! arena ids; the **byte layout is unchanged** at v0 — the writer still emits
+//! an expanded preorder tree (v0 has no subterm table), so a shared subterm is
+//! written once per reference. The v1 sharing writer (commit 2) replaces this
+//! with a content-keyed subterm table.
 
 use alloc::vec::Vec;
 
@@ -56,6 +63,11 @@ use super::TYPE_SUM;
 use super::TYPE_THUNK;
 use super::TYPE_UNIT;
 use super::TYPE_UNIVERSE;
+use crate::arena::CompTypeId;
+use crate::arena::ComputationId;
+use crate::arena::TermArena;
+use crate::arena::ValueId;
+use crate::arena::ValueTypeId;
 use crate::base::BaseType;
 use crate::base::Literal;
 use crate::base::Sign;
@@ -77,20 +89,17 @@ use crate::types::ValueType;
 /// - ensures: the bytes carry the version tag, the reserved sections, and the
 ///   admission-ordered declaration sequence with per-declaration admission
 ///   marks — everything a replay needs (E1); iterating an identical environment
-///   yields a byte-identical result (E4, deterministic canonical bytes:
-///   admission order and sorted level atoms, never hash-order); the precomputed
-///   audit sets are not written (E3).
+///   yields a byte-identical result (E4); the precomputed audit sets are not
+///   written (E3).
 /// - provides: the K5 export artifact.
 /// - fails: never — serialization is total.
 /// - panics: none.
 ///
 /// # Adequacy
 /// - hypothesis: L2 — the round-trip differential pins that every
-///   [`super::read()`] of `write(env)` reproduces the environment
-///   (declarations, marks, and recomputed audits), and the determinism property
-///   pins that a second `write` is byte-identical; the L3 residues are the
-///   empty environment and the bypass-admitted mark, each pinned by a unit
-///   golden.
+///   [`super::read()`] of `write(env)` reproduces the environment, and the
+///   determinism property pins that a second `write` is byte-identical; the L3
+///   residues are the empty environment and the bypass-admitted mark.
 /// - witness: `export::tests::round_trip_reproduces_the_environment`
 /// - witness: `export::tests::a_second_write_is_byte_identical`
 /// - witness: `export::tests::the_empty_environment_round_trips`
@@ -102,21 +111,26 @@ pub fn write(environment: &Environment) -> Vec<u8>
         .admitted()
         .map(|(admission, declaration)| (mark_of(admission), declaration))
         .collect();
-    encode_artifact(&declarations)
+    encode_artifact(environment.arena(), &declarations)
 }
 
-/// Encode a marked declaration sequence into the canonical artifact bytes —
-/// the shared engine of [`write()`] and the reader's canonical-bytes check.
+/// Encode a marked declaration sequence (its content in `arena`) into the
+/// canonical artifact bytes — the shared engine of [`write()`] and the reader's
+/// canonical-bytes check.
 ///
 /// # Contract
-/// - requires: `declarations` is in admission order.
+/// - requires: `declarations` is in admission order and their content roots
+///   resolve in `arena`.
 /// - ensures: the bytes are the header (magic + version), the reserved
 ///   minted-atom table (empty at v0), the declaration count, and one canonical
 ///   record per declaration.
 /// - provides: the deterministic canonical byte image of the sequence.
 /// - fails: never.
 /// - panics: none.
-pub(super) fn encode_artifact(declarations: &[(AdmissionMark, &Declaration)]) -> Vec<u8>
+pub(super) fn encode_artifact(
+    arena: &TermArena,
+    declarations: &[(AdmissionMark, &Declaration)],
+) -> Vec<u8>
 {
     let mut out = Vec::new();
     out.extend_from_slice(&MAGIC);
@@ -125,7 +139,7 @@ pub(super) fn encode_artifact(declarations: &[(AdmissionMark, &Declaration)]) ->
     put_uvarint(&mut out, 0_u64);
     put_uvarint(&mut out, usize_to_u64(declarations.len()));
     for &(mark, declaration) in declarations {
-        encode_declaration(&mut out, mark, declaration);
+        encode_declaration(&mut out, arena, mark, declaration);
     }
     out
 }
@@ -141,9 +155,10 @@ fn mark_of(admission: Admission) -> AdmissionMark
 }
 
 /// Encode one declaration record: admission mark, kind, structured name (empty
-/// at v0), level signature, and content.
+/// at v0), level signature, and content (its roots into `arena`).
 fn encode_declaration(
     out: &mut Vec<u8>,
+    arena: &TermArena,
     mark: AdmissionMark,
     declaration: &Declaration,
 )
@@ -162,12 +177,9 @@ fn encode_declaration(
     put_uvarint(out, 0_u64);
     encode_level_signature(out, declaration.levels());
     match *content {
-        | DeclarationContent::Def {
-            ref declared,
-            ref body,
-        } => {
-            encode_value_type(out, declared);
-            encode_value(out, body);
+        | DeclarationContent::Def { declared, body } => {
+            encode_value_type(out, arena, declared);
+            encode_value(out, arena, body);
             // R3: four per-Def annotation slots, each length-prefixed and empty
             // at v0 (erasure, modes/grades, sealing-provenance,
             // directedness/variance).
@@ -176,8 +188,8 @@ fn encode_declaration(
             put_uvarint(out, 0_u64);
             put_uvarint(out, 0_u64);
         },
-        | DeclarationContent::Axiom { ref declared } => {
-            encode_value_type(out, declared);
+        | DeclarationContent::Axiom { declared } => {
+            encode_value_type(out, arena, declared);
         },
     }
 }
@@ -221,165 +233,174 @@ fn encode_level(
     }
 }
 
-/// A borrowed type node awaiting emission (value-type or computation-type).
-enum TypeRef<'decl>
+/// A type-node id awaiting emission (value-type or computation-type).
+#[derive(Clone, Copy)]
+enum TypeRef
 {
     /// A value type.
-    Value(&'decl ValueType),
+    Value(ValueTypeId),
     /// A computation type.
-    Comp(&'decl CompType),
+    Comp(CompTypeId),
 }
 
-/// Encode a value type in preorder over an explicit stack (no input recursion):
-/// each node emits its tag and inline leaf data, then its children follow.
+/// Encode a value type in preorder over an explicit id stack (no input
+/// recursion): each node emits its tag and inline leaf data, then its children
+/// follow. A dangling id emits the unit leaf (fail-safe, unreachable for a
+/// valid environment).
 #[expect(
     clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of borrowed type nodes; every binding is a shared reference by intent"
+    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
 )]
 fn encode_value_type(
     out: &mut Vec<u8>,
-    root: &ValueType,
+    arena: &TermArena,
+    root: ValueTypeId,
 )
 {
-    let mut stack: Vec<TypeRef<'_>> = Vec::new();
+    let mut stack: Vec<TypeRef> = Vec::new();
     stack.push(TypeRef::Value(root));
     while let Some(node) = stack.pop() {
         match node {
-            | TypeRef::Value(value_type) => match value_type {
-                | ValueType::Base(base) => {
+            | TypeRef::Value(id) => match arena.value_type(id) {
+                | Some(&ValueType::Base(base)) => {
                     out.push(TYPE_BASE);
-                    out.push(base_type_byte(*base));
+                    out.push(base_type_byte(base));
                 },
-                | ValueType::Unit => out.push(TYPE_UNIT),
-                | ValueType::Product(first, second) => {
+                | Some(&ValueType::Unit) | None => out.push(TYPE_UNIT),
+                | Some(&ValueType::Product(first, second)) => {
                     out.push(TYPE_PRODUCT);
-                    stack.push(TypeRef::Value(second.as_ref()));
-                    stack.push(TypeRef::Value(first.as_ref()));
+                    stack.push(TypeRef::Value(second));
+                    stack.push(TypeRef::Value(first));
                 },
-                | ValueType::Sum(first, second) => {
+                | Some(&ValueType::Sum(first, second)) => {
                     out.push(TYPE_SUM);
-                    stack.push(TypeRef::Value(second.as_ref()));
-                    stack.push(TypeRef::Value(first.as_ref()));
+                    stack.push(TypeRef::Value(second));
+                    stack.push(TypeRef::Value(first));
                 },
-                | ValueType::Thunk(body) => {
+                | Some(&ValueType::Thunk(body)) => {
                     out.push(TYPE_THUNK);
-                    stack.push(TypeRef::Comp(body.as_ref()));
+                    stack.push(TypeRef::Comp(body));
                 },
-                | ValueType::Universe(level) => {
+                | Some(ValueType::Universe(level)) => {
                     out.push(TYPE_UNIVERSE);
                     encode_level(out, level);
                 },
-                | ValueType::Lift { inner, target } => {
+                | Some(ValueType::Lift { inner, target }) => {
                     out.push(TYPE_LIFT);
                     encode_level(out, target);
-                    stack.push(TypeRef::Value(inner.as_ref()));
+                    stack.push(TypeRef::Value(*inner));
                 },
             },
-            | TypeRef::Comp(comp_type) => match comp_type {
-                | CompType::Returner(result) => {
+            | TypeRef::Comp(id) => match arena.comp_type(id) {
+                | Some(&CompType::Returner(result)) => {
                     out.push(TYPE_RETURNER);
-                    stack.push(TypeRef::Value(result.as_ref()));
+                    stack.push(TypeRef::Value(result));
                 },
-                | CompType::Arrow { domain, codomain } => {
+                | Some(&CompType::Arrow { domain, codomain }) => {
                     out.push(TYPE_ARROW);
-                    stack.push(TypeRef::Comp(codomain.as_ref()));
-                    stack.push(TypeRef::Value(domain.as_ref()));
+                    stack.push(TypeRef::Comp(codomain));
+                    stack.push(TypeRef::Value(domain));
                 },
+                | None => out.push(TYPE_UNIT),
             },
         }
     }
 }
 
-/// A borrowed term node awaiting emission (value or computation).
-enum TermRef<'decl>
+/// A term-node id awaiting emission (value or computation).
+#[derive(Clone, Copy)]
+enum TermRef
 {
     /// A value.
-    Value(&'decl Value),
+    Value(ValueId),
     /// A computation.
-    Comp(&'decl Computation),
+    Comp(ComputationId),
 }
 
-/// Encode a value term in preorder over an explicit stack (no input recursion).
+/// Encode a value term in preorder over an explicit id stack (no input
+/// recursion). A dangling id emits the unit leaf (fail-safe).
 #[expect(
     clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of borrowed term nodes; every binding is a shared reference by intent"
+    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
 )]
 fn encode_value(
     out: &mut Vec<u8>,
-    root: &Value,
+    arena: &TermArena,
+    root: ValueId,
 )
 {
-    let mut stack: Vec<TermRef<'_>> = Vec::new();
+    let mut stack: Vec<TermRef> = Vec::new();
     stack.push(TermRef::Value(root));
     while let Some(node) = stack.pop() {
         match node {
-            | TermRef::Value(value) => match value {
-                | Value::Variable(index) => {
+            | TermRef::Value(id) => match arena.value(id) {
+                | Some(&Value::Variable(index)) => {
                     out.push(TERM_VARIABLE);
-                    put_uvarint(out, u64::from(u32::from(*index)));
+                    put_uvarint(out, u64::from(u32::from(index)));
                 },
-                | Value::Constant(index) => {
+                | Some(&Value::Constant(index)) => {
                     out.push(TERM_CONSTANT);
-                    put_uvarint(out, usize_to_u64(usize::from(*index)));
+                    put_uvarint(out, usize_to_u64(usize::from(index)));
                 },
-                | Value::Unit => out.push(TERM_UNIT),
-                | Value::Literal(literal) => {
+                | Some(&Value::Unit) | None => out.push(TERM_UNIT),
+                | Some(Value::Literal(literal)) => {
                     out.push(TERM_LITERAL);
                     encode_literal(out, literal);
                 },
-                | Value::Pair(first, second) => {
+                | Some(&Value::Pair(first, second)) => {
                     out.push(TERM_PAIR);
-                    stack.push(TermRef::Value(second.as_ref()));
-                    stack.push(TermRef::Value(first.as_ref()));
+                    stack.push(TermRef::Value(second));
+                    stack.push(TermRef::Value(first));
                 },
-                | Value::Injection(side, body) => {
+                | Some(&Value::Injection(side, body)) => {
                     out.push(TERM_INJECTION);
-                    out.push(side_byte(*side));
-                    stack.push(TermRef::Value(body.as_ref()));
+                    out.push(side_byte(side));
+                    stack.push(TermRef::Value(body));
                 },
-                | Value::Thunk(body) => {
+                | Some(&Value::Thunk(body)) => {
                     out.push(TERM_THUNK);
-                    stack.push(TermRef::Comp(body.as_ref()));
+                    stack.push(TermRef::Comp(body));
                 },
-                | Value::Lift { target, body } => {
+                | Some(Value::Lift { target, body }) => {
                     out.push(TERM_LIFT);
                     encode_level(out, target);
-                    stack.push(TermRef::Value(body.as_ref()));
+                    stack.push(TermRef::Value(*body));
                 },
             },
-            | TermRef::Comp(computation) => match computation {
-                | Computation::Lambda(body) => {
+            | TermRef::Comp(id) => match arena.computation(id) {
+                | Some(&Computation::Lambda(body)) => {
                     out.push(TERM_LAMBDA);
-                    stack.push(TermRef::Comp(body.as_ref()));
+                    stack.push(TermRef::Comp(body));
                 },
-                | Computation::Application(head, argument) => {
+                | Some(&Computation::Application(head, argument)) => {
                     out.push(TERM_APPLICATION);
-                    stack.push(TermRef::Value(argument.as_ref()));
-                    stack.push(TermRef::Comp(head.as_ref()));
+                    stack.push(TermRef::Value(argument));
+                    stack.push(TermRef::Comp(head));
                 },
-                | Computation::Return(value) => {
+                | Some(&Computation::Return(value)) => {
                     out.push(TERM_RETURN);
-                    stack.push(TermRef::Value(value.as_ref()));
+                    stack.push(TermRef::Value(value));
                 },
-                | Computation::Bind(bound, body) => {
+                | Some(&Computation::Bind(bound, body)) => {
                     out.push(TERM_BIND);
-                    stack.push(TermRef::Comp(body.as_ref()));
-                    stack.push(TermRef::Comp(bound.as_ref()));
+                    stack.push(TermRef::Comp(body));
+                    stack.push(TermRef::Comp(bound));
                 },
-                | Computation::Force(value) => {
+                | Some(&Computation::Force(value)) => {
                     out.push(TERM_FORCE);
-                    stack.push(TermRef::Value(value.as_ref()));
+                    stack.push(TermRef::Value(value));
                 },
-                | Computation::Case {
+                | Some(&Computation::Case {
                     scrutinee,
                     on_left,
                     on_right,
-                } => {
+                }) => {
                     out.push(TERM_CASE);
-                    stack.push(TermRef::Comp(on_right.as_ref()));
-                    stack.push(TermRef::Comp(on_left.as_ref()));
-                    stack.push(TermRef::Value(scrutinee.as_ref()));
+                    stack.push(TermRef::Comp(on_right));
+                    stack.push(TermRef::Comp(on_left));
+                    stack.push(TermRef::Value(scrutinee));
                 },
+                | None => out.push(TERM_UNIT),
             },
         }
     }
@@ -462,7 +483,7 @@ fn side_byte(side: Side) -> u8
 ///   overlong-rejecting decoder.
 /// - fails: never.
 /// - panics: none.
-fn put_uvarint(
+pub(super) fn put_uvarint(
     out: &mut Vec<u8>,
     value: u64,
 )
@@ -482,7 +503,7 @@ fn put_uvarint(
 /// Widen a `usize` count to `u64` for the wire (lossless on every supported
 /// platform, where `usize` is at most 64 bits).
 #[inline]
-fn usize_to_u64(value: usize) -> u64
+pub(super) fn usize_to_u64(value: usize) -> u64
 {
     u64::try_from(value).unwrap_or(u64::MAX)
 }

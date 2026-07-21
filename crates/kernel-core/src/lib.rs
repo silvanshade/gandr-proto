@@ -73,6 +73,7 @@
 
 extern crate alloc;
 
+mod arena;
 mod base;
 mod check;
 mod conv;
@@ -84,6 +85,11 @@ mod levels;
 mod term;
 mod types;
 
+pub use arena::CompTypeId;
+pub use arena::ComputationId;
+pub use arena::TermArena;
+pub use arena::ValueId;
+pub use arena::ValueTypeId;
 pub use base::BaseType;
 pub use base::FractionDigits;
 pub use base::IntegerLiteral;
@@ -98,11 +104,13 @@ pub use conv::convertible_computations;
 pub use conv::convertible_value_types;
 pub use conv::convertible_values;
 pub use decl::Declaration;
+pub use decl::DeclarationBuilder;
 pub use decl::DeclarationContent;
 pub use decl::LevelSignature;
 pub use env::AxiomReport;
 pub use env::CheckedId;
 pub use env::Environment;
+pub use error::CompTypeSnapshot;
 pub use error::ComputationTypeMismatch;
 pub use error::ExpectedComputationShape;
 pub use error::ExpectedValueShape;
@@ -112,8 +120,10 @@ pub use error::NonInferableForm;
 pub use error::RegisterFault;
 pub use error::UniverseViolation;
 pub use error::ValueTypeMismatch;
+pub use error::ValueTypeSnapshot;
 pub use export::AdmissionMark;
 pub use export::DecodeError;
+pub use export::DecodedArtifact;
 pub use export::DecodedDeclaration;
 pub use export::MalformedSite;
 pub use export::ReadError;

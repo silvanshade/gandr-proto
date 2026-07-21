@@ -75,6 +75,7 @@ use core::fmt;
 pub use self::read::decode;
 pub use self::read::read;
 pub use self::write::write;
+use crate::arena::TermArena;
 use crate::decl::Declaration;
 use crate::error::KernelError;
 
@@ -243,12 +244,62 @@ impl DecodedDeclaration
         self.mark
     }
 
-    /// The recovered declaration.
+    /// The recovered declaration (its content roots address the owning
+    /// [`DecodedArtifact`]'s arena).
     #[inline]
     #[must_use]
     pub const fn declaration(&self) -> &Declaration
     {
         &self.declaration
+    }
+}
+
+/// A fully decoded artifact: the [`TermArena`] its declarations' content was
+/// decoded into, and the admission-ordered declaration sequence addressing it.
+///
+/// [`decode`] yields this self-contained structure (the term/type content lives
+/// in [`Self::arena`], not in owned trees); [`read`] re-admits it through the
+/// choke point by importing each declaration's content into a fresh
+/// environment.
+#[derive(Clone, Debug, Default)]
+pub struct DecodedArtifact
+{
+    /// The arena every decoded declaration's content lives in.
+    arena: TermArena,
+    /// The decoded declarations, in admission order.
+    declarations: alloc::vec::Vec<DecodedDeclaration>,
+}
+
+impl DecodedArtifact
+{
+    /// Pair a decode arena with its admission-ordered declaration sequence.
+    #[inline]
+    #[must_use]
+    pub(crate) fn new(
+        arena: TermArena,
+        declarations: alloc::vec::Vec<DecodedDeclaration>,
+    ) -> Self
+    {
+        Self {
+            arena,
+            declarations,
+        }
+    }
+
+    /// The arena the declarations' content was decoded into.
+    #[inline]
+    #[must_use]
+    pub const fn arena(&self) -> &TermArena
+    {
+        &self.arena
+    }
+
+    /// The decoded declarations, in admission order.
+    #[inline]
+    #[must_use]
+    pub fn declarations(&self) -> &[DecodedDeclaration]
+    {
+        &self.declarations
     }
 }
 

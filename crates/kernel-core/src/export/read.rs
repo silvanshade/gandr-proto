@@ -2,7 +2,7 @@
 //! canonical bytes back to a declaration sequence and replay it through the
 //! choke point.
 //!
-//! # Decode through constructors, total on adversarial bytes
+//! # Decode is arena construction (D1(C), gandr-5t3)
 //!
 //! The reader is a closed-vocabulary parser. Every read is bounds-checked (a
 //! short artifact surfaces [`DecodeError::Truncated`]); every tag is matched
@@ -11,29 +11,25 @@
 //! **constructor**, so a non-canonical state never materializes:
 //!
 //! * **Levels** are rebuilt through the [`gandr_kernel_strata`] smart
-//!   constructors (`constant`/`var`/`succ`/`max`), which keep canonical form —
-//!   a non-canonical level is unrepresentable in memory. This re-arms, at the
-//!   B2.2 decode boundary, the B2.1 obligation that the kernel rejects
-//!   non-canonical levels (the crate has no non-canonical-level error variant
-//!   because such a level cannot be built).
+//!   constructors, which keep canonical form.
 //! * **Landmark constraints** are rebuilt through `LandmarkConstraint::leq` /
 //!   `equal`, which reject a non-variable-only side.
 //! * **Literals** are rebuilt through `Magnitude` / `FractionDigits` /
-//!   `IntegerLiteral` / `NumericLiteral` / `StringLiteral`, which normalize and
-//!   reject non-digit payloads.
-//! * **Terms and types** are rebuilt through the kernel-core constructors, with
-//!   the whole artifact held to a **canonical-bytes check**: the decoded
-//!   sequence is re-encoded and compared to the input, so a non-canonical
-//!   *encoding* (a padded literal, an unsorted or dominated level atom, an
-//!   overlong varint) is rejected as [`DecodeError::Malformed`] rather than
-//!   silently normalized (E4).
+//!   `IntegerLiteral` / `NumericLiteral` / `StringLiteral`.
+//! * **Terms and types** are **minted into a [`TermArena`]** as each node
+//!   completes (post-order completion is exactly allocation order), with the
+//!   whole artifact held to a **canonical-bytes check**: the decoded arena is
+//!   re-encoded and compared to the input, so a non-canonical *encoding* is
+//!   rejected as [`DecodeError::Malformed`] (E4). [`decode`] yields a
+//!   self-contained [`DecodedArtifact`] (the arena plus the declaration
+//!   sequence); [`read`] imports each declaration's content into a fresh
+//!   environment arena and re-admits through the choke point.
 //!
-//! Term and type trees decode **iteratively** over an explicit frame worklist
-//! (the [`crate::conv`] precedent), never input-scaled recursion, so an
-//! adversarially deep artifact is rejected or decoded without a stack overflow.
-//! Level reconstruction is bounded by [`super::MAX_DECODED_LEVEL_OFFSET`].
+//! Term and type trees decode **iteratively** over an explicit frame worklist,
+//! never input-scaled recursion, so an adversarially deep artifact is rejected
+//! or decoded without a stack overflow. Level reconstruction is bounded by
+//! [`super::MAX_DECODED_LEVEL_OFFSET`].
 
-use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -51,6 +47,7 @@ use super::BASE_INTEGER;
 use super::BASE_NUMERIC;
 use super::BASE_STRING;
 use super::DecodeError;
+use super::DecodedArtifact;
 use super::DecodedDeclaration;
 use super::FORMAT_VERSION_V0;
 use super::KIND_ABSTRACT_TYPE;
@@ -99,6 +96,11 @@ use super::TYPE_UNIT;
 use super::TYPE_UNIVERSE;
 use super::TagSite;
 use super::write::encode_artifact;
+use crate::arena::CompTypeId;
+use crate::arena::ComputationId;
+use crate::arena::TermArena;
+use crate::arena::ValueId;
+use crate::arena::ValueTypeId;
 use crate::base::BaseType;
 use crate::base::FractionDigits;
 use crate::base::IntegerLiteral;
@@ -108,27 +110,25 @@ use crate::base::NumericLiteral;
 use crate::base::Sign;
 use crate::base::StringLiteral;
 use crate::decl::Declaration;
+use crate::decl::DeclarationBuilder;
+use crate::decl::DeclarationContent;
 use crate::decl::LevelSignature;
 use crate::env::Environment;
 use crate::levels::LevelParamCount;
-use crate::term::Computation;
 use crate::term::ConstantIndex;
 use crate::term::DeBruijnIndex;
 use crate::term::Side;
-use crate::term::Value;
-use crate::types::CompType;
-use crate::types::ValueType;
 
-/// Decode a byte artifact into its admission-ordered declaration sequence
-/// (kernel-boundary.md §5, the validating reader).
+/// Decode a byte artifact into its admission-ordered declaration sequence,
+/// building the content into a self-contained arena (the validating reader).
 ///
 /// # Contract
 /// - requires: nothing — `bytes` may be arbitrary/adversarial.
-/// - ensures: `Ok(sequence)` with the declarations in admission order, each
-///   carrying its admission mark (E6), exactly when the bytes are the canonical
-///   encoding of a v0 artifact whose levels, constraints, literals, terms, and
-///   types all rebuild through their constructors; every level is canonical by
-///   construction (E4).
+/// - ensures: `Ok(artifact)` — a [`DecodedArtifact`] whose arena holds every
+///   declaration's content and whose declarations carry their admission mark
+///   (E6) — exactly when the bytes are the canonical encoding of a v0 artifact
+///   whose levels, constraints, literals, terms, and types all rebuild through
+///   their constructors; every level is canonical by construction (E4).
 /// - provides: the K5 re-checkable decode — a total parser over the closed
 ///   vocabulary.
 /// - fails: [`DecodeError`] — the rejection triple (truncation, an unknown tag,
@@ -144,24 +144,24 @@ use crate::types::ValueType;
 /// - hypothesis: L2 — the rejection-totality property pins that truncation at
 ///   every prefix and arbitrary random bytes return (never panic), and the
 ///   round-trip differential pins acceptance of every genuine artifact; the L3
-///   residues are each named rejection (reserved kind, reserved slot, version
-///   refusal, non-canonical level), pinned by hand-crafted goldens.
+///   residues are each named rejection, pinned by hand-crafted goldens.
 /// - witness: `export::tests::truncation_at_every_prefix_is_rejected`
 /// - witness: `export::tests::arbitrary_bytes_never_panic`
 /// - witness: `export::tests::a_non_canonical_level_encoding_is_rejected`
 /// - witness: `export::tests::each_reserved_declaration_kind_is_rejected`
 #[inline]
-pub fn decode(bytes: &[u8]) -> Result<Vec<DecodedDeclaration>, DecodeError>
+pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
 {
     let mut reader = ByteReader::new(bytes);
     reader.expect_magic()?;
     reader.expect_version()?;
     reader.expect_empty_minted_atom_table()?;
     let count = reader.read_uvarint()?;
+    let mut arena = TermArena::new();
     let mut declarations: Vec<DecodedDeclaration> = Vec::new();
     let mut remaining = count;
     while remaining > 0_u64 {
-        let declaration = decode_declaration(&mut reader)?;
+        let declaration = decode_declaration(&mut reader, &mut arena)?;
         declarations.push(declaration);
         remaining = remaining.wrapping_sub(1_u64);
     }
@@ -172,17 +172,18 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<DecodedDeclaration>, DecodeError>
     }
     let pairs: Vec<(AdmissionMark, &Declaration)> = declarations
         .iter()
-        .map(|decoded| (decoded.mark, &decoded.declaration))
+        .map(|decoded| (decoded.mark(), decoded.declaration()))
         .collect();
-    if encode_artifact(&pairs) != bytes {
+    if encode_artifact(&arena, &pairs) != bytes {
         return Err(DecodeError::Malformed {
             site: MalformedSite::NonCanonical,
         });
     }
-    Ok(declarations)
+    Ok(DecodedArtifact::new(arena, declarations))
 }
 
-/// Read a byte artifact into an [`Environment`] by replaying each declaration
+/// Read a byte artifact into an [`Environment`] by importing each decoded
+/// declaration's content into a fresh environment arena and replaying it
 /// through the choke point (kernel-boundary.md §5 E2/E3/E6).
 ///
 /// # Contract
@@ -194,8 +195,7 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<DecodedDeclaration>, DecodeError>
 ///   is recomputed rather than trusted (E3) and the bypass marks survive (E6).
 /// - provides: the K5 replay — an independent re-checker's admission path.
 /// - fails: [`ReadError::Decode`] on a format failure, [`ReadError::Admit`]
-///   when a recovered declaration does not re-admit (a typing failure, held
-///   distinct from a decode failure).
+///   when a recovered declaration does not re-admit.
 /// - panics: none.
 ///
 /// # Errors
@@ -204,23 +204,36 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<DecodedDeclaration>, DecodeError>
 /// # Adequacy
 /// - hypothesis: L2 — the round-trip differential pins that `read(write(env))`
 ///   reproduces the environment (declarations, marks, and recomputed audits);
-///   the L3 residue is the bypass replay path, pinned by a bypass-admitted
-///   fixture whose unchecked mark survives into the recomputed audit.
+///   the L3 residue is the bypass replay path.
 /// - witness: `export::tests::round_trip_reproduces_the_environment`
 /// - witness: `export::tests::a_bypass_admission_survives_the_round_trip`
 #[inline]
 pub fn read(bytes: &[u8]) -> Result<Environment, ReadError>
 {
-    let declarations = decode(bytes)?;
+    let artifact = decode(bytes)?;
+    let decode_arena = artifact.arena();
     let mut environment = Environment::new();
-    for decoded in declarations {
-        let DecodedDeclaration { mark, declaration } = decoded;
+    for decoded in artifact.declarations() {
+        let mark = decoded.mark();
+        let declaration = decoded.declaration();
+        let signature = declaration.levels().clone();
+        let mut builder = environment.stage();
+        let recovered = match *declaration.content() {
+            | DeclarationContent::Def { declared, body } => {
+                let (declared, body) = decode_arena.import_def(builder.arena(), declared, body);
+                builder.def(signature, declared, body)
+            },
+            | DeclarationContent::Axiom { declared } => {
+                let declared = decode_arena.import_axiom(builder.arena(), declared);
+                builder.axiom(signature, declared)
+            },
+        };
         match mark {
             | AdmissionMark::Checked => {
-                let _checked = environment.add_decl(declaration)?;
+                let _checked = environment.add_decl(recovered)?;
             },
             | AdmissionMark::UncheckedBypass => {
-                let _checked = environment.add_decl_unchecked(declaration);
+                let _checked = environment.add_decl_unchecked(recovered);
             },
         }
     }
@@ -403,24 +416,28 @@ impl<'bytes> ByteReader<'bytes>
     }
 }
 
-/// Decode one declaration record.
-fn decode_declaration(reader: &mut ByteReader<'_>) -> Result<DecodedDeclaration, DecodeError>
+/// Decode one declaration record, minting its content into `arena`.
+fn decode_declaration(
+    reader: &mut ByteReader<'_>,
+    arena: &mut TermArena,
+) -> Result<DecodedDeclaration, DecodeError>
 {
     let mark = decode_admission(reader)?;
     let kind = reader.next_byte()?;
     reject_reserved_kind(kind)?;
     decode_empty_name(reader)?;
     let signature = decode_level_signature(reader)?;
+    let mut builder = DeclarationBuilder::new(arena);
     let declaration = match kind {
         | KIND_DEF => {
-            let declared = decode_value_type(reader)?;
-            let body = decode_value(reader)?;
+            let declared = decode_value_type(reader, builder.arena())?;
+            let body = decode_value(reader, builder.arena())?;
             decode_empty_def_slots(reader)?;
-            Declaration::def(signature, declared, body)
+            builder.def(signature, declared, body)
         },
         | KIND_AXIOM => {
-            let declared = decode_value_type(reader)?;
-            Declaration::axiom(signature, declared)
+            let declared = decode_value_type(reader, builder.arena())?;
+            builder.axiom(signature, declared)
         },
         | other => {
             return Err(DecodeError::UnknownTag {
@@ -539,9 +556,8 @@ fn decode_relation(reader: &mut ByteReader<'_>) -> Result<ConstraintRelation, De
 ///
 /// # Contract
 /// - requires: nothing.
-/// - ensures: `Ok(level)` — always canonical, since it is built from
-///   `constant`/`var`/`succ`/`max` — when the constant, atom count, and each
-///   `(variable, offset)` pair decode and no offset meets
+/// - ensures: `Ok(level)` — always canonical — when the constant, atom count,
+///   and each `(variable, offset)` pair decode and no offset meets
 ///   [`MAX_DECODED_LEVEL_OFFSET`].
 /// - provides: the level decoder for universes, lifts, and constraint sides.
 /// - fails: [`DecodeError::Truncated`]; [`DecodeError::Malformed`]
@@ -588,22 +604,23 @@ fn build_variable_atom(
     Ok(atom)
 }
 
-/// A decoded type node, tagged by polarity.
-enum TypeNode
+/// A decoded type root, tagged by polarity (an id into the decode arena).
+#[derive(Clone, Copy)]
+enum DecodedType
 {
     /// A value type.
-    Value(ValueType),
+    Value(ValueTypeId),
     /// A computation type.
-    Comp(CompType),
+    Comp(CompTypeId),
 }
 
-/// A pending type-constructor frame awaiting its remaining children.
+/// A pending type-constructor frame awaiting its remaining child ids.
 enum TypeFrame
 {
     /// A product awaiting its first (`None`) or second (`Some`) value type.
-    Product(Option<ValueType>),
+    Product(Option<ValueTypeId>),
     /// A sum awaiting its first (`None`) or second (`Some`) value type.
-    Sum(Option<ValueType>),
+    Sum(Option<ValueTypeId>),
     /// A thunk awaiting its computation type.
     Thunk,
     /// A lift awaiting its inner value type; its target level is decoded.
@@ -612,27 +629,35 @@ enum TypeFrame
     Returner,
     /// An arrow awaiting its domain value type (`None`) or codomain
     /// computation type (`Some`).
-    Arrow(Option<ValueType>),
+    Arrow(Option<ValueTypeId>),
 }
 
-/// Decode a value type — the declaration's declared type is always value
-/// polarity.
+/// Decode a value type into `arena` — the declaration's declared type is always
+/// value polarity.
 #[inline]
-fn decode_value_type(reader: &mut ByteReader<'_>) -> Result<ValueType, DecodeError>
+fn decode_value_type(
+    reader: &mut ByteReader<'_>,
+    arena: &mut TermArena,
+) -> Result<ValueTypeId, DecodeError>
 {
-    expect_value_type(decode_type_tree(reader)?)
+    expect_value_type(decode_type_tree(reader, arena)?)
 }
 
-/// Decode a type tree iteratively over an explicit frame worklist.
-fn decode_type_tree(reader: &mut ByteReader<'_>) -> Result<TypeNode, DecodeError>
+/// Decode a type tree iteratively over an explicit frame worklist, minting each
+/// node into `arena` as it completes (post-order completion = allocation
+/// order).
+fn decode_type_tree(
+    reader: &mut ByteReader<'_>,
+    arena: &mut TermArena,
+) -> Result<DecodedType, DecodeError>
 {
     let mut frames: Vec<TypeFrame> = Vec::new();
     'read: loop {
         let tag = reader.next_byte()?;
         let mut produced = match tag {
-            | TYPE_BASE => TypeNode::Value(ValueType::Base(decode_base_type(reader)?)),
-            | TYPE_UNIT => TypeNode::Value(ValueType::Unit),
-            | TYPE_UNIVERSE => TypeNode::Value(ValueType::Universe(decode_level(reader)?)),
+            | TYPE_BASE => DecodedType::Value(arena.value_type_base(decode_base_type(reader)?)),
+            | TYPE_UNIT => DecodedType::Value(arena.value_type_unit()),
+            | TYPE_UNIVERSE => DecodedType::Value(arena.value_type_universe(decode_level(reader)?)),
             | TYPE_PRODUCT => {
                 frames.push(TypeFrame::Product(None));
                 continue 'read;
@@ -677,8 +702,7 @@ fn decode_type_tree(reader: &mut ByteReader<'_>) -> Result<TypeNode, DecodeError
                 },
                 | TypeFrame::Product(Some(first)) => {
                     let second = expect_value_type(produced)?;
-                    produced =
-                        TypeNode::Value(ValueType::Product(Box::new(first), Box::new(second)));
+                    produced = DecodedType::Value(arena.value_type_product(first, second));
                 },
                 | TypeFrame::Sum(None) => {
                     frames.push(TypeFrame::Sum(Some(expect_value_type(produced)?)));
@@ -686,22 +710,19 @@ fn decode_type_tree(reader: &mut ByteReader<'_>) -> Result<TypeNode, DecodeError
                 },
                 | TypeFrame::Sum(Some(first)) => {
                     let second = expect_value_type(produced)?;
-                    produced = TypeNode::Value(ValueType::Sum(Box::new(first), Box::new(second)));
+                    produced = DecodedType::Value(arena.value_type_sum(first, second));
                 },
                 | TypeFrame::Thunk => {
                     let body = expect_comp_type(produced)?;
-                    produced = TypeNode::Value(ValueType::Thunk(Box::new(body)));
+                    produced = DecodedType::Value(arena.value_type_thunk(body));
                 },
                 | TypeFrame::Lift(target) => {
                     let inner = expect_value_type(produced)?;
-                    produced = TypeNode::Value(ValueType::Lift {
-                        inner: Box::new(inner),
-                        target,
-                    });
+                    produced = DecodedType::Value(arena.value_type_lift(inner, target));
                 },
                 | TypeFrame::Returner => {
                     let result = expect_value_type(produced)?;
-                    produced = TypeNode::Comp(CompType::Returner(Box::new(result)));
+                    produced = DecodedType::Comp(arena.comp_type_returner(result));
                 },
                 | TypeFrame::Arrow(None) => {
                     frames.push(TypeFrame::Arrow(Some(expect_value_type(produced)?)));
@@ -709,10 +730,7 @@ fn decode_type_tree(reader: &mut ByteReader<'_>) -> Result<TypeNode, DecodeError
                 },
                 | TypeFrame::Arrow(Some(domain)) => {
                     let codomain = expect_comp_type(produced)?;
-                    produced = TypeNode::Comp(CompType::Arrow {
-                        domain: Box::new(domain),
-                        codomain: Box::new(codomain),
-                    });
+                    produced = DecodedType::Comp(arena.comp_type_arrow(domain, codomain));
                 },
             }
         }
@@ -721,11 +739,11 @@ fn decode_type_tree(reader: &mut ByteReader<'_>) -> Result<TypeNode, DecodeError
 
 /// Require a value-type node, rejecting a polarity mismatch.
 #[inline]
-fn expect_value_type(node: TypeNode) -> Result<ValueType, DecodeError>
+fn expect_value_type(node: DecodedType) -> Result<ValueTypeId, DecodeError>
 {
     match node {
-        | TypeNode::Value(value_type) => Ok(value_type),
-        | TypeNode::Comp(_) => Err(DecodeError::Malformed {
+        | DecodedType::Value(id) => Ok(id),
+        | DecodedType::Comp(_) => Err(DecodeError::Malformed {
             site: MalformedSite::Polarity,
         }),
     }
@@ -733,11 +751,11 @@ fn expect_value_type(node: TypeNode) -> Result<ValueType, DecodeError>
 
 /// Require a computation-type node, rejecting a polarity mismatch.
 #[inline]
-fn expect_comp_type(node: TypeNode) -> Result<CompType, DecodeError>
+fn expect_comp_type(node: DecodedType) -> Result<CompTypeId, DecodeError>
 {
     match node {
-        | TypeNode::Comp(comp_type) => Ok(comp_type),
-        | TypeNode::Value(_) => Err(DecodeError::Malformed {
+        | DecodedType::Comp(id) => Ok(id),
+        | DecodedType::Value(_) => Err(DecodeError::Malformed {
             site: MalformedSite::Polarity,
         }),
     }
@@ -758,20 +776,21 @@ fn decode_base_type(reader: &mut ByteReader<'_>) -> Result<BaseType, DecodeError
     }
 }
 
-/// A decoded term node, tagged by polarity.
-enum TermNode
+/// A decoded term root, tagged by polarity (an id into the decode arena).
+#[derive(Clone, Copy)]
+enum DecodedTerm
 {
     /// A value.
-    Value(Value),
+    Value(ValueId),
     /// A computation.
-    Comp(Computation),
+    Comp(ComputationId),
 }
 
-/// A pending term-constructor frame awaiting its remaining children.
+/// A pending term-constructor frame awaiting its remaining child ids.
 enum TermFrame
 {
     /// A pair awaiting its first (`None`) or second (`Some`) value.
-    Pair(Option<Value>),
+    Pair(Option<ValueId>),
     /// An injection awaiting its body value; its side is decoded.
     Injection(Side),
     /// A thunk awaiting its computation.
@@ -782,49 +801,57 @@ enum TermFrame
     Lambda,
     /// An application awaiting its head computation (`None`) or argument value
     /// (`Some`).
-    Application(Option<Computation>),
+    Application(Option<ComputationId>),
     /// A returner awaiting its value.
     Return,
     /// A bind awaiting its bound computation (`None`) or body computation
     /// (`Some`).
-    Bind(Option<Computation>),
+    Bind(Option<ComputationId>),
     /// A force awaiting its value.
     Force,
     /// A case awaiting its scrutinee value.
     CaseScrutinee,
     /// A case awaiting its left branch; its scrutinee is decoded.
-    CaseLeft(Value),
+    CaseLeft(ValueId),
     /// A case awaiting its right branch; its scrutinee and left branch are
     /// decoded.
-    CaseRight(Value, Computation),
+    CaseRight(ValueId, ComputationId),
 }
 
-/// Decode a value term — a definition body is always value polarity.
+/// Decode a value term into `arena` — a definition body is always value
+/// polarity.
 #[inline]
-fn decode_value(reader: &mut ByteReader<'_>) -> Result<Value, DecodeError>
+fn decode_value(
+    reader: &mut ByteReader<'_>,
+    arena: &mut TermArena,
+) -> Result<ValueId, DecodeError>
 {
-    expect_value_term(decode_term_tree(reader)?)
+    expect_value_term(decode_term_tree(reader, arena)?)
 }
 
-/// Decode a term tree iteratively over an explicit frame worklist.
+/// Decode a term tree iteratively over an explicit frame worklist, minting each
+/// node into `arena` as it completes.
 #[expect(
     clippy::too_many_lines,
-    reason = "the flat iterative term decoder enumerates every value and computation former in one worklist loop; splitting it would obscure the single reduction machine"
+    reason = "the flat iterative term decoder enumerates every value and computation former in one worklist loop; splitting it would obscure the single machine"
 )]
-fn decode_term_tree(reader: &mut ByteReader<'_>) -> Result<TermNode, DecodeError>
+fn decode_term_tree(
+    reader: &mut ByteReader<'_>,
+    arena: &mut TermArena,
+) -> Result<DecodedTerm, DecodeError>
 {
     let mut frames: Vec<TermFrame> = Vec::new();
     'read: loop {
         let tag = reader.next_byte()?;
         let mut produced = match tag {
             | TERM_VARIABLE => {
-                TermNode::Value(Value::Variable(DeBruijnIndex::from(reader.read_u32()?)))
+                DecodedTerm::Value(arena.value_variable(DeBruijnIndex::from(reader.read_u32()?)))
             },
             | TERM_CONSTANT => {
-                TermNode::Value(Value::Constant(ConstantIndex::from(reader.read_usize()?)))
+                DecodedTerm::Value(arena.value_constant(ConstantIndex::from(reader.read_usize()?)))
             },
-            | TERM_UNIT => TermNode::Value(Value::Unit),
-            | TERM_LITERAL => TermNode::Value(Value::Literal(decode_literal(reader)?)),
+            | TERM_UNIT => DecodedTerm::Value(arena.value_unit()),
+            | TERM_LITERAL => DecodedTerm::Value(arena.value_literal(decode_literal(reader)?)),
             | TERM_PAIR => {
                 frames.push(TermFrame::Pair(None));
                 continue 'read;
@@ -886,26 +913,23 @@ fn decode_term_tree(reader: &mut ByteReader<'_>) -> Result<TermNode, DecodeError
                 },
                 | TermFrame::Pair(Some(first)) => {
                     let second = expect_value_term(produced)?;
-                    produced = TermNode::Value(Value::Pair(Box::new(first), Box::new(second)));
+                    produced = DecodedTerm::Value(arena.value_pair(first, second));
                 },
                 | TermFrame::Injection(side) => {
                     let body = expect_value_term(produced)?;
-                    produced = TermNode::Value(Value::Injection(side, Box::new(body)));
+                    produced = DecodedTerm::Value(arena.value_injection(side, body));
                 },
                 | TermFrame::Thunk => {
                     let body = expect_comp_term(produced)?;
-                    produced = TermNode::Value(Value::Thunk(Box::new(body)));
+                    produced = DecodedTerm::Value(arena.value_thunk(body));
                 },
                 | TermFrame::Lift(target) => {
                     let body = expect_value_term(produced)?;
-                    produced = TermNode::Value(Value::Lift {
-                        target,
-                        body: Box::new(body),
-                    });
+                    produced = DecodedTerm::Value(arena.value_lift(target, body));
                 },
                 | TermFrame::Lambda => {
                     let body = expect_comp_term(produced)?;
-                    produced = TermNode::Comp(Computation::Lambda(Box::new(body)));
+                    produced = DecodedTerm::Comp(arena.computation_lambda(body));
                 },
                 | TermFrame::Application(None) => {
                     frames.push(TermFrame::Application(Some(expect_comp_term(produced)?)));
@@ -913,14 +937,11 @@ fn decode_term_tree(reader: &mut ByteReader<'_>) -> Result<TermNode, DecodeError
                 },
                 | TermFrame::Application(Some(head)) => {
                     let argument = expect_value_term(produced)?;
-                    produced = TermNode::Comp(Computation::Application(
-                        Box::new(head),
-                        Box::new(argument),
-                    ));
+                    produced = DecodedTerm::Comp(arena.computation_application(head, argument));
                 },
                 | TermFrame::Return => {
                     let value = expect_value_term(produced)?;
-                    produced = TermNode::Comp(Computation::Return(Box::new(value)));
+                    produced = DecodedTerm::Comp(arena.computation_return(value));
                 },
                 | TermFrame::Bind(None) => {
                     frames.push(TermFrame::Bind(Some(expect_comp_term(produced)?)));
@@ -928,11 +949,11 @@ fn decode_term_tree(reader: &mut ByteReader<'_>) -> Result<TermNode, DecodeError
                 },
                 | TermFrame::Bind(Some(bound)) => {
                     let body = expect_comp_term(produced)?;
-                    produced = TermNode::Comp(Computation::Bind(Box::new(bound), Box::new(body)));
+                    produced = DecodedTerm::Comp(arena.computation_bind(bound, body));
                 },
                 | TermFrame::Force => {
                     let value = expect_value_term(produced)?;
-                    produced = TermNode::Comp(Computation::Force(Box::new(value)));
+                    produced = DecodedTerm::Comp(arena.computation_force(value));
                 },
                 | TermFrame::CaseScrutinee => {
                     frames.push(TermFrame::CaseLeft(expect_value_term(produced)?));
@@ -944,11 +965,8 @@ fn decode_term_tree(reader: &mut ByteReader<'_>) -> Result<TermNode, DecodeError
                 },
                 | TermFrame::CaseRight(scrutinee, on_left) => {
                     let on_right = expect_comp_term(produced)?;
-                    produced = TermNode::Comp(Computation::Case {
-                        scrutinee: Box::new(scrutinee),
-                        on_left: Box::new(on_left),
-                        on_right: Box::new(on_right),
-                    });
+                    produced =
+                        DecodedTerm::Comp(arena.computation_case(scrutinee, on_left, on_right));
                 },
             }
         }
@@ -957,11 +975,11 @@ fn decode_term_tree(reader: &mut ByteReader<'_>) -> Result<TermNode, DecodeError
 
 /// Require a value node, rejecting a polarity mismatch.
 #[inline]
-fn expect_value_term(node: TermNode) -> Result<Value, DecodeError>
+fn expect_value_term(node: DecodedTerm) -> Result<ValueId, DecodeError>
 {
     match node {
-        | TermNode::Value(value) => Ok(value),
-        | TermNode::Comp(_) => Err(DecodeError::Malformed {
+        | DecodedTerm::Value(id) => Ok(id),
+        | DecodedTerm::Comp(_) => Err(DecodeError::Malformed {
             site: MalformedSite::Polarity,
         }),
     }
@@ -969,11 +987,11 @@ fn expect_value_term(node: TermNode) -> Result<Value, DecodeError>
 
 /// Require a computation node, rejecting a polarity mismatch.
 #[inline]
-fn expect_comp_term(node: TermNode) -> Result<Computation, DecodeError>
+fn expect_comp_term(node: DecodedTerm) -> Result<ComputationId, DecodeError>
 {
     match node {
-        | TermNode::Comp(computation) => Ok(computation),
-        | TermNode::Value(_) => Err(DecodeError::Malformed {
+        | DecodedTerm::Comp(id) => Ok(id),
+        | DecodedTerm::Value(_) => Err(DecodeError::Malformed {
             site: MalformedSite::Polarity,
         }),
     }

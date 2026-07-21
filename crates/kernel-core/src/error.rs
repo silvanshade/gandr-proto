@@ -8,13 +8,22 @@
 //! universe failures carry the `gandr_kernel_strata` refutation evidence they
 //! rest on, so a rejection is itself re-checkable.
 //!
+//! # Type-carrying payloads are self-contained arena snapshots (D1(C))
+//!
+//! A synthesized type lives in the environment arena, which the choke point
+//! **truncates** after the verdict (dropping this declaration's content and the
+//! checker's intermediates on rejection). A diagnostic payload therefore cannot
+//! hold a bare arena id — it would dangle. Each type-carrying variant instead
+//! owns a small [`TermArena`] **snapshot** of the reachable closure of its
+//! root(s), reified before truncation ([`crate::arena`]). The snapshot's node
+//! children are `Copy` ids, so the payload's `Drop`/`Clone` are flat and total
+//! on any depth — the totality the owned-tree representation needed
+//! hand-written worklists to guarantee.
+//!
 //! There is deliberately **no** non-canonical-level variant: an in-memory
-//! `gandr_kernel_strata::Level` is canonical by construction (its smart
-//! constructors keep canonical form, so a non-canonical level is
-//! unrepresentable — K1 applied to levels). The "reject non-canonical input at
-//! the boundary" obligation is discharged here by construction and re-armed at
-//! the decode boundary in the export reader (B2.2), not by a phantom variant
-//! that could never fire.
+//! `gandr_kernel_strata::Level` is canonical by construction. The
+//! reject-non-canonical-input obligation is discharged by construction here and
+//! re-armed at the decode boundary in the export reader (B2.2).
 
 use alloc::boxed::Box;
 use core::error::Error;
@@ -28,8 +37,9 @@ use gandr_kernel_strata::LevelVar;
 use gandr_kernel_strata::LoopWitness;
 use gandr_kernel_strata::PosetError;
 
-use crate::types::CompType;
-use crate::types::ValueType;
+use crate::arena::CompTypeId;
+use crate::arena::TermArena;
+use crate::arena::ValueTypeId;
 
 /// A checking-only term form met where the checker had to synthesize a type.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -93,44 +103,145 @@ pub enum ExpectedComputationShape
     Returner,
 }
 
-/// A definitional-inequality between two value types: the checker synthesized
-/// `actual` where `expected` was required, and the two do not convert.
+/// A self-contained snapshot of one value type.
+///
+/// The reified reachable closure plus its root id, so the payload survives the
+/// working arena's truncation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValueTypeSnapshot
+{
+    /// The reified arena holding the value type's closure.
+    arena: TermArena,
+    /// The root id into [`Self::arena`].
+    root: ValueTypeId,
+}
+
+impl ValueTypeSnapshot
+{
+    /// Record a value-type snapshot (its reified arena and root id).
+    #[inline]
+    #[must_use]
+    pub(crate) fn new(
+        arena: TermArena,
+        root: ValueTypeId,
+    ) -> Self
+    {
+        Self { arena, root }
+    }
+
+    /// The snapshot's arena.
+    #[inline]
+    #[must_use]
+    pub const fn arena(&self) -> &TermArena
+    {
+        &self.arena
+    }
+
+    /// The value type's root id into [`Self::arena`].
+    #[inline]
+    #[must_use]
+    pub const fn root(&self) -> ValueTypeId
+    {
+        self.root
+    }
+}
+
+/// A self-contained snapshot of one computation type.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompTypeSnapshot
+{
+    /// The reified arena holding the computation type's closure.
+    arena: TermArena,
+    /// The root id into [`Self::arena`].
+    root: CompTypeId,
+}
+
+impl CompTypeSnapshot
+{
+    /// Record a computation-type snapshot.
+    #[inline]
+    #[must_use]
+    pub(crate) fn new(
+        arena: TermArena,
+        root: CompTypeId,
+    ) -> Self
+    {
+        Self { arena, root }
+    }
+
+    /// The snapshot's arena.
+    #[inline]
+    #[must_use]
+    pub const fn arena(&self) -> &TermArena
+    {
+        &self.arena
+    }
+
+    /// The computation type's root id into [`Self::arena`].
+    #[inline]
+    #[must_use]
+    pub const fn root(&self) -> CompTypeId
+    {
+        self.root
+    }
+}
+
+/// A definitional-inequality between two value types.
+///
+/// The checker synthesized `actual` where `expected` was required, and the two
+/// do not convert. Both roots are reified into one self-contained snapshot
+/// arena.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ValueTypeMismatch
 {
-    /// The value type the context required.
-    expected: ValueType,
-    /// The value type the checker synthesized.
-    actual: ValueType,
+    /// The snapshot arena holding both roots' closures.
+    arena: TermArena,
+    /// The value type the context required (root into [`Self::arena`]).
+    expected: ValueTypeId,
+    /// The value type the checker synthesized (root into [`Self::arena`]).
+    actual: ValueTypeId,
 }
 
 impl ValueTypeMismatch
 {
-    /// Record a value-type mismatch.
+    /// Record a value-type mismatch over a shared snapshot arena.
     #[inline]
     #[must_use]
     pub(crate) fn new(
-        expected: ValueType,
-        actual: ValueType,
+        arena: TermArena,
+        expected: ValueTypeId,
+        actual: ValueTypeId,
     ) -> Self
     {
-        Self { expected, actual }
+        Self {
+            arena,
+            expected,
+            actual,
+        }
     }
 
-    /// The value type the context required.
+    /// The snapshot arena holding both roots.
     #[inline]
     #[must_use]
-    pub const fn expected(&self) -> &ValueType
+    pub const fn arena(&self) -> &TermArena
     {
-        &self.expected
+        &self.arena
     }
 
-    /// The value type the checker synthesized.
+    /// The value type the context required (root into [`Self::arena`]).
     #[inline]
     #[must_use]
-    pub const fn actual(&self) -> &ValueType
+    pub const fn expected(&self) -> ValueTypeId
     {
-        &self.actual
+        self.expected
+    }
+
+    /// The value type the checker synthesized (root into [`Self::arena`]).
+    #[inline]
+    #[must_use]
+    pub const fn actual(&self) -> ValueTypeId
+    {
+        self.actual
     }
 }
 
@@ -138,39 +249,56 @@ impl ValueTypeMismatch
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ComputationTypeMismatch
 {
-    /// The computation type the context required.
-    expected: CompType,
-    /// The computation type the checker synthesized.
-    actual: CompType,
+    /// The snapshot arena holding both roots' closures.
+    arena: TermArena,
+    /// The computation type the context required (root into [`Self::arena`]).
+    expected: CompTypeId,
+    /// The computation type the checker synthesized (root into
+    /// [`Self::arena`]).
+    actual: CompTypeId,
 }
 
 impl ComputationTypeMismatch
 {
-    /// Record a computation-type mismatch.
+    /// Record a computation-type mismatch over a shared snapshot arena.
     #[inline]
     #[must_use]
     pub(crate) fn new(
-        expected: CompType,
-        actual: CompType,
+        arena: TermArena,
+        expected: CompTypeId,
+        actual: CompTypeId,
     ) -> Self
     {
-        Self { expected, actual }
+        Self {
+            arena,
+            expected,
+            actual,
+        }
     }
 
-    /// The computation type the context required.
+    /// The snapshot arena holding both roots.
     #[inline]
     #[must_use]
-    pub const fn expected(&self) -> &CompType
+    pub const fn arena(&self) -> &TermArena
     {
-        &self.expected
+        &self.arena
     }
 
-    /// The computation type the checker synthesized.
+    /// The computation type the context required (root into [`Self::arena`]).
     #[inline]
     #[must_use]
-    pub const fn actual(&self) -> &CompType
+    pub const fn expected(&self) -> CompTypeId
     {
-        &self.actual
+        self.expected
+    }
+
+    /// The computation type the checker synthesized (root into
+    /// [`Self::arena`]).
+    #[inline]
+    #[must_use]
+    pub const fn actual(&self) -> CompTypeId
+    {
+        self.actual
     }
 }
 
@@ -283,8 +411,8 @@ pub enum KernelError
     {
         /// The value-type shape the rule required.
         expected: ExpectedValueShape,
-        /// The value type actually present.
-        actual: Box<ValueType>,
+        /// A snapshot of the value type actually present.
+        actual: Box<ValueTypeSnapshot>,
     },
     /// A computation of the wrong type shape met an eliminator or checking
     /// rule.
@@ -292,8 +420,8 @@ pub enum KernelError
     {
         /// The computation-type shape the rule required.
         expected: ExpectedComputationShape,
-        /// The computation type actually present.
-        actual: Box<CompType>,
+        /// A snapshot of the computation type actually present.
+        actual: Box<CompTypeSnapshot>,
     },
     /// A synthesized value type failed to convert against the expected type.
     ValueTypeMismatch(Box<ValueTypeMismatch>),
@@ -330,6 +458,12 @@ pub enum KernelError
     /// (fail-closed) instead of fabricating a type, which could wrongly accept
     /// an ill-typed declaration (fail-open).
     CheckerRegisterFault(RegisterFault),
+    /// An arena id resolved to no node — the K1 weakening surfaced. Unreachable
+    /// when minting and lookup are wired correctly (ids are minted only by
+    /// arena constructors over allocated children, [`crate::arena`]); surfaced
+    /// rather than trusted, so a resolution defect rejects the declaration
+    /// (fail-closed) instead of proceeding on a fabricated node.
+    ArenaFault,
 }
 
 impl From<LevelError> for KernelError
@@ -417,6 +551,9 @@ impl fmt::Display for KernelError
                 | RegisterFault::ExpectedCompType => f.write_str(
                     "checker-machine register fault: a computation-consuming frame found a non-computation register",
                 ),
+            },
+            | Self::ArenaFault => {
+                f.write_str("an arena id resolved to no node: a resolution fault, surfaced not trusted")
             },
         }
     }

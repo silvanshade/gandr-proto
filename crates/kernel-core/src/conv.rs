@@ -8,46 +8,47 @@
 //! against the expected type. At S1 the definitional equality this needs is
 //! **type conversion only**, and it is exactly:
 //!
+//! * an **id-equality early-out** — two nodes named by the *same id in the same
+//!   arena* are the same node, hence structurally equal (trivially sound, the
+//!   Lean `is_eqp`-first / smalltt ptr-eq posture, impl-models §2.1); it admits
+//!   **no table into the TCB** (C3 held) because it decides only *reflexive*
+//!   pairs and defers every distinct-id pair to the structural walk;
 //! * α-structural equality — terms are nameless (de Bruijn), so α-equivalence
 //!   is syntactic identity, and types carry no binders;
 //! * with `gandr_kernel_strata::Level` **canonical equality** at
 //!   [`crate::types::ValueType::Universe`] and
 //!   [`crate::types::ValueType::Lift`] (the strata `Level` type's derived
 //!   equality **is** the ADR-78 level-equality oracle);
-//! * structurally through `Product`, `Sum`, `Thunk`, `Arrow`, and `Returner`.
+//! * structurally through `Product`, `Sum`, `Thunk`, `Arrow`, and `Returner`,
+//!   resolving each child through the arena's checked `get`.
 //!
 //! **No β law fires and no computation is evaluated.** At S1 no value-type or
 //! computation-type former is indexed by a value term, so type conversion
-//! never descends into a term — the C5 quarantine ("the kernel types
-//! computations but never evaluates them during conversion") holds
-//! **vacuously** at S1, because there is nothing to evaluate. This coincidence
-//! with plain structural equality is not permanent: once a term-indexed type
-//! former lands (an `El`/description code carrying a value into a type, S2+),
-//! values will appear in types and the β laws of the value fragment will become
-//! load-bearing here.
+//! never descends into a term — the C5 quarantine holds **vacuously** at S1.
+//! Once a term-indexed type former lands (an `El`/description code carrying a
+//! value into a type, S2+), values will appear in types and the β laws of the
+//! value fragment will become load-bearing here.
 //!
-//! # The value-fragment conversion (present, quarantined)
+//! # Fail-closed on a dangling id
 //!
-//! [`convertible_values`] / [`convertible_computations`] provide the
-//! α-structural equality of the value/computation term fragment — the fragment
-//! C5 permits conversion to compare. At S1 they carry no β law (the value
-//! fragment forces none — the only value embedding a computation is a thunk,
-//! which suspends rather than reduces) and are **not invoked by the checker**
-//! (types hold no terms); they are the seed the term-indexed extensions will
-//! grow. They never evaluate a computation — a `Thunk`/`Force` pair is compared
-//! structurally, never run.
+//! A child id always resolves under the minting invariant ([`crate::arena`]).
+//! Were one to dangle, the checked `get` yields `None` and the walk answers
+//! [`Convertibility::Distinct`] — rejecting is the safe (fail-closed) verdict.
 //!
 //! # Totality
 //!
-//! Every face is **iterative** over an explicit heap worklist, not recursive:
-//! the relation coincides with the derived structural equality, but the derived
-//! `PartialEq` recurses on type/term depth and would overflow the stack on an
-//! adversarial-depth input. The worklist keeps conversion total (the kernel
-//! never diverges — docs/workflow/rust.md).
+//! Every face is **iterative** over an explicit heap worklist of `Copy` id
+//! pairs (no lifetimes), never recursive: the derived structural equality would
+//! recurse on depth and overflow the stack on an adversarial-depth input; the
+//! worklist keeps conversion total (docs/workflow/rust.md).
 
-use alloc::boxed::Box;
 use alloc::vec::Vec;
 
+use crate::arena::CompTypeId;
+use crate::arena::ComputationId;
+use crate::arena::TermArena;
+use crate::arena::ValueId;
+use crate::arena::ValueTypeId;
 use crate::error::ComputationTypeMismatch;
 use crate::error::KernelError;
 use crate::error::ValueTypeMismatch;
@@ -70,59 +71,64 @@ pub enum Convertibility
     Distinct,
 }
 
-/// A pending type-conversion obligation: a same-polarity pair still to compare.
-enum TypeGoal<'types>
+/// A pending type-conversion obligation: a same-polarity id pair still to
+/// compare.
+#[derive(Clone, Copy)]
+enum TypeGoal
 {
     /// A pair of value types.
-    Value(&'types ValueType, &'types ValueType),
+    Value(ValueTypeId, ValueTypeId),
     /// A pair of computation types.
-    Comp(&'types CompType, &'types CompType),
+    Comp(CompTypeId, CompTypeId),
 }
 
-/// A pending term-conversion obligation: a same-polarity pair still to compare.
-enum TermGoal<'terms>
+/// A pending term-conversion obligation: a same-polarity id pair still to
+/// compare.
+#[derive(Clone, Copy)]
+enum TermGoal
 {
     /// A pair of values.
-    Value(&'terms Value, &'terms Value),
+    Value(ValueId, ValueId),
     /// A pair of computations.
-    Comp(&'terms Computation, &'terms Computation),
+    Comp(ComputationId, ComputationId),
 }
 
-/// Decide convertibility of two value types.
+/// Decide convertibility of two value types in one arena.
 ///
 /// # Contract
-/// - requires: nothing (any two value types are comparable).
+/// - requires: `left` and `right` resolve in `arena`.
 /// - ensures: [`Convertibility::Convertible`] exactly when the two are equal up
-///   to the S1 definitional equality (α-structural with canonical levels); the
-///   relation is reflexive, symmetric, and transitive.
+///   to the S1 definitional equality (id-equality then α-structural with
+///   canonical levels); the relation is reflexive, symmetric, and transitive.
 /// - provides: the type equality the checker invokes at a value mode switch.
 /// - fails: never — a negative answer is [`Convertibility::Distinct`], not a
-///   failure.
+///   failure (and a dangling id fails closed to `Distinct`).
 /// - panics: none.
 ///
 /// # Adequacy
 /// - hypothesis: L2 — a boundary-biased differential against the crate's own
 ///   generator confirms it agrees with reflexive equality and separates
-///   distinct types on every generated pair; the L3 residue is the level-node
-///   comparison (canonical `Level` equality, not syntactic), pinned by a lift
-///   whose targets differ only by canonical form.
+///   distinct types on every generated pair; the L3 residues are the
+///   id-equality early-out (a shared id converts without a structural walk) and
+///   the level-node comparison (canonical `Level` equality, not syntactic).
 /// - witness: `conv::tests::value_type_conversion_is_reflexive`
 /// - witness: `conv::tests::value_type_conversion_separates_distinct_types`
 /// - witness: `conversion::tests::prop_value_type_conversion_is_reflexive`
 #[inline]
 #[must_use]
 pub fn convertible_value_types(
-    left: &ValueType,
-    right: &ValueType,
+    arena: &TermArena,
+    left: ValueTypeId,
+    right: ValueTypeId,
 ) -> Convertibility
 {
-    converge_types(TypeGoal::Value(left, right))
+    converge_types(arena, TypeGoal::Value(left, right))
 }
 
-/// Decide convertibility of two computation types.
+/// Decide convertibility of two computation types in one arena.
 ///
 /// # Contract
-/// - requires: nothing.
+/// - requires: `left` and `right` resolve in `arena`.
 /// - ensures: [`Convertibility::Convertible`] exactly when the two are equal up
 ///   to the S1 definitional equality; reflexive, symmetric, transitive.
 /// - provides: the type equality the checker invokes at a computation mode
@@ -133,24 +139,24 @@ pub fn convertible_value_types(
 /// # Adequacy
 /// - hypothesis: L2 — the differential confirms agreement with reflexive
 ///   equality on generated computation types; the L3 residue is the arrow's two
-///   children (domain value type, codomain computation type), pinned by a pair
-///   differing in exactly one child.
+///   children (domain value type, codomain computation type).
 /// - witness: `conv::tests::computation_type_conversion_is_reflexive`
 /// - witness: `conversion::tests::prop_computation_type_conversion_is_reflexive`
 #[inline]
 #[must_use]
 pub fn convertible_comp_types(
-    left: &CompType,
-    right: &CompType,
+    arena: &TermArena,
+    left: CompTypeId,
+    right: CompTypeId,
 ) -> Convertibility
 {
-    converge_types(TypeGoal::Comp(left, right))
+    converge_types(arena, TypeGoal::Comp(left, right))
 }
 
 /// Decide α-structural convertibility of two values (the C5 value fragment).
 ///
 /// # Contract
-/// - requires: nothing.
+/// - requires: `left` and `right` resolve in `arena`.
 /// - ensures: [`Convertibility::Convertible`] exactly when the two values are
 ///   α-equal (syntactic identity under de Bruijn, with canonical literal
 ///   equality at leaves); no β law fires and no thunked computation is run.
@@ -169,17 +175,18 @@ pub fn convertible_comp_types(
 #[inline]
 #[must_use]
 pub fn convertible_values(
-    left: &Value,
-    right: &Value,
+    arena: &TermArena,
+    left: ValueId,
+    right: ValueId,
 ) -> Convertibility
 {
-    converge_terms(TermGoal::Value(left, right))
+    converge_terms(arena, TermGoal::Value(left, right))
 }
 
 /// Decide α-structural convertibility of two computations (the C5 fragment).
 ///
 /// # Contract
-/// - requires: nothing.
+/// - requires: `left` and `right` resolve in `arena`.
 /// - ensures: [`Convertibility::Convertible`] exactly when the two computations
 ///   are α-equal (syntactic identity under de Bruijn); no β law fires and
 ///   nothing is evaluated.
@@ -191,153 +198,188 @@ pub fn convertible_values(
 /// # Adequacy
 /// - hypothesis: L2 — reflexivity on generated computations; the L3 residue is
 ///   the binder-blindness of de Bruijn (two lambdas convert exactly when their
-///   bodies do, with no name comparison), pinned by a lambda-body pair.
+///   bodies do, with no name comparison).
 /// - witness: `conv::tests::computation_conversion_is_alpha_structural`
 /// - witness: `conversion::tests::prop_computation_conversion_is_reflexive`
 #[inline]
 #[must_use]
 pub fn convertible_computations(
-    left: &Computation,
-    right: &Computation,
+    arena: &TermArena,
+    left: ComputationId,
+    right: ComputationId,
 ) -> Convertibility
 {
-    converge_terms(TermGoal::Comp(left, right))
+    converge_terms(arena, TermGoal::Comp(left, right))
 }
 
 /// Convert a synthesized value type against an expected one, building the
-/// mismatch error from the two roots on divergence.
+/// mismatch error (a self-contained arena snapshot of both roots) on
+/// divergence.
 ///
 /// # Contract
-/// - requires: nothing.
+/// - requires: `expected` and `actual` resolve in `arena`.
 /// - ensures: `Ok(())` exactly when [`convertible_value_types`] converges.
 /// - provides: the checker's value mode-switch step.
-/// - fails: [`KernelError::ValueTypeMismatch`] carrying the two root types.
+/// - fails: [`KernelError::ValueTypeMismatch`] carrying a snapshot of the two
+///   roots (self-contained, so it survives the arena truncation on rejection).
 /// - panics: none.
 ///
 /// # Errors
 /// [`KernelError::ValueTypeMismatch`].
 #[inline]
 pub fn convert_value_type(
-    expected: &ValueType,
-    actual: &ValueType,
+    arena: &TermArena,
+    expected: ValueTypeId,
+    actual: ValueTypeId,
 ) -> Result<(), KernelError>
 {
-    match convertible_value_types(expected, actual) {
+    match convertible_value_types(arena, expected, actual) {
         | Convertibility::Convertible => Ok(()),
-        | Convertibility::Distinct => Err(KernelError::ValueTypeMismatch(Box::new(
-            ValueTypeMismatch::new(expected.clone(), actual.clone()),
-        ))),
+        | Convertibility::Distinct => {
+            let (snapshot, expected, actual) = arena.snapshot_value_types(expected, actual);
+            Err(KernelError::ValueTypeMismatch(alloc::boxed::Box::new(
+                ValueTypeMismatch::new(snapshot, expected, actual),
+            )))
+        },
     }
 }
 
 /// Convert a synthesized computation type against an expected one, building the
-/// mismatch error from the two roots on divergence.
+/// mismatch error (a self-contained arena snapshot) on divergence.
 ///
 /// # Contract
-/// - requires: nothing.
+/// - requires: `expected` and `actual` resolve in `arena`.
 /// - ensures: `Ok(())` exactly when [`convertible_comp_types`] converges.
 /// - provides: the checker's computation mode-switch step.
-/// - fails: [`KernelError::ComputationTypeMismatch`] carrying the two roots.
+/// - fails: [`KernelError::ComputationTypeMismatch`] carrying a snapshot of the
+///   two roots.
 /// - panics: none.
 ///
 /// # Errors
 /// [`KernelError::ComputationTypeMismatch`].
 #[inline]
 pub fn convert_comp_type(
-    expected: &CompType,
-    actual: &CompType,
+    arena: &TermArena,
+    expected: CompTypeId,
+    actual: CompTypeId,
 ) -> Result<(), KernelError>
 {
-    match convertible_comp_types(expected, actual) {
+    match convertible_comp_types(arena, expected, actual) {
         | Convertibility::Convertible => Ok(()),
-        | Convertibility::Distinct => Err(KernelError::ComputationTypeMismatch(Box::new(
-            ComputationTypeMismatch::new(expected.clone(), actual.clone()),
-        ))),
+        | Convertibility::Distinct => {
+            let (snapshot, expected, actual) = arena.snapshot_comp_types(expected, actual);
+            Err(KernelError::ComputationTypeMismatch(
+                alloc::boxed::Box::new(ComputationTypeMismatch::new(snapshot, expected, actual)),
+            ))
+        },
     }
 }
 
 /// Run the type-conversion worklist to a verdict.
 ///
 /// # Contract
-/// - requires: `initial` is a same-polarity pair.
+/// - requires: `initial` is a same-polarity id pair resolving in `arena`.
 /// - ensures: [`Convertibility::Convertible`] exactly when every reachable
-///   sub-pair matches structurally with canonical-level equality at level
-///   nodes; the walk is iterative over a heap stack, so it is total on any
-///   depth.
+///   sub-pair is id-equal or matches structurally with canonical-level equality
+///   at level nodes; the walk is iterative over a heap stack, so it is total on
+///   any depth.
 /// - provides: the shared engine of the type-conversion faces.
-/// - fails: never (the verdict is the return value).
+/// - fails: never (the verdict is the return value; a dangling id ⇒
+///   `Distinct`).
 /// - panics: none.
 #[inline]
-fn converge_types(initial: TypeGoal<'_>) -> Convertibility
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "ergonomic matching of the two borrowed type nodes against value patterns; every binding is a shared reference by intent"
+)]
+fn converge_types(
+    arena: &TermArena,
+    initial: TypeGoal,
+) -> Convertibility
 {
-    let mut stack: Vec<TypeGoal<'_>> = Vec::new();
+    let mut stack: Vec<TypeGoal> = Vec::new();
     stack.push(initial);
     while let Some(goal) = stack.pop() {
         match goal {
-            | TypeGoal::Value(left, right) => match (left, right) {
-                | (&ValueType::Base(ref one), &ValueType::Base(ref other)) => {
-                    if one != other {
-                        return Convertibility::Distinct;
-                    }
-                },
-                | (&ValueType::Unit, &ValueType::Unit) => {},
-                | (
-                    &ValueType::Product(ref one_first, ref one_second),
-                    &ValueType::Product(ref other_first, ref other_second),
-                ) => {
-                    stack.push(TypeGoal::Value(one_first, other_first));
-                    stack.push(TypeGoal::Value(one_second, other_second));
-                },
-                | (
-                    &ValueType::Sum(ref one_left, ref one_right),
-                    &ValueType::Sum(ref other_left, ref other_right),
-                ) => {
-                    stack.push(TypeGoal::Value(one_left, other_left));
-                    stack.push(TypeGoal::Value(one_right, other_right));
-                },
-                | (&ValueType::Thunk(ref one_body), &ValueType::Thunk(ref other_body)) => {
-                    stack.push(TypeGoal::Comp(one_body, other_body));
-                },
-                | (&ValueType::Universe(ref one_level), &ValueType::Universe(ref other_level)) => {
-                    if one_level != other_level {
-                        return Convertibility::Distinct;
-                    }
-                },
-                | (
-                    &ValueType::Lift {
-                        inner: ref one_inner,
-                        target: ref one_target,
+            | TypeGoal::Value(left, right) => {
+                if left == right {
+                    continue;
+                }
+                let (Some(left), Some(right)) = (arena.value_type(left), arena.value_type(right))
+                else {
+                    return Convertibility::Distinct;
+                };
+                match (left, right) {
+                    | (ValueType::Base(one), ValueType::Base(other)) => {
+                        if one != other {
+                            return Convertibility::Distinct;
+                        }
                     },
-                    &ValueType::Lift {
-                        inner: ref other_inner,
-                        target: ref other_target,
+                    | (ValueType::Unit, ValueType::Unit) => {},
+                    | (
+                        ValueType::Product(one_first, one_second),
+                        ValueType::Product(other_first, other_second),
+                    )
+                    | (
+                        ValueType::Sum(one_first, one_second),
+                        ValueType::Sum(other_first, other_second),
+                    ) => {
+                        stack.push(TypeGoal::Value(*one_first, *other_first));
+                        stack.push(TypeGoal::Value(*one_second, *other_second));
                     },
-                ) => {
-                    if one_target != other_target {
-                        return Convertibility::Distinct;
-                    }
-                    stack.push(TypeGoal::Value(one_inner, other_inner));
-                },
-                | _ => return Convertibility::Distinct,
+                    | (ValueType::Thunk(one_body), ValueType::Thunk(other_body)) => {
+                        stack.push(TypeGoal::Comp(*one_body, *other_body));
+                    },
+                    | (ValueType::Universe(one_level), ValueType::Universe(other_level)) => {
+                        if one_level != other_level {
+                            return Convertibility::Distinct;
+                        }
+                    },
+                    | (
+                        ValueType::Lift {
+                            inner: one_inner,
+                            target: one_target,
+                        },
+                        ValueType::Lift {
+                            inner: other_inner,
+                            target: other_target,
+                        },
+                    ) => {
+                        if one_target != other_target {
+                            return Convertibility::Distinct;
+                        }
+                        stack.push(TypeGoal::Value(*one_inner, *other_inner));
+                    },
+                    | _ => return Convertibility::Distinct,
+                }
             },
-            | TypeGoal::Comp(left, right) => match (left, right) {
-                | (&CompType::Returner(ref one), &CompType::Returner(ref other)) => {
-                    stack.push(TypeGoal::Value(one, other));
-                },
-                | (
-                    &CompType::Arrow {
-                        domain: ref one_domain,
-                        codomain: ref one_codomain,
+            | TypeGoal::Comp(left, right) => {
+                if left == right {
+                    continue;
+                }
+                let (Some(left), Some(right)) = (arena.comp_type(left), arena.comp_type(right))
+                else {
+                    return Convertibility::Distinct;
+                };
+                match (left, right) {
+                    | (CompType::Returner(one), CompType::Returner(other)) => {
+                        stack.push(TypeGoal::Value(*one, *other));
                     },
-                    &CompType::Arrow {
-                        domain: ref other_domain,
-                        codomain: ref other_codomain,
+                    | (
+                        CompType::Arrow {
+                            domain: one_domain,
+                            codomain: one_codomain,
+                        },
+                        CompType::Arrow {
+                            domain: other_domain,
+                            codomain: other_codomain,
+                        },
+                    ) => {
+                        stack.push(TypeGoal::Value(*one_domain, *other_domain));
+                        stack.push(TypeGoal::Comp(*one_codomain, *other_codomain));
                     },
-                ) => {
-                    stack.push(TypeGoal::Value(one_domain, other_domain));
-                    stack.push(TypeGoal::Comp(one_codomain, other_codomain));
-                },
-                | _ => return Convertibility::Distinct,
+                    | _ => return Convertibility::Distinct,
+                }
             },
         }
     }
@@ -347,108 +389,133 @@ fn converge_types(initial: TypeGoal<'_>) -> Convertibility
 /// Run the term-conversion (α-equivalence) worklist to a verdict.
 ///
 /// # Contract
-/// - requires: `initial` is a same-polarity pair.
+/// - requires: `initial` is a same-polarity id pair resolving in `arena`.
 /// - ensures: [`Convertibility::Convertible`] exactly when the two terms are
-///   α-equal — syntactic identity under de Bruijn, with canonical literal
-///   equality at leaves and injection-side sensitivity; nothing is evaluated.
+///   α-equal — id-equality then syntactic identity under de Bruijn, with
+///   canonical literal equality at leaves and injection-side sensitivity;
+///   nothing is evaluated.
 /// - provides: the shared engine of the term-conversion faces.
-/// - fails: never.
+/// - fails: never (a dangling id ⇒ `Distinct`).
 /// - panics: none.
 #[inline]
-fn converge_terms(initial: TermGoal<'_>) -> Convertibility
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "ergonomic matching of the two borrowed term nodes against value patterns; every binding is a shared reference by intent"
+)]
+fn converge_terms(
+    arena: &TermArena,
+    initial: TermGoal,
+) -> Convertibility
 {
-    let mut stack: Vec<TermGoal<'_>> = Vec::new();
+    let mut stack: Vec<TermGoal> = Vec::new();
     stack.push(initial);
     while let Some(goal) = stack.pop() {
         match goal {
             | TermGoal::Value(left, right) => {
+                if left == right {
+                    continue;
+                }
+                let (Some(left), Some(right)) = (arena.value(left), arena.value(right))
+                else {
+                    return Convertibility::Distinct;
+                };
                 match (left, right) {
-                    | (&Value::Variable(_), &Value::Variable(_))
-                    | (&Value::Constant(_), &Value::Constant(_))
-                    | (&Value::Unit, &Value::Unit)
-                    | (&Value::Literal(_), &Value::Literal(_)) => {
-                        // Leaf values convert by direct (non-recursive) equality
-                        // on the whole node.
+                    | (Value::Variable(_), Value::Variable(_))
+                    | (Value::Constant(_), Value::Constant(_))
+                    | (Value::Unit, Value::Unit)
+                    | (Value::Literal(_), Value::Literal(_)) => {
+                        // Leaf values convert by direct equality on the inline
+                        // payload (leaves have no id children — the derived-
+                        // equality caveat does not apply here).
                         if left != right {
                             return Convertibility::Distinct;
                         }
                     },
                     | (
-                        &Value::Pair(ref one_first, ref one_second),
-                        &Value::Pair(ref other_first, ref other_second),
+                        Value::Pair(one_first, one_second),
+                        Value::Pair(other_first, other_second),
                     ) => {
-                        stack.push(TermGoal::Value(one_first, other_first));
-                        stack.push(TermGoal::Value(one_second, other_second));
+                        stack.push(TermGoal::Value(*one_first, *other_first));
+                        stack.push(TermGoal::Value(*one_second, *other_second));
                     },
                     | (
-                        &Value::Injection(one_side, ref one_body),
-                        &Value::Injection(other_side, ref other_body),
+                        Value::Injection(one_side, one_body),
+                        Value::Injection(other_side, other_body),
                     ) => {
                         if one_side != other_side {
                             return Convertibility::Distinct;
                         }
-                        stack.push(TermGoal::Value(one_body, other_body));
+                        stack.push(TermGoal::Value(*one_body, *other_body));
                     },
-                    | (&Value::Thunk(ref one_body), &Value::Thunk(ref other_body)) => {
-                        stack.push(TermGoal::Comp(one_body, other_body));
+                    | (Value::Thunk(one_body), Value::Thunk(other_body)) => {
+                        stack.push(TermGoal::Comp(*one_body, *other_body));
                     },
                     | (
-                        &Value::Lift {
-                            target: ref one_target,
-                            body: ref one_body,
+                        Value::Lift {
+                            target: one_target,
+                            body: one_body,
                         },
-                        &Value::Lift {
-                            target: ref other_target,
-                            body: ref other_body,
+                        Value::Lift {
+                            target: other_target,
+                            body: other_body,
                         },
                     ) => {
                         if one_target != other_target {
                             return Convertibility::Distinct;
                         }
-                        stack.push(TermGoal::Value(one_body, other_body));
+                        stack.push(TermGoal::Value(*one_body, *other_body));
                     },
                     | _ => return Convertibility::Distinct,
                 }
             },
-            | TermGoal::Comp(left, right) => match (left, right) {
-                | (&Computation::Lambda(ref one_body), &Computation::Lambda(ref other_body)) => {
-                    stack.push(TermGoal::Comp(one_body, other_body));
-                },
-                | (
-                    &Computation::Application(ref one_head, ref one_arg),
-                    &Computation::Application(ref other_head, ref other_arg),
-                ) => {
-                    stack.push(TermGoal::Comp(one_head, other_head));
-                    stack.push(TermGoal::Value(one_arg, other_arg));
-                },
-                | (&Computation::Return(ref one), &Computation::Return(ref other))
-                | (&Computation::Force(ref one), &Computation::Force(ref other)) => {
-                    stack.push(TermGoal::Value(one, other));
-                },
-                | (
-                    &Computation::Bind(ref one_bound, ref one_body),
-                    &Computation::Bind(ref other_bound, ref other_body),
-                ) => {
-                    stack.push(TermGoal::Comp(one_bound, other_bound));
-                    stack.push(TermGoal::Comp(one_body, other_body));
-                },
-                | (
-                    &Computation::Case {
-                        scrutinee: ref one_scrutinee,
-                        on_left: ref one_left,
-                        on_right: ref one_right,
+            | TermGoal::Comp(left, right) => {
+                if left == right {
+                    continue;
+                }
+                let (Some(left), Some(right)) = (arena.computation(left), arena.computation(right))
+                else {
+                    return Convertibility::Distinct;
+                };
+                match (left, right) {
+                    | (Computation::Lambda(one_body), Computation::Lambda(other_body)) => {
+                        stack.push(TermGoal::Comp(*one_body, *other_body));
                     },
-                    &Computation::Case {
-                        scrutinee: ref other_scrutinee,
-                        on_left: ref other_left,
-                        on_right: ref other_right,
+                    | (
+                        Computation::Application(one_head, one_arg),
+                        Computation::Application(other_head, other_arg),
+                    ) => {
+                        stack.push(TermGoal::Comp(*one_head, *other_head));
+                        stack.push(TermGoal::Value(*one_arg, *other_arg));
                     },
-                ) => {
-                    stack.push(TermGoal::Value(one_scrutinee, other_scrutinee));
-                    stack.push(TermGoal::Comp(one_left, other_left));
-                    stack.push(TermGoal::Comp(one_right, other_right));
-                },
-                | _ => return Convertibility::Distinct,
+                    | (Computation::Return(one), Computation::Return(other))
+                    | (Computation::Force(one), Computation::Force(other)) => {
+                        stack.push(TermGoal::Value(*one, *other));
+                    },
+                    | (
+                        Computation::Bind(one_bound, one_body),
+                        Computation::Bind(other_bound, other_body),
+                    ) => {
+                        stack.push(TermGoal::Comp(*one_bound, *other_bound));
+                        stack.push(TermGoal::Comp(*one_body, *other_body));
+                    },
+                    | (
+                        Computation::Case {
+                            scrutinee: one_scrutinee,
+                            on_left: one_left,
+                            on_right: one_right,
+                        },
+                        Computation::Case {
+                            scrutinee: other_scrutinee,
+                            on_left: other_left,
+                            on_right: other_right,
+                        },
+                    ) => {
+                        stack.push(TermGoal::Value(*one_scrutinee, *other_scrutinee));
+                        stack.push(TermGoal::Comp(*one_left, *other_left));
+                        stack.push(TermGoal::Comp(*one_right, *other_right));
+                    },
+                    | _ => return Convertibility::Distinct,
+                }
             },
         }
     }
@@ -458,7 +525,6 @@ fn converge_terms(initial: TermGoal<'_>) -> Convertibility
 #[cfg(test)]
 mod tests
 {
-    use alloc::boxed::Box;
     use alloc::string::String;
 
     use gandr_kernel_strata::Level;
@@ -469,37 +535,31 @@ mod tests
     use super::convertible_computations;
     use super::convertible_value_types;
     use super::convertible_values;
+    use crate::arena::TermArena;
     use crate::base::BaseType;
     use crate::base::FractionDigits;
     use crate::base::IntegerLiteral;
     use crate::base::Literal;
     use crate::base::Magnitude;
     use crate::base::Sign;
-    use crate::term::Computation;
     use crate::term::DeBruijnIndex;
     use crate::term::Side;
-    use crate::term::Value;
-    use crate::types::CompType;
-    use crate::types::ValueType;
-
-    /// The universe former at constant level `value`.
-    fn universe(value: u64) -> ValueType
-    {
-        ValueType::Universe(Level::constant(LevelConstant::from(value)))
-    }
 
     #[test]
     fn value_type_conversion_is_reflexive()
     {
-        let ty = ValueType::Product(
-            Box::new(ValueType::Base(BaseType::Integer)),
-            Box::new(ValueType::Thunk(Box::new(CompType::Returner(Box::new(
-                ValueType::Unit,
-            ))))),
-        );
+        // Product(Integer, Thunk(F Unit)) — reflexivity on distinct ids by
+        // structural walk (the two arguments are the same root id, so the
+        // top-level early-out also fires; children below it are walked).
+        let mut arena = TermArena::new();
+        let integer = arena.value_type_base(BaseType::Integer);
+        let unit = arena.value_type_unit();
+        let returner = arena.comp_type_returner(unit);
+        let thunk = arena.value_type_thunk(returner);
+        let product = arena.value_type_product(integer, thunk);
         assert_eq!(
             Convertibility::Convertible,
-            convertible_value_types(&ty, &ty),
+            convertible_value_types(&arena, product, product),
             "a value type converts with itself"
         );
     }
@@ -507,32 +567,51 @@ mod tests
     #[test]
     fn value_type_conversion_separates_distinct_types()
     {
-        let integer = ValueType::Base(BaseType::Integer);
-        let string = ValueType::Base(BaseType::String);
+        let mut arena = TermArena::new();
+        let integer = arena.value_type_base(BaseType::Integer);
+        let string = arena.value_type_base(BaseType::String);
         assert_eq!(
             Convertibility::Distinct,
-            convertible_value_types(&integer, &string),
+            convertible_value_types(&arena, integer, string),
             "distinct base atoms do not convert"
         );
+        let universe0 = arena.value_type_universe(Level::constant(LevelConstant::from(0_u64)));
+        let universe1 = arena.value_type_universe(Level::constant(LevelConstant::from(1_u64)));
         assert_eq!(
             Convertibility::Distinct,
-            convertible_value_types(&universe(0), &universe(1)),
+            convertible_value_types(&arena, universe0, universe1),
             "universes at distinct levels do not convert"
+        );
+    }
+
+    #[test]
+    fn distinct_ids_for_equal_structure_still_convert()
+    {
+        // Two separately-minted Unit-typed nodes have distinct ids; the walk
+        // resolves both and agrees structurally (the kernel preserves sharing,
+        // never creates it, so equal structure need not share an id).
+        let mut arena = TermArena::new();
+        let one = arena.value_type_unit();
+        let other = arena.value_type_unit();
+        assert_ne!(one, other, "distinct mints have distinct ids");
+        assert_eq!(
+            Convertibility::Convertible,
+            convertible_value_types(&arena, one, other),
+            "structurally equal but differently-allocated types convert"
         );
     }
 
     #[test]
     fn computation_type_conversion_is_reflexive()
     {
-        let ty = CompType::Arrow {
-            domain: Box::new(ValueType::Unit),
-            codomain: Box::new(CompType::Returner(Box::new(ValueType::Base(
-                BaseType::Numeric,
-            )))),
-        };
+        let mut arena = TermArena::new();
+        let unit = arena.value_type_unit();
+        let numeric = arena.value_type_base(BaseType::Numeric);
+        let returner = arena.comp_type_returner(numeric);
+        let arrow = arena.comp_type_arrow(unit, returner);
         assert_eq!(
             Convertibility::Convertible,
-            convertible_comp_types(&ty, &ty),
+            convertible_comp_types(&arena, arrow, arrow),
             "a computation type converts with itself"
         );
     }
@@ -540,17 +619,18 @@ mod tests
     #[test]
     fn value_conversion_ignores_literal_padding()
     {
-        let padded = Value::Literal(Literal::Integer(IntegerLiteral::new(
+        let mut arena = TermArena::new();
+        let padded = arena.value_literal(Literal::Integer(IntegerLiteral::new(
             Sign::NonNegative,
             Magnitude::from_decimal_text(String::from("007")).unwrap(),
         )));
-        let bare = Value::Literal(Literal::Integer(IntegerLiteral::new(
+        let bare = arena.value_literal(Literal::Integer(IntegerLiteral::new(
             Sign::NonNegative,
             Magnitude::from_decimal_text(String::from("7")).unwrap(),
         )));
         assert_eq!(
             Convertibility::Convertible,
-            convertible_values(&padded, &bare),
+            convertible_values(&arena, padded, bare),
             "literals convert up to canonical value, not spelling"
         );
     }
@@ -558,11 +638,14 @@ mod tests
     #[test]
     fn value_conversion_distinguishes_injection_sides()
     {
-        let left = Value::Injection(Side::Left, Box::new(Value::Unit));
-        let right = Value::Injection(Side::Right, Box::new(Value::Unit));
+        let mut arena = TermArena::new();
+        let unit_left = arena.value_unit();
+        let unit_right = arena.value_unit();
+        let left = arena.value_injection(Side::Left, unit_left);
+        let right = arena.value_injection(Side::Right, unit_right);
         assert_eq!(
             Convertibility::Distinct,
-            convertible_values(&left, &right),
+            convertible_values(&arena, left, right),
             "the two injections of a sum are distinct"
         );
     }
@@ -570,11 +653,12 @@ mod tests
     #[test]
     fn value_conversion_is_variable_sensitive()
     {
-        let zero = Value::Variable(DeBruijnIndex::from(0_u32));
-        let one = Value::Variable(DeBruijnIndex::from(1_u32));
+        let mut arena = TermArena::new();
+        let zero = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let one = arena.value_variable(DeBruijnIndex::from(1_u32));
         assert_eq!(
             Convertibility::Distinct,
-            convertible_values(&zero, &one),
+            convertible_values(&arena, zero, one),
             "distinct de Bruijn variables are distinct"
         );
     }
@@ -584,26 +668,28 @@ mod tests
     {
         // Two lambdas over structurally identical bodies convert with no name
         // comparison (de Bruijn α is syntactic).
-        let identity = Computation::Lambda(Box::new(Computation::Return(Box::new(
-            Value::Variable(DeBruijnIndex::from(0_u32)),
-        ))));
-        let same = Computation::Lambda(Box::new(Computation::Return(Box::new(Value::Variable(
-            DeBruijnIndex::from(0_u32),
-        )))));
+        let mut arena = TermArena::new();
+        let variable_one = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let return_one = arena.computation_return(variable_one);
+        let identity = arena.computation_lambda(return_one);
+        let variable_two = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let return_two = arena.computation_return(variable_two);
+        let same = arena.computation_lambda(return_two);
         assert_eq!(
             Convertibility::Convertible,
-            convertible_computations(&identity, &same),
+            convertible_computations(&arena, identity, same),
             "α-equal lambdas convert"
         );
-        let numeric = Value::Literal(Literal::Numeric(crate::base::NumericLiteral::new(
+        let numeric = arena.value_literal(Literal::Numeric(crate::base::NumericLiteral::new(
             Sign::NonNegative,
             Magnitude::zero(),
             FractionDigits::none(),
         )));
-        let different = Computation::Lambda(Box::new(Computation::Return(Box::new(numeric))));
+        let return_numeric = arena.computation_return(numeric);
+        let different = arena.computation_lambda(return_numeric);
         assert_eq!(
             Convertibility::Distinct,
-            convertible_computations(&identity, &different),
+            convertible_computations(&arena, identity, different),
             "lambdas with distinct bodies do not convert"
         );
     }

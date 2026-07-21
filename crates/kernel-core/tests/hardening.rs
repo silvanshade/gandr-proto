@@ -1,14 +1,14 @@
-//! Adversarial-depth totality (gandr-i3i): the worklist `Drop` and iterative
-//! `Clone` of the owned term/type trees survive ~1M-deep chains inside a
-//! small-stack thread where the recursive glue they replace would overflow.
+//! Adversarial-depth totality (gandr-i3i, gandr-5t3): under the D1(C) arena the
+//! term/type node children are `Copy` ids, so a whole [`TermArena`] tears down
+//! in flat `Vec` drops — no recursive drop glue. These witnesses build ~1M-deep
+//! chains **iteratively** into an arena inside a small-stack thread and confirm
+//! that **construction**, **checking**, **decoding**, and **teardown** stay
+//! total where the retired recursive owned-tree glue would overflow.
 //!
-//! Each chain is built ITERATIVELY (proptest never reaches this depth); the
-//! work under test — dropping, cloning, or decoding it — runs inside a
-//! `std::thread::Builder` thread with a small stack, so a regression to
-//! recursive glue is a deterministic stack overflow rather than a silent pass
-//! on a large main stack. A clone is checked by an ITERATIVE spine-depth walk
-//! (the derived recursive `PartialEq` would itself overflow), so a shallow or
-//! structurally wrong clone is caught, not just an overflow.
+//! A checker/decoder that regressed to input-scaled recursion, or a node that
+//! regained an owned `Box` child (reviving recursive drop glue), is a
+//! deterministic stack overflow here rather than a silent pass on a large main
+//! stack.
 
 #![cfg_attr(
     test,
@@ -22,35 +22,36 @@
     )
 )]
 
-/// The deep-drop, deep-clone, and indirect-drop totality witnesses.
+/// The deep construction, check, decode, and teardown totality witnesses.
 #[cfg(test)]
 mod tests
 {
     use std::thread;
 
-    use gandr_kernel_core::CompType;
-    use gandr_kernel_core::Computation;
-    use gandr_kernel_core::Declaration;
+    use gandr_kernel_core::ComputationId;
     use gandr_kernel_core::Environment;
-    use gandr_kernel_core::ExpectedValueShape;
     use gandr_kernel_core::KernelError;
     use gandr_kernel_core::LevelSignature;
-    use gandr_kernel_core::Value;
-    use gandr_kernel_core::ValueType;
+    use gandr_kernel_core::TermArena;
+    use gandr_kernel_core::ValueId;
+    use gandr_kernel_core::ValueTypeId;
     use gandr_kernel_core::decode;
     use gandr_kernel_core::write;
 
-    /// A chain depth past any plausible recursive-glue stack budget. It is
-    /// built iteratively (proptest never reaches this depth).
+    /// A chain depth past any plausible recursive-glue stack budget. Built
+    /// iteratively (proptest never reaches this depth).
     const CHAIN_DEPTH: usize = 1_000_000;
 
     /// A smaller depth for the multi-pass decode witness (write, decode, and
-    /// the canonical re-encode each walk the whole tree), still far past
-    /// the recursive-overflow point.
+    /// the canonical re-encode each walk the whole tree).
     const DECODE_DEPTH: usize = 200_000;
 
+    /// A depth for the checker-totality witnesses (gandr-98o): the machine
+    /// descends this far, well past the retired 512 depth budget.
+    const CHECK_DEPTH: usize = 200_000;
+
     /// A deliberately small worker-thread stack: recursive glue overflows it
-    /// well before the chain depth, the iterative worklist does not.
+    /// well before the chain depth; the flat arena teardown does not.
     const SMALL_STACK: usize = 512 * 1024;
 
     /// Run `work` in a thread with a small stack, propagating a panic or
@@ -67,235 +68,127 @@ mod tests
             .expect("the worker thread does not overflow or panic");
     }
 
-    /// A left-nested pair chain of the given depth (each step wraps the prior
-    /// value).
-    fn deep_value(depth: usize) -> Value
+    /// A left-nested pair chain of the given depth, minted into `arena`.
+    fn deep_value(
+        arena: &mut TermArena,
+        depth: usize,
+    ) -> ValueId
     {
-        let mut value = Value::Unit;
+        let mut value = arena.value_unit();
         for _step in 0 .. depth {
-            value = Value::Pair(Box::new(value), Box::new(Value::Unit));
+            let unit = arena.value_unit();
+            value = arena.value_pair(value, unit);
         }
         value
     }
 
     /// A left-nested bind chain of the given depth (each step wraps the prior
-    /// computation as the bound sub-computation).
-    fn deep_computation(depth: usize) -> Computation
+    /// computation as the bound sub-computation), minted into `arena`.
+    fn deep_computation(
+        arena: &mut TermArena,
+        depth: usize,
+    ) -> ComputationId
     {
-        let mut computation = Computation::Return(Box::new(Value::Unit));
+        let unit = arena.value_unit();
+        let mut computation = arena.computation_return(unit);
         for _step in 0 .. depth {
-            computation = Computation::Bind(
-                Box::new(computation),
-                Box::new(Computation::Return(Box::new(Value::Unit))),
-            );
+            let inner_unit = arena.value_unit();
+            let inner_return = arena.computation_return(inner_unit);
+            computation = arena.computation_bind(computation, inner_return);
         }
         computation
     }
 
-    /// A left-nested product chain of the given depth.
-    fn deep_value_type(depth: usize) -> ValueType
+    /// A left-nested product chain of the given depth, minted into `arena`.
+    fn deep_value_type(
+        arena: &mut TermArena,
+        depth: usize,
+    ) -> ValueTypeId
     {
-        let mut value_type = ValueType::Unit;
+        let mut value_type = arena.value_type_unit();
         for _step in 0 .. depth {
-            value_type = ValueType::Product(Box::new(value_type), Box::new(ValueType::Unit));
+            let unit = arena.value_type_unit();
+            value_type = arena.value_type_product(value_type, unit);
         }
         value_type
     }
 
     /// An arrow chain of the given depth (each step nests the prior type as the
-    /// codomain).
-    fn deep_comp_type(depth: usize) -> CompType
+    /// codomain), minted into `arena`.
+    fn deep_comp_type(
+        arena: &mut TermArena,
+        depth: usize,
+    ) -> gandr_kernel_core::CompTypeId
     {
-        let mut comp_type = CompType::Returner(Box::new(ValueType::Unit));
+        let unit = arena.value_type_unit();
+        let mut comp_type = arena.comp_type_returner(unit);
         for _step in 0 .. depth {
-            comp_type = CompType::Arrow {
-                domain: Box::new(ValueType::Unit),
-                codomain: Box::new(comp_type),
-            };
+            let domain = arena.value_type_unit();
+            comp_type = arena.comp_type_arrow(domain, comp_type);
         }
         comp_type
     }
 
-    /// The left-spine depth of a pair chain, walked iteratively.
-    #[expect(
-        clippy::pattern_type_mismatch,
-        reason = "ergonomic walk of a borrowed value spine; each binding is a shared reference by intent"
-    )]
-    fn value_spine_depth(root: &Value) -> usize
-    {
-        let mut depth: usize = 0;
-        let mut cursor = root;
-        while let Value::Pair(first, _second) = cursor {
-            depth += 1;
-            cursor = first.as_ref();
-        }
-        depth
-    }
-
-    /// The spine depth of a bind chain, walked iteratively.
-    #[expect(
-        clippy::pattern_type_mismatch,
-        reason = "ergonomic walk of a borrowed computation spine; each binding is a shared reference by intent"
-    )]
-    fn comp_spine_depth(root: &Computation) -> usize
-    {
-        let mut depth: usize = 0;
-        let mut cursor = root;
-        while let Computation::Bind(bound, _body) = cursor {
-            depth += 1;
-            cursor = bound.as_ref();
-        }
-        depth
-    }
-
-    /// The left-spine depth of a product chain, walked iteratively.
-    #[expect(
-        clippy::pattern_type_mismatch,
-        reason = "ergonomic walk of a borrowed value-type spine; each binding is a shared reference by intent"
-    )]
-    fn value_type_spine_depth(root: &ValueType) -> usize
-    {
-        let mut depth: usize = 0;
-        let mut cursor = root;
-        while let ValueType::Product(first, _second) = cursor {
-            depth += 1;
-            cursor = first.as_ref();
-        }
-        depth
-    }
-
-    /// The spine depth of an arrow chain (walked through the codomain),
-    /// iteratively.
-    #[expect(
-        clippy::pattern_type_mismatch,
-        reason = "ergonomic walk of a borrowed computation-type spine; each binding is a shared reference by intent"
-    )]
-    fn comp_type_spine_depth(root: &CompType) -> usize
-    {
-        let mut depth: usize = 0;
-        let mut cursor = root;
-        while let CompType::Arrow { codomain, .. } = cursor {
-            depth += 1;
-            cursor = codomain.as_ref();
-        }
-        depth
-    }
-
     #[test]
-    fn deep_value_drop_is_total()
+    fn deep_value_arena_teardown_is_total()
     {
         in_small_stack(|| {
-            let value = deep_value(CHAIN_DEPTH);
-            drop(value);
+            let mut arena = TermArena::new();
+            let _root = deep_value(&mut arena, CHAIN_DEPTH);
+            drop(arena);
         });
     }
 
     #[test]
-    fn deep_computation_drop_is_total()
+    fn deep_computation_arena_teardown_is_total()
     {
         in_small_stack(|| {
-            let computation = deep_computation(CHAIN_DEPTH);
-            drop(computation);
+            let mut arena = TermArena::new();
+            let _root = deep_computation(&mut arena, CHAIN_DEPTH);
+            drop(arena);
         });
     }
 
     #[test]
-    fn deep_value_type_drop_is_total()
+    fn deep_value_type_arena_teardown_is_total()
     {
         in_small_stack(|| {
-            let value_type = deep_value_type(CHAIN_DEPTH);
-            drop(value_type);
+            let mut arena = TermArena::new();
+            let _root = deep_value_type(&mut arena, CHAIN_DEPTH);
+            drop(arena);
         });
     }
 
     #[test]
-    fn deep_comp_type_drop_is_total()
+    fn deep_comp_type_arena_teardown_is_total()
     {
         in_small_stack(|| {
-            let comp_type = deep_comp_type(CHAIN_DEPTH);
-            drop(comp_type);
-        });
-    }
-
-    #[test]
-    fn deep_value_clone_is_total()
-    {
-        in_small_stack(|| {
-            let value = deep_value(CHAIN_DEPTH);
-            let cloned = value.clone();
-            assert_eq!(
-                value_spine_depth(&cloned),
-                CHAIN_DEPTH,
-                "the clone preserves the chain depth"
-            );
-            assert_eq!(
-                value_spine_depth(&value),
-                value_spine_depth(&cloned),
-                "the clone matches the source depth"
-            );
-            drop(cloned);
-            drop(value);
-        });
-    }
-
-    #[test]
-    fn deep_computation_clone_is_total()
-    {
-        in_small_stack(|| {
-            let computation = deep_computation(CHAIN_DEPTH);
-            let cloned = computation.clone();
-            assert_eq!(
-                comp_spine_depth(&cloned),
-                CHAIN_DEPTH,
-                "the clone preserves the chain depth"
-            );
-            drop(cloned);
-            drop(computation);
-        });
-    }
-
-    #[test]
-    fn deep_value_type_clone_is_total()
-    {
-        in_small_stack(|| {
-            let value_type = deep_value_type(CHAIN_DEPTH);
-            let cloned = value_type.clone();
-            assert_eq!(
-                value_type_spine_depth(&cloned),
-                CHAIN_DEPTH,
-                "the clone preserves the chain depth"
-            );
-            drop(cloned);
-            drop(value_type);
-        });
-    }
-
-    #[test]
-    fn deep_comp_type_clone_is_total()
-    {
-        in_small_stack(|| {
-            let comp_type = deep_comp_type(CHAIN_DEPTH);
-            let cloned = comp_type.clone();
-            assert_eq!(
-                comp_type_spine_depth(&cloned),
-                CHAIN_DEPTH,
-                "the clone preserves the chain depth"
-            );
-            drop(cloned);
-            drop(comp_type);
+            let mut arena = TermArena::new();
+            let _root = deep_comp_type(&mut arena, CHAIN_DEPTH);
+            drop(arena);
         });
     }
 
     #[test]
     fn deep_error_payload_drop_is_total()
     {
-        // A `KernelError` boxing a deep value type: dropping the error is a deep
-        // drop through the error payload (the checker's mismatch arms box types).
+        // A deep declared type with a mismatching (unit) body: the checker's
+        // conversion builds a `ValueTypeMismatch` carrying an arena SNAPSHOT of
+        // the deep type, reified iteratively; dropping the error tears the
+        // snapshot down flatly (the owned-tree payload would overflow).
         in_small_stack(|| {
-            let error = KernelError::ValueShapeMismatch {
-                expected: ExpectedValueShape::Thunk,
-                actual: Box::new(deep_value_type(CHAIN_DEPTH)),
-            };
+            let mut environment = Environment::new();
+            let mut builder = environment.stage();
+            let declared = deep_value_type(builder.arena(), CHECK_DEPTH);
+            let body = builder.arena().value_unit();
+            let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
+            let error = environment
+                .add_decl(declaration)
+                .expect_err("unit does not inhabit a deep product");
+            assert!(
+                matches!(error, KernelError::ValueTypeMismatch(_)),
+                "a deep type mismatch is the reified-snapshot payload"
+            );
             drop(error);
         });
     }
@@ -304,58 +197,36 @@ mod tests
     fn deep_decoded_declaration_drop_is_total()
     {
         // A deep body admitted through the bypass, serialized, and decoded back
-        // into an owned `DecodedDeclaration` — dropped without ever being checked,
-        // the exact i3i hazard path (decode builds a deep tree, the caller
+        // into a `DecodedArtifact` — dropped without ever being checked, the
+        // exact i3i hazard path (decode builds a deep arena, the caller
         // discards it).
         in_small_stack(|| {
             let mut environment = Environment::new();
-            let _id = environment.add_decl_unchecked(Declaration::def(
-                LevelSignature::monomorphic(),
-                ValueType::Unit,
-                deep_value(DECODE_DEPTH),
-            ));
+            let mut builder = environment.stage();
+            let declared = builder.arena().value_type_unit();
+            let body = deep_value(builder.arena(), DECODE_DEPTH);
+            let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
+            let _id = environment.add_decl_unchecked(declaration);
             let bytes = write(&environment);
             let decoded = decode(&bytes).expect("the deep artifact decodes");
-            assert_eq!(decoded.len(), 1, "one declaration decodes");
+            assert_eq!(decoded.declarations().len(), 1, "one declaration decodes");
             drop(decoded);
         });
-    }
-
-    /// A depth for the checker-totality witnesses (gandr-98o): the machine
-    /// descends this far, well past the retired 512 depth budget, and the old
-    /// recursive descent would overflow the small thread stack here.
-    const CHECK_DEPTH: usize = 200_000;
-
-    /// A bind chain of the given depth: `bind _ <- return unit; ...; return
-    /// unit` (each step wraps the prior chain as the bind body).
-    fn deep_bind(depth: usize) -> Computation
-    {
-        let mut computation = Computation::Return(Box::new(Value::Unit));
-        for _step in 0 .. depth {
-            computation = Computation::Bind(
-                Box::new(Computation::Return(Box::new(Value::Unit))),
-                Box::new(computation),
-            );
-        }
-        computation
     }
 
     #[test]
     fn a_deep_pair_definition_checks_totally()
     {
-        // Inverts the retired depth-budget test (gandr-98o): a term nested past
-        // the old 512 budget is now CHECKED totally rather than rejected with
-        // DepthLimitExceeded. A ~200k-deep well-typed pair : product admits
-        // inside a small-stack thread where the old recursive descent overflows.
+        // A ~200k-deep well-typed pair : product admits inside a small-stack
+        // thread where the retired recursive descent overflows (gandr-98o).
         in_small_stack(|| {
             let mut environment = Environment::new();
-            let admitted = environment.add_decl(Declaration::def(
-                LevelSignature::monomorphic(),
-                deep_value_type(CHECK_DEPTH),
-                deep_value(CHECK_DEPTH),
-            ));
+            let mut builder = environment.stage();
+            let declared = deep_value_type(builder.arena(), CHECK_DEPTH);
+            let body = deep_value(builder.arena(), CHECK_DEPTH);
+            let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
             assert!(
-                admitted.is_ok(),
+                environment.add_decl(declaration).is_ok(),
                 "the deep well-typed pair definition admits totally"
             );
         });
@@ -369,15 +240,26 @@ mod tests
         // scope-exit frames without overflowing the small thread stack.
         in_small_stack(|| {
             let mut environment = Environment::new();
-            let declared =
-                ValueType::Thunk(Box::new(CompType::Returner(Box::new(ValueType::Unit))));
-            let body = Value::Thunk(Box::new(deep_bind(CHECK_DEPTH)));
-            let admitted = environment.add_decl(Declaration::def(
-                LevelSignature::monomorphic(),
-                declared,
-                body,
-            ));
-            assert!(admitted.is_ok(), "the deep bind definition admits totally");
+            let mut builder = environment.stage();
+            let arena = builder.arena();
+            // declared = U (F Unit).
+            let unit_type = arena.value_type_unit();
+            let returner = arena.comp_type_returner(unit_type);
+            let declared = arena.value_type_thunk(returner);
+            // body = thunk (bind _ <- return unit; ...; return unit).
+            let inner_unit = arena.value_unit();
+            let mut chain = arena.computation_return(inner_unit);
+            for _step in 0 .. CHECK_DEPTH {
+                let bound_unit = arena.value_unit();
+                let bound = arena.computation_return(bound_unit);
+                chain = arena.computation_bind(bound, chain);
+            }
+            let body = arena.value_thunk(chain);
+            let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
+            assert!(
+                environment.add_decl(declaration).is_ok(),
+                "the deep bind definition admits totally"
+            );
         });
     }
 }

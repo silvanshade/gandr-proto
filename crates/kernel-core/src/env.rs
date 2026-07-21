@@ -8,19 +8,42 @@
 //! consuming code, not a runtime claim (K3, the adequacy ladder's L0 applied to
 //! trust itself). There is a **single checked/unchecked bit**, never a trust
 //! lattice.
+//!
+//! # The arena and the admission watermark (D1(C), gandr-5t3)
+//!
+//! The environment owns the one [`TermArena`] every declaration's content lives
+//! in. Content is built by a [`DeclarationBuilder`] ([`Environment::stage`])
+//! that records the **content-start** watermark; admission enforces the
+//! ratified invariant:
+//!
+//! > After `add_decl` returns — success **or** rejection — the arena holds
+//! > exactly the nodes admitted by prior declarations plus, on success, this
+//! > declaration's content; checker intermediates never persist.
+//!
+//! The mechanism is a **two-mark** scheme (impl-models §1.4/§5.3, the Idris
+//! commit-on-success staging overlay). The builder records content-start;
+//! `add_decl` reads content-end on entry (the checker's synthesized
+//! intermediates allocate strictly after it). The checker runs, then the arena
+//! is truncated: to **content-end** on success (dropping intermediates, keeping
+//! content) or to **content-start** on rejection (dropping both). The
+//! `a_rejected_declaration_leaves_the_environment_unchanged` witness asserts
+//! the arena length is restored on rejection.
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use crate::check::Checker;
+use crate::arena::TermArena;
+use crate::arena::ValueId;
+use crate::arena::ValueTypeId;
+use crate::check;
 use crate::decl::Declaration;
+use crate::decl::DeclarationBuilder;
 use crate::decl::DeclarationContent;
 use crate::error::KernelError;
 use crate::levels::LevelContext;
 use crate::term::Computation;
 use crate::term::ConstantIndex;
 use crate::term::Value;
-use crate::types::ValueType;
 
 /// An unforgeable handle to a declaration admitted into an [`Environment`].
 ///
@@ -63,7 +86,7 @@ pub enum Admission
 
 /// One admitted declaration and its audit metadata.
 #[derive(Clone, Debug)]
-struct AdmittedDeclaration
+pub struct AdmittedDeclaration
 {
     /// The declaration itself.
     declaration: Declaration,
@@ -73,6 +96,17 @@ struct AdmittedDeclaration
     /// declaration rests on (including itself when it is one). Precomputed at
     /// admission, so the audit is a lookup.
     rested_on: BTreeSet<ConstantIndex>,
+}
+
+impl AdmittedDeclaration
+{
+    /// The declared value-type root id — the constant rule's resolution target.
+    #[inline]
+    #[must_use]
+    pub fn declared_id(&self) -> ValueTypeId
+    {
+        self.declaration.declared_id()
+    }
 }
 
 /// The transitive audit of a declaration: the axioms and unchecked admissions
@@ -110,11 +144,14 @@ impl AxiomReport
     }
 }
 
-/// The append-only kernel environment: a sequence of admitted declarations in
-/// admission order (kernel-boundary.md §3; the export format's E2 ordering).
+/// The append-only kernel environment: the one term arena and a sequence of
+/// admitted declarations in admission order (kernel-boundary.md §3; the export
+/// format's E2 ordering).
 #[derive(Clone, Debug, Default)]
 pub struct Environment
 {
+    /// The one arena every declaration's content lives in.
+    arena: TermArena,
     /// The admitted declarations, in admission order.
     entries: Vec<AdmittedDeclaration>,
 }
@@ -126,24 +163,52 @@ impl Environment
     #[must_use]
     pub fn new() -> Self
     {
-        Self {
-            entries: Vec::new(),
-        }
+        Self::default()
+    }
+
+    /// Begin building one declaration's content into the environment arena.
+    ///
+    /// # Contract
+    /// - requires: the returned builder is used to mint exactly one
+    ///   declaration's content, then finalized and passed to `add_decl` /
+    ///   `add_decl_unchecked` before any further arena mutation (the content-
+    ///   start watermark records the arena length now).
+    /// - ensures: a [`DeclarationBuilder`] borrowing the arena.
+    /// - provides: the minimal construction surface tests and the B2.3 bridge
+    ///   use to build arena-resident declarations.
+    /// - fails: never.
+    /// - panics: none.
+    #[inline]
+    pub fn stage(&mut self) -> DeclarationBuilder<'_>
+    {
+        DeclarationBuilder::new(&mut self.arena)
+    }
+
+    /// The environment arena, for the export writer's content walk.
+    #[inline]
+    #[must_use]
+    pub(crate) fn arena(&self) -> &TermArena
+    {
+        &self.arena
     }
 
     /// Admit a declaration through the checked choke point.
     ///
     /// # Contract
-    /// - requires: nothing — every well-formedness and typing obligation is
-    ///   re-derived here (K2), granting the producer no credence.
+    /// - requires: the declaration's content was built into this environment's
+    ///   arena (typically via [`Self::stage`]); every well-formedness and
+    ///   typing obligation is re-derived here (K2), granting the producer no
+    ///   credence.
     /// - ensures: `Ok(id)` with an unforgeable [`CheckedId`] exactly when the
-    ///   declaration's level signature admits (a consistent landmark poset),
-    ///   its declared type is well-formed, and (for a `Def`) its body checks
-    ///   against that type; the declaration is appended and its audit
-    ///   precomputed.
+    ///   declaration's level signature admits, its declared type is
+    ///   well-formed, and (for a `Def`) its body checks against that type; the
+    ///   declaration is appended, its audit precomputed, and the arena holds
+    ///   prior content plus this declaration's content (checker intermediates
+    ///   truncated). On any failure the arena is truncated to the content-start
+    ///   watermark, so the environment is left unchanged.
     /// - provides: the K3 choke point — the only checked entry into the kernel.
     /// - fails: any [`KernelError`] the level admission or the checker
-    ///   surfaces; the environment is left unchanged on failure.
+    ///   surfaces.
     /// - panics: none.
     ///
     /// # Errors
@@ -153,8 +218,8 @@ impl Environment
     /// - hypothesis: L1/L2 — a `CheckedId` is unforgeable (L0 type-level), and
     ///   the corpus differential pins acceptance of well-typed declarations and
     ///   rejection of ill-typed ones; the L3 residues are the
-    ///   constant-reference resolution (a forward reference is rejected) and
-    ///   the append-on-success / unchanged-on-failure boundary.
+    ///   constant-reference resolution and the
+    ///   arena-length-restored-on-rejection boundary.
     /// - witness: `env::tests::a_definition_referencing_a_prior_one_checks`
     /// - witness: `env::tests::a_forward_constant_reference_is_unbound`
     /// - witness: `env::tests::a_rejected_declaration_leaves_the_environment_unchanged`
@@ -165,18 +230,45 @@ impl Environment
     ) -> Result<CheckedId, KernelError>
     {
         let position = ConstantIndex::from(self.entries.len());
-        let levels = LevelContext::admit(
+        let content_start = declaration.content_start();
+        let content_end = self.arena.watermark();
+        let levels = match LevelContext::admit(
             declaration.levels().params(),
             declaration.levels().constraints().to_vec(),
-        )?;
-        Self::check_content(self, &levels, &declaration)?;
-        let rested_on = self.transitive_rest(declaration.content(), position, Admission::Checked);
-        self.entries.push(AdmittedDeclaration {
-            declaration,
-            admission: Admission::Checked,
-            rested_on,
-        });
-        Ok(CheckedId::new(position))
+        ) {
+            | Ok(levels) => levels,
+            | Err(error) => {
+                self.arena.truncate_to(content_start);
+                return Err(error);
+            },
+        };
+        let outcome = {
+            let Self {
+                ref mut arena,
+                ref entries,
+            } = *self;
+            check::check_declaration(arena, entries, &levels, &declaration)
+        };
+        match outcome {
+            | Ok(()) => {
+                // Keep this declaration's content; drop the checker intermediates
+                // that allocated past it.
+                self.arena.truncate_to(content_end);
+                let rested_on =
+                    self.transitive_rest(declaration.content(), position, Admission::Checked);
+                self.entries.push(AdmittedDeclaration {
+                    declaration,
+                    admission: Admission::Checked,
+                    rested_on,
+                });
+                Ok(CheckedId::new(position))
+            },
+            | Err(error) => {
+                // Drop both the intermediates and this declaration's content.
+                self.arena.truncate_to(content_start);
+                Err(error)
+            },
+        }
     }
 
     /// Admit a declaration through the **single warned bypass**, unchecked.
@@ -190,15 +282,15 @@ impl Environment
     /// exactly the Lean `addDecl`-unchecked / `native_decide` hazard. Every
     /// admission through it is **tracked**: the declaration is marked
     /// unchecked and surfaces in the [`Environment::audit`] of everything
-    /// that transitively rests on it. Use it only for a deliberately
-    /// trusted axiomatic base, never as a shortcut around a checker
-    /// rejection.
+    /// that transitively rests on it.
     ///
     /// # Contract
-    /// - requires: the caller vouches for the declaration; nothing is verified.
+    /// - requires: the declaration's content was built into this environment's
+    ///   arena; the caller vouches for the declaration; nothing is verified.
     /// - ensures: the declaration is appended, marked [`Admission::Unchecked`],
     ///   and included in the audit of every dependent; a [`CheckedId`] is
-    ///   returned.
+    ///   returned. The arena is unchanged (the bypass mints no intermediates,
+    ///   so the built content is exactly what persists).
     /// - provides: the tracked, warned bypass of K3.
     /// - fails: never — the bypass does not check.
     /// - panics: none.
@@ -267,7 +359,7 @@ impl Environment
 
     /// The admitted declarations in admission order, each paired with its
     /// admission mark — the export writer's E2/E6 source (kernel-boundary.md
-    /// §5).
+    /// §5). The content roots address [`Self::arena`].
     ///
     /// # Contract
     /// - requires: nothing.
@@ -286,55 +378,8 @@ impl Environment
             .map(|entry| (entry.admission, &entry.declaration))
     }
 
-    /// The declared value type of a prior admitted declaration, for the
-    /// checker's constant-reference rule.
-    ///
-    /// # Contract
-    /// - requires: nothing.
-    /// - ensures: `Some(ty)` when `index` names an admitted declaration.
-    /// - provides: the constant rule's resolver (a not-yet-admitted index is
-    ///   `None`, which the checker turns into `UnboundConstant`).
-    /// - fails: `None` for an out-of-range index.
-    /// - panics: none.
-    #[inline]
-    #[must_use]
-    pub(crate) fn declared_value_type(
-        &self,
-        index: ConstantIndex,
-    ) -> Option<&ValueType>
-    {
-        self.entries
-            .get(usize::from(index))
-            .map(|entry| entry.declaration.declared_type())
-    }
-
-    /// Check a declaration's content against a fresh checker over `levels`.
-    #[expect(
-        clippy::pattern_type_mismatch,
-        reason = "ergonomic matching of a borrowed declaration node; every binding is a shared reference by intent"
-    )]
-    fn check_content(
-        environment: &Self,
-        levels: &LevelContext,
-        declaration: &Declaration,
-    ) -> Result<(), KernelError>
-    {
-        let checker = Checker::new(environment, levels);
-        checker.check_value_type(declaration.declared_type())?;
-        match declaration.content() {
-            | DeclarationContent::Def { declared, body } => {
-                checker.check_definition(declared, body)
-            },
-            | DeclarationContent::Axiom { .. } => Ok(()),
-        }
-    }
-
     /// Precompute the transitive set of axioms and unchecked admissions a
     /// declaration rests on.
-    #[expect(
-        clippy::pattern_type_mismatch,
-        reason = "ergonomic matching of a borrowed declaration node; every binding is a shared reference by intent"
-    )]
     fn transitive_rest(
         &self,
         content: &DeclarationContent,
@@ -343,8 +388,8 @@ impl Environment
     ) -> BTreeSet<ConstantIndex>
     {
         let mut set = BTreeSet::new();
-        if let DeclarationContent::Def { body, .. } = content {
-            for referenced in collect_constants(body) {
+        if let DeclarationContent::Def { body, .. } = *content {
+            for referenced in collect_constants(&self.arena, body) {
                 if let Some(entry) = self.entries.get(usize::from(referenced)) {
                     for &ancestor in &entry.rested_on {
                         let _fresh = set.insert(ancestor);
@@ -360,29 +405,34 @@ impl Environment
     }
 }
 
-/// Collect the constant references a value body mentions, iteratively.
+/// Collect the constant references a value body mentions, iteratively over the
+/// arena.
 ///
 /// # Contract
-/// - requires: nothing.
-/// - ensures: exactly the set of [`ConstantIndex`]es reachable in the term.
+/// - requires: `root` resolves in `arena`.
+/// - ensures: exactly the set of [`ConstantIndex`]es reachable in the term (a
+///   dangling id contributes nothing — fail-closed).
 /// - provides: the direct-dependency edges of the audit graph.
 /// - fails: never.
 /// - panics: none.
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of borrowed term nodes; every binding is a shared reference by intent"
-)]
-fn collect_constants(root: &Value) -> BTreeSet<ConstantIndex>
+fn collect_constants(
+    arena: &TermArena,
+    root: ValueId,
+) -> BTreeSet<ConstantIndex>
 {
     let mut found = BTreeSet::new();
-    let mut values: Vec<&Value> = Vec::new();
-    let mut computations: Vec<&Computation> = Vec::new();
+    let mut values: Vec<ValueId> = Vec::new();
+    let mut computations: Vec<crate::arena::ComputationId> = Vec::new();
     values.push(root);
     loop {
-        while let Some(value) = values.pop() {
-            match value {
+        while let Some(id) = values.pop() {
+            let Some(value) = arena.value(id)
+            else {
+                continue;
+            };
+            match *value {
                 | Value::Constant(index) => {
-                    let _fresh = found.insert(*index);
+                    let _fresh = found.insert(index);
                 },
                 | Value::Variable(_) | Value::Unit | Value::Literal(_) => {},
                 | Value::Pair(first, second) => {
@@ -393,11 +443,15 @@ fn collect_constants(root: &Value) -> BTreeSet<ConstantIndex>
                 | Value::Thunk(body) => computations.push(body),
             }
         }
-        let Some(computation) = computations.pop()
+        let Some(id) = computations.pop()
         else {
             break;
         };
-        match computation {
+        let Some(computation) = arena.computation(id)
+        else {
+            continue;
+        };
+        match *computation {
             | Computation::Lambda(body) => computations.push(body),
             | Computation::Application(head, argument) => {
                 computations.push(head);
@@ -425,51 +479,50 @@ fn collect_constants(root: &Value) -> BTreeSet<ConstantIndex>
 #[cfg(test)]
 mod tests
 {
-    use alloc::boxed::Box;
-
     use super::Environment;
-    use crate::decl::Declaration;
+    use crate::base::BaseType;
     use crate::decl::LevelSignature;
     use crate::error::KernelError;
-    use crate::term::Computation;
     use crate::term::ConstantIndex;
-    use crate::term::Value;
-    use crate::types::CompType;
-    use crate::types::ValueType;
+    use crate::term::DeBruijnIndex;
 
-    /// The declared type `U (Unit → F Unit)` and the identity thunk body.
-    fn identity_declaration() -> Declaration
+    /// Stage and finalize the identity thunk `U (Unit → F Unit) = thunk (λ.
+    /// return v0)`, admitting it and returning the environment.
+    fn admit_identity(environment: &mut Environment) -> Result<super::CheckedId, KernelError>
     {
-        let arrow = CompType::Arrow {
-            domain: Box::new(ValueType::Unit),
-            codomain: Box::new(CompType::Returner(Box::new(ValueType::Unit))),
-        };
-        let declared = ValueType::Thunk(Box::new(arrow));
-        let body = Value::Thunk(Box::new(Computation::Lambda(Box::new(
-            Computation::Return(Box::new(Value::Variable(crate::term::DeBruijnIndex::from(
-                0_u32,
-            )))),
-        ))));
-        Declaration::def(LevelSignature::monomorphic(), declared, body)
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let domain = arena.value_type_unit();
+        let result = arena.value_type_unit();
+        let returner = arena.comp_type_returner(result);
+        let arrow = arena.comp_type_arrow(domain, returner);
+        let declared = arena.value_type_thunk(arrow);
+        let variable = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let ret = arena.computation_return(variable);
+        let lambda = arena.computation_lambda(ret);
+        let body = arena.value_thunk(lambda);
+        let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
+        environment.add_decl(declaration)
     }
 
     #[test]
     fn a_definition_referencing_a_prior_one_checks()
     {
         let mut environment = Environment::new();
-        let first = environment.add_decl(identity_declaration()).unwrap();
-        // A second definition of type Unit whose body ignores the first is
-        // trivial; reference the first through a constant to exercise resolution.
-        let referencing = Declaration::def(
-            LevelSignature::monomorphic(),
-            ValueType::Thunk(Box::new(CompType::Arrow {
-                domain: Box::new(ValueType::Unit),
-                codomain: Box::new(CompType::Returner(Box::new(ValueType::Unit))),
-            })),
-            Value::Constant(first.position()),
-        );
+        let first = admit_identity(&mut environment).unwrap();
+        // A second definition of type U (Unit → F Unit) whose body is a constant
+        // reference to the first — exercises constant resolution.
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let domain = arena.value_type_unit();
+        let result = arena.value_type_unit();
+        let returner = arena.comp_type_returner(result);
+        let arrow = arena.comp_type_arrow(domain, returner);
+        let declared = arena.value_type_thunk(arrow);
+        let body = arena.value_constant(first.position());
+        let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
         assert!(
-            environment.add_decl(referencing).is_ok(),
+            environment.add_decl(declaration).is_ok(),
             "a definition may reference a prior declaration by constant"
         );
     }
@@ -478,11 +531,11 @@ mod tests
     fn a_forward_constant_reference_is_unbound()
     {
         let mut environment = Environment::new();
-        let declaration = Declaration::def(
-            LevelSignature::monomorphic(),
-            ValueType::Unit,
-            Value::Constant(ConstantIndex::from(0_usize)),
-        );
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_unit();
+        let body = arena.value_constant(ConstantIndex::from(0_usize));
+        let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
         assert_eq!(
             environment.add_decl(declaration),
             Err(KernelError::UnboundConstant {
@@ -496,24 +549,30 @@ mod tests
     fn a_rejected_declaration_leaves_the_environment_unchanged()
     {
         let mut environment = Environment::new();
-        let _first = environment.add_decl(identity_declaration()).unwrap();
+        let _first = admit_identity(&mut environment).unwrap();
+        let before = environment.arena().watermark();
         // A definition whose body (unit) does not match its declared type.
-        let ill_typed = Declaration::def(
-            LevelSignature::monomorphic(),
-            ValueType::Base(crate::base::BaseType::Integer),
-            Value::Unit,
-        );
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_base(BaseType::Integer);
+        let body = arena.value_unit();
+        let ill_typed = builder.def(LevelSignature::monomorphic(), declared, body);
         assert!(
             environment.add_decl(ill_typed).is_err(),
             "an ill-typed def is rejected"
         );
+        assert_eq!(
+            environment.arena().watermark(),
+            before,
+            "rejection restores the arena length (content and intermediates truncated)"
+        );
         // The rejected declaration was not appended: a fresh reference to
         // position 1 is still unbound.
-        let referencing = Declaration::def(
-            LevelSignature::monomorphic(),
-            ValueType::Unit,
-            Value::Constant(ConstantIndex::from(1_usize)),
-        );
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_unit();
+        let body = arena.value_constant(ConstantIndex::from(1_usize));
+        let referencing = builder.def(LevelSignature::monomorphic(), declared, body);
         assert_eq!(
             environment.add_decl(referencing),
             Err(KernelError::UnboundConstant {
@@ -527,7 +586,7 @@ mod tests
     fn a_closed_definition_rests_on_nothing()
     {
         let mut environment = Environment::new();
-        let id = environment.add_decl(identity_declaration()).unwrap();
+        let id = admit_identity(&mut environment).unwrap();
         let report = environment.audit(id);
         assert!(
             report.axioms().is_empty(),
@@ -543,17 +602,16 @@ mod tests
     fn audit_reports_the_transitive_axiom()
     {
         let mut environment = Environment::new();
-        let axiom = environment.add_decl(Declaration::axiom(
-            LevelSignature::monomorphic(),
-            ValueType::Unit,
-        ));
-        let axiom = axiom.unwrap();
+        let mut builder = environment.stage();
+        let declared = builder.arena().value_type_unit();
+        let axiom = builder.axiom(LevelSignature::monomorphic(), declared);
+        let axiom = environment.add_decl(axiom).unwrap();
         // A def whose body references the axiom.
-        let dependent = Declaration::def(
-            LevelSignature::monomorphic(),
-            ValueType::Unit,
-            Value::Constant(axiom.position()),
-        );
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_unit();
+        let body = arena.value_constant(axiom.position());
+        let dependent = builder.def(LevelSignature::monomorphic(), declared, body);
         let dependent = environment.add_decl(dependent).unwrap();
         let report = environment.audit(dependent);
         assert_eq!(
@@ -567,16 +625,16 @@ mod tests
     fn audit_reports_a_transitive_unchecked_admission()
     {
         let mut environment = Environment::new();
-        let bypassed = environment.add_decl_unchecked(Declaration::def(
-            LevelSignature::monomorphic(),
-            ValueType::Unit,
-            Value::Unit,
-        ));
-        let dependent = Declaration::def(
-            LevelSignature::monomorphic(),
-            ValueType::Unit,
-            Value::Constant(bypassed.position()),
-        );
+        let mut builder = environment.stage();
+        let declared = builder.arena().value_type_unit();
+        let body = builder.arena().value_unit();
+        let bypassed = builder.def(LevelSignature::monomorphic(), declared, body);
+        let bypassed = environment.add_decl_unchecked(bypassed);
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let declared = arena.value_type_unit();
+        let body = arena.value_constant(bypassed.position());
+        let dependent = builder.def(LevelSignature::monomorphic(), declared, body);
         let dependent = environment.add_decl(dependent).unwrap();
         let report = environment.audit(dependent);
         assert_eq!(
