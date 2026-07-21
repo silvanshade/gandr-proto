@@ -9,6 +9,10 @@ notes/
 # mise local opt-in environment selector (created by `mise run dev:enable`).
 .miserc.toml
 
+# Generated from mise's nightly pin for Dylint, which strips the environment
+# before resolving its driver toolchain.
+/crates/workflow-dylint/rust-toolchain
+
 # git worktrees parked inside the checkout (siblings live outside the repo)
 .claude/worktrees/
 

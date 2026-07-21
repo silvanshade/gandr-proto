@@ -27,9 +27,10 @@ binstall = true
 
 [env]
 # Toolchain pins are configured ONCE here — mise is the SOLE toolchain
-# authority. A rust-toolchain.toml would be a second copy of the same pin that
-# RUSTUP_TOOLCHAIN shadows inside every task, and two copies drifted in
-# practice (the repo template shipped mismatched pins and the stale one won).
+# authority. A tracked rust-toolchain file would be a second copy of the same
+# pin and two copies drifted in practice. The ignored driver-local file is
+# materialized from `RUSTUP_TOOLCHAIN_NIGHTLY` for tools that deliberately
+# strip the environment before asking rustup to select a toolchain.
 # `get_env` keeps the ambient value when a caller already set it, so an
 # explicit override wins.
 # RUSTUP_TOOLCHAIN preempts even an explicit `rustup run <other>` argument, so
@@ -61,7 +62,14 @@ rm -f .miserc.toml
 echo "mise development config disabled"
 """
 
+[tasks."toolchain:materialize"]
+description = "Materialize the Dylint driver's ignored rust-toolchain file from mise's nightly pin"
+run = """
+printf '%s\\n' "$RUSTUP_TOOLCHAIN_NIGHTLY" > crates/workflow-dylint/rust-toolchain
+"""
+
 [tasks.setup]
+depends = ["toolchain:materialize"]
 description = "Populate fresh-worktree dependencies (root devDependencies for the treefmt/oxlint and commitlint hooks + the pinned Rust toolchains and components)"
 run = """
 aube ci
@@ -99,6 +107,7 @@ cargo clippy --workspace --all-targets --features=full -- -D warnings
 
 [tasks."cargo:dylint"]
 description = "Run project Dylint gates"
+depends = ["toolchain:materialize"]
 run = """
 RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
 export RUSTUP_TOOLCHAIN
