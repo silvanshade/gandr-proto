@@ -54,7 +54,7 @@
    Exact higher-order readback needs **inverting the focus translation** `𝓕` — the largest open seam in the core-sequent port.
    The term-face origin-`NodeId` cache short-circuits the **inert** case; a **reduced** value still needs `𝓕⁻¹`.
    Whether B4 lands full `𝓕⁻¹` or defers it behind the origin-`NodeId` cache plus the existing KIND-granularity fallback is B4-RC9.
-10. **Nine ratification-queue candidates** (§9), numbered locally B4-RC1..B4-RC9 (global RQ-n assigned at ratification).
+10. **Ten ratification-queue candidates** (§9), numbered locally B4-RC1..B4-RC10 (B4-RC10 added at the 2026-07-21 ratification; global numbers RQ-18..RQ-27 assigned there).
     The A2.5 streaming demo and incremental coupling are scoped to the A2 lane, not here (`gandr-wvd.4` description); the benchmark baseline and the standing perf discipline begin at B4 landing (the `gandr-wvd.4` exit).
 
 ---
@@ -318,17 +318,18 @@ The kernel handshake (b3 §6.2/§6.3) determines _which_ normalizer meets _which
 
 ## 8. Decision map
 
-| #       | Decision                           | Recommendation                                                                                             | Alternative recorded                                                                        | Owner posture          |
-| ------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------- |
-| D-glue  | Glued value representation         | Two named faces; term-face (origin-`NodeId`) now, unfolding-face (`VUnfold`) designed with the hints table | single conflated "glued" (the ADR-50 D phrasing) — rejected, it is the half-built-glue trap | B4-RC1                 |
-| D-pipe  | def-eq pipeline order              | id-eq → cached-word → iterative structural → lazy-δ/heights → smart-unfolding → `ConvState`                | Idris-style eval-both-sides, no caches — rejected (the performance cliff)                   | B4-RC2                 |
-| D-ident | Content-address under generativity | minted atoms are part of value identity; freshness checkable vs R4 table                                   | atoms outside identity — rejected (the generative-aliasing hazard)                          | B4-RC3 (soundness)     |
-| D-holes | Module-form parameterization       | build the skeleton with six neutral holes; fill per B3 rung                                                | wait for the whole B3 module system before B4 — rejected (defeats B3-before-B4)             | B4-RC4                 |
-| D-recur | Recursive-def unfolding            | smart-unfolding on case-tree progress (gandr mechanism)                                                    | unconditional δ — rejected (stuck-`brecOn` disaster)                                        | B4-RC5                 |
-| D-kern  | Kernel normalizer scope            | instantiated residue only; `HOLE-APP` elaborator-side                                                      | kernel-check functor bodies at B3 — deferred (TCB + replay cost)                            | B4-RC6 (mirrors b3 Q1) |
-| D-stuck | Stuck-value shape                  | values carry blocker identity                                                                              | stuck-as-outcome only (current)                                                             | B4-RC7                 |
-| D-trans | Transparency defaults              | (open)                                                                                                     | height-only, all-reducible-by-default                                                       | B4-RC8 (open)          |
-| D-read  | Un-focusing readback timing        | origin-`NodeId` now; scope `𝓕⁻¹` as a sub-rung                                                             | full `𝓕⁻¹` at B4 landing                                                                    | B4-RC9 (open)          |
+| #       | Decision                           | Recommendation                                                                                             | Alternative recorded                                                                        | Owner posture            |
+| ------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------ |
+| D-glue  | Glued value representation         | Two named faces; term-face (origin-`NodeId`) now, unfolding-face (`VUnfold`) designed with the hints table | single conflated "glued" (the ADR-50 D phrasing) — rejected, it is the half-built-glue trap | B4-RC1                   |
+| D-pipe  | def-eq pipeline order              | id-eq → cached-word → iterative structural → lazy-δ/heights → smart-unfolding → `ConvState`                | Idris-style eval-both-sides, no caches — rejected (the performance cliff)                   | B4-RC2                   |
+| D-ident | Content-address under generativity | minted atoms are part of value identity; freshness checkable vs R4 table                                   | atoms outside identity — rejected (the generative-aliasing hazard)                          | B4-RC3 (soundness)       |
+| D-holes | Module-form parameterization       | build the skeleton with six neutral holes; fill per B3 rung                                                | wait for the whole B3 module system before B4 — rejected (defeats B3-before-B4)             | B4-RC4                   |
+| D-recur | Recursive-def unfolding            | smart-unfolding on case-tree progress (gandr mechanism)                                                    | unconditional δ — rejected (stuck-`brecOn` disaster)                                        | B4-RC5                   |
+| D-kern  | Kernel normalizer scope            | instantiated residue only; `HOLE-APP` elaborator-side                                                      | kernel-check functor bodies at B3 — deferred (TCB + replay cost)                            | B4-RC6 (mirrors b3 Q1)   |
+| D-stuck | Stuck-value shape                  | values carry blocker identity                                                                              | stuck-as-outcome only (current)                                                             | B4-RC7                   |
+| D-trans | Transparency defaults              | reducible-by-default + reserved irreducible opt-out; heuristic-only (engine layer, never kernel semantics) | all-reducible height-only (A); opaque-outside-unit (D, rejected)                            | B4-RC8 (adopted (B))     |
+| D-read  | Un-focusing readback timing        | origin-`NodeId` now; scope `𝓕⁻¹` as a sub-rung                                                             | full `𝓕⁻¹` at B4 landing                                                                    | B4-RC9 (adopted, staged) |
+| D-cc    | D8/closure-plane non-foreclosure   | abstract first-order closures; value-level differential; IL-shape indifference                             | (none — foreclosure is the failure mode)                                                    | B4-RC10 (adopted)        |
 
 ---
 
@@ -336,6 +337,11 @@ The kernel handshake (b3 §6.2/§6.3) determines _which_ normalizer meets _which
 
 Numbered locally **B4-RC1..B4-RC9** to avoid collision with the shared RQ-n namespace (RQ-n belongs to massive-term §12, and a sibling lane is extending it).
 **Global RQ numbers are assigned at ratification.** Each: the decision, the recommendation, and the alternative.
+
+> **RATIFIED (owner, 2026-07-21):** B4-RC1..RC9 adopted — RC1-RC7 per recommendation; RC8 as option (B): reducible-by-default `Regular(height)` plus a reserved irreducible opt-out, with the heuristic-only split adopted explicitly — transparency is engine/elaborator policy, never kernel semantics; kernel def-eq depends on declaration **form** only (a sealed atom is opaque by form, not by annotation); RC9 as the staged option (origin-`NodeId` term-face at B4 landing, full `𝓕⁻¹` scoped as a B4 sub-rung).
+> **B4-RC10 added at ratification** (below).
+> Global RQ numbers: **RQ-18..RQ-26 = RC1..RC9; RQ-27 = RC10.** The scoped/declared unfolding of GSACB [L-6] (Agda `opaque`/`unfolding` is its practical face) remains the reserved theory layer per §4.4 — RC8(B) is the Lean engine posture only, deliberately weaker.
+> Ratification record on `gandr-9pv`.
 
 * **B4-RC1 — the two-face glued split (adopt).** Name term-face and unfolding-face in the value-domain type; implement term-face (origin-`NodeId`) immediately, design unfolding-face (`VUnfold`) jointly with the engine hints table so quote-face and def-eq-unfold policies are one table.
   Alternative: the single conflated "glued" of ADR-50 D — rejected as the half-built-glue trap (impl-models §5.2).
@@ -355,6 +361,9 @@ Numbered locally **B4-RC1..B4-RC9** to avoid collision with the shared RQ-n name
   Options span all-reducible-by-default to an `@[irreducible]`-style opt-out; needs an owner decision before the engine layer lands.
 * **B4-RC9 — un-focusing readback timing (OPEN owner call).** Land origin-`NodeId` term-face now (covers the inert case) and scope full `𝓕⁻¹` (L-machine landing SEAM 1) as a B4 sub-rung, or land full `𝓕⁻¹` at B4 landing.
   Recommendation leans to the staged option — the seam is the largest in the port (~800-1400 LOC estimate) and the term-face cache defers the pressure — but it is a genuine scoping fork for the owner.
+* **B4-RC10 — D8/closure-plane non-foreclosure invariants (added and adopted at ratification, 2026-07-21; RQ-27).** The phase-K3 closure-conversion lane — notes-distillate D8: Sullivan abstract closures [A-22a]/[A-22b] as in-IL 2-cells at the `U`/`force` boundary only, feeding the CC-normal Cranelift pre-lowering where `jit ≡ eval` is a theorem — is downstream of B4, and the IL already reserves its seam (`core-sequent/src/il.rs` emits `Cocase` as the pre-closure-conversion form; the `Closure` producer is deliberately absent at L0; "phase-K3" is `proposal-sequent-kernel.md` §8 vocabulary, a namespace distinct from the K1-K5 kernel invariants).
+  B4 takes no design content from D8 but must not foreclose it; three invariants: (i) the value domain keeps closures abstract first-order `(Env, NodeId)` — the Sullivan abstract-closure posture — never specialized toward post-CC concrete closure records; (ii) the NbE ≡ L-machine differential compares at the value/readback level, never the IL-shape level, so it extends to CC-normal adequacy (`normalize∘CC ≡ normalize`) when phase-K3 lands; (iii) whnf/conversion is indifferent to `Cocase`-vs-`Closure` IL surface forms, and thunk cells (H4) stay representation-agnostic at the `U`/`force` boundary CC will rewrite.
+  The Sullivan digests (`sequent-machines-closures`, `sequent-machines-effcc`) remain distill-pending; their absorption is owed to the phase-K3 lane, not B4.
 
 ---
 
