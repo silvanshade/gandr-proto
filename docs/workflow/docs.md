@@ -18,7 +18,10 @@ The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A
 * **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the sibling `wyrd-notes` repository (a separate local git repo beside this one), never in the tracked tree.
   What a survey _decides_ gets distilled into an ADR; the survey itself does not move into `docs/`.
 
-Per-crate `crates/*/docs/` (STATUS, crate ADR, CHANGELOG — no TODO.md; beads tracks that) are a distinct lean tier, off the design-corpus main-path and unregistered in the MANIFEST.
+Per-crate `crates/*/docs/STATUS.xml` is the lean tier, off the design-corpus main-path and unregistered in the MANIFEST.
+Legacy `STATUS.md` migrates opportunistically.
+CHANGELOG is retired as a document class: fold dated changes into STATUS plus beads and git history; do not create a new CHANGELOG in either format.
+Per-crate ADR/METRICS/OPTIMIZATION files are legacy material outside the three prose classes, and TODO files are retired because beads tracks work.
 
 ## Specification corpus and the doc tool
 
@@ -40,9 +43,14 @@ What has landed:
   The status lifecycle is the shared five-value vocabulary (`built | partial | adopted-unbuilt | design-pass | dormant`); a research proposal under review authors as `design-pass`, its human status phrase carried in the banner.
 
 **Authoring policy — XML-first (`gandr-712`).** Once a class has an XML home, a new document in that class authors as **XML**, not Markdown.
-Markdown is the **legacy tail only**: do not add a new `.md` file in a class that now has an XML class (research, workflow, per-crate STATUS/CHANGELOG).
-Existing `.md` migrate opportunistically when touched, never in a mass sweep; `.md` and `.xml` coexist until the tail is gone.
+Markdown is the **legacy tail only**: do not add a new `.md` file in a class that now has an XML home (research, workflow, per-crate STATUS).
+CHANGELOG has no XML class and is retired: do not create one in either format; fold dated changes into STATUS plus beads and git history.
+Existing research/workflow/STATUS Markdown migrates opportunistically when touched, never in a mass sweep; existing CHANGELOG Markdown folds into STATUS when touched.
+`.md` and `.xml` coexist until those tails are gone.
 The math- and symbol-dense Markdown conventions below stay in force for the un-migrated tail — they are the workarounds for Markdown's lack of first-class math, and they retire with the last `.md` in a migrated class.
+Repository entrypoints whose consumers require Markdown names (`README.md`, `AGENTS.md`, `CLAUDE.md`) are routing adapters, not authored-document classes: keep them thin and point substantive material into the XML homes.
+Do not add new top-level Markdown guidance.
+Route process material to `docs/workflow/*.xml`, design material to `docs/spec/*.xml`, and staging/design-study material to `docs/research/*.xml`; the legacy `docs/WORKFLOW.md` umbrella migrates to `docs/workflow/index.xml`.
 
 The static-HTML render pipeline the resolution specifies — Typst math compiled to MathML Core, `typst-fletcher` diagrams to SVG, progressive-enhancement WebComponent islands — is the design target, not yet built; describe it as design, not as a shipped capability.
 The pre-`gandr-fcw.8` proposal-lifecycle model below (proposal files as document classes, manual absorption) is superseded by that status-attributed component model, and is retained only until the tool subsumes it.

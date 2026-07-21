@@ -1,7 +1,7 @@
-<research-record id="doc-tool-class-growth" status="design-pass" title="Growing the doc-tool prose document classes">
+<research-record id="doc-tool-class-growth" status="built" title="Growing the doc-tool prose document classes">
   <banner>
-    <note>Status: proposal for owner review — a design pass, not a decision record (gandr-712, phase B). It records the class designs, the treefmt/policy cutover, and the decisions held for owner veto.</note>
-    <note>Scope: grow the doc tool (gandr-workflow-docs, gandr-fcw.8) beyond the docs/spec component corpus to the surrounding Markdown tail, so the markdown-to-XML convergence can cut over and the .md tail stops growing. No existing .md file is migrated in this lane; the appendix prices that later sweep.</note>
+    <note>Status: built and ratified (gandr-712). The three prose classes, their shared substrate, the treefmt/check-docs wiring, and the XML-first policy are implemented; the four formerly held owner-veto choices below are final.</note>
+    <note>Scope: the doc tool (gandr-workflow-docs, gandr-fcw.8) now covers the three authored-document classes around docs/spec. Existing .md files remain an opportunistic migration or folding tail; ecosystem-named Markdown entrypoints stay thin routing adapters rather than precedent for new authored Markdown.</note>
     <note>Dogfood: this record is itself the first instance of the research-record class, authored as XML and validated by the tool it designs (check-docs). The bootstrap is the acceptance test.</note>
   </banner>
   <section id="dtcg-summary" title="What this lane grows">
@@ -151,7 +151,7 @@
 &lt;/research-record&gt;</code>
   </section>
   <section id="dtcg-decisions" title="Design decisions">
-    <prose>Each decision below is a coined anchor; the ones held for owner veto are gathered in the next section.</prose>
+    <prose>Each decision below is a coined anchor. The implementation recommendations and the formerly held owner-veto choices are all ratified.</prose>
     <list ordered="false">
       <item>
         <label key="R1">R1</label>
@@ -183,50 +183,52 @@
       </item>
       <item>
         <label key="D1">D1</label>
-        — recommend the per-crate CHANGELOG class DIE rather than migrate. See the owner-veto section: the changelog is prose with near-zero validatable structure, better served by folding into STATUS plus beads and git history.
+        — the per-crate CHANGELOG class is rejected. Dated changes fold into STATUS plus beads and git history; existing CHANGELOG files are a folding tail, not a fourth XML class.
       </item>
     </list>
   </section>
-  <section id="dtcg-owner-veto" title="Decisions for owner-veto review">
-    <prose>Separated from the recommendations above; each is a genuine fork the owner decides at review.</prose>
+  <section id="dtcg-owner-veto" title="Ratified owner decisions">
+    <prose>The implementation choices below are final; each records the resolved fork and the resulting authoring rule.</prose>
     <list ordered="false">
       <item>
         <label key="O1">O1</label>
-        — class root names and the per-crate file layout. The roots are
+        — retain the root names
         <inline-code>research-record</inline-code>
         ,
         <inline-code>workflow-doc</inline-code>
-        ,
+        , and
         <inline-code>crate-status</inline-code>
-        ; the per-crate file is proposed as
+        . Per-crate status authors at
         <inline-code>crates/*/docs/STATUS.xml</inline-code>
-        beside the retiring
-        <inline-code>STATUS.md</inline-code>
-        . Ratify the names and whether a per-crate CHANGELOG gets its own root or is subsumed (see
+        ; no CHANGELOG root is added (
+        <ref key="D1"/>
+        ). The legacy umbrella
+        <inline-code>docs/WORKFLOW.md</inline-code>
+        migrates into the existing workflow class at
+        <inline-code>docs/workflow/index.xml</inline-code>
+        rather than widening the class model.
+      </item>
+      <item>
+        <label key="O2">O2</label>
+        — ship the minimal
+        <inline-code>crate-status</inline-code>
+        class for STATUS. Status presence, crate scope, and dated-section shape provide enough validation value for the lean tier; CHANGELOG still folds into STATUS, beads, and git history (
         <ref key="D1"/>
         ).
       </item>
       <item>
-        <label key="O2">O2</label>
-        — whether the per-crate lean tier should get an XML class at all. It is off the corpus main-path by design and is prose with almost no cross-references, coined anchors, or citations — the thin parse-is-validate value (dated-section shape, status presence) may not repay the ceremony. Options: (a) ship the minimal
-        <inline-code>crate-status</inline-code>
-        class as designed; (b) keep the lean tier in Markdown indefinitely and cut over only research and workflow; (c) fold CHANGELOG into STATUS and let beads plus git history carry the dated record (
-        <ref key="D1"/>
-        ). Recommendation: (c) for CHANGELOG, (a) for STATUS.
-      </item>
-      <item>
         <label key="O3">O3</label>
-        — the block set is currently shared across all three classes (only the
+        — retain one shared block set across all three prose classes. Class-specific schema stays limited to root attributes, banner obligations, and the
         <ref key="R3"/>
-        inline restriction distinguishes them). Confirm this is right, or name a per-class block restriction (for example, tables in the lean tier) worth enforcing. Recommendation: keep the block set shared; premature per-class block restrictions are the expensive wrong-early-vocabulary the charter warns against.
+        inline restriction; no speculative table or code restriction is added. Vocabulary grows only from a demonstrated authoring need.
       </item>
       <item>
         <label key="O4">O4</label>
-        — cross-document references (a research record pointing at another doc's section) are modeled as prose plus
+        — cross-document references remain prose plus
         <inline-code>inline-code</inline-code>
         , not a resolved
         <inline-code>see</inline-code>
-        element. Resolving them corpus-wide is a growth point deferred to the static-HTML render target. Confirm deferral.
+        element. Corpus-wide resolution is deferred until the static-HTML render target supplies a concrete destination model and observable validation contract.
       </item>
     </list>
   </section>
@@ -296,15 +298,15 @@
         <cell>the lean-tier status narrative per crate</cell>
       </row>
       <row>
-        <cell>crate-status (CHANGELOG)</cell>
+        <cell>retired CHANGELOG tail</cell>
         <cell>
           <inline-code>crates/*/docs/CHANGELOG.md</inline-code>
         </cell>
         <cell>9</cell>
         <cell>
-          recommended to die into STATUS plus beads (
+          folds into STATUS plus beads and git history (
           <ref key="D1"/>
-          ) rather than gain a class
+          ) rather than gaining an XML class
         </cell>
       </row>
       <row>
@@ -318,6 +320,6 @@
         <cell>not one of the three classes; ADR homes at repo root, README is GitHub-facing, TODO is retired (beads tracks it)</cell>
       </row>
     </table>
-    <prose>Topline: about 49 .md files sit in the three class homes (20 research + 12 workflow + 18 crate STATUS/CHANGELOG), of which roughly 40 are genuine migration candidates once the register source, surveys, and the death-recommended CHANGELOG are set aside. The sweep is a follow-on lane; this record only prices it.</prose>
+    <prose>Topline: about 49 .md files sit in the three class homes (20 research + 12 workflow + 18 crate STATUS/CHANGELOG). Roughly 30 are genuine XML migration candidates after the register source, surveys, and nine retired CHANGELOG files are set aside; the CHANGELOG tail folds into STATUS instead. The sweep is a follow-on lane; this record only prices it.</prose>
   </section>
 </research-record>
