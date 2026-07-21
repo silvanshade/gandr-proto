@@ -1,0 +1,23 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-surface-syntax"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Flat arena concrete syntax tree for gandr parser and incremental syntax diffing"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "diff"
+path = "tests/diff.rs"
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true
