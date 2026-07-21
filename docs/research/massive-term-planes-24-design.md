@@ -32,6 +32,8 @@ Neither touches the kernel replay semantics (K2/E3) or the wire format — they 
 | 2 · streaming decode     | **P2-D4** A2.5 demo consumption        | The A2.5 streaming demo composes **two** streams — checker-plane synthesis (A2.3) and storage-plane export decode; plane 2 backs the latter over chunk-granular `BlockStore` access, bao verification off by default. | ratify scope (RQ-17)                   |
 | 4 × 2 · interplay        | **budget carry**                       | Checkpoint state carries the **accumulated** budget counters (table entries, artifact-total work) across resume/stream boundaries — else split-artifact evades the whole-artifact caps. Prices against, not around.   | ratify (RQ-16); the headline interplay |
 
+> **Ratification note (owner, 2026-07-21):** all eight rows ratified as recommended (RQ-11 posture (a), RQ-15 posture (ii)), with one amendment — the P2-D1 substrate is the iroh-family `bao-tree`, not plain `bao` (§4.2, §9).
+
 The single governing consequence: **the two walls do not move.** The outer wall (the manifest identity, a BLAKE3 over the record set) is untrusted plumbing that proves provenance, never validity; the inner wall (K2/E3 replay through `add_decl`) is the sole validity authority.
 Every acceleration below — a resumed checkpoint, a streamed prefix — is priced by the rule that **integrity never substitutes validity** (`storage-artifact/README.md:26–32`).
 
@@ -179,6 +181,7 @@ This is fixed by the record model, so it is recorded as ground truth rather than
 `bao` is the ratified verified-streaming route (`massive-term-design.md:337`), but today it is dev-only and no code streams-and-verifies (§2.4).
 The honest posture: **do not claim verified streaming as a current capability.** Streaming verification is inherited-deferred alongside the multi-level tree; until the A2.5 demo needs it, chunk-granular access is via `BlockStore` (which verifies each blob on load, `store.rs:137–170`) and whole-artifact verification is full-rebuild. bao is untrusted plumbing (the outer wall), so promoting it is a dependency decision with **no TCB impact** — but it is a new runtime dep and belongs behind a feature until earned.
 Options: **(A)** promote bao to runtime now (rejected — no consumer, dead weight); **(B)** feature-gate, promote on first consumer (recommended); **(C)** hold at full-rebuild indefinitely (rejected — forfeits the demo's incrementality).
+**Ratification amendment (owner, 2026-07-21):** the promoted substrate is the iroh-family `bao-tree` crate, not plain `bao` — the same BLAKE3/Bao verified-streaming model, chosen to align with the planned iroh adoption; the dev-only `bao 0.13.1` adapter evidence stays as-is until the promotion moment.
 
 ### 4.3 P2-D3 — incremental budgets, and the E4 whole-artifact seam
 
@@ -264,6 +267,9 @@ No decision is taken here; this paragraph is the posture statement the charter r
 
 Each item: the decision, its options, the recommendation, and what it blocks.
 RQ numbering **continues the §12 queue** (RQ-1..RQ-9 there).
+
+> **RATIFIED (owner, 2026-07-21):** RQ-10..RQ-17 adopted per recommendation — RQ-11 posture (a), RQ-15 posture (ii) — with one amendment to RQ-14: the verified-streaming substrate is the iroh-family `bao-tree` crate rather than plain `bao` (iroh adoption is planned, so the substrate aligns with that trajectory now).
+> Ratification record on `gandr-3ln.1`.
 
 **RQ-10 — P4-D1 checkpoint grain.** Options: **(A)** whole-artifact only · **(B)** per-declaration resume · **(C)** declaration-prefix, prolly-hash-keyed.
 Recommendation **(C)** (§3.1) — the prefix is the only sound resumable unit (strictly-earlier child refs); the prolly prefix-hash is the outer, untrusted cache key.
