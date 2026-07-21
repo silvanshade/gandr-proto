@@ -1,0 +1,323 @@
+<research-record id="doc-tool-class-growth" status="design-pass" title="Growing the doc-tool prose document classes">
+  <banner>
+    <note>Status: proposal for owner review — a design pass, not a decision record (gandr-712, phase B). It records the class designs, the treefmt/policy cutover, and the decisions held for owner veto.</note>
+    <note>Scope: grow the doc tool (gandr-workflow-docs, gandr-fcw.8) beyond the docs/spec component corpus to the surrounding Markdown tail, so the markdown-to-XML convergence can cut over and the .md tail stops growing. No existing .md file is migrated in this lane; the appendix prices that later sweep.</note>
+    <note>Dogfood: this record is itself the first instance of the research-record class, authored as XML and validated by the tool it designs (check-docs). The bootstrap is the acceptance test.</note>
+  </banner>
+  <section id="dtcg-summary" title="What this lane grows">
+    <prose>
+      The doc tool already owns one document class: the
+      <inline-code>component</inline-code>
+      spec vocabulary under
+      <inline-code>docs/spec</inline-code>
+      , where parsing is validation. Everything outside
+      <inline-code>docs/spec</inline-code>
+      still authors as Markdown because no XML class existed for it. This lane grows the three missing classes so the authoring policy can turn XML-first.
+    </prose>
+    <prose>
+      The classes share one minimal block and inline substrate and differ only in their banner obligation, their root attributes, and whether they may coin cross-referenced labels. The canonical formatter is class-agnostic, so no formatting code is added — only the
+      <inline-code>docs-xml</inline-code>
+      treefmt globs widen to the new roots (
+      <ref key="R2"/>
+      ).
+    </prose>
+    <list ordered="false">
+      <item lead="research records">
+        <inline-code>docs/research/*.xml</inline-code>
+        — design studies and staging records: a status banner, sections, tables, code, coined-label anchors, and register-key citations.
+      </item>
+      <item lead="workflow docs">
+        <inline-code>docs/workflow/*.xml</inline-code>
+        — process and convention docs: a required read-when banner and rule/convention lists.
+      </item>
+      <item lead="the per-crate lean tier">
+        <inline-code>crates/*/docs/STATUS.xml</inline-code>
+        — the crate status narrative: a crate scope, dated sections, current-state prose. Kept deliberately minimal; off the corpus main-path by design.
+      </item>
+    </list>
+  </section>
+  <section id="dtcg-substrate" title="The shared substrate">
+    <prose>
+      All three classes are configurations of one substrate. The block vocabulary is the minimum each class needs; it omits the component corpus's math-bearing blocks (judgements, grammar, rule, diagram), which prose documents do not carry. The inline
+      <inline-code>label</inline-code>
+      and
+      <inline-code>ref</inline-code>
+      anchors are admitted only in a research-record (
+      <ref key="R3"/>
+      ).
+    </prose>
+    <table caption="The prose substrate vocabulary and its validation">
+      <header>
+        <cell>element</cell>
+        <cell>kind</cell>
+        <cell>role</cell>
+        <cell>parse-is-validate rule</cell>
+      </header>
+      <row>
+        <cell>
+          <inline-code>section</inline-code>
+        </cell>
+        <cell>block</cell>
+        <cell>titled, optionally dated grouping; the only nesting axis</cell>
+        <cell>title required; optional id joins the corpus id space</cell>
+      </row>
+      <row>
+        <cell>
+          <inline-code>prose</inline-code>
+        </cell>
+        <cell>block</cell>
+        <cell>a paragraph of inline content</cell>
+        <cell>inlines validated (see below)</cell>
+      </row>
+      <row>
+        <cell>
+          <inline-code>list</inline-code>
+        </cell>
+        <cell>block</cell>
+        <cell>flat ordered/unordered list; items carry an optional bold lead-in</cell>
+        <cell>
+          accepts only
+          <inline-code>item</inline-code>
+          children
+        </cell>
+      </row>
+      <row>
+        <cell>
+          <inline-code>table</inline-code>
+        </cell>
+        <cell>block</cell>
+        <cell>header-plus-body table</cell>
+        <cell>
+          a
+          <inline-code>header</inline-code>
+          row is required; rows accept only
+          <inline-code>cell</inline-code>
+        </cell>
+      </row>
+      <row>
+        <cell>
+          <inline-code>code</inline-code>
+        </cell>
+        <cell>block</cell>
+        <cell>a verbatim code listing with a language label</cell>
+        <cell>opaque text; not executed</cell>
+      </row>
+      <row>
+        <cell>
+          <inline-code>inline-code</inline-code>
+        </cell>
+        <cell>inline</cell>
+        <cell>a backtick-style identifier or path</cell>
+        <cell>opaque text</cell>
+      </row>
+      <row>
+        <cell>
+          <inline-code>label</inline-code>
+          /
+          <inline-code>ref</inline-code>
+        </cell>
+        <cell>inline</cell>
+        <cell>coined-anchor definition and reference (R1/HZ-1/O1 device)</cell>
+        <cell>define-once per document; a ref resolves to a label in the same document; research-record only</cell>
+      </row>
+      <row>
+        <cell>
+          <inline-code>cite</inline-code>
+        </cell>
+        <cell>inline</cell>
+        <cell>a register-key citation</cell>
+        <cell>
+          the key must resolve in
+          <inline-code>refs.yml</inline-code>
+        </cell>
+      </row>
+    </table>
+    <prose>
+      The status lifecycle reuses the component vocabulary's five spellings verbatim rather than inventing a research-specific enum (
+      <ref key="R1"/>
+      ): a proposal under review authors as
+      <inline-code>design-pass</inline-code>
+      , its human status phrase carried in the banner. The class design borrows the Lean reference-manual patterns the component corpus already adopted — titled boxes, stable anchors, status attributes, checked-shape examples
+      <cite key="P-2"/>
+      .
+    </prose>
+    <code language="xml">&lt;research-record id="..." title="..." status="design-pass"&gt;
+  &lt;banner&gt;&lt;note&gt;status phrase, scope, provenance&lt;/note&gt;&lt;/banner&gt;
+  &lt;section title="..."&gt;
+    &lt;prose&gt;text with &lt;inline-code&gt;paths&lt;/inline-code&gt; and a &lt;label key="R1"&gt;R1&lt;/label&gt; anchor&lt;/prose&gt;
+    &lt;list&gt;&lt;item lead="rule"&gt;body&lt;/item&gt;&lt;/list&gt;
+    &lt;table caption="..."&gt;&lt;header&gt;&lt;cell&gt;h&lt;/cell&gt;&lt;/header&gt;&lt;row&gt;&lt;cell&gt;x&lt;/cell&gt;&lt;/row&gt;&lt;/table&gt;
+  &lt;/section&gt;
+&lt;/research-record&gt;</code>
+  </section>
+  <section id="dtcg-decisions" title="Design decisions">
+    <prose>Each decision below is a coined anchor; the ones held for owner veto are gathered in the next section.</prose>
+    <list ordered="false">
+      <item>
+        <label key="R1">R1</label>
+        — reuse the component
+        <inline-code>Status</inline-code>
+        enum for the doc family rather than mint a research-specific status enum. The five spellings map cleanly (a design study or proposal is
+        <inline-code>design-pass</inline-code>
+        ; adopted is
+        <inline-code>adopted-unbuilt</inline-code>
+        /
+        <inline-code>built</inline-code>
+        ; retired is
+        <inline-code>dormant</inline-code>
+        ), which keeps one status concept across both corpora. Cost: the machine status is coarser than the banner's human phrase, so the phrase lives in the banner.
+      </item>
+      <item>
+        <label key="R2">R2</label>
+        — one shared substrate with a per-class schema, not three parallel model/parse/validate stacks. The classes differ by banner obligation and admitted inlines, expressed as a small schema, so a bug fixed once is fixed for all three and the vocabulary stays minimal. The component stack is left untouched: a prose document is a distinct root element, so the two corpora coexist.
+      </item>
+      <item>
+        <label key="R3">R3</label>
+        — coined labels (
+        <inline-code>label</inline-code>
+        /
+        <inline-code>ref</inline-code>
+        ) are a research-record affordance only. The recommendation/hazard/question anchor is a design-study device; a workflow or crate-status document that coins one is a schema violation (
+        <inline-code>disallowed-inline</inline-code>
+        ). This is the one real per-class inline restriction; the block set is otherwise shared.
+      </item>
+      <item>
+        <label key="D1">D1</label>
+        — recommend the per-crate CHANGELOG class DIE rather than migrate. See the owner-veto section: the changelog is prose with near-zero validatable structure, better served by folding into STATUS plus beads and git history.
+      </item>
+    </list>
+  </section>
+  <section id="dtcg-owner-veto" title="Decisions for owner-veto review">
+    <prose>Separated from the recommendations above; each is a genuine fork the owner decides at review.</prose>
+    <list ordered="false">
+      <item>
+        <label key="O1">O1</label>
+        — class root names and the per-crate file layout. The roots are
+        <inline-code>research-record</inline-code>
+        ,
+        <inline-code>workflow-doc</inline-code>
+        ,
+        <inline-code>crate-status</inline-code>
+        ; the per-crate file is proposed as
+        <inline-code>crates/*/docs/STATUS.xml</inline-code>
+        beside the retiring
+        <inline-code>STATUS.md</inline-code>
+        . Ratify the names and whether a per-crate CHANGELOG gets its own root or is subsumed (see
+        <ref key="D1"/>
+        ).
+      </item>
+      <item>
+        <label key="O2">O2</label>
+        — whether the per-crate lean tier should get an XML class at all. It is off the corpus main-path by design and is prose with almost no cross-references, coined anchors, or citations — the thin parse-is-validate value (dated-section shape, status presence) may not repay the ceremony. Options: (a) ship the minimal
+        <inline-code>crate-status</inline-code>
+        class as designed; (b) keep the lean tier in Markdown indefinitely and cut over only research and workflow; (c) fold CHANGELOG into STATUS and let beads plus git history carry the dated record (
+        <ref key="D1"/>
+        ). Recommendation: (c) for CHANGELOG, (a) for STATUS.
+      </item>
+      <item>
+        <label key="O3">O3</label>
+        — the block set is currently shared across all three classes (only the
+        <ref key="R3"/>
+        inline restriction distinguishes them). Confirm this is right, or name a per-class block restriction (for example, tables in the lean tier) worth enforcing. Recommendation: keep the block set shared; premature per-class block restrictions are the expensive wrong-early-vocabulary the charter warns against.
+      </item>
+      <item>
+        <label key="O4">O4</label>
+        — cross-document references (a research record pointing at another doc's section) are modeled as prose plus
+        <inline-code>inline-code</inline-code>
+        , not a resolved
+        <inline-code>see</inline-code>
+        element. Resolving them corpus-wide is a growth point deferred to the static-HTML render target. Confirm deferral.
+      </item>
+    </list>
+  </section>
+  <section id="dtcg-dogfood" title="Dogfood outcome">
+    <prose>
+      The research-record class survived authoring its own design record. Every feature the charter names was exercised by this file: the status banner, nested sections, tables (the substrate and the inventory below), a code listing, coined-label anchors (
+      <ref key="R1"/>
+      ,
+      <ref key="R2"/>
+      ,
+      <ref key="R3"/>
+      ,
+      <ref key="D1"/>
+      ) with intra-document resolution, and a register-key citation (
+      <cite key="P-2"/>
+      ). The class vocabulary was sufficient; no fallback to Markdown was needed, and the bootstrap validates clean under
+      <inline-code>check-docs</inline-code>
+      .
+    </prose>
+    <prose>
+      One vocabulary judgement surfaced while authoring and is recorded honestly: nested lists (sub-bullets) are not in the minimal substrate — a list is flat. The research and workflow tails use sub-bullets, so nesting is a likely early growth point; it was left out to keep the first vocabulary minimal and to avoid a second recursion axis in the parser. Flag, not fix (
+      <ref key="O3"/>
+      is the review hook).
+    </prose>
+  </section>
+  <section id="dtcg-inventory" title="Appendix — the Markdown tail inventory">
+    <prose>The counts that price the later migration sweep, per class. Inventory only; no migration lands in this lane.</prose>
+    <table caption="Markdown tail by class (counts at the lane base)">
+      <header>
+        <cell>class</cell>
+        <cell>directory / glob</cell>
+        <cell>.md files</cell>
+        <cell>notes</cell>
+      </header>
+      <row>
+        <cell>research-record</cell>
+        <cell>
+          <inline-code>docs/research/*.md</inline-code>
+        </cell>
+        <cell>20</cell>
+        <cell>
+          one (
+          <inline-code>bibliography-v2.md</inline-code>
+          ) is the derived-register source parsed by
+          <inline-code>scripts/refs-yml</inline-code>
+          and stays Markdown; a few are surveys the docs policy keeps out of the tracked tree — leaves ~19 migration candidates
+        </cell>
+      </row>
+      <row>
+        <cell>workflow-doc</cell>
+        <cell>
+          <inline-code>docs/workflow/*.md</inline-code>
+        </cell>
+        <cell>11</cell>
+        <cell>
+          plus the umbrella
+          <inline-code>docs/WORKFLOW.md</inline-code>
+          at the docs root (1)
+        </cell>
+      </row>
+      <row>
+        <cell>crate-status (STATUS)</cell>
+        <cell>
+          <inline-code>crates/*/docs/STATUS.md</inline-code>
+        </cell>
+        <cell>9</cell>
+        <cell>the lean-tier status narrative per crate</cell>
+      </row>
+      <row>
+        <cell>crate-status (CHANGELOG)</cell>
+        <cell>
+          <inline-code>crates/*/docs/CHANGELOG.md</inline-code>
+        </cell>
+        <cell>9</cell>
+        <cell>
+          recommended to die into STATUS plus beads (
+          <ref key="D1"/>
+          ) rather than gain a class
+        </cell>
+      </row>
+      <row>
+        <cell>out of scope</cell>
+        <cell>
+          <inline-code>crates/*/docs/{ADR,METRICS,OPTIMIZATION,TODO}.md</inline-code>
+          , crate
+          <inline-code>README.md</inline-code>
+        </cell>
+        <cell>~16</cell>
+        <cell>not one of the three classes; ADR homes at repo root, README is GitHub-facing, TODO is retired (beads tracks it)</cell>
+      </row>
+    </table>
+    <prose>Topline: about 49 .md files sit in the three class homes (20 research + 12 workflow + 18 crate STATUS/CHANGELOG), of which roughly 40 are genuine migration candidates once the register source, surveys, and the death-recommended CHANGELOG are set aside. The sweep is a follow-on lane; this record only prices it.</prose>
+  </section>
+</research-record>
