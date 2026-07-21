@@ -31,6 +31,18 @@ What has landed:
   Canonical XML formatting is wired into treefmt as the `docs-xml` formatter (`gandr-workflow-docs fmt` over `docs/spec/*.xml`).
 * **The citation register.** `docs/spec/refs.yml` is the central Hayagriva bibliography — 379 entries, one per row of the register `docs/research/bibliography-v2.md` (`gandr-fcw.10`).
   It is a **derived artifact**: the generator is `scripts/refs-yml/` (typed Nushell); to change a citation, edit the register and re-derive, never hand-edit `refs.yml`.
+* **The prose document classes** (`gandr-712`).
+  The same tool grows three classes beyond the component corpus, sharing one minimal block/inline substrate (`section`, `prose`, `list`, `table`, `code`; `inline-code`, `label`/`ref` coined anchors, `cite` register keys) and the same parse-is-validate discipline (banner presence, status presence, label define-once, label/cite resolution, per-class schema):
+  + **research records** — `docs/research/*.xml` (`<research-record>`): status banner, sections, tables, code, coined-label anchors (`R1`/`HZ-1`/`O1`), register-key citations.
+  + **workflow docs** — `docs/workflow/*.xml` (`<workflow-doc>`): a required `read-when` banner and rule/convention lists.
+  + **the per-crate lean tier** — `crates/*/docs/STATUS.xml` (`<crate-status>`): a `crate` scope, dated sections, current-state prose.
+  `check-docs` (`mise run docs:check-classes`) is the class gate; the `docs-xml` formatter covers all class roots.
+  The status lifecycle is the shared five-value vocabulary (`built | partial | adopted-unbuilt | design-pass | dormant`); a research proposal under review authors as `design-pass`, its human status phrase carried in the banner.
+
+**Authoring policy — XML-first (`gandr-712`).** Once a class has an XML home, a new document in that class authors as **XML**, not Markdown.
+Markdown is the **legacy tail only**: do not add a new `.md` file in a class that now has an XML class (research, workflow, per-crate STATUS/CHANGELOG).
+Existing `.md` migrate opportunistically when touched, never in a mass sweep; `.md` and `.xml` coexist until the tail is gone.
+The math- and symbol-dense Markdown conventions below stay in force for the un-migrated tail — they are the workarounds for Markdown's lack of first-class math, and they retire with the last `.md` in a migrated class.
 
 The static-HTML render pipeline the resolution specifies — Typst math compiled to MathML Core, `typst-fletcher` diagrams to SVG, progressive-enhancement WebComponent islands — is the design target, not yet built; describe it as design, not as a shipped capability.
 The pre-`gandr-fcw.8` proposal-lifecycle model below (proposal files as document classes, manual absorption) is superseded by that status-attributed component model, and is retained only until the tool subsumes it.
