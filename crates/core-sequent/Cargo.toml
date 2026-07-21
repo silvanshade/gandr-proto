@@ -23,6 +23,12 @@ gandr-core-checker = { path = "../core-checker" }
 # provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
 # provenance convention the pre-lowered corpus fixtures already carry.
 blake3 = { workspace = true }
+# The S1 kernel (kernel-boundary.md §2): the B2.3 corpus partition sweep
+# (`tests/kernel_corpus_partition.rs`) bridges each corpus item through
+# `gandr-core-checker`'s kernel bridge into this kernel's choke point and export.
+# A test-only edge — the section-2 TCB wall constrains kernel-core's own
+# dependencies, never its consumers.
+gandr-kernel-core = { path = "../kernel-core" }
 proptest = { workspace = true }
 
 [features]

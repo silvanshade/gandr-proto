@@ -607,6 +607,7 @@ version = "0.0.0"
 name = "gandr-core-checker"
 version = "0.0.0"
 dependencies = [
+ "gandr-kernel-core",
  "gandr-theory-nominal-automata",
  "gandr-theory-orders",
  "no-panic",
@@ -621,6 +622,7 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "gandr-core-checker",
+ "gandr-kernel-core",
  "proptest",
 ]
 

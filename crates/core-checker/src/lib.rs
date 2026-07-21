@@ -75,6 +75,7 @@ pub mod grade;
 pub mod host;
 pub mod identity;
 pub mod intern;
+pub mod kernel_bridge;
 pub mod machine;
 pub mod mark;
 pub mod nominal;

@@ -11,6 +11,11 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The minimal certified kernel's S1 core (kernel-boundary.md §2). The B2.3
+# bridge lowers checked core CBPV forms into the closed S1 vocabulary; this
+# dependency direction is the permitted one — the section-2 TCB wall forbids the
+# reverse (gandr-kernel-core depends on gandr-kernel-strata ONLY).
+gandr-kernel-core = { path = "../kernel-core" }
 # The nominal atom substrate (ADR-41): runtime continuation-key minting routes
 # through its `Gensym`/`Atom` instead of a bare counter.
 gandr-theory-nominal-automata = { path = "../theory-nominal-automata" }

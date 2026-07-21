@@ -16,6 +16,10 @@ Implemented:
 * The live value/data carriers used by lowering: numeric and string atoms, sums, products, lists, records, thunks/functions, native builtins, and the prelude environment.
 * Identity rung 1 (ADR-76): `Path`, `here`, and full Martin-Löf `walk` with explicit motives and definitional walk-β, under the without-K discipline.
 * The per-run type interner and reflexive-subtyping pointer fast path.
+* The **kernel bridge** (`kernel_bridge`, stage B2.3): the elaborator-side, total, iterative lowering from the checked core CBPV forms into the minimal certified kernel's closed S1 vocabulary (`gandr-kernel-core`).
+  Out-of-S1 nodes are rejected structurally with a precise `BridgeRejection`; `Annot`/`dup`/`drop` are erased (C4); names resolve to de Bruijn indices or cross-declaration `Value::Constant` admission indices; a computation definition enters the single-polarity kernel as a thunk (`U C`, B2.1 decision 3).
+  This crate now depends on `gandr-kernel-core` — the permitted direction (the section-2 TCB wall forbids the reverse).
+  The kernel re-derives every obligation (K2); the bridge is untrusted.
 
 Tests are green (the conformance and marking suites run under `mise run cargo:nextest`).
 
