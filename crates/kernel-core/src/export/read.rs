@@ -1,34 +1,39 @@
 //! The validating export reader (kernel-boundary.md §5, E1–E6): decode
-//! canonical bytes back to a declaration sequence and replay it through the
+//! canonical v1 bytes back to a declaration sequence and replay it through the
 //! choke point.
 //!
-//! # Decode is arena construction (D1(C), gandr-5t3)
+//! # v1: streaming subterm-table decode is arena construction (§4.4–4.6)
 //!
-//! The reader is a closed-vocabulary parser. Every read is bounds-checked (a
-//! short artifact surfaces [`DecodeError::Truncated`]); every tag is matched
-//! against a closed set (an out-of-vocabulary byte surfaces
-//! [`DecodeError::UnknownTag`]); every value is rebuilt through its domain
-//! **constructor**, so a non-canonical state never materializes:
+//! The reader is a closed-vocabulary parser. Every read is bounds-checked
+//! ([`DecodeError::Truncated`]); every tag is matched against the closed
+//! `NODE_*` set ([`DecodeError::UnknownTag`]); every value is rebuilt through
+//! its domain constructor. Each subterm-table entry is **validated as it
+//! accrues** and **minted once into a [`TermArena`]** (post-order completion is
+//! allocation order), so **decode retains sharing** — a table index referenced
+//! twice reuses one arena id, never expanding:
 //!
-//! * **Levels** are rebuilt through the [`gandr_kernel_strata`] smart
-//!   constructors, which keep canonical form.
-//! * **Landmark constraints** are rebuilt through `LandmarkConstraint::leq` /
-//!   `equal`, which reject a non-variable-only side.
-//! * **Literals** are rebuilt through `Magnitude` / `FractionDigits` /
-//!   `IntegerLiteral` / `NumericLiteral` / `StringLiteral`.
-//! * **Terms and types** are **minted into a [`TermArena`]** as each node
-//!   completes (post-order completion is exactly allocation order), with the
-//!   whole artifact held to a **canonical-bytes check**: the decoded arena is
-//!   re-encoded and compared to the input, so a non-canonical *encoding* is
-//!   rejected as [`DecodeError::Malformed`] (E4). [`decode`] yields a
-//!   self-contained [`DecodedArtifact`] (the arena plus the declaration
-//!   sequence); [`read`] imports each declaration's content into a fresh
-//!   environment arena and re-admits through the choke point.
+//! * **Per-entry validation**: a known tag; each child index **strictly
+//!   earlier** than the entry's own global index ([`MalformedSite::ChildOrder`]
+//!   — acyclicity) and **polarity-correct** by table lookup (replacing v0's
+//!   `expect_value_term`/`expect_comp_term`); [`MAX_TABLE_ENTRIES`] enforced as
+//!   entries accrue.
+//! * **The amplification defence (§4.4)**: after the whole table, one forward
+//!   scan computes each entry's memoized `expanded_size` (a saturating `u64`),
+//!   and any declaration whose declared-type or body root exceeds
+//!   [`MAX_EXPANDED_TERM_WORK`] is rejected **before replay** — bounding the
+//!   recursive checker's tree-expanded work over the shared DAG without
+//!   touching the checker.
+//! * **Canonical form (E4, §4.6)**: the whole-artifact **sharing-aware**
+//!   re-encode-compare (the maximal-sharing writer is the re-encoder,
+//!   `O(entries)`) rejects any non-canonical table — a non-maximally-shared
+//!   duplicate, a mis-ordered table, or a dead (unreferenced) entry — as
+//!   [`MalformedSite::NonCanonical`]; strictly-earlier children are checked
+//!   structurally during decode, before re-encode.
 //!
-//! Term and type trees decode **iteratively** over an explicit frame worklist,
-//! never input-scaled recursion, so an adversarially deep artifact is rejected
-//! or decoded without a stack overflow. Level reconstruction is bounded by
-//! [`super::MAX_DECODED_LEVEL_OFFSET`].
+//! [`decode`] yields a self-contained [`DecodedArtifact`] (the shared arena
+//! plus the declaration sequence); [`read`] imports each declaration's content
+//! into a fresh environment arena and re-admits through the choke point. The
+//! decode is iterative over the flat table, never input-scaled recursion.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -49,7 +54,7 @@ use super::BASE_STRING;
 use super::DecodeError;
 use super::DecodedArtifact;
 use super::DecodedDeclaration;
-use super::FORMAT_VERSION_V0;
+use super::FORMAT_VERSION_V1;
 use super::KIND_ABSTRACT_TYPE;
 use super::KIND_AXIOM;
 use super::KIND_DEF;
@@ -61,7 +66,32 @@ use super::LITERAL_NUMERIC;
 use super::LITERAL_TEXT;
 use super::MAGIC;
 use super::MAX_DECODED_LEVEL_OFFSET;
+use super::MAX_EXPANDED_TERM_WORK;
+use super::MAX_TABLE_ENTRIES;
 use super::MalformedSite;
+use super::NODE_C_APPLICATION;
+use super::NODE_C_BIND;
+use super::NODE_C_CASE;
+use super::NODE_C_FORCE;
+use super::NODE_C_LAMBDA;
+use super::NODE_C_RETURN;
+use super::NODE_CT_ARROW;
+use super::NODE_CT_RETURNER;
+use super::NODE_V_CONSTANT;
+use super::NODE_V_INJECTION;
+use super::NODE_V_LIFT;
+use super::NODE_V_LITERAL;
+use super::NODE_V_PAIR;
+use super::NODE_V_THUNK;
+use super::NODE_V_UNIT;
+use super::NODE_V_VARIABLE;
+use super::NODE_VT_BASE;
+use super::NODE_VT_LIFT;
+use super::NODE_VT_PRODUCT;
+use super::NODE_VT_SUM;
+use super::NODE_VT_THUNK;
+use super::NODE_VT_UNIT;
+use super::NODE_VT_UNIVERSE;
 use super::RELATION_EQ;
 use super::RELATION_LEQ;
 use super::ReadError;
@@ -71,29 +101,6 @@ use super::SIDE_LEFT;
 use super::SIDE_RIGHT;
 use super::SIGN_NEGATIVE;
 use super::SIGN_NON_NEGATIVE;
-use super::TERM_APPLICATION;
-use super::TERM_BIND;
-use super::TERM_CASE;
-use super::TERM_CONSTANT;
-use super::TERM_FORCE;
-use super::TERM_INJECTION;
-use super::TERM_LAMBDA;
-use super::TERM_LIFT;
-use super::TERM_LITERAL;
-use super::TERM_PAIR;
-use super::TERM_RETURN;
-use super::TERM_THUNK;
-use super::TERM_UNIT;
-use super::TERM_VARIABLE;
-use super::TYPE_ARROW;
-use super::TYPE_BASE;
-use super::TYPE_LIFT;
-use super::TYPE_PRODUCT;
-use super::TYPE_RETURNER;
-use super::TYPE_SUM;
-use super::TYPE_THUNK;
-use super::TYPE_UNIT;
-use super::TYPE_UNIVERSE;
 use super::TagSite;
 use super::write::encode_artifact;
 use crate::arena::CompTypeId;
@@ -119,22 +126,105 @@ use crate::term::ConstantIndex;
 use crate::term::DeBruijnIndex;
 use crate::term::Side;
 
+/// The polarity family of a decoded subterm-table entry (from its tag).
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Family
+{
+    /// A value type.
+    ValueType,
+    /// A computation type.
+    CompType,
+    /// A value.
+    Value,
+    /// A computation.
+    Computation,
+}
+
+/// A decoded subterm-table entry's arena id, tagged by family.
+#[derive(Clone, Copy)]
+enum DecodedNode
+{
+    /// A value-type node.
+    ValueType(ValueTypeId),
+    /// A computation-type node.
+    CompType(CompTypeId),
+    /// A value node.
+    Value(ValueId),
+    /// A computation node.
+    Computation(ComputationId),
+}
+
+/// The running decode state for the global subterm table: the arena the entries
+/// mint into, and per-entry parallel vectors indexed by global table index.
+struct Table
+{
+    /// The arena every entry mints into (sharing retained).
+    arena: TermArena,
+    /// Global index → the entry's arena id (typed).
+    nodes: Vec<DecodedNode>,
+    /// Global index → the entry's polarity family (for child-polarity checks).
+    families: Vec<Family>,
+    /// Global index → the entry's child global indices (for `expanded_size`).
+    children: Vec<Vec<u32>>,
+}
+
+impl Table
+{
+    /// A fresh empty table.
+    #[inline]
+    fn new() -> Self
+    {
+        Self {
+            arena: TermArena::new(),
+            nodes: Vec::new(),
+            families: Vec::new(),
+            children: Vec::new(),
+        }
+    }
+
+    /// The number of entries decoded so far, as a `u32` global index (capped at
+    /// [`MAX_TABLE_ENTRIES`] well below `u32::MAX`, so the widening is exact).
+    #[inline]
+    fn len_index(&self) -> u32
+    {
+        u32::try_from(self.nodes.len()).unwrap_or(u32::MAX)
+    }
+}
+
+/// Per-declaration metadata gathered during decode, resolved to declarations
+/// after the arena is built.
+struct DeclMeta
+{
+    /// The admission mark (E6).
+    mark: AdmissionMark,
+    /// The prenex level signature.
+    levels: LevelSignature,
+    /// The declared value type's global table index.
+    root_declared: u32,
+    /// The body value's global table index (`Def` only).
+    root_body: Option<u32>,
+}
+
 /// Decode a byte artifact into its admission-ordered declaration sequence,
-/// building the content into a self-contained arena (the validating reader).
+/// building the content into a self-contained shared arena (the v1 validating
+/// reader).
 ///
 /// # Contract
 /// - requires: nothing — `bytes` may be arbitrary/adversarial.
-/// - ensures: `Ok(artifact)` — a [`DecodedArtifact`] whose arena holds every
-///   declaration's content and whose declarations carry their admission mark
-///   (E6) — exactly when the bytes are the canonical encoding of a v0 artifact
-///   whose levels, constraints, literals, terms, and types all rebuild through
-///   their constructors; every level is canonical by construction (E4).
+/// - ensures: `Ok(artifact)` — a [`DecodedArtifact`] whose arena holds the
+///   maximal-shared subterm table and whose declarations carry their admission
+///   mark (E6) — exactly when the bytes are the canonical v1 encoding of an
+///   artifact whose entries all validate (known tag, strictly-earlier and
+///   polarity-correct children, within the table and expanded-work caps) and
+///   whose levels, constraints, and literals rebuild through their constructors
+///   (E4).
 /// - provides: the K5 re-checkable decode — a total parser over the closed
 ///   vocabulary.
 /// - fails: [`DecodeError`] — the rejection triple (truncation, an unknown tag,
-///   a structural violation including a non-canonical encoding), a reserved
-///   declaration kind (R1), a non-empty reserved slot/section (R2/R3/R4), or an
-///   unsupported version (E5). Never panics, never loops unboundedly.
+///   a structural violation including non-canonical, child-order, table-size,
+///   and expanded-work), a reserved declaration kind (R1), a non-empty reserved
+///   slot/section (R2/R3/R4), or an unsupported version (E5, including v0).
+///   Never panics, never loops unboundedly.
 /// - panics: none.
 ///
 /// # Errors
@@ -144,11 +234,12 @@ use crate::term::Side;
 /// - hypothesis: L2 — the rejection-totality property pins that truncation at
 ///   every prefix and arbitrary random bytes return (never panic), and the
 ///   round-trip differential pins acceptance of every genuine artifact; the L3
-///   residues are each named rejection, pinned by hand-crafted goldens.
+///   residues are each named rejection (v0 refusal, non-canonical, child-order,
+///   table-size, expanded-work), pinned by hand-crafted goldens.
 /// - witness: `export::tests::truncation_at_every_prefix_is_rejected`
 /// - witness: `export::tests::arbitrary_bytes_never_panic`
-/// - witness: `export::tests::a_non_canonical_level_encoding_is_rejected`
-/// - witness: `export::tests::each_reserved_declaration_kind_is_rejected`
+/// - witness: `export::tests::a_repeated_diamond_dag_is_rejected_before_the_checker`
+/// - witness: `export::tests::a_v0_artifact_is_refused`
 #[inline]
 pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
 {
@@ -157,12 +248,12 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
     reader.expect_version()?;
     reader.expect_empty_minted_atom_table()?;
     let count = reader.read_uvarint()?;
-    let mut arena = TermArena::new();
-    let mut declarations: Vec<DecodedDeclaration> = Vec::new();
+    let mut table = Table::new();
+    let mut metas: Vec<DeclMeta> = Vec::new();
     let mut remaining = count;
     while remaining > 0_u64 {
-        let declaration = decode_declaration(&mut reader, &mut arena)?;
-        declarations.push(declaration);
+        let meta = decode_declaration(&mut reader, &mut table)?;
+        metas.push(meta);
         remaining = remaining.wrapping_sub(1_u64);
     }
     if !reader.at_end() {
@@ -170,16 +261,132 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
             site: MalformedSite::TrailingBytes,
         });
     }
+    reject_over_budget(&table, &metas)?;
+    let declarations = build_declarations(&mut table, &metas);
     let pairs: Vec<(AdmissionMark, &Declaration)> = declarations
         .iter()
         .map(|decoded| (decoded.mark(), decoded.declaration()))
         .collect();
-    if encode_artifact(&arena, &pairs) != bytes {
+    if encode_artifact(&table.arena, &pairs) != bytes {
         return Err(DecodeError::Malformed {
             site: MalformedSite::NonCanonical,
         });
     }
-    Ok(DecodedArtifact::new(arena, declarations))
+    Ok(DecodedArtifact::new(table.arena, declarations))
+}
+
+/// Reject any declaration whose declared-type or body root exceeds
+/// [`MAX_EXPANDED_TERM_WORK`], computed by one forward scan of memoized
+/// saturating `expanded_size` — the amplification defence, before replay
+/// (§4.4).
+///
+/// # Contract
+/// - requires: every entry's children are strictly-earlier (checked at decode),
+///   so a forward scan resolves each child's size before the parent's.
+/// - ensures: `Ok(())` exactly when every declaration root's expanded (tree)
+///   size is at or below the cap.
+/// - provides: the checker-time bound, enforced structurally on the table.
+/// - fails: [`DecodeError::Malformed`] (`ExpandedWork`).
+/// - panics: none.
+fn reject_over_budget(
+    table: &Table,
+    metas: &[DeclMeta],
+) -> Result<(), DecodeError>
+{
+    let mut expanded: Vec<u64> = Vec::with_capacity(table.children.len());
+    for child_globals in &table.children {
+        let mut size: u64 = 1;
+        for &child in child_globals {
+            let child_size = expanded
+                .get(usize::try_from(child).unwrap_or(usize::MAX))
+                .copied()
+                .unwrap_or(u64::MAX);
+            size = size.saturating_add(child_size);
+        }
+        expanded.push(size);
+    }
+    let over = DecodeError::Malformed {
+        site: MalformedSite::ExpandedWork,
+    };
+    let size_of = |global: u32| -> u64 {
+        expanded
+            .get(usize::try_from(global).unwrap_or(usize::MAX))
+            .copied()
+            .unwrap_or(u64::MAX)
+    };
+    for meta in metas {
+        if size_of(meta.root_declared) > MAX_EXPANDED_TERM_WORK {
+            return Err(over);
+        }
+        if let Some(root_body) = meta.root_body
+            && size_of(root_body) > MAX_EXPANDED_TERM_WORK
+        {
+            return Err(over);
+        }
+    }
+    Ok(())
+}
+
+/// The value-type id at a global index, if it is a value-type entry.
+#[inline]
+fn value_type_id_at(
+    nodes: &[DecodedNode],
+    global: u32,
+) -> Option<ValueTypeId>
+{
+    match nodes.get(usize::try_from(global).unwrap_or(usize::MAX)) {
+        | Some(&DecodedNode::ValueType(id)) => Some(id),
+        | _ => None,
+    }
+}
+
+/// The value id at a global index, if it is a value entry.
+#[inline]
+fn value_id_at(
+    nodes: &[DecodedNode],
+    global: u32,
+) -> Option<ValueId>
+{
+    match nodes.get(usize::try_from(global).unwrap_or(usize::MAX)) {
+        | Some(&DecodedNode::Value(id)) => Some(id),
+        | _ => None,
+    }
+}
+
+/// Resolve each declaration's global roots to arena ids and build the decoded
+/// declaration sequence.
+///
+/// # Contract
+/// - requires: each meta's roots resolved to entries of the correct family at
+///   decode; `table.arena` holds the built nodes.
+/// - ensures: one [`DecodedDeclaration`] per meta, its content roots addressing
+///   `table.arena`.
+/// - provides: the [`DecodedArtifact`]'s declaration sequence and the re-encode
+///   input.
+/// - fails: never (a family mismatch is impossible after decode's checks; a
+///   fresh unit leaf is the fail-safe fallback, never a panic).
+/// - panics: none.
+fn build_declarations(
+    table: &mut Table,
+    metas: &[DeclMeta],
+) -> Vec<DecodedDeclaration>
+{
+    let mut declarations: Vec<DecodedDeclaration> = Vec::new();
+    for meta in metas {
+        let declared_id = value_type_id_at(&table.nodes, meta.root_declared);
+        let body_id = meta.root_body.map(|root| value_id_at(&table.nodes, root));
+        let mut builder = DeclarationBuilder::new(&mut table.arena);
+        let declared = declared_id.unwrap_or_else(|| builder.arena().value_type_unit());
+        let declaration = match body_id {
+            | Some(body_id) => {
+                let body = body_id.unwrap_or_else(|| builder.arena().value_unit());
+                builder.def(meta.levels.clone(), declared, body)
+            },
+            | None => builder.axiom(meta.levels.clone(), declared),
+        };
+        declarations.push(DecodedDeclaration::new(meta.mark, declaration));
+    }
+    declarations
 }
 
 /// Read a byte artifact into an [`Environment`] by importing each decoded
@@ -188,14 +395,17 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
 ///
 /// # Contract
 /// - requires: nothing — `bytes` may be arbitrary/adversarial.
-/// - ensures: `Ok(environment)` exactly when the bytes [`decode`] and every
+/// - ensures: `Ok(environment)` exactly when the bytes [`decode`] (within the
+///   expanded-work budget, so the checker's work is bounded) and every
 ///   recovered declaration re-admits; a checked mark replays through
-///   [`Environment::add_decl`] (re-deriving every obligation, K2) and a bypass
-///   mark through [`Environment::add_decl_unchecked`], so the transitive audit
-///   is recomputed rather than trusted (E3) and the bypass marks survive (E6).
-/// - provides: the K5 replay — an independent re-checker's admission path.
-/// - fails: [`ReadError::Decode`] on a format failure, [`ReadError::Admit`]
-///   when a recovered declaration does not re-admit.
+///   [`Environment::add_decl`] (K2) and a bypass mark through
+///   [`Environment::add_decl_unchecked`], so the audit is recomputed (E3) and
+///   the bypass marks survive (E6); the imported content retains the format's
+///   sharing.
+/// - provides: the K5 replay.
+/// - fails: [`ReadError::Decode`] on a format failure (including the pre-replay
+///   expanded-work rejection), [`ReadError::Admit`] when a declaration does not
+///   re-admit.
 /// - panics: none.
 ///
 /// # Errors
@@ -203,10 +413,11 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
 ///
 /// # Adequacy
 /// - hypothesis: L2 — the round-trip differential pins that `read(write(env))`
-///   reproduces the environment (declarations, marks, and recomputed audits);
-///   the L3 residue is the bypass replay path.
+///   reproduces the environment; the L3 residues are the bypass replay and the
+///   amplification differential (an over-budget artifact fails on the decode
+///   plane, never reaching the checker).
 /// - witness: `export::tests::round_trip_reproduces_the_environment`
-/// - witness: `export::tests::a_bypass_admission_survives_the_round_trip`
+/// - witness: `export::tests::a_repeated_diamond_dag_is_rejected_before_the_checker`
 #[inline]
 pub fn read(bytes: &[u8]) -> Result<Environment, ReadError>
 {
@@ -312,14 +523,16 @@ impl<'bytes> ByteReader<'bytes>
         }
     }
 
-    /// Verify the version tag, refusing an unimplemented version (E5).
+    /// Verify the version tag, refusing any version other than v1 — including
+    /// v0, whose refusal exercises the E5 machinery against a real
+    /// predecessor.
     #[inline]
     fn expect_version(&mut self) -> Result<(), DecodeError>
     {
         let high = self.next_byte()?;
         let low = self.next_byte()?;
         let found = u16::from_be_bytes([high, low]);
-        if found == FORMAT_VERSION_V0 {
+        if found == FORMAT_VERSION_V1 {
             Ok(())
         }
         else {
@@ -350,8 +563,8 @@ impl<'bytes> ByteReader<'bytes>
     ///   encoding of a `u64`.
     /// - provides: the reader's integer primitive.
     /// - fails: [`DecodeError::Truncated`] at the end;
-    ///   [`DecodeError::Malformed`] (`Varint`) on an overlong (non-minimal)
-    ///   encoding or one exceeding the `u64` range.
+    ///   [`DecodeError::Malformed`] (`Varint`) on an overlong or out-of-range
+    ///   encoding.
     /// - panics: none.
     fn read_uvarint(&mut self) -> Result<u64, DecodeError>
     {
@@ -416,29 +629,32 @@ impl<'bytes> ByteReader<'bytes>
     }
 }
 
-/// Decode one declaration record, minting its content into `arena`.
+/// Decode one declaration segment's header, its subterm-table entries, and its
+/// root references, minting the entries into `table.arena`.
 fn decode_declaration(
     reader: &mut ByteReader<'_>,
-    arena: &mut TermArena,
-) -> Result<DecodedDeclaration, DecodeError>
+    table: &mut Table,
+) -> Result<DeclMeta, DecodeError>
 {
     let mark = decode_admission(reader)?;
     let kind = reader.next_byte()?;
     reject_reserved_kind(kind)?;
     decode_empty_name(reader)?;
-    let signature = decode_level_signature(reader)?;
-    let mut builder = DeclarationBuilder::new(arena);
-    let declaration = match kind {
+    let levels = decode_level_signature(reader)?;
+    let entry_count = reader.read_uvarint()?;
+    let mut remaining = entry_count;
+    while remaining > 0_u64 {
+        decode_entry(reader, table)?;
+        remaining = remaining.wrapping_sub(1_u64);
+    }
+    let root_declared = decode_root(reader, table, Family::ValueType)?;
+    let root_body = match kind {
         | KIND_DEF => {
-            let declared = decode_value_type(reader, builder.arena())?;
-            let body = decode_value(reader, builder.arena())?;
+            let body = decode_root(reader, table, Family::Value)?;
             decode_empty_def_slots(reader)?;
-            builder.def(signature, declared, body)
+            Some(body)
         },
-        | KIND_AXIOM => {
-            let declared = decode_value_type(reader, builder.arena())?;
-            builder.axiom(signature, declared)
-        },
+        | KIND_AXIOM => None,
         | other => {
             return Err(DecodeError::UnknownTag {
                 site: TagSite::DeclarationKind,
@@ -446,7 +662,324 @@ fn decode_declaration(
             });
         },
     };
-    Ok(DecodedDeclaration::new(mark, declaration))
+    Ok(DeclMeta {
+        mark,
+        levels,
+        root_declared,
+        root_body,
+    })
+}
+
+/// Decode a declaration's root reference: a global index that must resolve to
+/// an already-decoded entry of the required family.
+fn decode_root(
+    reader: &mut ByteReader<'_>,
+    table: &Table,
+    required: Family,
+) -> Result<u32, DecodeError>
+{
+    let index = reader.read_u32()?;
+    let family = family_at(table, index)?;
+    if family == required {
+        Ok(index)
+    }
+    else {
+        Err(DecodeError::Malformed {
+            site: MalformedSite::Polarity,
+        })
+    }
+}
+
+/// The family of the entry at `index`, requiring `index` to name an already-
+/// decoded entry (a forward or out-of-range reference is a child-order fault).
+#[inline]
+fn family_at(
+    table: &Table,
+    index: u32,
+) -> Result<Family, DecodeError>
+{
+    if index >= table.len_index() {
+        return Err(DecodeError::Malformed {
+            site: MalformedSite::ChildOrder,
+        });
+    }
+    table
+        .families
+        .get(usize::try_from(index).unwrap_or(usize::MAX))
+        .copied()
+        .ok_or(DecodeError::Malformed {
+            site: MalformedSite::ChildOrder,
+        })
+}
+
+/// Decode one subterm-table entry: enforce the table cap, read its tag, inline
+/// payload, and strictly-earlier polarity-correct child indices, mint it into
+/// the arena, and record its family and children.
+#[expect(
+    clippy::too_many_lines,
+    reason = "the flat entry decoder enumerates every NODE_* former in one match; splitting it would obscure the single validated mint"
+)]
+fn decode_entry(
+    reader: &mut ByteReader<'_>,
+    table: &mut Table,
+) -> Result<(), DecodeError>
+{
+    if table.nodes.len() >= MAX_TABLE_ENTRIES {
+        return Err(DecodeError::Malformed {
+            site: MalformedSite::TableSize,
+        });
+    }
+    let this_global = table.len_index();
+    let tag = reader.next_byte()?;
+    let mut child_globals: Vec<u32> = Vec::new();
+    let (node, family) = match tag {
+        | NODE_VT_BASE => {
+            let base = decode_base_type(reader)?;
+            let id = table.arena.value_type_base(base);
+            (DecodedNode::ValueType(id), Family::ValueType)
+        },
+        | NODE_VT_UNIT => (
+            DecodedNode::ValueType(table.arena.value_type_unit()),
+            Family::ValueType,
+        ),
+        | NODE_VT_UNIVERSE => {
+            let level = decode_level(reader)?;
+            let id = table.arena.value_type_universe(level);
+            (DecodedNode::ValueType(id), Family::ValueType)
+        },
+        | NODE_VT_PRODUCT => {
+            let first = read_value_type(reader, table, this_global, &mut child_globals)?;
+            let second = read_value_type(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_type_product(first, second);
+            (DecodedNode::ValueType(id), Family::ValueType)
+        },
+        | NODE_VT_SUM => {
+            let first = read_value_type(reader, table, this_global, &mut child_globals)?;
+            let second = read_value_type(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_type_sum(first, second);
+            (DecodedNode::ValueType(id), Family::ValueType)
+        },
+        | NODE_VT_THUNK => {
+            let body = read_comp_type(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_type_thunk(body);
+            (DecodedNode::ValueType(id), Family::ValueType)
+        },
+        | NODE_VT_LIFT => {
+            let target = decode_level(reader)?;
+            let inner = read_value_type(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_type_lift(inner, target);
+            (DecodedNode::ValueType(id), Family::ValueType)
+        },
+        | NODE_CT_RETURNER => {
+            let result = read_value_type(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.comp_type_returner(result);
+            (DecodedNode::CompType(id), Family::CompType)
+        },
+        | NODE_CT_ARROW => {
+            let domain = read_value_type(reader, table, this_global, &mut child_globals)?;
+            let codomain = read_comp_type(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.comp_type_arrow(domain, codomain);
+            (DecodedNode::CompType(id), Family::CompType)
+        },
+        | NODE_V_VARIABLE => {
+            let index = reader.read_u32()?;
+            let id = table.arena.value_variable(DeBruijnIndex::from(index));
+            (DecodedNode::Value(id), Family::Value)
+        },
+        | NODE_V_CONSTANT => {
+            let index = reader.read_usize()?;
+            let id = table.arena.value_constant(ConstantIndex::from(index));
+            (DecodedNode::Value(id), Family::Value)
+        },
+        | NODE_V_UNIT => (DecodedNode::Value(table.arena.value_unit()), Family::Value),
+        | NODE_V_LITERAL => {
+            let literal = decode_literal(reader)?;
+            let id = table.arena.value_literal(literal);
+            (DecodedNode::Value(id), Family::Value)
+        },
+        | NODE_V_PAIR => {
+            let first = read_value(reader, table, this_global, &mut child_globals)?;
+            let second = read_value(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_pair(first, second);
+            (DecodedNode::Value(id), Family::Value)
+        },
+        | NODE_V_INJECTION => {
+            let side = decode_side(reader)?;
+            let body = read_value(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_injection(side, body);
+            (DecodedNode::Value(id), Family::Value)
+        },
+        | NODE_V_THUNK => {
+            let body = read_computation(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_thunk(body);
+            (DecodedNode::Value(id), Family::Value)
+        },
+        | NODE_V_LIFT => {
+            let target = decode_level(reader)?;
+            let body = read_value(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.value_lift(target, body);
+            (DecodedNode::Value(id), Family::Value)
+        },
+        | NODE_C_LAMBDA => {
+            let body = read_computation(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.computation_lambda(body);
+            (DecodedNode::Computation(id), Family::Computation)
+        },
+        | NODE_C_APPLICATION => {
+            let head = read_computation(reader, table, this_global, &mut child_globals)?;
+            let argument = read_value(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.computation_application(head, argument);
+            (DecodedNode::Computation(id), Family::Computation)
+        },
+        | NODE_C_RETURN => {
+            let value = read_value(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.computation_return(value);
+            (DecodedNode::Computation(id), Family::Computation)
+        },
+        | NODE_C_BIND => {
+            let bound = read_computation(reader, table, this_global, &mut child_globals)?;
+            let body = read_computation(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.computation_bind(bound, body);
+            (DecodedNode::Computation(id), Family::Computation)
+        },
+        | NODE_C_FORCE => {
+            let value = read_value(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.computation_force(value);
+            (DecodedNode::Computation(id), Family::Computation)
+        },
+        | NODE_C_CASE => {
+            let scrutinee = read_value(reader, table, this_global, &mut child_globals)?;
+            let on_left = read_computation(reader, table, this_global, &mut child_globals)?;
+            let on_right = read_computation(reader, table, this_global, &mut child_globals)?;
+            let id = table.arena.computation_case(scrutinee, on_left, on_right);
+            (DecodedNode::Computation(id), Family::Computation)
+        },
+        | other => {
+            return Err(DecodeError::UnknownTag {
+                site: TagSite::Node,
+                tag: other,
+            });
+        },
+    };
+    table.nodes.push(node);
+    table.families.push(family);
+    table.children.push(child_globals);
+    Ok(())
+}
+
+/// Read one child index, validating strictly-earlier order and the required
+/// polarity, and return the resolved child node.
+#[inline]
+fn read_child_node(
+    reader: &mut ByteReader<'_>,
+    table: &Table,
+    this_global: u32,
+    required: Family,
+    child_globals: &mut Vec<u32>,
+) -> Result<DecodedNode, DecodeError>
+{
+    let index = reader.read_u32()?;
+    if index >= this_global {
+        return Err(DecodeError::Malformed {
+            site: MalformedSite::ChildOrder,
+        });
+    }
+    let position = usize::try_from(index).unwrap_or(usize::MAX);
+    let family = table
+        .families
+        .get(position)
+        .copied()
+        .ok_or(DecodeError::Malformed {
+            site: MalformedSite::ChildOrder,
+        })?;
+    if family != required {
+        return Err(DecodeError::Malformed {
+            site: MalformedSite::Polarity,
+        });
+    }
+    let node = table
+        .nodes
+        .get(position)
+        .copied()
+        .ok_or(DecodeError::Malformed {
+            site: MalformedSite::ChildOrder,
+        })?;
+    child_globals.push(index);
+    Ok(node)
+}
+
+/// Read a value-type child id (order and polarity validated).
+#[inline]
+fn read_value_type(
+    reader: &mut ByteReader<'_>,
+    table: &Table,
+    this_global: u32,
+    child_globals: &mut Vec<u32>,
+) -> Result<ValueTypeId, DecodeError>
+{
+    match read_child_node(reader, table, this_global, Family::ValueType, child_globals)? {
+        | DecodedNode::ValueType(id) => Ok(id),
+        | _ => Err(DecodeError::Malformed {
+            site: MalformedSite::Polarity,
+        }),
+    }
+}
+
+/// Read a computation-type child id (order and polarity validated).
+#[inline]
+fn read_comp_type(
+    reader: &mut ByteReader<'_>,
+    table: &Table,
+    this_global: u32,
+    child_globals: &mut Vec<u32>,
+) -> Result<CompTypeId, DecodeError>
+{
+    match read_child_node(reader, table, this_global, Family::CompType, child_globals)? {
+        | DecodedNode::CompType(id) => Ok(id),
+        | _ => Err(DecodeError::Malformed {
+            site: MalformedSite::Polarity,
+        }),
+    }
+}
+
+/// Read a value child id (order and polarity validated).
+#[inline]
+fn read_value(
+    reader: &mut ByteReader<'_>,
+    table: &Table,
+    this_global: u32,
+    child_globals: &mut Vec<u32>,
+) -> Result<ValueId, DecodeError>
+{
+    match read_child_node(reader, table, this_global, Family::Value, child_globals)? {
+        | DecodedNode::Value(id) => Ok(id),
+        | _ => Err(DecodeError::Malformed {
+            site: MalformedSite::Polarity,
+        }),
+    }
+}
+
+/// Read a computation child id (order and polarity validated).
+#[inline]
+fn read_computation(
+    reader: &mut ByteReader<'_>,
+    table: &Table,
+    this_global: u32,
+    child_globals: &mut Vec<u32>,
+) -> Result<ComputationId, DecodeError>
+{
+    match read_child_node(
+        reader,
+        table,
+        this_global,
+        Family::Computation,
+        child_globals,
+    )? {
+        | DecodedNode::Computation(id) => Ok(id),
+        | _ => Err(DecodeError::Malformed {
+            site: MalformedSite::Polarity,
+        }),
+    }
 }
 
 /// Decode a declaration's admission mark (E6).
@@ -477,7 +1010,7 @@ fn reject_reserved_kind(kind: u8) -> Result<(), DecodeError>
     Err(DecodeError::ReservedDeclarationKind { kind: reserved })
 }
 
-/// Decode the structured-name record, requiring it empty at v0 (R2).
+/// Decode the structured-name record, requiring it empty at v1 (R2).
 #[inline]
 fn decode_empty_name(reader: &mut ByteReader<'_>) -> Result<(), DecodeError>
 {
@@ -491,7 +1024,7 @@ fn decode_empty_name(reader: &mut ByteReader<'_>) -> Result<(), DecodeError>
     }
 }
 
-/// Decode the four per-Def annotation slots, requiring each empty at v0 (R3).
+/// Decode the four per-Def annotation slots, requiring each empty at v1 (R3).
 #[inline]
 fn decode_empty_def_slots(reader: &mut ByteReader<'_>) -> Result<(), DecodeError>
 {
@@ -561,8 +1094,8 @@ fn decode_relation(reader: &mut ByteReader<'_>) -> Result<ConstraintRelation, De
 ///   [`MAX_DECODED_LEVEL_OFFSET`].
 /// - provides: the level decoder for universes, lifts, and constraint sides.
 /// - fails: [`DecodeError::Truncated`]; [`DecodeError::Malformed`]
-///   (`LevelOffset`) on an over-cap offset or a reconstruction overflow,
-///   (`IndexRange`) on an out-of-range variable index.
+///   (`LevelOffset`) on an over-cap offset or overflow, (`IndexRange`) on an
+///   out-of-range index.
 /// - panics: none.
 fn decode_level(reader: &mut ByteReader<'_>) -> Result<Level, DecodeError>
 {
@@ -585,8 +1118,8 @@ fn decode_level(reader: &mut ByteReader<'_>) -> Result<Level, DecodeError>
     Ok(level)
 }
 
-/// Rebuild the level atom `variable + offset` through `var` and `succ` (strata
-/// exposes no direct offset constructor); `offset` is bounded by the caller.
+/// Rebuild the level atom `variable + offset` through `var` and `succ`;
+/// `offset` is bounded by the caller.
 #[inline]
 fn build_variable_atom(
     variable: u32,
@@ -604,163 +1137,6 @@ fn build_variable_atom(
     Ok(atom)
 }
 
-/// A decoded type root, tagged by polarity (an id into the decode arena).
-#[derive(Clone, Copy)]
-enum DecodedType
-{
-    /// A value type.
-    Value(ValueTypeId),
-    /// A computation type.
-    Comp(CompTypeId),
-}
-
-/// A pending type-constructor frame awaiting its remaining child ids.
-enum TypeFrame
-{
-    /// A product awaiting its first (`None`) or second (`Some`) value type.
-    Product(Option<ValueTypeId>),
-    /// A sum awaiting its first (`None`) or second (`Some`) value type.
-    Sum(Option<ValueTypeId>),
-    /// A thunk awaiting its computation type.
-    Thunk,
-    /// A lift awaiting its inner value type; its target level is decoded.
-    Lift(Level),
-    /// A returner awaiting its result value type.
-    Returner,
-    /// An arrow awaiting its domain value type (`None`) or codomain
-    /// computation type (`Some`).
-    Arrow(Option<ValueTypeId>),
-}
-
-/// Decode a value type into `arena` — the declaration's declared type is always
-/// value polarity.
-#[inline]
-fn decode_value_type(
-    reader: &mut ByteReader<'_>,
-    arena: &mut TermArena,
-) -> Result<ValueTypeId, DecodeError>
-{
-    expect_value_type(decode_type_tree(reader, arena)?)
-}
-
-/// Decode a type tree iteratively over an explicit frame worklist, minting each
-/// node into `arena` as it completes (post-order completion = allocation
-/// order).
-fn decode_type_tree(
-    reader: &mut ByteReader<'_>,
-    arena: &mut TermArena,
-) -> Result<DecodedType, DecodeError>
-{
-    let mut frames: Vec<TypeFrame> = Vec::new();
-    'read: loop {
-        let tag = reader.next_byte()?;
-        let mut produced = match tag {
-            | TYPE_BASE => DecodedType::Value(arena.value_type_base(decode_base_type(reader)?)),
-            | TYPE_UNIT => DecodedType::Value(arena.value_type_unit()),
-            | TYPE_UNIVERSE => DecodedType::Value(arena.value_type_universe(decode_level(reader)?)),
-            | TYPE_PRODUCT => {
-                frames.push(TypeFrame::Product(None));
-                continue 'read;
-            },
-            | TYPE_SUM => {
-                frames.push(TypeFrame::Sum(None));
-                continue 'read;
-            },
-            | TYPE_THUNK => {
-                frames.push(TypeFrame::Thunk);
-                continue 'read;
-            },
-            | TYPE_LIFT => {
-                let target = decode_level(reader)?;
-                frames.push(TypeFrame::Lift(target));
-                continue 'read;
-            },
-            | TYPE_RETURNER => {
-                frames.push(TypeFrame::Returner);
-                continue 'read;
-            },
-            | TYPE_ARROW => {
-                frames.push(TypeFrame::Arrow(None));
-                continue 'read;
-            },
-            | other => {
-                return Err(DecodeError::UnknownTag {
-                    site: TagSite::Type,
-                    tag: other,
-                });
-            },
-        };
-        loop {
-            let Some(frame) = frames.pop()
-            else {
-                return Ok(produced);
-            };
-            match frame {
-                | TypeFrame::Product(None) => {
-                    frames.push(TypeFrame::Product(Some(expect_value_type(produced)?)));
-                    continue 'read;
-                },
-                | TypeFrame::Product(Some(first)) => {
-                    let second = expect_value_type(produced)?;
-                    produced = DecodedType::Value(arena.value_type_product(first, second));
-                },
-                | TypeFrame::Sum(None) => {
-                    frames.push(TypeFrame::Sum(Some(expect_value_type(produced)?)));
-                    continue 'read;
-                },
-                | TypeFrame::Sum(Some(first)) => {
-                    let second = expect_value_type(produced)?;
-                    produced = DecodedType::Value(arena.value_type_sum(first, second));
-                },
-                | TypeFrame::Thunk => {
-                    let body = expect_comp_type(produced)?;
-                    produced = DecodedType::Value(arena.value_type_thunk(body));
-                },
-                | TypeFrame::Lift(target) => {
-                    let inner = expect_value_type(produced)?;
-                    produced = DecodedType::Value(arena.value_type_lift(inner, target));
-                },
-                | TypeFrame::Returner => {
-                    let result = expect_value_type(produced)?;
-                    produced = DecodedType::Comp(arena.comp_type_returner(result));
-                },
-                | TypeFrame::Arrow(None) => {
-                    frames.push(TypeFrame::Arrow(Some(expect_value_type(produced)?)));
-                    continue 'read;
-                },
-                | TypeFrame::Arrow(Some(domain)) => {
-                    let codomain = expect_comp_type(produced)?;
-                    produced = DecodedType::Comp(arena.comp_type_arrow(domain, codomain));
-                },
-            }
-        }
-    }
-}
-
-/// Require a value-type node, rejecting a polarity mismatch.
-#[inline]
-fn expect_value_type(node: DecodedType) -> Result<ValueTypeId, DecodeError>
-{
-    match node {
-        | DecodedType::Value(id) => Ok(id),
-        | DecodedType::Comp(_) => Err(DecodeError::Malformed {
-            site: MalformedSite::Polarity,
-        }),
-    }
-}
-
-/// Require a computation-type node, rejecting a polarity mismatch.
-#[inline]
-fn expect_comp_type(node: DecodedType) -> Result<CompTypeId, DecodeError>
-{
-    match node {
-        | DecodedType::Comp(id) => Ok(id),
-        | DecodedType::Value(_) => Err(DecodeError::Malformed {
-            site: MalformedSite::Polarity,
-        }),
-    }
-}
-
 /// Decode a base-type atom byte.
 #[inline]
 fn decode_base_type(reader: &mut ByteReader<'_>) -> Result<BaseType, DecodeError>
@@ -772,227 +1148,6 @@ fn decode_base_type(reader: &mut ByteReader<'_>) -> Result<BaseType, DecodeError
         | other => Err(DecodeError::UnknownTag {
             site: TagSite::BaseType,
             tag: other,
-        }),
-    }
-}
-
-/// A decoded term root, tagged by polarity (an id into the decode arena).
-#[derive(Clone, Copy)]
-enum DecodedTerm
-{
-    /// A value.
-    Value(ValueId),
-    /// A computation.
-    Comp(ComputationId),
-}
-
-/// A pending term-constructor frame awaiting its remaining child ids.
-enum TermFrame
-{
-    /// A pair awaiting its first (`None`) or second (`Some`) value.
-    Pair(Option<ValueId>),
-    /// An injection awaiting its body value; its side is decoded.
-    Injection(Side),
-    /// A thunk awaiting its computation.
-    Thunk,
-    /// A value lift awaiting its body value; its target level is decoded.
-    Lift(Level),
-    /// A lambda awaiting its body computation.
-    Lambda,
-    /// An application awaiting its head computation (`None`) or argument value
-    /// (`Some`).
-    Application(Option<ComputationId>),
-    /// A returner awaiting its value.
-    Return,
-    /// A bind awaiting its bound computation (`None`) or body computation
-    /// (`Some`).
-    Bind(Option<ComputationId>),
-    /// A force awaiting its value.
-    Force,
-    /// A case awaiting its scrutinee value.
-    CaseScrutinee,
-    /// A case awaiting its left branch; its scrutinee is decoded.
-    CaseLeft(ValueId),
-    /// A case awaiting its right branch; its scrutinee and left branch are
-    /// decoded.
-    CaseRight(ValueId, ComputationId),
-}
-
-/// Decode a value term into `arena` — a definition body is always value
-/// polarity.
-#[inline]
-fn decode_value(
-    reader: &mut ByteReader<'_>,
-    arena: &mut TermArena,
-) -> Result<ValueId, DecodeError>
-{
-    expect_value_term(decode_term_tree(reader, arena)?)
-}
-
-/// Decode a term tree iteratively over an explicit frame worklist, minting each
-/// node into `arena` as it completes.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the flat iterative term decoder enumerates every value and computation former in one worklist loop; splitting it would obscure the single machine"
-)]
-fn decode_term_tree(
-    reader: &mut ByteReader<'_>,
-    arena: &mut TermArena,
-) -> Result<DecodedTerm, DecodeError>
-{
-    let mut frames: Vec<TermFrame> = Vec::new();
-    'read: loop {
-        let tag = reader.next_byte()?;
-        let mut produced = match tag {
-            | TERM_VARIABLE => {
-                DecodedTerm::Value(arena.value_variable(DeBruijnIndex::from(reader.read_u32()?)))
-            },
-            | TERM_CONSTANT => {
-                DecodedTerm::Value(arena.value_constant(ConstantIndex::from(reader.read_usize()?)))
-            },
-            | TERM_UNIT => DecodedTerm::Value(arena.value_unit()),
-            | TERM_LITERAL => DecodedTerm::Value(arena.value_literal(decode_literal(reader)?)),
-            | TERM_PAIR => {
-                frames.push(TermFrame::Pair(None));
-                continue 'read;
-            },
-            | TERM_INJECTION => {
-                let side = decode_side(reader)?;
-                frames.push(TermFrame::Injection(side));
-                continue 'read;
-            },
-            | TERM_THUNK => {
-                frames.push(TermFrame::Thunk);
-                continue 'read;
-            },
-            | TERM_LIFT => {
-                let target = decode_level(reader)?;
-                frames.push(TermFrame::Lift(target));
-                continue 'read;
-            },
-            | TERM_LAMBDA => {
-                frames.push(TermFrame::Lambda);
-                continue 'read;
-            },
-            | TERM_APPLICATION => {
-                frames.push(TermFrame::Application(None));
-                continue 'read;
-            },
-            | TERM_RETURN => {
-                frames.push(TermFrame::Return);
-                continue 'read;
-            },
-            | TERM_BIND => {
-                frames.push(TermFrame::Bind(None));
-                continue 'read;
-            },
-            | TERM_FORCE => {
-                frames.push(TermFrame::Force);
-                continue 'read;
-            },
-            | TERM_CASE => {
-                frames.push(TermFrame::CaseScrutinee);
-                continue 'read;
-            },
-            | other => {
-                return Err(DecodeError::UnknownTag {
-                    site: TagSite::Term,
-                    tag: other,
-                });
-            },
-        };
-        loop {
-            let Some(frame) = frames.pop()
-            else {
-                return Ok(produced);
-            };
-            match frame {
-                | TermFrame::Pair(None) => {
-                    frames.push(TermFrame::Pair(Some(expect_value_term(produced)?)));
-                    continue 'read;
-                },
-                | TermFrame::Pair(Some(first)) => {
-                    let second = expect_value_term(produced)?;
-                    produced = DecodedTerm::Value(arena.value_pair(first, second));
-                },
-                | TermFrame::Injection(side) => {
-                    let body = expect_value_term(produced)?;
-                    produced = DecodedTerm::Value(arena.value_injection(side, body));
-                },
-                | TermFrame::Thunk => {
-                    let body = expect_comp_term(produced)?;
-                    produced = DecodedTerm::Value(arena.value_thunk(body));
-                },
-                | TermFrame::Lift(target) => {
-                    let body = expect_value_term(produced)?;
-                    produced = DecodedTerm::Value(arena.value_lift(target, body));
-                },
-                | TermFrame::Lambda => {
-                    let body = expect_comp_term(produced)?;
-                    produced = DecodedTerm::Comp(arena.computation_lambda(body));
-                },
-                | TermFrame::Application(None) => {
-                    frames.push(TermFrame::Application(Some(expect_comp_term(produced)?)));
-                    continue 'read;
-                },
-                | TermFrame::Application(Some(head)) => {
-                    let argument = expect_value_term(produced)?;
-                    produced = DecodedTerm::Comp(arena.computation_application(head, argument));
-                },
-                | TermFrame::Return => {
-                    let value = expect_value_term(produced)?;
-                    produced = DecodedTerm::Comp(arena.computation_return(value));
-                },
-                | TermFrame::Bind(None) => {
-                    frames.push(TermFrame::Bind(Some(expect_comp_term(produced)?)));
-                    continue 'read;
-                },
-                | TermFrame::Bind(Some(bound)) => {
-                    let body = expect_comp_term(produced)?;
-                    produced = DecodedTerm::Comp(arena.computation_bind(bound, body));
-                },
-                | TermFrame::Force => {
-                    let value = expect_value_term(produced)?;
-                    produced = DecodedTerm::Comp(arena.computation_force(value));
-                },
-                | TermFrame::CaseScrutinee => {
-                    frames.push(TermFrame::CaseLeft(expect_value_term(produced)?));
-                    continue 'read;
-                },
-                | TermFrame::CaseLeft(scrutinee) => {
-                    frames.push(TermFrame::CaseRight(scrutinee, expect_comp_term(produced)?));
-                    continue 'read;
-                },
-                | TermFrame::CaseRight(scrutinee, on_left) => {
-                    let on_right = expect_comp_term(produced)?;
-                    produced =
-                        DecodedTerm::Comp(arena.computation_case(scrutinee, on_left, on_right));
-                },
-            }
-        }
-    }
-}
-
-/// Require a value node, rejecting a polarity mismatch.
-#[inline]
-fn expect_value_term(node: DecodedTerm) -> Result<ValueId, DecodeError>
-{
-    match node {
-        | DecodedTerm::Value(id) => Ok(id),
-        | DecodedTerm::Comp(_) => Err(DecodeError::Malformed {
-            site: MalformedSite::Polarity,
-        }),
-    }
-}
-
-/// Require a computation node, rejecting a polarity mismatch.
-#[inline]
-fn expect_comp_term(node: DecodedTerm) -> Result<ComputationId, DecodeError>
-{
-    match node {
-        | DecodedTerm::Comp(id) => Ok(id),
-        | DecodedTerm::Value(_) => Err(DecodeError::Malformed {
-            site: MalformedSite::Polarity,
         }),
     }
 }
@@ -1073,4 +1228,98 @@ fn decode_fraction(reader: &mut ByteReader<'_>) -> Result<FractionDigits, Decode
     FractionDigits::from_decimal_text(digits).ok_or(DecodeError::Malformed {
         site: MalformedSite::LiteralPayload,
     })
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::super::write::write;
+    use super::DecodedDeclaration;
+    use super::decode;
+    use crate::decl::DeclarationContent;
+    use crate::decl::LevelSignature;
+    use crate::env::Environment;
+    use crate::term::DeBruijnIndex;
+    use crate::term::Value;
+
+    /// Decode retains within-declaration sharing: a body `pair(x, x)` decodes
+    /// to a pair whose two children are the SAME arena id (the format's
+    /// shared entry reuses one id — decode is arena construction, never
+    /// expansion).
+    #[test]
+    fn decode_retains_within_declaration_sharing()
+    {
+        let mut environment = Environment::new();
+        let mut builder = environment.stage();
+        let arena = builder.arena();
+        let x = arena.value_variable(DeBruijnIndex::from(0_u32));
+        let body = arena.value_pair(x, x);
+        let declared = arena.value_type_unit();
+        let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
+        let _id = environment.add_decl_unchecked(declaration);
+        let bytes = write(&environment);
+        let artifact = decode(&bytes).expect("the shared artifact decodes");
+        let decoded = artifact
+            .declarations()
+            .first()
+            .expect("one declaration decodes");
+        let body_id = match *decoded.declaration().content() {
+            | DeclarationContent::Def { body, .. } => body,
+            | DeclarationContent::Axiom { .. } => panic!("a Def was decoded"),
+        };
+        match artifact.arena().value(body_id) {
+            | Some(&Value::Pair(first, second)) => assert_eq!(
+                first, second,
+                "the shared pair children decode to one arena id (sharing retained)"
+            ),
+            | _ => panic!("the body decodes to a pair"),
+        }
+    }
+
+    /// Decode retains cross-declaration sharing: two declarations whose bodies
+    /// are the same `unit` value share one arena entry, so the second
+    /// declaration's body id equals the first's.
+    #[test]
+    fn decode_retains_cross_declaration_sharing()
+    {
+        let mut environment = Environment::new();
+        // The first declaration's body is a bare unit.
+        let mut builder = environment.stage();
+        let first_declared = builder.arena().value_type_unit();
+        let first_body = builder.arena().value_unit();
+        let first = builder.def(LevelSignature::monomorphic(), first_declared, first_body);
+        let _first_id = environment.add_decl_unchecked(first);
+        // The second's body is pair(unit, unit) — the units share the first's entry.
+        let mut builder = environment.stage();
+        let second_declared = builder.arena().value_type_unit();
+        let left = builder.arena().value_unit();
+        let right = builder.arena().value_unit();
+        let second_body = builder.arena().value_pair(left, right);
+        let second = builder.def(LevelSignature::monomorphic(), second_declared, second_body);
+        let _second_id = environment.add_decl_unchecked(second);
+
+        let bytes = write(&environment);
+        let artifact = decode(&bytes).expect("the shared artifact decodes");
+        let decls = artifact.declarations();
+        let body_of = |declaration: &DecodedDeclaration| match *declaration.declaration().content()
+        {
+            | DeclarationContent::Def { body, .. } => body,
+            | DeclarationContent::Axiom { .. } => panic!("a Def was decoded"),
+        };
+        let unit_entry = body_of(decls.first().expect("the first declaration decodes"));
+        let pair_entry = body_of(decls.get(1).expect("the second declaration decodes"));
+        match artifact.arena().value(pair_entry) {
+            | Some(&Value::Pair(left_child, right_child)) => {
+                assert_eq!(
+                    left_child, right_child,
+                    "the pair's own children share one id"
+                );
+                assert_eq!(
+                    left_child, unit_entry,
+                    "the second declaration's unit shares the first's arena id (cross-declaration sharing)"
+                );
+            },
+            | _ => panic!("the second declaration decodes to a pair"),
+        }
+    }
 }

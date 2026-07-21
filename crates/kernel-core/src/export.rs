@@ -18,36 +18,41 @@
 //!   (`rested_on`) are **not** in the bytes; the reader recomputes them by
 //!   re-admitting each declaration, so a forged audit cannot ride along (the
 //!   design decision is recorded in the crate STATUS).
-//! * **E4 — canonical bytes, validating reader.** Encoding iterates in
-//!   admission order and over `BTreeMap`-sorted level atoms — **never** a
-//!   hash-order iteration — so an identical environment yields a byte-identical
-//!   artifact. The reader is a closed-vocabulary parser with the rejection
-//!   triple as a closed error vocabulary ([`DecodeError`]): truncation, an
-//!   unknown tag, or a structural violation. It **decodes through
-//!   constructors**: levels rebuild through the [`gandr_kernel_strata`] smart
-//!   constructors so a non-canonical level is unrepresentable, and the whole
-//!   artifact is held to a canonical-bytes check (re-encode and compare) so a
-//!   non-canonical *encoding* is **rejected** — discharging the B2.1 obligation
-//!   that the non-canonical-level guard re-arms at the decode boundary. Terms,
-//!   types, and literals decode only through the kernel-core constructors.
-//! * **E5 — versioned, with refusal.** A version tag rides from artifact one;
-//!   an unknown version is a named refusal
-//!   ([`DecodeError::UnsupportedVersion`]), never a guess.
+//! * **E4 — canonical bytes, validating reader.** The v1 format is a
+//!   **maximal-sharing subterm table** per declaration segment (massive-term
+//!   design §4). Encoding interns nodes bottom-up with **content-keyed dedup**
+//!   (the bytes are a function of the abstract environment, never of in-memory
+//!   sharing) and iterates admission order and `BTreeMap`-sorted level atoms,
+//!   so an identical environment yields a byte-identical artifact. The reader
+//!   is a closed-vocabulary streaming parser over the rejection triple
+//!   ([`DecodeError`]: truncation, an unknown tag, or a structural violation).
+//!   It **decodes through constructors** (levels/literals rebuild canonically)
+//!   and mints each entry into a [`TermArena`] once (decode retains sharing).
+//!   Canonical form is enforced by a **sharing-aware whole-artifact
+//!   re-encode-compare**: a non-maximally-shared (duplicate), mis-ordered, or
+//!   dead-entry table, or a non-canonical level/literal, re-encodes differently
+//!   and is rejected [`MalformedSite::NonCanonical`]; strictly-earlier and
+//!   polarity-correct child references are checked structurally during decode.
+//! * **E5 — versioned, with refusal.** The version is **v1**
+//!   ([`FORMAT_VERSION_V1`]); a v0 (`version = 0`) or any other version is a
+//!   named refusal ([`DecodeError::UnsupportedVersion`]), exercising the E5
+//!   machinery against a real predecessor.
 //! * **E6 — unchecked admissions visible.** Each declaration's admission mark
 //!   (checked or unchecked-bypass) is in the bytes, and `Axiom`s are visible as
 //!   `Axiom` declarations, so the §3 audit survives serialization.
 //!
-//! # Totality
+//! # Totality and the amplification defence (§4.4)
 //!
 //! The reader parses adversarial bytes inside the TCB and is **total**: every
-//! read is bounds-checked (truncation surfaces), every tag is matched against a
-//! closed set (an unknown tag surfaces), and term/type decoding is
-//! **iterative** over an explicit worklist (the [`crate::conv`] precedent),
-//! never input-scaled recursion — so an adversarially deep artifact never
-//! overflows the stack. The writer is likewise iterative for the same reason
-//! (an environment admitted through the bypass may hold a deeply nested term).
-//! Level reconstruction is bounded by a decode-time offset cap
-//! ([`MAX_DECODED_LEVEL_OFFSET`]).
+//! read is bounds-checked, every tag is matched against the closed `NODE_*`
+//! set, and the subterm table is decoded **iteratively** over the flat entry
+//! list, never input-scaled recursion. Because decode retains sharing, a small
+//! artifact can name a DAG of astronomical *expanded* (tree) size — the
+//! billion-laughs attack moved from memory to checker time. The reader carries
+//! two budgets, enforced before replay: [`MAX_TABLE_ENTRIES`] (as entries
+//! accrue) and [`MAX_EXPANDED_TERM_WORK`] (one forward scan of memoized
+//! saturating `expanded_size`, rejecting any declaration root over the cap).
+//! Level reconstruction is bounded by [`MAX_DECODED_LEVEL_OFFSET`].
 //!
 //! # The seven ratified reservations (format-plane, zero S1 typing consequence)
 //!
@@ -58,12 +63,12 @@
 //!   tag).
 //! * **R2 — structured names.** A name is a sequence of segments, never a flat
 //!   dotted string. S1 declarations carry no name, so the per-declaration name
-//!   record is a segment count pinned to zero at v0; a non-empty name is
+//!   record is a segment count pinned to zero at v1; a non-empty name is
 //!   rejected as [`DecodeError::ReservedSlotOccupied`].
 //! * **R3 — four per-`Def` annotation slots** (erasure, modes/grades,
 //!   sealing-provenance, directedness/variance) are present from birth and
-//!   empty at v0; a non-empty slot is rejected as unimplemented.
-//! * **R4 — reserved minted-atom table**, admission-ordered and empty at v0; a
+//!   empty at v1; a non-empty slot is rejected as unimplemented.
+//! * **R4 — reserved minted-atom table**, admission-ordered and empty at v1; a
 //!   non-empty table is rejected.
 
 mod read;
@@ -82,8 +87,31 @@ use crate::error::KernelError;
 /// The four-byte artifact magic — Gandr Kernel eXport, v-family `1`.
 pub const MAGIC: [u8; 4] = *b"GKX1";
 
-/// The v0 format version tag (E5: the version rides from artifact one).
-pub const FORMAT_VERSION_V0: u16 = 0;
+/// The current format version tag: v1, the maximal-sharing subterm-table format
+/// (E5: a real bump from v0 — a v0 `version = 0` artifact is refused
+/// `UnsupportedVersion { found: 0 }`, exercising the refusal machinery against
+/// a real predecessor; the old v0 goldens are repurposed as refusal fixtures).
+pub const FORMAT_VERSION_V1: u16 = 1;
+
+/// The decode-time cap on the expanded (tree) size of a declaration root — the
+/// amplification defence (massive-term design §4.4).
+///
+/// Decode retains sharing, so a small artifact can name a DAG whose *expanded*
+/// (tree) size is astronomical; the recursive S1 checker walks that DAG as a
+/// tree, re-checking each shared subterm once per reference, so a shallow-wide
+/// DAG is exponential checker work the depth-free defunctionalized machine does
+/// not bound. Before replay, the reader computes each entry's memoized
+/// `expanded_size` (a saturating `u64`) in one forward scan and rejects any
+/// declaration whose declared-type or body root exceeds this cap — bounding
+/// checker time without touching the checker. **D3-tunable at B2.3** (telemetry
+/// floors measure real corpus sizes); this is a conservative launch value.
+pub const MAX_EXPANDED_TERM_WORK: u64 = 1 << 24;
+
+/// The decode-time cap on the number of subterm-table entries in an artifact —
+/// the table-size defence (massive-term design §4.4), enforced as entries
+/// accrue (truncation-cheap). **D3-tunable at B2.3**; a conservative launch
+/// value.
+pub const MAX_TABLE_ENTRIES: usize = 1 << 20;
 
 /// The decode-time cap on a level variable atom's successor offset.
 ///
@@ -145,53 +173,63 @@ pub const RELATION_LEQ: u8 = 0;
 /// Landmark-constraint-relation byte: `left = right`.
 pub const RELATION_EQ: u8 = 1;
 
-/// Type-stream tag: the base-type former.
-pub const TYPE_BASE: u8 = 0;
-/// Type-stream tag: the unit type.
-pub const TYPE_UNIT: u8 = 1;
-/// Type-stream tag: the product former.
-pub const TYPE_PRODUCT: u8 = 2;
-/// Type-stream tag: the sum former.
-pub const TYPE_SUM: u8 = 3;
-/// Type-stream tag: the thunk former.
-pub const TYPE_THUNK: u8 = 4;
-/// Type-stream tag: the universe former.
-pub const TYPE_UNIVERSE: u8 = 5;
-/// Type-stream tag: the lift former.
-pub const TYPE_LIFT: u8 = 6;
-/// Type-stream tag: the returner (computation-type) former.
-pub const TYPE_RETURNER: u8 = 7;
-/// Type-stream tag: the arrow (computation-type) former.
-pub const TYPE_ARROW: u8 = 8;
+// Unified subterm-table node tags (v1): one disjoint enumeration over all four
+// families, contiguous `0x00..=0x16`, banded by family in the massive-term
+// design §4.5 table order. **This byte assignment is a frozen wire commitment
+// under v1** (future formers extend the enumeration under a later version,
+// which E5 makes safe). Polarity is recoverable from the tag alone, replacing
+// v0's `expect_value_term`/`expect_comp_term` with a table-lookup
+// child-polarity check.
 
-/// Term-stream tag: a bound value variable.
-pub const TERM_VARIABLE: u8 = 0;
-/// Term-stream tag: a constant reference.
-pub const TERM_CONSTANT: u8 = 1;
-/// Term-stream tag: the unit value.
-pub const TERM_UNIT: u8 = 2;
-/// Term-stream tag: a literal value.
-pub const TERM_LITERAL: u8 = 3;
-/// Term-stream tag: a pair value.
-pub const TERM_PAIR: u8 = 4;
-/// Term-stream tag: a sum injection value.
-pub const TERM_INJECTION: u8 = 5;
-/// Term-stream tag: a thunk value.
-pub const TERM_THUNK: u8 = 6;
-/// Term-stream tag: a value lift.
-pub const TERM_LIFT: u8 = 7;
-/// Term-stream tag: a lambda computation.
-pub const TERM_LAMBDA: u8 = 8;
-/// Term-stream tag: an application computation.
-pub const TERM_APPLICATION: u8 = 9;
-/// Term-stream tag: a returner computation.
-pub const TERM_RETURN: u8 = 10;
-/// Term-stream tag: a bind computation.
-pub const TERM_BIND: u8 = 11;
-/// Term-stream tag: a force computation.
-pub const TERM_FORCE: u8 = 12;
-/// Term-stream tag: a case computation.
-pub const TERM_CASE: u8 = 13;
+/// Node tag: value-type base atom (payload: base-type byte).
+pub const NODE_VT_BASE: u8 = 0x00;
+/// Node tag: the value-type unit.
+pub const NODE_VT_UNIT: u8 = 0x01;
+/// Node tag: the universe former (payload: inline level).
+pub const NODE_VT_UNIVERSE: u8 = 0x02;
+/// Node tag: the product former (children: value-type, value-type).
+pub const NODE_VT_PRODUCT: u8 = 0x03;
+/// Node tag: the sum former (children: value-type, value-type).
+pub const NODE_VT_SUM: u8 = 0x04;
+/// Node tag: the value-type thunk former (child: comp-type).
+pub const NODE_VT_THUNK: u8 = 0x05;
+/// Node tag: the value-type lift (payload: inline target level; child:
+/// value-type inner).
+pub const NODE_VT_LIFT: u8 = 0x06;
+/// Node tag: the returner former (child: value-type).
+pub const NODE_CT_RETURNER: u8 = 0x07;
+/// Node tag: the arrow former (children: value-type domain, comp-type
+/// codomain).
+pub const NODE_CT_ARROW: u8 = 0x08;
+/// Node tag: a bound value variable (payload: de Bruijn index uvarint).
+pub const NODE_V_VARIABLE: u8 = 0x09;
+/// Node tag: a constant reference (payload: admission index uvarint).
+pub const NODE_V_CONSTANT: u8 = 0x0A;
+/// Node tag: the unit value.
+pub const NODE_V_UNIT: u8 = 0x0B;
+/// Node tag: a literal value (payload: literal kind byte + canonical payload).
+pub const NODE_V_LITERAL: u8 = 0x0C;
+/// Node tag: a pair value (children: value, value).
+pub const NODE_V_PAIR: u8 = 0x0D;
+/// Node tag: a sum injection value (payload: side byte; child: value).
+pub const NODE_V_INJECTION: u8 = 0x0E;
+/// Node tag: a thunk value (child: computation).
+pub const NODE_V_THUNK: u8 = 0x0F;
+/// Node tag: a value lift (payload: inline target level; child: value).
+pub const NODE_V_LIFT: u8 = 0x10;
+/// Node tag: a lambda computation (child: computation).
+pub const NODE_C_LAMBDA: u8 = 0x11;
+/// Node tag: an application (children: computation head, value argument).
+pub const NODE_C_APPLICATION: u8 = 0x12;
+/// Node tag: a returner computation (child: value).
+pub const NODE_C_RETURN: u8 = 0x13;
+/// Node tag: a bind computation (children: computation, computation).
+pub const NODE_C_BIND: u8 = 0x14;
+/// Node tag: a force computation (child: value).
+pub const NODE_C_FORCE: u8 = 0x15;
+/// Node tag: a case computation (children: value scrutinee, computation,
+/// computation).
+pub const NODE_C_CASE: u8 = 0x16;
 
 /// A declaration's admission mark as it rides in the artifact (E6): a single
 /// checked/unchecked bit, never a trust lattice (kernel-boundary.md §3 K3).
@@ -395,10 +433,8 @@ pub enum TagSite
     /// A declaration's kind byte (a value outside `Def`/`Axiom` and the R1
     /// reserved kinds).
     DeclarationKind,
-    /// A type-stream node tag.
-    Type,
-    /// A term-stream node tag.
-    Term,
+    /// A unified subterm-table node tag (a value outside `NODE_*`).
+    Node,
     /// A base-type atom byte.
     BaseType,
     /// A literal sign byte.
@@ -422,8 +458,7 @@ impl fmt::Display for TagSite
         f.write_str(match *self {
             | Self::Admission => "an admission mark",
             | Self::DeclarationKind => "a declaration kind",
-            | Self::Type => "a type node",
-            | Self::Term => "a term node",
+            | Self::Node => "a subterm-table node tag",
             | Self::BaseType => "a base-type atom",
             | Self::Sign => "a literal sign",
             | Self::LiteralKind => "a literal kind",
@@ -461,8 +496,18 @@ pub enum MalformedSite
     /// A decoded child node's polarity did not fit the slot its parent
     /// constructor required.
     Polarity,
+    /// A subterm-table entry's child index was not **strictly earlier** than
+    /// the entry's own global index (acyclicity / topological order
+    /// violated).
+    ChildOrder,
+    /// The subterm table exceeded [`MAX_TABLE_ENTRIES`] as its entries accrued.
+    TableSize,
+    /// A declaration root's memoized expanded (tree) size exceeded
+    /// [`MAX_EXPANDED_TERM_WORK`] — the amplification defence (§4.4).
+    ExpandedWork,
     /// The bytes decoded but were not the canonical encoding of the recovered
-    /// artifact (E4: a non-canonical encoding is rejected).
+    /// artifact (E4: a non-canonical encoding — a non-maximally-shared,
+    /// mis-ordered, or dead-entry table — is rejected).
     NonCanonical,
     /// Bytes remained after a complete artifact was decoded.
     TrailingBytes,
@@ -484,6 +529,9 @@ impl fmt::Display for MalformedSite
             | Self::ConstraintForm => "a constraint side was not variable-only",
             | Self::LiteralPayload => "a literal payload was not reconstructible",
             | Self::Polarity => "a decoded node had the wrong polarity for its slot",
+            | Self::ChildOrder => "a child index was not strictly earlier than its entry",
+            | Self::TableSize => "the subterm table exceeded the entry cap",
+            | Self::ExpandedWork => "a declaration's expanded size exceeded the work cap",
             | Self::NonCanonical => "the bytes were not the canonical encoding",
             | Self::TrailingBytes => "bytes remained after a complete artifact",
         })

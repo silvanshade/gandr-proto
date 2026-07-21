@@ -1,22 +1,34 @@
 //! The deterministic export writer (kernel-boundary.md §5, E1/E2/E4/E5/E6):
-//! serialize an [`Environment`] to canonical bytes.
+//! serialize an [`Environment`] to canonical v1 bytes.
 //!
-//! The encoding iterates the environment in admission order (E2) and each
-//! level's atoms in `BTreeMap`-sorted order (E4) — never a hash-order
-//! iteration — so an identical environment yields a byte-identical artifact.
-//! Term and type trees are walked **iteratively** over an explicit id stack
-//! (never input-scaled recursion), resolving each child through the arena, so
-//! an environment holding a deeply nested term (admissible through the bypass)
-//! is serialized without risking a stack overflow.
+//! # v1: the maximal-sharing subterm table (massive-term design §4.2–4.5)
 //!
-//! # v0 codec over the arena (gandr-5t3)
+//! Each declaration segment carries a **subterm table** rather than an expanded
+//! preorder tree. The writer interns nodes bottom-up (**post-order**, children
+//! before parents) with **content-keyed dedup**: a node's key is its encoded
+//! entry bytes — the node tag, its children's already-assigned **global** table
+//! indices, and its canonical inline payload — so two structurally-equal nodes
+//! (whether shared within a declaration, across declarations, or merely
+//! coincident) collapse to one global index (**maximal sharing under structural
+//! equality**, the Lean `ShareCommon` boundary pass). The first completion of a
+//! node assigns the next global index and appends its entry to the *current*
+//! declaration's segment; a later occurrence reuses the index without
+//! appending.
 //!
-//! The D1(C) arena restructure retypes the walk from owned `Box` children to
-//! arena ids; the **byte layout is unchanged** at v0 — the writer still emits
-//! an expanded preorder tree (v0 has no subterm table), so a shared subterm is
-//! written once per reference. The v1 sharing writer (commit 2) replaces this
-//! with a content-keyed subterm table.
+//! Dedup is **content-keyed, never arena-id-keyed**: the bytes are a function
+//! of the *abstract* environment, not of incidental in-memory sharing
+//! (in-memory sharing differs between a freshly-built and a decoded
+//! environment; E4 determinism demands content keys). The `no_std` dedup map is
+//! a `BTreeMap`. The walk is a resumable-frame post-order over an explicit
+//! stack (never input-scaled recursion) and is **sharing-aware** — an arena
+//! node is visited once (an `id_to_global` memo), so re-encoding a decoded DAG
+//! is `O(entries)`, not `O(expanded)` (§4.6).
+//!
+//! The writer feeds no judgment and is not a trusted fast path: the reader's
+//! whole-artifact re-encode-compare (§4.6) is what enforces canonical form, so
+//! a buggy or malicious writer is caught, never trusted (C3-compatible).
 
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use gandr_kernel_strata::Level;
@@ -27,42 +39,42 @@ use super::AdmissionMark;
 use super::BASE_INTEGER;
 use super::BASE_NUMERIC;
 use super::BASE_STRING;
-use super::FORMAT_VERSION_V0;
+use super::FORMAT_VERSION_V1;
 use super::KIND_AXIOM;
 use super::KIND_DEF;
 use super::LITERAL_INTEGER;
 use super::LITERAL_NUMERIC;
 use super::LITERAL_TEXT;
 use super::MAGIC;
+use super::NODE_C_APPLICATION;
+use super::NODE_C_BIND;
+use super::NODE_C_CASE;
+use super::NODE_C_FORCE;
+use super::NODE_C_LAMBDA;
+use super::NODE_C_RETURN;
+use super::NODE_CT_ARROW;
+use super::NODE_CT_RETURNER;
+use super::NODE_V_CONSTANT;
+use super::NODE_V_INJECTION;
+use super::NODE_V_LIFT;
+use super::NODE_V_LITERAL;
+use super::NODE_V_PAIR;
+use super::NODE_V_THUNK;
+use super::NODE_V_UNIT;
+use super::NODE_V_VARIABLE;
+use super::NODE_VT_BASE;
+use super::NODE_VT_LIFT;
+use super::NODE_VT_PRODUCT;
+use super::NODE_VT_SUM;
+use super::NODE_VT_THUNK;
+use super::NODE_VT_UNIT;
+use super::NODE_VT_UNIVERSE;
 use super::RELATION_EQ;
 use super::RELATION_LEQ;
 use super::SIDE_LEFT;
 use super::SIDE_RIGHT;
 use super::SIGN_NEGATIVE;
 use super::SIGN_NON_NEGATIVE;
-use super::TERM_APPLICATION;
-use super::TERM_BIND;
-use super::TERM_CASE;
-use super::TERM_CONSTANT;
-use super::TERM_FORCE;
-use super::TERM_INJECTION;
-use super::TERM_LAMBDA;
-use super::TERM_LIFT;
-use super::TERM_LITERAL;
-use super::TERM_PAIR;
-use super::TERM_RETURN;
-use super::TERM_THUNK;
-use super::TERM_UNIT;
-use super::TERM_VARIABLE;
-use super::TYPE_ARROW;
-use super::TYPE_BASE;
-use super::TYPE_LIFT;
-use super::TYPE_PRODUCT;
-use super::TYPE_RETURNER;
-use super::TYPE_SUM;
-use super::TYPE_THUNK;
-use super::TYPE_UNIT;
-use super::TYPE_UNIVERSE;
 use crate::arena::CompTypeId;
 use crate::arena::ComputationId;
 use crate::arena::TermArena;
@@ -82,27 +94,31 @@ use crate::term::Value;
 use crate::types::CompType;
 use crate::types::ValueType;
 
-/// Serialize an [`Environment`] to a self-contained, canonical byte artifact.
+/// Serialize an [`Environment`] to a self-contained, canonical v1 byte
+/// artifact.
 ///
 /// # Contract
 /// - requires: nothing.
-/// - ensures: the bytes carry the version tag, the reserved sections, and the
-///   admission-ordered declaration sequence with per-declaration admission
-///   marks — everything a replay needs (E1); iterating an identical environment
-///   yields a byte-identical result (E4); the precomputed audit sets are not
-///   written (E3).
-/// - provides: the K5 export artifact.
+/// - ensures: the bytes carry the v1 version tag, the reserved sections, and
+///   the admission-ordered declaration segments — each a maximal-sharing
+///   subterm table plus root references (E1); iterating an identical *abstract*
+///   environment yields a byte-identical result regardless of in-memory sharing
+///   (E4, content-keyed dedup); the precomputed audit sets are not written
+///   (E3).
+/// - provides: the K5 v1 export artifact.
 /// - fails: never — serialization is total.
 /// - panics: none.
 ///
 /// # Adequacy
 /// - hypothesis: L2 — the round-trip differential pins that every
-///   [`super::read()`] of `write(env)` reproduces the environment, and the
-///   determinism property pins that a second `write` is byte-identical; the L3
-///   residues are the empty environment and the bypass-admitted mark.
+///   [`super::read()`] of `write(env)` reproduces the environment and retains
+///   sharing, and the determinism property pins that structurally-equal but
+///   differently-shared inputs write identically; the L3 residues are the empty
+///   environment and the bypass-admitted mark.
 /// - witness: `export::tests::round_trip_reproduces_the_environment`
-/// - witness: `export::tests::a_second_write_is_byte_identical`
-/// - witness: `export::tests::the_empty_environment_round_trips`
+/// - witness: `export::tests::structurally_equal_inputs_write_identically`
+/// - witness: `export::tests::sharing_collapses_the_table`
+/// - witness: `read::tests::decode_retains_cross_declaration_sharing`
 #[inline]
 #[must_use]
 pub fn write(environment: &Environment) -> Vec<u8>
@@ -115,16 +131,16 @@ pub fn write(environment: &Environment) -> Vec<u8>
 }
 
 /// Encode a marked declaration sequence (its content in `arena`) into the
-/// canonical artifact bytes — the shared engine of [`write()`] and the reader's
-/// canonical-bytes check.
+/// canonical v1 artifact bytes — the shared engine of [`write()`] and the
+/// reader's sharing-aware canonical-bytes check (§4.6).
 ///
 /// # Contract
 /// - requires: `declarations` is in admission order and their content roots
 ///   resolve in `arena`.
-/// - ensures: the bytes are the header (magic + version), the reserved
-///   minted-atom table (empty at v0), the declaration count, and one canonical
-///   record per declaration.
-/// - provides: the deterministic canonical byte image of the sequence.
+/// - ensures: the header, the empty reserved sections, the declaration count,
+///   and one canonical maximal-sharing segment per declaration.
+/// - provides: the deterministic canonical byte image, `O(total arena nodes)`
+///   (sharing-aware, never `O(expanded)`).
 /// - fails: never.
 /// - panics: none.
 pub(super) fn encode_artifact(
@@ -134,12 +150,13 @@ pub(super) fn encode_artifact(
 {
     let mut out = Vec::new();
     out.extend_from_slice(&MAGIC);
-    out.extend_from_slice(&FORMAT_VERSION_V0.to_be_bytes());
-    // R4: the reserved minted-atom table, admission-ordered and empty at v0.
+    out.extend_from_slice(&FORMAT_VERSION_V1.to_be_bytes());
+    // R4: the reserved minted-atom table, admission-ordered and empty at v1.
     put_uvarint(&mut out, 0_u64);
     put_uvarint(&mut out, usize_to_u64(declarations.len()));
+    let mut interner = Interner::new();
     for &(mark, declaration) in declarations {
-        encode_declaration(&mut out, arena, mark, declaration);
+        encode_declaration(&mut out, arena, &mut interner, mark, declaration);
     }
     out
 }
@@ -154,11 +171,279 @@ fn mark_of(admission: Admission) -> AdmissionMark
     }
 }
 
-/// Encode one declaration record: admission mark, kind, structured name (empty
-/// at v0), level signature, and content (its roots into `arena`).
+/// A cross-family arena node reference — the work item of the intern walk.
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+enum Node
+{
+    /// A value node.
+    Value(ValueId),
+    /// A computation node.
+    Computation(ComputationId),
+    /// A value-type node.
+    ValueType(ValueTypeId),
+    /// A computation-type node.
+    CompType(CompTypeId),
+}
+
+/// The content-keyed subterm interner, carrying the global index counter and
+/// the dedup and arena-memo maps across declarations.
+struct Interner
+{
+    /// Arena node → its assigned global table index (the sharing-aware memo, so
+    /// an in-arena shared node is walked once).
+    id_to_global: BTreeMap<Node, u32>,
+    /// Encoded entry bytes → its global index (the content dedup; the encoded
+    /// bytes are the content key, so structurally-equal nodes collapse).
+    key_to_global: BTreeMap<Vec<u8>, u32>,
+    /// The next free global table index.
+    next_index: u32,
+}
+
+impl Interner
+{
+    /// A fresh interner.
+    #[inline]
+    fn new() -> Self
+    {
+        Self {
+            id_to_global: BTreeMap::new(),
+            key_to_global: BTreeMap::new(),
+            next_index: 0,
+        }
+    }
+}
+
+/// The immediate child references of an arena node, in order (empty for a leaf
+/// or a dangling id — fail-safe).
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
+)]
+fn node_children(
+    arena: &TermArena,
+    node: Node,
+) -> Vec<Node>
+{
+    let mut children = Vec::new();
+    match node {
+        | Node::Value(id) => {
+            if let Some(value) = arena.value(id) {
+                match value {
+                    | Value::Variable(_) | Value::Constant(_) | Value::Unit | Value::Literal(_) => {
+                    },
+                    | Value::Pair(first, second) => {
+                        children.push(Node::Value(*first));
+                        children.push(Node::Value(*second));
+                    },
+                    | Value::Injection(_, body) | Value::Lift { body, .. } => {
+                        children.push(Node::Value(*body));
+                    },
+                    | Value::Thunk(body) => children.push(Node::Computation(*body)),
+                }
+            }
+        },
+        | Node::Computation(id) => {
+            if let Some(computation) = arena.computation(id) {
+                match computation {
+                    | Computation::Lambda(body) => children.push(Node::Computation(*body)),
+                    | Computation::Application(head, argument) => {
+                        children.push(Node::Computation(*head));
+                        children.push(Node::Value(*argument));
+                    },
+                    | Computation::Return(value) | Computation::Force(value) => {
+                        children.push(Node::Value(*value));
+                    },
+                    | Computation::Bind(bound, body) => {
+                        children.push(Node::Computation(*bound));
+                        children.push(Node::Computation(*body));
+                    },
+                    | Computation::Case {
+                        scrutinee,
+                        on_left,
+                        on_right,
+                    } => {
+                        children.push(Node::Value(*scrutinee));
+                        children.push(Node::Computation(*on_left));
+                        children.push(Node::Computation(*on_right));
+                    },
+                }
+            }
+        },
+        | Node::ValueType(id) => {
+            if let Some(value_type) = arena.value_type(id) {
+                match value_type {
+                    | ValueType::Base(_) | ValueType::Unit | ValueType::Universe(_) => {},
+                    | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
+                        children.push(Node::ValueType(*first));
+                        children.push(Node::ValueType(*second));
+                    },
+                    | ValueType::Thunk(body) => children.push(Node::CompType(*body)),
+                    | ValueType::Lift { inner, .. } => children.push(Node::ValueType(*inner)),
+                }
+            }
+        },
+        | Node::CompType(id) => {
+            if let Some(comp_type) = arena.comp_type(id) {
+                match comp_type {
+                    | CompType::Returner(result) => children.push(Node::ValueType(*result)),
+                    | CompType::Arrow { domain, codomain } => {
+                        children.push(Node::ValueType(*domain));
+                        children.push(Node::CompType(*codomain));
+                    },
+                }
+            }
+        },
+    }
+    children
+}
+
+/// Encode one subterm-table entry: its node tag, inline payload, then its
+/// children's global indices as uvarints (a dangling id encodes as unit,
+/// fail-safe).
+#[expect(
+    clippy::pattern_type_mismatch,
+    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
+)]
+fn encode_entry(
+    arena: &TermArena,
+    node: Node,
+    child_globals: &[u32],
+) -> Vec<u8>
+{
+    let mut out = Vec::new();
+    match node {
+        | Node::ValueType(id) => match arena.value_type(id) {
+            | Some(&ValueType::Base(base)) => {
+                out.push(NODE_VT_BASE);
+                out.push(base_type_byte(base));
+            },
+            | Some(&ValueType::Unit) | None => out.push(NODE_VT_UNIT),
+            | Some(ValueType::Universe(level)) => {
+                out.push(NODE_VT_UNIVERSE);
+                encode_level(&mut out, level);
+            },
+            | Some(&ValueType::Product(..)) => out.push(NODE_VT_PRODUCT),
+            | Some(&ValueType::Sum(..)) => out.push(NODE_VT_SUM),
+            | Some(&ValueType::Thunk(_)) => out.push(NODE_VT_THUNK),
+            | Some(ValueType::Lift { target, .. }) => {
+                out.push(NODE_VT_LIFT);
+                encode_level(&mut out, target);
+            },
+        },
+        | Node::CompType(id) => match arena.comp_type(id) {
+            | Some(&CompType::Returner(_)) | None => out.push(NODE_CT_RETURNER),
+            | Some(&CompType::Arrow { .. }) => out.push(NODE_CT_ARROW),
+        },
+        | Node::Value(id) => match arena.value(id) {
+            | Some(&Value::Variable(index)) => {
+                out.push(NODE_V_VARIABLE);
+                put_uvarint(&mut out, u64::from(u32::from(index)));
+            },
+            | Some(&Value::Constant(index)) => {
+                out.push(NODE_V_CONSTANT);
+                put_uvarint(&mut out, usize_to_u64(usize::from(index)));
+            },
+            | Some(&Value::Unit) | None => out.push(NODE_V_UNIT),
+            | Some(Value::Literal(literal)) => {
+                out.push(NODE_V_LITERAL);
+                encode_literal(&mut out, literal);
+            },
+            | Some(&Value::Pair(..)) => out.push(NODE_V_PAIR),
+            | Some(&Value::Injection(side, _)) => {
+                out.push(NODE_V_INJECTION);
+                out.push(side_byte(side));
+            },
+            | Some(&Value::Thunk(_)) => out.push(NODE_V_THUNK),
+            | Some(Value::Lift { target, .. }) => {
+                out.push(NODE_V_LIFT);
+                encode_level(&mut out, target);
+            },
+        },
+        | Node::Computation(id) => match arena.computation(id) {
+            | Some(&Computation::Lambda(_)) => out.push(NODE_C_LAMBDA),
+            | Some(&Computation::Application(..)) => out.push(NODE_C_APPLICATION),
+            | Some(&Computation::Return(_)) | None => out.push(NODE_C_RETURN),
+            | Some(&Computation::Bind(..)) => out.push(NODE_C_BIND),
+            | Some(&Computation::Force(_)) => out.push(NODE_C_FORCE),
+            | Some(&Computation::Case { .. }) => out.push(NODE_C_CASE),
+        },
+    }
+    for &child in child_globals {
+        put_uvarint(&mut out, u64::from(child));
+    }
+    out
+}
+
+/// Intern a root node's sub-DAG into `interner`, appending each first-completed
+/// entry to `segment`, and return the root's global table index.
+///
+/// # Contract
+/// - requires: `root` resolves in `arena`.
+/// - ensures: every node reachable from `root` has a global index in
+///   `interner.id_to_global`; entries first completed here are appended to
+///   `segment` in post-order first-completion order; the root's global index is
+///   returned. The walk is a resumable-frame post-order over an explicit stack,
+///   sharing-aware (each arena node is walked once), so it is total on any
+///   depth.
+/// - provides: the maximal-sharing intern of one declaration root.
+/// - fails: never.
+/// - panics: none.
+fn intern(
+    arena: &TermArena,
+    interner: &mut Interner,
+    segment: &mut Vec<Vec<u8>>,
+    root: Node,
+) -> u32
+{
+    let mut stack: Vec<(Node, usize)> = Vec::new();
+    stack.push((root, 0_usize));
+    while let Some((node, cursor)) = stack.pop() {
+        if interner.id_to_global.contains_key(&node) {
+            continue;
+        }
+        let children = node_children(arena, node);
+        let mut next = cursor;
+        let mut descended = false;
+        while let Some(&child) = children.get(next) {
+            if interner.id_to_global.contains_key(&child) {
+                next = next.saturating_add(1);
+            }
+            else {
+                stack.push((node, next.saturating_add(1)));
+                stack.push((child, 0_usize));
+                descended = true;
+                break;
+            }
+        }
+        if descended {
+            continue;
+        }
+        let child_globals: Vec<u32> = children
+            .iter()
+            .map(|child| interner.id_to_global.get(child).copied().unwrap_or(0))
+            .collect();
+        let encoded = encode_entry(arena, node, &child_globals);
+        let global = match interner.key_to_global.get(&encoded) {
+            | Some(&existing) => existing,
+            | None => {
+                let assigned = interner.next_index;
+                interner.next_index = interner.next_index.saturating_add(1);
+                let _prior = interner.key_to_global.insert(encoded.clone(), assigned);
+                segment.push(encoded);
+                assigned
+            },
+        };
+        let _prior = interner.id_to_global.insert(node, global);
+    }
+    interner.id_to_global.get(&root).copied().unwrap_or(0)
+}
+
+/// Encode one declaration segment: admission mark, kind, name (empty at v1),
+/// level signature, its subterm-table entries, and root references.
 fn encode_declaration(
     out: &mut Vec<u8>,
     arena: &TermArena,
+    interner: &mut Interner,
     mark: AdmissionMark,
     declaration: &Declaration,
 )
@@ -172,25 +457,35 @@ fn encode_declaration(
         | DeclarationContent::Def { .. } => KIND_DEF,
         | DeclarationContent::Axiom { .. } => KIND_AXIOM,
     });
-    // R2: the structured name is a segment sequence, empty (zero segments) at
-    // v0 — never a flat dotted string.
+    // R2: the structured name, empty (zero segments) at v1.
     put_uvarint(out, 0_u64);
     encode_level_signature(out, declaration.levels());
-    match *content {
+    // Intern this declaration's roots, collecting the entries it introduces.
+    let mut segment: Vec<Vec<u8>> = Vec::new();
+    let roots = match *content {
         | DeclarationContent::Def { declared, body } => {
-            encode_value_type(out, arena, declared);
-            encode_value(out, arena, body);
-            // R3: four per-Def annotation slots, each length-prefixed and empty
-            // at v0 (erasure, modes/grades, sealing-provenance,
-            // directedness/variance).
-            put_uvarint(out, 0_u64);
-            put_uvarint(out, 0_u64);
-            put_uvarint(out, 0_u64);
-            put_uvarint(out, 0_u64);
+            let declared = intern(arena, interner, &mut segment, Node::ValueType(declared));
+            let body = intern(arena, interner, &mut segment, Node::Value(body));
+            (declared, Some(body))
         },
         | DeclarationContent::Axiom { declared } => {
-            encode_value_type(out, arena, declared);
+            let declared = intern(arena, interner, &mut segment, Node::ValueType(declared));
+            (declared, None)
         },
+    };
+    put_uvarint(out, usize_to_u64(segment.len()));
+    for entry in &segment {
+        out.extend_from_slice(entry);
+    }
+    let (root_declared, root_body) = roots;
+    put_uvarint(out, u64::from(root_declared));
+    if let Some(root_body) = root_body {
+        put_uvarint(out, u64::from(root_body));
+        // R3: four per-Def annotation slots, empty at v1.
+        put_uvarint(out, 0_u64);
+        put_uvarint(out, 0_u64);
+        put_uvarint(out, 0_u64);
+        put_uvarint(out, 0_u64);
     }
 }
 
@@ -230,179 +525,6 @@ fn encode_level(
     for (variable, offset) in atoms {
         put_uvarint(out, u64::from(u32::from(variable.index())));
         put_uvarint(out, u64::from(offset));
-    }
-}
-
-/// A type-node id awaiting emission (value-type or computation-type).
-#[derive(Clone, Copy)]
-enum TypeRef
-{
-    /// A value type.
-    Value(ValueTypeId),
-    /// A computation type.
-    Comp(CompTypeId),
-}
-
-/// Encode a value type in preorder over an explicit id stack (no input
-/// recursion): each node emits its tag and inline leaf data, then its children
-/// follow. A dangling id emits the unit leaf (fail-safe, unreachable for a
-/// valid environment).
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
-)]
-fn encode_value_type(
-    out: &mut Vec<u8>,
-    arena: &TermArena,
-    root: ValueTypeId,
-)
-{
-    let mut stack: Vec<TypeRef> = Vec::new();
-    stack.push(TypeRef::Value(root));
-    while let Some(node) = stack.pop() {
-        match node {
-            | TypeRef::Value(id) => match arena.value_type(id) {
-                | Some(&ValueType::Base(base)) => {
-                    out.push(TYPE_BASE);
-                    out.push(base_type_byte(base));
-                },
-                | Some(&ValueType::Unit) | None => out.push(TYPE_UNIT),
-                | Some(&ValueType::Product(first, second)) => {
-                    out.push(TYPE_PRODUCT);
-                    stack.push(TypeRef::Value(second));
-                    stack.push(TypeRef::Value(first));
-                },
-                | Some(&ValueType::Sum(first, second)) => {
-                    out.push(TYPE_SUM);
-                    stack.push(TypeRef::Value(second));
-                    stack.push(TypeRef::Value(first));
-                },
-                | Some(&ValueType::Thunk(body)) => {
-                    out.push(TYPE_THUNK);
-                    stack.push(TypeRef::Comp(body));
-                },
-                | Some(ValueType::Universe(level)) => {
-                    out.push(TYPE_UNIVERSE);
-                    encode_level(out, level);
-                },
-                | Some(ValueType::Lift { inner, target }) => {
-                    out.push(TYPE_LIFT);
-                    encode_level(out, target);
-                    stack.push(TypeRef::Value(*inner));
-                },
-            },
-            | TypeRef::Comp(id) => match arena.comp_type(id) {
-                | Some(&CompType::Returner(result)) => {
-                    out.push(TYPE_RETURNER);
-                    stack.push(TypeRef::Value(result));
-                },
-                | Some(&CompType::Arrow { domain, codomain }) => {
-                    out.push(TYPE_ARROW);
-                    stack.push(TypeRef::Comp(codomain));
-                    stack.push(TypeRef::Value(domain));
-                },
-                | None => out.push(TYPE_UNIT),
-            },
-        }
-    }
-}
-
-/// A term-node id awaiting emission (value or computation).
-#[derive(Clone, Copy)]
-enum TermRef
-{
-    /// A value.
-    Value(ValueId),
-    /// A computation.
-    Comp(ComputationId),
-}
-
-/// Encode a value term in preorder over an explicit id stack (no input
-/// recursion). A dangling id emits the unit leaf (fail-safe).
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
-)]
-fn encode_value(
-    out: &mut Vec<u8>,
-    arena: &TermArena,
-    root: ValueId,
-)
-{
-    let mut stack: Vec<TermRef> = Vec::new();
-    stack.push(TermRef::Value(root));
-    while let Some(node) = stack.pop() {
-        match node {
-            | TermRef::Value(id) => match arena.value(id) {
-                | Some(&Value::Variable(index)) => {
-                    out.push(TERM_VARIABLE);
-                    put_uvarint(out, u64::from(u32::from(index)));
-                },
-                | Some(&Value::Constant(index)) => {
-                    out.push(TERM_CONSTANT);
-                    put_uvarint(out, usize_to_u64(usize::from(index)));
-                },
-                | Some(&Value::Unit) | None => out.push(TERM_UNIT),
-                | Some(Value::Literal(literal)) => {
-                    out.push(TERM_LITERAL);
-                    encode_literal(out, literal);
-                },
-                | Some(&Value::Pair(first, second)) => {
-                    out.push(TERM_PAIR);
-                    stack.push(TermRef::Value(second));
-                    stack.push(TermRef::Value(first));
-                },
-                | Some(&Value::Injection(side, body)) => {
-                    out.push(TERM_INJECTION);
-                    out.push(side_byte(side));
-                    stack.push(TermRef::Value(body));
-                },
-                | Some(&Value::Thunk(body)) => {
-                    out.push(TERM_THUNK);
-                    stack.push(TermRef::Comp(body));
-                },
-                | Some(Value::Lift { target, body }) => {
-                    out.push(TERM_LIFT);
-                    encode_level(out, target);
-                    stack.push(TermRef::Value(*body));
-                },
-            },
-            | TermRef::Comp(id) => match arena.computation(id) {
-                | Some(&Computation::Lambda(body)) => {
-                    out.push(TERM_LAMBDA);
-                    stack.push(TermRef::Comp(body));
-                },
-                | Some(&Computation::Application(head, argument)) => {
-                    out.push(TERM_APPLICATION);
-                    stack.push(TermRef::Value(argument));
-                    stack.push(TermRef::Comp(head));
-                },
-                | Some(&Computation::Return(value)) => {
-                    out.push(TERM_RETURN);
-                    stack.push(TermRef::Value(value));
-                },
-                | Some(&Computation::Bind(bound, body)) => {
-                    out.push(TERM_BIND);
-                    stack.push(TermRef::Comp(body));
-                    stack.push(TermRef::Comp(bound));
-                },
-                | Some(&Computation::Force(value)) => {
-                    out.push(TERM_FORCE);
-                    stack.push(TermRef::Value(value));
-                },
-                | Some(&Computation::Case {
-                    scrutinee,
-                    on_left,
-                    on_right,
-                }) => {
-                    out.push(TERM_CASE);
-                    stack.push(TermRef::Comp(on_right));
-                    stack.push(TermRef::Comp(on_left));
-                    stack.push(TermRef::Value(scrutinee));
-                },
-                | None => out.push(TERM_UNIT),
-            },
-        }
     }
 }
 
