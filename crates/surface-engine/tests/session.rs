@@ -137,6 +137,37 @@ mod tests
         }
     }
 
+    /// A checked sum stored by one submission remains consumable after the
+    /// L machine erases its runtime annotation and the session re-embeds it.
+    #[test]
+    fn erased_sum_definition_is_consumed_by_a_later_case()
+    {
+        let mut session = Session::new();
+        let definition = session
+            .submit("def chosen = (Inl(41) : Integer + String)")
+            .expect("lowering must not fail");
+        assert_clean_submission(&definition);
+
+        match sole_outcome(
+            &mut session,
+            "(case chosen { Inl(x) => ret x, Inr(s) => ret 0 } : F Integer)",
+        ) {
+            | ItemOutcome::Expression { ty, value } => {
+                assert_eq!(
+                    Ty::Comp(CompType::returner(ValueType::integer())),
+                    ty,
+                    "the later case retains the stored definition's checked sum type"
+                );
+                assert_eq!(
+                    Eval::Value(Comp::ret(Value::int(41))),
+                    value,
+                    "the later case consumes the erased Inl payload"
+                );
+            },
+            | outcome => panic!("the later case should evaluate, got {outcome:?}"),
+        }
+    }
+
     /// Asserts that a submission has no type diagnostics and no hole goals.
     fn assert_clean_submission(submission: &Submission)
     {

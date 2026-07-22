@@ -120,24 +120,37 @@ mod tests
     /// Every local current-fixture path exercised by totality.
     fn manifest_source_paths() -> Vec<String>
     {
-        [
-            "anchor-evidence",
-            "benchmark-mixed",
-            "cst-to-ast-core",
-            "duplicate-entity",
-            "edit-boundary-mistakes",
-            "grammar-facts-core",
-            "highlighting-captures",
-            "incomplete-input",
-            "incremental-base",
-            "incremental-edited",
-            "parser-recovery",
-            "stale-relocation-base",
-            "stale-relocation-edited",
-        ]
-        .into_iter()
-        .map(|stem| format!("tests/fixtures/current/{stem}.gandr"))
-        .collect()
+        let root = repo_root();
+        let fixture_dir = root.join("tests/fixtures/current");
+        let mut paths: Vec<String> = fs::read_dir(&fixture_dir)
+            .unwrap_or_else(|error| {
+                panic!("fixture directory {fixture_dir:?} must be readable: {error}")
+            })
+            .map(|entry| {
+                entry.unwrap_or_else(|error| {
+                    panic!("every fixture entry in {fixture_dir:?} must be readable: {error}")
+                })
+            })
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.extension()
+                    .is_some_and(|extension| extension == "gandr")
+            })
+            .map(|path| {
+                path.strip_prefix(&root)
+                    .unwrap_or_else(|error| {
+                        panic!("fixture {path:?} must be under crate root {root:?}: {error}")
+                    })
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+        paths.sort();
+        assert!(
+            !paths.is_empty(),
+            "the current fixture directory must not be empty"
+        );
+        paths
     }
 
     /// Acceptance class 1: the `cst-to-ast-core.gandr` round trip — lower,

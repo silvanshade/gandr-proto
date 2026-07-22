@@ -27,6 +27,7 @@ use std::process::Stdio;
 use std::process::id as process_id;
 
 use gandr_core_checker::boundary::OperationName;
+use gandr_core_checker::host as sig;
 use gandr_core_checker::host::HostOp;
 use gandr_core_checker::syntax::Value;
 
@@ -38,7 +39,6 @@ use crate::boundary::PathSegmentText;
 use crate::codec;
 use crate::codec::SpawnMode;
 use crate::error::ShellError;
-use crate::sig;
 
 /// The maximum number of distinct names [`ShellHandler::fs_tempdir`] tries
 /// before giving up (a defensive bound; a fresh counter suffix makes a
@@ -737,6 +737,7 @@ fn glob_segment(cursor: GlobCursor<'_>) -> GlobMatch
 )]
 mod tests
 {
+    use gandr_core_checker::host as sig;
     use gandr_core_checker::syntax::Value;
 
     use super::ShellHandler;
@@ -744,7 +745,6 @@ mod tests
     use super::segment_matches;
     use crate::boundary::FileContents;
     use crate::boundary::FilePath;
-    use crate::sig;
 
     #[test]
     fn segment_matcher_handles_star_question_and_literals()

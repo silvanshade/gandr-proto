@@ -18,11 +18,8 @@
 //! L driver without changing observable outcomes (asserted by the driver's
 //! differential tests).
 //!
-//! Three faces:
-//!
-//! - [`sig`] — the canonical effect signatures (`sig::exec`, `sig::fs`,
-//!   `sig::env`, `sig::proc`) and operation-name constants, the single source
-//!   of truth a program author and the handler share so they never drift.
+//! Two runtime faces, both consuming the canonical signature API in
+//! [`gandr_core_checker::host`]:
 //! - [`ShellHandler`] — the [`gandr_core_checker::host::HostHandler`]-shaped
 //!   dispatcher ([`ShellHandler::dispatch`]) that carries each intercepted
 //!   operation out to a real syscall over `std::process` / `std::fs` /
@@ -43,15 +40,14 @@
 //! Source-text convenience entry points stay in the surface engine:
 //! `gandr_surface_engine::run::run_source` composes the engine's lowering,
 //! linking, and prelude checking with [`run_program_with_prelude`]. This
-//! headless host owns the canonical signatures and accepts already-lowered,
-//! hand-built [`Comp`](gandr_core_checker::syntax::Comp) programs through
-//! [`run_program`].
+//! headless host accepts already-lowered, hand-built
+//! [`Comp`](gandr_core_checker::syntax::Comp) programs through [`run_program`].
 //!
 //! ```
+//! use gandr_core_checker::host as sig;
 //! use gandr_core_checker::syntax::Comp;
 //! use gandr_core_checker::syntax::Value;
 //! use gandr_runtime_host::run_program;
-//! use gandr_runtime_host::sig;
 //!
 //! // perform Exec::exec {program: "true", args: []} >>= r. ret r
 //! let command = Value::record([
@@ -100,7 +96,6 @@ pub mod codec;
 pub mod driver;
 pub mod error;
 pub mod handler;
-pub mod sig;
 
 pub use crate::driver::ShellOutcome;
 pub use crate::driver::run_program;

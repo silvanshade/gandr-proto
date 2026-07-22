@@ -1,6 +1,7 @@
-//! The host-effect seam (ADR-35 D4) — the boundary at which the machine offers
-//! an effect operation *no source-level handler claims* to an ambient host
-//! interpreter.
+//! The representation-independent host-effect seam.
+//!
+//! This boundary carries operations no source-level handler claims to an
+//! ambient host interpreter (`docs/gandr/spec/effects-control-shell.md` §3/§5).
 //!
 //! This is a **preserved boundary**: it is expressed over the public
 //! [`Value`] / [`EffectSig`] surface and the operation *name* only — never a
@@ -19,18 +20,20 @@
 //! module is the seam's durable home precisely because the boundary outlives
 //! any one machine.
 //!
-//! It is its own module (coordinator decision D1): [`crate::boundary`] is the
-//! newtype vocabulary, [`crate::effect`] is the effect-row algebra, and the
-//! host seam is a distinct ADR-35 D4 boundary concern.
+//! It is its own module: [`crate::boundary`] is the newtype vocabulary,
+//! [`crate::effect`] is the effect-row algebra, and this module owns the
+//! representation-independent host seam plus its canonical signatures.
 
 use alloc::string::String;
+use alloc::vec;
 
 use crate::boundary::OperationName;
+use crate::effect::EffectOp;
 use crate::effect::EffectSig;
 use crate::syntax::Value;
+use crate::types::ValueType;
 
-/// The host's reply to an intercepted effect operation — the host-effect seam
-/// (ADR-35 D4).
+/// The host's reply to an intercepted effect operation.
 ///
 /// A [`HostHandler`] either resumes the operation with a value or declines it,
 /// leaving the machine to take its ordinary step (which blames
@@ -53,8 +56,8 @@ pub enum HostReply
     Unhandled,
 }
 
-/// A host-side interpreter for the effect operations no source-level handler
-/// claims — the host-effect seam (ADR-35 D4; the earliest bootstrap gate).
+/// A host-side interpreter for effect operations no source-level handler
+/// claims.
 ///
 /// **Invariant.** The host intercepts EXACTLY the operations that would
 /// otherwise [`crate::outcome::Blame::PerformNoHandler`] — those no
@@ -116,7 +119,7 @@ where
 }
 
 /// A host-interceptable effect operation carried out of the machine as an
-/// **owned** payload (ADR-35 D4).
+/// **owned** payload.
 ///
 /// Owned by design: under the coming arena the payload is a node with no
 /// `&Value` to borrow, so the seam hands the host a self-contained operation
@@ -162,4 +165,207 @@ impl HostOp
             payload,
         }
     }
+}
+
+// --- Canonical host signatures
+// -------------------------------------------------
+//
+// The canonical host effect signatures the runtime handles (proposal §3/§5:
+// the thin v0 host handler intercepts the flat `Exec`/`Fs`/`Proc`/`Env`
+// signature, performs the syscall, and resumes the delimited continuation
+// with the reply). These builders and name constants are the single source of
+// truth two faces share: a program author builds a `Comp::perform` against
+// `exec()` and the native dispatcher handles the same [`EffectSig::name`] /
+// operation names, so the faces never drift. v0 is sound because `Σ` is
+// vacuous and resumption is multi-shot — a captured continuation prefix is
+// reified as a plain stack value with the handler reinstalled — so the host is
+// an always-resume ambient handler on the seam. The surface engine re-exports
+// these definitions and adds its source-facing `fs.read(…)`-style module
+// metadata and `#!{ … }` shell-block lowering; the runtime host binds them
+// for native dispatch.
+
+/// The `Exec` signature name.
+pub const EXEC: &str = "Exec";
+/// The `Fs` signature name.
+pub const FS: &str = "Fs";
+/// The `Proc` signature name.
+pub const PROC: &str = "Proc";
+/// The `Env` signature name.
+pub const ENV: &str = "Env";
+
+/// `Exec::exec` — run an external program, capturing its output and exit code.
+pub const EXEC_RUN: &str = "exec";
+
+/// `Fs::read` — read a file's whole contents as a string.
+pub const FS_READ: &str = "read";
+/// `Fs::write` — write a string to a file (truncating).
+pub const FS_WRITE: &str = "write";
+/// `Fs::glob` — expand a glob pattern to the sorted list of matching paths.
+pub const FS_GLOB: &str = "glob";
+/// `Fs::stat` — classify a path (kind + byte size).
+pub const FS_STAT: &str = "stat";
+/// `Fs::mkdir` — create a directory and every missing parent.
+pub const FS_MKDIR: &str = "mkdir";
+/// `Fs::tempdir` — create a fresh temporary directory, returning its path.
+pub const FS_TEMPDIR: &str = "tempdir";
+/// `Fs::cwd` — the process's current working directory.
+pub const FS_CWD: &str = "cwd";
+/// `Fs::ls_files` — the tracked files under a directory (`git ls-files`).
+pub const FS_LS_FILES: &str = "ls_files";
+
+/// `Env::get` — read one environment variable (empty string if unset).
+pub const ENV_GET: &str = "get";
+/// `Env::path` — the `PATH` entries, split into a list.
+pub const ENV_PATH: &str = "path";
+
+/// `Proc::exit` — halt the run with an exit code (never resumes).
+pub const PROC_EXIT: &str = "exit";
+
+/// The record label carrying the program name in an `Exec::exec` payload.
+pub const FIELD_PROGRAM: &str = "program";
+/// The record label carrying the argument list in an `Exec::exec` payload.
+pub const FIELD_ARGS: &str = "args";
+/// The record label carrying the spawn mode in an `Exec::exec` payload:
+/// [`MODE_CAPTURED`] or [`MODE_INHERIT`].
+///
+/// The spawn-mode design: the captured reply is the typed contract for a
+/// consumed result (splices, bound values, scripts), while a discarded reply
+/// runs with inherited stdio so an interactive program behaves.
+pub const FIELD_MODE: &str = "mode";
+/// The `Exec::exec` spawn mode that captures the child's output.
+///
+/// Captures stdout/stderr into the typed `{stdout, stderr, exit_code}` reply —
+/// the contract for every consumed result. A payload with no `mode` field
+/// decodes as captured (the drift-safe default).
+pub const MODE_CAPTURED: &str = "captured";
+/// The `Exec::exec` spawn mode that inherits the parent's terminal.
+///
+/// The child inherits the parent's stdin/stdout/stderr, so an interactive
+/// program (`vim`, `less`, `ssh`) behaves. The reply's `stdout`/`stderr` are
+/// then empty and only `exit_code` is meaningful.
+pub const MODE_INHERIT: &str = "inherit";
+/// The record label carrying the standard-output string in an `exec` reply.
+pub const FIELD_STDOUT: &str = "stdout";
+/// The record label carrying the standard-error string in an `exec` reply.
+pub const FIELD_STDERR: &str = "stderr";
+/// The record label carrying the exit code in an `exec` reply.
+pub const FIELD_EXIT_CODE: &str = "exit_code";
+/// The record label carrying the target path in an `Fs::write` payload.
+pub const FIELD_PATH: &str = "path";
+/// The record label carrying the file contents in an `Fs::write` payload.
+pub const FIELD_CONTENTS: &str = "contents";
+/// The record label carrying the path kind in an `Fs::stat` reply.
+pub const FIELD_KIND: &str = "kind";
+/// The record label carrying the byte size in an `Fs::stat` reply.
+pub const FIELD_SIZE: &str = "size";
+
+/// The `Exec::exec` payload type
+/// `{program : String, args : List String, mode : String}`.
+///
+/// The `mode` field carries the spawn mode ([`MODE_CAPTURED`] /
+/// [`MODE_INHERIT`]); a payload with no `mode` field decodes as
+/// [`MODE_CAPTURED`] (the drift-safe default).
+#[inline]
+#[must_use]
+fn command_ty() -> ValueType
+{
+    ValueType::record([
+        (FIELD_PROGRAM.to_owned(), ValueType::string()),
+        (FIELD_ARGS.to_owned(), ValueType::list(ValueType::string())),
+        (FIELD_MODE.to_owned(), ValueType::string()),
+    ])
+}
+
+/// The `Exec::exec` reply type
+/// `{stdout : String, stderr : String, exit_code : Integer}`.
+#[inline]
+#[must_use]
+fn exec_result_ty() -> ValueType
+{
+    ValueType::record([
+        (FIELD_STDOUT.to_owned(), ValueType::string()),
+        (FIELD_STDERR.to_owned(), ValueType::string()),
+        (FIELD_EXIT_CODE.to_owned(), ValueType::integer()),
+    ])
+}
+
+/// The `Exec` effect signature: `exec : Command ↠ Output`.
+#[inline]
+#[must_use]
+pub fn exec() -> EffectSig
+{
+    EffectSig::new(EXEC.into(), vec![EffectOp::new(
+        EXEC_RUN.into(),
+        command_ty(),
+        exec_result_ty(),
+    )])
+}
+
+/// The `Fs::write` payload type `{path : String, contents : String}`.
+#[inline]
+#[must_use]
+fn write_ty() -> ValueType
+{
+    ValueType::record([
+        (FIELD_PATH.to_owned(), ValueType::string()),
+        (FIELD_CONTENTS.to_owned(), ValueType::string()),
+    ])
+}
+
+/// The `Fs::stat` reply type `{kind : String, size : Integer}`.
+#[inline]
+#[must_use]
+fn stat_ty() -> ValueType
+{
+    ValueType::record([
+        (FIELD_KIND.to_owned(), ValueType::string()),
+        (FIELD_SIZE.to_owned(), ValueType::integer()),
+    ])
+}
+
+/// The `Fs` effect signature: read / write / glob / stat / mkdir / tempdir /
+/// `ls_files` over the host filesystem.
+#[inline]
+#[must_use]
+pub fn fs() -> EffectSig
+{
+    let string_list = ValueType::list(ValueType::string());
+    EffectSig::new(FS.into(), vec![
+        EffectOp::new(FS_READ.into(), ValueType::string(), ValueType::string()),
+        EffectOp::new(FS_WRITE.into(), write_ty(), ValueType::Unit),
+        EffectOp::new(FS_GLOB.into(), ValueType::string(), string_list.clone()),
+        EffectOp::new(FS_STAT.into(), ValueType::string(), stat_ty()),
+        EffectOp::new(FS_MKDIR.into(), ValueType::string(), ValueType::Unit),
+        EffectOp::new(FS_TEMPDIR.into(), ValueType::Unit, ValueType::string()),
+        EffectOp::new(FS_CWD.into(), ValueType::Unit, ValueType::string()),
+        EffectOp::new(FS_LS_FILES.into(), ValueType::string(), string_list),
+    ])
+}
+
+/// The `Env` effect signature: read-only `get` / `path` over the process
+/// environment (the scoped `with-env` variant is deferred).
+#[inline]
+#[must_use]
+pub fn env() -> EffectSig
+{
+    EffectSig::new(ENV.into(), vec![
+        EffectOp::new(ENV_GET.into(), ValueType::string(), ValueType::string()),
+        EffectOp::new(
+            ENV_PATH.into(),
+            ValueType::Unit,
+            ValueType::list(ValueType::string()),
+        ),
+    ])
+}
+
+/// The `Proc` effect signature: `exit : Integer ↠ Unit`.
+#[inline]
+#[must_use]
+pub fn proc() -> EffectSig
+{
+    EffectSig::new(PROC.into(), vec![EffectOp::new(
+        PROC_EXIT.into(),
+        ValueType::integer(),
+        ValueType::Unit,
+    )])
 }

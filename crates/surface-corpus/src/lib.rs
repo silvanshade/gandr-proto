@@ -91,6 +91,7 @@
 
 use core::fmt::Write as _;
 
+use gandr_core_checker::host::FIELD_STDOUT;
 use gandr_core_checker::outcome::Blame;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::outcome::StuckReason;
@@ -102,7 +103,6 @@ use gandr_core_sequent::focus_term;
 use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
 use gandr_runtime_host::ShellOutcome;
-use gandr_runtime_host::sig::FIELD_STDOUT;
 use gandr_surface_engine::boundary::PipelineSource;
 use gandr_surface_engine::desc_elab::elaborate_data_descs;
 use gandr_surface_engine::lower::lower_source;

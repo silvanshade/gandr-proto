@@ -227,6 +227,7 @@ mod tests
     use gandr_core_checker::effect::EffectOp;
     use gandr_core_checker::effect::EffectSig;
     use gandr_core_checker::grade::Grade;
+    use gandr_core_checker::host as sig;
     use gandr_core_checker::outcome::Blame;
     use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::outcome::StuckReason;
@@ -243,7 +244,6 @@ mod tests
     use crate::boundary::ProcessExitCode;
     use crate::boundary::SpawnModeName;
     use crate::error::ShellError;
-    use crate::sig;
 
     /// Sentinel value that must not run after `proc.exit` truncates a program.
     const UNREACHED_AFTER_EXIT_CODE: i64 = 99;
@@ -953,6 +953,7 @@ mod l_host_outcomes
 {
     use gandr_core_checker::effect::EffectOp;
     use gandr_core_checker::effect::EffectSig;
+    use gandr_core_checker::host as sig;
     use gandr_core_checker::outcome::Blame;
     use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::syntax::Comp;
@@ -961,7 +962,6 @@ mod l_host_outcomes
 
     use super::ShellOutcome;
     use super::run_program;
-    use crate::sig;
 
     #[test]
     fn resuming_host_op_takes_the_reply_as_the_outcome()

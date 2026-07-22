@@ -1,14 +1,13 @@
-//! The source-level module surface over the canonical runtime-host signatures
-//! (proposal §3/§5: the thin v0 host handler intercepts the flat
-//! `Exec`/`Fs`/`Proc`/`Env` signature, performs the syscall, and resumes the
-//! delimited continuation with the reply).
+//! The source-level module surface over the canonical host signatures
+//! (`docs/gandr/spec/effects-control-shell.md` §3/§5).
 //!
-//! [`gandr_runtime_host::sig`] owns the `Exec` / `Fs` / `Proc` / `Env`
-//! signatures and operation-name constants. This module re-exports that
-//! authority for the surface engine's existing public API and adds only the
+//! [`gandr_core_checker::host`] owns the canonical `Exec` / `Fs` / `Proc` /
+//! `Env` signatures alongside the representation-independent host seam.
+//! This module explicitly re-exports that signature API and adds only the
 //! source-facing [`HostModule`] / [`HostMember`] metadata the lowerer needs.
-//! Keeping the signature builders in the runtime avoids both table duplication
-//! and a heavyweight runtime → surface-engine dependency.
+//! Keeping signatures with the seam avoids table duplication and any
+//! signature-driven surface-engine ↔ runtime-host coupling; the engine's only
+//! runtime edge is the host-capability adapter `run::run_source` composes.
 //!
 //! The **host modules** ([`HOST_MODULES`]) are the source-level surface
 //! (`host-module surface`): a call `fs.read(path)` whose head is a known host
@@ -22,7 +21,38 @@
 //! the ambient handler for these signatures.
 
 use gandr_core_checker::effect::EffectSig;
-pub use gandr_runtime_host::sig::*;
+pub use gandr_core_checker::host::ENV;
+pub use gandr_core_checker::host::ENV_GET;
+pub use gandr_core_checker::host::ENV_PATH;
+pub use gandr_core_checker::host::EXEC;
+pub use gandr_core_checker::host::EXEC_RUN;
+pub use gandr_core_checker::host::FIELD_ARGS;
+pub use gandr_core_checker::host::FIELD_CONTENTS;
+pub use gandr_core_checker::host::FIELD_EXIT_CODE;
+pub use gandr_core_checker::host::FIELD_KIND;
+pub use gandr_core_checker::host::FIELD_MODE;
+pub use gandr_core_checker::host::FIELD_PATH;
+pub use gandr_core_checker::host::FIELD_PROGRAM;
+pub use gandr_core_checker::host::FIELD_SIZE;
+pub use gandr_core_checker::host::FIELD_STDERR;
+pub use gandr_core_checker::host::FIELD_STDOUT;
+pub use gandr_core_checker::host::FS;
+pub use gandr_core_checker::host::FS_CWD;
+pub use gandr_core_checker::host::FS_GLOB;
+pub use gandr_core_checker::host::FS_LS_FILES;
+pub use gandr_core_checker::host::FS_MKDIR;
+pub use gandr_core_checker::host::FS_READ;
+pub use gandr_core_checker::host::FS_STAT;
+pub use gandr_core_checker::host::FS_TEMPDIR;
+pub use gandr_core_checker::host::FS_WRITE;
+pub use gandr_core_checker::host::MODE_CAPTURED;
+pub use gandr_core_checker::host::MODE_INHERIT;
+pub use gandr_core_checker::host::PROC;
+pub use gandr_core_checker::host::PROC_EXIT;
+pub use gandr_core_checker::host::env;
+pub use gandr_core_checker::host::exec;
+pub use gandr_core_checker::host::fs;
+pub use gandr_core_checker::host::proc;
 
 use crate::boundary::HostModuleName;
 use crate::boundary::HostOperation;
@@ -274,6 +304,14 @@ mod tests
                         );
                     },
                 }
+            }
+            for op in sig.ops() {
+                assert!(
+                    module.member(op.name().as_ref()).is_some(),
+                    "{}::{} must have source-module metadata",
+                    sig.name().as_ref(),
+                    op.name().as_ref()
+                );
             }
         }
         Ok(())

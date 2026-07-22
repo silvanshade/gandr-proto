@@ -289,3 +289,42 @@ pub fn prelude_env() -> Prelude
     let bindings: Vec<(String, Value)> = operator_bindings.chain(module_bindings).collect();
     Prelude::from_bindings(bindings)
 }
+
+#[cfg(test)]
+mod tests
+{
+    use alloc::vec;
+
+    use gandr_core_checker::outcome::Eval;
+    use gandr_core_sequent::machine::run_comp_with_prelude;
+
+    use super::*;
+
+    /// The wrapper preserves insertion order, and the L-machine focus resolves
+    /// duplicate names from the latest binding as the predecessor prelude did.
+    #[test]
+    fn ordered_bindings_shadow_from_the_right()
+    {
+        let bindings = vec![
+            (
+                "x".to_owned(),
+                Value::thunk(Grade::ONE, Comp::ret(Value::int(1))),
+            ),
+            (
+                "x".to_owned(),
+                Value::thunk(Grade::ONE, Comp::ret(Value::int(2))),
+            ),
+        ];
+        let prelude = Prelude::from_bindings(bindings.clone());
+        assert_eq!(
+            bindings.as_slice(),
+            prelude.as_bindings(),
+            "the wrapper preserves every binding in insertion order"
+        );
+        assert_eq!(
+            Eval::Value(Comp::ret(Value::int(2))),
+            run_comp_with_prelude(&Comp::force(Value::var("x")), prelude.as_bindings()),
+            "the later duplicate binding shadows the earlier binding"
+        );
+    }
+}
