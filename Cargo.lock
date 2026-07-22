@@ -651,7 +651,6 @@ version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
  "gandr-core-sequent",
- "gandr-surface-engine",
  "thiserror 2.0.19",
 ]
 
@@ -698,6 +697,7 @@ version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
  "gandr-core-sequent",
+ "gandr-runtime-host",
  "gandr-surface-grammar",
  "gandr-surface-parser",
  "gandr-surface-syntax",

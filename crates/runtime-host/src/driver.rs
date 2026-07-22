@@ -24,17 +24,16 @@
 //! outcome in place of that blamed [`Eval`]. A resumed operation flows straight
 //! through as [`HostReply::Resume`].
 //!
-//! # Parked
+//! # The source entry
 //!
-//! `run_source` / `run_source_file` — the CST → core lowering convenience that
-//! ran the pipeline lowerer before handing the program to the host loop —
-//! return with the surface engine; only the hand-built [`Comp`] entry
-//! ([`run_program`]) lands on the L-machine seam here.
+//! `run_source` — the CST → core lowering convenience that runs the pipeline
+//! lowerer before handing the program to the host loop — lives in the surface
+//! engine (`gandr_surface_engine::run::run_source`), which composes its
+//! lowering, linking, and prelude checking with [`run_program_with_prelude`];
+//! only the hand-built [`Comp`] entries land on the L-machine seam here.
 
 use gandr_core_checker::boundary::OperationName;
-use gandr_core_checker::checker;
 use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::error::TypeError;
 use gandr_core_checker::host::HostHandler;
 use gandr_core_checker::host::HostOp;
 use gandr_core_checker::host::HostReply;
@@ -43,11 +42,6 @@ use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Value;
 use gandr_core_sequent::machine::run_comp_with_host;
 use gandr_core_sequent::machine::run_comp_with_prelude_and_host;
-use gandr_surface_engine::boundary::PipelineSource;
-use gandr_surface_engine::link;
-use gandr_surface_engine::lower;
-use gandr_surface_engine::prelude_ctx;
-use gandr_surface_engine::prelude_env;
 
 use crate::error::ShellError;
 use crate::handler::HostAction;
@@ -94,63 +88,26 @@ impl ShellOutcome
     }
 }
 
-/// Lowers, links, type-checks, and runs one source program under the host.
+/// Runs a lowered computation under an ambient value prelude and the shell
+/// host on the L machine.
 ///
-/// # Errors
-///
-/// Returns [`RunError`] when lowering, linking, or type-checking the source
-/// fails before execution.
+/// This is the capability the surface engine's `run::run_source` composes with
+/// its lowering, linking, and prelude checking: the runtime owns the host seam
+/// and the canonical signatures, never the source pipeline.
 ///
 /// # Contract
-/// - ensures: a source with a final runnable item is checked under the same
-///   prelude used by [`gandr_surface_engine::session::Session`], then executed
-///   once with both that prelude and the host-effect handler installed;
-/// - fails: malformed source, an invalid runnable-item layout, or an ill-typed
-///   linked computation;
+/// - ensures: the program runs with `prelude` installed as the ambient value
+///   bindings and every host-interceptable `perform` offered to a fresh
+///   [`ShellHandler`], with `Proc::exit` and fatal syscalls truncating the run;
 /// - panics: none.
 #[inline]
-pub fn run_source<'source, S>(source: S) -> Result<ShellOutcome, RunError>
-where
-    S: Into<PipelineSource<'source>>,
+#[must_use]
+pub fn run_program_with_prelude(
+    comp: &Comp,
+    prelude: &[(String, Value)],
+) -> ShellOutcome
 {
-    let lowered = lower::lower_source(source.into())?;
-    let comp = link::link_program(&lowered)?;
-    checker::infer_comp(prelude_ctx(), comp.clone())?;
-    let prelude = prelude_env();
-    Ok(run_with_driver(|driver| {
-        run_comp_with_prelude_and_host(&comp, prelude.as_bindings(), driver)
-    }))
-}
-
-/// A failure preparing a source program for [`run_source`].
-#[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
-pub enum RunError
-{
-    /// The source failed to lower to core CBPV.
-    #[error("lowering failed: {0}")]
-    Lower(#[from] lower::LowerError),
-    /// The source has no final runnable item.
-    #[error("no runnable program: the source has no items or only declarations")]
-    NoProgram,
-    /// The lowered item stream is not a valid runnable source file.
-    #[error("program linking failed: {0}")]
-    Program(#[source] link::LinkError),
-    /// The linked computation is ill-typed and must not reach the host seam.
-    #[error("type checking failed: {0}")]
-    Type(#[from] TypeError),
-}
-
-impl From<link::LinkError> for RunError
-{
-    #[inline]
-    fn from(error: link::LinkError) -> Self
-    {
-        match error {
-            | link::LinkError::NoFinalProgram { named_count: 0 } => Self::NoProgram,
-            | other => Self::Program(other),
-        }
-    }
+    run_with_driver(|driver| run_comp_with_prelude_and_host(comp, prelude, driver))
 }
 
 /// Runs a lowered computation under the shell host on the L machine.
@@ -159,8 +116,9 @@ impl From<link::LinkError> for RunError
 /// [`gandr_core_sequent::machine::run_comp_with_host`]; each host-interceptable
 /// `perform` is offered to a fresh [`ShellHandler`] over the ADR-35 D4 seam.
 /// There is no ambient prelude here — the hand-built [`Comp`] entry runs
-/// exactly the operators and host effects it names. [`run_source`] is the
-/// prelude-bearing source entry.
+/// exactly the operators and host effects it names.
+/// [`run_program_with_prelude`] installs an ambient value prelude; the surface
+/// engine's `run::run_source` is the prelude-bearing source entry built on it.
 ///
 /// Takes the program by reference: the L driver
 /// ([`gandr_core_sequent::machine::run_comp_with_host`]) focuses and drives a

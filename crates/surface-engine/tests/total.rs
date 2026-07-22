@@ -265,8 +265,8 @@ mod tests
             assert_eq!(notes("thunk { ret 1; }"), vec![HoleNote::EmptyBlock]);
         }
         /// `InvalidIntegerLiteral` ⇒ a hole at the literal. A bare float now
-        /// lowers to `f64` (the design record), so the invalid case is an
-        /// i64-overflowing integer numeral (an out-of-range suffixed
+        /// lowers to `f64` (the value-model contract), so the invalid case is
+        /// an i64-overflowing integer numeral (an out-of-range suffixed
         /// literal behaves likewise).
         #[test]
         fn invalid_literal_becomes_a_hole()
@@ -515,7 +515,7 @@ mod tests
         /// sequences decoded, infers the rigid `String` atom on both
         /// implementations, and checks against a `: String` annotation (the
         /// type keyword lowers to the same atom). The value-model ladder's
-        /// first scalar rung (the design record).
+        /// first scalar rung (the value-model contract).
         #[test]
         fn string_literal_lowers_types_and_checks()
         {
@@ -563,7 +563,7 @@ mod tests
         /// implementations, monomorphically; a bare integer stays `Integer` but
         /// also checks against a sized atom it fits (the Rust `{integer}`
         /// rule); a bare float lowers to `f64`. The value-model
-        /// ladder's numeric primitive rung (the design record).
+        /// ladder's numeric primitive rung (the value-model contract).
         #[test]
         fn numeric_literals_lower_type_and_check()
         {
@@ -581,7 +581,7 @@ mod tests
             );
 
             // A float suffix on integral digits is the float value (`2f32` is
-            // `2.0f32`); a bare float defaults to f64 (the design record).
+            // `2.0f32`); a bare float defaults to f64 (the value-model contract).
             assert_eq!(
                 lower_total("def half = 1.5f32;\n").items[0].term,
                 Term::Value(Value::f32(1.5)),
@@ -613,7 +613,7 @@ mod tests
                 "a u32 literal checks against a : u32 annotation"
             );
 
-            // The Rust `{integer}` rule (the design record): a bare integer literal
+            // The Rust `{integer}` rule (the value-model contract): a bare integer literal
             // checks against a sized integer atom it fits.
             let widened = lower_total("def n = (8080 : u32);\n");
             assert_eq!(

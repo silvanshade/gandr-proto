@@ -218,8 +218,8 @@ mod tests
                 ValueType::stk(CompType::returner(atom("B")), CompType::returner(atom("C"))),
                 "Stk(F B, F C)",
             ),
-            // The declared-data handle renders its surface spelling (the design record): a
-            // parameterless datatype is its bare name, an applied one is
+            // The declared-data handle renders its surface spelling (the declared-data contract):
+            // a parameterless datatype is its bare name, an applied one is
             // name-and-arguments.
             (
                 ValueType::data(DataId::new(0, "Celsius"), Vec::new()),

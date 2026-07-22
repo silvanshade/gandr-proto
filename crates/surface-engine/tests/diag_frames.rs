@@ -64,7 +64,7 @@ mod tests
                 "def d = (case (Inl(1) : Integer + Integer) { Inl(x) => ret x, Inr(y) => ret zzz } : F \
                  Integer);",
             ),
-            // A split is check-only without a motive (rule Split⇓, the design record), so
+            // A split is check-only without a motive (rule Split⇓, the split rule), so
             // both frame cases ascribe the thunk to reach the split in checking
             // position (a bare inferred split is stuck-needs-motive before its
             // `Frame::Split` is pushed).

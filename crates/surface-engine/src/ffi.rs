@@ -148,7 +148,7 @@ impl ForeignFn
 }
 
 /// A foreign module — one `extern "abi" from "library" { … }` block
-/// (proposal-ffi.md §2), binding its members as the design record module
+/// (proposal-ffi.md §2), binding its members as the FFI contract module
 /// members under the namespace named by its `library` string.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]

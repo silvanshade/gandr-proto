@@ -35,9 +35,12 @@ use crate::boundary::PreludeMemberName;
 use crate::boundary::PreludeModuleName;
 /// Evaluation bindings consumed by the L machine's prelude focus.
 ///
+/// This preserves the predecessor `Prelude` contract exactly: construction
+/// performs no validation, binding order is retained, and later duplicate
+/// names shadow earlier names when the machine prepares its focus.
+///
 /// # Contract
-/// - ensures: preserves binding order; later duplicate names shadow earlier
-///   names when the L focuser prepares the machine.
+/// - ensures: preserves binding order and values byte-for-byte.
 /// - provides: a nominal boundary over the L machine's `(name, value)` slice.
 /// - panics: none.
 #[repr(transparent)]
@@ -181,7 +184,7 @@ pub fn is_module_member<
 /// Used by the lowerer to keep `M.member` where `M` is a known module on the
 /// module path even when the member is unknown (a declined hole, the design
 /// record: a module namespace is not a record value), rather than treating it
-/// as a record projection (the design record).
+/// as a record projection (the module-selection contract).
 ///
 /// # Contract
 /// - ensures: `true` iff some entry of [`MODULE_BUILTINS`] has module `name`.

@@ -1,7 +1,7 @@
 //! CST → core-CBPV lowering (`A2-PLAN.md` §§A2.1–A2.2).
 //!
 //! [`lower_source`] parses with the melder front-end
-//! ([`crate::synnode::SynTree`], the design record) viewed through the
+//! ([`crate::synnode::SynTree`], the lowering contract) viewed through the
 //! [`crate::synnode::SynNode`] adapter, walks the CST, and produces [`Lowered`]
 //! — items plus an [`crate::origin::OriginMap`]. Lowering is **syntax-directed
 //! and total-or-structured-error**: every construct either lowers or yields a
@@ -414,10 +414,10 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
-    /// Two copattern clauses answer the same observation `π` (the design record
-    /// §4.1: an observation is answered *exactly once*). Strict mode
-    /// rejects; total mode keeps the last clause (last-wins, as duplicate
-    /// record fields).
+    /// Two copattern clauses answer the same observation `π` (the lowering
+    /// contract §4.1: an observation is answered *exactly once*). Strict
+    /// mode rejects; total mode keeps the last clause (last-wins, as
+    /// duplicate record fields).
     #[error(
         "observation `{observation}` is answered by more than one copattern clause at bytes {byte_range:?}"
     )]
@@ -430,10 +430,11 @@ pub enum LowerError
     },
 
     /// A copattern definition against codata `C` leaves an observation `π`
-    /// unanswered (the design record §4.1: coverage requires every observation
-    /// answered). Strict mode rejects here; total mode omits the field and
-    /// lets the carrier ascription surface the gap as a record type
-    /// mismatch naming the missing observation (the coverage diagnostic).
+    /// unanswered (the copattern-coverage contract: coverage requires every
+    /// observation answered). Strict mode rejects here; total mode omits
+    /// the field and lets the carrier ascription surface the gap as a
+    /// record type mismatch naming the missing observation (the coverage
+    /// diagnostic).
     #[error(
         "codata `{codata}` definition does not answer observation `{observation}` at bytes {byte_range:?}"
     )]
@@ -548,20 +549,21 @@ pub struct Lowered
     /// boundary (§5.1).
     pub foreign: Vec<ForeignModule>,
     /// The `codata` blocks declared by *this* source, keyed by codata type name
-    /// (the design record §2). Like [`Self::foreign`], a `codata` block is a
-    /// declaration, not a runnable item — it yields no [`LoweredItem`].
-    /// Read through [`Self::codata`]: a REPL [`crate::session::Session`] merges
-    /// these into its persistent registry so a later submission's copattern
-    /// definition sees the declaration (the negative-declaration analogue
-    /// of the `extern` bridge).
+    /// (the codata-declaration contract). Like [`Self::foreign`], a `codata`
+    /// block is a declaration, not a runnable item — it yields no
+    /// [`LoweredItem`]. Read through [`Self::codata`]: a REPL
+    /// [`crate::session::Session`] merges these into its persistent
+    /// registry so a later submission's copattern definition sees the
+    /// declaration (the negative-declaration analogue of the `extern`
+    /// bridge).
     codata: BTreeMap<String, codata::CodataDecl>,
     /// The `data` blocks declared by *this* source, keyed by datatype name
-    /// (the design record Decision 4). Like [`Self::codata`], a `data` block is
-    /// a declaration, not a runnable item — it yields no [`LoweredItem`].
-    /// Read through [`Self::data`]: a renderer consults the declaration table's
-    /// constructor enumeration and minted `DataId` to print a
-    /// declared-constructor value as its `tag + name` (`Some(3)`, `Red`)
-    /// rather than the structural carrier.
+    /// (the data-declaration contract). Like [`Self::codata`], a `data` block
+    /// is a declaration, not a runnable item — it yields no
+    /// [`LoweredItem`]. Read through [`Self::data`]: a renderer consults
+    /// the declaration table's constructor enumeration and minted `DataId`
+    /// to print a declared-constructor value as its `tag + name`
+    /// (`Some(3)`, `Red`) rather than the structural carrier.
     data: BTreeMap<String, data::DataDecl>,
     /// Stable-ID-keyed CST origins, with compatibility path readback (see
     /// [`crate::origin`]).
@@ -584,7 +586,7 @@ impl Lowered
         &self.codata
     }
 
-    /// This source's own `data` declarations (the design record Decision 4),
+    /// This source's own `data` declarations (the data-declaration contract),
     /// keyed by datatype name — the decl table (constructor enumeration +
     /// minted `DataId`) a renderer resolves a declared-constructor value's
     /// `tag` against to print its constructor name.
@@ -728,13 +730,13 @@ pub fn lower_source_total_with_foreign(
 
 /// Parses `source` and lowers it totally, seeded with both the `foreign`
 /// (`extern`) and `codata` declaration registries a REPL session accumulated
-/// from earlier submissions (proposal-ffi.md §2; the design record §2). A later
-/// line's copattern definition `def rec f() -> C` is coverage-checked against,
-/// and a later `s.π` observation is disambiguated by, a `codata C` block
-/// declared on an earlier line — exactly as an `extern` module or a `def`
-/// bridges lines. The returned [`Lowered::foreign`] / [`Lowered::codata`] carry
-/// only *this* source's own declarations (what the caller merges into its
-/// registries).
+/// from earlier submissions (proposal-ffi.md §2; the codata-declaration
+/// contract). A later line's copattern definition `def rec f() -> C` is
+/// coverage-checked against, and a later `s.π` observation is disambiguated by,
+/// a `codata C` block declared on an earlier line — exactly as an `extern`
+/// module or a `def` bridges lines. The returned [`Lowered::foreign`] /
+/// [`Lowered::codata`] carry only *this* source's own declarations (what the
+/// caller merges into its registries).
 ///
 /// # Contract
 /// - ensures: a copattern definition or observation elaborates against a
@@ -1111,7 +1113,7 @@ struct ShellCommand<'tree>
     origin: OriginNode,
 }
 
-/// One parsed arm of a list-`case` (the design record): the empty-list arm
+/// One parsed arm of a list-`case` (the lowering contract): the empty-list arm
 /// `Nil`, or the cons arm `Cons(head, tail)` with its two binders.
 enum ListArm
 {
@@ -1175,13 +1177,13 @@ struct Lowerer<'src>
     /// The source text being lowered.
     source: PipelineSource<'src>,
     /// Allocator for `%tmpN` hoist binders — a monotone [`Gensym`] over the
-    /// [`GandrSort::TmpHoist`] atom sort (the design record).
+    /// [`GandrSort::TmpHoist`] atom sort (the lowering contract).
     hoist: Gensym<GandrSort>,
     /// Allocator for hole identifiers (total mode) — a monotone [`Gensym`] over
-    /// the [`GandrSort::HoleAddr`] atom sort (the design record). Identifiers
-    /// are minted in lowering-attempt order; statement-level recovery may
-    /// discard a failed attempt's mints, so identifiers are unique and
-    /// deterministic but not necessarily contiguous.
+    /// the [`GandrSort::HoleAddr`] atom sort (the lowering contract).
+    /// Identifiers are minted in lowering-attempt order; statement-level
+    /// recovery may discard a failed attempt's mints, so identifiers are
+    /// unique and deterministic but not necessarily contiguous.
     holes: Gensym<GandrSort>,
     /// The lowering mode.
     strictness: Strictness,
@@ -1192,7 +1194,7 @@ struct Lowerer<'src>
     /// a member of one of these elaborates to a `perform` (§3.1).
     foreign: BTreeMap<String, ForeignModule>,
     /// The `codata` blocks declared in this source, keyed by codata type name
-    /// (the design record §2). Built in a pre-pass at the start of
+    /// (the codata-declaration contract). Built in a pre-pass at the start of
     /// [`Self::source_file`] (like [`Self::foreign`]) so a later copattern
     /// definition `def rec f() -> C { … }` is elaborated and
     /// coverage-checked against `C`'s observation set regardless of source
@@ -1206,7 +1208,7 @@ struct Lowerer<'src>
     /// label-driven analogue of module-select disambiguation.
     observations: BTreeSet<String>,
     /// The `data` blocks declared in this source, keyed by datatype name (the
-    /// positive-declaration analogue of [`Self::codata`]; the design record
+    /// positive-declaration analogue of [`Self::codata`]; the lowering contract
     /// Decision 4). Built by the [`Self::collect_data`] pre-pass at the
     /// start of [`Self::source_file`] so a later item's constructor
     /// application `C(v̄)` or `case v { … }` resolves against the datatype
@@ -1217,7 +1219,7 @@ struct Lowerer<'src>
     data: BTreeMap<String, data::DataDecl>,
     /// Every declared constructor name mapped to its `(datatype name, tag)` —
     /// the constructor-resolution map a `C(v̄)` call / bare `C` / `case` arm
-    /// consults (the design record). Populated alongside [`Self::data`].
+    /// consults (the lowering contract). Populated alongside [`Self::data`].
     constructors: BTreeMap<String, (String, usize)>,
     /// The parse's severity-ordered obligations. Total-mode recovery resolves
     /// each grout-leaf hole's [`HoleNote`] from the obligation responsible for
@@ -1520,7 +1522,7 @@ impl Lowerer<'_>
     }
 
     /// Lowers a bare `number` token (no type suffix) to a value literal
-    /// (the design record).
+    /// (the lowering contract).
     ///
     /// A *float-shaped* numeral — one carrying a fractional point or an
     /// exponent — lowers to an `f64` [`Value::Num`] (Rust's default for an
@@ -1559,7 +1561,7 @@ impl Lowerer<'_>
 
     /// Lowers a `typed_number` token (a Rust-style type-suffixed numeric
     /// literal, `8080u32` / `1.5f64` / `2f32`) to the corresponding
-    /// [`Value::Num`] (the design record).
+    /// [`Value::Num`] (the lowering contract).
     ///
     /// The grammar guarantees the text ends in one of the six three-character
     /// primitive suffixes; it is split off and the digit part parsed as that
@@ -1839,10 +1841,10 @@ impl Lowerer<'_>
         let arguments_node = required_field(node, node_kinds::FIELD_ARGUMENTS)?;
         let arguments = named_non_extra_children(arguments_node);
 
-        // The identity intro `here(v)` (the design record): a reserved lowercase call
-        // head resolved by name (like the `Inl`/`Inr` constructors), lowering
-        // to the value former `Value::Here`. A failed intro (wrong arity)
-        // elides the whole call in total mode.
+        // The identity intro `here(v)` (the lowering contract): a reserved lowercase
+        // call head resolved by name (like the `Inl`/`Inr` constructors),
+        // lowering to the value former `Value::Here`. A failed intro (wrong
+        // arity) elides the whole call in total mode.
         let function_head = if function.kind() == node_kinds::IDENTIFIER {
             let function_head = self.text(function)?;
             Some(function_head.0)
@@ -1861,12 +1863,12 @@ impl Lowerer<'_>
         }
 
         // The identity eliminator `walk(p, fn(x, y, q) { C }, fn(x) { c })`
-        // (the design record): a reserved lowercase call head resolved by name — the
-        // eliminator is `walk` (not the capitalized `J` of the literature), so
-        // like `here` it is recognized here rather than as a constructor call —
-        // lowering to the computation former `Comp::Walk`. A failed eliminator
-        // (wrong arity, non-lambda motive/base, out-of-rung motive body) elides
-        // the whole call in total mode.
+        // (the lowering contract): a reserved lowercase call head resolved by name —
+        // the eliminator is `walk` (not the capitalized `J` of the literature),
+        // so like `here` it is recognized here rather than as a constructor
+        // call — lowering to the computation former `Comp::Walk`. A failed
+        // eliminator (wrong arity, non-lambda motive/base, out-of-rung motive
+        // body) elides the whole call in total mode.
         if function_head == Some(node_kinds::NAME_WALK) {
             let j = match self.walk_call(node, &arguments) {
                 | Err(ref error) if bool::from(self.total()) => self.comp_hole(node, error)?,
@@ -1997,7 +1999,7 @@ impl Lowerer<'_>
     ///   foreign selection (a genuine record projection or module builtin falls
     ///   through to the ordinary call path).
     /// - fails: [`LowerError::Unsupported`] for a known foreign module with an
-    ///   unknown member (the design record — a module namespace is not a
+    ///   unknown member (the lowering contract — a module namespace is not a
     ///   record) or an arity mismatch against the declared signature.
     /// - panics: none.
     fn foreign_call(
@@ -2093,7 +2095,7 @@ impl Lowerer<'_>
     ///   `None` when the head is not a host module (a genuine record projection
     ///   or prelude module builtin falls through to the ordinary call path).
     /// - fails: [`LowerError::Unsupported`] for a known host module with an
-    ///   unknown member (the design record — a module namespace is not a
+    ///   unknown member (the lowering contract — a module namespace is not a
     ///   record) or an arity mismatch against the declared parameters.
     /// - panics: none.
     fn host_call(
@@ -2192,14 +2194,14 @@ impl Lowerer<'_>
             | node_kinds::NAME_INL => Side::Fst,
             | node_kinds::NAME_INR => Side::Snd,
             // A declared-data constructor `C(v̄)` lowers to the nominal
-            // constructor-tagged value (the design record Decision 2); an unknown
+            // constructor-tagged value (the constructor-lowering contract); an unknown
             // constructor is out of fragment.
             | other if self.is_data_constructor(other.into()).into() => {
                 // No enclosing ascription here (a bare constructor application);
                 // its fields are lowered unchecked. The field-type discipline
                 // applies when an ascription reaches the constructor through
                 // [`Self::value_expr_expecting`], itself stuck under inference
-                // until then (the design record Decision 2 is check-only).
+                // until then (the constructor-lowering contract is check-only).
                 return self.data_constructor(call_node, constructor, arguments, hoists, None);
             },
             | _ => {
@@ -2256,7 +2258,7 @@ impl Lowerer<'_>
     }
 
     /// Lowers the identity eliminator `walk(p, fn(x, y, q) { C }, fn(x) { c })`
-    /// to [`Comp::Walk`] (the design record; rule `Walk`, rung 1 — explicit
+    /// to [`Comp::Walk`] (the lowering contract; rule `Walk`, rung 1 — explicit
     /// motives only).
     ///
     /// The motive and base are part of the `Walk` **syntax form** (`Arrow` is
@@ -2356,8 +2358,8 @@ impl Lowerer<'_>
 
     /// Lowers a `Walk` motive body — a **type** under the motive binders,
     /// parsed in expression position (the motive is part of the `Walk`
-    /// syntax form; the design record). The body block must be a single tail
-    /// expression, in one of two rung-1 shapes:
+    /// syntax form; the lowering contract). The body block must be a single
+    /// tail expression, in one of two rung-1 shapes:
     ///
     /// * **an ascribed hole `(? : C)`** — the ascription's annotation parses in
     ///   genuine *type* position, so the full type grammar is available
@@ -2411,7 +2413,7 @@ impl Lowerer<'_>
                 let ty_node = required_field(tail, node_kinds::FIELD_TYPE)?;
                 // Route through the declared-data-aware seam so a motive
                 // mentioning a declared datatype (`? : F Maybe(Integer)`) sees
-                // the nominal handle at any depth (the design record).
+                // the nominal handle at any depth (the lowering contract).
                 match self.lower_type_node(ty_node)? {
                     | Ty::Comp(comp_ty) => Ok(comp_ty),
                     // A value-sorted motive is the F-wrapped special case.
@@ -2515,9 +2517,10 @@ impl Lowerer<'_>
 
     /// Lowers a `case` expression, dispatching on the arm constructors: a
     /// `case` whose arms use `Nil` / `Cons` is the list eliminator
-    /// ([`Comp::ListCase`], the design record); otherwise it is the sum case
-    /// ([`Comp::Case`], `Inl` / `Inr`). The classification is syntactic — the
-    /// constructor names, decidable at lowering with no type information.
+    /// ([`Comp::ListCase`], the lowering contract); otherwise it is the sum
+    /// case ([`Comp::Case`], `Inl` / `Inr`). The classification is
+    /// syntactic — the constructor names, decidable at lowering with no
+    /// type information.
     fn case(
         &mut self,
         node: SynNode<'_>,
@@ -2526,7 +2529,7 @@ impl Lowerer<'_>
         // A `case` over declared constructors, or an EMPTY `case v {}` (the
         // absurd match over an uninhabited datatype — no arm reveals the
         // constructor family, so it can only be the declared-data eliminator),
-        // lowers to `Comp::DataCase` (the design record Decision 3).
+        // lowers to `Comp::DataCase` (the lowering contract Decision 3).
         if bool::from(self.case_arms_are_data(node)) || bool::from(Self::case_arms_empty(node)) {
             self.data_case(node)
         }
@@ -2723,7 +2726,7 @@ impl Lowerer<'_>
     /// Lowers `case v { Nil => t, Cons(h, t) => u }` to [`Comp::ListCase`],
     /// arms normalized nil-then-cons; a missing arm is
     /// [`LowerError::MissingCaseArm`] in strict mode (a hole body in total
-    /// mode), exactly as [`Self::sum_case`] (the design record). The term
+    /// mode), exactly as [`Self::sum_case`] (the lowering contract). The term
     /// children are the scrutinee (0), the `nil` body (1), and the `cons`
     /// body (2) — the `origin::resolve` order.
     fn list_case(
@@ -2835,7 +2838,7 @@ impl Lowerer<'_>
 
     /// Parses one list-`case` arm: a `Nil` (no arguments) or `Cons(head, tail)`
     /// (exactly two identifier/wildcard arguments) constructor pattern, and the
-    /// arm's body in computation position (the design record).
+    /// arm's body in computation position (the lowering contract).
     fn list_case_arm(
         &mut self,
         node: SynNode<'_>,
@@ -3169,13 +3172,13 @@ impl Lowerer<'_>
     }
 
     /// Lowers a record field projection `record.ℓ` to [`Comp::RecordProj`]
-    /// (the design record): the target lowers in *value position* (the record
-    /// is a value) and the projection is the resulting computation. A
-    /// capitalized target token is accepted here as a variable so
+    /// (the lowering contract): the target lowers in *value position* (the
+    /// record is a value) and the projection is the resulting computation.
+    /// A capitalized target token is accepted here as a variable so
     /// `Module.field` uses the same ordinary projection path as
     /// `module.field` without admitting bare constructors elsewhere. The
     /// dispatch reaches here from [`Self::projection`] for any field name
-    /// that is neither a module member (the design record module-select)
+    /// that is neither a module member (the lowering contract module-select)
     /// nor the structural `fst` / `snd`.
     fn record_projection(
         &mut self,
@@ -3257,11 +3260,11 @@ impl Lowerer<'_>
             false
         };
         // Otherwise it is a structural projection `t.fst` / `t.snd`, the record
-        // field projection `t.ℓ` (the design record), or — for a known module with an
-        // unknown member — a declined hole (the design record: a module namespace is
-        // not a record value, so a non-member is an error rather than a
-        // projection). The owned label releases the `field_text` borrow so the
-        // record path can take `&mut self`.
+        // field projection `t.ℓ` (the lowering contract), or — for a known module with
+        // an unknown member — a declined hole (the lowering contract: a module
+        // namespace is not a record value, so a non-member is an error rather
+        // than a projection). The owned label releases the `field_text` borrow
+        // so the record path can take `&mut self`.
         let record_label = match field_text.0 {
             | node_kinds::NAME_FST | node_kinds::NAME_SND => None,
             | _ if target_is_known_module => {
@@ -3897,7 +3900,7 @@ impl Lowerer<'_>
     ///
     /// The lowerer always emits [`MODE_CAPTURED`](crate::host::MODE_CAPTURED):
     /// every `#!{ … }` block produces a consumed result (a bound value), so the
-    /// corpus is unchanged (the design record). The inherit mode is a
+    /// corpus is unchanged (the lowering contract). The inherit mode is a
     /// driver-level decision for a discarded REPL command line, never a
     /// lowering of source.
     fn exec_command(command: HostCommand) -> Comp
@@ -4023,7 +4026,7 @@ impl Lowerer<'_>
             let annotation = match parameter.child_by_field_name(node_kinds::FIELD_TYPE) {
                 // Route through `lower_value_type_node` so a declared-datatype
                 // parameter annotation `f(m: Maybe(a))` sees the nominal handle
-                // (the design record).
+                // (the lowering contract).
                 | Some(ty_node) => Some({
                     let lower_value_type_node = self.lower_value_type_node(ty_node)?;
                     core::convert::identity(lower_value_type_node)
@@ -4104,11 +4107,11 @@ impl Lowerer<'_>
                 }
             }
             // Pre-pass: register every `codata` block into the codata registry
-            // (the design record §2), before lowering any item, so a copattern definition
-            // `def rec f() -> C { … }` is coverage-checked against `C`'s
-            // observations regardless of source order. Like `extern`, a `codata`
-            // block is a declaration, not a runnable item — it yields no
-            // [`LoweredItem`].
+            // (the codata-declaration contract), before lowering any item, so a copattern
+            // definition `def rec f() -> C { … }` is coverage-checked against
+            // `C`'s observations regardless of source order. Like `extern`, a
+            // `codata` block is a declaration, not a runnable item — it yields
+            // no [`LoweredItem`].
             for child in named_non_extra_children(root) {
                 if child.kind() != node_kinds::CODATA_DECLARATION {
                     continue;
@@ -4120,7 +4123,7 @@ impl Lowerer<'_>
                 }
             }
             // Pre-pass: register every `data D(ā) { … }` block into the data
-            // registry (the design record Decision 4), before lowering any item, so a
+            // registry (the data-declaration contract), before lowering any item, so a
             // constructor application `C(v̄)` or `case v { … }` resolves against
             // the datatype regardless of source order. Like `codata`, a `data`
             // block is a declaration, not a runnable item — it yields no
@@ -4135,7 +4138,7 @@ impl Lowerer<'_>
                         | node_kinds::DATA_DECLARATION
                 ) {
                     // Consumed by the pre-passes above (a `data` block is a
-                    // declaration, not a runnable item; the design record).
+                    // declaration, not a runnable item; the lowering contract).
                     continue;
                 }
                 if child.kind() == node_kinds::DEF_SIGNATURE {
@@ -4336,7 +4339,7 @@ impl Lowerer<'_>
     /// [`ForeignModule`] (proposal-ffi.md §2). The block's `library` string is
     /// the module namespace; each `type Name;` is an opaque handle type (§4.4)
     /// and each bodyless `def name(params) -> T;` is a foreign function whose
-    /// members bind as the design record module members.
+    /// members bind as the lowering contract module members.
     ///
     /// # Contract
     /// - ensures: on success, a [`ForeignModule`] named by the `library`
@@ -5122,7 +5125,7 @@ impl Lowerer<'_>
             }
             .to_owned(),
             // Route through `lower_type_node` so a declared-datatype signature
-            // `def x : Maybe(Integer);` sees the nominal handle (the design record).
+            // `def x : Maybe(Integer);` sees the nominal handle (the lowering contract).
             ty: self.lower_type_node(ty_node)?,
             byte_range: child.byte_range(),
             node: child.cst_node(),
@@ -5267,7 +5270,7 @@ impl Lowerer<'_>
         let result_ty = match node.child_by_field_name(node_kinds::FIELD_RESULT) {
             // Declared-data-aware so a result type mentioning a declared
             // datatype (`-> F Maybe(Integer)`) sees the nominal handle at any
-            // depth (the design record).
+            // depth (the lowering contract).
             | Some(result_node) => Some({
                 let lower_comp_type_node = self.lower_comp_type_node(result_node)?;
                 core::convert::identity(lower_comp_type_node)
@@ -5877,7 +5880,7 @@ mod tests
             .ok_or_else(|| "an unknown foreign member must be rejected".to_owned())?;
         assert!(
             matches!(error, LowerError::Unsupported { .. }),
-            "a known module with an unknown member is Unsupported (the design record), got {error:?}"
+            "a known module with an unknown member is Unsupported, got {error:?}"
         );
         Ok(())
     }
@@ -6076,7 +6079,7 @@ mod tests
             .ok_or_else(|| "an unknown host member must be rejected".to_owned())?;
         assert!(
             matches!(error, LowerError::Unsupported { .. }),
-            "a host module with an unknown member is Unsupported (the design record), got {error:?}"
+            "a host module with an unknown member is Unsupported, got {error:?}"
         );
         Ok(())
     }

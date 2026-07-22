@@ -6,14 +6,13 @@ name = "gandr-runtime-host"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Headless host-effect runtime for gandr: native Exec/Fs/Proc/Env handlers over the ADR-35 D4 host-effect seam, driven by the L machine (run_comp_with_host)"
+description = "Headless host-effect runtime for gandr: native Exec/Fs/Proc/Env handlers over the host-effect seam, driven by the L machine (run_comp_with_host)"
 license.workspace = true
 publish.workspace = true
 
 [dependencies]
 gandr-core-checker = { path = "../core-checker" }
 gandr-core-sequent = { path = "../core-sequent" }
-gandr-surface-engine = { path = "../surface-engine" }
 thiserror = { workspace = true }
 
 [features]

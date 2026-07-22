@@ -317,7 +317,7 @@ mod tests
                         ..
                     })
                 }),
-                // `List(Integer)` is now in-fragment (the design record), so this fixture
+                // `List(Integer)` is now in-fragment (the surface contract), so this fixture
                 // lowers its `map_square` and first-errors on the A8 shell
                 // pipeline inside the shell block.
                 ("benchmark-mixed", |error| {
@@ -339,7 +339,7 @@ mod tests
             }
 
             // A *non*-`List` type application is still out of fragment (only
-            // `List(A)` lowers; the design record), yielding a structured
+            // `List(A)` lowers; the surface contract), yielding a structured
             // `type_application` error — the coverage `benchmark-mixed` no longer
             // provides now that its `List(Integer)` is in-fragment.
             let non_list = lower_source("def g = (() : Foo(Integer));\n".into())
@@ -618,8 +618,8 @@ mod tests
         }
         /// A list literal lowers to `Value::List`; a `List(A)` annotation to
         /// `ValueType::List`; and a `case` with `Nil`/`Cons` arms to
-        /// `Comp::ListCase` (the design record), dispatched away from the sum
-        /// case by the constructor names.
+        /// `Comp::ListCase` (the surface contract), dispatched away from the
+        /// sum case by the constructor names.
         #[test]
         fn list_literal_and_list_case_lower()
         {
@@ -1520,28 +1520,28 @@ mod tests
                     LowerError::InvalidIntegerLiteral { .. }
                 ),
                 "an i64-overflowing integer literal is InvalidIntegerLiteral (a bare \
-                 float now lowers to f64, the design record)"
+                 float now lowers to f64, the surface contract)"
             );
             assert!(
                 matches!(
                     lower_err("def x = 4294967296u32;"),
                     LowerError::InvalidIntegerLiteral { .. }
                 ),
-                "a u32 literal out of range is InvalidIntegerLiteral (the design record)"
+                "a u32 literal out of range is InvalidIntegerLiteral (the surface contract)"
             );
             assert!(
                 matches!(
                     lower_err("def x = 1e400;"),
                     LowerError::InvalidIntegerLiteral { .. }
                 ),
-                "a bare float that overflows f64 to a non-finite value is rejected (the design record)"
+                "a bare float that overflows f64 to a non-finite value is rejected (the surface contract)"
             );
             assert!(
                 matches!(
                     lower_err("def x = 1e400f64;"),
                     LowerError::InvalidIntegerLiteral { .. }
                 ),
-                "a suffixed float that overflows f64 is rejected (the design record)"
+                "a suffixed float that overflows f64 is rejected (the surface contract)"
             );
             assert!(
                 matches!(

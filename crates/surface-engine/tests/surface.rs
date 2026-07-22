@@ -213,7 +213,7 @@ mod tests
     fn a_module_namespace_is_not_a_projectable_record()
     {
         // A known member selects to the flat qualified variable (module-select,
-        // the design record): `list.each` ⇒ `Value::Var("list.each")`.
+        // the module-selection contract): `list.each` ⇒ `Value::Var("list.each")`.
         assert!(
             matches!(
                 strict_term("list.each"),
@@ -222,7 +222,7 @@ mod tests
             "a known module member selects to the qualified variable"
         );
         // A bare selection of an unknown member from a known module is declined
-        // (the design record): a module namespace is not a record value.
+        // (the module-selection contract): a module namespace is not a record value.
         let error = strict_error("list.nonesuch");
         assert!(
             matches!(error, LowerError::Unsupported {

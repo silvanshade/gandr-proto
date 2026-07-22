@@ -17,10 +17,10 @@
 //!   hole goals into one versioned, serde-JSON [`diag::Report`] — the v0 of the
 //!   agent stream (D7).
 //! - **Entity attributes** ([`attributes`]): the `@[…]` marker's registry,
-//!   payload checker path (iterative, the design record), and inert side table,
-//!   projected into [`diag::Report::attributes`] (proposal-attributes.md; ADR
-//!   "entity attributes"). Hash-neutral — an inert attribute never enters an
-//!   item's core-IR term.
+//!   payload checker path (iterative, the attribute contract), and inert side
+//!   table, projected into [`diag::Report::attributes`]
+//!   (proposal-attributes.md). Hash-neutral — an inert attribute never enters
+//!   an item's core-IR term.
 //! - **A2.3 — dependency-validated checkpoints** ([`footprint`],
 //!   [`checkpoint`]): [`footprint::footprint_of`] captures the dependency
 //!   footprint of a lowered item — the context names its term read
@@ -35,10 +35,10 @@
 //!   [`gandr_theory_orders`] (§7 Porter disposition).
 //! - **Edit-action reconstruction** ([`edit`]): the localized structured diff
 //!   of two lowerings — the Porter/Pantograph "edit-action" both consume but
-//!   leave out of scope (`incremental-pipeline.md` §7; ADR `edit-action
-//!   reconstruction`). A foundation-independent A2 brick: it needs neither the
-//!   checkpoint base (A2.3) nor the solver, so it lands ahead of them as the
-//!   seam they will consume.
+//!   leave out of scope (`incremental-pipeline.md` §7). A
+//!   foundation-independent A2 brick: it needs neither the checkpoint base
+//!   (A2.3) nor the solver, so it lands ahead of them as the seam they will
+//!   consume.
 //!
 //! Later rungs add the streaming driver (A2.5) and the per-term-node,
 //! solver-coupled checkpoint granularity above the item-level A2.3 base here.
@@ -141,6 +141,7 @@ pub mod lower;
 pub mod origin;
 pub mod prelude;
 pub mod render;
+pub mod run;
 pub mod session;
 pub mod synnode;
 

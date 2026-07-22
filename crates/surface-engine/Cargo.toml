@@ -18,6 +18,7 @@ path = "tests/engine.rs"
 [dependencies]
 gandr-core-checker = { path = "../core-checker" }
 gandr-core-sequent = { path = "../core-sequent" }
+gandr-runtime-host = { path = "../runtime-host" }
 gandr-surface-grammar = { path = "../surface-grammar" }
 gandr-surface-parser = { path = "../surface-parser" }
 gandr-surface-syntax = { path = "../surface-syntax" }

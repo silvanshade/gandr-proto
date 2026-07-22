@@ -1,5 +1,7 @@
-//! The headless host-effect runtime for gandr (proposal
-//! `docs/gandr/spec/effects-control-shell.md` §3/§5, ADR-35 D4).
+//! The headless host-effect runtime for gandr: the thin v0 host handler of
+//! `docs/gandr/spec/effects-control-shell.md` §3/§5 — a top-level handler that
+//! intercepts the flat `Exec`/`Fs`/`Proc`/`Env` signature, performs the
+//! syscall, and resumes the delimited continuation with the reply.
 //!
 //! This crate is the *host* side of the effect seam: the native interpreter for
 //! the `Exec` / `Fs` / `Env` / `Proc` operations no source-level handler
@@ -25,20 +27,25 @@
 //!   dispatcher ([`ShellHandler::dispatch`]) that carries each intercepted
 //!   operation out to a real syscall over `std::process` / `std::fs` /
 //!   `std::env`.
-//! - [`run_program`] / [`run_source`] — drivers that flow checked core or
-//!   source text through the host-effect seam to a [`ShellOutcome`], with
-//!   `Proc::exit` and fatal syscalls truncating the run.
+//! - [`run_program`] — the driver that flows a program through the host-effect
+//!   seam to a [`ShellOutcome`], with `Proc::exit` and fatal syscalls
+//!   truncating the run. [`run_program_with_prelude`] drives the same seam with
+//!   an ambient value prelude installed.
 //!
-//! **Soundness (v0).** `Σ` is vacuous and resumption is multi-shot (ADR-34), so
-//! the host is an always-resume ambient handler on the seam; the eager OS pipe
-//! between external commands is a stopgap, NOT the typed A8 `Pipe` session; the
-//! op set is named `Exec`/`Fs`/`Proc`/`Env` and does not appropriate the
-//! reserved A8 name `Shell`.
+//! **Soundness (v0).** `Σ` is vacuous and resumption is multi-shot — a
+//! captured continuation prefix is reified as a plain stack value with the
+//! handler reinstalled, so a captured continuation may be resumed any number
+//! of times — so the host is an always-resume ambient handler on the seam; the
+//! eager OS pipe between external commands is a stopgap, NOT the typed A8
+//! `Pipe` session; the op set is named `Exec`/`Fs`/`Proc`/`Env` and does not
+//! appropriate the reserved A8 name `Shell`.
 //!
-//! [`run_source`] composes the surface engine’s strict lowering, linking, and
-//! prelude-aware checking with the L-machine host seam. [`run_program`] remains
-//! the exact hand-built [`Comp`](gandr_core_checker::syntax::Comp) entry with
-//! no ambient prelude.
+//! Source-text convenience entry points stay in the surface engine:
+//! `gandr_surface_engine::run::run_source` composes the engine's lowering,
+//! linking, and prelude checking with [`run_program_with_prelude`]. This
+//! headless host owns the canonical signatures and accepts already-lowered,
+//! hand-built [`Comp`](gandr_core_checker::syntax::Comp) programs through
+//! [`run_program`].
 //!
 //! ```
 //! use gandr_core_checker::syntax::Comp;
@@ -93,11 +100,10 @@ pub mod codec;
 pub mod driver;
 pub mod error;
 pub mod handler;
-pub use gandr_surface_engine::host as sig;
+pub mod sig;
 
-pub use crate::driver::RunError;
 pub use crate::driver::ShellOutcome;
 pub use crate::driver::run_program;
-pub use crate::driver::run_source;
+pub use crate::driver::run_program_with_prelude;
 pub use crate::error::ShellError;
 pub use crate::handler::ShellHandler;

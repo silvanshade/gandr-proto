@@ -11,17 +11,17 @@
 //! because its checkpoints live inside the stepping typing machine.
 //!
 //! This module captures the footprint the *current* architecture actually
-//! exposes. As built (2026-07-11, tree-sitter-free / melder push machine, ADR
-//! 73), the runnable typing surface is item-granular: top-level items lower
-//! independently and are typed against an accumulating context ([`Ctx`]) that a
-//! [`crate::session::Session`] threads from item to item — a processed
-//! `def name = A` binds `name : A` for later items to read. The one piece of
-//! shared, edit-mutable state threaded across items is therefore that
-//! name → type context, and an item's footprint is exactly **the set of
-//! context names its lowered term read** (its free variables). This is the §4
-//! footprint specialized to the item granularity: condition 2 ("no `tyvars` in
-//! the footprint were re-assigned") becomes "no *name* the item read had its
-//! binding change", the same soundness shape one stratum up.
+//! exposes. With the tree-sitter-free melder push machine, the runnable typing
+//! surface is item-granular: top-level items lower independently and are typed
+//! against an accumulating context ([`Ctx`]) that a [`crate::session::Session`]
+//! threads from item to item — a processed `def name = A` binds `name : A` for
+//! later items to read. The one piece of shared, edit-mutable state threaded
+//! across items is therefore that name → type context, and an item's footprint
+//! is exactly **the set of context names its lowered term read** (its free
+//! variables). This is the §4 footprint specialized to the item granularity:
+//! condition 2 ("no `tyvars` in the footprint were re-assigned") becomes "no
+//! *name* the item read had its binding change", the same soundness shape one
+//! stratum up.
 //!
 //! [`Ctx`]: gandr_core_checker::ctx::Ctx
 //!
