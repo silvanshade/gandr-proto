@@ -1,6 +1,7 @@
 //! `gandr-gf-docs` CLI: the `PoC` lanes — toolchain provisioning, grammar
 //! compilation, migration, validation, rendering, and the full arc.
 
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -39,28 +40,20 @@ fn run(args: &[String]) -> Result<(), String>
         | Some("migrate") => {
             let xml = flag(args, "--xml")?;
             let out = flag(args, "--out")?;
-            let gfd = translate_file(&xml).map_err(|e| e.to_string())?;
-            std::fs::write(&out, gfd).map_err(|e| e.to_string())
+            do_migrate(&xml, &out)
         },
         | Some("check") => {
             let pgf = flag(args, "--pgf")?;
             let lang = flag(args, "--lang")?;
-            let runtime = PyPgf::load(&pgf.to_string_lossy(), &lang.to_string_lossy())
-                .map_err(|e| e.to_string())?;
-            let gfd = std::fs::read_to_string(flag(args, "--gfd")?).map_err(|e| e.to_string())?;
-            runtime.check(&gfd).map_err(|e| e.to_string())
+            let gfd = flag(args, "--gfd")?;
+            do_check(&pgf, &lang.to_string_lossy(), &gfd)
         },
         | Some("build") => {
             let pgf = flag(args, "--pgf")?;
             let lang = flag(args, "--lang")?;
-            let runtime = PyPgf::load(&pgf.to_string_lossy(), &lang.to_string_lossy())
-                .map_err(|e| e.to_string())?;
-            let gfd = std::fs::read_to_string(flag(args, "--gfd")?).map_err(|e| e.to_string())?;
-            let body = build_body(&runtime, &gfd).map_err(|e| e.to_string())?;
-            let page = format!(
-                "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>gf-docs PoC</title>\n</head>\n<body>\n{body}\n</body>\n</html>\n"
-            );
-            std::fs::write(flag(args, "--out")?, page).map_err(|e| e.to_string())
+            let gfd = flag(args, "--gfd")?;
+            let out = flag(args, "--out")?;
+            do_build(&pgf, &lang.to_string_lossy(), &gfd, &out)
         },
         | Some("poc") => poc(),
         | _ => Err(
@@ -68,6 +61,45 @@ fn run(args: &[String]) -> Result<(), String>
                 .to_owned(),
         ),
     }
+}
+
+/// The migrate lane body: `XML` → `.gfd`.
+fn do_migrate(
+    xml: &Path,
+    out: &Path,
+) -> Result<(), String>
+{
+    let gfd = translate_file(xml).map_err(|e| e.to_string())?;
+    std::fs::write(out, gfd).map_err(|e| e.to_string())
+}
+
+/// The check lane body: validate one `.gfd` at the `checkExpr` lane.
+fn do_check(
+    pgf: &Path,
+    lang: &str,
+    gfd: &Path,
+) -> Result<(), String>
+{
+    let runtime = PyPgf::load(&pgf.to_string_lossy(), lang).map_err(|e| e.to_string())?;
+    let gfd = std::fs::read_to_string(gfd).map_err(|e| e.to_string())?;
+    runtime.check(&gfd).map_err(|e| e.to_string())
+}
+
+/// The build lane body: validate and render one `.gfd` page.
+fn do_build(
+    pgf: &Path,
+    lang: &str,
+    gfd: &Path,
+    out: &Path,
+) -> Result<(), String>
+{
+    let runtime = PyPgf::load(&pgf.to_string_lossy(), lang).map_err(|e| e.to_string())?;
+    let gfd = std::fs::read_to_string(gfd).map_err(|e| e.to_string())?;
+    let body = build_body(&runtime, &gfd).map_err(|e| e.to_string())?;
+    let page = format!(
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>gf-docs PoC</title>\n</head>\n<body>\n{body}\n</body>\n</html>\n"
+    );
+    std::fs::write(out, page).map_err(|e| e.to_string())
 }
 
 /// Provision the GF toolchain (compiler + `libpgf`) from the pinned official
@@ -194,47 +226,18 @@ fn poc() -> Result<(), String>
 {
     let root = PathBuf::from(REPO_ROOT);
     run_command("cargo", &["build", "-p", "gandr-gf-docs"], &[])?;
+    run_command("cargo", &["build", "-p", "gandr-gf-docs"], &[])?;
     run_command("uv", &["sync", "--project", "crates/gf-docs"], &[])
         .map_err(|e| format!("uv sync: {e}"))?;
     let xml = root.join("docs/spec/component-vocabulary.xml");
     let gfd = root.join("crates/gf-docs/corpus/component-vocabulary.gfd");
     let pgf = root.join("target/gf-docs/GandrDocsLex.pgf");
     let page = root.join("target/gf-docs/component-vocabulary.html");
-    run(&args(&[
-        "migrate",
-        "--xml",
-        &xml.to_string_lossy(),
-        "--out",
-        &gfd.to_string_lossy(),
-    ]))?;
-    run(&args(&[
-        "check",
-        "--pgf",
-        &pgf.to_string_lossy(),
-        "--lang",
-        "GandrDocsLexHtml",
-        "--gfd",
-        &gfd.to_string_lossy(),
-    ]))?;
-    run(&args(&[
-        "build",
-        "--pgf",
-        &pgf.to_string_lossy(),
-        "--lang",
-        "GandrDocsLexHtml",
-        "--gfd",
-        &gfd.to_string_lossy(),
-        "--out",
-        &page.to_string_lossy(),
-    ]))?;
+    do_migrate(&xml, &gfd)?;
+    do_check(&pgf, "GandrDocsLexHtml", &gfd)?;
+    do_build(&pgf, "GandrDocsLexHtml", &gfd, &page)?;
     println!("PoC page: {}", page.display());
     Ok(())
-}
-
-/// Collect command words into owned args.
-fn args(words: &[&str]) -> Vec<String>
-{
-    words.iter().map(|w| (*w).to_owned()).collect()
 }
 
 /// Run an external command, failing with its stderr on nonzero exit.

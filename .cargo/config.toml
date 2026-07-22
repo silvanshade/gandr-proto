@@ -6,9 +6,3 @@
 # NOTE: requires building with +nightly
 build-dist = ["build", "--config=.cargo/config.dist.toml", "--profile=dist"]
 check-dist = ["check", "--config=.cargo/config.dist.toml", "--profile=dist"]
-
-[env]
-# Pin the embedded interpreter for gandr-gf-docs' PyO3 backend to the
-# uv-managed environment in the crate (uv sync must run before the first
-# build; the pgf extension tag must match this interpreter's version).
-PYO3_PYTHON = { value = "crates/gf-docs/.venv/bin/python", relative = true }

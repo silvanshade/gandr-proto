@@ -61,59 +61,74 @@ impl Sexp
         out
     }
 
-    /// Render at the given indent; compound applications as arguments are
-    /// parenthesized by [`Sexp::render_arg`].
+    /// Render at the given indent, iteratively (explicit work stack, no
+    /// recursion): nodes render in document order, argument positions
+    /// parenthesize compound applications, and `Cons` chains flatten
+    /// Lisp-style at constant indent.
     fn render_at(
         &self,
         indent: usize,
         out: &mut String,
     )
     {
-        match *self {
-            | Self::Atom(ref text) => out.push_str(text),
-            | Self::App { ref head, ref args } => {
-                if let Some(flat) = flat_form(head, args) {
-                    out.push_str(&flat);
-                    return;
-                }
-                out.push_str(head);
-                if head.starts_with("Cons") {
-                    // Lisp list style: element, then the tail at the same indent.
-                    let mut iter = args.iter();
-                    if let Some(element) = iter.next() {
-                        out.push(' ');
-                        element.render_arg(indent.saturating_add(1), out);
-                    }
-                    if let Some(tail) = iter.next() {
-                        out.push('\n');
-                        pad(out, indent.saturating_add(1));
-                        tail.render_arg(indent.saturating_add(1), out);
-                    }
-                    return;
-                }
-                for arg in args {
-                    out.push('\n');
-                    pad(out, indent.saturating_add(2));
-                    arg.render_arg(indent.saturating_add(2), out);
-                }
-            },
+        /// One pending layout step.
+        enum Task<'tree>
+        {
+            /// Render an expression at an indent.
+            Node(&'tree Sexp, usize),
+            /// Render an argument (parenthesized when compound).
+            Arg(&'tree Sexp, usize),
+            /// Emit a newline and indent padding.
+            Break(usize),
+            /// Emit a closing parenthesis.
+            Close,
         }
-    }
 
-    /// Render as an argument (parenthesized when compound).
-    fn render_arg(
-        &self,
-        indent: usize,
-        out: &mut String,
-    )
-    {
-        match *self {
-            | Self::Atom(_) => self.render_at(indent, out),
-            | Self::App { .. } => {
-                out.push('(');
-                self.render_at(indent.saturating_add(1), out);
-                out.push(')');
-            },
+        let mut stack = vec![Task::Node(self, indent)];
+        while let Some(task) = stack.pop() {
+            match task {
+                | Task::Close => out.push(')'),
+                | Task::Break(level) => {
+                    out.push('\n');
+                    pad(out, level);
+                },
+                | Task::Arg(sexp, level) => match sexp {
+                    | &Self::Atom(_) => stack.push(Task::Node(sexp, level)),
+                    | &Self::App { .. } => {
+                        out.push('(');
+                        stack.push(Task::Close);
+                        stack.push(Task::Node(sexp, level.saturating_add(1)));
+                    },
+                },
+                | Task::Node(sexp, level) => match sexp {
+                    | &Self::Atom(ref text) => out.push_str(text),
+                    | &Self::App { ref head, ref args } => {
+                        if let Some(flat) = flat_form(head, args) {
+                            out.push_str(&flat);
+                            continue;
+                        }
+                        out.push_str(head);
+                        if head.starts_with("Cons") {
+                            // Lisp list style: element on the head's line, tail
+                            // at the same indent, closing parens trailing.
+                            let mut iter = args.iter();
+                            if let Some(element) = iter.next() {
+                                out.push(' ');
+                                if let Some(tail) = iter.next() {
+                                    stack.push(Task::Arg(tail, level.saturating_add(1)));
+                                    stack.push(Task::Break(level.saturating_add(1)));
+                                }
+                                stack.push(Task::Arg(element, level.saturating_add(1)));
+                            }
+                            continue;
+                        }
+                        for arg in args.iter().rev() {
+                            stack.push(Task::Arg(arg, level.saturating_add(2)));
+                            stack.push(Task::Break(level.saturating_add(2)));
+                        }
+                    },
+                },
+            }
         }
     }
 }

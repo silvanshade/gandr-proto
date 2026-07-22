@@ -75,6 +75,7 @@ run = """
 aube ci
 rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component clippy,rustfmt
 rustup toolchain install "$RUSTUP_TOOLCHAIN_NIGHTLY" --profile minimal --component clippy,rustfmt,rust-src,llvm-tools-preview,rustc-dev
+uv sync --project crates/gf-docs
 """
 
 # Parked: the tree-sitter grammar package is not in the repo yet (it returns
