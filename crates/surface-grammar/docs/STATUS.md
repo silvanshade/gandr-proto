@@ -15,9 +15,8 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
 * O3 / ADR scrub: all retired-tracker provenance was dropped from the ported source — 75 wyrd bead-ID occurrences (19 distinct ids) and 19 wyrd `ADR-NN` citations (ADR-54, ADR-57, ADR-66, ADR-70, ADR-76) were inlined in current terms or dropped where the surrounding prose already carried the point.
   Zero survive into rustdoc; the crate documents clean under the merge-wall `cargo:doc-check` (`cargo doc --document-private-items -D warnings`).
   The wyrd design-wave labels (W4d / W4e / W5′) were preserved: they are not bead ids or ADR citations, and several appear inside load-bearing `AdaptationReason` data strings where a rewrite would be a behaviour change.
-* Tests carried across — the parser-free grammar unit goldens: the PBG construction contracts (`tests/pbg.rs`) and the walk-index / comparison-table / reachability contracts (`tests/walk.rs`), funnelled through the `autotests = false` aggregator `tests/surface.rs`, plus the two `highlight` module unit tests.
-  All 28 pass under nextest, including the pinned `built_in` grammar-fingerprint (`0xfd00_2ee0_a085_9dd8`), declared mold count (1456), per-label candidate inventory, and reachable multi-mold goldens — proof the scrub touched no behaviour.
-  At rung F2 the parser-driven surface-acceptance `contracts` suite (`tests/contracts.rs`, six tests) returns over the melder push machine, bringing the aggregator to 34 green (see `designed direction`).
+* Tests — the parser-free PBG, walk-index, comparison-table, reachability, and highlighter contracts plus the parser-driven surface-acceptance suite all funnel through the `autotests = false` `tests/surface.rs` aggregator.
+  All 36 pass under nextest, including the dedicated instantiation-sort decoder and recursion-marker clean-parse contract, the pinned `built_in` grammar fingerprint (`0x7b0c_4e6c_c16b_8608`), declared mold count (1482), per-label candidate inventory, and reachable multi-mold goldens.
   A `walk_index` criterion bench (`harness = false`) is present.
 * Feature posture — `default = []`, `full = []`; the `parity` feature is omitted entirely (see below).
 

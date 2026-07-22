@@ -36,6 +36,7 @@ mod contracts
     use gandr_surface_grammar::named_kind_parity;
     use gandr_surface_grammar::named_kind_realization;
     use gandr_surface_parser::parse;
+    use gandr_surface_syntax::GroutSort;
     use gandr_surface_syntax::SourceSlice;
 
     const EXPECTED_PRECEDENCE_GROUPS: &[(&str, Option<Assoc>)] = &[
@@ -220,6 +221,7 @@ mod contracts
         assert_has_checked_form(&pbg, Sort::Pattern);
         assert_has_checked_form(&pbg, Sort::Expression);
         assert_has_checked_form(&pbg, Sort::Type);
+        assert_has_checked_form(&pbg, Sort::Instantiation);
         Ok(())
     }
 
@@ -234,6 +236,25 @@ mod contracts
                 .any(|&(form_sort, _prec)| form_sort == sort),
             "built-in PBG must have at least one checked {} form",
             sort.name()
+        );
+    }
+
+    #[test]
+    fn sort_decode_contract()
+    {
+        let cases = [
+            (0, Sort::Item),
+            (1, Sort::Pattern),
+            (2, Sort::Expression),
+            (3, Sort::Type),
+            (4, Sort::Instantiation),
+        ];
+        for (tag, expected) in cases {
+            assert_eq!(Ok(expected), Sort::try_from_tag(GroutSort(tag)));
+        }
+        assert_eq!(
+            Err(PbgError::InvalidSort { sort: 5 }),
+            Sort::try_from_tag(GroutSort(5))
         );
     }
 
@@ -520,6 +541,42 @@ mod contracts
             ParseCase {
                 label: CaseLabel("four-member intersection"),
                 source: ParseSource("def f : A /\\ B /\\ C /\\ D;"),
+            },
+        ];
+        for case in cases {
+            assert_parses_clean(&pbg, case)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn recursion_marker_instantiations_parse_cleanly() -> Result<(), Box<dyn Error>>
+    {
+        let pbg = built_in()?;
+        let cases = [
+            ParseCase {
+                label: CaseLabel("descending recursion marker"),
+                source: ParseSource("def rec f() { f[<]() }"),
+            },
+            ParseCase {
+                label: CaseLabel("productive recursion marker"),
+                source: ParseSource("def rec f() { f[>]() }"),
+            },
+            ParseCase {
+                label: CaseLabel("combined recursion markers"),
+                source: ParseSource("def rec f() { f[<, >]() }"),
+            },
+            ParseCase {
+                label: CaseLabel("reserved named measure"),
+                source: ParseSource("def rec f() { f[n <]() }"),
+            },
+            ParseCase {
+                label: CaseLabel("reserved explicit resident"),
+                source: ParseSource("def rec f() { f[n = 1]() }"),
+            },
+            ParseCase {
+                label: CaseLabel("reserved tail resident"),
+                source: ParseSource("def rec f() { f[tail]() }"),
             },
         ];
         for case in cases {

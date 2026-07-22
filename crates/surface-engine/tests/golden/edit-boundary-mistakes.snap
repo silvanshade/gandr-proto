@@ -44,12 +44,12 @@ term: Value(
     ),
 )
 === origin ===
-[0] => 0..57 #5b20cae0e46cff1d [DefFunctionSugar]
-[0, 0] => 0..57 #5b20cae0e46cff1d [DefFunctionSugar]
-[0, 0, 0] => 38..57 #6d5074b4823ba2aa [SeqDiscard]
-[0, 0, 0, 0] => 38..46 #6d5074b4823ba2aa
-[0, 0, 0, 0, 0] => 38..43 #f48ddb7c90272abc [ForceSugar]
-[0, 0, 0, 0, 0, 0] => 38..43 #f48ddb7c90272abc
-[0, 0, 0, 0, 1] => 44..45 #c8b644cccc5758ab
-[0, 0, 0, 1] => 50..55 #eaea1e33842fd3d6
-[0, 0, 0, 1, 0] => 54..55 #c8b644cccc5758ab
+[0] => 0..57 #422f95fd04c8a6ba [DefFunctionSugar]
+[0, 0] => 0..57 #422f95fd04c8a6ba [DefFunctionSugar]
+[0, 0, 0] => 38..57 #f22667170c5b41e6 [SeqDiscard]
+[0, 0, 0, 0] => 38..46 #f22667170c5b41e6
+[0, 0, 0, 0, 0] => 38..43 #d73886cec2cdc4ab [ForceSugar]
+[0, 0, 0, 0, 0, 0] => 38..43 #d73886cec2cdc4ab
+[0, 0, 0, 0, 1] => 44..45 #fabc197d39642ffc
+[0, 0, 0, 1] => 50..55 #24ffdfc459e1a6d2
+[0, 0, 0, 1, 0] => 54..55 #fabc197d39642ffc

@@ -47,27 +47,29 @@ mod contracts
 
     /// The pinned fingerprint of the built-in mold and interned-context tables.
     ///
-    /// Covers the full built-in surface: the base expression / pattern / type
-    /// forms; the `data` / `codata` datatype declarations (members, constructor
-    /// and observation fields, reserved `op` / `rule` / grade / GADT / attr
-    /// slots); `def rec` + copattern clauses folded into the def family; the
-    /// `for` / `while` / `loop` / `break` / `continue` control atoms; the
-    /// `import` MVP; the reserved operator-fixity declaration; the reserved
-    /// `rec` block; the `case … with` view + empty-arm option; `${ … }` string
-    /// interpolation; the shell surface (braced parameter expansion,
-    /// fragment-lexed `double_quoted_string`, and the `[ … ]` `subshell` on
-    /// distinct `subshell_open` / `subshell_close` bracket tiles, with the dead
-    /// composite shell rules folded into `shell_word` /
-    /// `redirection_operator`); first-class holes (the standalone
-    /// `hole_name` folded to the `?` hole's optional tail); the
-    /// `number.type` Type-sort atom for literal-endpoint type holes;
-    /// right-associative product / sum operators and the
+    /// Covers the full built-in surface: the expression / pattern / type /
+    /// instantiation forms; the `data` / `codata` datatype declarations
+    /// (members, and observation fields, reserved `op` / `rule` / grade /
+    /// GADT / attr slots); `def rec` + copattern clauses folded into the
+    /// def family; the `for` / `while` / `loop` / `break` / `continue`
+    /// control atoms; the `import` MVP; the reserved operator-fixity
+    /// declaration; the reserved `rec` block; the `case … with` view +
+    /// empty-arm option; `${ … }` string interpolation; the shell surface
+    /// (braced parameter expansion, fragment-lexed `double_quoted_string`,
+    /// and the `[ … ]` `subshell` on distinct `subshell_open` /
+    /// `subshell_close` bracket tiles, with the dead composite shell rules
+    /// folded into `shell_word` / `redirection_operator`); first-class
+    /// holes (the standalone `hole_name` folded to the `?` hole's optional
+    /// tail); the `number.type` Type-sort atom for literal-endpoint type
+    /// holes; right-associative product / sum operators and the
     /// pairwise-incomparable right-associative set tier
     /// (union / intersection / lazy-product); and the keyword-led `module` Item
     /// form with its optional transparent record-type ascription and body-local
     /// non-recursive def/signature member family; the distinct
-    /// `run PAT <- E` computation bind; and the `val PAT = E` value bind.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x1536_6770_bac1_933d);
+    /// `run PAT <- E` computation bind; the `val PAT = E` value bind; and the
+    /// dedicated instantiation sort for type arguments, direction sigils, named
+    /// measures, explicit residents, and `tail`.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x7b0c_4e6c_c16b_8608);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -88,7 +90,10 @@ mod contracts
     /// ascription, and one body-local copy of the non-recursive
     /// def/signature family. The distinct `run`- and `val`-led bind rules each
     /// contribute one keyword mold in their 19 expanded statement contexts.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1475);
+    /// The dedicated instantiation-sort forms add seven molds: two `<`
+    /// occurrences and one each for `>`, `=`, `tail`, and the two
+    /// named-resident `identifier` occurrences.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1482);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -122,15 +127,15 @@ mod contracts
         ("/\\", 1),
         (":", 82),
         (";", 181),
-        ("<", 2),
+        ("<", 4),
         ("<&", 1),
         ("<-", 19),
         ("<=", 1),
         ("<>", 1),
-        ("=", 49),
+        ("=", 50),
         ("==", 1),
         ("=>", 8),
-        (">", 2),
+        (">", 3),
         (">&", 1),
         (">=", 1),
         (">>", 1),
@@ -193,7 +198,7 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 208),
+        ("identifier", 210),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -232,6 +237,7 @@ mod contracts
         ("string_fragment", 7),
         ("subshell_close", 1),
         ("subshell_open", 1),
+        ("tail", 1),
         ("thunk", 1),
         ("true", 3),
         ("type", 1),

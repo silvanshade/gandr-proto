@@ -25,7 +25,8 @@ use crate::TileLabel;
 ///   record/list/tuple/function, session-operation, and lexical named-node
 ///   forms without adjacent generated sort holes.
 /// - provides: a tree-sitter-free precedence-bounded grammar surface over the
-///   four PBG sorts: `Item`, `Pattern`, `Expression`, and `Type`.
+///   five PBG sorts: `Item`, `Pattern`, `Expression`, `Type`, and
+///   `Instantiation`.
 /// - fails: returns `PbgError` when a required precedence name is absent.
 /// - panics: none.
 /// - intension: rule order mirrors `packages/tree-sitter-gandr/grammar.js`
@@ -56,6 +57,7 @@ pub fn rules(precs: &PrecTable) -> Result<Vec<Rule>, PbgError>
     attributes_parameters_externs(&mut out, item);
     statements(&mut out, item);
     patterns(&mut out, pat_or, pat_as, pat_atom);
+    instantiations(&mut out, atom);
     expressions(&mut out, ExprPrecs {
         ret,
         or,
@@ -804,6 +806,72 @@ fn patterns(
     ));
 }
 
+/// Append instantiation-slot resident forms.
+///
+/// # Contract
+/// - requires: `p` is a precedence in the built-in PBG.
+/// - ensures: type arguments, direction sigils, named measures, explicit
+///   residents, and `tail` inhabit only [`Sort::Instantiation`].
+/// - provides: an atom-only context for `<` and `>` that is distinct from their
+///   binary-expression molds.
+/// - fails: never.
+/// - panics: none.
+/// - intension: the dedicated sort is the syntax boundary at which later
+///   resolver and checker rungs interpret or decline each resident.
+fn instantiations(
+    out: &mut Vec<Rule>,
+    p: Prec,
+)
+{
+    let s = Sort::Instantiation;
+    out.push(r(
+        RuleName("instantiation.type"),
+        Provenance("instantiation_expression"),
+        s,
+        p,
+        h(Sort::Type),
+    ));
+    out.push(r(
+        RuleName("instantiation.direction.descent"),
+        Provenance("instantiation_expression"),
+        s,
+        p,
+        t(TileLabel("<")),
+    ));
+    out.push(r(
+        RuleName("instantiation.direction.productivity"),
+        Provenance("instantiation_expression"),
+        s,
+        p,
+        t(TileLabel(">")),
+    ));
+    out.push(r(
+        RuleName("instantiation.named_measure"),
+        Provenance("instantiation_expression"),
+        s,
+        p,
+        seq([t(TileLabel("identifier")), t(TileLabel("<"))]),
+    ));
+    out.push(r(
+        RuleName("instantiation.explicit"),
+        Provenance("instantiation_expression"),
+        s,
+        p,
+        seq([
+            t(TileLabel("identifier")),
+            t(TileLabel("=")),
+            h(Sort::Expression),
+        ]),
+    ));
+    out.push(r(
+        RuleName("instantiation.tail"),
+        Provenance("instantiation_expression"),
+        s,
+        p,
+        t(TileLabel("tail")),
+    ));
+}
+
 /// Append expression forms.
 fn expressions(
     out: &mut Vec<Rule>,
@@ -951,7 +1019,7 @@ fn expressions(
         seq([
             h(s),
             t(TileLabel("[")),
-            comma1(h(Sort::Type)),
+            comma1(h(Sort::Instantiation)),
             t(TileLabel("]")),
         ]),
     ));

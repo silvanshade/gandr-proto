@@ -85,23 +85,23 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #8de1e21eb16b6edf [DefFunctionSugar]
-[0, 0] => 0..53 #8de1e21eb16b6edf [DefFunctionSugar]
-[0, 0, 0] => 40..51 #958b588e97ee1369 [BindHoist]
-[0, 0, 0, 0] => 45..50 #4ef6d04107a2d12e [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #4ef6d04107a2d12e [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #2b5c2f3c94122e1c [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #2b5c2f3c94122e1c [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #c8b644cccc5758ab
-[0, 0, 0, 0, 1] => 49..50 #c8b644cccc5758ab
-[0, 0, 0, 1] => 40..51 #958b588e97ee1369
-[0, 0, 0, 1, 0] => 44..51 #50e4649839787b63 [BindHoist]
-[1] => 55..99 #8a9ce51787d7ae15
-[1, 0] => 65..97 #feef5dbab0497a13 [IfSugar]
-[1, 0, 0] => 68..72 #cf5e48cfa6e156fb [BoolLiteral]
-[1, 0, 0, 0] => 68..72 #cf5e48cfa6e156fb [BoolLiteral]
-[1, 0, 0, 0, 0] => 68..72 #cf5e48cfa6e156fb [BoolLiteral]
-[1, 0, 1] => 75..80 #eaea1e33842fd3d6
-[1, 0, 1, 0] => 79..80 #c8b644cccc5758ab
-[1, 0, 2] => 90..95 #f5d220829f7034d4
-[1, 0, 2, 0] => 94..95 #fb4749b973430f87
+[0] => 0..53 #55d8e264cc46b06c [DefFunctionSugar]
+[0, 0] => 0..53 #55d8e264cc46b06c [DefFunctionSugar]
+[0, 0, 0] => 40..51 #e201142bf560ecf5 [BindHoist]
+[0, 0, 0, 0] => 45..50 #66c8cb6b768e3b9e [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #66c8cb6b768e3b9e [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #1d977b99a305f953 [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #1d977b99a305f953 [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #fabc197d39642ffc
+[0, 0, 0, 0, 1] => 49..50 #fabc197d39642ffc
+[0, 0, 0, 1] => 40..51 #e201142bf560ecf5
+[0, 0, 0, 1, 0] => 44..51 #ee1985ea3530b51f [BindHoist]
+[1] => 55..99 #08ffded7af87df88
+[1, 0] => 65..97 #45bb50b684a0e152 [IfSugar]
+[1, 0, 0] => 68..72 #502deb24857d6736 [BoolLiteral]
+[1, 0, 0, 0] => 68..72 #502deb24857d6736 [BoolLiteral]
+[1, 0, 0, 0, 0] => 68..72 #502deb24857d6736 [BoolLiteral]
+[1, 0, 1] => 75..80 #24ffdfc459e1a6d2
+[1, 0, 1, 0] => 79..80 #fabc197d39642ffc
+[1, 0, 2] => 90..95 #ac58b7e25aeb2079
+[1, 0, 2, 0] => 94..95 #2da2ade47cf4a5b8

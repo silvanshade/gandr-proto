@@ -121,7 +121,7 @@ use crate::mold::RCtxStep;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[expect(
     clippy::exhaustive_enums,
-    reason = "the PBG contract fixes these four grammar sorts exactly"
+    reason = "the PBG contract fixes these five grammar sorts exactly"
 )]
 pub enum Sort
 {
@@ -133,6 +133,8 @@ pub enum Sort
     Expression,
     /// Type grammar sort.
     Type,
+    /// Instantiation-slot resident grammar sort.
+    Instantiation,
 }
 
 impl Sort
@@ -147,6 +149,7 @@ impl Sort
             | Self::Pattern => GroutSort(1),
             | Self::Expression => GroutSort(2),
             | Self::Type => GroutSort(3),
+            | Self::Instantiation => GroutSort(4),
         }
     }
 
@@ -160,6 +163,7 @@ impl Sort
             | Self::Pattern => SortName("pattern"),
             | Self::Expression => SortName("expression"),
             | Self::Type => SortName("type"),
+            | Self::Instantiation => SortName("instantiation"),
         }
     }
 
@@ -173,14 +177,14 @@ impl Sort
     /// - provides: the checked boundary from `gandr-surface-syntax` molds back
     ///   to PBG sorts.
     /// - fails: returns [`PbgError::InvalidSort`] for tags outside the closed
-    ///   four-sort vocabulary.
+    ///   five-sort vocabulary.
     /// - panics: none.
     ///
     /// # Errors
     /// Returns [`PbgError::InvalidSort`] when `sort` is not a PBG sort tag.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 pointwise — the four accepted tags and the first
+    /// - hypothesis: L3 pointwise — the five accepted tags and the first
     ///   rejected tag distinguish exact closed-vocabulary decoding.
     /// - witness: `gandr_surface_grammar::contracts::sort_decode_contract`
     #[inline]
@@ -191,6 +195,7 @@ impl Sort
             | 1 => Ok(Self::Pattern),
             | 2 => Ok(Self::Expression),
             | 3 => Ok(Self::Type),
+            | 4 => Ok(Self::Instantiation),
             | other => Err(PbgError::InvalidSort { sort: other }),
         }
     }
