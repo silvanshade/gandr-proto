@@ -24,7 +24,7 @@ use crate::typst_leaf::Leaf;
 const STYLESHEET: &str = r#":root{--fg:#1a1a1a;--bg:#fdfdfc;--muted:#666;--accent:#3b5;--line:#ddd;--code:#f4f4f2}
 @media(prefers-color-scheme:dark){:root{--fg:#e8e8e6;--bg:#16171a;--muted:#9a9a9a;--accent:#6d9;--line:#333;--code:#22242a}}
 body{color:var(--fg);background:var(--bg);font-family:system-ui,sans-serif;line-height:1.55;max-width:48rem;margin:2rem auto;padding:0 1rem}
-h1,h2,h3,h4{line-height:1.2}code,pre{background:var(--code);border-radius:4px}
+h1,h2,h3,h4{line-height:1.2}code,pre{background:var(--code);border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 code{padding:.1em .3em}pre{padding:.7em 1em;overflow-x:auto}
 .status{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);border-radius:1em;padding:.1em .6em;color:var(--muted)}
 .math{display:inline-block;vertical-align:middle}.math svg,figure svg{max-width:100%;height:auto}
