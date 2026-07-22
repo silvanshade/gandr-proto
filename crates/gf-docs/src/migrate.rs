@@ -1,9 +1,10 @@
 //! Migration: legacy `XML` components to `.gfd` abstract-syntax text.
 //!
 //! The legacy parse (`gandr_workflow_docs::parse`) produces the typed model;
-//! this module walks it into the constructor text the `GF` runtime reads.
-//! Lexicon constant naming is the contract shared with the generated lexicon
-//! modules: `term_<key>`, `cite_<key>`, `anchor_<id>` with `-` mapped to `_`.
+//! this module walks it into [`Sexp`] trees rendered with the canonical
+//! layout. Lexicon constant naming is the contract shared with the generated
+//! lexicon modules: `term_<key>`, `cite_<key>`, `anchor_<id>` with `-` mapped
+//! to `_`.
 
 use std::path::Path;
 
@@ -17,6 +18,7 @@ use gandr_workflow_docs::model::TableCell;
 use gandr_workflow_docs::parse::parse_document;
 
 use crate::error::GfDocsError;
+use crate::sexp::Sexp;
 
 /// Translate one legacy `XML` component file into its `.gfd` text.
 ///
@@ -33,25 +35,15 @@ pub fn translate_file(path: &Path) -> Result<String, GfDocsError>
     let document = parsed
         .document
         .ok_or_else(|| GfDocsError::Model(format!("{}: no document produced", path.display())))?;
-    translate(&document)
+    let tree = translate(&document)?;
+    Ok(format!("{}\n", tree.render()))
 }
 
-/// Translate a parsed component into `.gfd` constructor text.
-fn translate(document: &Document) -> Result<String, GfDocsError>
+/// Translate a parsed component into its expression tree.
+fn translate(document: &Document) -> Result<Sexp, GfDocsError>
 {
-    let mut out = String::new();
-    out.push_str("MkComponent ");
-    out.push_str(&anchor_const(&document.id));
     let status = status_const(document.status)
         .ok_or_else(|| GfDocsError::Translation("unknown status variant".into()))?;
-    out.push(' ');
-    out.push_str(&gf_str(&document.title));
-    out.push(' ');
-    out.push_str(status);
-    out.push(' ');
-    out.push_str(&anchor_list(&document.grounds));
-    out.push(' ');
-    out.push_str(&anchor_list(&document.derives));
 
     let mut sections = Vec::new();
     let mut references = Vec::new();
@@ -66,17 +58,22 @@ fn translate(document: &Document) -> Result<String, GfDocsError>
             },
         }
     }
-    out.push(' ');
-    out.push_str(&list_of("Section", &sections, |b| block_expr(b))?);
-    out.push(' ');
-    out.push_str(&list_of("CiteKey", &references, |c| {
-        Ok(cite_const(&c.key))
-    })?);
-    Ok(out)
+
+    Ok(Sexp::app("MkComponent", vec![
+        Sexp::atom(anchor_const(&document.id)),
+        Sexp::atom(gf_str(&document.title)),
+        Sexp::atom(status),
+        anchor_list(&document.grounds),
+        anchor_list(&document.derives),
+        list_of("Section", &sections, |&b| block_expr(b))?,
+        list_of("CiteKey", &references, |c| {
+            Ok(Sexp::atom(cite_const(&c.key)))
+        })?,
+    ]))
 }
 
 /// Render one block as a constructor expression.
-fn block_expr(block: &Block) -> Result<String, GfDocsError>
+fn block_expr(block: &Block) -> Result<Sexp, GfDocsError>
 {
     Ok(match *block {
         | Block::Section(ref section) => {
@@ -84,57 +81,55 @@ fn block_expr(block: &Block) -> Result<String, GfDocsError>
                 .id
                 .as_deref()
                 .ok_or_else(|| GfDocsError::Translation("section without id".into()))?;
-            format!(
-                "MkSection {} {} {}",
-                anchor_const(id),
-                gf_str(&section.title),
-                list_of("Block", &section.blocks, block_expr)?
-            )
+            Sexp::app("MkSection", vec![
+                Sexp::atom(anchor_const(id)),
+                Sexp::atom(gf_str(&section.title)),
+                list_of("Block", &section.blocks, block_expr)?,
+            ])
         },
-        | Block::Prose(ref inlines) => format!("ProseBlock {}", inline_list(inlines)?),
-        | Block::Judgements(ref j) => format!(
-            "JudgementsBlock {} {}",
-            gf_str(&j.title),
-            list_of("MathRow", &j.forms, |m| Ok(format!(
-                "MkMathRow {}",
-                gf_str(&m.source)
-            )))?
-        ),
-        | Block::Grammar(ref productions) => format!(
-            "GrammarBlock {}",
-            list_of("Production", productions, |p| Ok(format!(
-                "MkProduction {} {}",
-                gf_str(&p.symbol),
-                gf_str(&p.definition)
-            )))?
-        ),
+        | Block::Prose(ref inlines) => Sexp::app("ProseBlock", vec![inline_list(inlines)?]),
+        | Block::Judgements(ref j) => Sexp::app("JudgementsBlock", vec![
+            Sexp::atom(gf_str(&j.title)),
+            list_of("MathRow", &j.forms, |m| {
+                Ok(Sexp::app("MkMathRow", vec![Sexp::atom(gf_str(&m.source))]))
+            })?,
+        ]),
+        | Block::Grammar(ref productions) => Sexp::app("GrammarBlock", vec![list_of(
+            "Production",
+            productions,
+            |p| {
+                Ok(Sexp::app("MkProduction", vec![
+                    Sexp::atom(gf_str(&p.symbol)),
+                    Sexp::atom(gf_str(&p.definition)),
+                ]))
+            },
+        )?]),
         | Block::Rule(ref rule) => {
             let id = rule
                 .id
                 .as_deref()
                 .ok_or_else(|| GfDocsError::Translation("rule without id".into()))?;
-            format!(
-                "RuleBlock {} {} {} (MkMathRow {})",
-                anchor_const(id),
-                gf_str(&rule.name),
-                list_of("MathRow", &rule.premises, |m| Ok(format!(
-                    "MkMathRow {}",
-                    gf_str(&m.source)
-                )))?,
-                gf_str(&rule.conclusion.source)
-            )
+            Sexp::app("RuleBlock", vec![
+                Sexp::atom(anchor_const(id)),
+                Sexp::atom(gf_str(&rule.name)),
+                list_of("MathRow", &rule.premises, |m| {
+                    Ok(Sexp::app("MkMathRow", vec![Sexp::atom(gf_str(&m.source))]))
+                })?,
+                Sexp::app("MkMathRow", vec![Sexp::atom(gf_str(
+                    &rule.conclusion.source,
+                ))]),
+            ])
         },
         | Block::Definition(ref def) => {
             let id = def
                 .id
                 .as_deref()
                 .ok_or_else(|| GfDocsError::Translation("definition without id".into()))?;
-            format!(
-                "DefinitionBlock {} {} {}",
-                anchor_const(id),
-                term_const(&def.term),
-                inline_list(&def.body)?
-            )
+            Sexp::app("DefinitionBlock", vec![
+                Sexp::atom(anchor_const(id)),
+                Sexp::atom(term_const(&def.term)),
+                inline_list(&def.body)?,
+            ])
         },
         | Block::Diagram(ref diagram) => {
             let mut cites = diagram.cites.iter();
@@ -151,61 +146,51 @@ fn block_expr(block: &Block) -> Result<String, GfDocsError>
                     ));
                 },
             };
-            format!(
-                "DiagramBlock {} {} {} {}",
-                anchor_const(&diagram.id),
-                gf_str(&diagram.caption),
-                cite,
-                gf_str(&diagram.source)
-            )
+            Sexp::app("DiagramBlock", vec![
+                Sexp::atom(anchor_const(&diagram.id)),
+                Sexp::atom(gf_str(&diagram.caption)),
+                Sexp::atom(cite),
+                Sexp::atom(gf_str(&diagram.source)),
+            ])
         },
         | Block::Code(ref code) => match (code.role, code.expect_output.as_ref()) {
-            | (CodeRole::Api, _) => {
-                format!(
-                    "ApiCodeBlock {} {}",
-                    gf_str(&code.language),
-                    gf_str(&code.text)
-                )
-            },
-            | (CodeRole::Example, Some(expect)) => format!(
-                "ExpectCodeBlock {} {} {}",
-                gf_str(&code.language),
-                gf_str(expect),
-                gf_str(&code.text)
-            ),
-            | (CodeRole::Example, None) => {
-                format!(
-                    "PlainCodeBlock {} {}",
-                    gf_str(&code.language),
-                    gf_str(&code.text)
-                )
-            },
+            | (CodeRole::Api, _) => Sexp::app("ApiCodeBlock", vec![
+                Sexp::atom(gf_str(&code.language)),
+                Sexp::atom(gf_str(&code.text)),
+            ]),
+            | (CodeRole::Example, Some(expect)) => Sexp::app("ExpectCodeBlock", vec![
+                Sexp::atom(gf_str(&code.language)),
+                Sexp::atom(gf_str(expect)),
+                Sexp::atom(gf_str(&code.text)),
+            ]),
+            | (CodeRole::Example, None) => Sexp::app("PlainCodeBlock", vec![
+                Sexp::atom(gf_str(&code.language)),
+                Sexp::atom(gf_str(&code.text)),
+            ]),
             | _ => {
                 return Err(GfDocsError::Translation(
                     "unknown code role (model evolved)".into(),
                 ));
             },
         },
-        | Block::Example(ref example) => format!(
-            "ExampleBlock {} {}",
-            gf_str(&example.title),
-            list_of("Block", &example.blocks, block_expr)?
-        ),
+        | Block::Example(ref example) => Sexp::app("ExampleBlock", vec![
+            Sexp::atom(gf_str(&example.title)),
+            list_of("Block", &example.blocks, block_expr)?,
+        ]),
         | Block::List(ref list) => {
             let items = list_of("Item", &list.items, item_expr)?;
             if list.ordered {
-                format!("RegisterBlock {items}")
+                Sexp::app("RegisterBlock", vec![items])
             }
             else {
-                format!("PlainRegisterBlock {items}")
+                Sexp::app("PlainRegisterBlock", vec![items])
             }
         },
-        | Block::Table(ref table) => format!(
-            "InventoryBlock {} ({}) {}",
-            gf_str(&table.caption),
+        | Block::Table(ref table) => Sexp::app("InventoryBlock", vec![
+            Sexp::atom(gf_str(&table.caption)),
             row_expr("MkHeaderRow", &table.header)?,
-            list_of("Row", &table.rows, |row| row_expr("MkBodyRow", &row.cells))?
-        ),
+            list_of("Row", &table.rows, |row| row_expr("MkBodyRow", &row.cells))?,
+        ]),
         | Block::References(_) => {
             return Err(GfDocsError::Translation(
                 "references block outside component root".into(),
@@ -220,15 +205,14 @@ fn block_expr(block: &Block) -> Result<String, GfDocsError>
 }
 
 /// Render one list item.
-fn item_expr(item: &ListItem) -> Result<String, GfDocsError>
+fn item_expr(item: &ListItem) -> Result<Sexp, GfDocsError>
 {
     match item.lead.as_deref() {
-        | Some(lead) => Ok(format!(
-            "MkItem {} {}",
-            gf_str(lead),
-            inline_list(&item.body)?
-        )),
-        | None => Ok(format!("MkPlainItem {}", inline_list(&item.body)?)),
+        | Some(lead) => Ok(Sexp::app("MkItem", vec![
+            Sexp::atom(gf_str(lead)),
+            inline_list(&item.body)?,
+        ])),
+        | None => Ok(Sexp::app("MkPlainItem", vec![inline_list(&item.body)?])),
     }
 }
 
@@ -236,26 +220,21 @@ fn item_expr(item: &ListItem) -> Result<String, GfDocsError>
 fn row_expr(
     constructor: &str,
     cells: &[TableCell],
-) -> Result<String, GfDocsError>
+) -> Result<Sexp, GfDocsError>
 {
-    Ok(format!(
-        "{constructor} {}",
-        list_of("Cell", cells, |cell| Ok(format!(
-            "MkCell {}",
-            inline_list(&cell.content)?
-        )))?
-    ))
+    Ok(Sexp::app(constructor, vec![list_of(
+        "Cell",
+        cells,
+        |cell| Ok(Sexp::app("MkCell", vec![inline_list(&cell.content)?])),
+    )?]))
 }
 
 /// Render a `[Inline]` list, choosing the glue constructor at boundaries
 /// where the next element is punctuation-leading text (so `.` and friends
 /// bind to the preceding inline instead of taking a word space).
-fn inline_list(inlines: &[Inline]) -> Result<String, GfDocsError>
+fn inline_list(inlines: &[Inline]) -> Result<Sexp, GfDocsError>
 {
-    if inlines.is_empty() {
-        return Ok(String::from("BaseInline"));
-    }
-    let mut out = String::from("BaseInline");
+    let mut out = Sexp::atom("BaseInline");
     for (index, item) in inlines.iter().enumerate().rev() {
         let glued = matches!(
             inlines.get(index.saturating_add(1)),
@@ -270,23 +249,28 @@ fn inline_list(inlines: &[Inline]) -> Result<String, GfDocsError>
         else {
             "ConsInline"
         };
-        out = format!("{cons} ({}) ({out})", inline_expr(item)?);
+        out = Sexp::app(cons, vec![inline_expr(item)?, out]);
     }
-    Ok(format!("({out})"))
+    Ok(out)
 }
 
 /// Render one inline element.
-fn inline_expr(inline: &Inline) -> Result<String, GfDocsError>
+fn inline_expr(inline: &Inline) -> Result<Sexp, GfDocsError>
 {
     Ok(match *inline {
-        | Inline::Text(ref text) => format!("Txt {}", gf_str(&normalize(text))),
-        | Inline::TermDef(ref def) => {
-            format!("TermDef {} {}", term_const(&def.key), gf_str(&def.text))
+        | Inline::Text(ref text) => Sexp::app("Txt", vec![Sexp::atom(gf_str(&normalize(text)))]),
+        | Inline::TermDef(ref def) => Sexp::app("TermDef", vec![
+            Sexp::atom(term_const(&def.key)),
+            Sexp::atom(gf_str(&def.text)),
+        ]),
+        | Inline::TermRef(ref reference) => {
+            Sexp::app("TermRef", vec![Sexp::atom(term_const(&reference.key))])
         },
-        | Inline::TermRef(ref reference) => format!("TermRef {}", term_const(&reference.key)),
-        | Inline::Cite(ref key) => format!("CiteRef {}", cite_const(&key.key)),
-        | Inline::Ref(ref reference) => format!("XRef {}", anchor_const(&reference.target)),
-        | Inline::Math(ref math) => format!("MathInline {}", gf_str(&math.source)),
+        | Inline::Cite(ref key) => Sexp::app("CiteRef", vec![Sexp::atom(cite_const(&key.key))]),
+        | Inline::Ref(ref reference) => {
+            Sexp::app("XRef", vec![Sexp::atom(anchor_const(&reference.target))])
+        },
+        | Inline::Math(ref math) => Sexp::app("MathInline", vec![Sexp::atom(gf_str(&math.source))]),
         | _ => {
             return Err(GfDocsError::Translation(
                 "unknown inline variant (model evolved)".into(),
@@ -295,34 +279,28 @@ fn inline_expr(inline: &Inline) -> Result<String, GfDocsError>
     })
 }
 
-/// Fold a slice into parenthesized `Cons`-nested list-constructor text.
+/// Fold a slice into a `Cons`-nested list expression.
 fn list_of<T>(
     category: &str,
     items: &[T],
-    render: impl Fn(&T) -> Result<String, GfDocsError>,
-) -> Result<String, GfDocsError>
+    render: impl Fn(&T) -> Result<Sexp, GfDocsError>,
+) -> Result<Sexp, GfDocsError>
 {
-    if items.is_empty() {
-        return Ok(format!("Base{category}"));
-    }
-    let mut out = format!("Base{category}");
+    let mut out = Sexp::atom(format!("Base{category}"));
     for item in items.iter().rev() {
-        out = format!("Cons{category} ({}) ({out})", render(item)?);
+        out = Sexp::app(format!("Cons{category}"), vec![render(item)?, out]);
     }
-    Ok(format!("({out})"))
+    Ok(out)
 }
 
-/// Fold id strings into an `[Anchor]` list.
-fn anchor_list(ids: &[String]) -> String
+/// Fold id strings into an `[Anchor]` list expression.
+fn anchor_list(ids: &[String]) -> Sexp
 {
-    if ids.is_empty() {
-        return String::from("BaseAnchor");
-    }
-    let mut out = String::from("BaseAnchor");
+    let mut out = Sexp::atom("BaseAnchor");
     for id in ids.iter().rev() {
-        out = format!("ConsAnchor {} ({out})", anchor_const(id));
+        out = Sexp::app("ConsAnchor", vec![Sexp::atom(anchor_const(id)), out]);
     }
-    format!("({out})")
+    out
 }
 
 /// The lexicon constant for a term key.

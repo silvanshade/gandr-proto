@@ -11,5 +11,6 @@ pub mod error;
 pub mod migrate;
 pub mod pipeline;
 pub mod rt;
+pub mod sexp;
 
 pub use error::GfDocsError;

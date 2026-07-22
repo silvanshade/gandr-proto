@@ -55,6 +55,7 @@ mod tests
     fn migration_emits_all_block_constructors() -> TestResult
     {
         let gfd = translate_file(&xml_path())?;
+        let flat = gfd.split_whitespace().collect::<Vec<_>>().join(" ");
         for constructor in [
             "MkComponent anchor_component_vocabulary",
             "StatusPartial",
@@ -75,14 +76,14 @@ mod tests
             "DiagramBlock anchor_cv_diagram",
             "ExampleBlock \"A code block anticipating output\"",
             "ExpectCodeBlock \"gandr\" \"6\"",
-            "ConsCiteKey (cite_P_2)",
-            "ConsCiteKey (cite_A_1a)",
+            "ConsCiteKey cite_P_2",
+            "ConsCiteKey cite_A_1a",
             "TermDef term_component",
             "XRef anchor_cv_examples",
             "MathInline \"tilde(mu)\"",
         ] {
             assert!(
-                gfd.contains(constructor),
+                flat.contains(constructor),
                 "missing constructor text: {constructor}"
             );
         }
