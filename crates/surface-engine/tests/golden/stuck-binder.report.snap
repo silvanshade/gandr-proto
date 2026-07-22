@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "StuckExpr",
+      "data": {
+        "hint": "annotate the binder or check against an arrow type"
+      },
+      "severity": "error",
+      "message": "no typing rule applies to term Comp(Abs(\"x\", None, Ret(Var(\"x\")))): annotate the binder or check against an arrow type",
+      "span": {
+        "start": 0,
+        "end": 15
+      },
+      "expr": "Abs(\"x\", None, Ret(Var(\"x\")))",
+      "context_chain": [],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "Stuck",
+      "data": {
+        "hint": "annotate the binder or check against an arrow type"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 0,
+        "end": 15
+      },
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

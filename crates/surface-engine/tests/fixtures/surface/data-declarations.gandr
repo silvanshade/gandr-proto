@@ -1,0 +1,23 @@
+// W4d surface fold-in — `data` datatype declarations (parse-only fixture).
+//
+// GRADUATION: the concrete `data` surface enters the PBG grammar now
+// (wyrd-ku0f) so it never needs a later re-parse; the datatype SEMANTICS —
+// constructors as values, `case` elaboration, structural recursion — graduate
+// under wyrd-e0xy. This `surface/` tree is PBG-only (the committed tree-sitter
+// grammar does not produce these kinds) and firewalled from lowering / eval:
+// the parser's zero-obligation corpus gate is the only harness that reads it.
+
+// A nullary-only enumeration (each member is a bare uppercase constructor).
+data Color { Red, Green, Blue }
+
+// Parameterised constructors carry inline `name: Type` fields.
+data Maybe(a) { None, Some(x: a) }
+
+// Recursive datatypes need nothing new: a self-reference `Tree(a)` inside a
+// field is an ordinary type application.
+data Tree(a) { Leaf, Node(l: Tree(a), x: a, r: Tree(a)) }
+
+// The empty (uninhabited) datatype. (Its name must be an ordinary
+// type-identifier: `Void` is a reserved primitive-type keyword, so a datatype
+// declaration uses a fresh name like `Empty`.)
+data Empty {}

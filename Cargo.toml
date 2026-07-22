@@ -13,6 +13,7 @@ members = [
   "crates/storage-chunker",
   "crates/storage-prolly-trees",
   "crates/surface-driver",
+  "crates/surface-engine",
   "crates/surface-grammar",
   "crates/surface-parser",
   "crates/surface-render-remote",

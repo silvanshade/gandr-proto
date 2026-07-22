@@ -1,0 +1,59 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "GradeError",
+      "data": {
+        "lower": "Fin(1)",
+        "upper": "Fin(0)"
+      },
+      "severity": "error",
+      "message": "grade order requirement failed: Fin(1) ⊑ Fin(0) does not hold",
+      "span": {
+        "start": 0,
+        "end": 52
+      },
+      "elaboration": "DefFunctionSugar",
+      "context_chain": [
+        {
+          "role": "Thunk",
+          "prose": "checking the body of a thunk"
+        },
+        {
+          "role": "Abs",
+          "prose": "checking the body of an abstraction binding `z`",
+          "binder": "z"
+        },
+        {
+          "role": "Force",
+          "prose": "checking the forced value"
+        }
+      ],
+      "ctx": [
+        {
+          "name": "z",
+          "ty": "Thunk(Fin(0), F(Atom(\"Integer\")))"
+        }
+      ]
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "Thunkability",
+      "data": {
+        "available": "Fin(0)"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 43,
+        "end": 50
+      },
+      "analyzed": "Comp(F(Atom(\"Integer\")))",
+      "synthesized": "Comp(F(Atom(\"Integer\")))"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

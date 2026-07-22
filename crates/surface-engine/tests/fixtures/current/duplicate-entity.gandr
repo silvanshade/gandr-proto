@@ -1,0 +1,6 @@
+def target(x: Integer) -> F Integer {
+  ret x
+}
+def target(x: Integer) -> F Integer {
+  ret (x + 1)
+}

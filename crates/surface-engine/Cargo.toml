@@ -1,0 +1,48 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-surface-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Surface lowering engine: CST-to-core lowering, origin tracking, goals, and incremental sessions"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "engine"
+path = "tests/engine.rs"
+
+[dependencies]
+gandr-core-checker = { path = "../core-checker" }
+gandr-core-sequent = { path = "../core-sequent" }
+gandr-surface-grammar = { path = "../surface-grammar" }
+gandr-surface-parser = { path = "../surface-parser" }
+gandr-surface-syntax = { path = "../surface-syntax" }
+gandr-theory-levitation = { path = "../theory-levitation" }
+gandr-theory-nominal-automata = { path = "../theory-nominal-automata" }
+gandr-theory-orders = { path = "../theory-orders" }
+gandr-theory-recursion = { path = "../theory-recursion" }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+gandr-core-checker = { path = "../core-checker", features = [
+  "gandr_test_strategies"
+] }
+proptest = { workspace = true }
+
+[features]
+default = []
+codecs = ["dep:serde", "dep:serde_json"]
+full = ["codecs", "regex"]
+regex = [
+  "gandr-core-checker/gandr_feat_regex",
+  "gandr-core-sequent/gandr_feat_regex",
+]
+
+[lints]
+workspace = true

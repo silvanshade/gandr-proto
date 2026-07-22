@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a thunk type",
+        "actual": "Value(Atom(\"Integer\"))"
+      },
+      "severity": "error",
+      "message": "type shape mismatch: expected a thunk type, actual Value(Atom(\"Integer\"))",
+      "span": {
+        "start": 0,
+        "end": 8
+      },
+      "context_chain": [
+        {
+          "role": "Force",
+          "prose": "checking the forced value"
+        }
+      ],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a thunk type",
+        "actual": "Value(Atom(\"Integer\"))"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 0,
+        "end": 8
+      },
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

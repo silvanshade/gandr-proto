@@ -1,0 +1,5 @@
+// highlight smoke
+def greet(name: String) -> F Unit {
+  print("hi")
+}
+#!{echo $USER && grep hi < input.txt}

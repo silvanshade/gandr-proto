@@ -1,0 +1,107 @@
+=== item 0: Some("square") ===
+ascription: Some(
+    Value(
+        Thunk(
+            Omega,
+            Arrow(
+                Atom(
+                    "Integer",
+                ),
+                F(
+                    Atom(
+                        "Integer",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+term: Value(
+    Thunk(
+        Omega,
+        Abs(
+            "x",
+            None,
+            Bind(
+                App(
+                    App(
+                        Force(
+                            Var(
+                                "mul",
+                            ),
+                        ),
+                        Var(
+                            "x",
+                        ),
+                    ),
+                    Var(
+                        "x",
+                    ),
+                ),
+                "%tmp0",
+                Ret(
+                    Var(
+                        "%tmp0",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+=== item 1: None ===
+ascription: None
+term: Comp(
+    Abs(
+        "x",
+        None,
+        Case(
+            Annot(
+                Inj(
+                    Fst,
+                    Unit,
+                ),
+                Sum(
+                    Unit,
+                    Unit,
+                ),
+            ),
+            (
+                "_",
+                Ret(
+                    Var(
+                        "x",
+                    ),
+                ),
+            ),
+            (
+                "_",
+                Ret(
+                    Int(
+                        0,
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+=== origin ===
+[0] => 0..53 #8de1e21eb16b6edf [DefFunctionSugar]
+[0, 0] => 0..53 #8de1e21eb16b6edf [DefFunctionSugar]
+[0, 0, 0] => 40..51 #958b588e97ee1369 [BindHoist]
+[0, 0, 0, 0] => 45..50 #4ef6d04107a2d12e [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #4ef6d04107a2d12e [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #2b5c2f3c94122e1c [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #2b5c2f3c94122e1c [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #c8b644cccc5758ab
+[0, 0, 0, 0, 1] => 49..50 #c8b644cccc5758ab
+[0, 0, 0, 1] => 40..51 #958b588e97ee1369
+[0, 0, 0, 1, 0] => 44..51 #50e4649839787b63 [BindHoist]
+[1] => 55..99 #8a9ce51787d7ae15
+[1, 0] => 65..97 #feef5dbab0497a13 [IfSugar]
+[1, 0, 0] => 68..72 #cf5e48cfa6e156fb [BoolLiteral]
+[1, 0, 0, 0] => 68..72 #cf5e48cfa6e156fb [BoolLiteral]
+[1, 0, 0, 0, 0] => 68..72 #cf5e48cfa6e156fb [BoolLiteral]
+[1, 0, 1] => 75..80 #eaea1e33842fd3d6
+[1, 0, 1, 0] => 79..80 #c8b644cccc5758ab
+[1, 0, 2] => 90..95 #f5d220829f7034d4
+[1, 0, 2, 0] => 94..95 #fb4749b973430f87

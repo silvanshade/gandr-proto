@@ -1,0 +1,98 @@
+=== item 0: Some("target") ===
+ascription: Some(
+    Value(
+        Thunk(
+            Omega,
+            Arrow(
+                Atom(
+                    "Integer",
+                ),
+                F(
+                    Atom(
+                        "Integer",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+term: Value(
+    Thunk(
+        Omega,
+        Abs(
+            "x",
+            None,
+            Ret(
+                Var(
+                    "x",
+                ),
+            ),
+        ),
+    ),
+)
+=== item 1: Some("target") ===
+ascription: Some(
+    Value(
+        Thunk(
+            Omega,
+            Arrow(
+                Atom(
+                    "Integer",
+                ),
+                F(
+                    Atom(
+                        "Integer",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+term: Value(
+    Thunk(
+        Omega,
+        Abs(
+            "x",
+            None,
+            Bind(
+                App(
+                    App(
+                        Force(
+                            Var(
+                                "add",
+                            ),
+                        ),
+                        Var(
+                            "x",
+                        ),
+                    ),
+                    Int(
+                        1,
+                    ),
+                ),
+                "%tmp0",
+                Ret(
+                    Var(
+                        "%tmp0",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+=== origin ===
+[0] => 0..47 #71bfe966bf0c768f [DefFunctionSugar]
+[0, 0] => 0..47 #71bfe966bf0c768f [DefFunctionSugar]
+[0, 0, 0] => 40..45 #eaea1e33842fd3d6
+[0, 0, 0, 0] => 44..45 #c8b644cccc5758ab
+[1] => 48..101 #f2c9bb526e217c38 [DefFunctionSugar]
+[1, 0] => 48..101 #f2c9bb526e217c38 [DefFunctionSugar]
+[1, 0, 0] => 88..99 #1740e2b34f86ab58 [BindHoist]
+[1, 0, 0, 0] => 93..98 #70d8b984a7afad73 [OperatorElab]
+[1, 0, 0, 0, 0] => 93..98 #70d8b984a7afad73 [OperatorElab]
+[1, 0, 0, 0, 0, 0] => 95..96 #c4cf5a7035da344d [OperatorElab]
+[1, 0, 0, 0, 0, 0, 0] => 95..96 #c4cf5a7035da344d [OperatorElab]
+[1, 0, 0, 0, 0, 1] => 93..94 #c8b644cccc5758ab
+[1, 0, 0, 0, 1] => 97..98 #fb4748b973430dd4
+[1, 0, 0, 1] => 88..99 #1740e2b34f86ab58
+[1, 0, 0, 1, 0] => 92..99 #5668ed6a874b6839 [BindHoist]

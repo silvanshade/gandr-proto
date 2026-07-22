@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "TypeMismatch",
+      "data": {
+        "expected": "Value(Unit)",
+        "actual": "Value(Atom(\"Integer\"))"
+      },
+      "severity": "error",
+      "message": "type mismatch: expected Value(Unit), actual Value(Atom(\"Integer\"))",
+      "span": {
+        "start": 22,
+        "end": 23
+      },
+      "expr": "Int(1)",
+      "context_chain": [],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "TypeMismatch",
+      "data": {
+        "expected": "Value(Unit)",
+        "actual": "Value(Atom(\"Integer\"))"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 22,
+        "end": 23
+      },
+      "analyzed": "Value(Unit)",
+      "synthesized": "Value(Unit)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "StuckExpr",
+      "data": {
+        "hint": "a motive-less split only checks; supply a dependent motive (z. M) to infer, or an expected type"
+      },
+      "severity": "error",
+      "message": "no typing rule applies to term Comp(Split { scrut: Pair(Int(1), Int(2)), fst_name: \"x\", snd_name: \"y\", motive: None, body: Ret(Var(\"x\")) }): a motive-less split only checks; supply a dependent motive (z. M) to infer, or an expected type",
+      "span": {
+        "start": 8,
+        "end": 36
+      },
+      "expr": "Split { scrut: Pair(Int(1), Int(2)), fst_name: \"x\", snd_name: \"y\", motive: None, body: Ret(Var(\"x\")) }",
+      "context_chain": [
+        {
+          "role": "Thunk",
+          "prose": "checking the body of a thunk"
+        }
+      ],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "Stuck",
+      "data": {
+        "hint": "a motive-less split only checks; supply a dependent motive (z. M) to infer, or an expected type"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 8,
+        "end": 36
+      },
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

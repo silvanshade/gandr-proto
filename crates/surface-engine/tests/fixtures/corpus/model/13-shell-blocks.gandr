@@ -1,0 +1,25 @@
+// Shell blocks: effects through the host seam.
+//
+// `#!{ ... }` embeds flat commands; each lowers to a `perform` of the host
+// `Exec` effect, and the shell driver's handlers (Exec/Fs/Proc/Env) answer
+// them. The reply is ordinary typed data -- a record with `stdout`,
+// `stderr`, and `exit_code` fields -- not magic captured text: "tools are an
+// effect signature" is the design stance, and this is its smallest witness.
+//
+// Standalone host escapes `$(...)` evaluate gandr expressions before their
+// containing command and splice the resulting `String` as exactly one argv
+// element: no word splitting, interpolation, or shell reparse. Adjacent
+// literal/escape fragments are one lexical shell word and are rejected until a
+// typed string-concat operation lands.
+//
+// (Pipelines inside `#!{ }` are deliberately still rejected -- the pipeline
+// surface belongs to a later semantic stage; see the pathological tree.)
+#!{
+  printf 'hello from the host\n<%s>\n' $("one argv with spaces");
+}
+
+// The harness checks (shell mode runs a single top-level item):
+//@ mode: shell
+//@ expect: clean
+//@ expect-stdout-contains: hello from the host
+//@ expect-stdout-contains: <one argv with spaces>

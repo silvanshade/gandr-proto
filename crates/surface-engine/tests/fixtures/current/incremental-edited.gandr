@@ -1,0 +1,4 @@
+def target(x: Integer) -> F Integer {
+  ret (x + 2)
+}
+print(target)

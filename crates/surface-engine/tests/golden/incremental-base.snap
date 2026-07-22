@@ -1,0 +1,80 @@
+=== item 0: Some("target") ===
+ascription: Some(
+    Value(
+        Thunk(
+            Omega,
+            Arrow(
+                Atom(
+                    "Integer",
+                ),
+                F(
+                    Atom(
+                        "Integer",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+term: Value(
+    Thunk(
+        Omega,
+        Abs(
+            "x",
+            None,
+            Bind(
+                App(
+                    App(
+                        Force(
+                            Var(
+                                "add",
+                            ),
+                        ),
+                        Var(
+                            "x",
+                        ),
+                    ),
+                    Int(
+                        1,
+                    ),
+                ),
+                "%tmp0",
+                Ret(
+                    Var(
+                        "%tmp0",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+=== item 1: None ===
+ascription: None
+term: Comp(
+    App(
+        Force(
+            Var(
+                "print",
+            ),
+        ),
+        Var(
+            "target",
+        ),
+    ),
+)
+=== origin ===
+[0] => 0..53 #f2c9bb526e217c38 [DefFunctionSugar]
+[0, 0] => 0..53 #f2c9bb526e217c38 [DefFunctionSugar]
+[0, 0, 0] => 40..51 #1740e2b34f86ab58 [BindHoist]
+[0, 0, 0, 0] => 45..50 #70d8b984a7afad73 [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #70d8b984a7afad73 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #c4cf5a7035da344d [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #c4cf5a7035da344d [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #c8b644cccc5758ab
+[0, 0, 0, 0, 1] => 49..50 #fb4748b973430dd4
+[0, 0, 0, 1] => 40..51 #1740e2b34f86ab58
+[0, 0, 0, 1, 0] => 44..51 #5668ed6a874b6839 [BindHoist]
+[1] => 54..67 #408d30717fd64430
+[1, 0] => 54..59 #f48ddb7c90272abc [ForceSugar]
+[1, 0, 0] => 54..59 #f48ddb7c90272abc
+[1, 1] => 60..66 #3db6aa34a2669544

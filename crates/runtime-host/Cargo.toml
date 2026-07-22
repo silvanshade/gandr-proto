@@ -13,6 +13,7 @@ publish.workspace = true
 [dependencies]
 gandr-core-checker = { path = "../core-checker" }
 gandr-core-sequent = { path = "../core-sequent" }
+gandr-surface-engine = { path = "../surface-engine" }
 thiserror = { workspace = true }
 
 [features]

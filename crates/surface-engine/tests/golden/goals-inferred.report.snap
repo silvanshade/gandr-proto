@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "diagnostics": [],
+  "goals": [
+    {
+      "hole": 0,
+      "item": 0,
+      "span": {
+        "start": 70,
+        "end": 81
+      },
+      "note": "UnsupportedForm { kind: \"leta_statement\" }",
+      "ctx_local": [
+        {
+          "name": "x",
+          "ty": "Atom(\"Integer\")"
+        }
+      ]
+    }
+  ],
+  "marks": [
+    {
+      "kind": "EmptyHole",
+      "data": {
+        "hole": 0
+      },
+      "is_error": false,
+      "item": 0,
+      "span": {
+        "start": 70,
+        "end": 81
+      },
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

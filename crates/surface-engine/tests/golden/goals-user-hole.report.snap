@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "diagnostics": [],
+  "goals": [
+    {
+      "hole": 0,
+      "item": 0,
+      "span": {
+        "start": 42,
+        "end": 43
+      },
+      "note": "UserHole { name: None }",
+      "expected": "Comp(F(Atom(\"Integer\")))",
+      "ctx_local": []
+    },
+    {
+      "hole": 1,
+      "item": 1,
+      "span": {
+        "start": 93,
+        "end": 98
+      },
+      "note": "UserHole { name: Some(\"seed\") }",
+      "expected": "Value(Atom(\"Integer\"))",
+      "ctx_local": []
+    }
+  ],
+  "marks": [
+    {
+      "kind": "EmptyHole",
+      "data": {
+        "hole": 0
+      },
+      "is_error": false,
+      "item": 0,
+      "span": {
+        "start": 42,
+        "end": 43
+      },
+      "analyzed": "Comp(F(Atom(\"Integer\")))",
+      "synthesized": "Comp(F(Atom(\"Integer\")))"
+    },
+    {
+      "kind": "EmptyHole",
+      "data": {
+        "hole": 1
+      },
+      "is_error": false,
+      "item": 1,
+      "span": {
+        "start": 93,
+        "end": 98
+      },
+      "analyzed": "Value(Atom(\"Integer\"))",
+      "synthesized": "Value(Atom(\"Integer\"))"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

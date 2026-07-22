@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a product type",
+        "actual": "Value(Atom(\"Integer\"))"
+      },
+      "severity": "error",
+      "message": "type shape mismatch: expected a product type, actual Value(Atom(\"Integer\"))",
+      "span": {
+        "start": 34,
+        "end": 65
+      },
+      "context_chain": [
+        {
+          "role": "Thunk",
+          "prose": "checking the body of a thunk"
+        },
+        {
+          "role": "Split",
+          "prose": "checking the scrutinee of a split binding `(x, y)`"
+        }
+      ],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a product type",
+        "actual": "Value(Atom(\"Integer\"))"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 42,
+        "end": 65
+      },
+      "analyzed": "Comp(F(Atom(\"Integer\")))",
+      "synthesized": "Comp(F(Atom(\"Integer\")))"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

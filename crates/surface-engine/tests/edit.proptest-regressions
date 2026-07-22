@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9593c0ec0f652292dd479d7aca0df1324ac7f43fb25e2ae8e3a3ef8522f627a8 # shrinks to old_source = "x(x)", new_source = "x(x)\ndef x(x: Integer) -> F Integer { ret (x + 0) }"
+cc 935c1c46990d7da49686b41e90adb759df86c5f7bb0e0fc608cf6d0d3a096011 # shrinks to source = "def x = \"hi\";"
+cc ec90bfa0bc0d2db666df0cb8668f873cbb9b2cc8860020a9c59b07cf77d746cd # shrinks to old_source = "", new_source = "def x = \"hi\";"
+cc 3bf9ece02c4e3ddb78534b516fe0aff8548444bf57b8d14d6e333d6155e1f30b # shrinks to source = "(ret 0).fst\nx(x)"

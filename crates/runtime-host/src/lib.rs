@@ -93,7 +93,7 @@ pub mod codec;
 pub mod driver;
 pub mod error;
 pub mod handler;
-pub mod sig;
+pub use gandr_surface_engine::host as sig;
 
 pub use crate::driver::ShellOutcome;
 pub use crate::driver::run_program;

@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "GradeError",
+      "data": {
+        "lower": "Omega",
+        "upper": "Fin(1)"
+      },
+      "severity": "error",
+      "message": "grade order requirement failed: Omega ⊑ Fin(1) does not hold",
+      "span": {
+        "start": 35,
+        "end": 53
+      },
+      "expr": "Thunk(Fin(1), Ret(Int(1)))",
+      "context_chain": [],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "GradeBudget",
+      "data": {
+        "required": "Omega",
+        "available": "Fin(1)"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 35,
+        "end": 53
+      },
+      "analyzed": "Value(Thunk(Omega, F(Atom(\"Integer\"))))",
+      "synthesized": "Value(Thunk(Omega, F(Atom(\"Integer\"))))"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

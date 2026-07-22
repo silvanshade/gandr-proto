@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "diagnostics": [],
+  "goals": [
+    {
+      "hole": 0,
+      "item": 0,
+      "span": {
+        "start": 40,
+        "end": 50
+      },
+      "note": "EmptyBlock",
+      "expected": "Comp(F(Atom(\"Integer\")))",
+      "ctx_local": [
+        {
+          "name": "_",
+          "ty": "Atom(\"Integer\")"
+        }
+      ]
+    }
+  ],
+  "marks": [
+    {
+      "kind": "EmptyHole",
+      "data": {
+        "hole": 0
+      },
+      "is_error": false,
+      "item": 0,
+      "span": {
+        "start": 40,
+        "end": 50
+      },
+      "analyzed": "Comp(F(Atom(\"Integer\")))",
+      "synthesized": "Comp(F(Atom(\"Integer\")))"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

@@ -1,0 +1,5 @@
+def map_square(xs: List(Integer)) -> F (List(Integer)) {
+  ret map(thunk { fn(x) { ret (x * x) } }, xs)
+}
+#!{printf '%s\n' alpha beta gamma | grep a | wc -l};
+def job = thunk { #!{echo $(string_append("hi", name)) && $(print("done"))} };

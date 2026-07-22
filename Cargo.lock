@@ -650,6 +650,7 @@ version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
  "gandr-core-sequent",
+ "gandr-surface-engine",
  "thiserror 2.0.19",
 ]
 
@@ -676,6 +677,25 @@ dependencies = [
  "bao",
  "blake3",
  "gandr-storage-chunker",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "gandr-surface-engine"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-core-sequent",
+ "gandr-surface-grammar",
+ "gandr-surface-parser",
+ "gandr-surface-syntax",
+ "gandr-theory-levitation",
+ "gandr-theory-nominal-automata",
+ "gandr-theory-orders",
+ "gandr-theory-recursion",
+ "proptest",
+ "serde",
+ "serde_json",
  "thiserror 2.0.19",
 ]
 

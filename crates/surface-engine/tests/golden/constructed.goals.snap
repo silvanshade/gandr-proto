@@ -1,0 +1,8 @@
+hole 0 @ item 0 path [0, 0, 0, 0] bytes 70..81
+  note: Some(UnsupportedForm { kind: "leta_statement" })
+  expected: None
+  ctx_local: Some([("x", Atom("Integer"))])
+hole 1 @ item 1 path [1] bytes 90..106
+  note: Some(MissingDefinition { name: "g" })
+  expected: Some(Value(Sum(Unit, Unit)))
+  ctx_local: Some([])

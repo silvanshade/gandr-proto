@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "an arrow type",
+        "actual": "Comp(F(Atom(\"Integer\")))"
+      },
+      "severity": "error",
+      "message": "type shape mismatch: expected an arrow type, actual Comp(F(Atom(\"Integer\")))",
+      "span": {
+        "start": 0,
+        "end": 10
+      },
+      "context_chain": [
+        {
+          "role": "AppFn",
+          "prose": "checking the function of an application"
+        }
+      ],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "an arrow type",
+        "actual": "Comp(F(Atom(\"Integer\")))"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 0,
+        "end": 10
+      },
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

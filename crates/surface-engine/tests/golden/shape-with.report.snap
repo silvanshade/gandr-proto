@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a with-type",
+        "actual": "Comp(F(Atom(\"Integer\")))"
+      },
+      "severity": "error",
+      "message": "type shape mismatch: expected a with-type, actual Comp(F(Atom(\"Integer\")))",
+      "span": {
+        "start": 0,
+        "end": 11
+      },
+      "context_chain": [
+        {
+          "role": "Prj",
+          "prose": "checking the target of a projection"
+        }
+      ],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a with-type",
+        "actual": "Comp(F(Atom(\"Integer\")))"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 0,
+        "end": 11
+      },
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

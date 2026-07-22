@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "StuckExpr",
+      "data": {
+        "hint": "an abstraction only checks against an arrow type"
+      },
+      "severity": "error",
+      "message": "no typing rule applies to term Comp(Abs(\"x\", None, Ret(Var(\"x\")))): an abstraction only checks against an arrow type",
+      "span": {
+        "start": 42,
+        "end": 57
+      },
+      "expr": "Abs(\"x\", None, Ret(Var(\"x\")))",
+      "context_chain": [
+        {
+          "role": "Thunk",
+          "prose": "checking the body of a thunk"
+        }
+      ],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "Stuck",
+      "data": {
+        "hint": "an abstraction only checks against an arrow type"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 42,
+        "end": 57
+      },
+      "analyzed": "Comp(F(Atom(\"Integer\")))",
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

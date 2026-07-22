@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "StuckExpr",
+      "data": {
+        "hint": "case only checks; annotate or supply an expected type"
+      },
+      "severity": "error",
+      "message": "no typing rule applies to term Comp(Case(Annot(Inj(Fst, Int(1)), Sum(Atom(\"Integer\"), Atom(\"Integer\"))), (\"x\", Ret(Var(\"x\"))), (\"y\", Ret(Int(0))))): case only checks; annotate or supply an expected type",
+      "span": {
+        "start": 0,
+        "end": 70
+      },
+      "expr": "Case(Annot(Inj(Fst, Int(1)), Sum(Atom(\"Integer\"), Atom(\"Integer\"))), (\"x\", Ret(Var(\"x\"))), (\"y\", Ret(Int(0))))",
+      "context_chain": [],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "Stuck",
+      "data": {
+        "hint": "case only checks; annotate or supply an expected type"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 0,
+        "end": 70
+      },
+      "synthesized": "Comp(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

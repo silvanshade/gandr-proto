@@ -1,0 +1,184 @@
+=== item 0: Some("alpha") ===
+ascription: Some(
+    Value(
+        Thunk(
+            Omega,
+            Arrow(
+                Atom(
+                    "Integer",
+                ),
+                F(
+                    Atom(
+                        "Integer",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+term: Value(
+    Thunk(
+        Omega,
+        Abs(
+            "x",
+            None,
+            Bind(
+                App(
+                    App(
+                        Force(
+                            Var(
+                                "add",
+                            ),
+                        ),
+                        Var(
+                            "x",
+                        ),
+                    ),
+                    Int(
+                        1,
+                    ),
+                ),
+                "%tmp0",
+                Ret(
+                    Var(
+                        "%tmp0",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+=== item 1: Some("target") ===
+ascription: Some(
+    Value(
+        Thunk(
+            Omega,
+            Arrow(
+                Atom(
+                    "Integer",
+                ),
+                F(
+                    Atom(
+                        "Integer",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+term: Value(
+    Thunk(
+        Omega,
+        Abs(
+            "y",
+            None,
+            Bind(
+                App(
+                    App(
+                        Force(
+                            Var(
+                                "mul",
+                            ),
+                        ),
+                        Var(
+                            "y",
+                        ),
+                    ),
+                    Var(
+                        "y",
+                    ),
+                ),
+                "%tmp1",
+                Ret(
+                    Var(
+                        "%tmp1",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+=== item 2: Some("omega") ===
+ascription: Some(
+    Value(
+        Thunk(
+            Omega,
+            Arrow(
+                Atom(
+                    "Integer",
+                ),
+                F(
+                    Atom(
+                        "Integer",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+term: Value(
+    Thunk(
+        Omega,
+        Abs(
+            "z",
+            None,
+            Bind(
+                App(
+                    App(
+                        Force(
+                            Var(
+                                "sub",
+                            ),
+                        ),
+                        Var(
+                            "z",
+                        ),
+                    ),
+                    Int(
+                        1,
+                    ),
+                ),
+                "%tmp2",
+                Ret(
+                    Var(
+                        "%tmp2",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+=== origin ===
+[0] => 0..52 #bedda41450032e8a [DefFunctionSugar]
+[0, 0] => 0..52 #bedda41450032e8a [DefFunctionSugar]
+[0, 0, 0] => 39..50 #1740e2b34f86ab58 [BindHoist]
+[0, 0, 0, 0] => 44..49 #70d8b984a7afad73 [OperatorElab]
+[0, 0, 0, 0, 0] => 44..49 #70d8b984a7afad73 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 46..47 #c4cf5a7035da344d [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 46..47 #c4cf5a7035da344d [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 44..45 #c8b644cccc5758ab
+[0, 0, 0, 0, 1] => 48..49 #fb4748b973430dd4
+[0, 0, 0, 1] => 39..50 #1740e2b34f86ab58
+[0, 0, 0, 1, 0] => 43..50 #5668ed6a874b6839 [BindHoist]
+[1] => 53..106 #7b13f12e7d195394 [DefFunctionSugar]
+[1, 0] => 53..106 #7b13f12e7d195394 [DefFunctionSugar]
+[1, 0, 0] => 93..104 #5283cc4384138bd2 [BindHoist]
+[1, 0, 0, 0] => 98..103 #fe33e19a73345cd2 [OperatorElab]
+[1, 0, 0, 0, 0] => 98..103 #fe33e19a73345cd2 [OperatorElab]
+[1, 0, 0, 0, 0, 0] => 100..101 #2b5c2f3c94122e1c [OperatorElab]
+[1, 0, 0, 0, 0, 0, 0] => 100..101 #2b5c2f3c94122e1c [OperatorElab]
+[1, 0, 0, 0, 0, 1] => 98..99 #c8b643cccc5756f8
+[1, 0, 0, 0, 1] => 102..103 #c8b643cccc5756f8
+[1, 0, 0, 1] => 93..104 #5283cc4384138bd2
+[1, 0, 0, 1, 0] => 97..104 #e222347a76bf1a37 [BindHoist]
+[2] => 107..159 #01e0d158e2c9e6e6 [DefFunctionSugar]
+[2, 0] => 107..159 #01e0d158e2c9e6e6 [DefFunctionSugar]
+[2, 0, 0] => 146..157 #d84752b646a338d2 [BindHoist]
+[2, 0, 0, 0] => 151..156 #768c5e57a48db409 [OperatorElab]
+[2, 0, 0, 0, 0] => 151..156 #768c5e57a48db409 [OperatorElab]
+[2, 0, 0, 0, 0, 0] => 153..154 #b8207745b88ac9ea [OperatorElab]
+[2, 0, 0, 0, 0, 0, 0] => 153..154 #b8207745b88ac9ea [OperatorElab]
+[2, 0, 0, 0, 0, 1] => 151..152 #c8b646cccc575c11
+[2, 0, 0, 0, 1] => 155..156 #fb4748b973430dd4
+[2, 0, 0, 1] => 146..157 #d84752b646a338d2
+[2, 0, 0, 1, 0] => 150..157 #0f80629e5e0dc12f [BindHoist]

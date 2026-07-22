@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a returner type",
+        "actual": "Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))"
+      },
+      "severity": "error",
+      "message": "type shape mismatch: expected a returner type, actual Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))",
+      "span": {
+        "start": 0,
+        "end": 50
+      },
+      "context_chain": [
+        {
+          "role": "Thunk",
+          "prose": "checking the body of a thunk"
+        },
+        {
+          "role": "Bind",
+          "prose": "checking the bound computation of `run x <- …`",
+          "binder": "x"
+        }
+      ],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "ShapeMismatch",
+      "data": {
+        "expected_shape": "a returner type",
+        "actual": "Comp(Arrow(Atom(\"Integer\"), F(Atom(\"Integer\"))))"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 8,
+        "end": 50
+      },
+      "synthesized": "Comp(F(Unknown))"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

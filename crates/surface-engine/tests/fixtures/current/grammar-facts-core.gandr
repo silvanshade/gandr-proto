@@ -1,0 +1,5 @@
+def answer = 42;
+def square(x: Integer) -> F Integer {
+  ret (x * x)
+}
+#!{FOO=bar echo "hello $USER" | grep hello > out.txt}

@@ -1,0 +1,7 @@
+def square(x: Integer) -> F Integer {
+  ret (x * x)
+}
+
+fn(x) {
+  if true { ret x } else { ret 0 }
+}

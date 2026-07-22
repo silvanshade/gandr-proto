@@ -1,0 +1,12 @@
+// W4d surface fold-in — the levitation stage-0 declined-declaration golden.
+//
+// GRADUATION: this block parses, but its levitation-stage-0 elaboration in
+// `gandr-surface-engine::desc_elab` declines it. The per-variable variance /
+// linearity of a 2-cell face is derived from the faces, never declared
+// (proposal-levitation-addendum-vdc.md §A/§C), so an attribute slot naming the
+// reserved `variance` metadata is rejected with a host well-formedness
+// diagnostic. `tests/desc_elab.rs` witnesses the decline.
+
+// A datatype whose constructor tries to declare the reserved, derived
+// `variance` metadata through an attribute slot.
+data Declared { Mk [variance] }

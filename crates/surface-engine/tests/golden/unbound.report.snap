@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "diagnostics": [
+    {
+      "kind": "UnboundVariable",
+      "data": {
+        "name": "nonesuch"
+      },
+      "severity": "error",
+      "message": "variable is unbound: nonesuch",
+      "span": {
+        "start": 0,
+        "end": 8
+      },
+      "expr": "Var(\"nonesuch\")",
+      "context_chain": [],
+      "ctx": []
+    }
+  ],
+  "goals": [],
+  "marks": [
+    {
+      "kind": "FreeVariable",
+      "data": {
+        "name": "nonesuch"
+      },
+      "is_error": true,
+      "item": 0,
+      "span": {
+        "start": 0,
+        "end": 8
+      },
+      "synthesized": "Value(Unknown)"
+    }
+  ],
+  "attributes": [],
+  "obligations": []
+}

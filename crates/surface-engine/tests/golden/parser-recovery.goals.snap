@@ -1,0 +1,4 @@
+hole 0 @ item 1 path [1] bytes 20..32
+  note: Some(UnsupportedForm { kind: "pipeline" })
+  expected: None
+  ctx_local: Some([])

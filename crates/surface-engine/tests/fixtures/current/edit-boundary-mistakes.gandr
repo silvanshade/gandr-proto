@@ -1,0 +1,4 @@
+def wrap(x: Integer) -> F Integer {
+  print(x);
+  ret x
+}
