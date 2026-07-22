@@ -27,6 +27,7 @@ This is the **routing layer**: the base operating doctrine lives in the shared c
 | [workflow/agda.md](workflow/agda.md)                           | anything under `metatheory/`                                                   |
 | [workflow/scripting.md](workflow/scripting.md)                 | project scripts (Nushell/TS), reading diagnostics (aifix)                      |
 | [workflow/review.md](workflow/review.md)                       | adversarial review, interpreting adversary findings, research outlooks         |
+| [workflow/specs.md](workflow/specs.md)                         | authoring/editing `docs/spec` components, re-absorptions, doc fidelity work    |
 | [workflow/docs.md](workflow/docs.md)                           | adding/restructuring docs, formatter posture, math-dense Markdown              |
 
 ## Quality gates, in one breath
