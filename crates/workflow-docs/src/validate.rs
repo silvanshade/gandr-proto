@@ -9,72 +9,41 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
-use std::path::Path;
-
-use yaml_rust2::YamlLoader;
 
 use crate::Diagnostic;
-use crate::DocError;
+use crate::bibliography::Bibliography;
 use crate::model::Block;
+use crate::model::CiteKey;
 use crate::model::Document;
 use crate::model::Inline;
 
 /// A validated (or to-be-validated) corpus: the parsed components plus the
-/// resolvable cite-key set from the references file.
+/// resolvable bibliography.
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct Corpus
 {
     /// Parsed components, in discovery order.
     pub documents: Vec<Document>,
-    /// Cite keys declared in the hayagriva references file.
-    pub reference_keys: BTreeSet<String>,
+    /// Typed references declared in the Hayagriva bibliography.
+    pub references: Bibliography,
 }
 
 impl Corpus
 {
-    /// Build a corpus from parsed documents and reference keys.
+    /// Build a corpus from parsed documents and their bibliography.
     #[inline]
     #[must_use]
     pub fn new(
         documents: Vec<Document>,
-        reference_keys: BTreeSet<String>,
+        references: Bibliography,
     ) -> Self
     {
         Self {
             documents,
-            reference_keys,
+            references,
         }
     }
-}
-
-/// Read the top-level cite keys from a hayagriva references file.
-///
-/// # Errors
-/// Returns [`DocError::Io`] when the file cannot be read and [`DocError::Yaml`]
-/// when it is not well-formed.
-#[inline]
-pub fn load_reference_keys(path: &Path) -> Result<BTreeSet<String>, DocError>
-{
-    let text = std::fs::read_to_string(path).map_err(|source| DocError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    let documents = YamlLoader::load_from_str(&text).map_err(|error| DocError::Yaml {
-        path: path.to_path_buf(),
-        detail: error.to_string(),
-    })?;
-    let mut keys = BTreeSet::new();
-    for document in &documents {
-        if let Some(mapping) = document.as_hash() {
-            for entry in mapping.keys() {
-                if let Some(key) = entry.as_str() {
-                    keys.insert(key.to_owned());
-                }
-            }
-        }
-    }
-    Ok(keys)
 }
 
 /// Validate a corpus, returning every violation as a diagnostic.
@@ -92,7 +61,7 @@ pub fn validate_corpus(corpus: &Corpus) -> Vec<Diagnostic>
     for document in &corpus.documents {
         collector.visit_document(document);
     }
-    collector.finish(&corpus.reference_keys);
+    collector.finish(&corpus.references);
     let mut diagnostics = collector.diagnostics;
     diagnostics.sort();
     diagnostics
@@ -109,8 +78,8 @@ struct Collector
     defined_terms: BTreeMap<String, String>,
     /// Each term reference as a key and location.
     term_refs: Vec<(String, String)>,
-    /// Each cite reference as a key and location.
-    cites: Vec<(String, String)>,
+    /// Each cite reference as a typed key and location.
+    cites: Vec<(CiteKey, String)>,
     /// Each provenance edge as a target identifier and location.
     provenance: Vec<(String, String)>,
     /// Accumulated diagnostics.
@@ -223,13 +192,13 @@ impl Collector
                     self.record_id(&diagram.id, &format!("{path}:<diagram#{}>", diagram.id));
                     for cite in &diagram.cites {
                         self.cites
-                            .push((cite.key.clone(), format!("{path}:<diagram#{}>", diagram.id)));
+                            .push((cite.clone(), format!("{path}:<diagram#{}>", diagram.id)));
                     }
                 },
                 | Block::References(ref keys) => {
                     for cite in keys {
                         self.cites
-                            .push((cite.key.clone(), format!("{path}:<references>")));
+                            .push((cite.clone(), format!("{path}:<references>")));
                     }
                 },
                 | Block::Judgements(_) | Block::Grammar(_) | Block::Code(_) | Block::Example(_) => {
@@ -269,10 +238,8 @@ impl Collector
                 ));
             },
             | Inline::Cite(ref cite) => {
-                self.cites.push((
-                    cite.key.clone(),
-                    format!("{path}:<cite key='{}'>", cite.key),
-                ));
+                self.cites
+                    .push((cite.clone(), format!("{path}:<cite key='{}'>", cite.key)));
             },
             | Inline::Text(_) | Inline::Math(_) => {},
         }
@@ -281,7 +248,7 @@ impl Collector
     /// Resolve deferred references and produce the remaining diagnostics.
     fn finish(
         &mut self,
-        reference_keys: &BTreeSet<String>,
+        references: &Bibliography,
     )
     {
         for entry in &self.term_refs {
@@ -295,12 +262,15 @@ impl Collector
             }
         }
         for entry in &self.cites {
-            let (key, location) = (&entry.0, &entry.1);
-            if !reference_keys.contains(key) {
+            let (cite, location) = (&entry.0, &entry.1);
+            if references.get(cite).is_none() {
                 self.diagnostics.push(Diagnostic::new(
                     "unresolved-cite",
                     location.clone(),
-                    format!("cite key '{key}' is not present in the references file"),
+                    format!(
+                        "cite key '{}' is not present in the references file",
+                        cite.key
+                    ),
                 ));
             }
         }
@@ -323,13 +293,13 @@ mod tests
     //! Validator witnesses: duplicate identifier, unresolved term, unresolved
     //! cite, and missing status.
 
-    use alloc::collections::BTreeSet;
     use alloc::string::String;
     use alloc::vec::Vec;
 
     use super::Corpus;
     use super::validate_corpus;
     use crate::Diagnostic;
+    use crate::bibliography::Bibliography;
     use crate::model::Block;
     use crate::model::CiteKey;
     use crate::model::Definition;
@@ -376,7 +346,7 @@ mod tests
     {
         let corpus = Corpus::new(
             alloc::vec![component("dup", Vec::new()), component("dup", Vec::new())],
-            BTreeSet::new(),
+            Bibliography::default(),
         );
         let diagnostics = validate_corpus(&corpus);
         assert!(
@@ -395,7 +365,7 @@ mod tests
         })]);
         let corpus = Corpus::new(
             alloc::vec![component("c", alloc::vec![prose])],
-            BTreeSet::new(),
+            Bibliography::default(),
         );
         let diagnostics = validate_corpus(&corpus);
         assert!(
@@ -417,7 +387,7 @@ mod tests
         };
         let corpus = Corpus::new(
             alloc::vec![component("c", alloc::vec![define("t"), define("t")])],
-            BTreeSet::new(),
+            Bibliography::default(),
         );
         let diagnostics = validate_corpus(&corpus);
         assert!(
@@ -436,7 +406,7 @@ mod tests
         })]);
         let corpus = Corpus::new(
             alloc::vec![component("c", alloc::vec![prose])],
-            BTreeSet::new(),
+            Bibliography::default(),
         );
         let diagnostics = validate_corpus(&corpus);
         assert!(
@@ -453,9 +423,8 @@ mod tests
         let prose = Block::Prose(alloc::vec![Inline::Cite(CiteKey {
             key: "A-1a".to_owned(),
         })]);
-        let mut keys = BTreeSet::new();
-        keys.insert("A-1a".to_owned());
-        let corpus = Corpus::new(alloc::vec![component("c", alloc::vec![prose])], keys);
+        let references = Bibliography::from_keys(alloc::vec!["A-1a".to_owned()]);
+        let corpus = Corpus::new(alloc::vec![component("c", alloc::vec![prose])], references);
         let diagnostics = validate_corpus(&corpus);
         assert!(
             !diagnostics.iter().any(|d| d.code == "unresolved-cite"),
@@ -505,7 +474,7 @@ mod tests
         });
         let corpus = Corpus::new(
             alloc::vec![component("c", alloc::vec![root])],
-            BTreeSet::new(),
+            Bibliography::default(),
         );
 
         let diagnostics = validate_corpus(&corpus);

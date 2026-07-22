@@ -12,6 +12,8 @@ use std::path::PathBuf;
 
 use crate::Diagnostic;
 use crate::DocError;
+use crate::bibliography;
+use crate::bibliography::Bibliography;
 use crate::doc::model::DocRecord;
 use crate::doc::parse::parse_doc_document;
 use crate::doc::validate::DocCorpus;
@@ -75,15 +77,15 @@ pub fn discover_component_files(spec_dir: &Path) -> Result<Vec<PathBuf>, DocErro
     Ok(files)
 }
 
-/// Parse every component and validate the corpus, returning the documents and
-/// the sorted diagnostics.
+/// Parse every component and validate the corpus, returning the typed corpus
+/// and sorted diagnostics.
 ///
 /// # Errors
 /// Returns [`DocError`] on a filesystem, `XML`, or `YAML` failure.
 fn assemble(
     spec_dir: &Path,
     refs_path: &Path,
-) -> Result<(Vec<Document>, Vec<Diagnostic>), DocError>
+) -> Result<(Corpus, Vec<Diagnostic>), DocError>
 {
     let mut diagnostics = Vec::new();
     let mut documents: Vec<Document> = Vec::new();
@@ -98,11 +100,11 @@ fn assemble(
             documents.push(document);
         }
     }
-    let reference_keys = validate::load_reference_keys(refs_path)?;
-    let corpus = Corpus::new(documents, reference_keys);
+    let references = bibliography::load(refs_path)?;
+    let corpus = Corpus::new(documents, references);
     diagnostics.extend(validate::validate_corpus(&corpus));
     diagnostics.sort();
-    Ok((corpus.documents, diagnostics))
+    Ok((corpus, diagnostics))
 }
 
 /// Parse and validate the whole corpus.
@@ -115,9 +117,9 @@ pub fn check(
     refs_path: &Path,
 ) -> Result<CheckReport, DocError>
 {
-    let (documents, diagnostics) = assemble(spec_dir, refs_path)?;
+    let (corpus, diagnostics) = assemble(spec_dir, refs_path)?;
     Ok(CheckReport {
-        component_count: documents.len(),
+        component_count: corpus.documents.len(),
         diagnostics,
     })
 }
@@ -136,9 +138,9 @@ pub fn build(
     out_dir: &Path,
 ) -> Result<BuildReport, DocError>
 {
-    let (documents, diagnostics) = assemble(spec_dir, refs_path)?;
+    let (corpus, diagnostics) = assemble(spec_dir, refs_path)?;
     let check = CheckReport {
-        component_count: documents.len(),
+        component_count: corpus.documents.len(),
         diagnostics,
     };
     if !check.diagnostics.is_empty() {
@@ -148,7 +150,7 @@ pub fn build(
             notes: Vec::new(),
         });
     }
-    let (pages, notes) = write_pages(&documents, out_dir)?;
+    let (pages, notes) = write_pages(&corpus.documents, &corpus.references, out_dir)?;
     Ok(BuildReport {
         check,
         pages,
@@ -159,6 +161,7 @@ pub fn build(
 /// Render and write every page, returning the written paths and any notes.
 fn write_pages(
     documents: &[Document],
+    references: &Bibliography,
     out_dir: &Path,
 ) -> Result<(Vec<PathBuf>, Vec<String>), DocError>
 {
@@ -168,7 +171,7 @@ fn write_pages(
         source,
     })?;
     let terms = render::term_map(documents);
-    let ctx = RenderContext::new(&cache_dir, &terms);
+    let ctx = RenderContext::new(&cache_dir, &terms, references);
     let mut notes = Vec::new();
     let mut pages = Vec::new();
     let index_path = out_dir.join("index.html");
@@ -325,8 +328,8 @@ pub fn check_docs(
             records.push(record);
         }
     }
-    let reference_keys = validate::load_reference_keys(refs_path)?;
-    let corpus = DocCorpus::new(records, reference_keys);
+    let references = bibliography::load(refs_path)?;
+    let corpus = DocCorpus::new(records, references.key_set());
     diagnostics.extend(validate_doc_corpus(&corpus));
     diagnostics.sort();
     Ok(DocCheckReport {

@@ -17,6 +17,8 @@ use alloc::string::String;
 use core::fmt;
 use std::path::PathBuf;
 
+/// Typed Hayagriva bibliography shared by validation and rendering.
+pub mod bibliography;
 /// Corpus discovery and the `check`, `build`, and `fmt` orchestration.
 pub mod corpus;
 /// The prose document classes, a minimal family alongside the [`model`]

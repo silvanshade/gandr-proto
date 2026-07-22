@@ -10,6 +10,7 @@ use alloc::vec::Vec;
 use std::path::Path;
 
 use crate::DocError;
+use crate::bibliography::Bibliography;
 use crate::model::Block;
 use crate::model::CiteKey;
 use crate::model::Document;
@@ -32,9 +33,11 @@ figure{margin:1.2em 0;text-align:center}figcaption{color:var(--muted);font-size:
 .cite{color:var(--accent);text-decoration:none}.mono{font-family:ui-monospace,monospace}
 .fallback{border:1px dashed var(--line);padding:.2em .4em;color:var(--muted)}
 dl.grammar dt{font-family:ui-monospace,monospace;font-weight:bold}
-.expect{color:var(--muted);font-size:.85rem;margin:.2em 0}"#;
+.expect{color:var(--muted);font-size:.85rem;margin:.2em 0}
+.refs{list-style:none;padding-left:0}.refs li{margin:.8em 0}
+.ref-key{font-family:ui-monospace,monospace;white-space:nowrap}.ref-locator{color:var(--accent);white-space:nowrap}"#;
 
-/// Rendering context: the leaf cache directory and the corpus term map.
+/// Rendering context: leaf cache, corpus term map, and bibliography.
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub struct RenderContext<'ctx>
@@ -43,6 +46,8 @@ pub struct RenderContext<'ctx>
     pub cache_dir: &'ctx Path,
     /// Corpus-wide map from term key to displayed definition text.
     pub terms: &'ctx BTreeMap<String, String>,
+    /// Typed bibliography used to materialize per-component reference entries.
+    pub references: &'ctx Bibliography,
 }
 
 impl<'ctx> RenderContext<'ctx>
@@ -53,9 +58,14 @@ impl<'ctx> RenderContext<'ctx>
     pub const fn new(
         cache_dir: &'ctx Path,
         terms: &'ctx BTreeMap<String, String>,
+        references: &'ctx Bibliography,
     ) -> Self
     {
-        Self { cache_dir, terms }
+        Self {
+            cache_dir,
+            terms,
+            references,
+        }
     }
 }
 
@@ -388,7 +398,9 @@ fn render_blocks(
                     output.push_str(&expected_output);
                     output.push_str(&expected_error);
                 },
-                | Block::References(ref keys) => output.push_str(&render_references(keys)),
+                | Block::References(ref keys) => {
+                    output.push_str(&render_references(keys, ctx.references));
+                },
             },
         }
     }
@@ -397,19 +409,81 @@ fn render_blocks(
 }
 
 /// Render a per-component references list.
-fn render_references(keys: &[CiteKey]) -> String
+///
+/// # Contract
+/// - requires: `keys` belongs to the validated bibliography supplied with the
+///   render context.
+/// - ensures: preserves each `ref-KEY` anchor while materializing author,
+///   title, venue, date, and the preferred resolvable locator when present.
+/// - provides: one references section in the supplied key order.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — exact rows for DOI, arXiv, URL, and missing
+///   optional fields distinguish every rendering branch.
+/// - witness: `render::tests::reference_rows_materialize_metadata_and_links`
+fn render_references(
+    keys: &[CiteKey],
+    bibliography: &Bibliography,
+) -> String
 {
-    let rows: String = keys
-        .iter()
-        .map(|cite| {
-            format!(
-                "<li id=\"ref-{key}\">[{key}]</li>\n",
-                key = escape(&cite.key)
-            )
-        })
-        .collect::<Vec<String>>()
-        .concat();
+    let mut rows = String::new();
+    for cite in keys {
+        rows.push_str(&render_reference(cite, bibliography));
+    }
     format!("<h2>References</h2>\n<ul class=\"refs\">\n{rows}</ul>\n")
+}
+
+/// Render one stable-anchor bibliography row.
+fn render_reference(
+    cite: &CiteKey,
+    bibliography: &Bibliography,
+) -> String
+{
+    let key = escape(&cite.key);
+    let Some(reference) = bibliography.get(cite)
+    else {
+        return format!("<li id=\"ref-{key}\"><span class=\"ref-key\">[{key}]</span></li>\n");
+    };
+    let mut row = format!("<li id=\"ref-{key}\"><span class=\"ref-key\">[{key}]</span> ");
+    if let Some(author) = reference.author() {
+        row.push_str(&escape(author));
+        row.push_str(". ");
+    }
+    row.push_str("<cite>");
+    row.push_str(&escape(reference.title()));
+    row.push_str("</cite>.");
+    match (reference.venue(), reference.date()) {
+        | (Some(venue), Some(date)) => {
+            row.push(' ');
+            row.push_str(&escape(venue));
+            row.push_str(", ");
+            row.push_str(&escape(date));
+            row.push('.');
+        },
+        | (Some(venue), None) => {
+            row.push(' ');
+            row.push_str(&escape(venue));
+            row.push('.');
+        },
+        | (None, Some(date)) => {
+            row.push(' ');
+            row.push_str(&escape(date));
+            row.push('.');
+        },
+        | (None, None) => {},
+    }
+    if let Some(locator) = reference.locator() {
+        let href = locator.href();
+        let label = locator.label();
+        row.push_str(" <a class=\"ref-locator\" href=\"");
+        row.push_str(&escape(&href));
+        row.push_str("\">");
+        row.push_str(&escape(&label));
+        row.push_str("</a>.");
+    }
+    row.push_str("</li>\n");
+    row
 }
 
 /// Render an inline sequence to `HTML`.
@@ -536,8 +610,11 @@ mod tests
 
     use super::RenderContext;
     use super::render_blocks;
+    use super::render_references;
     use super::term_map;
+    use crate::bibliography::Bibliography;
     use crate::model::Block;
+    use crate::model::CiteKey;
     use crate::model::Definition;
     use crate::model::Document;
     use crate::model::Example;
@@ -609,7 +686,8 @@ mod tests
             ],
         })];
         let terms = BTreeMap::new();
-        let context = RenderContext::new(Path::new("unused"), &terms);
+        let bibliography = Bibliography::default();
+        let context = RenderContext::new(Path::new("unused"), &terms, &bibliography);
         let mut notes = Vec::new();
 
         let rendered = render_blocks(&blocks, 2usize, &context, &mut notes)?;
@@ -631,6 +709,78 @@ mod tests
             ),
         );
         assert!(notes.is_empty());
+        Ok(())
+    }
+
+    /// Reference rows materialize metadata and preferred outbound links.
+    #[test]
+    fn reference_rows_materialize_metadata_and_links() -> Result<(), crate::DocError>
+    {
+        let bibliography = Bibliography::parse_source(
+            r#"D:
+  type: article
+  title: "Typed & Linked"
+  author: Ada & Bob
+  date: 2024
+  parent:
+    type: proceedings
+    title: Venue
+  serial-number:
+    doi: 10.1000/example
+A:
+  type: article
+  title: Archive
+  serial-number:
+    arxiv: "2402.00002"
+U:
+  type: thesis
+  title: Repository Copy
+  organization: Example University
+  url: https://example.test/thesis
+M:
+  type: misc
+  title: Metadata Minimum
+"#,
+        )?;
+        let keys = alloc::vec![
+            CiteKey {
+                key: "D".to_owned(),
+            },
+            CiteKey {
+                key: "A".to_owned(),
+            },
+            CiteKey {
+                key: "U".to_owned(),
+            },
+            CiteKey {
+                key: "M".to_owned(),
+            },
+        ];
+
+        let rendered = render_references(&keys, &bibliography);
+
+        assert_eq!(
+            rendered,
+            concat!(
+                "<h2>References</h2>\n",
+                "<ul class=\"refs\">\n",
+                "<li id=\"ref-D\"><span class=\"ref-key\">[D]</span> Ada &amp; Bob. ",
+                "<cite>Typed &amp; Linked</cite>. Venue, 2024. ",
+                "<a class=\"ref-locator\" href=\"https://doi.org/10.1000/example\">",
+                "doi:10.1000/example</a>.</li>\n",
+                "<li id=\"ref-A\"><span class=\"ref-key\">[A]</span> ",
+                "<cite>Archive</cite>. ",
+                "<a class=\"ref-locator\" href=\"https://arxiv.org/abs/2402.00002\">",
+                "arXiv:2402.00002</a>.</li>\n",
+                "<li id=\"ref-U\"><span class=\"ref-key\">[U]</span> ",
+                "<cite>Repository Copy</cite>. Example University. ",
+                "<a class=\"ref-locator\" href=\"https://example.test/thesis\">",
+                "source</a>.</li>\n",
+                "<li id=\"ref-M\"><span class=\"ref-key\">[M]</span> ",
+                "<cite>Metadata Minimum</cite>.</li>\n",
+                "</ul>\n",
+            ),
+        );
         Ok(())
     }
 }
