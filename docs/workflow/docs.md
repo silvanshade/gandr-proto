@@ -8,6 +8,8 @@
 
 Documentation accumulation is a **named project killer**: doc bloat helped sink a predecessor, and stale accumulated context confuses agents as much as humans.
 The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A question that was set aside can be re-asked later if it ever actually arises; most never do.
+Economy governs **which documents exist and where** — it is never a license to thin load-bearing content (owner, 2026-07-21, `gandr-fid.0`; the 2026-07-21 fidelity audits measured the first absorption pass at ~50-70% retention because this scoping was implicit).
+Every `docs/spec/` and `docs/research/` change carries a mandatory fidelity review against its declared source set (`review.md` §"Documentation fidelity review").
 
 * **Relevant** — every added doc is graded by the role it actually plays; never waved on by inertia.
 * **Deduped** — cross-link what another doc states; never restate non-load-bearing content.
@@ -15,6 +17,7 @@ The standing posture (owner, 2026-07-12): **prefer forgetting over hoarding.** A
 * **Placed** — deep material stays off the agent orientation main-path (`AGENTS.md` §"Start here", `docs/gandr/VISION.md` §6): reachable from it, never inlined into it.
 * **Fidelity overrides economy** for load-bearing content: never truncate or lossily summarize it — reorganize (chunk, relocate intact, archive) instead.
   When uncertain whether content is load-bearing, treat it as load-bearing.
+  For spec absorption the bar is **superset-transfer**: the source is the floor, never the ceiling, and the acceptance test is that an implementer could build the component without opening the source tree (`docs/spec/README.md` §"Absorption fidelity").
 * **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the sibling `wyrd-notes` repository (a separate local git repo beside this one), never in the tracked tree.
   What a survey _decides_ gets distilled into an ADR; the survey itself does not move into `docs/`.
 

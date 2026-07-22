@@ -21,6 +21,25 @@ Triage findings like drift findings: fix should-fix in the same change, file the
 An immutable checkpoint commit is the normal input to an isolated reviewer; a strictly read-only reviewer may inspect uncommitted state.
 For governance docs already on `main`, reviewers stay read-only and the orchestrator applies fixes on `main` before push.
 
+## Documentation fidelity review
+
+Documentation is the one artifact class with **no natural adversary for omission**: a dropped function fails to compile and a dropped case fails a test, but a dropped paragraph fails nothing — `docs:check` validates structure (IDs, terms, cites), so a component that silently sheds half its source's implementation-grade content passes every gate.
+Omission is invisible in the artifact itself; it is only visible in a diff against the sources.
+Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `docs/spec/` or `docs/research/` gets a two-axis adversarial review**, not just substantial ones:
+
+1. **Correctness axis** — the standard lenses above: are the claims that appear accurate, cited, current?
+2. **Fidelity axis** — the reviewer receives the change's **declared source set** (the wyrd files, research sweep, ledger entries, or session decisions it draws from) and adversarially hunts for what was dropped, compressed, or de-linked, stanced as "prove that load-bearing detail was lost."
+
+The fidelity instrument is the **content-class inventory**: for each class — decision/summary tables; grammars; typing rules; type/code signatures; architecture (crate/module homes); algorithms; staging plans with gates; corpus-example plans; open questions; dependency tables; precise citations (theorem numbers, section anchors) — record retained / compressed-lossy / dropped against the source.
+**Gate: zero dropped load-bearing classes.** Compression is acceptable only when the compressed form still lets an implementer proceed without the source; when density is the problem, spread out, explain, and link — never drop ([docs.md](docs.md) §"Documentation economy").
+
+Preconditions and boundaries:
+
+* **A doc change with no declared source set cannot be fidelity-reviewed** — declaring sources is part of authoring, not an optional courtesy.
+  For absorption work the ledger (`docs/research/`) is the source-set registry; for net-new components the commissioning bead names the sources.
+* Reboot-era operating notes stating "no adversarial reviewers" (the PLAN-assembly posture) **do not apply to documentation authoring**; this section supersedes them for that class (`gandr-fid.0`).
+* The merge discipline for re-absorption: reboot truth wins on status and naming; the source wins on payload the reboot copy dropped.
+
 ## Interpreting findings — challenged, not refuted
 
 Adversarial findings are **inputs, not verdicts**, and two kinds bind differently:

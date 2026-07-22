@@ -46,6 +46,8 @@ Editing a registered corpus doc updates its `docs/gandr/MANIFEST.yml` b3sum in t
 * **Graduation principle (dogfood the stack)**: when a major component ships, evaluate it as a replacement for the ad-hoc tooling that preceded it and file beads for the graduations it enables — the project's own layers are the intended substrate for the tooling around the project, so interim tooling keeps its formats substrate-agnostic.
 * **Adversarial review before substantial landings**; findings are challenged-not-refuted unless factual ([workflow/review.md](workflow/review.md)).
 * **Documentation economy — prefer forgetting over hoarding**: accumulation is a named project killer; distill decisions into ADRs, keep surveys and session context in the notes repo ([workflow/docs.md](workflow/docs.md)).
+  Economy governs **which documents exist**, never the fidelity of load-bearing content: spreading out, explaining, and linking is the sanctioned response to density — dropping is not (`gandr-fid.0`).
+* **Documentation authoring gets a mandatory fidelity review**: every `docs/spec/` / `docs/research/` change is adversarially diffed against its declared source set for dropped content, not just checked for correctness ([workflow/review.md](workflow/review.md) §"Documentation fidelity review").
 
 ## Where things are decided
 
