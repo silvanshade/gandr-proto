@@ -1,0 +1,6 @@
+[project]
+name = "gandr-gf-docs"
+version = "0.0.0"
+description = "Python environment for the gandr-gf-docs PGF interop backend (uv-managed; pgf wheels bundle libpgf/libgu on macOS and Linux)"
+requires-python = ">=3.10"
+dependencies = ["pgf==1.1"]

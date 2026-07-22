@@ -6,6 +6,7 @@ resolver = "3"
 members = [
   "crates/core-checker",
   "crates/core-sequent",
+  "crates/gf-docs",
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-host",
@@ -179,6 +180,15 @@ default-features = false
 [workspace.dependencies.proptest]
 version = "1.11.0"
 default-features = true
+
+# Embedded CPython for the GF/PGF interop backend (the `pgf` binding rides the
+# uv-managed environment declared in crates/gf-docs/pyproject.toml).
+# consumers:
+# - gandr-gf-docs
+[workspace.dependencies.pyo3]
+version = "0.26"
+default-features = false
+features = ["abi3-py313", "auto-initialize"]
 
 # TUI framework.
 [workspace.dependencies.ratatui]

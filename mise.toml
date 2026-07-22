@@ -352,6 +352,20 @@ REG_PATH=docs/research/bibliography-v2.md OUT_PATH="$tmp/rows.nuon" nu ./scripts
 ROWS_PATH="$tmp/rows.nuon" OUT_PATH=docs/spec/refs.yml nu ./scripts/refs-yml/build-refs.nu
 """
 
+[tasks."docs:gfd:toolchain"]
+description = "Provision the GF toolchain (gf compiler + libpgf from the official 3.12 release) into target/gf-toolchain (idempotent; gandr-wrs)"
+run = "cargo run -p gandr-gf-docs --locked -- toolchain"
+
+[tasks."docs:gfd:grammar"]
+description = "Compile the corpus GF grammar to target/gf-docs/GandrDocsLex.pgf (gandr-wrs)"
+depends = ["docs:gfd:toolchain"]
+run = "cargo run -p gandr-gf-docs --locked -- grammar"
+
+[tasks."docs:gfd:poc"]
+description = "Run the gf-docs PoC arc: cargo build, uv sync (pgf env), migrate component-vocabulary.xml to .gfd, checkExpr validation, render target/gf-docs/component-vocabulary.html (gandr-wrs)"
+depends = ["docs:gfd:grammar"]
+run = "cargo run -p gandr-gf-docs --locked -- poc"
+
 # Parked with the manual family (docs/manual/** aspirational; see docs:manual).
 # [tasks."docs:spike"]
 # description = "Compile the Track-C typst rendering spike -> PDF (curryst/fletcher)"

@@ -1,0 +1,47 @@
+version = 1
+revision = 3
+requires-python = ">=3.10"
+
+[[package]]
+name = "gandr-gf-docs"
+version = "0.0.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "pgf" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pgf", specifier = "==1.1" }]
+
+[[package]]
+name = "pgf"
+version = "1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/4a/8c8ea86a12a8d4ab54f07be1063fc12c646fdb82a1d203b1d791989eaecf/pgf-1.1.tar.gz", hash = "sha256:26d6fede8321f25d62cad32f99c03fb4fadde79ae26feaf6981bb2e404a8ab59", size = 17999, upload-time = "2025-08-08T12:30:43.132Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/73/673cd8c001a954c56ce8b47a56be42aad8a9359ce8b682fd3509aa790093/pgf-1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9477d163edf8a77cc2c96e2089274469bffca90eca8b21946365ac47646a6a2c", size = 157087, upload-time = "2025-08-08T16:57:45.797Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/f3/35b6f949e2b5424ff75fe1a50a6cdf9b7cf057d8f4833fb9a027c5f3fc3a/pgf-1.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:5a6896be38ea1025e41e79af4e9e15db100c4d482fc20f0a6c51fddb887f60a7", size = 136443, upload-time = "2025-08-08T12:30:13.394Z" },
+    { url = "https://files.pythonhosted.org/packages/28/59/943ecbab2ae3477bcb0c73cea7bff8ca3c4df6ffce1a12e96d1bc8dc78bf/pgf-1.1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ec1937404e2dacab3154737e1460f7c707338cf69f01f4892ed0f54366716db6", size = 619029, upload-time = "2025-08-08T12:30:14.76Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/9e/80def22db88fd4a581dac02dae517b65649ab67999a62e20c0e6f680e67e/pgf-1.1-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:894f4b7fc22ee3ad4d20f7b48bd6faa6de29b18709d4453cc26136fce4ccc808", size = 610705, upload-time = "2025-08-08T12:30:15.791Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/64/603951c81aa7ffdf4449cbd7ff9a0c886fe677bd4cb12a226a4bbc637843/pgf-1.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:c761f23ca755ffe3381617dccffca5fa292880be789ee94a5f559bc069e12bda", size = 157081, upload-time = "2025-08-08T16:57:47.607Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/f8/a1b8e3cf2ca51f88723fec07f88be2f7c5df73679c75cf1a3cc53dac3100/pgf-1.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:1eb4038dab8e544b28b5d06edf41a55769a0c47ca41b220d1b11b2a4e506749f", size = 136441, upload-time = "2025-08-08T12:30:17.186Z" },
+    { url = "https://files.pythonhosted.org/packages/82/ad/946d2a9983aadbd38824ed62a11ff25409d0ce97d0bb07c0bbdb11c63f6d/pgf-1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:353d335e192bae9e2b215d749a06bd4831618c4c20caac694d2ff2c580bae951", size = 620029, upload-time = "2025-08-08T12:30:18.164Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/b6/50095ddbfba638ee0f72f579d5c0d70b29ca0cfe4d7a05d502084b373c0e/pgf-1.1-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:0e063702cbbab574f3372ef96586dd193b1f75565b33e48163beaba8b6c2c1f5", size = 611628, upload-time = "2025-08-08T12:30:20.344Z" },
+    { url = "https://files.pythonhosted.org/packages/be/2c/471208bab13f128301b581e8b5913ded7824d10a9812d232b2a3b33bd88e/pgf-1.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:4d92f3afdf84e1506146d213be0a280f59bc15a37ccf3dce57f14455df62e80a", size = 156928, upload-time = "2025-08-08T16:57:49.021Z" },
+    { url = "https://files.pythonhosted.org/packages/98/7f/d9d820f269b99574f1de84e6dd0cc3b879cf9f68d6ca3f2696a9377e44e9/pgf-1.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:19f10c256071e1a73733901b64bf87f26ed4e2f0f371e9a13b75475bfb050fda", size = 136514, upload-time = "2025-08-08T12:30:21.479Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/1e/55960a47f6046d6b46475781f8e7e33210652a4682ad815e4fa8fdbcbdda/pgf-1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:fbbea335bfc22e67a75266c371aca078441270760f752604db13e8b41ef4c7ac", size = 625155, upload-time = "2025-08-08T12:30:22.465Z" },
+    { url = "https://files.pythonhosted.org/packages/09/1f/772d93c58cb6255e9432b4eb500c1b8f113a175029d0d1cce1cdc27aa651/pgf-1.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:ef01a49e21b8d1727a93f659b065b13da404e2e301cadaf8777f2b24163b0524", size = 616231, upload-time = "2025-08-08T12:30:23.998Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/f7/bea6bb7b47cb2cd43a7f32efc25f4132313009d9d7c2bfd296a4efcd0384/pgf-1.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:8ab08b84e02dd2255549f4a12b14d37fe05c073d7bd3e9af7867b7d63ea10e8e", size = 156946, upload-time = "2025-08-08T16:57:50.239Z" },
+    { url = "https://files.pythonhosted.org/packages/70/ce/4aed75682f22034acc40b03918d7d4b2e7172f7826f47b484b729af82791/pgf-1.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0784fc6561216afba95573c246d82f862f46a03eac7510fe50dbd9d7d0e2014e", size = 136494, upload-time = "2025-08-08T12:30:25.084Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/6c/7de2588f4a27bf8b0ed88fcc88aa0248fe832536968b8ea854e2c2c6de10/pgf-1.1-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:16b666b73554b6d156cae495b053dfc34c9bef640004c7f461b4fc890d2c0b90", size = 25554, upload-time = "2025-08-03T15:09:25.14Z" },
+    { url = "https://files.pythonhosted.org/packages/81/bb/99a0085d97027c25fd160a4467e1fc9cce582ec2c7fbf22c15fe52446061/pgf-1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b47e00f60e6461716236a122c82a16ce22e270bc1d2ba2f454b6c5654cf41c66", size = 625179, upload-time = "2025-08-08T12:30:25.977Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/4c/6696bc46b93d3d5c6c3fc9e3a0bffb0408844baff82cd858d854d4830b30/pgf-1.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:80ba5bb3a8bccf0f7f3c418dcee2f8e0a74724ae7a92c28a0475facae3007c37", size = 616209, upload-time = "2025-08-08T12:30:27.323Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/c5/08c5d5881d83ffed0fb09d40370df93cd743d14b86e1c6aa8c1fc42258cb/pgf-1.1-cp314-cp314-macosx_10_13_x86_64.whl", hash = "sha256:b15e65b535cdc9ed6a4be36a2cdfb5bf31bcda8edb879fac4577f54c46989d60", size = 156899, upload-time = "2025-08-08T16:57:51.468Z" },
+    { url = "https://files.pythonhosted.org/packages/79/7e/6c9cc8b2a725f575cfa3f576c58443a8bc01f92eea504f9d7f376c5a7cbe/pgf-1.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:ba7474b102ec41cfd5963265275de7c428e635049ff06ee8d9c26fd23c0ed5b5", size = 136547, upload-time = "2025-08-08T12:30:28.38Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/9d/d0acd60e8f96c9753d0451e9acf41cbec0003120dd756e393ea226bb8759/pgf-1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ec9df0afbd8c1d4d72813f99f1475a023745df601c9b509cb9d8126e62deccb1", size = 624750, upload-time = "2025-08-08T12:30:29.343Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/e8/b8840c12a675feb50a53c72a33eb516c3f9313ced24f78ab39b9a8bce978/pgf-1.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:bf78a61edba70eadf64e92f9c0bcfb5e8cc9cf9ad7167a2f6bfbb8e93b4c9708", size = 615778, upload-time = "2025-08-08T12:30:30.886Z" },
+    { url = "https://files.pythonhosted.org/packages/46/c0/c7231777cd27b3624646cae062b07c3e161f75fc28e1424cf9e7fda06b58/pgf-1.1-cp314-cp314t-macosx_10_13_x86_64.whl", hash = "sha256:79615406cd29f28a57194f814b11b8ebd5072072706142fc1f83ebc69b2ace2b", size = 158662, upload-time = "2025-08-08T16:57:52.366Z" },
+    { url = "https://files.pythonhosted.org/packages/98/27/8b4df765ddd5766e358041023af59366c11bfb0db4c1f5cb8fb28fb2d9a5/pgf-1.1-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:59b2aca8c30b2f5403c1ec6a8a9611b5a3f305938fd152cb0b98b8f19bbd1b07", size = 138528, upload-time = "2025-08-08T12:30:32.271Z" },
+    { url = "https://files.pythonhosted.org/packages/55/8d/c39e0be268db16cf7a17420a335507dda9633901bf6253e4251f80801c3e/pgf-1.1-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0c50b6de0de2065a94b6a440825f82cfaacc606f6af496cff8ff1c43ae8d3a82", size = 650639, upload-time = "2025-08-08T12:30:33.493Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/a8/a659c15e364668f798c54fef888033a540c2ea5542c0d0938c5e66ff57e0/pgf-1.1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:3af8a1323b86aca7113fc8a388d3d9732a06bfc5afe05a4affe31a0ccf8ea784", size = 640746, upload-time = "2025-08-08T12:30:34.573Z" },
+]
