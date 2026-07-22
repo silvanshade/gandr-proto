@@ -82,6 +82,8 @@ struct Collector
     cites: Vec<(CiteKey, String)>,
     /// Each provenance edge as a target identifier and location.
     provenance: Vec<(String, String)>,
+    /// Each anchor reference as a target identifier and location.
+    anchor_refs: Vec<(String, String)>,
     /// Accumulated diagnostics.
     diagnostics: Vec<Diagnostic>,
 }
@@ -98,6 +100,7 @@ impl Collector
             term_refs: Vec::new(),
             cites: Vec::new(),
             provenance: Vec::new(),
+            anchor_refs: Vec::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -201,6 +204,24 @@ impl Collector
                             .push((cite.clone(), format!("{path}:<references>")));
                     }
                 },
+                | Block::List(ref list) => {
+                    for item in &list.items {
+                        for inline in &item.body {
+                            self.visit_inline(inline, path);
+                        }
+                    }
+                },
+                | Block::Table(ref table) => {
+                    for cell in table
+                        .header
+                        .iter()
+                        .chain(table.rows.iter().flat_map(|row| row.cells.iter()))
+                    {
+                        for inline in &cell.content {
+                            self.visit_inline(inline, path);
+                        }
+                    }
+                },
                 | Block::Judgements(_) | Block::Grammar(_) | Block::Code(_) | Block::Example(_) => {
                 },
             }
@@ -240,6 +261,12 @@ impl Collector
             | Inline::Cite(ref cite) => {
                 self.cites
                     .push((cite.clone(), format!("{path}:<cite key='{}'>", cite.key)));
+            },
+            | Inline::Ref(ref anchor) => {
+                self.anchor_refs.push((
+                    anchor.target.clone(),
+                    format!("{path}:<ref target='{}'>", anchor.target),
+                ));
             },
             | Inline::Text(_) | Inline::Math(_) => {},
         }
@@ -284,6 +311,16 @@ impl Collector
                 ));
             }
         }
+        for entry in &self.anchor_refs {
+            let (target, location) = (&entry.0, &entry.1);
+            if !self.ids.contains_key(target) {
+                self.diagnostics.push(Diagnostic::new(
+                    "unresolved-ref",
+                    location.clone(),
+                    format!("ref target '{target}' does not resolve to a declared id"),
+                ));
+            }
+        }
     }
 }
 
@@ -300,6 +337,7 @@ mod tests
     use super::validate_corpus;
     use crate::Diagnostic;
     use crate::bibliography::Bibliography;
+    use crate::model::AnchorRef;
     use crate::model::Block;
     use crate::model::CiteKey;
     use crate::model::Definition;
@@ -308,6 +346,9 @@ mod tests
     use crate::model::Inline;
     use crate::model::Section;
     use crate::model::Status;
+    use crate::model::Table;
+    use crate::model::TableCell;
+    use crate::model::TableRow;
     use crate::model::TermDef;
     use crate::model::TermRef;
     use crate::parse::parse_document;
@@ -453,6 +494,82 @@ mod tests
             summary(&parsed.diagnostics),
         );
         Ok(())
+    }
+
+    /// An anchor ref with no matching declared id is unresolved.
+    #[test]
+    fn unresolved_anchor_ref_is_flagged()
+    {
+        let prose = Block::Prose(alloc::vec![Inline::Ref(AnchorRef {
+            target: "ghost".to_owned(),
+        })]);
+        let corpus = Corpus::new(
+            alloc::vec![component("c", alloc::vec![prose])],
+            Bibliography::default(),
+        );
+        let diagnostics = validate_corpus(&corpus);
+        assert!(
+            diagnostics.iter().any(|d| d.code == "unresolved-ref"),
+            "expected an unresolved-ref diagnostic, got {}",
+            summary(&diagnostics),
+        );
+    }
+
+    /// An anchor ref to another component's section id resolves.
+    #[test]
+    fn cross_component_anchor_ref_passes()
+    {
+        let section = Block::Section(Section {
+            id: Some("a-sec".to_owned()),
+            status: None,
+            title: "S".to_owned(),
+            blocks: Vec::new(),
+        });
+        let prose = Block::Prose(alloc::vec![Inline::Ref(AnchorRef {
+            target: "a-sec".to_owned(),
+        })]);
+        let corpus = Corpus::new(
+            alloc::vec![
+                component("a", alloc::vec![section]),
+                component("b", alloc::vec![prose]),
+            ],
+            Bibliography::default(),
+        );
+        let diagnostics = validate_corpus(&corpus);
+        assert!(
+            !diagnostics.iter().any(|d| d.code == "unresolved-ref"),
+            "expected no unresolved-ref diagnostic, got {}",
+            summary(&diagnostics),
+        );
+    }
+
+    /// Inline content inside table cells joins corpus validation.
+    #[test]
+    fn table_cell_inlines_are_validated()
+    {
+        let table = Block::Table(Table {
+            caption: String::new(),
+            header: alloc::vec![TableCell {
+                content: Vec::new(),
+            }],
+            rows: alloc::vec![TableRow {
+                cells: alloc::vec![TableCell {
+                    content: alloc::vec![Inline::TermRef(TermRef {
+                        key: "ghost".to_owned(),
+                    })],
+                }],
+            }],
+        });
+        let corpus = Corpus::new(
+            alloc::vec![component("c", alloc::vec![table])],
+            Bibliography::default(),
+        );
+        let diagnostics = validate_corpus(&corpus);
+        assert!(
+            diagnostics.iter().any(|d| d.code == "unresolved-term"),
+            "expected an unresolved-term diagnostic through the table cell, got {}",
+            summary(&diagnostics),
+        );
     }
 
     /// Nested validation retains the first identifier in document order.

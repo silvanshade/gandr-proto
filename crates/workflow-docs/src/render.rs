@@ -32,12 +32,16 @@ figure{margin:1.2em 0;text-align:center}figcaption{color:var(--muted);font-size:
 .rule{border:none}.term{border-bottom:1px dotted var(--accent);text-decoration:none;color:inherit}
 .cite{color:var(--accent);text-decoration:none}.mono{font-family:ui-monospace,monospace}
 .fallback{border:1px dashed var(--line);padding:.2em .4em;color:var(--muted)}
+.xref{color:var(--accent)}table{border-collapse:collapse;margin:0 auto}
+th,td{border:1px solid var(--line);padding:.3em .6em;text-align:left;vertical-align:top}
+figure.table{overflow-x:auto}
 dl.grammar dt{font-family:ui-monospace,monospace;font-weight:bold}
 .expect{color:var(--muted);font-size:.85rem;margin:.2em 0}
 .refs{list-style:none;padding-left:0}.refs li{margin:.8em 0}
 .ref-key{font-family:ui-monospace,monospace;white-space:nowrap}.ref-locator{color:var(--accent);white-space:nowrap}"#;
 
-/// Rendering context: leaf cache, corpus term map, and bibliography.
+/// Rendering context: leaf cache, corpus term map, anchor map, and
+/// bibliography.
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub struct RenderContext<'ctx>
@@ -46,6 +50,8 @@ pub struct RenderContext<'ctx>
     pub cache_dir: &'ctx Path,
     /// Corpus-wide map from term key to displayed definition text.
     pub terms: &'ctx BTreeMap<String, String>,
+    /// Corpus-wide map from declared anchor id to its owning page and title.
+    pub anchors: &'ctx BTreeMap<String, AnchorTarget>,
     /// Typed bibliography used to materialize per-component reference entries.
     pub references: &'ctx Bibliography,
 }
@@ -58,15 +64,30 @@ impl<'ctx> RenderContext<'ctx>
     pub const fn new(
         cache_dir: &'ctx Path,
         terms: &'ctx BTreeMap<String, String>,
+        anchors: &'ctx BTreeMap<String, AnchorTarget>,
         references: &'ctx Bibliography,
     ) -> Self
     {
         Self {
             cache_dir,
             terms,
+            anchors,
             references,
         }
     }
+}
+
+/// The resolution of one corpus anchor id: its owning component page and its
+/// human-readable title (used as the link text of an inline `ref`).
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct AnchorTarget
+{
+    /// Identifier of the component whose page carries the anchor.
+    pub component: String,
+    /// Human-readable link text (component title, section title, rule name,
+    /// definition term, or diagram caption).
+    pub title: String,
 }
 
 /// Collect the corpus term map (key to displayed text) for cross-references.
@@ -111,6 +132,20 @@ fn collect_terms(
             | Block::Definition(ref definition) => {
                 collect_inline_terms(&definition.body, terms);
             },
+            | Block::List(ref list) => {
+                for item in &list.items {
+                    collect_inline_terms(&item.body, terms);
+                }
+            },
+            | Block::Table(ref table) => {
+                for cell in table
+                    .header
+                    .iter()
+                    .chain(table.rows.iter().flat_map(|row| row.cells.iter()))
+                {
+                    collect_inline_terms(&cell.content, terms);
+                }
+            },
             | Block::Section(_)
             | Block::Judgements(_)
             | Block::Grammar(_)
@@ -121,6 +156,68 @@ fn collect_terms(
             | Block::References(_) => {},
         }
     }
+}
+
+/// Collect the corpus anchor map (declared id to owning page and title).
+///
+/// # Contract
+///
+/// - requires: `documents` hold finite, structurally well-formed block trees.
+/// - ensures: maps every component id and every declared section, rule,
+///   definition, and diagram id to its owning component and human-readable
+///   title, keeping the first declaration when ids collide (the validator
+///   rejects collisions separately).
+/// - provides: the link-resolution input of inline `ref` rendering.
+/// - panics: none.
+///
+/// # Adequacy
+///
+/// - hypothesis: L3 pointwise — one anchor of each declaring block kind
+///   distinguishes the per-kind component and title projections.
+/// - witness: `tests::anchor_map_collects_each_declaring_kind`.
+#[inline]
+#[must_use]
+pub fn anchor_map(documents: &[Document]) -> BTreeMap<String, AnchorTarget>
+{
+    let mut anchors = BTreeMap::new();
+    for document in documents {
+        anchors
+            .entry(document.id.clone())
+            .or_insert_with(|| AnchorTarget {
+                component: document.id.clone(),
+                title: document.title.clone(),
+            });
+        for block in &document.blocks {
+            for block in block.walk() {
+                let id_title = match *block {
+                    | Block::Section(ref section) => {
+                        section.id.as_ref().map(|id| (id, section.title.clone()))
+                    },
+                    | Block::Rule(ref rule) => rule.id.as_ref().map(|id| (id, rule.name.clone())),
+                    | Block::Definition(ref definition) => definition
+                        .id
+                        .as_ref()
+                        .map(|id| (id, definition.term.clone())),
+                    | Block::Diagram(ref diagram) => Some((&diagram.id, diagram.caption.clone())),
+                    | Block::Prose(_)
+                    | Block::Judgements(_)
+                    | Block::Grammar(_)
+                    | Block::Code(_)
+                    | Block::Example(_)
+                    | Block::List(_)
+                    | Block::Table(_)
+                    | Block::References(_) => None,
+                };
+                if let Some((id, title)) = id_title {
+                    anchors.entry(id.clone()).or_insert_with(|| AnchorTarget {
+                        component: document.id.clone(),
+                        title,
+                    });
+                }
+            }
+        }
+    }
+    anchors
 }
 
 /// Collect term definitions from an inline sequence.
@@ -262,7 +359,14 @@ fn render_blocks(
             | RenderTask::Block { block, level } => match *block {
                 | Block::Section(ref section) => {
                     let heading = level.min(6usize).to_string();
-                    output.push_str("<section>\n<h");
+                    match section.id {
+                        | Some(ref id) => {
+                            output.push_str("<section id=\"");
+                            output.push_str(&escape(id));
+                            output.push_str("\">\n<h");
+                        },
+                        | None => output.push_str("<section>\n<h"),
+                    }
                     output.push_str(&heading);
                     output.push('>');
                     output.push_str(&escape(&section.title));
@@ -300,7 +404,14 @@ fn render_blocks(
                 },
                 | Block::Definition(ref definition) => {
                     let body = render_inlines(&definition.body, ctx, notes)?;
-                    output.push_str("<dl>\n<dt>");
+                    match definition.id {
+                        | Some(ref id) => {
+                            output.push_str("<dl id=\"");
+                            output.push_str(&escape(id));
+                            output.push_str("\">\n<dt>");
+                        },
+                        | None => output.push_str("<dl>\n<dt>"),
+                    }
                     output.push_str(&escape(&definition.term));
                     output.push_str("</dt>\n<dd>");
                     output.push_str(&body);
@@ -353,7 +464,14 @@ fn render_blocks(
                         &rule.conclusion.source,
                         ctx.cache_dir,
                     )?;
-                    output.push_str("<figure class=\"rule\">\n");
+                    match rule.id {
+                        | Some(ref id) => {
+                            output.push_str("<figure class=\"rule\" id=\"");
+                            output.push_str(&escape(id));
+                            output.push_str("\">\n");
+                        },
+                        | None => output.push_str("<figure class=\"rule\">\n"),
+                    }
                     output.push_str(&leaf_markup(leaf, "rule", notes));
                     output.push_str("\n<figcaption>");
                     output.push_str(&escape(&rule.name));
@@ -397,6 +515,54 @@ fn render_blocks(
                     output.push_str("</code></pre>\n");
                     output.push_str(&expected_output);
                     output.push_str(&expected_error);
+                },
+                | Block::List(ref list) => {
+                    let tag = if list.ordered { "ol" } else { "ul" };
+                    output.push('<');
+                    output.push_str(tag);
+                    output.push_str(">\n");
+                    for item in &list.items {
+                        let body = render_inlines(&item.body, ctx, notes)?;
+                        output.push_str("<li>");
+                        if let Some(ref lead) = item.lead {
+                            output.push_str("<strong>");
+                            output.push_str(&escape(lead));
+                            output.push_str("</strong> — ");
+                        }
+                        output.push_str(&body);
+                        output.push_str("</li>\n");
+                    }
+                    output.push_str("</");
+                    output.push_str(tag);
+                    output.push_str(">\n");
+                },
+                | Block::Table(ref table) => {
+                    output.push_str("<figure class=\"table\">\n<table>\n");
+                    output.push_str("<thead>\n<tr>");
+                    for cell in &table.header {
+                        let body = render_inlines(&cell.content, ctx, notes)?;
+                        output.push_str("<th>");
+                        output.push_str(&body);
+                        output.push_str("</th>");
+                    }
+                    output.push_str("</tr>\n</thead>\n<tbody>\n");
+                    for row in &table.rows {
+                        output.push_str("<tr>");
+                        for cell in &row.cells {
+                            let body = render_inlines(&cell.content, ctx, notes)?;
+                            output.push_str("<td>");
+                            output.push_str(&body);
+                            output.push_str("</td>");
+                        }
+                        output.push_str("</tr>\n");
+                    }
+                    output.push_str("</tbody>\n</table>\n");
+                    if !table.caption.is_empty() {
+                        output.push_str("<figcaption>");
+                        output.push_str(&escape(&table.caption));
+                        output.push_str("</figcaption>\n");
+                    }
+                    output.push_str("</figure>\n");
                 },
                 | Block::References(ref keys) => {
                     output.push_str(&render_references(keys, ctx.references));
@@ -529,7 +695,40 @@ fn render_inline(
             "<sup><a class=\"cite\" href=\"#ref-{key}\">[{key}]</a></sup>",
             key = escape(&cite.key),
         )),
+        | Inline::Ref(ref anchor) => Ok(render_anchor_ref(anchor, ctx)),
         | Inline::Math(ref math) => render_math(math, ctx, notes),
+    }
+}
+
+/// Render an inline anchor reference as a titled cross-page link.
+///
+/// A target that is itself a component links to that component's page; any
+/// other anchor links to its owning component's page at the anchor fragment.
+/// An unresolvable target (rejected by the validator, but rendered
+/// defensively) falls back to a same-page fragment labeled by the raw id.
+fn render_anchor_ref(
+    anchor: &crate::model::AnchorRef,
+    ctx: &RenderContext<'_>,
+) -> String
+{
+    match ctx.anchors.get(&anchor.target) {
+        | Some(target) => {
+            let href = if target.component == anchor.target {
+                format!("{}.html", target.component)
+            }
+            else {
+                format!("{}.html#{}", target.component, anchor.target)
+            };
+            format!(
+                "<a class=\"xref\" href=\"{href}\">{title}</a>",
+                href = escape(&href),
+                title = escape(&target.title),
+            )
+        },
+        | None => format!(
+            "<a class=\"xref\" href=\"#{target}\">{target}</a>",
+            target = escape(&anchor.target),
+        ),
     }
 }
 
@@ -608,19 +807,30 @@ mod tests
     use alloc::collections::BTreeMap;
     use std::path::Path;
 
+    use super::AnchorTarget;
     use super::RenderContext;
+    use super::anchor_map;
     use super::render_blocks;
     use super::render_references;
     use super::term_map;
     use crate::bibliography::Bibliography;
+    use crate::model::AnchorRef;
     use crate::model::Block;
     use crate::model::CiteKey;
     use crate::model::Definition;
     use crate::model::Document;
     use crate::model::Example;
     use crate::model::Inline;
+    use crate::model::List;
+    use crate::model::ListItem;
+    use crate::model::Math;
+    use crate::model::MathDisplay;
+    use crate::model::Rule;
     use crate::model::Section;
     use crate::model::Status;
+    use crate::model::Table;
+    use crate::model::TableCell;
+    use crate::model::TableRow;
     use crate::model::TermDef;
 
     /// The first nested definition remains authoritative in document order.
@@ -686,8 +896,9 @@ mod tests
             ],
         })];
         let terms = BTreeMap::new();
+        let anchors = BTreeMap::new();
         let bibliography = Bibliography::default();
-        let context = RenderContext::new(Path::new("unused"), &terms, &bibliography);
+        let context = RenderContext::new(Path::new("unused"), &terms, &anchors, &bibliography);
         let mut notes = Vec::new();
 
         let rendered = render_blocks(&blocks, 2usize, &context, &mut notes)?;
@@ -706,6 +917,127 @@ mod tests
                 "<dd>tail</dd>\n",
                 "</dl>\n",
                 "</section>\n",
+            ),
+        );
+        assert!(notes.is_empty());
+        Ok(())
+    }
+
+    /// The anchor map records one entry per declaring block kind with the
+    /// owning component and the human-readable title projection.
+    #[test]
+    fn anchor_map_collects_each_declaring_kind()
+    {
+        let math = || Math {
+            source: "x".to_owned(),
+            display: MathDisplay::Block,
+        };
+        let document = Document {
+            id: "comp".to_owned(),
+            spec_version: "1".to_owned(),
+            title: "Component Title".to_owned(),
+            status: Status::Partial,
+            grounds: Vec::new(),
+            derives: Vec::new(),
+            blocks: alloc::vec![Block::Section(Section {
+                id: Some("sec".to_owned()),
+                status: None,
+                title: "Section Title".to_owned(),
+                blocks: alloc::vec![
+                    Block::Rule(Rule {
+                        id: Some("rul".to_owned()),
+                        name: "Rule Name".to_owned(),
+                        premises: Vec::new(),
+                        conclusion: math(),
+                    }),
+                    Block::Definition(Definition {
+                        id: Some("def".to_owned()),
+                        term: "Term".to_owned(),
+                        body: Vec::new(),
+                    }),
+                ],
+            })],
+            source_path: "mem:comp.xml".to_owned(),
+        };
+
+        let anchors = anchor_map(&[document]);
+
+        let expect = |id: &str, title: &str| {
+            assert_eq!(
+                anchors.get(id),
+                Some(&AnchorTarget {
+                    component: "comp".to_owned(),
+                    title: title.to_owned(),
+                }),
+                "anchor '{id}'",
+            );
+        };
+        expect("comp", "Component Title");
+        expect("sec", "Section Title");
+        expect("rul", "Rule Name");
+        expect("def", "Term");
+    }
+
+    /// List, table, and anchor-ref payload blocks render their exact markup.
+    #[test]
+    fn payload_blocks_render_expected_markup() -> Result<(), crate::DocError>
+    {
+        let blocks = alloc::vec![
+            Block::List(List {
+                ordered: false,
+                items: alloc::vec![ListItem {
+                    lead: Some("K".to_owned()),
+                    body: alloc::vec![Inline::Text("v".to_owned())],
+                }],
+            }),
+            Block::Table(Table {
+                caption: "Cap".to_owned(),
+                header: alloc::vec![TableCell {
+                    content: alloc::vec![Inline::Text("H".to_owned())],
+                }],
+                rows: alloc::vec![TableRow {
+                    cells: alloc::vec![
+                        TableCell {
+                            content: alloc::vec![Inline::Ref(AnchorRef {
+                                target: "tgt".to_owned(),
+                            })],
+                        },
+                        TableCell {
+                            content: alloc::vec![Inline::Text("x".to_owned())],
+                        },
+                    ],
+                }],
+            }),
+        ];
+        let terms = BTreeMap::new();
+        let mut anchors = BTreeMap::new();
+        anchors.insert("tgt".to_owned(), AnchorTarget {
+            component: "other".to_owned(),
+            title: "Target".to_owned(),
+        });
+        let bibliography = Bibliography::default();
+        let context = RenderContext::new(Path::new("unused"), &terms, &anchors, &bibliography);
+        let mut notes = Vec::new();
+
+        let rendered = render_blocks(&blocks, 2usize, &context, &mut notes)?;
+
+        assert_eq!(
+            rendered,
+            concat!(
+                "<ul>\n",
+                "<li><strong>K</strong> — v</li>\n",
+                "</ul>\n",
+                "<figure class=\"table\">\n",
+                "<table>\n",
+                "<thead>\n",
+                "<tr><th>H</th></tr>\n",
+                "</thead>\n",
+                "<tbody>\n",
+                "<tr><td><a class=\"xref\" href=\"other.html#tgt\">Target</a></td><td>x</td></tr>\n",
+                "</tbody>\n",
+                "</table>\n",
+                "<figcaption>Cap</figcaption>\n",
+                "</figure>\n",
             ),
         );
         assert!(notes.is_empty());

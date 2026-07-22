@@ -171,7 +171,8 @@ fn write_pages(
         source,
     })?;
     let terms = render::term_map(documents);
-    let ctx = RenderContext::new(&cache_dir, &terms, references);
+    let anchors = render::anchor_map(documents);
+    let ctx = RenderContext::new(&cache_dir, &terms, &anchors, references);
     let mut notes = Vec::new();
     let mut pages = Vec::new();
     let index_path = out_dir.join("index.html");

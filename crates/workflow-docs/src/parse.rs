@@ -17,21 +17,28 @@ use roxmltree::Node;
 
 use crate::Diagnostic;
 use crate::DocError;
+use crate::model::AnchorRef;
 use crate::model::Block;
 use crate::model::CiteKey;
 use crate::model::CodeBlock;
+use crate::model::CodeRole;
 use crate::model::Definition;
 use crate::model::Diagram;
 use crate::model::Document;
 use crate::model::Example;
 use crate::model::Inline;
 use crate::model::Judgements;
+use crate::model::List;
+use crate::model::ListItem;
 use crate::model::Math;
 use crate::model::MathDisplay;
 use crate::model::Production;
 use crate::model::Rule;
 use crate::model::Section;
 use crate::model::Status;
+use crate::model::Table;
+use crate::model::TableCell;
+use crate::model::TableRow;
 
 /// Outcome of parsing one file: an optional model and any structural
 /// diagnostics.
@@ -277,6 +284,8 @@ fn parse_leaf_block(
         ))),
         | "diagram" => parse_diagram(node, path_text, diagnostics).map(Block::Diagram),
         | "code" => Some(Block::Code(parse_code(node, path_text, diagnostics))),
+        | "list" => Some(Block::List(parse_list(node, path_text, diagnostics))),
+        | "table" => Some(Block::Table(parse_table(node, path_text, diagnostics))),
         | "references" => Some(Block::References(parse_references(node))),
         | other => {
             diagnostics.push(Diagnostic::new(
@@ -439,6 +448,7 @@ fn parse_code(
     let language = node
         .attribute("language")
         .map_or_else(String::new, str::to_owned);
+    let role = parse_code_role(node, path_text, diagnostics);
     let expect_output = node.attribute("expect-output").map(str::to_owned);
     let expect_error = node.attribute("expect-error").map(str::to_owned);
     if let (Some(_), Some(_)) = (expect_output.as_ref(), expect_error.as_ref()) {
@@ -448,12 +458,149 @@ fn parse_code(
             "code declares both expect-output and expect-error".to_owned(),
         ));
     }
+    if role == CodeRole::Api && (expect_output.is_some() || expect_error.is_some()) {
+        diagnostics.push(Diagnostic::new(
+            "conflicting-role",
+            element_location(path_text, "code"),
+            "an api-role code block is never executed and cannot declare expectations".to_owned(),
+        ));
+    }
     CodeBlock {
         language,
+        role,
         text: element_text(node),
         expect_output,
         expect_error,
     }
+}
+
+/// Parse the optional code role attribute, defaulting to a checked example.
+fn parse_code_role(
+    node: Node<'_, '_>,
+    path_text: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> CodeRole
+{
+    let Some(raw) = node.attribute("role")
+    else {
+        return CodeRole::default();
+    };
+    match CodeRole::parse(raw) {
+        | Some(role) => role,
+        | None => {
+            diagnostics.push(Diagnostic::new(
+                "invalid-role",
+                element_location(path_text, "code"),
+                format!("role '{raw}' is not one of [example, api]"),
+            ));
+            CodeRole::default()
+        },
+    }
+}
+
+/// Parse a list block into its items.
+fn parse_list(
+    node: Node<'_, '_>,
+    path_text: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> List
+{
+    let ordered = node
+        .attribute("ordered")
+        .is_some_and(|value| value == "true");
+    let mut items = Vec::new();
+    for child in node.children().filter(Node::is_element) {
+        if child.tag_name().name() == "item" {
+            items.push(ListItem {
+                lead: child.attribute("lead").map(str::to_owned),
+                body: parse_inlines(child, path_text, diagnostics),
+            });
+        }
+        else {
+            diagnostics.push(Diagnostic::new(
+                "unexpected-child",
+                element_location(path_text, child.tag_name().name()),
+                "list accepts only <item> children".to_owned(),
+            ));
+        }
+    }
+    List { ordered, items }
+}
+
+/// Parse a table block into its header row and body rows.
+fn parse_table(
+    node: Node<'_, '_>,
+    path_text: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Table
+{
+    let caption = node
+        .attribute("caption")
+        .map_or_else(String::new, str::to_owned);
+    let mut header: Option<Vec<TableCell>> = None;
+    let mut rows = Vec::new();
+    for child in node.children().filter(Node::is_element) {
+        match child.tag_name().name() {
+            | "header" => {
+                if header.is_some() {
+                    diagnostics.push(Diagnostic::new(
+                        "duplicate-header",
+                        element_location(path_text, "header"),
+                        "a table carries at most one <header> row".to_owned(),
+                    ));
+                }
+                else {
+                    header = Some(parse_cells(child, path_text, diagnostics));
+                }
+            },
+            | "row" => rows.push(TableRow {
+                cells: parse_cells(child, path_text, diagnostics),
+            }),
+            | other => diagnostics.push(Diagnostic::new(
+                "unexpected-child",
+                element_location(path_text, other),
+                "table accepts only <header> and <row> children".to_owned(),
+            )),
+        }
+    }
+    let header = header.unwrap_or_else(|| {
+        diagnostics.push(Diagnostic::new(
+            "missing-header",
+            element_location(path_text, "table"),
+            "a table must declare a <header> row".to_owned(),
+        ));
+        Vec::new()
+    });
+    Table {
+        caption,
+        header,
+        rows,
+    }
+}
+
+/// Parse the `<cell>` children of a table row.
+fn parse_cells(
+    node: Node<'_, '_>,
+    path_text: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Vec<TableCell>
+{
+    let mut cells = Vec::new();
+    for child in node.children().filter(Node::is_element) {
+        if child.tag_name().name() == "cell" {
+            cells.push(TableCell {
+                content: parse_inlines(child, path_text, diagnostics),
+            });
+        }
+        else {
+            diagnostics.push(Diagnostic::new(
+                "unexpected-child",
+                element_location(path_text, child.tag_name().name()),
+                "a table row accepts only <cell> children".to_owned(),
+            ));
+        }
+    }
+    cells
 }
 
 /// Parse a references block into declared cite keys.
@@ -518,6 +665,10 @@ fn parse_inline(
         | "cite" => {
             let key = required_attribute(node, "key", path_text, "cite", diagnostics)?;
             Some(Inline::Cite(CiteKey { key }))
+        },
+        | "ref" => {
+            let target = required_attribute(node, "target", path_text, "ref", diagnostics)?;
+            Some(Inline::Ref(AnchorRef { target }))
         },
         | "math" => Some(Inline::Math(Math {
             source: element_text(node),
@@ -667,11 +818,21 @@ pub(crate) fn element_location(
 mod tests
 {
     use super::parse_document;
+    use crate::model::AnchorRef;
     use crate::model::Block;
+    use crate::model::CiteKey;
+    use crate::model::CodeBlock;
+    use crate::model::CodeRole;
     use crate::model::Definition;
     use crate::model::Example;
+    use crate::model::Inline;
+    use crate::model::List;
+    use crate::model::ListItem;
     use crate::model::Section;
     use crate::model::Status;
+    use crate::model::Table;
+    use crate::model::TableCell;
+    use crate::model::TableRow;
 
     /// Parsing preserves the exact nested block tree and container metadata.
     #[test]
@@ -720,6 +881,91 @@ mod tests
                     body: Vec::new(),
                 }),
             ]),
+        );
+        Ok(())
+    }
+
+    /// Table, list, ref, and code-role payload blocks parse into their exact
+    /// typed shapes.
+    #[test]
+    fn payload_blocks_parse_exact_shapes() -> Result<(), crate::DocError>
+    {
+        let xml = r#"<component id="c" spec-version="1" title="T" status="partial">
+            <table caption="Cap">
+                <header><cell>H</cell></header>
+                <row><cell>a <ref target="s"/></cell><cell><cite key="K-1"/></cell></row>
+            </table>
+            <list ordered="true"><item lead="L">body</item></list>
+            <code language="rust" role="api">fn f();</code>
+        </component>"#;
+        let parsed = parse_document(std::path::Path::new("mem:c.xml"), xml)?;
+
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "expected valid payload blocks, got {:?}",
+            parsed.diagnostics,
+        );
+        assert_eq!(
+            parsed.document.map(|document| document.blocks),
+            Some(alloc::vec![
+                Block::Table(Table {
+                    caption: "Cap".to_owned(),
+                    header: alloc::vec![TableCell {
+                        content: alloc::vec![Inline::Text("H".to_owned())],
+                    }],
+                    rows: alloc::vec![TableRow {
+                        cells: alloc::vec![
+                            TableCell {
+                                content: alloc::vec![
+                                    Inline::Text("a ".to_owned()),
+                                    Inline::Ref(AnchorRef {
+                                        target: "s".to_owned(),
+                                    }),
+                                ],
+                            },
+                            TableCell {
+                                content: alloc::vec![Inline::Cite(CiteKey {
+                                    key: "K-1".to_owned(),
+                                })],
+                            },
+                        ],
+                    }],
+                }),
+                Block::List(List {
+                    ordered: true,
+                    items: alloc::vec![ListItem {
+                        lead: Some("L".to_owned()),
+                        body: alloc::vec![Inline::Text("body".to_owned())],
+                    }],
+                }),
+                Block::Code(CodeBlock {
+                    language: "rust".to_owned(),
+                    role: CodeRole::Api,
+                    text: "fn f();".to_owned(),
+                    expect_output: None,
+                    expect_error: None,
+                }),
+            ]),
+        );
+        Ok(())
+    }
+
+    /// An api-role code block declaring an expectation is a structural
+    /// violation.
+    #[test]
+    fn api_role_with_expectation_is_flagged() -> Result<(), crate::DocError>
+    {
+        let xml = r#"<component id="c" spec-version="1" title="T" status="partial">
+            <code language="rust" role="api" expect-output="x">fn f();</code>
+        </component>"#;
+        let parsed = parse_document(std::path::Path::new("mem:c.xml"), xml)?;
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "conflicting-role"),
+            "expected a conflicting-role diagnostic, got {:?}",
+            parsed.diagnostics,
         );
         Ok(())
     }

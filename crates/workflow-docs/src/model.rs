@@ -101,9 +101,11 @@ pub struct Document
 
 /// A block-level element of the vocabulary.
 ///
-/// The taxonomy is the seeded block set of decision `gandr-fcw.8`: section,
+/// The taxonomy is the seeded block set of decision `gandr-fcw.8` — section,
 /// prose, judgements, grammar, rule, definition, diagram, code, example, and
-/// references.
+/// references — extended by the `gandr-fid.3` payload blocks (list, table)
+/// that mirror the prose-substrate shapes so the two vocabularies author
+/// identically.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Block
@@ -123,10 +125,14 @@ pub enum Block
     Definition(Definition),
     /// A commutative (or other) diagram compiled from a typst leaf.
     Diagram(Diagram),
-    /// A code block that structurally anticipates a checked example.
+    /// A code block: a checked-example candidate or a normative API surface.
     Code(CodeBlock),
     /// A worked example: a titled grouping of nested blocks.
     Example(Example),
+    /// A flat (non-nested) ordered or unordered list of inline items.
+    List(List),
+    /// A captioned header-plus-body table of inline cells.
+    Table(Table),
     /// A per-component bibliography: the cite keys it declares.
     References(Vec<CiteKey>),
 }
@@ -166,6 +172,8 @@ impl Block
                 | Self::Definition(_)
                 | Self::Diagram(_)
                 | Self::Code(_)
+                | Self::List(_)
+                | Self::Table(_)
                 | Self::References(_) => {},
             }
             Some(block)
@@ -253,22 +261,69 @@ pub struct Diagram
     pub cites: Vec<CiteKey>,
 }
 
-/// A code block that structurally anticipates a checked example.
+/// A code block: a checked-example candidate or a normative API surface.
 ///
 /// The `expect_output` and `expect_error` fields are validated for shape only
 /// and never executed; execution gating is deferred until the interpreter runs.
+/// An [`CodeRole::Api`] block is a normative signature listing and never an
+/// execution candidate, so it excludes the expectation attributes.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct CodeBlock
 {
     /// Source language label.
     pub language: String,
+    /// The block's role: checked-example candidate (default) or API surface.
+    pub role: CodeRole,
     /// Verbatim code text.
     pub text: String,
     /// Optional anticipated standard output.
     pub expect_output: Option<String>,
     /// Optional anticipated error.
     pub expect_error: Option<String>,
+}
+
+/// The role of a code block.
+///
+/// The `gandr-fid.0` two-register weave makes normative API surfaces (typed
+/// signatures, data layouts) first-class payload; the role keeps them
+/// distinguishable from checked-example candidates so execution gating never
+/// picks them up.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum CodeRole
+{
+    /// A checked-example candidate (execution gating deferred). The default.
+    #[default]
+    Example,
+    /// A normative API-surface listing; never executed.
+    Api,
+}
+
+impl CodeRole
+{
+    /// Parse a role from its canonical attribute spelling.
+    #[inline]
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self>
+    {
+        match text {
+            | "example" => Some(Self::Example),
+            | "api" => Some(Self::Api),
+            | _ => None,
+        }
+    }
+
+    /// Return the canonical attribute spelling of the role.
+    #[inline]
+    #[must_use]
+    pub const fn as_str(self) -> &'static str
+    {
+        match self {
+            | Self::Example => "example",
+            | Self::Api => "api",
+        }
+    }
 }
 
 /// A worked example: a titled grouping of nested blocks.
@@ -280,6 +335,67 @@ pub struct Example
     pub title: String,
     /// Nested blocks.
     pub blocks: Vec<Block>,
+}
+
+/// A flat ordered or unordered list of inline items.
+///
+/// The shape mirrors the prose substrate's list so the two vocabularies
+/// author identically; component list items carry the full component inline
+/// set (terms, cites, refs, math).
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct List
+{
+    /// Whether the list is a numbered (ordered) sequence.
+    pub ordered: bool,
+    /// The list items in document order.
+    pub items: Vec<ListItem>,
+}
+
+/// A single list item: an optional bold lead-in plus inline body content.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct ListItem
+{
+    /// Optional bold lead-in naming the item.
+    pub lead: Option<String>,
+    /// Inline body content.
+    pub body: Vec<Inline>,
+}
+
+/// A captioned header-plus-body table of inline cells.
+///
+/// The shape mirrors the prose substrate's table; cells carry the full
+/// component inline set, so dictionary and decision tables keep their term
+/// links and citations.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct Table
+{
+    /// Table caption metadata.
+    pub caption: String,
+    /// The header row.
+    pub header: Vec<TableCell>,
+    /// The body rows in document order.
+    pub rows: Vec<TableRow>,
+}
+
+/// A single table body row.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct TableRow
+{
+    /// The cells of this row in column order.
+    pub cells: Vec<TableCell>,
+}
+
+/// A single table cell of inline content.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct TableCell
+{
+    /// Inline cell content.
+    pub content: Vec<Inline>,
 }
 
 /// An inline element within prose or a definition body.
@@ -295,6 +411,9 @@ pub enum Inline
     TermRef(TermRef),
     /// A cite-key reference.
     Cite(CiteKey),
+    /// A cross-reference to a corpus anchor (a component, section, rule,
+    /// definition, or diagram id).
+    Ref(AnchorRef),
     /// An inline math leaf.
     Math(Math),
 }
@@ -317,6 +436,20 @@ pub struct TermRef
 {
     /// Referenced term key.
     pub key: String,
+}
+
+/// A cross-reference to a corpus anchor, resolved against declared ids.
+///
+/// The target is any corpus-unique identifier (component, section, rule,
+/// definition, or diagram); the validator rejects an unresolvable target.
+/// This is the section-granular link the `gandr-fid.0` weave relies on in
+/// place of prose-flattened anchors.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct AnchorRef
+{
+    /// Referenced anchor identifier.
+    pub target: String,
 }
 
 /// A cite-key reference resolved against the references file.
@@ -395,6 +528,8 @@ mod tests
                 | Block::Diagram(ref diagram) => ("diagram", diagram.id.as_str()),
                 | Block::Code(ref code) => ("code", code.language.as_str()),
                 | Block::Example(ref example) => ("example", example.title.as_str()),
+                | Block::List(_) => ("list", ""),
+                | Block::Table(ref table) => ("table", table.caption.as_str()),
                 | Block::References(_) => ("references", ""),
             })
             .collect::<Vec<_>>();
