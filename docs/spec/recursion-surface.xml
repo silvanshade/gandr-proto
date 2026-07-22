@@ -161,6 +161,186 @@ in add(Succ(Zero), Succ(Zero))</code>
     <prose>Sigil molding passed its implementation gate: &lt; and &gt; are operator tiles, but the instantiation slot has its own grammar sort in which both sigils mold as atoms, distinct from binary expressions. The duplicate-tile check passes with copattern and postfix dots continuing to mold by context. At the current parser rung, a qualified call head in a recursive body is grouped as (outer.f)(args); removing that grouping requirement is a parser refinement, not a change to the qualified-path escape semantics.</prose>
     <prose>Adjacent non-decisions, recorded so this component does not silently spend them. The let keyword, freed by the value/computation binder pair (val x = v; / run x &lt;- c;), stays unassigned; its strongest claimant is a transparent definitional binder — one whose unfolding is visible to conversion — at the dependent-types rung, semantically distinct from val's opaque bind, and reserving keywords early breaks identifiers for no gain. The mut keyword stays unreserved pending the value-semantics/modes design pass; nothing in this component pre-commits the mutation story to modes over the effect row or the reverse, and the marker slot deliberately carries no aliasing or mode content. Display-layer elision of inferable markers in prover-facing renderings is endorsed as a projection concern and constrains nothing here. Finally, the diagnostic quality bar of the self-reference rule is normative: the unmarked-self-name error must carry the did-you-mean suggestion, because the rule's safety argument (error, never capture) assumes the repair is offered, not hunted.</prose>
   </section>
+  <section id="rs-architecture" status="partial" title="Architecture and API surface">
+    <prose>
+      The realized surface splits across three crates, and this section is the map. The grammar plane gives the
+      <term key="instantiation-slot"/>
+      its own sort, so the direction sigils mold as atoms exactly where the slot is expected and nowhere else — the syntax boundary at which later rungs interpret or decline each resident. The engine hosts the scope pass as a deliberately pre-kernel, pre-lowering stage: fix-bound names are resolved and marker residents classified before ordinary CBPV lowering sees the expression, which is what makes “the marked occurrence is the only reference to the fix-bound variable” an exact property rather than a convention. The corpus holds the parse-gated witnesses, firewalled from execution. The signatures below are quoted from the crates as the normative shape this component pins.
+    </prose>
+    <table caption="Module homes for the recursion surface">
+      <header>
+        <cell>Surface area</cell>
+        <cell>Home</cell>
+        <cell>What it carries</cell>
+      </header>
+      <row>
+        <cell>Instantiation-slot sort</cell>
+        <cell>surface-grammar, surface/term.rs</cell>
+        <cell>The atom-only instantiation sort; grammar rules for type arguments, the two direction sigils, the named-measure and explicit named forms, and the tail atom — distinct from the sigils' binary-expression molds.</cell>
+      </row>
+      <row>
+        <cell>Scope node kinds</cell>
+        <cell>surface-grammar, consumed via surface-engine's lower::node_kinds</cell>
+        <cell>The def-rec and rec-block node kinds with their member, name, clause, and body fields — the rec family's grammar shapes the pass pattern-matches on.</cell>
+      </row>
+      <row>
+        <cell>Recursive-scope pass</cell>
+        <cell>surface-engine, lower/recursion_surface.rs</cell>
+        <cell>Pre-lowering validation of one parsed item: a standalone def-rec scope or a rec-block group; a lexical-shadow arena keeps inner binders shadowing recursive names so qualified outer access survives exactly.</cell>
+      </row>
+      <row>
+        <cell>Finding family</cell>
+        <cell>surface-engine, lower.rs</cell>
+        <cell>The named error and reserved-decline variants below; byte ranges are the diagnostic spans, and total-mode recovery guarantees a scope error never consumes its sibling item.</cell>
+      </row>
+      <row>
+        <cell>Witnesses</cell>
+        <cell>surface-corpus, examples/surface/</cell>
+        <cell>PBG-only parse-gated programs; the corpus walker is firewalled to the model and pathological trees, so these witnesses gate parsing only.</cell>
+      </row>
+    </table>
+    <code language="rust" role="api">// surface-engine::lower::recursion_surface — the pre-lowering scope pass
+pub(super) fn validate_item(item: SynNode&lt;'_&gt;) -&gt; LowerResult&lt;()&gt;
+
+// surface-engine::lower — the recursion-surface finding family (excerpt)
+#[non_exhaustive]
+pub enum LowerError {
+    UnmarkedRecursiveReference { name: String, suggestion: String, byte_range: SourceRange },
+    MarkedReferenceOutsideRecursiveScope { target: String, byte_range: SourceRange },
+    ReservedNamedMeasure { resident: String, byte_range: SourceRange },
+    ReservedExplicitInstantiation { resident: String, byte_range: SourceRange },
+    ReservedExplicitSize { resident: String, byte_range: SourceRange },
+    ReservedCostBound { resident: String, byte_range: SourceRange },
+    ReservedTailAssertion { byte_range: SourceRange },
+}</code>
+    <prose>
+      Two shape decisions the signatures make visible. First, the grammar admits six instantiation rule shapes — type argument, the two sigils, named measure (an identifier followed by the descent sigil), explicit named form (an identifier, an equals, an expression), and the tail atom — and the engine classifies the named forms by identifier: a size or cost name takes its own reserved variant, any other name the generic explicit-instantiation variant. The "declines the reserved residents by name" clause of the overview is therefore literal: the decline variant is selected by the resident's name, and the diagnostic quotes the resident text. Second, the unmarked-reference error carries the suggested marked spelling as a field, not as message text assembled at the diagnostic site — the did-you-mean is part of the finding's data, which is what lets the diagnostic quality bar of the edge cases (
+      <ref target="rs-edge"/>
+      ) be a testable contract.
+    </prose>
+  </section>
+  <section id="rs-staging" status="partial" title="Staging and gates">
+    <prose>
+      The
+      <term key="productivity-ladder"/>
+      is the staging plan; this table restates it as gates (the prose development stays at
+      <ref target="rs-ladder"/>
+      ). Each rung strengthens what a marker means, and no rung's syntax ships before its check is designed — the soundness hedge that keeps sized semantics out of scope-checked syntax.
+    </prose>
+    <table caption="The productivity ladder as gates">
+      <header>
+        <cell>Rung</cell>
+        <cell>Marker semantics</cell>
+        <cell>Checked obligation</cell>
+        <cell>Go / no-go gate</cell>
+        <cell>Status</cell>
+      </header>
+      <row>
+        <cell>Scope</cell>
+        <cell>Scope evidence only; the sigils record direction intent, unchecked.</cell>
+        <cell>A marked occurrence must target a definition of the enclosing recursive scope; reserved residents are declined by name; unmarked self-reference is an error carrying the marked spelling.</cell>
+        <cell>Landed: the parse gates (sigil molding, duplicate-tile) and the scope pass are green.</cell>
+        <cell>built</cell>
+      </row>
+      <row>
+        <cell>Guardedness</cell>
+        <cell>
+          The sigils become checked claims: descent obliges some argument of the marked call to structurally descend; productivity obliges the marked call to sit under at least one copattern observation
+          <cite key="O-1a"/>
+          .
+        </cell>
+        <cell>The structural-descent and guard checks are total on the fragment; an escaping reference is declined with a diagnostic saying which rung refused it.</cell>
+        <cell>Go: recursive lowering lands and both checks are total. No-go: any sized-type semantics leaking into scope-checked syntax.</cell>
+        <cell>adopted-unbuilt</cell>
+      </row>
+      <row>
+        <cell>Sized</cell>
+        <cell>
+          Both sigils elaborate to erased size applications at a fresh size strictly below the ambient one; the explicit size form opens in the same slot; conversion quotients the annotations under size-irrelevance
+          <cite key="O-2"/>
+          .
+        </cell>
+        <cell>
+          The sized-types design pass, including the bounded-quantification and infinite-size interaction; the underlying theory
+          <cite key="O-6"/>
+          is sound, and Agda's implementation history is the standing hedge.
+        </cell>
+        <cell>Reserved: gated on that design pass, never on enthusiasm.</cell>
+        <cell>design-pass</cell>
+      </row>
+    </table>
+  </section>
+  <section id="rs-corpus-plan" status="partial" title="Corpus-examples plan">
+    <prose>The landed coverage is parse-gated witnesses plus crate fixtures, per the corpus discipline: a syntax-only landing gets a parse-gated surface witness, and the full treatment — runnable model and pathological examples, harness assertions, coverage-map registration — rides the same change as the semantics that graduates it. The engine's unit tests are the named fixtures of the internal-only rung; the graduation rows below are the planned promotion.</prose>
+    <table caption="Witnesses, fixtures, and the graduation plan">
+      <header>
+        <cell>Artifact</cell>
+        <cell>Tree</cell>
+        <cell>Expected outcome</cell>
+        <cell>Status</cell>
+      </header>
+      <row>
+        <cell>examples/surface/def-rec-and-copatterns.gandr</cell>
+        <cell>surface (parse-gated)</cell>
+        <cell>Parses: direction sigils, copattern bodies, the reserved default copattern arm, and every reserved marker resident.</cell>
+        <cell>built</cell>
+      </row>
+      <row>
+        <cell>examples/surface/operator-and-rec-block.gandr</cell>
+        <cell>surface (parse-gated)</cell>
+        <cell>Parses: a mutual rec block with marked cross-calls beside operator declarations.</cell>
+        <cell>built</cell>
+      </row>
+      <row>
+        <cell>lower/recursion_surface.rs unit tests; tests/acceptance.rs (mod recursion_surface)</cell>
+        <cell>crate fixtures</cell>
+        <cell>The unmarked-self error carries the did-you-mean; the marked-outside-scope decline fires; each reserved resident declines into its own named variant; lexical shadows and sibling-item recovery hold.</cell>
+        <cell>built</cell>
+      </row>
+      <row>
+        <cell>model recursion examples (planned)</cell>
+        <cell>model</cell>
+        <cell>
+          Structural recursion and a mutual group run with expected output once recursive lowering lands; the checked example already in this component (
+          <ref target="rs-examples"/>
+          ) is the anticipated shape.
+        </cell>
+        <cell>adopted-unbuilt</cell>
+      </row>
+      <row>
+        <cell>pathological unmarked-self example (planned)</cell>
+        <cell>pathological</cell>
+        <cell>Expected error naming the marked spelling as the suggestion.</cell>
+        <cell>adopted-unbuilt</cell>
+      </row>
+      <row>
+        <cell>pathological escaping-reference example (planned)</cell>
+        <cell>pathological</cell>
+        <cell>The guardedness-rung decline says which rung refused the escaping marked reference.</cell>
+        <cell>design-pass</cell>
+      </row>
+    </table>
+  </section>
+  <section id="rs-open-questions" status="partial" title="Open questions and residuals">
+    <prose>What this component deliberately leaves unresolved, collected so later rungs inherit the questions rather than rediscover them.</prose>
+    <list>
+      <item lead="Sequent correspondence">
+        The productive sigil should acquire an L face as the seed side of a coiterator
+        <term key="cut"/>
+        when the L fragment grows far enough to express it (see
+        <ref target="rs-one-family"/>
+        ); the marker discipline must survive that translation unchanged — if it cannot, the surface design moves, not the kernel.
+      </item>
+      <item lead="Escaping self-reference across rungs">The grammar admits a marked non-call reference, the guardedness rung declines it, and the sized rung accepts it; the per-rung diagnostic contract (the message says which rung refused) is stated but its wording is unowned.</item>
+      <item lead="Sized-rung soundness posture">
+        The MiniAgda-line theory
+        <cite key="O-6"/>
+        is sound, but bounded size quantification interacting with the infinite size produced real inconsistencies in Agda's implementation; the sized rung stays gated on a deliberate design pass, and the marker's normative semantics stays at scope-plus-direction until then.
+      </item>
+      <item lead="Display elision">Prover-facing renderings may elide inferable markers as a projection concern over whitespace-invariant identity; nothing here constrains or implements that projection.</item>
+      <item lead="Adjacent non-decisions">The let keyword stays unassigned (its strongest claimant is a transparent definitional binder at the dependent rung); the mut keyword stays unreserved pending the value-semantics/modes pass; the marker slot deliberately carries no aliasing or mode content.</item>
+    </list>
+  </section>
   <references>
     <cite key="L-1"/>
     <cite key="L-2"/>
