@@ -53,6 +53,9 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 
 The base rule still governs: close a bead only when its full recorded scope is done and verified; make residual scope epic-shaped; file follow-ups `discovered-from` the parent; sweep related memory before closing. gandr adds one **feature-landing workflow** so executable evidence, manual work, mutation campaigns, and other residuals cannot drift into separate conventions.
 
+**The merge gate is part of "done and verified"**: before a task is considered finished — and before its residuals bead is filed — the work must pass `mise run gate:merge` in the landing worktree (the same gate `wt merge` runs pre-merge).
+Passing narrower gates (build, scoped clippy, nextest) is not sufficient: the merge gate is where project-wide lints catch what narrow verification misses — realized instance 2026-07-22: the recursion-documentation dylint fired only under `gate:merge`, after scoped clippy and nextest were already green.
+
 ### Demonstrability lands with the feature
 
 * **Surfaced language feature.** The implementing change includes runnable `gandr-corpus` model **and** pathological examples, harness assertions, and coverage-map registration ([corpus.md](corpus.md); `ADR-84`).
