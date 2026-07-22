@@ -1,8 +1,8 @@
 // W4d surface fold-in — `codata` datatype declarations (parse-only fixture).
 //
-// GRADUATION: `codata` and its lowercase-led observation members enter the PBG
-// grammar now (wyrd-ku0f); corecursion / copattern SEMANTICS graduate under
-// wyrd-e0xy (companion to the `data` face). `codata` reserves as one whole
+// GRADUATION: `codata` and its lowercase-led observation members are in the
+// checked PBG; corecursion / copattern semantics graduate with the pattern-
+// matrix work. `codata` reserves as one whole
 // keyword, so it never lexes as `co` + `data`. Parse-only; never lowered.
 
 // A stream: each observation is `name: Type`.

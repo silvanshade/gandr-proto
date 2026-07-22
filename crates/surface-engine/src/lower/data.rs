@@ -1,14 +1,14 @@
-//! Declared data: the positive-half elaboration (ADR-80; ADR-54 §3;
-//! proposal-data-patterns.md; `wyrd-cx79`).
+//! Declared data: the positive-half elaboration
+//! (`proposal-data-patterns.md`; declared-data work).
 //!
 //! A `data D(ā) { C₀, C₁(x: A), … }` block declares generative-nominal
 //! **constructors** (1-cells). A constructor application `C(v̄)` introduces a
 //! value of `D(ā)` — the [`gandr_core_checker::syntax::Value::Ctor`] tagged
 //! value — and a `case v { Cᵢ(x̄ᵢ) => eᵢ }` eliminates it through the
-//! [`gandr_core_checker::syntax::Comp::DataCase`] case-over-the-tag (ADR-80
-//! Decisions 2/3).
+//! [`gandr_core_checker::syntax::Comp::DataCase`] case-over-the-tag
+//! (declared-data design Decisions 2/3).
 //!
-//! # The pipeline seam (ADR-80 Decision 4)
+//! # The pipeline seam (declared-data design Decision 4)
 //!
 //! This module is the single seam that maps a
 //! `gandr_theory_levitation::NominalId` (serial + name, minted by
@@ -19,7 +19,7 @@
 //! constructor application, `case` lowering, the `D(ā)` type former, and the
 //! renderer all resolve against it.
 //!
-//! # MVP boundaries (ADR-80 Decisions 6/7)
+//! # MVP boundaries (declared-data design Decisions 6/7)
 //!
 //! * **Non-recursive.** A recursive datatype (a constructor field whose type is
 //!   the type being declared) is declined off `DataDesc::is_recursive` until
@@ -27,9 +27,9 @@
 //! * **Field discipline.** A constructor application under a `D(ā)` ascription
 //!   checks each payload field against its declared type instantiated at `ā`
 //!   ([`Lowerer::instantiated_field_types`]) — the soundness the frozen core's
-//!   tag-only `rule_ctor` cannot enforce (ADR-80 Decision 4/5). A field type
-//!   outside the resolvable first-order fragment (an applied non-declared
-//!   former) is checked permissively (`Unknown`), a residual.
+//!   tag-only `rule_ctor` cannot enforce (declared-data design Decision 4/5). A
+//!   field type outside the resolvable first-order fragment (an applied
+//!   non-declared former) is checked permissively (`Unknown`), a residual.
 //! * **Arity.** A nullary constructor's payload is `()`, a one-field
 //!   constructor's is the field value directly, and a many-field constructor's
 //!   is the right-nested product of its fields; a `case` arm destructures the
@@ -78,17 +78,17 @@ use crate::origin::ElabKind;
 use crate::origin::OriginNode;
 use crate::synnode::SynNode;
 
-/// A `data D(ā) { … }` declaration's registered shape (ADR-80): its minted
-/// core-local nominal id, its usable constructor names, and — the decl table
-/// the frozen core deliberately does not carry — its type-parameter names and
-/// each constructor's payload [`Code`], in declaration (tag) order.
+/// A `data D(ā) { … }` declaration's registered shape (declared-data design):
+/// its minted core-local nominal id, its usable constructor names, and — the
+/// decl table the frozen core deliberately does not carry — its type-parameter
+/// names and each constructor's payload [`Code`], in declaration (tag) order.
 ///
 /// The `params` and `ctor_codes` are the pipeline-seam field-discipline
-/// substrate (ADR-80 Decision 4/5): a constructor application `C(v̄)` under a
-/// `D(ā)` ascription checks each payload field against its declared type
-/// (`ctor_codes[tag]`) instantiated at `ā` (the parameters `params` substituted
-/// by the ascription's arguments), the soundness the core's tag-only
-/// `rule_ctor` cannot enforce.
+/// substrate (declared-data design Decision 4/5): a constructor application
+/// `C(v̄)` under a `D(ā)` ascription checks each payload field against its
+/// declared type (`ctor_codes[tag]`) instantiated at `ā` (the parameters
+/// `params` substituted by the ascription's arguments), the soundness the
+/// core's tag-only `rule_ctor` cannot enforce.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DataDecl
 {
@@ -102,9 +102,10 @@ pub struct DataDecl
     /// declaration order — the substitution domain for a constructor's field
     /// types at an ascribed instantiation.
     pub params: Vec<String>,
-    /// Each constructor's payload [`Code`] (ADR-67 first-order fragment), index
-    /// = tag. A constructor of `n` fields carries a right-nested product of `n`
-    /// field codes (`1` when nullary), interpreted to core field types by
+    /// Each constructor's payload [`Code`] (levitation stage-0 design
+    /// first-order fragment), index = tag. A constructor of `n` fields
+    /// carries a right-nested product of `n` field codes (`1` when
+    /// nullary), interpreted to core field types by
     /// [`Lowerer::instantiated_field_types`].
     pub ctor_codes: Vec<Code>,
 }
@@ -164,14 +165,15 @@ pub(super) struct DataConstructorCall<'tree>
 impl Lowerer<'_>
 {
     /// Pre-pass: register every `data D(ā) { … }` block into the data registry
-    /// (ADR-80 Decision 4), mirroring the codata `collect_codata` pre-pass.
+    /// (declared-data design Decision 4), mirroring the codata `collect_codata`
+    /// pre-pass.
     ///
     /// Uses [`elaborate_data_descs`] over the source — the stage-0 elaborator
     /// that mints the `NominalId` serials — so this is the `NominalId → DataId`
     /// seam. `codata` blocks are skipped (they are the negative half). A
     /// recursive datatype is registered but its constructors are **not** usable
-    /// (ADR-80 Decision 6): they are left out of the registry, so a
-    /// construction or match against them declines as an unknown
+    /// (declared-data design Decision 6): they are left out of the registry, so
+    /// a construction or match against them declines as an unknown
     /// constructor.
     ///
     /// # Contract
@@ -187,7 +189,7 @@ impl Lowerer<'_>
             if desc.polarity != DeclPolarity::Data {
                 continue;
             }
-            // Non-recursive only (ADR-80 Decision 6): a recursive datatype's
+            // Non-recursive only (declared-data design Decision 6): a recursive datatype's
             // constructors are not made usable until the μ⁺ rung.
             if bool::from(desc.is_recursive()) {
                 continue;
@@ -323,19 +325,20 @@ impl Lowerer<'_>
     }
 
     /// Lowers a declared-data constructor application `C(v̄)` to
-    /// [`Value::Ctor`] (ADR-80 Decision 2). The payload is the constructor's
-    /// field-tuple: `()` for a nullary constructor, the single field value for
-    /// a one-field constructor, and a right-nested [`Value::pair`] product for
-    /// a many-field constructor (ADR-80's arity growth path; the payload mirror
-    /// of the declared [`Code`] product).
+    /// [`Value::Ctor`] (declared-data design Decision 2). The payload is the
+    /// constructor's field-tuple: `()` for a nullary constructor, the
+    /// single field value for a one-field constructor, and a right-nested
+    /// [`Value::pair`] product for a many-field constructor (declared-data
+    /// design's arity growth path; the payload mirror of the declared
+    /// [`Code`] product).
     ///
     /// When `expected_args` is `Some(ā)`, the expected-type lowering request
     /// has confirmed this constructor belongs to the enclosing ascription
     /// `D(ā)`; each payload
     /// field is **checked** against its declared field type instantiated at
     /// `ā` (a [`Value::annot`] the core's tag-only `rule_ctor` then
-    /// verifies; ADR-80 Decision 4/5 field discipline), so `Some("hi") :
-    /// Maybe(Integer)` is a clean type error rather than a
+    /// verifies; declared-data design Decision 4/5 field discipline), so
+    /// `Some("hi") : Maybe(Integer)` is a clean type error rather than a
     /// silently-accepted payload. `None` lowers the fields unchecked (a
     /// bare / non-ascribed constructor, itself stuck under inference until
     /// an ascription reaches it).
@@ -432,12 +435,12 @@ impl Lowerer<'_>
 
     /// Flattens a constructor's payload [`Code`] into its per-field codes,
     /// undoing the right-nesting [`Code::product_of`] built (`1` ↦ `[]`, a
-    /// field ↦ `[field]`, `f × (g × h)` ↦ `[f, g, h]`). Iterative (ADR-47): a
-    /// right-nested product is walked down its `right` spine, never recursed.
-    /// A non-recursive `data` block's constructor code is `1` / a field / a
-    /// right-nested product of fields, so each `left` is one field leaf; any
-    /// other shape contributes a single opaque field (interpreted
-    /// permissively).
+    /// field ↦ `[field]`, `f × (g × h)` ↦ `[f, g, h]`). Iterative
+    /// (iterative-traversal design): a right-nested product is walked down
+    /// its `right` spine, never recursed. A non-recursive `data` block's
+    /// constructor code is `1` / a field / a right-nested product of
+    /// fields, so each `left` is one field leaf; any other shape
+    /// contributes a single opaque field (interpreted permissively).
     fn flatten_field_codes(code: &Code) -> Vec<Code>
     {
         let mut fields = Vec::new();
@@ -539,9 +542,9 @@ impl Lowerer<'_>
 
     /// Lowers a bare declared-data constructor `C` (a nullary constructor in
     /// expression position, e.g. `None` / `Red`) to [`Value::Ctor`] with the
-    /// unit payload (ADR-80). Returns `None` when `node` is not a declared
-    /// constructor, so the caller can fall through to the out-of-fragment
-    /// decline.
+    /// unit payload (declared-data design). Returns `None` when `node` is not a
+    /// declared constructor, so the caller can fall through to the
+    /// out-of-fragment decline.
     ///
     /// # Contract
     /// - ensures: `Some(Ctor { id, tag, () })` for a declared **nullary**
@@ -575,17 +578,18 @@ impl Lowerer<'_>
     /// The declared-data resolver the type lowering
     /// ([`ty_lower::lower_ty`] and its kin) threads to rewrite a declared
     /// datatype head to its [`ValueType::Data`] nominal handle at **any** depth
-    /// (ADR-80) — `List(Maybe(a))`, `Maybe(a) -> X`, and record fields all
-    /// intercept, not only a top-level ascription. A non-declared head resolves
-    /// to `None` (a primitive / type variable / built-in former).
+    /// (declared-data design) — `List(Maybe(a))`, `Maybe(a) -> X`, and record
+    /// fields all intercept, not only a top-level ascription. A
+    /// non-declared head resolves to `None` (a primitive / type variable /
+    /// built-in former).
     fn data_resolver(&self) -> impl Fn(&str) -> Option<DataId> + '_
     {
         move |name: &str| self.data.get(name).map(|decl| decl.id.clone())
     }
 
     /// Lowers a type node with declared-datatype awareness at every depth
-    /// (ADR-80): a declared datatype head — top-level or nested — becomes the
-    /// [`ValueType::Data`] nominal handle, else the ordinary
+    /// (declared-data design): a declared datatype head — top-level or nested —
+    /// becomes the [`ValueType::Data`] nominal handle, else the ordinary
     /// [`ty_lower::lower_ty`] result. The ascription / signature sites route
     /// through this so `def x : Maybe(Integer) = …`, `(v : Celsius)`, and a
     /// nested `List(Maybe(a))` all see the nominal type.
@@ -664,10 +668,10 @@ impl Lowerer<'_>
     }
 
     /// Whether a `case` has no arms at all — the absurd match `case v {}` over
-    /// an uninhabited datatype (ADR-80). It reveals no constructor family, so
-    /// it is only meaningful as the declared-data eliminator (over an empty
-    /// `Data` type), routed to [`Self::data_case`] which produces the
-    /// arm-less `DataCase`.
+    /// an uninhabited datatype (declared-data design). It reveals no
+    /// constructor family, so it is only meaningful as the declared-data
+    /// eliminator (over an empty `Data` type), routed to
+    /// [`Self::data_case`] which produces the arm-less `DataCase`.
     pub(super) fn case_arms_empty(node: SynNode<'_>) -> MatchDecision
     {
         (!named_non_extra_children(node)
@@ -677,7 +681,8 @@ impl Lowerer<'_>
     }
 
     /// Lowers `case v { C₀(x̄₀) => t₀, … }` over declared constructors to
-    /// [`Comp::DataCase`] (ADR-80 Decision 3), arms placed by constructor tag.
+    /// [`Comp::DataCase`] (declared-data design Decision 3), arms placed by
+    /// constructor tag.
     ///
     /// Every arm's constructor must belong to one datatype (the scrutinee's);
     /// the arms are assembled into a vector of length `k` (the datatype's
@@ -765,7 +770,7 @@ impl Lowerer<'_>
         else {
             // The absurd empty match `case v {}`: an arm-less `DataCase` over
             // the scrutinee's (uninhabited) data type, which the core checks
-            // vacuously against the expected answer (ADR-80 Decision 3).
+            // vacuously against the expected answer (declared-data design Decision 3).
             if Self::case_arms_empty(node).into() {
                 let body = COut::from_legacy_comp(
                     &Comp::DataCase(Rc::new(scrut_value), Vec::new()),
@@ -839,7 +844,7 @@ impl Lowerer<'_>
     /// datatype name, its tag, the payload binder the `DataCase` arm binds, and
     /// the lowered body — for a many-field constructor the body is wrapped in
     /// the nested `split`s that positionally destructure the product payload
-    /// into the field binders (ADR-80 arity growth).
+    /// into the field binders (declared-data design arity growth).
     ///
     /// # Contract
     /// - ensures: the pattern's binder count equals the constructor's declared
@@ -930,8 +935,9 @@ impl Lowerer<'_>
     /// many-field constructor's right-nested product payload into `binders`,
     /// returning the fresh payload variable the `case` arm binds and the
     /// wrapped body (the [`Comp::DataCase`] β-rule binds the whole product to
-    /// that variable; ADR-80 arity growth). Iterative (ADR-47): the split
-    /// levels are computed over an index and folded, no host recursion.
+    /// that variable; declared-data design arity growth). Iterative
+    /// (iterative-traversal design): the split levels are computed over an
+    /// index and folded, no host recursion.
     ///
     /// # Contract
     /// - requires: `binders.len() >= 2` (the one/zero-field arms bind

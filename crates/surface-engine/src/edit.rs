@@ -1,6 +1,6 @@
 //! Edit-action reconstruction: a localized structured diff of the lowered
-//! CBPV core (`A2`; `incremental-pipeline.md` §7; ADR-17 Porter disposition;
-//! `wyrd-kekv`).
+//! CBPV core (`A2`; `incremental-pipeline.md` §7; incremental-pipeline design
+//! Porter disposition; `edit-action work`).
 //!
 //! # The impedance gate this closes
 //!
@@ -12,14 +12,14 @@
 //! one-hole-context edits (not text diffs), and so always knows *which* child
 //! an edit touched. (The corpus carries the verified harvest of both — Porter's
 //! order-maintenance intervals and binding pointers, Pantograph's typed
-//! error-boundary — in `incremental-pipeline.md` §7 and ADR-17; the per-paper
-//! claims live there, not duplicated here.) gandr's A2 front end, by contrast,
-//! produces a melder CST (the merkle-hashed `gandr-syntax` arena) and a
-//! re-lowered core term. This module is the **translation layer** between the
-//! two: it reconstructs a localized edit-action script over the lowered core
-//! from the before/after lowerings, plus a byte-range **localizer** that maps a
-//! [`SourceEdit`]'s old extent to the smallest enclosing core term (the *edit
-//! locus*).
+//! error-boundary — in `incremental-pipeline.md` §7 and incremental-pipeline
+//! design; the per-paper claims live there, not duplicated here.) gandr's A2
+//! front end, by contrast, produces a melder CST (the merkle-hashed
+//! `gandr-surface-syntax` arena) and a re-lowered core term. This module is the
+//! **translation layer** between the two: it reconstructs a localized
+//! edit-action script over the lowered core from the before/after lowerings,
+//! plus a byte-range **localizer** that maps a [`SourceEdit`]'s old extent to
+//! the smallest enclosing core term (the *edit locus*).
 //!
 //! # Coverage with fallback (be honest)
 //!
@@ -49,18 +49,19 @@
 //! [`apply`] operates on the **term forest** ([`LoweredItem`]s — names,
 //! ascriptions, and core terms), *not* on the [`OriginMap`]: byte ranges and
 //! CST identity are a function of lowering, and reconstructing them from an
-//! action script is the order-maintenance-over-CST resync problem (`wyrd-c5h3`,
-//! Pterodactyl relative positioning), deliberately out of scope here. The
-//! [`localize`] half uses the existing [`OriginMap`] byte-range nesting as its
-//! positioning substrate: a byte->node *stabbing* query answered in
-//! **O(depth)** by descending the nesting (the ranges nest, so the smallest
-//! enclosing entry is reached by stepping into the containing child at each
-//! level — never scanning the whole map, `wyrd-62id`). The
-//! `gandr-order-maintenance` `Interval` containment is a *different* query —
-//! O(1) node->node *ancestry*, the query the future dirty-frontier engine
-//! (A2.3) consumes, not a drop-in speed-up for this byte->node lookup. Rebasing
-//! the [`OriginMap`] onto order-maintenance keys, so a whitespace reparse
-//! leaves positions invariant, is the OM-over-CST resync (`wyrd-c5h3`).
+//! action script is the order-maintenance-over-CST resync problem
+//! (`CST-resynchronization work`, Pterodactyl relative positioning),
+//! deliberately out of scope here. The [`localize`] half uses the existing
+//! [`OriginMap`] byte-range nesting as its positioning substrate: a byte->node
+//! *stabbing* query answered in **O(depth)** by descending the nesting (the
+//! ranges nest, so the smallest enclosing entry is reached by stepping into the
+//! containing child at each level — never scanning the whole map,
+//! `stable-origin work`). The `gandr-theory-orders` `Interval` containment is a
+//! *different* query — O(1) node->node *ancestry*, the query the future
+//! dirty-frontier engine (A2.3) consumes, not a drop-in speed-up for this
+//! byte->node lookup. Rebasing the [`OriginMap`] onto order-maintenance keys,
+//! so a whitespace reparse leaves positions invariant, is the OM-over-CST
+//! resync (`CST-resynchronization work`).
 //!
 //! # Index conventions
 //!
@@ -690,7 +691,7 @@ fn diff_value_step<'term>(
                 new: new_fst,
             });
         },
-        // A list literal (ADR-40): when the lengths match, the elements align
+        // A list literal (list-former design): when the lengths match, the elements align
         // 1:1 and the diff descends structurally into each (the `Pair`
         // discipline, n-ary). A length change does not align — the localized
         // diff cannot yet express a list-element insert/delete (a residual
@@ -719,7 +720,7 @@ fn diff_value_step<'term>(
                 });
             }
         },
-        // A record literal (ADR-45): when the label sets match, the fields align
+        // A record literal (record-former design): when the label sets match, the fields align
         // 1:1 by label (in canonical sorted order) and the diff descends
         // structurally into each (the `Pair` / `List` discipline, n-ary and
         // label-keyed). A label-set change does not align — the localized diff
@@ -794,14 +795,14 @@ fn diff_value_step<'term>(
                 new: new_body,
             });
         },
-        // A string literal (ADR-38), a typed numeric literal (ADR-39), and a
-        // reified stack are all opaque to the diff: an unchanged one emits no
-        // action — so a self-diff over such a term stays empty — and a changed
+        // A string literal (string-literal design), a typed numeric literal (numeric-literal
+        // design), and a reified stack are all opaque to the diff: an unchanged one emits
+        // no action — so a self-diff over such a term stays empty — and a changed
         // one is a wholesale replacement, compared by exact structure (the whole
         // node, *not* a per-field comparison — the latent self-diff bug the Str
         // rung fixed). Granular sub-edits are deferred (a string `SetStr` and a
-        // numeric `SetNum` mirroring `SetInt`, `wyrd-c4oe`; descent into a
-        // stack, `wyrd-q1mz`).
+        // numeric `SetNum` mirroring `SetInt`, `scalar-edit refinement`; descent into a
+        // stack, `deep edit descent`).
         | (&Value::Str(_), &Value::Str(_))
         | (&Value::Num(_), &Value::Num(_))
         | (&Value::Stk(_), &Value::Stk(_)) => {
@@ -1747,7 +1748,7 @@ fn diff_comp_step<'term>(
         },
         // A split's binders are the `Fst`/`Snd` attribute slots; the scrutinee
         // (0) and body (1) are the term children. The motive is a computation
-        // *type* (ADR-82) — an untyped-by-`edit` attribute carried verbatim
+        // *type* (dependent-split design) — an untyped-by-`edit` attribute carried verbatim
         // through `rebuild`, not diffed (as `Abs`'s binder annotation is not).
         | (
             &Comp::Split {
@@ -1790,7 +1791,7 @@ fn diff_comp_step<'term>(
                 new: new_scrut,
             });
         },
-        // A list-case (ADR-40): the `head`/`tail` binders are attributes
+        // A list-case (list-former design): the `head`/`tail` binders are attributes
         // (`Fst`/`Snd`), the scrutinee (0), `nil` body (1), and `cons` body (2)
         // are children — the `origin::resolve` order.
         | (
@@ -1865,7 +1866,7 @@ fn diff_comp_step<'term>(
                 new: new_target,
             });
         },
-        // A record projection `record.ℓ` (ADR-45 D4): localize into the record
+        // A record projection `record.ℓ` (record-former design D4): localize into the record
         // value child (0) when the projected label is stable; a changed label is
         // a wholesale replacement (there is no per-label edit action, as
         // `Perform` has none for its op name). A self-diff descends to nothing.
@@ -2009,7 +2010,7 @@ fn diff_comp_step<'term>(
         // Different concrete constructors: replace wholesale. (`Value::Stk`
         // reified stacks are opaque to the value diff for the same reason —
         // they are machine-constructed, not a surface form; descent into a
-        // reified stack is deferred, `wyrd-q1mz`.)
+        // reified stack is deferred, `deep edit descent`.)
         | _ => out.push(Action::Replace {
             path: prefix.to_vec().into(),
             to: Subtree::Comp(new.clone()),
@@ -2076,7 +2077,7 @@ fn handle_clause_child(index: ItemIndex) -> OriginPathComponent
 /// identifiers** (typing ignores them, so the diff treats two holes at the same
 /// position as equal and leaves the old identifier in place). The [`OriginMap`]
 /// is *not* reconstructed — only the term forest (names, ascriptions, terms);
-/// re-deriving byte ranges is `wyrd-jc0u`.
+/// re-deriving byte ranges is `origin-reconstruction work`.
 ///
 /// # Contract
 /// - requires: `script` was produced by [`diff`] / [`diff_items`] from `old`
@@ -2329,14 +2330,15 @@ pub fn edit_locus(
 /// span — answered by an **O(depth) descent** of the [`OriginMap`]'s nested
 /// byte ranges: the ranges nest, so the smallest enclosing entry is reached by
 /// stepping into the containing child at each level rather than scanning the
-/// whole map (`wyrd-62id`). It is *not* the `gandr-order-maintenance`
+/// whole map (`stable-origin work`). It is *not* the `gandr-theory-orders`
 /// `Interval` containment, which answers node->node *ancestry* in O(1) for the
-/// dirty-frontier engine (A2.3, `wyrd-c5h3`) — a different query. The locus is
-/// the **smallest-byte-range** entry containing the edit; among entries sharing
-/// that minimal range — synthesized elaboration nodes (operator desugaring, the
-/// `def` sugar) legitimately share a span — the **outermost** (shortest-path)
-/// is chosen, so the locus is a *common ancestor* of every change a contiguous
-/// edit induces, not one of several overlapping siblings.
+/// dirty-frontier engine (A2.3, `CST-resynchronization work`) — a different
+/// query. The locus is the **smallest-byte-range** entry containing the edit;
+/// among entries sharing that minimal range — synthesized elaboration nodes
+/// (operator desugaring, the `def` sugar) legitimately share a span — the
+/// **outermost** (shortest-path) is chosen, so the locus is a *common ancestor*
+/// of every change a contiguous edit induces, not one of several overlapping
+/// siblings.
 ///
 /// # Contract
 /// - requires: `origin` is the old program's origin map; `start <= end`.
@@ -2379,8 +2381,9 @@ pub fn localize(
 /// children it steps past at each level.
 ///
 /// The result is `debug_assert`-checked against the linear-stab reference
-/// ([`localize_reference`]) — an external oracle (ADR-71): the O(depth) descent
-/// is only sound if it lands on the same entry the exhaustive minimum would.
+/// ([`localize_reference`]) — an external oracle (adequacy design): the
+/// O(depth) descent is only sound if it lands on the same entry the exhaustive
+/// minimum would.
 #[must_use]
 pub(crate) fn localize_traced(
     origin: &OriginMap,
@@ -2485,8 +2488,8 @@ fn descend_locus(
 }
 
 /// The reference localizer: an exhaustive linear stab over every origin entry
-/// (the pre-`wyrd-62id` implementation). Retained as the external oracle
-/// [`localize_traced`] `debug_assert`s the O(depth) descent against.
+/// (the pre-`stable-origin work` implementation). Retained as the external
+/// oracle [`localize_traced`] `debug_assert`s the O(depth) descent against.
 fn localize_reference(
     origin: &OriginMap,
     start: SourceOffset,
@@ -2525,7 +2528,7 @@ fn contains(
 }
 
 /// A source edit's byte extents — the localizer input that replaced the retired
-/// `tree_sitter::InputEdit` (`wyrd-62id`).
+/// `tree_sitter::InputEdit` (`stable-origin work`).
 ///
 /// The melder is a *batch* parser, so the row/column positions tree-sitter
 /// carried for incremental reparse are not consumed here; the localizer needs

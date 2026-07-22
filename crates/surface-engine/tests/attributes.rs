@@ -1,5 +1,4 @@
-//! Entity-attribute MVP acceptance tests (proposal-attributes.md §§2–5; ADR
-//! "entity attributes"; the predecessor design record).
+//! Entity-attribute MVP acceptance tests (proposal-attributes.md §§2–5).
 //!
 //! Drives the `@[…]` marker end-to-end through the pipeline
 //! ([`lower_source_total`] → [`attributes::run`] / [`report`]): the registry
@@ -145,9 +144,9 @@ mod tests
     #[test]
     fn manifest_schemas_resolve_as_inert_coordinates()
     {
-        // The predecessor design record manifest fields, checked on a top-level `def` —
-        // the unit-root stand-in until the predecessor design record module
-        // root lands. A repeatable `dependency` plus single-valued `package` /
+        // Manifest fields checked on a top-level `def`, the unit-root stand-in
+        // until the module root lands. A repeatable `dependency` plus
+        // single-valued `package` /
         // `toolchain` / `license` / `authors` (proposal-packages.md §7.3, §7.6
         // MVP column).
         let source = "@[package(#{ name = \"acme/parser\", version = \"1.4.0\" })]\n\
@@ -205,7 +204,7 @@ mod tests
     #[test]
     fn inert_attributes_are_hash_neutral()
     {
-        // The predecessor design record default (§4.2): an inert attribute never
+        // The inert default (§4.2): an inert attribute never
         // perturbs the entity's core-IR term. The item term is the
         // hash-neutrality proxy — the content-address is computed over it.
         let plain = lower_source_total("def f = 42;\n".into()).unwrap();

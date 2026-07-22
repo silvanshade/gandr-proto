@@ -1,5 +1,5 @@
 //! Dependency-validated checkpoints and the validated-resume incremental typer
-//! (A2.3; `incremental-pipeline.md` §§4–6; `wyrd-ejkc`).
+//! (A2.3; `incremental-pipeline.md` §§4–6; `incremental-checkpoint work`).
 //!
 //! # The rung this builds
 //!

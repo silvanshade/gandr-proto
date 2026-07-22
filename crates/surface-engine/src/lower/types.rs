@@ -91,9 +91,9 @@ pub fn lower_value_ty(
 /// `1 + 1` ("Booleans need no core change", §A2.1 scope item 2). A third
 /// keyword, `Unknown`, is the gradual top [`ValueType::Unknown`] — the
 /// consistency hole an ascription names explicitly — NOT the rigid
-/// `atom("Unknown")` the opaque fallback would otherwise give (the originating
-/// work item). All other primitives stay opaque atoms (in particular `Integer`,
-/// matching `Value::Int`).
+/// `atom("Unknown")` the opaque fallback would otherwise give. All other
+/// primitives stay opaque atoms (in particular `Integer`, matching
+/// `Value::Int`).
 fn lower_primitive(
     source: PipelineSource<'_>,
     node: SynNode<'_>,

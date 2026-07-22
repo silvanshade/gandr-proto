@@ -1,4 +1,4 @@
-//! CST merkle-identity acceptance (the predecessor design record): the origin
+//! CST merkle-identity acceptance: the origin
 //! snapshot's `cst_hash` column is reproducible across runs *and* processes —
 //! the property the freed tree-sitter node address (a heap pointer) provably
 //! lacked — and the structural CST diff the pipeline consumes leaves every

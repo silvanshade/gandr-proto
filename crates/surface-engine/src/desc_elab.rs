@@ -1,19 +1,16 @@
 //! Levitation **stage-0 elaboration**: `data` / `codata` blocks → the
-//! `gandr_theory_levitation` decl table (bead `wyrd-go7x`;
-//! proposal-levitation.md §3).
+//! `gandr_theory_levitation` declaration table (proposal-levitation.md §3).
 //!
 //! This is the thin adapter between the parser's flat CST and the description
 //! layer: it reads a parsed [`node_kinds::DATA_DECLARATION`] /
 //! [`node_kinds::CODATA_DECLARATION`] and builds a [`DataDesc`], then runs
 //! [`gandr_theory_levitation::check_desc`] over it. The bulk of the description
-//! model and the generic consumers live in `gandr-desc`; the seam this module
-//! adds to the lowering path is minimal — two [`crate::synnode`] classification
-//! arms and the two node-kind constants — because the datatype-declaration
-//! lowering path is under concurrent development (the codata MVP, `wyrd-j2gm`),
-//! and the integrator merges the two.
+//! model and generic consumers live in `gandr-theory-levitation`; this module
+//! provides the classification and conversion bridge consumed by the data and
+//! codata lowerers.
 //!
-//! The grammar's `data` surface is **flat** (ADR-43's captured flat-seq): a
-//! declaration's members are inline tiles under one Meld, with only compound
+//! The grammar's `data` surface is a captured flat sequence in the checked PBG:
+//! a declaration's members are inline tiles under one Meld, with only compound
 //! field types and rule expressions nesting into sub-Melds. The reader is
 //! therefore a small cursor over the declaration's significant children,
 //! splitting members at bracket-depth-zero commas.
@@ -128,7 +125,7 @@ pub struct DescElab
 /// - hypothesis: L3 — a nullary enum, a parameterized recursive datatype, and a
 ///   declined higher-order field are elaborated / declined distinctly.
 /// - witness: `desc_elab` integration tests
-///   (`crates/gandr-pipeline/tests/desc_elab.rs`).
+///   (`crates/gandr-surface-engine/tests/desc_elab.rs`).
 #[inline]
 #[must_use]
 pub fn elaborate_data_descs<'source, S: Into<PipelineSource<'source>>>(source: S) -> DescElab

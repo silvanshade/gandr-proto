@@ -1,5 +1,5 @@
-//! Grammar-directed property tests for the pipeline's totality and the
-//! source-level checker ≡ machine agreement (the predecessor design record).
+//! Grammar-directed property tests for the pipeline's totality and
+//! source-level checker ≡ machine agreement.
 //!
 //! These generate grammar-shaped source — well-formed bindings and signatures,
 //! variable references, shell blocks, and deliberately broken fragments — from

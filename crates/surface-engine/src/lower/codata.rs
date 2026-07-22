@@ -1,5 +1,4 @@
-//! Codata: the negative-half elaboration (ADR-66; proposal-codata-corecursion
-//! §2–4; `wyrd-j2gm`).
+//! Codata: the negative-half elaboration (proposal-codata-corecursion §2–4).
 //!
 //! A `codata C { π₁: B₁, … }` block declares named **observations** — the dual
 //! of a `data` block's field-tuple constructors (a constructor says what a
@@ -9,45 +8,49 @@
 //!
 //! # One algorithm, one node, one lowering (the MVP slice)
 //!
-//! * **The lhs problem** ([`Lowerer::build_cosplit`], ADR-66 §4.1). Patterns
-//!   and copatterns elaborate by *one* engine — the generalization of the
-//!   planned Maranget matrix (ADR-54 §4.2) to a left-hand-side problem that
-//!   mixes application copatterns (ordinary argument patterns) and projection
-//!   copatterns (`.π`). The codata MVP exercises the projection-copattern axis:
-//!   every clause leads with `.π`, so the engine partitions the clauses by
-//!   observation (the `Cosplit` step). The data-only fragment degenerates to
-//!   exactly the planned Maranget matrix — this is the extension the pattern
-//!   side (`wyrd-e0xy`/`wyrd-zks9`) will grow into, not a second engine.
-//!   Coverage (every observation answered exactly once) is a *separate phase*
-//!   from productivity (ADR-66 §4.1) — the productivity ladder (guardedness,
-//!   sizes) is `wyrd-c2g4`/beyond and runs on the already-elaborated tree.
-//! * **The `Cosplit` node** ([`Cosplit`], ADR-66 §4.2, C3). One elaboration-
-//!   level case-tree node: a record of branches keyed by observation, reducing
-//!   only when observed.
-//! * **Route (a) lowering** ([`Lowerer::lower_cosplit`], ADR-66 §4.2/§3.1). The
-//!   `Cosplit` lowers to the **record of graded thunks** `#{ πᵢ = thunk_ω tᵢ }`
-//!   over the ADR-45 record former; an observation `s.π` is `RecordProj` +
-//!   `force` ([`Lowerer::codata_observation`]). **Zero frozen-core spend** — no
-//!   new core construct; the carrier is the existing record, `U_ω` thunk, and
-//!   call-by-need memo machinery. Route (b) (a labeled n-ary negative product)
-//!   stays reserved (ADR-66 §4.2), taken only on sequent-kernel evidence.
+//! * **The lhs problem** ([`Lowerer::build_cosplit`], codata design §4.1).
+//!   Patterns and copatterns elaborate by *one* engine — the generalization of
+//!   the planned Maranget matrix (declared-data design §4.2) to a
+//!   left-hand-side problem that mixes application copatterns (ordinary
+//!   argument patterns) and projection copatterns (`.π`). The codata MVP
+//!   exercises the projection-copattern axis: every clause leads with `.π`, so
+//!   the engine partitions the clauses by observation (the `Cosplit` step). The
+//!   data-only fragment degenerates to exactly the planned Maranget matrix —
+//!   the pattern-matrix work extends this engine rather than introducing a
+//!   second one. Coverage (every observation answered exactly once) is a
+//!   *separate phase* from productivity (codata design §4.1) — the productivity
+//!   ladder (guardedness, sizes) is `guarded-corecursion work`/beyond and runs
+//!   on the already-elaborated tree.
+//! * **The `Cosplit` node** ([`Cosplit`], codata design §4.2, C3). One
+//!   elaboration- level case-tree node: a record of branches keyed by
+//!   observation, reducing only when observed.
+//! * **Route (a) lowering** ([`Lowerer::lower_cosplit`], codata design
+//!   §4.2/§3.1). The `Cosplit` lowers to the **record of graded thunks** `#{ πᵢ
+//!   = thunk_ω tᵢ }` over the existing record former; an observation `s.π` is
+//!   `RecordProj` + `force` ([`Lowerer::codata_observation`]). **Zero
+//!   frozen-core spend** — no new core construct; the carrier is the existing
+//!   record, `U_ω` thunk, and call-by-need memo machinery. Route (b) (a labeled
+//!   n-ary negative product) stays reserved (codata design §4.2), taken only on
+//!   sequent-kernel evidence.
 //!
 //! # MVP boundaries (recorded honestly)
 //!
 //! * **No nominal opacity.** The MVP carrier is the *structural* record type
 //!   `#{ π: U_ω B }`; the codata type `C` is a synonym for its carrier, not a
-//!   minted nominal id. Nominal tagging is the single frozen-core touch ADR-54
-//!   schedules for declared data (shared, both polarities) — deferred with the
-//!   data-block work (`wyrd-go7x`), out of this zero-core slice.
+//!   minted nominal id. Nominal tagging is the single frozen-core touch
+//!   declared-data design schedules for declared data (shared, both polarities)
+//!   — deferred with the data-block work (`datatype-description work`), out of
+//!   this zero-core slice.
 //! * **No corecursion.** The `fix self` desugaring of a *recursive* copattern
-//!   definition (ADR-66 §5.1) and the guardedness rung (§5.2) are `wyrd-c2g4`.
-//!   This slice lowers the copattern clauses to the `Cosplit` record-of-thunks
-//!   with **no** `fix` binder: a non-recursive codata value (a finite record of
-//!   observations) evaluates end-to-end; a self-referential body observes an
-//!   unbound name (honest stuckness until `fix` lands).
-//! * **The `_` default arm** (ADR-66 §3.2) parses and is recorded, but is a
-//!   reserved slot — it does not fill unanswered observations in the MVP, so a
-//!   definition relying on it fails coverage.
+//!   definition (codata design §5.1) and the guardedness rung (§5.2) are
+//!   `guarded-corecursion work`. This slice lowers the copattern clauses to the
+//!   `Cosplit` record-of-thunks with **no** `fix` binder: a non-recursive
+//!   codata value (a finite record of observations) evaluates end-to-end; a
+//!   self-referential body observes an unbound name (honest stuckness until
+//!   `fix` lands).
+//! * **The `_` default arm** (codata design §3.2) parses and is recorded, but
+//!   is a reserved slot — it does not fill unanswered observations in the MVP,
+//!   so a definition relying on it fails coverage.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
@@ -81,7 +84,7 @@ use crate::origin::ElabKind;
 use crate::origin::OriginNode;
 use crate::synnode::SynNode;
 
-/// One declared observation `π : B` of a [`CodataDecl`] (ADR-66 §2). The
+/// One declared observation `π : B` of a [`CodataDecl`] (codata design §2). The
 /// result `B` is a *computation* type (an observation is a demand); a value-
 /// typed surface `π : A` is stored as `π : F A`.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -93,8 +96,8 @@ pub(super) struct ObservationDecl
     result: CompType,
 }
 
-/// A `codata C { … }` declaration's registered shape (ADR-66 §2): its usable
-/// observations, in declaration order. Reserved members (grade-prefixed,
+/// A `codata C { … }` declaration's registered shape (codata design §2): its
+/// usable observations, in declaration order. Reserved members (grade-prefixed,
 /// parameterized, or `rule` 2-cells) are parse-and-decline and are not stored.
 ///
 /// Carried on [`super::Lowered::codata`] so a REPL [`crate::session::Session`]
@@ -132,12 +135,12 @@ impl CodataDecl
         )
     }
 
-    /// The MVP structural carrier `#{ π: U_ω B }` (ADR-66 §3.1): the record of
-    /// graded thunks a value of this codata type inhabits. Used as the codata
-    /// definition's ascription — it enforces each observation's result type and
-    /// (by the record former's width+depth discipline) surfaces a *missing*
-    /// observation as a type mismatch naming the field (the coverage
-    /// diagnostic).
+    /// The MVP structural carrier `#{ π: U_ω B }` (codata design §3.1): the
+    /// record of graded thunks a value of this codata type inhabits. Used
+    /// as the codata definition's ascription — it enforces each
+    /// observation's result type and (by the record former's width+depth
+    /// discipline) surfaces a *missing* observation as a type mismatch
+    /// naming the field (the coverage diagnostic).
     fn carrier(&self) -> ValueType
     {
         ValueType::record(self.observations.iter().map(|obs| {
@@ -160,12 +163,13 @@ struct CosplitArm<'tree>
     clause: SynNode<'tree>,
 }
 
-/// The copattern case-tree node (ADR-66 §4.2, C3): a record of branches keyed
-/// by observation, reducing only when observed. Built by the lhs-problem engine
-/// ([`Lowerer::build_cosplit`]) from a coverage-checked clause list, then
-/// lowered by route (a) ([`Lowerer::lower_cosplit`]) to the record-of-thunks
-/// carrier. The MVP is depth-1 (each clause is a single projection copattern);
-/// nested copatterns (`.tail.head => …`) are the documented generalization.
+/// The copattern case-tree node (codata design §4.2, C3): a record of branches
+/// keyed by observation, reducing only when observed. Built by the lhs-problem
+/// engine ([`Lowerer::build_cosplit`]) from a coverage-checked clause list,
+/// then lowered by route (a) ([`Lowerer::lower_cosplit`]) to the
+/// record-of-thunks carrier. The MVP is depth-1 (each clause is a single
+/// projection copattern); nested copatterns (`.tail.head => …`) are the
+/// documented generalization.
 #[repr(transparent)]
 struct Cosplit<'tree>
 {
@@ -176,10 +180,11 @@ struct Cosplit<'tree>
 impl Lowerer<'_>
 {
     /// Pre-pass: register one `codata C { … }` block into the codata registry
-    /// (ADR-66 §2). Mirrors the `extern`-block pre-pass — a `codata` block is a
-    /// declaration, not a runnable item, so it contributes no [`LoweredItem`];
-    /// it records the observation set copattern definitions are elaborated and
-    /// coverage-checked against, regardless of source order.
+    /// (codata design §2). Mirrors the `extern`-block pre-pass — a `codata`
+    /// block is a declaration, not a runnable item, so it contributes no
+    /// [`LoweredItem`]; it records the observation set copattern
+    /// definitions are elaborated and coverage-checked against, regardless
+    /// of source order.
     ///
     /// # Contract
     /// - ensures: `C` is registered with its usable observations (each result
@@ -206,7 +211,7 @@ impl Lowerer<'_>
             if member.kind() != node_kinds::CODATA_OBSERVATION {
                 continue;
             }
-            // Reserved slots (ADR-66 §2): parameterized / graded observations
+            // Reserved slots (codata design §2): parameterized / graded observations
             // and `rule` 2-cells parse and are declined — registered as present
             // (they still occupy the block) but not lowered to the carrier.
             if member.is_reserved_observation().0 {
@@ -231,10 +236,10 @@ impl Lowerer<'_>
             }
             .to_owned();
             // An observation is a demand, so its result is a computation type;
-            // the value-typed surface `π: A` is the sugar `π: F A` (ADR-66 §2).
+            // the value-typed surface `π: A` is the sugar `π: F A` (codata design §2).
             // The declared-data-aware seam rewrites a declared datatype in the
             // observation's result type to its nominal handle at any depth
-            // (ADR-80).
+            // (declared-data design).
             let result = match self.lower_type_node(ty_node)? {
                 | Ty::Value(value) => CompType::returner(value),
                 | Ty::Comp(comp) => comp,
@@ -258,8 +263,8 @@ impl Lowerer<'_>
     }
 
     /// Lowers a copattern definition `def rec f(params?) -> C { .π => e, … }`
-    /// to its route-(a) carrier (ADR-66 §4.2/§5.1, minus the `fix` binder
-    /// that is `wyrd-c2g4`).
+    /// to its route-(a) carrier (codata design §4.2/§5.1, minus the `fix`
+    /// binder that is `guarded-corecursion work`).
     ///
     /// The copattern clauses elaborate through the lhs-problem engine to a
     /// [`Cosplit`], which lowers to the record of graded thunks. A nullary
@@ -335,7 +340,7 @@ impl Lowerer<'_>
 
         // A parameterized copattern definition is a codata value indexed by its
         // parameters: `thunk_ω { fn(params) { ret record } }` (the def-function
-        // sugar shape, ADR-66 §5.1's λ minus the `fix self`).
+        // sugar shape, codata design §5.1's λ minus the `fix self`).
         let sugar_entry = entry(node, Some(ElabKind::Cosplit));
         let ret = COut::from_legacy_comp(
             &Comp::Ret(Rc::new({
@@ -380,11 +385,11 @@ impl Lowerer<'_>
         ))
     }
 
-    /// The lhs-problem engine (ADR-66 §4.1): partition the copattern clauses by
-    /// observation into a [`Cosplit`], coverage-checked against `C`'s declared
-    /// observations. Coverage is the without-K analogue of a `case`'s
-    /// exhaustiveness; it is a *separate phase* from productivity (ADR-66
-    /// §4.1).
+    /// The lhs-problem engine (codata design §4.1): partition the copattern
+    /// clauses by observation into a [`Cosplit`], coverage-checked against
+    /// `C`'s declared observations. Coverage is the without-K analogue of a
+    /// `case`'s exhaustiveness; it is a *separate phase* from productivity
+    /// (codata design §4.1).
     ///
     /// The MVP is depth-1 — every clause is a single projection copattern
     /// `.π => e` — so the engine's `Cosplit` step is the whole compilation. An
@@ -417,7 +422,7 @@ impl Lowerer<'_>
             };
             let Some(obs_node) = clause.child_by_field_name(node_kinds::FIELD_OBSERVATION)
             else {
-                // A `_ => e` default arm (ADR-66 §3.2): reserved parse-and-
+                // A `_ => e` default arm (codata design §3.2): reserved parse-and-
                 // decline. It is recognized but does not fill unanswered
                 // observations in the MVP, so a definition relying on it fails
                 // the missing-observation check below.
@@ -482,14 +487,14 @@ impl Lowerer<'_>
         Ok(Cosplit { arms })
     }
 
-    /// Route (a) (ADR-66 §4.2): lower a [`Cosplit`] to the record-of-thunks
-    /// carrier `#{ πᵢ = thunk_ω tᵢ }`. Each observation's clause body lowers in
-    /// *computation position* (the observation is a demand, so a value body is
-    /// `ret`-coerced), then is delayed as a graded thunk `U_ω B` — the field
-    /// the ADR-45 record former holds and the observation `s.π` later
-    /// `RecordProj`s and `force`s. Fields go in canonical (sorted) label order,
-    /// the order the checker / machine / mark descend a record (mirrors
-    /// [`Lowerer::record_expr`]).
+    /// Route (a) (codata design §4.2): lower a [`Cosplit`] to the
+    /// record-of-thunks carrier `#{ πᵢ = thunk_ω tᵢ }`. Each observation's
+    /// clause body lowers in *computation position* (the observation is a
+    /// demand, so a value body is `ret`-coerced), then is delayed as a
+    /// graded thunk `U_ω B` — the field the existing record former holds
+    /// and the observation `s.π` later `RecordProj`s and `force`s. Fields
+    /// go in canonical (sorted) label order, the order the checker /
+    /// machine / mark descend a record (mirrors [`Lowerer::record_expr`]).
     fn lower_cosplit(
         &mut self,
         node: SynNode<'_>,
@@ -528,11 +533,11 @@ impl Lowerer<'_>
     }
 
     /// Lowers a codata observation `s.π` to `let t <- RecordProj(s, π);
-    /// force t` (ADR-66 §3.1). The observed target `s` lowers in value position
-    /// (a computation target — e.g. `f(x).π` — is hoisted); the projection
-    /// reads the delayed observation body `t : U_ω B`, and `force t : B`
-    /// performs the observation. The [`Lowerer::projection`] dispatch routes
-    /// here when the field is a declared observation.
+    /// force t` (codata design §3.1). The observed target `s` lowers in value
+    /// position (a computation target — e.g. `f(x).π` — is hoisted); the
+    /// projection reads the delayed observation body `t : U_ω B`, and
+    /// `force t : B` performs the observation. The [`Lowerer::projection`]
+    /// dispatch routes here when the field is a declared observation.
     ///
     /// # Contract
     /// - ensures: the returned computation is `RecordProj(s, π)` bound and

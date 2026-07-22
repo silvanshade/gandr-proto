@@ -13,12 +13,13 @@
 //! 4. [`tests::roundtrip`] — `serde_json` round-trip stability for every
 //!    report, plus a hand-written wire-shape pin for the `non_exhaustive`
 //!    `Other` / `EffectRowMismatch` marks the corpus cannot construct.
-//! 5. [`tests::semantic_marks`] — the ADR-17 marks surface (`wyrd-cyun`): each
-//!    reachable mark kind is covered, the marks oracle holds at the pipeline
-//!    boundary (error marks iff ill-typed; well-typed hole-free ⇒ no marks),
-//!    `is_error` classifies the empty hole alone, every mark span lies within
-//!    its source, no surface mark is silently dropped, and no surface source
-//!    yields an effect-row or `Other` mark.
+//! 5. [`tests::semantic_marks`] — the incremental-pipeline design marks surface
+//!    (`semantic-marks work`): each reachable mark kind is covered, the marks
+//!    oracle holds at the pipeline boundary (error marks iff ill-typed;
+//!    well-typed hole-free ⇒ no marks), `is_error` classifies the empty hole
+//!    alone, every mark span lies within its source, no surface mark is
+//!    silently dropped, and no surface source yields an effect-row or `Other`
+//!    mark.
 
 #![cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -76,7 +77,7 @@ mod tests
     ///
     /// Not represented: the two polarity-guard `ShapeMismatch` descriptions
     /// (`a value type` / `a computation type`) are unreachable by
-    /// construction (`error.rs` module doc; a `gandr-core` conformance
+    /// construction (`error.rs` module doc; a `gandr-core-checker` conformance
     /// meta-test pins this), so there is no surface source that drives them.
     const ERROR_CORPUS: &[(&str, &str, &str)] = &[
         (
@@ -97,7 +98,7 @@ mod tests
             "def c : U[1] (F Integer);\ndef c = thunk { case 1 { Inl(x) => ret x, Inr(y) => ret 0 } };\n",
         ),
         (
-            // A motive-less split is check-only (rule Split⇓, ADR-82), so the
+            // A motive-less split is check-only (rule Split⇓, dependent-split design), so the
             // product-shape mismatch is driven in *checking* position (the
             // declared `F Integer` answer, like `shape-sum` above); a bare
             // inferred split is stuck-needs-motive instead (see
@@ -135,7 +136,7 @@ mod tests
         (
             // A motive-less split in inference position is stuck (rule Split⇓ is
             // check-only; a split *infers* only with a dependent motive, rule
-            // SplitMotive⇑; ADR-82) — the lowerer emits motive-less splits, so
+            // SplitMotive⇑; dependent-split design) — the lowerer emits motive-less splits, so
             // this fires whenever a `let (x, y) = …` is not in checking position.
             "stuck-split-motive",
             "StuckExpr:a motive-less split only checks; supply a dependent motive (z. M) to infer, or \
@@ -390,7 +391,8 @@ mod tests
         }
     }
 
-    /// Acceptance class 5: the ADR-17 semantic marks (`wyrd-cyun`).
+    /// Acceptance class 5: the incremental-pipeline design semantic marks
+    /// (`semantic-marks work`).
     mod semantic_marks
     {
         use super::*;
@@ -585,10 +587,10 @@ mod tests
         /// `marks()` drops nothing (the `Stk`-interior drop path is forward-
         /// compat-dead on surface input). This pins the term → origin coverage
         /// the marks surface depends on, against a future lowering regression
-        /// that adds a term child without a matching origin entry (`wyrd-cyun`
-        /// soundness guard). Drives the marker directly (mirroring
-        /// `mark_item`), so it observes drops `marks()` would otherwise
-        /// hide.
+        /// that adds a term child without a matching origin entry
+        /// (`semantic-marks work` soundness guard). Drives the marker
+        /// directly (mirroring `mark_item`), so it observes drops
+        /// `marks()` would otherwise hide.
         #[test]
         fn surface_marks_are_never_dropped()
         {

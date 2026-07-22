@@ -83,7 +83,7 @@ impl Prelude
 /// `list` iteration and functional-update members, `record` access/update
 /// members, `string` helpers, `regex.extract`, and `path` helpers. The
 /// fixed-table arithmetic / comparison / boolean / list-concat operators are
-/// unqualified prelude bindings owned by the predecessor design record.
+/// the unqualified prelude bindings defined by the same table.
 const MODULE_BUILTINS: &[(&str, &str, NativePrim)] = &[
     ("prim", "id", NativePrim::Id),
     ("prim", "const", NativePrim::Const),
@@ -95,8 +95,8 @@ const MODULE_BUILTINS: &[(&str, &str, NativePrim)] = &[
     ("list", "flatten", NativePrim::Flatten),
     ("list", "uniq", NativePrim::Uniq),
     ("list", "sort", NativePrim::Sort),
-    // List functional-update builtins (the predecessor design record;
-    // `proposal-value-semantics-mvp.md` §3.2) — each returns a fresh list, no
+    // List functional-update builtins (`proposal-value-semantics-mvp.md` §3.2)
+    // each return a fresh list, never an
     // lvalue. `append` reuses the `++`/`concat` operator prim (two-list
     // concatenation); `concat` reuses `flatten` (a list of lists, the Haskell
     // `concat`), so those two names add no prim.
@@ -205,7 +205,7 @@ pub fn is_module<'name, N: Into<PreludeModuleName<'name>>>(name: N) -> MatchDeci
 /// ([`MODULE_BUILTINS`]), each a graded thunk so the elaborated `force` is
 /// well-typed.
 ///
-/// Operators (the predecessor design record):
+/// Operators:
 ///
 /// - `add`, `sub`, `mul`, `neg`: `Unknown` operands/results
 /// - `eq`, `ne`, `lt`, `le`, `gt`, `ge`: `Unknown → Unknown → F (1 + 1)`

@@ -1,11 +1,9 @@
 //! Shared type renderers from semantic values to presentation strings.
 //!
-//! Graduated from `gandr-tui::render` when the LSP materialized a second
-//! consumer (the predecessor design record hover; the predecessor design record
-//! presentation-conveniences seam): the type-rendering trio is the
-//! machine-state → presentation projection both renderers share, per decision
-//! D3 (no core `Display`; the `use_debug` lint forbids `Debug` in user-facing
-//! output).
+//! The type-rendering trio is the shared machine-state → presentation
+//! projection used by the REPL and LSP, kept outside the core in accordance
+//! with decision D3 (no core `Display`; the `use_debug` lint forbids `Debug` in
+//! user-facing output).
 //!
 //! This duplication of the REPL bin's renderer remains sanctioned-temporary:
 //! the shared pretty-printer family (`gandr-doc`,
@@ -19,9 +17,8 @@ use gandr_core_checker::types::ValueType;
 ///
 /// # Contract
 /// - ensures: total over `Ty` (unknown variants render as `?`).
-/// - panics: none for interactive-scale types (recursion follows the type
-///   structure, which the callers' input depth guards bound — the originating
-///   work item).
+/// - panics: none for interactive-scale types; recursion follows the type
+///   structure, whose depth callers guard.
 #[inline]
 #[must_use]
 pub fn ty(ty: &Ty) -> String

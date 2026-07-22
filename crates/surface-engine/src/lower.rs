@@ -488,10 +488,9 @@ pub struct Lowered
 
 impl Lowered
 {
-    /// This source's own `codata` declarations (the design record §2), keyed by
-    /// codata type name — the negative-declaration bridge a REPL session
-    /// persists across submissions (the `extern` analogue). the originating
-    /// work item.
+    /// This source's own `codata` declarations, keyed by codata type name —
+    /// the negative-declaration bridge a REPL session persists across
+    /// submissions, analogous to `extern` declarations.
     #[inline]
     #[must_use]
     pub(crate) fn codata(&self) -> &BTreeMap<String, codata::CodataDecl>

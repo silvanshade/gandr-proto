@@ -7,12 +7,12 @@
 //! [`gandr_core_checker::error::TypeError`]) together with the source identity
 //! in an [`OriginMap`](crate::origin) to a structured, source-ranged
 //! [`Diagnostic`], and carries the hole **goals** (`A2-PLAN.md` §A2.2,
-//! [`crate::goals`]) in the same versioned [`Report`] envelope. The ADR-17
-//! *marks* slot is now **populated** ([`marks`], `wyrd-cyun`): one
-//! [`MarkReport`] per node mark from the total semantic marking layer
-//! ([`gandr_core_checker::mark`], `wyrd-nfeo`), source-ranged through the
-//! same `OriginMap`. The *obligations* slot stays reserved (empty) so the
-//! schema is forward-compatible.
+//! [`crate::goals`]) in the same versioned [`Report`] envelope. The
+//! incremental-pipeline design *marks* slot is now **populated** ([`marks`],
+//! `semantic-marks work`): one [`MarkReport`] per node mark from the total
+//! semantic marking layer ([`gandr_core_checker::mark`], `semantic marker`),
+//! source-ranged through the same `OriginMap`. The *obligations* slot stays
+//! reserved (empty) so the schema is forward-compatible.
 //!
 //! The marks and the diagnostics are **complementary** realizations of the same
 //! type system: the diagnostics are the machine's fail-fast derivation view
@@ -27,18 +27,18 @@
 //!
 //! [SPECULATIVE DECISION, D7 under-specification.] D7 says only "output is
 //! serde-JSON"; it does not say *where* the serde derives live. The plan
-//! reserves a `serde` feature on `gandr-core` for **A2.3** (checkpointing of
-//! the machine `State`). To keep A2.4 parallel-safe with A2.3 (the plan's §3
-//! requirement) and to keep `gandr-core` dependency-free and WASM-portable
-//! (decision D3's "core stays parser-free / minimal dependency surface"), the
-//! JSON types live **here**, as mirror structs over the core's
-//! `FailureState` / `TypeError` / [`Mark`] / [`Goal`] data — *not* as
-//! `Serialize` derives on the core types. A2.3 can add its `State` serde
+//! reserves a `serde` feature on `gandr-core-checker` for **A2.3**
+//! (checkpointing of the machine `State`). To keep A2.4 parallel-safe with A2.3
+//! (the plan's §3 requirement) and to keep `gandr-core-checker` dependency-free
+//! and WASM-portable (decision D3's "core stays parser-free / minimal
+//! dependency surface"), the JSON types live **here**, as mirror structs over
+//! the core's `FailureState` / `TypeError` / [`Mark`] / [`Goal`] data — *not*
+//! as `Serialize` derives on the core types. A2.3 can add its `State` serde
 //! feature without colliding
 //! with anything in this module. Rejected alternative: derive `Serialize` on
-//! the core error/type enums now — it pulls `serde` into `gandr-core` early,
-//! couples the two rungs, and bakes the wire format into the verification
-//! anchor.
+//! the core error/type enums now — it pulls `serde` into `gandr-core-checker`
+//! early, couples the two rungs, and bakes the wire format into the
+//! verification anchor.
 //!
 //! # Rendering (decision tree)
 //!
@@ -46,11 +46,11 @@
 //! via their derived [`core::fmt::Debug`] — the same choice
 //! [`OriginMap::snapshot`](crate::origin::OriginMap::snapshot) and the goals
 //! golden tests already make. This is deterministic (golden-stable), faithful
-//! to the core representation, and respects ADR-28's grade-carrier seal (it
-//! does not *match* the `Grade` representation outside `grade.rs`). A
-//! surface-syntax pretty-printer is a forward enhancement, deferred to avoid
-//! duplicating — and risking divergence from — the lowerer's spelling
-//! decisions.
+//! to the core representation, and respects grade-carrier boundary's
+//! grade-carrier seal (it does not *match* the `Grade` representation outside
+//! `grade.rs`). A surface-syntax pretty-printer is a forward enhancement,
+//! deferred to avoid duplicating — and risking divergence from — the lowerer's
+//! spelling decisions.
 //!
 //! # Span resolution (decision tree)
 //!
@@ -119,8 +119,8 @@ use crate::render;
 /// fields do not require a bump). Consumers must check it before parsing.
 ///
 /// `2` — the reserved `marks` slot changed from an opaque `serde_json::Value`
-/// array to a typed [`MarkReport`] array (`wyrd-cyun`); a meaning change, hence
-/// a bump.
+/// array to a typed [`MarkReport`] array (`semantic-marks work`); a meaning
+/// change, hence a bump.
 pub const SCHEMA_VERSION: u32 = 2;
 
 /// A byte span `[start, end)` in the source.
@@ -476,17 +476,18 @@ pub enum MarkDetail
 
 /// One source-ranged semantic [`Mark`] from the total marking layer.
 ///
-/// The [`Mark`] (from [`gandr_core_checker::mark`], `wyrd-nfeo`) is mapped
-/// through its node's structural path to a source span via the
+/// The [`Mark`] (from [`gandr_core_checker::mark`], `semantic marker`) is
+/// mapped through its node's structural path to a source span via the
 /// [`OriginMap`](crate::origin): one `MarkReport` per node mark, in (item,
 /// path, mark) order. A mark whose node is not `origin::resolve`-addressable —
-/// a reified-stack interior decorated as a bonus entry (`wyrd-oe4z`) — has no
-/// source identity and is dropped from this surface until the Stk-descent
-/// resync lands (`wyrd-cyun` step 5); every reported mark therefore carries a
-/// span in source. The incremental `dirty` bit
+/// a reified-stack interior decorated as a bonus entry (`reified-stack marking
+/// residual`) — has no source identity and is dropped from this surface until
+/// the Stk-descent resync lands (`semantic-marks work` step 5); every reported
+/// mark therefore carries a span in source. The incremental `dirty` bit
 /// ([`gandr_core_checker::mark::NodeFacts`]) is not surfaced here: its producer
-/// is the gated edit / order-maintenance layer (`wyrd-cyun` step 3, gated on
-/// `wyrd-2j5` / `wyrd-c5h3`), so the field would be a dead `false` until then.
+/// is the gated edit / order-maintenance layer (`semantic-marks work` step 3,
+/// gated on `dirty-frontier work` / `CST-resynchronization work`), so the field
+/// would be a dead `false` until then.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[non_exhaustive]
@@ -530,8 +531,8 @@ pub struct MarkReport
 ///
 /// This is the `Report.attributes` field's element. A renderer (LSP hover, the
 /// TUI, the agent stream, a REPL `:attrs` command) reads this and renders it —
-/// it parses nothing, lowers nothing, types nothing (ADR-35 D6, the renderer
-/// firewall).
+/// it parses nothing, lowers nothing, types nothing (host-effect boundary D6,
+/// the renderer firewall).
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[non_exhaustive]
@@ -542,8 +543,8 @@ pub struct AttrReport
     pub node: usize,
     /// The resolved schema's name (the `SchemaRef`).
     pub schema: String,
-    /// The checked payload, rendered (see the module doc's `Debug` rendering
-    /// decision — the surface pretty-printer is `wyrd-6n5m` / `wyrd-57er`).
+    /// The checked payload, rendered with the module's deterministic `Debug`
+    /// projection until the shared surface pretty-printer lands.
     pub payload: String,
     /// The schema's identity tier (`inert` for every MVP schema).
     pub tier: attributes::AttrTier,
@@ -575,9 +576,9 @@ pub struct Report
     pub diagnostics: Vec<Diagnostic>,
     /// One goal per hole (`A2-PLAN.md` §A2.2).
     pub goals: Vec<GoalReport>,
-    /// The ADR-17 semantic *marks* (`wyrd-nfeo` / `wyrd-cyun`): one
-    /// [`MarkReport`] per `origin`-addressable node mark from the total marking
-    /// layer, in (item, path, mark) order.
+    /// The incremental-pipeline design semantic *marks* (`semantic marker` /
+    /// `semantic-marks work`): one [`MarkReport`] per `origin`-addressable
+    /// node mark from the total marking layer, in (item, path, mark) order.
     pub marks: Vec<MarkReport>,
     /// The resolved entity attributes (proposal-attributes.md §5): one
     /// [`AttrReport`] per well-formed `@[…]` attribute, in source order. An
@@ -624,7 +625,8 @@ impl Report
 ///   diagnostic per failing item, one goal per hole, one mark per
 ///   `origin`-addressable node mark — with each item checked against the same
 ///   ordered context a [`crate::session::Session`] uses for outcomes.
-/// - provides: the v0 agent stream (D7) plus the ADR-17 marks (`wyrd-cyun`).
+/// - provides: the v0 agent stream (D7) plus the incremental-pipeline design
+///   marks (`semantic-marks work`).
 /// - panics: none.
 #[inline]
 #[must_use]
@@ -934,9 +936,10 @@ fn detail_of(error: &TypeError) -> DiagnosticDetail
 /// (`TypeError::to_string`), EXCEPT a `TypeMismatch` / `ShapeMismatch` whose
 /// operands mention a declared datatype renders those operands by their surface
 /// spelling ([`render_type_operand`]) — so a nominal mismatch reads
-/// `Maybe(Integer)` / `Celsius`, never the raw `Debug` of a `DataId` (ADR-80
-/// Decision 2's O(1)-render corollary). Every non-declared-data mismatch keeps
-/// the core `Display` byte-for-byte (the golden report snapshots pin it).
+/// `Maybe(Integer)` / `Celsius`, never the raw `Debug` of a `DataId`
+/// (declared-data design Decision 2's O(1)-render corollary). Every
+/// non-declared-data mismatch keeps the core `Display` byte-for-byte (the
+/// golden report snapshots pin it).
 fn message_of(error: &TypeError) -> String
 {
     match *error {
@@ -1330,7 +1333,7 @@ fn goal_to_report(goal: &Goal) -> GoalReport
 /// Computes the semantic marks for a lowered file: one [`MarkReport`] per
 /// `origin`-addressable node mark from the total marking layer.
 ///
-/// Marks come from [`gandr_core_checker::mark`] (`wyrd-nfeo`) and retain
+/// Marks come from [`gandr_core_checker::mark`] (`semantic marker`) and retain
 /// (item, path, mark) order.
 ///
 /// Each item is marked against its ascription (checking mode) or in inference
@@ -1340,8 +1343,8 @@ fn goal_to_report(goal: &Goal) -> GoalReport
 /// marking additionally decorates *every* node (it is total over type errors).
 /// A node's structural path is mapped to a source span through the
 /// [`OriginMap`](crate::origin) compatibility path index; a mark whose node is
-/// not addressable there (a reified-stack interior, `wyrd-oe4z`) is dropped
-/// (`wyrd-cyun` step 5).
+/// not addressable there (a reified-stack interior, `reified-stack marking
+/// residual`) is dropped (`semantic-marks work` step 5).
 ///
 /// A node carries at most one mark under surface lowering (the
 /// absorbing-`Unknown` recovery discipline precludes a rule-mark plus a
@@ -1355,7 +1358,8 @@ fn goal_to_report(goal: &Goal) -> GoalReport
 /// - ensures: returns one `MarkReport` per `origin`-addressable node mark, in
 ///   (item, path, mark) order; an item whose term sort is unknown contributes
 ///   none.
-/// - provides: the ADR-17 marks for the agent stream (`VISION.md` §4).
+/// - provides: the incremental-pipeline design marks for the agent stream
+///   (`VISION.md` §4).
 /// - panics: none. The marker is *type*-total (every node decorated, every
 ///   abort site recovered) but still direct-style; the pipeline therefore
 ///   fail-closes by skipping marks for items whose origin path depth exceeds
@@ -1387,9 +1391,9 @@ fn push_marks_for_item(
     if recursive_mark_depth_exceeded(item_index, lowered).0 {
         // Interim safety contract: the core marker is still direct-style.
         // Rather than risk aborting the long-lived session on generated or
-        // adversarial nesting, omit the optional ADR-17 marks for this item.
-        // Machine-backed diagnostics and goals above still preserve source
-        // identity and type failures for the submission.
+        // adversarial nesting, omit the optional incremental-pipeline design marks for
+        // this item. Machine-backed diagnostics and goals above still preserve
+        // source identity and type failures for the submission.
         return;
     }
     let Some(marking) = mark_item(item, base)
@@ -1411,8 +1415,9 @@ fn push_marks_for_item(
         path.push(target);
         path.extend_from_slice(node_path);
         // Drop a mark whose node has no source identity (a reified-stack
-        // interior bonus entry; `wyrd-oe4z` / `wyrd-cyun` step 5). Surface
-        // lowering never mints a `Stk`, so this is forward-compat only.
+        // interior bonus entry; `reified-stack marking residual` / `semantic-marks
+        // work` step 5). Surface lowering never mints a `Stk`, so this is
+        // forward-compat only.
         let Some(entry) = lowered.origin.get_path(&path)
         else {
             continue;

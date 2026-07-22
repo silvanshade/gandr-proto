@@ -1,16 +1,17 @@
-//! The entity-attribute layer (proposal-attributes.md; ADR "entity
-//! attributes"; epic `wyrd-5sit`, MVP bead `wyrd-f0a9`).
+//! The entity-attribute layer (proposal-attributes.md).
 //!
 //! An **entity attribute** is a named, typed datum attached to a declaration
 //! entity through the leading `@[…]` marker ([`crate::lower`], grammar §2).
 //! This module owns the three landed disciplines the layer composes:
 //!
 //! 1. a **schema registry** ([`REGISTRY`]) binding attribute names to value
-//!    types, the way ADR-42's prelude binds native builtins to their types;
+//!    types, the way module/prelude design's prelude binds native builtins to
+//!    their types;
 //! 2. a **checker path** that types each payload against its schema with the
 //!    ordinary bidirectional checker — driven through the **typing machine**
-//!    (iterative, ADR-47), never the recursive checker, so the pass is robust
-//!    on generated input exactly as [`crate::goals`] / [`crate::diag`] are;
+//!    (iterative, iterative-traversal design), never the recursive checker, so
+//!    the pass is robust on generated input exactly as [`crate::goals`] /
+//!    [`crate::diag`] are;
 //! 3. the **inert side table** — [`run`] resolves every raw attribute into a
 //!    [`ResolvedAttr`] keyed by its item's stable id, plus one [`AttrFinding`]
 //!    per malformed attribute for the diagnostics surface.
@@ -18,14 +19,14 @@
 //! # Storage identity — the stable-`NodeId` stand-in
 //!
 //! The proposal keys the side table by the entity's **stable `NodeId`**
-//! (ADR-50, commit `8bfccbe`). The pipeline's item identity today is the item's
-//! **index** in [`Lowered::items`] — the same key the `Report`'s goal,
-//! diagnostic, and mark projections already localize by (`item : usize`). This
-//! module keys on that index ([`ResolvedAttr::node`]); the arena-of-`NodeId`
-//! graduation is a lossless re-key, not a redesign (the ECS-attachment path,
-//! proposal §4.3).
+//! (stable-node-identity design, commit `8bfccbe`). The pipeline's item
+//! identity today is the item's **index** in [`Lowered::items`] — the same key
+//! the `Report`'s goal, diagnostic, and mark projections already localize by
+//! (`item : usize`). This module keys on that index ([`ResolvedAttr::node`]);
+//! the arena-of-`NodeId` graduation is a lossless re-key, not a redesign (the
+//! ECS-attachment path, proposal §4.3).
 //!
-//! # Hash-neutrality (the `wyrd-q5r0` invariant, inert MVP)
+//! # Hash-neutrality (the `hash-neutrality` invariant, inert MVP)
 //!
 //! Every MVP schema is [`AttrTier::Inert`]: an attribute lives **only** in this
 //! side table and never enters an item's core-IR term ([`Lowered::items`] is
@@ -164,19 +165,19 @@ fn schema_authors() -> ValueType
 /// The MVP built-in attribute registry — every entry is inert.
 ///
 /// Proposal-attributes.md §3.1 and proposal-packages.md §7: the entity and
-/// manifest schemas share this one registry, the ADR-42 prelude-binding
-/// substrate the attribute names resolve through. The manifest schemas
-/// (`package` / `dependency` / `toolchain` / `name` / `license` / `authors`,
-/// bead `wyrd-c7bx`) are the **inert descriptive + coordinate** fields of
+/// manifest schemas share this one registry and resolve attribute names through
+/// the same prelude-binding substrate. The manifest schemas (`package` /
+/// `dependency` / `toolchain` / `name` / `license` / `authors`) are the
+/// **inert descriptive + coordinate** fields of
 /// proposal-packages.md §7.6's MVP column; the identity-bearing fields (exposed
 /// signature, required capabilities) gate on the unbuilt semantic tier, and the
 /// `resolved` dependency-address participation gates on resolution.
 ///
-/// The manifest's intended host is the `wyrd-wpa0` M1-lite **module root**,
-/// which is not landed; until it is, a manifest schema validates on a top-level
-/// `def` item (the unit-root stand-in the grammar provides today). The schemas
-/// and their checker path are therefore complete; the module-root attachment
-/// and the local lock record are the reported `wyrd-wpa0` gap.
+/// The manifest's intended host is the M1-lite **module root**, which is not
+/// landed; until it is, a manifest schema validates on a top-level `def` item
+/// (the unit-root stand-in the grammar provides today). The schemas and their
+/// checker path are complete; module-root attachment and the local lock record
+/// remain open.
 pub const REGISTRY: &[AttrSchema] = &[
     AttrSchema {
         name: "doc",
@@ -190,7 +191,7 @@ pub const REGISTRY: &[AttrSchema] = &[
         arity: AttrArity::Single,
         schema: schema_deprecated,
     },
-    // --- Manifest schemas (proposal-packages.md §7; bead `wyrd-c7bx`) ---------
+    // --- Manifest schemas (proposal-packages.md §7) --------------------------
     AttrSchema {
         name: "name",
         tier: AttrTier::Inert,
@@ -230,7 +231,8 @@ pub const REGISTRY: &[AttrSchema] = &[
 ];
 
 /// The maximum edit distance a [`AttrFinding::Unknown`] did-you-mean suggestion
-/// tolerates (proposal-attributes.md §3.2 — the ADR-42 unknown-member story).
+/// tolerates (proposal-attributes.md §3.2 — the module/prelude design
+/// unknown-member story).
 const MAX_SUGGESTION_DISTANCE: usize = 3;
 
 /// Resolves and types the entity attributes of a lowered file against `base`
@@ -240,8 +242,8 @@ const MAX_SUGGESTION_DISTANCE: usize = 3;
 /// single-valued duplicate, a missing payload, a non-value payload, or a
 /// payload that fails to type is a [`AttrFinding`]; every remaining attribute
 /// is a [`ResolvedAttr`] carrying its checked payload. Payload typing runs on
-/// the iterative typing machine (ADR-47), so this pass never recurses on the
-/// host stack.
+/// the iterative typing machine (iterative-traversal design), so this pass
+/// never recurses on the host stack.
 ///
 /// # Contract
 /// - requires: `base` is the typing context the file was lowered against (e.g.
@@ -434,7 +436,8 @@ fn suggest<'name>(name: impl Into<AttributeName<'name>>) -> Option<String>
 }
 
 /// Types one payload value against its schema on the iterative typing machine
-/// (ADR-47), returning the first [`TypeError`] or [`None`] when it checks.
+/// (iterative-traversal design), returning the first [`TypeError`] or [`None`]
+/// when it checks.
 ///
 /// This is the "no new typing rule" path (proposal-attributes.md §3.1): a
 /// payload is a value, and the record/scalar/list rules already type it —

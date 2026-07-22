@@ -1,9 +1,9 @@
 // W4d surface fold-in — `data` datatype declarations (parse-only fixture).
 //
-// GRADUATION: the concrete `data` surface enters the PBG grammar now
-// (wyrd-ku0f) so it never needs a later re-parse; the datatype SEMANTICS —
-// constructors as values, `case` elaboration, structural recursion — graduate
-// under wyrd-e0xy. This `surface/` tree is PBG-only (the committed tree-sitter
+// GRADUATION: the concrete `data` surface is in the checked PBG, so it never
+// needs a later re-parse; datatype semantics — constructors as values, `case`
+// elaboration, structural recursion — graduate with the pattern-matrix work.
+// This `surface/` tree is PBG-only (the committed tree-sitter
 // grammar does not produce these kinds) and firewalled from lowering / eval:
 // the parser's zero-obligation corpus gate is the only harness that reads it.
 

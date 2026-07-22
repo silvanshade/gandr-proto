@@ -1,10 +1,10 @@
 //! Source identity for lowered terms: the `OriginMap` side table
 //! (`A2-PLAN.md` §A2.1 scope item 4, decision D4).
 //!
-//! `gandr-core` syntax stays span-free; this module maps stable origin node
-//! IDs to CST node IDs and byte ranges, plus an elaboration tag for synthesized
-//! nodes (the `def` sugar, operator elaboration, `if` desugaring, …) so
-//! elaborations can be un-sugared on demand (`proposal-surface-syntax.md`
+//! `gandr-core-checker` syntax stays span-free; this module maps stable origin
+//! node IDs to CST node IDs and byte ranges, plus an elaboration tag for
+//! synthesized nodes (the `def` sugar, operator elaboration, `if` desugaring,
+//! …) so elaborations can be un-sugared on demand (`proposal-surface-syntax.md`
 //! §5.2).
 //!
 //! # Stable IDs and legacy paths
@@ -232,7 +232,8 @@ pub enum ElabKind
     SeqDiscard,
     /// A computation-sorted ascription `(t : B)` ⇒ `force ((thunk t) : U_ω B)`
     /// — core has no computation-annotation node, so the expected type rides
-    /// the thunk annotation and `force` synthesizes it back (`wyrd-p6yr`).
+    /// the thunk annotation and `force` synthesizes it back
+    /// (`computation-ascription work`).
     CompAscription,
     /// Multi-parameter/multi-argument currying: the *inner* nodes of
     /// `fn(x, y) { t }` ⇒ `fn(x) { fn(y) { t } }` and `f(v, w)` ⇒ `f(v)(w)`.
@@ -244,10 +245,10 @@ pub enum ElabKind
     /// n-ary tuple pattern `let (x, y, z) = v;`.
     SplitNest,
     /// A module-select `M.l` whose value is a known module name ⇒ the flat
-    /// qualified `Var("M.l")` (ADR-42, `wyrd-zg3h`; the MVP module layer's
-    /// namespace half — pure elaboration, unlike the structural `t.fst` /
-    /// `t.snd` projection the same `projection_expression` otherwise lowers
-    /// to).
+    /// qualified `Var("M.l")` (module/prelude design, `module-selection work`;
+    /// the MVP module layer's namespace half — pure elaboration, unlike the
+    /// structural `t.fst` / `t.snd` projection the same
+    /// `projection_expression` otherwise lowers to).
     ModuleSelect,
     /// `module M (: #{ … })? { members… }` ⇒ one named record item with
     /// source-ordered generated binds for member definitions and a final
@@ -270,20 +271,20 @@ pub enum ElabKind
     /// tag; the argument record retains its own origin.
     ForeignPerform,
     /// A copattern definition's `Cosplit` case-tree node lowered to the
-    /// record-of-thunks carrier `#{ πᵢ = thunk_ω tᵢ }` (ADR-66 §4.2 route (a),
-    /// `wyrd-j2gm`): the synthesized record and each observation's delayed
-    /// thunk carry this tag, so a diagnostic can re-sugar the record back to
-    /// its copattern clauses. Zero frozen-core spend — the carrier is the
-    /// ADR-45 record former over `U_ω` thunks.
+    /// record-of-thunks carrier `#{ πᵢ = thunk_ω tᵢ }` (codata design §4.2
+    /// route (a), `codata MVP`): the synthesized record and each
+    /// observation's delayed thunk carry this tag, so a diagnostic can
+    /// re-sugar the record back to its copattern clauses. Zero frozen-core
+    /// spend — the carrier is the existing record former over `U_ω` thunks.
     Cosplit,
     /// A codata observation `s.π` lowered to `let t <- RecordProj(s, π);
-    /// force t` (ADR-66 §3.1): the projection is the record field read and
-    /// `force` performs the observation. The synthesized `Bind` / `Force`
-    /// carry this tag; the observed target retains its own origin.
+    /// force t` (codata design §3.1): the projection is the record field read
+    /// and `force` performs the observation. The synthesized `Bind` /
+    /// `Force` carry this tag; the observed target retains its own origin.
     Observe,
     /// A host-module call `fs.read(v)` / `env.get(v)` / `proc.exit(v)` whose
     /// head is a reserved host module ⇒ `perform` against the corresponding
-    /// host effect signature ([`crate::host`], `wyrd-jir7` — the same
+    /// host effect signature ([`crate::host`], `host-module surface` — the same
     /// module-select ⇒ perform elaboration as [`Self::ForeignPerform`], with
     /// the payload shaped by the member's declared parameters). The
     /// synthesized `Perform` carries this tag; the arguments retain their own
@@ -304,9 +305,10 @@ pub enum ElabKind
 #[non_exhaustive]
 pub enum HoleNote
 {
-    /// An `ERROR` or `MISSING` CST region (the melder-CST switch, `wyrd-ohzn`
-    /// M3, retired this in favor of the per-obligation-class notes below; the
-    /// variant is retained for compatibility but has no producer).
+    /// An `ERROR` or `MISSING` CST region (the melder-CST switch, `melder-CST
+    /// migration` M3, retired this in favor of the per-obligation-class
+    /// notes below; the variant is retained for compatibility but has no
+    /// producer).
     SyntaxError,
     /// A returner / force / operator operand the source elides — no term where
     /// one was expected ([`gandr_surface_parser::Oblig::MissingMeld`]).
@@ -407,7 +409,7 @@ pub struct OriginEntry
     /// deterministic within one parse but *positional* — a within-tree
     /// address (the substrate the structural diff aligns on), never
     /// a cross-run identity. [`OriginMap::snapshot`] keys on [`Self::cst_hash`]
-    /// instead (`wyrd-62id`).
+    /// instead (`stable-origin work`).
     pub cst_node: NodeId,
     /// The originating CST node's per-node merkle hash
     /// ([`gandr_surface_syntax::Cst::hash`], behind
@@ -415,7 +417,7 @@ pub struct OriginEntry
     /// node's significant structure. Reproducible across runs *and* processes —
     /// the property the freed tree-sitter subtree address it superseded
     /// provably lacked — so [`OriginMap::snapshot`] includes it as a sound
-    /// provenance golden key (`wyrd-62id`).
+    /// provenance golden key (`stable-origin work`).
     pub cst_hash: StableHash,
     /// The originating CST node's byte range in the source.
     pub byte_range: SourceRange,
@@ -517,13 +519,13 @@ impl OriginMap
     /// one `path => byte_range #cst_hash [elaboration] (note)` line per entry
     /// (elaboration and note only when present), in legacy path order.
     ///
-    /// [`OriginEntry::cst_hash`] is **included** (`wyrd-62id`): the per-node
-    /// merkle hash is a content fingerprint, reproducible across runs *and*
-    /// processes, so it is a sound golden key over provenance. The positional
-    /// [`OriginEntry::cst_node`] (the dense arena slot) is deliberately omitted
-    /// — like the tree-sitter node address it superseded, it is a
-    /// within-tree position, not a reproducible identity, and would make
-    /// snapshots nondeterministic.
+    /// [`OriginEntry::cst_hash`] is **included** (`stable-origin work`): the
+    /// per-node merkle hash is a content fingerprint, reproducible across
+    /// runs *and* processes, so it is a sound golden key over provenance.
+    /// The positional [`OriginEntry::cst_node`] (the dense arena slot) is
+    /// deliberately omitted — like the tree-sitter node address it
+    /// superseded, it is a within-tree position, not a reproducible
+    /// identity, and would make snapshots nondeterministic.
     #[inline]
     #[must_use]
     pub fn snapshot(&self) -> String
@@ -631,7 +633,7 @@ impl OriginNode
             map.insert(id, node_path.clone(), node.entry);
             for (index, child) in node.children.into_iter().enumerate().rev() {
                 // Most constructors have at most three children; a list
-                // literal is n-ary (ADR-40), so the index can be arbitrary.
+                // literal is n-ary (list-former design), so the index can be arbitrary.
                 // The `u32::MAX` fallback keeps the traversal total if that
                 // theoretical bound is ever exceeded.
                 let component = u32::try_from(index).unwrap_or(u32::MAX);
@@ -721,19 +723,19 @@ fn step_value(
             | Value::Inj(_, ref child)
             | Value::Annot(ref child, _)
             // A reflexivity proof's witness is its single value child `0`
-            // (ADR-76).
+            // (identity-eliminator design).
             | Value::Here(ref child)),
             0,
         )
         | (&Value::Pair(_, ref child), 1) => Some(TermRef::Value(child)),
         | (&Value::Thunk(_, ref child), 0) => Some(TermRef::Comp(child)),
-        // A list literal's elements are its value children `0, 1, …` (ADR-40).
+        // A list literal's elements are its value children `0, 1, …` (list-former design).
         | (&Value::List(ref elements), index) => usize::try_from(index)
             .ok()
             .and_then(|element_index| elements.get(element_index))
             .map(|element| TermRef::Value(element)),
         // A record literal's field values are its value children `0, 1, …` in
-        // canonical (sorted-label) order (ADR-45), matching the order the
+        // canonical (sorted-label) order (record-former design), matching the order the
         // checker / machine / mark and the lowerer's origin assign.
         | (&Value::Record(ref fields), index) => usize::try_from(index)
             .ok()
@@ -755,7 +757,7 @@ fn step_comp(
     match (comp, component) {
         // Computation children at index 0. `Reset`/`Shift` each carry a single
         // computation body; `Shift`'s continuation binder `k` is an attribute,
-        // not a child (`wyrd-q1mz`).
+        // not a child (`deep edit descent`).
         | (
             &(Comp::Abs(_, _, ref child)
             | Comp::App(ref child, _)
@@ -777,19 +779,19 @@ fn step_comp(
             | Comp::Resume(_, ref child)
             // The identity eliminator's base body is its computation child `1`
             // (its scrutinee is the value child `0`; the motive is a type —
-            // an attribute, not a child; ADR-76).
+            // an attribute, not a child; identity-eliminator design).
             | Comp::Walk { base: WalkBase { body: ref child, .. }, .. }),
             1,
         )
         // A list-case's `nil` body is child 1, its `cons` body child 2 (the
-        // `head`/`tail` binders are attributes, not children; ADR-40 D4).
+        // `head`/`tail` binders are attributes, not children; list-former design D4).
         | (
             &(Comp::Case(_, _, (_, ref child)) | Comp::ListCase { cons: ref child, .. }),
             2,
         ) => Some(TermRef::Comp(child)),
         // A handler's computation children: scrutinee (0), return body (1), and
         // operation-clause bodies (2..), the order `edit::diff`/`edit::rebuild`
-        // also use (`wyrd-q1mz`). The signature and the clause binders are
+        // also use (`deep edit descent`). The signature and the clause binders are
         // attributes, not children.
         | (&Comp::Handle { ref scrutinee, .. }, 0) => Some(TermRef::Comp(scrutinee)),
         | (&Comp::Handle { ref ret, .. }, 1) => Some(TermRef::Comp(&ret.1)),
@@ -812,10 +814,10 @@ fn step_comp(
             | Comp::Perform(_, _, ref child)
             | Comp::Resume(ref child, _)
             // A record projection's record value is its single value child `0`
-            // (ADR-45 D4; the `label` is an attribute, not a child).
+            // (record-former design D4; the `label` is an attribute, not a child).
             | Comp::RecordProj { record: ref child, .. }
             // The identity eliminator's scrutinee is its value child `0`
-            // (ADR-76).
+            // (identity-eliminator design).
             | Comp::Walk { scrut: ref child, .. }),
             0,
         )

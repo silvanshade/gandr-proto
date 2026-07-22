@@ -48,9 +48,9 @@
 //! The pure CBPV spine (literals, pairs, lists, injections, `let`/bind,
 //! forcing a thunk, `case`/`split` over closed scrutinees, lambdas), **plus**
 //! the fixed-table operator builtins and module-qualified native builtins
-//! resolved through the eval prelude ([`prelude_env`], ADR-42): `1 + 2`
-//! evaluates through the same native-builtin seam as `force(prim.id) 5` and
-//! `list.push([1, 2], 3)`. The session surfaces a definition that does not
+//! resolved through the eval prelude ([`prelude_env`], module/prelude design):
+//! `1 + 2` evaluates through the same native-builtin seam as `force(prim.id) 5`
+//! and `list.push([1, 2], 3)`. The session surfaces a definition that does not
 //! reduce to `ret` of a value — for example, a handler-less effect that reaches
 //! defined blame or another non-value outcome — honestly as a type-only
 //! definition, never as a stored value.
@@ -180,14 +180,14 @@ pub struct Session
     /// capability-denied outcome (§3.2), least authority made visible.
     foreign: BTreeMap<String, ForeignModule>,
     /// The `codata`-declared observation shapes accumulated across submissions,
-    /// keyed by codata type name (ADR-66 §2). Bridged across lines exactly as
-    /// `extern` modules and definitions are: a `codata C` block submitted on
-    /// one line makes a later line's `def rec f() -> C` coverage-check and
-    /// a later `s.π` observe against it (`wyrd-j2gm`).
+    /// keyed by codata type name (codata design §2). Bridged across lines
+    /// exactly as `extern` modules and definitions are: a `codata C` block
+    /// submitted on one line makes a later line's `def rec f() -> C`
+    /// coverage-check and a later `s.π` observe against it (`codata MVP`).
     codata: BTreeMap<String, crate::lower::codata::CodataDecl>,
     /// The `data`-declared datatype shapes accumulated across submissions,
-    /// keyed by datatype name (ADR-80 Decision 4). Bridged across lines
-    /// like `codata` and `extern`: the decl table (the constructor
+    /// keyed by datatype name (declared-data design Decision 4). Bridged across
+    /// lines like `codata` and `extern`: the decl table (the constructor
     /// enumeration and the minted `DataId`) that a front-end renderer
     /// resolves a declared-constructor value's `tag` against to print its
     /// constructor name (`Some(3)`, `Red`) rather than the structural
@@ -220,8 +220,9 @@ impl Session
 
     /// The declared constructor name for a value `Ctor { id, tag, … }` — the
     /// decl-table lookup a front-end renderer uses to print `Some(3)` / `Red`
-    /// rather than the structural carrier (ADR-80 stage d). The datatype is
-    /// keyed by the `id`'s name; the constructor is its `tag`-th.
+    /// rather than the structural carrier (declared-data design stage d). The
+    /// datatype is keyed by the `id`'s name; the constructor is its
+    /// `tag`-th.
     ///
     /// # Contract
     /// - ensures: `Some(name)` when the datatype is registered and `tag` is in
@@ -293,13 +294,14 @@ impl Session
             outcomes.push(self.process_item(item, holey));
         }
         // Persist this submission's `codata` blocks so a later line's copattern
-        // definition or observation sees the declaration (ADR-66 §2 bridge).
+        // definition or observation sees the declaration (codata design §2 bridge).
         // Before the `foreign` move below, which partially moves `lowered`.
         for (name, decl) in lowered.codata() {
             self.codata.insert(name.clone(), decl.clone());
         }
         // Persist this submission's `data` blocks so a later line's renderer
-        // resolves a returned constructor value's name (ADR-80 stage d bridge).
+        // resolves a returned constructor value's name (declared-data design stage d
+        // bridge).
         for (name, decl) in lowered.data() {
             self.data.insert(name.clone(), decl.clone());
         }
@@ -393,10 +395,10 @@ impl Default for Session
 /// Types one lowered item against `base`, returning its result type.
 ///
 /// The "terminal computation type of a `Done` expression item" the REPL shows
-/// before the value (the `wyrd-sww9` pipeline-result-type addition). Uses
-/// [`crate::goals::initial_state`]'s sort-and-ascription dispatch, then drives
-/// the heap-stacked typing machine to completion: an item is checked against
-/// its recorded ascription when the sorts match, inferred otherwise.
+/// before the value (the `REPL-session work` pipeline-result-type addition).
+/// Uses [`crate::goals::initial_state`]'s sort-and-ascription dispatch, then
+/// drives the heap-stacked typing machine to completion: an item is checked
+/// against its recorded ascription when the sorts match, inferred otherwise.
 ///
 /// # Contract
 /// - ensures: returns `Some(Ok(ty))` with the item's value/computation type on

@@ -1,5 +1,6 @@
-//! The `SynNode` adapter: the melder CST (`gandr-syntax`) presented through the
-//! lowerer's tree-sitter-shaped interface (`wyrd-ohzn`, W5′; ADR-73).
+//! The `SynNode` adapter: the melder CST (`gandr-surface-syntax`) presented
+//! through the lowerer's tree-sitter-shaped interface (`melder-CST migration`,
+//! W5′; checked-PBG front-end design).
 //!
 //! `gandr_surface_syntax::Cst` is deliberately **form-name-free**: a node is
 //! one of [`NodeKind::Cell`]/[`NodeKind::Meld`]/[`NodeKind::Wald`]/
@@ -79,17 +80,19 @@ mod label
     use super::TileSpelling;
     /// Item-family lead tile.
     pub const DEF: TileSpelling = TileSpelling("def");
-    /// Recursive-def tile (`def rec …`; W4d fold, ADR-57/66).
+    /// Recursive-def tile (`def rec …`; W4d fold, recursive-codata design).
     pub const REC: TileSpelling = TileSpelling("rec");
-    /// `codata` datatype-declaration lead tile (PBG surface; ADR-66).
+    /// `codata` datatype-declaration lead tile (PBG surface; codata design).
     pub const CODATA: TileSpelling = TileSpelling("codata");
     /// Reserved 2-cell / rewrite-rule member lead tile (`rule lhs ~> rhs`).
     pub const RULE: TileSpelling = TileSpelling("rule");
     /// `extern` block lead tile.
     pub const EXTERN: TileSpelling = TileSpelling("extern");
-    /// `data` datatype-declaration lead tile (PBG surface; ADR-54).
+    /// `data` datatype-declaration lead tile (PBG surface; declared-data
+    /// design).
     pub const DATA: TileSpelling = TileSpelling("data");
-    /// `module` declaration lead tile (PBG surface; `wyrd-wpa0`).
+    /// `module` declaration lead tile (PBG surface; `M1-lite module-root
+    /// work`).
     pub const MODULE: TileSpelling = TileSpelling("module");
     /// Attribute-block opener.
     pub const AT_BRACKET: TileSpelling = TileSpelling("@[");
@@ -217,7 +220,7 @@ mod label
     /// `command_name`).
     pub const COMMAND_NAME: TileSpelling = TileSpelling("shell_word");
     /// A command-local environment assignment `NAME=value`, molded as one tile
-    /// from the labeler's whole-token munch (`wyrd-wvj3`).
+    /// from the labeler's whole-token munch (`environment-assignment work`).
     pub const ENVIRONMENT_ASSIGNMENT: TileSpelling = TileSpelling("environment_assignment");
 }
 
@@ -300,15 +303,15 @@ fn grammar() -> &'static Pbg
     GRAMMAR.get_or_init(|| {
         #[expect(
             clippy::expect_used,
-            reason = "the built-in grammar is a compile-pinned checked artifact (ADR-73); a build failure is caught by gandr-grammar's own contract tests, never at pipeline runtime"
+            reason = "the built-in grammar is a compile-pinned checked artifact (checked-PBG front-end design); a build failure is caught by gandr-surface-grammar's own contract tests, never at pipeline runtime"
         )]
         built_in().expect("the built-in grammar is checked")
     })
 }
 
 /// An owned parse result the [`SynNode`] views borrow from: the committed CST
-/// plus the parse's severity-ordered obligations (the `wyrd-l605` surface the
-/// total-mode hole enrichment consumes).
+/// plus the parse's severity-ordered obligations (the `obligation surface`
+/// surface the total-mode hole enrichment consumes).
 pub struct SynTree
 {
     /// The committed concrete syntax tree.
@@ -358,8 +361,8 @@ impl SynTree
     ///
     /// The structural-diff seam ([`gandr_surface_syntax::diff`],
     /// incremental-pipeline.md §3) consumes two trees' [`Cst`]s directly
-    /// (`wyrd-62id`); the merkle hashes it aligns on are the same the origin
-    /// map records ([`crate::origin::OriginEntry::cst_hash`]).
+    /// (`stable-origin work`); the merkle hashes it aligns on are the same the
+    /// origin map records ([`crate::origin::OriginEntry::cst_hash`]).
     #[inline]
     #[must_use]
     pub fn cst(&self) -> &Cst
@@ -372,11 +375,12 @@ impl SynTree
     /// pruning matches every subtree whose significant content is
     /// unchanged, so an edit confined to one item leaves every *other*
     /// item's root in [`gandr_surface_syntax::Diff::matches`]
-    /// (`wyrd-62id`).
+    /// (`stable-origin work`).
     ///
     /// # Contract
     /// - requires: `self` and `new` are parses over the same built-in grammar
-    ///   (always true — [`SynTree::parse`] pins the ADR-73 fingerprint).
+    ///   (always true — [`SynTree::parse`] pins the checked-PBG front-end
+    ///   design fingerprint).
     /// - ensures: returns the deterministic top-down diff; equal-`(kind,
     ///   payload, hash)` subtree roots are matched and pruned, differing
     ///   interiors are aligned by LCS over the same key.
@@ -645,8 +649,8 @@ impl<'tree> SynNode<'tree>
     /// This node's stable CST identity for the origin map
     /// ([`gandr_surface_syntax::NodeId`]): a real node's dense arena slot, or a
     /// run's first significant child. The `NodeId`-typed identity that
-    /// superseded the freed tree-sitter subtree address (`wyrd-62id`) —
-    /// positional within one parse (the substrate the structural diff
+    /// superseded the freed tree-sitter subtree address (`stable-origin work`)
+    /// — positional within one parse (the substrate the structural diff
     /// aligns on), paired with the reproducible [`Self::cst_hash`] for
     /// provenance.
     #[inline]
@@ -658,7 +662,8 @@ impl<'tree> SynNode<'tree>
 
     /// This node's per-node merkle hash ([`gandr_surface_syntax::Cst::hash`] of
     /// [`Self::cst_node`]): a content fingerprint over the node's significant
-    /// structure, reproducible across runs and processes (`wyrd-62id`).
+    /// structure, reproducible across runs and processes (`stable-origin
+    /// work`).
     #[inline]
     #[must_use]
     pub fn cst_hash(self) -> StableHash
@@ -784,7 +789,7 @@ impl<'tree> SynNode<'tree>
             | (node_kinds::MODULE_DECLARATION, node_kinds::FIELD_MEMBER) => self.module_members(),
             | (_, node_kinds::FIELD_ATTRIBUTE) => self.attribute_blocks(),
             // The copattern-clause list of a `def rec … { .π => e, … }` body
-            // (ADR-66 §5.1): the melder keeps the clauses flat, like a `case`'s
+            // (codata design §5.1): the melder keeps the clauses flat, like a `case`'s
             // arms, so they segment on top-level `,` (a nested `,` inside a
             // clause body's call/tuple hides inside its own child meld).
             | (node_kinds::DEF_REC, node_kinds::FIELD_CLAUSE) => {
@@ -1069,7 +1074,7 @@ impl<'tree> SynNode<'tree>
 
     /// Whether this node stands in for a `MISSING` tile: the same grout-leaf
     /// signal as [`Self::is_error`] in the melder model (the obligation class
-    /// distinguishes them; `wyrd-ohzn` milestone 3).
+    /// distinguishes them; `melder-CST migration` milestone 3).
     #[inline]
     #[must_use]
     pub fn is_missing(self) -> MissingPresence
@@ -1172,10 +1177,10 @@ impl<'tree> SynNode<'tree>
             | Some(label::EXTERN) => node_kinds::EXTERN_BLOCK,
             // The `data` / `codata` datatype-declaration leads. These classify
             // for the levitation stage-0 elaborator (`crate::desc_elab`,
-            // wyrd-go7x): the SynNode dispatch surface recognizes the
+            // datatype-description work): the SynNode dispatch surface recognizes the
             // declaration kinds, though the lowerer's `item()` still firewalls
             // them from term lowering (their semantics graduate under
-            // wyrd-e0xy).
+            // pattern-matrix work).
             | Some(label::DATA) => node_kinds::DATA_DECLARATION,
             | Some(label::CODATA) => node_kinds::CODATA_DECLARATION,
             | Some(label::MODULE) => node_kinds::MODULE_DECLARATION,
@@ -1415,10 +1420,10 @@ impl<'tree> SynNode<'tree>
     }
 
     /// Whether a [`node_kinds::CODATA_OBSERVATION`] segment is a reserved
-    /// parse-and-decline form (ADR-66 §2): a `rule` 2-cell member, a graded
-    /// observation (`1 step: …`), or a parameterized observation
+    /// parse-and-decline form (codata design §2): a `rule` 2-cell member, a
+    /// graded observation (`1 step: …`), or a parameterized observation
     /// (`ap(x: a): b`, whose `(` precedes the result `:`). The MVP carrier
-    /// (`wyrd-j2gm`) lowers only the plain `π : B` observation; a reserved
+    /// (`codata MVP`) lowers only the plain `π : B` observation; a reserved
     /// member is registered but declined.
     #[inline]
     #[must_use]
@@ -1447,8 +1452,8 @@ impl<'tree> SynNode<'tree>
     /// Whether a [`node_kinds::DEF_REC`] body is a copattern-clause list (its
     /// first body tile is a leading projection `.` or the default-arm `_`),
     /// rather than an ordinary statement body. The copattern body is the codata
-    /// intro (ADR-66 §5.1, `wyrd-j2gm`); a statement body is user recursion
-    /// (`wyrd-u7m5`), which the codata MVP declines.
+    /// intro (codata design §5.1, `codata MVP`); a statement body is user
+    /// recursion (`user-recursion work`), which the codata MVP declines.
     #[inline]
     #[must_use]
     pub fn def_rec_has_copattern_body(self) -> CopatternBodyFlag
@@ -2215,7 +2220,7 @@ impl<'tree> SynNode<'tree>
     /// A shell block's `;`-separated commands. Each segment is a simple
     /// [`node_kinds::COMMAND`] unless it carries a pipeline / control operator,
     /// in which case it presents as the operator's kind so the lowerer's shell
-    /// path rejects it as unsupported (`wyrd-jir7` boundary).
+    /// path rejects it as unsupported (`host-module surface` boundary).
     fn shell_commands(self) -> Vec<Self>
     {
         let Some((container, body)) = self.body_between(label::SHELL_OPEN, label::RBRACE)
@@ -2510,7 +2515,7 @@ impl<'tree> SynNode<'tree>
             {
                 // A matching `}`, or — when the melder ghost-closed an
                 // unterminated block body — the window's last significant child,
-                // so the body still recovers (`wyrd-ohzn`; a matched brace is
+                // so the body still recovers (`melder-CST migration`; a matched brace is
                 // unaffected).
                 let close = self
                     .matching_close(
@@ -2685,10 +2690,11 @@ impl<'tree> SynNode<'tree>
     /// this view addresses. Item/member windows start *after* any leading
     /// `@[ … ]` attribute-block prefix, so a delimited-span scan (e.g. a
     /// `def`'s `parameters` paren) never matches inside an attribute
-    /// payload's own brackets (`wyrd-ohzn` gap 6). Synthetic runs keep
-    /// their absolute container indices, so module-member fields skip only
-    /// attributes within that member's source span. An `attribute_block`
-    /// run is itself the delimiter payload, so it keeps its opener visible.
+    /// payload's own brackets (`melder-CST migration` gap 6). Synthetic runs
+    /// keep their absolute container indices, so module-member fields skip
+    /// only attributes within that member's source span. An
+    /// `attribute_block` run is itself the delimiter payload, so it keeps
+    /// its opener visible.
     fn container_window(self) -> SignificantWindow
     {
         let window = self.raw_container_window();
@@ -2902,7 +2908,7 @@ struct Span
 
 /// The shell-block kind a pipeline / control operator tile induces on the
 /// enclosing `;`-segment, or `None` for a non-operator tile. The kinds route
-/// the segment to the lowerer's unsupported-shell path (`wyrd-jir7`).
+/// the segment to the lowerer's unsupported-shell path (`host-module surface`).
 fn shell_op_kind(tile: Option<TileSpelling>) -> Option<SyntaxKind>
 {
     match tile {
@@ -2927,7 +2933,8 @@ fn is_shell_redirection(tile: Option<TileSpelling>) -> ShellRedirectionFlag
 /// keyword that does not lead one (so the run stays an expression statement).
 /// These statement forms are flat runs in the block body, so the lead keyword
 /// is the only discriminator; classifying them keeps the lowerer's
-/// `Unsupported` rejection instead of a silent mis-lowering (`wyrd-ohzn`).
+/// `Unsupported` rejection instead of a silent mis-lowering (`melder-CST
+/// migration`).
 fn unsupported_statement_kind(lead: TileSpelling) -> Option<SyntaxKind>
 {
     match lead {
@@ -3350,7 +3357,7 @@ mod tests
     {
         // A bare nullary constructor pattern (`Nil`) and a saturated one
         // (`Cons(h, t)`) both classify as constructor patterns, recover the
-        // constructor name, and count their arguments (`wyrd-ohzn` gap 4).
+        // constructor name, and count their arguments (`melder-CST migration` gap 4).
         let source = tree("def k = case v { Nil => ret 0, Cons(h, t) => ret 1 };")?;
         let arms = {
             let item0 = item0(&source)?;
@@ -4017,7 +4024,7 @@ mod tests
     fn recognizes_ret_and_force_operands() -> Result<(), String>
     {
         // The returner and force operands are recovered by the `value` field
-        // (`wyrd-ohzn` gap 1) — the sole named child after the lead keyword.
+        // (`melder-CST migration` gap 1) — the sole named child after the lead keyword.
         let ret = tree("def r = ret x;")?;
         let ret_value = field(
             {
@@ -4067,7 +4074,7 @@ mod tests
     fn recognizes_extern_function_result() -> Result<(), String>
     {
         // An `extern` member function recovers its `-> result` boundary type
-        // (`wyrd-ohzn` gap 2); a result-less member has none.
+        // (`melder-CST migration` gap 2); a result-less member has none.
         let source =
             tree("extern \"c\" from \"lib\" { def cos(x: f64) -> f64; def sink(x: f64); }")?;
         let members = {
@@ -4104,7 +4111,7 @@ mod tests
     fn recognizes_tuple_pattern_in_value_statement() -> Result<(), String>
     {
         // A paren-led pattern-sorted Meld with a top-level `,` is a tuple
-        // pattern, not a tuple expression (`wyrd-ohzn` gap 3).
+        // pattern, not a tuple expression (`melder-CST migration` gap 3).
         let source = tree("def m = { val (x, y) = p; ret x };")?;
         let block = field(
             {
@@ -4427,7 +4434,8 @@ mod tests
     {
         // The graded-thunk prefix `U` / `U[r]` melds as a bare sibling of its
         // argument; the `argument` field recovers the following sibling across
-        // signature, parameter, and annotation positions (`wyrd-ohzn` gap 5).
+        // signature, parameter, and annotation positions (`melder-CST migration` gap
+        // 5).
         let signature = tree("def u : U[1] (Integer -> F Integer);")?;
         let u_ty = field(
             {
@@ -4513,7 +4521,7 @@ mod tests
     fn recognizes_attributed_def_function_parameters() -> Result<(), String>
     {
         // An attribute payload's own parens must not shadow the `def`'s
-        // parameter parens: the scan skips the `@[ … ]` prefix (`wyrd-ohzn`
+        // parameter parens: the scan skips the `@[ … ]` prefix (`melder-CST migration`
         // gap 6).
         let source = tree("@[doc(\"hi\")] def f(a: Integer) { ret a }")?;
         let item = item0(&source)?;

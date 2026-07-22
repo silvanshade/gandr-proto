@@ -1,5 +1,5 @@
 //! The A2.3 differential gate: incremental validated resume ≡ from-scratch
-//! re-typing (`incremental-pipeline.md` §§4–6; `wyrd-ejkc`).
+//! re-typing (`incremental-pipeline.md` §§4–6; `incremental-checkpoint work`).
 //!
 //! The theorem `crate::checkpoint::resume` must satisfy: for **every** edit,
 //! the incrementally-resumed per-item typing equals the typing a full

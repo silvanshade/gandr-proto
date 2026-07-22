@@ -1,22 +1,23 @@
 //! The canonical host effect signatures and their source-level module surface
-//! (proposal §3/§5, ADR-35 D4).
+//! (proposal §3/§5, host-effect boundary D4).
 //!
 //! The v0 op set is named **`Exec` / `Fs` / `Proc` / `Env`** — the reserved
 //! name `Shell` denotes the A8 typed-`Pipe` op (`effects-control-shell.md` §3)
 //! and is deliberately NOT appropriated. These builders are the single source
 //! of truth shared by every face: the lowerer elaborates `#!{ … }` shell
 //! blocks and `fs.read(…)`-style host-module calls to `Comp::perform` against
-//! them, a program author (`wyrd-8mk8`) builds performs against the same
-//! signatures, and the `gandr-shell` handler dispatches on the same
-//! [`EffectSig::name`] / operation names (re-exported as `gandr_shell::sig`),
-//! so the faces never drift. They live here rather than in `gandr-shell`
-//! because the lowerer needs them and `gandr-pipeline` cannot depend on
-//! `gandr-shell` without forming a cycle.
+//! them, a program author (`program-authoring work`) builds performs against
+//! the same signatures, and the `gandr-runtime-host` handler dispatches on the
+//! same [`EffectSig::name`] / operation names (re-exported as
+//! `gandr_shell::sig`), so the faces never drift. They live here rather than in
+//! `gandr-runtime-host` because the lowerer needs them and
+//! `gandr-surface-engine` cannot depend on `gandr-runtime-host` without forming
+//! a cycle.
 //!
 //! The **host modules** ([`HOST_MODULES`]) are the source-level surface
-//! (`wyrd-jir7`): a call `fs.read(path)` whose head is a known host module
-//! elaborates to `perform Fs::read path` exactly as an FFI extern call does
-//! (proposal-ffi.md §3.1) — module-select ⇒ perform against a known
+//! (`host-module surface`): a call `fs.read(path)` whose head is a known host
+//! module elaborates to `perform Fs::read path` exactly as an FFI extern call
+//! does (proposal-ffi.md §3.1) — module-select ⇒ perform against a known
 //! [`EffectSig`], so the effect row records the host reach. The gate is
 //! syntactic: `fs` / `env` / `proc` are reserved module names, not scoped
 //! bindings.
@@ -76,16 +77,18 @@ pub const FIELD_PROGRAM: &str = "program";
 /// The record label carrying the argument list in an `Exec::exec` payload.
 pub const FIELD_ARGS: &str = "args";
 /// The record label carrying the spawn mode in an `Exec::exec` payload
-/// (ADR-74 D4): [`MODE_CAPTURED`] or [`MODE_INHERIT`].
+/// (shell spawn-mode design D4): [`MODE_CAPTURED`] or [`MODE_INHERIT`].
 pub const FIELD_MODE: &str = "mode";
-/// The `Exec::exec` spawn mode that captures the child's output (ADR-74 D4).
+/// The `Exec::exec` spawn mode that captures the child's output (shell
+/// spawn-mode design D4).
 ///
 /// Captures stdout/stderr into the typed `{stdout, stderr, exit_code}` reply —
 /// the contract for every consumed result (`$( … )` splices, bound values,
 /// scripts). The lowerer emits this for every `#!{ … }` block and host-escape,
 /// so the corpus is unchanged.
 pub const MODE_CAPTURED: &str = "captured";
-/// The `Exec::exec` spawn mode that inherits the parent's terminal (ADR-74 D4).
+/// The `Exec::exec` spawn mode that inherits the parent's terminal (shell
+/// spawn-mode design D4).
 ///
 /// The child inherits the parent's stdin/stdout/stderr, so an interactive
 /// program (`vim`, `less`, `ssh`) behaves. Selected by a REPL command line
@@ -110,11 +113,11 @@ pub const FIELD_SIZE: &str = "size";
 /// The `Exec::exec` payload type
 /// `{program : String, args : List String, mode : String}`.
 ///
-/// The `mode` field carries the ADR-74 D4 spawn mode ([`MODE_CAPTURED`] /
-/// [`MODE_INHERIT`]) as the consumption context the lowerer or the driver
-/// decided; the handler dispatches on it. A payload with no `mode` field
-/// decodes as [`MODE_CAPTURED`] (the drift-safe default), so a hand-built
-/// `{program, args}` perform still captures.
+/// The `mode` field carries the shell spawn-mode design D4 spawn mode
+/// ([`MODE_CAPTURED`] / [`MODE_INHERIT`]) as the consumption context the
+/// lowerer or the driver decided; the handler dispatches on it. A payload with
+/// no `mode` field decodes as [`MODE_CAPTURED`] (the drift-safe default), so a
+/// hand-built `{program, args}` perform still captures.
 #[inline]
 #[must_use]
 fn command_ty() -> ValueType
@@ -191,7 +194,8 @@ fn stat_ty() -> ValueType
 }
 
 /// The `Env` effect signature: read-only `get` / `path` over the process
-/// environment (the scoped `with-env` variant is deferred, `wyrd-49xh`).
+/// environment (the scoped `with-env` variant is deferred, `scoped-environment
+/// work`).
 #[inline]
 #[must_use]
 pub fn env() -> EffectSig
@@ -219,7 +223,8 @@ pub fn proc() -> EffectSig
     )])
 }
 
-// --- The source-level host-module surface (wyrd-jir7) -----------------------
+// --- The source-level host-module surface (host-module surface)
+// -----------------------
 
 /// One source-callable member of a [`HostModule`] — `read` in `fs.read(…)`.
 ///
@@ -341,10 +346,12 @@ const PROC_MEMBERS: &[HostMember] = &[HostMember {
     params: &["code"],
 }];
 
-/// The host modules exposed to source (`wyrd-jir7`): `fs` / `env` / `proc`.
+/// The host modules exposed to source (`host-module surface`): `fs` / `env` /
+/// `proc`.
 ///
 /// `exec` is deliberately absent — the `Exec` surface is the `#!{ … }` shell
-/// block (and its host-escape splices, `wyrd-l5nq`), not a module call.
+/// block (and its host-escape splices, `host-escape surface`), not a module
+/// call.
 pub const HOST_MODULES: &[HostModule] = &[
     HostModule {
         name: "fs",
@@ -363,8 +370,8 @@ pub const HOST_MODULES: &[HostModule] = &[
     },
 ];
 
-/// Whether `name` is a reserved host-module name (the ADR-42 D2 gate: a
-/// module namespace is not a record, so `fs.x` never falls through to a
+/// Whether `name` is a reserved host-module name (the module/prelude design D2
+/// gate: a module namespace is not a record, so `fs.x` never falls through to a
 /// structural projection).
 ///
 /// # Contract

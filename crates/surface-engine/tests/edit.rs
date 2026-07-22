@@ -1,5 +1,5 @@
-//! Tests for the edit-action reconstruction layer (`edit`; `wyrd-kekv`,
-//! `wyrd-el81`).
+//! Tests for the edit-action reconstruction layer (`edit`; `edit-action work`,
+//! `edit-action oracle work`).
 //!
 //! Six classes:
 //!
@@ -1410,7 +1410,7 @@ mod tests
             prop_oneof![
                 (binder_name(), 0_u64 .. 50_u64)
                     .prop_map(|(name, literal)| format!("def {name} = {literal};")),
-                // String literals (value-model ladder, ADR-38): a small pool so
+                // String literals (value-model ladder, string-literal design): a small pool so
                 // two items can match (a self-diff stays empty) or differ (a
                 // wholesale `Replace`), exercising `diff_value`'s `Str` arm.
                 (binder_name(), prop_oneof![
@@ -1422,7 +1422,7 @@ mod tests
                     .prop_map(|(name, text)| format!("def {name} = \"{text}\";")),
                 (binder_name(), prop_oneof![Just("x"), Just("yz")])
                     .prop_map(|(name, text)| format!("def {name} = (\"{text}\" : String);")),
-                // Typed numeric literals (value-model ladder, ADR-39): a small
+                // Typed numeric literals (value-model ladder, numeric-literal design): a small
                 // pool spanning all six suffixes plus a bare float, so two items
                 // can match (self-diff stays empty) or differ (a wholesale
                 // `Replace`), exercising `diff_value`'s `Num` arm.
@@ -1492,7 +1492,7 @@ mod tests
                              ({left}, {right}); ret {fst_binder} }};"
                         )
                     }),
-                // A list literal `def n = [a, b, …];` (ADR-40): exercises
+                // A list literal `def n = [a, b, …];` (list-former design): exercises
                 // `Value::List` n-ary element descent — a same-length pair diffs
                 // element-wise, a length change replaces wholesale, and a
                 // self-diff is empty — through the oracle.
@@ -1507,7 +1507,7 @@ mod tests
                     }
                 ),
                 // A list-case `def n = case [k] { Nil => …, Cons(h, rest) => … }`
-                // (ADR-40): exercises `Comp::ListCase` descent (scrutinee, nil
+                // (list-former design): exercises `Comp::ListCase` descent (scrutinee, nil
                 // body, cons body) and the `head` `Rebind` (Fst) through the
                 // oracle.
                 (binder_name(), binder_name(), 0_u64 .. 9_u64).prop_map(|(name, head, literal)| {
@@ -1516,14 +1516,14 @@ mod tests
                          {{ Nil => ret {literal}, Cons({head}, rest) => ret {head} }};"
                     )
                 }),
-                // A record literal `def n = #{a = x, b = y};` (ADR-45):
+                // A record literal `def n = #{a = x, b = y};` (record-former design):
                 // exercises `Value::Record` n-ary field descent — a same-label-set
                 // field change diffs field-wise, a label-set change replaces
                 // wholesale, and a self-diff is empty — through the oracle (the
                 // latent-bug-prone diff face, per the string rung's self-diff bug).
                 (binder_name(), 0_u64 .. 9_u64, 0_u64 .. 9_u64)
                     .prop_map(|(name, x, y)| { format!("def {name} = #{{a = {x}, b = {y}}};") }),
-                // A record projection `def n = #{a = x}.a;` (ADR-45): exercises
+                // A record projection `def n = #{a = x}.a;` (record-former design): exercises
                 // `Comp::RecordProj` descent (the record value child, the stable
                 // projected label).
                 (binder_name(), 0_u64 .. 9_u64)
@@ -1570,13 +1570,14 @@ mod tests
 
     /// The A3 effect/control constructors and the grade structural ops localize
     /// edits into their children rather than coarse-replacing, and `apply`
-    /// stays the diff's adjoint over them (`wyrd-q1mz`). The surface does not
-    /// yet lower to these forms, so the fixtures build the core terms directly,
-    /// overwriting the term of one lowered item; `diff`/`apply` read only the
-    /// item terms, never the origin map, so the stale origin is immaterial.
-    /// (`Value::Stk` reified stacks are machine-constructed, not a surface
-    /// form; the diff treats them as opaque — sound coarse replacement —
-    /// and descent into a reified stack is deferred.)
+    /// stays the diff's adjoint over them (`deep edit descent`). The surface
+    /// does not yet lower to these forms, so the fixtures build the core
+    /// terms directly, overwriting the term of one lowered item;
+    /// `diff`/`apply` read only the item terms, never the origin map, so
+    /// the stale origin is immaterial. (`Value::Stk` reified stacks are
+    /// machine-constructed, not a surface form; the diff treats them as
+    /// opaque — sound coarse replacement — and descent into a reified stack
+    /// is deferred.)
     mod effect_control
     {
         use alloc::rc::Rc;

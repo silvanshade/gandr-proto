@@ -1,5 +1,5 @@
 //! Dependency-footprint capture for the incremental typing pipeline (A2.3;
-//! `incremental-pipeline.md` §4; `wyrd-ejkc`).
+//! `incremental-pipeline.md` §4; `incremental-checkpoint work`).
 //!
 //! # What a footprint is
 //!
@@ -149,8 +149,9 @@ impl Scope<'_>
 }
 
 /// One pending node in the iterative scan: a value or a computation, paired
-/// with the lexical scope in force at its position (ADR-47: the traversal is a
-/// heap work-list, never host recursion on the user-sized term).
+/// with the lexical scope in force at its position (iterative-traversal design:
+/// the traversal is a heap work-list, never host recursion on the user-sized
+/// term).
 enum Work<'term>
 {
     /// A value node to scan under `scope`.
@@ -201,7 +202,7 @@ fn scan_comp<'term>(
             stack.push(Work::Cmp(as_cmp(left_body), extend(scope, left_name)));
             stack.push(Work::Cmp(as_cmp(right_body), extend(scope, right_name)));
         },
-        // The motive is a computation *type* (ADR-82) carrying no free-variable
+        // The motive is a computation *type* (dependent-split design) carrying no free-variable
         // footprint obligation `footprint` tracks — as `Walk`'s motive does not;
         // only the scrutinee value and the body (under `p`/`q`) are walked.
         | Comp::Split {
@@ -344,9 +345,9 @@ fn as_val(value: &Rc<Value>) -> &Value
 /// variables it reads from the ambient context, plus the conservative
 /// [`Footprint::opaque`] / [`Footprint::has_hole`] flags.
 ///
-/// The scan is a single heap-work-list pass (ADR-47) that threads a persistent
-/// [`Scope`] so a variable occurrence counts as *free* only when no enclosing
-/// binder captures it — the exact cross-item read-set.
+/// The scan is a single heap-work-list pass (iterative-traversal design) that
+/// threads a persistent [`Scope`] so a variable occurrence counts as *free*
+/// only when no enclosing binder captures it — the exact cross-item read-set.
 ///
 /// # Contract
 /// - ensures: [`Footprint::names`] is precisely the term's free variables;
