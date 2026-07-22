@@ -202,20 +202,10 @@ fn bind_statement_uses_run_keyword() -> Result<(), Box<dyn Error>>
 /// program to a globally-consistent **zero-obligation** reading — zero
 /// total obligations, no named residual.
 ///
-/// The model + pathological trees hold at **67 / 67** clean (53 + the
-/// three codata-MVP executable examples added — two model, one
-/// pathological — under the `codata/` subtrees; plus the four supporting
-/// sequent/description inspection examples added by the 2026-07-12
-/// coherence sweep; plus the six identity examples; plus the
-/// shell host-escape non-String failure witness). The W4d grammar growth
-/// itself moved no executable example (its fold-ins are parse-only
-/// `surface/` fixtures). The surface
-/// tree carries the PBG-only fold-in fixtures (`data` / `codata` /
-/// `def rec` / control flow / `import` / interpolation / reserved slots),
-/// each of which molds clean under the keyword-led forms. A regressed
-/// count drives a defect fix, never a re-pin.
+/// The model + pathological trees hold at **87 / 87** clean. The parse-gated
+/// surface tree is cardinality-open but must remain non-empty and wholly clean.
+/// A regressed fixed-tree count drives a defect fix, never a re-pin.
 #[test]
-#[ignore = "corpus gate: returns at F4 when surface-corpus lands (front-end-port-staging.md §9); the zero-obligation count lock is pinned in-body and recorded in docs/STATUS.md"]
 fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
 {
     let pbg = built();
@@ -234,7 +224,7 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     let mut base_count = 0_usize;
     let mut surface_clean = 0_usize;
     let mut surface_count = 0_usize;
-    let mut dirty: Vec<(String, Vec<Oblig>)> = Vec::new();
+    let mut dirty: Vec<(String, Vec<String>)> = Vec::new();
     for path in &files {
         let src = read_source(path)?;
         let result = parse(pbg, SourceSlice::from(src.as_str()))?;
@@ -261,7 +251,14 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
             }
         }
         else {
-            dirty.push((rel, result.obligations().iter().map(|o| o.class).collect()));
+            dirty.push((
+                rel,
+                result
+                    .obligations()
+                    .iter()
+                    .map(|obligation| format!("{:?} @ {:?}", obligation.class, obligation.span))
+                    .collect(),
+            ));
         }
     }
     eprintln!(
@@ -405,15 +402,14 @@ fn malformed_programs_repair_predictably() -> Result<(), Box<dyn Error>>
 }
 
 #[test]
-#[ignore = "corpus gate: returns at F4 when surface-corpus lands (front-end-port-staging.md §9)"]
 fn corpus_parses_totally() -> Result<(), Box<dyn Error>>
 {
     // Every committed corpus program parses totally — no
     // panic, a well-formed CST recording the grammar fingerprint, and the
     // committed leaves reconstruct the source. (The stronger ZERO-obligation
     // gate is `corpus_molds_to_zero_obligations`, over all
-    // three trees — model + pathological (56 / 56) plus the W4d surface
-    // fold-in fixtures; this test is the weaker totality floor.)
+    // three trees — model + pathological plus the parse-gated surface
+    // witnesses; this test is the weaker totality floor.
     let pbg = built();
     let files = gandr_files(&workspace_root().join("crates/surface-corpus/examples"));
     assert!(

@@ -258,6 +258,30 @@ pub enum LowerError
         byte_range: SourceRange,
     },
 
+    /// Explicit size instantiation is reserved but not implemented.
+    #[error(
+        "recursion marker resident `{resident}` at bytes {byte_range:?} is reserved for explicit sizes and is not implemented"
+    )]
+    ReservedExplicitSize
+    {
+        /// The declined resident.
+        resident: String,
+        /// The resident's source range.
+        byte_range: SourceRange,
+    },
+
+    /// Per-call cost bounds are reserved but not implemented.
+    #[error(
+        "recursion marker resident `{resident}` at bytes {byte_range:?} is reserved for cost bounds and is not implemented"
+    )]
+    ReservedCostBound
+    {
+        /// The declined resident.
+        resident: String,
+        /// The resident's source range.
+        byte_range: SourceRange,
+    },
+
     /// Tail-call assertions are reserved but not implemented.
     #[error(
         "recursion marker resident `tail` at bytes {byte_range:?} is reserved for tail-call assertions and is not implemented"
@@ -759,9 +783,6 @@ fn lower_source_seeded(
         return Err(LowerError::Syntax {
             byte_range: obligation_range(first),
         });
-    }
-    if matches!(strictness, Strictness::Strict) {
-        recursion_surface::validate(tree.root())?;
     }
     // Seed the projection-disambiguation set from the persisted declarations'
     // observation names, so an `s.π` in this source that observes a codata type
@@ -5117,6 +5138,7 @@ impl Lowerer<'_>
         child: SynNode<'_>,
     ) -> LowerResult<(LoweredItem, OriginNode)>
     {
+        recursion_surface::validate_item(child)?;
         match child.kind() {
             | node_kinds::DEF_VALUE => {
                 let name_node = required_field(child, node_kinds::FIELD_NAME)?;
@@ -5329,6 +5351,8 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
         | LowerError::MarkedReferenceOutsideRecursiveScope { ref byte_range, .. }
         | LowerError::ReservedNamedMeasure { ref byte_range, .. }
         | LowerError::ReservedExplicitInstantiation { ref byte_range, .. }
+        | LowerError::ReservedExplicitSize { ref byte_range, .. }
+        | LowerError::ReservedCostBound { ref byte_range, .. }
         | LowerError::ReservedTailAssertion { ref byte_range }
         | LowerError::InvalidIntegerLiteral { ref byte_range, .. }
         | LowerError::InvalidGrade { ref byte_range, .. }
@@ -5361,10 +5385,14 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::Unsupported { kind, .. } | LowerError::TypeSortMismatch { kind, .. } => {
             HoleNote::UnsupportedForm { kind }
         },
-        | LowerError::UnmarkedRecursiveReference { .. }
+        | LowerError::UnmarkedRecursiveReference { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::IDENTIFIER,
+        },
         | LowerError::MarkedReferenceOutsideRecursiveScope { .. }
         | LowerError::ReservedNamedMeasure { .. }
         | LowerError::ReservedExplicitInstantiation { .. }
+        | LowerError::ReservedExplicitSize { .. }
+        | LowerError::ReservedCostBound { .. }
         | LowerError::ReservedTailAssertion { .. } => HoleNote::UnsupportedForm {
             kind: node_kinds::INSTANTIATION_EXPRESSION,
         },

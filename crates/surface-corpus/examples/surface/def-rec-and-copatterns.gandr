@@ -1,24 +1,30 @@
-// W4d surface fold-in — `def rec` recursion and copattern bodies (parse-only).
+// Recursion surface — declaration scopes and evidence markers (parse-gated).
 //
-// GRADUATION: `def rec` folds into the def family now (wyrd-ku0f) as a fourth
-// tail discriminating on the `rec` keyword, so `def` keeps ONE form-first mold;
-// user-recursion / corecursion SEMANTICS graduate under wyrd-u7m5 (today the
-// `list` builtins are the iteration surface). Parse-only; never lowered.
+// GRADUATION: `def rec` opens one recursive scope. This witness parse-gates
+// direction sigils and the residents reserved for later semantics. Scope
+// validation and named decline messages are covered in `surface-engine`;
+// recursive lowering, guardedness, sizes, and cost semantics remain unbuilt.
 
-// An ordinary recursive definition: `def rec` + a statement body.
+// An ordinary recursive definition with a marked self-reference.
 def rec fact(n: Integer) -> F Integer {
-  if eq(n, 0) { ret 1 } else { let m <- fact(minus(n, 1)); ret times(n, m) }
+  fact[<](n)
 }
 
 // A corecursive definition: the body is a list of copattern clauses `.obs => e`.
 def rec nats(n: Integer) -> Stream(Integer) {
   .head => n,
-  .tail => nats(plus(n, 1))
+  .tail => nats[>](plus(n, 1))
 }
 
-// The reserved default copattern arm `_ => e` (ADR-66 §3.2) rides the clause
-// list beside the projection clauses.
+// The reserved default copattern arm `_ => e` rides beside projections.
 def rec loopy(n: Integer) -> Stream(Integer) {
   .head => n,
   _ => nats(n)
 }
+
+// Reserved residents parse in the same slot and decline during lowering.
+def rec measured(n: Integer) -> F Integer { ret measured[n <](n) }
+def rec explicit(n: Integer) -> F Integer { ret explicit[n = 1](n) }
+def rec sized(n: Integer) -> F Integer { ret sized[size = 1](n) }
+def rec bounded(n: Integer) -> F Integer { ret bounded[cost = 1](n) }
+def rec tailing(n: Integer) -> F Integer { ret tailing[tail](n) }

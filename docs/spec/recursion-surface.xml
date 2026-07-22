@@ -1,4 +1,4 @@
-<component derives="spec-index" grounds="core-ir data-patterns sequent-kernel" id="recursion-surface" spec-version="1" status="adopted-unbuilt" title="The (co)recursion surface: recursive scope and call-site evidence markers">
+<component derives="spec-index" grounds="core-ir data-patterns sequent-kernel" id="recursion-surface" spec-version="1" status="partial" title="The (co)recursion surface: recursive scope and call-site evidence markers">
   <section id="rs-overview" title="Overview and the decision">
     <prose>
       This component fixes where recursion and corecursion are declared, where their termination and productivity evidence lives, and how that evidence surface grows into sized types, cost annotations, and explicit implicit-instantiation without retrofit. The decision is a hybrid of two sites. A
@@ -9,10 +9,11 @@
       <term-def key="direction-sigil">direction sigil</term-def>
       : &lt; claims descent into an inductive argument, &gt; claims guarded production of coinductive output. Declaration-site rec is scope information; the call-site marker is evidence information. They answer different questions, so carrying both is not redundancy.
     </prose>
+    <prose>As built, the surface grammar accepts def rec, rec { … }, bracketed direction sigils, comma lists, and the reserved marker residents. A pre-lowering scope pass requires marked self or group references, rejects unmarked self-reference with the marked spelling as a suggestion, preserves qualified access to outer bindings, and declines the reserved residents by name. Recursive and corecursive definitions themselves do not yet lower; the direction sigils therefore carry scope evidence only, not guardedness, size, or cost claims.</prose>
     <prose>
-      Three consequences are the point of the design. First, the rec-versus-nonrec declaration dichotomy is eliminated: every plain name reference means the same thing everywhere (the enclosing or imported binding), and self-reference is always explicit, so a nonrec keyword has nothing left to mean. Second, the surface becomes honest to the elaboration: the core has a fix computation former (the ADR-57 design, elaborating recursion through thunks over the
+      Three consequences are the point of the design. First, the rec-versus-nonrec declaration dichotomy is eliminated: every plain name reference means the same thing everywhere (the enclosing or imported binding), and self-reference is always explicit, so a nonrec keyword has nothing left to mean. Second, the surface becomes honest to the elaboration: the core design elaborates recursion through thunks over the
       <term key="frozen-core"/>
-      call-by-push-value substrate), and under it a recursive occurrence is the fix-bound variable — a different binding than the definition's name. The marker surfaces exactly that distinction instead of hiding it behind name capture. Third, every recursive call now carries a syntactic slot on which the productivity ladder, the cost model, and explicit implicit-instantiation can all later hang, because the slot is the instantiation slot the expression grammar already has.
+      call-by-push-value substrate, and under it a recursive occurrence is the fix-bound variable — a different binding than the definition's name. The marker surfaces exactly that distinction instead of hiding it behind name capture. Third, every recursive call now carries a syntactic slot on which the productivity ladder, the cost model, and explicit implicit-instantiation can all later hang, because the slot is the instantiation slot the expression grammar already has.
     </prose>
   </section>
   <section id="rs-evidence-site" title="Where termination evidence lives: the declaration-site/call-site spectrum">
@@ -27,7 +28,7 @@
     </prose>
     <prose>The noise objection — a prover-flavored language recurses constantly, and every call pays three characters — is acknowledged and priced. A prover requires termination evidence somewhere; the design question is only its address. Agda's answer (a silent structural checker, escalating to size quantifiers in types when it fails) puts the noise in the types, which is more total noise at a worse address. Three characters at the call is close to the minimum honest notation for evidence the checker needs anyway. And because the parser is of the tylr lineage, whose identity is whitespace-invariant and merkle-keyed, stored syntax and displayed syntax are decoupled: prover-facing renderings may elide inferable markers as a projection concern, without the grammar or the stored term changing.</prose>
   </section>
-  <section id="rs-scope-rule" title="The recursive scope and the self-reference rule">
+  <section id="rs-scope-rule" status="partial" title="The recursive scope and the self-reference rule">
     <prose>Call-site-only marking was considered and rejected, because mutual recursion needs declaration-site grouping regardless of any call-site discipline: inside even, a call to odd requires odd in scope before odd's definition is complete, so something must open the group's scope, and that is precisely the reserved rec { … } block. The alternative that dissolves the problem — the whole file as one implicit letrec scope, the Rust and Haskell posture — is rejected on principle: implicit recursion everywhere is exactly the default this design exists to remove. So the choice is not declaration-site versus call-site; it is declaration-site alone versus both, and both is what makes the evidence discipline possible.</prose>
     <prose>The self-reference rule makes the hybrid safe. Inside a recursive scope, the marked occurrence is the only reference to the fix-bound variable. An unmarked occurrence of the definition's own name is a hard error carrying a did-you-mean suggestion naming the marked form — never a silent resolution. An outer or imported binding of the same name remains reachable, but only through a qualified path. The error-not-capture clause matters more than it first appears: under the naive alternative ("a plain name resolves to the outer binding"), forgetting one marker silently captures an imported or shadowed binding of the same name — a strictly worse footgun than the shadowing confusions nonrec was invented to manage. The rule as stated kills the footgun and the nonrec keyword with one stroke, and the qualified-path escape keeps the legitimate outer-reference idiom expressible.</prose>
     <prose>
@@ -36,7 +37,7 @@
       ) learns from the header alone that a definition is self-referential, without scanning the body for markers; and the surface grammar keeps def rec folded as a tail of the single def family — one form-first mold, the rec-versus-name choice locally decidable — so the scope keyword costs no new shared-prefix window.
     </prose>
   </section>
-  <section id="rs-marker-slot" title="The marker is the instantiation slot">
+  <section id="rs-marker-slot" status="partial" title="The marker is the instantiation slot">
     <prose>
       The load-bearing syntactic finding: the expression grammar already has a postfix bracketed instantiation form, e[T, …], and the bracket plane already uniformly denotes the erased, second-class tier — type instantiation e[T], type abstraction fn [a] { … }, the
       <term key="grade"/>
@@ -46,12 +47,12 @@
     </prose>
     <grammar>
       <production symbol="e">e [ ι₁, …, ιₙ ] | e ( e₁, …, eₘ ) | …</production>
-      <production symbol="ι">T | &lt; | &gt; | x = e | reserved: named measures x &lt;, explicit sizes, cost bounds, tail</production>
+      <production symbol="ι">T | &lt; | &gt; | x = e | m &lt; | size = e | cost = e | tail</production>
     </grammar>
     <prose>
       The slot is a comma list from day one, in the same anti-retrofit posture as the reserved productions of the
       <term key="data-declaration"/>
-      block: the grammar accepts the full list and the checker declines every resident it does not yet implement. The named future residents, reserved now so none is a retrofit: named measures (f[m &lt;], naming which argument descends), explicit size instantiation once sizes exist, cost bounds in the calf reading
+      block: the grammar accepts the full list and the checker declines every resident it does not yet implement. The named future residents, reserved now so none is a retrofit: named measures (f[m &lt;], naming which argument descends), explicit size instantiation f[size = e], cost bounds f[cost = e] in the calf reading
       <cite key="L-1"/>
       , and a tail atom asserting the call must compile as a tail call. A function that recurses on an inductive argument while corecursing into its coinductive result marks one call with a list, f[&lt;, &gt;] — which is why the slot cannot be a single atom.
     </prose>
@@ -61,7 +62,7 @@
       live at the signature/functor layer and are unaffected by any of this.
     </prose>
   </section>
-  <section id="rs-ladder" title="Marker semantics along the productivity ladder">
+  <section id="rs-ladder" status="partial" title="Marker semantics along the productivity ladder">
     <prose>
       The
       <term-def key="productivity-ladder">productivity ladder</term-def>
@@ -122,7 +123,7 @@
       — a missing argument or unclosed call is a located hole, which is the tile parser's signature diagnostic strength — where juxtaposition demotes every arity mistake to a downstream type error. Juxtaposition also makes every adjacency a potential meld, the quadratic-per-block hazard that is the stated reason it is quarantined to shell blocks. And the genuine notational win of the Agda family is mixfix operators, not juxtaposed application; gandr already reserves that outlet in the operator-declaration form, with tiles-as-data keeping open mixfix a priced option. The notation budget goes there, and prover-facing beauty is a projection/display concern over whitespace-invariant identity, not a grammar concern.
     </prose>
   </section>
-  <section id="rs-examples" title="Examples">
+  <section id="rs-examples" status="adopted-unbuilt" title="Examples">
     <example title="Structural recursion with a marked descending call">
       <prose>The recursive scope is opened by def rec; the one recursive call carries the descending sigil in the instantiation slot; the unmarked spelling add(p, n) inside the body is an error with a did-you-mean suggestion.</prose>
       <code language="text">def rec add(m: Nat, n: Nat) -&gt; Nat {
@@ -155,9 +156,9 @@ in def rec add(m: Nat, n: Nat) -&gt; Nat {
 in add(Succ(Zero), Succ(Zero))</code>
     </example>
   </section>
-  <section id="rs-edge" title="Edge cases, implementation gates, and adjacent non-decisions">
+  <section id="rs-edge" status="partial" title="Edge cases, implementation gates, and adjacent non-decisions">
     <prose>Escaping self-reference: a marked occurrence that is not a call — fold(add[&lt;], xs), the definition passed to a higher-order function — is admitted by the grammar (the slot is an instantiation form over any operand), declined by the guardedness rung (structural descent through an escaping reference is not syntactically checkable), and accepted by the sized rung (a partially size-instantiated reference is meaningful). The decline is designed, not accidental, and the diagnostic must say which rung refused it.</prose>
-    <prose>Sigil molding is an implementation gate, not a settled fact: &lt; and &gt; are operator tiles, and inside the slot they appear with no operands, so the slot interior must be its own sort in which the sigils mold as atoms — the same by-context molding the copattern dot already relies on against the projection dot. The duplicate-tile check must pass before the [&lt;] spelling is ratified; the fallback under a failed gate is word-atom sigils in the same slot, at a legibility cost and no design change.</prose>
+    <prose>Sigil molding passed its implementation gate: &lt; and &gt; are operator tiles, but the instantiation slot has its own grammar sort in which both sigils mold as atoms, distinct from binary expressions. The duplicate-tile check passes with copattern and postfix dots continuing to mold by context. At the current parser rung, a qualified call head in a recursive body is grouped as (outer.f)(args); removing that grouping requirement is a parser refinement, not a change to the qualified-path escape semantics.</prose>
     <prose>Adjacent non-decisions, recorded so this component does not silently spend them. The let keyword, freed by the value/computation binder pair (val x = v; / run x &lt;- c;), stays unassigned; its strongest claimant is a transparent definitional binder — one whose unfolding is visible to conversion — at the dependent-types rung, semantically distinct from val's opaque bind, and reserving keywords early breaks identifiers for no gain. The mut keyword stays unreserved pending the value-semantics/modes design pass; nothing in this component pre-commits the mutation story to modes over the effect row or the reverse, and the marker slot deliberately carries no aliasing or mode content. Display-layer elision of inferable markers in prover-facing renderings is endorsed as a projection concern and constrains nothing here. Finally, the diagnostic quality bar of the self-reference rule is normative: the unmarked-self-name error must carry the did-you-mean suggestion, because the rule's safety argument (error, never capture) assumes the repair is offered, not hunted.</prose>
   </section>
   <references>

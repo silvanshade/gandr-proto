@@ -3,9 +3,9 @@
 // GRADUATION: both are reserved parse-and-decline. The operator-fixity form
 // `op <fixity> <level> "spelling" ;` reuses the reserved `op` lead and a
 // string-literal spelling (so the labeler needs no user-operator token); the
-// actual per-module wiring is the `Pbg::extend` seam + wyrd-7xl7. The reserved
-// mutual-recursion `rec { … }` block (ADR-57 D4) graduates under wyrd-u7m5.
-// Parse-only; never lowered.
+// actual per-module wiring remains unbuilt. The `rec { … }` block now opens one
+// mutual-recursion scope for marked member calls; executable group lowering
+// remains unbuilt. Parse-only; never lowered.
 
 // Operator-fixity declarations (each fixity class parses).
 op infixl 6 "<|>" ;
@@ -13,5 +13,8 @@ op infixr 5 "<>" ;
 op prefix 9 "!" ;
 op postfix 9 "?" ;
 
-// The reserved mutual-recursion block: inline value / function defs.
-rec { def f = g; def g = f; }
+// A mutual-recursion block with marked cross-member calls.
+rec {
+  def even(n: Integer) -> F Bool { ret odd[<](n) }
+  def odd(n: Integer) -> F Bool { ret even[<](n) }
+}

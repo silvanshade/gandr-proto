@@ -563,6 +563,10 @@ mod contracts
                 source: ParseSource("def rec f() { f[>]() }"),
             },
             ParseCase {
+                label: CaseLabel("productive copattern marker"),
+                source: ParseSource("def rec n() { .head => 0, .tail => n[>]() }"),
+            },
+            ParseCase {
                 label: CaseLabel("combined recursion markers"),
                 source: ParseSource("def rec f() { f[<, >]() }"),
             },
@@ -575,8 +579,20 @@ mod contracts
                 source: ParseSource("def rec f() { f[n = 1]() }"),
             },
             ParseCase {
+                label: CaseLabel("reserved explicit size"),
+                source: ParseSource("def rec f() { f[size = 1]() }"),
+            },
+            ParseCase {
+                label: CaseLabel("reserved cost bound"),
+                source: ParseSource("def rec f() { f[cost = 1]() }"),
+            },
+            ParseCase {
                 label: CaseLabel("reserved tail resident"),
                 source: ParseSource("def rec f() { f[tail]() }"),
+            },
+            ParseCase {
+                label: CaseLabel("qualified outer reference"),
+                source: ParseSource("def rec f() { (outer.f)() }"),
             },
         ];
         for case in cases {
@@ -598,7 +614,7 @@ mod contracts
             result
                 .obligations()
                 .iter()
-                .map(|obligation| obligation.class)
+                .map(|obligation| (obligation.class, obligation.span))
                 .collect::<Vec<_>>()
         );
         Ok(())

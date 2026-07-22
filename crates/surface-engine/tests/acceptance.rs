@@ -2034,4 +2034,205 @@ mod tests
             }
         }
     }
+    /// Acceptance coverage for the first recursion-surface resolver rung.
+    mod recursion_surface
+    {
+        use super::*;
+
+        #[test]
+        fn marked_self_reference_reaches_recursive_definition_lowering() -> Result<(), String>
+        {
+            let error = lowering_error("def rec f(n: Integer) -> F Integer { ret f[<](n) }")?;
+            assert!(
+                matches!(
+                    error,
+                    LowerError::Unsupported { kind, .. } if kind == node_kinds::DEF_REC
+                ),
+                "the marked self-call must satisfy scope validation and reach the \
+                 not-yet-lowered recursive definition boundary, got {error:?}"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn unmarked_self_reference_is_a_hard_error_with_a_marked_suggestion() -> Result<(), String>
+        {
+            let error = lowering_error("def rec f(n: Integer) -> F Integer { ret f(n) }")?;
+            assert!(matches!(
+                error,
+                LowerError::UnmarkedRecursiveReference {
+                    ref name,
+                    ref suggestion,
+                    ..
+                } if name == "f" && suggestion == "f[<](…)"
+            ));
+            Ok(())
+        }
+
+        #[test]
+        fn qualified_outer_reference_escapes_the_recursive_binding() -> Result<(), String>
+        {
+            let error = lowering_error("def rec f(n: Integer) -> F Integer { ret (outer.f)(n) }")?;
+            assert!(
+                matches!(
+                    error,
+                    LowerError::Unsupported { kind, .. } if kind == node_kinds::DEF_REC
+                ),
+                "the qualified call must pass recursive-name resolution and reach the \
+                 not-yet-lowered recursive definition boundary, got {error:?}"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn marked_mutual_group_reaches_recursive_group_lowering() -> Result<(), String>
+        {
+            let error = lowering_error(concat!(
+                "rec { ",
+                "def even(n: Integer) -> F Integer { ret odd[<](n) } ",
+                "def odd(n: Integer) -> F Integer { ret even[<](n) }",
+                " }",
+            ))?;
+            assert!(
+                matches!(
+                    error,
+                    LowerError::Unsupported { kind, .. } if kind == node_kinds::REC_BLOCK
+                ),
+                "the marked group must satisfy scope validation and reach the \
+                 not-yet-lowered recursive-group boundary, got {error:?}"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn unmarked_mutual_peer_is_a_hard_error_with_a_marked_suggestion() -> Result<(), String>
+        {
+            let error = lowering_error(concat!(
+                "rec { ",
+                "def even(n: Integer) -> F Integer { ret odd(n) } ",
+                "def odd(n: Integer) -> F Integer { ret even[<](n) }",
+                " }",
+            ))?;
+            assert!(matches!(
+                error,
+                LowerError::UnmarkedRecursiveReference {
+                    ref name,
+                    ref suggestion,
+                    ..
+                } if name == "odd" && suggestion == "odd[<](…)"
+            ));
+            Ok(())
+        }
+
+        #[test]
+        fn reserved_marker_residents_have_named_decline_messages() -> Result<(), String>
+        {
+            let cases = [
+                (
+                    "def rec f(n: Integer) -> F Integer { ret f[n <](n) }",
+                    "reserved for named measures",
+                ),
+                (
+                    "def rec f(n: Integer) -> F Integer { ret f[n = 1](n) }",
+                    "reserved for explicit instantiation",
+                ),
+                (
+                    "def rec f(n: Integer) -> F Integer { ret f[size = 1](n) }",
+                    "reserved for explicit sizes",
+                ),
+                (
+                    "def rec f(n: Integer) -> F Integer { ret f[cost = 1](n) }",
+                    "reserved for cost bounds",
+                ),
+                (
+                    "def rec f(n: Integer) -> F Integer { ret f[tail](n) }",
+                    "reserved for tail-call assertions",
+                ),
+            ];
+            for (source, expected) in cases {
+                let error = lowering_error(source)?;
+                assert!(
+                    error.to_string().contains(expected),
+                    "reserved resident must name its decline class: {error}"
+                );
+            }
+            Ok(())
+        }
+
+        #[test]
+        fn total_lowering_recovers_scope_errors_as_item_local_holes() -> Result<(), String>
+        {
+            let lowered = lower_source_total(
+                "def ok = 1; def rec f(n: Integer) -> F Integer { ret f(n) }".into(),
+            )
+            .map_err(|error| format!("total lowering failed: {error}"))?;
+            let names = lowered
+                .items
+                .iter()
+                .filter_map(|item| item.name.as_deref())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                vec!["ok", "f"],
+                names,
+                "a recursive scope error must not consume its successful sibling item"
+            );
+            assert!(
+                lowered.origin.iter().any(|(_id, entry)| {
+                    matches!(
+                        entry.note,
+                        Some(HoleNote::UnsupportedForm { kind })
+                            if kind == node_kinds::IDENTIFIER
+                    )
+                }),
+                "the failed recursive item must carry an item-local unmarked-reference hole"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn total_lowering_recovers_mutual_scope_errors_as_item_local_holes() -> Result<(), String>
+        {
+            let lowered = lower_source_total(
+                concat!(
+                    "rec { ",
+                    "def even(n: Integer) -> F Integer { ret odd(n) } ",
+                    "def odd(n: Integer) -> F Integer { ret even[<](n) }",
+                    " } ",
+                    "def ok = 1;",
+                )
+                .into(),
+            )
+            .map_err(|error| format!("total lowering failed: {error}"))?;
+            assert_eq!(
+                2,
+                lowered.items.len(),
+                "a failed recursive group and its successful sibling each yield one item"
+            );
+            assert!(
+                lowered
+                    .items
+                    .iter()
+                    .any(|item| item.name.as_deref() == Some("ok")),
+                "the successful sibling after a failed recursive group must survive"
+            );
+            assert!(
+                lowered.origin.iter().any(|(_id, entry)| {
+                    matches!(
+                        entry.note,
+                        Some(HoleNote::UnsupportedForm { kind })
+                            if kind == node_kinds::IDENTIFIER
+                    )
+                }),
+                "the failed recursive group must carry an item-local unmarked-reference hole"
+            );
+            Ok(())
+        }
+
+        fn lowering_error(source: &str) -> Result<LowerError, String>
+        {
+            lower_source(source.into())
+                .err()
+                .ok_or_else(|| "strict lowering must decline the source".to_owned())
+        }
+    }
 }

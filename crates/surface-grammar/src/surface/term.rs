@@ -811,7 +811,8 @@ fn patterns(
 /// # Contract
 /// - requires: `p` is a precedence in the built-in PBG.
 /// - ensures: type arguments, direction sigils, named measures, explicit
-///   residents, and `tail` inhabit only [`Sort::Instantiation`].
+///   residents (including reserved `size = e` and `cost = e` forms), and `tail`
+///   inhabit only [`Sort::Instantiation`].
 /// - provides: an atom-only context for `<` and `>` that is distinct from their
 ///   binary-expression molds.
 /// - fails: never.
