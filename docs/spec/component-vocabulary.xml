@@ -34,7 +34,7 @@
     </definition>
     <grammar>
       <production symbol="component">'&lt;component&gt;' status blocks* '&lt;/component&gt;'</production>
-      <production symbol="block">section | prose | judgements | grammar | rule | definition | diagram | code | example | references</production>
+      <production symbol="block">section | prose | judgements | grammar | rule | definition | diagram | code | example | list | table | references</production>
       <production symbol="status">built | partial | adopted-unbuilt | design-pass | dormant</production>
     </grammar>
     <judgements title="Judgement forms">
@@ -46,6 +46,56 @@
       <premise>Gamma tack.r e_2 : A</premise>
       <conclusion>Gamma tack.r e_1 e_2 : B</conclusion>
     </rule>
+    <prose>
+      The payload register of the two-register weave, exercised: dictionary, decision, and staging content authors as a
+      <term key="component"/>
+      table; enumerated registers as a list; normative API surfaces as an api-role code block — the schema itself is the example — and section-granular links as refs. Each exists so a class of dense payload never has to flatten into prose.
+    </prose>
+    <table caption="The payload blocks and links of the two-register weave">
+      <header>
+        <cell>Block</cell>
+        <cell>Shape</cell>
+        <cell>Payload role</cell>
+      </header>
+      <row>
+        <cell>table</cell>
+        <cell>caption, header row, body rows of inline cells</cell>
+        <cell>Dictionary, decision, mapping, and staging tables — never flattened to prose.</cell>
+      </row>
+      <row>
+        <cell>list</cell>
+        <cell>ordered flag, items with an optional bold lead</cell>
+        <cell>Enumerated registers: obligations, open questions, residual seams.</cell>
+      </row>
+      <row>
+        <cell>code (api role)</cell>
+        <cell>verbatim signatures, no expectation attributes</cell>
+        <cell>Normative API surfaces — typed signatures and data layouts, never executed.</cell>
+      </row>
+      <row>
+        <cell>ref</cell>
+        <cell>inline, targets a corpus anchor</cell>
+        <cell>Cross-component and section-granular links; the readability answer to density, validated like term and cite.</cell>
+      </row>
+    </table>
+    <list ordered="true">
+      <item lead="first">Every load-bearing artifact lives in a block.</item>
+      <item lead="second">Every block gets an introducing prose paragraph.</item>
+      <item lead="third">
+        Density is answered by spreading out, explaining, and linking — as this section's
+        <ref target="cv-examples"/>
+        link illustrates — never by dropping.
+      </item>
+    </list>
+    <code language="rust" role="api">// The block taxonomy, quoted from the normative schema (workflow-docs::model)
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Block {
+    Section(Section), Prose(Vec&lt;Inline&gt;), Judgements(Judgements),
+    Grammar(Vec&lt;Production&gt;), Rule(Rule), Definition(Definition),
+    Diagram(Diagram), Code(CodeBlock), Example(Example),
+    List(List), Table(Table), References(Vec&lt;CiteKey&gt;),
+}</code>
     <diagram caption="A component contains sections, which contain blocks." cites="A-1a" id="cv-diagram">#diagram(
   node((0,0), [component]),
   node((1,0), [section]),
