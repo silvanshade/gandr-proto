@@ -1,0 +1,5 @@
+// Failure golden: a bare list literal cannot infer its element type
+// (check-only literal discipline, ADR-40); the checker reports it.
+[1, 2, 3]
+
+//@ expect-diagnostic: list

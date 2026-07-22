@@ -41,6 +41,10 @@ gandr-kernel-strata = { path = "../kernel-strata" }
 # storage crates consume kernel-core, never the reverse (acyclic).
 gandr-storage-artifact = { path = "../storage-artifact" }
 gandr-storage-prolly-trees = { path = "../storage-prolly-trees" }
+# Live total lowering for the F4 corpus sweeps. This is a test-only back-edge:
+# surface-engine consumes core-sequent at runtime, while core-sequent's own
+# library graph remains acyclic.
+gandr-surface-engine = { path = "../surface-engine" }
 proptest = { workspace = true }
 
 [features]

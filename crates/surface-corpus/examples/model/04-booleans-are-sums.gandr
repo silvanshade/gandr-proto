@@ -1,0 +1,13 @@
+// gandr has no primitive boolean.
+//
+// `Bool` is the sum `1 + 1`: `true` is the left injection of unit, `false`
+// the right, and the comparison operators return exactly that. Nothing about
+// booleans is special-cased in the core -- `if` is sugar over `case`.
+//
+// The harness renders values *structurally* (the surface pretty-printer is a
+// separate, pending piece), so "true" honestly reads as `Inl(())` below.
+1 < 2
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: Inl(())

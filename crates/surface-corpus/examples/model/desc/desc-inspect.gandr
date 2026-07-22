@@ -1,0 +1,12 @@
+// Levitation stage 0 makes a datatype declaration inspectable before it makes
+// constructors executable user values.
+//
+// The PBG parses this declaration and the stage-0 elaborator turns it into a
+// Rust-side `DataDesc`: a tagged, first-order description whose nullary
+// constructors carry the unit code. This is supporting implementation surface,
+// not yet a dependent universe or generic programming inside gandr.
+data Traffic { Stop, Go, Wait }
+
+// The harness elaborates and renders the description deterministically:
+//@ mode: desc
+//@ expect-desc-render: data Traffic { Stop = 1, Go = 1, Wait = 1 }

@@ -1,0 +1,35 @@
+// Surface fold-in — user-written typed holes `?` and `?name`.
+//
+// GRADUATION: user holes are FIRST-CLASS surface, not incomplete input. A `?`
+// (anonymous) or `?name` (named, addressing the hole in the goal stream) is a
+// legitimate axiom — the melder molds it to a complete hole meld with ZERO
+// obligations, and its optional name attaches as the `hole_name` tail. This
+// fixture is the parser-side witness (wyrd-bsmf) that a hole never absorbs the
+// tile closing an enclosing form: the `;` / `}` / `,` / `)` after a hole, and
+// an infix operator beside one, all stay flat siblings. The hole SEMANTICS —
+// each hole reported as a typed GOAL, holey items left unevaluated — are the
+// typing machine's (model example 12-typed-holes covers the `{ }` block hole);
+// the consumer of this structural guarantee is the lower.rs migration
+// (wyrd-ohzn), which needs the closer to remain a flat sibling for block
+// recovery. Parse-only, like the rest of the surface tree.
+
+// A bare anonymous hole as a def value: the `;` terminator stays a sibling.
+def anon = ?;
+
+// A named hole: the name attaches to the hole, the `;` stays a sibling.
+def named = ?goal;
+
+// Holes at operand positions in an infix chain (both bare and named).
+def in_infix = ? + 1;
+def named_infix = ?lhs + ?rhs;
+
+// Holes as call arguments: the `,` and `)` stay flat siblings.
+def in_call = f(?, 2);
+
+// Holes inside a thunk block (computation position): the `}` closes the block,
+// not the hole.
+def in_thunk = thunk { ? };
+def seeded = thunk { ret ?seed };
+
+// A hole in each tuple slot: the `,` and `)` stay siblings.
+def pair_hole = (?, ?slot);

@@ -1,0 +1,19 @@
+// Branching on a command's reply — the script shape real automation needs.
+//
+// `case` and `if` are check-only (they need an expected type), and an
+// expression-only script has no `def` signature to carry one. The
+// computation-sorted ascription `(t : F A)` fills that hole: it elaborates
+// through the thunk annotation (`force ((thunk t) : U_ω (F A))`), so the
+// `if` below is checked against `F String` and the script stays a single
+// expression item.
+//
+// `test -d /tmp` exits zero exactly when the directory exists, so the
+// reply's `exit_code` field drives the branch through the prelude's `==`.
+{
+  run probe <- #!{ test -d /tmp; };
+  (if probe.exit_code == 0 { ret "present" } else { ret "absent" } : F String)
+}
+
+// The harness checks:
+//@ mode: shell
+//@ expect-shell-value: "present"

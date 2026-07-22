@@ -1,0 +1,21 @@
+// A declared datatype nested inside a bigger type (ADR-80; ADR-54 §3.4).
+//
+// A declared datatype is a nominal type former like any other, so it can appear
+// INSIDE a bigger type -- here `Maybe(Integer)` is the element type of a
+// `List(...)`. The ascription `List(Maybe(Integer))` rewrites the nested
+// `Maybe` to its nominal handle at depth (not only at the top of the type), so
+// the list of constructor values checks against it: each element is a
+// `Maybe(Integer)`.
+data Maybe(a) { None, Some(x: a) }
+
+def sum_first() -> F Integer {
+  run items <- ret ([Some(1), None, Some(3)] : List(Maybe(Integer)));
+  ret 7
+}
+
+sum_first()
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: sum_first
+//@ expect-last-value: 7

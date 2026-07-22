@@ -1,0 +1,6 @@
+// Failure golden: a `def name : T;` member signature is only valid when the
+// matching implementation follows in the same module body.
+module Bad { def missing : Integer; }
+
+//@ mode: shell
+//@ expect-shell-error: signature for `missing` has no matching definition

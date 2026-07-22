@@ -1,0 +1,26 @@
+// W4e surface fold-in — shell double-quoted strings (parse-only fixture).
+//
+// GRADUATION: the shell DSL's double-quoted string enters the PBG grammar now
+// (wyrd-83wx) as ONE string atom — a `"`-delimited run of fragment text (with
+// interior spaces preserved), `\.` escapes, and `$name` / `${name}` parameter
+// expansions — rather than the juxtaposed shell words it previously degraded
+// to. The labeler's shell double-quote mode lexes the constituent tokens, and
+// `double_quoted_string` is rewired off its dead `variable_expansion` /
+// `command_substitution` composite tiles onto the inline expansion shape
+// (command substitution inside a string is the deferred POSIX tail). The
+// SEMANTICS (field-splitting-free expansion into a single argument) graduate
+// under the wyrd-83wx gandr-shell wiring follow-up. Parse-only; never lowered.
+
+// A quoted argument with interior spaces is ONE word, not two.
+#!{ echo "hello world"; }
+
+// Escapes are live inside double quotes (a tab and a newline).
+#!{ printf "col1\tcol2\n"; }
+
+// Parameter expansion inside double quotes: simple and braced, interleaved
+// with literal fragments.
+#!{ echo "home is $HOME and user is ${USER}"; }
+
+// Single- and double-quoted arguments side by side: the single-quoted run is
+// verbatim (its `$x` stays literal), the double-quoted run expands.
+#!{ printf '%s\n' "value $x"; }

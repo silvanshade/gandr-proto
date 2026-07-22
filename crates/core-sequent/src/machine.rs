@@ -2090,6 +2090,39 @@ pub fn run_comp_with_prelude(
     }
 }
 
+/// Focuses a checked-core computation under a prelude and runs it while
+/// offering host-interceptable operations to `handler`.
+///
+/// This composes [`run_comp_with_prelude`] and [`run_comp_with_host`] without
+/// dropping either capability; source-level host programs need both operator
+/// resolution and the ADR-35 D4 host seam.
+///
+/// # Contract
+/// - ensures: `L-run(𝓕(comp))` under `bindings`, with every handler-less
+///   `perform` offered to `handler`;
+/// - ensures: a focusing failure surfaces as
+///   [`StuckReason::InvalidClosureBody`];
+/// - panics: none (barring a panic thrown by `handler`).
+#[inline]
+#[must_use]
+pub fn run_comp_with_prelude_and_host<H>(
+    comp: &Comp,
+    bindings: &[(String, Value)],
+    handler: &mut H,
+) -> Eval
+where
+    H: HostHandler,
+{
+    match crate::focus::focus_comp_with_prelude(comp, bindings) {
+        | Ok(prepared) => {
+            let (focused, prelude) = prepared.into_parts();
+            let (arena, root, origins) = focused.into_parts();
+            LMachine::new_with_prelude(arena, origins, prelude).run_with_host(root, handler)
+        },
+        | Err(_) => Eval::Stuck(StuckReason::InvalidClosureBody),
+    }
+}
+
 /// Focuses a lowered top-level term (a value or a computation) and runs it on a
 /// fresh L machine to a terminal — the entry the corpus differential drives.
 ///

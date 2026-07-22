@@ -1,0 +1,28 @@
+// FFI as an effect — capability gating for free.
+//
+// Because a foreign call is a `perform` at the host seam (proposal-ffi.md
+// §3.1), three properties fall out with no extra machinery:
+//
+//   * INTERCEPTION. A source-level handler over the module shadows the native
+//     FFI handler, so a test can run against a pure mock with no library loaded.
+//   * AN HONEST TYPE. The effect row `⟨sensor⟩` on the result records that the
+//     call reaches foreign code — effect-polymorphic code stays honest.
+//   * LEAST AUTHORITY. A world that installs no FFI handler cannot make the
+//     call: the machine BLAMES the unhandled `perform` (proposal-ffi.md §3.2).
+//     Blame is a *defined* halt, not a crash — the capability-denied outcome
+//     made visible.
+//
+// This example declares a foreign `sensor` module and then calls it in a world
+// with no handler installed: the call type-checks cleanly (its row is honest),
+// then blames `perform-no-handler`. That single fact is the whole least-
+// authority story — the most dangerous operation gandr has is denied by simply
+// not answering it.
+
+//@ mode: session
+//@ expect-blame: perform-no-handler
+
+extern "c" from "sensor" {
+  def read(channel: i32) -> i64;
+}
+
+sensor.read(0i32)

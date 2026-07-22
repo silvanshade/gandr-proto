@@ -1,0 +1,22 @@
+// Coverage: a copattern definition must answer every declared observation.
+//
+// Coverage (ADR-66 §4.1) is the copattern dual of a `case`'s exhaustiveness --
+// the lhs-problem elaboration diagnoses an *unanswered observation*, exactly as
+// the Maranget matrix diagnoses a missing constructor. `Point` declares two
+// observations, `x` and `depth`; this definition answers only `x`.
+//
+// Under route (a) the gap surfaces through the codata definition's carrier
+// ascription: the record `#{ x = ... }` is checked against `Point`'s carrier
+// `#{ x: U_ω (F Integer), depth: U_ω (F Integer) }`, and the ADR-45 record
+// former's width+depth discipline rejects the short record with a type mismatch
+// that names the unanswered observation `depth`. (A future nominal codata type
+// would name the coverage gap more directly; the structural carrier is the
+// zero-frozen-core MVP.)
+codata Point { x: Integer, depth: Integer }
+
+def rec incomplete() -> Point {
+  .x => 0
+}
+
+// The golden is the diagnostic naming the unanswered observation `depth`:
+//@ expect-diagnostic: depth

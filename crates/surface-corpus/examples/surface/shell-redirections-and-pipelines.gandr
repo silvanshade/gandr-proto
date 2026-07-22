@@ -1,0 +1,38 @@
+// W4e surface fold-in — shell redirections, pipelines, and list operators
+// (parse-only fixture).
+//
+// GRADUATION: the shell DSL's redirection class, pipelines, and control / list
+// separators are exercised as real molded forms (wyrd-83wx). The redirection
+// operators (`>`, `>>`, `<`, `<&`, `>&`, `<>`) were already molded; W4e makes
+// the file descriptor (`2>`, `2>&1`) real — a digit run abutting a redirection
+// now molds as `file_descriptor` (grammar.js `file_descriptor`) rather than a
+// stray shell word, so `redirection` captures `fd op target` properly. The
+// pipeline `|` / `|&` is a binary infix; `&&` / `||` and `;` / `&` are the
+// control and list separators. The SEMANTICS (wiring these to the host
+// Exec/Fs/Proc effects) graduate under the wyrd-83wx gandr-shell wiring
+// follow-up — a shell block today still lowers only flat simple commands, so
+// these forms parse but do not yet run. Parse-only; never lowered.
+//
+// NOTE: commands are kept SHORT (few juxtaposed atoms per block). Shell command
+// juxtaposition is O(atoms^2) in the melder today (each juxtaposed atom triggers
+// a Degrout that walks the slope) — a pre-existing hazard flagged for a follow-up
+// (making the `command` rule absorb arguments as form-continuations). Short
+// blocks keep this fixture well inside the batch p99 budget.
+
+// Output, append, and input redirections.
+#!{ echo hi > out; }
+#!{ echo more >> out; }
+#!{ cat < in; }
+
+// A redirection file descriptor: stderr to a file, and stderr merged to stdout.
+#!{ make 2> err; }
+#!{ make 2>&1; }
+
+// Pipelines: plain `|` and the stderr-merging `|&`.
+#!{ cat data | sort; }
+#!{ make |& tee log; }
+
+// Logical control (`&&` / `||`) and the list separators (`;` / `&`).
+#!{ probe && report; }
+#!{ probe || abort; }
+#!{ warm; run & }

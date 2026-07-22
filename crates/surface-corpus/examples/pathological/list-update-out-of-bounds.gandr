@@ -1,0 +1,7 @@
+// Failure golden: an out-of-bounds list-update index is a DEFINED halt, not a
+// panic. On the gradual surface the builtin degenerates to a hole, which
+// evaluates to `Blame::Hole` (proposal-value-semantics-mvp §3.2). Index 9 is
+// past the end of a 3-element list.
+list.set([1, 2, 3], 9, 0)
+
+//@ expect-blame: hole

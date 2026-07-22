@@ -1,0 +1,16 @@
+// The exit-code guard — the gate-script shape (`proc.exit` from source,
+// `wyrd-jir7`). `env.get` replies with the variable's value (the empty
+// string when unset), the pure `if` computes the verdict code (checked
+// against `F Integer` through the computation-sorted ascription,
+// 24-shell-conditionals), and `proc.exit` truncates the run with it — the
+// host's `Exit` action, not a returned value. A CI harness reads this
+// program's exit status exactly as it would a shell script's.
+{
+  run missing <- env.get("GANDR_CORPUS_UNSET_VARIABLE_ZZQ");
+  run code <- (if string.eq(missing, "") { ret 3 } else { ret 7 } : F Integer);
+  proc.exit(code)
+}
+
+// The harness checks:
+//@ mode: shell
+//@ expect-shell-exit: 3

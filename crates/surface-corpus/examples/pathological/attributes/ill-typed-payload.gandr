@@ -1,0 +1,7 @@
+// A payload that violates its schema is the ordinary record/scalar type error,
+// surfaced at the payload node (proposal-attributes.md §3.1) — no
+// attribute-specific machinery explains it. `doc` wants a `String`; `42` is an
+// `Integer`.
+//@ expect-diagnostic: type mismatch
+@[doc(42)]
+def f = 42;

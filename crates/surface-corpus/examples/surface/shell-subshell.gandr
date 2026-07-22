@@ -1,0 +1,25 @@
+// W4e surface fold-in — shell subshell grouping (parse-only fixture).
+//
+// GRADUATION: the shell DSL's subshell `[ … ]` is a real molded form again
+// (wyrd-83wx). W4c had folded it away because its `[` opener competed with the
+// host list literal at every `[`; W4e reintroduces it on DISTINCT shell-context
+// bracket tiles (emitted only inside a shell block), so the host list-literal
+// `[` menu is untouched and the form is genuinely moldable — not a dead rule.
+//
+// DIVERGENCE from POSIX sh: the gandr shell dialect spells a subshell `[ … ]`
+// (the committed tree-sitter `subshell`), NOT the POSIX `( … )` — `[` is the
+// POSIX `test` builtin, and `( … )` is kept free for the `$( … )` host escape.
+// The SEMANTICS (running the group in a child world) graduate under the
+// wyrd-83wx gandr-shell wiring follow-up. Parse-only; never lowered.
+
+// A subshell groups a `;`-separated command list.
+#!{ [ cd build; ls ]; }
+
+// A single-command subshell.
+#!{ [ echo hi ]; }
+
+// Subshells compose with the pipeline and list operators like any command.
+#!{ [ cd src; grep foo ] | sort; }
+
+// Nested subshells.
+#!{ [ echo outer; [ echo inner ] ]; }

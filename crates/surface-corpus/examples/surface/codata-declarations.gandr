@@ -1,0 +1,20 @@
+// W4d surface fold-in — `codata` datatype declarations (parse-only fixture).
+//
+// GRADUATION: `codata` and its lowercase-led observation members enter the PBG
+// grammar now (wyrd-ku0f); corecursion / copattern SEMANTICS graduate under
+// wyrd-e0xy (companion to the `data` face). `codata` reserves as one whole
+// keyword, so it never lexes as `co` + `data`. Parse-only; never lowered.
+
+// A stream: each observation is `name: Type`.
+codata Stream(a) { head: a, tail: Stream(a) }
+
+// An anonymous record type inside an observation is already grammatical.
+codata Iter(a) { next: F(Option(#{ item: a, rest: Iter(a) })) }
+
+// Reserved parameterized observation `ap(x: a): b`, and a reserved grade
+// prefix on an observation.
+codata Fun(a, b) { ap(x: a): b }
+codata Session { 1 step: F(Unit) }
+
+// Reserved `rule` 2-cell member also rides the codata block.
+codata Colist(a) { head: a, tail: Colist(a), rule tail(x) ~> x }

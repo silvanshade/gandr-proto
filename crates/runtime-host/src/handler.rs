@@ -275,6 +275,14 @@ impl ShellHandler
         clippy::filetype_is_file,
         reason = "the chain deliberately separates a regular file from a symlink or other node; !is_dir would fold symlinks into `file`"
     )]
+    #[expect(
+        clippy::allow_attributes,
+        reason = "stable Clippy flags std::io as replaceable while the nightly gate recognizes core::io as unstable, so one cross-toolchain allow is required"
+    )]
+    #[allow(
+        clippy::std_instead_of_core,
+        reason = "core::io::ErrorKind remains unstable on the workspace toolchain"
+    )]
     fn fs_stat(payload: &Value) -> Result<Value, ShellError>
     {
         let path = codec::decode_str(sig::FS, sig::FS_STAT, payload)?;
@@ -331,6 +339,14 @@ impl ShellHandler
     /// systematically collide with a prior run's persisted directories. The
     /// returned path is rendered lossily, so it assumes the OS temp dir is
     /// valid UTF-8 (the `Value::Str` model).
+    #[expect(
+        clippy::allow_attributes,
+        reason = "stable Clippy flags std::io as replaceable while the nightly gate recognizes core::io as unstable, so one cross-toolchain allow is required"
+    )]
+    #[allow(
+        clippy::std_instead_of_core,
+        reason = "core::io::ErrorKind remains unstable on the workspace toolchain"
+    )]
     fn fs_tempdir(&mut self) -> Result<Value, ShellError>
     {
         let base = env::temp_dir();

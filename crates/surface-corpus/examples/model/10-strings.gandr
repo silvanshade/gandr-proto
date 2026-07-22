@@ -1,0 +1,29 @@
+// String builtins from the prelude's `string` module.
+//
+// Strings are owned UTF-8 values (the string model is its own design record,
+// `wyrd-sab2`); the `string` module carries the native predicates and small
+// text transforms. Predicates return `Bool = 1 + 1`, so a hit renders as
+// `Inl(())` (04).
+def slogan = "types are machines";
+
+string.contains(slogan, "machine");
+
+// Whole-string equality is `string.eq` — the string counterpart of the
+// numeric `==` operator (which is numeric-only), and the prim string-literal
+// patterns dispatch through. Same `Bool = 1 + 1` carrier.
+string.eq(slogan, "types are machines");
+
+// `starts_with` / `ends_with` are the prefix/suffix predicates automation
+// scripts need; `split` returns an ordinary list of strings; `escape` quotes
+// regex metacharacters when a string is about to become a literal pattern.
+def has_prefix = string.starts_with(slogan, "types");
+def has_suffix = string.ends_with(slogan, "machines");
+def escaped = string.escape("a+b.txt");
+
+string.split("alpha,beta", ",")
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: slogan
+//@ expect-def: escaped
+//@ expect-last-value: ["alpha", "beta"]

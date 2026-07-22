@@ -1,0 +1,14 @@
+// Updating a nested field is compositional -- there is no special "deep
+// update" syntax. Read the inner record off the base with a projection, update
+// it with its own `#{ ... | ... }`, and hand that as the override for the outer
+// field (proposal-value-semantics-mvp §3.1). Each layer is an ordinary update.
+def outer = #{ tag = "t", inner = #{ x = 1, y = 2 } };
+
+// `outer.inner` reads the inner record (a projection, delivering a computation
+// that is sequenced for us); the inner update rebuilds it with y = 9; the outer
+// update overlays the rebuilt inner. `outer` is untouched throughout.
+#{ outer | inner = #{ outer.inner | y = 9 } }
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: #{inner = #{x = 1, y = 9}, tag = "t"}

@@ -1,0 +1,20 @@
+// `def` binds a name for later items to use.
+//
+// The session runs a definition's body once, at definition time, and stores
+// the returned *value* -- later expressions see that value, never a re-run of
+// the computation (the memoization a REPL user expects, and a first taste of
+// CBPV's explicit sequencing: things run exactly where the program says they
+// run).
+// (The `;` matters: newlines are insignificant between items, so a value
+// definition is terminated explicitly -- otherwise the next item would be
+// read as a continuation of this expression.)
+def greeting = "the value zone";
+
+// A variable is a value (CBPV: only values can be variables), so returning it
+// is again one `ret` away.
+ret greeting
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: greeting
+//@ expect-last-value: "the value zone"

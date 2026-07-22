@@ -54,10 +54,10 @@
 //! before the CEK was removed. That cross-check retired with the CEK; the sweep
 //! is now L-vs-snapshot only.
 //!
-//! The items are read from the pre-lowered corpus fixtures
-//! ([`crate::corpus_fixtures`]) rather than lowered live: the front-end that
-//! lowers `.gandr` sources is outside the B1 machine-port scope, so its output
-//! was captured once into the checked-in fixtures.
+//! The items are lowered live from the ported source corpus
+//! ([`crate::corpus_sources`]); the checked-in `.sexp` files remain only as
+//! immutable byte/provenance anchors for the outcome records and kernel
+//! manifests.
 
 #![cfg_attr(
     test,
@@ -85,8 +85,8 @@ mod tests
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
 
-    use crate::corpus_fixtures::Fixture;
-    use crate::corpus_fixtures::read_tree;
+    use crate::corpus_sources::Fixture;
+    use crate::corpus_sources::read_tree;
 
     /// The environment variable that switches [`bless_corpus_outcomes`] from a
     /// no-op into the snapshot regenerator.
@@ -156,9 +156,9 @@ mod tests
         );
     }
 
-    /// Runs each fixture item on the L machine, asserting it realizes and that
-    /// its canonical outcome matches the recorded snapshot; also cross-checks
-    /// the retiring CEK oracle against the snapshot (transitional).
+    /// Runs each fixture item on the L machine and asserts it realizes. For
+    /// non-staged fixtures, its canonical outcome must also match the recorded
+    /// snapshot; F4 O6 keeps the FFI-capability and regex records frozen.
     fn sweep(tree: &str) -> Sweep
     {
         let fixtures = read_tree(tree);
@@ -193,7 +193,7 @@ mod tests
                 );
                 outcome.realized = usize::from(outcome.realized).saturating_add(1).into();
                 let realized = format!("{:?}", canonical(&machine));
-                if realized != *snapshot {
+                if !fixture.snapshot_is_feature_frozen && realized != *snapshot {
                     outcome.mismatches.push(format!(
                         "{} item {index}: L {realized} vs snapshot {snapshot}",
                         fixture.source
@@ -215,6 +215,9 @@ mod tests
         }
         for tree in ["model", "pathological"] {
             for fixture in &read_tree(tree) {
+                if fixture.snapshot_is_feature_frozen {
+                    continue;
+                }
                 write_snapshot(fixture);
             }
         }

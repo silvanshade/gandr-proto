@@ -1,0 +1,24 @@
+// Regex extraction and pure path helpers.
+//
+// `regex.extract(pattern, text)` is the native named-capture helper: a match
+// returns a record whose labels are the capture names. Failure cases live in
+// the pathological tree; this model example stays on the happy path. The
+// `path` module is pure string manipulation, not filesystem I/O: `join`,
+// `basename`, and `extension` compute over path-shaped strings and can be used
+// in ordinary session mode.
+def caps = regex.extract("^(?<stem>.*)\\.(?<ext>gandr)$", "examples/demo.gandr");
+
+def joined = path.join("examples", "demo.gandr");
+
+def leaf = path.basename(joined);
+
+def suffix = path.extension(joined);
+
+#{ capture = caps, leaf = leaf, path_ext = suffix }
+
+// The harness checks:
+//@ requires-feature: regex
+//@ expect: clean
+//@ expect-def: caps
+//@ expect-def: joined
+//@ expect-last-value: #{capture = #{ext = "gandr", stem = "examples/demo"}, leaf = "demo.gandr", path_ext = "gandr"}

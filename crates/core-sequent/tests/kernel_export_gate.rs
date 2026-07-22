@@ -47,7 +47,7 @@
 //! identity). The three tests stay; this adds the telemetry layer, and adds the
 //! missing b3sum fixture-provenance guard (W-A H3) to both single-manifest
 //! sweeps via
-//! [`corpus_fixtures_b3sum`](crate::corpus_fixtures::corpus_fixtures_b3sum).
+//! [`corpus_fixtures_b3sum`](crate::corpus_sources::corpus_fixtures_b3sum).
 //! The C5 goldens are reconstructed here (via kernel-core's public arena API)
 //! so one manifest carries the full driven corpus with the artifact identity
 //! the `kernel-core` test cannot mint (the TCB wall forbids kernel-core
@@ -106,8 +106,8 @@ mod tests
     use gandr_storage_prolly_trees::InMemoryBlockStore;
     use gandr_storage_prolly_trees::TreeParams;
 
-    use crate::corpus_fixtures::corpus_fixtures_b3sum;
-    use crate::corpus_fixtures::read_tree;
+    use crate::corpus_sources::corpus_fixtures_b3sum;
+    use crate::corpus_sources::read_tree;
 
     /// The environment variable that switches the gate from verify to bless.
     const BLESS_ENV: &str = "GANDR_BLESS_KERNEL_EXPORT";

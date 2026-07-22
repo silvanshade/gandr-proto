@@ -1,0 +1,25 @@
+// Named functions and sequencing.
+//
+// `def f(x: A) -> F B { body }` declares a function; a call `f(x)` is
+// call-position sugar for `(force f)(x)` -- the defined name holds a *thunk*
+// (a value!), and forcing it yields the function computation. This is why
+// functions can be passed around at all in a CBPV language: the value zone
+// carries them as thunks.
+//
+// `run y <- comp; rest` is the sequencing form: run `comp`, bind its returned
+// value to `y`, continue. It is the surface face of the core `bind` -- the
+// only way results flow from one computation into the next.
+def inc(x: Integer) -> F Integer {
+  ret (x + 1)
+}
+
+def twice(x: Integer) -> F Integer {
+  run y <- inc(x);
+  inc(y)
+}
+
+twice(40)
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: 42

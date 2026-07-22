@@ -1,0 +1,21 @@
+// Entity attributes: the leading `@[...]` marker attaches typed metadata to a
+// declaration without changing what the declaration *is*
+// (proposal-attributes.md §2). Attributes stack — one item takes several — and
+// each carries a payload the ordinary checker types against its schema: `doc`
+// wants a `String`, `deprecated` wants a record `#{ since : String, note :
+// String }`. Attribute typing *is* ordinary value typing, no new rule.
+//
+// The attributes are inert: they live in a side table keyed by the item, never
+// in its core-IR term, so `square`'s content-address is unchanged by adding,
+// editing, or removing them (proposal-attributes.md §4.2, the `wyrd-q5r0`
+// default). This is the canonical first read for the marker.
+//
+//@ expect: clean
+//@ expect-def: square
+//@ expect-attribute: doc
+//@ expect-attribute: deprecated
+@[doc("Squares its argument.")]
+@[deprecated(#{ since = "0.2", note = "use square_checked" })]
+def square(x: Integer) -> F Integer {
+  ret (x * x)
+}

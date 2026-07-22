@@ -1,9 +1,9 @@
 //! The **S1-eligible corpus partition** (gandr-wvd.2, B2.3 deliverable 3).
 //!
-//! The pre-lowered corpus ([`crate::corpus_fixtures`]) is the checked-in output
-//! of the elaborator's lowering, so its items are exactly the checked core CBPV
-//! terms the B2.3 kernel bridge ([`gandr_core_checker::kernel_bridge`]) lowers
-//! FROM. This sweep classifies the corpus **per item** (never per file — the
+//! The live source corpus ([`crate::corpus_sources`]) is lowered through the
+//! elaborator, so its items are exactly the checked core CBPV terms the B2.3
+//! kernel bridge ([`gandr_core_checker::kernel_bridge`]) lowers FROM.
+//! This sweep classifies the corpus **per item** (never per file — the
 //! files-vs-items unit pitfall is a recorded hazard): an item is
 //! **S1-eligible** iff its lowered core form uses only the S1 stock, it types
 //! in the empty context, and it re-admits through the kernel choke point. Every
@@ -57,8 +57,9 @@ mod tests
     use gandr_kernel_core::write;
 
     use self::alloc::collections::BTreeMap;
-    use crate::corpus_fixtures::corpus_fixtures_b3sum;
-    use crate::corpus_fixtures::read_tree;
+    use self::alloc::collections::BTreeSet;
+    use crate::corpus_sources::corpus_fixtures_b3sum;
+    use crate::corpus_sources::read_tree;
 
     /// The environment variable that switches the sweep from verify to bless.
     const BLESS_ENV: &str = "GANDR_BLESS_KERNEL_PARTITION";
@@ -78,6 +79,8 @@ mod tests
         index: usize,
         /// The class tag (`eligible` or an exclusion class).
         class: String,
+        /// Whether F4 O6 freezes this row's pre-feature partition record.
+        snapshot_is_feature_frozen: bool,
     }
 
     /// Classify every item of every corpus tree, in a deterministic order, and
@@ -96,6 +99,7 @@ mod tests
                         | Err(tag) => tag,
                     };
                     rows.push(Classified {
+                        snapshot_is_feature_frozen: fixture.snapshot_is_feature_frozen,
                         source: fixture.source.clone(),
                         index,
                         class,
@@ -210,6 +214,16 @@ mod tests
             .collect()
     }
 
+    /// Whether a rendered row belongs to an O6 feature-frozen source.
+    fn is_feature_frozen_line(
+        line: &str,
+        sources: &BTreeSet<&str>,
+    ) -> bool
+    {
+        line.split_once('\t')
+            .is_some_and(|(source, _rest)| sources.contains(source))
+    }
+
     /// The value of a `; <name>: <value>` provenance header line, trimmed.
     fn header_value(
         text: &str,
@@ -238,7 +252,15 @@ mod tests
     fn corpus_partition_matches_the_manifest()
     {
         let rows = sweep();
-        let live = render_data_lines(&rows);
+        let feature_frozen_sources: BTreeSet<&str> = rows
+            .iter()
+            .filter(|row| row.snapshot_is_feature_frozen)
+            .map(|row| row.source.as_str())
+            .collect();
+        let live: Vec<String> = render_data_lines(&rows)
+            .into_iter()
+            .filter(|line| !is_feature_frozen_line(line, &feature_frozen_sources))
+            .collect();
         let counts = cardinalities(&rows);
         let eligible = counts.get(ELIGIBLE).copied().unwrap_or(0);
         eprintln!("kernel corpus partition: {} items", rows.len());
@@ -275,11 +297,15 @@ mod tests
              {BLESS_ENV}=1",
             path.display()
         );
-        let expected = data_lines(&text);
+        let expected: Vec<String> = data_lines(&text)
+            .into_iter()
+            .filter(|line| !is_feature_frozen_line(line, &feature_frozen_sources))
+            .collect();
         assert_eq!(
             live,
             expected,
-            "the live corpus partition drifted from `{}`; regenerate with {BLESS_ENV}=1",
+            "the non-staged live corpus partition drifted from `{}`; regenerate with \
+             {BLESS_ENV}=1",
             path.display()
         );
 

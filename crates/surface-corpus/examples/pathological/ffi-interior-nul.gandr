@@ -1,0 +1,14 @@
+//@ mode: ffi
+//@ expect-ffi-error: interior NUL
+
+// A `String` with an interior NUL passed as `CStr`. A `char*` would truncate at
+// the NUL and silently pass a shorter string than intended, so the copy is
+// REJECTED at the boundary (proposal-ffi.md §4.2) — checked at the copy, not
+// silently truncated. The run aborts with a typed boundary error rather than
+// calling C with a corrupted argument.
+
+extern "c" from "testlib" {
+  def gandr_test_strlen(s: CStr) -> u64;
+}
+
+testlib.gandr_test_strlen("a\0b")

@@ -1,0 +1,13 @@
+// List literals and concatenation.
+//
+// A bare `[1, 2, 3]` cannot *infer* its element type -- the same check-only
+// discipline as injections (06) -- so a standalone list literal carries an
+// ascription. `++` is the prelude's list concatenation operator.
+def xs = ([1, 2, 3] : List(Integer));
+
+[0] ++ xs
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: xs
+//@ expect-last-value: [0, 1, 2, 3]

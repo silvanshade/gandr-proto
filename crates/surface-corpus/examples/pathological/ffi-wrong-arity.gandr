@@ -1,0 +1,15 @@
+//@ mode: session
+//@ expect: goal
+
+// An `extern` signature disagreeing with the call: `pow` is declared binary,
+// but the call passes one argument. The foreign-call elaboration demands the
+// declared arity (proposal-ffi.md §2), so in total (REPL) lowering the mismatch
+// is elided to a typed hole — reported as a goal rather than silently building
+// a malformed call. This is the class of bug the FFI type mapping exists to
+// catch before a single byte crosses the boundary.
+
+extern "c" from "m" {
+  def pow(base: f64, exp: f64) -> f64;
+}
+
+m.pow(2.0f64)

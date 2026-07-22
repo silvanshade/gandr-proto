@@ -1,0 +1,32 @@
+// Iteration without recursion: the prelude list combinators.
+//
+// User-level recursion is a designed-but-not-yet-landed surface (the
+// recursion epic), so today iteration goes through native builtins hanging
+// off the module layer (ADR-42): `list.each` (map), `list.where` (filter),
+// `list.reduce` (fold), boolean scans (`any`/`all`), and whole-list
+// transforms (`flatten`/`uniq`/`sort`).
+//
+// Why `thunk { fn(x) { ... } }` and not a bare function: CBPV functions are
+// *computations*, and only *values* pass as arguments -- so a higher-order
+// argument is always a thunked computation. That wrapper is the U/F
+// adjunction doing real work in user syntax, not boilerplate.
+def doubled = list.each(thunk { fn(x) { x * 2 } }, [1, 2, 3]);
+
+def big = list.where(thunk { fn(x) { x > 2 } }, doubled);
+
+def total = list.reduce(thunk { fn(acc, x) { acc + x } }, 0, big);
+
+// `any` and `all` return `Bool = 1 + 1`; binding them proves they evaluate
+// without making this file about boolean rendering. The last expression keeps
+// the data-transform trio visible: flatten nested lists, remove duplicates,
+// then sort to a stable order.
+def any_big = list.any(thunk { fn(x) { x > 5 } }, big);
+def all_even = list.all(thunk { fn(x) { x > 1 } }, doubled);
+def flattened = list.flatten([[3, 1], [2, 2]]);
+
+list.sort(list.uniq(flattened))
+
+// doubled = [2, 4, 6]; big = [4, 6]; total = 10; last value = [1, 2, 3].
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: [1, 2, 3]

@@ -8,12 +8,9 @@
 //! the `𝓕`-only-entry invariant, since `★` is the only top-level continuation
 //! and every minted covariable is bound.
 //!
-//! The items are read from the pre-lowered corpus fixtures
-//! ([`crate::corpus_fixtures`]) rather than lowered live: the front-end that
-//! lowers `.gandr` sources is outside the B1 machine-port scope, so its output
-//! was captured once into the checked-in fixtures. The surface tree is excluded
-//! on purpose (it is firewalled from execution and never lowers), exactly as it
-//! was excluded when the fixtures were generated.
+//! The items are lowered live from the ported source corpus
+//! ([`crate::corpus_sources`]). The surface tree remains excluded on purpose:
+//! it is firewalled from execution and never lowers.
 
 #![cfg_attr(
     test,
@@ -35,7 +32,7 @@ mod tests
     use gandr_core_sequent::focus_term;
     use gandr_core_sequent::wellformed;
 
-    use crate::corpus_fixtures::read_tree;
+    use crate::corpus_sources::read_tree;
 
     /// `𝓕` is total on the model corpus tree.
     #[test]

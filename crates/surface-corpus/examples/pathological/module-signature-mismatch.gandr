@@ -1,0 +1,5 @@
+// Failure golden: the transparent module record signature checks the returned
+// record payload, so a member whose inferred field type disagrees is rejected.
+module Bad : #{ x: String } { def x = 1; }
+
+//@ expect-diagnostic: type mismatch

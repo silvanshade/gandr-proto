@@ -1,0 +1,10 @@
+// Stress: a deeply nested record update exercises rebuild cost -- each layer
+// reads its inner record and rebuilds it. The value answer is fixed; a future
+// uniqueness/COW pass must preserve it while reducing copies
+// (proposal-value-semantics-mvp §3.5, §8).
+def d = #{ a = #{ b = #{ c = 1 } } };
+
+#{ d | a = #{ d.a | b = #{ d.a.b | c = 9 } } }
+
+//@ expect: clean
+//@ expect-last-value: #{a = #{b = #{c = 9}}}

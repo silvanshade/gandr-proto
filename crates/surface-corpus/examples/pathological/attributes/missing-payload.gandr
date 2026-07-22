@@ -1,0 +1,6 @@
+// A schema that carries a payload cannot be written as a bare marker
+// (proposal-attributes.md §3.1): every MVP schema (`doc`, `deprecated`, and the
+// manifest fields) requires one.
+//@ expect-diagnostic: requires a payload
+@[doc]
+def f = 42;

@@ -1,0 +1,8 @@
+// Attribute purity is locality (proposal-attributes.md §3.3): a payload is
+// data, never a computation, so it cannot perform an effect. A shell block is a
+// host `Exec` computation, not a value — the value-fragment discipline rejects
+// it before any effect could run. The executable witness that "attribute purity
+// is locality".
+//@ expect-diagnostic: must be a value, not a computation
+@[doc(#!{ echo hi; })]
+def f = 42;

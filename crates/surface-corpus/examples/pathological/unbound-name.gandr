@@ -1,0 +1,5 @@
+// Failure golden: a free variable is a diagnostic, not a crash.
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+nowhere
+
+//@ expect-diagnostic: nowhere

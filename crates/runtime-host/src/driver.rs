@@ -32,7 +32,9 @@
 //! ([`run_program`]) lands on the L-machine seam here.
 
 use gandr_core_checker::boundary::OperationName;
+use gandr_core_checker::checker;
 use gandr_core_checker::effect::EffectSig;
+use gandr_core_checker::error::TypeError;
 use gandr_core_checker::host::HostHandler;
 use gandr_core_checker::host::HostOp;
 use gandr_core_checker::host::HostReply;
@@ -40,6 +42,12 @@ use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Value;
 use gandr_core_sequent::machine::run_comp_with_host;
+use gandr_core_sequent::machine::run_comp_with_prelude_and_host;
+use gandr_surface_engine::boundary::PipelineSource;
+use gandr_surface_engine::link;
+use gandr_surface_engine::lower;
+use gandr_surface_engine::prelude_ctx;
+use gandr_surface_engine::prelude_env;
 
 use crate::error::ShellError;
 use crate::handler::HostAction;
@@ -86,14 +94,73 @@ impl ShellOutcome
     }
 }
 
+/// Lowers, links, type-checks, and runs one source program under the host.
+///
+/// # Errors
+///
+/// Returns [`RunError`] when lowering, linking, or type-checking the source
+/// fails before execution.
+///
+/// # Contract
+/// - ensures: a source with a final runnable item is checked under the same
+///   prelude used by [`gandr_surface_engine::session::Session`], then executed
+///   once with both that prelude and the host-effect handler installed;
+/// - fails: malformed source, an invalid runnable-item layout, or an ill-typed
+///   linked computation;
+/// - panics: none.
+#[inline]
+pub fn run_source<'source, S>(source: S) -> Result<ShellOutcome, RunError>
+where
+    S: Into<PipelineSource<'source>>,
+{
+    let lowered = lower::lower_source(source.into())?;
+    let comp = link::link_program(&lowered)?;
+    checker::infer_comp(prelude_ctx(), comp.clone())?;
+    let prelude = prelude_env();
+    Ok(run_with_driver(|driver| {
+        run_comp_with_prelude_and_host(&comp, prelude.as_bindings(), driver)
+    }))
+}
+
+/// A failure preparing a source program for [`run_source`].
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum RunError
+{
+    /// The source failed to lower to core CBPV.
+    #[error("lowering failed: {0}")]
+    Lower(#[from] lower::LowerError),
+    /// The source has no final runnable item.
+    #[error("no runnable program: the source has no items or only declarations")]
+    NoProgram,
+    /// The lowered item stream is not a valid runnable source file.
+    #[error("program linking failed: {0}")]
+    Program(#[source] link::LinkError),
+    /// The linked computation is ill-typed and must not reach the host seam.
+    #[error("type checking failed: {0}")]
+    Type(#[from] TypeError),
+}
+
+impl From<link::LinkError> for RunError
+{
+    #[inline]
+    fn from(error: link::LinkError) -> Self
+    {
+        match error {
+            | link::LinkError::NoFinalProgram { named_count: 0 } => Self::NoProgram,
+            | other => Self::Program(other),
+        }
+    }
+}
+
 /// Runs a lowered computation under the shell host on the L machine.
 ///
 /// The program is focused and driven by
 /// [`gandr_core_sequent::machine::run_comp_with_host`]; each host-interceptable
 /// `perform` is offered to a fresh [`ShellHandler`] over the ADR-35 D4 seam.
 /// There is no ambient prelude here — the hand-built [`Comp`] entry runs
-/// exactly the operators and host effects it names (the ADR-42 prelude
-/// installation was a `run_source` concern, parked with the surface engine).
+/// exactly the operators and host effects it names. [`run_source`] is the
+/// prelude-bearing source entry.
 ///
 /// Takes the program by reference: the L driver
 /// ([`gandr_core_sequent::machine::run_comp_with_host`]) focuses and drives a

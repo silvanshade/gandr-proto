@@ -1,0 +1,7 @@
+// Failure golden: a host-module namespace is not a record (ADR-42 D2) — a
+// member the module does not declare (`fs` has no `copy`) is rejected at
+// lowering, never demoted to a structural projection or run approximately.
+fs.copy("/a", "/b")
+
+//@ mode: shell
+//@ expect-shell-error: unsupported construct

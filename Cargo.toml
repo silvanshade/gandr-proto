@@ -12,6 +12,7 @@ members = [
   "crates/storage-artifact",
   "crates/storage-chunker",
   "crates/storage-prolly-trees",
+  "crates/surface-corpus",
   "crates/surface-driver",
   "crates/surface-engine",
   "crates/surface-grammar",

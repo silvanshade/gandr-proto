@@ -1,0 +1,21 @@
+// Failure golden: deriving K (equivalently UIP) MUST fail elaboration with a
+// without-k diagnostic (ADR-76; the binding adequacy witness of the without-K
+// discipline). An elaborator that accepts this program has implemented K.
+//
+// The program is the UIP statement over a diagonal identity type: matching
+// `p : Path(Integer, n, n)` (and then `q`) against `here` requires solving the
+// reflexive equation `n = n` by DELETION -- exactly the unification step
+// without-k forbids (Cockx-Devriese-Piessens; the rung-2 lhs engine must
+// decline that step itself, with this same diagnostic spelling). At rung 1
+// here patterns do not exist at all, and `case` on an identity type is
+// rejected with the without-k reservation -- so this witness fails today and
+// stays a valid failure verbatim at rung 2.
+//
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+
+def uip(n: Integer, p: Path(Integer, n, n), q: Path(Integer, n, n)) -> F(Path(Path(Integer, n, n), p, q)) {
+  case p { here => case q { here => ret here(p) } }
+}
+
+//@ expect-diagnostic: without-k
+//@ expect-diagnostics-all: without-k

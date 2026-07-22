@@ -1,0 +1,8 @@
+// Failure golden: a host escape inside a shell command must produce a String.
+// The lowerer must not coerce numbers or ask a child shell to reinterpret the
+// value; the ordinary typing path rejects the `Integer` where `Exec::exec`'s
+// argv contract demands `String`.
+#!{ printf '%s' $(1); }
+
+//@ mode: shell
+//@ expect-shell-error: String

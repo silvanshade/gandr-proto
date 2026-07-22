@@ -1,0 +1,22 @@
+// A two-parameter tagged result and its match (ADR-80; ADR-54 §3).
+//
+// `data Either(a, b) { Left(x: a), Right(y: b) }` is the tagged-result idiom: a
+// value is either a `Left` carrying an `a` or a `Right` carrying a `b`. Each
+// constructor only *checks* (the other type parameter is not inferable from one
+// arm), so the value carries an `Either(Integer, String)` ascription. The match
+// binds the carried field in each arm.
+data Either(a, b) { Left(x: a), Right(y: b) }
+
+def from_left() -> F Integer {
+  case (Left(5) : Either(Integer, String)) {
+    Left(x) => ret x,
+    Right(y) => ret 0
+  }
+}
+
+from_left()
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: from_left
+//@ expect-last-value: 5

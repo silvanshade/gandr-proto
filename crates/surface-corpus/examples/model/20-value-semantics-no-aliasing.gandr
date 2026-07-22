@@ -1,0 +1,17 @@
+// The state-visibility red line (wyrd-h5e): after binding r2 to an update of r,
+// r STILL denotes the original. Every update yields a new value; no binding a
+// program already holds can observe a later "change"
+// (proposal-value-semantics-mvp §3.4). This is what makes the whole update
+// surface value-semantics-honest, and it is checked operationally by the
+// eval == run differential.
+def r = #{ x = 1, y = 2 };
+
+// Update THROUGH a new binding r2; r is not mentioned as a target.
+def r2 = #{ r | x = 9 };
+
+// Return the ORIGINAL r -- it is unchanged. r2 would render #{x=9, y=2}.
+r
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: #{x = 1, y = 2}

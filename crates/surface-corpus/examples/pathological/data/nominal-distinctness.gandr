@@ -1,0 +1,18 @@
+// Failure golden: generative nominal identity (ADR-80; ADR-54 §3.4).
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+//
+// `Celsius` and `Fahrenheit` have structurally-identical carriers (each one
+// constructor over a single `Integer` field), but they are DISTINCT types --
+// declaring a datatype mints a fresh nominal id, and the checker compares that
+// id before the carrier. So a `Celsius` value does not check against the
+// `Fahrenheit` type: the mixup is rejected, exactly the authority a structural
+// type cannot express.
+//
+// (Constructor names avoid `C`/`F`: bare `F` collides with the `F` returner
+// type keyword, so the constructors are spelled `Cel` / `Fah`.)
+data Celsius { Cel(x: Integer) }
+data Fahrenheit { Fah(x: Integer) }
+
+(Cel(20) : Fahrenheit)
+
+//@ expect-diagnostic: Fahrenheit

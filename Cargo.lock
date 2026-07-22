@@ -626,6 +626,7 @@ dependencies = [
  "gandr-kernel-strata",
  "gandr-storage-artifact",
  "gandr-storage-prolly-trees",
+ "gandr-surface-engine",
  "proptest",
 ]
 
@@ -678,6 +679,17 @@ dependencies = [
  "blake3",
  "gandr-storage-chunker",
  "thiserror 2.0.19",
+]
+
+[[package]]
+name = "gandr-surface-corpus"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-core-sequent",
+ "gandr-runtime-host",
+ "gandr-surface-engine",
+ "gandr-theory-levitation",
 ]
 
 [[package]]

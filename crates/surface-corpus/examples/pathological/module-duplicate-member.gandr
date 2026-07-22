@@ -1,0 +1,5 @@
+// Failure golden: a module record cannot define the same field twice.
+module Bad { def x = 1; def x = 2; }
+
+//@ mode: shell
+//@ expect-shell-error: defined more than once

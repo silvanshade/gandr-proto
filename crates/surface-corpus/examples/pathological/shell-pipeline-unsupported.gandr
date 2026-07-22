@@ -1,0 +1,7 @@
+// Failure golden: pipelines inside `#!{ }` are deliberately unsupported in
+// the v0 shell-block fragment (the A8 pipeline surface is a later semantic
+// stage); lowering must reject them loudly, never run them approximately.
+#!{ printf 'x' | cat; }
+
+//@ mode: shell
+//@ expect-shell-error: pipeline

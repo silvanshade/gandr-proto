@@ -224,7 +224,6 @@ mod tests
     }
 
     #[test]
-    #[ignore = "corpus gate: returns at F4 when surface-corpus lands (front-end-port-staging.md §9)"]
     fn corpus_parses_totally() -> Result<(), Box<dyn Error>>
     {
         // Every committed corpus program parses totally — no panic, a

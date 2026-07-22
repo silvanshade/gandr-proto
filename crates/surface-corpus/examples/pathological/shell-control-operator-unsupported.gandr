@@ -1,0 +1,8 @@
+// Failure golden: shell `&&` / `||` control belongs to the later A8 shell
+// surface. The v0 shell block accepts flat simple commands only, so control
+// operators must fail during lowering instead of being delegated approximately
+// to a child shell.
+#!{ true && false; }
+
+//@ mode: shell
+//@ expect-shell-error: unsupported construct

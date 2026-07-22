@@ -1,0 +1,16 @@
+// W4d surface fold-in — empty/absurd match and the reserved `with` view.
+//
+// GRADUATION: the empty match `case x {}` (over an uninhabited type) parses now
+// (wyrd-ku0f) via nullable case arms; the reserved `case e with e { … }`
+// scrutinee-view parses-and-declines. Both SEMANTICS graduate under wyrd-zks9
+// (pattern matching / view patterns). Parse-only; never lowered.
+
+// The absurd match over an empty scrutinee type.
+def absurd(x: Void) -> F Integer {
+  case x {}
+}
+
+// Reserved with-view: an extra `with e` scrutinee before the arm block.
+def classify(xs: List(Integer)) -> F Integer {
+  case xs with len(xs) { 0 => ret 0, _ => ret 1 }
+}

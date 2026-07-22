@@ -1,0 +1,27 @@
+// A declared datatype and its constructors (ADR-80; ADR-54 §3).
+//
+// `data Maybe(a) { None, Some(x: a) }` mints a fresh generative-nominal type:
+// its two constructors build values, and `case` eliminates them by matching on
+// the constructor. Unlike the built-in `Inl`/`Inr` sum, the nominal identity is
+// the point -- a `Maybe` is not interchangeable with any structurally-identical
+// declaration.
+//
+// A constructor application `Some(3)` only *checks* (like an injection): from
+// `Some(3)` alone the type argument `a` is not inferable, so the value carries
+// a `: Maybe(Integer)` ascription. The `case` body's result type comes from the
+// function header's `-> F Integer`.
+data Maybe(a) { None, Some(x: a) }
+
+def unwrap_or_zero() -> F Integer {
+  case (Some(3) : Maybe(Integer)) {
+    None => ret 0,
+    Some(x) => ret x
+  }
+}
+
+unwrap_or_zero()
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: unwrap_or_zero
+//@ expect-last-value: 3

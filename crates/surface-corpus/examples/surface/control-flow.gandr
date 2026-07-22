@@ -1,0 +1,26 @@
+// W4d surface fold-in — `for` / `while` / `loop` / `break` / `continue`.
+//
+// GRADUATION: the imperative-looking control atoms enter the PBG grammar now
+// (wyrd-ku0f) as keyword-led expression atoms (siblings of `if` / `case`);
+// their SEMANTICS — loops desugaring over the value model, `break` / `continue`
+// as control effects — graduate under wyrd-u7m5. Parse-only; never lowered.
+
+// `for x in e { body }` binds a single identifier (the MVP binder).
+def for_each() {
+  for x in xs { drop(x); }
+}
+
+// `while c { body }` and `break` (bare, unlabeled).
+def until_done() {
+  while cond { break; }
+}
+
+// `loop { body }` and `continue`.
+def spin() {
+  loop { continue; }
+}
+
+// Nested control with both `break` and `continue`.
+def sift() {
+  for x in xs { if p { break; } else { continue; } }
+}

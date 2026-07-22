@@ -1,0 +1,41 @@
+#:schema tombi://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-surface-corpus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Executable example corpus for the gandr language: literate model examples, pathological cases, and the end-to-end harness that runs them (ADR-52)"
+readme.workspace = true
+license.workspace = true
+publish.workspace = true
+# `examples/` holds gandr source trees (`model/`, `pathological/`), not cargo
+# examples; keep cargo from scanning it for Rust example targets.
+autoexamples = false
+autotests = false
+
+[[test]]
+name = "corpus"
+path = "tests/corpus.rs"
+
+[dependencies]
+gandr-core-checker = { path = "../core-checker" }
+gandr-core-sequent = { path = "../core-sequent" }
+gandr-runtime-host = { path = "../runtime-host" }
+gandr-surface-engine = { path = "../surface-engine" }
+gandr-theory-levitation = { path = "../theory-levitation" }
+
+[features]
+default = []
+# The fixtures remain frozen and hash-checked, but native FFI execution stays
+# parked until the FFI crate lands in the reboot.
+ffi = []
+full = ["regex"]
+regex = [
+  "gandr-core-checker/gandr_feat_regex",
+  "gandr-surface-engine/regex",
+]
+
+[lints]
+workspace = true

@@ -1,0 +1,15 @@
+// Descriptions also carry a datatype's declared directed theory as inspectable
+// 2-cell faces. The operation is declared first, so the rewrite mentions only
+// symbols in this signature and passes stage-0 well-formedness.
+//
+// This does not run rewriting or completion. It demonstrates the stable seam:
+// surface `rule` -> an open `FreeTerm` pair with derived variable metadata in
+// the `DataDesc`; the future polygraph and CFVDC layers consume that same face.
+data NatTheory {
+  Zero,
+  op id(x: NatTheory) -> NatTheory,
+  rule id(Zero) ~> Zero
+}
+
+//@ mode: desc
+//@ expect-desc-cells: 1

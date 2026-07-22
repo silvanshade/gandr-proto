@@ -1,0 +1,39 @@
+// Identity types (ADR-76): `Path(A, x, y)` is the type of proofs that `x` and
+// `y` are equal at `A` -- gandr's first DEPENDENT type former (terms occur
+// inside the type). Its only introduction is `here(v) : Path(A, v, v)`: the
+// proof that a value equals itself.
+//
+// The rung-1 surface capture admits number literals and variables as the
+// endpoints in type position (`Path(Integer, 4, 4)` here exercises the literal
+// form); compound endpoint terms are a reserved later rung. Conversion is
+// INVARIANT in the carrier and in both endpoints: a `Path(Integer, 4, 4)`
+// expectation accepts `here(4)` and rejects `here(5)` -- there is no widening
+// between identity types, only definitional equality of their endpoints.
+//
+// There is no K and no proof uniqueness: the only primitive eliminator is the
+// full Martin-Lof `walk` (see `back.gandr` and the siblings), and `case`
+// analysis on an identity proof is reserved for the without-K pattern fragment
+// (the pathological tree's `k-derivation.gandr` pins the rejection).
+
+// A proof that 4 equals 4, by reflexivity. The definition INFERS its type
+// `Path(Integer, 4, 4)` from the witness -- no annotation needed.
+def four_eq_four = here(4);
+
+// An identity type in ordinary type positions: a function over proofs. The
+// parameter and result annotations both spell `Path(Integer, 4, 4)` with
+// literal endpoints (the rung-1 capture).
+def cast(p: Path(Integer, 4, 4)) -> F(Path(Integer, 4, 4)) {
+  ret p
+}
+
+// Checking mode: an ascription pins the proof against the expected identity
+// type (endpoint equality is decided structurally).
+def checked = (here(4) : Path(Integer, 4, 4));
+
+cast(four_eq_four)
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: four_eq_four
+//@ expect-def: checked
+//@ expect-last-value: here(4)

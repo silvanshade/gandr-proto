@@ -1,0 +1,7 @@
+// Failure golden: a malformed member is rejected as a structured lowering
+// diagnostic in strict shell mode; implementation total-mode tests pin local
+// recovery without making this a model example.
+module Bad { def broken = ; def ok = 2; }
+
+//@ mode: shell
+//@ expect-shell-error: malformed

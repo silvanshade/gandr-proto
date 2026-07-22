@@ -1,6 +1,6 @@
 //! Consolidated integration-test binary for `gandr-core-sequent`.
 
-mod corpus_fixtures;
+mod corpus_sources;
 
 mod conformance_soundness;
 mod corpus_differential;

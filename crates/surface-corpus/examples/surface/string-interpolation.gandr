@@ -1,0 +1,23 @@
+// W4d surface fold-in — `"${ … }"` string interpolation (parse-only fixture).
+//
+// GRADUATION: an expression string carries `${ E }` interpolation segments now
+// (wyrd-ku0f) — a bracket-family member of the fragment/escape repeat, with the
+// labeler's string-segment mode emitting the `${` opener and re-entering string
+// mode at the matching `}`. No format specifiers (deferred). The elaboration to
+// `string` concatenation graduates under wyrd-qlv8. Parse-only; never lowered.
+
+// A single interpolation between literal fragments.
+def greet(name: String) -> F String {
+  ret "hello ${ name }!"
+}
+
+// Multiple segments, escapes, and a `#{ … }` record inside an interpolation
+// (its own braces are tracked to the matching close).
+def describe(user: String, count: Integer) -> F String {
+  ret "user=${ user }\trow=${ #{ n = count } }\n"
+}
+
+// A bare `$` that is not `${` stays ordinary string content.
+def price() -> F String {
+  ret "total: $5.00 for ${ count } items"
+}

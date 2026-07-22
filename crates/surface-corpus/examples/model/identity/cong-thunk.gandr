@@ -1,0 +1,40 @@
+// Congruence, form 2 of 2: THROUGH THUNKS (ADR-76; the proposal's "identity
+// of computations goes through thunks, as everything does in CBPV").
+//
+// For a defined function `double`, the two APPLICATIONS `double(x)` and
+// `double(y)` are computations -- they have no value-level identity. Their
+// THUNKS are values, so from `p : Path(Integer, x, y)` one `walk` derives
+//
+//     Path(U(F(Integer)), thunk { double(x) }, thunk { double(y) })
+//
+// -- the two suspended calls are equal AS THUNKS. This is deliberately
+// intensional (no funext, ever): the proof identifies the two suspensions
+// because their bodies are equal term-for-term after transport, not because
+// they "behave the same". Claiming more -- congruence of the RESULTS of an
+// arbitrary effectful `f` -- is not derivable, and this family never claims
+// it.
+//
+// The motive's endpoints are compound (thunk literals), so it uses the
+// walk-form identity former `Path(?, ..., ...)` exactly as `cong-value.gandr`;
+// the base's witness thunk infers its own type (`U(F(Integer))`), no
+// ascription needed.
+
+def double(x: Integer) -> F Integer {
+  ret (x + x)
+}
+
+def cong_double = thunk {
+  fn(p: Path(Integer, 4, 4)) {
+    walk(p,
+      fn(x, y, q) { Path(?, thunk { double(x) }, thunk { double(y) }) },
+      fn(x) { ret here(thunk { double(x) }) })
+  }
+};
+
+cong_double(here(4))
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: double
+//@ expect-def: cong_double
+//@ expect-last-value: here(<thunk>)

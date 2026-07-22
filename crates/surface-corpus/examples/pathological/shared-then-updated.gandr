@@ -1,0 +1,13 @@
+// Stress / red-line pin: bind a record, share it across several bindings, then
+// update one path. Value semantics guarantees the shared original is unchanged
+// no matter how many bindings read it (proposal-value-semantics-mvp §3.4). The
+// eval == run differential is the oracle; here the harness reads the shared
+// original back directly.
+def r = #{ x = 1, y = 2 };
+def a = r;
+def b = r;
+def updated = #{ r | x = 99 };
+
+a
+
+//@ expect-last-value: #{x = 1, y = 2}

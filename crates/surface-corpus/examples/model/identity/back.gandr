@@ -1,0 +1,24 @@
+// Symmetry, derived from ONE use of the Martin-Lof eliminator `walk` (ADR-76).
+//
+// `walk(p, fn(x, y, q) { C }, fn(x) { c })` is the FULL (dinatural) identity
+// eliminator: the motive `C` binds BOTH endpoints `x`, `y` and the path `q`,
+// and the base `c` answers the diagonal `C[x/y][here(x)/q]`. It is gandr's
+// first dependent eliminator, and -- unlike `case` -- it INFERS: the explicit
+// motive is what makes the result type computable.
+//
+// The motive here is written as an ascribed hole `(? : F(Path(Integer, y, x)))`:
+// the ascription's annotation is genuine TYPE position, so the motive is the
+// returner of the REVERSED identity type -- `y` and `x` are the motive's own
+// binders, variable endpoints under the rung-1 capture. At the diagonal both
+// endpoints coincide, so the base answers with `here(x)` -- and walk's
+// computation rule (definitional beta on here) makes the whole eliminator
+// compute: `back(here(7))` IS `here(7)`, not a stuck proof term.
+
+def p = here(7);
+
+walk(p, fn(x, y, q) { (? : F(Path(Integer, y, x))) }, fn(x) { ret here(x) })
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: p
+//@ expect-last-value: here(7)

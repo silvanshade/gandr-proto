@@ -1,0 +1,20 @@
+// Failure golden: a non-exhaustive match (ADR-80; ADR-54 §4.2).
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+//
+// `Maybe(a)` has two constructors; a `case` that answers only `Some` omits
+// `None`. The 1-cell MVP does no static exhaustiveness check (Maranget stays
+// with the patterns bead), so the missing constructor arm degenerates to a hole
+// -- and when the scrutinee IS that missing constructor (`None`), the hole is
+// reached at runtime and reported as a DEFINED halt (`Blame::Hole`), not a
+// panic. That runtime blame is the coverage gap made observable.
+data Maybe(a) { None, Some(x: a) }
+
+def unwrap() -> F Integer {
+  case (None : Maybe(Integer)) {
+    Some(x) => ret x
+  }
+}
+
+unwrap()
+
+//@ expect-blame: hole

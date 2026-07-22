@@ -1,0 +1,13 @@
+// One description drives more than inspection: stage 0 already supplies generic
+// structural equality and canonical serialization as host-side consumers.
+//
+// Two nullary constructors are enough to expose the contract. Two `Off` values
+// compare equal and serialize identically; `Off` and `On` compare unequal and
+// receive distinct tag encodings. The harness constructs those described values
+// from this declaration, so the example checks the generic consumers rather
+// than duplicating them as datatype-specific code.
+data Bit { Off, On }
+
+//@ mode: desc
+//@ expect-desc-render: data Bit { Off = 1, On = 1 }
+//@ expect-desc-unit-consumers: clean

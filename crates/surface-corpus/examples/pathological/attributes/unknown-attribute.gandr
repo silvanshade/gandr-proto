@@ -1,0 +1,7 @@
+// An attribute name that resolves to no registry entry is `UnknownAttribute`,
+// rendered with a did-you-mean over the registry (proposal-attributes.md §3.2,
+// the ADR-42 unknown-member story). `dco` is one edit from `doc`.
+//@ expect-diagnostic: unknown attribute `dco`
+//@ expect-diagnostic: did you mean `doc`
+@[dco("oops")]
+def f = 42;

@@ -1,0 +1,12 @@
+// Stress: functional list growth (append) vs indexed replacement (set) at a
+// larger scale. Both return fresh lists; the pair pins that growth and
+// in-place-shaped replacement agree on value semantics
+// (proposal-value-semantics-mvp §8).
+def xs = ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9] : List(Integer));
+
+def grown = list.append(xs, [10, 11, 12]);
+
+// Replace the element at index 11 (the second appended value, 11) with 99.
+list.set(grown, 11, 99)
+
+//@ expect-last-value: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 99, 12]

@@ -1,0 +1,12 @@
+// Stress: build successive versions of an accumulator with a fold. The
+// loop-carried value is threaded as a VALUE (a fold over the list), never a
+// mutable loop variable -- the accumulator is rebound each step, not mutated
+// (proposal-value-semantics-mvp §7, ties to the recursion/loops area). This is
+// the loop-carried uniqueness hot path a COW-elision pass targets.
+def steps = ([1, 2, 3, 4] : List(Integer));
+
+// Fold from an empty accumulator, pushing each element -- each step rebuilds a
+// fresh, longer list.
+list.reduce(thunk { fn(acc, n) { list.push(acc, n) } }, [], steps)
+
+//@ expect-last-value: [1, 2, 3, 4]

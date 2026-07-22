@@ -1,0 +1,4 @@
+// Failure golden: an ascription the payload cannot check against.
+("five" : Integer)
+
+//@ expect-diagnostic: Integer

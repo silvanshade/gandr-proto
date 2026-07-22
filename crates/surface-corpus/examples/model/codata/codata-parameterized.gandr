@@ -1,0 +1,27 @@
+// A codata value indexed by parameters, with a computed observation.
+//
+// `Scaled` answers one observation, `doubled`. A *parameterized* copattern
+// definition `def rec scaled(n) -> Scaled` is a codata value indexed by its
+// parameter: it lowers to
+//     thunk_ω { fn(n) { ret #{ doubled = thunk_ω (ret (n + n)) } } }
+// -- a function returning the record-of-thunks carrier (ADR-66 §5.1's shape,
+// minus the `fix self` binder that corecursion, wyrd-c2g4, would add).
+//
+// Note the observation body is a *computation* (`n + n`), delayed by the thunk:
+// the work happens only when the observation is demanded, not when the codata
+// value is built. This is the call-by-need laziness the negative half buys.
+codata Scaled { doubled: Integer }
+
+def rec scaled(n: Integer) -> Scaled {
+  .doubled => n + n
+}
+
+// `scaled(21)` applies the parameter, yielding the codata value; `.doubled`
+// then observes it. The observation elaboration hoists the applied computation,
+// so `scaled(21).doubled` is `let s <- scaled(21); force(RecordProj(s, doubled))`
+// -- which forces the delayed `21 + 21`.
+scaled(21).doubled
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: 42

@@ -1,0 +1,10 @@
+// Failure golden: the base of a record update must be a record. Updating a
+// non-record (here an integer) fails to type -- an integer is not a subtype of
+// the empty record {} that the update base must fit
+// (proposal-value-semantics-mvp §3.1; the base is checked against the width-top
+// {} of ADR-45).
+def n = 5;
+
+#{ n | x = 1 }
+
+//@ expect-diagnostic: type mismatch

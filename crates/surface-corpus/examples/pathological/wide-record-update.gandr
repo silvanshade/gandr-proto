@@ -1,0 +1,10 @@
+// Stress: a wide record with a single-field update -- the widest copy-vs-COW
+// gap (many fields carried over, exactly one changed). The value answer is
+// fixed; a future uniqueness/COW-elision pass must preserve it while reducing
+// the copy count (proposal-value-semantics-mvp §3.5, §8).
+def wide = #{ a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8 };
+
+#{ wide | e = 99 }
+
+//@ expect: clean
+//@ expect-last-value: #{a = 1, b = 2, c = 3, d = 4, e = 99, f = 6, g = 7, h = 8}

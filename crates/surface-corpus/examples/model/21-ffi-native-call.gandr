@@ -1,0 +1,39 @@
+// Foreign functions — calling C from gandr.
+//
+// gandr does not need a bespoke FFI subsystem: a foreign function is already
+// exactly what gandr calls a *tool* — an effect operation whose handler happens
+// to be a native call rather than a gandr clause (proposal-ffi.md §0/§3.1). So
+// the whole FFI surface is the effect/capability machinery you already know,
+// pointed at C.
+//
+// An `extern` block NAMES and TYPES foreign symbols. It is a declaration, not a
+// runnable item: it populates a module namespace (here `testlib`, from the
+// library string) whose members are foreign functions. Each member is a
+// bodyless `def` — the surface tell that the callee is foreign.
+//
+// This example links the hermetic in-repo C fixture `testlib` (built by the
+// corpus crate, so the example is reproducible anywhere — proposal-ffi.md §9).
+
+//@ mode: ffi
+//@ expect-ffi-value: (42i64, 5u64)
+
+extern "c" from "testlib" {
+  // Two `i64` scalars in, one out. The six numeric atoms (ADR-39) map to the C
+  // fixed-width scalars by IDENTITY (proposal-ffi.md §4.1) — no width
+  // negotiation, no implicit conversion; the boundary demands a concrete atom,
+  // so we pass `21i64`, never a bare `21`.
+  def gandr_test_add(a: i64, b: i64) -> i64;
+  // A `CStr` argument: a gandr `String` crosses as a NUL-terminated `char*`
+  // copy, freed after the call (proposal-ffi.md §4.2). C never retains it.
+  def gandr_test_strlen(s: CStr) -> u64;
+}
+
+// Each call `testlib.op(args)` elaborates to `perform testlib.op {args}` — the
+// call reaches foreign code, so its type carries the effect row `F^⟨testlib⟩`
+// and purity is not silently lost. `run x <- c; rest` sequences the calls; the
+// native FFI handler answers each `perform` with the C return value.
+{
+  run doubled <- testlib.gandr_test_add(21i64, 21i64);
+  run length <- testlib.gandr_test_strlen("hello");
+  ret (doubled, length)
+}

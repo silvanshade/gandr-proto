@@ -1,0 +1,7 @@
+// Failure golden: source files link zero or more named items followed by one
+// final unnamed run target. A named item after that target is a linker error.
+1;
+def late = 2;
+
+//@ mode: shell
+//@ expect-shell-error: appears after final runnable item

@@ -1,0 +1,7 @@
+// A single-valued attribute repeated on one entity is `DuplicateAttribute`
+// (proposal-attributes.md §3.2). The first occurrence still projects; the
+// repeat is the finding.
+//@ expect-diagnostic: duplicate attribute `doc`
+@[doc("first")]
+@[doc("second")]
+def f = 42;

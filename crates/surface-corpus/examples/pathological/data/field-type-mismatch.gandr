@@ -1,0 +1,16 @@
+// Failure golden: a constructor payload violating its declared field type
+// (ADR-80 Decision 4/5; ADR-54 §3).
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+//
+// `Some(x: a)` of `Maybe(a)`, ascribed `Maybe(Integer)`, instantiates the field
+// `a` to `Integer`; a `String` payload therefore fails to check. The frozen
+// core carries only the constructor's nominal tag (not its field types), so the
+// 1-cell MVP enforces field discipline at the pipeline seam: the payload is
+// checked against its declared field type instantiated at the ascribed
+// arguments, exactly the soundness a tag-only rule cannot express. Without it
+// `Some("hello") : Maybe(Integer)` would wrongly type-check.
+data Maybe(a) { None, Some(x: a) }
+
+(Some("hello") : Maybe(Integer))
+
+//@ expect-diagnostic: type mismatch

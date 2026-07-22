@@ -1,0 +1,26 @@
+// A tagged sum, eliminated by `case`.
+//
+// Two bidirectional-typing rules surface in this file's shape:
+//
+//   * injections only *check* -- from `Inl(42)` alone the other summand
+//     (`String` here) is not inferable, so the injection carries a type
+//     ascription;
+//   * a one-part function type annotation (`-> F Integer` below) is enough
+//     context for a check-only `case` body.
+//
+// So the idiomatic shape for a case-bodied function is a single annotated
+// function definition: state the result type in the header, then write the
+// computation body directly.
+def pick() -> F Integer {
+  case (Inl(42) : Integer + String) {
+    Inl(x) => ret (x + 1),
+    Inr(s) => ret 0
+  }
+}
+
+pick()
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: pick
+//@ expect-last-value: 43

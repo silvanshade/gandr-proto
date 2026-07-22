@@ -1,0 +1,16 @@
+// A checked gandr computation also has an inspectable sequent-command face.
+//
+// Phase L0 is the first landed face of gandr's adopted polarized sequent
+// command IL: the total focusing translation 𝓕 re-expresses lowered CBPV terms
+// as polarized command IL. `ret ()` is the smallest positive producer, cut
+// against the distinguished top-level continuation `★`.
+//
+// Keeping this rendering in the model corpus makes the new machine IR teachable
+// and pins its public inspection seam without claiming that L1 stepping/store
+// or the later fusion phases already execute. Until L1, the frozen-core
+// evaluator is the differential oracle for `L-run ∘ 𝓕 ≡ run`.
+ret ()
+
+// The harness lowers, focuses, checks the IL, and compares its bounded render:
+//@ mode: sequent
+//@ expect-sequent-render: ⟨() |+ ★⟩

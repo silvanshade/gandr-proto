@@ -1,0 +1,15 @@
+// Failure golden: a nominal mismatch at a NESTED type position (ADR-80).
+// (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
+//
+// `Celsius` and `Fahrenheit` are distinct generative-nominal types. A list of
+// `Cel(20)` ascribed `List(Fahrenheit)` must be rejected -- the element `Cel`
+// builds a `Celsius`, not the `Fahrenheit` the nested `List(...)` element type
+// demands. This only fires if the declared datatype is rewritten to its nominal
+// handle at DEPTH: a nested position that stayed structural (or holed) would
+// let the mixup pass. It is the depth analogue of `nominal-distinctness`.
+data Celsius { Cel(x: Integer) }
+data Fahrenheit { Fah(x: Integer) }
+
+([Cel(20)] : List(Fahrenheit))
+
+//@ expect-diagnostic: Fahrenheit

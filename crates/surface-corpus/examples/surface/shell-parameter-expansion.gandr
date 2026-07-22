@@ -1,0 +1,22 @@
+// W4e surface fold-in — shell parameter expansion (parse-only fixture).
+//
+// GRADUATION: the shell DSL's parameter expansion enters the PBG grammar now
+// (wyrd-83wx) — the simple form `$name` (the committed `variable_expansion`)
+// beside the braced form `${name}`, folded into `variable_expansion` as a
+// second opener branch. The braced form is a W4e divergence from the committed
+// tree-sitter grammar (which has only `$name`); its interior is a shell
+// `variable_name`, DISTINCT from the string-interpolation `${ E }` host-splice
+// (a shell parameter is not a gandr binding). The SEMANTICS — the gandr-shell
+// host seam answering an expansion against the process environment — graduate
+// under the wyrd-83wx gandr-shell wiring follow-up. Parse-only; never lowered.
+
+// A single-quoted string is a verbatim literal run: `$x` and backslashes inside
+// it are NOT expanded or escaped (grammar.js `single_quoted_string`).
+#!{ printf 'literal $x and \n stay verbatim'; }
+
+// `$name` simple expansion beside `${name}` braced expansion.
+#!{ echo $HOME ${HOME}; }
+
+// The braced form disambiguates a parameter from adjacent word text — `${x}`
+// abuts a following word, and two braced parameters abut with no separator.
+#!{ echo ${prefix}_suffix ${x}${y}; }

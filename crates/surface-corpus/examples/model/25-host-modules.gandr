@@ -1,0 +1,37 @@
+// Host modules (`wyrd-jir7`): `fs` / `env` / `proc` are reserved module
+// namespaces whose member calls elaborate to `perform` of the corresponding
+// host operation — the same module-select ⇒ perform rule as an FFI extern
+// call (21-ffi-native-call), against the ambient `Fs` / `Env` / `Proc`
+// signatures the runtime host answers. What the host does natively and
+// typed no longer needs a `#!{ ... }` shell-out: this script creates a
+// scratch directory, writes a file, reads it back, classifies it, and asks the
+// host for environment/path facts — no child process at all.
+//
+// Payloads follow the member's parameters (`fs.write` performs the record
+// `{path, contents}`; nullary `fs.tempdir()` / `fs.cwd()` / `env.path()`
+// perform `()`), and replies are ordinary typed values a script computes over
+// (23-shell-scripts-compute). `path.join` / `basename` / `extension` are pure
+// prelude builtins over those host-returned path strings.
+{
+  run dir <- fs.tempdir();
+  run nested <- path.join(dir, "nested");
+  fs.mkdir(nested);
+  run file <- path.join(nested, "greeting.txt");
+  fs.write(file, "hello from gandr");
+  run content <- fs.read(file);
+  run matches <- fs.glob(path.join(nested, "*.txt"));
+  run stat <- fs.stat(file);
+  run cwd <- fs.cwd();
+  run tracked <- fs.ls_files(".");
+  run path_entries <- env.path();
+  ret #{
+    content = content,
+    name = path.basename(file),
+    ext = path.extension(file),
+    kind = stat.kind
+  }
+}
+
+// The harness checks:
+//@ mode: shell
+//@ expect-shell-value: #{content = "hello from gandr", ext = "txt", kind = "file", name = "greeting.txt"}

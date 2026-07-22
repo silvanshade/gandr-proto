@@ -1,0 +1,33 @@
+// Congruence, form 1 of 2: a VALUE CONTEXT (ADR-76). From `p : Path(Integer,
+// x, y)` derive a proof that the lists `[x]` and `[y]` are equal -- one `walk`,
+// with the value context `V[-] = [-]` applied to both endpoints inside the
+// motive.
+//
+// This is one of exactly TWO honest congruence forms in CBPV. General
+// congruence -- `Path(B, f(x), f(y))` for an arbitrary function `f` -- is NOT
+// derivable: `f(x)` is a COMPUTATION, and identity is a type of VALUES; an
+// effectful `f` has no value-level image to compare. What IS derivable:
+// congruence under a value constructor context (this file), and congruence of
+// the THUNKS of the two applications (`cong-thunk.gandr`).
+//
+// The motive here is the walk-form's own identity former `Path(?, [x], [y])`:
+// the motive is part of walk's binder syntax (not a general type position), so
+// its endpoints may be COMPOUND value terms -- exactly what congruence needs.
+// The `?` carrier is the gradual unknown; conversion's consistency lets the
+// base's precisely-typed `here` inhabit it. The base ascribes its witness
+// (`[x] : List(Integer)`) because list literals are check-only.
+
+def cong_list = thunk {
+  fn(p: Path(Integer, 4, 4)) {
+    walk(p,
+      fn(x, y, q) { Path(?, [x], [y]) },
+      fn(x) { ret here(([x] : List(Integer))) })
+  }
+};
+
+cong_list(here(4))
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: cong_list
+//@ expect-last-value: here([4])

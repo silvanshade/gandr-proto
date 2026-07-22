@@ -1,0 +1,5 @@
+// Failure golden: member scope is left-to-right. Later members may see earlier
+// ones, but an earlier member cannot refer forward to a field not bound yet.
+module Bad { def first = second + 1; def second = 2; }
+
+//@ expect-diagnostic: second

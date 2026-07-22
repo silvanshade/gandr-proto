@@ -25,9 +25,9 @@
 //!   dispatcher ([`ShellHandler::dispatch`]) that carries each intercepted
 //!   operation out to a real syscall over `std::process` / `std::fs` /
 //!   `std::env`.
-//! - [`run_program`] — the driver that flows a program through the host-effect
-//!   seam to a [`ShellOutcome`], with `Proc::exit` and fatal syscalls
-//!   truncating the run.
+//! - [`run_program`] / [`run_source`] — drivers that flow checked core or
+//!   source text through the host-effect seam to a [`ShellOutcome`], with
+//!   `Proc::exit` and fatal syscalls truncating the run.
 //!
 //! **Soundness (v0).** `Σ` is vacuous and resumption is multi-shot (ADR-34), so
 //! the host is an always-resume ambient handler on the seam; the eager OS pipe
@@ -35,10 +35,10 @@
 //! op set is named `Exec`/`Fs`/`Proc`/`Env` and does not appropriate the
 //! reserved A8 name `Shell`.
 //!
-//! The source-text convenience `run_source` / `run_source_file` — which ran the
-//! CST → core lowering before this host loop — return with the surface engine;
-//! only the hand-built [`Comp`](gandr_core_checker::syntax::Comp) entry
-//! ([`run_program`]) lands here.
+//! [`run_source`] composes the surface engine’s strict lowering, linking, and
+//! prelude-aware checking with the L-machine host seam. [`run_program`] remains
+//! the exact hand-built [`Comp`](gandr_core_checker::syntax::Comp) entry with
+//! no ambient prelude.
 //!
 //! ```
 //! use gandr_core_checker::syntax::Comp;
@@ -95,7 +95,9 @@ pub mod error;
 pub mod handler;
 pub use gandr_surface_engine::host as sig;
 
+pub use crate::driver::RunError;
 pub use crate::driver::ShellOutcome;
 pub use crate::driver::run_program;
+pub use crate::driver::run_source;
 pub use crate::error::ShellError;
 pub use crate::handler::ShellHandler;

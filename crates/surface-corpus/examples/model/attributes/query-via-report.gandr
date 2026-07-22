@@ -1,0 +1,16 @@
+// The renderer firewall (proposal-attributes.md §5; ADR-35 D6): tooling,
+// the REPL, and agents read attributes only through the reified
+// `Report.attributes` projection — a plain-data field of `{ node, schema,
+// payload, tier }` rows. A renderer reads that field and renders it; it parses
+// nothing, lowers nothing, types nothing.
+//
+// Here the `doc` attribute on `greet` is resolved, checked against its `String`
+// schema, and projected as one `Report.attributes` row — the row the harness
+// reads back through the `expect-attribute` directive (the executable image of
+// what an LSP hover or a REPL `:attrs` command would show).
+//
+//@ expect: clean
+//@ expect-def: greet
+//@ expect-attribute: doc
+@[doc("Returns a fixed greeting.")]
+def greet = "hello";

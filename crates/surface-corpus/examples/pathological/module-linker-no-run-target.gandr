@@ -1,0 +1,6 @@
+// Failure golden: a source file with only named definitions/modules has no
+// final program for the shared linker to run.
+module Only { def x = 1; }
+
+//@ mode: shell
+//@ expect-shell-error: no final runnable program

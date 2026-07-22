@@ -1,0 +1,20 @@
+// Where every gandr program ends up: a computation returning a value.
+//
+// gandr is a CBPV (call-by-push-value) language. VALUES *are* -- numbers,
+// strings, pairs, records -- and COMPUTATIONS *do* -- they run, perform
+// effects, and (if all goes well) return a value. The two worlds never mix
+// implicitly: a bare value is not a program, and `ret v` is the explicit
+// bridge -- the computation that does nothing but return `v`.
+//
+// This program is written the way it is because it is the smallest honest
+// gandr program: one computation item, one `ret`, one value.
+/*
+  Block comments are ordinary whitespace to the parser. They are useful when a
+  note needs more room than a line comment, and they do not change the program:
+  the last value is still the string returned just below.
+*/
+ret "hello, gandr"
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: "hello, gandr"

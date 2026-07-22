@@ -1,0 +1,15 @@
+// W4d surface fold-in — reserved `data` operation and 2-cell members.
+//
+// GRADUATION: these members PARSE now (wyrd-ku0f) so the datatype block never
+// needs re-parsing when their semantics land, but they are parse-and-decline
+// today. `op` operations and `rule` rewrites graduate under wyrd-7xl7
+// (equational / operator theories). Parse-only; never lowered.
+
+// Reserved `op` operation member: `op name(params) -> Result`.
+data NatOp { Zero, Succ(n: NatOp), op add(m: NatOp, n: NatOp) -> NatOp }
+
+// Reserved `rule` 2-cell member: `rule lhs ~> rhs` (a directed rewrite).
+data NatRule { Zero, Succ(n: NatRule), rule id(Zero) ~> Zero }
+
+// Reserved named multi-output result on an `op` member.
+data NatDiv { Zero, op divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }

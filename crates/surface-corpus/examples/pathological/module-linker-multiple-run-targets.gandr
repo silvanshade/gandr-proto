@@ -1,0 +1,7 @@
+// Failure golden: the shared linker accepts one final unnamed run target, not
+// two competing final expressions.
+1;
+2
+
+//@ mode: shell
+//@ expect-shell-error: multiple unnamed runnable targets

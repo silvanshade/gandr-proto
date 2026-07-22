@@ -1,0 +1,7 @@
+//@ mode: shell
+//@ expect-shell-error: unsupported construct
+
+// Failure golden: host-module members are operations, not record fields. A bare
+// selection such as `fs.read` is rejected by the ADR-42 D2 module gate rather
+// than lowering to a value-level projection or an uncallable thunk.
+fs.read

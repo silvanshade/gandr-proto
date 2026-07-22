@@ -1,0 +1,18 @@
+// Scripts share the REPL's prelude (ADR-42): operators and module builtins
+// resolve inside a shell-mode program, so a script can COMPUTE over a
+// command's reply instead of merely relaying it. (This pins the wyrd-4eys
+// regression, where the prelude was absent from the shell state and every
+// operator use in a script stuck on `forced non-thunk`.)
+//
+// The reply of a `#!{ ... }` block is a record (13-shell-blocks); this
+// script binds the reply, then decides a typed fact about the captured
+// stdout with a string builtin. Predicates return `Bool = 1 + 1`, so the
+// hit renders as the annotated `Inl(())`.
+{
+  run banner <- #!{ printf 'hello from gandr\n'; };
+  string.contains(banner.stdout, "gandr")
+}
+
+// The harness checks:
+//@ mode: shell
+//@ expect-shell-value: Inl(())

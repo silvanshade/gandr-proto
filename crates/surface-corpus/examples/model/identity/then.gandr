@@ -1,0 +1,32 @@
+// Transitivity (`then`), derived from ONE use of `walk` -- the TRANSPORT shape
+// (ADR-76). To compose `p : Path(Integer, 7, u)` with `r : Path(Integer, u, v)`,
+// eliminate `r` with a motive that is a FUNCTION over proofs:
+//
+//     C(u, v, q) = U[1](F(Path(Integer, 7, u))) -> F(Path(Integer, 7, v))
+//
+// The far endpoint `u` sits in negative position (the argument), so the
+// diagonal base is just "force the argument" -- and applying the eliminated
+// transport to (a thunk of) `p` moves `p`'s right endpoint along `r`. This is
+// why the motive lands in a COMPUTATION type: transport must eliminate into
+// arbitrary computations (here an arrow), and CBPV's `U`/`F` mediation carries
+// the proof across as a graded thunk.
+//
+// The motive is an ascribed hole `(? : ...)` -- real type position, so the
+// arrow, the `U[1]` grade, and the literal endpoint `7` (the rung-1 capture)
+// all spell directly (the arrow's thunk operand is parenthesized so the
+// prefix `U` cannot capture the arrow). Both `walk` uses in this family are one
+// walk each: no composite primitive, no K, definitional beta all the way down --
+// `then(here(7), here(7))` COMPUTES to `here(7)`.
+
+def p = here(7);
+def r = here(7);
+
+walk(r,
+  fn(u, v, q) { (? : (U[1](F(Path(Integer, 7, u)))) -> F(Path(Integer, 7, v))) },
+  fn(u) { fn(w) { force w } })(thunk { ret p })
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: p
+//@ expect-def: r
+//@ expect-last-value: here(7)

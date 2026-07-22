@@ -1,0 +1,30 @@
+// Paired signatures: a `def name : T;` line supplies the expected type for
+// the immediately following definition in the same submission. This is the
+// explicit form under the annotated function sugar in 06/11, and it matters
+// for check-only bodies: the signature gives the body an expected type before
+// the checker sees the implementation.
+//
+// Function definitions bind thunk VALUES, so the explicit function signature
+// is a thunk type: `U[1] (Integer -> F Integer)`. The value definition below
+// shows the same pairing for ordinary values. The calls to `prim.id` and
+// `prim.const` also pin the tiny `prim` module builtins: identity returns its
+// argument, const returns its first argument.
+
+/* Block comments are also grammar extras, and they can nest:
+   /* inner note */
+   the program below is unchanged by this prose. */
+def seed : Integer;
+def seed = prim.const(40, prim.id(999));
+
+def plus_two : U[1] (Integer -> F Integer);
+def plus_two(x: Integer) -> F Integer {
+  ret (x + 2)
+}
+
+plus_two(seed)
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: seed
+//@ expect-def: plus_two
+//@ expect-last-value: 42

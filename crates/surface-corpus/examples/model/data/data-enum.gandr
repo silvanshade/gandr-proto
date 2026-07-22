@@ -1,0 +1,25 @@
+// A nullary enumeration and an exhaustive match (ADR-80; ADR-54 §3).
+//
+// `data Color { Red, Green, Blue }` declares three nullary constructors -- each
+// a bare uppercase name that builds a value with no fields. A `case` over the
+// three arms is exhaustive; the pipeline places the arms by constructor tag, so
+// the runtime selects the arm matching the scrutinee's constructor.
+//
+// A bare constructor `Green` in a checking position (`: Color`) builds the
+// tagged value directly, no call needed.
+data Color { Red, Green, Blue }
+
+def rank() -> F Integer {
+  case (Green : Color) {
+    Red => ret 0,
+    Green => ret 1,
+    Blue => ret 2
+  }
+}
+
+rank()
+
+// The harness checks:
+//@ expect: clean
+//@ expect-def: rank
+//@ expect-last-value: 1

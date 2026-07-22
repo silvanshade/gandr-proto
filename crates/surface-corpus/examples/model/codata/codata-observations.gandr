@@ -1,0 +1,38 @@
+// Codata: negative types introduced by how they answer observations (ADR-66).
+//
+// A `data` block says what a value *contains* -- constructors and their field
+// tuples. A `codata` block is the exact dual: it says what a value *answers* --
+// named *observations*. This is the CBPV-negative half the substrate always
+// reserved (values ARE; computations DO -- and a codata value answers demands).
+//
+// `Point` declares two observations, `x` and `y`, each answering an `Integer`.
+// (An observation's result is a demand, so a value-typed `x: Integer` reads as
+// the computation `x: F Integer`.)
+codata Point { x: Integer, y: Integer }
+
+// A *copattern definition* introduces a `Point` by saying, clause by clause,
+// how it responds to each observation. The clauses lead with `.observation`,
+// the dual of a constructor pattern. This definition is non-recursive -- a
+// finite record of observations -- so it needs no fixpoint (corecursion, the
+// productivity ladder, is a separate rung: wyrd-c2g4).
+//
+// Under the hood this is pure elaboration with ZERO frozen-core spend
+// (ADR-66 route (a)): the copattern clauses compile through one `Cosplit`
+// case-tree node to a record of graded thunks
+//     #{ x = thunk_ω (ret 3), y = thunk_ω (ret 4) }
+// over the ADR-45 record former. Each observation body is delayed by the
+// existing `U_ω` thunk; nothing new is added to the core.
+def rec origin() -> Point {
+  .x => 3,
+  .y => 4
+}
+
+// Observing is the eliminator, dual to constructing. `origin.x` projects the
+// `x` field and forces its thunk -- ADR-66 §3.1's `s.π ↦ force(RecordProj(s, π))`.
+// Here we observe BOTH `x` and `y` and add them: each observation independently
+// forces its own delayed body, so the sum is `3 + 4`.
+origin.x + origin.y
+
+// The harness checks:
+//@ expect: clean
+//@ expect-last-value: 7
