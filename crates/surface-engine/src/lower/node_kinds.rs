@@ -22,6 +22,8 @@ pub const DEF_SIGNATURE: SyntaxKind = SyntaxKind("def_signature");
 pub const DEF_VALUE: SyntaxKind = SyntaxKind("def_value");
 pub const DEF_FUNCTION: SyntaxKind = SyntaxKind("def_function");
 pub const DEF_REC: SyntaxKind = SyntaxKind("def_rec");
+/// An open mutually-recursive declaration group `rec { … }`.
+pub const REC_BLOCK: SyntaxKind = SyntaxKind("rec_block");
 pub const CODATA_DECLARATION: SyntaxKind = SyntaxKind("codata_declaration");
 pub const CODATA_OBSERVATION: SyntaxKind = SyntaxKind("codata_observation");
 pub const COPATTERN_CLAUSE: SyntaxKind = SyntaxKind("copattern_clause");
@@ -38,6 +40,10 @@ pub const FIELD_ATTRIBUTE: SyntaxField = SyntaxField("attribute");
 pub const FIELD_PAYLOAD: SyntaxField = SyntaxField("payload");
 pub const FIELD_NAME: SyntaxField = SyntaxField("name");
 pub const FIELD_ARGUMENT: SyntaxField = SyntaxField("argument");
+/// The erased residents carried by an instantiation slot.
+pub const FIELD_INSTANTIATION: SyntaxField = SyntaxField("instantiation");
+/// The expression modified by an instantiation slot.
+pub const FIELD_TARGET: SyntaxField = SyntaxField("target");
 pub const FIELD_ARGUMENTS: SyntaxField = SyntaxField("arguments");
 pub const FIELD_CLAUSE: SyntaxField = SyntaxField("clause");
 pub const FIELD_PATTERN: SyntaxField = SyntaxField("pattern");
@@ -116,6 +122,10 @@ pub const FIELD_BASE: SyntaxField = SyntaxField("base");
 pub const RECORD_FIELD: SyntaxKind = SyntaxKind("record_field");
 pub const PROJECTION_EXPRESSION: SyntaxKind = SyntaxKind("projection_expression");
 pub const CALL_EXPRESSION: SyntaxKind = SyntaxKind("call_expression");
+/// A postfix erased-instantiation slot `e[ι₁, …, ιₙ]`.
+pub const INSTANTIATION_EXPRESSION: SyntaxKind = SyntaxKind("instantiation_expression");
+/// One comma-delimited resident of an instantiation slot.
+pub const INSTANTIATION_RESIDENT: SyntaxKind = SyntaxKind("instantiation_resident");
 pub const FORCE_EXPRESSION: SyntaxKind = SyntaxKind("force_expression");
 pub const RET_EXPRESSION: SyntaxKind = SyntaxKind("ret_expression");
 pub const BINARY_EXPRESSION: SyntaxKind = SyntaxKind("binary_expression");

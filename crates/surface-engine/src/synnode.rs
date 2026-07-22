@@ -739,6 +739,7 @@ impl<'tree> SynNode<'tree>
                 self.comma_segments(self.brace_body(), node_kinds::CODATA_OBSERVATION)
             },
             | node_kinds::MODULE_DECLARATION => self.module_members(),
+            | node_kinds::REC_BLOCK => self.rec_members(),
             | node_kinds::ATTRIBUTE_BLOCK => self.comma_segments(
                 self.body_between(label::AT_BRACKET, label::CLOSE_BRACKET),
                 node_kinds::ATTRIBUTE,
@@ -771,6 +772,9 @@ impl<'tree> SynNode<'tree>
         F: Into<SyntaxField>,
     {
         match (self.kind(), field.into()) {
+            | (node_kinds::INSTANTIATION_EXPRESSION, node_kinds::FIELD_INSTANTIATION) => {
+                self.comma_segments(self.bracket_body(), node_kinds::INSTANTIATION_RESIDENT)
+            },
             | (node_kinds::CALL_EXPRESSION, node_kinds::FIELD_ARGUMENT) => self
                 .child_by_field_name(node_kinds::FIELD_ARGUMENTS)
                 .map(Self::named_children)
@@ -787,6 +791,7 @@ impl<'tree> SynNode<'tree>
                 node_kinds::FIELD_MEMBER,
             ) => self.type_members(),
             | (node_kinds::MODULE_DECLARATION, node_kinds::FIELD_MEMBER) => self.module_members(),
+            | (node_kinds::REC_BLOCK, node_kinds::FIELD_MEMBER) => self.rec_members(),
             | (_, node_kinds::FIELD_ATTRIBUTE) => self.attribute_blocks(),
             // The copattern-clause list of a `def rec … { .π => e, … }` body
             // (codata design §5.1): the melder keeps the clauses flat, like a `case`'s
@@ -867,9 +872,9 @@ impl<'tree> SynNode<'tree>
             | (node_kinds::CALL_EXPRESSION, node_kinds::FIELD_ARGUMENTS) => {
                 self.paren_group(KIND_ARGUMENTS)
             },
-            // Brace-block bodies.
             | (
                 node_kinds::DEF_FUNCTION
+                | node_kinds::DEF_REC
                 | node_kinds::LAMBDA_EXPRESSION
                 | node_kinds::THUNK_EXPRESSION,
                 node_kinds::FIELD_BODY,
@@ -967,6 +972,7 @@ impl<'tree> SynNode<'tree>
             },
             // "the nth significant child".
             | (node_kinds::CALL_EXPRESSION, node_kinds::FIELD_FUNCTION)
+            | (node_kinds::INSTANTIATION_EXPRESSION, node_kinds::FIELD_TARGET)
             | (
                 node_kinds::CONSTRUCTOR_PATTERN | node_kinds::TYPE_APPLICATION,
                 node_kinds::FIELD_CONSTRUCTOR,
@@ -1184,6 +1190,7 @@ impl<'tree> SynNode<'tree>
             | Some(label::DATA) => node_kinds::DATA_DECLARATION,
             | Some(label::CODATA) => node_kinds::CODATA_DECLARATION,
             | Some(label::MODULE) => node_kinds::MODULE_DECLARATION,
+            | Some(label::REC) => node_kinds::REC_BLOCK,
             | Some(label::VAL) => node_kinds::LET_STATEMENT,
             | Some(label::RUN) => node_kinds::BIND_STATEMENT,
             | Some(label::CASE) => node_kinds::CASE_EXPRESSION,
@@ -1303,6 +1310,9 @@ impl<'tree> SynNode<'tree>
         }
         match second_label {
             | Some(label::DOT) => node_kinds::PROJECTION_EXPRESSION,
+            | Some(label::LBRACKET_GRADE) if matches!(sort, Some(Sort::Expression)) => {
+                node_kinds::INSTANTIATION_EXPRESSION
+            },
             | Some(label::LPAREN) => node_kinds::CALL_EXPRESSION,
             | Some(label::RIGHT_ARROW) if matches!(sort, Some(Sort::Type)) => {
                 node_kinds::FUNCTION_TYPE
@@ -1938,7 +1948,22 @@ impl<'tree> SynNode<'tree>
     /// The `module` block's ordered definition/signature members.
     fn module_members(self) -> Vec<Self>
     {
-        let Some((container, body)) = self.module_body()
+        self.definition_members(self.module_body())
+    }
+
+    /// The `rec` block's ordered recursive definitions.
+    fn rec_members(self) -> Vec<Self>
+    {
+        self.definition_members(self.brace_body())
+    }
+
+    /// Segment definition members inside one already-located brace body.
+    fn definition_members(
+        self,
+        region: Option<(NodeId, Span)>,
+    ) -> Vec<Self>
+    {
+        let Some((container, body)) = region
         else {
             return Vec::new();
         };
@@ -2587,6 +2612,13 @@ impl<'tree> SynNode<'tree>
     fn paren_body(self) -> Option<(NodeId, Span)>
     {
         self.body_between(label::LPAREN, label::RPAREN)
+    }
+
+    /// The container plus the `[lo, hi)` span strictly inside the outermost
+    /// `[`/`]` instantiation slot.
+    fn bracket_body(self) -> Option<(NodeId, Span)>
+    {
+        self.body_between(label::LBRACKET_GRADE, label::RBRACKET_GRADE)
     }
 
     /// The container plus the `[lo, hi)` span between the record `#{` and its
@@ -3644,6 +3676,20 @@ mod tests
             "a statement body is not a copattern body"
         );
 
+        let mutual = tree(concat!(
+            "rec { ",
+            "def even(n: Integer) -> F Integer { ret odd[<](n) } ",
+            "def odd(n: Integer) -> F Integer { ret even[<](n) }",
+            " }",
+        ))?;
+        let group = item0(&mutual)?;
+        assert_eq!(node_kinds::REC_BLOCK, group.kind(), "rec block classifies");
+        assert_eq!(
+            2,
+            group.children_by_field_name(node_kinds::FIELD_MEMBER).len(),
+            "rec block exposes both definitions"
+        );
+
         // A nested `,` inside a clause body's call hides in that call's own
         // meld, so the clause segmentation sees only the top-level separators.
         let nested = tree("def rec nats(n: Integer) -> S { .head => n, .tail => f(g(n, 1)) }")?;
@@ -3842,6 +3888,28 @@ mod tests
         );
         let args = call_node.children_by_field_name(node_kinds::FIELD_ARGUMENT);
         assert_eq!(2, args.len(), "two call arguments");
+        Ok(())
+    }
+    #[test]
+    fn recognizes_instantiation_residents() -> Result<(), String>
+    {
+        let marked = tree("def c = f[<, >](a);")?;
+        let call = field(item0(&marked)?, "value")?;
+        let instantiation = field(call, "function")?;
+        assert_eq!(
+            node_kinds::INSTANTIATION_EXPRESSION,
+            instantiation.kind(),
+            "the bracketed postfix is an instantiation expression"
+        );
+        assert_eq!(
+            "f",
+            field(instantiation, "target")?.text().as_ref(),
+            "the instantiation preserves its target"
+        );
+        let residents = instantiation.children_by_field_name(node_kinds::FIELD_INSTANTIATION);
+        assert_eq!(2, residents.len(), "the comma list exposes two residents");
+        assert_eq!("<", residents[0].text().as_ref());
+        assert_eq!(">", residents[1].text().as_ref());
         Ok(())
     }
     #[test]

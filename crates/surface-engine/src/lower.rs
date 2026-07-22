@@ -88,6 +88,7 @@
 pub(crate) mod codata;
 pub(crate) mod data;
 pub mod node_kinds;
+mod recursion_surface;
 #[cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
     allow(
@@ -203,6 +204,67 @@ pub enum LowerError
         /// The node kind of the unsupported construct.
         kind: SyntaxKind,
         /// The construct's byte range.
+        byte_range: SourceRange,
+    },
+
+    /// A bare fix-bound name occurred inside its recursive scope.
+    #[error(
+        "unmarked recursive reference `{name}` at bytes {byte_range:?}; did you mean `{suggestion}`?"
+    )]
+    UnmarkedRecursiveReference
+    {
+        /// The fix-bound name that required call-site evidence.
+        name: String,
+        /// The marked spelling suggested to the author.
+        suggestion: String,
+        /// The bare occurrence's source range.
+        byte_range: SourceRange,
+    },
+
+    /// A direction marker targeted no definition in the enclosing recursive
+    /// scope.
+    #[error(
+        "marked reference `{target}` at bytes {byte_range:?} does not target the enclosing recursive scope"
+    )]
+    MarkedReferenceOutsideRecursiveScope
+    {
+        /// The marked expression target.
+        target: String,
+        /// The marked occurrence's source range.
+        byte_range: SourceRange,
+    },
+
+    /// Named descent measures are reserved but not implemented.
+    #[error(
+        "recursion marker resident `{resident}` at bytes {byte_range:?} is reserved for named measures and is not implemented"
+    )]
+    ReservedNamedMeasure
+    {
+        /// The declined resident.
+        resident: String,
+        /// The resident's source range.
+        byte_range: SourceRange,
+    },
+
+    /// Explicit erased instantiation is reserved but not implemented.
+    #[error(
+        "recursion marker resident `{resident}` at bytes {byte_range:?} is reserved for explicit instantiation and is not implemented"
+    )]
+    ReservedExplicitInstantiation
+    {
+        /// The declined resident.
+        resident: String,
+        /// The resident's source range.
+        byte_range: SourceRange,
+    },
+
+    /// Tail-call assertions are reserved but not implemented.
+    #[error(
+        "recursion marker resident `tail` at bytes {byte_range:?} is reserved for tail-call assertions and is not implemented"
+    )]
+    ReservedTailAssertion
+    {
+        /// The resident's source range.
         byte_range: SourceRange,
     },
 
@@ -697,6 +759,9 @@ fn lower_source_seeded(
         return Err(LowerError::Syntax {
             byte_range: obligation_range(first),
         });
+    }
+    if matches!(strictness, Strictness::Strict) {
+        recursion_surface::validate(tree.root())?;
     }
     // Seed the projection-disambiguation set from the persisted declarations'
     // observation names, so an `s.π` in this source that observes a codata type
@@ -5260,6 +5325,11 @@ fn error_byte_range(error: &LowerError) -> Option<SourceRange>
     match *error {
         | LowerError::Syntax { ref byte_range }
         | LowerError::Unsupported { ref byte_range, .. }
+        | LowerError::UnmarkedRecursiveReference { ref byte_range, .. }
+        | LowerError::MarkedReferenceOutsideRecursiveScope { ref byte_range, .. }
+        | LowerError::ReservedNamedMeasure { ref byte_range, .. }
+        | LowerError::ReservedExplicitInstantiation { ref byte_range, .. }
+        | LowerError::ReservedTailAssertion { ref byte_range }
         | LowerError::InvalidIntegerLiteral { ref byte_range, .. }
         | LowerError::InvalidGrade { ref byte_range, .. }
         | LowerError::MissingCaseArm { ref byte_range, .. }
@@ -5290,6 +5360,13 @@ fn note_of(error: &LowerError) -> HoleNote
         | LowerError::Syntax { .. } => HoleNote::SyntaxError,
         | LowerError::Unsupported { kind, .. } | LowerError::TypeSortMismatch { kind, .. } => {
             HoleNote::UnsupportedForm { kind }
+        },
+        | LowerError::UnmarkedRecursiveReference { .. }
+        | LowerError::MarkedReferenceOutsideRecursiveScope { .. }
+        | LowerError::ReservedNamedMeasure { .. }
+        | LowerError::ReservedExplicitInstantiation { .. }
+        | LowerError::ReservedTailAssertion { .. } => HoleNote::UnsupportedForm {
+            kind: node_kinds::INSTANTIATION_EXPRESSION,
         },
         | LowerError::InvalidIntegerLiteral { ref text, .. } => {
             HoleNote::InvalidIntegerLiteral { text: text.clone() }
