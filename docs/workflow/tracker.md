@@ -6,12 +6,17 @@
 
 ## Source of truth and sync
 
-Issues live in a local Dolt database (beads, prefix `gandr-`) syncing **out-of-band from git** to DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) (the `origin` Dolt remote).
-DoltHub is the **only** synced copy; every worktree and the primary checkout hold independent Dolt clones (core/HAZARDS.md H2):
+Issues live in **one shared Dolt database per machine** (beads, prefix `gandr-`): the primary checkout and every worktree resolve the same database through the git common directory, so worktrees carry **no gitignored `.beads` state of their own** (the `wt` copy-ignored step excludes `.beads/**`; topology record: `gandr-fid.15`).
+A bead written from any checkout is immediately visible in all of them — no pull between worktrees.
+The database syncs **out-of-band from git** to DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) (the `origin` Dolt remote), the only off-machine copy:
 
 * **push after every write** — `bd dolt push` immediately after `bd create`/`update`/`dep`/`close`;
-* **pull before relying on reads** — `bd dolt pull` at session start, on entering a worktree, before triage (the `wt` `beads-pull` hooks and the `SessionStart` hook mechanize this);
-* trust the remote over a local clone when they disagree.
+* **pull before relying on reads** — `bd dolt pull` at session start and before triage (the `wt` `beads-pull` hooks and the `SessionStart` hook mechanize this); this guards **cross-machine** staleness, not worktree-to-worktree staleness;
+* trust the remote over a local clone when they disagree;
+* **server lifecycle is owner-controlled** — agents never run `bd dolt stop`/`start` or restart the Dolt server unprompted: a mid-session kill is what forked per-worktree clones and double-recorded a closeout on 2026-07-22 (`gandr-fid.15`).
+
+**Topology invariant** (check when in doubt): `bd dolt status` from every checkout reports the **same** PID/port/data-dir (the primary checkout's `.beads/dolt`), and a probe bead created in one checkout is instantly visible from another without any pull.
+A worktree whose `.beads` holds gitignored database state (`dolt/`, `embeddeddolt/`, `metadata.json`, `dolt-server.*`) is misconfigured: prove nothing local-only exists vs `origin/main`, then quarantine that state (recipe in `gandr-fid.15`).
 
 `.beads/*.jsonl` is a gitignored local-only export read by `bv`, never committed.
 

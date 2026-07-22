@@ -14,11 +14,11 @@
 
 ## Hooks (`.config/wt.toml`)
 
-* `[[pre-start]]`: `copy-ignored` (fail-open ignored-state reflink; excludes `.beads/*.jsonl` and `target/**`, core H11), `beads-chmod` (`chmod 0700 .beads` — keep the newborn worktree's private Dolt clone out of group/other reach), `beads-pull` (`bd dolt pull || true` freshness, H2).
+* `[[pre-start]]`: `copy-ignored` (fail-open ignored-state reflink; excludes `.beads/**` — the shared-tracker topology guard, [tracker.md](tracker.md) §"Source of truth and sync" — plus `target/**` and friends) and `beads-pull` (`bd dolt pull || true` — cross-machine freshness of the shared database; worktree-to-worktree visibility needs no pull).
   The template's `mise setup` and submodule init/warmup pre-start steps are parked while the reboot bootstraps — they reference state this repo does not have yet and re-grow with the pieces they serve.
-* **`[pre-merge]` is the local wall** — any non-zero exit aborts the merge: `mise run gate:merge` (the composed merge check, [ci.md](ci.md)) and `beads` (`bd dolt pull && bd dolt push` — make the branch's beads durable **before** the merge removes the worktree's Dolt clone; pull-then-push self-heals the sibling-push race).
+* **`[pre-merge]` is the local wall** — any non-zero exit aborts the merge: `mise run gate:merge` (the composed merge check, [ci.md](ci.md)) and `beads` (`bd dolt pull && bd dolt push` — make the branch's beads durable on DoltHub once gates are green; pull-then-push self-heals the race with other pushers).
   Parked pending their prerequisites: `adr-guard` (ADRs land on `main` only, core H5 — returns when `docs/adr/` exists) and `core-pin` (`mise run core:check`, the read-only vendored core at its pin — returns when the agentic-dev core is vendored at `.agents/core`).
-* `[post-merge]`: `beads-pull` in the primary — the merge made the branch's beads durable on DoltHub, but the primary's own clone reads stale until it pulls (the missing-seam incident).
+* `[post-merge]`: `beads-pull` in the primary — with the shared per-machine database this is cross-machine freshness only; the merged branch's beads were already visible locally the moment they were written.
 
 Contributor notes live in the sibling `wyrd-notes` repository (a separate local git repo beside this one), so worktree lifecycle operations cannot strand them — the historical in-repo gitignored `notes/` and its `notes-guard` gate are retired.
 

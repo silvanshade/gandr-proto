@@ -12,9 +12,8 @@
 # `wt config approvals add` once after wiring — never blanket `--yes`.
 #
 # Hook interactivity audit: lifecycle commands are non-interactive by
-# construction. Mise trust and ignored-state copying do not live here; mise
-# v2026.7.5+ propagates trust from the main checkout, and the opt-in
-# `mise.dev.toml` shell hooks own fail-open `wt step copy-ignored` (core H15).
+# construction. Mise trust does not live here; mise v2026.7.5+ propagates
+# trust from the main checkout (core H15).
 
 # Pre-start is intentionally minimal while the gandr reboot bootstraps: the
 # remaining template steps (mise setup, submodule init/warmup) reference state
@@ -24,15 +23,11 @@
 [[pre-start]]
 copy-ignored = "wt step copy-ignored"
 
-# The tracker's Dolt clone is private working state, not shareable source:
-# keep every newborn worktree's .beads out of group/other reach.
-[[pre-start]]
-beads-chmod = "chmod 0700 .beads"
-
-# Freshness gate (docs/HAZARDS.md H2): pull the newborn worktree's tracker
-# clone from the remote (the only synced copy). Best-effort (`|| true`) so an
-# offline/transient pull never blocks creation; linked-worktree trust already
-# propagates from the main checkout before this hook runs (core H15).
+# Freshness gate: pull the machine's SHARED beads database (one Dolt database
+# per machine, resolved through the git common directory — worktrees carry no
+# database state of their own) from DoltHub. Guards cross-MACHINE staleness;
+# worktree-to-worktree visibility is immediate. Best-effort (`|| true`) so an
+# offline/transient pull never blocks creation (gandr-fid.15).
 [[pre-start]]
 beads-pull = "bd dolt pull || true"
 
@@ -58,28 +53,28 @@ beads-pull = "bd dolt pull || true"
 gate-merge = "mise run gate:merge"
 
 # Make this branch's beads durable on DoltHub only after every validation gate
-# is green (docs/HAZARDS.md H2). Pull-then-push self-heals the non-fast-forward
-# race between independent per-worktree Dolt clones; a genuine row conflict
-# still aborts the merge.
+# is green. Pull-then-push self-heals the non-fast-forward race with other
+# pushers (other machines, or a not-yet-migrated stale clone); a genuine row
+# conflict still aborts the merge (gandr-fid.15).
 [[pre-merge]]
 beads = "bd dolt pull && bd dolt push"
 
-# Freshness gate (docs/HAZARDS.md H2, read side). The [pre-merge] `beads` gate pushes the
-# branch's beads to DoltHub just before the worktree is removed — but the PRIMARY (main)
-# checkout's own Dolt clone does not auto-pull them, so `main` reads stale until someone
-# pulls by hand (the 2026-06-28 missing-seam incident). `post-merge` runs in the primary
-# worktree after the merge (the branch worktree is gone), so this re-syncs main's local
-# clone with what the merge just made durable. Background + logged (post-* never blocks).
+# Freshness gate, read side. With the shared per-machine database the branch's
+# beads are already visible in the primary the moment they are written; this
+# post-merge pull now only re-syncs against DoltHub for cross-machine changes.
+# Background + logged (post-* never blocks). (gandr-fid.15)
 [post-merge]
 beads-pull = "bd dolt pull"
 
-# Structural guard for H11 (defense in depth beneath `export.auto: false`): exclude the
-# passive beads jsonl exports from the "wt step copy-ignored" reflink above, so a stale
-# branch-birth snapshot is never copied into a new worktree to be auto-imported at the
-# pre-merge beads gate (core/HAZARDS.md H11).
+# Beads topology guard (gandr-fid.15): worktrees must NOT carry gitignored
+# .beads state. bd shares ONE database per machine via git common-directory
+# discovery; a copied .beads (Dolt data snapshot, metadata.json, stale
+# dolt-server port/pid files) shadows that discovery and forks per-worktree
+# clones — the 2026-07-22 double-recording incident. Excluding .beads/** also
+# subsumes the older H11 guard against copying stale passive jsonl exports.
 [step.copy-ignored]
 exclude = [
-  ".beads/*.jsonl",
+  ".beads/**",
   "target/**",
   # tree-sitter reference crate returns under crates/tree-sitter (not yet in the
   # repo); the generic target/** above is root-anchored, so its nested target dir

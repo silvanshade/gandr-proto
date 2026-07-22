@@ -68,7 +68,9 @@ Backstops are lexical and incomplete; the classification is the rule, the hooks 
 
 ## Project delta (kept thin)
 
-* **Tracker**: beads, prefix `gandr-`; sync rides DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) via `bd dolt push` / `pull` (out-of-band from git — push after every write, pull before reads; core/HAZARDS.md H2).
+* **Tracker**: beads, prefix `gandr-`; **one shared Dolt database per machine** — the primary checkout and all worktrees resolve it via the git common directory, and worktrees carry no gitignored `.beads` state (the `wt` copy-ignored step excludes `.beads/**`; `gandr-fid.15`).
+  Sync rides DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) via `bd dolt push` / `pull` (out-of-band from git — push after every write, pull before reads; that discipline guards **cross-machine** staleness, worktree-to-worktree visibility is immediate).
+  Server lifecycle (`bd dolt stop`/`start`/restart) is **owner-controlled** — never touch it unprompted (`docs/workflow/tracker.md` §"Source of truth and sync").
   No TodoWrite / markdown TODOs / ad-hoc `MEMORY.md`.
   `bv --robot-*` for triage (bare `bv` blocks the session); confirm with `bd show` (`bd list` hides closed — use `--all` when auditing, core/HAZARDS.md H3).
 * **Gates** (run the narrowest that proves your change): `mise run treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift` (MANIFEST.yml BLAKE3), `docs:reference-integrity`, `wrkflw` (workflow edits); Rust — `cargo:clippy` (pass/fail gate only), `cargo:nextest`; Agda — `agda:check`.
