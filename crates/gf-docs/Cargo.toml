@@ -21,8 +21,9 @@ path = "src/main.rs"
 [dependencies]
 # The legacy XML pipeline, reused as the migration parser (XML -> model -> trees).
 gandr-workflow-docs = { path = "../workflow-docs" }
-# Embedded CPython hosting the pgf binding (see pyproject.toml; uv-managed).
-pyo3 = { workspace = true }
+# The GF/PGF interop: the GfRuntime trait (internalization seam) and the B'
+# .gfd s-expression surface.
+gandr-workflow-grammatical-framework = { path = "../workflow-grammatical-framework" }
 # Scoped code-payload escaping in the render post-pass.
 regex = { workspace = true }
 # Typed error derive for the crate error vocabulary.

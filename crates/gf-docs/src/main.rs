@@ -12,10 +12,10 @@ use gandr_gf_docs::pipeline::PostContext;
 use gandr_gf_docs::pipeline::build_page;
 use gandr_gf_docs::pipeline::copy_fonts;
 use gandr_gf_docs::pipeline::render_index;
-use gandr_gf_docs::rt::GfRuntime as _;
-use gandr_gf_docs::rt::PyPgf;
 use gandr_workflow_docs::bibliography;
 use gandr_workflow_docs::typst_leaf;
+use gandr_workflow_grammatical_framework::rt::GfRuntime as _;
+use gandr_workflow_grammatical_framework::rt::PyPgf;
 
 /// The repository root (two levels above this crate's manifest).
 const REPO_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
@@ -142,25 +142,33 @@ fn corpus_files() -> Result<Vec<PathBuf>, String>
     Ok(files)
 }
 
-/// Extract the index-row data (title, status) from a component's `.gfd` head.
+/// Extract the index-row data (title, status) from a component's `.gfd` tree.
 fn index_entry(
     gfd: &str,
     stem: &str,
 ) -> Result<IndexEntry, String>
 {
-    let head: String = gfd.chars().take(400).collect();
-    let pattern =
-        regex::Regex::new(r#"MkComponent\s+anchor_\w+\s+"((?:[^"\\]|\\.)*)"\s+(Status\w+)"#)
-            .map_err(|e| e.to_string())?;
-    let caps = pattern
-        .captures(&head)
-        .ok_or_else(|| format!("{stem}: no MkComponent head found"))?;
-    let title = caps
-        .get(1)
-        .map_or("", |m| m.as_str())
-        .replace("\\\"", "\"")
-        .replace("\\\\", "\\");
-    let status = match caps.get(2).map_or("", |m| m.as_str()) {
+    use gandr_workflow_grammatical_framework::sexp::Sexp;
+    let tree = gandr_workflow_grammatical_framework::sexp::parse(gfd)
+        .map_err(|e| format!("{stem}: {e}"))?;
+    let Sexp::App { head, args } = &tree
+    else {
+        return Err(format!("{stem}: corpus root is not an application"));
+    };
+    if head != "MkComponent" {
+        return Err(format!("{stem}: corpus root is {head}, not MkComponent"));
+    }
+    let [_anchor, title, status, _grounds, _derives, _sections, _refs] = args.as_slice()
+    else {
+        return Err(format!("{stem}: MkComponent arity is not seven"));
+    };
+    let (Sexp::Atom(title), Sexp::Atom(status)) = (title, status)
+    else {
+        return Err(format!("{stem}: MkComponent title/status is not an atom"));
+    };
+    let title = gandr_workflow_grammatical_framework::sexp::unquote(title)
+        .ok_or_else(|| format!("{stem}: MkComponent title is not a string literal"))?;
+    let status = match status.as_str() {
         | "StatusBuilt" => "built",
         | "StatusPartial" => "partial",
         | "StatusAdoptedUnbuilt" => "adopted-unbuilt",
@@ -177,8 +185,9 @@ fn index_entry(
 fn lexicon(check: bool) -> Result<(), String>
 {
     let root = PathBuf::from(REPO_ROOT);
-    let lexicon = generate(&root.join("docs/spec"), &root.join("docs/spec/refs.yml"))
-        .map_err(|e| e.to_string())?;
+    let corpus_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("corpus");
+    let lexicon =
+        generate(&corpus_dir, &root.join("docs/spec/refs.yml")).map_err(|e| e.to_string())?;
     let grammar_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("grammar");
     for (name, text) in [
         ("GandrDocsLex.gf", lexicon.render_abstract()),
@@ -373,8 +382,12 @@ fn poc() -> Result<(), String>
     let root = PathBuf::from(REPO_ROOT);
     run_command("cargo", &["build", "-p", "gandr-gf-docs"], &[])?;
     run_command("cargo", &["build", "-p", "gandr-gf-docs"], &[])?;
-    run_command("uv", &["sync", "--project", "crates/gf-docs"], &[])
-        .map_err(|e| format!("uv sync: {e}"))?;
+    run_command(
+        "uv",
+        &["sync", "--project", "crates/workflow-grammatical-framework"],
+        &[],
+    )
+    .map_err(|e| format!("uv sync: {e}"))?;
     let xml = root.join("docs/spec/component-vocabulary.xml");
     let gfd = root.join("crates/gf-docs/corpus/component-vocabulary.gfd");
     let pgf = root.join("target/gf-docs/GandrDocsLex.pgf");

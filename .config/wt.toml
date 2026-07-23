@@ -23,12 +23,12 @@
 [[pre-start]]
 copy-ignored = "wt step copy-ignored"
 
-# gf-docs PGF-interop env: create/update the crate venv (uv, system python)
+# gf PGF-interop env: create/update the crate venv (uv, system python)
 # so the PyO3 backend's interpreter matches the build-discovered python3.
 # Cargo builds do NOT require this (the venv is a runtime dependency of the
-# gf-docs lanes and tests only), but fresh checkouts want it provisioned.
+# GF lanes and tests only), but fresh checkouts want it provisioned.
 [[pre-start]]
-gf-docs-env = "uv sync --project crates/gf-docs"
+gf-docs-env = "uv sync --project crates/workflow-grammatical-framework"
 
 # Freshness gate: pull the machine's SHARED beads database (one Dolt database
 # per machine, resolved through the git common directory — worktrees carry no

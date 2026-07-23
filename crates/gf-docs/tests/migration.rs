@@ -21,10 +21,10 @@ use std::path::PathBuf;
 
 use gandr_gf_docs::pipeline::PostContext;
 use gandr_gf_docs::pipeline::build_body;
-use gandr_gf_docs::rt::PyPgf;
 use gandr_workflow_docs::bibliography;
 use gandr_workflow_docs::corpus;
 use gandr_workflow_docs::typst_leaf;
+use gandr_workflow_grammatical_framework::rt::PyPgf;
 
 /// Shared result type for the migration witnesses.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -221,17 +221,27 @@ mod tests
         Ok(())
     }
 
-    /// The lexicon generated from the legacy `XML` scan agrees with the
-    /// committed modules (the bootstrap invariant; the `.gfd` scan succeeds
-    /// it at retirement).
+    /// The lexicon generated from the `.gfd` corpus agrees with the
+    /// transition-era `XML` scan (the migration invariant) and with the
+    /// committed modules (the freshness gate).
     #[test]
     fn generated_lexicon_is_fresh() -> TestResult
     {
         let root = repo_root();
-        let lexicon = gandr_gf_docs::lexicon::generate(
-            &root.join("docs/spec"),
-            &root.join("docs/spec/refs.yml"),
-        )?;
+        let corpus_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("corpus");
+        let refs = root.join("docs/spec/refs.yml");
+        let lexicon = gandr_gf_docs::lexicon::generate(&corpus_dir, &refs)?;
+        let xml_lexicon = gandr_gf_docs::lexicon::generate_xml(&root.join("docs/spec"), &refs)?;
+        assert_eq!(
+            lexicon.render_abstract(),
+            xml_lexicon.render_abstract(),
+            "the .gfd and XML lexicon scans diverge"
+        );
+        assert_eq!(
+            lexicon.render_concrete(),
+            xml_lexicon.render_concrete(),
+            "the .gfd and XML lexicon scans diverge (concrete)"
+        );
         let grammar = Path::new(env!("CARGO_MANIFEST_DIR")).join("grammar");
         for (name, rendered) in [
             ("GandrDocsLex.gf", lexicon.render_abstract()),

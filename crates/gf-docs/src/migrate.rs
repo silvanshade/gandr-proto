@@ -17,9 +17,9 @@ use gandr_workflow_docs::model::Section;
 use gandr_workflow_docs::model::Status;
 use gandr_workflow_docs::model::TableCell;
 use gandr_workflow_docs::parse::parse_document;
+use gandr_workflow_grammatical_framework::sexp::Sexp;
 
 use crate::error::GfDocsError;
-use crate::sexp::Sexp;
 
 /// Translate one legacy `XML` component file into its `.gfd` text.
 ///

@@ -635,7 +635,7 @@ name = "gandr-gf-docs"
 version = "0.0.0"
 dependencies = [
  "gandr-workflow-docs",
- "pyo3",
+ "gandr-workflow-grammatical-framework",
  "regex",
  "thiserror 2.0.19",
 ]
@@ -841,6 +841,14 @@ dependencies = [
  "syn 2.0.119",
  "toml",
  "yaml-rust2",
+]
+
+[[package]]
+name = "gandr-workflow-grammatical-framework"
+version = "0.0.0"
+dependencies = [
+ "pyo3",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

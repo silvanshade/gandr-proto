@@ -18,9 +18,9 @@ use gandr_workflow_docs::model::CiteKey;
 use gandr_workflow_docs::render::render_references;
 use gandr_workflow_docs::typst_leaf;
 use gandr_workflow_docs::typst_leaf::Leaf;
+use gandr_workflow_grammatical_framework::rt::GfRuntime;
 
 use crate::error::GfDocsError;
-use crate::rt::GfRuntime;
 
 /// The post-pass context: the bibliography for references enrichment and the
 /// cache directory for compiled math/diagram leaves.

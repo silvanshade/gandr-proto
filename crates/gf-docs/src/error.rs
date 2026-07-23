@@ -22,4 +22,24 @@ pub enum GfDocsError
     /// The model-to-tree translation hit a construct outside the `PoC` grammar.
     #[error("translation: {0}")]
     Translation(String),
+    /// The `.gfd` reader rejected the surface text.
+    #[error("gfd parse: {0}")]
+    Parse(String),
+}
+
+/// Map a runtime-lane rejection into the crate error vocabulary.
+impl From<gandr_workflow_grammatical_framework::GfError> for GfDocsError
+{
+    #[inline]
+    fn from(error: gandr_workflow_grammatical_framework::GfError) -> Self
+    {
+        use gandr_workflow_grammatical_framework::GfError as Gf;
+        match error {
+            | Gf::Io(source) => Self::Io(source),
+            | Gf::Python(message) => Self::Python(message),
+            | Gf::Pgf(message) => Self::Pgf(message),
+            | Gf::Parse(message) => Self::Parse(message),
+            | _ => Self::Model("unknown GF interop error".into()),
+        }
+    }
 }

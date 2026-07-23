@@ -14,10 +14,10 @@ use gandr_gf_docs::pipeline::PostContext;
 use gandr_gf_docs::pipeline::build_body;
 use gandr_gf_docs::pipeline::build_page;
 use gandr_gf_docs::pipeline::copy_fonts;
-use gandr_gf_docs::rt::GfRuntime as _;
-use gandr_gf_docs::rt::PyPgf;
 use gandr_workflow_docs::bibliography;
 use gandr_workflow_docs::typst_leaf;
+use gandr_workflow_grammatical_framework::rt::GfRuntime as _;
+use gandr_workflow_grammatical_framework::rt::PyPgf;
 
 /// Shared result type for the `PoC` integration witnesses.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;

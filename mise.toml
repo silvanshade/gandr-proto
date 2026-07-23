@@ -75,7 +75,7 @@ run = """
 aube ci
 rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component clippy,rustfmt
 rustup toolchain install "$RUSTUP_TOOLCHAIN_NIGHTLY" --profile minimal --component clippy,rustfmt,rust-src,llvm-tools-preview,rustc-dev
-uv sync --project crates/gf-docs
+uv sync --project crates/workflow-grammatical-framework
 """
 
 # Parked: the tree-sitter grammar package is not in the repo yet (it returns
@@ -330,7 +330,7 @@ cargo run --quiet -p gandr-workflow-gates -- iu-pin --workspace-root .
 description = "Validate the .gfd specification corpus through the GF pipeline (gandr-5n6): lexicon freshness (the duplicate detector), term/cite/ref/provenance resolution at the mandatory checkExpr lane"
 depends = ["docs:gfd:grammar"]
 run = """
-uv sync --project crates/gf-docs
+uv sync --project crates/workflow-grammatical-framework
 cargo run --quiet -p gandr-gf-docs --locked -- check-all
 """
 
@@ -344,7 +344,7 @@ cargo run --quiet -p gandr-workflow-docs --features=full -- check-docs
 description = "Build the no-JavaScript static HTML spec corpus from .gfd through the GF pipeline into target/docs-spec (typst math/diagram leaves compiled to SVG; gandr-5n6)"
 depends = ["docs:gfd:grammar"]
 run = """
-uv sync --project crates/gf-docs
+uv sync --project crates/workflow-grammatical-framework
 cargo run --quiet -p gandr-gf-docs --locked -- build-all --out target/docs-spec
 """
 
@@ -370,7 +370,7 @@ run = "cargo run -p gandr-gf-docs --locked -- grammar"
 description = "Run the gf-docs corpus arc: uv sync (pgf env), lexicon freshness, checkExpr over the corpus, render all pages + the index to target/gf-docs/corpus-pages, gf-docs tests incl. the dual-run gate (gandr-5n6)"
 depends = ["docs:gfd:grammar"]
 run = """
-uv sync --project crates/gf-docs
+uv sync --project crates/workflow-grammatical-framework
 cargo run --quiet -p gandr-gf-docs --locked -- check-all
 cargo run --quiet -p gandr-gf-docs --locked -- build-all --out target/gf-docs/corpus-pages
 cargo nextest run -p gandr-gf-docs

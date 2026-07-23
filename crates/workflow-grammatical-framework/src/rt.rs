@@ -9,7 +9,7 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
-use crate::error::GfDocsError;
+use crate::error::GfError;
 
 /// The runtime surface the pipeline uses (proposal §4).
 pub trait GfRuntime
@@ -19,13 +19,12 @@ pub trait GfRuntime
     ///
     /// # Errors
     ///
-    /// [`GfDocsError::Pgf`] when the runtime rejects the tree (unknown
-    /// function or ill-typed application); [`GfDocsError::Python`] on
-    /// interop failure.
+    /// [`GfError::Pgf`] when the runtime rejects the tree (unknown function or
+    /// ill-typed application); [`GfError::Python`] on interop failure.
     fn check_and_linearize(
         &self,
         expr: &str,
-    ) -> Result<String, GfDocsError>;
+    ) -> Result<String, GfError>;
 
     /// Validate without rendering (the negative-test lane).
     ///
@@ -34,7 +33,7 @@ pub trait GfRuntime
     fn check(
         &self,
         expr: &str,
-    ) -> Result<(), GfDocsError>;
+    ) -> Result<(), GfError>;
 }
 
 /// The `PyO3` backend: holds the loaded `pgf` module, PGF grammar object, and
@@ -58,13 +57,13 @@ impl PyPgf
     ///
     /// # Errors
     ///
-    /// [`GfDocsError::Python`] when the interpreter, the `pgf` import, the
-    /// `.pgf` load, or the language lookup fails.
+    /// [`GfError::Python`] when the interpreter, the `pgf` import, the `.pgf`
+    /// load, or the language lookup fails.
     #[inline]
     pub fn load(
         pgf_path: &str,
         language: &str,
-    ) -> Result<Self, GfDocsError>
+    ) -> Result<Self, GfError>
     {
         Python::attach(|py| {
             prepend_venv_site_packages(py)?;
@@ -81,7 +80,7 @@ impl PyPgf
                         ))
                     })
                     .unwrap_or_else(|_| "probe failed".to_owned());
-                GfDocsError::Python(format!("{e} [{probe}]"))
+                GfError::Python(format!("{e} [{probe}]"))
             })?;
             let grammar = module
                 .getattr("readPGF")
@@ -101,7 +100,7 @@ impl PyPgf
     fn read_and_check(
         &self,
         expr: &str,
-    ) -> Result<Py<PyAny>, GfDocsError>
+    ) -> Result<Py<PyAny>, GfError>
     {
         Python::attach(|py| {
             let tree = self
@@ -127,7 +126,7 @@ impl GfRuntime for PyPgf
     fn check_and_linearize(
         &self,
         expr: &str,
-    ) -> Result<String, GfDocsError>
+    ) -> Result<String, GfError>
     {
         let checked = self.read_and_check(expr)?;
         Python::attach(|py| {
@@ -144,7 +143,7 @@ impl GfRuntime for PyPgf
     fn check(
         &self,
         expr: &str,
-    ) -> Result<(), GfDocsError>
+    ) -> Result<(), GfError>
     {
         self.read_and_check(expr).map(|_| ())
     }
@@ -152,14 +151,14 @@ impl GfRuntime for PyPgf
 
 /// Map an interop-side failure (import, attribute, conversion) to the
 /// interop variant.
-fn py_err(error: &PyErr) -> GfDocsError
+fn py_err(error: &PyErr) -> GfError
 {
-    GfDocsError::Python(error.to_string())
+    GfError::Python(error.to_string())
 }
 
 /// Prepend the crate's uv `site-packages` to `sys.path` when the directory
 /// exists (the `.venv` lives beside this crate's manifest at build time).
-fn prepend_venv_site_packages(py: Python<'_>) -> Result<(), GfDocsError>
+fn prepend_venv_site_packages(py: Python<'_>) -> Result<(), GfError>
 {
     let lib = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".venv/lib");
     let Ok(mut versions) = std::fs::read_dir(&lib)
@@ -183,16 +182,16 @@ fn prepend_venv_site_packages(py: Python<'_>) -> Result<(), GfDocsError>
 
 /// Map a check-lane rejection to the validation variant, preserving the
 /// runtime's exception class (`PGFError` vs `TypeError`) in the message.
-fn check_err(error: &PyErr) -> GfDocsError
+fn check_err(error: &PyErr) -> GfError
 {
     Python::attach(|py| {
         if error.is_instance_of::<PyTypeError>(py) {
-            return GfDocsError::Pgf(format!("TypeError: {error}"));
+            return GfError::Pgf(format!("TypeError: {error}"));
         }
         if error.is_instance_of::<PyException>(py) {
             // pgf.PGFError's message already carries the class name.
-            return GfDocsError::Pgf(error.to_string());
+            return GfError::Pgf(error.to_string());
         }
-        GfDocsError::Python(error.to_string())
+        GfError::Python(error.to_string())
     })
 }

@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.10"
 
 [[package]]
-name = "gandr-gf-docs"
+name = "gandr-workflow-grammatical-framework"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [

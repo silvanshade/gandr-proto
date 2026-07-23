@@ -30,6 +30,7 @@ members = [
   "crates/workflow-docs",
   "crates/workflow-dylint",
   "crates/workflow-gates",
+  "crates/workflow-grammatical-framework",
 ]
 # `fuzz/` is an independent AFL++ workspace with its own lockfile and lint
 # posture (it also path-deps crates that have not been ported yet); keep it
@@ -182,9 +183,9 @@ version = "1.11.0"
 default-features = true
 
 # Embedded CPython for the GF/PGF interop backend (the `pgf` binding rides the
-# uv-managed environment declared in crates/gf-docs/pyproject.toml).
+# uv-managed environment declared in crates/workflow-grammatical-framework/pyproject.toml).
 # consumers:
-# - gandr-gf-docs
+# - gandr-workflow-grammatical-framework
 [workspace.dependencies.pyo3]
 version = "0.26"
 default-features = false
