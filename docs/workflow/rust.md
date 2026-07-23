@@ -49,6 +49,8 @@
 * **Arithmetic is checked, never bare.** `saturating_*` for monotone counters/depths, `checked_*` where overflow must surface (the grade semiring clamps finite overflow to `ω`), `wrapping_*` only for hashing.
   `arithmetic_side_effects` is denied workspace-wide.
 * **Test/bench code may relax the wall; production never does.** The standard test-allow set (`arithmetic_side_effects`, `expect_used`, `indexing_slicing`, `panic`, `unwrap_used`, plus what clippy requires) via a single crate-level `#![cfg_attr(test, allow(...), reason = "..."))]`.
+  The relaxation is the FIRST thing added when a crate or a test target is created (owner directive, 2026-07-23): the lib root carries it from day one, and each `tests/*.rs` integration file carries it at its own root — crate-level attributes do not cross compilation roots, so the lib's block never reaches integration targets.
+  A crate that gains its first `#[cfg(test)]` module or `tests/` file later adds the relaxation in the same change, before writing the tests.
 * **Panic policy.** Production paths return typed errors.
   A panic is acceptable only as a `debug_assert!` of an internal invariant or in test/bench code.
   Every reachable panic is either routed through a structured error variant or documented in the item's `# Contract`.

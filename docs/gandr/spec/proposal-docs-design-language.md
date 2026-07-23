@@ -315,6 +315,25 @@ The build lane (`crates/workflow-docs/src/main.rs::do_build`) replaces the bare 
 6. **Math in TeX Gyre Pagella Math with bold-italic category names (owner-directed, §7.4).** The Munch thesis's math surface: Palatino-lineage math, the bold-italic/upright-subscript convention for category/sort/system names, italic metavariables, upright operators.
    The font config itself lands with the typst-SVG splice lane; the doctrine is fixed here so the splice lane and the recursion-surface re-authoring (gandr-aaq) inherit one convention.
 
+## 12.5 Amendment A — the gandr-aaq design pass (owner-directed, 2026-07-23)
+
+Landed with the recursion-surface re-authoring (gandr-aaq); every change below is an owner decision from that session.
+Contrast figures machine-verified at amendment time.
+
+1. **Body ink dimmed one step (dark scheme).** `--ink` dark `#e6e2d5` → `#cfcabd` (11.18:1 on the dark paper): full-strength ink at 14.1:1 read harsh for long-form prose; the dim keeps ≥ 4.5:1 with a wide margin while letting the two accent roles below carry their moments.
+   The light scheme's landed `--ink` is `#26241f` (15.44:1), a softening of this document's proposed `#111111` from the gandr-4l9 landing — recorded here so the token table stays the palette's one closed inventory.
+2. **`strong` pops by weight _and_ hue.** §4.3's plain real-cut bold became `font-weight: 700` in `--strong` (light `#9a6200` 5.07:1; dark `#ffd98a` 13.54:1).
+   Emphasis is the prose-pacing doctrine's spine marker (docs/workflow/specs.md); in a corpus of dimmed ink it must be findable at a scan, which weight alone did not deliver.
+3. **Inline syntax fragments: `code.syn`.** The grammar gained `CodeInline : String -> Inline` (the corpus vocabulary's one new inline constructor), linearized as `<code class="syn">`: mono at `0.88em` in `--syn` (light `#2b6f62` 5.89:1; dark `#9fd3c7` 10.99:1) over a `--syn-wash` background (`rgba` of the same hue, 0.08 light / 0.09 dark), `0.18em` padding, 2px radius.
+   The hue is the cool counterpoint to `--strong`'s warm: surface syntax (`def rec`, `rec { … }`, `assert_smaller`) reads as a third channel beside prose and emphasis, never as either. §4.3's "inline `<code>` → mono, no background" still governs generic inline code; `code.syn` is the authored `CodeInline` construct only.
+4. **The table of contents rail (`nav.toc`).** Pages with sections carry a fixed left-margin rail: right edge at `calc(50% + 32.5rem + 1.25rem)` — just left of the 104ch content box (65rem ≈ the box plus its padding, the same quantity the base layout computes) — `20ch` wide, `0.85rem/1.35`, entries in `--ink-soft` with `--accent` hover/focus, the current entry marked by a 2px `--accent` left border plus ink-colored bold text (never color alone, §6.1's CVD rule).
+   It exists only where it fits: `display: none` below `92em`, no collapse layout — the rail tucks away rather than compete with the text column.
+5. **The scroll-spy: the one sanctioned JavaScript exception.** Principle 5's "no JavaScript, ever, in the design layer" yields exactly once: a ~20-line `IntersectionObserver` script, emitted after `<main>` in the page shell, toggling `li.current` as sections cross a `-10%/-75%` root-margin band, with a last-section-above-the-band fallback so the rail is never without a current entry.
+   The exception is **progressive enhancement by construction**: the rail's links navigate without it, the page is complete with scripts disabled, and the design never requires it — principle 5's intent (the design must never require JS) is preserved while its letter bows to the owner's call.
+   Two placement facts cost a debugging session and are recorded: the script must follow `<main>` in document order (emitted earlier, its `section[id]` query matches nothing and the spy silently never fires), and the observer's initial callback alone misses band-gap scrolls, so a passive `scroll` listener shares the `mark` pass.
+6. **The short-title convention.** Section titles stay short — the rail is `20ch` at `0.85rem` and entries wrap poorly past it.
+   Authored corpus titles were revised down in the same change ("Overview and the decision", "The instantiation slot", "Staging and gates"); the convention is author-facing guidance in docs/workflow/specs.md.
+
 ## 13. References
 
 * Edward Tufte, _The Visual Display of Quantitative Information_ (Graphics Press, 1983) — data-ink ratio; _Envisioning Information_ (1990) — marginalia, layering.

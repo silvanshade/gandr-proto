@@ -106,7 +106,11 @@ The pacing/linguistic program (gandr-aaq) computes over abstract trees — a str
 
 * **Exact by construction:** emphasis density (bold/italic are abstract constructors — counting them is a tree walk, not a regex); block-mix and weave compliance (payload blocks per section, prose-per-block ratios); section shape (paragraph and sentence counts from `Prose` structure).
 * **On linearized prose:** sentence-length distribution (mean/median/p90/max/variance — the rhythm signal), paragraph word counts, Flesch/Fog-style formulas with the documented technical-corpus caveats.
-* **Clause-level (staged, honest):** parsing authored English with an RGL-English concrete syntax gives clause depth, passives, and nominalizations as tree statistics — _with coverage reporting_ (technical prose with math/code will partially parse; every metric from this lane is reported with its parse-coverage percentage, and the lane is optional until coverage data justifies it).
+* **Clause-level (the application-grammar lane):** prose parsed into `RGL` trees gives the doctrine's sentence-level quantities as tree walks — clauses per sentence, embedding depth, passives, nominalizations — _with coverage reporting_ (every metric from this lane is reported with its parse-coverage percentage).
+  The grammar is a **domain application grammar**, not wide-coverage English: an `RGL` Lang subset plus a generated domain lexicon (the docs lexicon's display texts plus coined terms as declared lexemes) — the configuration `GF` is designed for (small search space, domain terms first-class) and the remedy for both spike failures (5.6% wide-coverage coverage; the debugger-verified libpgf C-stack crash on 65k-lemma ambiguity).
+  Its purpose is **mechanically-assisted revision**: findings name the construction and locate the split point, a deterministic measure → locate → rewrite → re-measure loop for the authoring agent.
+  Posture: coverage reported, never gated; structural findings fire only where prose already fails the pacing doctrine (docs/workflow/specs.md §"The sentence-level twin").
+  The build is gandr-739 (owner decision, 2026-07-23).
 
 ### 3.6 What stays outside GF
 
@@ -196,6 +200,7 @@ No big-bang: the old pipeline stays until (2) is green for every component.
   Mitigation: one .gf module, cheap to revise pre-migration; corpus is ten documents; the audit grounding is already done.
 * **R4 — RGL English coverage** on technical prose (§3.5's staged lane).
   Mitigation: coverage reporting built into the lane; lane is optional; v1 metrics need nothing from it.
+  **Outcome (gandr-aaq spike, 2026-07-23): the risk materialized — 5.6% coverage and a debugger-verified libpgf C-stack segfault on a 24-token ambiguous sentence; the lane stays staged (§3.5, gandr-739).**
 * **R5 — `readExpr`/`checkExpr` performance and lexicon-regeneration cost** in the `docs:check` inner loop (no XML is PGF-parsed under B′; the live costs are the runtime reader/checker on ~10–60 KB `.gfd` files plus `gf --make` on regenerated lexica).
   Mitigation: measure both in the PoC; lexica regenerate only on lexicon-affecting changes (content-hash gated).
 

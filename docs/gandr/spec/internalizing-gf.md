@@ -48,6 +48,21 @@ Entries so far (env spike, 2026-07-22):
 * **API surface exercised:** `readPGF`, `languages`, `readExpr`, `linearize`, `functionType`, `functionsByCat`, `inferExpr` — all present and working in the Python binding (pgf 1.1) against libpgf from the same 3.12 release.
 * **Distribution (binding):** the pgf 1.1 PyPI wheels **bundle** `libpgf`/`libgu` (mac arm/x86, manylinux, musllinux — verified by wheel inspection); only the sdist path (Windows, pinned source builds) compiles `pypgf.c` against a preinstalled runtime.
 
+Entries (bindings-surface verification, 2026-07-23, pgf 1.1 against the compiled corpus lexicon PGF):
+
+* **`PGF.functionsByCat(cat)`** returns the category's function names as plain strings (exercised for `Term`/`Anchor` — the metrics lane's lexicon-view source).
+* **`Concr.tabularLinearize(expr)`** returns the record-field map (`{key, text}` for `Term`, `{id, title}` for `Anchor`) — display texts come from the compiled grammar itself, so no consumer ever parses the generated `.gf` modules.
+* **`Expr.unpack()`** returns a plain `str` for string literals and `(head, [arg…])` for applications (nullary constructors included), so one `pgf.Expr` extracts recursively into a `Rust` tree in a single boundary crossing (`FromPyObject` on the crate tree type, the vkpp wrapper pattern — `rt::GfRuntime::read_tree`).
+  The extracted shapes match the retired house reader's exactly: the lexicon lane regenerates byte-identical modules through the runtime path.
+* **`Concr.parse`** requires an explicit start category for grammars without one (the corpus grammar has none — expected; the RGL lane carries its own).
+* **The C parser is unhardened against deep generated-category recursion** (2026-07-23, pgf 1.1 wheel): parsing a 24-token ambiguous sentence (`"this is completion over the convergent slice of a polygraph presentation , and it is the optimization-time twin of the runtime matching modulo stance"`) against a Lang+DictEng English `PGF` segfaults the process — the debugger shows `pgf_process_generated_cat` recursing past one million frames (`gu_map_find_default`/`gu_map_lookup` in the cycle) until the C stack exhausts.
+  Short inputs and single unknown tokens fail cleanly (`ParseError`); the crash is scale-dependent, independent of the `literal=Symb` flag, and reproduces through any binding (it is the shared runtime, not the `Python` glue).
+  Any future parse lane needs an input-length/complexity guard or chunked parsing.
+  **Update (same day):** the crash signature is _unknown tokens deep inside structurally complex input_ (a relative-clause+coordination sentence with one unlexicalized token crashes the Lang+small-domain-lexicon grammar the same way).
+  The parse lane's guard is therefore a pre-parse unknown-token check, not just a length cap.
+* **`Concr.lookupMorpho` and `Concr.fullFormLexicon` under-cover structural words** (2026-07-23, pgf 1.1): function words the parser accepts (`is`, `an`, `at`, modals) are absent from both `API`s — the parser itself is the only complete oracle for "is this token known".
+  The parse lane's unknown-token guard therefore combines the full-form lexicon with a documented structural-word whitelist.
+
 ## Decision triggers
 
 Open an internalization bead when any of: (a) the pipeline is migrated and GF is load-bearing for the corpus; (b) the Python/libpgf env cost measurably hurts (CI time, contributor setup); (c) a needed runtime capability is unreachable through the C API.

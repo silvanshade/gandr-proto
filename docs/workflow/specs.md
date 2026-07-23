@@ -55,6 +55,32 @@ Author-facing consequences:
 * **Normative API surfaces** (`api`-role code) render at full inner measure and must not scroll: keep lines ≤ 96 columns, exactly like the 72-column canonical `.gfd` layout discipline.
 * **Math authoring** (typst source, splice lane pending): write category/sort/system names so they can be set bold italic with upright subscripts; keep operators and keywords upright-able (word-like, not letter-like).
 
+## The prose-pacing doctrine (gandr-aaq)
+
+Prose in the corpus is **aired out**: one load-bearing idea per paragraph, with paragraph breaks taken freely.
+**Bold and italics mark the load-bearing ideas** — a reader skimming only the emphasized text recovers the document's spine; that is what makes the structure scannable.
+Density belongs in payload blocks (tables, grammars, code, registers); prose carries one idea at a time.
+A paragraph that needs two load-bearing ideas gets split; a paragraph whose idea needs emphasis gets it; emphasis is the concept marker, so roughly one emphasized idea per paragraph is the shape of the target, not a quota.
+
+Explicitly _not_ the target: syllable- and complex-word readability scores (Flesch/Fog and friends).
+This is a mathematics corpus — complex words are not the enemy (owner direction, 2026-07-23); density, pacing, concept placement at paragraph boundaries, and flow are.
+
+The **measurement** is the metrics lane (`cargo run -p gandr-workflow-docs -- metrics [FILES…]`, proposal §3.5):
+
+* **Exact by construction** (tree walks): section shape, block mix, weave compliance (zero violations is the gate — every payload block gets an introducing prose paragraph), emphasis spans per paragraph (the concept-marking signal), and term/cross-reference chains between adjacent paragraphs (flow: adjacent paragraphs should share references; a chronically zero chain reads as a pile of notes, not a document).
+* **On linearized prose**: sentence- and paragraph-length distributions (mean/median/p90/max/stdev) — the rhythm numbers.
+  Sentences trend shorter than the first-pass corpus's (mean ≈ 28, p90 ≈ 49); paragraphs trend thinner (median ≈ 108 words is over-dense).
+  Calibrated on the recursion-surface revision (gandr-aaq, the doctrine's reference point, 3047 prose words over 14 sections): **sentence words mean ≈ 18, median ≈ 17, p90 ≈ 29, max ≈ 38; paragraph words mean ≈ 42, median ≈ 38, p90 ≈ 74; ≈ 2.3 sentences per paragraph; ≈ 1 emphasis span per 100 words marking ≈ 38% of paragraphs; zero weave violations; adjacent-paragraph reference chains visibly above the first pass's 0.00.** These are the shape of a passing revision, not gates — the revision itself moved mean sentence length 28.3 → 17.9 and mean paragraph length 95.5 → 41.7 under them.
+
+## The sentence-level twin (the application-grammar lane)
+
+"One load-bearing idea per paragraph" has a sentence-level twin: **one clause spine per sentence, emphasis on the spine.** The application-grammar lane (gandr-739) parses prose into `RGL` trees and makes that checkable: clauses per sentence, embedding depth (center-embedding fails; long right-branching sentences pass — length is the wrong instrument), nominalized main actions (verbalize them), emphasis-role alignment (the emphasized span belongs on the main-clause spine, not buried in an adjunct), and given/new subject-chain continuity across a paragraph.
+
+Its purpose is **mechanically-assisted revision**: a quantitative, deterministic _measure → locate → rewrite → re-measure_ loop for the documentation agent — findings name the construction and locate the split point, they do not gesture at word counts.
+The posture that keeps prose alive: **coverage is reported, never gated** — a coverage gate makes authors write to the grammar and kills the essay; structural findings and narrow structural gates fire only where the prose already fails this doctrine, and nobody's voice lives in four-deep center-embedding.
+The reference instrument (the spike probe, `MetricsLex` = `Lang` + `DictEngAbs` minus the segfault-guard exclusions, with `CodeInline`/`MathInline`/`CiteRef` read as placeholders) measures the recursion-surface arc **5.6% → 9.4% raw, 5.6% → 10.5% code-stripped** (108 → 171 sentences — the splitting itself raises coverage, shorter spines parse).
+The residual failures are lexicon, not spine: unglossed technical vocabulary (`corecursion`, `pre-lowering`) and punctuation-adjacent tokens dominate the reject list, which is exactly the application grammar's lexicon gap (gandr-739) rather than prose pathology.
+
 ## Pointers
 
 * `docs/spec/README.md` — the authoring discipline (skeleton, blocks, links, required attributes).

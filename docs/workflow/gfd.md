@@ -9,6 +9,22 @@ One `.gfd` file is **one `GF` abstract-syntax tree** written in PGF expression s
 Documents are **validated, never parsed blind**: the pipeline reads the text with `readExpr` and then type-checks it at the mandatory `checkExpr` lane — unknown lexicon constants and ill-typed applications are rejected before any rendering happens.
 Renderings are **linearizations** of the same tree (HTML today; Markdown, LaTeX, and more later), so nothing presentational — styling, escaping, link targets — belongs in the tree.
 
+## The bindings-first doctrine
+
+**Never re-implement functionality the `GF` toolchain already provides.** Reading expressions, validating trees, parsing, linearizing, and grammar introspection all ride the runtime bindings in `crates/workflow-grammatical-framework` (`rt.rs` — the only module that may know which backend is live, per `docs/gandr/spec/internalizing-gf.md`).
+A second implementation is not just more code to maintain: it is _less precise_, because it drifts from the runtime's own behavior — syntax edge cases, error shapes, and semantics only the runtime owns.
+Everything `GF`-touching in this repository assumes the bindings are provisioned (owner directive, 2026-07-23); offline fallbacks are not a goal (they return only if `GF` is ever internalized locally, per `docs/gandr/spec/internalizing-gf.md`).
+
+The cautionary example: the B′ reader in `sexp.rs` grew from a formatting aid into the tree source for the lexicon lane, the corpus index, and planned metrics — a hand-written parser shadowing the runtime's `readExpr`.
+It was removed; trees consumed in `Rust` now come from the runtime's `readExpr` plus tree deconstruction, converted once at the `rt.rs` boundary.
+
+**The one exception is the B′ printer** (`sexp.rs`): the `GF` toolchain ships no formatting or canonical-layout tooling — `readExpr` and `linearize` neither preserve nor produce the `.gfd` surface's canonical layout — so the `fmt` lane (`gandr-hz8`) owns that printer.
+The asymmetry is the rule of thumb: _producing_ the surface's layout is ours because `GF` does not provide it; _consuming_ `GF` structures is never ours because `GF` does.
+
+**The compiler boundary.** The `gf` binary is invoked for exactly one job: compiling `.gf` grammar source into `.pgf` images (the runtime is a _runtime_ — it reads compiled `PGF`s and cannot compile grammar source; the compiler is the Haskell `gf`).
+That job lives in the `toolchain`/`grammar` lanes of `crates/workflow-docs/src/main.rs`, pinned and provisioned — never ad-hoc shell invocations.
+Every consumption path (reading expressions, validating trees, parsing, linearizing, introspection) rides the `Python` bindings; if a new `PGF` artifact is needed (for example the `RGL` English parse grammar, if the gandr-aaq spike graduates), its build becomes a pinned lane beside `grammar`, not a script.
+
 ## Authoring rules
 
 1. **The grammar is the vocabulary.** Constructors come from the abstract grammar (`crates/workflow-docs/grammar/GandrDocs.gf`); never invent them.
@@ -25,6 +41,8 @@ Renderings are **linearizations** of the same tree (HTML today; Markdown, LaTeX,
 4. **Punctuation glues left.** A `Txt` whose first character is sentence punctuation (`. , ; : ! ? ) ] } " '`) takes `ConsInlineGlued` instead of `ConsInline`, so the rendered text binds the punctuation to the preceding inline instead of inserting a word space.
 5. **Payloads are raw strings.** Code, math, and diagram sources are string literals in the tree, unescaped for `HTML` (escaping and compilation are the renderer's payload transforms).
    Quote source code **byte-exact** (visibility, attributes, field names — the two review findings on this are in `docs/workflow/specs.md`'s failure list).
+6. **Prose paces.** The prose-pacing doctrine ([specs.md](specs.md) §"The prose-pacing doctrine"): one load-bearing idea per paragraph, bold/italics marking that idea, density in payload blocks rather than in prose.
+   Measure with the metrics lane (`cargo run -p gandr-workflow-docs -- metrics <file.gfd>`): weave violations are authoring defects; the rhythm numbers are directional.
 
 ## Editing workflow
 
