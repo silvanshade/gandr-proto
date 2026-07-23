@@ -33,6 +33,21 @@ Renderings are **linearizations** of the same tree (HTML today; Markdown, LaTeX,
 * Grammar changes require recompiling the PGF (`mise run docs:gfd:grammar`) before checks see them.
 * `XML` → `.gfd` migration of a legacy component: the crate's `migrate` lane (semantic annotation is human-checked per component during the corpus migration, `gandr-5n6`).
 
+## The design language (gandr-4l9)
+
+Rendered pages carry the house design language (`docs/gandr/spec/proposal-docs-design-language.md`): the tree stays semantic, the renderer supplies all presentation.
+What authors may rely on, and what they must never do:
+
+* **Never hand-style.** Constructors are semantic; classes, colors, and layout are the renderer's.
+  A presentation wish is a grammar or stylesheet change, not a text workaround.
+* **Payload containers are `HTML`-escaped; prose is not.** `<pre><code>`, grammar `dt`/`dd`, diagram slots, and math spans have their `String`-leaf content escaped in the post-pass — payload text may contain `<`, `>`, `&` freely.
+  Prose `Txt` interleaves with constructor tags and **cannot** be escaped, so raw `<` or `&` in prose is an authoring error (the checker does not catch it; the rendered page silently eats it).
+* **Production bodies carry no `::=`** — injected at rendering.
+  Rule names render parenthesized below the conclusion.
+* **`api`-role code lines stay ≤ 96 columns** (full inner measure; longer lines scroll, and scrolled normative signatures are a defect).
+* **Captions sit in the margin** beside their figure — write captions that reward beside-reading (short, glossing, complete sentences).
+* **Math** (typst source until the splice lane): the page shows source as an italic placeholder today; the splice lane will render it in TeX Gyre Pagella Math with the corpus's category-name convention (bold italic, upright subscripts) — author typst source with that target in mind.
+
 ## Status
 
 2026-07-22: `PoC` landed and owner-accepted (`gandr-wrs` closed).

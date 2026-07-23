@@ -44,6 +44,17 @@
 The 2026-07-21 audits measured ~50–70% retention on the first-pass absorptions; the recurring drops: decision tables prosified; Rust type/trait/enum signatures dropped; crate/module layouts dropped; corpus-example plans dropped; open-questions sections dropped; decision-trail rationale erased along with the (correctly banned) record numbers.
 The counter is structural: the skeleton's four closing sections (6–9) exist precisely to hold those classes, and "not applicable" is stated, never omitted.
 
+## The design language (gandr-4l9)
+
+Rendered pages from the `GF` pipeline carry the house design language (`docs/gandr/spec/proposal-docs-design-language.md`, owner-accepted 2026-07-22): Tufte-grade typography and layout (ET Book, 62ch text column, margin-zone captions), the closed color palette with semantic status colors, booktabs tables, the normative-block hairline, and the Munch-derived math doctrine (TeX Gyre Pagella Math at the splice lane; category/sort/system names bold italic with upright subscripts; italic metavariables; upright operators).
+Author-facing consequences:
+
+* **Presentation never enters the source.** The vocabulary's constructors are semantic; the renderer supplies every class, and authors never hand-style.
+* **Production bodies carry no `::=`** — the stylesheet injects the separator; write `'<component>' status blocks* '</component>'`, never `component ::= …`.
+* **Rule names render parenthesized below the conclusion** (`(T-App)`) — write the bare name, the rendering supplies the parentheses.
+* **Normative API surfaces** (`api`-role code) render at full inner measure and must not scroll: keep lines ≤ 96 columns, exactly like the 72-column canonical `.gfd` layout discipline.
+* **Math authoring** (typst source, splice lane pending): write category/sort/system names so they can be set bold italic with upright subscripts; keep operators and keywords upright-able (word-like, not letter-like).
+
 ## Pointers
 
 * `docs/spec/README.md` — the authoring discipline (skeleton, blocks, links, required attributes).
