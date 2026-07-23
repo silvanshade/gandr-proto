@@ -17,3 +17,8 @@ nodes:
     b3: bb89dad731eaccef6bcf228fff1482857f66e9f6e556247268a48827fad03e77
     edges:
       - { rel: extends, to: spec/proposal-docs-gf-pipeline.md }
+  - path: spec/proposal-docs-design-language.md
+    role: proposal
+    b3: 52e363767c2c663662634ed13a2636a19d60cf91e2ef08daa160b1fbeb71d52a
+    edges:
+      - { rel: registered-under, to: README.md }

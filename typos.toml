@@ -116,6 +116,10 @@ transfors = "transfors"
 
 [default.extend-identifiers]
 CertiCoq = "CertiCoq"
+# The upstream ET Book OpenType font family name (edwardtufte/et-book,
+# et-book-ligatures-enabled set): typos case-splits it and flags the
+# trailing "OT".
+ETBookOT = "ETBookOT"
 # Venue acronym in the bibliography: typos case-splits it and flags the
 # leading "Fo".
 FoSSaCS = "FoSSaCS"
