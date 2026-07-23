@@ -1,0 +1,491 @@
+/* gandr documentation corpus — the house design language (gandr-4l9).
+ * Spec: docs/gandr/spec/proposal-docs-design-language.md. Tufte-grade
+ * restraint: data-ink first, color as a controlled vocabulary, no JavaScript. */
+
+/* ---- faces (ET Book ETBookOT set, vendored, MIT — assets/fonts/LICENSE.et-book) ---- */
+
+@font-face {
+  font-family: "et-book";
+  src: url("fonts/etbookot-roman-webfont.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "et-book";
+  src: url("fonts/etbookot-italic-webfont.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "et-book";
+  src: url("fonts/etbookot-bold-webfont.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---- color tokens: the closed palette (§6) ---- */
+
+:root {
+  --paper: #fffff8;
+  --ink: #111111;
+  --ink-soft: #3d3c38;
+  --rule: #9a937d;
+  --accent: #93301a;
+  --status-built: #3f6b3a;
+  --status-partial: #946518;
+  --status-adopted-unbuilt: #3d5a80;
+  --status-design-pass: #6b4f8e;
+  --status-dormant: #6e6a61;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #151512;
+    --ink: #e6e2d5;
+    --ink-soft: #b8b3a4;
+    --rule: #6b6558;
+    --accent: #d97a5e;
+    --status-built: #7fa877;
+    --status-partial: #c99a4a;
+    --status-adopted-unbuilt: #7f9cc4;
+    --status-design-pass: #a98fc9;
+    --status-dormant: #a39d90;
+  }
+}
+
+/* ---- base typography (§4) ---- */
+
+body {
+  margin: 0;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: et-book, Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
+  font-size: 1.1875rem;
+  line-height: 1.45;
+}
+
+code,
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+code {
+  font-size: 0.9em;
+}
+
+sup {
+  line-height: 0;
+}
+
+dfn {
+  font-style: italic;
+}
+
+.math {
+  font-style: italic;
+}
+
+/* forward rule for the typst-SVG splice lane (gf-pipeline §3.6) */
+.math svg {
+  height: 1em;
+  vertical-align: -0.15em;
+}
+
+/* ---- headings: size, italic, and space — never weight inflation (§4.2) ---- */
+
+h1 {
+  font-size: 2.4rem;
+  line-height: 1.1;
+  font-weight: 400;
+  margin: 3rem 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.7rem;
+  line-height: 1.15;
+  font-weight: 400;
+  font-style: italic;
+  margin: 2.5rem 0 1rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 400;
+  font-style: italic;
+  margin: 2rem 0 1rem;
+}
+
+/* ---- two-zone page: 62ch text + 4ch gap + 30ch margin = 96ch inner (§5.1) ---- */
+
+main.page {
+  max-width: 104ch;
+  margin-inline: auto;
+  padding: 0 4ch;
+}
+
+article {
+  padding-bottom: 5rem;
+}
+
+article > *:not(section),
+section > *:not(figure) {
+  max-width: 62ch;
+}
+
+section > figure {
+  max-width: none;
+}
+
+p {
+  margin: 1.4rem 0;
+}
+
+/* ---- status chip: swatch + word, never color alone (§6.1) ---- */
+
+p.status-chip {
+  font-family: "Gill Sans", "Gill Sans MT", Calibri, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0.5rem 0 4rem;
+}
+
+p.status-chip::before {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.6em;
+  background-color: currentcolor;
+}
+
+.status-built {
+  color: var(--status-built);
+}
+
+.status-partial {
+  color: var(--status-partial);
+}
+
+.status-adopted-unbuilt {
+  color: var(--status-adopted-unbuilt);
+}
+
+.status-design-pass {
+  color: var(--status-design-pass);
+}
+
+.status-dormant {
+  color: var(--status-dormant);
+}
+
+/* ---- marginalia: the figure grid (§5.3) — source-order independent ---- */
+
+figure {
+  margin: 1.8rem 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 62ch) minmax(0, 30ch);
+  column-gap: 4ch;
+  align-items: start;
+}
+
+figure > *:not(figcaption) {
+  grid-column: 1;
+}
+
+figcaption {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+/* ---- tables: booktabs (§7.2) ---- */
+
+figure.table table {
+  display: block; /* overflow backstop via anonymous table box */
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  font-size: 0.95em;
+}
+
+figure.table thead {
+  border-bottom: 1px solid var(--ink);
+}
+
+figure.table th {
+  font-weight: 400; /* roman headers — the midrule marks the header (booktabs) */
+  text-align: left;
+}
+
+figure.table th,
+figure.table td {
+  padding: 0.35em 1.2em 0.35em 0;
+  vertical-align: top;
+}
+
+/* ---- code and API surfaces (§7.3) ---- */
+
+pre {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border-left: 1px solid var(--rule); /* the hairline never scrolls */
+  padding-left: 1.5ch;
+  overflow-x: auto;
+  margin: 1.4rem 0;
+}
+
+pre code {
+  font-size: inherit;
+}
+
+/* API-role reprieve targets the scroll container, not the code child;
+ * payload without marginalia may use the full inner measure (96ch) —
+ * normative signatures must not scroll. */
+pre:has(> code.api) {
+  max-width: 96ch;
+}
+
+p.expect {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  margin-top: -0.6rem;
+  padding-left: calc(1.5ch + 1px);
+}
+
+/* ---- the normative-block hairline (§5.4) ---- */
+
+div.definition,
+div.rule,
+div.example,
+div.judgements {
+  border-left: 1px solid var(--rule);
+  padding-left: 1.5ch;
+}
+
+/* one hairline per unit: nested normative blocks defer to the outer edge */
+div.example pre,
+div.rule pre,
+div.definition pre {
+  border-left: 0;
+  padding-left: 0;
+}
+
+div.example p.expect {
+  padding-left: 0;
+}
+
+/* ---- rules: textbook inference layout (§7.5) ---- */
+
+div.rule {
+  display: grid;
+  grid-template-columns: minmax(0, auto);
+  justify-content: center;
+  justify-items: center;
+}
+
+div.rule h3 {
+  order: 1; /* below the conclusion (Munch convention, adapted) */
+  justify-self: center;
+  font-style: normal;
+  margin: 0.3rem 0 0.5rem;
+}
+
+div.rule h3::before {
+  content: "(";
+}
+
+div.rule h3::after {
+  content: ")";
+}
+
+div.rule .conclusion {
+  justify-self: stretch;
+  text-align: center;
+  border-top: 1.5px solid var(--ink);
+  padding-top: 0.5em;
+  margin-top: 0.5em;
+}
+
+/* ---- judgements: display-math posture (§7.4) ---- */
+
+div.judgements > div {
+  text-align: center;
+  margin: 0.6em 0;
+}
+
+/* ---- grammar: aligned production grid (§7.6) ---- */
+
+dl.grammar {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 2ch;
+  row-gap: 0.3rem;
+}
+
+dl.grammar dt {
+  grid-column: 1;
+  font-style: italic;
+}
+
+dl.grammar dd {
+  grid-column: 2;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+dl.grammar dd::before {
+  content: "::= "; /* BNF canon (Munch convention), notation as generated content */
+}
+
+/* ---- lists and registers (§5.2, §7.9) ---- */
+
+ol,
+ul {
+  padding-left: 2.5ch;
+}
+
+li:not(:first-child) {
+  margin-top: 0.25rem;
+}
+
+ul.refs {
+  list-style: none;
+  font-size: 0.875rem;
+  padding-left: 3ch;
+}
+
+ul.refs li {
+  text-indent: -3ch;
+  color: var(--ink-soft);
+}
+
+/* ---- diagrams (§7.8) ---- */
+
+div.diagram-slot {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  text-align: center;
+}
+
+/* forward rule for the diagram-SVG splice lane */
+div.diagram-slot svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---- links: the semantic underline vocabulary (§8) ---- */
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  text-decoration-thickness: 0.06em;
+}
+
+a.term {
+  text-decoration-style: dotted;
+}
+
+a.cite {
+  text-decoration: none;
+}
+
+a:hover,
+a:focus-visible {
+  color: var(--accent);
+  text-decoration-thickness: 0.09em;
+}
+
+a.cite:hover,
+a.cite:focus-visible {
+  text-decoration: underline;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- single-column collapse (§5.1) ---- */
+
+@media (max-width: 68em) {
+  main.page {
+    padding: 0 5vw;
+  }
+
+  article > *:not(section),
+  section > *:not(figure) {
+    max-width: none;
+  }
+
+  figure {
+    display: block;
+  }
+
+  figcaption {
+    margin-top: 0.6rem;
+  }
+
+  pre:has(> code.api) {
+    max-width: none;
+  }
+}
+
+/* ---- print: a competent book chapter (§9) ---- */
+@media print {
+  :root {
+    --paper: #ffffff;
+    --ink: #000000;
+    --ink-soft: #333333;
+  }
+
+  body {
+    font-size: 11pt;
+  }
+
+  main.page {
+    max-width: none;
+    padding: 0;
+  }
+
+  article > *:not(section),
+  section > *:not(figure) {
+    max-width: none;
+  }
+
+  figure {
+    display: block;
+  }
+
+  figcaption {
+    margin-top: 0.6rem;
+  }
+
+  p.status-chip {
+    color: #000000;
+  }
+
+  figure,
+  div.rule,
+  div.definition,
+  pre {
+    break-inside: avoid;
+  }
+
+  @page {
+    margin: 2.2cm 2.4cm;
+  }
+}

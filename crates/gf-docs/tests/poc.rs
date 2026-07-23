@@ -11,6 +11,8 @@ use std::path::PathBuf;
 
 use gandr_gf_docs::migrate::translate_file;
 use gandr_gf_docs::pipeline::build_body;
+use gandr_gf_docs::pipeline::build_page;
+use gandr_gf_docs::pipeline::copy_fonts;
 use gandr_gf_docs::rt::GfRuntime as _;
 use gandr_gf_docs::rt::PyPgf;
 
@@ -145,6 +147,7 @@ mod tests
             "id=\"term-component\"",
             "class=\"status-chip status-partial\"",
             "Vec&lt;Inline&gt;",
+            "'&lt;component&gt;' status blocks* '&lt;/component&gt;'",
             "class=\"lang-rust api\"",
             "</sup>.",
             "Example: A code block anticipating output",
@@ -160,6 +163,51 @@ mod tests
             !body.contains('\u{200B}'),
             "glue markers survive the post-pass"
         );
+        Ok(())
+    }
+
+    /// The page shell (gandr-4l9) carries its observable contract: the lifted
+    /// `<title>`, the inlined stylesheet, the `<main>` landmark, and the
+    /// vendored fonts beside the page.
+    #[test]
+    fn page_shell_carries_design_language_contract() -> TestResult
+    {
+        let Some(runtime) = runtime()
+        else {
+            eprintln!("skip: PoC environment unprovisioned");
+            return Ok(());
+        };
+        let gfd = translate_file(&xml_path())?;
+        let page = build_page(&runtime, &gfd, "component-vocabulary")?;
+        for expected in [
+            "<title>The component vocabulary</title>",
+            "<meta name=\"viewport\"",
+            "<main class=\"page\">",
+            "<article>",
+            "<style>",
+            "--paper: #fffff8",
+            "grid-template-columns: minmax(0, 62ch) minmax(0, 30ch)",
+            "fonts/etbookot-roman-webfont.woff2",
+        ] {
+            assert!(
+                page.contains(expected),
+                "missing shell fragment: {expected}"
+            );
+        }
+        let out_dir = repo_root().join("target/gf-docs");
+        std::fs::create_dir_all(&out_dir)?;
+        copy_fonts(&out_dir)?;
+        for font in [
+            "etbookot-roman-webfont.woff2",
+            "etbookot-italic-webfont.woff2",
+            "etbookot-bold-webfont.woff2",
+            "LICENSE.et-book",
+        ] {
+            assert!(
+                out_dir.join("fonts").join(font).is_file(),
+                "missing copied font: {font}"
+            );
+        }
         Ok(())
     }
 }

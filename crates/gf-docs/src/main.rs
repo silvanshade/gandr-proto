@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use gandr_gf_docs::migrate::translate_file;
-use gandr_gf_docs::pipeline::build_body;
+use gandr_gf_docs::pipeline::build_page;
+use gandr_gf_docs::pipeline::copy_fonts;
 use gandr_gf_docs::rt::GfRuntime as _;
 use gandr_gf_docs::rt::PyPgf;
 
@@ -94,11 +95,15 @@ fn do_build(
 ) -> Result<(), String>
 {
     let runtime = PyPgf::load(&pgf.to_string_lossy(), lang).map_err(|e| e.to_string())?;
-    let gfd = std::fs::read_to_string(gfd).map_err(|e| e.to_string())?;
-    let body = build_body(&runtime, &gfd).map_err(|e| e.to_string())?;
-    let page = format!(
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>gf-docs PoC</title>\n</head>\n<body>\n{body}\n</body>\n</html>\n"
-    );
+    let gfd_text = std::fs::read_to_string(gfd).map_err(|e| e.to_string())?;
+    let fallback = gfd
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("gandr docs");
+    let page = build_page(&runtime, &gfd_text, fallback).map_err(|e| e.to_string())?;
+    if let Some(dir) = out.parent() {
+        copy_fonts(dir).map_err(|e| e.to_string())?;
+    }
     std::fs::write(out, page).map_err(|e| e.to_string())
 }
 
