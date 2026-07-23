@@ -6,7 +6,7 @@ name = "gandr-workflow-docs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Static spec-documentation tool for the gandr component vocabulary: parse=validate, canonical XML formatting, and no-JavaScript HTML build (typst math/diagram leaves via the pinned CLI)"
+description = "The gandr documentation tool: the GF-native spec pipeline (.gfd corpora as GF abstract-syntax trees, checkExpr validation, HTML by linearization), the prose document classes, canonical XML formatting, and the shared bibliography/typst machinery"
 license.workspace = true
 publish.workspace = true
 
@@ -21,17 +21,22 @@ path = "src/main.rs"
 [dependencies]
 # Content-addressed cache keys for compiled math/diagram SVG leaves.
 blake3 = { workspace = true }
-# Read-only XML DOM for the parse=validate pass over the component corpus.
+# The GF/PGF interop: the GfRuntime trait (internalization seam) and the B'
+# .gfd s-expression surface.
+gandr-workflow-grammatical-framework = { path = "../workflow-grammatical-framework" }
+# Scoped code-payload escaping in the render post-pass.
+regex = { workspace = true }
+# Read-only XML DOM for the document-class parse=validate pass and the
+# canonical formatter.
 roxmltree = { workspace = true }
+# Typed error derive for the crate error vocabulary.
+thiserror = { workspace = true }
 # Hayagriva `refs.yml` key set, read for cite-key resolution during validation.
 yaml-rust2 = { workspace = true }
 
 [features]
 default = []
-# House aggregating feature. The typst math/diagram compile path is a runtime
-# shell-out to the pinned typst CLI (not a linked library), so no cargo feature
-# is required to keep the regex family out of the default graph — the default
-# graph never contains typst at all. `full` stays empty by the house scheme.
+# House aggregating feature (`full` stays empty by the house scheme).
 full = []
 
 [lints]

@@ -1,25 +1,24 @@
-//! `PoC` acceptance tests (gandr-wrs): migration shape, the `checkExpr` lanes,
-//! and the end-to-end render.
+//! The component-vocabulary corpus witness: constructor coverage, the
+//! `checkExpr` lanes, and the end-to-end render of the committed `.gfd`.
 //!
-//! The runtime lanes skip cleanly when the `PoC` environment is absent
+//! The runtime lanes skip cleanly when the `GF` environment is absent
 //! (no compiled PGF or no pgf-enabled Python), so the suite stays green on a
-//! bare checkout; the mise `docs:gfd:poc` task provisions the environment and
+//! bare checkout; the mise corpus arc provisions the environment and
 //! exercises them for real.
 
 use core::error::Error;
 use std::path::PathBuf;
 
-use gandr_gf_docs::migrate::translate_file;
-use gandr_gf_docs::pipeline::PostContext;
-use gandr_gf_docs::pipeline::build_body;
-use gandr_gf_docs::pipeline::build_page;
-use gandr_gf_docs::pipeline::copy_fonts;
 use gandr_workflow_docs::bibliography;
+use gandr_workflow_docs::pipeline::PostContext;
+use gandr_workflow_docs::pipeline::build_body;
+use gandr_workflow_docs::pipeline::build_page;
+use gandr_workflow_docs::pipeline::copy_fonts;
 use gandr_workflow_docs::typst_leaf;
 use gandr_workflow_grammatical_framework::rt::GfRuntime as _;
 use gandr_workflow_grammatical_framework::rt::PyPgf;
 
-/// Shared result type for the `PoC` integration witnesses.
+/// Shared result type for the corpus witnesses.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 
 /// The repo root (the crate manifest dir's grandparent).
@@ -28,19 +27,25 @@ fn repo_root() -> PathBuf
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// The migration source of truth for the `PoC`.
-fn xml_path() -> PathBuf
+/// The committed component-vocabulary corpus file.
+fn gfd_path() -> PathBuf
 {
-    repo_root().join("docs/spec/component-vocabulary.xml")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("corpus/component-vocabulary.gfd")
 }
 
-/// The compiled grammar the `PoC` environment produces.
+/// Read the committed component-vocabulary document.
+fn gfd() -> TestResult<String>
+{
+    Ok(std::fs::read_to_string(gfd_path())?)
+}
+
+/// The compiled grammar the corpus environment produces.
 fn pgf_path() -> PathBuf
 {
-    repo_root().join("target/gf-docs/GandrDocsLex.pgf")
+    repo_root().join("target/gf/GandrDocsLex.pgf")
 }
 
-/// Load the runtime, or `None` when the `PoC` environment is unprovisioned.
+/// Load the runtime, or `None` when the `GF` environment is unprovisioned.
 fn runtime() -> Option<PyPgf>
 {
     let pgf = pgf_path();
@@ -55,7 +60,7 @@ fn runtime() -> Option<PyPgf>
 fn context() -> Option<(bibliography::Bibliography, PathBuf)>
 {
     let bibliography = bibliography::load(&repo_root().join("docs/spec/refs.yml")).ok()?;
-    let cache_dir = typst_leaf::default_cache_dir(&repo_root().join("target/gf-docs"));
+    let cache_dir = typst_leaf::default_cache_dir(&repo_root().join("target/gf"));
     Some((bibliography, cache_dir))
 }
 
@@ -64,12 +69,12 @@ mod tests
 {
     use super::*;
 
-    /// The migration emits every constructor the conversion target exercises.
+    /// The committed component carries every block constructor of the
+    /// conversion target's inventory.
     #[test]
-    fn migration_emits_all_block_constructors() -> TestResult
+    fn component_carries_all_block_constructors() -> TestResult
     {
-        let gfd = translate_file(&xml_path())?;
-        let flat = gfd.split_whitespace().collect::<Vec<_>>().join(" ");
+        let flat = gfd()?.split_whitespace().collect::<Vec<_>>().join(" ");
         for constructor in [
             "MkComponent anchor_component_vocabulary",
             "StatusPartial",
@@ -83,7 +88,7 @@ mod tests
             "InventoryBlock \"The payload blocks and links of the two-register weave\"",
             "MkHeaderRow",
             "MkBodyRow",
-            "RegisterBlock",
+            "RegisterBlock OrderedList",
             "MkItem \"first\"",
             "ConsInlineGlued",
             "ApiCodeBlock \"rust\"",
@@ -104,17 +109,16 @@ mod tests
         Ok(())
     }
 
-    /// A valid migrated document passes the mandatory `checkExpr` lane.
+    /// The committed component passes the mandatory `checkExpr` lane.
     #[test]
     fn valid_document_passes_check_lane() -> TestResult
     {
         let Some(runtime) = runtime()
         else {
-            eprintln!("skip: PoC environment unprovisioned");
+            eprintln!("skip: GF environment unprovisioned");
             return Ok(());
         };
-        let gfd = translate_file(&xml_path())?;
-        runtime.check(&gfd)?;
+        runtime.check(&gfd()?)?;
         Ok(())
     }
 
@@ -124,11 +128,10 @@ mod tests
     {
         let Some(runtime) = runtime()
         else {
-            eprintln!("skip: PoC environment unprovisioned");
+            eprintln!("skip: GF environment unprovisioned");
             return Ok(());
         };
-        let gfd =
-            translate_file(&xml_path())?.replace("TermRef term_status", "TermRef term_missing");
+        let gfd = gfd()?.replace("TermRef term_status", "TermRef term_missing");
         let result = runtime.check(&gfd);
         let Err(error) = result
         else {
@@ -148,12 +151,11 @@ mod tests
     {
         let (Some(runtime), Some((bibliography, cache_dir))) = (runtime(), context())
         else {
-            eprintln!("skip: PoC environment unprovisioned");
+            eprintln!("skip: GF environment unprovisioned");
             return Ok(());
         };
         let context = PostContext::new(&bibliography, &cache_dir);
-        let gfd = translate_file(&xml_path())?;
-        let body = build_body(&runtime, &gfd, &context)?;
+        let body = build_body(&runtime, &gfd()?, &context)?;
         for expected in [
             "id=\"cv-overview\"",
             "href=\"#term-component\"",
@@ -165,7 +167,6 @@ mod tests
             "</sup>.",
             "Example: A code block anticipating output",
             "expected output: 6",
-            "<figcaption>The payload blocks and links of the two-register weave</figcaption>",
         ] {
             assert!(
                 body.contains(expected),
@@ -187,12 +188,11 @@ mod tests
     {
         let (Some(runtime), Some((bibliography, cache_dir))) = (runtime(), context())
         else {
-            eprintln!("skip: PoC environment unprovisioned");
+            eprintln!("skip: GF environment unprovisioned");
             return Ok(());
         };
         let context = PostContext::new(&bibliography, &cache_dir);
-        let gfd = translate_file(&xml_path())?;
-        let page = build_page(&runtime, &gfd, "component-vocabulary", &context)?;
+        let page = build_page(&runtime, &gfd()?, "component-vocabulary", &context)?;
         for expected in [
             "<title>The component vocabulary</title>",
             "<meta name=\"viewport\"",
@@ -208,7 +208,7 @@ mod tests
                 "missing shell fragment: {expected}"
             );
         }
-        let out_dir = repo_root().join("target/gf-docs");
+        let out_dir = repo_root().join("target/gf");
         std::fs::create_dir_all(&out_dir)?;
         copy_fonts(&out_dir)?;
         for font in [

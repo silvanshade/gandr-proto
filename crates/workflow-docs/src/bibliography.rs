@@ -3,8 +3,6 @@
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::string::String;
-#[cfg(test)]
-use alloc::vec::Vec;
 use std::path::Path;
 
 use yaml_rust2::Yaml;
@@ -42,26 +40,6 @@ impl Bibliography
     pub fn key_set(&self) -> BTreeSet<String>
     {
         self.entries.keys().cloned().collect()
-    }
-
-    /// Build a minimal key-only bibliography for validation tests.
-    #[cfg(test)]
-    pub(crate) fn from_keys(keys: Vec<String>) -> Self
-    {
-        let entries = keys
-            .into_iter()
-            .map(|key| {
-                let title = key.clone();
-                (key, Reference {
-                    author: None,
-                    title,
-                    venue: None,
-                    date: None,
-                    locator: None,
-                })
-            })
-            .collect();
-        Self { entries }
     }
 
     /// Parse an in-memory bibliography fixture.

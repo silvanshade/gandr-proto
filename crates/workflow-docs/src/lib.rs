@@ -1,45 +1,43 @@
-//! Static specification-documentation tool for the gandr component vocabulary.
+//! `GF`-native documentation pipeline (gandr-5n6).
 //!
-//! The crate is the normative schema of a custom `XML` component vocabulary
-//! (decision record `gandr-fcw.8`): a typed Rust model, a parse-equals-validate
-//! pass, canonical `XML` formatting, and a no-JavaScript static `HTML` build.
-//! Math and diagram leaves are compiled to `SVG` by shelling out to the pinned
-//! typst command-line tool (see [`typst_leaf`]).
-//!
-//! The public surface is deliberately small: the typed model in [`model`], the
-//! [`Diagnostic`] and [`DocError`] reporting types here, and the orchestration
-//! entry points in [`corpus`] ([`corpus::check`], [`corpus::build`],
-//! [`corpus::format_paths`]).
+//! The spec corpus is authored as `GF` abstract-syntax trees (`.gfd`, read by
+//! the runtime's expression reader), validated at the mandatory `checkExpr`
+//! lane, and rendered by linearization; the `GF`/PGF runtime is reached
+//! through the `GfRuntime` trait in `gandr-workflow-grammatical-framework` so
+//! the `PyO3` backend can be swapped for a C FFI or pure-Rust backend without
+//! touching the pipeline. The prose document classes ([`doc`]) and the shared
+//! documentation machinery — the Hayagriva bibliography ([`bibliography`]),
+//! the typst leaf compiler ([`typst_leaf`]), canonical `XML` formatting
+//! ([`format`]), and the references renderer ([`references`]) — live here as
+//! the one documentation tool.
 
 extern crate alloc;
 
-use alloc::string::String;
 use core::fmt;
 use std::path::PathBuf;
 
 /// Typed Hayagriva bibliography shared by validation and rendering.
 pub mod bibliography;
-/// Corpus discovery and the `check`, `build`, and `fmt` orchestration.
+/// Corpus discovery and the document-class `check`/`fmt` orchestration.
 pub mod corpus;
-/// The prose document classes, a minimal family alongside the [`model`]
-/// component vocabulary.
+/// The prose document classes, a minimal family alongside the `GF` corpus.
 pub mod doc;
+/// The crate error vocabulary for the `GF` lanes.
+pub mod error;
 /// Canonical `XML` formatting (idempotent), used as the doc-tool formatter.
 pub mod format;
-/// Typed model of the component vocabulary (the normative schema).
+/// Lexicon generation (the corpus-wide `GF` term/cite/anchor modules).
+pub mod lexicon;
+/// Shared vocabulary types ([`model::Status`], [`model::CiteKey`]).
 pub mod model;
-/// Parse-equals-validate pass: `XML` text to [`model::Document`] with
-/// structural diagnostics.
-pub mod parse;
-/// No-JavaScript static `HTML` rendering of a validated corpus.
-pub mod render;
+/// The render pipeline: read, validate, post-pass, page.
+pub mod pipeline;
+/// The per-component references renderer.
+pub mod references;
 /// Math and diagram leaf compilation to `SVG` via the pinned typst tool.
 pub mod typst_leaf;
-/// Corpus-level cross-file validation.
-///
-/// Checks identifier uniqueness, define-once, and term, cite, and provenance
-/// resolution.
-pub mod validate;
+
+pub use error::GfDocsError;
 
 /// Non-fatal specification violation reported by the parse-validate pass.
 ///

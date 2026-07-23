@@ -4,13 +4,13 @@
 > **Date:** 2026-07-22.
 > **Owner amendment 2026-07-22** (post-acceptance, owner-directed): the math-typography doctrine is restyled after Guillaume Munch-Maccagnoni's thesis (_Syntax and Models for a non-Associative Composition of Programs and Proofs_) — Palatino-lineage math, bold-italic serif category names, `::=` productions, parenthesized rule names — adapted under Tufte priority (§2, §7.2, §7.4–§7.6, and §12 decision 6).
 > **Review record:** independent adversarial review 2026-07-22 (report: `adversary/2026-07-22-gandr-4l9-design-language.md` in the sibling notes repository) — 13 binding findings fixed in this revision, 5 challenged findings recorded with dispositions where they arise.
-> **Scope:** the `gf-docs` HTML linearization and page shell only — typography, layout, color, tables, code, captions, links, print.
+> **Scope:** the `workflow-docs` HTML linearization and page shell only — typography, layout, color, tables, code, captions, links, print.
 > Explicitly out of scope, as later tooling work: syntax highlighting (gandr-r8x), executable blocks (gandr-6lc), type-on-hover (gandr-l5v), bead-reference inlines (gandr-gq2), the inline-code element (gandr-4wg), sidenote grammar constructors, and the LaTeX and Markdown linearizations. gandr-6yx (legacy-renderer polish, including table caption placement) overlaps this bead's caption design: the design language governs placement doctrine; gandr-6yx inherits or defers for the legacy renderer.
 
 ## 1. Purpose
 
-The `gf-docs` renderer ships a bare page shell with zero CSS: the corpus's first rendered page (`component-vocabulary.html`) presents in unstyled user-agent defaults.
-This proposal defines the house design language — the typographic, layout, and color system every gandr documentation page renders in — and its implementation as one stylesheet plus a page-shell revision inside `gf-docs`.
+The `workflow-docs` renderer ships a bare page shell with zero CSS: the corpus's first rendered page (`component-vocabulary.html`) presents in unstyled user-agent defaults.
+This proposal defines the house design language — the typographic, layout, and color system every gandr documentation page renders in — and its implementation as one stylesheet plus a page-shell revision inside `workflow-docs`.
 The mandate (owner directive 2026-07-22): **Tufte-grade typesetting, a distinctive house style**, engineered at the CSS level so that nothing in the tree layer or the linearization's semantics depends on presentation.
 
 Three properties make this a design _language_ rather than a stylesheet that happens to exist: every choice is **derived from a stated doctrine** (§2), every value is **specified** so it can be reviewed, measured, and tuned (§4–§9), and the system is **named and versioned in the repo** so the workflow guidance can cite it (§11).
@@ -282,14 +282,14 @@ The same HTML prints as a competent book chapter — the rehearsal for the LaTeX
 
 ## 10. Page shell and asset engineering
 
-The build lane (`crates/gf-docs/src/main.rs::do_build`) replaces the bare shell:
+The build lane (`crates/workflow-docs/src/main.rs::do_build`) replaces the bare shell:
 
 * `<meta name="viewport" content="width=device-width, initial-scale=1">`.
 * `<title>` lifted from the rendered `<h1>` — one `h1` per page by grammatical construction (`MkComponent` is the sole `Component` linearization and its title is a plain `String` leaf, so the rendered `h1` contains no markup), extracted by a scoped scan in the pipeline post-pass; fallback is the file stem.
   No grammar change.
 * Landmarks: `<body><main class="page"><article>…</article></main></body>` — one `<main>`, heading order already correct by construction (h1 → h2 → h3).
-* The stylesheet is a compile-time asset: `crates/gf-docs/assets/gandr-docs.css`, embedded with `include_str!` and inlined into a `<style>` element — every page is **self-contained** (movable, archivable, diffable; no relative-path fragility), at ~12KB of CSS per page, nothing to cache-bust.
-* Fonts cannot inline sanely: the build lane copies `crates/gf-docs/assets/fonts/` → `<out-dir>/fonts/` (idempotent, three WOFF2 files + `LICENSE.et-book`); the CSS references them relatively (`fonts/etbookot-…woff2`).
+* The stylesheet is a compile-time asset: `crates/workflow-docs/assets/gandr-docs.css`, embedded with `include_str!` and inlined into a `<style>` element — every page is **self-contained** (movable, archivable, diffable; no relative-path fragility), at ~12KB of CSS per page, nothing to cache-bust.
+* Fonts cannot inline sanely: the build lane copies `crates/workflow-docs/assets/fonts/` → `<out-dir>/fonts/` (idempotent, three WOFF2 files + `LICENSE.et-book`); the CSS references them relatively (`fonts/etbookot-…woff2`).
   A page moved without its `fonts/` sibling degrades to the Palatino/Georgia stack — the graceful, declared failure mode.
 * Grammar (`GandrDocsHtml.gf`) changes: **none.** The grid marginalia (§5.3), the container-targeted API reprieve (§7.3), the generated-content production arrow (§7.6), and the grid rule stroke (§7.5) are all achievable against the emitted markup as-is; the PGF needs no recompile for this bead.
 
@@ -299,12 +299,12 @@ The build lane (`crates/gf-docs/src/main.rs::do_build`) replaces the bare shell:
 2. Rework the page shell (§10) in `main.rs` + a scoped title extraction in `pipeline.rs`.
 3. Rebuild the PoC (`mise run docs:gfd:poc`); **visually inspect in a real browser** at multiple widths and in print preview; measure actual CPL against the §4.2 target and tune; re-verify the §6 contrasts.
 4. Named test(s) in the crate: the emitted page contains the lifted `<title>`, the inlined `<style>`, the `<main>` landmark, and the fonts copy exists — the shell's observable contract.
-5. `cargo nextest run -p gandr-gf-docs`, treefmt, then fold the author-facing guidance into `docs/workflow/specs.md` and `docs/workflow/gfd.md` (what the design language is, what authors may rely on — semantic classes, figure/caption posture — and what they must never hand-style).
+5. `cargo nextest run -p gandr-workflow-docs`, treefmt, then fold the author-facing guidance into `docs/workflow/specs.md` and `docs/workflow/gfd.md` (what the design language is, what authors may rely on — semantic classes, figure/caption posture — and what they must never hand-style).
 6. `mise run gate:merge` before closeout, per the closeout doctrine.
 
 ## 12. Decisions flagged for the owner
 
-1. **Vendor ET Book — the ligatures-enabled `ETBookOT` set, as WOFF2 (recommended).** Three WOFF2 binaries + MIT license enter the repo at `crates/gf-docs/assets/fonts/`.
+1. **Vendor ET Book — the ligatures-enabled `ETBookOT` set, as WOFF2 (recommended).** Three WOFF2 binaries + MIT license enter the repo at `crates/workflow-docs/assets/fonts/`.
    This set (not the no-ligatures directory tufte-css consumes) is the book-authentic choice: real ligatures, old-style roman figures natively, and upstream WOFF2 files (~135KB total) — it satisfies the §2 figures doctrine by design rather than by feature-flag hope.
    The alternative — a pure system stack (Palatino/Georgia) — costs zero assets but renders differently on every platform and abandons the Tufte identity that is this bead's mandate.
    The repo's no-vendoring rule covers _research artifacts_ (companion code, mechanizations); a design dependency with an MIT grant is a different class — but the posture is strict enough that this is surfaced, not assumed.

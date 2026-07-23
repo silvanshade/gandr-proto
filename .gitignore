@@ -60,6 +60,6 @@ fuzz/coverage/
 # macOS cruft
 .DS_Store
 
-# gf-docs PoC environment (uv-managed) and GF build intermediates
+# GF/PGF interop environment (uv-managed) and GF build intermediates
 .venv/
 *.gfo

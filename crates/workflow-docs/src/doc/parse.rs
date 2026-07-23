@@ -39,11 +39,7 @@ use crate::doc::model::DocTable;
 use crate::doc::model::Label;
 use crate::doc::model::LabelRef;
 use crate::model::CiteKey;
-use crate::parse::collapse_whitespace;
-use crate::parse::element_location;
-use crate::parse::element_text;
-use crate::parse::required_attribute;
-use crate::parse::required_status;
+use crate::model::Status;
 
 /// Outcome of parsing one file: an optional model and any structural
 /// diagnostics.
@@ -495,6 +491,106 @@ fn parse_inline(
             None
         },
     }
+}
+
+// ── shared leaf helpers (the component parser's discipline, kept for the
+// classes when the component parser retired with the XML corpus) ────────────
+
+/// Read a required attribute, pushing a diagnostic when it is absent.
+pub(crate) fn required_attribute(
+    node: Node<'_, '_>,
+    name: &str,
+    path_text: &str,
+    element: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<String>
+{
+    match node.attribute(name) {
+        | Some(value) => Some(value.to_owned()),
+        | None => {
+            diagnostics.push(Diagnostic::new(
+                "missing-attribute",
+                element_location(path_text, element),
+                format!("<{element}> is missing required attribute {name}"),
+            ));
+            None
+        },
+    }
+}
+
+/// Read the required status attribute, pushing a diagnostic when absent or
+/// malformed.
+pub(crate) fn required_status(
+    node: Node<'_, '_>,
+    path_text: &str,
+    element: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<Status>
+{
+    let raw = required_attribute(node, "status", path_text, element, diagnostics)?;
+    parse_status_value(&raw, path_text, element, diagnostics)
+}
+
+/// Parse a status value, pushing a diagnostic when it is not canonical.
+fn parse_status_value(
+    raw: &str,
+    path_text: &str,
+    element: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<Status>
+{
+    match Status::parse(raw) {
+        | Some(status) => Some(status),
+        | None => {
+            let allowed = Status::spellings().to_vec();
+            diagnostics.push(Diagnostic::new(
+                "invalid-status",
+                element_location(path_text, element),
+                format!("status '{raw}' is not one of [{}]", allowed.join(", ")),
+            ));
+            None
+        },
+    }
+}
+
+/// Concatenate the descendant text of an element, trimming outer whitespace.
+pub(crate) fn element_text(node: Node<'_, '_>) -> String
+{
+    let mut text = String::new();
+    for descendant in node.descendants().filter(Node::is_text) {
+        text.push_str(descendant.text().unwrap_or_default());
+    }
+    text.trim().to_owned()
+}
+
+/// Collapse internal whitespace runs to single spaces, preserving boundary
+/// spacing.
+pub(crate) fn collapse_whitespace(input: &str) -> String
+{
+    let core: String = input.split_whitespace().collect::<Vec<&str>>().join(" ");
+    if core.is_empty() {
+        return core;
+    }
+    let lead = input.starts_with(char::is_whitespace);
+    let trail = input.ends_with(char::is_whitespace);
+    let mut out = String::new();
+    if lead {
+        out.push(' ');
+    }
+    out.push_str(&core);
+    if trail {
+        out.push(' ');
+    }
+    out
+}
+
+/// Build a diagnostic location string from a path and element name.
+pub(crate) fn element_location(
+    path_text: &str,
+    element: &str,
+) -> String
+{
+    format!("{path_text}:<{element}>")
 }
 
 #[cfg(test)]

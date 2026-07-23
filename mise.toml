@@ -331,7 +331,7 @@ description = "Validate the .gfd specification corpus through the GF pipeline (g
 depends = ["docs:gfd:grammar"]
 run = """
 uv sync --project crates/workflow-grammatical-framework
-cargo run --quiet -p gandr-gf-docs --locked -- check-all
+cargo run --quiet -p gandr-workflow-docs --locked -- check-all
 """
 
 [tasks."docs:check-classes"]
@@ -345,7 +345,7 @@ description = "Build the no-JavaScript static HTML spec corpus from .gfd through
 depends = ["docs:gfd:grammar"]
 run = """
 uv sync --project crates/workflow-grammatical-framework
-cargo run --quiet -p gandr-gf-docs --locked -- build-all --out target/docs-spec
+cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
 """
 
 [tasks."docs:refs-yml"]
@@ -359,21 +359,21 @@ ROWS_PATH="$tmp/rows.nuon" OUT_PATH=docs/spec/refs.yml nu ./scripts/refs-yml/bui
 
 [tasks."docs:gfd:toolchain"]
 description = "Provision the GF toolchain (gf compiler + libpgf from the official 3.12 release) into target/gf-toolchain (idempotent; gandr-wrs)"
-run = "cargo run -p gandr-gf-docs --locked -- toolchain"
+run = "cargo run -p gandr-workflow-docs --locked -- toolchain"
 
 [tasks."docs:gfd:grammar"]
-description = "Compile the corpus GF grammar to target/gf-docs/GandrDocsLex.pgf (gandr-wrs)"
+description = "Compile the corpus GF grammar to target/gf/GandrDocsLex.pgf (gandr-5n6)"
 depends = ["docs:gfd:toolchain"]
-run = "cargo run -p gandr-gf-docs --locked -- grammar"
+run = "cargo run -p gandr-workflow-docs --locked -- grammar"
 
 [tasks."docs:gfd:corpus"]
-description = "Run the gf-docs corpus arc: uv sync (pgf env), lexicon freshness, checkExpr over the corpus, render all pages + the index to target/gf-docs/corpus-pages, gf-docs tests incl. the dual-run gate (gandr-5n6)"
+description = "Run the corpus arc: uv sync (pgf env), lexicon freshness, checkExpr over the corpus, render all pages + the index to target/docs-spec, workflow-docs tests (gandr-5n6)"
 depends = ["docs:gfd:grammar"]
 run = """
 uv sync --project crates/workflow-grammatical-framework
-cargo run --quiet -p gandr-gf-docs --locked -- check-all
-cargo run --quiet -p gandr-gf-docs --locked -- build-all --out target/gf-docs/corpus-pages
-cargo nextest run -p gandr-gf-docs
+cargo run --quiet -p gandr-workflow-docs --locked -- check-all
+cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
+cargo nextest run -p gandr-workflow-docs
 """
 
 # Parked with the manual family (docs/manual/** aspirational; see docs:manual).

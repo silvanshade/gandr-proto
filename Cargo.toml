@@ -6,7 +6,6 @@ resolver = "3"
 members = [
   "crates/core-checker",
   "crates/core-sequent",
-  "crates/gf-docs",
   "crates/kernel-core",
   "crates/kernel-strata",
   "crates/runtime-host",

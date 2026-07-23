@@ -11,15 +11,15 @@ Renderings are **linearizations** of the same tree (HTML today; Markdown, LaTeX,
 
 ## Authoring rules
 
-1. **The grammar is the vocabulary.** Constructors come from the abstract grammar (`crates/gf-docs/grammar/GandrDocs.gf`); never invent them.
+1. **The grammar is the vocabulary.** Constructors come from the abstract grammar (`crates/workflow-docs/grammar/GandrDocs.gf`); never invent them.
    If the grammar lacks a construct you need, the grammar change is the work — not a workaround in text.
 2. **Lexicon constants name everything linkable.** Terms are `term_<key>`, citations `cite_<key>`, anchors `anchor_<id>` (hyphens become underscores).
    A reference to an undefined constant fails `checkExpr` — that rejection is the term/citation/cross-reference validation working, not an error in your document's structure.
-   Constant inventories live in the generated lexicon modules (`grammar/GandrDocsLex*.gf` in the `PoC`; generated at migration).
+   Constant inventories live in the generated lexicon modules (`grammar/GandrDocsLex*.gf`, regenerated from the corpus by the `lexicon` lane — committed derived files; never hand-edit).
 3. **Layout is canonical** (what the translator's layout engine emits and the `fmt` lane — `gandr-hz8` — will enforce):
    + A constructor application whose arguments are all atomic stays **on one line** when it fits in 72 columns: `TermDef term_status "status"`.
    + Otherwise the head opens the line and **each argument gets its own line**, indented two columns under the head, compound arguments parenthesized.
-   + **`Cons` chains flatten Lisp-style**: the element follows the head on the same line, the tail continues at constant indent, closing parens trail: see any `[Inline]` list in `crates/gf-docs/corpus/component-vocabulary.gfd` for the shape. (PGF expression syntax has no list literals; `Cons`/`Base` is the only spelling.)
+   + **`Cons` chains flatten Lisp-style**: the element follows the head on the same line, the tail continues at constant indent, closing parens trail: see any `[Inline]` list in `crates/workflow-docs/corpus/component-vocabulary.gfd` for the shape. (PGF expression syntax has no list literals; `Cons`/`Base` is the only spelling.)
    + Strings are the only leaves.
      Escape exactly `\"`, `\\`, `\n`, `\t`, `\r`.
 4. **Punctuation glues left.** A `Txt` whose first character is sentence punctuation (`. , ; : ! ? ) ] } " '`) takes `ConsInlineGlued` instead of `ConsInline`, so the rendered text binds the punctuation to the preceding inline instead of inserting a word space.
@@ -28,10 +28,11 @@ Renderings are **linearizations** of the same tree (HTML today; Markdown, LaTeX,
 
 ## Editing workflow
 
-* Check a file: `cargo run -p gandr-gf-docs --locked -- check --pgf target/gf-docs/GandrDocsLex.pgf --lang GandrDocsLexHtml --gfd <file.gfd>` (after `mise run docs:gfd:grammar`).
-* The full `PoC` arc (provision toolchain, compile grammar, migrate the example, validate, render): `mise run docs:gfd:poc`.
+* Check a file: `cargo run -p gandr-workflow-docs --locked -- check --pgf target/gf/GandrDocsLex.pgf --lang GandrDocsLexHtml --gfd <file.gfd>` (after `mise run docs:gfd:grammar`).
+* Check the whole corpus (lexicon freshness + `checkExpr` over every component): `mise run docs:check`.
+* Build every page plus the corpus index: `mise run docs:build` (into `target/docs-spec/`).
+* The full corpus arc (provision toolchain, compile grammar, lexicon, validate, render, test): `mise run docs:gfd:corpus`.
 * Grammar changes require recompiling the PGF (`mise run docs:gfd:grammar`) before checks see them.
-* `XML` → `.gfd` migration of a legacy component: the crate's `migrate` lane (semantic annotation is human-checked per component during the corpus migration, `gandr-5n6`).
 
 ## The design language (gandr-4l9)
 
@@ -50,8 +51,8 @@ What authors may rely on, and what they must never do:
 
 ## Status
 
-2026-07-22: `PoC` landed and owner-accepted (`gandr-wrs` closed).
-The live corpus still authors `XML` until the migration epic lands; this guidance governs every `.gfd` file from the first one onward, and will govern workflow docs when they convert (`gandr-2u0`).
+2026-07-22: `PoC` landed and owner-accepted (`gandr-wrs` closed); 2026-07-23: the migration landed (`gandr-5n6`) — the corpus authors as `.gfd`, `gf-docs` became `workflow-docs`, and the `GF` interop lives in `workflow-grammatical-framework`.
+This guidance governs every `.gfd` file, and will govern workflow docs when they convert (`gandr-2u0`).
 
 ## Pointers
 

@@ -11,21 +11,11 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use gandr_workflow_docs::bibliography;
-use gandr_workflow_docs::corpus::discover_component_files;
-use gandr_workflow_docs::model::Block;
-use gandr_workflow_docs::model::Document;
-use gandr_workflow_docs::model::Inline;
-use gandr_workflow_docs::parse::parse_document;
 use gandr_workflow_grammatical_framework::sexp::Sexp;
 use gandr_workflow_grammatical_framework::sexp::unquote;
 
+use crate::bibliography;
 use crate::error::GfDocsError;
-use crate::migrate::anchor_const;
-use crate::migrate::cite_const;
-use crate::migrate::escape_text;
-use crate::migrate::gf_str;
-use crate::migrate::term_const;
 
 /// The collected lexicon: three namespaces of constant records, each keyed by
 /// `GF` constant name for deterministic (sorted) emission.
@@ -214,113 +204,6 @@ pub fn generate(
         lexicon.insert_cite(&key)?;
     }
     Ok(lexicon)
-}
-
-/// Generate the corpus-wide lexicon from the legacy `XML` components (the
-/// transition-era bootstrap: the migration invariant asserts it agrees with
-/// [`generate`] exactly while the `XML` still exists).
-///
-/// # Errors
-/// [`GfDocsError::Model`] when a component fails the legacy parse or the
-/// bibliography fails to load; [`GfDocsError::Translation`] on any id/term
-/// collision or a declared-id-less section, rule, or definition.
-pub fn generate_xml(
-    spec_dir: &Path,
-    refs_path: &Path,
-) -> Result<Lexicon, GfDocsError>
-{
-    let mut lexicon = Lexicon::default();
-    for path in discover_component_files(spec_dir).map_err(|e| GfDocsError::Model(e.to_string()))? {
-        let xml = std::fs::read_to_string(&path)?;
-        let parsed = parse_document(&path, &xml).map_err(|e| GfDocsError::Model(e.to_string()))?;
-        let document = parsed.document.ok_or_else(|| {
-            GfDocsError::Model(format!("{}: no document produced", path.display()))
-        })?;
-        collect(&document, &mut lexicon)?;
-    }
-    let bibliography =
-        bibliography::load(refs_path).map_err(|e| GfDocsError::Model(e.to_string()))?;
-    for key in bibliography.key_set() {
-        lexicon.insert_cite(&key)?;
-    }
-    Ok(lexicon)
-}
-
-/// Collect every lexicon record one component declares.
-fn collect(
-    document: &Document,
-    lexicon: &mut Lexicon,
-) -> Result<(), GfDocsError>
-{
-    lexicon.insert_anchor(&document.id, &escape_text(&document.title))?;
-    let mut pending: Vec<&Block> = document.blocks.iter().collect();
-    while let Some(block) = pending.pop() {
-        match *block {
-            | Block::Section(ref section) => {
-                let id = declared_id(section.id.as_deref(), "section")?;
-                lexicon.insert_anchor(id, &escape_text(&section.title))?;
-                pending.extend(section.blocks.iter());
-            },
-            | Block::Example(ref example) => pending.extend(example.blocks.iter()),
-            | Block::Rule(ref rule) => {
-                lexicon.insert_anchor(
-                    declared_id(rule.id.as_deref(), "rule")?,
-                    &escape_text(&rule.name),
-                )?;
-            },
-            | Block::Definition(ref definition) => {
-                lexicon.insert_anchor(
-                    declared_id(definition.id.as_deref(), "definition")?,
-                    &escape_text(&format!("{} (definition)", definition.term)),
-                )?;
-                lexicon.insert_term(&definition.term, &escape_text(&definition.term))?;
-                harvest_inlines(&definition.body, lexicon)?;
-            },
-            | Block::Diagram(ref diagram) => {
-                lexicon.insert_anchor(&diagram.id, &escape_text(&diagram.caption))?;
-            },
-            | Block::Prose(ref inlines) => harvest_inlines(inlines, lexicon)?,
-            | Block::List(ref list) => {
-                for item in &list.items {
-                    harvest_inlines(&item.body, lexicon)?;
-                }
-            },
-            | Block::Table(ref table) => {
-                for cell in table
-                    .header
-                    .iter()
-                    .chain(table.rows.iter().flat_map(|row| row.cells.iter()))
-                {
-                    harvest_inlines(&cell.content, lexicon)?;
-                }
-            },
-            | _ => {},
-        }
-    }
-    Ok(())
-}
-
-/// Harvest the inline term definitions one inline sequence carries.
-fn harvest_inlines(
-    inlines: &[Inline],
-    lexicon: &mut Lexicon,
-) -> Result<(), GfDocsError>
-{
-    for inline in inlines {
-        if let Inline::TermDef(ref definition) = *inline {
-            lexicon.insert_term(&definition.key, &escape_text(&definition.text))?;
-        }
-    }
-    Ok(())
-}
-
-/// Unwrap an optional declared id, naming its owner kind on absence.
-fn declared_id<'a>(
-    id: Option<&'a str>,
-    kind: &str,
-) -> Result<&'a str, GfDocsError>
-{
-    id.ok_or_else(|| GfDocsError::Translation(format!("{kind} without id")))
 }
 
 // ── the `.gfd` collector (the production path) ──────────────────────────────
@@ -607,4 +490,74 @@ fn unmangle(
         .strip_prefix(prefix)
         .map(|rest| rest.replace('_', "-"))
         .ok_or_else(|| GfDocsError::Parse(format!("'{constant}' lacks the '{prefix}' prefix")))
+}
+
+// ── lexicon constant naming and `GF`/text escaping (the shared contract) ────
+
+/// The lexicon constant for a term key.
+#[inline]
+#[must_use]
+pub fn term_const(key: &str) -> String
+{
+    format!("term_{}", mangle(key))
+}
+
+/// The lexicon constant for a cite key.
+#[inline]
+#[must_use]
+pub fn cite_const(key: &str) -> String
+{
+    format!("cite_{}", mangle(key))
+}
+
+/// The lexicon constant for an anchor id.
+#[inline]
+#[must_use]
+pub fn anchor_const(id: &str) -> String
+{
+    format!("anchor_{}", mangle(id))
+}
+
+/// Map a corpus key to a `GF`-safe identifier fragment.
+fn mangle(key: &str) -> String
+{
+    key.replace('-', "_")
+}
+
+/// Quote text as a `GF` string literal.
+pub(crate) fn gf_str(text: &str) -> String
+{
+    let mut out = String::with_capacity(text.len().saturating_add(2));
+    out.push('"');
+    for ch in text.chars() {
+        match ch {
+            | '"' => out.push_str("\\\""),
+            | '\\' => out.push_str("\\\\"),
+            | '\n' => out.push_str("\\n"),
+            | '\t' => out.push_str("\\t"),
+            | '\r' => out.push_str("\\r"),
+            | _ => out.push(ch),
+        }
+    }
+    out.push('"');
+    out
+}
+
+/// `HTML`-escape text-destined content (`& < >`).
+///
+/// Text-destined strings (`Txt` prose, titles, captions, display texts) are
+/// emitted raw by the linearization; escaping is the content boundary's job,
+/// applied exactly once.
+pub(crate) fn escape_text(text: &str) -> String
+{
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            | '&' => out.push_str("&amp;"),
+            | '<' => out.push_str("&lt;"),
+            | '>' => out.push_str("&gt;"),
+            | other => out.push(other),
+        }
+    }
+    out
 }

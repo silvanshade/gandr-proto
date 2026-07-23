@@ -133,6 +133,9 @@ No Haskell toolchain enters the build.
 
 ## 5. Greenfield crate plan
 
+> **As landed (gandr-5n6, 2026-07-23):** the plan below is the as-built layout with two owner-directed changes at the migration's retirement step: the crate is **`crates/workflow-docs`** (the new pipeline inherited the canonical name; the legacy renderer it replaced was deleted), and the `rt.rs`/`sexp.rs` interop split into **`crates/workflow-grammatical-framework`** (the pyo3 quarantine and the physical internalization seam, with the uv project beside it).
+> The legacy parser/renderer machinery retired with the XML corpus; the bibliography, typst leaf compiler, references renderer, and the prose document classes moved into the renamed crate.
+
 One new crate, **`crates/gf-docs`**, beside (not inside) `workflow-docs`:
 
 ```text
@@ -164,7 +167,7 @@ Scope (gandr-wrs, after this proposal's acceptance):
 3. The HTML concrete syntax for that inventory; authoring rides `readExpr` on B′ text (§3.2) — no authoring grammar to build in the PoC.
 4. **One real component rendered end-to-end:** the PoC translator (old XML parse → trees → B′ print) converts `component-vocabulary.xml` (small, self-describing, exercises the subset); the new pipeline reads the `.gfd` and renders an HTML page; content equivalence against the current page checked section-by-section.
 5. Term-registry seed: a generated `Term` lexicon; a dangling term reference **fails `checkExpr`** (the negative test is the point).
-6. Gates: `cargo nextest -p gf-docs`, `mise run docs:build`-equivalent for the PoC page.
+6. Gates: `cargo nextest -p gandr-workflow-docs`, `mise run docs:build`-equivalent for the PoC page.
 
 **PoC acceptance:** the owner inspects the rendered page; equivalence holds; the negative test fires; sign-off unblocks migration (gandr-5n6).
 

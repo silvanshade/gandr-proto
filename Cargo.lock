@@ -631,16 +631,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gandr-gf-docs"
-version = "0.0.0"
-dependencies = [
- "gandr-workflow-docs",
- "gandr-workflow-grammatical-framework",
- "regex",
- "thiserror 2.0.19",
-]
-
-[[package]]
 name = "gandr-kernel-core"
 version = "0.0.0"
 dependencies = [
@@ -815,7 +805,10 @@ name = "gandr-workflow-docs"
 version = "0.0.0"
 dependencies = [
  "blake3",
+ "gandr-workflow-grammatical-framework",
+ "regex",
  "roxmltree",
+ "thiserror 2.0.19",
  "yaml-rust2",
 ]
 

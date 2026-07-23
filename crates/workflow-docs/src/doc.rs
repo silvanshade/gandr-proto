@@ -1,13 +1,10 @@
 //! The prose document classes: research records, workflow docs, and the
 //! per-crate lean-tier status narrative.
 //!
-//! These classes grow the doc tool beyond the `docs/spec/` component corpus to
-//! the surrounding Markdown tail (`gandr-712`). They share one minimal
-//! block/inline substrate ([`model`]) parsed by a single parse-equals-validate
-//! pass ([`parse`]) and checked against a small per-class schema
-//! ([`validate`]). The component vocabulary ([`crate::model`]) is untouched; a
-//! prose document is a distinct root element, so the two corpora coexist during
-//! the migration tail.
+//! These classes grow the doc tool beyond the spec corpus to the surrounding
+//! Markdown tail (`gandr-712`). They share one minimal block/inline substrate
+//! ([`model`]) parsed by a single parse-equals-validate pass ([`parse`]) and
+//! checked against a small per-class schema ([`validate`]).
 //!
 //! The canonical `XML` formatter ([`crate::format`]) is class-agnostic, so
 //! these classes need no new formatting code — only the `treefmt` `docs-xml`

@@ -26,9 +26,9 @@ Internalizing this is a research-scale project; the Haskell `gf` compiler stays 
 
 ## The seam we are already building
 
-`gf-docs`'s `GfRuntime` trait (proposal §4) is deliberately the internalization surface: `read_pgf`, `parse`, `linearize`/`bracketed_linearize`, expr construct/deconstruct, `function_type`/`functions_by_cat`, `check_expr`.
+`workflow-grammatical-framework`'s `GfRuntime` trait (proposal §4) is deliberately the internalization surface: `read_pgf`, `parse`, `linearize`/`bracketed_linearize`, expr construct/deconstruct, `function_type`/`functions_by_cat`, `check_expr`.
 A pure-Rust runtime becomes a third backend beside PyO3 and the documented C-FFI fallback — swappable without touching the pipeline.
-**Design rule for all gandr-2vv work: nothing outside `rt.rs` may know which backend is live.**
+**Design rule for all gandr-2vv work: nothing outside `rt.rs` (in `workflow-grammatical-framework`) may know which backend is live.**
 
 ## Observation log (maintained during PoC and migration)
 
