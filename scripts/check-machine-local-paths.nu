@@ -29,9 +29,13 @@ const ABS_RE = '(?P<hit>/(Users|home)/[A-Za-z0-9_.-]+[A-Za-z0-9_./-]*)'
 const TILDE_RE = '(?P<hit>~/[A-Za-z0-9_.][A-Za-z0-9_./-]*)'
 
 # Scan one file's content; one row per offending path occurrence. Unreadable
-# or deleted staged paths scan as empty — absent content cannot leak.
+# or deleted staged paths scan as empty — absent content cannot leak. Binary
+# staged files (fonts, images) scan as empty too: `open --raw` types them
+# `binary`, and a binary payload cannot carry a machine-local text path.
 export def scan-file [file: path]: nothing -> table<file: string, line: int, hit: string> {
-    try { open --raw $file } catch { '' }
+    let content = (try { open --raw $file } catch { '' })
+    let text = if ($content | describe | str starts-with 'string') { $content } else { '' }
+    $text
     | lines
     | enumerate
     | each {|row|

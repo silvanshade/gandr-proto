@@ -84,7 +84,11 @@ def scan-file [file: path]: nothing -> list<record<path: path, line: int, text: 
         # state that rendering it will name something, so assert the value before
         # it is copied into every diagnostic record.
         assert (($display_path | into string) | is-not-empty) $'scan-file: display path must be non-empty for ($file)'
-        let body = (try { open --raw $file } catch {|err| error make {msg: $'failed to read ($file): ($err.msg)'} })
+        let raw = (try { open --raw $file } catch {|err| error make {msg: $'failed to read ($file): ($err.msg)'} })
+        # Binary tracked files (fonts, images) cannot carry text conflict
+        # markers: `open --raw` types them `binary`; scan them as empty rather
+        # than feeding a binary payload to `lines`.
+        let body = if ($raw | describe | str starts-with 'string') { $raw } else { '' }
 
         $body
         | lines
