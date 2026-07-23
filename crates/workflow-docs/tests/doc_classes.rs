@@ -7,6 +7,19 @@
 //! parse-equals-validate pass is the same discipline `check-docs` runs; this
 //! test drives it over the real tree.
 
+#![cfg_attr(
+    test,
+    allow(
+        clippy::arithmetic_side_effects,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::panic,
+        clippy::unwrap_used,
+        reason = "the standard test-allow set keeps the unit and property tests \
+                  readable (docs/workflow/rust.md)"
+    )
+)]
+
 #[cfg(test)]
 mod tests
 {

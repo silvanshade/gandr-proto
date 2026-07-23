@@ -12,199 +12,463 @@ MkComponent
        InheritSectionStatus
        (ConsBlock (ProseBlock
             (ConsInline (Txt
-                 "This component fixes where recursion and corecursion are declared, where their termination and productivity evidence lives, and how that evidence surface grows into sized types, cost annotations, and explicit implicit-instantiation without retrofit. The decision is a hybrid of two sites. A")
-              (ConsInline (TermDef term_recursive_scope "recursive scope")
-                (ConsInline (Txt
-                     "is opened at the declaration: def rec for a single self-referential definition, the rec { … } block for a mutual group. A")
-                  (ConsInline (TermDef term_recursion_marker "recursion marker")
-                    (ConsInline (Txt
-                         "is required at every recursive occurrence: the marked occurrence — written in the bracketed instantiation slot, as in add[&lt;](p, n) — is the only way to reference a definition from inside its own recursive scope. The marker's interior carries a")
-                      (ConsInlineGlued (TermDef term_direction_sigil "direction sigil")
-                        (ConsInline (Txt
-                             ": &lt; claims descent into an inductive argument, &gt; claims guarded production of coinductive output. Declaration-site rec is scope information; the call-site marker is evidence information. They answer different questions, so carrying both is not redundancy.")
-                          BaseInline))))))))
+                 "This component fixes where recursion and corecursion are declared, where their termination and productivity evidence lives, and how that evidence surface grows into sized types, cost annotations, and explicit implicit-instantiation without retrofit.")
+              BaseInline))
          (ConsBlock (ProseBlock
-              (ConsInline (Txt
-                   "As built, the surface grammar accepts def rec, rec { … }, bracketed direction sigils, comma lists, and the reserved marker residents. A pre-lowering scope pass requires marked self or group references, rejects unmarked self-reference with the marked spelling as a suggestion, preserves qualified access to outer bindings, and declines the reserved residents by name. Recursive and corecursive definitions themselves do not yet lower; the direction sigils therefore carry scope evidence only, not guardedness, size, or cost claims.")
-                BaseInline))
+              (ConsInline (Txt "The decision is a")
+                (ConsInlineGlued (Bold
+                     (ConsInline (Txt "hybrid of two sites")
+                       BaseInline))
+                  (ConsInline (Txt ".")
+                    BaseInline))))
            (ConsBlock (ProseBlock
-                (ConsInline (Txt
-                     "Three consequences are the point of the design. First, the rec-versus-nonrec declaration dichotomy is eliminated: every plain name reference means the same thing everywhere (the enclosing or imported binding), and self-reference is always explicit, so a nonrec keyword has nothing left to mean. Second, the surface becomes honest to the elaboration: the core design elaborates recursion through thunks over the")
-                  (ConsInline (TermRef term_frozen_core)
-                    (ConsInline (Txt
-                         "call-by-push-value substrate, and under it a recursive occurrence is the fix-bound variable — a different binding than the definition's name. The marker surfaces exactly that distinction instead of hiding it behind name capture. Third, every recursive call now carries a syntactic slot on which the productivity ladder, the cost model, and explicit implicit-instantiation can all later hang, because the slot is the instantiation slot the expression grammar already has.")
-                      BaseInline))))
-             BaseBlock))))
+                (ConsInline (Txt "A")
+                  (ConsInline (TermDef term_recursive_scope "recursive scope")
+                    (ConsInline (Txt "is opened at the declaration:")
+                      (ConsInline (CodeInline "def rec")
+                        (ConsInline (Txt "for a single self-referential definition, the")
+                          (ConsInline (CodeInline "rec { … }")
+                            (ConsInline (Txt "block for a mutual group.")
+                              BaseInline))))))))
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt "A")
+                    (ConsInline (TermDef term_recursion_marker "recursion marker")
+                      (ConsInline (Txt
+                           "is required at every recursive occurrence. The marked occurrence — written in the bracketed instantiation slot, as in")
+                        (ConsInline (CodeInline "add[&lt;](p, n)")
+                          (ConsInline (Txt
+                               "— is the only way to reference a definition from inside its own recursive scope.")
+                            BaseInline))))))
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt "The")
+                      (ConsInlineGlued (TermRef term_recursion_marker)
+                        (ConsInline (Txt "'s interior carries a")
+                          (ConsInlineGlued (TermDef term_direction_sigil "direction sigil")
+                            (ConsInline (Txt ":")
+                              (ConsInline (CodeInline "&lt;")
+                                (ConsInline (Txt "claims descent into an inductive argument,")
+                                  (ConsInline (CodeInline "&gt;")
+                                    (ConsInline (Txt "claims guarded production of coinductive output.")
+                                      BaseInline))))))))))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "Declaration-site rec is")
+                        (ConsInlineGlued (Bold
+                             (ConsInline (Txt "scope information")
+                               BaseInline))
+                          (ConsInline (Txt "; the call-site marker is")
+                            (ConsInlineGlued (Bold
+                                 (ConsInline (Txt "evidence information")
+                                   BaseInline))
+                              (ConsInline (Txt ".")
+                                BaseInline))))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt "They answer different questions, so")
+                          (ConsInlineGlued (Bold
+                               (ConsInline (Txt "carrying both is not redundancy")
+                                 BaseInline))
+                            (ConsInline (Txt ".")
+                              BaseInline))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt "As built, the surface grammar accepts")
+                            (ConsInlineGlued (CodeInline "def rec")
+                              (ConsInline (Txt ",")
+                                (ConsInlineGlued (CodeInline "rec { … }")
+                                  (ConsInline (Txt
+                                       ", bracketed direction sigils, comma lists, and the reserved marker residents.")
+                                    BaseInline))))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "A pre-lowering scope pass then validates the surface: marked self or group references are required, and unmarked self-reference is rejected with the marked spelling as a suggestion. Qualified access to outer bindings survives, and the reserved residents are declined by name.")
+                              BaseInline))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "Recursive and corecursive definitions themselves do not yet lower; the direction sigils therefore carry")
+                                (ConsInline (Bold
+                                     (ConsInline (Txt "scope evidence only")
+                                       BaseInline))
+                                  (ConsInline (Txt "— not guardedness, size, or cost claims.")
+                                    BaseInline))))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt "Three consequences are the point of the design. First, the")
+                                  (ConsInlineGlued (Bold
+                                       (ConsInline (Txt "rec-versus-nonrec declaration dichotomy is eliminated")
+                                         BaseInline))
+                                    (ConsInline (Txt
+                                         ". Every plain name reference means the same thing everywhere — the enclosing or imported binding. Self-reference is always explicit, so a")
+                                      (ConsInline (CodeInline "nonrec")
+                                        (ConsInline (Txt "keyword has nothing left to mean.")
+                                          BaseInline))))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt "Second, the surface becomes")
+                                    (ConsInlineGlued (Bold
+                                         (ConsInline (Txt "honest to the elaboration")
+                                           BaseInline))
+                                      (ConsInline (Txt ". The core design elaborates recursion through thunks over the")
+                                        (ConsInline (TermRef term_frozen_core)
+                                          (ConsInline (Txt
+                                               "call-by-push-value substrate. Under it, a recursive occurrence is the fix-bound variable — a different binding than the definition's name. The marker surfaces exactly that distinction instead of hiding it behind name capture.")
+                                            BaseInline))))))
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt "Third, every recursive call carries a")
+                                      (ConsInlineGlued (Bold
+                                           (ConsInline (Txt "syntactic slot")
+                                             BaseInline))
+                                        (ConsInline (Txt
+                                             ". The productivity ladder, the cost model, and explicit implicit-instantiation can all later hang on it, because the slot is the instantiation slot the expression grammar already has.")
+                                          BaseInline))))
+                                 BaseBlock))))))))))))))
     (ConsSection (MkSection
          anchor_rs_evidence_site
-         "Where termination evidence lives: the declaration-site/call-site spectrum"
+         "Where termination evidence lives"
          InheritSectionStatus
          (ConsBlock (ProseBlock
               (ConsInline (Txt
-                   "Prior art splits by the site where a definition's well-foundedness evidence attaches. Declaration-site systems attach a measure to the definition: Lean's termination_by / decreasing_by clauses, ATS's termination metrics in the signature, Liquid Haskell's decrease annotations. Call-site systems attach evidence to the occurrence: Idris's assert_smaller, and — the popularly-known case — Clojure's recur. The Clojure precedent needs a correction before it can inform the design: recur is tail-position-only and self-only, and exists because the JVM lacks tail-call elimination; it is a loop construct wearing recursion syntax, not a general recursion marker. The nearest honest description of this design is \"Idris's assert_smaller made systematic and mandatory\": unusual as a required form, but not unprecedented as a site.")
-                BaseInline))
-           (ConsBlock (ProseBlock
-                (ConsInline (Txt
-                     "Call-site evidence wins for gandr on four grounds. The checker's obligations attach where the proof burden actually is — each marked call is one obligation, and a diagnostic names the call that fails, not the definition that contains it somewhere. The cost model reads the same sites: the calf substrate")
-                  (ConsInline (CiteRef cite_L_1)
-                    (ConsInline (CiteRef cite_L_2)
+                   "Prior art splits by the site where a definition's well-foundedness evidence attaches. Declaration-site systems attach a measure to the definition: Lean's")
+                (ConsInline (CodeInline "termination_by")
+                  (ConsInline (Txt "/")
+                    (ConsInline (CodeInline "decreasing_by")
                       (ConsInline (Txt
-                           "extracts recurrences at recursive calls, so a per-call slot is exactly where a cost bound will later live. Sized types read the same sites again: under well-founded sized recursion")
-                        (ConsInline (CiteRef cite_O_1b)
-                          (ConsInline (Txt
-                               "a recursive call is an application at a strictly smaller size, so the marker is not an ad-hoc invention that sized types would replace — it is the surface position that size instantiation will occupy, adopted early with lighter semantics. And mutual recursion generalizes cleanly: inside even, the call odd[&lt;](p) marks a recursive-group call at smaller size, which a self-only construct like recur cannot express and a sized-type semantics handles by construction.")
-                            BaseInline)))))))
+                           "clauses, ATS's termination metrics in the signature, Liquid Haskell's")
+                        (ConsInline (CodeInline "decrease")
+                          (ConsInline (Txt "annotations.")
+                            BaseInline))))))))
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt "Call-site systems attach evidence to the occurrence: Idris's")
+                  (ConsInlineGlued (CodeInline "assert_smaller")
+                    (ConsInline (Txt ", and — the popularly-known case — Clojure's")
+                      (ConsInlineGlued (CodeInline "recur")
+                        (ConsInline (Txt ".")
+                          BaseInline))))))
              (ConsBlock (ProseBlock
                   (ConsInline (Txt
-                       "The noise objection — a prover-flavored language recurses constantly, and every call pays three characters — is acknowledged and priced. A prover requires termination evidence somewhere; the design question is only its address. Agda's answer (a silent structural checker, escalating to size quantifiers in types when it fails) puts the noise in the types, which is more total noise at a worse address. Three characters at the call is close to the minimum honest notation for evidence the checker needs anyway. And because the parser is of the tylr lineage, whose identity is whitespace-invariant and merkle-keyed, stored syntax and displayed syntax are decoupled: prover-facing renderings may elide inferable markers as a projection concern, without the grammar or the stored term changing.")
-                    BaseInline))
-               BaseBlock))))
+                       "The Clojure precedent needs a correction before it can inform the design.")
+                    (ConsInline (CodeInline "recur")
+                      (ConsInline (Txt
+                           "is tail-position-only and self-only, and it exists because the JVM lacks tail-call elimination. It is")
+                        (ConsInlineGlued (Bold
+                             (ConsInline (Txt "a loop construct wearing recursion syntax")
+                               BaseInline))
+                          (ConsInline (Txt ", not a general recursion marker.")
+                            BaseInline))))))
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt "The nearest honest description of this design is \"Idris's")
+                      (ConsInline (CodeInline "assert_smaller")
+                        (ConsInline (Txt
+                             "made systematic and mandatory\": unusual as a required form, but not unprecedented as a site.")
+                          BaseInline))))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt
+                           "Call-site evidence wins for gandr on four grounds. The checker's obligations attach where the proof burden actually is —")
+                        (ConsInlineGlued (Bold
+                             (ConsInline (Txt "each marked call is one obligation")
+                               BaseInline))
+                          (ConsInline (Txt
+                               ", and a diagnostic names the call that fails, not the definition that contains it somewhere.")
+                            BaseInline))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt "The cost model reads the same sites: the calf substrate")
+                          (ConsInline (CiteRef cite_L_1)
+                            (ConsInline (CiteRef cite_L_2)
+                              (ConsInline (Txt
+                                   "extracts recurrences at recursive calls, so a per-call slot is exactly where a cost bound will later live.")
+                                BaseInline)))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "Sized types read the same sites again. Under well-founded sized recursion")
+                            (ConsInlineGlued (CiteRef cite_O_1b)
+                              (ConsInline (Txt
+                                   ", a recursive call is an application at a strictly smaller size. The marker is therefore not an ad-hoc invention that sized types would replace. It is the surface position that size instantiation will occupy, adopted early with lighter semantics.")
+                                BaseInline))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt "And mutual recursion generalizes cleanly: inside even, the call")
+                              (ConsInline (CodeInline "odd[&lt;](p)")
+                                (ConsInline (Txt
+                                     "marks a recursive-group call at smaller size, which a self-only construct like")
+                                  (ConsInline (CodeInline "recur")
+                                    (ConsInline (Txt "cannot express and a sized-type semantics handles by construction.")
+                                      BaseInline))))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "The noise objection — a prover-flavored language recurses constantly, and every call pays three characters — is acknowledged and priced. A prover requires termination evidence somewhere; the design question is only its address.")
+                                BaseInline))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt
+                                     "Agda's answer (a silent structural checker, escalating to size quantifiers in types when it fails) puts the noise in the types, which is more total noise at a worse address. Three characters at the call is close to the")
+                                  (ConsInline (Bold
+                                       (ConsInline (Txt "minimum honest notation")
+                                         BaseInline))
+                                    (ConsInline (Txt "for evidence the checker needs anyway.")
+                                      BaseInline))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "The tylr parser lineage decouples stored syntax from displayed syntax, because identity there is whitespace-invariant and merkle-keyed. Prover-facing renderings may therefore elide inferable markers as a projection concern, without the grammar or the stored term changing.")
+                                    BaseInline))
+                               BaseBlock))))))))))))
       (ConsSection (MkSection
            anchor_rs_scope_rule
-           "The recursive scope and the self-reference rule"
+           "Recursive scope and self-reference"
            (WithSectionStatus StatusPartial)
            (ConsBlock (ProseBlock
                 (ConsInline (Txt
-                     "Call-site-only marking was considered and rejected, because mutual recursion needs declaration-site grouping regardless of any call-site discipline: inside even, a call to odd requires odd in scope before odd's definition is complete, so something must open the group's scope, and that is precisely the reserved rec { … } block. The alternative that dissolves the problem — the whole file as one implicit letrec scope, the Rust and Haskell posture — is rejected on principle: implicit recursion everywhere is exactly the default this design exists to remove. So the choice is not declaration-site versus call-site; it is declaration-site alone versus both, and both is what makes the evidence discipline possible.")
-                  BaseInline))
+                     "Call-site-only marking was considered and rejected. Mutual recursion needs declaration-site grouping regardless of any call-site discipline: inside even, a call to odd requires odd in scope before odd's definition is complete. Something must open the group's scope, and that is precisely the reserved")
+                  (ConsInline (CodeInline "rec { … }")
+                    (ConsInline (Txt "block.")
+                      BaseInline))))
              (ConsBlock (ProseBlock
                   (ConsInline (Txt
-                       "The self-reference rule makes the hybrid safe. Inside a recursive scope, the marked occurrence is the only reference to the fix-bound variable. An unmarked occurrence of the definition's own name is a hard error carrying a did-you-mean suggestion naming the marked form — never a silent resolution. An outer or imported binding of the same name remains reachable, but only through a qualified path. The error-not-capture clause matters more than it first appears: under the naive alternative (\"a plain name resolves to the outer binding\"), forgetting one marker silently captures an imported or shadowed binding of the same name — a strictly worse footgun than the shadowing confusions nonrec was invented to manage. The rule as stated kills the footgun and the nonrec keyword with one stroke, and the qualified-path escape keeps the legitimate outer-reference idiom expressible.")
-                    BaseInline))
+                       "The alternative that dissolves the problem — the whole file as one implicit letrec scope, the Rust and Haskell posture — is rejected on principle.")
+                    (ConsInlineGlued (Bold
+                         (ConsInline (Txt
+                              "Implicit recursion everywhere is exactly the default this design exists to remove")
+                           BaseInline))
+                      (ConsInline (Txt ".")
+                        BaseInline))))
                (ConsBlock (ProseBlock
                     (ConsInline (Txt
-                         "The declaration-site half also keeps its independent value: a reader (or the")
-                      (ConsInlineGlued (TermRef term_decl_table)
-                        (ConsInline (Txt
-                             ") learns from the header alone that a definition is self-referential, without scanning the body for markers; and the surface grammar keeps def rec folded as a tail of the single def family — one form-first mold, the rec-versus-name choice locally decidable — so the scope keyword costs no new shared-prefix window.")
+                         "So the choice is not declaration-site versus call-site; it is declaration-site alone versus")
+                      (ConsInline (Bold
+                           (ConsInline (Txt "both")
+                             BaseInline))
+                        (ConsInline (Txt "— and both is what makes the evidence discipline possible.")
                           BaseInline))))
-                 BaseBlock))))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt
+                           "The self-reference rule makes the hybrid safe. Inside a recursive scope,")
+                        (ConsInlineGlued (Bold
+                             (ConsInline (Txt
+                                  "the marked occurrence is the only reference to the fix-bound variable")
+                               BaseInline))
+                          (ConsInline (Txt
+                               ". An unmarked occurrence of the definition's own name is a hard error carrying a did-you-mean suggestion naming the marked form — never a silent resolution. An outer or imported binding of the same name remains reachable, but only through a qualified path.")
+                            BaseInline))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "The error-not-capture clause matters more than it first appears. Under the naive alternative — \"a plain name resolves to the outer binding\" — forgetting one marker silently captures an imported or shadowed binding of the same name. That is a strictly worse footgun than the shadowing confusions nonrec was invented to manage. The rule as stated kills the footgun and the nonrec keyword with one stroke, and the qualified-path escape keeps the legitimate outer-reference idiom expressible.")
+                          BaseInline))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "The declaration-site half also keeps its independent value. A reader — or the")
+                            (ConsInline (TermRef term_decl_table)
+                              (ConsInline (Txt
+                                   "— learns from the header alone that a definition is self-referential, without scanning the body for markers. And the surface grammar keeps def rec folded as a tail of the single def family: one form-first mold, the rec-versus-name choice locally decidable. The scope keyword therefore costs no new shared-prefix window.")
+                                BaseInline))))
+                       BaseBlock)))))))
         (ConsSection (MkSection
              anchor_rs_marker_slot
-             "The marker is the instantiation slot"
+             "The instantiation slot"
              (WithSectionStatus StatusPartial)
              (ConsBlock (ProseBlock
                   (ConsInline (Txt
-                       "The load-bearing syntactic finding: the expression grammar already has a postfix bracketed instantiation form, e[T, …], and the bracket plane already uniformly denotes the erased, second-class tier — type instantiation e[T], type abstraction fn [a] { … }, the")
+                       "The load-bearing syntactic finding is that the bracket plane already exists. The expression grammar already has a postfix bracketed instantiation form, e[T, …]. And the bracket plane already uniformly denotes the erased, second-class tier: type instantiation e[T], type abstraction fn [a] { … }, the")
                     (ConsInline (TermRef term_grade)
-                      (ConsInline (Txt
-                           "slot thunk [g] { … }. The recursion marker is therefore not a new syntax class: it is the existing")
-                        (ConsInline (TermDef term_instantiation_slot "instantiation slot")
-                          (ConsInline (Txt
-                               "admitting two new interior atoms, the direction sigils. Under the sized-types rung of the ladder this stops being a pun and becomes literally true: f[&lt;] is instantiation of an erased size argument at a fresh size strictly below the ambient one.")
-                            BaseInline))))))
-               (ConsBlock (GrammarBlock
-                    (ConsProduction (MkProduction "e" "e [ ι₁, …, ιₙ ] | e ( e₁, …, eₘ ) | …")
-                      (ConsProduction (MkProduction "ι" "T | < | > | x = e | m < | size = e | cost = e | tail")
-                        BaseProduction)))
-                 (ConsBlock (ProseBlock
-                      (ConsInline (Txt
-                           "The slot is a comma list from day one, in the same anti-retrofit posture as the reserved productions of the")
-                        (ConsInline (TermRef term_data_declaration)
-                          (ConsInline (Txt
-                               "block: the grammar accepts the full list and the checker declines every resident it does not yet implement. The named future residents, reserved now so none is a retrofit: named measures (f[m &lt;], naming which argument descends), explicit size instantiation f[size = e], cost bounds f[cost = e] in the calf reading")
-                            (ConsInlineGlued (CiteRef cite_L_1)
-                              (ConsInline (Txt
-                                   ", and a tail atom asserting the call must compile as a tail call. A function that recurses on an inductive argument while corecursing into its coinductive result marks one call with a list, f[&lt;, &gt;] — which is why the slot cannot be a single atom.")
-                                BaseInline))))))
+                      (ConsInline (Txt "slot thunk [g] { … }.")
+                        BaseInline))))
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt "The recursion marker is therefore")
+                      (ConsInlineGlued (Bold
+                           (ConsInline (Txt "not a new syntax class")
+                             BaseInline))
+                        (ConsInline (Txt ": it is the existing")
+                          (ConsInline (TermDef term_instantiation_slot "instantiation slot")
+                            (ConsInline (Txt
+                                 "admitting two new interior atoms, the direction sigils. Under the sized-types rung of the ladder, this stops being a pun. It becomes literally true: f[&lt;] is instantiation of an erased size argument at a fresh size strictly below the ambient one.")
+                              BaseInline))))))
+                 (ConsBlock (GrammarBlock
+                      (ConsProduction (MkProduction "e" "e [ ι₁, …, ιₙ ] | e ( e₁, …, eₘ ) | …")
+                        (ConsProduction (MkProduction "ι" "T | < | > | x = e | m < | size = e | cost = e | tail")
+                          BaseProduction)))
                    (ConsBlock (ProseBlock
                         (ConsInline (Txt
-                             "The implicit-arguments interaction resolves by unification rather than collision. Term-level implicits arrive by contextual-metavariable elaboration (the D9 line of the kernel synthesis), and any implicit system eventually needs an explicit-instantiation surface; that surface is this same slot, f[i = e]. One occurrence-modifier slot then serves type arguments, sizes, direction sigils, and explicit implicit instantiation, instead of two bracket languages competing for one opener. Module-level implicits in the modular-implicits line")
-                          (ConsInline (CiteRef cite_H_4)
+                             "The slot is a comma list from day one, in the same anti-retrofit posture as the reserved productions of the")
+                          (ConsInline (TermRef term_data_declaration)
                             (ConsInline (Txt
-                                 "live at the signature/functor layer and are unaffected by any of this.")
+                                 "block. The grammar accepts the full list, and the checker declines every resident it does not yet implement.")
                               BaseInline))))
-                     BaseBlock)))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "Four future residents are named and reserved now, so that none is a retrofit. Named measures (f[m &lt;]) say which argument descends. Explicit size instantiation is f[size = e], and cost bounds are f[cost = e] in the calf reading")
+                            (ConsInlineGlued (CiteRef cite_L_1)
+                              (ConsInline (Txt ". A tail atom asserts that the call must compile as a tail call.")
+                                BaseInline))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "A function that recurses on an inductive argument while corecursing into its coinductive result marks one call with a list, f[&lt;, &gt;] — which is why")
+                              (ConsInline (Bold
+                                   (ConsInline (Txt "the")
+                                     BaseInline))
+                                (ConsInline (TermRef term_instantiation_slot)
+                                  (ConsInlineGlued (Bold
+                                       (ConsInline (Txt "cannot be a single atom")
+                                         BaseInline))
+                                    (ConsInline (Txt ".")
+                                      BaseInline))))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "The implicit-arguments interaction resolves by unification rather than collision. Term-level implicits arrive by contextual-metavariable elaboration (the D9 line of the kernel synthesis), and any implicit system eventually needs an explicit-instantiation surface. That surface is this same slot, f[i = e]: one occurrence-modifier slot then serves type arguments, sizes, direction sigils, and explicit implicit instantiation, instead of two bracket languages competing for one opener.")
+                                BaseInline))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt "Module-level implicits in the modular-implicits line")
+                                  (ConsInline (CiteRef cite_H_4)
+                                    (ConsInline (Txt
+                                         "live at the signature/functor layer and are unaffected by any of this.")
+                                      BaseInline))))
+                             BaseBlock)))))))))
           (ConsSection (MkSection
                anchor_rs_ladder
-               "Marker semantics along the productivity ladder"
+               "The productivity ladder"
                (WithSectionStatus StatusPartial)
                (ConsBlock (ProseBlock
                     (ConsInline (Txt "The")
                       (ConsInline (TermDef term_productivity_ladder "productivity ladder")
                         (ConsInline (Txt
-                             "is the staged strengthening of what a marker means: step budget now, syntactic guardedness next, sized types reserved. On the first rung the marker is scope-checked only — a marked occurrence must target a definition of the enclosing recursive scope, and nothing else is claimed; evaluation remains bounded by the machine step budget with decline-and-report. On the guardedness rung the sigils become checked claims: &lt; obliges some argument of the marked call to structurally descend; &gt; obliges the marked call to sit under at least one copattern observation, the standard guard discipline of copattern corecursion")
-                          (ConsInlineGlued (CiteRef cite_O_1a)
-                            (ConsInline (Txt
-                                 ". On the sized rung both sigils elaborate to erased size applications, the explicit forms become available in the same slot, and conversion quotients the annotations under size-irrelevance")
-                              (ConsInlineGlued (CiteRef cite_O_2)
-                                (ConsInline (Txt ", as the kernel's gluing design already anticipates.")
-                                  BaseInline))))))))
+                             "is the staged strengthening of what a marker means: step budget now, syntactic guardedness next, sized types reserved.")
+                          BaseInline))))
                  (ConsBlock (ProseBlock
                       (ConsInline (Txt
-                           "One normative caveat is fixed now so the sized rung inherits no lie. In the sized-type semantics")
-                        (ConsInline (CiteRef cite_O_1b)
-                          (ConsInline (Txt
-                               "both recursion and corecursion consume size: a coinductive type sized by observation depth has its corecursive call at strictly smaller depth, exactly as an inductive traversal descends. Both sigils therefore mean the same thing normatively — instantiate at a fresh size strictly below the ambient size — and the &lt;/&gt; split is presentational, keyed to the polarity of the type being traversed or produced: &lt; when the descent is into a positive argument, &gt; when the production is of a negative result. The split is kept anyway because the consuming-input/producing-output distinction is what a human reader wants at the call; the spec simply refuses to pretend it is a semantic distinction.")
-                            BaseInline))))
+                           "On the first rung the marker is scope-checked only: a marked occurrence must target a definition of the enclosing recursive scope, and nothing else is claimed. Evaluation remains bounded by the machine step budget, with decline-and-report.")
+                        BaseInline))
                    (ConsBlock (ProseBlock
                         (ConsInline (Txt
-                             "The ladder's ordering is also a soundness hedge. Sized types have a troubled implementation history — the interaction of bounded size quantification with the infinite size produced real inconsistencies in Agda's implementation, though the underlying theory in the MiniAgda line")
-                          (ConsInline (CiteRef cite_O_6)
-                            (ConsInline (Txt
-                                 "is sound. Keeping the marker's normative MVP semantics at \"scope plus direction claim\", with guardedness checked before any size semantics ships, means nothing downstream depends on sized-type semantics before that rung is deliberately designed.")
+                             "On the guardedness rung the sigils become checked claims. &lt; obliges some argument of the marked call to structurally descend. &gt; obliges the marked call to sit under at least one copattern observation — the standard guard discipline of copattern corecursion")
+                          (ConsInlineGlued (CiteRef cite_O_1a)
+                            (ConsInline (Txt ".")
                               BaseInline))))
-                     BaseBlock))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "On the sized rung both sigils elaborate to erased size applications, and the explicit forms become available in the same slot. Conversion quotients the annotations under size-irrelevance")
+                            (ConsInlineGlued (CiteRef cite_O_2)
+                              (ConsInline (Txt ", as the kernel's gluing design already anticipates.")
+                                BaseInline))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "One normative caveat is fixed now so the sized rung inherits no lie. In the sized-type semantics")
+                              (ConsInline (CiteRef cite_O_1b)
+                                (ConsInline (Txt
+                                     "both recursion and corecursion consume size: a coinductive type sized by observation depth has its corecursive call at strictly smaller depth, exactly as an inductive traversal descends.")
+                                  BaseInline))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "Both sigils therefore mean the same thing normatively: instantiate at a fresh size strictly below the ambient size. The &lt;/&gt; split is")
+                                (ConsInlineGlued (Bold
+                                     (ConsInline (Txt "presentational")
+                                       BaseInline))
+                                  (ConsInline (Txt
+                                       ", keyed to the polarity of the type being traversed or produced — &lt; when the descent is into a positive argument, &gt; when the production is of a negative result. The split is kept anyway: the consuming-input/producing-output distinction is what a human reader wants at the call. The spec simply refuses to pretend it is a semantic distinction.")
+                                    BaseInline))))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt "The")
+                                  (ConsInlineGlued (TermRef term_productivity_ladder)
+                                    (ConsInline (Txt
+                                         "'s ordering is also a soundness hedge. Sized types have a troubled implementation history: the interaction of bounded size quantification with the infinite size produced real inconsistencies in Agda's implementation. The underlying theory in the MiniAgda line")
+                                      (ConsInline (CiteRef cite_O_6)
+                                        (ConsInline (Txt
+                                             "is sound. Keeping the marker's normative MVP semantics at \"scope plus direction claim\", with guardedness checked before any size semantics ships, means")
+                                          (ConsInlineGlued (Bold
+                                               (ConsInline (Txt
+                                                    "nothing downstream depends on sized-type semantics before that rung is deliberately designed")
+                                                 BaseInline))
+                                            (ConsInline (Txt ".")
+                                              BaseInline))))))))
+                             BaseBlock))))))))
             (ConsSection (MkSection
                  anchor_rs_one_family
-                 "One def rec family: no def corec"
+                 "One def rec family"
                  InheritSectionStatus
                  (ConsBlock (ProseBlock
-                      (ConsInline (Txt
-                           "There is deliberately no def corec. The body shape already discriminates: a statement body is recursive, a copattern-clause body (.head =&gt; e, .tail =&gt; e) is corecursive, elaborating through the cosplit case-tree node")
-                        (ConsInline (CiteRef cite_O_3a)
-                          (ConsInline (Txt
-                               "to a record of thunks over the existing record former. A second declaration keyword would re-encode information the body carries, cost a second mold in the definition family, and — decisively — force mixed recursive/corecursive functions to pick a side they do not have: a stream transformer that descends an inductive argument while producing guarded coinductive output is one definition whose calls carry [&lt;, &gt;], not two definitions. The single { … } body with an interior alternative also keeps the two body forms from opening two brace-led branches in one context, per the surface grammar's duplicate-tile discipline.")
+                      (ConsInline (Txt "There is deliberately")
+                        (ConsInlineGlued (Bold
+                             (ConsInline (Txt "no def corec")
+                               BaseInline))
+                          (ConsInline (Txt ".")
                             BaseInline))))
                    (ConsBlock (ProseBlock
                         (ConsInline (Txt
-                             "The sequent reading is recorded as a correspondence obligation rather than designed here: in the classical account of (co)recursion")
-                          (ConsInline (CiteRef cite_O_5)
-                            (ConsInline (Txt "the corecursor's seed sits on the")
-                              (ConsInline (TermRef term_consumer)
-                                (ConsInline (Txt "side of a")
-                                  (ConsInlineGlued (TermRef term_cut)
-                                    (ConsInline (Txt ", dual to the recursor's argument on the")
-                                      (ConsInline (TermRef term_producer)
-                                        (ConsInline (Txt
-                                             "side — so when the L fragment grows far enough to express it, the &gt;-marked occurrence should acquire an L face as the seed side of a coiterator cut, and the marker discipline should survive that translation unchanged. If it does not, the surface design — not the kernel — is what must move.")
-                                          BaseInline))))))))))
-                     BaseBlock)))
+                             "The body shape already discriminates. A statement body is recursive; a copattern-clause body (.head =&gt; e, .tail =&gt; e) is corecursive. The latter elaborates through the cosplit case-tree node")
+                          (ConsInline (CiteRef cite_O_3a)
+                            (ConsInline (Txt "to a record of thunks over the existing record former.")
+                              BaseInline))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "A second declaration keyword would re-encode information the body carries, and it would cost a second mold in the definition family. Decisively, it would force mixed recursive/corecursive functions to pick a side they do not have. A stream transformer descends an inductive argument while producing guarded coinductive output: that is one definition whose calls carry [&lt;, &gt;], not two definitions.")
+                            BaseInline))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "The single { … } body with an interior alternative also keeps the two body forms from opening two brace-led branches in one context, per the surface grammar's duplicate-tile discipline.")
+                              BaseInline))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "The sequent reading is recorded as a correspondence obligation rather than designed here: in the classical account of (co)recursion")
+                                (ConsInline (CiteRef cite_O_5)
+                                  (ConsInline (Txt "the corecursor's seed sits on the")
+                                    (ConsInline (TermRef term_consumer)
+                                      (ConsInline (Txt "side of a")
+                                        (ConsInlineGlued (TermRef term_cut)
+                                          (ConsInline (Txt ". That is dual to the recursor's argument on the")
+                                            (ConsInline (TermRef term_producer)
+                                              (ConsInline (Txt
+                                                   "side. So when the L fragment grows far enough to express it, the &gt;-marked occurrence should acquire an L face as the seed side of a coiterator cut. The marker discipline should survive that translation unchanged; if it does not,")
+                                                (ConsInlineGlued (Bold
+                                                     (ConsInline (Txt "the surface design — not the kernel — is what must move")
+                                                       BaseInline))
+                                                  (ConsInline (Txt ".")
+                                                    BaseInline))))))))))))
+                           BaseBlock))))))
               (ConsSection (MkSection
                    anchor_rs_type_level
-                   "Type-level self-reference needs no marker"
+                   "Type-level self-reference"
                    InheritSectionStatus
                    (ConsBlock (ProseBlock
                         (ConsInline (Txt
                              "The analogous OCaml pain at the type level — type nonrec t = t — dissolves without new syntax, because its cause is shadowing, not termination. Declared data is")
                           (ConsInlineGlued (TermRef term_generative_nominal)
                             (ConsInline (Txt
-                                 ": the declaration mints a fresh nominal id, and the rule inside a data block mirrors the term-level self-reference rule with the marker dropped: the declared name denotes the block's own fresh nominal (data is inherently recursive — that recursion is what declaring a datatype means), and an outer binding of the same name is reachable only by qualified path. No termination evidence attaches to type-level self-reference because none is owed at the surface: strict positivity is the checker's obligation over the")
+                                 ": the declaration mints a fresh nominal id. The rule inside a data block then mirrors the term-level self-reference rule with the marker dropped. The declared name denotes the block's own fresh nominal — data is inherently recursive, and that recursion is what declaring a datatype means. An outer binding of the same name is reachable only by qualified path.")
+                              BaseInline))))
+                     (ConsBlock (ProseBlock
+                          (ConsInlineGlued (Bold
+                               (ConsInline (Txt "No termination evidence attaches to type-level self-reference")
+                                 BaseInline))
+                            (ConsInline (Txt
+                                 ", because none is owed at the surface: strict positivity is the checker's obligation over the")
                               (ConsInlineGlued (TermRef term_decl_table)
-                                (ConsInline (Txt
-                                     ", not a claim the author repeats per occurrence. The re-export idiom nonrec existed for is written as a qualified alias instead.")
-                                  BaseInline))))))
-                     BaseBlock))
+                                (ConsInline (Txt ", not a claim the author repeats per occurrence.")
+                                  BaseInline)))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "The re-export idiom nonrec existed for is written as a qualified alias instead.")
+                              BaseInline))
+                         BaseBlock))))
                 (ConsSection (MkSection
                      anchor_rs_application_syntax
-                     "The application-syntax stance: juxtaposition rejected"
+                     "Application syntax"
                      InheritSectionStatus
                      (ConsBlock (ProseBlock
                           (ConsInline (Txt
-                               "Considered alongside this design, and rejected: switching application from f(a, b) to Agda-style juxtaposition f a b. The parser could carry it — the tile calculus already melds juxtaposed atoms inside shell blocks — so the rejection is doctrinal and economic, not technical. Doctrinally, the")
-                            (ConsInline (TermRef term_data_declaration)
-                              (ConsInline (Txt
-                                   "surface rules that a constructor's surface is a field-tuple and that writing a constructor as an arrow is a polarity lie; curried juxtaposition makes partially-applied constructors first-class, turning value introductions into closures mid-application — the exact laundering the constructor rule exists to prevent. Adopting juxtaposition would force either breaking that rule or splitting the application syntax (constructors parenthesized, functions juxtaposed), which is worse than either uniform choice.")
+                               "Considered alongside this design, and rejected: switching application from f(a, b) to Agda-style juxtaposition f a b. The parser could carry it — the tile calculus already melds juxtaposed atoms inside shell blocks — so the rejection is")
+                            (ConsInlineGlued (Bold
+                                 (ConsInline (Txt "doctrinal and economic, not technical")
+                                   BaseInline))
+                              (ConsInline (Txt ".")
                                 BaseInline))))
                        (ConsBlock (ProseBlock
-                            (ConsInline (Txt
-                                 "Economically: parenthesized application is what makes an arity mistake a parse-adjacent material obligation")
-                              (ConsInline (CiteRef cite_I_7a)
-                                (ConsInline (CiteRef cite_I_7b)
-                                  (ConsInline (Txt
-                                       "— a missing argument or unclosed call is a located hole, which is the tile parser's signature diagnostic strength — where juxtaposition demotes every arity mistake to a downstream type error. Juxtaposition also makes every adjacency a potential meld, the quadratic-per-block hazard that is the stated reason it is quarantined to shell blocks. And the genuine notational win of the Agda family is mixfix operators, not juxtaposed application; gandr already reserves that outlet in the operator-declaration form, with tiles-as-data keeping open mixfix a priced option. The notation budget goes there, and prover-facing beauty is a projection/display concern over whitespace-invariant identity, not a grammar concern.")
-                                    BaseInline)))))
-                         BaseBlock)))
+                            (ConsInline (Txt "Doctrinally, the")
+                              (ConsInline (TermRef term_data_declaration)
+                                (ConsInline (Txt
+                                     "surface rules that a constructor's surface is a field-tuple, and that writing a constructor as an arrow is a polarity lie. Curried juxtaposition makes partially-applied constructors first-class — turning value introductions into closures mid-application, the exact laundering the constructor rule exists to prevent. Adopting juxtaposition would then force either breaking that rule or splitting the application syntax (constructors parenthesized, functions juxtaposed). Both are worse than either uniform choice.")
+                                  BaseInline))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "Economically: parenthesized application is what makes an arity mistake a parse-adjacent material obligation")
+                                (ConsInline (CiteRef cite_I_7a)
+                                  (ConsInlineGlued (CiteRef cite_I_7b)
+                                    (ConsInline (Txt
+                                         ": a missing argument or unclosed call is a located hole, the tile parser's signature diagnostic strength. Juxtaposition demotes every such mistake to a downstream type error. It also makes every adjacency a potential meld — the quadratic-per-block hazard that is the stated reason melding is quarantined to shell blocks.")
+                                      BaseInline)))))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt
+                                     "And the genuine notational win of the Agda family is mixfix operators, not juxtaposed application; gandr already reserves that outlet in the operator-declaration form, with tiles-as-data keeping open mixfix a priced option. The notation budget goes there, and prover-facing beauty is a projection/display concern over whitespace-invariant identity, not a grammar concern.")
+                                  BaseInline))
+                             BaseBlock)))))
                   (ConsSection (MkSection
                        anchor_rs_examples
                        "Examples"
@@ -213,8 +477,13 @@ MkComponent
                             "Structural recursion with a marked descending call"
                             (ConsBlock (ProseBlock
                                  (ConsInline (Txt
-                                      "The recursive scope is opened by def rec; the one recursive call carries the descending sigil in the instantiation slot; the unmarked spelling add(p, n) inside the body is an error with a did-you-mean suggestion.")
-                                   BaseInline))
+                                      "The recursive scope is opened by def rec. The one recursive call carries the")
+                                   (ConsInline (Bold
+                                        (ConsInline (Txt "descending sigil")
+                                          BaseInline))
+                                     (ConsInline (Txt
+                                          "in the instantiation slot. The unmarked spelling add(p, n) inside the body is an error with a did-you-mean suggestion.")
+                                       BaseInline))))
                               (ConsBlock (PlainCodeBlock
                                    "text"
                                    "def rec add(m: Nat, n: Nat) -> Nat {\n  case m {\n    Zero    => n,\n    Succ(p) => Succ(add[<](p, n)),\n  }\n}")
@@ -222,9 +491,13 @@ MkComponent
                          (ConsBlock (ExampleBlock
                               "Corecursion by copatterns with a marked productive call"
                               (ConsBlock (ProseBlock
-                                   (ConsInline (Txt
-                                        "The copattern-clause body selects the corecursive reading of the same def rec family; the corecursive occurrence carries the productive sigil and sits under the .tail observation, which is exactly what the guardedness rung will check.")
-                                     BaseInline))
+                                   (ConsInline (Txt "The copattern-clause body selects the")
+                                     (ConsInline (Bold
+                                          (ConsInline (Txt "corecursive reading")
+                                            BaseInline))
+                                       (ConsInline (Txt
+                                            "of the same def rec family. The corecursive occurrence carries the productive sigil and sits under the .tail observation — exactly what the guardedness rung will check.")
+                                         BaseInline))))
                                 (ConsBlock (PlainCodeBlock
                                      "text"
                                      "def rec nats(m: Nat) -> Stream(Nat) {\n  .head => m,\n  .tail => nats[>](m + 1),\n}")
@@ -233,8 +506,13 @@ MkComponent
                                 "A mutual group: markers name group members"
                                 (ConsBlock (ProseBlock
                                      (ConsInline (Txt
-                                          "The rec block opens one scope for the group; a marked call may target any member, which the self-only recur precedent cannot express and the sized semantics justifies (the group shares the descending size).")
-                                       BaseInline))
+                                          "The rec block opens one scope for the group. A marked call may target")
+                                       (ConsInline (Bold
+                                            (ConsInline (Txt "any member")
+                                              BaseInline))
+                                         (ConsInline (Txt
+                                              "— which the self-only recur precedent cannot express and the sized semantics justifies (the group shares the descending size).")
+                                           BaseInline))))
                                   (ConsBlock (PlainCodeBlock
                                        "text"
                                        "rec {\n  def even(n: Nat) -> Bool { case n { Zero => true,  Succ(p) => odd[<](p)  } }\n  def odd (n: Nat) -> Bool { case n { Zero => false, Succ(p) => even[<](p) } }\n}")
@@ -253,21 +531,46 @@ MkComponent
                                BaseBlock)))))
                     (ConsSection (MkSection
                          anchor_rs_edge
-                         "Edge cases, implementation gates, and adjacent non-decisions"
+                         "Edge cases and non-decisions"
                          (WithSectionStatus StatusPartial)
                          (ConsBlock (ProseBlock
                               (ConsInline (Txt
-                                   "Escaping self-reference: a marked occurrence that is not a call — fold(add[&lt;], xs), the definition passed to a higher-order function — is admitted by the grammar (the slot is an instantiation form over any operand), declined by the guardedness rung (structural descent through an escaping reference is not syntactically checkable), and accepted by the sized rung (a partially size-instantiated reference is meaningful). The decline is designed, not accidental, and the diagnostic must say which rung refused it.")
-                                BaseInline))
+                                   "Escaping self-reference: a marked occurrence that is not a call — fold(add[&lt;], xs), the definition passed to a higher-order function. The grammar admits it, because the slot is an instantiation form over any operand. The guardedness rung declines it, because structural descent through an escaping reference is not syntactically checkable. The sized rung accepts it, because a partially size-instantiated reference is meaningful.")
+                                (ConsInlineGlued (Bold
+                                     (ConsInline (Txt "The decline is designed, not accidental")
+                                       BaseInline))
+                                  (ConsInline (Txt ", and the diagnostic must say which rung refused it.")
+                                    BaseInline))))
                            (ConsBlock (ProseBlock
                                 (ConsInline (Txt
-                                     "Sigil molding passed its implementation gate: &lt; and &gt; are operator tiles, but the instantiation slot has its own grammar sort in which both sigils mold as atoms, distinct from binary expressions. The duplicate-tile check passes with copattern and postfix dots continuing to mold by context. At the current parser rung, a qualified call head in a recursive body is grouped as (outer.f)(args); removing that grouping requirement is a parser refinement, not a change to the qualified-path escape semantics.")
+                                     "Sigil molding passed its implementation gate: &lt; and &gt; are operator tiles, but the instantiation slot has its own grammar sort in which both sigils mold as atoms, distinct from binary expressions. The duplicate-tile check passes with copattern and postfix dots continuing to mold by context.")
                                   BaseInline))
                              (ConsBlock (ProseBlock
                                   (ConsInline (Txt
-                                       "Adjacent non-decisions, recorded so this component does not silently spend them. The let keyword, freed by the value/computation binder pair (val x = v; / run x &lt;- c;), stays unassigned; its strongest claimant is a transparent definitional binder — one whose unfolding is visible to conversion — at the dependent-types rung, semantically distinct from val's opaque bind, and reserving keywords early breaks identifiers for no gain. The mut keyword stays unreserved pending the value-semantics/modes design pass; nothing in this component pre-commits the mutation story to modes over the effect row or the reverse, and the marker slot deliberately carries no aliasing or mode content. Display-layer elision of inferable markers in prover-facing renderings is endorsed as a projection concern and constrains nothing here. Finally, the diagnostic quality bar of the self-reference rule is normative: the unmarked-self-name error must carry the did-you-mean suggestion, because the rule's safety argument (error, never capture) assumes the repair is offered, not hunted.")
+                                       "At the current parser rung, a qualified call head in a recursive body is grouped as (outer.f)(args). Removing that grouping requirement is a parser refinement, not a change to the qualified-path escape semantics.")
                                     BaseInline))
-                               BaseBlock))))
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "Adjacent non-decisions, recorded so this component does not silently spend them. The")
+                                      (ConsInline (CodeInline "let")
+                                        (ConsInline (Txt "keyword, freed by the value/computation binder pair (")
+                                          (ConsInline (CodeInline "val x = v;")
+                                            (ConsInline (Txt "/")
+                                              (ConsInlineGlued (CodeInline "run x &lt;- c;")
+                                                (ConsInline (Txt
+                                                     "), stays unassigned. Its strongest claimant is a transparent definitional binder at the dependent-types rung — one whose unfolding is visible to conversion, semantically distinct from")
+                                                  (ConsInlineGlued (CodeInline "val")
+                                                    (ConsInline (Txt
+                                                         "'s opaque bind. Reserving keywords early breaks identifiers for no gain. The")
+                                                      (ConsInline (CodeInline "mut")
+                                                        (ConsInline (Txt
+                                                             "keyword stays unreserved pending the value-semantics/modes design pass. Nothing in this component pre-commits the mutation story to modes over the effect row or the reverse, and the marker slot deliberately carries no aliasing or mode content.")
+                                                          BaseInline))))))))))))
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "Display-layer elision of inferable markers in prover-facing renderings is endorsed as a projection concern and constrains nothing here. Finally, the diagnostic quality bar of the self-reference rule is normative. The unmarked-self-name error must carry the did-you-mean suggestion: the rule's safety argument (error, never capture) assumes the repair is offered, not hunted.")
+                                        BaseInline))
+                                   BaseBlock))))))
                       (ConsSection (MkSection
                            anchor_rs_architecture
                            "Architecture and API surface"
@@ -277,92 +580,116 @@ MkComponent
                                      "The realized surface splits across three crates, and this section is the map. The grammar plane gives the")
                                   (ConsInline (TermRef term_instantiation_slot)
                                     (ConsInline (Txt
-                                         "its own sort, so the direction sigils mold as atoms exactly where the slot is expected and nowhere else — the syntax boundary at which later rungs interpret or decline each resident. The engine hosts the scope pass as a deliberately pre-kernel, pre-lowering stage: fix-bound names are resolved and marker residents classified before ordinary CBPV lowering sees the expression, which is what makes “the marked occurrence is the only reference to the fix-bound variable” an exact property rather than a convention. The corpus holds the parse-gated witnesses, firewalled from execution. The signatures below are quoted from the crates as the normative shape this component pins.")
+                                         "its own sort. The direction sigils therefore mold as atoms exactly where the slot is expected, and nowhere else — the syntax boundary at which later rungs interpret or decline each resident.")
                                       BaseInline))))
-                             (ConsBlock (InventoryBlock
-                                  "Module homes for the recursion surface"
-                                  (MkHeaderRow
-                                     (ConsCell (MkCell
-                                          (ConsInline (Txt "Surface area")
-                                            BaseInline))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "The engine hosts the scope pass as a deliberately pre-kernel, pre-lowering stage. Fix-bound names are resolved, and the")
+                                    (ConsInlineGlued (TermRef term_instantiation_slot)
+                                      (ConsInline (Txt
+                                           "'s residents are classified, before ordinary CBPV lowering sees the expression. That is what makes \"the marked occurrence is the only reference to the fix-bound variable\" an")
+                                        (ConsInline (Bold
+                                             (ConsInline (Txt "exact property")
+                                               BaseInline))
+                                          (ConsInline (Txt "rather than a convention.")
+                                            BaseInline))))))
+                               (ConsBlock (InventoryBlock
+                                    "Module homes for the recursion surface"
+                                    (MkHeaderRow
                                        (ConsCell (MkCell
-                                            (ConsInline (Txt "Home")
+                                            (ConsInline (Txt "Surface area")
                                               BaseInline))
                                          (ConsCell (MkCell
-                                              (ConsInline (Txt "What it carries")
-                                                BaseInline))
-                                           BaseCell))))
-                                  (ConsRow (MkBodyRow
-                                       (ConsCell (MkCell
-                                            (ConsInline (Txt "Instantiation-slot sort")
-                                              BaseInline))
-                                         (ConsCell (MkCell
-                                              (ConsInline (Txt "surface-grammar, surface/term.rs")
+                                              (ConsInline (Txt "Home")
                                                 BaseInline))
                                            (ConsCell (MkCell
-                                                (ConsInline (Txt
-                                                     "The atom-only instantiation sort; grammar rules for type arguments, the two direction sigils, the named-measure and explicit named forms, and the tail atom — distinct from the sigils' binary-expression molds.")
+                                                (ConsInline (Txt "What it carries")
                                                   BaseInline))
                                              BaseCell))))
                                     (ConsRow (MkBodyRow
                                          (ConsCell (MkCell
-                                              (ConsInline (Txt "Scope node kinds")
+                                              (ConsInline (Txt "Instantiation-slot sort")
                                                 BaseInline))
                                            (ConsCell (MkCell
-                                                (ConsInline (Txt "surface-grammar, consumed via surface-engine's lower::node_kinds")
+                                                (ConsInline (Txt "surface-grammar, surface/term.rs")
                                                   BaseInline))
                                              (ConsCell (MkCell
                                                   (ConsInline (Txt
-                                                       "The def-rec and rec-block node kinds with their member, name, clause, and body fields — the rec family's grammar shapes the pass pattern-matches on.")
+                                                       "The atom-only instantiation sort; grammar rules for type arguments, the two direction sigils, the named-measure and explicit named forms, and the tail atom — distinct from the sigils' binary-expression molds.")
                                                     BaseInline))
                                                BaseCell))))
                                       (ConsRow (MkBodyRow
                                            (ConsCell (MkCell
-                                                (ConsInline (Txt "Recursive-scope pass")
+                                                (ConsInline (Txt "Scope node kinds")
                                                   BaseInline))
                                              (ConsCell (MkCell
-                                                  (ConsInline (Txt "surface-engine, lower/recursion_surface.rs")
+                                                  (ConsInline (Txt "surface-grammar, consumed via surface-engine's lower::node_kinds")
                                                     BaseInline))
                                                (ConsCell (MkCell
                                                     (ConsInline (Txt
-                                                         "Pre-lowering validation of one parsed item: a standalone def-rec scope or a rec-block group; a lexical-shadow arena keeps inner binders shadowing recursive names so qualified outer access survives exactly.")
+                                                         "The def-rec and rec-block node kinds with their member, name, clause, and body fields — the rec family's grammar shapes the pass pattern-matches on.")
                                                       BaseInline))
                                                  BaseCell))))
                                         (ConsRow (MkBodyRow
                                              (ConsCell (MkCell
-                                                  (ConsInline (Txt "Finding family")
+                                                  (ConsInline (Txt "Recursive-scope pass")
                                                     BaseInline))
                                                (ConsCell (MkCell
-                                                    (ConsInline (Txt "surface-engine, lower.rs")
+                                                    (ConsInline (Txt "surface-engine, lower/recursion_surface.rs")
                                                       BaseInline))
                                                  (ConsCell (MkCell
                                                       (ConsInline (Txt
-                                                           "The named error and reserved-decline variants below; byte ranges are the diagnostic spans, and total-mode recovery guarantees a scope error never consumes its sibling item.")
+                                                           "Pre-lowering validation of one parsed item: a standalone def-rec scope or a rec-block group; a lexical-shadow arena keeps inner binders shadowing recursive names so qualified outer access survives exactly.")
                                                         BaseInline))
                                                    BaseCell))))
                                           (ConsRow (MkBodyRow
                                                (ConsCell (MkCell
-                                                    (ConsInline (Txt "Witnesses")
+                                                    (ConsInline (Txt "Finding family")
                                                       BaseInline))
                                                  (ConsCell (MkCell
-                                                      (ConsInline (Txt "surface-corpus, examples/surface/")
+                                                      (ConsInline (Txt "surface-engine, lower.rs")
                                                         BaseInline))
                                                    (ConsCell (MkCell
                                                         (ConsInline (Txt
-                                                             "PBG-only parse-gated programs; the corpus walker is firewalled to the model and pathological trees, so these witnesses gate parsing only.")
+                                                             "The named error and reserved-decline variants below; byte ranges are the diagnostic spans, and total-mode recovery guarantees a scope error never consumes its sibling item.")
                                                           BaseInline))
                                                      BaseCell))))
-                                            BaseRow))))))
-                               (ConsBlock (ApiCodeBlock
-                                    "rust"
-                                    "// surface-engine::lower::recursion_surface — the pre-lowering scope pass\npub(super) fn validate_item(item: SynNode<'_>) -> LowerResult<()>\n\n// surface-engine::lower — the recursion-surface finding family (excerpt)\n#[non_exhaustive]\npub enum LowerError {\n    UnmarkedRecursiveReference { name: String, suggestion: String, byte_range: SourceRange },\n    MarkedReferenceOutsideRecursiveScope { target: String, byte_range: SourceRange },\n    ReservedNamedMeasure { resident: String, byte_range: SourceRange },\n    ReservedExplicitInstantiation { resident: String, byte_range: SourceRange },\n    ReservedExplicitSize { resident: String, byte_range: SourceRange },\n    ReservedCostBound { resident: String, byte_range: SourceRange },\n    ReservedTailAssertion { byte_range: SourceRange },\n}")
+                                            (ConsRow (MkBodyRow
+                                                 (ConsCell (MkCell
+                                                      (ConsInline (Txt "Witnesses")
+                                                        BaseInline))
+                                                   (ConsCell (MkCell
+                                                        (ConsInline (Txt "surface-corpus, examples/surface/")
+                                                          BaseInline))
+                                                     (ConsCell (MkCell
+                                                          (ConsInline (Txt
+                                                               "PBG-only parse-gated programs; the corpus walker is firewalled to the model and pathological trees, so these witnesses gate parsing only.")
+                                                            BaseInline))
+                                                       BaseCell))))
+                                              BaseRow))))))
                                  (ConsBlock (ProseBlock
                                       (ConsInline (Txt
-                                           "Two shape decisions the signatures make visible. First, the grammar admits six instantiation rule shapes — type argument, the two sigils, named measure (an identifier followed by the descent sigil), explicit named form (an identifier, an equals, an expression), and the tail atom — and the engine classifies the named forms by identifier: a size or cost name takes its own reserved variant, any other name the generic explicit-instantiation variant. The \"declines the reserved residents by name\" clause of the overview is therefore literal: the decline variant is selected by the resident's name, and the diagnostic quotes the resident text. Second, the unmarked-reference error carries the suggested marked spelling as a field, not as message text assembled at the diagnostic site — the did-you-mean is part of the finding's data, which is what lets the diagnostic quality bar of the edge cases (")
-                                        (ConsInlineGlued (XRef anchor_rs_edge)
-                                          (ConsInline (Txt ") be a testable contract.")
-                                            BaseInline))))
-                                   BaseBlock)))))
+                                           "The corpus holds the parse-gated witnesses, firewalled from execution. The signatures below are quoted from the crates as the normative shape this component pins.")
+                                        BaseInline))
+                                   (ConsBlock (ApiCodeBlock
+                                        "rust"
+                                        "// surface-engine::lower::recursion_surface — the pre-lowering scope pass\npub(super) fn validate_item(item: SynNode<'_>) -> LowerResult<()>\n\n// surface-engine::lower — the recursion-surface finding family (excerpt)\n#[non_exhaustive]\npub enum LowerError {\n    UnmarkedRecursiveReference { name: String, suggestion: String, byte_range: SourceRange },\n    MarkedReferenceOutsideRecursiveScope { target: String, byte_range: SourceRange },\n    ReservedNamedMeasure { resident: String, byte_range: SourceRange },\n    ReservedExplicitInstantiation { resident: String, byte_range: SourceRange },\n    ReservedExplicitSize { resident: String, byte_range: SourceRange },\n    ReservedCostBound { resident: String, byte_range: SourceRange },\n    ReservedTailAssertion { byte_range: SourceRange },\n}")
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "Two shape decisions the signatures make visible. First, the grammar admits six instantiation rule shapes: type argument, the two sigils, named measure (an identifier followed by the descent sigil), explicit named form (an identifier, an equals, an expression), and the tail atom. The engine classifies the named forms by identifier — a size or cost name takes its own reserved variant; any other name takes the generic explicit-instantiation variant. The \"declines the reserved residents by name\" clause of the overview is therefore literal: the decline variant is selected by the resident's name, and the diagnostic quotes the resident text.")
+                                            BaseInline))
+                                       (ConsBlock (ProseBlock
+                                            (ConsInline (Txt
+                                                 "Second, the unmarked-reference error carries the suggested marked spelling")
+                                              (ConsInlineGlued (Bold
+                                                   (ConsInline (Txt "as a field")
+                                                     BaseInline))
+                                                (ConsInline (Txt
+                                                     ", not as message text assembled at the diagnostic site. The did-you-mean is part of the finding's data — and that is what lets the diagnostic quality bar of the edge cases (")
+                                                  (ConsInlineGlued (XRef anchor_rs_edge)
+                                                    (ConsInline (Txt ") be a testable contract.")
+                                                      BaseInline))))))
+                                         BaseBlock))))))))
                         (ConsSection (MkSection
                              anchor_rs_staging
                              "Staging and gates"
@@ -373,9 +700,13 @@ MkComponent
                                       (ConsInline (Txt
                                            "is the staging plan; this table restates it as gates (the prose development stays at")
                                         (ConsInlineGlued (XRef anchor_rs_ladder)
-                                          (ConsInline (Txt
-                                               "). Each rung strengthens what a marker means, and no rung's syntax ships before its check is designed — the soundness hedge that keeps sized semantics out of scope-checked syntax.")
-                                            BaseInline))))))
+                                          (ConsInline (Txt "). Each rung strengthens what a marker means, and")
+                                            (ConsInline (Bold
+                                                 (ConsInline (Txt "no rung's syntax ships before its check is designed")
+                                                   BaseInline))
+                                              (ConsInline (Txt
+                                                   "— the soundness hedge that keeps sized semantics out of scope-checked syntax.")
+                                                BaseInline))))))))
                                (ConsBlock (StagingPlanBlock
                                     "The productivity ladder as gates"
                                     (MkHeaderRow
@@ -468,7 +799,7 @@ MkComponent
                                (WithSectionStatus StatusPartial)
                                (ConsBlock (ProseBlock
                                     (ConsInline (Txt
-                                         "The landed coverage is parse-gated witnesses plus crate fixtures, per the corpus discipline: a syntax-only landing gets a parse-gated surface witness, and the full treatment — runnable model and pathological examples, harness assertions, coverage-map registration — rides the same change as the semantics that graduates it. The engine's unit tests are the named fixtures of the internal-only rung; the graduation rows below are the planned promotion.")
+                                         "The landed coverage is parse-gated witnesses plus crate fixtures, per the corpus discipline: a syntax-only landing gets a parse-gated surface witness. The full treatment — runnable model and pathological examples, harness assertions, coverage-map registration — rides the same change as the semantics that graduates it. The engine's unit tests are the named fixtures of the internal-only rung; the graduation rows below are the planned promotion.")
                                       BaseInline))
                                  (ConsBlock (StagingPlanBlock
                                       "Witnesses, fixtures, and the graduation plan"

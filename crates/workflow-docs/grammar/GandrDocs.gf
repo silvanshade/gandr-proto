@@ -59,6 +59,7 @@ abstract GandrDocs = {
     CiteRef : CiteKey -> Inline ;
     XRef : Anchor -> Inline ;
     MathInline : String -> Inline ;
+    CodeInline : String -> Inline ;
     -- glue boundary: a punctuation-leading Text binds to its left neighbor
     ConsInlineGlued : Inline -> [Inline] -> [Inline] ;
 }

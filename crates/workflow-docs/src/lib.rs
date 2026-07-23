@@ -1,3 +1,8 @@
+// Bindings-first doctrine (docs/workflow/gfd.md §"The bindings-first
+// doctrine"): every `GF`-touching lane in this crate rides the runtime bindings
+// in `gandr-workflow-grammatical-framework`; never re-implement what the
+// runtime provides (the retired `.gfd` reader is the cautionary example).
+
 #![expect(clippy::too_long_first_doc_paragraph, reason = "bugged")]
 
 //! `GF`-native documentation pipeline.
@@ -11,13 +16,28 @@
 //! documentation machinery — the Hayagriva bibliography ([`bibliography`]),
 //! the typst leaf compiler ([`typst_leaf`]), canonical `XML` formatting
 //! ([`mod@format`]), and the references renderer ([`references`]) — live here
-//! as the one documentation tool.
+//! the one documentation tool.
+
+#![cfg_attr(
+    test,
+    allow(
+        clippy::arithmetic_side_effects,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::panic,
+        clippy::unwrap_used,
+        reason = "the standard test-allow set keeps the unit and property tests \
+                  readable (docs/workflow/rust.md)"
+    )
+)]
 
 extern crate alloc;
 
 use core::fmt;
 use std::path::PathBuf;
 
+/// The domain application grammar (the gandr-739 lane's generator).
+pub mod appgrammar;
 /// Typed Hayagriva bibliography shared by validation and rendering.
 pub mod bibliography;
 /// Corpus discovery and the document-class `check`/`fmt` orchestration.
@@ -30,6 +50,8 @@ pub mod error;
 pub mod format;
 /// Lexicon generation (the corpus-wide `GF` term/cite/anchor modules).
 pub mod lexicon;
+/// Prose-pacing metrics over the document trees (the gandr-aaq arc).
+pub mod metrics;
 /// Shared vocabulary types.
 pub mod model;
 /// The render pipeline: read, validate, post-pass, page.

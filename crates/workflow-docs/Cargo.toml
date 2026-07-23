@@ -31,6 +31,8 @@ regex = { workspace = true }
 roxmltree = { workspace = true }
 # Typed error derive for the crate error vocabulary.
 thiserror = { workspace = true }
+# UAX #29 sentence boundaries for the prose-pacing metrics lane.
+unicode-segmentation = { workspace = true }
 # Hayagriva `refs.yml` key set, read for cite-key resolution during validation.
 yaml-rust2 = { workspace = true }
 

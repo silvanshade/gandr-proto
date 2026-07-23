@@ -13,10 +13,13 @@
 
 use std::path::Path;
 
+use gandr_workflow_grammatical_framework::rt::ExprText;
 use gandr_workflow_grammatical_framework::rt::GfRuntime;
+use gandr_workflow_grammatical_framework::sexp::Sexp;
 
 use crate::bibliography::Bibliography;
 use crate::error::GfDocsError;
+use crate::metrics;
 use crate::model::CiteKey;
 use crate::references::render_references;
 use crate::typst_leaf;
@@ -65,7 +68,7 @@ const FONTS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/fonts");
 #[inline]
 pub fn build_body<R>(
     runtime: &R,
-    gfd: &str,
+    gfd: &ExprText,
     context: &PostContext<'_>,
 ) -> Result<String, GfDocsError>
 where
@@ -86,25 +89,27 @@ where
 ///   runtime's `checkExpr` lane inside it.
 /// - ensures: the returned page carries the design-language stylesheet inline,
 ///   a `<title>` lifted from the component's rendered `<h1>` (falling back to
-///   `fallback_title` when none is found), and the `<main
-///   class="page"><article>` landmarks. The title text is reused from the body
-///   verbatim — the grammar emits the component title as a plain `String` leaf,
-///   so it contains no markup.
+///   `fallback_title` when none is found), the `<main class="page"><article>`
+///   landmarks, and the section table of contents (from `toc`, empty for the
+///   corpus index). The title text is reused from the body verbatim — the
+///   grammar emits the component title as a plain `String` leaf, so it contains
+///   no markup.
 /// # Errors
 /// Whatever the runtime lane rejects ([`GfDocsError::Pgf`] on validation).
 #[inline]
 pub fn build_page<R>(
     runtime: &R,
-    gfd: &str,
+    gfd: &ExprText,
     fallback_title: &str,
     context: &PostContext<'_>,
+    toc: &[TocEntry],
 ) -> Result<String, GfDocsError>
 where
     R: GfRuntime + ?Sized,
 {
     let body = build_body(runtime, gfd, context)?;
     let title = extract_h1(&body).unwrap_or(fallback_title);
-    Ok(shell(title, &body))
+    Ok(shell_with_toc(title, &body, toc))
 }
 
 /// One component-listing row for the corpus index page.
@@ -162,6 +167,100 @@ pub fn render_index(entries: &[IndexEntry]) -> String
     shell("gandr specification corpus", &body)
 }
 
+/// One table-of-contents row: a section's `HTML` id, its title, and its
+/// nesting depth (1 for top-level sections).
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct TocEntry
+{
+    /// The section's anchor id (the link target).
+    pub id: String,
+    /// The section title (the link text).
+    pub title: String,
+    /// The nesting depth (1 for top-level sections).
+    pub depth: u32,
+}
+
+/// Extract the table of contents from a component's tree: every `MkSection`
+/// in reading order, anchor constant resolved to its `HTML` id through the
+/// views.
+///
+/// # Errors
+/// [`GfDocsError::Parse`] when the tree departs from the expected shapes or
+/// an anchor constant has no lexicon id.
+#[inline]
+pub fn toc_entries(
+    tree: &Sexp,
+    views: &metrics::LexiconViews,
+) -> Result<Vec<TocEntry>, GfDocsError>
+{
+    let mut entries = Vec::new();
+    collect_toc(tree, 1, views, &mut entries)?;
+    Ok(entries)
+}
+
+/// Walk for `MkSection` nodes, recording (id, title, depth).
+///
+/// The traversal is an explicit work stack (the house pattern): each pop
+/// visits one node and pushes its strict children in reverse, so the walk
+/// stays document-ordered depth-first without call recursion.
+///
+/// # Termination
+/// - reason: an explicit work stack visits each tree node once.
+/// - measure: pending stack entries; every pop removes one entry and pushes
+///   only strict children of the popped node.
+/// - boundedness: the source tree is finite.
+/// - input recursion: none.
+fn collect_toc(
+    tree: &Sexp,
+    depth: u32,
+    views: &metrics::LexiconViews,
+    entries: &mut Vec<TocEntry>,
+) -> Result<(), GfDocsError>
+{
+    let mut stack = vec![(tree, depth)];
+    while let Some((node, depth)) = stack.pop() {
+        let Sexp::App { ref head, ref args } = *node
+        else {
+            continue;
+        };
+        let next_depth = if head == "MkSection" {
+            let [ref anchor, ref title, ref _status, ref _blocks] = *args.as_slice()
+            else {
+                return Err(GfDocsError::Parse("MkSection arity is not four".into()));
+            };
+            let Sexp::Atom(ref anchor_name) = *anchor
+            else {
+                return Err(GfDocsError::Parse("section anchor is not an atom".into()));
+            };
+            let Sexp::Atom(ref title_atom) = *title
+            else {
+                return Err(GfDocsError::Parse(
+                    "section title is not a string literal".into(),
+                ));
+            };
+            let title = gandr_workflow_grammatical_framework::sexp::unquote(title_atom)
+                .ok_or_else(|| {
+                    GfDocsError::Parse("section title is not a string literal".into())
+                })?;
+            let id = views
+                .anchor_ids()
+                .get(anchor_name)
+                .ok_or_else(|| GfDocsError::Parse(format!("{anchor_name}: no lexicon id")))?
+                .clone();
+            entries.push(TocEntry { id, title, depth });
+            depth.saturating_add(1)
+        }
+        else {
+            depth
+        };
+        for arg in args.iter().rev() {
+            stack.push((arg, next_depth));
+        }
+    }
+    Ok(())
+}
+
 /// Wrap a rendered body in the full standalone `HTML` page shell: the
 /// design-language stylesheet inline, the viewport meta, and the
 /// `<main class="page"><article>` landmarks.
@@ -170,10 +269,65 @@ fn shell(
     body: &str,
 ) -> String
 {
+    shell_with_toc(title, body, &[])
+}
+
+/// Wrap a rendered body in the full standalone `HTML` page shell with the
+/// section table of contents in the left rail (empty when there are no
+/// entries — the corpus index stays bare).
+fn shell_with_toc(
+    title: &str,
+    body: &str,
+    toc: &[TocEntry],
+) -> String
+{
+    let mut nav = String::new();
+    if !toc.is_empty() {
+        use core::fmt::Write as _;
+        nav.push_str("<nav class=\"toc\"><div class=\"toc-heading\">Contents</div><ol>");
+        for entry in toc {
+            let _res = write!(
+                nav,
+                "<li class=\"toc-depth-{}\"><a href=\"#{}\">{}</a></li>",
+                entry.depth, entry.id, entry.title
+            );
+        }
+        nav.push_str("</ol></nav>");
+    }
+    // The scroll-spy runs after `main` is parsed — emitted before it, the
+    // section query matches nothing and the spy silently never fires.
+    let spy = if nav.is_empty() { "" } else { SCROLL_SPY };
     format!(
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{title}</title>\n<style>\n{STYLESHEET}</style>\n</head>\n<body>\n<main class=\"page\">\n<article>\n{body}\n</article>\n</main>\n</body>\n</html>\n"
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{title}</title>\n<style>\n{STYLESHEET}</style>\n</head>\n<body>\n{nav}<main class=\"page\">\n<article>\n{body}\n</article>\n</main>\n{spy}</body>\n</html>\n"
     )
 }
+
+/// The scroll-spy: mark the `ToC` row of the section nearest the viewport
+/// top. Progressive enhancement — the `ToC` links work without it. This is
+/// the one sanctioned `JavaScript` exception to the design language's no-`JS`
+/// rule (owner decision, gandr-aaq, 2026-07-23; recorded in the design-
+/// language proposal).
+const SCROLL_SPY: &str = "<script>(() => {\n\
+  const rows = [...document.querySelectorAll('nav.toc li')];\n\
+  const byId = new Map(rows.map((li) => [li.querySelector('a').hash.slice(1), li]));\n\
+  const visible = new Set();\n\
+  const sections = [...document.querySelectorAll('section[id]')];\n\
+  let current = sections[0];\n\
+  const mark = () => {\n\
+    const line = 0.25 * window.innerHeight;\n\
+    current = sections.find((section) => visible.has(section.id))\n\
+      ?? sections.findLast((section) => section.getBoundingClientRect().top <= line)\n\
+      ?? sections[0];\n\
+    rows.forEach((li) => li.classList.toggle('current', li === byId.get(current && current.id)));\n\
+  };\n\
+  mark();\n\
+  const spy = new IntersectionObserver((entries) => {\n\
+    entries.forEach((entry) => visible[entry.isIntersecting ? 'add' : 'delete'](entry.target.id));\n\
+    mark();\n\
+  }, { rootMargin: '-10% 0px -75% 0px' });\n\
+  sections.forEach((section) => spy.observe(section));\n\
+  window.addEventListener('scroll', mark, { passive: true });\n\
+})();</script>\n";
 
 /// Copy the vendored ET Book fonts next to the rendered page(s).
 ///

@@ -6,6 +6,19 @@
 //! bare checkout; the mise corpus arc provisions the environment and
 //! exercises them for real.
 
+#![cfg_attr(
+    test,
+    allow(
+        clippy::arithmetic_side_effects,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::panic,
+        clippy::unwrap_used,
+        reason = "the standard test-allow set keeps the unit and property tests \
+                  readable (docs/workflow/rust.md)"
+    )
+)]
+
 use core::error::Error;
 use std::path::PathBuf;
 
@@ -15,7 +28,9 @@ use gandr_workflow_docs::pipeline::build_body;
 use gandr_workflow_docs::pipeline::build_page;
 use gandr_workflow_docs::pipeline::copy_fonts;
 use gandr_workflow_docs::typst_leaf;
+use gandr_workflow_grammatical_framework::rt::ExprText;
 use gandr_workflow_grammatical_framework::rt::GfRuntime as _;
+use gandr_workflow_grammatical_framework::rt::LanguageName;
 use gandr_workflow_grammatical_framework::rt::PyPgf;
 
 /// Shared result type for the corpus witnesses.
@@ -52,7 +67,7 @@ fn runtime() -> Option<PyPgf>
     if !pgf.exists() {
         return None;
     }
-    PyPgf::load(&pgf.to_string_lossy(), "GandrDocsLexHtml").ok()
+    PyPgf::new(&pgf, &LanguageName::new("GandrDocsLexHtml")).ok()
 }
 
 /// The post-pass context against the repo's real bibliography and the shared
@@ -100,6 +115,7 @@ mod tests
             "TermDef term_component",
             "XRef anchor_cv_examples",
             "MathInline \"tilde(mu)\"",
+            "CodeInline \"def rec\"",
         ] {
             assert!(
                 flat.contains(constructor),
@@ -118,7 +134,7 @@ mod tests
             eprintln!("skip: GF environment unprovisioned");
             return Ok(());
         };
-        runtime.check(&gfd()?)?;
+        runtime.check(&ExprText::new(gfd()?))?;
         Ok(())
     }
 
@@ -132,7 +148,7 @@ mod tests
             return Ok(());
         };
         let gfd = gfd()?.replace("TermRef term_status", "TermRef term_missing");
-        let result = runtime.check(&gfd);
+        let result = runtime.check(&ExprText::new(gfd));
         let Err(error) = result
         else {
             return Err("a dangling term constant must be rejected".into());
@@ -155,7 +171,7 @@ mod tests
             return Ok(());
         };
         let context = PostContext::new(&bibliography, &cache_dir);
-        let body = build_body(&runtime, &gfd()?, &context)?;
+        let body = build_body(&runtime, &ExprText::new(gfd()?), &context)?;
         for expected in [
             "id=\"cv-overview\"",
             "href=\"#term-component\"",
@@ -192,7 +208,13 @@ mod tests
             return Ok(());
         };
         let context = PostContext::new(&bibliography, &cache_dir);
-        let page = build_page(&runtime, &gfd()?, "component-vocabulary", &context)?;
+        let page = build_page(
+            &runtime,
+            &ExprText::new(gfd()?),
+            "component-vocabulary",
+            &context,
+            &[],
+        )?;
         for expected in [
             "<title>The component vocabulary</title>",
             "<meta name=\"viewport\"",

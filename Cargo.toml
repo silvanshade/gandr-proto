@@ -271,6 +271,13 @@ version = "0.3.0"
 default-features = false
 features = ["vt100"]
 
+# UAX #29 text segmentation (grapheme/word/sentence boundaries).
+# consumers:
+# - gandr-workflow-docs (sentence boundaries for the prose-pacing metrics lane)
+[workspace.dependencies.unicode-segmentation]
+version = "1.12"
+default-features = false
+
 # Terminal (vt100) parser owned app-side by the PTY job pane: consumes child
 # bytes into an addressable screen + scrollback that tui-term renders.
 [workspace.dependencies.vt100]

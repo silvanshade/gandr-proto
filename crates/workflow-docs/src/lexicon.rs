@@ -12,6 +12,8 @@ use alloc::collections::BTreeMap;
 use core::fmt::Write as _;
 use std::path::Path;
 
+use gandr_workflow_grammatical_framework::rt::ExprText;
+use gandr_workflow_grammatical_framework::rt::GfRuntime;
 use gandr_workflow_grammatical_framework::sexp::Sexp;
 use gandr_workflow_grammatical_framework::sexp::unquote;
 
@@ -30,6 +32,18 @@ pub struct Lexicon
     cites: BTreeMap<String, String>,
     /// Anchor records: constant → (id, display title).
     anchors: BTreeMap<String, (String, String)>,
+}
+
+impl Lexicon
+{
+    /// The term records (constant → key/display text), for the
+    /// application-grammar lane's domain-lexicon generation.
+    #[inline]
+    #[must_use]
+    pub fn term_records(&self) -> &BTreeMap<String, (String, String)>
+    {
+        &self.terms
+    }
 }
 
 impl Lexicon
@@ -179,19 +193,23 @@ impl Lexicon
 /// Generate the corpus-wide lexicon from the `.gfd` corpus (the production
 /// path) and `refs.yml`.
 ///
-/// The `.gfd` trees carry every text-destined string already `HTML`-escaped
-/// (the translation boundary), so values insert as-is.
+/// The `.gfd` trees are read by the `GF` runtime (the bindings-first doctrine:
+/// no house reader shadows `readExpr`); they carry every text-destined string
+/// already `HTML`-escaped (the translation boundary), so values insert as-is.
 ///
 /// # Errors
-/// [`GfDocsError::Parse`] when a `.gfd` file fails the reader or departs from
-/// the expected constructor shapes; [`GfDocsError::Model`] when the
-/// bibliography fails to load; [`GfDocsError::Translation`] on any id/term
+/// [`GfDocsError::Parse`] when a `.gfd` file fails the runtime's reader or
+/// departs from the expected constructor shapes; [`GfDocsError::Model`] when
+/// the bibliography fails to load; [`GfDocsError::Translation`] on any id/term
 /// collision.
 #[inline]
-pub fn generate(
+pub fn generate<R>(
+    runtime: &R,
     corpus_dir: &Path,
     refs_path: &Path,
 ) -> Result<Lexicon, GfDocsError>
+where
+    R: GfRuntime + ?Sized,
 {
     let mut lexicon = Lexicon::default();
     let mut files = std::fs::read_dir(corpus_dir)?
@@ -202,7 +220,7 @@ pub fn generate(
     files.sort();
     for path in files {
         let text = std::fs::read_to_string(&path)?;
-        let tree = gandr_workflow_grammatical_framework::sexp::parse(&text)?;
+        let tree = runtime.read_tree(&ExprText::new(text))?;
         collect_gfd(&tree, &mut lexicon)?;
     }
     let bibliography =

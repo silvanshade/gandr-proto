@@ -68,6 +68,7 @@ concrete GandrDocsHtml of GandrDocs = {
     CiteRef c = "<sup><a class=\"cite\" href=\"#ref-" ++ "​" ++ c.key ++ "​" ++ "\">[" ++ "​" ++ c.key ++ "​" ++ "]</a></sup>" ;
     XRef a = "<a class=\"xref\" href=\"#" ++ "​" ++ a.id ++ "​" ++ "\">" ++ "​" ++ a.title ++ "​" ++ "</a>" ;
     MathInline src = "<span class=\"math\">" ++ "​" ++ src.s ++ "​" ++ "</span>" ;
+    CodeInline src = "<code class=\"syn\">" ++ "​" ++ src.s ++ "​" ++ "</code>" ;
     -- list folds: word-spacing joins (++) inside prose-level lists, glue (BIND) elsewhere
     BaseSection = { s = "" } ;
     ConsSection x xs = { s = x ++ xs.s } ;

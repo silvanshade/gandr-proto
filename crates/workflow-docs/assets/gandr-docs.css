@@ -32,10 +32,13 @@
 
 :root {
   --paper: #fffff8;
-  --ink: #111111;
+  --ink: #26241f;
   --ink-soft: #3d3c38;
   --rule: #9a937d;
   --accent: #93301a;
+  --strong: #9a6200;
+  --syn: #2b6f62;
+  --syn-wash: rgba(43, 111, 98, 0.08);
   --status-built: #3f6b3a;
   --status-partial: #946518;
   --status-adopted-unbuilt: #3d5a80;
@@ -46,10 +49,13 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --paper: #151512;
-    --ink: #e6e2d5;
+    --ink: #cfcabd;
     --ink-soft: #b8b3a4;
     --rule: #6b6558;
     --accent: #d97a5e;
+    --strong: #ffd98a;
+    --syn: #9fd3c7;
+    --syn-wash: rgba(159, 211, 199, 0.09);
     --status-built: #7fa877;
     --status-partial: #c99a4a;
     --status-adopted-unbuilt: #7f9cc4;
@@ -86,6 +92,23 @@ dfn {
   font-style: italic;
 }
 
+/* emphasis pops by weight AND hue (gandr-aaq design pass): the load-bearing
+ * idea must read at a glance against the dimmed body ink */
+strong {
+  font-weight: 700;
+  color: var(--strong);
+}
+
+/* inline syntax fragments (CodeInline): mono face, cool counterpoint to the
+ * warm strong, faint wash — distinct from prose, emphasis, and links */
+code.syn {
+  font-size: 0.88em;
+  color: var(--syn);
+  background-color: var(--syn-wash);
+  padding: 0 0.18em;
+  border-radius: 2px;
+}
+
 .math {
   font-style: italic;
 }
@@ -119,6 +142,75 @@ h3 {
   font-weight: 400;
   font-style: italic;
   margin: 2rem 0 1rem;
+}
+
+/* ---- the section table of contents: docked in the page's left margin,
+ * scroll-spy (gandr-aaq) ---- */
+
+nav.toc {
+  display: none;
+  position: fixed;
+  top: 2.5rem;
+  /* docked in the page's left margin: right edge just left of the 104ch
+   * content box (65rem ≈ 104ch at the body face plus its 4ch padding, the
+   * same quantity the base layout computes) */
+  right: calc(50% + 32.5rem + 1.25rem);
+  width: 20ch;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+/* the rail needs the margin that a centered 104ch box leaves; below it the
+ * nav tucks away entirely */
+@media (min-width: 92em) {
+  nav.toc {
+    display: block;
+  }
+}
+
+nav.toc .toc-heading {
+  font-family: "Gill Sans", "Gill Sans MT", Calibri, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+}
+
+nav.toc ol {
+  list-style: none;
+  padding-left: 0;
+}
+
+nav.toc li {
+  margin: 0.2rem 0;
+  padding-left: 0.9ch;
+  border-left: 2px solid transparent;
+}
+
+nav.toc li.toc-depth-2 {
+  padding-left: 2.4ch;
+}
+
+nav.toc a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+nav.toc a:hover,
+nav.toc a:focus-visible {
+  color: var(--accent);
+}
+
+nav.toc li.current {
+  border-left-color: var(--accent);
+}
+
+nav.toc li.current a {
+  color: var(--ink);
+  font-weight: 700;
 }
 
 /* ---- two-zone page: 62ch text + 4ch gap + 30ch margin = 96ch inner (§5.1) ---- */

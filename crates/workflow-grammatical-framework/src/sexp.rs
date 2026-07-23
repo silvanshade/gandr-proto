@@ -1,16 +1,15 @@
-//! The B′ `.gfd` surface: a tiny `GF`-expression builder with deterministic,
-//! human-readable layout, and the matching reader.
+//! The B′ `.gfd` surface: the crate's expression tree type and its canonical
+//! printer (deterministic, human-readable layout).
 //!
 //! The printer owns the `.gfd` surface's readability rules (the same rules the
 //! authoring guidance documents): flat applications stay on one line when they
 //! fit; compound arguments are parenthesized and indented two columns under
 //! their head; `Cons` chains flatten Lisp-style at constant indent with the
-//! closing parens trailing. The reader accepts exactly what the printer emits
-//! (any `GF` expression: atoms, string literals, parenthesized applications),
-//! so corpus trees round-trip through Rust without a `GF` runtime in the
-//! loop — this module is also the future `fmt` lane's engine.
-
-use crate::error::GfError;
+//! closing parens trailing. It is the future `fmt` lane's engine (`gandr-hz8`).
+//! Trees are never *read* here — reading is the `GF` runtime's (`readExpr`,
+//! reached via [`crate::rt`]); the printer is the one blessed surface exception
+//! because the `GF` toolchain ships no formatting or canonical-layout tooling
+//! (docs/workflow/gfd.md §"The bindings-first doctrine").
 
 /// A `GF` expression under construction.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -55,6 +54,17 @@ impl Sexp
             head: head.into(),
             args,
         }
+    }
+
+    /// Build a string-literal atom from its unquoted text (the [`quote`]d form
+    /// is stored; [`unquote`] resolves it back).
+    #[inline]
+    #[must_use]
+    pub fn string<T>(text: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::atom(quote(text.into()))
     }
 
     /// Render with the canonical layout at zero indent.
@@ -175,133 +185,29 @@ fn pad(
     }
 }
 
-/// One surface token: an open paren, a close paren, or an atom (a bare
-/// constant or a quoted string literal in its raw, still-escaped form).
-enum Tok
-{
-    /// `(`.
-    Open,
-    /// `)`.
-    Close,
-    /// A self-delimiting token.
-    Atom(String),
-}
-
-/// Parse one `.gfd` expression (the B′ surface).
-///
-/// The root application is naked (the printer emits `Head arg…` without
-/// wrapping parens); every nested argument is parenthesized.
-///
-/// # Errors
-/// [`GfError::Parse`] on an unterminated string, unbalanced parens, or an
-/// application whose head is not an atom.
+/// Unquote a string-literal atom
+/// the result is self-delimiting with `\"` `\\` `\n` `\t` `\r` escaped.
 #[inline]
-pub fn parse(text: &str) -> Result<Sexp, GfError>
+#[must_use]
+pub fn quote<T>(text: T) -> String
+where
+    T: Into<String>,
 {
-    let toks = tokenize(text)?;
-    // The implicit root frame collects the naked top-level application.
-    let mut stack: Vec<Vec<Sexp>> = vec![Vec::new()];
-    for tok in toks {
-        match tok {
-            | Tok::Open => stack.push(Vec::new()),
-            | Tok::Atom(atom) => {
-                let Some(frame) = stack.last_mut()
-                else {
-                    return Err(GfError::Parse("internal: no open frame".into()));
-                };
-                frame.push(Sexp::Atom(atom));
-            },
-            | Tok::Close => {
-                if stack.len() == 1 {
-                    return Err(GfError::Parse("unbalanced ')'".into()));
-                }
-                let Some(frame) = stack.pop()
-                else {
-                    return Err(GfError::Parse("internal: no open frame".into()));
-                };
-                let sexp = apply(frame)?;
-                let Some(parent) = stack.last_mut()
-                else {
-                    return Err(GfError::Parse("internal: no open frame".into()));
-                };
-                parent.push(sexp);
-            },
-        }
-    }
-    if stack.len() != 1 {
-        return Err(GfError::Parse("unbalanced '('".into()));
-    }
-    let Some(root) = stack.pop()
-    else {
-        return Err(GfError::Parse("internal: no open frame".into()));
-    };
-    apply(root)
-}
-
-/// Fold one completed frame into an application (the head must be an atom).
-fn apply(frame: Vec<Sexp>) -> Result<Sexp, GfError>
-{
-    let mut iter = frame.into_iter();
-    let Some(Sexp::Atom(head)) = iter.next()
-    else {
-        return Err(GfError::Parse(
-            "an application's head is not an atom".into(),
-        ));
-    };
-    Ok(Sexp::app(head, iter.collect()))
-}
-
-/// Tokenize the surface text (whitespace-separated, strings raw).
-fn tokenize(text: &str) -> Result<Vec<Tok>, GfError>
-{
-    let mut toks = Vec::new();
-    let mut chars = text.chars().peekable();
-    while let Some(ch) = chars.next() {
+    let text = text.into();
+    let mut out = String::with_capacity(text.len().saturating_add(2));
+    out.push('"');
+    for ch in text.chars() {
         match ch {
-            | _ if ch.is_whitespace() => {},
-            | '(' => toks.push(Tok::Open),
-            | ')' => toks.push(Tok::Close),
-            | '"' => toks.push(Tok::Atom(string_literal(&mut chars)?)),
-            | other => {
-                let mut atom = String::from(other);
-                while let Some(&next) = chars.peek() {
-                    if next.is_whitespace() || next == '(' || next == ')' {
-                        break;
-                    }
-                    atom.push(next);
-                    chars.next();
-                }
-                toks.push(Tok::Atom(atom));
-            },
+            | '"' => out.push_str("\\\""),
+            | '\\' => out.push_str("\\\\"),
+            | '\n' => out.push_str("\\n"),
+            | '\t' => out.push_str("\\t"),
+            | '\r' => out.push_str("\\r"),
+            | other => out.push(other),
         }
     }
-    Ok(toks)
-}
-
-/// Consume one string literal body (the opening quote is already consumed),
-/// returning the raw, still-escaped, self-delimiting form.
-fn string_literal(chars: &mut core::iter::Peekable<core::str::Chars<'_>>)
--> Result<String, GfError>
-{
-    let mut raw = String::from("\"");
-    let mut escaped = false;
-    loop {
-        match chars.next() {
-            | None => return Err(GfError::Parse("unterminated string literal".into())),
-            | Some('\\') if !escaped => {
-                raw.push('\\');
-                escaped = true;
-            },
-            | Some('"') if !escaped => {
-                raw.push('"');
-                return Ok(raw);
-            },
-            | Some(other) => {
-                raw.push(other);
-                escaped = false;
-            },
-        }
-    }
+    out.push('"');
+    out
 }
 
 /// Unquote a string-literal atom (strip the quotes, resolve the B′ escapes
@@ -310,7 +216,8 @@ fn string_literal(chars: &mut core::iter::Peekable<core::str::Chars<'_>>)
 #[must_use]
 pub fn unquote(atom: &str) -> Option<String>
 {
-    let inner = atom.strip_prefix('"')?.strip_suffix('"')?;
+    let stripped = atom.strip_prefix('"')?;
+    let inner = stripped.strip_suffix('"')?;
     let mut out = String::with_capacity(inner.len());
     let mut chars = inner.chars();
     loop {
