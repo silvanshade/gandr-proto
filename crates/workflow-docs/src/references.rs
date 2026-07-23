@@ -21,6 +21,8 @@ use crate::model::CiteKey;
 /// - hypothesis: L3 pointwise — exact rows for DOI, arXiv, URL, and missing
 ///   optional fields distinguish every rendering branch.
 /// - witness: `render::tests::reference_rows_materialize_metadata_and_links`
+#[must_use]
+#[inline]
 pub fn render_references(
     keys: &[CiteKey],
     bibliography: &Bibliography,

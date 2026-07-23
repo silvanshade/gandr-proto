@@ -66,7 +66,7 @@ fn run(args: &[String]) -> Result<(), String>
             build_all(&out)
         },
         | Some("check-docs") => check_docs_lane(),
-        | Some("fmt") => fmt_lane(&args[1 ..]),
+        | Some("fmt") => fmt_lane(args.get(1 ..).unwrap_or(&[])),
         | _ => Err(
             "usage: toolchain|grammar|lexicon|check-all|build-all|check|build|check-docs|fmt with --pgf/--lang/--gfd/--out"
                 .to_owned(),
@@ -187,18 +187,30 @@ fn index_entry(
     use gandr_workflow_grammatical_framework::sexp::Sexp;
     let tree = gandr_workflow_grammatical_framework::sexp::parse(gfd)
         .map_err(|e| format!("{stem}: {e}"))?;
-    let Sexp::App { head, args } = &tree
+    let Sexp::App { head, args } = tree
     else {
         return Err(format!("{stem}: corpus root is not an application"));
     };
     if head != "MkComponent" {
         return Err(format!("{stem}: corpus root is {head}, not MkComponent"));
     }
-    let [_anchor, title, status, _grounds, _derives, _sections, _refs] = args.as_slice()
+    let [
+        ref _anchor,
+        ref title,
+        ref status,
+        ref _grounds,
+        ref _derives,
+        ref _sections,
+        ref _refs,
+    ] = *args.as_slice()
     else {
         return Err(format!("{stem}: MkComponent arity is not seven"));
     };
-    let (Sexp::Atom(title), Sexp::Atom(status)) = (title, status)
+    let Sexp::Atom(ref title) = *title
+    else {
+        return Err(format!("{stem}: MkComponent title/status is not an atom"));
+    };
+    let Sexp::Atom(ref status) = *status
     else {
         return Err(format!("{stem}: MkComponent title/status is not an atom"));
     };

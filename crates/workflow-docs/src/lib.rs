@@ -1,6 +1,8 @@
-//! `GF`-native documentation pipeline (gandr-5n6).
+#![expect(clippy::too_long_first_doc_paragraph, reason = "bugged")]
+
+//! `GF`-native documentation pipeline.
 //!
-//! The spec corpus is authored as `GF` abstract-syntax trees (`.gfd`, read by
+//! The spec corpus is authored as `GF` abstract-syntax trees(`.gfd`, read by
 //! the runtime's expression reader), validated at the mandatory `checkExpr`
 //! lane, and rendered by linearization; the `GF`/PGF runtime is reached
 //! through the `GfRuntime` trait in `gandr-workflow-grammatical-framework` so
@@ -8,8 +10,8 @@
 //! touching the pipeline. The prose document classes ([`doc`]) and the shared
 //! documentation machinery — the Hayagriva bibliography ([`bibliography`]),
 //! the typst leaf compiler ([`typst_leaf`]), canonical `XML` formatting
-//! ([`format`]), and the references renderer ([`references`]) — live here as
-//! the one documentation tool.
+//! ([`mod@format`]), and the references renderer ([`references`]) — live here
+//! as the one documentation tool.
 
 extern crate alloc;
 
@@ -28,13 +30,13 @@ pub mod error;
 pub mod format;
 /// Lexicon generation (the corpus-wide `GF` term/cite/anchor modules).
 pub mod lexicon;
-/// Shared vocabulary types ([`model::Status`], [`model::CiteKey`]).
+/// Shared vocabulary types.
 pub mod model;
 /// The render pipeline: read, validate, post-pass, page.
 pub mod pipeline;
 /// The per-component references renderer.
 pub mod references;
-/// Math and diagram leaf compilation to `SVG` via the pinned typst tool.
+/// Math and diagram leaf compilation to `SVG`.
 pub mod typst_leaf;
 
 pub use error::GfDocsError;

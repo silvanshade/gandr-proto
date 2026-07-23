@@ -8,7 +8,8 @@
 //! (records sorted by constant name) so the modules are committed derived
 //! files (the `refs.yml` pattern: regenerate, never hand-edit).
 
-use std::collections::BTreeMap;
+use alloc::collections::BTreeMap;
+use core::fmt::Write as _;
 use std::path::Path;
 
 use gandr_workflow_grammatical_framework::sexp::Sexp;
@@ -47,14 +48,14 @@ impl Lexicon
     {
         let constant = term_const(key);
         match self.terms.get(&constant) {
-            | Some((existing_key, existing_text)) if existing_key == key => {
+            | Some(&(ref existing_key, ref existing_text)) if existing_key == key => {
                 if existing_text != text {
                     return Err(GfDocsError::Translation(format!(
                         "term '{key}' declares conflicting display texts: '{existing_text}' vs '{text}'"
                     )));
                 }
             },
-            | Some((existing_key, _)) => {
+            | Some(&(ref existing_key, _)) => {
                 return Err(GfDocsError::Translation(format!(
                     "term keys '{existing_key}' and '{key}' mangle to the same constant '{constant}'"
                 )));
@@ -102,12 +103,12 @@ impl Lexicon
     {
         let constant = anchor_const(id);
         match self.anchors.get(&constant) {
-            | Some((existing_id, _)) if existing_id == id => {
+            | Some(&(ref existing_id, _)) if existing_id == id => {
                 return Err(GfDocsError::Translation(format!(
                     "anchor id '{id}' is declared twice in the corpus"
                 )));
             },
-            | Some((existing_id, _)) => {
+            | Some(&(ref existing_id, _)) => {
                 return Err(GfDocsError::Translation(format!(
                     "anchor ids '{existing_id}' and '{id}' mangle to the same constant '{constant}'"
                 )));
@@ -121,48 +122,54 @@ impl Lexicon
     }
 
     /// Render the abstract lexicon module (`GandrDocsLex.gf`).
+    #[inline]
     #[must_use]
     pub fn render_abstract(&self) -> String
     {
         let mut out = String::from("abstract GandrDocsLex = GandrDocs ** {\n  fun\n");
         out.push_str("    -- terms (generated from the corpus term registry)\n");
         for constant in self.terms.keys() {
-            out.push_str(&format!("    {constant} : Term ;\n"));
+            let _res = writeln!(out, "    {constant} : Term ;");
         }
         out.push_str("    -- cite keys (generated from refs.yml)\n");
         for constant in self.cites.keys() {
-            out.push_str(&format!("    {constant} : CiteKey ;\n"));
+            let _res = writeln!(out, "    {constant} : CiteKey ;");
         }
         out.push_str("    -- anchors (generated from the corpus id namespace)\n");
         for constant in self.anchors.keys() {
-            out.push_str(&format!("    {constant} : Anchor ;\n"));
+            let _res = writeln!(out, "    {constant} : Anchor ;");
         }
         out.push_str("}\n");
         out
     }
 
     /// Render the concrete lexicon module (`GandrDocsLexHtml.gf`).
+    #[inline]
     #[must_use]
     pub fn render_concrete(&self) -> String
     {
         let mut out =
             String::from("concrete GandrDocsLexHtml of GandrDocsLex = GandrDocsHtml ** {\n  lin\n");
-        for (constant, (key, text)) in &self.terms {
-            out.push_str(&format!(
-                "    {constant} = {{ key = {} ; text = {} }} ;\n",
+        for (constant, entry) in &self.terms {
+            let (ref key, ref text) = *entry;
+            let _res = writeln!(
+                out,
+                "    {constant} = {{ key = {} ; text = {} }} ;",
                 gf_str(key),
                 gf_str(text)
-            ));
+            );
         }
         for (constant, key) in &self.cites {
-            out.push_str(&format!("    {constant} = {{ key = {} }} ;\n", gf_str(key)));
+            let _res = writeln!(out, "    {constant} = {{ key = {} }} ;", gf_str(key));
         }
-        for (constant, (id, title)) in &self.anchors {
-            out.push_str(&format!(
-                "    {constant} = {{ id = {} ; title = {} }} ;\n",
+        for (constant, entry) in &self.anchors {
+            let (ref id, ref title) = *entry;
+            let _res = writeln!(
+                out,
+                "    {constant} = {{ id = {} ; title = {} }} ;",
                 gf_str(id),
                 gf_str(title)
-            ));
+            );
         }
         out.push_str("}\n");
         out
@@ -173,14 +180,14 @@ impl Lexicon
 /// path) and `refs.yml`.
 ///
 /// The `.gfd` trees carry every text-destined string already `HTML`-escaped
-/// (the translation boundary), so values insert as-is; the transition-era
-/// `XML` collector ([`generate_xml`]) escapes at insert to agree exactly.
+/// (the translation boundary), so values insert as-is.
 ///
 /// # Errors
 /// [`GfDocsError::Parse`] when a `.gfd` file fails the reader or departs from
 /// the expected constructor shapes; [`GfDocsError::Model`] when the
 /// bibliography fails to load; [`GfDocsError::Translation`] on any id/term
 /// collision.
+#[inline]
 pub fn generate(
     corpus_dir: &Path,
     refs_path: &Path,
@@ -215,7 +222,15 @@ fn collect_gfd(
 ) -> Result<(), GfDocsError>
 {
     let args = expect_app(tree, "MkComponent")?;
-    let [anchor, title, _status, _grounds, _derives, sections, _refs] = args
+    let [
+        ref anchor,
+        ref title,
+        ref _status,
+        ref _grounds,
+        ref _derives,
+        ref sections,
+        ref _refs,
+    ] = *args
     else {
         return Err(GfDocsError::Parse("MkComponent arity is not seven".into()));
     };
@@ -232,7 +247,7 @@ fn collect_section(
 ) -> Result<(), GfDocsError>
 {
     let args = expect_app(section, "MkSection")?;
-    let [anchor, title, _status, blocks] = args
+    let [ref anchor, ref title, ref _status, ref blocks] = *args
     else {
         return Err(GfDocsError::Parse("MkSection arity is not four".into()));
     };
@@ -246,20 +261,20 @@ fn collect_block(
     lexicon: &mut Lexicon,
 ) -> Result<(), GfDocsError>
 {
-    let Sexp::App { head, args } = block
+    let Sexp::App { ref head, ref args } = *block
     else {
         return Ok(());
     };
     match head.as_str() {
         | "NestedSection" => {
-            let [section] = args.as_slice()
+            let [ref section] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("NestedSection arity is not one".into()));
             };
             collect_section(section, lexicon)
         },
         | "DefinitionBlock" => {
-            let [anchor, term, body] = args.as_slice()
+            let [ref anchor, ref term, ref body] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse(
                     "DefinitionBlock arity is not three".into(),
@@ -274,42 +289,42 @@ fn collect_block(
             harvest_inline_terms(body, lexicon)
         },
         | "RuleBlock" => {
-            let [anchor, name, _premises, _conclusion] = args.as_slice()
+            let [ref anchor, ref name, ref _premises, ref _conclusion] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("RuleBlock arity is not four".into()));
             };
             lexicon.insert_anchor(&anchor_id(anchor)?, &quoted(name)?)
         },
         | "DiagramBlock" => {
-            let [anchor, caption, _cite, _source] = args.as_slice()
+            let [ref anchor, ref caption, ref _cite, ref _source] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("DiagramBlock arity is not four".into()));
             };
             lexicon.insert_anchor(&anchor_id(anchor)?, &quoted(caption)?)
         },
         | "ProseBlock" => {
-            let [inlines] = args.as_slice()
+            let [ref inlines] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("ProseBlock arity is not one".into()));
             };
             harvest_inline_terms(inlines, lexicon)
         },
         | "ExampleBlock" => {
-            let [_title, blocks] = args.as_slice()
+            let [ref _title, ref blocks] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("ExampleBlock arity is not two".into()));
             };
             walk_list(blocks, "Block", &mut |inner| collect_block(inner, lexicon))
         },
         | "RegisterBlock" | "PlainRegisterBlock" => {
-            let [_order, items] = args.as_slice()
+            let [ref _order, ref items] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("register arity is not two".into()));
             };
             walk_list(items, "Item", &mut |item| collect_item(item, lexicon))
         },
         | "InventoryBlock" | "StagingPlanBlock" | "DecisionTableBlock" => {
-            let [_caption, header, rows] = args.as_slice()
+            let [ref _caption, ref header, ref rows] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("table arity is not three".into()));
             };
@@ -326,13 +341,25 @@ fn collect_item(
     lexicon: &mut Lexicon,
 ) -> Result<(), GfDocsError>
 {
-    let Sexp::App { head, args } = item
+    let Sexp::App { ref head, ref args } = *item
     else {
         return Ok(());
     };
-    let body = match (head.as_str(), args.as_slice()) {
-        | ("MkItem", [_lead, body]) => body,
-        | ("MkPlainItem", [body]) => body,
+    let body = match head.as_str() {
+        | "MkItem" => {
+            let [_, ref body] = *args.as_slice()
+            else {
+                return Ok(());
+            };
+            body
+        },
+        | "MkPlainItem" => {
+            let [ref body] = *args.as_slice()
+            else {
+                return Ok(());
+            };
+            body
+        },
         | _ => return Ok(()),
     };
     harvest_inline_terms(body, lexicon)
@@ -344,20 +371,20 @@ fn collect_row(
     lexicon: &mut Lexicon,
 ) -> Result<(), GfDocsError>
 {
-    let Sexp::App { head, args } = row
+    let Sexp::App { ref head, ref args } = *row
     else {
         return Ok(());
     };
     if !matches!(head.as_str(), "MkHeaderRow" | "MkBodyRow") {
         return Ok(());
     }
-    let [cells] = args.as_slice()
+    let [ref cells] = *args.as_slice()
     else {
         return Err(GfDocsError::Parse("row arity is not one".into()));
     };
     walk_list(cells, "Cell", &mut |cell| {
         let args = expect_app(cell, "MkCell")?;
-        let [content] = args
+        let [ref content] = *args
         else {
             return Err(GfDocsError::Parse("MkCell arity is not one".into()));
         };
@@ -372,17 +399,17 @@ fn harvest_inline_terms(
 ) -> Result<(), GfDocsError>
 {
     walk_list_any(inlines, &mut |inline| {
-        if let Sexp::App { head, args } = inline {
+        if let Sexp::App { ref head, ref args } = *inline {
             match head.as_str() {
                 | "TermDef" => {
-                    let [term, display] = args.as_slice()
+                    let [ref term, ref display] = *args.as_slice()
                     else {
                         return Err(GfDocsError::Parse("TermDef arity is not two".into()));
                     };
                     lexicon.insert_term(&unmangle(atom_of(term)?, "term_")?, &quoted(display)?)?;
                 },
                 | "Bold" | "Italic" => {
-                    let [inner] = args.as_slice()
+                    let [ref inner] = *args.as_slice()
                     else {
                         return Err(GfDocsError::Parse("emphasis arity is not one".into()));
                     };
@@ -406,9 +433,9 @@ fn walk_list(
     let mut cursor = list;
     loop {
         match cursor {
-            | Sexp::Atom(atom) if *atom == format!("Base{category}") => return Ok(()),
-            | Sexp::App { head, args } if *head == format!("Cons{category}") => {
-                let [element, tail] = args.as_slice()
+            | &Sexp::Atom(ref atom) if *atom == format!("Base{category}") => return Ok(()),
+            | &Sexp::App { ref head, ref args } if *head == format!("Cons{category}") => {
+                let [ref element, ref tail] = *args.as_slice()
                 else {
                     return Err(GfDocsError::Parse(format!(
                         "Cons{category} arity is not two"
@@ -431,9 +458,9 @@ fn walk_list_any(
     let mut cursor = list;
     loop {
         match cursor {
-            | Sexp::Atom(atom) if atom.starts_with("Base") => return Ok(()),
-            | Sexp::App { head, args } if head.starts_with("Cons") => {
-                let [element, tail] = args.as_slice()
+            | &Sexp::Atom(ref atom) if atom.starts_with("Base") => return Ok(()),
+            | &Sexp::App { ref head, ref args } if head.starts_with("Cons") => {
+                let [ref element, ref tail] = *args.as_slice()
                 else {
                     return Err(GfDocsError::Parse(format!("{head} arity is not two")));
                 };
@@ -452,7 +479,10 @@ fn expect_app<'tree>(
 ) -> Result<&'tree [Sexp], GfDocsError>
 {
     match sexp {
-        | Sexp::App { head: actual, args } if actual == head => Ok(args),
+        | &Sexp::App {
+            head: ref actual,
+            ref args,
+        } if actual == head => Ok(args),
         | _ => Err(GfDocsError::Parse(format!("expected a {head} application"))),
     }
 }
@@ -461,7 +491,7 @@ fn expect_app<'tree>(
 fn atom_of(sexp: &Sexp) -> Result<&str, GfDocsError>
 {
     match sexp {
-        | Sexp::Atom(text) => Ok(text),
+        | &Sexp::Atom(ref text) => Ok(text),
         | _ => Err(GfDocsError::Parse("expected an atom".into())),
     }
 }

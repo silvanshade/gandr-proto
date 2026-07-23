@@ -195,6 +195,7 @@ enum Tok
 /// # Errors
 /// [`GfError::Parse`] on an unterminated string, unbalanced parens, or an
 /// application whose head is not an atom.
+#[inline]
 pub fn parse(text: &str) -> Result<Sexp, GfError>
 {
     let toks = tokenize(text)?;
@@ -255,11 +256,7 @@ fn tokenize(text: &str) -> Result<Vec<Tok>, GfError>
 {
     let mut toks = Vec::new();
     let mut chars = text.chars().peekable();
-    loop {
-        let Some(ch) = chars.next()
-        else {
-            break;
-        };
+    while let Some(ch) = chars.next() {
         match ch {
             | _ if ch.is_whitespace() => {},
             | '(' => toks.push(Tok::Open),
@@ -309,6 +306,7 @@ fn string_literal(chars: &mut core::iter::Peekable<core::str::Chars<'_>>)
 
 /// Unquote a string-literal atom (strip the quotes, resolve the B′ escapes
 /// `\"` `\\` `\n` `\t` `\r`). Returns `None` for a bare (unquoted) atom.
+#[inline]
 #[must_use]
 pub fn unquote(atom: &str) -> Option<String>
 {
@@ -323,12 +321,11 @@ pub fn unquote(atom: &str) -> Option<String>
                 | Some('t') => out.push('\t'),
                 | Some('r') => out.push('\r'),
                 | Some('"') => out.push('"'),
-                | Some('\\') => out.push('\\'),
+                | Some('\\') | None => out.push('\\'),
                 | Some(other) => {
                     out.push('\\');
                     out.push(other);
                 },
-                | None => out.push('\\'),
             },
             | Some(other) => out.push(other),
         }

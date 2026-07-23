@@ -3,8 +3,9 @@
 //!
 //! These classes grow the doc tool beyond the spec corpus to the surrounding
 //! Markdown tail (`gandr-712`). They share one minimal block/inline substrate
-//! ([`model`]) parsed by a single parse-equals-validate pass ([`parse`]) and
-//! checked against a small per-class schema ([`validate`]).
+//! ([`model`]) parsed by a single parse-equals-validate pass
+//! ([`crate::doc::parse`]) and checked against a small per-class schema
+//! ([`crate::doc::validate`]).
 //!
 //! The canonical `XML` formatter ([`crate::format`]) is class-agnostic, so
 //! these classes need no new formatting code — only the `treefmt` `docs-xml`

@@ -25,23 +25,23 @@ use crate::typst_leaf::Leaf;
 /// The post-pass context: the bibliography for references enrichment and the
 /// cache directory for compiled math/diagram leaves.
 #[non_exhaustive]
-pub struct PostContext<'a>
+pub struct PostContext<'shared>
 {
     /// The corpus bibliography (`refs.yml`), used to enrich the references
     /// list from bare keyed rows to full bibliography rows.
-    pub bibliography: &'a Bibliography,
+    pub bibliography: &'shared Bibliography,
     /// The content-hash cache directory for compiled typst leaves.
-    pub cache_dir: &'a Path,
+    pub cache_dir: &'shared Path,
 }
 
-impl<'a> PostContext<'a>
+impl<'shared> PostContext<'shared>
 {
     /// Bundle the bibliography and cache directory for the post-pass.
     #[inline]
     #[must_use]
     pub const fn new(
-        bibliography: &'a Bibliography,
-        cache_dir: &'a Path,
+        bibliography: &'shared Bibliography,
+        cache_dir: &'shared Path,
     ) -> Self
     {
         Self {
