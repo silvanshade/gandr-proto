@@ -1,0 +1,396 @@
+MkComponent
+  anchor_core_ir
+  "The core IR contract: the frozen call-by-push-value substrate"
+  StatusPartial
+  BaseAnchor
+  (ConsAnchor anchor_spec_index BaseAnchor)
+  (ConsSection (MkSection
+       anchor_ci_overview
+       "The contract and its discipline"
+       InheritSectionStatus
+       (ConsBlock (ProseBlock
+            (ConsInline (Txt "The")
+              (ConsInline (TermDef term_core_ir "core IR")
+                (ConsInline (Txt
+                     "is the frozen coupling-point substrate of gandr: the value, computation, and stack node shapes the surface lowers into, the checker and the typing machine range over, the machine runs, and the metatheory states its theorems about. The core is call-by-push-value")
+                  (ConsInline (CiteRef cite_A_1a)
+                    (ConsInline (Txt
+                         "with grades on the thunk modal, an effect row on the returner, first-class control stacks, identity and dependent-pair formers, declared-data nominal handles, and a predicative code universe. This component is the contract's home: it fixes the data shapes those rules range over and declares what is frozen, what is a staged extension point, and what is a decided-direction hook.")
+                      BaseInline))))))
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt "The shapes below are the")
+                (ConsInlineGlued (TermDef term_frozen_core "frozen core")
+                  (ConsInline (Txt
+                       ": stable by declaration, so every lane can build against them concurrently. A change to a")
+                    (ConsInline (TermDef term_substrate_shape "substrate shape")
+                      (ConsInline (Txt
+                           "is expensive to retrofit, so it is decided in the open — a backbone decision recorded in the plan of record until the decision index exists — never a unilateral edit inside one lane. Additions are extensions, landing at their named slot without reshaping the frozen fragment. Re-sync is periodic, on contract change, not continuous. And one source owns each fact: a typing rule lives in its home component while this contract owns the frozen-data view; drift between them is a tracker item, not a tolerated state.")
+                        BaseInline))))))
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt
+                     "Absorbed from the pre-reboot core-IR/type contract and rewritten against the realized reboot core: the implementation-status table is now the realization map below, the machine face names the sole driver honestly, and the conversion-firewall section carries the recorded staleness correction — dependent elimination is realized, so the firewall holds by shape, not by absence. Where this component and a ported doc-comment disagree, this component is the contract; the doc-comment has drifted.")
+                  BaseInline))
+             BaseBlock))))
+    (ConsSection (MkSection
+         anchor_ci_realization
+         "The realization map"
+         (WithSectionStatus StatusBuilt)
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt
+                   "The frozen fragment is realized across five reboot crates. Crate core-checker carries the checker, the defunctionalized typing machine, the type and term node families, subtyping, the grade carrier, the effect layer, the control fragment, the identity layer, and the host-seam types. Crate core-sequent carries the focusing translation and the L machine, the sole operational driver since the CEK oracle retired. Crates kernel-core and kernel-strata carry the certified-kernel slice: arena-resident terms, the universe-level algebra, and the quarantined structural conversion. Crate theory-levitation carries the description decoder whose codomain is the code universe.")
+                BaseInline))
+           (ConsBlock (InventoryBlock
+                "Realization homes for the frozen fragment"
+                (MkHeaderRow (ConsCell (MkCell (ConsInline (Txt "shape") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "realized at") BaseInline)) BaseCell)))
+                (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "value/computation sorts, contexts, subtyping") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (types, syntax, ctx, subtype)") BaseInline)) BaseCell)))
+                  (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "the value-model ladder (literals, lists, records)") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (Value::Int/Str/Num/List/Record)") BaseInline)) BaseCell)))
+                    (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "grade carrier 0/1/ω + dup/drop") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (grade)") BaseInline)) BaseCell)))
+                      (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "effect signatures + sealed rows, perform / deep handle") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (effect)") BaseInline)) BaseCell)))
+                        (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "reified stacks Stk(B,C), resume, reset / shift, Γ; Σ") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (stack, control, ctx)") BaseInline)) BaseCell)))
+                          (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "Path / here / walk, structural value equality") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (identity) + core-sequent (focus)") BaseInline)) BaseCell)))
+                            (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "declared data D(ā) / C(v̄) / case-over-tag") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (Data, Ctor, DataCase)") BaseInline)) BaseCell)))
+                              (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "code universe Type + dependent pair Σ + split motive") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (Universe, Sigma, SplitMotive)") BaseInline)) BaseCell)))
+                                (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "the description decoder (Desc → Type)") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "theory-levitation") BaseInline)) BaseCell)))
+                                  (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "native builtins + the host binding environment") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-checker (prim) + runtime-host") BaseInline)) BaseCell)))
+                                    (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "the operational driver over the focused image") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "core-sequent (the L machine and its store)") BaseInline)) BaseCell)))
+                                      (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "the certified-kernel slice: levels, S1 conversion") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "kernel-core + kernel-strata") BaseInline)) BaseCell)))
+                                        BaseRow)))))))))))))
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "Two cores, two altitudes, one contract. The interpreter core (core-checker) realizes the full frozen fragment including the dependent formers; the certified kernel (kernel-core) is the deliberately smaller trusted slice — at its current stage it quarantines the dependent pair, the path type, effects, control, holes, and the list and record formers to its own later stage, so its conversion never descends into a term. The decl-table half of declared data (the constructor field types) is the data surface's job and stays adopted-unbuilt; the frozen core carries only the nominal tag and its arguments.")
+                    BaseInline))
+               BaseBlock))))
+      (ConsSection (MkSection
+           anchor_ci_polarity
+           "Polarity: two sorts and the adjunction"
+           (WithSectionStatus StatusBuilt)
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt "Two type sorts. A")
+                  (ConsInline (TermDef term_value_type "value type")
+                    (ConsInline (Txt "A (positive) is what is: it classifies values. A")
+                      (ConsInline (TermDef term_computation_type "computation type")
+                        (ConsInline (Txt
+                             "B (negative) is what does: it classifies computations. The F ⊣ U adjunction connects them: U_r B is a value (a thunk of a computation), F^ε A is a computation (a returner of a value), and thunk/force and ret/&gt;&gt;= mediate. This is the cartesian-calf substrate shape")
+                          (ConsInlineGlued (CiteRef cite_A_1a)
+                            (ConsInline (Txt
+                                 ", with grades on U and an effect row on F as gandr's additions over the calf base. A third syntactic category, stacks (evaluation contexts), is internalized as the value type Stk(B, C); there is deliberately no value-level function type.")
+                              BaseInline))))))))
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "The adopted unifying semantic model is the wheeled, polarity-sorted, graded nominal PROP: a unification of already-adopted axes rather than a greenfield bet, built on the nominal substrate whose atom representation is filled by supported sets")
+                    (ConsInline (CiteRef cite_K_2)
+                      (ConsInline (Txt
+                           "— finite, serializable, bridging to de Bruijn. It reshapes none of the frozen shapes: a decided direction whose construction is the open obligation, pointed at here and homed in the theory crates.")
+                        BaseInline))))
+               BaseBlock)))
+        (ConsSection (MkSection
+             anchor_ci_value_types
+             "Value-type shapes"
+             (WithSectionStatus StatusBuilt)
+             (ConsBlock (GrammarBlock
+                  (ConsProduction (MkProduction
+                       "A"
+                       "X | 1 | A × A′ | A + A′ | List A | {ℓᵢ:Aᵢ} | U_r B | Stk(B, C) | Path A x y | D(ā) | Type | Σ(x:A). B | Unknown")
+                    BaseProduction))
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt "Decomposition for")
+                      (ConsInline (TermDef term_structural_subtyping "structural subtyping")
+                        (ConsInline (Txt
+                             "is structural: products, sums, and lists covariant; the closed record {ℓᵢ:Aᵢ} width plus depth (a wider record is a subtype, each shared field covariant); the graded thunk contravariant in its grade (U_r B &lt;: U_s B′ iff s ⊑ r and B &lt;: B′). The")
+                          (ConsInline (TermDef term_path_type "path type")
+                            (ConsInline (Txt
+                                 "Path A x y is the first dependent former — its endpoints are value terms — and is invariant in all three positions: the carrier by two-way subtyping, the endpoints under the")
+                              (ConsInline (TermDef
+                                   term_structural_value_equality
+                                   "no-reduction structural value equality")
+                                (ConsInline (Txt
+                                     "(α-respecting, annotation-transparent, hole-consistent, with no reduction inside types). The declared-data handle D(ā) is")
+                                  (ConsInlineGlued (TermRef term_generative_nominal)
+                                    (ConsInline (Txt
+                                         ": its minted nominal id compares before any structural carrier, so two structurally-identical declarations are distinct types, with ā then covariant and positional and an empty ā consistent with any instantiation; the carrier itself lives in the decl table the data surface holds, not in the core type. The")
+                                      (ConsInline (TermDef term_code_universe "code universe")
+                                        (ConsInline (Txt "Type is the predicative sort the description decoder targets")
+                                          (ConsInline (CiteRef cite_N_1a)
+                                            (ConsInline (Txt "and the sort at which the")
+                                              (ConsInline (TermDef term_sigma_type "dependent pair")
+                                                (ConsInline (Txt
+                                                     "Σ(x:A). B binds its head: one predicative bump, reflexive-only in subtyping, with Type : Type refused by construction of the first-order fragment; the judgmental level algebra behind it lives in kernel-strata, and the frozen interpreter core carries the former without a first-class type-formation judgment. Σ's head is a small value type (a Σ over Type is families territory, outside the fragment); subtyping is invariant up to α-renaming of the binder. The")
+                                                  (ConsInline (TermDef term_gradual_hole "gradual hole")
+                                                    (ConsInline (Txt "Unknown")
+                                                      (ConsInline (CiteRef cite_I_3a)
+                                                        (ConsInline (Txt
+                                                             "is consistent with every type in both directions, so transitivity is deliberately not admissible once it participates — reflexivity stays admissible, never a node shape.")
+                                                          BaseInline))))))))))))))))))))
+                 BaseBlock)))
+          (ConsSection (MkSection
+               anchor_ci_comp_types
+               "Computation-type shapes"
+               (WithSectionStatus StatusBuilt)
+               (ConsBlock (GrammarBlock
+                    (ConsProduction (MkProduction "B" "F^ε A | A → B | B & B′ | Unknown")
+                      BaseProduction))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "The")
+                        (ConsInline (TermDef term_effect_graded_returner "effect-graded returner")
+                          (ConsInline (Txt
+                               "F^ε A pairs a payload value type with a sealed effect row; F A ≡ F^⟨⟩ A is the empty-row, pure case. The function type A → B (value argument, computation result) is contravariant in the argument and covariant in the result; the lazy product B &amp; B′ (\"with\") is componentwise; F^ε A decomposes to A &lt;: A′ together with the row relation on ε. Staged extension points — the intersection B ∩ B′ and polymorphism ∀X. B — attach at this grammar without reshaping it; session types are not computation types but live in the linear zone of the context.")
+                            BaseInline))))
+                   BaseBlock)))
+            (ConsSection (MkSection
+                 anchor_ci_grades
+                 "Grades on U"
+                 (WithSectionStatus StatusBuilt)
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "A")
+                        (ConsInline (TermDef term_grade "grade")
+                          (ConsInline (Txt
+                               "counts how many times a thunk may be forced — a coeffect on U, the symmetric dual of the effect on F")
+                            (ConsInlineGlued (CiteRef cite_F_7)
+                              (ConsInline (Txt
+                                   ". Grades appear in exactly one type constructor, U_r B, and in the term forms thunk_r t, dup, and drop; linearity is structural (the linear zone), never grade-policed — grades and the linear zone are independent disciplines. The algebra is a preordered semiring with default carrier ℕ ∪ {ω}, r ⊑ s iff r ≤ s or s = ω; + is alternative, accumulated demand, · nested, sequential demand.")
+                                BaseInline))))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt "The")
+                          (ConsInline (TermDef term_grade_carrier "grade carrier")
+                            (ConsInline (Txt
+                                 "is a single concrete, representation-sealed type, not a parameter: its entire surface is the semiring signature (constants 0/1/ω, constructor fin, order leq, algebra plus/times), rendered for diagnostics through Debug only, so swapping the semiring is a one-module edit and no IR node, frame, or error ever names a semiring parameter. An unannotated thunk elaborates to grade ω (U B ≡ U_ω B). The graded thunk is orthogonal to the effect row: U_r (F^ε A) reads \"a thunk forceable r times of a computation that may do ε.\"")
+                              BaseInline))))
+                     BaseBlock)))
+              (ConsSection (MkSection
+                   anchor_ci_effects
+                   "The effect row on F"
+                   (WithSectionStatus StatusBuilt)
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt "An")
+                          (ConsInline (TermDef term_effect_signature "effect signature")
+                            (ConsInline (Txt
+                                 "E names a family of operations, each with a payload and a reply type; an")
+                              (ConsInline (TermDef term_effect_row "effect row")
+                                (ConsInline (Txt
+                                     "ε is a finite composition of signatures, ⟨⟩ | ⟨E | ε⟩, with a row variable reserved for polymorphism. Effects sit on F, the dual of grades on U: the implemented returner node carries the row inline, and the pure returner is the empty-row case. Signatures are environment-free — carried inline on the perform node, an operation named by identity, never captured as a closure.")
+                                  BaseInline))))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "Two presentations of the same row, both kept. The kernel presentation carries ε explicitly; the ambient presentation threads one implicit current row through the judgment, adjusted at handling positions — Frank's ambient ability")
+                            (ConsInlineGlued (CiteRef cite_A_9)
+                              (ConsInline (Txt
+                                   ". The surface uses the ambient presentation; lowering is responsible for the ambient-to-kernel translation, and the checker and metatheory see the kernel. Row constraints are solved by deterministic Rémy-style row unification — a constraint domain, not a node shape. Sessions are not effects: session actions are structural, so session fidelity cannot be handled away — an effect operation may be implemented over a session, but a session action never appears in ε.")
+                                BaseInline))))
+                       BaseBlock)))
+                (ConsSection (MkSection
+                     anchor_ci_terms
+                     "Term node shapes"
+                     (WithSectionStatus StatusBuilt)
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt "Three node categories mirror the three sorts.")
+                            BaseInline))
+                       (ConsBlock (GrammarBlock
+                            (ConsProduction (MkProduction
+                                 "v"
+                                 "x | () | n | s | n_T | (v, v′) | inj₁ v | inj₂ v | [v₀, …, vₙ] | {ℓ₁=v₁, …} | thunk_r t | stk K | here v | C(v̄) | (v : A) | hole")
+                              (ConsProduction (MkProduction
+                                   "t"
+                                   "λx. t | λx:A. t | t v | ret v | t >>= x. u | force v | case v { inj₁ x → t | inj₂ y → u } | case v { Cᵢ(x̄ᵢ) → tᵢ } | case v { Nil → t | Cons(h,t) → u } | split v as (x, y) [z. M] in t | r.ℓ | ⟨t, u⟩ | prj₁ t | prj₂ t | dup v | drop v | perform op v | handle t { ret x ⇒ tᵣ | opᵢ p k ⇒ tᵢ } | resume v t | reset t | shift k. t | native p v̄ | walk(p, (x y q). C, (x). c) | hole")
+                                (ConsProduction (MkProduction
+                                     "K"
+                                     "ε | v :: K | (x. u) :: K | prjᵢ :: K | KReset(C) | KHandle(clauses, depth)")
+                                  BaseProduction))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt "The")
+                                (ConsInline (TermDef term_native_builtin "native builtin")
+                                  (ConsInline (Txt
+                                       "native p v̄ is a Rust-backed builtin: an axiom typed by the primitive's declared type with its accumulated arguments peeled, and a function-like terminal that reduces in Rust once saturated; p is an opaque tag resolved in a registry, the same inline-name discipline as perform's operation — machine-minted names ride one nominal atom substrate")
+                                    (ConsInlineGlued (CiteRef cite_K_2)
+                                      (ConsInline (Txt
+                                           ". Sequencing t &gt;&gt;= x. u is the sole union-elimination site by construction, and handlers and shift share one mechanism: the captured prefix is the stack handed to a clause.")
+                                        BaseInline))))))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt "The")
+                                  (ConsInline (TermDef term_identity_eliminator "identity eliminator")
+                                    (ConsInline (Txt
+                                         "walk(p, (x y q). C, (x). c) is the sole primitive eliminator of the path type, in the full Martin-Löf form: the motive C is a computation type binding both endpoints and the path, the base c answers the diagonal, and both binder structures are part of the walk syntax form, like case arms. Its one computation rule is definitional β on here — walk(here(v), C, (x). c) ↦ c[v/x] — with no η and no K; a case on a path scrutinee is rejected with the without-K reservation diagnostic, and the Paulin-Mohring based variants are derived, never primitive. The")
+                                      (ConsInline (TermDef term_split_motive "split motive")
+                                        (ConsInline (Txt
+                                             "is the same discipline one rung down: split v as (x, y) [z. M] in t eliminates a product or a Σ-typed scrutinee, taking an optional dependent motive (z). M — motive-bearing infers (the body checks against M[(p,q)/z], delivering the outer-scoped M[v/z], so no binder escapes), motive-less is check-only — and the runtime is type-erased, so the machine runs a Σ-typed or motive-bearing split exactly as a product one and the checker–machine differentials cover it with no new evaluation rule.")
+                                          BaseInline))))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt "A")
+                                    (ConsInline (TermDef term_reified_stack "reified stack")
+                                      (ConsInline (Txt
+                                           "stk K is a value of type Stk(B, C), consumed by resume v t. The one-shot discipline is a typing-side property, not a node shape: a stack capturing linear-zone obligations is itself linear-zone-resident — discarding it without resume is a linearity error unless a discard runs the recorded unwind obligations, and duplication is permitted only when the captured zone is empty.")
+                                        BaseInline))))
+                               BaseBlock))))))
+                  (ConsSection (MkSection
+                       anchor_ci_contexts
+                       "Contexts and the machine inventory"
+                       (WithSectionStatus StatusBuilt)
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt "The judgment ranges over a")
+                              (ConsInline (TermDef term_two_zone_context "two-zone context")
+                                (ConsInline (Txt
+                                     "Γ; Σ: Γ intuitionistic (world-annotated value hypotheses when worlds land), Σ linear — stack-owned obligations now, endpoints and capabilities when sessions land. In the realized core Σ is present but vacuous: no typing rule populates it yet, a conformance meta-invariant pins it empty across every run, and its one-shot laws are unit-tested directly.")
+                                  BaseInline))))
+                         (ConsBlock (JudgementsBlock
+                              "Bidirectional typing over the two zones"
+                              (ConsMathRow (MkMathRow "Gamma semi Sigma tack.r v ⇐ A")
+                                (ConsMathRow (MkMathRow "Gamma semi Sigma tack.r t ⇒ B")
+                                  BaseMathRow)))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt
+                                     "The machine inventory is downstream of this contract, derived rather than transcribed. The defunctionalized typing machine is derived from the recursive checker by the functional correspondence")
+                                  (ConsInlineGlued (CiteRef cite_E_3)
+                                    (ConsInline (Txt
+                                         ", property-tested for checker–machine agreement. The operational driver is the")
+                                      (ConsInline (TermRef term_l_machine)
+                                        (ConsInline (Txt
+                                             "over the focused image of these nodes, the sole driver since the CEK oracle retired; its frame inventory is the sequent kernel's, and the")
+                                          (ConsInline (TermRef term_host_effect_seam)
+                                            (ConsInline (Txt "it presents to the host is a")
+                                              (ConsInlineGlued (TermRef term_preserved_boundary)
+                                                (ConsInline (Txt
+                                                     ", expressed over the public value and effect-signature surface of this contract and nothing else.")
+                                                  BaseInline))))))))))
+                             BaseBlock))))
+                    (ConsSection (MkSection
+                         anchor_ci_hooks
+                         "Decided-direction hooks"
+                         InheritSectionStatus
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "These features are decided directions built by no frozen-core node; each hook names the forward-compatibility slot the decided construction lands in, and each lands additively, without reshaping the frozen fragment. The slot mechanism is the same discipline that seals the grade carrier behind an upgrade path; what waits on the far side of each slot is a decided direction, not a reserved option.")
+                                BaseInline))
+                           (ConsBlock (NestedSection
+                                (MkSection
+                                   anchor_ci_hooks_cost
+                                   "The phase modality and the cost effect"
+                                   (WithSectionStatus StatusAdoptedUnbuilt)
+                                   (ConsBlock (ProseBlock
+                                        (ConsInline (Txt "The calf-lineage")
+                                          (ConsInline (CiteRef cite_L_1)
+                                            (ConsInline (Txt
+                                                 "phase modality (open and closed phases, with noninterference) and the primitive cost effect step^c — a cost-monoid-indexed effect on F, distinct from the U_r grade — are adopted as the tail's user-facing effects slot: tier-1 step^c on effect rows, a cost/behavior phase distinction with noninterference, and tier-2 erasure elaboration sharing the phase/relevance/erasure infrastructure with the erasure hook below. The directed refinement — an intrinsic preorder in which a cost bound is a program — rides the same design pass, with the directed cost-aware framework as its reference")
+                                              (ConsInlineGlued (CiteRef cite_L_2)
+                                                (ConsInline (Txt
+                                                     ". Both are distinct from the compilation-staging phase, from subtyping, and from the grade order.")
+                                                  BaseInline))))))
+                                     BaseBlock)))
+                             (ConsBlock (NestedSection
+                                  (MkSection
+                                     anchor_ci_hooks_dependent
+                                     "Dependent elimination and conversion"
+                                     (WithSectionStatus StatusPartial)
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "Partially realized, and the realization is the firewall correction of the next section. The interpreter core already carries the dependent fragment of this hook: the")
+                                            (ConsInline (TermRef term_path_type)
+                                              (ConsInline (Txt "with its")
+                                                (ConsInline (TermRef term_identity_eliminator)
+                                                  (ConsInline (Txt "over a full dependent motive, and the")
+                                                    (ConsInline (TermRef term_sigma_type)
+                                                      (ConsInline (Txt "with the")
+                                                        (ConsInline (TermRef term_split_motive)
+                                                          (ConsInline (Txt
+                                                               "discipline. The certified kernel quarantines those formers to its own next stage, so its conversion today never descends into a term. The remainder — Π formers, full motives, the elaborator — rides the dependent-core backbone phase.")
+                                                            BaseInline))))))))))
+                                       BaseBlock)))
+                               (ConsBlock (NestedSection
+                                    (MkSection
+                                       anchor_ci_hooks_erasure
+                                       "The erasure functor"
+                                       (WithSectionStatus StatusAdoptedUnbuilt)
+                                       (ConsBlock (ProseBlock
+                                            (ConsInline (Txt
+                                                 "The phase-erasure functor takes the dependent layer to its non-dependent shadow — this contract's shapes are that shadow. It is a meta-level map, not a node, and holds the tail's final slot; the kernel reserves trusted-code annotation slots for erasure and modes so the landing stays additive rather than a kernel-format rewrite.")
+                                              BaseInline))
+                                         BaseBlock)))
+                                 BaseBlock)))))
+                      (ConsSection (MkSection
+                           anchor_ci_firewall
+                           "The conversion firewall, corrected"
+                           (WithSectionStatus StatusPartial)
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt "The")
+                                  (ConsInline (TermDef term_conversion_firewall "conversion firewall")
+                                    (ConsInline (Txt
+                                         "is the construction discipline the dependent layer inherits: three defaults answering the Fire-Triangle negative result — substitution, dependent elimination, and observable effects are jointly inconsistent")
+                                      (ConsInlineGlued (CiteRef cite_L_7)
+                                        (ConsInline (Txt
+                                             ". Conversion does not observe effects: no conversion step evaluates an effectful F^ε A into a conversion-visible value, and F^ε stays abstract under conversion. Dependent indices are pure value types only: U_r (F^ε A) and Stk(B, C) are excluded from conversion-reaching index positions — polarity alone is insufficient, U_r B being itself a value type. And the conversion-relevant fragment exposes no full-dependent catch.")
+                                          BaseInline))))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "Correction, recorded at absorption. The pre-reboot contract asserted the core satisfied the three defaults by absence — no conversion, no dependent elimination. The absence claim is stale: the realized reboot core realizes dependent elimination directly, the")
+                                    (ConsInline (TermRef term_identity_eliminator)
+                                      (ConsInline (Txt "over a dependent motive and the")
+                                        (ConsInline (TermRef term_split_motive)
+                                          (ConsInline (Txt "split, alongside the")
+                                            (ConsInline (TermRef term_path_type)
+                                              (ConsInline (Txt "and")
+                                                (ConsInline (TermRef term_sigma_type)
+                                                  (ConsInline (Txt
+                                                       "formers. The firewall survives by shape, not by absence. Conversion is a")
+                                                    (ConsInlineGlued (TermRef term_structural_value_equality)
+                                                      (ConsInline (Txt
+                                                           ": in the interpreter core, value equality is α-respecting, annotation-transparent, and hole-consistent with no reduction inside types; in the certified kernel, definitional equality is an id-equality early-out plus α-structural equality plus canonical level equality, with no β law firing and no computation evaluated — and since no kernel type former is yet indexed by a value term, the effects quarantine holds vacuously there. Dependent elimination at the term level with a conversion that never evaluates is exactly the configuration the negative result permits; when a term-indexed type former lands in the kernel, the β laws of the value fragment become load-bearing, and the three defaults above are the discipline it is built under.")
+                                                        BaseInline))))))))))))
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "The data layer reads the core's datatypes as the Squier-degenerate — convergent — fragment of a")
+                                      (ConsInlineGlued (TermRef term_polygraph_presentation)
+                                        (ConsInline (Txt
+                                             ": sorts, constructors, and directed rewrites where higher coherence is automatic. That convergent slice is realized in crate theory-computads as the")
+                                          (ConsInline (TermRef term_fusion_by_completion)
+                                            (ConsInline (Txt
+                                                 "engine; the untruncated directed higher-coherence tower is the adopted polygraphical-data direction whose coherence-computability vehicle is the sister internal-univalence formalization — a live in-house program, not a completed proof. The tower stays outside this frozen contract; the direction is decided, the tower is the work.")
+                                              BaseInline))))))
+                                 BaseBlock))))
+                        (ConsSection (MkSection
+                             anchor_ci_staged
+                             "Staged extension points"
+                             (WithSectionStatus StatusAdoptedUnbuilt)
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "Specified features that are not frozen-core; each lowers at its named home into the slots noted, without reshaping the frozen fragment. The map records the reboot home of each.")
+                                    BaseInline))
+                               (ConsBlock (StagingPlanBlock
+                                    "Staged extension points and their reboot homes"
+                                    (MkHeaderRow (ConsCell (MkCell (ConsInline (Txt "feature") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "adds") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "reboot home") BaseInline)) BaseCell))))
+                                    (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "unions") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "A ∪ A′ (value); union-elim at >>=") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "tail, after sessions/worlds") BaseInline)) BaseCell))))
+                                      (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "intersections") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "B ∩ B′ (computation)") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "tail, after sessions/worlds") BaseInline)) BaseCell))))
+                                        (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "polymorphism") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "∀X. B, ΛX. t, t [A]; kinds") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "unscheduled; the row tail of ε is reserved for it") BaseInline)) BaseCell))))
+                                          (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "sessions") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "endpoints c : S in Σ; send/recv/close/select/offer") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "tail sessions/worlds slot (linear typestate codata)") BaseInline)) BaseCell))))
+                                            (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "sharing") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "shared Θ; acquire/release; stratified lift") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "tail sessions/worlds slot family") BaseInline)) BaseCell))))
+                                              (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "multiparty") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "global/local types; projection") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "tail sessions/worlds slot family") BaseInline)) BaseCell))))
+                                                (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "worlds") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "@w A; hold/leta/migrate; located Γ/Σ") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "tail sessions/worlds slot") BaseInline)) BaseCell))))
+                                                  (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "modules") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "signatures, functors, implicits") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "backbone phase B3 (in flight)") BaseInline)) BaseCell))))
+                                                    (ConsRow (MkBodyRow (ConsCell (MkCell (ConsInline (Txt "dynamics") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "the concurrent runtime face") BaseInline)) (ConsCell (MkCell (ConsInline (Txt "sequential face realized; concurrency rides the tail") BaseInline)) BaseCell))))
+                                                      BaseRow))))))))))
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "Union and intersection land as an extension, not a rewrite — the dependent-core phase records the polarity-anticipation constraint so the frozen subtyping discipline survives their arrival. Session subtyping follows the coinductive line")
+                                        (ConsInlineGlued (CiteRef cite_D_2)
+                                          (ConsInline (Txt "; worlds follow the ML5 design")
+                                            (ConsInlineGlued (CiteRef cite_G_3)
+                                              (ConsInline (Txt "; modules follow the first-class-modules line")
+                                                (ConsInlineGlued (CiteRef cite_H_2)
+                                                  (ConsInline (Txt
+                                                       ", their MVP face a compile-time namespace that elaborates without touching this contract. The sequential operational face is no longer staged at all: it is realized by the")
+                                                    (ConsInlineGlued (TermRef term_l_machine)
+                                                      (ConsInline (Txt
+                                                           ", and what remains staged is the concurrent process face, riding the tail's value-semantics and threading design passes.")
+                                                        BaseInline))))))))))
+                                   BaseBlock))))
+                          BaseSection))))))))))))
+  (ConsCiteKey cite_A_1a
+    (ConsCiteKey cite_A_9
+      (ConsCiteKey cite_D_2
+        (ConsCiteKey cite_E_3
+          (ConsCiteKey cite_F_7
+            (ConsCiteKey cite_G_3
+              (ConsCiteKey cite_H_2
+                (ConsCiteKey cite_I_3a
+                  (ConsCiteKey cite_K_2
+                    (ConsCiteKey cite_L_1
+                      (ConsCiteKey cite_L_2
+                        (ConsCiteKey cite_L_7
+                          (ConsCiteKey cite_N_1a BaseCiteKey)))))))))))))

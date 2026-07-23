@@ -7,6 +7,7 @@ MkComponent
   (ConsSection (MkSection
        anchor_cv_overview
        "Overview"
+       InheritSectionStatus
        (ConsBlock (ProseBlock
             (ConsInline (Txt "A")
               (ConsInline (TermDef term_component "component")
@@ -30,6 +31,7 @@ MkComponent
     (ConsSection (MkSection
          anchor_cv_blocks
          "Block types"
+         InheritSectionStatus
          (ConsBlock (DefinitionBlock
               anchor_cv_def_prose
               term_prose
@@ -127,6 +129,7 @@ MkComponent
                                          BaseCell))))
                                 BaseRow)))))
                      (ConsBlock (RegisterBlock
+                          OrderedList
                           (ConsItem (MkItem
                                "first"
                                (ConsInline (Txt "Every load-bearing artifact lives in a block.")
@@ -155,6 +158,7 @@ MkComponent
       (ConsSection (MkSection
            anchor_cv_examples
            "Checked examples"
+           InheritSectionStatus
            (ConsBlock (ExampleBlock
                 "A code block anticipating output"
                 (ConsBlock (ProseBlock

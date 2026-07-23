@@ -1,0 +1,188 @@
+MkComponent
+  anchor_data_patterns
+  "The joint data-declarations and pattern-matching surface"
+  StatusAdoptedUnbuilt
+  (ConsAnchor anchor_core_ir BaseAnchor)
+  (ConsAnchor anchor_spec_index BaseAnchor)
+  (ConsSection (MkSection
+       anchor_dp_overview
+       "Overview and the load-bearing asymmetry"
+       InheritSectionStatus
+       (ConsBlock (ProseBlock
+            (ConsInline (Txt
+                 "gandr has no user data declarations today: only built-in structural formers (pairs, sums, lists, closed records, numeric and string atoms) and shallow single-level constructor matching. This design covers the two areas a usability MVP requires in tandem — a")
+              (ConsInline (TermDef term_data_declaration "data declaration")
+                (ConsInline (Txt "surface and its dual, nested")
+                  (ConsInline (TermDef term_pattern "pattern matching")
+                    (ConsInline (Txt
+                         "— because a constructor introduces exactly what a pattern eliminates. The decision face landed as ADR-54; the reboot has not yet built the surface, so this component is the adopted design record, not a shipped capability. Its enduring value to the built code is the directedness alignment its without-K stance shares with the reflection face's directed fragment.")
+                      BaseInline))))))
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt
+                   "The two halves have different costs, and that asymmetry sequences them. The patterns half is pure elaboration to the existing eliminators (record patterns realize the record-open eliminator already reserved), so it can land over the built-in formers with no frozen-core spend. The data-declaration half is generative-nominal, so it spends one minimal frozen-core touch (a nominal tag on the value-type grammar), sequenced after the arena migration exactly as the record former was. Patterns-over-builtins can therefore land first and declared nominal data second, both designed here as one surface. Surface elaboration continues to target the frozen call-by-push-value core in crate core-checker; nothing here touches that core beyond the single nominal tag.")
+                BaseInline))
+           BaseBlock)))
+    (ConsSection (MkSection
+         anchor_dp_data_block
+         "The data block: constructors, operations, and directed rewrites as siblings"
+         InheritSectionStatus
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt "A data declaration is a")
+                (ConsInlineGlued (TermDef term_polygraph_presentation "polygraph presentation")
+                  (ConsInline (Txt
+                       ": a set of generators and oriented rewrites over a minted sort. The block carries three member kinds as siblings from day one, even though the MVP populates only the first. Constructors are the 1-cell generators that build values (the MVP). Operations are the defined, non-constructor symbols that rewrites reduce; they carry a reserved multi-output result-tuple slot. A")
+                    (ConsInline (TermDef term_directed_rewrite "directed rewrite")
+                      (ConsInline (Txt
+                           "is an oriented 2-cell — a datatype's equational theory as a convergent directed rewrite system, written as an oriented arrow from a left- to a right-hand side.")
+                        BaseInline))))))
+           (ConsBlock (PlainCodeBlock
+                "text"
+                "data Nat {\n  Zero,                              // 1-cell: nullary constructor (generator)\n  Succ(n: Nat),                      // 1-cell: field-tuple constructor\n\n  op add(m: Nat, n: Nat) -> Nat,     // reserved: a defined operation (non-constructor symbol)\n\n  rule add(Zero, n)    ~> n,         // reserved 2-cell: a directed reduction (lhs ~> rhs)\n  rule add(Succ(m), n) ~> Succ(add(m, n)),\n}")
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "Reserving the 2-cell production in the block is the anti-retrofit guard. Languages that add constructors first and laws later bolt equational theory onto a datatype through an out-of-band pragma; here the oriented-rewrite production is a first-class sibling of constructors, designed in, so laws are never a retrofit. The MVP parser accepts the operation and rule productions and the checker declines them (\"2-cells are reserved; not yet supported\"), so the slot is real day one without any 2-cell semantics shipping. A constructor is a value introduction — an injection into a positive sum of records — so its surface is a field-tuple, not an arrow: writing a constructor as an arrow would be a polarity lie, presenting a value constructor as a computation and laundering the adjunction the surface is built not to launder. Three further slots exist in the grammar and the decl table from day one, each checked at its default: a grade slot on binders (the quantity semiring, default unrestricted), the multi-output result-tuple on operations, and a bracketed per-symbol attribute list.")
+                    BaseInline))
+               BaseBlock))))
+      (ConsSection (MkSection
+           anchor_dp_nominal
+           "Nominal identity: declarations mint named 0-cells"
+           InheritSectionStatus
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt "Declared data is")
+                  (ConsInlineGlued (TermDef term_generative_nominal "generative and nominal")
+                    (ConsInline (Txt
+                         ": each declaration mints a stable nominal id (a named 0-cell, in the polygraph reading where a datatype is a 0-cell generator of a presentation) together with a decl-table description of its constructors, their field-tuples, and the type's parameters. Two structurally-identical declarations are distinct types, because the reason to write a declaration is to buy that distinctness — the low-cost authority a structural type cannot express. The carrier is structural: a constructor injects into a sum-of-records over the existing formers, and matching eliminates through that carrier, so construction and elimination are pure elaboration to existing nodes. The only new thing the core carries is the nominal tag distinguishing the applied type from its carrier — the one minimal frozen-core touch, sequenced after the arena migration with a dictionary entry and an Agda face in its own commit. The stable nominal id is precisely what a content-address or interner keys on. The de-emphasized alternative — structural sugar, names as provenance only — ships with zero frozen-core spend but cannot express the authority distinctness that motivates declaring a type at all.")
+                      BaseInline))))
+             BaseBlock))
+        (ConsSection (MkSection
+             anchor_dp_cyclic
+             "Cyclic data and the wheel firewall"
+             InheritSectionStatus
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "Value-zone wheels stay unrepresentable, because trace in a cartesian (value) setting is a general fixpoint")
+                    (ConsInline (CiteRef cite_J_12)
+                      (ConsInline (Txt
+                           "— a value-zone wheel would smuggle unrestricted recursion into the value model and break the value-semantics red line (no aliasing, every value a mathematical value). Cyclic or recursive data therefore never routes through a wheel. It routes three ways: value-level least-fixpoint data (a self-referential constructor is structural finite recursion, not a wheel — the later value-type ladder rung recursive declared data rides), codata (genuinely infinite or productively-unfolding structure, the negative computation-side dual observed by copatterns, post-MVP), or explicit linear construction in the multi-output zone (genuinely aliased, shared, feedback-carrying structure, with an explicit wheel marker). The MVP ships non-recursive declared data, with the primitive list former covering common list-shaped recursion in the interim.")
+                        BaseInline))))
+               BaseBlock))
+          (ConsSection (MkSection
+               anchor_dp_patterns
+               "The pattern grammar"
+               InheritSectionStatus
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt
+                         "The MVP pattern language extends the current variable / wildcard / constructor / tuple pattern with the missing shapes. Nested patterns compose freely; the case-tree compiler handles the columns. Record patterns realize the record-open eliminator explicitly reserved elsewhere — a record pattern compiles to a sequence of projection binds, so it needs no new eliminator node. Or-patterns must bind the same variable set on both branches (or bind none); as-patterns bind one extra variable. Views ride a with-abstraction over ordinary data patterns rather than a bespoke view-pattern grammar, which would make matching depend on arbitrary decision procedures embedded in the grammar, hostile to the streaming checker and to exhaustiveness. Absurd patterns for empty types are justified by \"no constructor to cover\", never by a reflexive equality principle.")
+                      BaseInline))
+                 (ConsBlock (GrammarBlock
+                      (ConsProduction (MkProduction
+                           "p"
+                           "x | _ | C(p₁, …, pₙ) | (p₁, …, pₙ) | #{ℓ₁ = p₁, …} | [p₁, …, pₙ] | [p, …ps] | 0 | \"s\" | true | p₁ | p₂ | x as p")
+                        BaseProduction))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "Let-bound patterns must be irrefutable (variable, wildcard, tuple, record, single-constructor); a refutable pattern (multi-constructor, literal, list-shape) requires a case.")
+                          BaseInline))
+                     BaseBlock))))
+            (ConsSection (MkSection
+                 anchor_dp_exhaustiveness
+                 "Exhaustiveness and compilation: Maranget, to the existing eliminators"
+                 InheritSectionStatus
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "Usefulness and")
+                        (ConsInline (TermDef term_exhaustiveness "exhaustiveness")
+                          (ConsInline (Txt "analysis is MVP-mandatory. The pattern-matrix algorithm")
+                            (ConsInline (CiteRef cite_E_5)
+                              (ConsInline (Txt
+                                   "computes, over the decl-table description of the scrutinee type, whether the arm set is total (a gap yields the missing-pattern witness as a diagnostic) and whether each arm is reachable (a redundant arm is a warning naming the shadowing arm). The matrix compiles to a case tree whose internal nodes are the primitive eliminators the core already has — sum case, list case, tuple split, record projection — so matching lowers to existing IR with no new eliminator node, and its intro-dual is a constructor injection into the carrier. Both the matrix-to-tree compilation and the tree's execution are iterative (an explicit worklist, never host recursion whose depth scales with pattern nesting or column count), because a deeply-nested pattern is a user-sized input. Once a datatype carries 2-cells, exhaustiveness generalizes to sufficient completeness over the presentation — every ground term reduces to a constructor form some pattern covers — of which Maranget exhaustiveness is the 2-cell-free special case. The MVP's presentation is free, so Maranget exhaustiveness is sufficient completeness there; the growth is additive.")
+                                BaseInline))))))
+                   BaseBlock))
+              (ConsSection (MkSection
+                   anchor_dp_matching_modulo
+                   "The matching-modulo stance"
+                   InheritSectionStatus
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "When a datatype carries an equational theory, matching must respect it. The stance, fixed now so 2-cells are an addition, is")
+                          (ConsInline (TermDef term_matching_modulo "matching modulo")
+                            (ConsInline (Txt
+                                 "an oriented convergent presentation: a datatype's laws are a terminating, confluent directed rewrite system")
+                              (ConsInlineGlued (CiteRef cite_J_1)
+                                (ConsInline (Txt
+                                     ", so every term has a unique normal form, and the scrutinee is normalized before matching — a program cannot observe the difference between a term and its normal form. Eliminating a law-carrying type carries a")
+                                  (ConsInline (TermDef term_respect_obligation "respect obligation")
+                                    (ConsInline (Txt
+                                         "(the quotient-lift respect condition): the match must give equal results on law-related inputs. The obligation is a first-class, inspectable mark the solver reasons with, discharged by an equality-saturation engine")
+                                      (ConsInline (CiteRef cite_T_10)
+                                        (ConsInline (CiteRef cite_T_11)
+                                          (ConsInline (Txt
+                                               "whose congruence closure is compiled back to an oriented terminating system so runtime normalization stays decidable — the e-graph is the solver, the oriented convergent system is the runtime.")
+                                            BaseInline)))))))))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "The reflection pass sharpens the certificate format: a respect obligation and the reflection face's")
+                            (ConsInline (TermRef term_protype_isomorphism)
+                              (ConsInline (Txt
+                                   "are the same species — both assert \"these two things are related by the declared theory, with a witness the machine can check\" — so when the obligation solver certifies respect, its output is exportable as a replayable")
+                                (ConsInlineGlued (TermRef term_certificate)
+                                  (ConsInline (Txt
+                                       ", landing match-site obligations and completion certificates on one inspectable surface. Correspondingly, a rule production's elaboration has a named formal endpoint: it becomes a")
+                                    (ConsInline (TermRef term_loose_arrow)
+                                      (ConsInline (Txt
+                                           "generator of the rewrite layer's virtual double category, its typed face a protype of the reflected judgment layer. The MVP ships zero 2-cells, so the presentation is free, normal forms are the terms themselves, and respect obligations are vacuous; fixing the stance now is what keeps matching-modulo from being a retrofit.")
+                                        BaseInline))))))))
+                       BaseBlock)))
+                (ConsSection (MkSection
+                     anchor_dp_without_k
+                     "Without-K-equivalent unification"
+                     InheritSectionStatus
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt "The pattern elaborator's unifier is")
+                            (ConsInlineGlued (TermDef term_without_k_unification "without-K-equivalent")
+                              (ConsInline (Txt
+                                   ": it resolves pattern variables by first-order, Miller-pattern unification only")
+                                (ConsInline (CiteRef cite_Q_4)
+                                  (ConsInline (CiteRef cite_O_3a)
+                                    (ConsInline (Txt
+                                         "— never constructor-injectivity up to a reflexive equality principle, never a uniqueness-of-identity-proofs unifier that identifies distinct equality proofs. This is binding even though the MVP has no indexed data, because directed 2-cells are asymmetric (an oriented rewrite, not an equation): a K or UIP unifier collapses reflexive goals and identifies all proofs of an equality, which would collapse a directed 2-cell into an undirected equation, destroying the orientation matching-modulo depends on. The metatheory already mandates without-K on every Agda module; this is its elaborator-side analogue.")
+                                      BaseInline)))))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt "This restriction and the reflection face's")
+                              (ConsInline (TermRef term_directed_j)
+                                (ConsInline (Txt
+                                     "polarity restriction are the same design decision at two altitudes. One level up, the directed J refuses the motive that would transport a directed hom backward — the symmetry shape — exactly as a K or UIP unifier here would collapse orientation; adding symmetry (or K) to directed equality collapses the directed reading either way. Recording them as one decision at two altitudes is the durable link between this surface and the built directed fragment: in the MVP the restriction is vacuous (first-order unification trivially has no K), but stated as binding now so that when indexed data or 2-cells arrive, the unifier is already without-K and the directed cells survive.")
+                                  BaseInline))))
+                         BaseBlock)))
+                  (ConsSection (MkSection
+                       anchor_dp_levitation
+                       "Levitation-compatibility and the anti-retrofit checklist"
+                       InheritSectionStatus
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt "Declarations elaborate to a")
+                              (ConsInline (TermDef term_decl_table "decl table")
+                                (ConsInline (Txt "whose shape is description-compatible")
+                                  (ConsInlineGlued (CiteRef cite_N_1a)
+                                    (ConsInline (Txt
+                                         ": a decl-table entry is a datatype description — a first-class, inspectable value enumerating the type's parameters, its constructors, and each constructor's field-tuple — not an opaque type. Datatypes-as-descriptions is what lets a datatype's structure be queried, diffed, and later reasoned about by an internal computing logical relation. Flagged honestly: no existing description universe encodes directed 2-cell faces or multi-output arities. That is new design surface, not solved here; the MVP decl-table shape commits to constructor, field, and parameter shape only, but with five extension points named — 2-cell faces, multi-output arities, grade slots, atom-abstraction (binding-aware) fields, and per-symbol attribute lists — so the levitation universe grows rather than retrofits. The typed cell story routes through the reflected judgment layer of the reflection face once that layer can express the described faces.")
+                                      BaseInline))))))
+                         (ConsBlock (ExampleBlock
+                              "A declared option type and an exhaustive match"
+                              (ConsBlock (ProseBlock
+                                   (ConsInline (Txt
+                                        "The intended surface once the data and patterns halves land: a nullary-plus-field-tuple declaration, constructed and eliminated by an exhaustive match compiling to the sum-case eliminator. The tool validates the shape of the expectation; execution gating waits on the elaborator.")
+                                     BaseInline))
+                                (ConsBlock (ExpectCodeBlock
+                                     "gandr"
+                                     "1"
+                                     "data Maybe(a) { None, Some(x: a) }\nin case Some(1) { None => 0, Some(x) => x }")
+                                  BaseBlock)))
+                           BaseBlock)))
+                    BaseSection)))))))))
+  (ConsCiteKey cite_Q_4
+    (ConsCiteKey cite_O_3a
+      (ConsCiteKey cite_E_5
+        (ConsCiteKey cite_N_1a
+          (ConsCiteKey cite_J_1
+            (ConsCiteKey cite_J_12
+              (ConsCiteKey cite_T_10
+                (ConsCiteKey cite_T_11 BaseCiteKey))))))))

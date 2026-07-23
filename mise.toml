@@ -327,9 +327,11 @@ cargo run --quiet -p gandr-workflow-gates -- iu-pin --workspace-root .
 # """
 
 [tasks."docs:check"]
-description = "Parse=validate the specification corpus in docs/spec with the doc tool (gandr-fcw.8): id uniqueness, define-once, term/cite/provenance resolution, status presence"
+description = "Validate the .gfd specification corpus through the GF pipeline (gandr-5n6): lexicon freshness (the duplicate detector), term/cite/ref/provenance resolution at the mandatory checkExpr lane"
+depends = ["docs:gfd:grammar"]
 run = """
-cargo run --quiet -p gandr-workflow-docs --features=full -- check
+uv sync --project crates/gf-docs
+cargo run --quiet -p gandr-gf-docs --locked -- check-all
 """
 
 [tasks."docs:check-classes"]
@@ -339,9 +341,11 @@ cargo run --quiet -p gandr-workflow-docs --features=full -- check-docs
 """
 
 [tasks."docs:build"]
-description = "Build the no-JavaScript static HTML spec corpus into target/docs-spec (typst math/diagram leaves compiled to SVG via the pinned CLI)"
+description = "Build the no-JavaScript static HTML spec corpus from .gfd through the GF pipeline into target/docs-spec (typst math/diagram leaves compiled to SVG; gandr-5n6)"
+depends = ["docs:gfd:grammar"]
 run = """
-cargo run --quiet -p gandr-workflow-docs --features=full -- build
+uv sync --project crates/gf-docs
+cargo run --quiet -p gandr-gf-docs --locked -- build-all --out target/docs-spec
 """
 
 [tasks."docs:refs-yml"]
@@ -362,10 +366,15 @@ description = "Compile the corpus GF grammar to target/gf-docs/GandrDocsLex.pgf 
 depends = ["docs:gfd:toolchain"]
 run = "cargo run -p gandr-gf-docs --locked -- grammar"
 
-[tasks."docs:gfd:poc"]
-description = "Run the gf-docs PoC arc: cargo build, uv sync (pgf env), migrate component-vocabulary.xml to .gfd, checkExpr validation, render target/gf-docs/component-vocabulary.html (gandr-wrs)"
+[tasks."docs:gfd:corpus"]
+description = "Run the gf-docs corpus arc: uv sync (pgf env), lexicon freshness, checkExpr over the corpus, render all pages + the index to target/gf-docs/corpus-pages, gf-docs tests incl. the dual-run gate (gandr-5n6)"
 depends = ["docs:gfd:grammar"]
-run = "cargo run -p gandr-gf-docs --locked -- poc"
+run = """
+uv sync --project crates/gf-docs
+cargo run --quiet -p gandr-gf-docs --locked -- check-all
+cargo run --quiet -p gandr-gf-docs --locked -- build-all --out target/gf-docs/corpus-pages
+cargo nextest run -p gandr-gf-docs
+"""
 
 # Parked with the manual family (docs/manual/** aspirational; see docs:manual).
 # [tasks."docs:spike"]

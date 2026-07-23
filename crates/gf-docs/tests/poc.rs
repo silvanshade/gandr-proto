@@ -10,11 +10,14 @@ use core::error::Error;
 use std::path::PathBuf;
 
 use gandr_gf_docs::migrate::translate_file;
+use gandr_gf_docs::pipeline::PostContext;
 use gandr_gf_docs::pipeline::build_body;
 use gandr_gf_docs::pipeline::build_page;
 use gandr_gf_docs::pipeline::copy_fonts;
 use gandr_gf_docs::rt::GfRuntime as _;
 use gandr_gf_docs::rt::PyPgf;
+use gandr_workflow_docs::bibliography;
+use gandr_workflow_docs::typst_leaf;
 
 /// Shared result type for the `PoC` integration witnesses.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -45,6 +48,15 @@ fn runtime() -> Option<PyPgf>
         return None;
     }
     PyPgf::load(&pgf.to_string_lossy(), "GandrDocsLexHtml").ok()
+}
+
+/// The post-pass context against the repo's real bibliography and the shared
+/// leaf cache, or `None` when `refs.yml` is unavailable.
+fn context() -> Option<(bibliography::Bibliography, PathBuf)>
+{
+    let bibliography = bibliography::load(&repo_root().join("docs/spec/refs.yml")).ok()?;
+    let cache_dir = typst_leaf::default_cache_dir(&repo_root().join("target/gf-docs"));
+    Some((bibliography, cache_dir))
 }
 
 #[cfg(test)]
@@ -134,13 +146,14 @@ mod tests
     #[test]
     fn render_contains_clean_anchors_and_escaped_code() -> TestResult
     {
-        let Some(runtime) = runtime()
+        let (Some(runtime), Some((bibliography, cache_dir))) = (runtime(), context())
         else {
             eprintln!("skip: PoC environment unprovisioned");
             return Ok(());
         };
+        let context = PostContext::new(&bibliography, &cache_dir);
         let gfd = translate_file(&xml_path())?;
-        let body = build_body(&runtime, &gfd)?;
+        let body = build_body(&runtime, &gfd, &context)?;
         for expected in [
             "id=\"cv-overview\"",
             "href=\"#term-component\"",
@@ -172,13 +185,14 @@ mod tests
     #[test]
     fn page_shell_carries_design_language_contract() -> TestResult
     {
-        let Some(runtime) = runtime()
+        let (Some(runtime), Some((bibliography, cache_dir))) = (runtime(), context())
         else {
             eprintln!("skip: PoC environment unprovisioned");
             return Ok(());
         };
+        let context = PostContext::new(&bibliography, &cache_dir);
         let gfd = translate_file(&xml_path())?;
-        let page = build_page(&runtime, &gfd, "component-vocabulary")?;
+        let page = build_page(&runtime, &gfd, "component-vocabulary", &context)?;
         for expected in [
             "<title>The component vocabulary</title>",
             "<meta name=\"viewport\"",

@@ -1,0 +1,216 @@
+MkComponent
+  anchor_certificate_composition
+  "Certificate composition: the produoidal normal form and polarized boundaries"
+  StatusAdoptedUnbuilt
+  (ConsAnchor anchor_sequent_kernel
+    (ConsAnchor anchor_vdc_reflection BaseAnchor))
+  (ConsAnchor anchor_spec_index BaseAnchor)
+  (ConsSection (MkSection
+       anchor_cert_overview
+       "Overview and the decision"
+       InheritSectionStatus
+       (ConsBlock (ProseBlock
+            (ConsInline (Txt "The engine composes")
+              (ConsInline (TermRef term_certificate)
+                (ConsInline (Txt
+                     "s in two lanes — an unconditional coherence lane for invertible certificates and a directed lane gated by variable-flow acyclicity — whose operational face and realization are homed in the")
+                  (ConsInline (TermRef term_reflection_face)
+                    (ConsInline (Txt
+                         "component and crate theory-computads. This component is the decision record for where that two-mode design is headed: its formal home, its coherence obligations, and the boundary discipline that makes most of the laxness disappear. The decision has three clauses. First, the two-mode algebra targets the produoidal algebra of process decomposition")
+                      (ConsInline (CiteRef cite_S_8)
+                        (ConsInline (Txt
+                             "— the normal form of a category carrying sequential and parallel composition as interacting virtual structures — rather than a bespoke two-mode algebra: normalization, a canonical target with a universal property, and the full coherence-equation base all come off the shelf. Second, certificate boundaries acquire a polarity discipline: on purely polarized boundaries the two composition modes coincide definitionally and the interchange laxator is never consulted, so only mixed certificates pay the lax, one-directional interchange. Third, the adopted end-state is the message-theory presentation of the thesis")
+                          (ConsInline (CiteRef cite_S_9)
+                            (ConsInline (Txt
+                                 "— a finite presentation with decidable, linear-time normal forms — superseding the polarized-collapse fragment of the proceedings version as the aim.")
+                              BaseInline))))))))))
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt
+                   "Source ranking is part of the record, because the three texts differ in load-bearing content: the thesis")
+                (ConsInline (CiteRef cite_S_9)
+                  (ConsInline (Txt
+                       "is the primary citation and the implementation source (the theorem numbers cited below join to it verbatim); the proceedings version")
+                    (ConsInline (CiteRef cite_S_8)
+                      (ConsInline (Txt
+                           "is venue-of-record; the full version (arXiv:2301.11867) is the companion for the splice-arrow coend proofs and carries the coherence-equation appendix the proceedings omit. The content of this record is distilled from a commissioned seven-source polarization and focusing sweep and its extension round across the same author's corpus; the ruled-out routes are recorded alongside the adopted one, with their re-opening conditions, because the negatives are provenance the design cannot recover once dropped.")
+                        BaseInline))))))
+           BaseBlock)))
+    (ConsSection (MkSection
+         anchor_cert_produoidal
+         "The produoidal reading of the two modes"
+         InheritSectionStatus
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt "A")
+                (ConsInline (TermDef term_produoidal_category "produoidal category")
+                  (ConsInline (Txt
+                       "is a category equipped with two interacting promonoidal — virtual — structures: a sequential composition (◁, with unit N) and a parallel composition (⊗, with unit I), related by interchange maps that are lax and directed. This is definitionally the situation of certificate composition: chaining derived transformations along a shared")
+                    (ConsInline (TermRef term_cut)
+                      (ConsInline (Txt
+                           "seam is the sequential mode, juxtaposing certificates across independent seams is the parallel mode, and neither operation need be represented by an actual tensor on the")
+                        (ConsInline (TermRef term_cell_store)
+                          (ConsInline (Txt "— the structures are virtual in exactly the sense the")
+                            (ConsInline (TermRef term_virtual_double_category)
+                              (ConsInline (Txt "reading of the engine already commits to. The")
+                                (ConsInline (TermDef term_interchange_laxator "interchange laxator")
+                                  (ConsInline (Txt
+                                       "ψ₂ — the canonical map from a parallel composite of sequential composites to a sequential composite of parallel composites — is the whole interaction, available in closed form.")
+                                    BaseInline))))))))))))
+           (ConsBlock (PlainCodeBlock
+                "text"
+                "sequential:  (◁, N)   — chaining along a shared cut seam        (virtual / promonoidal)\nparallel:    (⊗, I)   — juxtaposition across independent seams  (virtual / promonoidal)\ninterchange: ψ₂ : (a ◁ b) ⊗ (c ◁ d) → (a ⊗ c) ◁ (b ⊗ d)         — lax, directed, never inverted\nnormal form: identifies the units I ≅ N; only the unit laxators become invertible")
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt "Adopting the normal form buys three things off the shelf.")
+                    (ConsInline (TermDef term_produoidal_normalization "Produoidal normalization")
+                      (ConsInline (Txt
+                           "— identifying the sequential and parallel units — is a free idempotent monad with closed-form unit bookkeeping (thesis Thm 4.2/4.3 in the proceedings numbering), which gives the engine's unit lemmas a principled home instead of an ad-hoc collection. The normalized target is canonical: monoidal contexts, equivalently lenses, with a universal property (Thm 5.4) — the produoidal answer to the canonicity complaint against process decompositions chosen by convention. And the coherence-equation base is printed in full (thesis App 0.1 Figs 1–5 with Rmk 3.1.2, lifted to the produoidal case by Rmk 3.3.3), so the equational theory the engine must respect is a checkable register, not folklore reconstructed from the duoidal literature.")
+                        BaseInline))))
+               BaseBlock))))
+      (ConsSection (MkSection
+           anchor_cert_laxness
+           "Laxness is structural: the coherence caveats"
+           InheritSectionStatus
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt
+                     "The laxness of ψ₂ is load-bearing and permanent: normalization inverts only the unit interchangers (thesis Def 3.4.2), ψ₂ itself stays a directed non-isomorphism even under the simpler symmetric normalization (§3.4.3), and the structural reason is recorded — the physical tensor is an inclusion of admissible orderings (Rmk 3.2.15), a poset subsumption, so a bidirectional interchange would erase genuine ordering information. The design consequence: the engine plans for lax interchange on mixed certificates as a permanent feature, never as a deficiency a cleverer normal form will remove.")
+                  BaseInline))
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "Two coherence cautions ride the adoption. The distinct-typing side-condition: produoidal coherence (Thm 4.1.8) guarantees at most one canonical derivation only between distinctly-typed boundaries; between boundaries with repeated types, parallel canonical maps are genuinely non-unique. And the duoidal doctrine item: duoidal categories are not coherent — there are two distinct canonical maps already at the units, and the failure locus is exactly the lax unit laxator combined with repeated units — so no construction may assume that two parallel composites around a lax laxator coincide. The escape hatch is the")
+                    (ConsInlineGlued (TermDef term_physical_profile "physical profile")
+                      (ConsInline (Txt
+                           ": an each-type-once boundary discipline under which the coherence theorem applies and canonical maps are unique. A composition-gate precondition may assume at-most-one coherence derivation only under distinct typing or an enforced physical profile — that is a checkable precondition candidate, not an ambient assumption.")
+                        BaseInline))))
+               BaseBlock)))
+        (ConsSection (MkSection
+             anchor_cert_polarization
+             "Polarized boundaries and the message-theory target"
+             InheritSectionStatus
+             (ConsBlock (ProseBlock
+                  (ConsInline (TermDef term_boundary_polarity "Boundary polarity")
+                    (ConsInline (Txt
+                         "marks each object on a certificate boundary as produced (!) or consumed (?). The payoff is the polarized collapse: on purely polarized boundaries, sequential and parallel composition of certificates agree — an equality, not a coherence map — so interchange is definitional and the laxator is never consulted (the proceedings state the fragment as Prop 6.5). Only mixed certificates — boundaries carrying both polarities across a seam — retain the lax, one-directional ψ₂. The discipline is a boundary annotation, derived like the rest of the cell metadata, never user-declared: the same elaboration that computes each cell's")
+                      (ConsInline (TermRef term_variance)
+                        (ConsInline (Txt
+                             "from its faces computes the polarity of its boundary objects, and the")
+                          (ConsInline (TermRef term_producer)
+                            (ConsInline (Txt "/")
+                              (ConsInline (TermRef term_consumer)
+                                (ConsInline (Txt
+                                     "orientation the command discipline already tracks is exactly the information the annotation records.")
+                                  BaseInline)))))))))
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt
+                         "The extension round upgrades the target from the polarized-collapse fragment to")
+                      (ConsInline (TermDef term_message_theory "message theories")
+                        (ConsInline (Txt
+                             "(thesis Def 4.1.1): a finite presentation — four generators, twelve axioms — of the polarized process algebra, with a coherence theorem (Thm 4.1.8), a polar-shuffle normal form whose acyclicity condition is decidable in linear time (Rmk 4.4.3), and an operadic characterization: message theories are precisely the algebras of the executable pShuf operand (Cor 4.4.12), self-contained with proofs. The linear-time acyclicity decision has the same shape as the directed lane's variable-flow gate — a static graph condition over the composed seam — which is the ground for expecting the gate to stay cheap as certificates scale. The session face is reserved rather than designed: the Session ⊣ Proc adjunction (Thm 4.5.9), with sessions characterized as lens combs (Prop 4.5.5), is the staged future reading for session-shaped certificate interfaces, recorded so that if the engine ever grows one, it grows toward this adjunction and not an ad-hoc protocol layer. The polar-shuffles lecture material")
+                          (ConsInline (CiteRef cite_S_7)
+                            (ConsInline (Txt
+                                 "joins to these theorem numbers verbatim and adds nothing normative beyond them.")
+                              BaseInline))))))
+                 BaseBlock)))
+          (ConsSection (MkSection
+               anchor_cert_metatheory
+               "The metatheory face of the two lanes"
+               InheritSectionStatus
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt
+                         "The two lanes are not two heuristics; each has a theorem behind it, and the pair is the restricted-cut story of the directed line")
+                      (ConsInline (CiteRef cite_Q_3)
+                        (ConsInline (Txt
+                             "read operationally. The coherence lane's unconditional composition is the groupoid lift: over groupoids, dinatural transformations always compose (the directed-dinaturality line's Thm 4.5), and completion-emitted joinability certificates are invertible by construction, so the lane is total on them. The statement is mechanized on the internal-univalence Agda face — the sequential-dinaturality lemma of its profunctor layer is the internal form of that theorem — which the corpus treats as the theorem-grade face of the lane, in the same division of labor the reflection face already uses for its groupoid escape. The directed lane's acyclicity gate is an admissibility criterion for a cut the doctrine-level calculus deliberately lacks (Thm 5.3): dinaturals do not compose in general, there is no unrestricted cut to inherit, and loop-freeness of the variable-flow graph — a criterion with proof-net pedigree")
+                          (ConsInline (CiteRef cite_Q_10)
+                            (ConsInline (Txt
+                                 "— is what readmits composition case by case. The gate is the operational face of restricted cut, not an engineering safeguard bolted onto a total operation.")
+                              BaseInline))))))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "A consumer instance is anticipated rather than claimed: when the")
+                        (ConsInline (TermRef term_completion)
+                          (ConsInline (Txt "work of the kernel's fusion track reaches its coherence layer,")
+                            (ConsInline (TermRef term_fusion_by_completion)
+                              (ConsInline (Txt
+                                   "becomes a client of exactly this metatheory — derived cells carry invertible joinability certificates, their composition lives on the coherence lane, and the lane's groupoid theorem is the reason the completion engine may compose them without consulting the gate. That instance lands with the completion engine, under its own")
+                                (ConsInlineGlued (TermRef term_phase_gates)
+                                  (ConsInline (Txt "; nothing here advances its schedule.")
+                                    BaseInline))))))))
+                   BaseBlock)))
+            (ConsSection (MkSection
+                 anchor_cert_negatives
+                 "Ruled-out routes, kept vocabulary, and re-opening conditions"
+                 InheritSectionStatus
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt
+                           "The sweep that produced this record evaluated seven sources — chiralities")
+                        (ConsInlineGlued (CiteRef cite_S_5)
+                          (ConsInline (Txt ", duploids")
+                            (ConsInlineGlued (CiteRef cite_S_6)
+                              (ConsInline (Txt ", context-free languages of string diagrams")
+                                (ConsInlineGlued (CiteRef cite_S_1)
+                                  (ConsInline (Txt ", graded monoidal categories")
+                                    (ConsInlineGlued (CiteRef cite_S_4)
+                                      (ConsInline (Txt ", premonoidal devices")
+                                        (ConsInlineGlued (CiteRef cite_S_3)
+                                          (ConsInline (Txt ", the produoidal algebra")
+                                            (ConsInlineGlued (CiteRef cite_S_8)
+                                              (ConsInline (Txt ", and polar shuffles")
+                                                (ConsInline (CiteRef cite_S_7)
+                                                  (ConsInline (Txt
+                                                       "— and the negatives are recorded with their mechanisms because the mechanisms name the re-opening conditions. Three distinct collapses killed the effectful-polarization frameworks against this setting: divergence (duploids — the polarity distinctions are generated by non-termination the certificate calculus lacks), interchange-satisfaction (devices — the framework's content is precisely the obstruction to interchange, and the certificate engine needs mediation, not obstruction), and reversibility (polar shuffles standalone — send/receive causality content dies under invertibility). An effectful-polarization framework derives its content from a failure that an invertible, total, interchange-satisfying setting does not have. The re-opening condition follows: if the engine ever admits non-invertible or effectful certificates, all three frameworks re-open on their own mechanisms. From the devices negative, two constructions are kept as vocabulary only: the interference-graph-to-minimal-device-set construction and the centralizer lattice.")
+                                                    BaseInline))))))))))))))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "The equipment route is declined with the thesis rather than against it: the thesis itself declines the proarrow-equipment formulation of context (§4.3.4), and Collages of String Diagrams")
+                          (ConsInline (CiteRef cite_S_2)
+                            (ConsInline (Txt
+                                 "is a verified hard negative for the reflection bridge — its bimodularity is two external actions on a collage, not two internal composition modes, and it contains no virtual-double-category, equipment, or multicategory contact. The consequence stands on its own line: the reflection bridge of the")
+                              (ConsInline (TermRef term_reflection_face)
+                                (ConsInline (Txt
+                                     "stays bespoke to this corpus; no published produoidal or collage structure supplies it. Two narrow keepers ride the negative: the functor-box calculus (Collages Thm 3.4, proven free), adopted as the ready diagrammatic syntax for the lax laxator when diagrams are drawn at all, and the pointed coend calculus behind it.")
+                                  BaseInline))))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt "The graded-monoidal route")
+                            (ConsInline (CiteRef cite_S_4)
+                              (ConsInline (Txt
+                                   "is the wrong axis, flipped: its grades combine along sequential composition, which is the discipline of the")
+                                (ConsInlineGlued (TermRef term_effect_row)
+                                  (ConsInline (Txt
+                                       "'s grading — the citable homes for that behavior are parametric effect monads")
+                                    (ConsInline (CiteRef cite_A_4)
+                                      (ConsInline (Txt "and effect-coeffect grading")
+                                        (ConsInline (CiteRef cite_F_3)
+                                          (ConsInline (Txt
+                                               "— not a second monoidal mode. One supporting positive from the sweep is recorded here because it validates an adjacent commitment: context-free languages of string diagrams are exactly the monoidal-functor images of regular languages with one extra state wire and no Dyck intersection (CFL Thm 6.6)")
+                                            (ConsInline (CiteRef cite_S_1)
+                                              (ConsInline (Txt
+                                                   "— the theorem-level form of the state-passing move the reflection face's discipline relies on. And one convergent pointer is kept for a future that may not arrive: the chiralities line and the produoidal reader independently converge on linearly-distributive and polarized categories (the Cockett–Seely line, held in the citation register's supporting-pointer block as unverified pointers) as the genuinely distributivity-shaped polarization — the right first read if a ⊕-with-distributor polarization is ever needed, and not before.")
+                                                BaseInline))))))))))))
+                       BaseBlock))))
+              (ConsSection (MkSection
+                   anchor_cert_consequences
+                   "Consequences for the engine and staging"
+                   InheritSectionStatus
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "Nothing here is retroactive. The two lanes, the derived cell metadata, and the acyclicity gate stand as realized;")
+                          (ConsInline (TermRef term_replay_equivalence)
+                            (ConsInline (Txt
+                                 "remains the certificate identity; the operational specification stays homed in the reflection-face component. What adoption changes, when the certificate track is next touched: unit bookkeeping routes through produoidal normalization rather than accumulating ad-hoc unit lemmas; cell metadata grows a boundary-polarity field beside the variance, linearity, and invertibility flags, derived by the same elaboration; composition on purely polarized boundaries short-circuits both the laxator and the gate, leaving the directed lane to mixed certificates; and any construction that wants coherence-uniqueness must first check distinct typing or the physical profile, because the duoidal doctrine item forbids assuming it. The staged growth target, in order: the normal form, the polarity field with the polarized short-circuit, the message-theory presentation with its linear-time normal form, and — reserved, unscheduled — the session adjunction. Each rung rides the kernel's own")
+                              (ConsInlineGlued (TermRef term_phase_gates)
+                                (ConsInline (Txt
+                                     "; this component is the adopted design record, and no produoidal structure is built.")
+                                  BaseInline))))))
+                     BaseBlock))
+                BaseSection)))))))
+  (ConsCiteKey cite_S_1
+    (ConsCiteKey cite_S_2
+      (ConsCiteKey cite_S_3
+        (ConsCiteKey cite_S_4
+          (ConsCiteKey cite_S_5
+            (ConsCiteKey cite_S_6
+              (ConsCiteKey cite_S_7
+                (ConsCiteKey cite_S_8
+                  (ConsCiteKey cite_S_9
+                    (ConsCiteKey cite_Q_3
+                      (ConsCiteKey cite_Q_10
+                        (ConsCiteKey cite_A_4
+                          (ConsCiteKey cite_F_3 BaseCiteKey)))))))))))))

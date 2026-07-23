@@ -35,10 +35,11 @@ impl Bibliography
         self.entries.get(&cite.key)
     }
 
-    /// Copy the stable keys for document-class validation.
+    /// Copy the stable keys for document-class validation and lexicon
+    /// generation (gandr-5n6).
     #[inline]
     #[must_use]
-    pub(crate) fn key_set(&self) -> BTreeSet<String>
+    pub fn key_set(&self) -> BTreeSet<String>
     {
         self.entries.keys().cloned().collect()
     }

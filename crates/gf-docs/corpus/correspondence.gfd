@@ -1,0 +1,92 @@
+MkComponent
+  anchor_correspondence
+  "The literature correspondence: gandr's lineage and citation record"
+  StatusPartial
+  BaseAnchor
+  (ConsAnchor anchor_spec_index
+    (ConsAnchor anchor_vdc_reflection BaseAnchor))
+  (ConsSection (MkSection
+       anchor_corr_overview
+       "The correspondence record"
+       InheritSectionStatus
+       (ConsBlock (ProseBlock
+            (ConsInline (Txt "A")
+              (ConsInline (TermDef term_literature_correspondence "literature correspondence")
+                (ConsInline (Txt
+                     "is a one-line entry binding a gandr construct to the external categorical or type-theoretic line it descends from, is contrasted against, or is bounded by. This component is the standing home for the lineage and citation notes routed out of the internal-univalence feedback ledger under the owner's all-absorb decision: it records where a construct's design is authorized by, corrected against, or fenced by published work, kept apart from the technical components so a citation lands as one honest sentence rather than a re-derivation. It is a growing record — each correspondence lands when the track it annotates is next touched — so its status is partial by construction.")
+                  BaseInline))))
+         BaseBlock))
+    (ConsSection (MkSection
+         anchor_corr_vdc_lineage
+         "Lineage of the reflection face: the virtual line, not Ruit's"
+         InheritSectionStatus
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt "gandr's")
+                (ConsInline (TermRef term_reflection_face)
+                  (ConsInline (Txt
+                       "— an inert reflection layer with no protype-composition primitive — descends from the")
+                    (ConsInlineGlued (TermDef term_virtual_line "virtual line")
+                      (ConsInline (Txt
+                           ": the Cruttwell–Shulman generalized multicategories that first presented the")
+                        (ConsInline (TermRef term_virtual_double_category)
+                          (ConsInline (Txt "by its units-and-restrictions universal property")
+                            (ConsInlineGlued (CiteRef cite_Q_8)
+                              (ConsInline (Txt ", and the New–Licata VETT hyperdoctrine of virtual equipments")
+                                (ConsInlineGlued (CiteRef cite_Q_5)
+                                  (ConsInline (Txt
+                                       ", with the Riehl–Verity §11.3 virtual-equipment presentation in the same pedigree. It is specifically not Ruit's multiple ∞-categories")
+                                    (ConsInline (CiteRef cite_Q_16)
+                                      (ConsInlineGlued (CiteRef cite_Q_17)
+                                        (ConsInline (Txt
+                                             ", which are symmetric — every direction Segal-composes — so the composition primitive they carry is exactly the one the virtual line, and gandr's reflection face after it, deliberately withholds. internal-univalence made the same correction to its own design record on 2026-07-15.")
+                                          BaseInline)))))))))))))))
+           BaseBlock))
+      (ConsSection (MkSection
+           anchor_corr_universe_axis
+           "The universe axis is not a Π-former"
+           InheritSectionStatus
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt
+                     "For a future \"models of the conjectured type theory\" story, the missing ingredient is not a fixed universe level. Ruit's α-power object")
+                  (ConsInline (CiteRef cite_Q_16)
+                    (ConsInline (Txt
+                         "is a classifier — a free α-cocompletion — not a Π-former, so the universe axis instead wants a")
+                      (ConsInlineGlued (TermDef term_scale_as_ideal "scale-as-ideal")
+                        (ConsInline (Txt ": a")
+                          (ConsInline (TermRef term_protype)
+                            (ConsInline (Txt
+                                 "class closed under ⊙ and restriction, together with a classifying protype. The tabularity half of that structure is already gandr's")
+                              (ConsInline (TermRef term_tabulator)
+                                (ConsInline (Txt
+                                     "and its comprehension. Honest note: the power-object axis is unfinished upstream too — the construction is Ruit's outlook, in a paper in preparation — and the scale-as-ideal axis is parked on the internal-univalence side.")
+                                  BaseInline))))))))))
+             BaseBlock))
+        (ConsSection (MkSection
+             anchor_corr_structure_univalence
+             "The structure-univalence statement-shape precedent"
+             InheritSectionStatus
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt "Petrakis's univalent typoids")
+                    (ConsInline (CiteRef cite_Q_20)
+                      (ConsInline (Txt
+                           "are the canonical MLTT-native statement-shape precedent for the faithfulness half of gandr's ua-base:")
+                        (ConsInline (TermDef term_structure_univalence "structure-univalence")
+                          (ConsInline (Txt
+                               "— univalence-of-a-structure realized per type former as a J-only, axiom-free theorem (Def 4.1's round-trip map Ua : x≃y → x=y, with the closure theorems product Thm 4.7 and exponential Prop 5.1). It is a template and a vocabulary, not an import, under one load-bearing caveat: Def 4.1 targets the carrier's ambient identity type, which is degenerate over decidable codes — Hedberg's theorem makes that identity type propositional and collapses the proof-relevant ≃ — so the direction relevant to gandr is the typoid-function-as-equivalence (Rezk-completion) one the paper names but does not develop; no normal-form, decidability, or coherence machinery is inherited from it. This work is registered in the consolidated literature register (bibliography-v2 Q-20); this entry cites that registration rather than duplicating it.")
+                            BaseInline))))))
+               BaseBlock))
+          (ConsSection (MkSection
+               anchor_corr_scope
+               "Scope and non-goals"
+               InheritSectionStatus
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt
+                         "The entries here are correspondences and lineage, never specifications: each records a relationship to external work, and the authoritative design for any construct remains in its technical component and the ADRs behind it. The record is partial by design — it carries the lineage and citation entries whose tracks have been touched, and further correspondences land as their tracks do. Where a routed source is not present in the consolidated literature register (for instance the Riehl–Verity virtual-equipment presentation named above), it appears as prose lineage rather than a formal citation, and its registration is a separate register decision.")
+                      BaseInline))
+                 BaseBlock))
+            BaseSection)))))
+  (ConsCiteKey cite_Q_5
+    (ConsCiteKey cite_Q_8
+      (ConsCiteKey cite_Q_16
+        (ConsCiteKey cite_Q_17
+          (ConsCiteKey cite_Q_20 BaseCiteKey)))))

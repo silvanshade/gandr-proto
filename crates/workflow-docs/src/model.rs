@@ -461,6 +461,19 @@ pub struct CiteKey
     pub key: String,
 }
 
+impl CiteKey
+{
+    /// Build a cite key from its stable corpus spelling.
+    #[inline]
+    #[must_use]
+    pub fn new(key: &str) -> Self
+    {
+        Self {
+            key: key.to_owned(),
+        }
+    }
+}
+
 /// A math leaf carrying typst source.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]

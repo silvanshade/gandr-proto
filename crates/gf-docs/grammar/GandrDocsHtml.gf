@@ -1,24 +1,34 @@
 concrete GandrDocsHtml of GandrDocs = {
+  param
+    -- whether an anchor list carries at least one edge
+    Presence = Absent | Present ;
   lincat
-    Component , Section , Block , Inline , Production , MathRow , Item , Status = Str ;
+    Component , Section , Block , Inline , Production , MathRow , Item , Status , SectionStatus , ListOrder = Str ;
     Cell = { th , td : Str } ;
     [Cell] = { th , td : Str } ;
     Row = Str ;
     Term = { key , text : Str } ;
     Anchor = { id , title : Str } ;
     CiteKey = { key : Str } ;
+    [Anchor] = { s , pfx : Str ; ne : Presence } ;
+    [CiteKey] = { s : Str ; ne : Presence } ;
   lin
-    MkComponent a t st _grounds _der secs refs =
+    MkComponent a t st grounds derives secs refs =
+      "<p><a href=\"spec-index.html\">&larr; corpus</a></p>" ++
       "<h1>" ++ "​" ++ t.s ++ "​" ++ "</h1>" ++
       "<p class=\"status-chip status-" ++ "​" ++ st ++ "​" ++ "\">" ++ "​" ++ st ++ "​" ++ "</p>" ++
+      prov grounds "grounds" derives "derives" ++
       secs.s ++
-      "<h2>References</h2><ul class=\"refs\">" ++ "​" ++ refs.s ++ "​" ++ "</ul>" ;
-    MkSection a t bs = "<section id=\"" ++ "​" ++ a.id ++ "​" ++ "\"><h2>" ++ "​" ++ t.s ++ "​" ++ "</h2>" ++ bs.s ++ "​" ++ "</section>" ;
+      refsBlock refs ;
+    MkSection a t sst bs = "<section id=\"" ++ "​" ++ a.id ++ "​" ++ "\"><h2>" ++ "​" ++ t.s ++ "​" ++ "</h2>" ++ sst ++ bs.s ++ "​" ++ "</section>" ;
+    NestedSection s = s ;
     StatusBuilt = "built" ;
     StatusPartial = "partial" ;
     StatusAdoptedUnbuilt = "adopted-unbuilt" ;
     StatusDesignPass = "design-pass" ;
     StatusDormant = "dormant" ;
+    InheritSectionStatus = "" ;
+    WithSectionStatus st = "<span class=\"status-chip status-" ++ "​" ++ st ++ "​" ++ "\">" ++ "​" ++ st ++ "​" ++ "</span>" ;
     ProseBlock xs = "<p>" ++ "​" ++ xs.s ++ "​" ++ "</p>" ;
     DefinitionBlock a t xs =
       "<div class=\"definition\" id=\"" ++ "​" ++ a.id ++ "​" ++ "\"><p><strong>Definition</strong> (<dfn id=\"term-" ++ "​" ++ t.key ++ "​" ++ "\">" ++ "​" ++ t.text ++ "​" ++ "</dfn>). " ++ xs.s ++ "​" ++ "</p></div>" ;
@@ -29,12 +39,18 @@ concrete GandrDocsHtml of GandrDocs = {
     RuleBlock a name prem conc =
       "<div class=\"rule\" id=\"" ++ "​" ++ a.id ++ "​" ++ "\"><h3>" ++ "​" ++ name.s ++ "​" ++ "</h3>" ++ prem.s ++ "<div class=\"conclusion\">" ++ conc ++ "​" ++ "</div></div>" ;
     InventoryBlock cap hdr rows =
-      "<figure class=\"table\"><table><thead>" ++ hdr ++ "</thead><tbody>" ++ rows.s ++ "</tbody></table><figcaption>" ++ "​" ++ cap.s ++ "​" ++ "</figcaption></figure>" ;
+      "<figure class=\"table inventory\"><table><thead>" ++ hdr ++ "</thead><tbody>" ++ rows.s ++ "</tbody></table><figcaption>" ++ "​" ++ cap.s ++ "​" ++ "</figcaption></figure>" ;
+    StagingPlanBlock cap hdr rows =
+      "<figure class=\"table staging-plan\"><table><thead>" ++ hdr ++ "</thead><tbody>" ++ rows.s ++ "</tbody></table><figcaption>" ++ "​" ++ cap.s ++ "​" ++ "</figcaption></figure>" ;
+    DecisionTableBlock cap hdr rows =
+      "<figure class=\"table decision-table\"><table><thead>" ++ hdr ++ "</thead><tbody>" ++ rows.s ++ "</tbody></table><figcaption>" ++ "​" ++ cap.s ++ "​" ++ "</figcaption></figure>" ;
     MkHeaderRow cs = "<tr>" ++ "​" ++ cs.th ++ "​" ++ "</tr>" ;
     MkBodyRow cs = "<tr>" ++ "​" ++ cs.td ++ "​" ++ "</tr>" ;
     MkCell xs = { th = "<th>" ++ "​" ++ xs.s ++ "​" ++ "</th>" ; td = "<td>" ++ "​" ++ xs.s ++ "​" ++ "</td>" } ;
-    RegisterBlock items = "<ol>" ++ "​" ++ items.s ++ "​" ++ "</ol>" ;
-    PlainRegisterBlock items = "<ul>" ++ "​" ++ items.s ++ "​" ++ "</ul>" ;
+    RegisterBlock ord items = "<" ++ "​" ++ ord ++ "​" ++ ">" ++ "​" ++ items.s ++ "​" ++ "</" ++ "​" ++ ord ++ "​" ++ ">" ;
+    PlainRegisterBlock ord items = "<" ++ "​" ++ ord ++ "​" ++ ">" ++ "​" ++ items.s ++ "​" ++ "</" ++ "​" ++ ord ++ "​" ++ ">" ;
+    OrderedList = "ol" ;
+    UnorderedList = "ul" ;
     MkItem lead xs = "<li><strong>" ++ "​" ++ lead.s ++ "​" ++ "</strong> — " ++ xs.s ++ "​" ++ "</li>" ;
     MkPlainItem xs = "<li>" ++ "​" ++ xs.s ++ "​" ++ "</li>" ;
     ApiCodeBlock lang payload = "<pre><code class=\"lang-" ++ "​" ++ lang.s ++ " api\">" ++ "​" ++ payload.s ++ "​" ++ "</code></pre>" ;
@@ -70,8 +86,27 @@ concrete GandrDocsHtml of GandrDocs = {
     ConsRow x xs = { s = x ++ xs.s } ;
     BaseItem = { s = "" } ;
     ConsItem x xs = { s = x ++ xs.s } ;
-    BaseCiteKey = { s = "" } ;
-    ConsCiteKey x xs = { s = "<li id=\"ref-" ++ "​" ++ x.key ++ "​" ++ "\">[" ++ "​" ++ x.key ++ "​" ++ "]</li>" ++ xs.s } ;
-    BaseAnchor = { s = "" } ;
-    ConsAnchor x xs = { s = x.id ++ xs.s } ;
+    BaseCiteKey = { s = "" ; ne = Absent } ;
+    ConsCiteKey x xs = { s = "<li id=\"ref-" ++ "​" ++ x.key ++ "​" ++ "\">[" ++ "​" ++ x.key ++ "​" ++ "]</li>" ++ xs.s ; ne = Present } ;
+    BaseAnchor = { s = "" ; pfx = "" ; ne = Absent } ;
+    ConsAnchor x xs = { s = x.id ++ xs.pfx ++ xs.s ; pfx = "​," ; ne = Present } ;
+  oper
+    -- the provenance line: one mono paragraph naming the declared edges,
+    -- absent when both lists are empty (the legacy renderer's contract)
+    prov : { s : Str ; pfx : Str ; ne : Presence } -> Str -> { s : Str ; pfx : Str ; ne : Presence } -> Str -> Str =
+      \grounds , glabel , derives , dlabel ->
+        case <grounds.ne , derives.ne> of {
+          <Absent , Absent> => "" ;
+          <Present , Absent> => provP (edge glabel grounds.s) ;
+          <Absent , Present> => provP (edge dlabel derives.s) ;
+          <Present , Present> => provP (edge glabel grounds.s ++ edge dlabel derives.s)
+        } ;
+    edge : Str -> Str -> Str = \label , ids -> label ++ "​" ++ ":" ++ ids ;
+    provP : Str -> Str = \t -> "<p class=\"mono\">" ++ "​" ++ t ++ "​" ++ "</p>" ;
+    -- the references block: absent when the component declares no cite keys
+    refsBlock : { s : Str ; ne : Presence } -> Str = \refs ->
+      case refs.ne of {
+        Absent => "" ;
+        Present => "<h2>References</h2><ul class=\"refs\">" ++ "​" ++ refs.s ++ "​" ++ "</ul>"
+      } ;
 }

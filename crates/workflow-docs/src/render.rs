@@ -576,6 +576,9 @@ fn render_blocks(
 
 /// Render a per-component references list.
 ///
+/// Public for the `gf-docs` post-pass (gandr-5n6): the `GF` linearization
+/// emits bare keyed rows and the pipeline substitutes this exact rendering.
+///
 /// # Contract
 /// - requires: `keys` belongs to the validated bibliography supplied with the
 ///   render context.
@@ -588,7 +591,7 @@ fn render_blocks(
 /// - hypothesis: L3 pointwise — exact rows for DOI, arXiv, URL, and missing
 ///   optional fields distinguish every rendering branch.
 /// - witness: `render::tests::reference_rows_materialize_metadata_and_links`
-fn render_references(
+pub fn render_references(
     keys: &[CiteKey],
     bibliography: &Bibliography,
 ) -> String

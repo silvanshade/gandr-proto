@@ -13,6 +13,7 @@ use gandr_workflow_docs::model::CodeRole;
 use gandr_workflow_docs::model::Document;
 use gandr_workflow_docs::model::Inline;
 use gandr_workflow_docs::model::ListItem;
+use gandr_workflow_docs::model::Section;
 use gandr_workflow_docs::model::Status;
 use gandr_workflow_docs::model::TableCell;
 use gandr_workflow_docs::parse::parse_document;
@@ -25,8 +26,9 @@ use crate::sexp::Sexp;
 /// # Errors
 ///
 /// [`GfDocsError::Model`] when the legacy parser rejects the file;
-/// [`GfDocsError::Translation`] on a construct outside the `PoC` grammar
-/// (missing section id, multi-cite diagram, non-section top-level block).
+/// [`GfDocsError::Translation`] on a construct outside the grammar (missing
+/// section id, multi-cite diagram, expect-error code, non-section top-level
+/// block).
 #[inline]
 pub fn translate_file(path: &Path) -> Result<String, GfDocsError>
 {
@@ -49,7 +51,7 @@ fn translate(document: &Document) -> Result<Sexp, GfDocsError>
     let mut references = Vec::new();
     for block in &document.blocks {
         match *block {
-            | Block::Section(_) => sections.push(block),
+            | Block::Section(ref section) => sections.push(section),
             | Block::References(ref cites) => references.extend(cites.iter()),
             | _ => {
                 return Err(GfDocsError::Translation(format!(
@@ -61,14 +63,36 @@ fn translate(document: &Document) -> Result<Sexp, GfDocsError>
 
     Ok(Sexp::app("MkComponent", vec![
         Sexp::atom(anchor_const(&document.id)),
-        Sexp::atom(gf_str(&document.title)),
+        Sexp::atom(gf_str(&escape_text(&document.title))),
         Sexp::atom(status),
         anchor_list(&document.grounds),
         anchor_list(&document.derives),
-        list_of("Section", &sections, |&b| block_expr(b))?,
+        list_of("Section", &sections, |s| section_expr(s))?,
         list_of("CiteKey", &references, |c| {
             Ok(Sexp::atom(cite_const(&c.key)))
         })?,
+    ]))
+}
+
+/// Render one section as a constructor expression.
+fn section_expr(section: &Section) -> Result<Sexp, GfDocsError>
+{
+    let id = section
+        .id
+        .as_deref()
+        .ok_or_else(|| GfDocsError::Translation("section without id".into()))?;
+    let status = match section.status {
+        | Some(status) => Sexp::app("WithSectionStatus", vec![Sexp::atom(
+            status_const(status)
+                .ok_or_else(|| GfDocsError::Translation("unknown status variant".into()))?,
+        )]),
+        | None => Sexp::atom("InheritSectionStatus"),
+    };
+    Ok(Sexp::app("MkSection", vec![
+        Sexp::atom(anchor_const(id)),
+        Sexp::atom(gf_str(&escape_text(&section.title))),
+        status,
+        list_of("Block", &section.blocks, block_expr)?,
     ]))
 }
 
@@ -76,20 +100,10 @@ fn translate(document: &Document) -> Result<Sexp, GfDocsError>
 fn block_expr(block: &Block) -> Result<Sexp, GfDocsError>
 {
     Ok(match *block {
-        | Block::Section(ref section) => {
-            let id = section
-                .id
-                .as_deref()
-                .ok_or_else(|| GfDocsError::Translation("section without id".into()))?;
-            Sexp::app("MkSection", vec![
-                Sexp::atom(anchor_const(id)),
-                Sexp::atom(gf_str(&section.title)),
-                list_of("Block", &section.blocks, block_expr)?,
-            ])
-        },
+        | Block::Section(ref section) => Sexp::app("NestedSection", vec![section_expr(section)?]),
         | Block::Prose(ref inlines) => Sexp::app("ProseBlock", vec![inline_list(inlines)?]),
         | Block::Judgements(ref j) => Sexp::app("JudgementsBlock", vec![
-            Sexp::atom(gf_str(&j.title)),
+            Sexp::atom(gf_str(&escape_text(&j.title))),
             list_of("MathRow", &j.forms, |m| {
                 Ok(Sexp::app("MkMathRow", vec![Sexp::atom(gf_str(&m.source))]))
             })?,
@@ -111,7 +125,7 @@ fn block_expr(block: &Block) -> Result<Sexp, GfDocsError>
                 .ok_or_else(|| GfDocsError::Translation("rule without id".into()))?;
             Sexp::app("RuleBlock", vec![
                 Sexp::atom(anchor_const(id)),
-                Sexp::atom(gf_str(&rule.name)),
+                Sexp::atom(gf_str(&escape_text(&rule.name))),
                 list_of("MathRow", &rule.premises, |m| {
                     Ok(Sexp::app("MkMathRow", vec![Sexp::atom(gf_str(&m.source))]))
                 })?,
@@ -148,46 +162,62 @@ fn block_expr(block: &Block) -> Result<Sexp, GfDocsError>
             };
             Sexp::app("DiagramBlock", vec![
                 Sexp::atom(anchor_const(&diagram.id)),
-                Sexp::atom(gf_str(&diagram.caption)),
+                Sexp::atom(gf_str(&escape_text(&diagram.caption))),
                 Sexp::atom(cite),
                 Sexp::atom(gf_str(&diagram.source)),
             ])
         },
-        | Block::Code(ref code) => match (code.role, code.expect_output.as_ref()) {
-            | (CodeRole::Api, _) => Sexp::app("ApiCodeBlock", vec![
-                Sexp::atom(gf_str(&code.language)),
-                Sexp::atom(gf_str(&code.text)),
-            ]),
-            | (CodeRole::Example, Some(expect)) => Sexp::app("ExpectCodeBlock", vec![
-                Sexp::atom(gf_str(&code.language)),
-                Sexp::atom(gf_str(expect)),
-                Sexp::atom(gf_str(&code.text)),
-            ]),
-            | (CodeRole::Example, None) => Sexp::app("PlainCodeBlock", vec![
-                Sexp::atom(gf_str(&code.language)),
-                Sexp::atom(gf_str(&code.text)),
-            ]),
-            | _ => {
+        | Block::Code(ref code) => {
+            if code.expect_error.is_some() {
                 return Err(GfDocsError::Translation(
-                    "unknown code role (model evolved)".into(),
+                    "expect-error code block is outside the grammar".into(),
                 ));
-            },
+            }
+            match (code.role, code.expect_output.as_ref()) {
+                | (CodeRole::Api, _) => Sexp::app("ApiCodeBlock", vec![
+                    Sexp::atom(gf_str(&code.language)),
+                    Sexp::atom(gf_str(&code.text)),
+                ]),
+                | (CodeRole::Example, Some(expect)) => Sexp::app("ExpectCodeBlock", vec![
+                    Sexp::atom(gf_str(&code.language)),
+                    Sexp::atom(gf_str(expect)),
+                    Sexp::atom(gf_str(&code.text)),
+                ]),
+                | (CodeRole::Example, None) => Sexp::app("PlainCodeBlock", vec![
+                    Sexp::atom(gf_str(&code.language)),
+                    Sexp::atom(gf_str(&code.text)),
+                ]),
+                | _ => {
+                    return Err(GfDocsError::Translation(
+                        "unknown code role (model evolved)".into(),
+                    ));
+                },
+            }
         },
         | Block::Example(ref example) => Sexp::app("ExampleBlock", vec![
-            Sexp::atom(gf_str(&example.title)),
+            Sexp::atom(gf_str(&escape_text(&example.title))),
             list_of("Block", &example.blocks, block_expr)?,
         ]),
         | Block::List(ref list) => {
-            let items = list_of("Item", &list.items, item_expr)?;
-            if list.ordered {
-                Sexp::app("RegisterBlock", vec![items])
+            let order = if list.ordered {
+                "OrderedList"
             }
             else {
-                Sexp::app("PlainRegisterBlock", vec![items])
+                "UnorderedList"
+            };
+            let constructor = if list.items.iter().any(|item| item.lead.is_some()) {
+                "RegisterBlock"
             }
+            else {
+                "PlainRegisterBlock"
+            };
+            Sexp::app(constructor, vec![
+                Sexp::atom(order),
+                list_of("Item", &list.items, item_expr)?,
+            ])
         },
         | Block::Table(ref table) => Sexp::app("InventoryBlock", vec![
-            Sexp::atom(gf_str(&table.caption)),
+            Sexp::atom(gf_str(&escape_text(&table.caption))),
             row_expr("MkHeaderRow", &table.header)?,
             list_of("Row", &table.rows, |row| row_expr("MkBodyRow", &row.cells))?,
         ]),
@@ -209,7 +239,7 @@ fn item_expr(item: &ListItem) -> Result<Sexp, GfDocsError>
 {
     match item.lead.as_deref() {
         | Some(lead) => Ok(Sexp::app("MkItem", vec![
-            Sexp::atom(gf_str(lead)),
+            Sexp::atom(gf_str(&escape_text(lead))),
             inline_list(&item.body)?,
         ])),
         | None => Ok(Sexp::app("MkPlainItem", vec![inline_list(&item.body)?])),
@@ -258,10 +288,12 @@ fn inline_list(inlines: &[Inline]) -> Result<Sexp, GfDocsError>
 fn inline_expr(inline: &Inline) -> Result<Sexp, GfDocsError>
 {
     Ok(match *inline {
-        | Inline::Text(ref text) => Sexp::app("Txt", vec![Sexp::atom(gf_str(&normalize(text)))]),
+        | Inline::Text(ref text) => Sexp::app("Txt", vec![Sexp::atom(gf_str(&escape_text(
+            &normalize(text),
+        )))]),
         | Inline::TermDef(ref def) => Sexp::app("TermDef", vec![
             Sexp::atom(term_const(&def.key)),
-            Sexp::atom(gf_str(&def.text)),
+            Sexp::atom(gf_str(&escape_text(&def.text))),
         ]),
         | Inline::TermRef(ref reference) => {
             Sexp::app("TermRef", vec![Sexp::atom(term_const(&reference.key))])
@@ -334,7 +366,7 @@ fn mangle(key: &str) -> String
 }
 
 /// Quote text as a `GF` string literal.
-fn gf_str(text: &str) -> String
+pub(crate) fn gf_str(text: &str) -> String
 {
     let mut out = String::with_capacity(text.len().saturating_add(2));
     out.push('"');
@@ -357,6 +389,27 @@ fn gf_str(text: &str) -> String
 fn normalize(text: &str) -> String
 {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// `HTML`-escape text-destined content (`& < >`).
+///
+/// The legacy corpus's prose is plain text the old renderer escaped at
+/// render time; the new pipeline emits `Txt` leaves raw (raw markup in prose
+/// is an authoring error — `docs/workflow/gfd.md`). The faithful boundary is
+/// therefore here: the translator escapes exactly once (the legacy parser
+/// already decoded entities), so migrated prose stays text.
+pub(crate) fn escape_text(text: &str) -> String
+{
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            | '&' => out.push_str("&amp;"),
+            | '<' => out.push_str("&lt;"),
+            | '>' => out.push_str("&gt;"),
+            | other => out.push(other),
+        }
+    }
+    out
 }
 
 /// The canonical constructor name for a lifecycle status.

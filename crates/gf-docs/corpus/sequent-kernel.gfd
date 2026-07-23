@@ -1,0 +1,440 @@
+MkComponent
+  anchor_sequent_kernel
+  "The sequent kernel: the polarized L command IL, machine, and fusion engine (phases L0-L2)"
+  StatusPartial
+  (ConsAnchor anchor_core_ir
+    (ConsAnchor anchor_host_effect_seam
+      (ConsAnchor anchor_vdc_reflection BaseAnchor)))
+  (ConsAnchor anchor_spec_index BaseAnchor)
+  (ConsSection (MkSection
+       anchor_sk_overview
+       "Overview and decisions"
+       InheritSectionStatus
+       (ConsBlock (ProseBlock
+            (ConsInline (Txt "The sequent kernel adopts a")
+              (ConsInline (TermDef term_command_il "polarized command IL")
+                (ConsInline (Txt
+                     "— a System-L (lambda-mu-mu-tilde) intermediate language whose producers, consumers, and commands are first-class, arena-resident, inspectable IR — as gandr's machine-and-optimization IL, beside the frozen call-by-push-value core")
+                  (ConsInlineGlued (CiteRef cite_A_1a)
+                    (ConsInline (Txt
+                         ", which remains the source and typing calculus. A static focusing translation bridges them. The correspondence is established: polarized L is call-by-push-value in sequent form")
+                      (ConsInline (CiteRef cite_A_19)
+                        (ConsInlineGlued (CiteRef cite_A_17)
+                          (ConsInline (Txt
+                               ", and the machine gandr already had is sequent-shaped, so the kernel reifies existing structure rather than replacing it")
+                            (ConsInlineGlued (CiteRef cite_A_20)
+                              (ConsInline (Txt ".")
+                                BaseInline)))))))))))
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt
+                   "This component absorbs the three additive phases the kernel work builds on. Phase L0 reifies the command IL and the focusing translation; phase L1 runs the focused IL on the")
+                (ConsInline (TermDef term_l_machine "L machine")
+                  (ConsInline (Txt
+                       "— the iterative, first-order, arena-native driver — over a two-region store, executing the full effect and control surface; phase L2 is a fusion engine over command seams, the reserved rule 2-cells completed into a convergent system whose derived cells carry replayable certificates. Phase L3, named but not decided, is an explicit, evidence-gated promotion decision. No phase touches the frozen core before L3. A deferred glued-NbE re-sequencing rides the same machine.")
+                    BaseInline))))
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt
+                     "The reboot carries L0 as built and L1 as partial (crate core-sequent) and the L2 fusion engine as built (crate theory-computads), beside the frozen core and touching no frozen-core code: the kernel consumes the public core-checker surface, and the fusion engine consumes the public command-IL vocabulary, read-only. The later closures lane and glued NbE are absorbed here as design records, not yet shipped code.")
+                  BaseInline))
+             BaseBlock))))
+    (ConsSection (MkSection
+         anchor_sk_il
+         "The kernel IL"
+         InheritSectionStatus
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt "Three syntactic categories. A")
+                (ConsInline (TermDef term_producer "producer")
+                  (ConsInline (Txt "p introduces values and captures contexts; a")
+                    (ConsInline (TermDef term_consumer "consumer")
+                      (ConsInline (Txt
+                           "c is a covariable, a binder, a destructor frame, a pattern match, or the terminal consumer; a")
+                        (ConsInline (TermDef term_command "command")
+                          (ConsInline (Txt
+                               "s is a cut carrying a polarity, a native operation, or a top-level jump. Every node is arena-resident and binders close over environments, never host closures.")
+                            BaseInline))))))))
+           (ConsBlock (GrammarBlock
+                (ConsProduction (MkProduction
+                     "p"
+                     "x | lit | μα. s | K(p̄; c̄) | cocase { D(x̄; ᾱ) ⇒ s, … }")
+                  (ConsProduction (MkProduction
+                       "c"
+                       "α | μ̃x. s | D(p̄; c̄) | case { K(x̄; ᾱ) ⇒ s, … } | ★")
+                    (ConsProduction (MkProduction "s" "⟨p |ε c⟩ | prim(p̄; c̄) | f(p̄; c̄)")
+                      BaseProduction))))
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt "A")
+                    (ConsInline (TermDef term_cut "cut")
+                      (ConsInline (Txt
+                           "⟨p |ε c⟩ is the machine's redex site: it carries a polarity ε and requires the producer and consumer to meet at the same type, with ε matching that type's polarity. Mixed argument lists are semicolon-separated (producers before consumers); a destructor's trailing consumer is its return continuation, so a stack frame is a covalue. The IL's own discipline is the two-sided sequent (internal to core-sequent, a debug-assertion face used by the differential harness, not the user-facing gate):")
+                        BaseInline))))
+               (ConsBlock (JudgementsBlock
+                    "Two-sided IL typing"
+                    (ConsMathRow (MkMathRow "Gamma tack.r p : A | Delta")
+                      (ConsMathRow (MkMathRow "Gamma | c : A tack.r Delta")
+                        (ConsMathRow (MkMathRow "Gamma tack.r s tack.r Delta")
+                          BaseMathRow))))
+                 BaseBlock)))))
+      (ConsSection (MkSection
+           anchor_sk_focusing
+           "Focusing: the core-to-command translation"
+           InheritSectionStatus
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt "Surface elaboration continues to target the frozen core. A static")
+                  (ConsInline (TermDef term_focusing "focusing")
+                    (ConsInline (Txt
+                         "translation takes checked core computations to focused commands; it is the only entry into the IL, so the machine only ever sees focused states (progress holds only for focused commands — un-focused input can be stuck). Focusing is administrative-redex-avoiding and total on well-formed core terms — a phase-L0 gate — and is itself differentially anchored (a checked term and its focused image denote the same observable outcome).")
+                      BaseInline))))
+             (ConsBlock (PlainCodeBlock
+                  "text"
+                  "𝓕⟦ret v⟧ α          = ⟨𝓥⟦v⟧ | α⟩\n𝓕⟦let x ← t; u⟧ α   = 𝓕⟦t⟧ (μ̃x. 𝓕⟦u⟧ α)          -- Bind is μ̃\n𝓕⟦t v⟧ α            = 𝓕⟦t⟧ (ap(𝓥⟦v⟧; α))          -- application is the ap destructor\n𝓕⟦λx. t⟧            = cocase { ap(x; α) ⇒ 𝓕⟦t⟧ α } -- the IL-internal function representation\n𝓕⟦force v⟧ α        = ⟨𝓥⟦v⟧ | force(α)⟩           -- the U-shift destructor\n𝓕⟦case v {…}⟧ α     = ⟨𝓥⟦v⟧ | case { K(x̄) ⇒ 𝓕⟦tᵢ⟧ α, … }⟩")
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt
+                         "Two spec-anchored correspondences the reboot pins: a stack frame is a consumer (the argument coterm is ap, the bind continuation is μ̃, a projection is a destructor), and a lambda or lazy pair is a cocase (negative introduction eliminated by copatterns). Two classical wins arrive free: case-of-case (commuting conversions are plain μ-reductions, no pass) and label/goto as derived forms (μ is lexically-scoped context capture).")
+                      BaseInline))
+                 BaseBlock))))
+        (ConsSection (MkSection
+             anchor_sk_machine
+             "The L machine and its store"
+             InheritSectionStatus
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "The L machine is a flat loop over the cut cases — iterative by construction, serializable and inspectable at every step (commands, consumers, and the store are all IR data). Each transition extends the environment; none substitutes textually. A terminal state is ⟨𝔭 | ★⟩.")
+                    BaseInline))
+               (ConsBlock (PlainCodeBlock
+                    "text"
+                    "⟨μα.s |ε c⟩       ↦  s  with env[α ↦ eval_c(c)]           (fires first when ε = +)\n⟨𝔭 |ε μ̃x.s⟩       ↦  s  with env[x ↦ eval_p(𝔭)]           (fires first when ε = −)\n⟨K(𝔭̄;𝔠̄) | case {…, K(x̄;ᾱ) ⇒ s, …}⟩  ↦  s  with env[x̄↦𝔭̄, ᾱ↦𝔠̄]\n⟨cocase {…, D(x̄;ᾱ) ⇒ s, …} | D(𝔭̄;𝔠̄)⟩ ↦  s  with env[x̄↦𝔭̄, ᾱ↦𝔠̄]\nprim(𝔭̄; c̄)       ↦  dispatch to the native registry, feeding results to c̄\nf(𝔭̄; c̄)          ↦  the body of f with env[params]        (a jump; no call stack)")
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "The")
+                        (ConsInline (TermDef term_two_region_store "two-region store")
+                          (ConsInline (Txt
+                               "pairs a persistent heap for duplicable values with a frame stack of addressable equation frames, under a shrink rule (returning through a covalue drops every frame allocated after it)")
+                            (ConsInlineGlued (CiteRef cite_A_31)
+                              (ConsInline (Txt
+                                   ". The store keeps the machine's own call-by-need semantics — a memo cell (unforced, in-progress, forced, with black-holing) is a stored negative binding with update-on-force. Residency is a per-cell store property, never a type former: grades inform initial placement (a heuristic) while an escape-promotion barrier carries soundness. L1 ships heap-everything behind a region-shaped API, so the machine differential measures the machine and not placement; the refined grade-to-region map is a gated follow-on.")
+                                BaseInline))))))
+                   BaseBlock))))
+          (ConsSection (MkSection
+               anchor_sk_glued_nbe
+               "Glued NbE re-sequenced onto the L machine"
+               (WithSectionStatus StatusDesignPass)
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt
+                         "Glued normalization-by-evaluation — the two-mechanism split of a syntactic face beside a semantic face — is re-sequenced onto the")
+                      (ConsInline (TermRef term_l_machine)
+                        (ConsInline (Txt
+                             "rather than the retired CEK oracle it was first framed against. The")
+                          (ConsInline (TermRef term_two_region_store)
+                            (ConsInline (Txt
+                                 "is the glue table: the syntactic face is the arena node graph, the semantic face is the forced-cell layer. Conversion checking, when it arrives with the levitation-stage-1 descriptions and the sized-types discipline of the negative surface, quotients size annotations under size-irrelevance. Building gluing once, on the machine that will keep it, avoids a CEK retrofit the L machine would immediately obsolete; the design takes the polarized-call-by-push-value NbE line as its reference")
+                              (ConsInlineGlued (CiteRef cite_A_37)
+                                (ConsInline (Txt
+                                     ". It is deferred, not built: no NbE face exists in the reboot yet, and the item stays queued behind the machine and the levitation-stage-1 landing.")
+                                  BaseInline))))))))
+                 BaseBlock))
+            (ConsSection (MkSection
+                 anchor_sk_strategy
+                 "Strategy as polarity orientation"
+                 InheritSectionStatus
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt
+                           "The command ⟨μα.s₁ | μ̃x.s₂⟩ is the fundamental critical pair: μ wants to capture the consumer, μ̃ wants to bind the producer, and the two results differ. The resolution is typed and local —")
+                        (ConsInlineGlued (TermDef term_polarity_orientation "polarity orientation")
+                          (ConsInline (Txt
+                               ": every cut carries ε, positive cuts give μ priority (call-by-value, data flows), negative cuts give μ̃ priority (call-by-name, demand flows). The type fixes ε, so determinism is restored per seam rather than by a global language switch, and an evaluation strategy becomes an orientation choice on a cell. Two consequences bind the engine: η-laws are strategy-tied (codata η only under call-by-name, data η only under call-by-value), and ε is always derivable from the type at elaboration, so the IL never guesses.")
+                            BaseInline))))
+                   BaseBlock))
+              (ConsSection (MkSection
+                   anchor_sk_effects
+                   "Effects and control as consumer patterns"
+                   InheritSectionStatus
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "The three existing control mechanisms translate into one shape — case analysis on the consumer side. A deep handler is a consumer case on operation constructors binding the resumption as a covalue; reset is a prompt covalue; shift captures the consumer up to it (μ-capture); break and continue are effect operations caught by loop handlers. Deep handlers re-install themselves in the captured resumption exactly as before, and the captured slice is first-class IL data rather than a name-keyed side table — strictly more inspectable.")
+                          BaseInline))
+                     (ConsBlock (PlainCodeBlock
+                          "text"
+                          "handler  H = handler { opᵢ(x̄; k) ⇒ sᵢ, …, return(x) ⇒ s₀ }   (a consumer)\nperform  ⟨op(𝔭̄) | H⟩  ↦  sᵢ with x̄ ↦ 𝔭̄, k ↦ the delimited resumption covalue\nreset    = a prompt covalue; shift captures the consumer up to it (μ-capture)")
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "The posture is translate, don't redesign: the surface (perform, handle, reset, shift, and the loop operations) is unchanged; only the machine realization becomes consumer-shaped. The")
+                              (ConsInline (TermRef term_host_effect_seam)
+                                (ConsInline (Txt "is unchanged by this translation. It is a")
+                                  (ConsInlineGlued (TermRef term_preserved_boundary)
+                                    (ConsInline (Txt
+                                         ": the L machine must present the identical host seam the earlier machine did, over the public value and effect-signature surface, so the headless host-effect runtime binds against the same contract regardless of which machine drives it.")
+                                      BaseInline))))))
+                         BaseBlock))))
+                (ConsSection (MkSection
+                     anchor_sk_fusion
+                     "Fusion by completion (phase L2)"
+                     InheritSectionStatus
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "Program transformation is ordinary rewriting in the IL, with certificates. The kernel's optimization layer is")
+                            (ConsInlineGlued (TermDef term_fusion_by_completion "fusion by completion")
+                              (ConsInline (Txt ": the reserved rule 2-cells of a data block — the surface")
+                                (ConsInline (TermRef term_directed_rewrite)
+                                  (ConsInline (Txt
+                                       "faces — elaborate to command rewrites; overlaps where two rewrites meet at a cut are bona-fide critical pairs; and a completion engine synthesizes derived, fused cells carrying replayable certificates, differential-tested against the two-step composite. There are no rewrite pragmas — the anti-pragma posture of the polygraph program (decision K5). This is completion over the convergent slice of a")
+                                    (ConsInlineGlued (TermRef term_polygraph_presentation)
+                                      (ConsInline (Txt ", and it is the optimization-time twin of the runtime")
+                                        (ConsInline (TermRef term_matching_modulo)
+                                          (ConsInline (Txt
+                                               "stance. It is engineered in crate theory-computads, the third purely-additive phase of the kernel: it consumes the public command-IL vocabulary read-only and touches no frozen-core code.")
+                                            BaseInline))))))))))
+                       (ConsBlock (NestedSection
+                            (MkSection
+                               anchor_sk_fusion_rules
+                               "What a rule becomes"
+                               (WithSectionStatus StatusBuilt)
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "A data block reserves op and rule productions (the anti-retrofit guard of the data surface); their elaboration target is the cell store. An operation op f(…) reifies as an")
+                                      (ConsInline (TermDef term_operation_frame "operation frame")
+                                        (ConsInline (Txt
+                                             "family f(remaining-args; return-consumer) — an f-application waiting at the seam — and a rule (an oriented left-to-right arrow) elaborates to an oriented command")
+                                          (ConsInline (TermDef term_command_cell "cell")
+                                            (ConsInline (Txt
+                                                 "whose left side is a cut between a constructor pattern and an operation frame. The running example is a Nat block with add and double:")
+                                              BaseInline))))))
+                                 (ConsBlock (PlainCodeBlock
+                                      "text"
+                                      "(add-Z)  ⟨Zero    | add(n; α)⟩  ⇝  ⟨n | α⟩\n(add-S)  ⟨Succ(m) | add(n; α)⟩  ⇝  ⟨m | add(n; Succ⁻(α))⟩\n(dbl-Z)  ⟨Zero    | double(α)⟩  ⇝  ⟨Zero | α⟩\n(dbl-S)  ⟨Succ(m) | double(α)⟩  ⇝  ⟨m | double(Succ⁻(Succ⁻(α)))⟩")
+                                   (ConsBlock (ProseBlock
+                                        (ConsInline (Txt
+                                             "Here Succ⁻(α) := μ̃x.⟨Succ(x) | α⟩ is the return-side constructor frame — definable, not primitive. Elaborating recursion on the argument into an accumulator frame is the standard sequent-machine flattening")
+                                          (ConsInlineGlued (CiteRef cite_A_20)
+                                            (ConsInline (Txt
+                                                 ": no rule ever searches a term tree; every redex sits at the cut. The elaboration of the reserved rule faces into cells is built in theory-computads (its elaborate layer), the acceptance target that flips rule from parse-and-decline to accepted-behind-gate.")
+                                              BaseInline))))
+                                     BaseBlock)))))
+                         (ConsBlock (NestedSection
+                              (MkSection
+                                 anchor_sk_fusion_overlaps
+                                 "Critical pairs at the seam"
+                                 (WithSectionStatus StatusBuilt)
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "A pipeline add(double(x), n) focuses to ⟨x | double(add(n; α))⟩ — the consumer is a composition of frames. An")
+                                        (ConsInline (TermDef term_overlap "overlap")
+                                          (ConsInline (Txt
+                                               "arises where one cell's right side materializes a pattern another cell's left side matches: (dbl-S) produces Succ⁻ frames that feed add's left side one constructor at a time. The composite worth fusing is the frame pair Succ⁻(add(n; α)), whose one-step behavior is derivable:")
+                                            BaseInline))))
+                                   (ConsBlock (PlainCodeBlock
+                                        "text"
+                                        "⟨v | Succ⁻(add(n; α))⟩ ≡ ⟨Succ(v) | add(n; α)⟩ ⇝ ⟨v | add(n; Succ⁻(α))⟩")
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "Completion therefore synthesizes the consumer-level commutation cell (fuse-S⁻-add), Succ⁻(add(n; α)) ⇝ add(n; Succ⁻(α)), which eliminates the intermediate Succ allocation entirely — deforestation as a derived 2-cell, with the derivation above as its certificate. (A consumer cell K₁ ⇝ K₂ abbreviates the producer-quantified command cell ⟨v | K₁⟩ ⇝ ⟨v | K₂⟩; the engine stores the quantified form.) First-class consumers are what make the overlap syntactically visible — under CPS the same overlap hides behind a lambda. That the fused cell is the two-step composite of its parts is the concurrency-theorem reading, adopted as the differential contract")
+                                            (ConsInlineGlued (CiteRef cite_J_26)
+                                              (ConsInline (Txt ".")
+                                                BaseInline))))
+                                       BaseBlock)))))
+                           (ConsBlock (NestedSection
+                                (MkSection
+                                   anchor_sk_fusion_engine
+                                   "The engine: cell store, overlap enumeration, completion"
+                                   (WithSectionStatus StatusBuilt)
+                                   (ConsBlock (ProseBlock
+                                        (ConsInline (Txt "The engine has four built parts. A")
+                                          (ConsInline (TermDef term_cell_store "cell store")
+                                            (ConsInline (Txt
+                                                 "holds cells as content-addressed inspectable IR, pattern identity keyed on node hashes. Overlap enumeration returns, for each cell pair, the complete family of left-side unifications at a")
+                                              (ConsInline (TermRef term_cut)
+                                                (ConsInline (Txt
+                                                     "— the multi-sum shape: every overlap, never a single chosen one. Cuts make overlaps shallow (the seam is the root), which is exactly why this is tractable where tree rewriting needs full subterm traversal")
+                                                  (ConsInlineGlued (CiteRef cite_J_26)
+                                                    (ConsInline (Txt ". The")
+                                                      (ConsInline (TermDef term_completion "completion")
+                                                        (ConsInline (Txt
+                                                             "loop runs Knuth–Bendix / Squier completion over the convergent slice")
+                                                          (ConsInline (CiteRef cite_J_25a)
+                                                            (ConsInline (CiteRef cite_J_25b)
+                                                              (ConsInlineGlued (CiteRef cite_J_1)
+                                                                (ConsInline (Txt ": it normalizes both reducts of each critical pair, emits a")
+                                                                  (ConsInline (TermDef term_tracelet "tracelet")
+                                                                    (ConsInline (Txt "(the 3-cell")
+                                                                      (ConsInlineGlued (TermRef term_certificate)
+                                                                        (ConsInline (Txt
+                                                                             ") for a joinable pair, and turns a requested fusion shortcut into a derived cell whose certificate is the pair of joining paths. Termination is bounded by a completion budget with decline-and-report, the same posture as the machine step budget: exhausting the step or cell ceiling is a defined decline carrying the pending overlaps, never divergence or a panic.")
+                                                                          BaseInline))))))))))))))))))
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "Correctness is differential plus replay, not trust. Every derived cell is property-tested — applying the fused cell agrees with applying the constituent path over generated ground configurations, the concurrency theorem adopted as a test, its category-theoretic proof machinery explicitly not implemented — and every certificate is replayed, re-executing both paths and comparing, rather than trusted. Replay is promoted to the identity criterion: two tracelets are the same transformation when they replay equal (")
+                                            (ConsInlineGlued (TermRef term_replay_equivalence)
+                                              (ConsInline (Txt
+                                                   "), which is what makes tracelet grafting associative and unital in the formal reading.")
+                                                BaseInline))))
+                                       (ConsBlock (ProseBlock
+                                            (ConsInline (Txt
+                                                 "Each cell carries derived — never user-declared — metadata: a per-metavariable")
+                                              (ConsInline (TermRef term_variance)
+                                                (ConsInline (Txt
+                                                     "with a linearity flag, and an invertibility flag (true for completion-emitted joinability certificates, false for oriented optimization cells), computed at elaboration. That metadata is what the two-mode certificate composition reads — an unconditional coherence lane for invertible certificates, and a directed lane gated by variable-flow acyclicity across the composed seam that declines a cycle with the cycle as diagnostic. The metadata and the two composition modes are the VDC-reflection deltas to this engine; their formal reading is homed in the reflection-face component, and this engine is the cell store that face grounds.")
+                                                  BaseInline))))
+                                         BaseBlock)))))
+                             (ConsBlock (NestedSection
+                                  (MkSection
+                                     anchor_sk_fusion_scope
+                                     "Scope and honest limits"
+                                     (WithSectionStatus StatusBuilt)
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "Three limits, stated honestly. Natives are opaque: a prim command reduces in Rust and has no seam a cell can see through, so every fusion claim is scoped to the")
+                                            (ConsInline (TermDef term_cell_visible_fragment "cell-visible fragment")
+                                              (ConsInline (Txt
+                                                   "— the symbolic command-pattern IL of datatype constructors, operations, and the two return-side frames — and re-expressing hot natives as cells is future work. Non-linear overlaps fan out: completion returns overlap-indexed families of composites, and a single canonical fused rule exists only on a linear seam. This fan-out is not a shortfall but the mathematically forced behavior — it is the virtual in the reflection face's virtual double category, where loose composites need not exist and, under duplication, exist only as the multi-sum-indexed family. Finally, the η discipline binds completion: a joining path may use codata-η only at a negative cut and data-η only at a positive cut, checked against the")
+                                                (ConsInline (TermRef term_polarity_orientation)
+                                                  (ConsInline (Txt
+                                                       "of the seam — the strategy-tied η vocabulary is realized as the cell's η-kind.")
+                                                    BaseInline))))))
+                                       BaseBlock)))
+                               (ConsBlock (NestedSection
+                                    (MkSection
+                                       anchor_sk_fusion_record
+                                       "Why completion beats pragmas, and the gate"
+                                       (WithSectionStatus StatusBuilt)
+                                       (ConsBlock (ProseBlock
+                                            (ConsInline (Txt
+                                                 "Pragma systems bolt unverified, unoriented equations onto a fixed evaluator, out of band from the datatype. Here the cells are declared in the data block as siblings of constructors (the anti-retrofit guard), oriented by the same")
+                                              (ConsInline (TermRef term_polarity_orientation)
+                                                (ConsInline (Txt
+                                                     "discipline that runs the machine, completed into a convergent system with machine-checkable certificates, and differential-tested. The folklore that lazy languages get obvious fusions for free is explained rather than envied: call-by-name orientation makes the seam demand-transparent, and the polarized kernel gives both orientations locally, per type, instead of globally per language. The same localization move recurs across the design — where a global gluing property fails, localize the choice per cut and restrict the global operation — and the composition gate is its correctness side. The list combinators are the obvious first fusion targets; the engine's bridge reifies exactly that frozen fragment (the Nil / Cons / Pair correspondences) into the command arena.")
+                                                  BaseInline))))
+                                         (ConsBlock (ProseBlock
+                                              (ConsInline (Txt
+                                                   "The phase-L2 gate is the fused-equals-two-step differential over generated ground configurations, certificate replay, and the η-polarity pathological pins — an η-step at the wrong polarity must be rejected by the engine. A disagreement is a genuine defect in the matching, substitution, or splicing engine — a finding, never a tolerated divergence — the same posture as the L1 differential.")
+                                                BaseInline))
+                                           BaseBlock))))
+                                 BaseBlock)))))))
+                  (ConsSection (MkSection
+                       anchor_sk_closures
+                       "Closures as rewrites (the closures lane, design)"
+                       (WithSectionStatus StatusAdoptedUnbuilt)
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "Closure conversion is an in-IL rewrite, adopted at exactly one site — the U/force boundary (gandr's lambda is a computation and is never bound, so no lambda-site closures exist). An environment-carrying thunk captures part of the ambient context; the closure cell fires like any other seam rule, and a confluent CC rewrite drives every free variable into the explicit environment:")
+                              BaseInline))
+                         (ConsBlock (PlainCodeBlock
+                              "text"
+                              "ς ::= ε | ς, v/x                                -- explicit environments (IL syntax)\n(βU)  ⟨{ς, force → M} | force(K)⟩ ⇝ ⟨M[ς] | K⟩   -- the closure cell, a seam rule like any other\n(CC)  {ς, force → M} ⇝ {(ς, x/x), force → M}      -- for x ∈ FV(M) ∖ Dom(ς); oriented, confluent\n                                                 --   modulo environment reordering")
+                           (ConsBlock (ProseBlock
+                                (ConsInline (TermDef term_cc_normal_form "CC-normal form")
+                                  (ConsInline (Txt
+                                       "— no free variable outside the environment — is the lowering gate: pre-lowering runs CC to normal form, and each closure lowers to a flat (env-struct, code-pointer) pair, the runtime closure shape the arena machine already builds. The adequacy result — a capturing machine agrees with a lookup-only machine on CC-normal programs — upgrades the jit-equals-eval correspondence from a test to a theorem on the closure fragment, with the differential retained regardless")
+                                    (ConsInline (CiteRef cite_A_22a)
+                                      (ConsInlineGlued (CiteRef cite_A_22b)
+                                        (ConsInline (Txt
+                                             ". Grades refine capture (a grade-0 variable need not be captured at all), and environment sharing and lambda-lifting are derived cells in the same store, with environments hashconsed after CC-normalization so canonical minimal environments deduplicate. The proof-debt ledger is named, not hidden: confluence of CC is modulo environment reordering — the Agda face needs a permutation quotient to sit in the Squier-degenerate slice — and the source theory covers pure and call-by-need but not effects.")
+                                          BaseInline))))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "The effects-and-closure-conversion composite is staged, because the two literatures are disjoint: every closure-conversion correctness proof is pure or state-only, every handler-compilation result performs no closure conversion, so the intersection is empty and the composite is genuinely open. The staged posture states the closure equalities now on the pure and call-by-need fragment (Sullivan's backward simulation and Kripke-heap logical relation apply essentially verbatim); adopts capability / evidence-passing as the handler-elimination leg with citable correctness, modeling gandr's op-keyed deep handlers on multi-prompt delimited control rather than single-prompt shift/reset")
+                                    (ConsInline (CiteRef cite_A_24)
+                                      (ConsInlineGlued (CiteRef cite_A_25)
+                                        (ConsInline (Txt
+                                             "; and names as staged proof debt the composite theorem — upgrading the Kripke-heap relation to a biorthogonal step-indexed logical relation for handlers over the sharing heap")
+                                          (ConsInline (CiteRef cite_A_26a)
+                                            (ConsInlineGlued (CiteRef cite_A_26b)
+                                              (ConsInline (Txt
+                                                   ", cohered against the confluent fine-grained handler reduction theory the completion engine's cells must respect")
+                                                (ConsInlineGlued (CiteRef cite_A_27)
+                                                  (ConsInline (Txt
+                                                       ". No published work combines all three, so gandr's stage would be a first — recorded as debt, never claimed early; a fallback pure-lambda handler translation")
+                                                    (ConsInline (CiteRef cite_A_11a)
+                                                      (ConsInline (CiteRef cite_A_11b)
+                                                        (ConsInline (Txt
+                                                             "and the nearest closure-conversion-under-effects result (state only)")
+                                                          (ConsInline (CiteRef cite_A_23)
+                                                            (ConsInline (Txt
+                                                                 "bound the boundary, and the jit-equals-eval differential over effectful corpus programs covers the composite meanwhile.")
+                                                              BaseInline)))))))))))))))
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "This is design, not built. The closure producer is deliberately absent at L0 — the focusing translation emits the pre-closure-conversion codata form instead, and closure conversion lands later as an in-IL rewrite. The lane is also where a copattern / handler unification would eventually sit, since compositional copatterns and delimited control are one mechanism")
+                                      (ConsInlineGlued (CiteRef cite_A_32)
+                                        (ConsInline (Txt ".")
+                                          BaseInline))))
+                                 BaseBlock))))))
+                    (ConsSection (MkSection
+                         anchor_sk_phases
+                         "Phases and gates"
+                         InheritSectionStatus
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt "The kernel lands in four gated")
+                                (ConsInlineGlued (TermDef term_phase_gates "phase gates")
+                                  (ConsInline (Txt
+                                       ", none touching the frozen core before the last. Each phase carries its own status below.")
+                                    BaseInline))))
+                           (ConsBlock (NestedSection
+                                (MkSection
+                                   anchor_sk_phase_l0
+                                   "Phase L0 — the command IR and focusing"
+                                   (WithSectionStatus StatusBuilt)
+                                   (ConsBlock (ProseBlock
+                                        (ConsInline (Txt
+                                             "The command IR, the focusing translation, a pretty-printer, and inspection hooks. Its gate: focusing is total on the corpus and the typed-IL debug assertions pass.")
+                                          BaseInline))
+                                     BaseBlock)))
+                             (ConsBlock (NestedSection
+                                  (MkSection
+                                     anchor_sk_phase_l1
+                                     "Phase L1 — the L machine and its differential"
+                                     (WithSectionStatus StatusPartial)
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "The L machine: transitions, store, memo write-back, and a single step budget. Its gate was the differential L-run of the focused image agreeing with the driver on the full corpus plus property strategies. Through the migration the CEK machine was the external oracle: an independently-maintained implementation of the same operational semantics, so agreement was evidence for the L machine's correctness. The CEK retired at B1 stage F, so the L machine is now the sole driver; the differential's reference is the frozen outcome snapshots that captured the final oracle-agreeing run — the same canonicalization, its reference now a fixture rather than a live second machine — and the conformance soundness rows are re-anchored on L outcomes. L1 is partial: the readback residuals stay tracked (the un-focusing translation, prelude free-name resolution in force position, the whole-program identity-former decline, and the declared-data eliminator decline), each reporting a defined unsupported-by-reference outcome rather than a panic.")
+                                            BaseInline))
+                                       BaseBlock)))
+                               (ConsBlock (NestedSection
+                                    (MkSection
+                                       anchor_sk_phase_l2
+                                       "Phase L2 — the fusion engine"
+                                       (WithSectionStatus StatusBuilt)
+                                       (ConsBlock (ProseBlock
+                                            (ConsInline (Txt
+                                                 "The cell store, overlap enumeration at cut seams, Knuth–Bendix / Squier completion, replayable tracelet certificates, and the two-mode certificate composition, flipping rewrite rules from parse-and-decline to accepted-behind-gate. Its design is absorbed in the fusion section above and its engineering face is built in crate theory-computads; the phase-L2 gate — the fused-equals-two-step differential, certificate replay, and the η-polarity pathological pins — is realized as that crate's differential harness. The category-theoretic proof machinery of the concurrency theorem is explicitly not implemented; the differential is its witness.")
+                                              BaseInline))
+                                         BaseBlock)))
+                                 (ConsBlock (NestedSection
+                                      (MkSection
+                                         anchor_sk_phase_l3
+                                         "Phase L3 — the promotion decision"
+                                         (WithSectionStatus StatusDesignPass)
+                                         (ConsBlock (ProseBlock
+                                              (ConsInline (Txt "The last phase is the")
+                                                (ConsInlineGlued (TermDef term_promotion_decision "promotion decision")
+                                                  (ConsInline (Txt
+                                                       ", an ADR either way and the only phase that may touch the frozen core. Position (a): L stays the runtime and optimization IL with the call-by-push-value core canonical — the Sequent Core position")
+                                                    (ConsInlineGlued (CiteRef cite_A_21)
+                                                      (ConsInline (Txt
+                                                           ". Position (b): command syntax enters the frozen core (an ADR plus a dictionary entry plus an Agda face, competing for the post-arena window with the data surface's nominal tag). The decision is explicit, evidence-based, and reversible until taken, gated on the evidence L1 and L2 accumulate plus the codata and lowering experience; until it is taken everything the kernel adds is additive, touching no frozen-core code. Its design is recorded here; the decision itself is deferred. The fusion engine already takes a related boundary — that its cells range over the symbolic")
+                                                        (ConsInline (TermRef term_cell_visible_fragment)
+                                                          (ConsInline (Txt
+                                                               "rather than the arena command IL directly — as a draft-ADR candidate rather than minting an ADR: if position (b) is chosen, the relationship between the two should be pinned by an ADR.")
+                                                            BaseInline))))))))
+                                           BaseBlock)))
+                                   BaseBlock))))))
+                      BaseSection))))))))))
+  (ConsCiteKey cite_A_1a
+    (ConsCiteKey cite_A_11a
+      (ConsCiteKey cite_A_11b
+        (ConsCiteKey cite_A_17
+          (ConsCiteKey cite_A_19
+            (ConsCiteKey cite_A_20
+              (ConsCiteKey cite_A_21
+                (ConsCiteKey cite_A_22a
+                  (ConsCiteKey cite_A_22b
+                    (ConsCiteKey cite_A_23
+                      (ConsCiteKey cite_A_24
+                        (ConsCiteKey cite_A_25
+                          (ConsCiteKey cite_A_26a
+                            (ConsCiteKey cite_A_26b
+                              (ConsCiteKey cite_A_27
+                                (ConsCiteKey cite_A_31
+                                  (ConsCiteKey cite_A_32
+                                    (ConsCiteKey cite_A_37
+                                      (ConsCiteKey cite_J_1
+                                        (ConsCiteKey cite_J_25a
+                                          (ConsCiteKey cite_J_25b
+                                            (ConsCiteKey cite_J_26 BaseCiteKey))))))))))))))))))))))

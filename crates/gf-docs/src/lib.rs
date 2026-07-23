@@ -8,6 +8,7 @@
 //! or pure-Rust backend without touching the pipeline.
 
 pub mod error;
+pub mod lexicon;
 pub mod migrate;
 pub mod pipeline;
 pub mod rt;
