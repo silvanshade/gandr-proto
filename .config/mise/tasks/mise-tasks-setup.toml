@@ -47,7 +47,7 @@ depends = ["toolchain:materialize"]
 description = "Populate fresh-worktree dependencies (root devDependencies for the treefmt/oxlint and commitlint hooks + the pinned Rust toolchains and components)"
 run = """
 aube ci
-rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component clippy,rustfmt
+rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component clippy,rustfmt,rust-analyzer
 rustup toolchain install "$RUSTUP_TOOLCHAIN_NIGHTLY" --profile minimal --component clippy,rustfmt,rust-src,llvm-tools-preview,rustc-dev
 uv sync --project crates/workflow-grammatical-framework
 """
