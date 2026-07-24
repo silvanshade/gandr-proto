@@ -121,6 +121,7 @@ use crate::boundary::OperationConstructorStatus;
 use crate::boundary::ReturnerStatus;
 use crate::boundary::UnfocusRequirement;
 use crate::focus::FocusOrigin;
+use crate::focus::FreshCoVarCounter;
 use crate::il::Arm;
 use crate::il::CoArm;
 use crate::il::CoName;
@@ -519,7 +520,7 @@ pub struct LMachine
     /// The fresh-covariable counter for re-focusing a higher-order native's
     /// result term into this arena ([`Self::refocus`]), threaded across
     /// dispatches so freshly minted covariables stay distinct.
-    next_fresh: u64,
+    next_fresh: FreshCoVarCounter,
 }
 
 impl LMachine
@@ -537,7 +538,7 @@ impl LMachine
             origins,
             store: Store::new(),
             prelude: BTreeMap::new(),
-            next_fresh: 0,
+            next_fresh: FreshCoVarCounter::default(),
         }
     }
 
@@ -561,7 +562,7 @@ impl LMachine
             origins,
             store: Store::new(),
             prelude,
-            next_fresh: 0,
+            next_fresh: FreshCoVarCounter::default(),
         }
     }
 

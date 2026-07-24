@@ -106,6 +106,7 @@ mod tests
     use gandr_storage_prolly_trees::InMemoryBlockStore;
     use gandr_storage_prolly_trees::TreeParams;
 
+    use crate::corpus_sources::CorpusTree;
     use crate::corpus_sources::corpus_fixtures_b3sum;
     use crate::corpus_sources::read_tree;
 
@@ -113,7 +114,7 @@ mod tests
     const BLESS_ENV: &str = "GANDR_BLESS_KERNEL_EXPORT";
 
     /// The corpus trees the gate reads (also the b3sum-provenance scope).
-    const TREES: [&str; 2] = ["model", "pathological"];
+    const TREES: [CorpusTree; 2] = [CorpusTree::MODEL, CorpusTree::PATHOLOGICAL];
 
     /// The pinned count of S1-eligible corpus items (an independent
     /// re-derivation of the `kernel_corpus_partition` eligible count).
@@ -139,18 +140,29 @@ mod tests
         identity: String,
     }
 
+    /// Corpus identity of one exported item.
+    #[derive(Clone, Copy)]
+    struct ExportLocation<'source>
+    {
+        /// Corpus-relative source path.
+        source: &'source str,
+        /// Item ordinal within the source.
+        index: usize,
+    }
+
     impl Outcome
     {
         /// Renders the pinned record line: `source \t index \t size \t entries
         /// \t expanded \t artifact \t identity`.
         fn render(
             &self,
-            source: &str,
-            index: usize,
+            location: ExportLocation<'_>,
         ) -> String
         {
             format!(
-                "{source}\t{index}\t{}\t{}\t{}\t{}\t{}",
+                "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                location.source,
+                location.index,
                 self.size_bytes,
                 self.table_entries,
                 self.expanded_work,
@@ -275,8 +287,11 @@ mod tests
                     };
                     gate.eligible = gate.eligible.saturating_add(1);
                     let label = format!("{} item {index}", fixture.source);
-                    let outcome = measure(&environment, &label);
-                    gate.record(outcome.render(&fixture.source, index));
+                    let outcome = measure(&environment, MeasurementLabel(&label));
+                    gate.record(outcome.render(ExportLocation {
+                        source: fixture.source.as_str(),
+                        index,
+                    }));
                 }
             }
         }
@@ -284,11 +299,30 @@ mod tests
         // (2) The kernel-native C5 goldens (universe/lift): no bridge counterpart,
         // reconstructed via kernel-core's public arena API. `goldens.rs` owns the
         // round-trip witness; this owns their telemetry + identity.
-        for (source, environment) in c5_goldens() {
+        for golden in c5_goldens() {
             gate.goldens = gate.goldens.saturating_add(1);
-            let label = format!("{source} item 0");
-            let outcome = measure(&environment, &label);
-            gate.record(outcome.render(source, 0));
+            let label = format!("{} item 0", golden.source);
+            let outcome = measure(&golden.environment, MeasurementLabel(&label));
+            gate.record(outcome.render(ExportLocation {
+                source: golden.source,
+                index: 0,
+            }));
+        }
+    }
+
+    /// Borrowed label for one measured export item.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct MeasurementLabel<'label>(&'label str);
+
+    impl core::fmt::Display for MeasurementLabel<'_>
+    {
+        fn fmt(
+            &self,
+            f: &mut core::fmt::Formatter<'_>,
+        ) -> core::fmt::Result
+        {
+            f.write_str(self.0)
         }
     }
 
@@ -298,7 +332,7 @@ mod tests
     /// the deterministic outcome.
     fn measure(
         environment: &Environment,
-        label: &str,
+        label: MeasurementLabel<'_>,
     ) -> Outcome
     {
         let bytes = write(environment);
@@ -306,7 +340,10 @@ mod tests
 
         let start = Instant::now();
         let decoded = decode(&bytes).unwrap_or_else(|error| {
-            panic!("{label}: an exit-gate artifact failed to decode: {error}")
+            panic!(
+                "{}: an exit-gate artifact failed to decode: {error}",
+                label.0
+            )
         });
         let decode_micros = start.elapsed().as_micros();
         let metrics = decoded.metrics();
@@ -397,16 +434,42 @@ mod tests
     // ----- The kernel-native C5 goldens (reconstructed; `goldens.rs` is the
     // round-trip authority). -----
 
-    /// The constant level `value`.
-    fn constant(value: u64) -> Level
+    /// Constant universe level fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct ConstantLevel(LevelConstant);
+
+    impl From<u64> for ConstantLevel
     {
-        Level::constant(LevelConstant::from(value))
+        fn from(value: u64) -> Self
+        {
+            Self(LevelConstant::from(value))
+        }
+    }
+
+    /// The constant level `value`.
+    fn constant(value: ConstantLevel) -> Level
+    {
+        Level::constant(value.0)
+    }
+
+    /// Prenex level-variable fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct VariableLevel(LevelVarIndex);
+
+    impl From<u32> for VariableLevel
+    {
+        fn from(index: u32) -> Self
+        {
+            Self(LevelVarIndex::from(index))
+        }
     }
 
     /// The level of the prenex variable `index`.
-    fn level_var(index: u32) -> Level
+    fn level_var(index: VariableLevel) -> Level
     {
-        Level::var(LevelVar::new(LevelVarIndex::from(index)))
+        Level::var(LevelVar::new(index.0))
     }
 
     /// A monomorphic level signature.
@@ -415,32 +478,44 @@ mod tests
         LevelSignature::monomorphic()
     }
 
+    /// One named kernel-native golden environment.
+    struct GoldenEnvironment
+    {
+        /// Stable record source.
+        source: &'static str,
+        /// Kernel environment exported by the gate.
+        environment: Environment,
+    }
+
     /// The six C5 goldens, each a `(record-source, environment)` pair, in a
     /// fixed order — mirroring `gandr_kernel_core`'s `tests/goldens.rs`.
-    fn c5_goldens() -> Vec<(&'static str, Environment)>
+    fn c5_goldens() -> Vec<GoldenEnvironment>
     {
         vec![
-            (
-                "golden/universe-constant-axiom",
-                golden_universe_constant_axiom(),
-            ),
-            (
-                "golden/universe-variable-axiom",
-                golden_universe_variable_axiom(),
-            ),
-            ("golden/lift-type-axiom", golden_lift_type_axiom()),
-            (
-                "golden/lift-value-definition",
-                golden_lift_value_definition(),
-            ),
-            (
-                "golden/universe-in-arrow-domain",
-                golden_universe_in_arrow_domain(),
-            ),
-            (
-                "golden/universe-and-lift-environment",
-                golden_universe_and_lift_environment(),
-            ),
+            GoldenEnvironment {
+                source: "golden/universe-constant-axiom",
+                environment: golden_universe_constant_axiom(),
+            },
+            GoldenEnvironment {
+                source: "golden/universe-variable-axiom",
+                environment: golden_universe_variable_axiom(),
+            },
+            GoldenEnvironment {
+                source: "golden/lift-type-axiom",
+                environment: golden_lift_type_axiom(),
+            },
+            GoldenEnvironment {
+                source: "golden/lift-value-definition",
+                environment: golden_lift_value_definition(),
+            },
+            GoldenEnvironment {
+                source: "golden/universe-in-arrow-domain",
+                environment: golden_universe_in_arrow_domain(),
+            },
+            GoldenEnvironment {
+                source: "golden/universe-and-lift-environment",
+                environment: golden_universe_and_lift_environment(),
+            },
         ]
     }
 
@@ -450,7 +525,7 @@ mod tests
         let mut environment = Environment::new();
         let declaration = {
             let mut builder = environment.stage();
-            let universe = builder.arena().value_type_universe(constant(0));
+            let universe = builder.arena().value_type_universe(constant((0).into()));
             builder.axiom(mono(), universe)
         };
         environment
@@ -466,7 +541,7 @@ mod tests
         let levels = LevelSignature::new(LevelParamCount::from(1_u32), Vec::new());
         let declaration = {
             let mut builder = environment.stage();
-            let universe = builder.arena().value_type_universe(level_var(0));
+            let universe = builder.arena().value_type_universe(level_var((0).into()));
             builder.axiom(levels, universe)
         };
         environment
@@ -484,7 +559,7 @@ mod tests
             let lifted = {
                 let arena = builder.arena();
                 let unit = arena.value_type_unit();
-                arena.value_type_lift(unit, constant(1))
+                arena.value_type_lift(unit, constant((1).into()))
             };
             builder.axiom(mono(), lifted)
         };
@@ -503,9 +578,9 @@ mod tests
             let (declared, body) = {
                 let arena = builder.arena();
                 let unit_type = arena.value_type_unit();
-                let declared = arena.value_type_lift(unit_type, constant(1));
+                let declared = arena.value_type_lift(unit_type, constant((1).into()));
                 let unit = arena.value_unit();
-                let body = arena.value_lift(constant(1), unit);
+                let body = arena.value_lift(constant((1).into()), unit);
                 (declared, body)
             };
             builder.def(mono(), declared, body)
@@ -526,7 +601,7 @@ mod tests
                 let arena = builder.arena();
                 let unit = arena.value_type_unit();
                 let returner = arena.comp_type_returner(unit);
-                let universe = arena.value_type_universe(constant(0));
+                let universe = arena.value_type_universe(constant((0).into()));
                 let arrow = arena.comp_type_arrow(universe, returner);
                 arena.value_type_thunk(arrow)
             };
@@ -547,7 +622,7 @@ mod tests
 
         let universe = {
             let mut builder = environment.stage();
-            let universe = builder.arena().value_type_universe(constant(0));
+            let universe = builder.arena().value_type_universe(constant((0).into()));
             builder.axiom(mono(), universe)
         };
         environment.add_decl(universe).expect("U_0 admits");
@@ -557,7 +632,7 @@ mod tests
             let lifted = {
                 let arena = builder.arena();
                 let unit = arena.value_type_unit();
-                arena.value_type_lift(unit, constant(2))
+                arena.value_type_lift(unit, constant((2).into()))
             };
             builder.axiom(mono(), lifted)
         };
@@ -568,9 +643,9 @@ mod tests
             let (declared, body) = {
                 let arena = builder.arena();
                 let unit_type = arena.value_type_unit();
-                let declared = arena.value_type_lift(unit_type, constant(1));
+                let declared = arena.value_type_lift(unit_type, constant((1).into()));
                 let unit = arena.value_unit();
-                let body = arena.value_lift(constant(1), unit);
+                let body = arena.value_lift(constant((1).into()), unit);
                 (declared, body)
             };
             builder.def(mono(), declared, body)
@@ -603,7 +678,11 @@ mod tests
                 path.display()
             )
         });
-        let recorded = header_field(&text, "corpus-fixtures-b3sum").unwrap_or_else(|| {
+        let recorded = header_field(HeaderQuery {
+            text: &text,
+            name: "corpus-fixtures-b3sum",
+        })
+        .unwrap_or_else(|| {
             panic!(
                 "export exit-gate manifest `{}` is missing its `corpus-fixtures-b3sum` provenance \
                  header",
@@ -654,14 +733,23 @@ mod tests
             .unwrap_or_else(|error| panic!("cannot write `{}`: {error}", path.display()));
     }
 
-    /// The value of a `; <name>: <value>` provenance header line, trimmed.
-    fn header_field(
-        text: &str,
-        name: &str,
-    ) -> Option<String>
+    /// One export-manifest provenance-header lookup.
+    #[derive(Clone, Copy)]
+    struct HeaderQuery<'header>
     {
-        let needle = format!("; {name}:");
-        text.lines()
+        /// Whole manifest text.
+        text: &'header str,
+        /// Header field name.
+        name: &'header str,
+    }
+
+    /// The value of a `; <name>: <value>` provenance header line, trimmed.
+    fn header_field(query: HeaderQuery<'_>) -> Option<String>
+    {
+        let needle = format!("; {}:", query.name);
+        query
+            .text
+            .lines()
             .find_map(|line| line.strip_prefix(&needle))
             .map(|rest| rest.trim().to_owned())
     }

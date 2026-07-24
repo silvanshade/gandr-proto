@@ -422,10 +422,16 @@ fn decode_cut(
             ..
         } => {
             let payload = decode_value(arena, origins, *ps.first()?)?;
-            let head = Comp::perform(effect_sig(sig), op.as_str(), payload);
+            let head = Comp::perform(
+                effect_sig(EffectSignatureName::from(sig.as_str())),
+                op.as_str(),
+                payload,
+            );
             (Piece::Comp(head), consumer)
         },
-        | ProducerNode::Lit(Lit::Hole(hole)) if is_comp_hole(origins, cmd) => {
+        | ProducerNode::Lit(Lit::Hole(hole))
+            if matches!(origins.get(&cmd), Some(&FocusOrigin::CompHole)) =>
+        {
             (Piece::Comp(Comp::hole(hole)), consumer)
         },
         // Any other producer is a value being eliminated / returned.
@@ -474,7 +480,7 @@ fn decode_delimiter(
                 ));
             }
             let head = Comp::handle(
-                effect_sig(&handler.sig),
+                effect_sig(EffectSignatureName::from(handler.sig.as_str())),
                 scrutinee,
                 handler.ret_binder.as_str(),
                 ret_body,
@@ -507,7 +513,7 @@ fn apply_cont(
 ) -> Option<Comp>
 {
     loop {
-        if is_tail(arena, cont, tail) {
+        if matches!(is_tail(arena, cont, tail), TailPosition::Tail) {
             return Some(current.into_comp());
         }
         match *arena.consumer(cont)? {
@@ -877,9 +883,19 @@ fn close_comp(
     let mut result = comp;
     for (name, bound) in env.bindings() {
         let replacement = unfocus_value(&bound, arena, origins)?;
-        result = subst_comp(&result, &name, &replacement);
+        result = subst_comp(&result, SubstitutionName(name.as_str()), &replacement);
     }
     Some(result)
+}
+
+/// Classification of a consumer against the active readback tail.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TailPosition
+{
+    /// The consumer is the active tail.
+    Tail,
+    /// The consumer is an interior continuation frame.
+    Interior,
 }
 
 /// Whether a consumer is the readback tail (the enclosing binder's covariable,
@@ -889,29 +905,24 @@ fn is_tail(
     arena: &CommandArena,
     consumer: ConsumerId,
     tail: &Tail,
-) -> bool
+) -> TailPosition
 {
     let Some(node) = arena.consumer(consumer)
     else {
-        return false;
+        return TailPosition::Interior;
     };
-    match *tail {
+    let matches_tail = match *tail {
         | Tail::ByCoVar(ref target) => {
             matches!(*node, ConsumerNode::CoVar(ref name) if name == target)
         },
         | Tail::ByTop => matches!(*node, ConsumerNode::Top),
+    };
+    if matches_tail {
+        TailPosition::Tail
     }
-}
-
-/// Whether a command is a computation-hole cut (a `Comp::Hole`, distinct from a
-/// returned `Value::Hole` only by provenance).
-#[must_use]
-fn is_comp_hole(
-    origins: &OriginTable,
-    cmd: CommandId,
-) -> bool
-{
-    matches!(origins.get(&cmd), Some(&FocusOrigin::CompHole))
+    else {
+        TailPosition::Interior
+    }
 }
 
 /// Reads a positive scalar leaf back to a source [`Value`].
@@ -930,9 +941,9 @@ fn lit_value(lit: &Lit) -> Value
 /// Builds a bare effect signature carrying only its name — the operation list
 /// `𝓕` erased (the differential normalizer drops it on the oracle side too).
 #[must_use]
-fn effect_sig(name: &str) -> EffectSig
+fn effect_sig(name: EffectSignatureName<'_>) -> EffectSig
 {
-    EffectSig::new(EffectSignatureName::from(name), Vec::new())
+    EffectSig::new(name, Vec::new())
 }
 
 /// A render-only placeholder declared-data id — `𝓕` erases the nominal id
@@ -950,6 +961,11 @@ fn placeholder_walk_motive() -> WalkMotive
 {
     WalkMotive::new("x", "y", "q", CompType::returner(ValueType::Unknown))
 }
+
+/// Borrowed source variable selected for closing substitution.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct SubstitutionName<'name>(&'name str);
 
 /// Capture-avoiding substitution of a **closed** value for the free occurrences
 /// of `name` in a computation, respecting binder shadowing (the closing
@@ -974,13 +990,13 @@ fn placeholder_walk_motive() -> WalkMotive
 #[must_use]
 fn subst_comp(
     comp: &Comp,
-    name: &str,
+    name: SubstitutionName<'_>,
     repl: &Value,
 ) -> Comp
 {
     match *comp {
         | Comp::Abs(ref binder, ref ty, ref body) => {
-            let inner = if binder == name {
+            let inner = if binder == name.0 {
                 body.as_ref().clone()
             }
             else {
@@ -995,7 +1011,7 @@ fn subst_comp(
         | Comp::Ret(ref value) => Comp::Ret(Rc::new(subst_value(value, name, repl))),
         | Comp::Bind(ref bound, ref binder, ref cont) => {
             let bound = subst_comp(bound, name, repl);
-            let cont = if binder == name {
+            let cont = if binder == name.0 {
                 cont.as_ref().clone()
             }
             else {
@@ -1006,8 +1022,8 @@ fn subst_comp(
         | Comp::Force(ref value) => Comp::Force(Rc::new(subst_value(value, name, repl))),
         | Comp::Case(ref scrut, (ref lb, ref lbody), (ref rb, ref rbody)) => {
             let scrut = subst_value(scrut, name, repl);
-            let lbody = subst_under(lb, lbody, name, repl);
-            let rbody = subst_under(rb, rbody, name, repl);
+            let lbody = subst_under(SubstitutionName(lb.as_str()), lbody, name, repl);
+            let rbody = subst_under(SubstitutionName(rb.as_str()), rbody, name, repl);
             Comp::Case(
                 Rc::new(scrut),
                 (lb.clone(), Rc::new(lbody)),
@@ -1021,7 +1037,12 @@ fn subst_comp(
                 .map(|arm| {
                     (
                         arm.0.clone(),
-                        Rc::new(subst_under(&arm.0, &arm.1, name, repl)),
+                        Rc::new(subst_under(
+                            SubstitutionName(arm.0.as_str()),
+                            &arm.1,
+                            name,
+                            repl,
+                        )),
                     )
                 })
                 .collect();
@@ -1038,7 +1059,7 @@ fn subst_comp(
             let nil = subst_comp(nil, name, repl);
             // The cons arm binds both `head` and `tail`; either rebinding
             // shields the substitution below it.
-            let cons = if head == name || tail == name {
+            let cons = if head == name.0 || tail == name.0 {
                 cons.as_ref().clone()
             }
             else {
@@ -1060,7 +1081,7 @@ fn subst_comp(
             ref body,
         } => {
             let scrut = subst_value(scrut, name, repl);
-            let body = if fst_name == name || snd_name == name {
+            let body = if fst_name == name.0 || snd_name == name.0 {
                 body.as_ref().clone()
             }
             else {
@@ -1100,13 +1121,13 @@ fn subst_comp(
             ref ops,
         } => {
             let scrutinee = subst_comp(scrutinee, name, repl);
-            let ret_body = subst_under(ret_binder, ret_body, name, repl);
+            let ret_body = subst_under(SubstitutionName(ret_binder.as_str()), ret_body, name, repl);
             let ops = ops
                 .iter()
                 .map(|clause| {
                     // A clause binds the payload and the resumption; either
                     // rebinding shields the substitution in the clause body.
-                    let body = if clause.payload == name || clause.resume == name {
+                    let body = if clause.payload == name.0 || clause.resume == name.0 {
                         clause.body.as_ref().clone()
                     }
                     else {
@@ -1133,7 +1154,7 @@ fn subst_comp(
         ),
         | Comp::Reset(ref inner) => Comp::Reset(Rc::new(subst_comp(inner, name, repl))),
         | Comp::Shift(ref binder, ref body) => {
-            let body = subst_under(binder, body, name, repl);
+            let body = subst_under(SubstitutionName(binder.as_str()), body, name, repl);
             Comp::Shift(binder.clone(), Rc::new(body))
         },
         | Comp::Hole(hole) => Comp::Hole(hole),
@@ -1150,7 +1171,7 @@ fn subst_comp(
             ref base,
         } => {
             let scrut = subst_value(scrut, name, repl);
-            let base_body = if base.x == name {
+            let base_body = if base.x == name.0 {
                 base.body.as_ref().clone()
             }
             else {
@@ -1179,13 +1200,13 @@ fn subst_comp(
 )]
 #[must_use]
 fn subst_under(
-    binder: &str,
+    binder: SubstitutionName<'_>,
     body: &Comp,
-    name: &str,
+    name: SubstitutionName<'_>,
     repl: &Value,
 ) -> Comp
 {
-    if binder == name {
+    if binder.0 == name.0 {
         body.clone()
     }
     else {
@@ -1212,13 +1233,13 @@ fn subst_under(
 #[must_use]
 fn subst_value(
     value: &Value,
-    name: &str,
+    name: SubstitutionName<'_>,
     repl: &Value,
 ) -> Value
 {
     match *value {
         | Value::Var(ref var) => {
-            if var == name {
+            if var == name.0 {
                 repl.clone()
             }
             else {

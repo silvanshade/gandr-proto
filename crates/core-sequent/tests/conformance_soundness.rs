@@ -249,7 +249,7 @@ mod tests
         let term = native_binary(NativePrim::Lt, Value::int(1), Value::int(2));
         assert_eq!(
             machine::run_comp(&term),
-            Eval::Value(Comp::ret(boolean(true)))
+            Eval::Value(Comp::ret(boolean((true).into())))
         );
     }
 
@@ -257,10 +257,14 @@ mod tests
     #[test]
     fn native_boolean_and_returns_false()
     {
-        let term = native_binary(NativePrim::And, boolean(true), boolean(false));
+        let term = native_binary(
+            NativePrim::And,
+            boolean((true).into()),
+            boolean((false).into()),
+        );
         assert_eq!(
             machine::run_comp(&term),
-            Eval::Value(Comp::ret(boolean(false)))
+            Eval::Value(Comp::ret(boolean((false).into())))
         );
     }
 
@@ -365,7 +369,7 @@ mod tests
                 Value::string("<<<<<<< HEAD"),
                 Value::string("<<<<<<<")
             ]),
-            Eval::Value(Comp::ret(boolean(true))),
+            Eval::Value(Comp::ret(boolean((true).into()))),
         );
     }
 
@@ -379,14 +383,14 @@ mod tests
                 Value::string("agda"),
                 Value::string("agda")
             ]),
-            Eval::Value(Comp::ret(boolean(true))),
+            Eval::Value(Comp::ret(boolean((true).into()))),
         );
         assert_eq!(
             run(NativePrim::StringEq, vec![
                 Value::string("agda"),
                 Value::string("agdA")
             ]),
-            Eval::Value(Comp::ret(boolean(false))),
+            Eval::Value(Comp::ret(boolean((false).into()))),
         );
         assert_eq!(
             Eval::Blame(Blame::Hole),
@@ -431,17 +435,17 @@ mod tests
     {
         let inc = || unary_op(NativePrim::Add, Value::int(1));
         assert_eq!(
-            run(NativePrim::Each, vec![inc(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(ints(&[2, 3, 4])))
+            run(NativePrim::Each, vec![inc(), ints((&[1, 2, 3]).into())]),
+            Eval::Value(Comp::ret(ints((&[2, 3, 4]).into())))
         );
         assert_eq!(
-            run(NativePrim::Each, vec![inc(), ints(&[])]),
-            Eval::Value(Comp::ret(ints(&[]))),
+            run(NativePrim::Each, vec![inc(), ints((&[]).into())]),
+            Eval::Value(Comp::ret(ints((&[]).into()))),
             "the empty list is mapped to the empty list"
         );
         assert_eq!(
-            run(NativePrim::Each, vec![inc(), ints(&[9])]),
-            Eval::Value(Comp::ret(ints(&[10]))),
+            run(NativePrim::Each, vec![inc(), ints((&[9]).into())]),
+            Eval::Value(Comp::ret(ints((&[10]).into()))),
             "a singleton exercises the one-step unroll"
         );
     }
@@ -456,10 +460,13 @@ mod tests
             Comp::app(Comp::native(NativePrim::Each), inc),
             Value::var("x"),
         ));
-        let nested = Value::list(vec![ints(&[1, 2]), ints(&[3])]);
+        let nested = Value::list(vec![ints((&[1, 2]).into()), ints((&[3]).into())]);
         assert_eq!(
             run(NativePrim::Each, vec![map_inc, nested]),
-            Eval::Value(Comp::ret(Value::list(vec![ints(&[2, 3]), ints(&[4])])))
+            Eval::Value(Comp::ret(Value::list(vec![
+                ints((&[2, 3]).into()),
+                ints((&[4]).into())
+            ])))
         );
     }
 
@@ -469,17 +476,17 @@ mod tests
     {
         let gt1 = || unary_op(NativePrim::Gt, Value::int(1));
         assert_eq!(
-            run(NativePrim::Where, vec![gt1(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(ints(&[2, 3])))
+            run(NativePrim::Where, vec![gt1(), ints((&[1, 2, 3]).into())]),
+            Eval::Value(Comp::ret(ints((&[2, 3]).into())))
         );
         assert_eq!(
-            run(NativePrim::Where, vec![gt1(), ints(&[])]),
-            Eval::Value(Comp::ret(ints(&[]))),
+            run(NativePrim::Where, vec![gt1(), ints((&[]).into())]),
+            Eval::Value(Comp::ret(ints((&[]).into()))),
             "the empty filter is the empty list"
         );
         assert_eq!(
-            run(NativePrim::Where, vec![gt1(), ints(&[2, 1, 3])]),
-            Eval::Value(Comp::ret(ints(&[2, 3])))
+            run(NativePrim::Where, vec![gt1(), ints((&[2, 1, 3]).into())]),
+            Eval::Value(Comp::ret(ints((&[2, 3]).into())))
         );
     }
 
@@ -498,12 +505,16 @@ mod tests
             run(NativePrim::Reduce, vec![
                 add(),
                 Value::int(0),
-                ints(&[1, 2, 3])
+                ints((&[1, 2, 3]).into())
             ]),
             Eval::Value(Comp::ret(Value::int(6)))
         );
         assert_eq!(
-            run(NativePrim::Reduce, vec![add(), Value::int(42), ints(&[])]),
+            run(NativePrim::Reduce, vec![
+                add(),
+                Value::int(42),
+                ints((&[]).into())
+            ]),
             Eval::Value(Comp::ret(Value::int(42))),
             "the empty fold is the seed"
         );
@@ -516,16 +527,16 @@ mod tests
     {
         let gt2 = || unary_op(NativePrim::Gt, Value::int(2));
         assert_eq!(
-            run(NativePrim::Any, vec![gt2(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(boolean(true)))
+            run(NativePrim::Any, vec![gt2(), ints((&[1, 2, 3]).into())]),
+            Eval::Value(Comp::ret(boolean((true).into())))
         );
         assert_eq!(
-            run(NativePrim::Any, vec![gt2(), ints(&[1, 2])]),
-            Eval::Value(Comp::ret(boolean(false)))
+            run(NativePrim::Any, vec![gt2(), ints((&[1, 2]).into())]),
+            Eval::Value(Comp::ret(boolean((false).into())))
         );
         assert_eq!(
-            run(NativePrim::Any, vec![gt2(), ints(&[])]),
-            Eval::Value(Comp::ret(boolean(false))),
+            run(NativePrim::Any, vec![gt2(), ints((&[]).into())]),
+            Eval::Value(Comp::ret(boolean((false).into()))),
             "`any` over the empty list is false"
         );
     }
@@ -537,16 +548,16 @@ mod tests
     {
         let gt0 = || unary_op(NativePrim::Gt, Value::int(0));
         assert_eq!(
-            run(NativePrim::All, vec![gt0(), ints(&[1, 2, 3])]),
-            Eval::Value(Comp::ret(boolean(true)))
+            run(NativePrim::All, vec![gt0(), ints((&[1, 2, 3]).into())]),
+            Eval::Value(Comp::ret(boolean((true).into())))
         );
         assert_eq!(
-            run(NativePrim::All, vec![gt0(), ints(&[1, 0, 3])]),
-            Eval::Value(Comp::ret(boolean(false)))
+            run(NativePrim::All, vec![gt0(), ints((&[1, 0, 3]).into())]),
+            Eval::Value(Comp::ret(boolean((false).into())))
         );
         assert_eq!(
-            run(NativePrim::All, vec![gt0(), ints(&[])]),
-            Eval::Value(Comp::ret(boolean(true))),
+            run(NativePrim::All, vec![gt0(), ints((&[]).into())]),
+            Eval::Value(Comp::ret(boolean((true).into()))),
             "`all` over the empty list is true"
         );
     }
@@ -555,17 +566,17 @@ mod tests
     #[test]
     fn flatten_concatenates_manifest_sublists()
     {
-        let nested = Value::list(vec![ints(&[1, 2]), ints(&[3])]);
+        let nested = Value::list(vec![ints((&[1, 2]).into()), ints((&[3]).into())]);
         assert_eq!(
             run(NativePrim::Flatten, vec![nested]),
-            Eval::Value(Comp::ret(ints(&[1, 2, 3])))
+            Eval::Value(Comp::ret(ints((&[1, 2, 3]).into())))
         );
         assert_eq!(
             run(NativePrim::Flatten, vec![Value::list(vec![])]),
-            Eval::Value(Comp::ret(ints(&[]))),
+            Eval::Value(Comp::ret(ints((&[]).into()))),
             "flattening the empty list is the empty list"
         );
-        let ragged = Value::list(vec![ints(&[1]), Value::int(5)]);
+        let ragged = Value::list(vec![ints((&[1]).into()), Value::int(5)]);
         assert_eq!(
             Eval::Blame(Blame::Hole),
             run(NativePrim::Flatten, vec![ragged]),
@@ -578,8 +589,8 @@ mod tests
     fn uniq_drops_later_structural_duplicates()
     {
         assert_eq!(
-            run(NativePrim::Uniq, vec![ints(&[1, 2, 1, 3, 2])]),
-            Eval::Value(Comp::ret(ints(&[1, 2, 3])))
+            run(NativePrim::Uniq, vec![ints((&[1, 2, 1, 3, 2]).into())]),
+            Eval::Value(Comp::ret(ints((&[1, 2, 3]).into())))
         );
     }
 
@@ -589,8 +600,8 @@ mod tests
     fn sort_orders_homogeneous_orderable_atoms()
     {
         assert_eq!(
-            run(NativePrim::Sort, vec![ints(&[3, 1, 2])]),
-            Eval::Value(Comp::ret(ints(&[1, 2, 3])))
+            run(NativePrim::Sort, vec![ints((&[3, 1, 2]).into())]),
+            Eval::Value(Comp::ret(ints((&[1, 2, 3]).into())))
         );
         let strings = Value::list(vec![
             Value::string("b"),
@@ -737,8 +748,8 @@ mod tests
             .collect();
         let gt31 = unary_op(NativePrim::Gt, Value::int(LONG_LIST_THRESHOLD));
         assert_eq!(
-            run(NativePrim::Where, vec![gt31, ints(&input)]),
-            Eval::Value(Comp::ret(ints(&expected)))
+            run(NativePrim::Where, vec![gt31, ints((&input).into())]),
+            Eval::Value(Comp::ret(ints((&expected).into())))
         );
     }
 
@@ -759,24 +770,28 @@ mod tests
         ));
         let expected_sum: i64 = input.iter().copied().sum();
         assert_eq!(
-            run(NativePrim::Reduce, vec![add, Value::int(0), ints(&input)]),
+            run(NativePrim::Reduce, vec![
+                add,
+                Value::int(0),
+                ints((&input).into())
+            ]),
             Eval::Value(Comp::ret(Value::int(expected_sum))),
             "reduce sums 1..=64 via the iterative left-fold builder"
         );
         assert_eq!(
             run(NativePrim::All, vec![
                 unary_op(NativePrim::Gt, Value::int(0)),
-                ints(&input)
+                ints((&input).into())
             ]),
-            Eval::Value(Comp::ret(boolean(true))),
+            Eval::Value(Comp::ret(boolean((true).into()))),
             "`all (> 0)` holds across the long list"
         );
         assert_eq!(
             run(NativePrim::Any, vec![
                 unary_op(NativePrim::Gt, Value::int(count)),
-                ints(&input)
+                ints((&input).into())
             ]),
-            Eval::Value(Comp::ret(boolean(false))),
+            Eval::Value(Comp::ret(boolean((false).into()))),
             "`any (> max)` finds no witness"
         );
     }
@@ -793,14 +808,14 @@ mod tests
                 Comp::native(NativePrim::All),
                 unary_op(NativePrim::Gt, Value::int(0)),
             ),
-            ints(&[1, 2, 3]),
+            ints((&[1, 2, 3]).into()),
         );
         let any_big = Comp::app(
             Comp::app(
                 Comp::native(NativePrim::Any),
                 unary_op(NativePrim::Gt, Value::int(2)),
             ),
-            ints(&[1, 2, 3]),
+            ints((&[1, 2, 3]).into()),
         );
         let body = Comp::bind(
             all_positive,
@@ -821,7 +836,7 @@ mod tests
         );
         assert_eq!(
             run_assertions(body),
-            Eval::Value(Comp::ret(boolean(true))),
+            Eval::Value(Comp::ret(boolean((true).into()))),
             "both assertions pass, so the runner reports success"
         );
     }
@@ -836,7 +851,7 @@ mod tests
                 Comp::native(NativePrim::All),
                 unary_op(NativePrim::Gt, Value::int(5)),
             ),
-            ints(&[1, 2, 3]),
+            ints((&[1, 2, 3]).into()),
         );
         let body = Comp::bind(
             all_big,
@@ -845,7 +860,7 @@ mod tests
         );
         assert_eq!(
             run_assertions(body),
-            Eval::Value(Comp::ret(boolean(false))),
+            Eval::Value(Comp::ret(boolean((false).into()))),
             "a failed assertion short-circuits to failure"
         );
     }
@@ -934,10 +949,31 @@ mod tests
         Value::thunk(Grade::OMEGA, Comp::lam("acc", Comp::lam("x", body)))
     }
 
-    /// A list value from bare integers.
-    fn ints(values: &[i64]) -> Value
+    /// Borrowed integers for one checked-core list fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct IntegerFixtureValues<'values>(&'values [i64]);
+
+    impl<'values, const LENGTH: usize> From<&'values [i64; LENGTH]> for IntegerFixtureValues<'values>
     {
-        Value::list(values.iter().copied().map(Value::int).collect())
+        fn from(values: &'values [i64; LENGTH]) -> Self
+        {
+            Self(values)
+        }
+    }
+
+    impl<'values> From<&'values Vec<i64>> for IntegerFixtureValues<'values>
+    {
+        fn from(values: &'values Vec<i64>) -> Self
+        {
+            Self(values.as_slice())
+        }
+    }
+
+    /// A list value from bare integers.
+    fn ints(values: IntegerFixtureValues<'_>) -> Value
+    {
+        Value::list(values.0.iter().copied().map(Value::int).collect())
     }
 
     // The `Optional` / boolean carriers `get` and the comparison / boolean
@@ -965,10 +1001,23 @@ mod tests
         Value::inj2(Value::Unit)
     }
 
-    /// The canonical boolean (`true = inj1 ()`, `false = inj2 ()`).
-    fn boolean(value: bool) -> Value
+    /// One canonical boolean fixture input.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct BooleanFixture(bool);
+
+    impl From<bool> for BooleanFixture
     {
-        if value {
+        fn from(value: bool) -> Self
+        {
+            Self(value)
+        }
+    }
+
+    /// The canonical boolean (`true = inj1 ()`, `false = inj2 ()`).
+    fn boolean(value: BooleanFixture) -> Value
+    {
+        if value.0 {
             Value::inj1(Value::Unit)
         }
         else {
@@ -1006,12 +1055,16 @@ mod tests
                 "$ok",
                 Comp::resume(Value::var("$k"), Comp::ret(Value::Unit)),
                 "$bad",
-                Comp::ret(boolean(false)),
+                Comp::ret(boolean((false).into())),
             ),
         );
-        let handler = Comp::handle(assert_sig(), body, "$done", Comp::ret(boolean(true)), vec![
-            clause,
-        ]);
+        let handler = Comp::handle(
+            assert_sig(),
+            body,
+            "$done",
+            Comp::ret(boolean((true).into())),
+            vec![clause],
+        );
         machine::run_comp(&handler)
     }
 }

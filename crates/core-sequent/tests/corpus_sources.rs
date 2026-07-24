@@ -27,6 +27,30 @@ const FEATURE_FROZEN_SOURCES: [&str; 2] = [
     "model/22-ffi-effect-and-capability.gandr",
     "model/28-regex-and-path-builtins.gandr",
 ];
+/// One named top-level source-corpus tree.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CorpusTree(&'static str);
+
+impl CorpusTree
+{
+    /// The representative model corpus.
+    pub const MODEL: Self = Self("model");
+
+    /// The pathological stress corpus.
+    pub const PATHOLOGICAL: Self = Self("pathological");
+}
+
+impl core::fmt::Display for CorpusTree
+{
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        f.write_str(self.0)
+    }
+}
 
 /// One live-lowered corpus source and its checked-in B1 byte anchor.
 pub struct Fixture
@@ -57,9 +81,9 @@ pub struct Fixture
 ///   totality, partition, and export gates.
 /// - panics: unreadable/malformed checked-in test data or lowering
 ///   infrastructure failure.
-pub fn read_tree(tree: &str) -> Vec<Fixture>
+pub fn read_tree(tree: CorpusTree) -> Vec<Fixture>
 {
-    let source_root = surface_corpus_root().join(tree);
+    let source_root = surface_corpus_root().join(tree.0);
     let mut source_paths = gandr_files(&source_root);
     source_paths.sort();
     let mut fixtures = Vec::with_capacity(source_paths.len());
@@ -99,10 +123,10 @@ pub fn read_tree(tree: &str) -> Vec<Fixture>
 /// The fold is intentionally byte-for-byte identical to the retired B1 reader:
 /// path and file bytes remain the authority for the partition/export manifests
 /// even though execution now comes from live lowering.
-pub fn corpus_fixtures_b3sum(trees: &[&str]) -> String
+pub fn corpus_fixtures_b3sum(trees: &[CorpusTree]) -> String
 {
     let mut hasher = blake3::Hasher::new();
-    for tree in trees {
+    for &tree in trees {
         for fixture in read_tree(tree) {
             let bytes = fs::read(&fixture.path).unwrap_or_else(|error| {
                 panic!("cannot read fixture `{}`: {error}", fixture.path.display())

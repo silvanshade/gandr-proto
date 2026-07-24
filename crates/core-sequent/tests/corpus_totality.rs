@@ -32,13 +32,14 @@ mod tests
     use gandr_core_sequent::focus_term;
     use gandr_core_sequent::wellformed;
 
+    use crate::corpus_sources::CorpusTree;
     use crate::corpus_sources::read_tree;
 
     /// `𝓕` is total on the model corpus tree.
     #[test]
     fn focusing_is_total_on_the_model_corpus()
     {
-        let outcome = sweep("model");
+        let outcome = sweep(CorpusTree::MODEL);
         eprintln!(
             "model 𝓕-totality witness: {} fixtures, {} items focused",
             outcome.files, outcome.items
@@ -62,7 +63,7 @@ mod tests
     #[test]
     fn focusing_is_total_on_the_pathological_corpus()
     {
-        let outcome = sweep("pathological");
+        let outcome = sweep(CorpusTree::PATHOLOGICAL);
         eprintln!(
             "pathological 𝓕-totality witness: {} fixtures, {} items focused",
             outcome.files, outcome.items
@@ -95,7 +96,7 @@ mod tests
 
     /// Focuses every fixture item in `tree`, checking the result is well-formed
     /// with no free covariables.
-    fn sweep(tree: &str) -> Sweep
+    fn sweep(tree: CorpusTree) -> Sweep
     {
         let fixtures = read_tree(tree);
         assert!(

@@ -58,6 +58,7 @@ mod tests
 
     use self::alloc::collections::BTreeMap;
     use self::alloc::collections::BTreeSet;
+    use crate::corpus_sources::CorpusTree;
     use crate::corpus_sources::corpus_fixtures_b3sum;
     use crate::corpus_sources::read_tree;
 
@@ -68,7 +69,7 @@ mod tests
     const ELIGIBLE: &str = "eligible";
 
     /// The corpus trees the sweep classifies (also the b3sum-provenance scope).
-    const TREES: [&str; 2] = ["model", "pathological"];
+    const TREES: [CorpusTree; 2] = [CorpusTree::MODEL, CorpusTree::PATHOLOGICAL];
 
     /// One classified corpus item.
     struct Classified
@@ -93,7 +94,10 @@ mod tests
                 for (index, term) in fixture.items.iter().enumerate() {
                     let class = match classify(term) {
                         | Ok(environment) => {
-                            assert_round_trips(&environment, &fixture.source, index);
+                            assert_round_trips(&environment, CorpusItemLocation {
+                                source: fixture.source.as_str(),
+                                index,
+                            });
                             String::from(ELIGIBLE)
                         },
                         | Err(tag) => tag,
@@ -171,22 +175,36 @@ mod tests
         Ok(environment)
     }
 
+    /// Corpus location of one classified item.
+    #[derive(Clone, Copy)]
+    struct CorpusItemLocation<'source>
+    {
+        /// Corpus-relative source path.
+        source: &'source str,
+        /// Item ordinal within the source.
+        index: usize,
+    }
+
     /// Assert `write ∘ read ∘ write` is byte-identical on an admitted item's
     /// environment.
     fn assert_round_trips(
         environment: &Environment,
-        source: &str,
-        index: usize,
+        location: CorpusItemLocation<'_>,
     )
     {
         let bytes = write(environment);
         let reread = read(&bytes).unwrap_or_else(|error| {
-            panic!("{source} item {index}: an eligible item failed to re-read: {error}")
+            panic!(
+                "{} item {}: an eligible item failed to re-read: {error}",
+                location.source, location.index
+            )
         });
         assert_eq!(
             bytes,
             write(&reread),
-            "{source} item {index}: an eligible item did not round-trip byte-identically"
+            "{} item {}: an eligible item did not round-trip byte-identically",
+            location.source,
+            location.index
         );
     }
 
@@ -205,45 +223,88 @@ mod tests
             .collect()
     }
 
+    /// Borrowed partition-manifest text.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct ManifestText<'text>(&'text str);
+
     /// The data lines of a manifest text (the non-`;` lines).
-    fn data_lines(text: &str) -> Vec<String>
+    fn data_lines(text: ManifestText<'_>) -> Vec<String>
     {
-        text.lines()
+        text.0
+            .lines()
             .filter(|line| !line.starts_with(';') && !line.trim().is_empty())
             .map(str::to_owned)
             .collect()
     }
 
-    /// Whether a rendered row belongs to an O6 feature-frozen source.
-    fn is_feature_frozen_line(
-        line: &str,
-        sources: &BTreeSet<&str>,
-    ) -> bool
+    /// One feature-freeze membership query.
+    #[derive(Clone, Copy)]
+    struct FeatureFreezeQuery<'line, 'set, 'source>
     {
-        line.split_once('\t')
-            .is_some_and(|(source, _rest)| sources.contains(source))
+        /// Rendered partition row.
+        line: &'line str,
+        /// Corpus sources still frozen at this stage.
+        sources: &'set BTreeSet<&'source str>,
+    }
+
+    /// Whether a manifest row belongs to a frozen source.
+    enum FeatureFreezeStatus
+    {
+        /// The row is frozen.
+        Frozen,
+        /// The row participates in live comparison.
+        Live,
+    }
+
+    /// Whether a rendered row belongs to an O6 feature-frozen source.
+    fn feature_freeze_status(query: FeatureFreezeQuery<'_, '_, '_>) -> FeatureFreezeStatus
+    {
+        if query
+            .line
+            .split_once('\t')
+            .is_some_and(|(source, _rest)| query.sources.contains(source))
+        {
+            FeatureFreezeStatus::Frozen
+        }
+        else {
+            FeatureFreezeStatus::Live
+        }
+    }
+
+    /// One partition-manifest provenance-header lookup.
+    #[derive(Clone, Copy)]
+    struct HeaderQuery<'header>
+    {
+        /// Whole manifest text.
+        text: &'header str,
+        /// Header field name.
+        name: &'header str,
     }
 
     /// The value of a `; <name>: <value>` provenance header line, trimmed.
-    fn header_value(
-        text: &str,
-        name: &str,
-    ) -> Option<String>
+    fn header_value(query: HeaderQuery<'_>) -> Option<String>
     {
-        let needle = format!("; {name}:");
-        text.lines()
+        let needle = format!("; {}:", query.name);
+        query
+            .text
+            .lines()
             .find_map(|line| line.strip_prefix(&needle))
             .map(|rest| rest.trim().to_owned())
     }
 
+    /// Per-class partition cardinalities.
+    #[repr(transparent)]
+    struct ClassCardinalities(BTreeMap<String, usize>);
+
     /// The per-class cardinalities, ascending by class.
-    fn cardinalities(rows: &[Classified]) -> BTreeMap<String, usize>
+    fn cardinalities(rows: &[Classified]) -> ClassCardinalities
     {
         let mut counts: BTreeMap<String, usize> = BTreeMap::new();
         for row in rows {
             *counts.entry(row.class.clone()).or_insert(0) += 1;
         }
-        counts
+        ClassCardinalities(counts)
     }
 
     /// The live classification matches the checked-in manifest, and every
@@ -259,12 +320,20 @@ mod tests
             .collect();
         let live: Vec<String> = render_data_lines(&rows)
             .into_iter()
-            .filter(|line| !is_feature_frozen_line(line, &feature_frozen_sources))
+            .filter(|line| {
+                matches!(
+                    feature_freeze_status(FeatureFreezeQuery {
+                        line: line.as_str(),
+                        sources: &feature_frozen_sources,
+                    }),
+                    FeatureFreezeStatus::Live
+                )
+            })
             .collect();
         let counts = cardinalities(&rows);
-        let eligible = counts.get(ELIGIBLE).copied().unwrap_or(0);
+        let eligible = counts.0.get(ELIGIBLE).copied().unwrap_or(0);
         eprintln!("kernel corpus partition: {} items", rows.len());
-        for (class, count) in &counts {
+        for (class, count) in &counts.0 {
             eprintln!("  {class}: {count}");
         }
 
@@ -283,7 +352,11 @@ mod tests
         // The b3sum fixture-provenance guard (W-A H3): the manifest couples to
         // the exact corpus bytes it was classified from, so a fixture edit forces
         // a re-bless rather than silently comparing against a stale partition.
-        let recorded_b3sum = header_value(&text, "corpus-fixtures-b3sum").unwrap_or_else(|| {
+        let recorded_b3sum = header_value(HeaderQuery {
+            text: &text,
+            name: "corpus-fixtures-b3sum",
+        })
+        .unwrap_or_else(|| {
             panic!(
                 "partition manifest `{}` is missing its `corpus-fixtures-b3sum` provenance header; \
                  regenerate with {BLESS_ENV}=1",
@@ -297,9 +370,17 @@ mod tests
              {BLESS_ENV}=1",
             path.display()
         );
-        let expected: Vec<String> = data_lines(&text)
+        let expected: Vec<String> = data_lines(ManifestText(&text))
             .into_iter()
-            .filter(|line| !is_feature_frozen_line(line, &feature_frozen_sources))
+            .filter(|line| {
+                matches!(
+                    feature_freeze_status(FeatureFreezeQuery {
+                        line: line.as_str(),
+                        sources: &feature_frozen_sources,
+                    }),
+                    FeatureFreezeStatus::Live
+                )
+            })
             .collect();
         assert_eq!(
             live,
@@ -324,7 +405,7 @@ mod tests
     /// Rewrite the checked-in manifest from the live classification.
     fn write_manifest(
         rows: &[Classified],
-        counts: &BTreeMap<String, usize>,
+        counts: &ClassCardinalities,
     )
     {
         let mut lines = vec![
@@ -336,7 +417,7 @@ mod tests
             format!("; items: {}", rows.len()),
             format!("; corpus-fixtures-b3sum: {}", corpus_fixtures_b3sum(&TREES)),
         ];
-        for (class, count) in counts {
+        for (class, count) in &counts.0 {
             lines.push(format!("; class {class}: {count}"));
         }
         lines.push(String::from("; columns: <source>\\t<item-index>\\t<class>"));
@@ -357,13 +438,14 @@ mod tests
         let rows = sweep();
         let counts = cardinalities(&rows);
         let observed: usize = counts
+            .0
             .keys()
             .filter(|class| class.as_str() != ELIGIBLE)
             .count();
         assert!(
             observed >= 4,
             "the corpus should exercise several exclusion classes (got {observed}): {:?}",
-            counts.keys().collect::<Vec<_>>()
+            counts.0.keys().collect::<Vec<_>>()
         );
     }
 }

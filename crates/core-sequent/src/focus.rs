@@ -264,6 +264,11 @@ impl Focused
     }
 }
 
+/// Monotone serial counter for freshly minted covariable names.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct FreshCoVarCounter(u64);
+
 /// The translation state: the growing arena, a monotone fresh-covariable
 /// counter, and the provenance table.
 struct Focuser
@@ -271,7 +276,7 @@ struct Focuser
     /// The arena being built.
     arena: CommandArena,
     /// The next fresh-covariable serial number.
-    fresh: u64,
+    fresh: FreshCoVarCounter,
     /// The provenance of each created command.
     origins: BTreeMap<CommandId, FocusOrigin>,
 }
@@ -283,7 +288,7 @@ impl Focuser
     {
         Self {
             arena: CommandArena::new(),
-            fresh: 0_u64,
+            fresh: FreshCoVarCounter::default(),
             origins: BTreeMap::new(),
         }
     }
@@ -292,8 +297,8 @@ impl Focuser
     /// disjoint from every frozen-core identifier.
     fn fresh_covar(&mut self) -> CoName
     {
-        let name = format!("%k{}", self.fresh);
-        self.fresh = self.fresh.wrapping_add(1_u64);
+        let name = format!("%k{}", self.fresh.0);
+        self.fresh.0 = self.fresh.0.wrapping_add(1_u64);
         name
     }
 
@@ -1272,7 +1277,7 @@ impl Focuser
     /// ([`focus_comp_into`]).
     fn from_parts(
         arena: CommandArena,
-        fresh: u64,
+        fresh: FreshCoVarCounter,
         origins: BTreeMap<CommandId, FocusOrigin>,
     ) -> Self
     {
@@ -1285,7 +1290,13 @@ impl Focuser
 
     /// Consumes the state into its raw arena, fresh counter, and provenance
     /// table (the companion of [`Self::from_parts`]).
-    fn into_raw_parts(self) -> (CommandArena, u64, BTreeMap<CommandId, FocusOrigin>)
+    fn into_raw_parts(
+        self
+    ) -> (
+        CommandArena,
+        FreshCoVarCounter,
+        BTreeMap<CommandId, FocusOrigin>,
+    )
     {
         (self.arena, self.fresh, self.origins)
     }
@@ -1320,7 +1331,7 @@ impl Focuser
 pub fn focus_comp_into(
     arena: &mut CommandArena,
     origins: &mut BTreeMap<CommandId, FocusOrigin>,
-    fresh: &mut u64,
+    fresh: &mut FreshCoVarCounter,
     comp: &Comp,
 ) -> Result<(CommandId, CoName), FocusError>
 {

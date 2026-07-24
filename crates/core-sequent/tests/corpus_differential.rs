@@ -85,6 +85,7 @@ mod tests
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
 
+    use crate::corpus_sources::CorpusTree;
     use crate::corpus_sources::Fixture;
     use crate::corpus_sources::read_tree;
 
@@ -97,7 +98,7 @@ mod tests
     #[test]
     fn l_machine_matches_the_outcome_snapshots_on_the_model_corpus()
     {
-        let outcome = sweep("model");
+        let outcome = sweep(CorpusTree::MODEL);
         eprintln!(
             "model corpus outcome snapshot: {} of {} items realized on the L machine",
             outcome.realized, outcome.items
@@ -130,7 +131,7 @@ mod tests
     #[test]
     fn l_machine_matches_the_outcome_snapshots_on_the_pathological_corpus()
     {
-        let outcome = sweep("pathological");
+        let outcome = sweep(CorpusTree::PATHOLOGICAL);
         eprintln!(
             "pathological corpus outcome snapshot: {} of {} items realized on the L machine",
             outcome.realized, outcome.items
@@ -159,7 +160,7 @@ mod tests
     /// Runs each fixture item on the L machine and asserts it realizes. For
     /// non-staged fixtures, its canonical outcome must also match the recorded
     /// snapshot; F4 O6 keeps the FFI-capability and regex records frozen.
-    fn sweep(tree: &str) -> Sweep
+    fn sweep(tree: CorpusTree) -> Sweep
     {
         let fixtures = read_tree(tree);
         assert!(
@@ -213,7 +214,7 @@ mod tests
         if std::env::var_os(BLESS_ENV).is_none() {
             return;
         }
-        for tree in ["model", "pathological"] {
+        for tree in [CorpusTree::MODEL, CorpusTree::PATHOLOGICAL] {
             for fixture in &read_tree(tree) {
                 if fixture.snapshot_is_feature_frozen {
                     continue;
@@ -262,7 +263,11 @@ mod tests
                 path.display()
             )
         });
-        let recorded = header_field(&text, "sexp-b3sum").unwrap_or_else(|| {
+        let recorded = header_field(SnapshotHeader {
+            text: &text,
+            name: "sexp-b3sum",
+        })
+        .unwrap_or_else(|| {
             panic!(
                 "outcome snapshot `{}` is missing its `sexp-b3sum` provenance header",
                 path.display()
@@ -306,14 +311,23 @@ mod tests
             .unwrap_or_else(|error| panic!("cannot write `{}`: {error}", path.display()));
     }
 
-    /// The value of a `; <name>: <value>` provenance header line, trimmed.
-    fn header_field(
-        text: &str,
-        name: &str,
-    ) -> Option<String>
+    /// One provenance-header lookup.
+    #[derive(Clone, Copy)]
+    struct SnapshotHeader<'text>
     {
-        let needle = format!("; {name}:");
-        text.lines()
+        /// Whole snapshot text.
+        text: &'text str,
+        /// Header field name.
+        name: &'text str,
+    }
+
+    /// The value of a `; <name>: <value>` provenance header line, trimmed.
+    fn header_field(header: SnapshotHeader<'_>) -> Option<String>
+    {
+        let needle = format!("; {}:", header.name);
+        header
+            .text
+            .lines()
             .find_map(|line| line.strip_prefix(&needle))
             .map(|rest| rest.trim().to_owned())
     }

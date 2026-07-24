@@ -495,7 +495,7 @@ mod tests
         const PINNED_RETURN_INTEGER: i64 = 42;
         const BETA_ARGUMENT: i64 = 11;
 
-        let mut check = Check::load("pure_spine");
+        let mut check = Check::load(("pure_spine").into());
 
         // ret + first-order data.
         check.pin(&Comp::ret(Value::int(PINNED_RETURN_INTEGER)));
@@ -660,7 +660,7 @@ mod tests
     #[test]
     fn hand_built_identity_cases_agree()
     {
-        let mut check = Check::load("identity");
+        let mut check = Check::load(("identity").into());
         // Walk-β threads the WITNESS into the base binder: `(x). ret x` on
         // `here(7)` yields `ret 7`.
         check.pin(&Comp::walk(
@@ -733,7 +733,7 @@ mod tests
     #[test]
     fn hand_built_declared_data_cases_agree()
     {
-        let mut check = Check::load("declared_data");
+        let mut check = Check::load(("declared_data").into());
         // Selects the matching arm and binds the payload: tag 0 yields 7.
         check.pin(&Comp::data_case(
             Value::ctor(did(), 0_usize, Value::int(7)),
@@ -817,7 +817,7 @@ mod tests
         const FIRST_NATIVE_ARGUMENT: i64 = 10;
         const SECOND_NATIVE_ARGUMENT: i64 = 20;
 
-        let mut check = Check::load("native");
+        let mut check = Check::load(("native").into());
 
         // Saturated arithmetic and comparison.
         check.pin(&Comp::app(
@@ -921,30 +921,64 @@ mod tests
         ));
     }
 
+    /// Borrowed binder text for one closure layer.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct ClosureBinder<'binder>(&'binder str);
+
+    impl<'binder> From<&'binder str> for ClosureBinder<'binder>
+    {
+        fn from(binder: &'binder str) -> Self
+        {
+            Self(binder)
+        }
+    }
+
     /// A pure unary closure `U(? → F ?)` — a thunk over `λx. body`, the shape a
     /// higher-order combinator forces and applies.
     fn closure1(
-        binder: &str,
+        binder: ClosureBinder<'_>,
         body: Comp,
     ) -> Value
     {
-        Value::thunk(Grade::OMEGA, Comp::lam(binder, body))
+        Value::thunk(Grade::OMEGA, Comp::lam(binder.0, body))
     }
 
     /// A pure binary closure `U(? → ? → F ?)` — the shape `reduce` folds with.
     fn closure2(
-        fst: &str,
-        snd: &str,
+        fst: ClosureBinder<'_>,
+        snd: ClosureBinder<'_>,
         body: Comp,
     ) -> Value
     {
-        Value::thunk(Grade::OMEGA, Comp::lam(fst, Comp::lam(snd, body)))
+        Value::thunk(Grade::OMEGA, Comp::lam(fst.0, Comp::lam(snd.0, body)))
+    }
+
+    /// Borrowed integers for one checked-core list fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct IntegerListFixture<'values>(&'values [i64]);
+
+    impl<'values, const LENGTH: usize> From<&'values [i64; LENGTH]> for IntegerListFixture<'values>
+    {
+        fn from(values: &'values [i64; LENGTH]) -> Self
+        {
+            Self(values)
+        }
+    }
+
+    impl<'values> From<&'values Vec<i64>> for IntegerListFixture<'values>
+    {
+        fn from(values: &'values Vec<i64>) -> Self
+        {
+            Self(values.as_slice())
+        }
     }
 
     /// A small integer list value.
-    fn int_list(values: &[i64]) -> Value
+    fn int_list(values: IntegerListFixture<'_>) -> Value
     {
-        Value::list(values.iter().copied().map(Value::int).collect())
+        Value::list(values.0.iter().copied().map(Value::int).collect())
     }
 
     /// A saturated `each f xs` computation.
@@ -966,34 +1000,34 @@ mod tests
     #[test]
     fn hand_built_higher_order_native_cases_agree()
     {
-        let mut check = Check::load("higher_order_native");
+        let mut check = Check::load(("higher_order_native").into());
         // `each (\x. x + 1) [1, 2, 3]` maps to `[2, 3, 4]`.
         check.pin(&each(
             closure1(
-                "x",
+                ("x").into(),
                 Comp::app(
                     Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
                     Value::int(1),
                 ),
             ),
-            int_list(&[1, 2, 3]),
+            int_list((&[1, 2, 3]).into()),
         ));
         // `each` over the empty list is the empty list.
         check.pin(&each(
-            closure1("x", Comp::ret(Value::var("x"))),
-            int_list(&[]),
+            closure1(("x").into(), Comp::ret(Value::var("x"))),
+            int_list((&[]).into()),
         ));
         // The mapped result threads into an enclosing bind.
         check.pin(&Comp::bind(
             each(
                 closure1(
-                    "x",
+                    ("x").into(),
                     Comp::app(
                         Comp::app(Comp::native(NativePrim::Mul), Value::var("x")),
                         Value::int(2),
                     ),
                 ),
-                int_list(&[10, 20]),
+                int_list((&[10, 20]).into()),
             ),
             "ys",
             Comp::ret(Value::pair(Value::var("ys"), Value::var("ys"))),
@@ -1004,14 +1038,14 @@ mod tests
             Comp::app(
                 Comp::native(NativePrim::Where),
                 closure1(
-                    "x",
+                    ("x").into(),
                     Comp::app(
                         Comp::app(Comp::native(NativePrim::Lt), Value::var("x")),
                         Value::int(2),
                     ),
                 ),
             ),
-            int_list(&[1, 2, 3]),
+            int_list((&[1, 2, 3]).into()),
         ));
 
         // `reduce (\a x. a + x) 0 [1, 2, 3, 4]` folds to `10`.
@@ -1020,8 +1054,8 @@ mod tests
                 Comp::app(
                     Comp::native(NativePrim::Reduce),
                     closure2(
-                        "a",
-                        "x",
+                        ("a").into(),
+                        ("x").into(),
                         Comp::app(
                             Comp::app(Comp::native(NativePrim::Add), Value::var("a")),
                             Value::var("x"),
@@ -1030,7 +1064,7 @@ mod tests
                 ),
                 Value::int(0),
             ),
-            int_list(&[1, 2, 3, 4]),
+            int_list((&[1, 2, 3, 4]).into()),
         ));
 
         // `any (\x. x == 2) [1, 2, 3]` is `true` (short-circuits).
@@ -1038,14 +1072,14 @@ mod tests
             Comp::app(
                 Comp::native(NativePrim::Any),
                 closure1(
-                    "x",
+                    ("x").into(),
                     Comp::app(
                         Comp::app(Comp::native(NativePrim::Eq), Value::var("x")),
                         Value::int(2),
                     ),
                 ),
             ),
-            int_list(&[1, 2, 3]),
+            int_list((&[1, 2, 3]).into()),
         ));
 
         // `all (\x. x < 5) [1, 2, 3]` is `true`.
@@ -1053,14 +1087,14 @@ mod tests
             Comp::app(
                 Comp::native(NativePrim::All),
                 closure1(
-                    "x",
+                    ("x").into(),
                     Comp::app(
                         Comp::app(Comp::native(NativePrim::Lt), Value::var("x")),
                         Value::int(5),
                     ),
                 ),
             ),
-            int_list(&[1, 2, 3]),
+            int_list((&[1, 2, 3]).into()),
         ));
 
         // `update_where (\x. x < 3) (\x. x + 100) [1, 2, 3, 4]` transforms the
@@ -1070,7 +1104,7 @@ mod tests
                 Comp::app(
                     Comp::native(NativePrim::UpdateWhere),
                     closure1(
-                        "x",
+                        ("x").into(),
                         Comp::app(
                             Comp::app(Comp::native(NativePrim::Lt), Value::var("x")),
                             Value::int(3),
@@ -1078,25 +1112,28 @@ mod tests
                     ),
                 ),
                 closure1(
-                    "x",
+                    ("x").into(),
                     Comp::app(
                         Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
                         Value::int(100),
                     ),
                 ),
             ),
-            int_list(&[1, 2, 3, 4]),
+            int_list((&[1, 2, 3, 4]).into()),
         ));
 
         // `update_at [10, 20, 30] 1 (\x. x + 5)` transforms the element at
         // index 1, yielding `[10, 25, 30]` (the closure-taking list update).
         check.pin(&Comp::app(
             Comp::app(
-                Comp::app(Comp::native(NativePrim::UpdateAt), int_list(&[10, 20, 30])),
+                Comp::app(
+                    Comp::native(NativePrim::UpdateAt),
+                    int_list((&[10, 20, 30]).into()),
+                ),
                 Value::int(1),
             ),
             closure1(
-                "x",
+                ("x").into(),
                 Comp::app(
                     Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
                     Value::int(5),
@@ -1117,7 +1154,7 @@ mod tests
                         Comp::perform(sig("E".into(), "op".into()), "op", Value::var("x")),
                     ),
                 ),
-                int_list(&[1, 2]),
+                int_list((&[1, 2]).into()),
             ),
             "r",
             Comp::ret(Value::var("r")),
@@ -1134,13 +1171,13 @@ mod tests
         // both machines (the closure body runs against the continuation).
         check.pin(&each(
             closure1(
-                "x",
+                ("x").into(),
                 Comp::app(
                     Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
                     Value::Unit,
                 ),
             ),
-            int_list(&[1, 2]),
+            int_list((&[1, 2]).into()),
         ));
 
         // A higher-order combinator whose list carries a bound value (the
@@ -1151,13 +1188,13 @@ mod tests
             "n",
             each(
                 closure1(
-                    "x",
+                    ("x").into(),
                     Comp::app(
                         Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
                         Value::var("n"),
                     ),
                 ),
-                int_list(&[1, 2]),
+                int_list((&[1, 2]).into()),
             ),
         ));
     }
@@ -1172,7 +1209,7 @@ mod tests
     #[test]
     fn hand_built_exact_readback_cases_agree()
     {
-        let mut check = Check::load("exact_readback");
+        let mut check = Check::load(("exact_readback").into());
         // A returned thunk — its body compared exactly.
         check.pin(&Comp::ret(Value::thunk(
             Grade::ONE,
@@ -1266,16 +1303,16 @@ mod tests
     #[test]
     fn hand_built_higher_order_prelude_case_agrees()
     {
-        let mut check = Check::load("higher_order_prelude");
+        let mut check = Check::load(("higher_order_prelude").into());
         let program = each(
             closure1(
-                "x",
+                ("x").into(),
                 Comp::app(
                     Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
                     Value::int(1),
                 ),
             ),
-            int_list(&[1, 2, 3]),
+            int_list((&[1, 2, 3]).into()),
         );
         check.pin_with_prelude(&Comp::force(Value::var("g")), &[(
             String::from("g"),
@@ -1293,7 +1330,7 @@ mod tests
     #[test]
     fn hand_built_prelude_cases_agree()
     {
-        let mut check = Check::load("prelude");
+        let mut check = Check::load(("prelude").into());
         // A hit: a thunk-valued name forces to its body, which continues.
         check.pin_with_prelude(&Comp::force(Value::var("f")), &[(
             String::from("f"),
@@ -1408,7 +1445,7 @@ mod tests
     #[test]
     fn handler_resumption_under_projection_uses_the_ambient_continuation_once()
     {
-        let mut check = Check::load("handler_resumption_under_projection");
+        let mut check = Check::load(("handler_resumption_under_projection").into());
         check.pin(&Comp::prj1(Comp::handle(
             sig("E".into(), "op".into()),
             Comp::perform(sig("E".into(), "op".into()), "op", Value::Unit),
@@ -1430,7 +1467,7 @@ mod tests
     #[test]
     fn hand_built_effect_cases_agree()
     {
-        let mut check = Check::load("effect");
+        let mut check = Check::load(("effect").into());
         // An unhandled perform blames PerformNoHandler on both.
         check.pin(&Comp::perform(
             sig("E".into(), "op".into()),
@@ -1639,7 +1676,7 @@ mod tests
     #[test]
     fn hand_built_shift_cases_agree()
     {
-        let mut check = Check::load("shift");
+        let mut check = Check::load(("shift").into());
         // Discard the captured continuation: the shift's value is the reset's.
         check.pin(&Comp::reset(Comp::shift("k", Comp::ret(Value::int(5)))));
         // Discard across a bind: the enclosing `let x <- []; ret (x, x)`
@@ -1780,6 +1817,20 @@ mod tests
         }
     }
 
+    /// Borrowed expected host-offer rows.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct ExpectedHostLog<'rows>(&'rows [(&'static str, &'static str, Value)]);
+
+    impl<'rows, const COUNT: usize> From<&'rows [(&'static str, &'static str, Value); COUNT]>
+        for ExpectedHostLog<'rows>
+    {
+        fn from(rows: &'rows [(&'static str, &'static str, Value); COUNT]) -> Self
+        {
+            Self(rows)
+        }
+    }
+
     /// Drives `comp` with the scripted host on the L machine, asserting its
     /// final outcome matches `expected_final` and its host offer log equals
     /// `expected_log`. Each case carries its own expected outcome, so the CEK
@@ -1787,7 +1838,7 @@ mod tests
     fn assert_host_seam(
         comp: &Comp,
         replies: &[HostReply],
-        expected_log: &[(&str, &str, Value)],
+        expected_log: ExpectedHostLog<'_>,
         expected_final: &Eval,
     )
     {
@@ -1802,6 +1853,7 @@ mod tests
         );
 
         let expected: Vec<(String, String, Value)> = expected_log
+            .0
             .iter()
             .map(|&(sig, op, ref payload)| (sig.to_owned(), op.to_owned(), payload.clone()))
             .collect();
@@ -1816,7 +1868,7 @@ mod tests
         assert_host_seam(
             &Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
             &[HostReply::Resume(Value::int(42))],
-            &[("E", "op", Value::int(5))],
+            (&[("E", "op", Value::int(5))]).into(),
             &Eval::Value(Comp::ret(Value::int(42))),
         );
     }
@@ -1828,7 +1880,7 @@ mod tests
         assert_host_seam(
             &Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
             &[HostReply::Unhandled],
-            &[("E", "op", Value::int(5))],
+            (&[("E", "op", Value::int(5))]).into(),
             &Eval::Blame(Blame::PerformNoHandler),
         );
     }
@@ -1849,7 +1901,7 @@ mod tests
                 HostReply::Resume(Value::int(10)),
                 HostReply::Resume(Value::int(99)),
             ],
-            &[("E", "op", Value::int(1)), ("E", "op", Value::int(10))],
+            (&[("E", "op", Value::int(1)), ("E", "op", Value::int(10))]).into(),
             &Eval::Value(Comp::ret(Value::int(99))),
         );
     }
@@ -1875,7 +1927,7 @@ mod tests
             &[HostReply::Resume(Value::int(20))],
             // Only the escaping `esc` reaches the host; the source handler claims
             // `keep` itself, so it is never offered.
-            &[("E", "esc", Value::int(7))],
+            (&[("E", "esc", Value::int(7))]).into(),
             &Eval::Value(Comp::ret(Value::int(555))),
         );
     }
@@ -1896,7 +1948,7 @@ mod tests
             // A non-empty script would be a bug magnet; the host must not be
             // consulted at all.
             &[HostReply::Resume(Value::int(0))],
-            &[],
+            (&[]).into(),
             &Eval::Value(Comp::ret(Value::int(77))),
         );
     }
@@ -1916,7 +1968,7 @@ mod tests
                 ),
             ),
             &[HostReply::Resume(Value::int(9))],
-            &[("E", "op", Value::Unit)],
+            (&[("E", "op", Value::Unit)]).into(),
             &Eval::Value(Comp::ret(Value::int(10))),
         );
     }
@@ -1933,7 +1985,7 @@ mod tests
                 Value::pair(Value::int(1), Value::int(2)),
             ),
             &[HostReply::Resume(Value::Unit)],
-            &[("E", "op", Value::pair(Value::int(1), Value::int(2)))],
+            (&[("E", "op", Value::pair(Value::int(1), Value::int(2)))]).into(),
             &Eval::Value(Comp::ret(Value::Unit)),
         );
         assert_host_seam(
@@ -1943,11 +1995,12 @@ mod tests
                 Value::list(vec![Value::int(1), Value::int(2), Value::int(3)]),
             ),
             &[HostReply::Resume(Value::Unit)],
-            &[(
+            (&[(
                 "E",
                 "op",
                 Value::list(vec![Value::int(1), Value::int(2), Value::int(3)]),
-            )],
+            )])
+                .into(),
             &Eval::Value(Comp::ret(Value::Unit)),
         );
         assert_host_seam(
@@ -1960,14 +2013,15 @@ mod tests
                 ]),
             ),
             &[HostReply::Resume(Value::Unit)],
-            &[(
+            (&[(
                 "E",
                 "op",
                 Value::record(vec![
                     (String::from("a"), Value::int(1)),
                     (String::from("b"), Value::string("hi")),
                 ]),
-            )],
+            )])
+                .into(),
             &Eval::Value(Comp::ret(Value::Unit)),
         );
     }
@@ -1987,11 +2041,12 @@ mod tests
                 Value::thunk(Grade::ONE, Comp::ret(Value::int(5))),
             ),
             &[HostReply::Resume(Value::Unit)],
-            &[(
+            (&[(
                 "E",
                 "op",
                 Value::thunk(Grade::ONE, Comp::ret(Value::int(5))),
-            )],
+            )])
+                .into(),
             &Eval::Value(Comp::ret(Value::Unit)),
         );
         // A thunk closure that closes over an outer binding: the readback closes
@@ -2007,11 +2062,12 @@ mod tests
                 ),
             ),
             &[HostReply::Resume(Value::Unit)],
-            &[(
+            (&[(
                 "E",
                 "op",
                 Value::thunk(Grade::OMEGA, Comp::ret(Value::int(7))),
-            )],
+            )])
+                .into(),
             &Eval::Value(Comp::ret(Value::Unit)),
         );
     }
@@ -2021,6 +2077,41 @@ mod tests
     /// The regeneration switch for the hand-built differential L-outcome
     /// snapshots.
     const BLESS_ENV: &str = "GANDR_BLESS_DIFFERENTIAL_OUTCOMES";
+
+    /// Borrowed snapshot-suite label.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct SnapshotLabel<'label>(&'label str);
+
+    impl<'label> From<&'label str> for SnapshotLabel<'label>
+    {
+        fn from(label: &'label str) -> Self
+        {
+            Self(label)
+        }
+    }
+
+    impl core::fmt::Display for SnapshotLabel<'_>
+    {
+        fn fmt(
+            &self,
+            f: &mut core::fmt::Formatter<'_>,
+        ) -> core::fmt::Result
+        {
+            f.write_str(self.0)
+        }
+    }
+
+    impl SnapshotLabel<'_>
+    {
+        /// Resolve the label's checked-in snapshot path.
+        fn path(self) -> std::path::PathBuf
+        {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/differential")
+                .join(format!("{}.snap", self.0))
+        }
+    }
 
     /// An ordered **L-outcome regression** check for a hand-built case suite.
     ///
@@ -2038,7 +2129,7 @@ mod tests
     struct Check
     {
         /// The snapshot file stem under `tests/fixtures/differential`.
-        label: &'static str,
+        label: SnapshotLabel<'static>,
         /// The recorded per-case canonical outcomes, in call order (empty while
         /// blessing).
         expected: Vec<String>,
@@ -2054,7 +2145,7 @@ mod tests
     {
         /// Loads (or, when blessing, prepares to regenerate) the snapshot suite
         /// `label`.
-        fn load(label: &'static str) -> Self
+        fn load(label: SnapshotLabel<'static>) -> Self
         {
             let blessing = std::env::var_os(BLESS_ENV).is_some();
             let expected = if blessing {
@@ -2159,18 +2250,10 @@ mod tests
         }
     }
 
-    /// The snapshot path for a hand-built case suite.
-    fn snapshot_path(label: &str) -> std::path::PathBuf
-    {
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/differential")
-            .join(format!("{label}.snap"))
-    }
-
     /// Reads a suite's recorded canonical outcomes, in order.
-    fn read_snapshot(label: &str) -> Vec<String>
+    fn read_snapshot(label: SnapshotLabel<'_>) -> Vec<String>
     {
-        let path = snapshot_path(label);
+        let path = label.path();
         let text = std::fs::read_to_string(&path).unwrap_or_else(|error| {
             panic!(
                 "cannot read differential snapshot `{}` ({error}); regenerate with {BLESS_ENV}=1",
@@ -2185,11 +2268,11 @@ mod tests
 
     /// Writes a suite's canonical outcomes (blessing path).
     fn write_snapshot(
-        label: &str,
+        label: SnapshotLabel<'_>,
         outcomes: &[String],
     )
     {
-        let path = snapshot_path(label);
+        let path = label.path();
         std::fs::create_dir_all(path.parent().expect("snapshot has a parent"))
             .unwrap_or_else(|error| panic!("cannot create fixture dir: {error}"));
         let mut lines = vec![
