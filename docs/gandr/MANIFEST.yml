@@ -9,16 +9,16 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/proposal-docs-gf-pipeline.md
     role: proposal
-    b3: 1186d402010561e65b8c06cd587047dff5f6bdff25106b8daaba14a3b44ae62c
+    b3: 516f5723017f4783f8f9aeaa4b7689849eab9070dffb201ffa672071aa78f399
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/internalizing-gf.md
     role: note
-    b3: 0215cfbc3d26fec57bbdc946bd8ec90676f11a5945f2f484fbc0bdf260749a81
+    b3: 8fe20dd5889b25b1344af97f0910828bc7eff4c3ec7030b2f7471a66ae0caddd
     edges:
       - { rel: extends, to: spec/proposal-docs-gf-pipeline.md }
   - path: spec/proposal-docs-design-language.md
     role: proposal
-    b3: f4d7a3543cad17fd3fafa4e62393b5fafa77711a26251aa5b86021e6d144e62b
+    b3: 3bfc532a57fce5bd57adbb5ab989583d2f72ae240d0c68e41c11310e650d5284
     edges:
       - { rel: registered-under, to: README.md }

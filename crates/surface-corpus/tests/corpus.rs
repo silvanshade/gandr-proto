@@ -90,12 +90,12 @@ mod tests
     {
         assert_eq!(
             29,
-            direct_gandr_file_count(&crate_root().join(MODEL_DIR)),
+            direct_gandr_files(&crate_root().join(MODEL_DIR)).len(),
             "frozen model root"
         );
         assert_eq!(
             27,
-            direct_gandr_file_count(&crate_root().join(PATHOLOGICAL_DIR)),
+            direct_gandr_files(&crate_root().join(PATHOLOGICAL_DIR)).len(),
             "frozen pathological root"
         );
     }
@@ -207,20 +207,22 @@ mod tests
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
 
-    /// Counts direct `.gandr` children without folding in feature subtrees.
-    fn direct_gandr_file_count(dir: &Path) -> usize
+    /// Direct `.gandr` children without folding in feature subtrees.
+    fn direct_gandr_files(dir: &Path) -> Vec<PathBuf>
     {
-        fs::read_dir(dir)
+        let mut files: Vec<PathBuf> = fs::read_dir(dir)
             .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", dir.display()))
             .filter_map(Result::ok)
-            .filter(|entry| {
-                let path = entry.path();
+            .map(|entry| entry.path())
+            .filter(|path| {
                 path.is_file()
                     && path
                         .extension()
                         .is_some_and(|extension| extension == "gandr")
             })
-            .count()
+            .collect();
+        files.sort();
+        files
     }
 
     /// Collects every `.gandr` file under `dir`, recursively, sorted.

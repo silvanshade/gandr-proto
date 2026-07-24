@@ -14,18 +14,20 @@ Every check has one canonical `mise` task body; hooks invoke that same task rath
 
 Run the **narrowest gate that proves your change** before any commit; the merge wall runs the composed sweep automatically.
 
-| Gate                                | Proves                                                                                                |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `mise run treefmt:check`            | formatting + lint across docs/config/Rust (the pre-commit hook runs this)                             |
-| `mise run docs:conflict-markers`    | no unresolved Git conflict markers (`scripts/check-conflict-markers.nu`)                              |
-| `mise run docs:manifest-drift`      | `docs/gandr/MANIFEST.yml` BLAKE3 hashes match registered docs                                         |
-| `mise run docs:reference-integrity` | corpus cross-references (edges, ADR refs, section refs) resolve                                       |
-| `mise run cargo:clippy`             | the strict nightly Clippy scope (pass/fail only — triage via aifix, [scripting.md](scripting.md))     |
-| `mise run cargo:nextest`            | the current Rust test scope                                                                           |
-| `mise run cargo:doc-check`          | workspace rustdoc builds with intra-doc links resolved (private items, `-D warnings`, pinned nightly) |
-| `mise run cargo:dylint:recursion`   | merge-tier project-local recursion contracts across Dylint-covered workspace targets                  |
-| `mise run cargo:dylint`             | strict project-local plus pinned upstream rules across Dylint-covered workspace targets               |
-| `mise run agda:check`               | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                    |
+| Gate                                | Proves                                                                                                                                        |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mise run treefmt:check`            | formatting + lint across docs/config/Rust (the pre-commit hook runs this)                                                                     |
+| `mise run docs:conflict-markers`    | no unresolved Git conflict markers (`scripts/check-conflict-markers.nu`)                                                                      |
+| `mise run docs:manifest-drift`      | `docs/gandr/MANIFEST.yml` BLAKE3 hashes match registered docs                                                                                 |
+| `mise run docs:reference-integrity` | corpus cross-references (edges, ADR refs, section refs) resolve                                                                               |
+| `mise run cargo:clippy`             | the strict nightly Clippy scope (pass/fail only — triage via aifix, [scripting.md](scripting.md))                                             |
+| `mise run cargo:nextest`            | the current Rust test scope                                                                                                                   |
+| `mise run cargo:doc-check`          | workspace rustdoc builds with intra-doc links resolved (private items, `-D warnings`, pinned nightly)                                         |
+| `mise run toolchain:pin-check`      | every toolchain reference point agrees with the mise pins (nightly/stable rustc, the materialized Dylint driver file, the typst doc-tool pin) |
+| `mise run cargo:dylint:recursion`   | merge-tier project-local recursion contracts across Dylint-covered workspace targets                                                          |
+| `mise run cargo:dylint:local`       | strict project-local Dylint scope at `-D warnings` (the primitive-boundary lane; ten crates excluded pending gandr-vp8)                       |
+| `mise run cargo:dylint`             | strict project-local plus pinned upstream rules across Dylint-covered workspace targets                                                       |
+| `mise run agda:check`               | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                                                            |
 
 The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles`, `test:options-policy`, coverage, no-panic, cargo-careful) exists as tasks but is not on the current merge wall; several return with the subject they check as the reboot ports it.
 
@@ -33,13 +35,15 @@ The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles
 
 `.config/wt.toml` `[pre-merge]` is the merge wall — any non-zero exit aborts `wt merge`:
 
-* **`gate:merge`** — the composed merge check, ordered: `cargo:build`, `cargo:clippy`, `cargo:dylint:recursion`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
-  The recursion task loads only `gandr-workflow-dylint` over the existing Dylint-covered package scope; `gandr-workflow-gates` and the driver itself remain excluded under `gandr-0ze` and `gandr-3yh`.
+* **`gate:merge`** — the composed merge check, ordered: `toolchain:pin-check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `cargo:build`, `cargo:clippy`, `cargo:dylint:recursion`, `cargo:dylint:local`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
+  The cheap drift/docs checks fail fast up front; `toolchain:pin-check` (restored per `gandr-wvd.20`, 2026-07-24) holds its fcw.13 first position.
+  The recursion lane loads `gandr-workflow-dylint` over the full covered scope with exactly the `primitive-signature` / `single-field-struct-needs-transparent-repr` relaxations; `cargo:dylint:local` then runs the strict project-local lane at `-D warnings`, so the primitive boundary gates merges again — ten crates (storage-*, kernel-core, core-checker, core-sequent, workflow-docs, workflow-grammatical-framework, surface-engine, theory-levitation) are excluded pending the `gandr-vp8` remediation (575 findings, census 2026-07-24), with the recursion lane keeping them covered in the meantime.
+  `gandr-workflow-gates` and the driver itself remain excluded from both lanes under `gandr-0ze` and `gandr-3yh`.
   The full upstream Dylint inventory remains on-demand and in the parked push tier.
   `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently; it documents the whole workspace including the nightly-only `gandr-workflow-dylint` driver (like `cargo:clippy`) and so carries no `--exclude` set.
-  It sits between `cargo:dylint:recursion` and `cargo:nextest` because it is a compile-class static check whose failures are cheap and localized, and grouping it with the other static analyzers surfaces doc breakage before the more expensive test run.
+  It sits between `cargo:dylint:local` and `cargo:nextest` because it is a compile-class static check whose failures are cheap and localized, and grouping it with the other static analyzers surfaces doc breakage before the more expensive test run.
   This is the deterministic set a normal diff can realistically break.
-  Parked entries return with their prerequisites: `toolchain:pin-check` (the `gandr-fcw.13` pin-drift gate, rebuild tracked in `gandr-wvd.20`) and `grammar:test` (returns with the tree-sitter grammar port).
+  Parked entries return with their prerequisites: `grammar:test` (returns with the tree-sitter grammar port).
 * **`beads`** (`bd dolt pull && bd dolt push`) — makes the branch's beads durable on DoltHub **before** the merge removes the worktree's Dolt clone; pull-then-push self-heals the sibling-push race ([tracker.md](tracker.md); `core/HAZARDS.md` H2).
 * Parked pre-merge hooks: `adr-guard` (returns when `docs/adr/` exists) and `core-pin` (`mise run core:check`, returns when the agentic-dev core is vendored at `.agents/core`).
   See [worktrees.md](worktrees.md).

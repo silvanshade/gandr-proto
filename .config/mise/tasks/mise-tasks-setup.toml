@@ -4,8 +4,43 @@
 ["toolchain:materialize"]
 description = "Materialize the Dylint driver's ignored rust-toolchain file from mise's nightly pin"
 run = """
-printf '%s\\n' "$RUSTUP_TOOLCHAIN_NIGHTLY" > crates/workflow-dylint/rust-toolchain
+printf '%s\n' "$RUSTUP_TOOLCHAIN_NIGHTLY" > crates/workflow-dylint/rust-toolchain
 """
+
+# Restored per gandr-wvd.20 (the fcw.13 gate, lost in the reboot). Every
+# toolchain reference point must agree with the mise pins: the materialized
+# Dylint driver file (its one ignored copy — the historical drift source),
+# the resolved rustc for both channels (PATH shadowing by an unmanaged
+# toolchain shows up here), and the resolved typst binary against the [tools]
+# pin (fcw.8 rider 6: the doc-tool shells out to `typst`). POSIX sh; the day
+# this needs structure it moves to gandr-workflow-gates, not to a script.
+["toolchain:pin-check"]
+description = "Fail on drift between the mise toolchain pins and every reference point"
+depends = ["toolchain:materialize"]
+run = '''
+set -eu
+
+fail() { echo "pin-check: $1" >&2; exit 1; }
+
+# 1. The materialized driver copy tracks the nightly pin.
+expected_nightly=$RUSTUP_TOOLCHAIN_NIGHTLY
+actual=$(tr -d '[:space:]' < crates/workflow-dylint/rust-toolchain)
+[ "$actual" = "$expected_nightly" ] || fail "crates/workflow-dylint/rust-toolchain is '$actual', expected '$expected_nightly' — run mise run toolchain:materialize"
+
+# 2. The resolved rustc matches each pinned channel (catches PATH shadowing;
+#    `rustup which` names the toolchain directory, i.e. the pin itself).
+stable=$RUSTUP_TOOLCHAIN
+rustup which rustc | grep -q "/$stable-" || fail "stable rustc resolves to '$(rustup which rustc)', expected channel '$stable'"
+RUSTUP_TOOLCHAIN="$expected_nightly" rustup which rustc | grep -q "/$expected_nightly-" || fail "nightly rustc resolves to '$(RUSTUP_TOOLCHAIN="$expected_nightly" rustup which rustc)', expected channel '$expected_nightly'"
+
+# 3. The typst binary resolves to the [tools] pin (fcw.8 rider 6).
+typst_pin=$(sed -n 's/^typst = "\(.*\)"/\1/p' mise.toml)
+[ -n "$typst_pin" ] || fail "no typst pin found in mise.toml [tools]"
+typst_actual=$(typst --version | sed -n 's/^typst \([^ ]*\).*/\1/p')
+[ "$typst_actual" = "$typst_pin" ] || fail "typst --version is '$typst_actual', expected '$typst_pin' (mise.toml [tools])"
+
+echo "pin-check: nightly=$expected_nightly stable=$stable typst=$typst_pin"
+'''
 
 [setup]
 depends = ["toolchain:materialize"]
