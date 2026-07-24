@@ -25,7 +25,7 @@ Substantive process guidance belongs in the routed workflow documents; reference
 ## Work tracking
 
 Beads is the issue tracker, with prefix `gandr-`.
-[`docs/workflow/tracker.md`](docs/workflow/tracker.md) owns the shared-Dolt topology, cross-machine synchronization, server-lifecycle boundary, audit conventions, feature-landing evidence, and residual closeout.
+[`docs/workflow/tracker.md`](docs/workflow/tracker.md) owns the shared-Dolt topology, cross-machine synchronization, server-lifecycle boundary, graph-backup protocol, title and metadata conventions, comment-only progress updates, research-reference retention, audit conventions, feature-landing evidence, and residual closeout.
 
 * Push after every tracker write; pull before relying on tracker reads.
 * Never stop, start, or restart the Dolt server unless the owner asks.

@@ -38,11 +38,32 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 * **Small graph, current graph.** The tracker is a working set, not an archive: ≲20 active beads, consolidated by topic.
   Prefer one compact bead that carries a topic's current state over several partial beads an agent must reassemble.
   Prune aggressively at triage; a dropped question can be re-asked later if it ever matters again (owner posture, 2026-07-12).
+
+### Titles and metadata
+
+* **Normalize titles as `<scope>: <subject>`.** Use one or more comma-delimited members of the closed `GANDR_SCOPES` vocabulary in `.commitlintrc.mts`; sort multiple scopes lexicographically, with no spaces between them.
+  The bead type remains structured metadata and is not repeated in the title.
+  Keep ordinary words lower-case, preserving case only inside a backtick-delimited literal whose spelling is case-sensitive.
+  The subject is action-oriented and names the outcome, decision, or question—not implementation steps, status, dates, branch names, bead IDs, or provenance unless one is essential to distinguish the work.
+  Titles have no trailing period, must fit the commitlint 100-character ceiling, and should usually fit within 72 characters.
+* **Choose the precise work type.** Use `decision` for an explicit choice or ratified architecture record; `spike` for a timeboxed investigation that reduces uncertainty before commitment; `story` for a user-perspective capability; and `milestone` only for a zero-work completion marker over related issues.
+  Use `epic`, `feature`, `bug`, `task`, or `chore` when their ordinary meanings fit better; do not force an underused type onto mismatched work.
 * **Choose metadata before filing.** Before every `bd create`, run `bd label list-all` and `bd types list-all`, then select the most appropriate existing labels and work type.
   Do not invent a near-synonym for convenience.
   If nothing fits well—or the bead would not surface reliably in a targeted search—consult the user before adding a metadata category.
   With explicitly granted full autonomy, create a category when appropriate and report every metadata-category addition or change at closeout.
   When searching a label family, enumerate the matching labels by prefix and query every applicable exact label.
+* **Retain full research citations in the bead.** For every relevant paper, record its title, authors, year, and the best-fitting unique locator—prefer a DOI, then an arXiv or HAL identifier, then a stable URL.
+  Cite standards, repositories, issues, and other research sources with equivalent identifying detail and a resolvable locator; a corpus path or filename alone is not a research citation.
+  Never leave the only citation in session context or a notes-repository report.
+  Put references known at filing in the description and append references discovered during execution as comments.
+
+### Safe graph and field updates
+
+* **Back up before graph-wide operations.** Before bulk triage, normalization, relabeling, dependency rewrites, or any other graph-wide mutation, create and sync a Dolt-native `bd backup` to a durable location outside the project tree.
+  Verify the backup status and retain the backup until the operation is complete, synchronized, and verified safe to roll forward without it.
+* **Progress additions are comments only.** After filing, append every progress, evidence, research, or closeout addition with `bd comment`; never accumulate it by amending `notes`, `description`, `design`, or `acceptance_criteria`.
+  Edit those standing fields only to correct the bead's authoritative current contract, not to preserve chronology.
 * Beads cite corpus paths (`docs/gandr/spec/…`, `docs/adr/…`) so an agent lands with context.
 * Every doc-drift finding files a bead (`docs/KNOWLEDGE.md` phase 1) — drift produces work items, not silent warnings.
 * Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
@@ -50,9 +71,8 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 * `bd list` hides closed issues — use `--all` / `bd show <id>` when auditing done-ness (core/HAZARDS.md H3).
   JSON listing commands paginate; pass `-n 0` (or use `bd export`) for complete sets.
 * **Large text fields wedge the database** (owner-confirmed 2026-07-19; formerly a hazards-doc entry, now standing workflow guidance).
-  Keep `notes` and `description` compact: standing directions plus a short pointer at most.
-  Long-form records — resolutions, decision logs, progress narration — go in issue comments (`bd comment <id>` or `bd comment <id> --file …`; retrieve with `bd comments <id>`; `bd show` surfaces only `comment_count`, so the pointer in the field is what makes the record discoverable).
-  Field updates REPLACE content (`bd update --notes`/`--description` clobber the prior value — re-paste anything that must survive); comments append, which is the second reason they are the right home for accumulating records.
+  Keep `notes`, `description`, `design`, and `acceptance_criteria` compact: standing directions plus a short pointer at most.
+  Field updates REPLACE content and can clobber prior context; comments append safely.
 
 ## Feature landing and residual closeout
 
