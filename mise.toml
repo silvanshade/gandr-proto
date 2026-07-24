@@ -941,14 +941,10 @@ aifix batch agda --fail-on-diagnostics --expected-code UnsolvedInteractionMetas 
 cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
 """
 
-[tool_alias]
-weave-cli = "github:ataraxy-labs/weave"
-weave-mcp = "github:ataraxy-labs/weave"
-
 [tools]
 "aqua:anchore/grype" = "0.116.0"
-"aqua:anchore/syft" = "1.48.0"
-"cargo:adrs" = "0.10.0"
+"aqua:anchore/syft" = "1.49.0"
+"cargo:adrs" = "0.10.1"
 "cargo:b3sum" = "1.8.5"
 "cargo:cargo-autoinherit" = "0.1.6"
 "cargo:cargo-binstall" = "1.21.0"
@@ -966,17 +962,14 @@ weave-mcp = "github:ataraxy-labs/weave"
 # Gives uniform reflink copy (`coreutils cp --reflink=auto`) on macOS AND Linux
 # for any local CI cache artifact warmup/copying.
 "cargo:coreutils" = "0.9.0"
-"cargo:mergiraf" = "0.18.0"
 "cargo:nu" = "0.113.1"  # NOTE: nu stays pinned at =0.113.1
 "cargo:prek" = "0.4.10"
-"cargo:rumdl" = "0.2.34"
+"cargo:rumdl" = "0.2.41"
 "cargo:sizelint" = "0.1.5"
 "cargo:typos-cli" = "1.48.0"
-"cargo:uv" = "0.11.29"
+"cargo:uv" = "0.11.31"
 "cargo:worktrunk" = "0.68.0"
 "github:agda/agda" = "2.8.0"
-"github:bytecodealliance/wit-bindgen" = "0.59.0"
-"github:Dicklesworthstone/beads_viewer" = "0.18.0"
 "github:numtide/treefmt" = "2.5.0"
 # microsandbox (`msb`): libkrun microVM runner, the containment substrate for
 # cargo-mutants. The regex is load-bearing and ANCHORED: it
@@ -987,15 +980,13 @@ weave-mcp = "github:ataraxy-labs/weave"
 # flat, and `msb` resolves libkrunfw "beside the resolved msb binary", so no
 # MSB_LIBKRUNFW_PATH is needed. macOS support is Apple Silicon only.
 "github:superradcompany/microsandbox" = { version = "0.6.6", matching_regex = "^microsandbox-" }
-"github:tombi-toml/tombi" = "1.2.1"
+"github:tombi-toml/tombi" = "1.2.4"
 "npm:@commitlint/cli" = "21.2.1"
-"npm:oxfmt" = "0.59.0"
-"npm:oxlint" = "1.74.0"
-"npm:oxlint-tsgolint" = "0.25.0"
-"npm:tsdown" = "0.22.9"
+"npm:oxfmt" = "0.60.0"
+"npm:oxlint" = "1.75.0"
+"npm:oxlint-tsgolint" = "7.0.2001"
+"npm:tsdown" = "0.22.13"
 "pipx:yamllint" = "1.38.0"
-aube = "1.29.1"
+aube = "1.32.0"
 node = "26.5.0"
 typst = "0.15.1"
-weave-cli = { version = "v0.3.6", matching = "weave-cli", rename_exe = "weave" }
-weave-mcp = { version = "v0.3.6", matching = "weave-mcp", rename_exe = "weave-mcp" }
