@@ -266,7 +266,15 @@ concrete GandrDocsLexHtml of GandrDocsLex = GandrDocsHtml ** {
     cite_J_41 = { key = "J-41" } ;
     cite_J_42 = { key = "J-42" } ;
     cite_J_43 = { key = "J-43" } ;
+    cite_J_44 = { key = "J-44" } ;
+    cite_J_45 = { key = "J-45" } ;
+    cite_J_46 = { key = "J-46" } ;
+    cite_J_47 = { key = "J-47" } ;
+    cite_J_48 = { key = "J-48" } ;
+    cite_J_49 = { key = "J-49" } ;
     cite_J_5 = { key = "J-5" } ;
+    cite_J_50 = { key = "J-50" } ;
+    cite_J_51 = { key = "J-51" } ;
     cite_J_6 = { key = "J-6" } ;
     cite_J_7a = { key = "J-7a" } ;
     cite_J_7b = { key = "J-7b" } ;
@@ -361,6 +369,9 @@ concrete GandrDocsLexHtml of GandrDocsLex = GandrDocsHtml ** {
     cite_Q_20 = { key = "Q-20" } ;
     cite_Q_21 = { key = "Q-21" } ;
     cite_Q_22 = { key = "Q-22" } ;
+    cite_Q_23 = { key = "Q-23" } ;
+    cite_Q_24 = { key = "Q-24" } ;
+    cite_Q_25 = { key = "Q-25" } ;
     cite_Q_3 = { key = "Q-3" } ;
     cite_Q_4 = { key = "Q-4" } ;
     cite_Q_5 = { key = "Q-5" } ;

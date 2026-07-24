@@ -268,7 +268,15 @@ abstract GandrDocsLex = GandrDocs ** {
     cite_J_41 : CiteKey ;
     cite_J_42 : CiteKey ;
     cite_J_43 : CiteKey ;
+    cite_J_44 : CiteKey ;
+    cite_J_45 : CiteKey ;
+    cite_J_46 : CiteKey ;
+    cite_J_47 : CiteKey ;
+    cite_J_48 : CiteKey ;
+    cite_J_49 : CiteKey ;
     cite_J_5 : CiteKey ;
+    cite_J_50 : CiteKey ;
+    cite_J_51 : CiteKey ;
     cite_J_6 : CiteKey ;
     cite_J_7a : CiteKey ;
     cite_J_7b : CiteKey ;
@@ -363,6 +371,9 @@ abstract GandrDocsLex = GandrDocs ** {
     cite_Q_20 : CiteKey ;
     cite_Q_21 : CiteKey ;
     cite_Q_22 : CiteKey ;
+    cite_Q_23 : CiteKey ;
+    cite_Q_24 : CiteKey ;
+    cite_Q_25 : CiteKey ;
     cite_Q_3 : CiteKey ;
     cite_Q_4 : CiteKey ;
     cite_Q_5 : CiteKey ;
