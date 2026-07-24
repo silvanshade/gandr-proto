@@ -75,6 +75,12 @@ Backstops are lexical and incomplete; the classification is the rule, the hooks 
   `bv --robot-*` for triage (bare `bv` blocks the session); confirm with `bd show` (`bd list` hides closed — use `--all` when auditing, core/HAZARDS.md H3).
 * **Gates** (run the narrowest that proves your change): `mise run treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift` (MANIFEST.yml BLAKE3), `docs:reference-integrity`, `wrkflw` (workflow edits); Rust — `cargo:clippy` (pass/fail gate only), `cargo:nextest`; Agda — `agda:check`.
   These run in CI (the gate of record) and locally via `prek` once you `prek install` (once per clone, primary checkout; core/HAZARDS.md H4).
+* **Commits**: commit messages are enforced by `commitlint`; `.commitlintrc.mts` is the authority.
+  Use Conventional Commits in the form `<type>(<scope>): <subject>`, for example `fix(repo): restore merge gate`.
+  Type and scope are required and lower-case; the scope must come from the closed `GANDR_SCOPES` vocabulary.
+  Keep the header and every body line at or below 100 characters, separate the header, body, and footer with blank lines, and omit a trailing period from the subject.
+  Agent co-author trailers must match the canonical registry, and session trailers are prohibited.
+  Inspect `.commitlintrc.mts` before inventing a type, scope, or trailer.
 * **Specification corpus**: `docs/spec/index.xml` is the entry point to status-attributed XML components validated by `gandr-workflow-docs`; `docs/spec/refs.yml` is derived and must be regenerated rather than edited by hand (`docs/workflow/docs.md`).
 * **Corpus treatment**: every new surfaced gandr feature lands runnable literate model examples, runnable pathological coverage, harness assertions, and coverage-map registration in the SAME change (`crates/gandr-corpus`; ADR-84 supersedes ADR-52 Decision B and Decision C's two-tree cardinality; `docs/workflow/corpus.md`).
   A syntax-only landing gets a parse-gated `surface/` witness; its semantics-graduation change promotes that witness and adds the full treatment in that same change.
