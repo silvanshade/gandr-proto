@@ -128,9 +128,12 @@
       <div class="stats stats-vertical lg:stats-horizontal shadow bg-base-100 max-w-full">
         <div class="stat py-3"><div class="stat-title">Doc artifacts</div><div class="stat-value text-2xl">472</div><div class="stat-desc">181 absorb · 98 distill · 115 ref · 78 drop</div></div>
         <div class="stat py-3"><div class="stat-title">Literature register</div><div class="stat-value text-2xl">381</div><div class="stat-desc">rows, locator-verified, zero prunes</div></div>
-        <div class="stat py-3"><div class="stat-title">Crates to port</div><div class="stat-value text-2xl">26</div><div class="stat-desc">3 landed · 23 remaining + futures</div></div>
+        <div class="stat py-3"><div class="stat-title">Crates</div><div class="stat-value text-2xl">26+2</div><div class="stat-desc">port landed · accel-simd/vulkan planned</div></div>
         <div class="stat py-3"><div class="stat-title">Backbone phases</div><div class="stat-value text-2xl">11+tail</div><div class="stat-desc">6 parallel lanes</div></div>
       </div>
+      <p class="pt-4 text-sm opacity-70"><strong>Revised 2026-07-24</strong> — refreshed against the beads graph: substrate burst, B1, B2 and the massive-term
+        program (<code>gandr-3ln</code>) landed; the <strong>tracelet-algebra arc</strong> (epic <code>gandr-5lf</code>) is adopted as the
+        priority thread over all other buildout (§2.1, §4.3); crate categories gain <code>storage-*</code> (landed) and <code>accel-*</code> (planned).</p>
     </div>
   </div>
 </section>
@@ -249,6 +252,24 @@
           <td class="text-sm"><strong>Rescoped</strong> (§6): mechanized metatheory is permanently second to the buildout; target the kernel, then parts opportunistically;
           no metatheory plan mapped until the kernel + more parts exist. Directed-vs-groupoid resolved: <strong>both from the start</strong> at the identity layer.</td>
         </tr>
+        <tr>
+          <td class="whitespace-nowrap"><code>5lf</code></td>
+          <td>Tracelet-algebra architecture</td>
+          <td class="text-sm">Adopted 2026-07-24 (owner; source: <code>wyrd:docs/gandr/spec/proposal-tracelet-algebra.md</code>, the 2026-07-23 design pass):
+          the <strong>priority thread over all other buildout</strong>, interleaved with the kernel and performance lanes. R1–R10 condensed:
+          the crDC fibrational axioms staged as a property suite over the cell store (a green suite upgrades <code>fused ≡ two-step</code> and grafting
+          associativity to theorem-backed); the convolution face adopted as the overlap enumerator's <em>completeness specification</em> (categorified
+          concurrency; VDC-honest colax form per Thompson–Carlson Ex 7.11); the ≡_N tracelet normal form with unique primitive factorization as the
+          certificate normal form (decidable under-approximation — <strong>replay remains the semantic oracle</strong>); the overlap-support cache as the
+          bracket-vanishing oracle driving ≡_S normalization, completion scheduling, parallel replay, and critical-path fuel; causal-signature smoke
+          alarms + FETA static pathway queries as surrounding discipline; free-bifibration repair gated on a factorization-preorder check; cartesian
+          doctrine alignment (framed, iso-strong, products-with-restriction). <strong>Binding division of labor</strong>: Hopf/Lie/PBW are metatheory
+          currency — the kernel ships canonical forms, caches, counters, and replay only; no vector space, formal sum, antipode, or word problem ever
+          ships. Acceleration is deliberate and measurement-first: SIMD then GPU (<code>accel-simd</code>, then <code>accel-vulkan</code> on
+          <strong>jay-ash + Vulkan compute only — never wgpu</strong>), advisory-or-exact-and-differentialed, kernel never links the band.
+          Observability is designed in early (tracing substrate, content-addressed events, own freya viewer). Epic <code>gandr-5lf</code>, 17 rungs;
+          kernel-certificate adoption rides B9 (<code>wvd.9</code>, amended).</td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -289,6 +310,21 @@
     <div class="card card-border bg-base-100"><div class="card-body py-4">
       <h4 class="font-semibold text-sm">Tracker-provenance policy (H7)</h4>
       <p class="text-sm">Old-tracker ids (~126 <code>wyrd-*</code> citations in crate docs) are <strong>rewritten, not carried</strong> — content re-expressed against gandr artifacts; precedent set by the perf-program migration into <code>gandr-wvd</code>.</p>
+    </div></div>
+    <div class="card card-border bg-base-100"><div class="card-body py-4">
+      <h4 class="font-semibold text-sm">Hardware acceleration (2026-07-24)</h4>
+      <p class="text-sm">SIMD first (<code>accel-simd</code>, own crate), GPU second behind a dispatch-amortization benchmark
+      (<code>accel-vulkan</code>: <strong>jay-ash + Vulkan compute only, never wgpu</strong>; MoltenVK is the macOS reality).
+      Accelerator results are advisory or exact-and-differentialed, never soundness-bearing; the kernel never links the band.
+      New <code>accel</code> commit scope. GPU diagnostics: debug-utils labels from day one; RenderDoc where supported (no macOS),
+      Xcode Metal frame capture locally; readback differentials are the verification backbone.</p>
+    </div></div>
+    <div class="card card-border bg-base-100"><div class="card-body py-4">
+      <h4 class="font-semibold text-sm">Engine observability (2026-07-24)</h4>
+      <p class="text-sm">Designed in early for the rewriting engine, tracelet machinery, and CAS massive-term layer: <strong>tracing</strong> substrate
+      (feature-gated no-op, never soundness-bearing), content-addressed event vocabulary (b3sum fields), deterministic JSONL export,
+      flame-class profiling (tracing-flame / samply / pprof), static SVG via the typst-fletcher docs lane, and an <strong>own freya viewer</strong>
+      for interactive exploration (Vulkan viewport only when graph scale earns it). Label scope <code>scope:runtime:observability</code>.</p>
     </div></div>
   </div>
 </section>
@@ -1038,17 +1074,25 @@
   <p class="my-3 text-sm opacity-80">Resolved in <code>gandr-fcw.11</code> (2026-07-19). The serial <strong>backbone</strong> carries only rungs that change the
   term language; everything else runs in <strong>lanes</strong> that join at explicit gates. Execution beads: epic <code>gandr-wvd</code>
   (backbone = <code>wvd.1–.12</code>, lanes = <code>wvd.13–.18</code>; child rungs mint at each phase start).</p>
+  <p class="my-3 text-sm opacity-80"><strong>State refresh (2026-07-24)</strong>: B1 (<code>wvd.1</code>), B2 (<code>wvd.2</code>), the substrate burst
+  (<code>wvd.13</code>) and the docs tooling program (<code>wvd.17</code>) are <strong>closed</strong>; the massive-term program
+  (<code>gandr-3ln</code>: arena representation, v1 sharing format, <code>storage-chunker/prolly-trees</code> CAS) landed ahead of B2.3;
+  the front-end port runs as <code>wvd.24</code> before module-system work. The <strong>tracelet-algebra arc (<code>gandr-5lf</code>)</strong>
+  is the priority thread (§2.1): its engine-side spine — crDC suite → ≡_N normal form → overlap-support cache + parallel replay — runs
+  <strong>now</strong> against the as-built cell store, VDC dictionary seed, and granular CAS (the wyrd-era L2 gate already landed at B1/B2);
+  kernel-certificate adoption rides B9 as scheduled.</p>
 
   <h3 class="text-xl font-semibold mt-8">4.1 Topology</h3>
   <pre class="mermaid my-4">
 flowchart LR
   subgraph LANES[" lanes "]
     direction TB
-    SB["Substrate burst<br />theory leaf ports · kernel-strata<br />runtime-host · config sweep"]
+    SB["Substrate burst <br />theory leaf ports · kernel-strata<br />runtime-host · config sweep"]
     A2["A2 incrementality<br />checkpoint base · parser retarget<br />streaming demo"]
     DOC["Docs lane<br />doc tool + absorption program"]
     SUR["Surface lane"]
     PERF["Perf discipline"]
+    TA["TA tracelet-algebra (5lf)<br />crDC suite · ≡_N NF · overlap cache<br />accel band · observability"]
   end
   subgraph BB[" backbone "]
     direction LR
@@ -1060,6 +1104,9 @@ flowchart LR
   DOC -. "components per phase" .-> B1
   PERF -. "baseline @B4" .-> B4
   SUR -. "lags backbone" .-> B6
+  TA -. "algebra theorem-tested before adoption" .-> B9
+  TA -. "crDC verdict + Δ̂ queries" .-> B10
+  TA -. "accel band on granular CAS" .-> PERF
   </pre>
 
   <h3 class="text-xl font-semibold mt-8">4.2 Backbone phases</h3>
@@ -1140,11 +1187,23 @@ flowchart LR
         <tr><td class="font-semibold whitespace-nowrap">Perf discipline</td><td><code>wvd.18</code></td>
           <td class="text-sm">Benchmarks + regression tracking; no unexplained regression at any phase exit.</td>
           <td class="text-sm">From B4 baseline</td></tr>
+        <tr><td class="font-semibold whitespace-nowrap">Tracelet-algebra</td><td><code>5lf</code></td>
+          <td class="text-sm"><strong>Priority thread</strong> (owner, 2026-07-24; §2.1). Establishment first: bibliography rows + the
+          <code>tracelet-algebra</code> spec component (<code>5lf.1–.2</code>). Engine-side spine: crDC property suite over the cell store
+          (<code>5lf.3</code>) → ≡_N normal form (<code>5lf.4</code>) → overlap-support cache + parallel replay (<code>5lf.5</code>);
+          then the specification faces (convolution <code>.6</code>, cartesian <code>.13/.14</code>, factorization-preorder check
+          <code>.12</code>) and later rungs (signatures <code>.7</code>, FETA <code>.8</code>, Agda metatheory <code>.9</code>).
+          Acceleration band (<code>.10</code> SIMD spike → <code>.11</code> band + Vulkan eval) and the observability thread
+          (<code>.15</code> design → <code>.16</code> instrumentation → <code>.17</code> freya viewer). Joins the backbone at B9
+          (certificate adoption) and B10 (verdict note, Δ̂ queries, cartesian-law refinement).</td>
+          <td class="text-sm"><strong>Now</strong> — immediate priority</td></tr>
       </tbody>
     </table>
   </div>
   <div role="alert" class="alert mt-3"><span class="text-sm"><strong>Concurrency cap:</strong> after the substrate burst — backbone + at most 2 standing lanes active;
-  contention priority backbone &gt; docs &gt; A2 &gt; surface &gt; runtime.</span></div>
+  contention priority backbone &gt; docs &gt; A2 &gt; surface &gt; runtime. <strong>Exception (2026-07-24):</strong> the tracelet-algebra thread
+  (<code>5lf</code>) runs with immediate priority over other lane work; its kernel-adjacent rungs coordinate with the backbone rather than
+  competing with it (engine-side first; certificate adoption at B9).</span></div>
 
   <h3 class="text-xl font-semibold mt-8">4.4 Structural corrections baked into the ordering</h3>
   <ul class="list-disc ml-5 my-2 space-y-2 text-sm">
@@ -1194,7 +1253,9 @@ flowchart LR
     (no <code>gandr-</code> prefix), package = <code>gandr-&lt;name&gt;</code>. The <code>kernel-*</code>
     prefix is the trusted-computing-base wall (kernel crates depend only on kernel + core/alloc).
     The one bare-package exception is <code>surface-driver</code>, whose package keeps the name
-    <code>gandr</code>. Port notes and hazard tags are drawn from the per-crate port map; the decided
+    <code>gandr</code>. Category additions since fcw.9: <code>storage-*</code> (massive-term CAS layer,
+    landed via <code>gandr-3ln</code>) and <code>accel-*</code> (hardware acceleration band, planned —
+    owner, 2026-07-24; kernel crates never depend on it). Port notes and hazard tags are drawn from the per-crate port map; the decided
     names supersede any earlier proposal and deltas are called out inline.
   </p>
 
@@ -1419,6 +1480,40 @@ flowchart LR
           <td>rustc_private lints + git-pinned <code>clippy_utils@9fca3bc9</code>, standalone <code>[workspace]</code>, not a member — the most toolchain-fragile artifact; audit the pin against nightly drift. Lib rename <code>wyrd_dylint</code>→<code>gandr_dylint</code> flows into <code>core-sequent</code> test attrs and mise clippy/dylint tasks. Owner note (PLAN review): recently fixed up but needs more triage — low priority unless it becomes a blocker.</td>
         </tr>
 
+        <!-- ======================= STORAGE ======================= -->
+        <tr class="bg-base-300"><td colspan="4" class="font-semibold uppercase tracking-wide text-xs">storage — content-addressed massive-term layer (landed via gandr-3ln, 2026-07-21)</td></tr>
+        <tr>
+          <td class="text-base-content/40">—</td>
+          <td><code>storage-artifact</code> <span class="badge badge-success badge-outline badge-sm">landed</span></td>
+          <td><span class="badge badge-info">new</span></td>
+          <td>Artifact export/import storage: v1 sharing format (content-addressed subterm table, decode-retains-sharing, amplification budgets). Ratified at <code>gandr-bvf</code>; implemented at <code>gandr-5t3</code>.</td>
+        </tr>
+        <tr>
+          <td class="text-base-content/40">—</td>
+          <td><code>storage-chunker</code> <span class="badge badge-success badge-outline badge-sm">landed</span></td>
+          <td><span class="badge badge-info">new</span></td>
+          <td>Content-defined chunking for the granular store — the data-parallel work unit for the tracelet-algebra acceleration band (<code>5lf.10/.11</code>).</td>
+        </tr>
+        <tr>
+          <td class="text-base-content/40">—</td>
+          <td><code>storage-prolly-trees</code> <span class="badge badge-success badge-outline badge-sm">landed</span></td>
+          <td><span class="badge badge-info">new</span></td>
+          <td>Prolly-tree CAS (history-independent chunked trees, BLAKE3 tree-mode hashing) — the representational twin of ≡_S: batch results are intra-level-order-independent by construction. Chunk-parallel replay+rehash lands on it (<code>5lf.11</code>).</td>
+        </tr>
+        <!-- ======================= ACCEL ======================= -->
+        <tr class="bg-base-300"><td colspan="4" class="font-semibold uppercase tracking-wide text-xs">accel — hardware acceleration band (planned; advisory-or-exact-and-differentialed, kernel never links)</td></tr>
+        <tr>
+          <td class="text-base-content/40">—</td>
+          <td><code>accel-simd</code></td>
+          <td><span class="badge badge-neutral badge-outline">future</span></td>
+          <td>SIMD kernels first (owner, 2026-07-24): truncated-signature Chen scans over canonical schedules, chunk-fingerprint overlap screening (sound-direction-only), batched spine rehash over prolly chunk shapes. Criterion-class benchmarks deliver the dispatch-amortization verdict. Spike bead <code>5lf.10</code>.</td>
+        </tr>
+        <tr>
+          <td class="text-base-content/40">—</td>
+          <td><code>accel-vulkan</code></td>
+          <td><span class="badge badge-neutral badge-outline">future</span></td>
+          <td>GPU behind the dispatch-amortization benchmark: <strong>jay-ash + Vulkan compute only, never wgpu</strong>; MoltenVK designed-for. A wide batch that fails to beat the multicore scan is a no. Debug-utils labels from day one (RenderDoc off-macOS, Xcode Metal capture on macOS). Evaluation bead <code>5lf.11</code>.</td>
+        </tr>
         <!-- ======================= PARKED ======================= -->
         <tr class="bg-base-300"><td colspan="4" class="font-semibold uppercase tracking-wide text-xs">parked / out</td></tr>
         <tr>
@@ -1689,6 +1784,19 @@ flowchart LR
       <h4 class="font-semibold text-sm">Absorption-debt drift</h4>
       <p class="text-sm">181 absorb rows + 18 W-entries ride milestones. The per-phase docs gate (§4.6) is the enforcement mechanism; skipping it silently
       accumulates exactly the debt the failed refactor died of.</p>
+    </div></div>
+    <div class="card card-border bg-base-100"><div class="card-body py-4">
+      <h4 class="font-semibold text-sm">Tracelet-algebra kill signals</h4>
+      <p class="text-sm">The 5lf arc carries explicit stops: an ≡_N-equal but replay-divergent certificate pair halts the normal-form lane
+      (soundness bug in position/overlap bookkeeping); any pressure to represent formal sums, antipodes, or word problems in the kernel
+      returns to design (the metatheory/semantic-currency division is binding); accelerator output is advisory or exact-and-differentialed
+      only, with numeric nondeterminism unobservable.</p>
+    </div></div>
+    <div class="card card-border bg-base-100"><div class="card-body py-4">
+      <h4 class="font-semibold text-sm">Free-bifibration decidability cliff</h4>
+      <p class="text-sm">The universal repair for failed crDC opfibrational axioms (freely adjoining fibrational structure) is decidable exactly
+      under a factorization preorder on the seam category (else the 2-cell word problem is undecidable — Dawson–Paré–Pronk).
+      The cheap preorder check (<code>5lf.12</code>) runs early so the STOP is known open or shut before any T0 failure needs it.</p>
     </div></div>
   </div>
 </section>
