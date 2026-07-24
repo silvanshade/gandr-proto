@@ -72,7 +72,7 @@ bd export -o /durable/path/beads-preupdate-YYYY-MM-DD.jsonl</code>
     </list>
   </section>
   <section id="bgs-plan" title="Build and review one deterministic mutation plan">
-    <prose>Materialize one machine-readable plan keyed by bead ID. For every field, record before value, after value, rationale, and evidence. New labels and dependency changes are separate explicit inventories. Citation additions carry append-ready comment text; they never amend standing text fields.</prose>
+    <prose>Materialize one machine-readable plan keyed by bead ID. For every field, record before value, after value, rationale, and evidence. New labels and dependency changes are separate explicit inventories. Citation additions carry the complete replacement for the bead's compact standing references section; research references are the sole exception to the comment-only update rule.</prose>
     <list ordered="false">
       <item lead="Conservation checks">The plan's ID set equals the baseline ID set for a full sweep. Every status is byte-for-byte preserved unless status was explicitly authorized. Every non-target standing field and graph edge is preserved.</item>
       <item lead="Owner decisions">Present uncertain citation candidates, genuinely new taxonomy categories, destructive redundancy remedies, and status changes for owner adjudication before applying them.</item>
@@ -80,12 +80,12 @@ bd export -o /durable/path/beads-preupdate-YYYY-MM-DD.jsonl</code>
     </list>
   </section>
   <section id="bgs-mutate" title="Apply a short, single-writer mutation batch">
-    <prose>Refresh the backup immediately before the first write. Use one coordinator and deterministic ID order. Apply metadata corrections first, dependency changes second, and citation comments last. Stop on the first failed command; do not treat emitted JSON as success without checking the command result and the live bead.</prose>
+    <prose>Refresh the backup immediately before the first write. Use one coordinator and deterministic ID order. Apply metadata corrections first, dependency changes second, and standing citation updates last. Stop on the first failed command; do not treat emitted JSON as success without checking the command result and the live bead.</prose>
     <list ordered="true">
       <item lead="Refresh">Run backup sync and status again, then confirm the baseline issue and status counts still match.</item>
       <item lead="Metadata">Apply each planned title, type, and label update without touching status or standing text.</item>
       <item lead="Graph">Apply only owner-approved redundancy edges or consolidations. Regenerate the passive export after dependency changes.</item>
-      <item lead="Research">Append complete, deduplicated citation comments. A comment states why the source belongs to the bead and preserves any owner-approved uncertainty.</item>
+      <item lead="Research">Add complete, deduplicated citations directly to the bead's compact standing references section. Preserve owner-approved uncertainty in the reference annotation; do not leave the canonical bibliography only in comments.</item>
       <item lead="Synchronize">Commit the tracker working set once the bounded batch succeeds, then push the Dolt state before any downstream process relies on it.</item>
     </list>
   </section>
@@ -97,7 +97,7 @@ bd backup status --json</code>
     <list ordered="false">
       <item lead="Exact diff">Compare baseline and final exports by ID. Assert exact expected title, type, label, comment, and approved-edge changes. Assert every status and every untargeted field or edge is unchanged.</item>
       <item lead="Global invariants">Re-enumerate all labels and types; validate every title scope, lexical ordering, case posture, and length; verify issue and status counts; confirm no issue vanished or appeared unexpectedly.</item>
-      <item lead="Citation integrity">Verify each new comment exists exactly once and every accepted citation includes identifying metadata and a resolvable locator. List remaining ambiguity rather than silently dropping it.</item>
+      <item lead="Citation integrity">Verify every accepted citation exists exactly once in the bead's standing body and includes identifying metadata and a resolvable locator. List remaining ambiguity rather than silently dropping it.</item>
       <item lead="Redundancy review">Inspect each altered candidate pair again in live tracker state. Confirm the surviving contracts and graph links match the approved remedy.</item>
       <item lead="Project gates">Run the documentation-class gate and formatter check for this workflow document, then the repository merge gate before landing tracked guidance.</item>
     </list>

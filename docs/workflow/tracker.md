@@ -60,15 +60,16 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 * **Retain full research citations in the bead.** For every relevant paper, record its title, authors, year, and the best-fitting unique locator—prefer a DOI, then an arXiv or HAL identifier, then a stable URL.
   Cite standards, repositories, issues, and other research sources with equivalent identifying detail and a resolvable locator; a corpus path or filename alone is not a research citation.
   Never leave the only citation in session context or a notes-repository report.
-  Put references known at filing in the description and append references discovered during execution as comments.
+  Put references known at filing in the description.
+  References discovered later are the sole exception to the comment-only update rule: add them directly to the bead's standing body, normally in a compact `## References` section in `notes`, so the bead alone retains its canonical bibliography.
 
 ### Safe graph and field updates
 
 * **Back up before graph-wide operations.** Before bulk triage, normalization, relabeling, dependency rewrites, or any other graph-wide mutation, create and sync a Dolt-native `bd backup` to a durable location outside the project tree.
   Verify the backup status and retain the backup until the operation is complete, synchronized, and verified safe to roll forward without it.
   Follow the end-to-end [beads graph sweep workflow](beads-graph-sweep.xml) for baseline capture, read-only classification, deterministic mutation, conservation checks, and reporting.
-* **Progress additions are comments only.** After filing, append every progress, evidence, research, or closeout addition with `bd comment`; never accumulate it by amending `notes`, `description`, `design`, or `acceptance_criteria`.
-  Edit those standing fields only to correct the bead's authoritative current contract, not to preserve chronology.
+* **Progress additions are comments only, except references.** After filing, append progress, evidence, and closeout chronology with `bd comment`; never accumulate them by amending `notes`, `description`, `design`, or `acceptance_criteria`.
+  Edit those standing fields only to correct the bead's authoritative current contract or to add and maintain its canonical research references.
 * Beads cite corpus paths (`docs/gandr/spec/…`, `docs/adr/…`) so an agent lands with context.
 * Every doc-drift finding files a bead (`docs/KNOWLEDGE.md` phase 1) — drift produces work items, not silent warnings.
 * Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
