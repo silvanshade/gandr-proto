@@ -419,7 +419,7 @@ fn index_entry(
     else {
         return Err(format!("{stem}: MkComponent title/status is not an atom"));
     };
-    let title = gandr_workflow_grammatical_framework::sexp::unquote(title)
+    let title = gandr_workflow_grammatical_framework::sexp::unquote((title).into())
         .ok_or_else(|| format!("{stem}: MkComponent title is not a string literal"))?;
     let status = match status.as_str() {
         | "StatusBuilt" => "built",

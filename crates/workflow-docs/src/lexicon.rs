@@ -517,7 +517,8 @@ fn atom_of(sexp: &Sexp) -> Result<&str, GfDocsError>
 /// The unquoted text of a string-literal atom expression.
 fn quoted(sexp: &Sexp) -> Result<String, GfDocsError>
 {
-    unquote(atom_of(sexp)?).ok_or_else(|| GfDocsError::Parse("expected a string literal".into()))
+    unquote((atom_of(sexp)?).into())
+        .ok_or_else(|| GfDocsError::Parse("expected a string literal".into()))
 }
 
 /// The id behind an anchor constant.

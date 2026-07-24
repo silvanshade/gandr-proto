@@ -320,24 +320,18 @@ pub struct ParseLimit
 impl ParseLimit
 {
     /// The largest cap the lane accepts.
-    pub const MAX: usize = 32;
+    pub const MAX: Self = Self { limit: 32 };
+}
 
+impl From<usize> for ParseLimit
+{
     /// Wrap a cap, clamped to [`ParseLimit::MAX`].
     #[inline]
-    #[must_use]
-    pub fn new(limit: usize) -> Self
+    fn from(limit: usize) -> Self
     {
         Self {
-            limit: limit.min(Self::MAX),
+            limit: limit.min(Self::MAX.limit),
         }
-    }
-
-    /// The clamped value.
-    #[inline]
-    #[must_use]
-    pub fn get(&self) -> usize
-    {
-        self.limit
     }
 }
 
@@ -695,7 +689,7 @@ impl PgfConcrete
                 .map_err(|e| parse_err(py, &e))?;
             let mut results = Vec::new();
             let iter = iterator.try_iter().map_err(|e| py_err(&e))?;
-            for item in iter.take(limit.get()) {
+            for item in iter.take(limit.limit) {
                 let item = item.map_err(|e| parse_err(py, &e))?;
                 let (probability, tree): (f64, Bound<'_, PyAny>) =
                     item.extract().map_err(|e| py_err(&e))?;

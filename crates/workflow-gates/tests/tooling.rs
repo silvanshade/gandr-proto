@@ -1491,8 +1491,6 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
             "--exclude",
             "gandr-core-checker",
             "--exclude",
-            "gandr-workflow-grammatical-framework",
-            "--exclude",
             "gandr-core-sequent",
             "--exclude",
             "gandr-workflow-docs",

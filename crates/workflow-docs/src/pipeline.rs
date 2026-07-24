@@ -239,7 +239,7 @@ fn collect_toc(
                     "section title is not a string literal".into(),
                 ));
             };
-            let title = gandr_workflow_grammatical_framework::sexp::unquote(title_atom)
+            let title = gandr_workflow_grammatical_framework::sexp::unquote((title_atom).into())
                 .ok_or_else(|| {
                     GfDocsError::Parse("section title is not a string literal".into())
                 })?;

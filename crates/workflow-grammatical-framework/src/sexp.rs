@@ -28,6 +28,57 @@ pub enum Sexp
     },
 }
 
+/// Borrowed text for one quoted S-expression atom.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct AtomText<'text>(&'text str);
+
+impl<'text> From<&'text str> for AtomText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
+impl<'text> From<&'text String> for AtomText<'text>
+{
+    #[inline]
+    fn from(text: &'text String) -> Self
+    {
+        Self(text.as_str())
+    }
+}
+
+/// Current indentation level while rendering an S-expression.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct LayoutIndent(usize);
+
+impl LayoutIndent
+{
+    /// Root indentation.
+    const ROOT: Self = Self(0);
+
+    /// Indentation for the next application position.
+    fn continuation(self) -> Self
+    {
+        Self(self.0.saturating_add(1))
+    }
+
+    /// Indentation for a nested application argument.
+    fn nested(self) -> Self
+    {
+        Self(self.0.saturating_add(2))
+    }
+}
+
+/// Borrowed application-head text during flat rendering.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ApplicationHead<'text>(&'text str);
+
 impl Sexp
 {
     /// Build an atom.
@@ -73,7 +124,7 @@ impl Sexp
     pub fn render(&self) -> String
     {
         let mut out = String::new();
-        self.render_at(0, &mut out);
+        self.render_at(LayoutIndent::ROOT, &mut out);
         out
     }
 
@@ -83,7 +134,7 @@ impl Sexp
     /// Lisp-style at constant indent.
     fn render_at(
         &self,
-        indent: usize,
+        indent: LayoutIndent,
         out: &mut String,
     )
     {
@@ -91,11 +142,11 @@ impl Sexp
         enum Task<'tree>
         {
             /// Render an expression at an indent.
-            Node(&'tree Sexp, usize),
+            Node(&'tree Sexp, LayoutIndent),
             /// Render an argument (parenthesized when compound).
-            Arg(&'tree Sexp, usize),
+            Arg(&'tree Sexp, LayoutIndent),
             /// Emit a newline and indent padding.
-            Break(usize),
+            Break(LayoutIndent),
             /// Emit a closing parenthesis.
             Close,
         }
@@ -113,13 +164,13 @@ impl Sexp
                     | &Self::App { .. } => {
                         out.push('(');
                         stack.push(Task::Close);
-                        stack.push(Task::Node(sexp, level.saturating_add(1)));
+                        stack.push(Task::Node(sexp, level.continuation()));
                     },
                 },
                 | Task::Node(sexp, level) => match sexp {
                     | &Self::Atom(ref text) => out.push_str(text),
                     | &Self::App { ref head, ref args } => {
-                        if let Some(flat) = flat_form(head, args) {
+                        if let Some(flat) = flat_form(ApplicationHead(head.as_str()), args) {
                             out.push_str(&flat);
                             continue;
                         }
@@ -131,16 +182,16 @@ impl Sexp
                             if let Some(element) = iter.next() {
                                 out.push(' ');
                                 if let Some(tail) = iter.next() {
-                                    stack.push(Task::Arg(tail, level.saturating_add(1)));
-                                    stack.push(Task::Break(level.saturating_add(1)));
+                                    stack.push(Task::Arg(tail, level.continuation()));
+                                    stack.push(Task::Break(level.continuation()));
                                 }
-                                stack.push(Task::Arg(element, level.saturating_add(1)));
+                                stack.push(Task::Arg(element, level.continuation()));
                             }
                             continue;
                         }
                         for arg in args.iter().rev() {
-                            stack.push(Task::Arg(arg, level.saturating_add(2)));
-                            stack.push(Task::Break(level.saturating_add(2)));
+                            stack.push(Task::Arg(arg, level.nested()));
+                            stack.push(Task::Break(level.nested()));
                         }
                     },
                 },
@@ -151,14 +202,14 @@ impl Sexp
 
 /// The single-line form when every argument is atomic and it fits.
 fn flat_form(
-    head: &str,
+    head: ApplicationHead<'_>,
     args: &[Sexp],
 ) -> Option<String>
 {
     /// The column budget for one-line applications.
     const FLAT_LIMIT: usize = 72;
-    let mut width = head.len();
-    let mut flat = String::from(head);
+    let mut width = head.0.len();
+    let mut flat = String::from(head.0);
     for arg in args {
         let Sexp::Atom(ref text) = *arg
         else {
@@ -177,10 +228,10 @@ fn flat_form(
 /// Append `count` spaces.
 fn pad(
     out: &mut String,
-    count: usize,
+    count: LayoutIndent,
 )
 {
-    for _ in 0 .. count {
+    for _ in 0 .. count.0 {
         out.push(' ');
     }
 }
@@ -214,8 +265,9 @@ where
 /// `\"` `\\` `\n` `\t` `\r`). Returns `None` for a bare (unquoted) atom.
 #[inline]
 #[must_use]
-pub fn unquote(atom: &str) -> Option<String>
+pub fn unquote(atom: AtomText<'_>) -> Option<String>
 {
+    let atom = atom.0;
     let stripped = atom.strip_prefix('"')?;
     let inner = stripped.strip_suffix('"')?;
     let mut out = String::with_capacity(inner.len());

@@ -930,7 +930,7 @@ fn quoted(tree: &Sexp) -> Result<String, GfDocsError>
     else {
         return Err(GfDocsError::Parse("expected a string literal".into()));
     };
-    unquote(atom).ok_or_else(|| GfDocsError::Parse("expected a string literal".into()))
+    unquote((atom).into()).ok_or_else(|| GfDocsError::Parse("expected a string literal".into()))
 }
 
 /// Walk one list chain (`Cons<Tag>`/`Cons<Tag>Glued` … `Base<Tag>`),
