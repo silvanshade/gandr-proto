@@ -1,115 +1,125 @@
 # Agent Guidance
 
-## Map
+## Start here
 
 * `PLAN.html` — the approved reboot roadmap and current project wayfinder.
 * `docs/spec/index.xml` — the entry point to the status-attributed, tool-validated specification corpus.
-* `docs/WORKFLOW.md` — the workflow **routing layer**: read it first, then open only the task-scoped sub-file it points to under `docs/workflow/` (tracker, worktrees, ci, scripting, rust, mutation-adequacy, soundness, corpus, agda, review, docs).
+* `docs/WORKFLOW.md` — the workflow routing layer.
+  Read it first, then open only the task-scoped file it points to under `docs/workflow/`.
+
+This file is a thin orientation adapter.
+Substantive process guidance belongs in the routed workflow documents; reference it instead of restating it here.
 
 ## Working posture
 
-* **Surgical changes; structural evaluation first.** Make surgical changes to the task itself; do not sprawl into unrelated rewrites.
-  But before modifying, evaluate structure: should this change extract shared functionality, prune duplication, or draw a module boundary?
-  Act when in-scope and surgical, otherwise file a tracker item — always surface it.
-  "Surgical" governs HOW you touch code; modularity-first governs WHETHER you first evaluate its structure.
-* **Leave what you modify in as good or better shape than you found it.** Report engineering improvements or hazards you notice that are not yet documented — noticing and staying silent is the failure mode.
-* **State uncertainty** when current code or docs do not prove a claim.
-  Report unexpected harness/tool/config failures immediately.
-* **Verify before completion.** A green build is not proof; exercise the behavior the change affects, and add or update tests for behavior changes.
-* **Gates prove structure, not meaning.** For substantial or publishable-stakes changes, run an independent adversarial review before committing (`WORKFLOW.md` §"Adversarial review").
+* **Surgical changes; structural evaluation first.** Make the task-scoped change without unrelated rewrites, but first ask whether the change should extract shared functionality, prune duplication, or draw a module boundary.
+  Act when that remains in scope; otherwise file a tracker item.
+  Surface the opportunity either way.
+* **Leave touched areas better.** Report undocumented engineering improvements and hazards; noticing and staying silent is the failure mode.
+* **State uncertainty.** Say when current code or documentation does not prove a claim, and report unexpected harness, tool, or configuration failures immediately.
+* **Verify behavior.** A green build is not proof.
+  Exercise the changed behavior and add or update tests when behavior changes.
+* **Gates prove structure, not meaning.** Substantial or publishable-stakes changes require an independent adversarial review before landing.
+  Follow [`docs/workflow/review.md`](docs/workflow/review.md).
 
-## Task completion — do small immediate follow-ups NOW
+## Work tracking
 
-Fresh sessions are preferred for significant work, and re-orienting a new session has real cost.
-That makes deferral _asymmetric_: a small step costs little to finish now but forces a full re-orient if pushed to "later".
-So, inverted from the usual instinct:
+Beads is the issue tracker, with prefix `gandr-`.
+[`docs/workflow/tracker.md`](docs/workflow/tracker.md) owns the shared-Dolt topology, cross-machine synchronization, server-lifecycle boundary, audit conventions, feature-landing evidence, and residual closeout.
 
-* At the end of every task, scan for small steps that can be done immediately — a one-line doc fix, a hazard to record, a follow-up tracker item to file — and do them now, while the context is loaded.
-* Defer only genuinely _significant_ work (anything that wants its own focused session).
-* Stay honest about size: if a "small" step turns out to need real building, stop, land the genuinely cheap increment, and defer the significant remainder.
+* Push after every tracker write; pull before relying on tracker reads.
+* Never stop, start, or restart the Dolt server unless the owner asks.
+* Use neither TodoWrite nor Markdown TODO lists nor an ad hoc `MEMORY.md`.
 
-## Publishable history
+## Worktrees, agents, and merging
 
-Classify every change **project-concern vs contributor-concern** before committing — machine-local paths, host quirks, session/model forensics never enter tracked content or commit messages.
-The doctrine and the acid test are `PUBLISHABLE-HISTORY.md`; the mechanical backstops are the `no-machine-local-paths` prek hook and the commitlint session-trailer ban (`fragments/commitlintrc.base.mts`).
+Follow [`docs/workflow/worktrees.md`](docs/workflow/worktrees.md) for the complete lifecycle.
 
-## Durable state
+* Do file-modifying work in a `wt` worktree and keep the primary checkout on `main`; ask before creating one when the task's track is unclear.
+  The routing and governance documents named by that workflow may land directly on `main`.
+* Run `mise run setup` in every fresh worktree before its first commit.
+  Never bypass hooks, emulate Worktrunk hooks, or bootstrap `mise trust` from agent preflight.
+* Mutating automated agents use the Worktrunk-owned lane: commit visible state, pre-create the worktree, launch the agent there without harness-native worktree creation, require commits only on its branch, then integrate with `wt merge --no-squash`.
+* Prefer the structure-aware path: `codegraph` for scope and blast radius, `sem` for divergence and conflict risk, `weave` for merge resolution, and `wt merge` for rebase, gates, and landing.
+* Dispose of completed worktrees and branches in the same session.
+  If safe disposal is blocked, record the exact state and removal condition in a bead.
 
-Finished tasks produce durable artifacts: tracker items updated and synced, decisions in the ADR, working-tree changes committed to publishable standard, memory revised where the task made it stale.
-The full discipline — including the tracker sync rules and the session-close checklist — is `WORKFLOW.md`.
+## Quality gates and review
 
-## Publishable history — project-concern vs contributor-concern
+[`docs/workflow/ci.md`](docs/workflow/ci.md) owns the current gate inventory and merge wall.
 
-Everything that enters a repo's git history is written assuming it will **eventually be public**.
-Before adding content to tracked files or commit messages, classify it:
+* Run the narrowest gate that proves the change before committing.
+* `mise run gate:merge` is part of “done and verified,” not a substitute for exercising the changed behavior.
+* Scale independent review to the change.
+  One-line fixes need the gates; substantial, cross-cutting, corpus, and publishable-stakes changes follow [`docs/workflow/review.md`](docs/workflow/review.md).
 
-* **Project-concern** — the design, decisions and their rationale, specs, code, tests, tooling configuration, and honest professional provenance (e.g. "this revision corrects an earlier draft"; "the design genesis was iterative refinement through dialogue with various language models").
-  This belongs in tracked files and commit messages, written to publishable standard.
-* **Contributor-concern** — anything meaningful only to a particular contributor's machine, workflow, or process: machine-local paths and hostnames, private artifacts and their filenames, session and model forensics (which model produced a draft, what it hallucinated), harness and workflow mechanics, salvage/rebuild narratives.
-  This never enters tracked content or commit messages.
+## Commits and publishable history
 
-**The acid test: would this content be wrong or useless for a second contributor on different hardware?** If yes, it is contributor-concern and stays out.
+Assume everything committed here will eventually be public.
+Before adding tracked content or a commit message, classify it:
 
-### Where contributor-concern material lives
+* **Project-concern** — design, decisions and rationale, specifications, code, tests, tooling configuration, and honest professional provenance.
+  This includes noting that a revision corrects an earlier draft or that a design was refined through dialogue with language models.
+  Write it to publishable standard.
+* **Contributor-concern** — machine-local paths and hostnames, private artifacts, session and model forensics, harness mechanics, and salvage narratives.
+  Keep it out of tracked content and commit messages.
 
-An untracked location, by consumer choice:
+**Acid test:** would the content be wrong or useless for a contributor on different hardware?
+If so, it is contributor-concern.
 
-* a gitignored `notes/` directory in-repo (the original pattern — pair it with the stranded-notes exposure, `HAZARDS.md` H1), or
-* a **sister notes repo** (a separate, fully version-controlled local repository the project references only as "refer to local notes") — removes the H1 exposure by construction and is the recommended pattern for new consumers.
+Store contributor-concern artifacts in a separate, versioned notes repository outside this tree; this repository has no in-repo `notes/` directory or stranded-notes guard.
+Distill any project-relevant conclusion into the appropriate design or decision record, and leave contributor context in the notes location.
 
-When contributor context is needed to understand a project decision, distill the project-relevant part into the decision record and keep the rest in the notes location.
+Commit messages are enforced by `commitlint`; `.commitlintrc.mts` is authoritative.
 
-### Mechanical backstops
+* Use `<type>(<scope>): <subject>`, with required lower-case type and scope.
+* Choose the scope from the closed `GANDR_SCOPES` vocabulary.
+* Keep the header and every body line at or below 100 characters.
+  Separate header, body, and footer with blank lines; omit a trailing period from the subject.
+* Agent co-author trailers must match the canonical registry byte-for-byte.
+  Session trailers are prohibited.
+* Inspect `.commitlintrc.mts` before inventing a type, scope, or trailer.
 
-* The `no-machine-local-paths` prek hook (`fragments/prek.base.toml`) rejects staged content containing machine-local home paths.
-* The commitlint base (`fragments/commitlintrc.base.mts`) rejects session-link trailers (`Claude-Session:` and variants) — agent-harness forensics are contributor-concern — and requires agent co-author trailers to match the canonical registry byte-for-byte, so agent attribution (which IS project-concern, as honest provenance) stays uniform.
+The `no-machine-local-paths` hook and commitlint are lexical backstops; classification remains the rule.
 
-Backstops are lexical and incomplete; the classification is the rule, the hooks are seatbelts.
+## Specification, corpus, and research
 
-## Project delta (kept thin)
+* `docs/spec/index.xml` is the specification entry point.
+  The corpus is validated by `gandr-workflow-docs`; `docs/spec/refs.yml` is derived and must be regenerated, never edited by hand.
+  Follow [`docs/workflow/docs.md`](docs/workflow/docs.md).
+* Every surfaced language feature lands its complete executable corpus treatment in the same change.
+  Syntax-only work lands a parse-gated `surface/` witness; internal-only work lands named exercised fixtures and an explicit promotion blocker.
+  Follow [`docs/workflow/corpus.md`](docs/workflow/corpus.md).
+* External research artifacts are references for understanding only.
+  Never vendor, port, or depend on companion artifacts, regardless of license.
 
-* **Tracker**: beads, prefix `gandr-`; **one shared Dolt database per machine** — the primary checkout and all worktrees resolve it via the git common directory, and worktrees carry no gitignored `.beads` state (the `wt` copy-ignored step excludes `.beads/**`; `gandr-fid.15`).
-  Sync rides DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) via `bd dolt push` / `pull` (out-of-band from git — push after every write, pull before reads; that discipline guards **cross-machine** staleness, worktree-to-worktree visibility is immediate).
-  Server lifecycle (`bd dolt stop`/`start`/restart) is **owner-controlled** — never touch it unprompted (`docs/workflow/tracker.md` §"Source of truth and sync").
-  No TodoWrite / markdown TODOs / ad-hoc `MEMORY.md`.
-  `bv --robot-*` for triage (bare `bv` blocks the session); confirm with `bd show` (`bd list` hides closed — use `--all` when auditing, core/HAZARDS.md H3).
-* **Gates** (run the narrowest that proves your change): `mise run treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift` (MANIFEST.yml BLAKE3), `docs:reference-integrity`, `wrkflw` (workflow edits); Rust — `cargo:clippy` (pass/fail gate only), `cargo:nextest`; Agda — `agda:check`.
-  These run in CI (the gate of record) and locally via `prek` once you `prek install` (once per clone, primary checkout; core/HAZARDS.md H4).
-* **Commits**: commit messages are enforced by `commitlint`; `.commitlintrc.mts` is the authority.
-  Use Conventional Commits in the form `<type>(<scope>): <subject>`, for example `fix(repo): restore merge gate`.
-  Type and scope are required and lower-case; the scope must come from the closed `GANDR_SCOPES` vocabulary.
-  Keep the header and every body line at or below 100 characters, separate the header, body, and footer with blank lines, and omit a trailing period from the subject.
-  Agent co-author trailers must match the canonical registry, and session trailers are prohibited.
-  Inspect `.commitlintrc.mts` before inventing a type, scope, or trailer.
-* **Specification corpus**: `docs/spec/index.xml` is the entry point to status-attributed XML components validated by `gandr-workflow-docs`; `docs/spec/refs.yml` is derived and must be regenerated rather than edited by hand (`docs/workflow/docs.md`).
-* **Corpus treatment**: every new surfaced gandr feature lands runnable literate model examples, runnable pathological coverage, harness assertions, and coverage-map registration in the SAME change (`crates/gandr-corpus`; ADR-84 supersedes ADR-52 Decision B and Decision C's two-tree cardinality; `docs/workflow/corpus.md`).
-  A syntax-only landing gets a parse-gated `surface/` witness; its semantics-graduation change promotes that witness and adds the full treatment in that same change.
-  Internal-only work lands named fixtures exercised by named tests plus an explicit corpus-promotion blocker.
-<!--* **gandr-pro skill**: load the `gandr-pro` skill BEFORE any gandr-related work — writing or reviewing `.gandr` programs, corpus examples, or reasoning about gandr semantics.
-  Source of truth: `crates/gandr-corpus/skills/gandr-pro/SKILL.md` (ADR-52 Decision E), surfaced via `.claude/skills/` + `.omp/skills/` symlinks, maintained on the corpus-treatment train.-->
-* **ADR log**: wyrd's is `docs/adr/` (b3sum-hashed, sequentially numbered — the hard ADR-on-main case; the `adr-guard` `[pre-merge]` gate rejects branch ADR edits, core/HAZARDS.md H5).
-  Record an ADR on `main` first, then rebase.
-* **Agda in its own commit**: keep `metatheory/**` (Agda) work in a separate commit from the Rust it mirrors (distinct artifact whose history may be reorganized; the `docs/gandr/**` dictionary face may ride with either).
-* **Rust code** follows `docs/workflow/rust.md` — no partial functions (no indexing/slicing, no `unwrap`/`expect` in shipping code), checked arithmetic, typed errors over panics, a `# Contract` rustdoc block on nontrivial items.
-  The `Cargo.toml` `[workspace.lints]` wall enforces the mechanical parts; test/bench relax it via one crate-level `#![cfg_attr(test, allow(...))]`, production never.
-* **Diagnostics via aifix**: reading / enumerating compiler / lint / LSP diagnostics ALWAYS goes through the `aifix_*` MCP tools (CLI `aifix` fallback), never by parsing raw `cargo clippy` (a raw `-D warnings` run aborts at the first failing target and under-reports).
-  `mise run cargo:clippy` is only the pass/fail gate.
-  `docs/workflow/scripting.md` §"Diagnostics go through aifix".
-* **Scripts**: typed only — Nushell for small/pipeline scripts, TypeScript (type-stripping Node, no build) for larger; no untyped `bash`/`sh`; a bare `any`/`unknown` needs explicit sign-off.
-  `core/WORKFLOW.md` §Scripting; worked examples (doc-gate scripts, `std/assert` shadowing, nutest) in `docs/workflow/scripting.md`.
-* **External research = reference only; Agda deps vetted**: research artifacts (companion code, mechanizations) are for understanding only — never vendored / ported / depended-on, any license; adding an **Agda** dependency needs maintainer sign-off first (stricter than the Rust/TS trees, where the finder skills give latitude).
-  The sister **internal-univalence** library is in-house, not external: its engine is consumed as a pinned, read-only git submodule at `metatheory/upstream/internal-univalence` (`iu:check` guards the pin) per `docs/gandr/spec/proposal-metatheory-relaunch.md`, with the integration record in `metatheory/README.md` §"Upstream integration" and the house style in `docs/workflow/agda.md`.
-  The reference-only rule and the Agda vetting bar are both in `docs/workflow/agda.md`.
-* **Structure-aware triad, not raw git**: `wt merge` orchestrates (rebase + gate + land); the content analysis goes `codegraph` (scope / blast radius) → `sem` (what diverged / conflict risk, not `git diff`) → `weave` (merge / conflict resolution, not `git merge`).
-* **Worktrees**: all file-modifying work in a `wt` worktree; the primary checkout stays on `main` (ask before creating one if the track is unclear).
-  In every fresh worktree run `mise run setup` before the first commit — it populates the root and grammar-package node dependencies so the treefmt pre-commit and commitlint push-range hooks pass natively (the old sanctioned `--no-verify` bypass is obsolete, and agent briefs must instruct the setup task, never the bypass).
-  Mutating automated agents use the orchestrator lane: commit visible state, pre-create `wt switch --create <branch> --base=@ --no-cd`, launch the agent at the returned path with harness-native worktree creation disabled, require the agent to commit only on its assigned branch, and integrate that branch into the owning branch with `wt merge --no-squash <target>`.
-  Harnesses that cannot target that path keep native CoW/reflink isolation (`task.isolation.mode = "auto"`) and a stable root trusted once in global mise configuration (OMP: `{{ env.HOME }}/.omp/wt`); never emulate Worktrunk hooks or run `mise trust` as agent preflight (core H15).
-  Read-only no-command agents may share a tree; project hooks are user-preapproved with `wt config approvals add`, agents never use blanket `--yes`, and Worktrunk fails loudly when noninteractive and unapproved.
-  The governance-doc carve-out (core/WORKFLOW.md) covers wyrd's `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/{WORKFLOW,KNOWLEDGE,HAZARDS}.md`, `docs/workflow/`, and `docs/adr/` — those land on `main` directly.
-* **Contributor notes**: contributor-concern material (session forensics, handoffs, machine-local scratch, salvage narratives) lives in the sibling `wyrd-notes` repository, not here — there is no in-repo `notes/` directory and no stranded-notes guard.
-  Classify per `.agents/core/core/PUBLISHABLE-HISTORY.md` before every commit; when contributor context explains a project decision, distill the project-relevant part into `docs/adr/` and leave the rest in wyrd-notes.
-* **Session close**: no git remote is configured during the reboot bootstrap — history is local-only until the gandr remote lands; once it does, reviewed work is committed and pushed to `main` with **signed** commits (conservative — push reviewed work, not speculative/unrequested).
-  Pushes are **arc-boundary events**: push after a full arc of work has merged to `main` (typically a `wt merge` landing), never per-commit — the pre-push tier deliberately runs the complete act-CI simulation (minutes; `docs/workflow/ci.md` §"Gate tiers"), so batching an arc's commits into one push is the intended shape.
-  Full lifecycle: `core/WORKFLOW.md` §"Session close".
-  At closeout file the **residuals bead** — manual, mutation-adequacy, other-residual, and corpus faces folded into one, with `not applicable` explicit (`docs/workflow/tracker.md` §"Feature landing and residual closeout").
+## Rust, automation, and diagnostics
+
+* Read [`docs/workflow/rust.md`](docs/workflow/rust.md) before writing or reviewing Rust.
+  It owns the no-partial-functions policy, checked arithmetic, typed errors, contract documentation, and production-versus-test lint posture.
+* New automation or a new script starts behind a named `mise` task, which remains the stable entry point.
+  Adapt or consolidate an existing task before adding another.
+* When modifying the task surface, simplify redundancies that are in scope and surface larger cleanup opportunities.
+  Report any future hazard or security concern noticed along the way: immediately if it bears on current work, otherwise at closeout.
+  This opportunistic duty does not require a separate audit.
+* Adding a task requires consulting the user first unless the user has granted full autonomy for the work.
+* If implementation outgrows a small task body, move the logic into an appropriate `workflow-*` crate instead of adding a standalone script.
+  Creating such a crate also requires consultation unless full autonomy has been granted.
+* Report every task addition, removal, or material change—and every new workflow crate—at closeout.
+* Enumerate compiler, linter, and language-server diagnostics through aifix, with its CLI only as fallback.
+  `mise run cargo:clippy` is a pass/fail gate, not a diagnostic-enumeration interface.
+
+## Completion and durable state
+
+Fresh sessions are preferred for significant work, and re-orienting later has real cost.
+Finish cheap follow-through while the context is loaded: one-line documentation repairs, hazard records, and small tracker updates should not force a later session to re-orient.
+Defer only genuinely significant work.
+If a “small” follow-up starts requiring real building, land the cheap increment and record the remainder.
+
+A finished task leaves durable state: tracker items updated and synchronized, decisions in the authoritative project record, working-tree changes committed to publishable standard, and stale memory revised.
+
+At session close:
+
+* complete the lifecycle in [`docs/workflow/worktrees.md`](docs/workflow/worktrees.md), [`docs/workflow/ci.md`](docs/workflow/ci.md), and [`docs/workflow/tracker.md`](docs/workflow/tracker.md);
+* keep history local while no remote exists; once one exists, push reviewed, signed work to `main` at arc boundaries rather than per commit;
+* apply the consolidated residuals-bead rule from the tracker workflow, marking inapplicable faces explicitly.

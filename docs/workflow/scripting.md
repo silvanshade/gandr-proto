@@ -2,6 +2,10 @@
 
 > Read when: changing the project-local gate driver, a shared-core script call, a tooling regression surface, or compiler/linter diagnostic handling.
 > Base discipline: `.agents/core/core/WORKFLOW.md` §"Scripting".
+>
+> **Legacy scripts:** the existing `scripts/` tree is obsolete and migration-bound.
+> Do not add new scripts.
+> Continue to follow this document when invoking, maintaining, or diagnosing existing scripts until they are replaced.
 
 ## Keep the ownership boundary explicit
 

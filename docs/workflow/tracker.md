@@ -38,6 +38,11 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 * **Small graph, current graph.** The tracker is a working set, not an archive: ≲20 active beads, consolidated by topic.
   Prefer one compact bead that carries a topic's current state over several partial beads an agent must reassemble.
   Prune aggressively at triage; a dropped question can be re-asked later if it ever matters again (owner posture, 2026-07-12).
+* **Choose metadata before filing.** Before every `bd create`, run `bd label list-all` and `bd types list-all`, then select the most appropriate existing labels and work type.
+  Do not invent a near-synonym for convenience.
+  If nothing fits well—or the bead would not surface reliably in a targeted search—consult the user before adding a metadata category.
+  With explicitly granted full autonomy, create a category when appropriate and report every metadata-category addition or change at closeout.
+  When searching a label family, enumerate the matching labels by prefix and query every applicable exact label.
 * Beads cite corpus paths (`docs/gandr/spec/…`, `docs/adr/…`) so an agent lands with context.
 * Every doc-drift finding files a bead (`docs/KNOWLEDGE.md` phase 1) — drift produces work items, not silent warnings.
 * Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
