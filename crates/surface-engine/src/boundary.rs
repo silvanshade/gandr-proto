@@ -228,6 +228,10 @@ semantic_copy!(
     pub struct MissingPresence(bool);
 );
 semantic_copy!(
+    /// Whether a recursive name is hidden by a lexical shadow.
+    pub struct ShadowPresence(bool);
+);
+semantic_copy!(
     /// Whether an observation name is reserved.
     pub struct ReservedObservationFlag(bool);
 );

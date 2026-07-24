@@ -2241,8 +2241,9 @@ mod tests
             Ok(())
         }
 
-        fn lowering_error(source: &str) -> Result<LowerError, String>
+        fn lowering_error<'text>(source: impl Into<TestText<'text>>) -> Result<LowerError, String>
         {
+            let source = source.into().0;
             lower_source(source.into())
                 .err()
                 .ok_or_else(|| "strict lowering must decline the source".to_owned())

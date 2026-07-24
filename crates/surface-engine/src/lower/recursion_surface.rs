@@ -10,6 +10,8 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::boundary::NodeText;
+use crate::boundary::ShadowPresence;
 use crate::lower::LowerError;
 use crate::lower::LowerResult;
 use crate::lower::node_kinds;
@@ -52,6 +54,7 @@ pub(super) fn validate_item(item: SynNode<'_>) -> LowerResult<()>
 /// # Contract
 /// - invariant: `None` is the empty chain; `Some(index)` names an existing
 ///   [`Shadow`] entry while validation is in progress.
+#[repr(transparent)]
 #[derive(Clone, Copy, Default)]
 struct ShadowId(Option<usize>);
 
@@ -142,7 +145,11 @@ fn validate_nodes_from<'tree>(
         match node.kind() {
             | node_kinds::IDENTIFIER
                 if scope.contains(node.text().as_ref())
-                    && !is_shadowed(work.shadows, node.text().as_ref(), shadow_arena) =>
+                    && !bool::from(is_shadowed(
+                        work.shadows,
+                        NodeText(node.text().as_ref()),
+                        shadow_arena,
+                    )) =>
             {
                 return Err(unmarked(node));
             },
@@ -229,7 +236,11 @@ fn validate_call<'tree>(
     }
     else if function.kind() == node_kinds::IDENTIFIER
         && scope.contains(function.text().as_ref())
-        && !is_shadowed(shadows, function.text().as_ref(), shadow_arena)
+        && !bool::from(is_shadowed(
+            shadows,
+            NodeText(function.text().as_ref()),
+            shadow_arena,
+        ))
     {
         Err(unmarked(function))
     }
@@ -314,7 +325,10 @@ fn validate_instantiation<'tree>(
             byte_range: instantiation.byte_range(),
         });
     }
-    if !has_direction && target_is_bound && !is_shadowed(shadows, target_name, shadow_arena) {
+    if !has_direction
+        && target_is_bound
+        && !bool::from(is_shadowed(shadows, NodeText(target_name), shadow_arena))
+    {
         return Err(unmarked(target));
     }
     if target.kind() != node_kinds::IDENTIFIER {
@@ -474,21 +488,21 @@ fn bind_name(
 /// Whether `name` occurs in one persistent lexical-shadow chain.
 fn is_shadowed(
     mut shadows: ShadowId,
-    name: &str,
+    name: NodeText<'_>,
     shadow_arena: &[Shadow],
-) -> bool
+) -> ShadowPresence
 {
     while let Some(index) = shadows.0 {
         let Some(shadow) = shadow_arena.get(index)
         else {
-            return false;
+            return false.into();
         };
-        if shadow.name == name {
-            return true;
+        if shadow.name == name.as_ref() {
+            return true.into();
         }
         shadows = shadow.parent;
     }
-    false
+    false.into()
 }
 
 /// Push named children in source order onto a LIFO work stack.
@@ -534,6 +548,7 @@ fn unmarked(node: SynNode<'_>) -> LowerError
 mod tests
 {
     use super::validate;
+    use crate::boundary::PipelineSource;
     use crate::lower::LowerError;
     use crate::lower::lower_source;
     use crate::synnode::SynTree;
@@ -541,13 +556,13 @@ mod tests
     #[test]
     fn marked_self_reference_resolves() -> Result<(), String>
     {
-        validate_source("def rec f(n: Integer) -> F Integer { ret f[<](n) }")
+        validate_source(("def rec f(n: Integer) -> F Integer { ret f[<](n) }").into())
     }
 
     #[test]
     fn unmarked_self_reference_has_a_marked_suggestion() -> Result<(), String>
     {
-        let error = validation_error("def rec f(n: Integer) -> F Integer { ret f(n) }")?;
+        let error = validation_error(("def rec f(n: Integer) -> F Integer { ret f(n) }").into())?;
         assert!(matches!(
             error,
             LowerError::UnmarkedRecursiveReference {
@@ -562,7 +577,7 @@ mod tests
     #[test]
     fn bare_self_reference_has_a_marked_suggestion() -> Result<(), String>
     {
-        let error = validation_error("def rec f(n: Integer) -> F Integer { ret f }")?;
+        let error = validation_error(("def rec f(n: Integer) -> F Integer { ret f }").into())?;
         assert!(matches!(
             error,
             LowerError::UnmarkedRecursiveReference {
@@ -577,13 +592,13 @@ mod tests
     #[test]
     fn qualified_outer_reference_is_not_captured() -> Result<(), String>
     {
-        validate_source("def rec f(n: Integer) -> F Integer { ret (outer.f)(n) }")
+        validate_source(("def rec f(n: Integer) -> F Integer { ret (outer.f)(n) }").into())
     }
 
     #[test]
     fn marked_reference_outside_the_scope_is_rejected() -> Result<(), String>
     {
-        let error = validation_error("def f(n: Integer) -> F Integer { ret f[<](n) }")?;
+        let error = validation_error(("def f(n: Integer) -> F Integer { ret f[<](n) }").into())?;
         assert!(matches!(
             error,
             LowerError::MarkedReferenceOutsideRecursiveScope { ref target, .. }
@@ -595,18 +610,21 @@ mod tests
     #[test]
     fn mutual_scope_resolves_marked_peers() -> Result<(), String>
     {
-        validate_source(concat!(
-            "rec { ",
-            "def even(n: Integer) -> F Integer { ret odd[<](n) } ",
-            "def odd(n: Integer) -> F Integer { ret even[<](n) }",
-            " }",
-        ))
+        validate_source(
+            (concat!(
+                "rec { ",
+                "def even(n: Integer) -> F Integer { ret odd[<](n) } ",
+                "def odd(n: Integer) -> F Integer { ret even[<](n) }",
+                " }",
+            ))
+            .into(),
+        )
     }
     #[test]
     fn value_members_require_marked_peer_references() -> Result<(), String>
     {
-        validate_source("rec { def f = g[<]; def g = f[<]; }")?;
-        let error = validation_error("rec { def f = g; def g = f; }")?;
+        validate_source(("rec { def f = g[<]; def g = f[<]; }").into())?;
+        let error = validation_error(("rec { def f = g; def g = f; }").into())?;
         assert!(matches!(
             error,
             LowerError::UnmarkedRecursiveReference {
@@ -621,12 +639,15 @@ mod tests
     #[test]
     fn unmarked_mutual_peer_has_a_marked_suggestion() -> Result<(), String>
     {
-        let error = validation_error(concat!(
-            "rec { ",
-            "def even(n: Integer) -> F Integer { ret odd(n) } ",
-            "def odd(n: Integer) -> F Integer { ret even[<](n) }",
-            " }",
-        ))?;
+        let error = validation_error(
+            (concat!(
+                "rec { ",
+                "def even(n: Integer) -> F Integer { ret odd(n) } ",
+                "def odd(n: Integer) -> F Integer { ret even[<](n) }",
+                " }",
+            ))
+            .into(),
+        )?;
         assert!(matches!(
             error,
             LowerError::UnmarkedRecursiveReference {
@@ -641,7 +662,9 @@ mod tests
     #[test]
     fn composite_instantiation_target_is_still_scope_checked() -> Result<(), String>
     {
-        let error = validation_error("def rec f(n: Integer) -> F Integer { ret (f)[Integer](n) }")?;
+        let error = validation_error(
+            ("def rec f(n: Integer) -> F Integer { ret (f)[Integer](n) }").into(),
+        )?;
         assert!(matches!(
             error,
             LowerError::UnmarkedRecursiveReference { ref name, .. } if name == "f"
@@ -659,7 +682,7 @@ mod tests
             "def rec f(n: Integer) -> F Integer { case n { f => ret f } }",
         ];
         for source in cases {
-            validate_source(source)?;
+            validate_source((source).into())?;
         }
         Ok(())
     }
@@ -667,28 +690,33 @@ mod tests
     #[test]
     fn explicit_marker_selects_fix_binding_through_a_shadow() -> Result<(), String>
     {
-        validate_source("def rec f(f: Integer) -> F Integer { ret f[<](f) }")
+        validate_source(("def rec f(f: Integer) -> F Integer { ret f[<](f) }").into())
     }
 
     #[test]
     fn reserved_residents_have_named_declines() -> Result<(), String>
     {
-        let measure = validation_error("def rec f(n: Integer) -> F Integer { ret f[n <](n) }")?;
+        let measure =
+            validation_error(("def rec f(n: Integer) -> F Integer { ret f[n <](n) }").into())?;
         assert!(matches!(measure, LowerError::ReservedNamedMeasure { .. }));
 
-        let explicit = validation_error("def rec f(n: Integer) -> F Integer { ret f[n = 1](n) }")?;
+        let explicit =
+            validation_error(("def rec f(n: Integer) -> F Integer { ret f[n = 1](n) }").into())?;
         assert!(matches!(
             explicit,
             LowerError::ReservedExplicitInstantiation { .. }
         ));
 
-        let size = validation_error("def rec f(n: Integer) -> F Integer { ret f[size = 1](n) }")?;
+        let size =
+            validation_error(("def rec f(n: Integer) -> F Integer { ret f[size = 1](n) }").into())?;
         assert!(matches!(size, LowerError::ReservedExplicitSize { .. }));
 
-        let cost = validation_error("def rec f(n: Integer) -> F Integer { ret f[cost = 1](n) }")?;
+        let cost =
+            validation_error(("def rec f(n: Integer) -> F Integer { ret f[cost = 1](n) }").into())?;
         assert!(matches!(cost, LowerError::ReservedCostBound { .. }));
 
-        let tail = validation_error("def rec f(n: Integer) -> F Integer { ret f[tail](n) }")?;
+        let tail =
+            validation_error(("def rec f(n: Integer) -> F Integer { ret f[tail](n) }").into())?;
         assert!(matches!(tail, LowerError::ReservedTailAssertion { .. }));
         Ok(())
     }
@@ -707,18 +735,18 @@ mod tests
         Ok(())
     }
 
-    fn validate_source(source: &str) -> Result<(), String>
+    fn validate_source(source: PipelineSource<'_>) -> Result<(), String>
     {
-        let tree = SynTree::parse(source).map_err(|error| format!("parse failed: {error:?}"))?;
+        let tree = SynTree::parse(source.0).map_err(|error| format!("parse failed: {error:?}"))?;
         if !tree.obligations().is_empty() {
             return Err(format!("parse obligations: {:?}", tree.obligations()));
         }
         validate(tree.root()).map_err(|error| format!("validation failed: {error:?}"))
     }
 
-    fn validation_error(source: &str) -> Result<LowerError, String>
+    fn validation_error(source: PipelineSource<'_>) -> Result<LowerError, String>
     {
-        let tree = SynTree::parse(source).map_err(|error| format!("parse failed: {error:?}"))?;
+        let tree = SynTree::parse(source.0).map_err(|error| format!("parse failed: {error:?}"))?;
         if !tree.obligations().is_empty() {
             return Err(format!("parse obligations: {:?}", tree.obligations()));
         }

@@ -31,11 +31,11 @@ export CARGO_INCREMENTAL
 
 # `gandr-workflow-gates` and the driver itself are excluded pending their
 # lint-debt triage (gandr-0ze, gandr-3yh).
-# Nine crates are excluded pending the strict primitive-signature remediation
-# (gandr-vp8; census 2026-07-24, 573 findings: gandr-storage-prolly-trees 243,
+# Eight crates are excluded pending the strict primitive-signature remediation
+# (gandr-vp8; census 2026-07-24, 568 findings: gandr-storage-prolly-trees 243,
 # gandr-workflow-docs 117, gandr-storage-chunker 88, gandr-kernel-core 66,
 # gandr-storage-artifact 30, gandr-core-checker 16, gandr-core-sequent 10,
-# gandr-workflow-grammatical-framework 6, gandr-surface-engine 5).
+# gandr-workflow-grammatical-framework 6).
 # The recursion lane below keeps them covered in the meantime; restoring them
 # here is the vp8 exit condition.
 cargo dylint \
@@ -52,7 +52,6 @@ cargo dylint \
   --exclude gandr-core-checker \
   --exclude gandr-workflow-grammatical-framework \
   --exclude gandr-core-sequent \
-  --exclude gandr-surface-engine \
   --exclude gandr-workflow-docs \
   --all-targets \
   --features=full
