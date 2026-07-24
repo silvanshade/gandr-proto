@@ -239,13 +239,56 @@ pub fn int_box() -> DataDesc
     )
 }
 
+/// Finite integer sample carried by the `IntBox` fixture.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct IntBoxLeaf(i64);
+
+impl IntBoxLeaf
+{
+    /// Zero, the first replay sample.
+    pub const ZERO: Self = Self(0);
+
+    /// One, the successor image of zero.
+    pub const ONE: Self = Self(1);
+
+    /// Two, the second positive replay sample.
+    const TWO: Self = Self(2);
+
+    /// Negative one, the first negative replay sample.
+    const NEGATIVE_ONE: Self = Self(-1);
+
+    /// Negative two, the second negative replay sample.
+    const NEGATIVE_TWO: Self = Self(-2);
+
+    /// Return the representable fixture successor.
+    fn successor(self) -> Self
+    {
+        Self(
+            self.0
+                .checked_add(1)
+                .expect("the sampled IntBox successor is representable"),
+        )
+    }
+
+    /// Return the representable fixture predecessor.
+    fn predecessor(self) -> Self
+    {
+        Self(
+            self.0
+                .checked_sub(1)
+                .expect("the sampled IntBox predecessor is representable"),
+        )
+    }
+}
+
 /// An [`int_box`] value carrying the integer `n` — constructor `Box` (index 0)
 /// over the canonical decimal-ASCII leaf encoding of `n`. The decimal spelling
 /// is unbounded-length, faithful to `Integer`'s unbounded leaf (the finite
 /// `i64` here bounds only the *sampled* range, never the leaf type).
-pub fn int_leaf(n: i64) -> DescValue
+pub fn int_leaf(n: IntBoxLeaf) -> DescValue
 {
-    DescValue::new(0.into(), Payload::Leaf(n.to_string().into_bytes().into()))
+    DescValue::new(0.into(), Payload::Leaf(n.0.to_string().into_bytes().into()))
 }
 
 /// A finite sample of [`int_box`] leaf values, `0` first (so the earliest
@@ -253,7 +296,16 @@ pub fn int_leaf(n: i64) -> DescValue
 /// inside the `i64` sample bound.
 pub fn int_box_values() -> Vec<DescValue>
 {
-    [0_i64, 1, 2, -1, -2].into_iter().map(int_leaf).collect()
+    [
+        IntBoxLeaf::ZERO,
+        IntBoxLeaf::ONE,
+        IntBoxLeaf::TWO,
+        IntBoxLeaf::NEGATIVE_ONE,
+        IntBoxLeaf::NEGATIVE_TWO,
+    ]
+    .into_iter()
+    .map(int_leaf)
+    .collect()
 }
 
 /// The **identity** auto-iso on [`int_box`] — the sole leaf-natural member of
@@ -272,21 +324,24 @@ pub fn int_box_identity() -> CodeIso
 /// leaf-natural (structural) certificate replays it — the U3.0d witness.
 pub fn leaf_shift() -> CodeIso
 {
-    let forward: Translate = Rc::new(|value: &DescValue| int_leaf(read_int_leaf(value) + 1));
-    let backward: Translate = Rc::new(|value: &DescValue| int_leaf(read_int_leaf(value) - 1));
+    let forward: Translate =
+        Rc::new(|value: &DescValue| int_leaf(read_int_leaf(value).successor()));
+    let backward: Translate =
+        Rc::new(|value: &DescValue| int_leaf(read_int_leaf(value).predecessor()));
     CodeIso::new("leaf-shift", int_box(), int_box(), forward, backward)
 }
 
 /// Read the integer an [`int_box`] value carries, parsing its decimal-ASCII
 /// leaf (the inverse of [`int_leaf`]).
-fn read_int_leaf(value: &DescValue) -> i64
+fn read_int_leaf(value: &DescValue) -> IntBoxLeaf
 {
     let Payload::Leaf(ref bytes) = value.payload
     else {
         panic!("an IntBox value carries a Leaf payload");
     };
-    core::str::from_utf8(bytes)
+    let value = core::str::from_utf8(bytes)
         .expect("the IntBox leaf is decimal-ASCII")
         .parse::<i64>()
-        .expect("the IntBox leaf parses as an integer")
+        .expect("the IntBox leaf parses as an integer");
+    IntBoxLeaf(value)
 }

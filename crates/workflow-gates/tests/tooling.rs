@@ -1495,8 +1495,6 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
             "--exclude",
             "gandr-core-sequent",
             "--exclude",
-            "gandr-theory-levitation",
-            "--exclude",
             "gandr-surface-engine",
             "--exclude",
             "gandr-workflow-docs",

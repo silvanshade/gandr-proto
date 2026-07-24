@@ -115,18 +115,26 @@ mod u30d
             replay_disagreement(&shift, &identity, &samples, &samples)
                 .expect("the leaf shift disagrees with the identity under replay");
         assert!(
-            bool::from(generic_eq(&box_desc, &input, &fixtures::int_leaf(0))),
+            bool::from(generic_eq(
+                &box_desc,
+                &input,
+                &fixtures::int_leaf(fixtures::IntBoxLeaf::ZERO)
+            )),
             "the earliest disagreement is at the leaf 0"
         );
         assert!(
-            bool::from(generic_eq(&box_desc, &shift_image, &fixtures::int_leaf(1))),
+            bool::from(generic_eq(
+                &box_desc,
+                &shift_image,
+                &fixtures::int_leaf(fixtures::IntBoxLeaf::ONE)
+            )),
             "the shift sends 0 to its successor 1"
         );
         assert!(
             bool::from(generic_eq(
                 &box_desc,
                 &identity_image,
-                &fixtures::int_leaf(0)
+                &fixtures::int_leaf(fixtures::IntBoxLeaf::ZERO)
             )),
             "the identity fixes 0"
         );
@@ -137,8 +145,8 @@ mod u30d
         assert!(
             !bool::from(generic_eq(
                 &box_desc,
-                &shift.forward_value(&fixtures::int_leaf(0)),
-                &shift.forward_value(&fixtures::int_leaf(1)),
+                &shift.forward_value(&fixtures::int_leaf(fixtures::IntBoxLeaf::ZERO)),
+                &shift.forward_value(&fixtures::int_leaf(fixtures::IntBoxLeaf::ONE)),
             )),
             "the shift maps distinct leaves to distinct images (it reads the content)"
         );
