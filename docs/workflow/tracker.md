@@ -38,6 +38,10 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 * **Small graph, current graph.** The tracker is a working set, not an archive: ≲20 active beads, consolidated by topic.
   Prefer one compact bead that carries a topic's current state over several partial beads an agent must reassemble.
   Prune aggressively at triage; a dropped question can be re-asked later if it ever matters again (owner posture, 2026-07-12).
+* **Reconstruction is the filing acid test.** A contributor must be able to reconstruct and execute the full task from the bead plus standing project guidance alone.
+  Include the intended outcome, boundaries and non-goals, governing decisions and provenance, affected interfaces, dependencies, acceptance and verification evidence, and authoritative references needed to act safely.
+  Do not depend on private notes, session history, branch state, or an unstated conversation.
+  Point to stable tracked project records instead of duplicating them; if the contract cannot remain compact, use one topic bead with executable children rather than omitting context.
 
 ### Titles and metadata
 
@@ -62,6 +66,7 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 
 * **Back up before graph-wide operations.** Before bulk triage, normalization, relabeling, dependency rewrites, or any other graph-wide mutation, create and sync a Dolt-native `bd backup` to a durable location outside the project tree.
   Verify the backup status and retain the backup until the operation is complete, synchronized, and verified safe to roll forward without it.
+  Follow the end-to-end [beads graph sweep workflow](beads-graph-sweep.xml) for baseline capture, read-only classification, deterministic mutation, conservation checks, and reporting.
 * **Progress additions are comments only.** After filing, append every progress, evidence, research, or closeout addition with `bd comment`; never accumulate it by amending `notes`, `description`, `design`, or `acceptance_criteria`.
   Edit those standing fields only to correct the bead's authoritative current contract, not to preserve chronology.
 * Beads cite corpus paths (`docs/gandr/spec/…`, `docs/adr/…`) so an agent lands with context.
