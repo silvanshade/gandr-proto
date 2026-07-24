@@ -1,0 +1,62 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+# ── Mutation testing (cargo-mutants; docs/HAZARDS.md) ─────────────────────────
+# EVERY task here goes through the Rust driver's microVM containment. `cargo
+# mutants` is never invoked directly on the host, and there is deliberately no
+# task that bypasses the containment proof.
+
+["mutants:snapshot"]
+description = "Build/refresh the reusable microVM base snapshot (toolchain + pinned tools + guest sentinel); needs network"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants snapshot
+"""
+
+["mutants:changed-vs-remote"]
+description = "Run a changed-code mutation campaign for commits relative to the configured remote, inside an ephemeral microVM"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants push
+"""
+
+["mutants:push"]
+description = "Alias for the changed-code mutation campaign relative to the configured remote"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants push
+"""
+
+["mutants:changed-vs-main"]
+description = "Run a changed-code mutation campaign for this branch relative to main, inside an ephemeral microVM"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants merge
+"""
+
+["mutants:merge"]
+description = "Alias for the changed-code mutation campaign relative to main"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants merge
+"""
+
+["mutants:scheduled"]
+description = "Run a changed-code mutation campaign over an explicit revision range, inside an ephemeral microVM"
+usage = '''
+flag "--from <from>" help="Base revision for the mutation range"
+flag "--to <to>" help="Head revision for the mutation range"
+'''
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants scheduled --from "${usage_from?}" --to "${usage_to?}"
+"""
+
+["mutants:clean"]
+description = "Stop and remove any microVM left behind by an interrupted mutants run"
+# The Rust driver tears its sandbox down on both success and failure, but a
+# SIGTERM to the driver can skip that. The sandbox's `--max-duration` eventually
+# reaps it; this command reclaims the CPU and memory immediately.
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants clean
+"""
+
+["mutants:sweep"]
+description = "Schedule a comprehensive workspace mutation campaign in an ephemeral microVM (~2427 mutants; sets the baseline)"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- mutants sweep
+"""

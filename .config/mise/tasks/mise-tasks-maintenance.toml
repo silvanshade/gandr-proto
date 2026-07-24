@@ -1,0 +1,42 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+["maintenance:weekly"]
+description = "Run the bounded weekly fuzz and changed-code mutation campaigns sequentially"
+usage = '''
+flag "--from <from>" help="Base revision for the mutation range"
+flag "--to <to>" help="Head revision for the mutation range"
+'''
+run = [
+  { task = "fuzz:weekly" },
+  { task = "mutants:scheduled", args = [
+    "--from",
+    "{{usage.from}}",
+    "--to",
+    "{{usage.to}}"
+  ] }
+]
+
+["maintenance:advance"]
+description = "Atomically advance the successful weekly campaign watermark"
+usage = '''
+flag "--watermark <watermark>" help="Runner-local watermark path"
+flag "--to <to>" help="Successful upper revision" default="HEAD"
+'''
+run = 'cargo run --quiet -p gandr-workflow-gates -- maintenance-range advance --watermark "{{usage.watermark}}" --to "{{usage.to}}"'
+
+["maintenance:monthly"]
+description = "Run the monthly full contained mutation sweep"
+run = [{ task = "mutants:sweep" }]
+
+[treefmt]
+description = "Run treefmt"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt
+"""
+
+["treefmt:check"]
+description = "Run treefmt in CI mode"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci
+"""

@@ -1,0 +1,37 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+# ── Agda metatheory (metatheory/; ADR-30 — Agda is the sole proof vehicle) ──────
+# Agda 2.8.0 (pinned above) + agda-stdlib v2.4 (verified under 2.8.0), vendored by
+# `agda:deps`. Adding an Agda dependency is vetted first — see docs/WORKFLOW.md
+# "External research artifacts and dependency discipline".
+# The IU engine (Internal.Graph / Internal.Rewriting[.Confluence] / Internal.Prelude)
+# is consumed from the pinned submodule metatheory/upstream/internal-univalence,
+# included on both gate lines via `-i …/internal-univalence/src` (pin gate: iu:check;
+# provenance: metatheory/README.md "Upstream integration").
+#
+# Strict root / holey leaf (docs/WORKFLOW.md "Agda house style"): the first
+# `agda:check` line gates the strict root (Gandr.Everything, 0 diagnostics);
+# each DECLARED holey leaf — a module the root does not import, carrying the
+# R3 in-progress proof obligations as interaction holes — gets its own line
+# with `--expected-code UnsolvedInteractionMetas`, so exactly the declared
+# holes are tolerated and anything else still fails. Current leaves:
+#   * metatheory/src/Gandr/Prop/Obligations.agda (canonicity
+#     existence/uniqueness + decidable equality on canonical forms). Keeps
+#     full OPTIONS (--safe coexists with interaction holes), so it needs NO
+#     exemption in the unified Rust OPTIONS-policy gate.
+
+["agda:deps"]
+description = "Vendor the Agda dependencies (agda-stdlib v2.4) via the gandr driver's script runner"
+run = """
+cargo run -q -p gandr -- scripts/agda-deps.gandr
+"""
+
+["agda:check"]
+description = "Type-check the gandr Agda metatheory under Agda 2.8.0 (strict root + declared holey leaf via aifix + OPTIONS policy sweep)"
+depends = ["agda:deps"]
+run = """
+aifix batch agda --fail-on-diagnostics -- -v0 -i metatheory/src -i metatheory/upstream/internal-univalence/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Everything.agda
+aifix batch agda --fail-on-diagnostics --expected-code UnsolvedInteractionMetas -- -v0 -i metatheory/src -i metatheory/upstream/internal-univalence/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Prop/Obligations.agda
+cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
+"""

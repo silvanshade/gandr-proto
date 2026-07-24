@@ -1,0 +1,227 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+["cargo:build"]
+description = "Build the project"
+run = """
+# The Dylint driver is nightly-only (`#![feature(rustc_private)]`); the stable
+# production build excludes it — nightly clippy/nextest passes cover it.
+cargo build --workspace --exclude gandr-workflow-dylint --all-targets --features=full
+"""
+
+["cargo:clippy"]
+description = "Run clippy linter"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+cargo clippy --workspace --all-targets --features=full -- -D warnings
+"""
+
+["cargo:dylint:local"]
+description = "Run project-local Dylint rules across covered workspace targets"
+depends = ["toolchain:materialize"]
+env = { CARGO_TARGET_DIR = "{{ config_root }}/target/dylint-local", DYLINT_RUSTFLAGS = "-D warnings" }
+run = """
+# Incremental state ICEs the dylint driver on reruns
+# (`shallow_lint_levels_on`); keep the driver run reproducible.
+CARGO_INCREMENTAL=0
+export CARGO_INCREMENTAL
+
+
+# `gandr-workflow-gates` and the driver itself are excluded pending their
+# lint-debt triage (gandr-0ze, gandr-3yh).
+cargo dylint \
+  --lib gandr_workflow_dylint \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
+"""
+
+["cargo:dylint:recursion"]
+description = "Gate recursion across the Dylint-covered workspace targets"
+# `DYLINT_RUSTFLAGS` does not distinguish Cargo fingerprints; isolate the
+# recursion-relaxed artifacts from the strict local/full lane.
+depends = [
+  { task = "cargo:dylint:local", env = { CARGO_TARGET_DIR = "{{ config_root }}/target/dylint-recursion", DYLINT_RUSTFLAGS = "-D warnings -A primitive-signature -A single-field-struct-needs-transparent-repr" } }
+]
+
+["cargo:dylint"]
+description = "Run full project-local and upstream Dylint gates"
+depends = ["cargo:dylint:local"]
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+# Verify the project-local driver's UI contract before upstream rules.
+cargo test -p gandr-workflow-dylint ui -- --nocapture
+
+DYLINT_RUSTFLAGS="-D warnings"
+export DYLINT_RUSTFLAGS
+
+# Incremental state ICEs the dylint driver on reruns
+# (`shallow_lint_levels_on`); keep the driver runs reproducible.
+CARGO_INCREMENTAL=0
+export CARGO_INCREMENTAL
+
+# Run every practical upstream example lint across every workspace target.
+cargo dylint \
+  --lib abs_home_path \
+  --lib assert_eq_arg_misordering \
+  --lib await_holding_span_guard \
+  --lib basic_dead_store \
+  --lib collapsible_unwrap \
+  --lib const_path_join \
+  --lib env_literal \
+  --lib inconsistent_qualification \
+  --lib incorrect_matches_operation \
+  --lib misleading_variable_name \
+  --lib non_thread_safe_call_in_test \
+  --lib non_topologically_sorted_functions \
+  --lib question_mark_in_expression \
+  --lib ref_aware_redundant_closure_for_method_calls \
+  --lib suboptimal_pattern \
+  --lib supplementary \
+  --lib try_io_result \
+  --lib wrong_serialize_struct_arg \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
+
+# The pinned non-local-effect rule stays in its own driver invocation after an
+# upstream panic on a core lib-test target. The shared workspace scope is
+# intentional; re-split per-core if that defect recurs.
+cargo dylint \
+  --lib non_local_effect_before_unhandled_error \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
+
+# `crate_wide_allow` deliberately omits test targets: the standard
+# `cfg_attr(test, allow(...))` lint-wall relaxation is the one approved case.
+cargo dylint \
+  --lib crate_wide_allow \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --lib \
+  --bins \
+  --benches \
+  --examples \
+  --features=full
+
+# `register_lints_warn` is warning-level by design and stays isolated so it
+# cannot weaken the deny posture of the other driver invocations.
+cargo dylint \
+  --lib register_lints_warn \
+  --no-deps \
+  -- \
+  --workspace \
+  --exclude gandr-workflow-gates \
+  --exclude gandr-workflow-dylint \
+  --all-targets \
+  --features=full
+"""
+
+["cargo:doc"]
+description = "Generate documentation"
+run = """
+cargo doc --workspace --features=full --no-deps --document-private-items --open
+"""
+
+["cargo:doc-check"]
+description = "Check workspace private-item rustdoc with intra-doc links denied"
+run = """
+# rustdoc runs on the pinned nightly like cargo:clippy so the nightly-only
+# `gandr-workflow-dylint` driver documents in the same pass; the merge-wall
+# doc gate therefore needs no `--exclude` set (unlike the stable cargo:build /
+# cargo:nextest lanes, whose exclusion exists only for the stable/nightly split).
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
+export RUSTUP_TOOLCHAIN
+
+# `RUSTDOCFLAGS="-D warnings"` makes every rustdoc lint (broken/redundant
+# intra-doc links &c.) fatal so doc breakage cannot land silently.
+RUSTDOCFLAGS="-D warnings"
+export RUSTDOCFLAGS
+
+cargo doc --workspace --features=full --no-deps --document-private-items
+"""
+
+# rustfmt.toml relies on nightly-only options (imports_granularity, wrap_comments,
+# …), so fmt always runs under the pinned nightly — stable rustfmt silently
+# ignores them and would format/check differently than treefmt's rustfmt.
+["cargo:fmt"]
+description = "Run cargo fmt"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo fmt --all
+"""
+
+["cargo:fmt-check"]
+description = "Run cargo fmt in check mode (prek pre-commit hook)"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo fmt --all -- --check
+"""
+
+["cargo:nextest"]
+description = "Run the workspace nextest suite"
+run = """
+# The Dylint driver is nightly-only (`#![feature(rustc_private)]`); the stable
+# nextest lane excludes it — the nightly cargo:dylint/careful lanes cover it.
+# Parked: the excluded tree-sitter reference-crate suite
+# (`--manifest-path crates/tree-sitter/Cargo.toml`) returns with the
+# tree-sitter lane.
+cargo nextest run --workspace --exclude gandr-workflow-dylint --all-targets --features=full
+"""
+
+["cargo:careful-nextest"]
+description = "Run the workspace nextest suite under cargo-careful"
+run = """
+# Parked: the excluded tree-sitter reference-crate suite (returns as
+# crates/tree-sitter with the tree-sitter/grammar lane) is not in the workspace
+# yet, so this runs --workspace only.
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo careful nextest run --workspace --all-targets --features=full
+"""
+
+["cargo:llvm-cov"]
+description = "Generate coverage artifacts (lcov, human summary, and summary JSON) into coverage/"
+run = """
+mkdir -p coverage
+cargo llvm-cov clean --workspace
+cargo llvm-cov --no-report --workspace --all-targets --features=full
+cargo llvm-cov report --lcov --output-path coverage/lcov.info
+cargo llvm-cov report --summary-only | tee coverage/summary.txt
+cargo llvm-cov report --json --summary-only --output-path coverage/llvm-cov-summary.json
+"""
+
+# Parked: the core crate is not in the repo yet — the Grade leaf ops land with the
+# core-checker/core-sequent port (formerly gandr-core); restore this task with it.
+# no_panic link smoke: prove Grade::{leq,plus,times} panic-free. A plain release
+# build (panic = "unwind" by default) links the annotated ops via the example, so
+# no_panic's link-time check fires; the dev release is unwind precisely so this
+# needs no extra flags. (#[no_panic] needs the unwind path — dist's abort would
+# defeat it — so the use-site cfg is `all(not(debug_assertions), panic = "unwind")`.)
+# ["cargo:no-panic"]
+# description = "Release no_panic link smoke (Grade leaf ops)"
+# run = """
+# cargo build --release -p gandr-core --example no_panic_smoke
+# """
+
+["cargo:miri"]
+description = "Run the workspace test suite under Miri"
+run = """
+RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" cargo miri test --workspace --all-targets --features=full
+"""

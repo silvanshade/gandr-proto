@@ -276,6 +276,14 @@ fn workspace_root() -> TestResult<PathBuf>
     Ok(workspace.to_path_buf())
 }
 
+/// Return the workspace mise tasks directory.
+fn workspace_mise_tasks(workspace: &Path) -> PathBuf
+{
+    let mut workspace_mise_tasks = workspace.to_path_buf();
+    workspace_mise_tasks.extend([".config", "mise", "tasks"]);
+    workspace_mise_tasks
+}
+
 /// Parse a workspace TOML file into a structural value.
 fn parse_toml_file(path: &Path) -> TestResult<toml::Value>
 {
@@ -614,7 +622,7 @@ fn configured_mutants_task_args<'semantic>(
 {
     let task = task.into().0;
     let mise = mise.into().0;
-    let header = format!("[tasks.\"{task}\"]");
+    let header = format!("[\"{task}\"]");
     let Some((_, task_section)) = mise.split_once(&header)
     else {
         return Err(Box::new(std::io::Error::other(format!(
@@ -1195,8 +1203,10 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
 fn configured_mise_mutants_tasks_parse_without_internal_path_flags() -> TestResult
 {
     let workspace = workspace_root()?;
-    let mise = gandr_workflow_gates::support::HOST_FILESYSTEM
-        .read_to_string(workspace.join("mise.toml"))?;
+    let workspace_mise_tasks = workspace_mise_tasks(&workspace);
+    let mise_tasks_mutants_path = workspace_mise_tasks.join("mise-tasks-mutants.toml");
+    let mise_tasks_mutants_toml =
+        gandr_workflow_gates::support::HOST_FILESYSTEM.read_to_string(mise_tasks_mutants_path)?;
     let current_dir = gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?;
     let cases = [
         ("mutants:snapshot", "snapshot"),
@@ -1210,7 +1220,10 @@ fn configured_mise_mutants_tasks_parse_without_internal_path_flags() -> TestResu
     ];
 
     for (task, mode) in cases {
-        let parsed = cli::parse_command(configured_mutants_task_args(&mise, task)?)?;
+        let parsed = cli::parse_command(configured_mutants_task_args(
+            &mise_tasks_mutants_toml,
+            task,
+        )?)?;
         let cli::Command::Mutants { command, options } = parsed
         else {
             return Err(Box::new(std::io::Error::other(format!(
@@ -1307,8 +1320,9 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         "Dylint represented lint inventory changed",
     );
 
-    let mise = parse_toml_file(&workspace.join("mise.toml"))?;
-    let cargo_clippy = toml_table_at(&mise, &["tasks", "cargo:clippy"])?;
+    let workspace_mise_tasks = workspace_mise_tasks(&workspace);
+    let mise_tasks_cargo = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-cargo.toml"))?;
+    let cargo_clippy = toml_table_at(&mise_tasks_cargo, &["cargo:clippy"])?;
     let cargo_clippy_script = toml_table_string(cargo_clippy, "run")?;
     let clippy_commands = parse_cargo_invocations(cargo_clippy_script);
     let [workspace_pass] = clippy_commands.as_slice()
@@ -1324,7 +1338,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         "cargo:clippy enabled-workspace scope changed",
     );
 
-    let cargo_dylint_local = toml_table_at(&mise, &["tasks", "cargo:dylint:local"])?;
+    let cargo_dylint_local = toml_table_at(&mise_tasks_cargo, &["cargo:dylint:local"])?;
     assert_string_sequence(
         &toml_table_string_array(cargo_dylint_local, "depends")?,
         ["toolchain:materialize"],
@@ -1358,7 +1372,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         ))));
     };
 
-    let cargo_dylint_recursion = toml_table_at(&mise, &["tasks", "cargo:dylint:recursion"])?;
+    let cargo_dylint_recursion = toml_table_at(&mise_tasks_cargo, &["cargo:dylint:recursion"])?;
     let Some(recursion_dependencies) = cargo_dylint_recursion
         .get("depends")
         .and_then(toml::Value::as_array)
@@ -1404,7 +1418,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         "recursion gate may allow only the two tracked unrelated local lints"
     );
 
-    let cargo_dylint = toml_table_at(&mise, &["tasks", "cargo:dylint"])?;
+    let cargo_dylint = toml_table_at(&mise_tasks_cargo, &["cargo:dylint"])?;
     assert_string_sequence(
         &toml_table_string_array(cargo_dylint, "depends")?,
         ["cargo:dylint:local"],
@@ -1557,8 +1571,9 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
 fn merge_gate_task_order_is_locked() -> TestResult
 {
     let workspace = workspace_root()?;
-    let mise = parse_toml_file(&workspace.join("mise.toml"))?;
-    let gate_merge = toml_table_at(&mise, &["tasks", "gate:merge"])?;
+    let workspace_mise_tasks = workspace_mise_tasks(&workspace);
+    let mise_tasks_gates = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-gates.toml"))?;
+    let gate_merge = toml_table_at(&mise_tasks_gates, &["gate:merge"])?;
     let Some(merge_steps) = gate_merge.get("run").and_then(toml::Value::as_array)
     else {
         return Err(Box::new(std::io::Error::other(
@@ -1590,14 +1605,32 @@ fn merge_gate_task_order_is_locked() -> TestResult
     Ok(())
 }
 
+/// The merge wall's formatter dependency is a discovered CI-mode task.
+#[test]
+fn treefmt_check_task_policy_is_locked() -> TestResult
+{
+    let workspace = workspace_root()?;
+    let workspace_mise_tasks = workspace_mise_tasks(&workspace);
+    let mise_tasks_maintenance =
+        parse_toml_file(&workspace_mise_tasks.join("mise-tasks-maintenance.toml"))?;
+    let treefmt_check = toml_table_at(&mise_tasks_maintenance, &["treefmt:check"])?;
+    let treefmt_check_script = toml_table_string(treefmt_check, "run")?;
+    assert_eq!(
+        treefmt_check_script.0.trim(),
+        r#"RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci"#
+    );
+    Ok(())
+}
+
 /// The merge-wall rustdoc gate documents the whole workspace on the pinned
 /// nightly with every rustdoc lint denied.
 #[test]
 fn doc_check_task_policy_is_locked() -> TestResult
 {
     let workspace = workspace_root()?;
-    let mise = parse_toml_file(&workspace.join("mise.toml"))?;
-    let cargo_doc_check = toml_table_at(&mise, &["tasks", "cargo:doc-check"])?;
+    let workspace_mise_tasks = workspace_mise_tasks(&workspace);
+    let mise_tasks_cargo = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-cargo.toml"))?;
+    let cargo_doc_check = toml_table_at(&mise_tasks_cargo, &["cargo:doc-check"])?;
     let doc_check_script = toml_table_string(cargo_doc_check, "run")?;
     assert!(
         doc_check_script
@@ -1631,11 +1664,16 @@ fn doc_check_task_policy_is_locked() -> TestResult
 fn gates_fuzz_configuration_is_closed() -> TestResult
 {
     let workspace = workspace_root()?;
-    let mise = gandr_workflow_gates::support::HOST_FILESYSTEM
-        .read_to_string(workspace.join("mise.toml"))?;
+    let workspace_mise_tasks = workspace_mise_tasks(&workspace);
+    let mise_tasks_fuzz_path = workspace_mise_tasks.join("mise-tasks-fuzz.toml");
+    let mise_tasks_fuzz_toml =
+        gandr_workflow_gates::support::HOST_FILESYSTEM.read_to_string(mise_tasks_fuzz_path)?;
     let gates_build =
         "cargo afl build --manifest-path fuzz/Cargo.toml --features gates --bin gates";
-    assert_eq!(2_usize, mise.match_indices(gates_build).count());
+    assert_eq!(
+        2_usize,
+        mise_tasks_fuzz_toml.match_indices(gates_build).count()
+    );
 
     let corpus = workspace.join(cli::fuzz_corpus_dir(cli::FuzzSmokeTarget::Gates));
     let mut nonempty_seed_count = 0_usize;

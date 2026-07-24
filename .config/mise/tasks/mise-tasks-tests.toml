@@ -1,0 +1,74 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+["test:adequacy-witnesses"]
+description = "Run the live graph rustdoc Contract adequacy-witness gate"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/theory-graphs
+"""
+
+["test:coverage-ratchet"]
+description = "Verify per-file coverage floors, monotonicity, schema validation, and path boundaries"
+run = """
+cargo nextest run -p gandr-workflow-gates
+"""
+
+# ["test:dep-graph"]
+# description = "Assert the default -e normal,build workspace graph stays tree-sitter-free (dependency gate)"
+# run = """
+# cargo run --quiet -p gandr-workflow-gates -- default-graph --workspace-root .
+# """
+
+["test:doc-gates"]
+description = "Run the Rust doc-gate regression suite"
+run = """
+cargo nextest run -p gandr-workflow-gates
+"""
+
+["test:gate-parity"]
+description = "Verify scheduled tasks and local hooks share exact self-contained gate definitions"
+run = """
+cargo nextest run -p gandr-workflow-gates
+"""
+
+["test:graph-boundary"]
+description = "Run the live theory-graphs façade boundary gate (gandr-graph, ported in wave 1)"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- graph-boundary --workspace-root .
+"""
+
+["test:graph-gates"]
+description = "Run gandr-workflow-gates Rust tests once, then both live graph gates"
+run = """
+cargo nextest run -p gandr-workflow-gates
+cargo run --quiet -p gandr-workflow-gates -- contracts --scope crates/theory-graphs
+cargo run --quiet -p gandr-workflow-gates -- graph-boundary --workspace-root .
+"""
+
+["test:options-policy"]
+description = "Run the Rust OPTIONS-policy regression suite and live policy sweep"
+run = """
+cargo nextest run -p gandr-workflow-gates
+cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
+"""
+
+["test:page-balance"]
+description = "Run the Rust page-balance regression suite"
+run = """
+cargo nextest run -p gandr-workflow-gates
+"""
+
+["test:soundness-oracles"]
+description = "Verify every free-generator coherence oracle in the conformance suite declares a biased companion (ADR-48)"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- soundness-oracles --workspace-root .
+"""
+
+# Parked: the tree-sitter reference crate is not in the repo yet (it returns as
+# crates/tree-sitter with the surface-grammar/tree-sitter port; the path below is
+# pre-retargeted to that name); restore this task with it.
+# ["test:tree-sitter-ref"]
+# description = "Run the excluded tree-sitter reference-crate tests (its own independent workspace, kept in the gate wall though --workspace no longer sees them)"
+# run = """
+# cargo nextest run --all-targets --manifest-path crates/tree-sitter/Cargo.toml
+# """

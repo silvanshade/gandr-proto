@@ -1,0 +1,18 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+["toolchain:materialize"]
+description = "Materialize the Dylint driver's ignored rust-toolchain file from mise's nightly pin"
+run = """
+printf '%s\\n' "$RUSTUP_TOOLCHAIN_NIGHTLY" > crates/workflow-dylint/rust-toolchain
+"""
+
+[setup]
+depends = ["toolchain:materialize"]
+description = "Populate fresh-worktree dependencies (root devDependencies for the treefmt/oxlint and commitlint hooks + the pinned Rust toolchains and components)"
+run = """
+aube ci
+rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component clippy,rustfmt
+rustup toolchain install "$RUSTUP_TOOLCHAIN_NIGHTLY" --profile minimal --component clippy,rustfmt,rust-src,llvm-tools-preview,rustc-dev
+uv sync --project crates/workflow-grammatical-framework
+"""

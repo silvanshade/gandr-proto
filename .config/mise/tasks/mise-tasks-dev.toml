@@ -1,0 +1,16 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+["dev:enable"]
+description = "Enable local mise development hooks"
+run = """
+echo 'env = ["dev"]' > .miserc.toml
+echo "mise development config enabled"
+"""
+
+["dev:disable"]
+description = "Disable local mise development hooks"
+run = """
+rm -f .miserc.toml
+echo "mise development config disabled"
+"""

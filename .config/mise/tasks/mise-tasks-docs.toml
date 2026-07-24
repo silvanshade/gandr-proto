@@ -1,0 +1,304 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+["docs:manifest-drift"]
+description = "Verify docs/gandr/MANIFEST.yml BLAKE3 hashes against registered docs"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- docs-manifest
+"""
+
+["docs:conflict-markers"]
+description = "Detect unresolved Git conflict markers in tracked files"
+run = """
+nu ./scripts/check-conflict-markers.nu
+"""
+
+["docs:reference-integrity"]
+description = "Verify gandr corpus cross-references (ADR/section refs, manifest anchors) all resolve"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- docs-reference
+"""
+
+# Parked: the reference-manual / typst lane is aspirational — docs/manual/**
+# (tools/, chapters/, spike/, main.typ) exists in no git ref yet. This whole
+# manual family (docs:manual, docs:manual:watch, docs:balance, docs:spike,
+# docs:cookbook, docs:highlight[:spike], docs:chapter:*) returns with the
+# manual/typst rendering track. docs:check / docs:build below are the LIVE
+# spec-corpus doc-tool tasks and stay. Restore the family when docs/manual lands.
+# ["docs:manual"]
+# description = "Build the gandr reference manual end-to-end (regenerate all highlight JSON, then typst-compile) -> PDF"
+# run = """
+# nu docs/manual/tools/build-manual.nu
+# """
+#
+# ["docs:manual:watch"]
+# description = "Regenerate all highlight JSON once, then watch + recompile the gandr reference manual on change"
+# run = """
+# nu docs/manual/tools/build-manual.nu regen
+# typst watch --root . docs/manual/main.typ docs/manual/main.pdf
+# """
+
+# Parked with the manual family (docs/manual/** is aspirational; see docs:manual
+# above): page-balance reads the derived highlight JSON the manual produces.
+# (test:page-balance below stays LIVE — it runs only the Rust regression suite.)
+# Page balance is measured mechanically (spec.typ <layout-probe> metadata +
+# typst eval query()), never by rendering and inspecting page images.
+# Informational: reports display blocks that open low on a page; fails only
+# when the probe hook itself has drifted (zero probes) or the manual does not
+# compile. Requires the derived highlight JSON (run docs:manual first).
+# ["docs:balance"]
+# description = "Report manual display blocks that open low on a page (informational; fails only on zero probes)"
+# run = """
+# cargo run --quiet -p gandr-workflow-gates -- page-balance
+# """
+
+["docs:check"]
+description = "Validate the .gfd specification corpus through the GF pipeline (gandr-5n6): lexicon freshness (the duplicate detector), term/cite/ref/provenance resolution at the mandatory checkExpr lane"
+depends = ["docs:gfd:grammar"]
+run = """
+uv sync --project crates/workflow-grammatical-framework
+cargo run --quiet -p gandr-workflow-docs --locked -- check-all
+"""
+
+["docs:check-classes"]
+description = "Parse=validate the prose document classes (gandr-712) with the doc tool: research records (docs/research), workflow docs (docs/workflow), per-crate status (crates/*/docs) — banner presence, status presence, label define-once, label/cite resolution, class schema. XML only; .md tail is skipped"
+run = """
+cargo run --quiet -p gandr-workflow-docs --features=full -- check-docs
+"""
+
+["docs:build"]
+description = "Build the no-JavaScript static HTML spec corpus from .gfd through the GF pipeline into target/docs-spec (typst math/diagram leaves compiled to SVG; gandr-5n6)"
+depends = ["docs:gfd:grammar"]
+run = """
+uv sync --project crates/workflow-grammatical-framework
+cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
+"""
+
+["docs:refs-yml"]
+description = "Regenerate the derived docs/spec/refs.yml Hayagriva bibliography from the register (docs/research/bibliography-v2.md; gandr-fcw.10): extract register rows then build+oxfmt-normalize. refs.yml is derived — never hand-edit it; edit the register and re-derive"
+run = """
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+REG_PATH=docs/research/bibliography-v2.md OUT_PATH="$tmp/rows.nuon" nu ./scripts/refs-yml/extract.nu
+ROWS_PATH="$tmp/rows.nuon" OUT_PATH=docs/spec/refs.yml nu ./scripts/refs-yml/build-refs.nu
+"""
+
+["docs:gfd:toolchain"]
+description = "Provision the GF toolchain (gf compiler + libpgf from the official 3.12 release) into target/gf-toolchain (idempotent; gandr-wrs)"
+run = "cargo run -p gandr-workflow-docs --locked -- toolchain"
+
+["docs:gfd:grammar"]
+description = "Compile the corpus GF grammar to target/gf/GandrDocsLex.pgf (gandr-5n6)"
+depends = ["docs:gfd:toolchain"]
+run = "cargo run -p gandr-workflow-docs --locked -- grammar"
+
+["docs:gfd:corpus"]
+description = "Run the corpus arc: uv sync (pgf env), lexicon freshness, checkExpr over the corpus, render all pages + the index to target/docs-spec, workflow-docs tests (gandr-5n6)"
+depends = ["docs:gfd:grammar"]
+run = """
+uv sync --project crates/workflow-grammatical-framework
+cargo run --quiet -p gandr-workflow-docs --locked -- check-all
+cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
+cargo nextest run -p gandr-workflow-docs
+"""
+
+# Parked with the manual family (docs/manual/** aspirational; see docs:manual).
+# ["docs:spike"]
+# description = "Compile the Track-C typst rendering spike -> PDF (curryst/fletcher)"
+# run = """
+# typst compile --root . docs/manual/spike/dictionary-spike.typ docs/manual/spike/dictionary-spike.pdf
+# """
+#
+# ["docs:cookbook"]
+# description = "Compile the Track-C diagram cookbook -> PDF (fletcher/cetz/diagraph/chronos/curryst)"
+# run = """
+# typst compile --root . docs/manual/spike/diagram-cookbook.typ docs/manual/spike/diagram-cookbook.pdf
+# """
+#
+# ["docs:highlight"]
+# description = "Preprocess a .gandr file through tree-sitter highlights.scm -> typst token JSON"
+# run = """
+# nu docs/manual/tools/highlight-gandr.nu {{arg(name='gandr_file')}} --out {{arg(name='out_json')}}
+# """
+#
+# ["docs:highlight:spike"]
+# description = "Regenerate the highlight token stream + compile the highlighting spike -> PDF"
+# run = """
+# nu docs/manual/tools/highlight-gandr.nu packages/tree-sitter-gandr/test/scripts/fixtures/highlights.gandr --out docs/manual/spike/gen/highlights.json
+# typst compile --root . docs/manual/spike/highlighting-spike.typ docs/manual/spike/highlighting-spike.pdf
+# """
+
+# Parked with the manual family (docs/manual/** aspirational; see docs:manual):
+# the docs:chapter:* renderers each map a spec source to a manual chapter and
+# return with the manual/typst track. Kept verbatim so the chapter structure
+# is restored intact when docs/manual lands.
+# ["docs:chapter:core"]
+# description = "Render the Core-Calculus chapter from structured data -> PDF (highlight JSON + curryst/fletcher/cetz/chronos)"
+# run = """
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/core-cbpv.gandr --out docs/manual/chapters/gen/core-cbpv.highlights.json
+# typst compile --root . docs/manual/chapters/core-calculus.typ docs/manual/chapters/core-calculus.pdf
+# """
+#
+# ["docs:chapter:typesys"]
+# description = "Render the Type-System features/algorithmics chapter (type-system §§4–12) from structured data -> PDF (curryst/fletcher)"
+# run = """
+# typst compile --root . docs/manual/chapters/type-system-features.typ docs/manual/chapters/type-system-features.pdf
+# """
+#
+# ["docs:chapter:typmac"]
+# description = "Render the Typing-Machine chapter (typing-machine.md §§1–9) from structured data -> PDF (listing/table/fletcher)"
+# run = """
+# typst compile --root . docs/manual/chapters/typing-machine.typ docs/manual/chapters/typing-machine.pdf
+# """
+#
+# ["docs:chapter:incr"]
+# description = "Render the Incremental-Pipeline chapter (incremental-pipeline.md §§1–10) from structured data -> PDF (diagraph pipeline DAG + listing/table/note)"
+# run = """
+# typst compile --root . docs/manual/chapters/incremental-pipeline.typ docs/manual/chapters/incremental-pipeline.pdf
+# """
+#
+# ["docs:chapter:effects"]
+# description = "Render the Effects/Control/Shell chapter (effects-control-shell.md §§0–6) from structured data -> PDF (grammar/rules/table/note + session-pipe & dynamics-pipeline diagrams)"
+# run = """
+# typst compile --root . docs/manual/chapters/effects-control-shell.typ docs/manual/chapters/effects-control-shell.pdf
+# """
+#
+# ["docs:chapter:modules"]
+# description = "Render the Modules chapter (modules.md §§1–11) from structured data -> PDF (grammar/rules/definition/table/listing)"
+# run = """
+# typst compile --root . docs/manual/chapters/modules.typ docs/manual/chapters/modules.pdf
+# """
+#
+# ["docs:chapter:glance"]
+# description = "Render the Gandr-at-a-Glance chapter (the didactic Part-II opener) from structured data -> PDF (regenerates its highlight JSON + code blocks)"
+# run = """
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/at-a-glance-hello.gandr --out docs/manual/chapters/gen/at-a-glance-hello.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/at-a-glance-functions.gandr --out docs/manual/chapters/gen/at-a-glance-functions.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-sums.gandr --out docs/manual/chapters/gen/examples-sums.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/at-a-glance-shell.gandr --out docs/manual/chapters/gen/at-a-glance-shell.highlights.json
+# typst compile --root . docs/manual/chapters/at-a-glance.typ docs/manual/chapters/at-a-glance.pdf
+# """
+#
+# ["docs:chapter:surface"]
+# description = "Render the Surface-Syntax & Grammar chapter (proposal-surface-syntax.md + proposal-operators.md + tree-sitter-gandr) from structured data -> PDF (highlight JSON + grammar/table/code)"
+# run = """
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-overview.gandr --out docs/manual/chapters/gen/surface-syntax-overview.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-composition.gandr --out docs/manual/chapters/gen/surface-syntax-composition.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-sessions.gandr --out docs/manual/chapters/gen/surface-syntax-sessions.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/surface-syntax-shell.gandr --out docs/manual/chapters/gen/surface-syntax-shell.highlights.json
+# typst compile --root . docs/manual/chapters/surface-syntax.typ docs/manual/chapters/surface-syntax.pdf
+# """
+#
+# ["docs:chapter:metaprog"]
+# description = "Render the Metaprogramming chapter (proposal-metaprogramming.md §§1–7) from structured data -> PDF (table/rules/listing/note)"
+# run = """
+# typst compile --root . docs/manual/chapters/metaprogramming.typ docs/manual/chapters/metaprogramming.pdf
+# """
+#
+# ["docs:chapter:solver"]
+# description = "Render the Solver-Interface chapter (proposal-solver-interface.md §§1–6) from structured data -> PDF (listing/rules/reductions/table + machine-solver diagram)"
+# run = """
+# typst compile --root . docs/manual/chapters/solver-interface.typ docs/manual/chapters/solver-interface.pdf
+# """
+#
+# ["docs:chapter:examples"]
+# description = "Render the Examples chapter (examples/examples.md) from structured data -> PDF (highlight JSON + example/derivation/trace + code)"
+# run = """
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-identity.gandr --out docs/manual/chapters/gen/examples-identity.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-composition.gandr --out docs/manual/chapters/gen/examples-composition.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-sums.gandr --out docs/manual/chapters/gen/examples-sums.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-session.gandr --out docs/manual/chapters/gen/examples-session.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-records.gandr --out docs/manual/chapters/gen/examples-records.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-list-update.gandr --out docs/manual/chapters/gen/examples-list-update.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-list-oob.gandr --out docs/manual/chapters/gen/examples-list-oob.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-typed-holes.gandr --out docs/manual/chapters/gen/examples-typed-holes.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-ffi.gandr --out docs/manual/chapters/gen/examples-ffi.highlights.json
+# nu docs/manual/tools/highlight-gandr.nu docs/manual/chapters/examples/examples-ffi-denied.gandr --out docs/manual/chapters/gen/examples-ffi-denied.highlights.json
+# typst compile --root . docs/manual/chapters/examples.typ docs/manual/chapters/examples.pdf
+# """
+#
+# ["docs:chapter:appendix"]
+# description = "Render the executable-corpus appendix (every model/ + pathological/ example via gen/corpus-index.json) standalone -> PDF (regenerates the corpus highlight set first)"
+# run = """
+# nu docs/manual/tools/build-manual.nu regen corpus
+# typst compile --root . docs/manual/chapters/appendix-corpus.typ docs/manual/chapters/appendix-corpus.pdf
+# """
+#
+# ["docs:chapter:status"]
+# description = "Render the Implementation-Status chapter (the docs/gandr/status.yml registry matrix + reading guide) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/status.typ docs/manual/chapters/status.pdf
+# """
+#
+# ["docs:chapter:parser"]
+# description = "Render the Parser-Interaction-Core chapter (proposal-graph-core.md + proposal-parser-interaction-core.md) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/parser-core.typ docs/manual/chapters/parser-core.pdf
+# """
+#
+# ["docs:chapter:values"]
+# description = "Render the Values/Data/Practical-Surface chapter (value-model ladder + Wave-0/1 usability proposals) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/values-data.typ docs/manual/chapters/values-data.pdf
+# """
+#
+# ["docs:chapter:kernel"]
+# description = "Render the Kernel-Boundary chapter (spec/kernel-boundary.md, ADR-77/78) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/kernel-boundary.typ docs/manual/chapters/kernel-boundary.pdf
+# """
+#
+# ["docs:chapter:sequent"]
+# description = "Render the Sequent-Kernel chapter (proposal-sequent-kernel.md + VDC addendum, ADR-65) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/sequent-kernel.typ docs/manual/chapters/sequent-kernel.pdf
+# """
+#
+# ["docs:chapter:identity"]
+# description = "Render the Identity/Temporal-Univalence chapter (proposal-identity-univalence.md, ADR-76) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/identity-univalence.typ docs/manual/chapters/identity-univalence.pdf
+# """
+#
+# ["docs:chapter:levitation"]
+# description = "Render the Levitation chapter (proposal-levitation.md + VDC addendum, ADR-67) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/levitation.typ docs/manual/chapters/levitation.pdf
+# """
+#
+# ["docs:chapter:codata"]
+# description = "Render the Codata/Copatterns chapter (proposal-codata-corecursion.md + VDC addendum, ADR-66) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/codata.typ docs/manual/chapters/codata.pdf
+# """
+#
+# ["docs:chapter:vdc"]
+# description = "Render the VDC-Reflection chapter (proposal-vdc-reflection.md, ADR-68/69) from structured data -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/vdc-reflection.typ docs/manual/chapters/vdc-reflection.pdf
+# """
+#
+# ["docs:chapter:dict"]
+# description = "Render the Conceptual-Dictionary chapter as a true single-source render of docs/gandr/dictionary.yml -> PDF"
+# run = """
+# typst compile --root . docs/manual/chapters/dictionary.typ docs/manual/chapters/dictionary.pdf
+# """
+#
+# ["docs:chapter:roadmap"]
+# description = "Render the Roadmap & References chapter (roadmap.md §§1–6) from structured data -> PDF (table/prose/note + dynamics-pipeline diagram)"
+# run = """
+# typst compile --root . docs/manual/chapters/roadmap.typ docs/manual/chapters/roadmap.pdf
+# """
+#
+# ["docs:chapter:semantic"]
+# description = "Render the Semantic Model chapter (the unifying wheeled/polarity/graded nominal PROP + directed polygraph/Squier-coherence rewriting; ADR-46 A & B / ADR-36 / ADR-32) from structured data -> PDF (section/prose/definition/table/deflist/references + squier-pillow & sigma-string-rewrite cetz figures)"
+# run = """
+# typst compile --root . docs/manual/chapters/semantic-model.typ docs/manual/chapters/semantic-model.pdf
+# """
+#
+# ["docs:chapter:toolchain"]
+# description = "Render the Toolchain Facets chapter (rendering/inspection surface, compilation backend, packages, wasm, self-hosting; ADR-46 Decision D + seven proposals) from structured data -> PDF (section/status/prose/deflist/note/references)"
+# run = """
+# typst compile --root . docs/manual/chapters/toolchain-facets.typ docs/manual/chapters/toolchain-facets.pdf
+# """
+#

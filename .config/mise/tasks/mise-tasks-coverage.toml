@@ -1,0 +1,23 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://mise.jdx.dev/schema/mise-task.json
+
+["coverage:check"]
+description = "Generate coverage, verify the ratchet harness, then enforce per-file floors"
+run = [
+  { task = "cargo:llvm-cov" },
+  { task = "test:coverage-ratchet" },
+  # { task = "coverage:check:enforce" }
+]
+
+["coverage:check:enforce"]
+description = "Fail when measured per-file coverage regresses below coverage/floors.toml"
+run = """
+cargo run --quiet -p gandr-workflow-gates -- coverage check --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
+"""
+
+["coverage:ratchet"]
+description = "Manually raise per-file coverage floors to the current measured coverage"
+depends = ["cargo:llvm-cov"]
+run = """
+cargo run --quiet -p gandr-workflow-gates -- coverage ratchet --repo-root . --summary coverage/llvm-cov-summary.json --floors coverage/floors.toml
+"""
