@@ -1671,6 +1671,85 @@ J-43:
   serial-number:
     doi: 10.1007/s11334-019-00347-1
   note: Innovations in Systems and Software Engineering, vol. 15
+J-44:
+  type: article
+  title: Tracelets and Tracelet Analysis of Compositional Rewriting Systems
+  author: Behr
+  date: 2021
+  parent:
+    type: periodical
+    title: EPTCS
+  serial-number:
+    doi: 10.4204/EPTCS.323.1
+  note: vol. 323 (ACT 2019)
+J-45:
+  type: article
+  title: Tracelet Hopf Algebras and Decomposition Spaces
+  author: Behr & Kock
+  date: 2022
+  parent:
+    type: periodical
+    title: EPTCS
+  serial-number:
+    doi: 10.4204/EPTCS.372.1
+  note: vol. 372 (ACT 2021); extended abstract
+J-46:
+  type: article
+  title: "Efficient Computation of Graph Overlaps for Rule Composition: Theory and Z3 Prototyping"
+  author: Behr, Heckel & Ghaffari Saadat
+  date: 2020
+  parent:
+    type: periodical
+    title: EPTCS
+  serial-number:
+    doi: 10.4204/EPTCS.330.8
+  note: vol. 330 (GCM 2020)
+J-47:
+  type: article
+  title: "Signatory: differentiable computations of the signature and logsignature transforms, on both CPU and GPU"
+  author: Kidger & Lyons
+  date: 2021
+  parent:
+    type: proceedings
+    title: ICLR
+  serial-number:
+    arxiv: "2001.00706"
+J-48:
+  type: article
+  title: Uniqueness for the signature of a path of bounded variation and the reduced path group
+  author: Hambly & Lyons
+  date: 2010
+  parent:
+    type: periodical
+    title: Annals of Mathematics
+  serial-number:
+    doi: 10.4007/annals.2010.171.109
+  note: vol. 171 — (arXiv:math/0507536)
+J-49:
+  type: article
+  title: "Decomposition spaces, incidence algebras and Möbius inversion I: basic theory"
+  author: Gálvez-Carrillo, Kock & Tonks
+  date: 2018
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+  serial-number:
+    doi: 10.1016/j.aim.2018.03.016
+  note: vol. 331 — (arXiv:1512.07573)
+J-50:
+  type: misc
+  title: Fundamentals of Compositional Rewriting Theory
+  author: Behr
+  date: 2022
+  url: https://www.youtube.com/watch?v=n4_68mk3c00
+  note: Topos Institute Colloquium talk, 2022-06-09 — (talk; no stable id)
+J-51:
+  type: misc
+  title: The rabbit calculus
+  author: Melliès
+  date: 2025
+  url: https://www.youtube.com/watch?v=b2IhdjD8WBQ
+  note: Topos Institute Colloquium talk + slides, 2025-02-06 — (talk; no stable id)
 K-1:
   type: book
   title: "Nominal Sets: Names and Symmetry in Computer Science"
@@ -2553,6 +2632,34 @@ Q-22:
   date: 1999
   publisher: Elsevier
   note: Studies in Logic 141 — no DOI (Elsevier book, 1999); ISBN 0-444-50170-3 (VERIFY-FINAL)
+Q-23:
+  type: article
+  title: Exponentiable Virtual Double Categories and Representability of Exponentials
+  author: Thompson & Carlson
+  date: 2026
+  serial-number:
+    arxiv: "2605.20586"
+Q-24:
+  type: article
+  title: Cartesian double theories
+  author: Lambert & Patterson
+  date: 2024
+  parent:
+    type: periodical
+    title: TAC
+  serial-number:
+    arxiv: "2310.05384"
+  note: Theory and Applications of Categories, vol. 40, no. 25 — (TAC 40:25, <https://www.tac.mta.ca/tac/volumes/40/>)
+Q-25:
+  type: article
+  title: Products in double categories, revisited
+  author: Patterson
+  date: 2025
+  parent:
+    type: periodical
+    title: TAC
+  url: http://www.tac.mta.ca/tac/volumes/45/16/45-16abs.html
+  note: Theory and Applications of Categories, vol. 45, no. 16
 R-1:
   type: book
   title: Foundations of Constructive Analysis

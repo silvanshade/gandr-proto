@@ -206,6 +206,14 @@ export def curated-entries []: nothing -> list {
     {id: "J-41" type: "article" title: "String Diagrams for Non-Strict Monoidal Categories" author: "Wilson et al." date: 2023 venue: "CSL" vtype: "proceedings"}
     {id: "J-42" type: "article" title: "The Free Bifibration on a Functor" author: "Clarke et al." date: 2025}
     {id: "J-43" type: "article" title: "Certified Normalization of Generalized Traces" author: "Maarand & Uustalu" date: 2019 venue: "ISSE" vtype: "periodical" note: "Innovations in Systems and Software Engineering, vol. 15"}
+    {id: "J-44" type: "article" title: "Tracelets and Tracelet Analysis of Compositional Rewriting Systems" author: "Behr" date: 2021 venue: "EPTCS" vtype: "periodical" note: "vol. 323 (ACT 2019)"}
+    {id: "J-45" type: "article" title: "Tracelet Hopf Algebras and Decomposition Spaces" author: "Behr & Kock" date: 2022 venue: "EPTCS" vtype: "periodical" note: "vol. 372 (ACT 2021); extended abstract"}
+    {id: "J-46" type: "article" title: "Efficient Computation of Graph Overlaps for Rule Composition: Theory and Z3 Prototyping" author: "Behr, Heckel & Ghaffari Saadat" date: 2020 venue: "EPTCS" vtype: "periodical" note: "vol. 330 (GCM 2020)"}
+    {id: "J-47" type: "article" title: "Signatory: differentiable computations of the signature and logsignature transforms, on both CPU and GPU" author: "Kidger & Lyons" date: 2021 venue: "ICLR" vtype: "proceedings"}
+    {id: "J-48" type: "article" title: "Uniqueness for the signature of a path of bounded variation and the reduced path group" author: "Hambly & Lyons" date: 2010 venue: "Annals of Mathematics" vtype: "periodical" note: "vol. 171"}
+    {id: "J-49" type: "article" title: "Decomposition spaces, incidence algebras and Möbius inversion I: basic theory" author: "Gálvez-Carrillo, Kock & Tonks" date: 2018 venue: "Advances in Mathematics" vtype: "periodical" note: "vol. 331"}
+    {id: "J-50" type: "misc" title: "Fundamentals of Compositional Rewriting Theory" author: "Behr" date: 2022 note: "Topos Institute Colloquium talk, 2022-06-09"}
+    {id: "J-51" type: "misc" title: "The rabbit calculus" author: "Melliès" date: 2025 note: "Topos Institute Colloquium talk + slides, 2025-02-06"}
 
     # K. Nominal sets & names
     {id: "K-1" type: "book" title: "Nominal Sets: Names and Symmetry in Computer Science" author: "Pitts" date: 2013 publisher: "Cambridge University Press"}
@@ -318,6 +326,9 @@ export def curated-entries []: nothing -> list {
     {id: "Q-20" type: "article" title: "Univalent Typoids" author: "Petrakis et al." date: 2022}
     {id: "Q-21" type: "thesis" title: "Cartesian Closed Bicategories: Type Theory and Coherence" author: "Saville" date: 2020 genre: "PhD thesis" org: "University of Cambridge"}
     {id: "Q-22" type: "book" title: "Categorical Logic and Type Theory" author: "Jacobs" date: 1999 publisher: "Elsevier" note: "Studies in Logic 141"}
+    {id: "Q-23" type: "article" title: "Exponentiable Virtual Double Categories and Representability of Exponentials" author: "Thompson & Carlson" date: 2026}
+    {id: "Q-24" type: "article" title: "Cartesian double theories" author: "Lambert & Patterson" date: 2024 venue: "TAC" vtype: "periodical" note: "Theory and Applications of Categories, vol. 40, no. 25"}
+    {id: "Q-25" type: "article" title: "Products in double categories, revisited" author: "Patterson" date: 2025 venue: "TAC" vtype: "periodical" note: "Theory and Applications of Categories, vol. 45, no. 16"}
 
     # R. Internal-univalence manual bibliography (iu:docs/manual/refs.yml)
     {id: "R-1" type: "book" title: "Foundations of Constructive Analysis" author: "Bishop" date: 1967 publisher: "McGraw-Hill"}
