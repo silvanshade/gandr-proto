@@ -165,6 +165,7 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
 // replaced (57 effective scopes, one per crate, pruned 2026-07-21).
 const GANDR_SCOPES: readonly string[] = [
   // crate categories (crates/<category>-*)
+  "accel",
   "core",
   "kernel",
   "runtime",
