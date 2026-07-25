@@ -61,20 +61,6 @@
 //! eligible count) and 6 kernel-native goldens, and that every recorded outcome
 //! line was consumed.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::pattern_type_mismatch,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the exit-gate harness readable \
-                  (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {

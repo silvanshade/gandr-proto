@@ -1,16 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::pattern_type_mismatch,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set plus match-by-reference bindings keeps grammar walk contract tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod contracts
 {

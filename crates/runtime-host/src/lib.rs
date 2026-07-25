@@ -70,13 +70,6 @@
 //! ```
 
 #![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-#![cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
     allow(
         unknown_lints,

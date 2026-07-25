@@ -14,16 +14,6 @@
         reason = "integration tests share fixture helpers called from tests in per-test orders; no single module arrangement satisfies every caller-before-callee pair, so the ordering rule is waived in test code pending a test-layout redesign"
     )
 )]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        reason = "integration tests read fixed fixtures and assert exact shapes (docs/workflow/rust.md)"
-    )
-)]
 
 /// End-to-end stage-0 elaboration tests.
 #[cfg(test)]

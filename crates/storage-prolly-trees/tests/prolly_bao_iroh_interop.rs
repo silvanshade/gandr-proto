@@ -1,11 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "contract tests relax the production wall per docs/workflow/rust.md"
-    )
-)]
-
 #[cfg(test)]
 mod support;
 

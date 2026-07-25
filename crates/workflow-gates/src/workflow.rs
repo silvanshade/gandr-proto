@@ -1,14 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "workflow tests assert exact static plans and use ordinary assertion panics"
-    )
-)]
 //! Deterministic local workflow plans for merge and push validation.
 //!
 //! This module is the typed replacement for the `act-ci.nu` push wrapper. It

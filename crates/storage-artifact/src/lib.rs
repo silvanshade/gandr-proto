@@ -43,13 +43,6 @@
     clippy::pub_use,
     reason = "the crate root intentionally re-exports a flat public API for this small outer-layer crate"
 )]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit tests readable (docs/workflow/rust.md)"
-    )
-)]
 
 extern crate alloc;
 

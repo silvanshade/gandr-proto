@@ -4,23 +4,6 @@
 //! exercise the whole front-end (`label → mold → push → commit`) against the
 //! committed corpus, the recovery fixtures, and curated malformed programs.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        clippy::cast_possible_truncation,
-        clippy::too_many_lines,
-        clippy::single_char_lifetime_names,
-        clippy::items_after_statements,
-        clippy::unnecessary_wraps,
-        reason = "the standard test-allow set keeps parser acceptance tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 use core::error::Error;
 use core::fmt;
 use std::path::Path;

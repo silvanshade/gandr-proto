@@ -28,18 +28,6 @@
 //! - witness: `gandr_theory_graphs::determinism::gandr_theory_graphs::subprocess_exact_maximum_perturbation_is_accepted`
 //! - witness: `gandr_theory_graphs::determinism::gandr_theory_graphs::subprocess_oversized_perturbation_fails_gracefully`
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps determinism tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 use core::error::Error;
 use core::fmt::Display;
 use core::fmt::Formatter;

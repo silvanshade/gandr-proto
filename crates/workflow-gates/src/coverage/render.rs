@@ -16,18 +16,6 @@
 //! - witness: `coverage::render::tests::render_floors_is_sorted_and_stable`
 //! - witness: `coverage::render::tests::toml_key_escapes_quotes_and_backslashes`
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "coverage renderer tests use direct golden-fixture assertions"
-    )
-)]
-
 extern crate alloc;
 
 use alloc::collections::BTreeMap;

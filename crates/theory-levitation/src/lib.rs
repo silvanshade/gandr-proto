@@ -96,14 +96,6 @@
 //!   with a decoded [`SignatureContext`] (the "dependent Σ over the signature",
 //!   addendum §4.1). Additive — [`CellFace`] is reused whole, not rewritten.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 pub mod arity;
 pub mod boundary;
 pub mod builtin;

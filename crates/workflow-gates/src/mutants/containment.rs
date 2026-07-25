@@ -5,18 +5,6 @@
 //! cargo-mutants; it only fails closed unless the supplied facts prove a
 //! contained guest and renders the deterministic `cargo mutants` argument
 //! vector.
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::missing_assert_message,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "module tests use compact fixtures and exact assertion helpers"
-    )
-)]
 
 extern crate alloc;
 

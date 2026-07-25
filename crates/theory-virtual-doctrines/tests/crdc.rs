@@ -89,19 +89,6 @@
 //! [`two_step_composites_are_pro_representable`]: tests::two_step_composites_are_pro_representable
 //! [`path_splittings_refine`]: tests::path_splittings_refine
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the crDC suite readable \
-                  (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {

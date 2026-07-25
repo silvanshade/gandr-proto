@@ -59,13 +59,6 @@
 //! B2.4 conversion record.
 
 #![no_std]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
 
 extern crate alloc;
 

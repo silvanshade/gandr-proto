@@ -31,19 +31,6 @@
 //! [`an_invertible_chain_cuts_unconditionally`]: tests::an_invertible_chain_cuts_unconditionally
 //! [`a_mixed_variance_cycle_is_declined`]: tests::a_mixed_variance_cycle_is_declined
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the directed-fragment suite \
-                  readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {

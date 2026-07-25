@@ -2,18 +2,6 @@
 //! determinism and sensitivity, the history-independence differential, and
 //! store/retrieve through a `BlockStore` (massive-term design §6; B2.3).
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the contract suite readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {

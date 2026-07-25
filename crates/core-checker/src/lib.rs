@@ -49,14 +49,6 @@
 //! extensible (non-exhaustive enums) so later stages can add constructors
 //! without breaking downstream matches.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps conformance/property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 pub mod boundary;

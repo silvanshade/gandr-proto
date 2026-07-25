@@ -61,14 +61,6 @@
 //! The crate is generic over the sort so it carries no gandr vocabulary; gandr
 //! supplies its own `enum GandrSort : Sort`.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 /// The dense identity an [`Atom`] carries within its sort.
 ///
 /// A transparent `u32` carrier matches the pipeline's `HoleId` without changing

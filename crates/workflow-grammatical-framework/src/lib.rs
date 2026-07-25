@@ -19,14 +19,6 @@
 //! type and its canonical printer (the `fmt` lane's engine); trees are read by
 //! the runtime, never by a house parser.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps the unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 pub mod error;
 pub mod rt;
 pub mod sexp;

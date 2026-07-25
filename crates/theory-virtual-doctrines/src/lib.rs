@@ -50,15 +50,6 @@
 //! engine only through [`gandr_theory_computads::compose_invertible`]) — pin
 //! either by ADR only if a later stage makes the reflected syntax canonical.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps the unit and property tests \
-                  readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 pub mod boundary;

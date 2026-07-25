@@ -11,13 +11,6 @@
 //! its recursive control flow remains inspectable and exhaustively checked.
 
 #![no_std]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
 
 extern crate alloc;
 

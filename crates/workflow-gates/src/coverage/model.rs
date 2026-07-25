@@ -21,17 +21,6 @@
 //! - witness: `coverage::model::tests::floor_key_validation_rejects_noncanonical_paths`
 //! - witness: `coverage::policy::tests::duplicate_normalized_summary_rows_fail`
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::integer_division,
-        clippy::manual_checked_ops,
-        clippy::unwrap_used,
-        reason = "coverage model tests compute exact percent fixture formulas"
-    )
-)]
-
 extern crate alloc;
 
 use alloc::format;

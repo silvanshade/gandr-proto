@@ -30,19 +30,6 @@
 //! [`directed_composition_of_a_ground_chain_replays`]: tests::directed_composition_of_a_ground_chain_replays
 //! [`fanout_family_is_a_multi_sum_not_a_single_rule`]: tests::fanout_family_is_a_multi_sum_not_a_single_rule
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the composition fixtures \
-                  readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {

@@ -4,18 +4,6 @@
 //! This module only validates user/git facts already supplied by that boundary
 //! and renders deterministic `git diff`/campaign plans for merge, push, and
 //! scheduled mutation runs.
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::missing_assert_message,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "module tests use compact fixtures and exact assertion helpers"
-    )
-)]
 
 extern crate alloc;
 

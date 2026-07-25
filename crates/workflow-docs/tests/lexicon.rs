@@ -2,15 +2,6 @@
 //! regeneration over the `.gfd` corpus (the derived-file pattern — regenerate,
 //! never hand-edit).
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps the unit and property tests \
-                  readable (docs/workflow/rust.md)"
-    )
-)]
-
 use core::error::Error;
 use std::path::Path;
 use std::path::PathBuf;

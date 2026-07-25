@@ -18,14 +18,6 @@
 //! ([`mod@format`]), and the references renderer ([`references`]) — live here
 //! the one documentation tool.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps the unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 use core::fmt;

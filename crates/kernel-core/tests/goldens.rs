@@ -14,22 +14,6 @@
 //! universe-constant, universe-variable, and lift serialization the bridge-fed
 //! corpus never reaches.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::pattern_type_mismatch,
-        clippy::unwrap_used,
-        dead_code,
-        reason = "the standard test-allow set (as the shared `common` module's other \
-                  consumers use it), plus dead_code for the `common` strategies this \
-                  binary does not use (docs/workflow/rust.md)"
-    )
-)]
-
 mod common;
 
 /// The C5 lift/universe golden round-trips.

@@ -30,18 +30,6 @@
         reason = "integration tests share fixture helpers called from tests in per-test orders; no single module arrangement satisfies every caller-before-callee pair, so the ordering rule is waived in test code pending a test-layout redesign"
     )
 )]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::pattern_type_mismatch,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set, plus the ergonomic ref-pattern relaxation, keep the differential gate readable (docs/workflow/rust.md)"
-    )
-)]
 
 /// The differential gate for `gandr_surface_engine::checkpoint`.
 #[cfg(test)]

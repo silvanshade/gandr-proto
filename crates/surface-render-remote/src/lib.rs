@@ -29,13 +29,5 @@
 //! needs the in-process types (today, `gandr-tui`) pays nothing by default; the
 //! bus and LSP adapters opt in when they need the wire image.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 pub mod present;
 pub mod wire;

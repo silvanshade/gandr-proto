@@ -21,15 +21,6 @@
 //! ids throughout — no string comparison past the caller, no re-derived
 //! precedence arithmetic.
 
-#![forbid(unsafe_code)]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps parser contract tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 mod label;

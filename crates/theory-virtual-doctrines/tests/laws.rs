@@ -29,19 +29,6 @@
 //! [`product_protype_is_well_formed_pointwise`]: tests::product_protype_is_well_formed_pointwise
 //! [`path_induction_folds_the_reduction_trace`]: tests::path_induction_folds_the_reduction_trace
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the dictionary and per-rule \
-                  suite readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {

@@ -10,18 +10,6 @@
 //! Hash equality is a pruning hint, not identity proof; debug diffing rechecks
 //! significant structure and tile text before accepting an equal-hash subtree.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::needless_pass_by_value,
-        clippy::pattern_type_mismatch,
-        clippy::std_instead_of_alloc,
-        clippy::std_instead_of_core,
-        reason = "the standard test-allow set plus test-local by-value helper params, match-ergonomics bindings, and std-path imports keeps unit and subprocess-probe tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 mod builder;

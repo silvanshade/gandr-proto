@@ -59,13 +59,6 @@
 #![cfg_attr(
     test,
     allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps pipeline unit tests readable (docs/workflow/rust.md)"
-    )
-)]
-#![cfg_attr(
-    test,
-    allow(
         unknown_lints,
         non_topologically_sorted_functions,
         reason = "unit-test modules share fixture helpers (tree, field, item0, lowered) that are called from tests in per-test orders; no single module arrangement satisfies every caller-before-callee pair"

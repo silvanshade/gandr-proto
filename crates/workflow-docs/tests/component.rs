@@ -6,19 +6,6 @@
 //! bare checkout; the mise corpus arc provisions the environment and
 //! exercises them for real.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the unit and property tests \
-                  readable (docs/workflow/rust.md)"
-    )
-)]
-
 use core::error::Error;
 use std::path::PathBuf;
 

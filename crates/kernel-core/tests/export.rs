@@ -14,25 +14,6 @@
 //! DAG rejected by the artifact-total budget, and the table-size cap), with
 //! boundary goldens for all three budget constants.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::as_conversions,
-        clippy::cast_possible_truncation,
-        clippy::default_numeric_fallback,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::integer_division,
-        clippy::panic,
-        clippy::pattern_type_mismatch,
-        clippy::semicolon_outside_block,
-        clippy::unwrap_used,
-        dead_code,
-        reason = "the standard test-allow set plus the byte-crafting helpers' numeric-literal and block-scoping ergonomics, and the exact power-of-two budget arithmetic in the boundary goldens (docs/workflow/rust.md)"
-    )
-)]
-
 mod common;
 
 /// The differential and rejection suite.

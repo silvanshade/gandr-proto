@@ -4,14 +4,6 @@
 //! adapter private. Public algorithms consume dense node identifiers only; no
 //! petgraph type appears in the public API.
 
-#![forbid(unsafe_code)]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps graph contract tests readable (docs/workflow/rust.md)"
-    )
-)]
 extern crate alloc;
 
 mod algorithms;

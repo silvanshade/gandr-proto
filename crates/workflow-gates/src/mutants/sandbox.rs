@@ -1,15 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "unit fixtures use scripted queues and ordinary assertions"
-    )
-)]
-
 //! Host-side planning and execution for mutation-test microVM campaigns.
 
 use alloc::format;

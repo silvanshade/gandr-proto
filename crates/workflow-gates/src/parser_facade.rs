@@ -25,18 +25,6 @@
 //! - witness: `parser_facade::tests::arbitrary_bytes_never_escape_the_facade`
 //! - witness: `parser_facade::tests::invalid_utf8_and_oversized_inputs_skip_parser_dispatch`
 //! - witness: `parser_facade::tests::representative_valid_records_reach_each_parser_domain`
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::missing_assert_message,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "parser facade tests use proptest macros and exact assertions"
-    )
-)]
 
 extern crate alloc;
 

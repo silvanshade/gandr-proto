@@ -6,15 +6,6 @@
 //! values over a validated [`PrecDag`], and [`Pbg::build`] performs the
 //! cross-rule checks.
 
-#![forbid(unsafe_code)]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps grammar contract tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 mod check;

@@ -1,13 +1,5 @@
 //! Shared public contract tests for the deterministic record-safe chunker.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "contract tests relax the production wall per docs/workflow/rust.md"
-    )
-)]
-
 /// Integration tests for the `gandr_storage_chunker` public API.
 #[cfg(test)]
 mod tests

@@ -1,18 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::missing_asserts_for_indexing,
-        clippy::panic,
-        clippy::pattern_type_mismatch,
-        clippy::shadow_same,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set plus test-construction ergonomics (multi-index reads, match-by-reference bindings, and self-deref rebinds) keeps grammar surface contract tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod contracts
 {

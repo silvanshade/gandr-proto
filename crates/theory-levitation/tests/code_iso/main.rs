@@ -61,15 +61,6 @@
 //! *protypes*, whose instance set at `(Boolean, Boolean)` is provably not a
 //! singleton here.
 
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::panic,
-    clippy::unwrap_used,
-    reason = "the standard test-allow set keeps the certificate suite readable (docs/workflow/rust.md)"
-)]
-
 extern crate alloc;
 
 mod certificates;

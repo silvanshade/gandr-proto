@@ -48,18 +48,6 @@
 //!   defined outcome on L) and the property differential
 //!   (`tests/differential.rs`).
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the ported soundness rows readable \
-                  (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {

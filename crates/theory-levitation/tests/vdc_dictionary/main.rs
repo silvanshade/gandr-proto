@@ -69,15 +69,6 @@
 //! the tuple. Law 3(a) carries the **real-structure content**: the face action
 //! is split on the landed [`gandr_theory_levitation::CellFace`] type itself.
 
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::panic,
-    clippy::unwrap_used,
-    reason = "the standard test-allow set keeps the dictionary suite readable (docs/workflow/rust.md)"
-)]
-
 extern crate alloc;
 
 mod fixtures;

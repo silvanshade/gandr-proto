@@ -6,20 +6,6 @@
 //! these laws also witness that the iterative worklist agrees with reflexive
 //! equality on every generated input, at any depth, without recursing.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::pattern_type_mismatch,
-        clippy::unwrap_used,
-        dead_code,
-        reason = "the standard test-allow set keeps property tests readable, and dead_code covers the shared common module (docs/workflow/rust.md)"
-    )
-)]
-
 mod common;
 
 /// Conversion laws over generated types and terms.

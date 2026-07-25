@@ -34,22 +34,6 @@
         reason = "integration tests share fixture helpers called from tests in per-test orders; no single module arrangement satisfies every caller-before-callee pair, so the ordering rule is waived in test code pending a test-layout redesign"
     )
 )]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::match_same_arms,
-        clippy::pattern_type_mismatch,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set, plus ergonomic-pattern and \
-                  identical-arm relaxations that keep the recursive \
-                  equality-up-to-holes helpers readable (docs/WORKFLOW.md \
-                  §Rust coding conventions)"
-    )
-)]
 
 /// Tests for the `gandr_surface_engine::edit` public API.
 #[cfg(test)]

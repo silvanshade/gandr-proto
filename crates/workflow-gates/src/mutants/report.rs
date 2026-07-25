@@ -1,15 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "unit fixtures use ordinary assertions and temporary-path counters"
-    )
-)]
-
 //! Failure-atomic publication for mutation campaign reports.
 
 use alloc::format;

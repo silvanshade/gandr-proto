@@ -27,18 +27,6 @@
 //! so a changed tile mold breaks alignment exactly as a changed grout sort
 //! does.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::std_instead_of_alloc,
-        reason = "the standard test-allow set plus the std-path Arc import keeps structural diff witnesses readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod gandr_surface_syntax
 {

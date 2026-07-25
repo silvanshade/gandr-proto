@@ -9,18 +9,6 @@
 //! this file complements them with a full-universe relabel stress test and the
 //! broad randomized cross-check.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 /// Reference-oracle and stress properties for the order-maintenance structure.
 #[cfg(test)]
 mod tests

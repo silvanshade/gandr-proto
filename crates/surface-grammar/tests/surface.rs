@@ -11,28 +11,10 @@
 //! The tree-sitter parity / node-types drift gates remain parked for F6 and
 //! return here as they land — see `docs/STATUS.md`.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps grammar contract tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
-// Included as `surface_contracts` (not `contracts`) so the outer module name
-// differs from the file's inner `#[cfg(test)] mod contracts`, avoiding the
-// module-inception lint while keeping the tests inside a test module.
-#[path = "contracts.rs"]
-mod surface_contracts;
+mod contracts;
 
-#[path = "pbg.rs"]
 mod pbg;
 
-#[path = "walk.rs"]
 mod walk;

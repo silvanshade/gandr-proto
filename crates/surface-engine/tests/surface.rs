@@ -14,17 +14,6 @@
         reason = "integration tests share fixture helpers called from tests in per-test orders; no single module arrangement satisfies every caller-before-callee pair, so the ordering rule is waived in test code pending a test-layout redesign"
     )
 )]
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::indexing_slicing,
-        clippy::expect_used,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the coverage tables readable (docs/workflow/rust.md)"
-    )
-)]
 
 #[cfg(test)]
 mod tests

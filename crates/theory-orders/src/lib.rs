@@ -61,14 +61,6 @@
 //! silently aliasing an unrelated element. A slot whose generation counter is
 //! exhausted is permanently retired instead of wrapping to an old generation.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 pub mod interval;

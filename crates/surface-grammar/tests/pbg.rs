@@ -1,16 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unnecessary_wraps,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set plus uniformly Result-wrapped fixture builders keeps grammar contract tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod contracts
 {

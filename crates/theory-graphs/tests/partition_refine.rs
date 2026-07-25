@@ -1,15 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps graph algorithm tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 use core::error::Error;
 
 use gandr_theory_graphs::BlockIndex;

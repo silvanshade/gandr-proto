@@ -64,14 +64,6 @@
 //! command IL should be pinned by an ADR. Recorded here as a candidate, not a
 //! decision.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        reason = "the standard test-allow set keeps the unit and property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 pub mod boundary;

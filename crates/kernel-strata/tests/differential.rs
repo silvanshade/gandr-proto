@@ -16,18 +16,6 @@
 //! against canonical equality, transitivity), the `lt ≡ leq ∘ succ`
 //! consistency law, and evidence validation on every decided pair.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps property tests readable (docs/workflow/rust.md)"
-    )
-)]
-
 extern crate alloc;
 
 /// Differential and law properties for the level oracle.
