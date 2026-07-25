@@ -52,14 +52,19 @@ use gandr_kernel_strata::LevelVarIndex;
 use super::ADMISSION_CHECKED;
 use super::ADMISSION_UNCHECKED;
 use super::AdmissionMark;
+use super::ArtifactImage;
 use super::BASE_INTEGER;
 use super::BASE_NUMERIC;
 use super::BASE_STRING;
+use super::ByteCount;
+use super::ByteOffset;
 use super::DecodeError;
 use super::DecodeMetrics;
 use super::DecodedArtifact;
 use super::DecodedDeclaration;
+use super::ExpandedWork;
 use super::FORMAT_VERSION_V1;
+use super::GlobalIndex;
 use super::KIND_ABSTRACT_TYPE;
 use super::KIND_AXIOM;
 use super::KIND_DEF;
@@ -107,7 +112,12 @@ use super::SIDE_LEFT;
 use super::SIDE_RIGHT;
 use super::SIGN_NEGATIVE;
 use super::SIGN_NON_NEGATIVE;
+use super::TableEntryCount;
 use super::TagSite;
+use super::WireByte;
+use super::WireU32;
+use super::WireU64;
+use super::WireUsize;
 use super::write::encode_artifact;
 use crate::arena::CompTypeId;
 use crate::arena::ComputationId;
@@ -171,7 +181,7 @@ struct Table
     /// Global index → the entry's polarity family (for child-polarity checks).
     families: Vec<Family>,
     /// Global index → the entry's child global indices (for `expanded_size`).
-    children: Vec<Vec<u32>>,
+    children: Vec<Vec<GlobalIndex>>,
 }
 
 impl Table
@@ -188,12 +198,11 @@ impl Table
         }
     }
 
-    /// The number of entries decoded so far, as a `u32` global index (capped at
-    /// [`MAX_TABLE_ENTRIES`] well below `u32::MAX`, so the widening is exact).
+    /// The number of entries decoded so far as a global table index.
     #[inline]
-    fn len_index(&self) -> u32
+    fn len_index(&self) -> GlobalIndex
     {
-        u32::try_from(self.nodes.len()).unwrap_or(u32::MAX)
+        GlobalIndex(u32::try_from(self.nodes.len()).unwrap_or(u32::MAX))
     }
 }
 
@@ -206,9 +215,9 @@ struct DeclMeta
     /// The prenex level signature.
     levels: LevelSignature,
     /// The declared value type's global table index.
-    root_declared: u32,
+    root_declared: GlobalIndex,
     /// The body value's global table index (`Def` only).
-    root_body: Option<u32>,
+    root_body: Option<GlobalIndex>,
 }
 
 /// Decode a byte artifact into its admission-ordered declaration sequence,
@@ -252,13 +261,13 @@ struct DeclMeta
 /// - witness: `export::tests::the_artifact_work_boundary_accepts_just_under_and_rejects_just_over`
 /// - witness: `export::tests::a_v0_artifact_is_refused`
 #[inline]
-pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
+pub fn decode(bytes: ArtifactImage<'_>) -> Result<DecodedArtifact, DecodeError>
 {
     let mut reader = ByteReader::new(bytes);
     reader.expect_magic()?;
     reader.expect_version()?;
     reader.expect_empty_minted_atom_table()?;
-    let count = reader.read_uvarint()?;
+    let count = reader.read_uvarint()?.0;
     let mut table = Table::new();
     let mut metas: Vec<DeclMeta> = Vec::new();
     let mut remaining = count;
@@ -267,7 +276,7 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
         metas.push(meta);
         remaining = remaining.wrapping_sub(1_u64);
     }
-    if !reader.at_end() {
+    if reader.position.0 < reader.bytes.0.len() {
         return Err(DecodeError::Malformed {
             site: MalformedSite::TrailingBytes,
         });
@@ -279,7 +288,7 @@ pub fn decode(bytes: &[u8]) -> Result<DecodedArtifact, DecodeError>
         .iter()
         .map(|decoded| (decoded.mark(), decoded.declaration()))
         .collect();
-    if encode_artifact(&table.arena, &pairs) != bytes {
+    if encode_artifact(&table.arena, &pairs).as_ref() != bytes.as_ref() {
         return Err(DecodeError::Malformed {
             site: MalformedSite::NonCanonical,
         });
@@ -307,38 +316,38 @@ fn budget_report(
     metas: &[DeclMeta],
 ) -> DecodeMetrics
 {
-    let mut expanded: Vec<u64> = Vec::with_capacity(table.children.len());
+    let mut expanded: Vec<ExpandedWork> = Vec::with_capacity(table.children.len());
     for child_globals in &table.children {
-        let mut size: u64 = 1;
+        let mut size = ExpandedWork(1);
         for &child in child_globals {
             let child_size = expanded
-                .get(usize::try_from(child).unwrap_or(usize::MAX))
+                .get(usize::try_from(child.0).unwrap_or(usize::MAX))
                 .copied()
-                .unwrap_or(u64::MAX);
-            size = size.saturating_add(child_size);
+                .unwrap_or(ExpandedWork(u64::MAX));
+            size.0 = size.0.saturating_add(child_size.0);
         }
         expanded.push(size);
     }
-    let size_of = |global: u32| -> u64 {
+    let size_of = |global: GlobalIndex| -> ExpandedWork {
         expanded
-            .get(usize::try_from(global).unwrap_or(usize::MAX))
+            .get(usize::try_from(global.0).unwrap_or(usize::MAX))
             .copied()
-            .unwrap_or(u64::MAX)
+            .unwrap_or(ExpandedWork(u64::MAX))
     };
-    let mut max_declaration_expanded_work: u64 = 0;
-    let mut artifact_expanded_work: u64 = 0;
+    let mut max_declaration_expanded_work = ExpandedWork(0);
+    let mut artifact_expanded_work = ExpandedWork(0);
     for meta in metas {
         let declared = size_of(meta.root_declared);
-        max_declaration_expanded_work = max_declaration_expanded_work.max(declared);
-        artifact_expanded_work = artifact_expanded_work.saturating_add(declared);
+        max_declaration_expanded_work.0 = max_declaration_expanded_work.0.max(declared.0);
+        artifact_expanded_work.0 = artifact_expanded_work.0.saturating_add(declared.0);
         if let Some(root_body) = meta.root_body {
             let body = size_of(root_body);
-            max_declaration_expanded_work = max_declaration_expanded_work.max(body);
-            artifact_expanded_work = artifact_expanded_work.saturating_add(body);
+            max_declaration_expanded_work.0 = max_declaration_expanded_work.0.max(body.0);
+            artifact_expanded_work.0 = artifact_expanded_work.0.saturating_add(body.0);
         }
     }
     DecodeMetrics::new(
-        table.nodes.len(),
+        TableEntryCount(table.nodes.len()),
         max_declaration_expanded_work,
         artifact_expanded_work,
     )
@@ -362,12 +371,12 @@ fn budget_report(
 /// - panics: none.
 fn check_budget(metrics: &DecodeMetrics) -> Result<(), DecodeError>
 {
-    if metrics.max_declaration_expanded_work() > MAX_EXPANDED_TERM_WORK {
+    if metrics.max_declaration_expanded_work().0 > MAX_EXPANDED_TERM_WORK {
         return Err(DecodeError::Malformed {
             site: MalformedSite::ExpandedWork,
         });
     }
-    if metrics.artifact_expanded_work() > MAX_ARTIFACT_EXPANDED_WORK {
+    if metrics.artifact_expanded_work().0 > MAX_ARTIFACT_EXPANDED_WORK {
         return Err(DecodeError::Malformed {
             site: MalformedSite::ArtifactExpandedWork,
         });
@@ -379,10 +388,10 @@ fn check_budget(metrics: &DecodeMetrics) -> Result<(), DecodeError>
 #[inline]
 fn value_type_id_at(
     nodes: &[DecodedNode],
-    global: u32,
+    global: GlobalIndex,
 ) -> Option<ValueTypeId>
 {
-    match nodes.get(usize::try_from(global).unwrap_or(usize::MAX)) {
+    match nodes.get(usize::try_from(global.0).unwrap_or(usize::MAX)) {
         | Some(&DecodedNode::ValueType(id)) => Some(id),
         | _ => None,
     }
@@ -392,10 +401,10 @@ fn value_type_id_at(
 #[inline]
 fn value_id_at(
     nodes: &[DecodedNode],
-    global: u32,
+    global: GlobalIndex,
 ) -> Option<ValueId>
 {
-    match nodes.get(usize::try_from(global).unwrap_or(usize::MAX)) {
+    match nodes.get(usize::try_from(global.0).unwrap_or(usize::MAX)) {
         | Some(&DecodedNode::Value(id)) => Some(id),
         | _ => None,
     }
@@ -467,7 +476,7 @@ fn build_declarations(
 /// - witness: `export::tests::round_trip_reproduces_the_environment`
 /// - witness: `export::tests::a_repeated_diamond_dag_is_rejected_before_the_checker`
 #[inline]
-pub fn read(bytes: &[u8]) -> Result<Environment, ReadError>
+pub fn read(bytes: ArtifactImage<'_>) -> Result<Environment, ReadError>
 {
     let artifact = decode(bytes)?;
     let decode_arena = artifact.arena();
@@ -504,64 +513,67 @@ pub fn read(bytes: &[u8]) -> Result<Environment, ReadError>
 struct ByteReader<'bytes>
 {
     /// The artifact bytes.
-    bytes: &'bytes [u8],
+    bytes: ArtifactImage<'bytes>,
     /// The next unread offset.
-    position: usize,
+    position: ByteOffset,
 }
 
 impl<'bytes> ByteReader<'bytes>
 {
     /// A cursor at the start of `bytes`.
     #[inline]
-    fn new(bytes: &'bytes [u8]) -> Self
+    fn new(bytes: ArtifactImage<'bytes>) -> Self
     {
-        Self { bytes, position: 0 }
-    }
-
-    /// Whether every byte has been consumed.
-    #[inline]
-    fn at_end(&self) -> bool
-    {
-        self.position >= self.bytes.len()
+        Self {
+            bytes,
+            position: ByteOffset(0),
+        }
     }
 
     /// Read one byte, or [`DecodeError::Truncated`] at the end.
     #[inline]
-    fn next_byte(&mut self) -> Result<u8, DecodeError>
+    fn next_byte(&mut self) -> Result<WireByte, DecodeError>
     {
         let byte = *self
             .bytes
-            .get(self.position)
+            .as_ref()
+            .get(self.position.0)
             .ok_or(DecodeError::Truncated)?;
-        self.position = self.position.checked_add(1).ok_or(DecodeError::Truncated)?;
-        Ok(byte)
+        self.position.0 = self
+            .position
+            .0
+            .checked_add(1)
+            .ok_or(DecodeError::Truncated)?;
+        Ok(WireByte(byte))
     }
 
     /// Read `count` bytes as a borrowed slice, or [`DecodeError::Truncated`].
     #[inline]
     fn take(
         &mut self,
-        count: usize,
-    ) -> Result<&'bytes [u8], DecodeError>
+        count: ByteCount,
+    ) -> Result<ArtifactImage<'bytes>, DecodeError>
     {
         let end = self
             .position
-            .checked_add(count)
+            .0
+            .checked_add(count.0)
             .ok_or(DecodeError::Truncated)?;
         let slice = self
             .bytes
-            .get(self.position .. end)
+            .0
+            .get(self.position.0 .. end)
             .ok_or(DecodeError::Truncated)?;
-        self.position = end;
-        Ok(slice)
+        self.position.0 = end;
+        Ok(ArtifactImage(slice))
     }
 
     /// Verify the four-byte magic (E1: the artifact is a gandr kernel export).
     #[inline]
     fn expect_magic(&mut self) -> Result<(), DecodeError>
     {
-        let head = self.take(MAGIC.len())?;
-        if head == MAGIC {
+        let head = self.take(ByteCount(MAGIC.len()))?;
+        if head.as_ref() == MAGIC {
             Ok(())
         }
         else {
@@ -572,13 +584,12 @@ impl<'bytes> ByteReader<'bytes>
     }
 
     /// Verify the version tag, refusing any version other than v1 — including
-    /// v0, whose refusal exercises the E5 machinery against a real
-    /// predecessor.
+    /// v0, whose refusal exercises the E5 machinery against a real predecessor.
     #[inline]
     fn expect_version(&mut self) -> Result<(), DecodeError>
     {
-        let high = self.next_byte()?;
-        let low = self.next_byte()?;
+        let high = self.next_byte()?.0;
+        let low = self.next_byte()?.0;
         let found = u16::from_be_bytes([high, low]);
         if found == FORMAT_VERSION_V1 {
             Ok(())
@@ -593,7 +604,7 @@ impl<'bytes> ByteReader<'bytes>
     fn expect_empty_minted_atom_table(&mut self) -> Result<(), DecodeError>
     {
         let count = self.read_uvarint()?;
-        if count == 0_u64 {
+        if count.0 == 0_u64 {
             Ok(())
         }
         else {
@@ -614,7 +625,7 @@ impl<'bytes> ByteReader<'bytes>
     ///   [`DecodeError::Malformed`] (`Varint`) on an overlong or out-of-range
     ///   encoding.
     /// - panics: none.
-    fn read_uvarint(&mut self) -> Result<u64, DecodeError>
+    fn read_uvarint(&mut self) -> Result<WireU64, DecodeError>
     {
         let overlong = DecodeError::Malformed {
             site: MalformedSite::Varint,
@@ -623,7 +634,7 @@ impl<'bytes> ByteReader<'bytes>
         let mut shift: u32 = 0;
         let mut count: u32 = 0;
         loop {
-            let byte = self.next_byte()?;
+            let byte = self.next_byte()?.0;
             count = count.checked_add(1).ok_or(overlong)?;
             if count > 10 {
                 return Err(overlong);
@@ -638,7 +649,7 @@ impl<'bytes> ByteReader<'bytes>
                 if count > 1 && byte == 0 {
                     return Err(overlong);
                 }
-                return Ok(result);
+                return Ok(WireU64(result));
             }
             shift = shift.checked_add(7).ok_or(overlong)?;
         }
@@ -646,22 +657,26 @@ impl<'bytes> ByteReader<'bytes>
 
     /// Read a `u32`, rejecting an out-of-range varint.
     #[inline]
-    fn read_u32(&mut self) -> Result<u32, DecodeError>
+    fn read_u32(&mut self) -> Result<WireU32, DecodeError>
     {
         let value = self.read_uvarint()?;
-        u32::try_from(value).map_err(|_error| DecodeError::Malformed {
-            site: MalformedSite::IndexRange,
-        })
+        u32::try_from(value.0)
+            .map(WireU32)
+            .map_err(|_error| DecodeError::Malformed {
+                site: MalformedSite::IndexRange,
+            })
     }
 
     /// Read a `usize`, rejecting an out-of-range varint.
     #[inline]
-    fn read_usize(&mut self) -> Result<usize, DecodeError>
+    fn read_usize(&mut self) -> Result<WireUsize, DecodeError>
     {
         let value = self.read_uvarint()?;
-        usize::try_from(value).map_err(|_error| DecodeError::Malformed {
-            site: MalformedSite::IndexRange,
-        })
+        usize::try_from(value.0)
+            .map(WireUsize)
+            .map_err(|_error| DecodeError::Malformed {
+                site: MalformedSite::IndexRange,
+            })
     }
 
     /// Read length-prefixed UTF-8 text through a validating conversion.
@@ -669,10 +684,11 @@ impl<'bytes> ByteReader<'bytes>
     fn read_text(&mut self) -> Result<String, DecodeError>
     {
         let length = self.read_usize()?;
-        let bytes = self.take(length)?;
-        let text = core::str::from_utf8(bytes).map_err(|_error| DecodeError::Malformed {
-            site: MalformedSite::LiteralPayload,
-        })?;
+        let bytes = self.take(ByteCount(length.0))?;
+        let text =
+            core::str::from_utf8(bytes.as_ref()).map_err(|_error| DecodeError::Malformed {
+                site: MalformedSite::LiteralPayload,
+            })?;
         Ok(String::from(text))
     }
 }
@@ -689,14 +705,14 @@ fn decode_declaration(
     reject_reserved_kind(kind)?;
     decode_empty_name(reader)?;
     let levels = decode_level_signature(reader)?;
-    let entry_count = reader.read_uvarint()?;
+    let entry_count = reader.read_uvarint()?.0;
     let mut remaining = entry_count;
     while remaining > 0_u64 {
         decode_entry(reader, table)?;
         remaining = remaining.wrapping_sub(1_u64);
     }
     let root_declared = decode_root(reader, table, Family::ValueType)?;
-    let root_body = match kind {
+    let root_body = match kind.0 {
         | KIND_DEF => {
             let body = decode_root(reader, table, Family::Value)?;
             decode_empty_def_slots(reader)?;
@@ -724,9 +740,9 @@ fn decode_root(
     reader: &mut ByteReader<'_>,
     table: &Table,
     required: Family,
-) -> Result<u32, DecodeError>
+) -> Result<GlobalIndex, DecodeError>
 {
-    let index = reader.read_u32()?;
+    let index = GlobalIndex(reader.read_u32()?.0);
     let family = family_at(table, index)?;
     if family == required {
         Ok(index)
@@ -743,7 +759,7 @@ fn decode_root(
 #[inline]
 fn family_at(
     table: &Table,
-    index: u32,
+    index: GlobalIndex,
 ) -> Result<Family, DecodeError>
 {
     if index >= table.len_index() {
@@ -753,7 +769,7 @@ fn family_at(
     }
     table
         .families
-        .get(usize::try_from(index).unwrap_or(usize::MAX))
+        .get(usize::try_from(index.0).unwrap_or(usize::MAX))
         .copied()
         .ok_or(DecodeError::Malformed {
             site: MalformedSite::ChildOrder,
@@ -778,8 +794,8 @@ fn decode_entry(
         });
     }
     let this_global = table.len_index();
-    let tag = reader.next_byte()?;
-    let mut child_globals: Vec<u32> = Vec::new();
+    let tag = reader.next_byte()?.0;
+    let mut child_globals: Vec<GlobalIndex> = Vec::new();
     let (node, family) = match tag {
         | NODE_VT_BASE => {
             let base = decode_base_type(reader)?;
@@ -830,12 +846,12 @@ fn decode_entry(
             (DecodedNode::CompType(id), Family::CompType)
         },
         | NODE_V_VARIABLE => {
-            let index = reader.read_u32()?;
+            let index = reader.read_u32()?.0;
             let id = table.arena.value_variable(DeBruijnIndex::from(index));
             (DecodedNode::Value(id), Family::Value)
         },
         | NODE_V_CONSTANT => {
-            let index = reader.read_usize()?;
+            let index = reader.read_usize()?.0;
             let id = table.arena.value_constant(ConstantIndex::from(index));
             (DecodedNode::Value(id), Family::Value)
         },
@@ -921,18 +937,18 @@ fn decode_entry(
 fn read_child_node(
     reader: &mut ByteReader<'_>,
     table: &Table,
-    this_global: u32,
+    this_global: GlobalIndex,
     required: Family,
-    child_globals: &mut Vec<u32>,
+    child_globals: &mut Vec<GlobalIndex>,
 ) -> Result<DecodedNode, DecodeError>
 {
-    let index = reader.read_u32()?;
+    let index = GlobalIndex(reader.read_u32()?.0);
     if index >= this_global {
         return Err(DecodeError::Malformed {
             site: MalformedSite::ChildOrder,
         });
     }
-    let position = usize::try_from(index).unwrap_or(usize::MAX);
+    let position = usize::try_from(index.0).unwrap_or(usize::MAX);
     let family = table
         .families
         .get(position)
@@ -961,8 +977,8 @@ fn read_child_node(
 fn read_value_type(
     reader: &mut ByteReader<'_>,
     table: &Table,
-    this_global: u32,
-    child_globals: &mut Vec<u32>,
+    this_global: GlobalIndex,
+    child_globals: &mut Vec<GlobalIndex>,
 ) -> Result<ValueTypeId, DecodeError>
 {
     match read_child_node(reader, table, this_global, Family::ValueType, child_globals)? {
@@ -978,8 +994,8 @@ fn read_value_type(
 fn read_comp_type(
     reader: &mut ByteReader<'_>,
     table: &Table,
-    this_global: u32,
-    child_globals: &mut Vec<u32>,
+    this_global: GlobalIndex,
+    child_globals: &mut Vec<GlobalIndex>,
 ) -> Result<CompTypeId, DecodeError>
 {
     match read_child_node(reader, table, this_global, Family::CompType, child_globals)? {
@@ -995,8 +1011,8 @@ fn read_comp_type(
 fn read_value(
     reader: &mut ByteReader<'_>,
     table: &Table,
-    this_global: u32,
-    child_globals: &mut Vec<u32>,
+    this_global: GlobalIndex,
+    child_globals: &mut Vec<GlobalIndex>,
 ) -> Result<ValueId, DecodeError>
 {
     match read_child_node(reader, table, this_global, Family::Value, child_globals)? {
@@ -1012,8 +1028,8 @@ fn read_value(
 fn read_computation(
     reader: &mut ByteReader<'_>,
     table: &Table,
-    this_global: u32,
-    child_globals: &mut Vec<u32>,
+    this_global: GlobalIndex,
+    child_globals: &mut Vec<GlobalIndex>,
 ) -> Result<ComputationId, DecodeError>
 {
     match read_child_node(
@@ -1034,7 +1050,7 @@ fn read_computation(
 #[inline]
 fn decode_admission(reader: &mut ByteReader<'_>) -> Result<AdmissionMark, DecodeError>
 {
-    match reader.next_byte()? {
+    match reader.next_byte()?.0 {
         | ADMISSION_CHECKED => Ok(AdmissionMark::Checked),
         | ADMISSION_UNCHECKED => Ok(AdmissionMark::UncheckedBypass),
         | other => Err(DecodeError::UnknownTag {
@@ -1046,9 +1062,9 @@ fn decode_admission(reader: &mut ByteReader<'_>) -> Result<AdmissionMark, Decode
 
 /// Reject a reserved declaration kind (R1), distinctly from a bad tag.
 #[inline]
-fn reject_reserved_kind(kind: u8) -> Result<(), DecodeError>
+fn reject_reserved_kind(kind: WireByte) -> Result<(), DecodeError>
 {
-    let reserved = match kind {
+    let reserved = match kind.0 {
         | KIND_ABSTRACT_TYPE => ReservedKind::AbstractType,
         | KIND_MODULE_SIG => ReservedKind::ModuleSig,
         | KIND_MODULE_DEF => ReservedKind::ModuleDef,
@@ -1062,7 +1078,7 @@ fn reject_reserved_kind(kind: u8) -> Result<(), DecodeError>
 #[inline]
 fn decode_empty_name(reader: &mut ByteReader<'_>) -> Result<(), DecodeError>
 {
-    if reader.read_uvarint()? == 0_u64 {
+    if reader.read_uvarint()?.0 == 0_u64 {
         Ok(())
     }
     else {
@@ -1083,7 +1099,7 @@ fn decode_empty_def_slots(reader: &mut ByteReader<'_>) -> Result<(), DecodeError
         ReservedSlot::DirectednessVariance,
     ];
     for slot in slots {
-        if reader.read_uvarint()? != 0_u64 {
+        if reader.read_uvarint()?.0 != 0_u64 {
             return Err(DecodeError::ReservedSlotOccupied { slot });
         }
     }
@@ -1094,8 +1110,8 @@ fn decode_empty_def_slots(reader: &mut ByteReader<'_>) -> Result<(), DecodeError
 /// each rebuilt through the strata smart constructor.
 fn decode_level_signature(reader: &mut ByteReader<'_>) -> Result<LevelSignature, DecodeError>
 {
-    let params = reader.read_u32()?;
-    let count = reader.read_uvarint()?;
+    let params = reader.read_u32()?.0;
+    let count = reader.read_uvarint()?.0;
     let mut constraints: Vec<LandmarkConstraint> = Vec::new();
     let mut remaining = count;
     while remaining > 0_u64 {
@@ -1122,7 +1138,7 @@ fn decode_level_signature(reader: &mut ByteReader<'_>) -> Result<LevelSignature,
 #[inline]
 fn decode_relation(reader: &mut ByteReader<'_>) -> Result<ConstraintRelation, DecodeError>
 {
-    match reader.next_byte()? {
+    match reader.next_byte()?.0 {
         | RELATION_LEQ => Ok(ConstraintRelation::Leq),
         | RELATION_EQ => Ok(ConstraintRelation::Eq),
         | other => Err(DecodeError::UnknownTag {
@@ -1147,14 +1163,14 @@ fn decode_relation(reader: &mut ByteReader<'_>) -> Result<ConstraintRelation, De
 /// - panics: none.
 fn decode_level(reader: &mut ByteReader<'_>) -> Result<Level, DecodeError>
 {
-    let constant = reader.read_uvarint()?;
-    let atom_count = reader.read_uvarint()?;
+    let constant = reader.read_uvarint()?.0;
+    let atom_count = reader.read_uvarint()?.0;
     let mut level = Level::constant(LevelConstant::from(constant));
     let mut remaining = atom_count;
     while remaining > 0_u64 {
         let variable = reader.read_u32()?;
         let offset = reader.read_uvarint()?;
-        if offset >= MAX_DECODED_LEVEL_OFFSET {
+        if offset.0 >= MAX_DECODED_LEVEL_OFFSET {
             return Err(DecodeError::Malformed {
                 site: MalformedSite::LevelOffset,
             });
@@ -1170,12 +1186,12 @@ fn decode_level(reader: &mut ByteReader<'_>) -> Result<Level, DecodeError>
 /// `offset` is bounded by the caller.
 #[inline]
 fn build_variable_atom(
-    variable: u32,
-    offset: u64,
+    variable: WireU32,
+    offset: WireU64,
 ) -> Result<Level, DecodeError>
 {
-    let mut atom = Level::var(LevelVar::new(LevelVarIndex::from(variable)));
-    let mut remaining = offset;
+    let mut atom = Level::var(LevelVar::new(LevelVarIndex::from(variable.0)));
+    let mut remaining = offset.0;
     while remaining > 0_u64 {
         atom = atom.succ().map_err(|_error| DecodeError::Malformed {
             site: MalformedSite::LevelOffset,
@@ -1189,7 +1205,7 @@ fn build_variable_atom(
 #[inline]
 fn decode_base_type(reader: &mut ByteReader<'_>) -> Result<BaseType, DecodeError>
 {
-    match reader.next_byte()? {
+    match reader.next_byte()?.0 {
         | BASE_INTEGER => Ok(BaseType::Integer),
         | BASE_STRING => Ok(BaseType::String),
         | BASE_NUMERIC => Ok(BaseType::Numeric),
@@ -1204,7 +1220,7 @@ fn decode_base_type(reader: &mut ByteReader<'_>) -> Result<BaseType, DecodeError
 #[inline]
 fn decode_side(reader: &mut ByteReader<'_>) -> Result<Side, DecodeError>
 {
-    match reader.next_byte()? {
+    match reader.next_byte()?.0 {
         | SIDE_LEFT => Ok(Side::Left),
         | SIDE_RIGHT => Ok(Side::Right),
         | other => Err(DecodeError::UnknownTag {
@@ -1217,7 +1233,7 @@ fn decode_side(reader: &mut ByteReader<'_>) -> Result<Side, DecodeError>
 /// Decode a literal, rebuilt through the base-type smart constructors.
 fn decode_literal(reader: &mut ByteReader<'_>) -> Result<Literal, DecodeError>
 {
-    match reader.next_byte()? {
+    match reader.next_byte()?.0 {
         | LITERAL_INTEGER => {
             let sign = decode_sign(reader)?;
             let magnitude = decode_magnitude(reader)?;
@@ -1248,7 +1264,7 @@ fn decode_literal(reader: &mut ByteReader<'_>) -> Result<Literal, DecodeError>
 #[inline]
 fn decode_sign(reader: &mut ByteReader<'_>) -> Result<Sign, DecodeError>
 {
-    match reader.next_byte()? {
+    match reader.next_byte()?.0 {
         | SIGN_NON_NEGATIVE => Ok(Sign::NonNegative),
         | SIGN_NEGATIVE => Ok(Sign::Negative),
         | other => Err(DecodeError::UnknownTag {
@@ -1306,7 +1322,7 @@ mod tests
         let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
         let _id = environment.add_decl_unchecked(declaration);
         let bytes = write(&environment);
-        let artifact = decode(&bytes).expect("the shared artifact decodes");
+        let artifact = decode(bytes.as_image()).expect("the shared artifact decodes");
         let decoded = artifact
             .declarations()
             .first()
@@ -1347,7 +1363,7 @@ mod tests
         let _second_id = environment.add_decl_unchecked(second);
 
         let bytes = write(&environment);
-        let artifact = decode(&bytes).expect("the shared artifact decodes");
+        let artifact = decode(bytes.as_image()).expect("the shared artifact decodes");
         let decls = artifact.declarations();
         let body_of = |declaration: &DecodedDeclaration| match *declaration.declaration().content()
         {

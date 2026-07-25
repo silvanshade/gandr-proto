@@ -44,7 +44,8 @@ fn closed() -> BridgeContext
 fn assert_round_trips(environment: &Environment)
 {
     let bytes = write(environment);
-    let reread = read(&bytes).expect("a bridged environment re-reads through the choke point");
+    let reread = read(bytes.as_ref().into())
+        .expect("a bridged environment re-reads through the choke point");
     let rebytes = write(&reread);
     assert_eq!(
         bytes, rebytes,

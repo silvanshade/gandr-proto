@@ -576,6 +576,11 @@ pub fn arb_base_type() -> impl Strategy<Value = BaseType>
     ]
 }
 
+/// Generated integer magnitude awaiting decimal rendering.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct MagnitudeSample(u64);
+
 /// A small literal (integer, text, or numeric).
 pub fn arb_literal() -> impl Strategy<Value = Literal>
 {
@@ -584,7 +589,7 @@ pub fn arb_literal() -> impl Strategy<Value = Literal>
         (sign.clone(), 0_u64 .. 1_000).prop_map(|(sign, magnitude)| {
             Literal::Integer(IntegerLiteral::new(
                 sign,
-                Magnitude::from_decimal_text(alloc_format(magnitude))
+                Magnitude::from_decimal_text(alloc_format(MagnitudeSample(magnitude)))
                     .expect("decimal text is a canonical magnitude"),
             ))
         }),
@@ -592,7 +597,7 @@ pub fn arb_literal() -> impl Strategy<Value = Literal>
         (sign, 0_u64 .. 1_000).prop_map(|(sign, magnitude)| {
             Literal::Numeric(NumericLiteral::new(
                 sign,
-                Magnitude::from_decimal_text(alloc_format(magnitude))
+                Magnitude::from_decimal_text(alloc_format(MagnitudeSample(magnitude)))
                     .expect("decimal text is a canonical magnitude"),
                 gandr_kernel_core::FractionDigits::none(),
             ))
@@ -601,10 +606,10 @@ pub fn arb_literal() -> impl Strategy<Value = Literal>
 }
 
 /// A `u64`'s decimal text (a tiny helper so strategies stay `no`-format-free).
-fn alloc_format(value: u64) -> String
+fn alloc_format(value: MagnitudeSample) -> String
 {
     let mut digits = String::new();
-    let mut remaining = value;
+    let mut remaining = value.0;
     if remaining == 0 {
         digits.push('0');
         return digits;

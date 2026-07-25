@@ -1067,9 +1067,9 @@ mod tests
     }
 
     /// An empty level context over `params` prenex parameters.
-    fn level_context(params: u32) -> LevelContext
+    fn level_context(params: LevelParamCount) -> LevelContext
     {
-        LevelContext::admit(LevelParamCount::from(params), Vec::new()).unwrap()
+        LevelContext::admit(params, Vec::new()).unwrap()
     }
 
     /// Synthesize a value's type from an initial context, returning the id.
@@ -1112,7 +1112,7 @@ mod tests
     fn variable_synthesizes_its_context_type()
     {
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let unit = arena.value_type_unit();
         let variable = arena.value_variable(DeBruijnIndex::from(0_u32));
@@ -1129,7 +1129,7 @@ mod tests
     fn injection_is_not_inferable()
     {
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let unit = arena.value_unit();
         let injection = arena.value_injection(Side::Left, unit);
@@ -1146,7 +1146,7 @@ mod tests
     fn injection_checks_against_its_sum()
     {
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let unit_type = arena.value_type_unit();
         let integer = arena.value_type_base(crate::base::BaseType::Integer);
@@ -1172,7 +1172,7 @@ mod tests
         // A pair whose first component is an injection (check-only) checks
         // against a product, exercising the propagation.
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let unit_a = arena.value_type_unit();
         let unit_b = arena.value_type_unit();
@@ -1201,7 +1201,7 @@ mod tests
     {
         // (force v0) applied to unit, where v0 : U (Unit → F Unit).
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let domain = arena.value_type_unit();
         let result = arena.value_type_unit();
@@ -1233,7 +1233,7 @@ mod tests
     fn force_unwraps_a_thunk()
     {
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let result = arena.value_type_unit();
         let returner = arena.comp_type_returner(result);
@@ -1260,7 +1260,7 @@ mod tests
         // case v0 { inl ⇒ return unit | inr ⇒ return (thunk ...) } — branches at
         // distinct types must be rejected in synth mode.
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let unit_a = arena.value_type_unit();
         let unit_b = arena.value_type_unit();
@@ -1294,7 +1294,7 @@ mod tests
         // In check mode both branches are checked against the expected type,
         // so an injection branch (check-only) is admissible.
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let entries = no_entries();
         let unit_a = arena.value_type_unit();
         let unit_b = arena.value_type_unit();
@@ -1328,7 +1328,7 @@ mod tests
     fn universe_forms_one_level_up()
     {
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         let universe = arena.value_type_universe(Level::constant(LevelConstant::from(0_u64)));
         let level = type_level(&arena, &levels, TypeLevelGoal::Value(universe)).unwrap();
         assert_eq!(
@@ -1342,7 +1342,7 @@ mod tests
     fn lift_requires_a_strictly_higher_target()
     {
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         // Lift Unit to level 1: Unit is at level 0, 0 < 1, so this is well-formed.
         let inner = arena.value_type_unit();
         let lifted = arena.value_type_lift(inner, Level::constant(LevelConstant::from(1_u64)));
@@ -1367,7 +1367,7 @@ mod tests
     fn arrow_level_is_the_join()
     {
         let mut arena = TermArena::new();
-        let levels = level_context(0);
+        let levels = level_context(LevelParamCount::from(0_u32));
         // (U_2 → F Unit): domain level 3, codomain level 0, join 3.
         let domain = arena.value_type_universe(Level::constant(LevelConstant::from(2_u64)));
         let result = arena.value_type_unit();

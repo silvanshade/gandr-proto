@@ -92,6 +92,16 @@ pub struct ValueTypeId(u32);
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CompTypeId(u32);
 
+/// Number of nodes already allocated in one arena family.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ArenaLength(usize);
+
+/// Stored index of one node within its arena family.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ArenaIndex(u32);
+
 /// Widen an arena length to the `u32` an id wraps, saturating at the ceiling.
 ///
 /// # Contract
@@ -103,9 +113,9 @@ pub struct CompTypeId(u32);
 /// - fails: never (saturates).
 /// - panics: none.
 #[inline]
-fn id_index(length: usize) -> u32
+fn id_index(length: ArenaLength) -> ArenaIndex
 {
-    u32::try_from(length).unwrap_or(u32::MAX)
+    ArenaIndex(u32::try_from(length.0).unwrap_or(u32::MAX))
 }
 
 /// Narrow an id's wrapped `u32` to the `usize` a `Vec::get` takes.
@@ -117,9 +127,9 @@ fn id_index(length: usize) -> u32
 /// - fails: never (saturates at `usize::MAX`, which `get` rejects).
 /// - panics: none.
 #[inline]
-fn id_offset(index: u32) -> usize
+fn id_offset(index: ArenaIndex) -> ArenaLength
 {
-    usize::try_from(index).unwrap_or(usize::MAX)
+    ArenaLength(usize::try_from(index.0).unwrap_or(usize::MAX))
 }
 
 /// A snapshot of the four family lengths — the admission watermark.
@@ -212,7 +222,7 @@ impl TermArena
         id: ValueId,
     ) -> Option<&Value>
     {
-        self.values.get(id_offset(id.0))
+        self.values.get(id_offset(ArenaIndex(id.0)).0)
     }
 
     /// Resolve a computation id to its node, or `None` if it dangles.
@@ -223,7 +233,7 @@ impl TermArena
         id: ComputationId,
     ) -> Option<&Computation>
     {
-        self.computations.get(id_offset(id.0))
+        self.computations.get(id_offset(ArenaIndex(id.0)).0)
     }
 
     /// Resolve a value-type id to its node, or `None` if it dangles.
@@ -234,7 +244,7 @@ impl TermArena
         id: ValueTypeId,
     ) -> Option<&ValueType>
     {
-        self.value_types.get(id_offset(id.0))
+        self.value_types.get(id_offset(ArenaIndex(id.0)).0)
     }
 
     /// Resolve a computation-type id to its node, or `None` if it dangles.
@@ -245,7 +255,7 @@ impl TermArena
         id: CompTypeId,
     ) -> Option<&CompType>
     {
-        self.comp_types.get(id_offset(id.0))
+        self.comp_types.get(id_offset(ArenaIndex(id.0)).0)
     }
 
     /// Append a value node and return its fresh id.
@@ -255,7 +265,7 @@ impl TermArena
         value: Value,
     ) -> ValueId
     {
-        let id = ValueId(id_index(self.values.len()));
+        let id = ValueId(id_index(ArenaLength(self.values.len())).0);
         self.values.push(value);
         id
     }
@@ -267,7 +277,7 @@ impl TermArena
         computation: Computation,
     ) -> ComputationId
     {
-        let id = ComputationId(id_index(self.computations.len()));
+        let id = ComputationId(id_index(ArenaLength(self.computations.len())).0);
         self.computations.push(computation);
         id
     }
@@ -279,7 +289,7 @@ impl TermArena
         value_type: ValueType,
     ) -> ValueTypeId
     {
-        let id = ValueTypeId(id_index(self.value_types.len()));
+        let id = ValueTypeId(id_index(ArenaLength(self.value_types.len())).0);
         self.value_types.push(value_type);
         id
     }
@@ -291,7 +301,7 @@ impl TermArena
         comp_type: CompType,
     ) -> CompTypeId
     {
-        let id = CompTypeId(id_index(self.comp_types.len()));
+        let id = CompTypeId(id_index(ArenaLength(self.comp_types.len())).0);
         self.comp_types.push(comp_type);
         id
     }

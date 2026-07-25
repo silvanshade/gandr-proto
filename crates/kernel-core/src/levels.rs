@@ -281,48 +281,48 @@ mod tests
     use crate::error::KernelError;
 
     /// A level variable by index.
-    fn var(index: u32) -> LevelVar
+    fn var(index: LevelVarIndex) -> LevelVar
     {
-        LevelVar::new(LevelVarIndex::from(index))
+        LevelVar::new(index)
     }
 
     /// The level of the variable `index`.
-    fn level_var(index: u32) -> Level
+    fn level_var(index: LevelVarIndex) -> Level
     {
         Level::var(var(index))
     }
 
     /// The constant level `value`.
-    fn constant(value: u64) -> Level
+    fn constant(value: LevelConstant) -> Level
     {
-        Level::constant(LevelConstant::from(value))
+        Level::constant(value)
     }
 
     /// An empty context over `params` parameters.
-    fn empty_context(params: u32) -> LevelContext
+    fn empty_context(params: LevelParamCount) -> LevelContext
     {
-        LevelContext::admit(LevelParamCount::from(params), vec![]).unwrap()
+        LevelContext::admit(params, vec![]).unwrap()
     }
 
     #[test]
     fn empty_context_admits()
     {
-        let context = empty_context(0);
+        let context = empty_context(0_u32.into());
         assert_eq!(u32::from(context.params()), 0, "no prenex parameters");
     }
 
     #[test]
     fn universe_rule_is_the_free_lt_on_the_empty_context()
     {
-        let context = empty_context(0);
+        let context = empty_context(0_u32.into());
         assert_eq!(
             Ok(()),
-            context.check_universe_below(&constant(0), &constant(1)),
+            context.check_universe_below(&constant(0_u64.into()), &constant(1_u64.into())),
             "U_0 : U_1 holds"
         );
         assert!(
             matches!(
-                context.check_universe_below(&constant(1), &constant(0)),
+                context.check_universe_below(&constant(1_u64.into()), &constant(0_u64.into())),
                 Err(KernelError::UniverseViolation(_))
             ),
             "U_1 : U_0 fails with a refutation"
@@ -332,8 +332,8 @@ mod tests
     #[test]
     fn universe_rule_is_irreflexive()
     {
-        let context = empty_context(1);
-        let composite = level_var(0).max(&constant(3));
+        let context = empty_context(1_u32.into());
+        let composite = level_var(0_u32.into()).max(&constant(3_u64.into()));
         assert!(
             matches!(
                 context.check_universe_below(&composite, &composite),
@@ -347,11 +347,14 @@ mod tests
     fn landmark_hypothesis_decides_the_universe_rule()
     {
         // Under x+1 ≤ y the free oracle cannot see x < y, but entailment can.
-        let constraints = vec![LandmarkConstraint::leq(succ(&level_var(0)), level_var(1)).unwrap()];
+        let constraints = vec![
+            LandmarkConstraint::leq(succ(&level_var(0_u32.into())), level_var(1_u32.into()))
+                .unwrap(),
+        ];
         let context = LevelContext::admit(LevelParamCount::from(2_u32), constraints).unwrap();
         assert_eq!(
             Ok(()),
-            context.check_universe_below(&level_var(0), &level_var(1)),
+            context.check_universe_below(&level_var(0_u32.into()), &level_var(1_u32.into()),),
             "x < y follows from x+1 ≤ y under the landmark poset"
         );
     }
@@ -365,10 +368,14 @@ mod tests
     #[test]
     fn out_of_scope_constraint_variable_is_rejected()
     {
-        let constraints = vec![LandmarkConstraint::leq(level_var(0), level_var(5)).unwrap()];
+        let constraints = vec![
+            LandmarkConstraint::leq(level_var(0_u32.into()), level_var(5_u32.into())).unwrap(),
+        ];
         assert_eq!(
             LevelContext::admit(LevelParamCount::from(2_u32), constraints).unwrap_err(),
-            KernelError::LevelVariableOutOfScope { variable: var(5) },
+            KernelError::LevelVariableOutOfScope {
+                variable: var(5_u32.into()),
+            },
             "a constraint variable at or above the parameter count is out of scope"
         );
     }
@@ -377,8 +384,10 @@ mod tests
     fn looping_constraints_are_rejected()
     {
         // x = x+1 has no model in ℕ; admission must loop.
-        let constraints =
-            vec![LandmarkConstraint::equal(level_var(0), succ(&level_var(0))).unwrap()];
+        let constraints = vec![
+            LandmarkConstraint::equal(level_var(0_u32.into()), succ(&level_var(0_u32.into())))
+                .unwrap(),
+        ];
         assert!(
             matches!(
                 LevelContext::admit(LevelParamCount::from(1_u32), constraints),
@@ -391,15 +400,17 @@ mod tests
     #[test]
     fn level_scope_boundary_is_exact()
     {
-        let context = empty_context(2);
+        let context = empty_context(2_u32.into());
         assert_eq!(
             Ok(()),
-            context.check_level_scope(&level_var(1)),
+            context.check_level_scope(&level_var(1_u32.into())),
             "variable 1 is in scope under 2 parameters"
         );
         assert_eq!(
-            context.check_level_scope(&level_var(2)),
-            Err(KernelError::LevelVariableOutOfScope { variable: var(2) }),
+            context.check_level_scope(&level_var(2_u32.into())),
+            Err(KernelError::LevelVariableOutOfScope {
+                variable: var(2_u32.into()),
+            }),
             "variable 2 is out of scope under 2 parameters"
         );
     }

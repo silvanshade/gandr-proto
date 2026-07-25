@@ -53,15 +53,15 @@ mod tests
     use crate::common::stage_def;
 
     /// The constant level `value`.
-    fn constant(value: u64) -> Level
+    fn constant(value: LevelConstant) -> Level
     {
-        Level::constant(LevelConstant::from(value))
+        Level::constant(value)
     }
 
     /// The level of the prenex variable `index`.
-    fn level_var(index: u32) -> Level
+    fn level_var(index: LevelVarIndex) -> Level
     {
-        Level::var(LevelVar::new(LevelVarIndex::from(index)))
+        Level::var(LevelVar::new(index))
     }
 
     /// A monomorphic level signature (no prenex parameters).
@@ -74,7 +74,8 @@ mod tests
     fn assert_round_trips(environment: &Environment)
     {
         let bytes = write(environment);
-        let reread = read(&bytes).expect("the C5 golden re-reads through the choke point");
+        let reread =
+            read(bytes.as_ref().into()).expect("the C5 golden re-reads through the choke point");
         assert_eq!(
             bytes,
             write(&reread),
@@ -91,7 +92,7 @@ mod tests
         let declaration = stage_axiom(
             &mut environment,
             mono(),
-            &ValueTypeSpec::Universe(constant(0)),
+            &ValueTypeSpec::Universe(constant(0_u64.into())),
         );
         environment
             .add_decl(declaration)
@@ -110,7 +111,7 @@ mod tests
         let declaration = stage_axiom(
             &mut environment,
             levels,
-            &ValueTypeSpec::Universe(level_var(0)),
+            &ValueTypeSpec::Universe(level_var(0_u32.into())),
         );
         environment
             .add_decl(declaration)
@@ -124,7 +125,7 @@ mod tests
         // Axiom : Lift Unit 1. Unit is at level 0, strictly below the target 1,
         // so the explicit lift is well-formed.
         let mut environment = Environment::new();
-        let lifted = ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(1));
+        let lifted = ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(1_u64.into()));
         let declaration = stage_axiom(&mut environment, mono(), &lifted);
         environment
             .add_decl(declaration)
@@ -138,8 +139,8 @@ mod tests
         // Def (Lift Unit 1) = lift_1 unit. The explicit lift value inhabits the
         // lift type: `unit : Unit` (level 0) lifted to target 1.
         let mut environment = Environment::new();
-        let declared = ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(1));
-        let body = ValueSpec::Lift(constant(1), Box::new(ValueSpec::Unit));
+        let declared = ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(1_u64.into()));
+        let body = ValueSpec::Lift(constant(1_u64.into()), Box::new(ValueSpec::Unit));
         let declaration = stage_def(&mut environment, mono(), &declared, &body);
         environment
             .add_decl(declaration)
@@ -154,7 +155,7 @@ mod tests
         // exercising the universe embedded inside a larger type former.
         let mut environment = Environment::new();
         let declared = ValueTypeSpec::Thunk(Box::new(CompTypeSpec::Arrow(
-            Box::new(ValueTypeSpec::Universe(constant(0))),
+            Box::new(ValueTypeSpec::Universe(constant(0_u64.into()))),
             Box::new(CompTypeSpec::Returner(Box::new(ValueTypeSpec::Unit))),
         )));
         let declaration = stage_axiom(&mut environment, mono(), &declared);
@@ -174,20 +175,20 @@ mod tests
         let universe = stage_axiom(
             &mut environment,
             mono(),
-            &ValueTypeSpec::Universe(constant(0)),
+            &ValueTypeSpec::Universe(constant(0_u64.into())),
         );
         environment.add_decl(universe).expect("U_0 admits");
         let lift_type = stage_axiom(
             &mut environment,
             mono(),
-            &ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(2)),
+            &ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(2_u64.into())),
         );
         environment.add_decl(lift_type).expect("Lift Unit 2 admits");
         let lift_value = stage_def(
             &mut environment,
             mono(),
-            &ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(1)),
-            &ValueSpec::Lift(constant(1), Box::new(ValueSpec::Unit)),
+            &ValueTypeSpec::Lift(Box::new(ValueTypeSpec::Unit), constant(1_u64.into())),
+            &ValueSpec::Lift(constant(1_u64.into()), Box::new(ValueSpec::Unit)),
         );
         environment
             .add_decl(lift_value)

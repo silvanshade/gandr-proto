@@ -36,10 +36,13 @@ use gandr_kernel_strata::Level;
 use super::ADMISSION_CHECKED;
 use super::ADMISSION_UNCHECKED;
 use super::AdmissionMark;
+use super::ArtifactFraming;
 use super::BASE_INTEGER;
 use super::BASE_NUMERIC;
 use super::BASE_STRING;
+use super::EncodedArtifact;
 use super::FORMAT_VERSION_V1;
+use super::GlobalIndex;
 use super::KIND_AXIOM;
 use super::KIND_DEF;
 use super::LITERAL_INTEGER;
@@ -76,6 +79,9 @@ use super::SIDE_RIGHT;
 use super::SIGN_NEGATIVE;
 use super::SIGN_NON_NEGATIVE;
 use super::SegmentedArtifact;
+use super::WireByte;
+use super::WireU64;
+use super::WireUsize;
 use crate::arena::CompTypeId;
 use crate::arena::ComputationId;
 use crate::arena::TermArena;
@@ -122,7 +128,7 @@ use crate::types::ValueType;
 /// - witness: `read::tests::decode_retains_cross_declaration_sharing`
 #[inline]
 #[must_use]
-pub fn write(environment: &Environment) -> Vec<u8>
+pub fn write(environment: &Environment) -> EncodedArtifact
 {
     let declarations: Vec<(AdmissionMark, &Declaration)> = environment
         .admitted()
@@ -166,9 +172,8 @@ pub fn write_segmented(environment: &Environment) -> SegmentedArtifact
         .admitted()
         .map(|(admission, declaration)| (mark_of(admission), declaration))
         .collect();
-    let (bytes, header_len, segment_ends) =
-        encode_artifact_framed(environment.arena(), &declarations);
-    SegmentedArtifact::new(bytes, header_len, segment_ends)
+    let (bytes, framing) = encode_artifact_framed(environment.arena(), &declarations);
+    SegmentedArtifact::new(bytes, framing)
 }
 
 /// Encode a marked declaration sequence (its content in `arena`) into the
@@ -187,9 +192,9 @@ pub fn write_segmented(environment: &Environment) -> SegmentedArtifact
 pub(super) fn encode_artifact(
     arena: &TermArena,
     declarations: &[(AdmissionMark, &Declaration)],
-) -> Vec<u8>
+) -> EncodedArtifact
 {
-    let (bytes, _header_len, _segment_ends) = encode_artifact_framed(arena, declarations);
+    let (bytes, _framing) = encode_artifact_framed(arena, declarations);
     bytes
 }
 
@@ -210,22 +215,25 @@ pub(super) fn encode_artifact(
 fn encode_artifact_framed(
     arena: &TermArena,
     declarations: &[(AdmissionMark, &Declaration)],
-) -> (Vec<u8>, usize, Vec<usize>)
+) -> (EncodedArtifact, ArtifactFraming)
 {
-    let mut out = Vec::new();
-    out.extend_from_slice(&MAGIC);
-    out.extend_from_slice(&FORMAT_VERSION_V1.to_be_bytes());
+    let mut out = EncodedArtifact(Vec::new());
+    out.0.extend_from_slice(&MAGIC);
+    out.0.extend_from_slice(&FORMAT_VERSION_V1.to_be_bytes());
     // R4: the reserved minted-atom table, admission-ordered and empty at v1.
-    put_uvarint(&mut out, 0_u64);
-    put_uvarint(&mut out, usize_to_u64(declarations.len()));
-    let header_len = out.len();
+    put_uvarint(&mut out, WireU64(0));
+    put_uvarint(&mut out, usize_to_u64(WireUsize(declarations.len())));
+    let header_len = out.0.len();
     let mut segment_ends: Vec<usize> = Vec::with_capacity(declarations.len());
     let mut interner = Interner::new();
     for &(mark, declaration) in declarations {
         encode_declaration(&mut out, arena, &mut interner, mark, declaration);
-        segment_ends.push(out.len());
+        segment_ends.push(out.0.len());
     }
-    (out, header_len, segment_ends)
+    (out, ArtifactFraming {
+        header_len,
+        segment_ends,
+    })
 }
 
 /// Map an environment admission to its wire mark (E6).
@@ -252,18 +260,28 @@ enum Node
     CompType(CompTypeId),
 }
 
+/// Canonical bytes of one encoded subterm-table entry.
+#[repr(transparent)]
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
+struct EncodedEntry(Vec<u8>);
+
+/// Borrowed literal text offered to the wire encoder.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ArtifactText<'text>(&'text str);
+
 /// The content-keyed subterm interner, carrying the global index counter and
 /// the dedup and arena-memo maps across declarations.
 struct Interner
 {
     /// Arena node → its assigned global table index (the sharing-aware memo, so
     /// an in-arena shared node is walked once).
-    id_to_global: BTreeMap<Node, u32>,
+    id_to_global: BTreeMap<Node, GlobalIndex>,
     /// Encoded entry bytes → its global index (the content dedup; the encoded
     /// bytes are the content key, so structurally-equal nodes collapse).
-    key_to_global: BTreeMap<Vec<u8>, u32>,
+    key_to_global: BTreeMap<EncodedEntry, GlobalIndex>,
     /// The next free global table index.
-    next_index: u32,
+    next_index: GlobalIndex,
 }
 
 impl Interner
@@ -275,7 +293,7 @@ impl Interner
         Self {
             id_to_global: BTreeMap::new(),
             key_to_global: BTreeMap::new(),
-            next_index: 0,
+            next_index: GlobalIndex(0),
         }
     }
 }
@@ -374,71 +392,71 @@ fn node_children(
 fn encode_entry(
     arena: &TermArena,
     node: Node,
-    child_globals: &[u32],
-) -> Vec<u8>
+    child_globals: &[GlobalIndex],
+) -> EncodedEntry
 {
-    let mut out = Vec::new();
+    let mut out = EncodedArtifact(Vec::new());
     match node {
         | Node::ValueType(id) => match arena.value_type(id) {
             | Some(&ValueType::Base(base)) => {
-                out.push(NODE_VT_BASE);
-                out.push(base_type_byte(base));
+                out.0.push(NODE_VT_BASE);
+                out.0.push(base_type_byte(base).0);
             },
-            | Some(&ValueType::Unit) | None => out.push(NODE_VT_UNIT),
+            | Some(&ValueType::Unit) | None => out.0.push(NODE_VT_UNIT),
             | Some(ValueType::Universe(level)) => {
-                out.push(NODE_VT_UNIVERSE);
+                out.0.push(NODE_VT_UNIVERSE);
                 encode_level(&mut out, level);
             },
-            | Some(&ValueType::Product(..)) => out.push(NODE_VT_PRODUCT),
-            | Some(&ValueType::Sum(..)) => out.push(NODE_VT_SUM),
-            | Some(&ValueType::Thunk(_)) => out.push(NODE_VT_THUNK),
+            | Some(&ValueType::Product(..)) => out.0.push(NODE_VT_PRODUCT),
+            | Some(&ValueType::Sum(..)) => out.0.push(NODE_VT_SUM),
+            | Some(&ValueType::Thunk(_)) => out.0.push(NODE_VT_THUNK),
             | Some(ValueType::Lift { target, .. }) => {
-                out.push(NODE_VT_LIFT);
+                out.0.push(NODE_VT_LIFT);
                 encode_level(&mut out, target);
             },
         },
         | Node::CompType(id) => match arena.comp_type(id) {
-            | Some(&CompType::Returner(_)) | None => out.push(NODE_CT_RETURNER),
-            | Some(&CompType::Arrow { .. }) => out.push(NODE_CT_ARROW),
+            | Some(&CompType::Returner(_)) | None => out.0.push(NODE_CT_RETURNER),
+            | Some(&CompType::Arrow { .. }) => out.0.push(NODE_CT_ARROW),
         },
         | Node::Value(id) => match arena.value(id) {
             | Some(&Value::Variable(index)) => {
-                out.push(NODE_V_VARIABLE);
-                put_uvarint(&mut out, u64::from(u32::from(index)));
+                out.0.push(NODE_V_VARIABLE);
+                put_uvarint(&mut out, WireU64(u64::from(u32::from(index))));
             },
             | Some(&Value::Constant(index)) => {
-                out.push(NODE_V_CONSTANT);
-                put_uvarint(&mut out, usize_to_u64(usize::from(index)));
+                out.0.push(NODE_V_CONSTANT);
+                put_uvarint(&mut out, usize_to_u64(WireUsize(usize::from(index))));
             },
-            | Some(&Value::Unit) | None => out.push(NODE_V_UNIT),
+            | Some(&Value::Unit) | None => out.0.push(NODE_V_UNIT),
             | Some(Value::Literal(literal)) => {
-                out.push(NODE_V_LITERAL);
+                out.0.push(NODE_V_LITERAL);
                 encode_literal(&mut out, literal);
             },
-            | Some(&Value::Pair(..)) => out.push(NODE_V_PAIR),
+            | Some(&Value::Pair(..)) => out.0.push(NODE_V_PAIR),
             | Some(&Value::Injection(side, _)) => {
-                out.push(NODE_V_INJECTION);
-                out.push(side_byte(side));
+                out.0.push(NODE_V_INJECTION);
+                out.0.push(side_byte(side).0);
             },
-            | Some(&Value::Thunk(_)) => out.push(NODE_V_THUNK),
+            | Some(&Value::Thunk(_)) => out.0.push(NODE_V_THUNK),
             | Some(Value::Lift { target, .. }) => {
-                out.push(NODE_V_LIFT);
+                out.0.push(NODE_V_LIFT);
                 encode_level(&mut out, target);
             },
         },
         | Node::Computation(id) => match arena.computation(id) {
-            | Some(&Computation::Lambda(_)) => out.push(NODE_C_LAMBDA),
-            | Some(&Computation::Application(..)) => out.push(NODE_C_APPLICATION),
-            | Some(&Computation::Return(_)) | None => out.push(NODE_C_RETURN),
-            | Some(&Computation::Bind(..)) => out.push(NODE_C_BIND),
-            | Some(&Computation::Force(_)) => out.push(NODE_C_FORCE),
-            | Some(&Computation::Case { .. }) => out.push(NODE_C_CASE),
+            | Some(&Computation::Lambda(_)) => out.0.push(NODE_C_LAMBDA),
+            | Some(&Computation::Application(..)) => out.0.push(NODE_C_APPLICATION),
+            | Some(&Computation::Return(_)) | None => out.0.push(NODE_C_RETURN),
+            | Some(&Computation::Bind(..)) => out.0.push(NODE_C_BIND),
+            | Some(&Computation::Force(_)) => out.0.push(NODE_C_FORCE),
+            | Some(&Computation::Case { .. }) => out.0.push(NODE_C_CASE),
         },
     }
     for &child in child_globals {
-        put_uvarint(&mut out, u64::from(child));
+        put_uvarint(&mut out, WireU64(u64::from(child.0)));
     }
-    out
+    EncodedEntry(out.0)
 }
 
 /// Intern a root node's sub-DAG into `interner`, appending each first-completed
@@ -458,9 +476,9 @@ fn encode_entry(
 fn intern(
     arena: &TermArena,
     interner: &mut Interner,
-    segment: &mut Vec<Vec<u8>>,
+    segment: &mut Vec<EncodedEntry>,
     root: Node,
-) -> u32
+) -> GlobalIndex
 {
     let mut stack: Vec<(Node, usize)> = Vec::new();
     stack.push((root, 0_usize));
@@ -485,16 +503,22 @@ fn intern(
         if descended {
             continue;
         }
-        let child_globals: Vec<u32> = children
+        let child_globals: Vec<GlobalIndex> = children
             .iter()
-            .map(|child| interner.id_to_global.get(child).copied().unwrap_or(0))
+            .map(|child| {
+                interner
+                    .id_to_global
+                    .get(child)
+                    .copied()
+                    .unwrap_or(GlobalIndex(0))
+            })
             .collect();
         let encoded = encode_entry(arena, node, &child_globals);
         let global = match interner.key_to_global.get(&encoded) {
             | Some(&existing) => existing,
             | None => {
                 let assigned = interner.next_index;
-                interner.next_index = interner.next_index.saturating_add(1);
+                interner.next_index.0 = interner.next_index.0.saturating_add(1);
                 let _prior = interner.key_to_global.insert(encoded.clone(), assigned);
                 segment.push(encoded);
                 assigned
@@ -502,33 +526,37 @@ fn intern(
         };
         let _prior = interner.id_to_global.insert(node, global);
     }
-    interner.id_to_global.get(&root).copied().unwrap_or(0)
+    interner
+        .id_to_global
+        .get(&root)
+        .copied()
+        .unwrap_or(GlobalIndex(0))
 }
 
 /// Encode one declaration segment: admission mark, kind, name (empty at v1),
 /// level signature, its subterm-table entries, and root references.
 fn encode_declaration(
-    out: &mut Vec<u8>,
+    out: &mut EncodedArtifact,
     arena: &TermArena,
     interner: &mut Interner,
     mark: AdmissionMark,
     declaration: &Declaration,
 )
 {
-    out.push(match mark {
+    out.0.push(match mark {
         | AdmissionMark::Checked => ADMISSION_CHECKED,
         | AdmissionMark::UncheckedBypass => ADMISSION_UNCHECKED,
     });
     let content = declaration.content();
-    out.push(match *content {
+    out.0.push(match *content {
         | DeclarationContent::Def { .. } => KIND_DEF,
         | DeclarationContent::Axiom { .. } => KIND_AXIOM,
     });
     // R2: the structured name, empty (zero segments) at v1.
-    put_uvarint(out, 0_u64);
+    put_uvarint(out, WireU64(0));
     encode_level_signature(out, declaration.levels());
     // Intern this declaration's roots, collecting the entries it introduces.
-    let mut segment: Vec<Vec<u8>> = Vec::new();
+    let mut segment: Vec<EncodedEntry> = Vec::new();
     let roots = match *content {
         | DeclarationContent::Def { declared, body } => {
             let declared = intern(arena, interner, &mut segment, Node::ValueType(declared));
@@ -540,34 +568,34 @@ fn encode_declaration(
             (declared, None)
         },
     };
-    put_uvarint(out, usize_to_u64(segment.len()));
+    put_uvarint(out, usize_to_u64(WireUsize(segment.len())));
     for entry in &segment {
-        out.extend_from_slice(entry);
+        out.0.extend_from_slice(&entry.0);
     }
     let (root_declared, root_body) = roots;
-    put_uvarint(out, u64::from(root_declared));
+    put_uvarint(out, WireU64(u64::from(root_declared.0)));
     if let Some(root_body) = root_body {
-        put_uvarint(out, u64::from(root_body));
+        put_uvarint(out, WireU64(u64::from(root_body.0)));
         // R3: four per-Def annotation slots, empty at v1.
-        put_uvarint(out, 0_u64);
-        put_uvarint(out, 0_u64);
-        put_uvarint(out, 0_u64);
-        put_uvarint(out, 0_u64);
+        put_uvarint(out, WireU64(0));
+        put_uvarint(out, WireU64(0));
+        put_uvarint(out, WireU64(0));
+        put_uvarint(out, WireU64(0));
     }
 }
 
 /// Encode a declaration's prenex level signature: parameter count and declared
 /// landmark constraints, in declaration order.
 fn encode_level_signature(
-    out: &mut Vec<u8>,
+    out: &mut EncodedArtifact,
     signature: &LevelSignature,
 )
 {
-    put_uvarint(out, u64::from(u32::from(signature.params())));
+    put_uvarint(out, WireU64(u64::from(u32::from(signature.params()))));
     let constraints = signature.constraints();
-    put_uvarint(out, usize_to_u64(constraints.len()));
+    put_uvarint(out, usize_to_u64(WireUsize(constraints.len())));
     for constraint in constraints {
-        out.push(match constraint.relation() {
+        out.0.push(match constraint.relation() {
             | gandr_kernel_strata::ConstraintRelation::Leq => RELATION_LEQ,
             | gandr_kernel_strata::ConstraintRelation::Eq => RELATION_EQ,
         });
@@ -579,87 +607,91 @@ fn encode_level_signature(
 /// Encode a canonical level: its constant part, then its variable atoms in
 /// ascending order (E4: `BTreeMap`-sorted, never hash-order).
 fn encode_level(
-    out: &mut Vec<u8>,
+    out: &mut EncodedArtifact,
     level: &Level,
 )
 {
-    put_uvarint(out, u64::from(level.constant_part()));
+    put_uvarint(out, WireU64(u64::from(level.constant_part())));
     let atoms: Vec<(
         gandr_kernel_strata::LevelVar,
         gandr_kernel_strata::LevelOffset,
     )> = level.atoms().collect();
-    put_uvarint(out, usize_to_u64(atoms.len()));
+    put_uvarint(out, usize_to_u64(WireUsize(atoms.len())));
     for (variable, offset) in atoms {
-        put_uvarint(out, u64::from(u32::from(variable.index())));
-        put_uvarint(out, u64::from(offset));
+        put_uvarint(out, WireU64(u64::from(u32::from(variable.index()))));
+        put_uvarint(out, WireU64(u64::from(offset)));
     }
 }
 
 /// Encode a literal: its kind, then its canonical payload.
 fn encode_literal(
-    out: &mut Vec<u8>,
+    out: &mut EncodedArtifact,
     literal: &Literal,
 )
 {
     match *literal {
         | Literal::Integer(ref integer) => {
-            out.push(LITERAL_INTEGER);
-            out.push(sign_byte(integer.sign()));
-            encode_text(out, &integer.magnitude().to_digits());
+            out.0.push(LITERAL_INTEGER);
+            out.0.push(sign_byte(integer.sign()).0);
+            let magnitude = integer.magnitude().to_digits();
+            encode_text(out, ArtifactText(&magnitude));
         },
         | Literal::Text(ref text) => {
-            out.push(LITERAL_TEXT);
-            encode_text(out, &text.to_content());
+            out.0.push(LITERAL_TEXT);
+            let content = text.to_content();
+            encode_text(out, ArtifactText(&content));
         },
         | Literal::Numeric(ref numeric) => {
-            out.push(LITERAL_NUMERIC);
-            out.push(sign_byte(numeric.sign()));
-            encode_text(out, &numeric.integer_part().to_digits());
-            encode_text(out, &numeric.fraction().to_digits());
+            out.0.push(LITERAL_NUMERIC);
+            out.0.push(sign_byte(numeric.sign()).0);
+            let integer = numeric.integer_part().to_digits();
+            encode_text(out, ArtifactText(&integer));
+            let fraction = numeric.fraction().to_digits();
+            encode_text(out, ArtifactText(&fraction));
         },
     }
 }
 
 /// Encode length-prefixed UTF-8 text.
 fn encode_text(
-    out: &mut Vec<u8>,
-    text: &str,
+    out: &mut EncodedArtifact,
+    text: ArtifactText<'_>,
 )
 {
-    let bytes = text.as_bytes();
-    put_uvarint(out, usize_to_u64(bytes.len()));
-    out.extend_from_slice(bytes);
+    let bytes = text.0.as_bytes();
+    put_uvarint(out, usize_to_u64(WireUsize(bytes.len())));
+    out.0.extend_from_slice(bytes);
 }
 
 /// The wire byte for a base-type atom.
 #[inline]
-fn base_type_byte(base: BaseType) -> u8
+fn base_type_byte(base: BaseType) -> WireByte
 {
-    match base {
+    WireByte(match base {
         | BaseType::Integer => BASE_INTEGER,
         | BaseType::String => BASE_STRING,
         | BaseType::Numeric => BASE_NUMERIC,
-    }
+    })
 }
 
 /// The wire byte for a literal sign.
 #[inline]
-fn sign_byte(sign: Sign) -> u8
+fn sign_byte(sign: Sign) -> WireByte
 {
-    match sign {
+    WireByte(match sign {
         | Sign::NonNegative => SIGN_NON_NEGATIVE,
         | Sign::Negative => SIGN_NEGATIVE,
-    }
+    })
 }
 
 /// The wire byte for an injection side.
 #[inline]
-fn side_byte(side: Side) -> u8
+fn side_byte(side: Side) -> WireByte
 {
-    match side {
+    WireByte(match side {
         | Side::Left => SIDE_LEFT,
         | Side::Right => SIDE_RIGHT,
-    }
+    })
 }
 
 /// Append a canonical (minimal) unsigned LEB128 varint.
@@ -673,26 +705,26 @@ fn side_byte(side: Side) -> u8
 /// - fails: never.
 /// - panics: none.
 pub(super) fn put_uvarint(
-    out: &mut Vec<u8>,
-    value: u64,
+    out: &mut EncodedArtifact,
+    value: WireU64,
 )
 {
-    let mut remaining = value;
+    let mut remaining = value.0;
     loop {
         let low = u8::try_from(remaining & 0x7f).unwrap_or(0_u8);
         remaining = remaining.wrapping_shr(7);
         if remaining == 0_u64 {
-            out.push(low);
+            out.0.push(low);
             break;
         }
-        out.push(low | 0x80);
+        out.0.push(low | 0x80);
     }
 }
 
 /// Widen a `usize` count to `u64` for the wire (lossless on every supported
 /// platform, where `usize` is at most 64 bits).
 #[inline]
-pub(super) fn usize_to_u64(value: usize) -> u64
+pub(super) fn usize_to_u64(value: WireUsize) -> WireU64
 {
-    u64::try_from(value).unwrap_or(u64::MAX)
+    WireU64(u64::try_from(value.0).unwrap_or(u64::MAX))
 }

@@ -300,6 +300,217 @@ pub enum AdmissionMark
     UncheckedBypass,
 }
 
+/// Borrowed canonical kernel-export bytes offered to the validating reader.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ArtifactImage<'artifact>(&'artifact [u8]);
+
+impl<'artifact> From<&'artifact [u8]> for ArtifactImage<'artifact>
+{
+    #[inline]
+    fn from(bytes: &'artifact [u8]) -> Self
+    {
+        Self(bytes)
+    }
+}
+
+impl AsRef<[u8]> for ArtifactImage<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        self.0
+    }
+}
+
+/// Owned canonical kernel-export byte image.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EncodedArtifact(
+    /// Canonical v1 export bytes.
+    alloc::vec::Vec<u8>,
+);
+
+impl AsRef<[u8]> for EncodedArtifact
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        self.0.as_slice()
+    }
+}
+impl EncodedArtifact
+{
+    /// Borrow these canonical bytes for validation or replay.
+    #[inline]
+    #[must_use]
+    pub fn as_image(&self) -> ArtifactImage<'_>
+    {
+        ArtifactImage(self.0.as_slice())
+    }
+}
+
+impl From<EncodedArtifact> for alloc::vec::Vec<u8>
+{
+    #[inline]
+    fn from(artifact: EncodedArtifact) -> Self
+    {
+        artifact.0
+    }
+}
+
+impl core::ops::Deref for EncodedArtifact
+{
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target
+    {
+        self.0.as_slice()
+    }
+}
+
+/// Borrowed header prefix of a segmented kernel-export artifact.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ArtifactHeaderBytes<'artifact>(&'artifact [u8]);
+
+impl AsRef<[u8]> for ArtifactHeaderBytes<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        self.0
+    }
+}
+
+/// Number of declaration segments in a kernel-export artifact.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SegmentCount(usize);
+
+impl From<SegmentCount> for usize
+{
+    #[inline]
+    fn from(count: SegmentCount) -> Self
+    {
+        count.0
+    }
+}
+
+/// Number of entries in the decoded global subterm table.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct TableEntryCount(usize);
+
+impl From<usize> for TableEntryCount
+{
+    #[inline]
+    fn from(count: usize) -> Self
+    {
+        Self(count)
+    }
+}
+
+impl From<TableEntryCount> for usize
+{
+    #[inline]
+    fn from(count: TableEntryCount) -> Self
+    {
+        count.0
+    }
+}
+impl fmt::Display for TableEntryCount
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
+    {
+        self.0.fmt(f)
+    }
+}
+
+/// Saturating expanded-tree work measured during artifact decoding.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ExpandedWork(u64);
+
+impl From<u64> for ExpandedWork
+{
+    #[inline]
+    fn from(work: u64) -> Self
+    {
+        Self(work)
+    }
+}
+
+impl From<ExpandedWork> for u64
+{
+    #[inline]
+    fn from(work: ExpandedWork) -> Self
+    {
+        work.0
+    }
+}
+impl fmt::Display for ExpandedWork
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
+    {
+        self.0.fmt(f)
+    }
+}
+
+/// Global index of one entry in the artifact subterm table.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+struct GlobalIndex(u32);
+
+/// One byte in the canonical artifact wire image.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct WireByte(u8);
+
+/// One decoded 32-bit wire integer.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct WireU32(u32);
+
+/// One decoded or encoded 64-bit wire integer.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct WireU64(u64);
+
+/// One decoded or encoded host-sized wire count.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct WireUsize(usize);
+
+/// Number of bytes requested from the artifact reader.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ByteCount(usize);
+
+/// Offset of the next unread artifact byte.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ByteOffset(usize);
+
+/// Header and declaration-segment offsets for one encoded artifact.
+#[derive(Clone, Debug)]
+struct ArtifactFraming
+{
+    /// Length of the header preceding the first declaration segment.
+    header_len: usize,
+    /// Exclusive end offset of each declaration segment.
+    segment_ends: alloc::vec::Vec<usize>,
+}
+
 /// A declaration recovered from an artifact, with its admission mark.
 ///
 /// It is the unit [`decode`] yields and [`read()`] replays through the choke
@@ -359,13 +570,11 @@ impl DecodedDeclaration
 pub struct DecodeMetrics
 {
     /// The number of subterm-table entries (bounded by [`MAX_TABLE_ENTRIES`]).
-    table_entries: usize,
-    /// The maximum expanded (tree) size over every declaration root — the
-    /// quantity [`MAX_EXPANDED_TERM_WORK`] caps (a saturating `u64`).
-    max_declaration_expanded_work: u64,
-    /// The saturating sum of expanded (tree) size over every declaration root —
-    /// the quantity [`MAX_ARTIFACT_EXPANDED_WORK`] caps (gandr-4p3).
-    artifact_expanded_work: u64,
+    table_entries: TableEntryCount,
+    /// The maximum expanded (tree) size over every declaration root.
+    max_declaration_expanded_work: ExpandedWork,
+    /// The saturating sum of expanded (tree) size over every declaration root.
+    artifact_expanded_work: ExpandedWork,
 }
 
 impl DecodeMetrics
@@ -374,9 +583,9 @@ impl DecodeMetrics
     #[inline]
     #[must_use]
     pub(crate) const fn new(
-        table_entries: usize,
-        max_declaration_expanded_work: u64,
-        artifact_expanded_work: u64,
+        table_entries: TableEntryCount,
+        max_declaration_expanded_work: ExpandedWork,
+        artifact_expanded_work: ExpandedWork,
     ) -> Self
     {
         Self {
@@ -389,7 +598,7 @@ impl DecodeMetrics
     /// The number of subterm-table entries.
     #[inline]
     #[must_use]
-    pub const fn table_entries(&self) -> usize
+    pub const fn table_entries(&self) -> TableEntryCount
     {
         self.table_entries
     }
@@ -397,7 +606,7 @@ impl DecodeMetrics
     /// The maximum per-declaration-root expanded (tree) size.
     #[inline]
     #[must_use]
-    pub const fn max_declaration_expanded_work(&self) -> u64
+    pub const fn max_declaration_expanded_work(&self) -> ExpandedWork
     {
         self.max_declaration_expanded_work
     }
@@ -406,7 +615,7 @@ impl DecodeMetrics
     /// declaration roots).
     #[inline]
     #[must_use]
-    pub const fn artifact_expanded_work(&self) -> u64
+    pub const fn artifact_expanded_work(&self) -> ExpandedWork
     {
         self.artifact_expanded_work
     }
@@ -496,16 +705,10 @@ impl DecodedArtifact
 #[derive(Clone, Debug)]
 pub struct SegmentedArtifact
 {
-    /// The full canonical artifact bytes (identical to [`write()`]).
-    bytes: alloc::vec::Vec<u8>,
-    /// The length of the header preceding the first declaration segment; the
-    /// declaration segments cover `bytes[header_len..]`.
-    header_len: usize,
-    /// Exclusive end offset of each declaration segment, strictly ascending,
-    /// the last equal to `bytes.len()`; segment `k` is
-    /// `bytes[prev_end .. segment_ends[k]]` with `prev_end` the previous end or
-    /// `header_len`.
-    segment_ends: alloc::vec::Vec<usize>,
+    /// Canonical bytes shared by whole-artifact and segmented projections.
+    bytes: EncodedArtifact,
+    /// Header and declaration-segment framing offsets.
+    framing: ArtifactFraming,
 }
 
 impl SegmentedArtifact
@@ -513,25 +716,20 @@ impl SegmentedArtifact
     /// Pair canonical artifact bytes with their declaration-segment framing.
     #[inline]
     #[must_use]
-    pub(crate) fn new(
-        bytes: alloc::vec::Vec<u8>,
-        header_len: usize,
-        segment_ends: alloc::vec::Vec<usize>,
+    fn new(
+        bytes: EncodedArtifact,
+        framing: ArtifactFraming,
     ) -> Self
     {
-        Self {
-            bytes,
-            header_len,
-            segment_ends,
-        }
+        Self { bytes, framing }
     }
 
     /// The full canonical artifact bytes — byte-identical to [`write()`].
     #[inline]
     #[must_use]
-    pub fn bytes(&self) -> &[u8]
+    pub fn bytes(&self) -> ArtifactImage<'_>
     {
-        &self.bytes
+        ArtifactImage(self.bytes.as_ref())
     }
 
     /// The header bytes preceding the first declaration segment (magic,
@@ -541,17 +739,18 @@ impl SegmentedArtifact
     /// admission order; that concatenation is [`Self::bytes`].
     #[inline]
     #[must_use]
-    pub fn header(&self) -> &[u8]
+    pub fn header(&self) -> ArtifactHeaderBytes<'_>
     {
-        self.bytes.get(.. self.header_len).unwrap_or(&[])
+        let header = self.bytes.get(.. self.framing.header_len).unwrap_or(&[]);
+        ArtifactHeaderBytes(header)
     }
 
     /// The number of declaration segments (the artifact's declaration count).
     #[inline]
     #[must_use]
-    pub fn segment_count(&self) -> usize
+    pub fn segment_count(&self) -> SegmentCount
     {
-        self.segment_ends.len()
+        SegmentCount(self.framing.segment_ends.len())
     }
 
     /// The declaration segments' bytes, in admission order.
@@ -571,9 +770,9 @@ impl SegmentedArtifact
     pub fn segments(&self) -> Segments<'_>
     {
         Segments {
-            bytes: &self.bytes,
-            ends: &self.segment_ends,
-            start: self.header_len,
+            bytes: self.bytes.as_ref(),
+            ends: &self.framing.segment_ends,
+            start: self.framing.header_len,
             next: 0,
         }
     }

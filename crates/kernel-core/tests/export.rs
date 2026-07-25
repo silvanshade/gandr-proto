@@ -87,16 +87,59 @@ mod tests
     const NODE_V_LITERAL: u8 = 0x0C;
     const NODE_V_PAIR: u8 = 0x0D;
 
+    /// Mutable bytes of one hand-crafted wire fixture.
+    #[repr(transparent)]
+    struct WireFixture(Vec<u8>);
+
+    impl core::ops::Deref for WireFixture
+    {
+        type Target = Vec<u8>;
+
+        fn deref(&self) -> &Self::Target
+        {
+            &self.0
+        }
+    }
+
+    impl core::ops::DerefMut for WireFixture
+    {
+        fn deref_mut(&mut self) -> &mut Self::Target
+        {
+            &mut self.0
+        }
+    }
+
+    /// Unsigned integer carried by one hand-crafted wire fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct WireValue(u64);
+
+    /// Declaration-kind byte carried by one hand-crafted wire fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct WireTag(u8);
+
+    /// Depth of one generated amplification fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct FixtureDepth(usize);
+
+    /// Declaration count of one generated amplification fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct FixtureCount(usize);
+
     /// Append a canonical unsigned LEB128 varint (the writer's wire form).
     fn put_uvarint(
-        out: &mut Vec<u8>,
-        mut value: u64,
+        out: &mut WireFixture,
+        value: WireValue,
     )
     {
+        let mut remaining = value.0;
         loop {
-            let low = (value & 0x7f) as u8;
-            value >>= 7_u32;
-            if value == 0 {
+            let low = (remaining & 0x7f) as u8;
+            remaining >>= 7_u32;
+            if remaining == 0 {
                 out.push(low);
                 break;
             }
@@ -106,11 +149,11 @@ mod tests
 
     /// The v1 artifact header (magic, v1 version, empty minted-atom table) plus
     /// a declaration count.
-    fn v1_header(count: u64) -> Vec<u8>
+    fn v1_header(count: WireValue) -> WireFixture
     {
-        let mut bytes = WIRE_MAGIC.to_vec();
+        let mut bytes = WireFixture(WIRE_MAGIC.to_vec());
         bytes.extend_from_slice(&[0, 1]); // version 1
-        put_uvarint(&mut bytes, 0); // R4 minted-atom table, empty
+        put_uvarint(&mut bytes, WireValue(0)); // R4 minted-atom table, empty
         put_uvarint(&mut bytes, count);
         bytes
     }
@@ -118,25 +161,25 @@ mod tests
     /// Append a declaration segment header (admission checked, kind, empty
     /// name, monomorphic level signature).
     fn segment_head(
-        bytes: &mut Vec<u8>,
-        kind: u8,
+        bytes: &mut WireFixture,
+        kind: WireTag,
     )
     {
         bytes.push(WIRE_ADMISSION_CHECKED);
-        bytes.push(kind);
-        put_uvarint(bytes, 0); // name segments
-        put_uvarint(bytes, 0); // level params
-        put_uvarint(bytes, 0); // level constraints
+        bytes.push(kind.0);
+        put_uvarint(bytes, WireValue(0)); // name segments
+        put_uvarint(bytes, WireValue(0)); // level params
+        put_uvarint(bytes, WireValue(0)); // level constraints
     }
 
     /// `variable + offset` built through the strata smart constructors.
     fn var_plus(
-        index: u32,
-        offset: u64,
+        index: LevelVarIndex,
+        offset: gandr_kernel_strata::LevelOffset,
     ) -> Level
     {
-        let mut level = Level::var(LevelVar::new(LevelVarIndex::from(index)));
-        for _step in 0 .. offset {
+        let mut level = Level::var(LevelVar::new(index));
+        for _step in 0 .. u64::from(offset) {
             level = level.succ().unwrap();
         }
         level
@@ -211,14 +254,16 @@ mod tests
         let axiom6 = common::stage_axiom(
             &mut environment,
             LevelSignature::new(LevelParamCount::from(1_u32), Vec::new()),
-            &ValueTypeSpec::Universe(var_plus(0, 0)),
+            &ValueTypeSpec::Universe(var_plus(0.into(), 0.into())),
         );
         environment.add_decl(axiom6).unwrap();
-        let constraint = LandmarkConstraint::leq(var_plus(0, 0), var_plus(1, 0)).unwrap();
+        let constraint =
+            LandmarkConstraint::leq(var_plus(0.into(), 0.into()), var_plus(1.into(), 0.into()))
+                .unwrap();
         let axiom7 = common::stage_axiom(
             &mut environment,
             LevelSignature::new(LevelParamCount::from(2_u32), vec![constraint]),
-            &ValueTypeSpec::Universe(var_plus(0, 0)),
+            &ValueTypeSpec::Universe(var_plus(0.into(), 0.into())),
         );
         environment.add_decl(axiom7).unwrap();
         // 8: def U (Unit -> F Unit) = the constant reference to declaration 2.
@@ -237,14 +282,14 @@ mod tests
     {
         let environment = Environment::new();
         let bytes = write(&environment);
-        let recovered = read(&bytes).expect("the empty artifact must read");
+        let recovered = read(bytes.as_ref().into()).expect("the empty artifact must read");
         assert_eq!(
             write(&recovered),
             bytes,
             "the empty environment round-trips to byte-identical output"
         );
         assert_eq!(
-            decode(&bytes).unwrap().declarations().len(),
+            decode(bytes.as_ref().into()).unwrap().declarations().len(),
             0,
             "the empty artifact decodes to no declarations"
         );
@@ -255,13 +300,13 @@ mod tests
     {
         let environment = rich_checked_environment();
         let bytes = write(&environment);
-        let recovered = read(&bytes).expect("a genuine artifact must read");
+        let recovered = read(bytes.as_ref().into()).expect("a genuine artifact must read");
         assert_eq!(
             write(&recovered),
             bytes,
             "the recovered environment re-serializes byte-identically (E4)"
         );
-        let artifact = decode(&bytes).unwrap();
+        let artifact = decode(bytes.as_ref().into()).unwrap();
         assert_eq!(
             artifact.declarations().len(),
             9,
@@ -282,12 +327,12 @@ mod tests
         let environment = rich_checked_environment();
         let segmented = write_segmented(&environment);
         assert_eq!(
-            segmented.bytes(),
-            write(&environment).as_slice(),
+            segmented.bytes().as_ref(),
+            write(&environment).as_ref(),
             "write_segmented's bytes are byte-identical to write (B2.3 outer layer)"
         );
         assert_eq!(
-            segmented.segment_count(),
+            usize::from(segmented.segment_count()),
             9,
             "one declaration segment per admitted declaration"
         );
@@ -298,13 +343,13 @@ mod tests
     {
         let environment = rich_checked_environment();
         let segmented = write_segmented(&environment);
-        let mut reassembled = segmented.header().to_vec();
+        let mut reassembled = segmented.header().as_ref().to_vec();
         for segment in segmented.segments() {
             reassembled.extend_from_slice(segment);
         }
         assert_eq!(
             reassembled,
-            segmented.bytes(),
+            segmented.bytes().as_ref(),
             "header followed by every declaration segment reproduces the artifact"
         );
     }
@@ -315,13 +360,13 @@ mod tests
         let environment = Environment::new();
         let segmented = write_segmented(&environment);
         assert_eq!(
-            segmented.segment_count(),
+            usize::from(segmented.segment_count()),
             0,
             "the empty environment has no declaration segments"
         );
         assert_eq!(
-            segmented.header(),
-            segmented.bytes(),
+            segmented.header().as_ref(),
+            segmented.bytes().as_ref(),
             "the empty artifact is exactly its header"
         );
         assert_eq!(
@@ -349,7 +394,7 @@ mod tests
         );
         let dependent = environment.add_decl(dependent_decl).unwrap();
         let bytes = write(&environment);
-        let recovered = read(&bytes).unwrap();
+        let recovered = read(bytes.as_ref().into()).unwrap();
         assert_eq!(
             environment.audit(axiom),
             recovered.audit(axiom),
@@ -382,14 +427,14 @@ mod tests
         let dependent = environment.add_decl(dependent_decl).unwrap();
         let bytes = write(&environment);
 
-        let artifact = decode(&bytes).unwrap();
+        let artifact = decode(bytes.as_ref().into()).unwrap();
         assert_eq!(
             artifact.declarations()[0].mark(),
             AdmissionMark::UncheckedBypass,
             "the bypass mark survives serialization"
         );
 
-        let recovered = read(&bytes).unwrap();
+        let recovered = read(bytes.as_ref().into()).unwrap();
         assert_eq!(
             recovered.audit(dependent).unchecked_admissions(),
             &[bypassed.position()],
@@ -451,7 +496,7 @@ mod tests
         // A body `pair(x, x)` with a shared `x` produces one shared entry, not
         // two: the artifact is strictly smaller than the same shape with two
         // DISTINCT (structurally different) children.
-        let build = |same: bool| -> Vec<u8> {
+        let build = |same: bool| {
             let mut environment = Environment::new();
             let mut builder = environment.stage();
             let arena = builder.arena();
@@ -481,12 +526,12 @@ mod tests
     {
         // A v0-magic/v0-version artifact is refused UnsupportedVersion{found:0} —
         // the old v0 goldens repurposed as the refusal fixture (E5).
-        let mut bytes = WIRE_MAGIC.to_vec();
+        let mut bytes = WireFixture(WIRE_MAGIC.to_vec());
         bytes.extend_from_slice(&[0, 0]); // version 0
-        put_uvarint(&mut bytes, 0);
-        put_uvarint(&mut bytes, 0);
+        put_uvarint(&mut bytes, WireValue(0));
+        put_uvarint(&mut bytes, WireValue(0));
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::UnsupportedVersion { found: 0 },
             "a v0 artifact is a named refusal, not a guess (E5)"
         );
@@ -495,11 +540,12 @@ mod tests
     #[test]
     fn an_unknown_future_version_is_refused()
     {
-        let mut bytes = write(&rich_checked_environment());
+        let mut bytes = Vec::from(write(&rich_checked_environment()));
+        assert!(bytes.len() > 5, "the canonical header carries a version");
         bytes[4] = 0;
         bytes[5] = 2; // version 2
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::UnsupportedVersion { found: 2 },
             "an unimplemented future version is refused"
         );
@@ -517,11 +563,11 @@ mod tests
             (5_u8, ReservedKind::FunctorDef),
         ];
         for (kind_byte, kind) in expectations {
-            let mut bytes = v1_header(1);
+            let mut bytes = v1_header(WireValue(1));
             bytes.push(WIRE_ADMISSION_CHECKED);
             bytes.push(kind_byte);
             assert_eq!(
-                decode(&bytes).unwrap_err(),
+                decode(bytes.as_slice().into()).unwrap_err(),
                 DecodeError::ReservedDeclarationKind { kind },
                 "reserved declaration kind {kind_byte} is rejected distinctly"
             );
@@ -531,10 +577,10 @@ mod tests
     #[test]
     fn a_non_empty_minted_atom_table_is_rejected()
     {
-        let mut bytes = v1_header(0);
+        let mut bytes = v1_header(WireValue(0));
         bytes[6] = 1; // the R4 minted-atom table count
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::ReservedSlotOccupied {
                 slot: ReservedSlot::MintedAtomTable,
             },
@@ -545,12 +591,12 @@ mod tests
     #[test]
     fn a_non_empty_structured_name_is_rejected()
     {
-        let mut bytes = v1_header(1);
+        let mut bytes = v1_header(WireValue(1));
         bytes.push(WIRE_ADMISSION_CHECKED);
         bytes.push(WIRE_KIND_AXIOM);
-        put_uvarint(&mut bytes, 1); // one name segment -> reserved at v1
+        put_uvarint(&mut bytes, WireValue(1)); // one name segment -> reserved at v1
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::ReservedSlotOccupied {
                 slot: ReservedSlot::StructuredName,
             },
@@ -561,16 +607,16 @@ mod tests
     #[test]
     fn a_non_empty_def_annotation_slot_is_rejected()
     {
-        let mut bytes = v1_header(1);
-        segment_head(&mut bytes, WIRE_KIND_DEF);
-        put_uvarint(&mut bytes, 2); // entry_count
+        let mut bytes = v1_header(WireValue(1));
+        segment_head(&mut bytes, WireTag(WIRE_KIND_DEF));
+        put_uvarint(&mut bytes, WireValue(2)); // entry_count
         bytes.push(NODE_VT_UNIT); // entry 0: declared type
         bytes.push(NODE_V_UNIT); // entry 1: body
-        put_uvarint(&mut bytes, 0); // root_declared
-        put_uvarint(&mut bytes, 1); // root_body
-        put_uvarint(&mut bytes, 1); // first Def annotation slot -> non-empty
+        put_uvarint(&mut bytes, WireValue(0)); // root_declared
+        put_uvarint(&mut bytes, WireValue(1)); // root_body
+        put_uvarint(&mut bytes, WireValue(1)); // first Def annotation slot -> non-empty
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::ReservedSlotOccupied {
                 slot: ReservedSlot::ErasureAnnotation,
             },
@@ -583,22 +629,22 @@ mod tests
     #[test]
     fn a_non_canonical_level_encoding_is_rejected()
     {
-        let mut bytes = v1_header(1);
+        let mut bytes = v1_header(WireValue(1));
         bytes.push(WIRE_ADMISSION_CHECKED);
         bytes.push(WIRE_KIND_AXIOM);
-        put_uvarint(&mut bytes, 0); // name
-        put_uvarint(&mut bytes, 1); // one level parameter (so x0 is in scope)
-        put_uvarint(&mut bytes, 0); // constraints
-        put_uvarint(&mut bytes, 1); // entry_count
+        put_uvarint(&mut bytes, WireValue(0)); // name
+        put_uvarint(&mut bytes, WireValue(1)); // one level parameter (so x0 is in scope)
+        put_uvarint(&mut bytes, WireValue(0)); // constraints
+        put_uvarint(&mut bytes, WireValue(1)); // entry_count
         bytes.push(NODE_VT_UNIVERSE);
         // Non-canonical level: max(3, x0 + 3) -> constant 3 is dominated.
-        put_uvarint(&mut bytes, 3); // constant part
-        put_uvarint(&mut bytes, 1); // one atom
-        put_uvarint(&mut bytes, 0); // variable index 0
-        put_uvarint(&mut bytes, 3); // offset 3
-        put_uvarint(&mut bytes, 0); // root_declared
+        put_uvarint(&mut bytes, WireValue(3)); // constant part
+        put_uvarint(&mut bytes, WireValue(1)); // one atom
+        put_uvarint(&mut bytes, WireValue(0)); // variable index 0
+        put_uvarint(&mut bytes, WireValue(3)); // offset 3
+        put_uvarint(&mut bytes, WireValue(0)); // root_declared
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
@@ -609,23 +655,23 @@ mod tests
     #[test]
     fn a_non_canonical_literal_encoding_is_rejected()
     {
-        let mut bytes = v1_header(1);
-        segment_head(&mut bytes, WIRE_KIND_DEF);
-        put_uvarint(&mut bytes, 2); // entry_count
+        let mut bytes = v1_header(WireValue(1));
+        segment_head(&mut bytes, WireTag(WIRE_KIND_DEF));
+        put_uvarint(&mut bytes, WireValue(2)); // entry_count
         bytes.push(NODE_VT_BASE);
         bytes.push(0); // base atom: Integer
         bytes.push(NODE_V_LITERAL);
         bytes.push(0); // literal kind: Integer
         bytes.push(0); // sign: NonNegative
-        put_uvarint(&mut bytes, 3); // magnitude length
+        put_uvarint(&mut bytes, WireValue(3)); // magnitude length
         bytes.extend_from_slice(b"007"); // non-canonical (leading zeros)
-        put_uvarint(&mut bytes, 0); // root_declared
-        put_uvarint(&mut bytes, 1); // root_body
+        put_uvarint(&mut bytes, WireValue(0)); // root_declared
+        put_uvarint(&mut bytes, WireValue(1)); // root_body
         for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, 0); // R3 slots
+            put_uvarint(&mut bytes, WireValue(0)); // R3 slots
         }
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
@@ -636,23 +682,23 @@ mod tests
     #[test]
     fn a_non_digit_magnitude_is_rejected()
     {
-        let mut bytes = v1_header(1);
-        segment_head(&mut bytes, WIRE_KIND_DEF);
-        put_uvarint(&mut bytes, 2);
+        let mut bytes = v1_header(WireValue(1));
+        segment_head(&mut bytes, WireTag(WIRE_KIND_DEF));
+        put_uvarint(&mut bytes, WireValue(2));
         bytes.push(NODE_VT_BASE);
         bytes.push(0); // Integer
         bytes.push(NODE_V_LITERAL);
         bytes.push(0); // Integer literal
         bytes.push(0); // sign
-        put_uvarint(&mut bytes, 2);
+        put_uvarint(&mut bytes, WireValue(2));
         bytes.extend_from_slice(b"1a"); // non-digit
-        put_uvarint(&mut bytes, 0);
-        put_uvarint(&mut bytes, 1);
+        put_uvarint(&mut bytes, WireValue(0));
+        put_uvarint(&mut bytes, WireValue(1));
         for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, 0);
+            put_uvarint(&mut bytes, WireValue(0));
         }
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::LiteralPayload,
             },
@@ -667,22 +713,22 @@ mod tests
     {
         // Two structurally-equal entries (unit values) — the maximal-sharing
         // re-encoder merges them, so the table is not canonical.
-        let mut bytes = v1_header(1);
-        segment_head(&mut bytes, WIRE_KIND_DEF);
-        put_uvarint(&mut bytes, 4); // entry_count
+        let mut bytes = v1_header(WireValue(1));
+        segment_head(&mut bytes, WireTag(WIRE_KIND_DEF));
+        put_uvarint(&mut bytes, WireValue(4)); // entry_count
         bytes.push(NODE_VT_UNIT); // 0: declared
         bytes.push(NODE_V_UNIT); // 1: unit value
         bytes.push(NODE_V_UNIT); // 2: DUPLICATE unit value
         bytes.push(NODE_V_PAIR); // 3: pair(1, 2)
-        put_uvarint(&mut bytes, 1);
-        put_uvarint(&mut bytes, 2);
-        put_uvarint(&mut bytes, 0); // root_declared
-        put_uvarint(&mut bytes, 3); // root_body
+        put_uvarint(&mut bytes, WireValue(1));
+        put_uvarint(&mut bytes, WireValue(2));
+        put_uvarint(&mut bytes, WireValue(0)); // root_declared
+        put_uvarint(&mut bytes, WireValue(3)); // root_body
         for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, 0);
+            put_uvarint(&mut bytes, WireValue(0));
         }
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
@@ -695,24 +741,24 @@ mod tests
     {
         // pair(var0, var1) with the two variable entries in the wrong (non
         // post-order-first-completion) order.
-        let mut bytes = v1_header(1);
-        segment_head(&mut bytes, WIRE_KIND_DEF);
-        put_uvarint(&mut bytes, 4);
+        let mut bytes = v1_header(WireValue(1));
+        segment_head(&mut bytes, WireTag(WIRE_KIND_DEF));
+        put_uvarint(&mut bytes, WireValue(4));
         bytes.push(NODE_VT_UNIT); // 0: declared
         bytes.push(NODE_V_VARIABLE); // 1: var1 (should be second)
-        put_uvarint(&mut bytes, 1);
+        put_uvarint(&mut bytes, WireValue(1));
         bytes.push(NODE_V_VARIABLE); // 2: var0 (should be first)
-        put_uvarint(&mut bytes, 0);
+        put_uvarint(&mut bytes, WireValue(0));
         bytes.push(NODE_V_PAIR); // 3: pair(var0=2, var1=1)
-        put_uvarint(&mut bytes, 2);
-        put_uvarint(&mut bytes, 1);
-        put_uvarint(&mut bytes, 0); // root_declared
-        put_uvarint(&mut bytes, 3); // root_body
+        put_uvarint(&mut bytes, WireValue(2));
+        put_uvarint(&mut bytes, WireValue(1));
+        put_uvarint(&mut bytes, WireValue(0)); // root_declared
+        put_uvarint(&mut bytes, WireValue(3)); // root_body
         for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, 0);
+            put_uvarint(&mut bytes, WireValue(0));
         }
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
@@ -724,20 +770,20 @@ mod tests
     fn a_dead_entry_is_rejected()
     {
         // An entry reachable from no root — the re-encoder drops it.
-        let mut bytes = v1_header(1);
-        segment_head(&mut bytes, WIRE_KIND_DEF);
-        put_uvarint(&mut bytes, 3);
+        let mut bytes = v1_header(WireValue(1));
+        segment_head(&mut bytes, WireTag(WIRE_KIND_DEF));
+        put_uvarint(&mut bytes, WireValue(3));
         bytes.push(NODE_VT_UNIT); // 0: declared
         bytes.push(NODE_V_UNIT); // 1: body
         bytes.push(NODE_V_VARIABLE); // 2: DEAD (unreferenced)
-        put_uvarint(&mut bytes, 0);
-        put_uvarint(&mut bytes, 0); // root_declared
-        put_uvarint(&mut bytes, 1); // root_body
+        put_uvarint(&mut bytes, WireValue(0));
+        put_uvarint(&mut bytes, WireValue(0)); // root_declared
+        put_uvarint(&mut bytes, WireValue(1)); // root_body
         for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, 0);
+            put_uvarint(&mut bytes, WireValue(0));
         }
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
@@ -750,20 +796,20 @@ mod tests
     {
         // pair(1, 1) as entry 1 references its own global index — not strictly
         // earlier (acyclicity).
-        let mut bytes = v1_header(1);
-        segment_head(&mut bytes, WIRE_KIND_DEF);
-        put_uvarint(&mut bytes, 2);
+        let mut bytes = v1_header(WireValue(1));
+        segment_head(&mut bytes, WireTag(WIRE_KIND_DEF));
+        put_uvarint(&mut bytes, WireValue(2));
         bytes.push(NODE_VT_UNIT); // 0: declared
         bytes.push(NODE_V_PAIR); // 1: pair(1, 1) -> self reference
-        put_uvarint(&mut bytes, 1);
-        put_uvarint(&mut bytes, 1);
-        put_uvarint(&mut bytes, 0);
-        put_uvarint(&mut bytes, 1);
+        put_uvarint(&mut bytes, WireValue(1));
+        put_uvarint(&mut bytes, WireValue(1));
+        put_uvarint(&mut bytes, WireValue(0));
+        put_uvarint(&mut bytes, WireValue(1));
         for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, 0);
+            put_uvarint(&mut bytes, WireValue(0));
         }
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ChildOrder,
             },
@@ -776,13 +822,13 @@ mod tests
     /// Build a bypass-admitted environment whose body is a `depth`-deep
     /// repeated pair diamond `pair(x, x)` (each level shares the prior),
     /// the declared type an ordinary unit.
-    fn diamond_environment(depth: usize) -> Environment
+    fn diamond_environment(depth: FixtureDepth) -> Environment
     {
         let mut environment = Environment::new();
         let mut builder = environment.stage();
         let arena = builder.arena();
         let mut node = arena.value_unit();
-        for _step in 0 .. depth {
+        for _step in 0 .. depth.0 {
             node = arena.value_pair(node, node);
         }
         let declared = arena.value_type_unit();
@@ -798,7 +844,7 @@ mod tests
         // size (2^29); the reader rejects it by the expanded-work budget BEFORE
         // replay. The differential: `read` fails on the DECODE plane
         // (ReadError::Decode), never reaching the choke point / checker.
-        let environment = diamond_environment(28);
+        let environment = diamond_environment(FixtureDepth(28));
         let bytes = write(&environment);
         assert!(
             bytes.len() < 512,
@@ -806,13 +852,13 @@ mod tests
             bytes.len()
         );
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ExpandedWork,
             },
             "the repeated-diamond DAG is rejected by the expanded-work budget"
         );
-        match read(&bytes) {
+        match read(bytes.as_ref().into()) {
             | Err(ReadError::Decode(DecodeError::Malformed {
                 site: MalformedSite::ExpandedWork,
             })) => {},
@@ -836,9 +882,9 @@ mod tests
         );
         let depth =
             usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 1).expect("the depth fits");
-        let under = write(&diamond_environment(depth));
+        let under = write(&diamond_environment(FixtureDepth(depth)));
         assert!(
-            decode(&under).is_ok(),
+            decode(under.as_ref().into()).is_ok(),
             "expanded size just under the cap decodes"
         );
         let mut over_env = Environment::new();
@@ -857,7 +903,7 @@ mod tests
         }
         let over = write(&over_env);
         assert_eq!(
-            decode(&over).unwrap_err(),
+            decode(over.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ExpandedWork,
             },
@@ -874,7 +920,7 @@ mod tests
         // (the table cap is the smaller, distinct-node axis), so only the
         // table-size arm fires. Tracks the D3-tuned constant.
         let cap = MAX_TABLE_ENTRIES;
-        let build = |entries: usize| -> Vec<u8> {
+        let build = |entries: usize| {
             let mut environment = Environment::new();
             let mut builder = environment.stage();
             let arena = builder.arena();
@@ -891,11 +937,11 @@ mod tests
             write(&environment)
         };
         assert!(
-            decode(&build(cap)).is_ok(),
+            decode(build(cap).as_ref().into()).is_ok(),
             "a table at exactly MAX_TABLE_ENTRIES decodes"
         );
         assert_eq!(
-            decode(&build(cap + 1)).unwrap_err(),
+            decode(build(cap + 1).as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::TableSize,
             },
@@ -912,17 +958,17 @@ mod tests
     /// the `N`-cheap-segments-sharing-one-near-cap-root shape gandr-4p3
     /// defends.
     fn shared_diamond_environment(
-        count: usize,
-        depth: usize,
+        count: FixtureCount,
+        depth: FixtureDepth,
     ) -> Environment
     {
         let mut environment = Environment::new();
-        for _decl in 0 .. count {
+        for _decl in 0 .. count.0 {
             let mut builder = environment.stage();
             let body = {
                 let arena = builder.arena();
                 let mut node = arena.value_unit();
-                for _step in 0 .. depth {
+                for _step in 0 .. depth.0 {
                     node = arena.value_pair(node, node);
                 }
                 node
@@ -955,15 +1001,21 @@ mod tests
         let contribution = 1_u64 << (depth + 1); // = MAX_EXPANDED_TERM_WORK / 2
         let count = usize::try_from(MAX_ARTIFACT_EXPANDED_WORK / contribution).expect("count fits");
         // Just at the cap: accepts (the artifact arm rejects strictly over).
-        let at_cap = write(&shared_diamond_environment(count, depth));
+        let at_cap = write(&shared_diamond_environment(
+            FixtureCount(count),
+            FixtureDepth(depth),
+        ));
         assert!(
-            decode(&at_cap).is_ok(),
+            decode(at_cap.as_ref().into()).is_ok(),
             "artifact-total work at exactly the cap decodes"
         );
         // One more declaration pushes the total over.
-        let over = write(&shared_diamond_environment(count + 1, depth));
+        let over = write(&shared_diamond_environment(
+            FixtureCount(count + 1),
+            FixtureDepth(depth),
+        ));
         assert_eq!(
-            decode(&over).unwrap_err(),
+            decode(over.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ArtifactExpandedWork,
             },
@@ -981,20 +1033,23 @@ mod tests
         // checker (the gandr-4p3 differential).
         let depth =
             usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 1).expect("the depth fits");
-        let bytes = write(&shared_diamond_environment(512, depth));
+        let bytes = write(&shared_diamond_environment(
+            FixtureCount(512),
+            FixtureDepth(depth),
+        ));
         assert!(
             bytes.len() < 8192,
             "the many-segment artifact is small ({} bytes) despite astronomical artifact work",
             bytes.len()
         );
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ArtifactExpandedWork,
             },
             "the many-segment amplification is rejected by the artifact-total budget"
         );
-        match read(&bytes) {
+        match read(bytes.as_ref().into()) {
             | Err(ReadError::Decode(DecodeError::Malformed {
                 site: MalformedSite::ArtifactExpandedWork,
             })) => {},
@@ -1011,10 +1066,10 @@ mod tests
     #[test]
     fn an_overlong_varint_is_rejected()
     {
-        let mut bytes = v1_header(0);
+        let mut bytes = v1_header(WireValue(0));
         bytes.splice(6 .. 7, [0x80, 0x00]);
         assert_eq!(
-            decode(&bytes).unwrap_err(),
+            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::Varint,
             },
@@ -1032,7 +1087,7 @@ mod tests
             &ValueTypeSpec::Unit,
         );
         environment.add_decl(axiom).unwrap();
-        let mut bytes = write(&environment);
+        let mut bytes = Vec::from(write(&environment));
         // The single entry's tag is a NODE_VT_UNIT byte; corrupt it.
         let position = bytes
             .iter()
@@ -1040,7 +1095,10 @@ mod tests
             .expect("the unit entry tag is present");
         bytes[position] = 0xFF; // an out-of-vocabulary node tag
         assert!(
-            matches!(decode(&bytes), Err(DecodeError::UnknownTag { .. })),
+            matches!(
+                decode(bytes.as_slice().into()),
+                Err(DecodeError::UnknownTag { .. })
+            ),
             "a corrupted node tag is rejected as an unknown tag"
         );
     }
@@ -1052,11 +1110,14 @@ mod tests
         for length in 0 .. bytes.len() {
             let prefix = &bytes[.. length];
             assert!(
-                decode(prefix).is_err(),
+                decode(prefix.into()).is_err(),
                 "the {length}-byte proper prefix must be rejected, never a false success"
             );
         }
-        assert!(decode(&bytes).is_ok(), "the full artifact still decodes");
+        assert!(
+            decode(bytes.as_ref().into()).is_ok(),
+            "the full artifact still decodes"
+        );
     }
 
     // ----- The generated strategies for the round-trip property. -----
@@ -1072,8 +1133,8 @@ mod tests
             any::<bool>(),
         )
             .prop_map(|(left_var, left_offset, right_var, right_offset, equal)| {
-                let left = var_plus(left_var, left_offset);
-                let right = var_plus(right_var, right_offset);
+                let left = var_plus(left_var.into(), left_offset.into());
+                let right = var_plus(right_var.into(), right_offset.into());
                 if equal {
                     LandmarkConstraint::equal(left, right).unwrap()
                 }
@@ -1151,10 +1212,11 @@ mod tests
                 signatures.push(admit_spec_unchecked(&mut environment, declaration));
             }
             let bytes = write(&environment);
-            let recovered = read(&bytes).expect("a genuine artifact must read");
+            let recovered =
+                read(bytes.as_ref().into()).expect("a genuine artifact must read");
             prop_assert!(write(&recovered) == bytes, "the round trip is byte-stable");
 
-            let artifact = decode(&bytes).unwrap();
+            let artifact = decode(bytes.as_ref().into()).unwrap();
             prop_assert_eq!(
                 artifact.declarations().len(),
                 declarations.len(),
@@ -1199,12 +1261,18 @@ mod tests
         #[test]
         fn arbitrary_bytes_never_panic(raw in prop::collection::vec(any::<u8>(), 0 .. 128))
         {
-            match decode(&raw) {
+            match decode(raw.as_slice().into()) {
                 | Ok(_artifact) => {
-                    prop_assert!(read(&raw).is_ok(), "a decodable artifact also reads");
+                    prop_assert!(
+                        read(raw.as_slice().into()).is_ok(),
+                        "a decodable artifact also reads"
+                    );
                 },
                 | Err(_error) => {
-                    prop_assert!(read(&raw).is_err(), "a rejected artifact also fails to read");
+                    prop_assert!(
+                        read(raw.as_slice().into()).is_err(),
+                        "a rejected artifact also fails to read"
+                    );
                 },
             }
         }

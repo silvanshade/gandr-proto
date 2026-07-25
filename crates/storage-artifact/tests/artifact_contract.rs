@@ -124,7 +124,7 @@ mod tests
 
         assert_eq!(
             records.reassemble().as_ref(),
-            bytes.as_slice(),
+            bytes.as_ref(),
             "header plus records in key order reproduces the artifact byte-for-byte"
         );
 
@@ -137,7 +137,7 @@ mod tests
         );
         assert_eq!(
             records.reassemble().as_ref(),
-            bytes.as_slice(),
+            bytes.as_ref(),
             "building does not disturb reassembly"
         );
     }
@@ -285,7 +285,7 @@ mod tests
             let records = ArtifactRecordSet::from_environment(&environment);
 
             let reassembled = records.reassemble();
-            prop_assert_eq!(reassembled.as_ref(), bytes.as_slice());
+            prop_assert_eq!(reassembled.as_ref(), bytes.as_ref());
             prop_assert_eq!(
                 u64::from(records.record_count()),
                 u64::try_from(kinds.len()).unwrap()

@@ -38,17 +38,22 @@ mod tests
     use gandr_kernel_core::decode;
     use gandr_kernel_core::write;
 
+    /// Requested depth of one iterative hardening fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct FixtureDepth(usize);
+
     /// A chain depth past any plausible recursive-glue stack budget. Built
     /// iteratively (proptest never reaches this depth).
-    const CHAIN_DEPTH: usize = 1_000_000;
+    const CHAIN_DEPTH: FixtureDepth = FixtureDepth(1_000_000);
 
     /// A smaller depth for the multi-pass decode witness (write, decode, and
     /// the canonical re-encode each walk the whole tree).
-    const DECODE_DEPTH: usize = 200_000;
+    const DECODE_DEPTH: FixtureDepth = FixtureDepth(200_000);
 
     /// A depth for the checker-totality witnesses (gandr-98o): the machine
     /// descends this far, well past the retired 512 depth budget.
-    const CHECK_DEPTH: usize = 200_000;
+    const CHECK_DEPTH: FixtureDepth = FixtureDepth(200_000);
 
     /// A deliberately small worker-thread stack: recursive glue overflows it
     /// well before the chain depth; the flat arena teardown does not.
@@ -71,11 +76,11 @@ mod tests
     /// A left-nested pair chain of the given depth, minted into `arena`.
     fn deep_value(
         arena: &mut TermArena,
-        depth: usize,
+        depth: FixtureDepth,
     ) -> ValueId
     {
         let mut value = arena.value_unit();
-        for _step in 0 .. depth {
+        for _step in 0 .. depth.0 {
             let unit = arena.value_unit();
             value = arena.value_pair(value, unit);
         }
@@ -86,12 +91,12 @@ mod tests
     /// computation as the bound sub-computation), minted into `arena`.
     fn deep_computation(
         arena: &mut TermArena,
-        depth: usize,
+        depth: FixtureDepth,
     ) -> ComputationId
     {
         let unit = arena.value_unit();
         let mut computation = arena.computation_return(unit);
-        for _step in 0 .. depth {
+        for _step in 0 .. depth.0 {
             let inner_unit = arena.value_unit();
             let inner_return = arena.computation_return(inner_unit);
             computation = arena.computation_bind(computation, inner_return);
@@ -102,11 +107,11 @@ mod tests
     /// A left-nested product chain of the given depth, minted into `arena`.
     fn deep_value_type(
         arena: &mut TermArena,
-        depth: usize,
+        depth: FixtureDepth,
     ) -> ValueTypeId
     {
         let mut value_type = arena.value_type_unit();
-        for _step in 0 .. depth {
+        for _step in 0 .. depth.0 {
             let unit = arena.value_type_unit();
             value_type = arena.value_type_product(value_type, unit);
         }
@@ -117,12 +122,12 @@ mod tests
     /// codomain), minted into `arena`.
     fn deep_comp_type(
         arena: &mut TermArena,
-        depth: usize,
+        depth: FixtureDepth,
     ) -> gandr_kernel_core::CompTypeId
     {
         let unit = arena.value_type_unit();
         let mut comp_type = arena.comp_type_returner(unit);
-        for _step in 0 .. depth {
+        for _step in 0 .. depth.0 {
             let domain = arena.value_type_unit();
             comp_type = arena.comp_type_arrow(domain, comp_type);
         }
@@ -208,7 +213,7 @@ mod tests
             let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
             let _id = environment.add_decl_unchecked(declaration);
             let bytes = write(&environment);
-            let decoded = decode(&bytes).expect("the deep artifact decodes");
+            let decoded = decode(bytes.as_ref().into()).expect("the deep artifact decodes");
             assert_eq!(decoded.declarations().len(), 1, "one declaration decodes");
             drop(decoded);
         });
@@ -249,7 +254,7 @@ mod tests
             // body = thunk (bind _ <- return unit; ...; return unit).
             let inner_unit = arena.value_unit();
             let mut chain = arena.computation_return(inner_unit);
-            for _step in 0 .. CHECK_DEPTH {
+            for _step in 0 .. CHECK_DEPTH.0 {
                 let bound_unit = arena.value_unit();
                 let bound = arena.computation_return(bound_unit);
                 chain = arena.computation_bind(bound, chain);

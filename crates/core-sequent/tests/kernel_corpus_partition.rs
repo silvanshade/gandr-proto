@@ -197,7 +197,7 @@ mod tests
     )
     {
         let bytes = write(environment);
-        let reread = read(&bytes).unwrap_or_else(|error| {
+        let reread = read(bytes.as_ref().into()).unwrap_or_else(|error| {
             panic!(
                 "{} item {}: an eligible item failed to re-read: {error}",
                 location.source, location.index

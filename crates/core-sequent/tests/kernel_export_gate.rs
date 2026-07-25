@@ -339,7 +339,7 @@ mod tests
         let identity = artifact_identity(environment);
 
         let start = Instant::now();
-        let decoded = decode(&bytes).unwrap_or_else(|error| {
+        let decoded = decode(bytes.as_ref().into()).unwrap_or_else(|error| {
             panic!(
                 "{}: an exit-gate artifact failed to decode: {error}",
                 label.0
@@ -350,7 +350,7 @@ mod tests
 
         // Replay: `read` re-admits through the choke point (K2/E3) and the whole
         // artifact round-trips byte-identically (the frozen fixed point).
-        let reread = read(&bytes).unwrap_or_else(|error| {
+        let reread = read(bytes.as_ref().into()).unwrap_or_else(|error| {
             panic!("{label}: an exit-gate artifact failed to replay: {error}")
         });
         assert_eq!(
@@ -370,9 +370,9 @@ mod tests
 
         Outcome {
             size_bytes: bytes.len(),
-            table_entries: metrics.table_entries(),
-            expanded_work: metrics.max_declaration_expanded_work(),
-            artifact_work: metrics.artifact_expanded_work(),
+            table_entries: usize::from(metrics.table_entries()),
+            expanded_work: u64::from(metrics.max_declaration_expanded_work()),
+            artifact_work: u64::from(metrics.artifact_expanded_work()),
             identity,
         }
     }
