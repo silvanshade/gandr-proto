@@ -1,9 +1,6 @@
 #:tombi toml-version = "v1.0.0"
 #:schema https://mise.jdx.dev/schema/mise.json
 
-# Linked-worktree trust propagation replaces lifecycle trust hooks (core H15).
-# Snapshot harness roots belong in the user's global `trusted_config_paths`;
-# a project config cannot bootstrap trust for its own isolated copy.
 min_version = "2026.7.5"
 
 [settings]
@@ -14,9 +11,6 @@ minimum_release_age = "1d"
 lockfile = true
 
 [settings.cargo]
-# Fetch prebuilt release binaries via cargo-binstall instead of compiling
-# cargo: tools (including coreutils) from source. `cargo:cargo-binstall` is
-# pinned in [tools], so this holds in fresh/isolated environments too.
 binstall = true
 
 [settings.npm]
@@ -26,24 +20,8 @@ package_manager = "aube"
 uvx = true
 
 [env]
-# Toolchain pins are configured ONCE here — mise is the SOLE toolchain
-# authority. A tracked rust-toolchain file would be a second copy of the same
-# pin and two copies drifted in practice. The ignored driver-local file is
-# materialized from `RUSTUP_TOOLCHAIN_NIGHTLY` for tools that deliberately
-# strip the environment before asking rustup to select a toolchain.
-# `get_env` keeps the ambient value when a caller already set it, so an
-# explicit override wins.
-# RUSTUP_TOOLCHAIN preempts even an explicit `rustup run <other>` argument, so
-# nightly tasks re-export it inline (`RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" …`)
-# rather than fighting that precedence with `rustup run`.
 RUSTUP_TOOLCHAIN = "{{ get_env(name='RUSTUP_TOOLCHAIN', default='1.97.1') }}"
 RUSTUP_TOOLCHAIN_NIGHTLY = "{{ get_env(name='RUSTUP_TOOLCHAIN_NIGHTLY', default='nightly-2026-07-07') }}"
-# Cargo resolves external subcommand binaries (cargo-clippy, cargo-fmt,
-# rustfmt) from PATH, so a Homebrew rust install at /opt/homebrew/bin silently
-# shadows the pinned toolchain. Prepend the rustup PROXY directory (not a
-# resolved toolchain bin dir): the proxies dispatch on RUSTUP_TOOLCHAIN, so
-# every task — and every child a formatter spawns — follows the pin above or a
-# task's inline nightly override.
 _.path = [
   "{{ exec(command='dirname \"$(command -v rustup || echo \"$HOME/.cargo/bin/rustup\")\"') }}"
 ]
@@ -56,46 +34,32 @@ includes = [".config/mise/tasks"]
 "aqua:anchore/syft" = "1.49.0"
 "cargo:adrs" = "0.10.1"
 "cargo:b3sum" = "1.8.5"
+"cargo:cargo-afl" = { version = "0.18.2", default-features = false }
 "cargo:cargo-autoinherit" = "0.1.6"
 "cargo:cargo-binstall" = "1.21.0"
 "cargo:cargo-careful" = "0.4.10"
-# cargo-afl's release binary embeds its build host's cargo registry path, which
-# makes `cargo afl config --build` non-relocatable. This no-op feature override
-# forces mise's Cargo backend to source-build this one tool instead of binstall.
-"cargo:cargo-afl" = { version = "0.18.2", default-features = false }
 "cargo:cargo-dylint" = "6.0.1"
-"cargo:dylint-link" = "6.0.1"
 "cargo:cargo-llvm-cov" = "0.8.7"
 "cargo:cargo-mutants" = "27.1.0"
 "cargo:cargo-nextest" = "0.9.140"
-# uutils coreutils — monolithic multicall binary, invoked `coreutils cp`.
-# Gives uniform reflink copy (`coreutils cp --reflink=auto`) on macOS AND Linux
-# for any local CI cache artifact warmup/copying.
 "cargo:coreutils" = "0.9.0"
+"cargo:dylint-link" = "6.0.1"
 "cargo:nu" = "0.113.1"  # NOTE: nu stays pinned at =0.113.1
 "cargo:prek" = "0.4.10"
-"cargo:rumdl" = "0.2.41"
+"cargo:rumdl" = "0.2.42"
 "cargo:sizelint" = "0.1.5"
 "cargo:typos-cli" = "1.48.0"
-"cargo:uv" = "0.11.31"
-"cargo:worktrunk" = "0.68.0"
+"cargo:uv" = "0.11.32"
+"cargo:worktrunk" = "0.69.0"
 "github:agda/agda" = "2.8.0"
 "github:numtide/treefmt" = "2.5.0"
-# microsandbox (`msb`): libkrun microVM runner, the containment substrate for
-# cargo-mutants. The regex is load-bearing and ANCHORED: it
-# selects the BUNDLE `microsandbox-<os>-<arch>.tar.gz`, which carries both `msb` and
-# the `libkrunfw.5.dylib` kernel payload that `msb` dlopens at VM boot. The bare
-# `msb-*` asset installs cleanly and then fails on first boot; unanchored,
-# `microsandbox-` also matches `libmicrosandbox_go_ffi-*`. mise extracts the bundle
-# flat, and `msb` resolves libkrunfw "beside the resolved msb binary", so no
-# MSB_LIBKRUNFW_PATH is needed. macOS support is Apple Silicon only.
 "github:superradcompany/microsandbox" = { version = "0.6.6", matching_regex = "^microsandbox-" }
 "github:tombi-toml/tombi" = "1.2.4"
 "npm:@commitlint/cli" = "21.2.1"
 "npm:oxfmt" = "0.60.0"
 "npm:oxlint" = "1.75.0"
 "npm:oxlint-tsgolint" = "7.0.2001"
-"npm:tsdown" = "0.22.13"
+"npm:tsdown" = "0.22.14"
 "pipx:yamllint" = "1.38.0"
 aube = "1.32.0"
 node = "26.5.0"

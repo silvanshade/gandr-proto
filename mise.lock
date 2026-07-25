@@ -184,7 +184,7 @@ version = "0.4.10"
 backend = "cargo:prek"
 
 [[tools."cargo:rumdl"]]
-version = "0.2.41"
+version = "0.2.42"
 backend = "cargo:rumdl"
 
 [[tools."cargo:sizelint"]]
@@ -196,11 +196,11 @@ version = "1.48.0"
 backend = "cargo:typos-cli"
 
 [[tools."cargo:uv"]]
-version = "0.11.31"
+version = "0.11.32"
 backend = "cargo:uv"
 
 [[tools."cargo:worktrunk"]]
-version = "0.68.0"
+version = "0.69.0"
 backend = "cargo:worktrunk"
 
 [[tools."github:agda/agda"]]
@@ -414,7 +414,7 @@ version = "7.0.2001"
 backend = "npm:oxlint-tsgolint"
 
 [[tools."npm:tsdown"]]
-version = "0.22.13"
+version = "0.22.14"
 backend = "npm:tsdown"
 
 [[tools."pipx:yamllint"]]
