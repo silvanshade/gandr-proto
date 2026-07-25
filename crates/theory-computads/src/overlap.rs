@@ -121,6 +121,28 @@ impl Overlap
         Some(self.unifier.apply_cmd(&self.right_renamed.rhs))
     }
 
+    /// The right cell **renamed apart** from the left — the span's right leg
+    /// (TA-8: the enumerator's seam data, consumed by the crDC suite, the
+    /// convolution face, and the overlap-support cache).
+    ///
+    /// The enumerator renames the right cell's metavariables until they are
+    /// disjoint from the left cell's before unifying, so the unifier's bindings
+    /// on the right side read against this renamed cell, never the original.
+    /// The renaming is structure-preserving (same pattern shapes, occurrence-
+    /// parallel metavariable lists), so the original right leg is recoverable
+    /// by zipping the two cells' metavariable occurrences.
+    ///
+    /// # Contract
+    /// - ensures: the apartness-renamed right cell the [`Self::unifier`] and
+    ///   [`Self::right_reduct`] / [`Self::composite`] reducts contract against.
+    /// - panics: none.
+    #[inline]
+    #[must_use]
+    pub const fn right_renamed(&self) -> &Cell
+    {
+        &self.right_renamed
+    }
+
     /// The composite of a **composition** overlap — apply the left cell at the
     /// root, then the right cell at the seam (the fused cell's right-hand
     /// side).

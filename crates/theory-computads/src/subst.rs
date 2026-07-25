@@ -33,6 +33,8 @@ use crate::pattern::ConsPat;
 use crate::pattern::MetaVar;
 use crate::pattern::Node;
 use crate::pattern::ProdPat;
+use crate::pattern::collect_cons_metavars;
+use crate::pattern::collect_prod_metavars;
 use crate::pattern::transform_node;
 
 /// A **substitution** — a binding of producer metavariables to producer
@@ -149,11 +151,108 @@ impl Subst
         })
     }
 
+    /// Fully resolve every binding image by iterated application, so the
+    /// substitution becomes **idempotent**: one application pass then fully
+    /// instantiates any pattern.
+    ///
+    /// Bindings produced by [`unify_cmd`] may be *triangular* — an image may
+    /// mention a metavariable bound after it, because the goal order is not
+    /// topological. Each pass resolves only images that still mention bound
+    /// metavariables (the skip-traversal guard: resolved bindings are never
+    /// re-walked), and a pass resolves every image whose dependencies are
+    /// already resolved, so at most one pass per binding layer runs.
+    ///
+    /// # Contract
+    /// - ensures: no binding's image mentions a bound metavariable
+    ///   (idempotent); the denoted instantiation is unchanged (each image is
+    ///   replaced by its fixpoint, never by a different pattern).
+    /// - panics: none.
+    #[inline]
+    pub fn resolve(&mut self)
+    {
+        for _ in 0 .. usize::from(self.len()) {
+            let mut changed = false;
+            let prod_keys: Vec<MetaVar> = self.prods.keys().cloned().collect();
+            for key in prod_keys {
+                let Some(image) = self.prods.get(&key).cloned()
+                else {
+                    continue;
+                };
+                if !bool::from(self.mentions_bound_prod(&image)) {
+                    continue;
+                }
+                let resolved = self.apply_prod(&image);
+                if resolved != image {
+                    drop(self.prods.insert(key, resolved));
+                    changed = true;
+                }
+            }
+            let cons_keys: Vec<MetaVar> = self.conss.keys().cloned().collect();
+            for key in cons_keys {
+                let Some(image) = self.conss.get(&key).cloned()
+                else {
+                    continue;
+                };
+                if !bool::from(self.mentions_bound_cons(&image)) {
+                    continue;
+                }
+                let resolved = self.apply_cons(&image);
+                if resolved != image {
+                    drop(self.conss.insert(key, resolved));
+                    changed = true;
+                }
+            }
+            if !changed {
+                return;
+            }
+        }
+    }
+
+    /// Whether any metavariable of a producer image is bound (the
+    /// skip-traversal guard of [`Subst::resolve`]).
+    ///
+    /// # Contract
+    /// - ensures: `true` iff some metavariable leaf of `image` is bound.
+    /// - panics: none.
+    #[inline]
+    fn mentions_bound_prod(
+        &self,
+        image: &ProdPat,
+    ) -> SubstitutionDecision
+    {
+        let mut vars = Vec::new();
+        collect_prod_metavars(image, &mut vars);
+        SubstitutionDecision::from(vars.iter().any(|mv| self.prods.contains_key(mv)))
+    }
+
+    /// Whether any metavariable of a consumer image is bound (see
+    /// [`Subst::mentions_bound_prod`]; op arguments are producers).
+    ///
+    /// # Contract
+    /// - ensures: `true` iff some metavariable leaf of `image` is bound.
+    /// - panics: none.
+    #[inline]
+    fn mentions_bound_cons(
+        &self,
+        image: &ConsPat,
+    ) -> SubstitutionDecision
+    {
+        let mut vars = Vec::new();
+        collect_cons_metavars(image, &mut vars);
+        SubstitutionDecision::from(vars.iter().any(|mv| match mv.cat {
+            | Cat::Producer => self.prods.contains_key(mv),
+            | Cat::Consumer => self.conss.contains_key(mv),
+        }))
+    }
+
     /// Apply the substitution to a command pattern.
     ///
     /// # Contract
     /// - ensures: every bound metavariable leaf is replaced by its binding;
     ///   unbound metavariables are left in place (a partial instantiation).
+    ///   Application is a **single pass**: an image mentioning a bound
+    ///   metavariable is inserted unresolved (see [`Subst::resolve`] for the
+    ///   fixpoint form, which [`unify_cmd`] already runs on its unifiers).
     /// - panics: none.
     #[inline]
     #[must_use]
@@ -162,6 +261,10 @@ impl Subst
         cmd: &CmdPat,
     ) -> CmdPat
     {
+        // The skip-traversal guard: an empty substitution is the identity.
+        if bool::from(self.is_empty()) {
+            return cmd.clone();
+        }
         let Some(Node::Cmd(cmd)) =
             transform_node(Node::Cmd(cmd.clone()), |node| Some(self.apply_node(node)))
         else {
@@ -182,6 +285,11 @@ impl Subst
         prod: &ProdPat,
     ) -> ProdPat
     {
+        // The skip-traversal guard (the Lean lesson): an empty substitution
+        // is the identity — do not pay the rebuild.
+        if bool::from(self.is_empty()) {
+            return prod.clone();
+        }
         let Some(Node::Prod(prod)) =
             transform_node(Node::Prod(prod.clone()), |node| Some(self.apply_node(node)))
         else {
@@ -202,6 +310,9 @@ impl Subst
         cons: &ConsPat,
     ) -> ConsPat
     {
+        if bool::from(self.is_empty()) {
+            return cons.clone();
+        }
         let Some(Node::Cons(cons)) =
             transform_node(Node::Cons(cons.clone()), |node| Some(self.apply_node(node)))
         else {
@@ -434,6 +545,13 @@ pub fn unify_cmd(
             return SubstitutionDecision::from(false);
         }
     }
+    // Fully resolve the unifier: the goal order is not topological, so a
+    // binding's image may mention a metavariable bound *after* it (a
+    // triangular substitution), and single-pass application of such a
+    // unifier would leave `apply_cmd(a) != apply_cmd(b)` — violating this
+    // function's contract. Resolving to the fixpoint yields an idempotent
+    // unifier: one application pass fully instantiates both sides.
+    subst.resolve();
     SubstitutionDecision::from(true)
 }
 
@@ -725,6 +843,42 @@ mod tests
         assert!(
             !bool::from(unify_cmd(&a, &b, &mut subst)),
             "x = Succ(x) is rejected by the occurs-check"
+        );
+    }
+
+    #[test]
+    fn unification_resolves_triangular_bindings()
+    {
+        // The crDC-suite finding (gandr-5lf.3): a binding whose image mentions
+        // a metavariable bound *after* it (the goal order is not topological —
+        // here `b2` binds first to an image mentioning x, and x binds
+        // afterward) must be resolved to the fixpoint before the unifier is
+        // returned, or single-pass application leaves `apply(a) != apply(b)`.
+        let a = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::meta("x"),
+            ConsPat::op(
+                "add",
+                [ProdPat::ctor("Succ", [ProdPat::ctor("Succ", [
+                    ProdPat::meta("x"),
+                ])])],
+                ConsPat::Top,
+            ),
+        );
+        let b = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("Cons", [
+                ProdPat::ctor("Succ", [ProdPat::ctor("Zero", [])]),
+                ProdPat::ctor("Succ", [ProdPat::ctor("Nil", [])]),
+            ]),
+            ConsPat::meta("b2"),
+        );
+        let mut subst = Subst::new();
+        assert!(bool::from(unify_cmd(&a, &b, &mut subst)), "the cuts unify");
+        assert_eq!(
+            subst.apply_cmd(&a),
+            subst.apply_cmd(&b),
+            "the unifier equates both sides after one application pass"
         );
     }
 }
