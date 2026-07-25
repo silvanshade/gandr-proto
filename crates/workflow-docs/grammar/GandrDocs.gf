@@ -45,6 +45,8 @@ abstract GandrDocs = {
     UnorderedList : ListOrder ;
     MkItem : String -> [Inline] -> Item ;
     MkPlainItem : [Inline] -> Item ;
+    -- a register item whose lead is a section link (the label IS the cross-reference)
+    MkRefItem : Anchor -> [Inline] -> Item ;
     ApiCodeBlock : String -> String -> Block ;
     PlainCodeBlock : String -> String -> Block ;
     ExpectCodeBlock : String -> String -> String -> Block ;

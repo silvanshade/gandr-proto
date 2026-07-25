@@ -155,7 +155,7 @@ nav.toc {
    * content box (65rem ≈ 104ch at the body face plus its 4ch padding, the
    * same quantity the base layout computes) */
   right: calc(50% + 32.5rem + 1.25rem);
-  width: 20ch;
+  width: 28ch;
   max-height: calc(100vh - 5rem);
   overflow-y: auto;
   font-size: 0.85rem;
@@ -188,6 +188,16 @@ nav.toc li {
   margin: 0.2rem 0;
   padding-left: 0.9ch;
   border-left: 2px solid transparent;
+}
+
+nav.toc li::before {
+  content: "\2022";
+  color: var(--rule);
+  margin-right: 0.6ch;
+}
+
+nav.toc li.current::before {
+  color: var(--accent);
 }
 
 nav.toc li.toc-depth-2 {
@@ -302,6 +312,39 @@ figcaption {
 
 /* ---- tables: booktabs (§7.2) ---- */
 
+/* provenance: the declared grounds/derives edges as two compact bullet lists */
+div.prov {
+  font-size: 0.8em;
+  color: var(--ink-soft);
+  margin: 0.4em 0 1.2em;
+}
+
+div.prov .prov-group {
+  display: flex;
+  gap: 0.8ch;
+  align-items: baseline;
+  margin: 0.15em 0;
+}
+
+span.prov-label {
+  color: var(--rule);
+}
+
+ul.prov {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1ch;
+}
+
+ul.prov li::before {
+  content: "\2022";
+  color: var(--rule);
+  margin-right: 0.5ch;
+}
+
 figure.table table {
   display: block; /* overflow backstop via anonymous table box */
   max-width: 100%;
@@ -309,7 +352,11 @@ figure.table table {
   border-collapse: collapse;
   border-top: 2px solid var(--ink);
   border-bottom: 2px solid var(--ink);
-  font-size: 0.95em;
+  font-size: 0.85em;
+}
+
+figure.table td:first-child {
+  font-weight: 700; /* first-column entries pop on scan; the body text stays light */
 }
 
 figure.table thead {
@@ -323,8 +370,18 @@ figure.table th {
 
 figure.table th,
 figure.table td {
-  padding: 0.35em 1.2em 0.35em 0;
+  padding: 0.4em 1.6em 0.4em 0;
   vertical-align: top;
+}
+
+/* the two-column decision table: the decision-name column never wraps */
+figure.table.decision-table table {
+  table-layout: fixed;
+}
+
+figure.table.decision-table th:first-child,
+figure.table.decision-table td:first-child {
+  width: 24%;
 }
 
 /* ---- code and API surfaces (§7.3) ---- */

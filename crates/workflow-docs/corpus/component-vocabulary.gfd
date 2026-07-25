@@ -147,7 +147,10 @@ MkComponent
                                      (ConsInline (XRef anchor_cv_examples)
                                        (ConsInline (Txt "link illustrates — never by dropping.")
                                          BaseInline))))
-                                BaseItem))))
+                              (ConsItem (MkRefItem anchor_cv_examples
+                                   (ConsInline (Txt "A register lead that is itself a section link — the label is the cross-reference, exercised by this very item.")
+                                     BaseInline))
+                                BaseItem)))))
                        (ConsBlock (ApiCodeBlock
                             "rust"
                             "// The block taxonomy, quoted from the normative schema (workflow-docs::model)\n#[derive(Clone, Debug, Eq, PartialEq)]\n#[non_exhaustive]\npub enum Block {\n    Section(Section), Prose(Vec<Inline>), Judgements(Judgements),\n    Grammar(Vec<Production>), Rule(Rule), Definition(Definition),\n    Diagram(Diagram), Code(CodeBlock), Example(Example),\n    List(List), Table(Table), References(Vec<CiteKey>),\n}")

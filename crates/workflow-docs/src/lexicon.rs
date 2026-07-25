@@ -364,7 +364,7 @@ fn collect_item(
         return Ok(());
     };
     let body = match head.as_str() {
-        | "MkItem" => {
+        | "MkItem" | "MkRefItem" => {
             let [_, ref body] = *args.as_slice()
             else {
                 return Ok(());

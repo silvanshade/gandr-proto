@@ -1,0 +1,1245 @@
+MkComponent
+  anchor_tracelet_algebra
+  "The tracelet algebra"
+  StatusDesignPass
+  (ConsAnchor anchor_certificate_composition
+    (ConsAnchor anchor_sequent_kernel
+      (ConsAnchor anchor_vdc_reflection BaseAnchor)))
+  (ConsAnchor anchor_spec_index BaseAnchor)
+  (ConsSection (MkSection
+       anchor_ta_overview
+       "Division of labor"
+       InheritSectionStatus
+       (ConsBlock (ProseBlock
+            (ConsInline (Txt "The")
+              (ConsInline (TermDef term_tracelet_algebra "tracelet algebra")
+                (ConsInline (Txt
+                     "is gandr's certificate architecture. The compositional-rewriting frame's fibrational axioms run as property tests over the")
+                  (ConsInlineGlued (TermRef term_cell_store)
+                    (ConsInline (Txt
+                         ". Rule composition is specified by a presheaf convolution. Certificates carry a decidable normal form and a cached independence relation that makes replay parallel. The design consumes the")
+                      (ConsInlineGlued (TermRef term_reflection_face)
+                        (ConsInline (Txt
+                             ", the sequent kernel's fusion engine, and the two-mode certificate design. It adds no dependency on external code — research artifacts remain reference-only.")
+                          BaseInline))))))))
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt "Four pillars carry the design. A")
+                (ConsInline (Bold
+                     (ConsInline (Txt "test suite")
+                       BaseInline))
+                  (ConsInline (Txt " asks which fibrational axioms the cell store satisfies. A")
+                    (ConsInline (Bold
+                         (ConsInline (Txt "specification")
+                           BaseInline))
+                      (ConsInline (Txt
+                           " gives rule composition a universal home in presheaves, whether or not loose composites exist. A")
+                        (ConsInline (Bold
+                             (ConsInline (Txt "normal form")
+                               BaseInline))
+                          (ConsInline (Txt
+                               " makes a large, decidable fragment of certificate identity cheap. And an")
+                            (ConsInline (Bold
+                                 (ConsInline (Txt "independence relation")
+                                   BaseInline))
+                              (ConsInline (Txt
+                                   " turns the causal structure of certificates into scheduling and fuel data.")
+                                BaseInline))))))))))
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt "The honesty gate is binding.")
+                  (ConsInlineGlued (Bold
+                       (ConsInline (Txt
+                            "No fibrational axiom is claimed for the cell store before its property test runs")
+                         BaseInline))
+                    (ConsInline (Txt
+                         "; the convolution face is adopted as specification, not machinery; and the Hopf algebra proper — linear spans, the antipode — never ships in the kernel. Every literature claim below carries its theorem number, and every gandr claim is marked tested, testable, or conjectural.")
+                      BaseInline))))
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "The division of labor is the load-bearing discipline. The Hopf algebra, the linear rule algebra, and the enveloping-algebra theorem are")
+                    (ConsInlineGlued (TermDef term_metatheory_currency "metatheory currency")
+                      (ConsInline (Txt
+                           ": they warrant the kernel-side constructions and name their laws. The kernel and engine take only")
+                        (ConsInlineGlued (TermDef term_semantic_currency "semantic currency")
+                          (ConsInline (Txt
+                               ": canonical forms on certificate data, primitive factorization, the overlap-support cache, integer-graded counters, and replay.")
+                            BaseInline))))))
+               (ConsBlock (ProseBlock
+                    (ConsInlineGlued (Bold
+                         (ConsInline (Txt
+                              "No vector space, no formal sum, no antipode, and no word-problem decision procedure ever ships in gandr")
+                           BaseInline))
+                      (ConsInline (Txt
+                           ". This is the same firewall the univalence-base lane keeps between presented calculus and semantic currency, one level up.")
+                        BaseInline)))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt
+                           "The ten decisions below are the design's skeleton. Each has its own section here, and the staging ladder (")
+                        (ConsInlineGlued (XRef anchor_ta_staging)
+                          (ConsInline (Txt
+                               ") sequences the landing. The register suffices for orientation; the sections are the build record.")
+                            BaseInline))))
+                   (ConsBlock (RegisterBlock
+                        OrderedList
+                        (ConsItem (MkRefItem
+                             anchor_ta_crdc
+                             (ConsInline (Txt
+                                  "Test the crDC axioms — multi-sums, a strong multi-opfibration source, a residual multi-opfibration target, horizontal decomposition — as a staged property suite over the cell store, following the TRS[Σ] template and extending the dictionary test. A green suite upgrades the fused-equals-two-step differential and grafting associativity from adopted-test contracts to theorem-backed ones, with the differentials retained as adequacy witnesses.")
+                               BaseInline))
+                          (ConsItem (MkRefItem
+                               anchor_ta_convolution
+                               (ConsInline (Txt
+                                    "Adopt as specification: presheaves over the cell store, rule interfaces as representables, and the categorified concurrency theorem as the overlap enumerator’s completeness contract. The VDC-honest form is multicategorical Day convolution over multi-ary cells — no composites assumed; oplaxity is the default, and strength is exactly what the crDC suite measures. It gives the overlap fan-out family a universal home.")
+                                 BaseInline))
+                            (ConsItem (MkRefItem
+                                 anchor_ta_normal_form
+                                 (ConsInline (Txt
+                                      "≡_N = rst(≡_A ∪ ≡_T ∪ ≡_S) with unique primitive factorization is adopted as the certificate normal form: a decidable, sound under-approximation of replay-equivalence — the fast path for cells_equal, with replay staying the oracle — plus certificate compression to a multiset of primitives and a canonical schedule, and definitional discharge of serialization-order coherence cells. It answers the replay-equivalence-cost question with a cited theorem.")
+                                   BaseInline))
+                              (ConsItem (MkRefItem
+                                   anchor_ta_bracket
+                                   (ConsInline (Txt
+                                        "Cache the Lie bracket’s support: the pairwise overlap-support relation on primitive cells is the bracket-vanishing oracle — freely reorderable exactly when no nontrivial overlap exists. It drives the ≡_S normalizer, completion scheduling, parallel and demand-driven certificate replay, and critical-path fuel accounting; PBW/Lyndon ordering by content address is the canonical schedule. Transport cost drops from sequential length to critical-path length, sound by theorem.")
+                                     BaseInline))
+                                (ConsItem (MkRefItem
+                                     anchor_ta_signatures
+                                     (ConsInline (Txt
+                                          "Graded invariants on certificate kinds — truncated, Chen-homomorphic occurrence and causality counts — as conservativity smoke alarms and cells_equal inequality prefilters, extending the univalence-base grade-alarm pattern. Advisory, never soundness-bearing.")
+                                       BaseInline))
+                                  (ConsItem (MkRefItem
+                                       anchor_ta_feta
+                                       (ConsInline (Txt
+                                            "FETA in the inspection protocol: goal-directed synthesis of minimal derivations ending in a target cell, by tracelet composition and ≡-compression, without evaluating on states. Diagnostics-side causal explanation, cheap for the same reason fusion is: seams are shallow.")
+                                         BaseInline))
+                                    (ConsItem (MkRefItem
+                                         anchor_ta_constrained
+                                         (ConsInline (Txt
+                                              "Compile per-seam side-condition classes to span-level forbidden-relation tests on the overlap itself, rejecting doomed composites before they are built; optionally host non-linear overlap enumeration on the solver interface, following ReSMT. Optimization lane; the current per-seam checks remain the reference semantics.")
+                                           BaseInline))
+                                      (ConsItem (MkRefItem
+                                           anchor_ta_bifibration
+                                           (ConsInline (Txt
+                                                "Where a crDC axiom fails, the free (P,N)-fibration completion is the universal repair — an owner STOP gated on a factorization-preorder check, because 2-cell equality in such free constructions is undecidable without it. Companions and conjoints of tight arrows come free by the zigzag construction, whose focusing-based normal forms converge with the sequent kernel’s own focusing. It is the growth firewall: a gated decision, not an ambient temptation.")
+                                             BaseInline))
+                                        (ConsItem (MkRefItem
+                                             anchor_ta_doctrine
+                                             (ConsInline (Txt
+                                                  "The 2-dimensional fragment of shape signatures is a cartesian double theory, with product-preserving lax-functor models and a VDC of models by cited theorems; the meta 3-cell layer sits above that literature, exactly as the higher-cells design routes it. The dictionary’s cartesian law is refined accordingly — framed pairing-projection bijection, iso-strong rather than strict, products-with-restriction decomposition — and the Nasu-cartesian reconciliation is filed as a follow-up read.")
+                                               BaseInline))
+                                          (ConsItem (MkRefItem
+                                               anchor_ta_acceleration
+                                               (ConsInline (Txt
+                                                    "Batched Chen-scan signatures, sound-direction overlap screening over chunk fingerprints, and chunk-parallel replay and rehash on the granular store — advisory or exact-and-differentialed only, SIMD-first, GPU behind a dispatch-amortization benchmark; the Lévy-area block doubles as a numerical bracket alarm. Never soundness-bearing; the kernel never links it.")
+                                                 BaseInline))
+                                            BaseItem)))))))))))
+                     BaseBlock))))))))
+    (ConsSection (MkSection
+         anchor_ta_objects
+         "Objects, aligned"
+         InheritSectionStatus
+         (ConsBlock (ProseBlock
+              (ConsInline (Txt
+                   "Two anchors make the alignment possible. The compositional-rewriting axioms are stated purely fibrationally, over an arbitrary double category")
+                (ConsInlineGlued (CiteRef cite_J_26)
+                  (ConsInline (Txt
+                       ". The term-rewriting double category TRS[Σ] is the worked instance: discrete opfibrations, multi-sums as minimal unifiers. That is the right shape for a term-shaped cell store, where the graph-shaped DPO instances do not apply.")
+                    BaseInline))))
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt "The")
+                  (ConsInline (TermRef term_reflection_face)
+                    (ConsInline (Txt "'s virtual reading is exactly the interface's weakening: ")
+                      (ConsInlineGlued (Bold
+                           (ConsInline (Txt "loose composites need not exist")
+                             BaseInline))
+                        (ConsInline (Txt
+                             " is what remains when the opfibrational axioms are dropped. The question the test suite asks is therefore well-posed: which of the axioms does the store actually satisfy?")
+                          BaseInline))))))
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "The dictionary below aligns the line's concepts with the as-built or specified gandr artifacts. Every row is developed in its own section; the two rows marked new are the additions the design contributes back.")
+                    BaseInline))
+               (ConsBlock (RegisterBlock
+                    OrderedList
+                    (ConsItem (MkItem
+                         "rule with condition"
+                         (ConsInline (Txt
+                              "A generating cell: a CellFace/Cell with faces in the described signatures and (future) side conditions — η-polarity,")
+                           (ConsInline (TermRef term_variance)
+                             (ConsInline (Txt ",")
+                               (ConsInline (TermRef term_grade)
+                                 (ConsInline (Txt "s.")
+                                   BaseInline))))))
+                      (ConsItem (MkItem
+                           "direct derivation"
+                           (ConsInline (Txt "One budgeted cell application at a")
+                             (ConsInline (TermRef term_cut)
+                               (ConsInline (Txt "seam (a CellApp).")
+                                 BaseInline))))
+                        (ConsItem (MkItem
+                             "derivation trace"
+                             (ConsInline (Txt
+                                  "A rewrite path: a vector of cell applications (Vec&lt;CellApp&gt;).")
+                               BaseInline))
+                          (ConsItem (MkItem
+                               "tracelet (minimal trace)"
+                               (ConsInline (Txt "The")
+                                 (ConsInline (TermRef term_tracelet)
+                                   (ConsInline (Txt
+                                        " — the 3-cell certificate (the minimal trace, characterized by the tracelets paper’s Thm 2")
+                                     (ConsInlineGlued (CiteRef cite_J_44)
+                                       (ConsInline (Txt "), whose identity is")
+                                         (ConsInline (TermRef term_replay_equivalence)
+                                           (ConsInline (Txt ".")
+                                             BaseInline))))))))
+                            (ConsItem (MkItem
+                                 "rule composition"
+                                 (ConsInline (Txt
+                                      "Seam composition per overlap: the multi-sum-indexed family of the fusion engine (")
+                                   (ConsInlineGlued (XRef anchor_sk_fusion)
+                                     (ConsInline (Txt ").")
+                                       BaseInline))))
+                              (ConsItem (MkItem
+                                   "concurrency theorem"
+                                   (ConsInline (Txt
+                                        "The fused-equals-two-step differential contract — adopted as a test, its proof machinery explicitly not implemented (")
+                                     (ConsInlineGlued (XRef anchor_sk_fusion_record)
+                                       (ConsInline (Txt ").")
+                                         BaseInline))))
+                                (ConsItem (MkItem
+                                     "associativity theorem"
+                                     (ConsInline (Txt "Grafting associativity up to")
+                                       (ConsInline (TermRef term_replay_equivalence)
+                                         (ConsInline (Txt " (the dictionary test’s cell-composition law).")
+                                           BaseInline))))
+                                  (ConsItem (MkItem
+                                       "rule algebra basis δ(r)"
+                                       (ConsInline (Txt
+                                            "The representable presheaf Δ̂_r — the instances of rule interface r, the")
+                                         (ConsInline (TermRef term_tabulator)
+                                           (ConsInline (Txt "’s query one level up (")
+                                             (ConsInlineGlued (XRef anchor_ta_convolution)
+                                               (ConsInline (Txt ").")
+                                                 BaseInline))))))
+                                    (ConsItem (MkItem
+                                         "shift equivalence"
+                                         (ConsInline (Txt
+                                              "New: the ≡_S quotient and primitive factorization on the tracelet (")
+                                           (ConsInlineGlued (XRef anchor_ta_normal_form)
+                                             (ConsInline (Txt ").")
+                                               BaseInline))))
+                                      (ConsItem (MkItem
+                                           "tracelet Hopf algebra"
+                                           (ConsInline (Txt "Metatheory only")
+                                             (ConsInlineGlued (CiteRef cite_J_45)
+                                               (ConsInline (Txt
+                                                    ": the Hopf algebra and its connected filtration (Thms 5.10–5.11), with U(L)/PBW at Thm 5.12 — the warrant for the canonical forms and parallel replay of the normal-form and bracket sections; never shipped.")
+                                                 BaseInline))))
+                                        BaseItem)))))))))))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt
+                           "One conceptual note is recorded with no machinery attached. Behr and Kock organize rules into a")
+                        (ConsInline (TermDef term_decomposition_space "decomposition space")
+                          (ConsInline (Txt " (their Thm 3.5")
+                            (ConsInlineGlued (CiteRef cite_J_45)
+                              (ConsInline (Txt
+                                   "; its incidence algebra is the rule algebra, their Prop 3.8; the decomposition-space frame")
+                                (ConsInlineGlued (CiteRef cite_J_49)
+                                  (ConsInline (Txt
+                                       "): a simplicial groupoid with the exactness that supports decomposition. It deliberately fails the Segal condition that would assert composition — not a category, because composition is non-deterministic. This is gandr’s virtual honesty stated one homotopy level up.")
+                                    BaseInline))))))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "Their strictification device — fully-specified simplices carrying chosen composites, after Quillen — is the same move as the content-addressed split")
+                          (ConsInline (TermRef term_restriction)
+                            (ConsInline (Txt " of the")
+                              (ConsInlineGlued (TermRef term_reflection_face)
+                                (ConsInline (Txt ": ")
+                                  (ConsInlineGlued (Bold
+                                       (ConsInline (Txt "carry the choice as data, and strictness follows")
+                                         BaseInline))
+                                    (ConsInline (Txt
+                                         ". The two architectures agree about where the non-determinism lives.")
+                                      BaseInline))))))))
+                     BaseBlock)))))))
+      (ConsSection (MkSection
+           anchor_ta_crdc
+           "crDC ladder"
+           InheritSectionStatus
+           (ConsBlock (ProseBlock
+                (ConsInline (Txt
+                     "Fix the stage the suite runs on. Objects are command patterns or interfaces. Tight morphisms are substitutions and context extensions — content-addressed and split. Loose arrows are rule interfaces, and cells are derivations. A")
+                  (ConsInline (TermDef term_crdc "compositional rewriting double category")
+                    (ConsInline (Txt
+                         "(crDC) is a double category carrying fibrational structure strong enough to compose rules")
+                      (ConsInlineGlued (CiteRef cite_J_26)
+                        (ConsInline (Txt
+                             ". The checklist below restates the axioms for this seam category, each with its gandr reading.")
+                          BaseInline))))))
+             (ConsBlock (RegisterBlock
+                  OrderedList
+                  (ConsItem (MkItem
+                       "Multi-sums in the tight layer"
+                       (ConsInline (Txt
+                            "(Def 2.1): the overlap enumerator’s family for a pair of patterns is ")
+                         (ConsInlineGlued (Bold
+                              (ConsInline (Txt "universal")
+                                BaseInline))
+                           (ConsInline (Txt
+                                " — every cospan of matches factors through exactly one enumerated overlap, uniquely. This is the completeness-and-minimality statement for critical-pair enumeration; the multi-sum shape is already adopted, so universality is the new testable content.")
+                             BaseInline))))
+                    (ConsItem (MkItem
+                         "Pullbacks in the tight and cell layers"
+                         (ConsInline (Txt
+                              "pattern intersections; expected unproblematic on content-addressed first-order syntax.")
+                           BaseInline))
+                      (ConsItem (MkItem
+                           "Horizontal decomposition"
+                           (ConsInline (Txt
+                                "(Def 3.2(iii), Remark 3.3): every cell over a composed seam factors, up to a globular iso residue, as a horizontal composition of cells. The gandr reading: a derivation over a frame composition splits into per-frame derivations — the seam-locality of rewriting, which cut-shallowness was designed for.")
+                             BaseInline))
+                        (ConsItem (MkItem
+                             "Source functor a strong multi-opfibration"
+                             (ConsInline (Txt
+                                  "(Def 2.5): pushforward of a cell along a substitution on its input face exists as a universal finite family. In TRS[Σ] this is discrete — apply the context or substitution to the whole rule; gandr’s matching-modulo and non-linear patterns may make it genuinely multi, a family per unifier, which the axiom permits.")
+                               BaseInline))
+                          (ConsItem (MkItem
+                               "Target functor a residual multi-opfibration"
+                               (ConsInline (Txt
+                                    "(Def 2.8): pushforward along output-face substitutions may exist only after a ")
+                                 (ConsInlineGlued (TermDef term_residue "residue")
+                                   (ConsInline (Txt
+                                        " — the formal record of what must additionally happen to the output. The gandr reading: pushing a derivation forward along an instantiation of its produced pattern can force further normalization, and the residue names it. The axiom’s honesty — lifts of f become lifts of post ∘ f — is the right shape for a system with oriented rules.")
+                                     BaseInline))))
+                            BaseItem))))))
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt
+                         "The suite runs the checklist over the real structures, in the same posture as the dictionary test: per-axiom verdicts, with failures naming missing invariants. Generated pattern pairs factor through the enumerated family (multi-sums). Generated cells and substitutions construct pushforwards and check the multi-op-Cartesian property and residue behavior (source and target). Generated composable seams check horizontal decomposition.")
+                      BaseInline))
+                 (ConsBlock (ProseBlock
+                      (ConsInlineGlued (Bold
+                           (ConsInline (Txt "Failure is informative")
+                             BaseInline))
+                        (ConsInline (Txt
+                             ": a non-universal overlap family is a completeness bug in the enumerator; a failing horizontal decomposition names a non-local rule; a failing residue law localizes where orientation and instantiation interact.")
+                          BaseInline)))
+                   (ConsBlock (ApiCodeBlock
+                        "rust"
+                        "// theory-computads — the crDC suite surface: property tests over the REAL\n// store, never a second engine. Representation sketch; names align with the\n// as-built Overlap { left, right, unifier, seam } and Cell shapes (the\n// sequent-kernel component's fusion-engine section).\n\n/// Axiom (i), multi-sum universality: the enumerated family is multi-universal.\n/// LAW: for every cospan of matches (f, g) of two patterns into one command,\n/// exactly one enumerated overlap admits a mediator, and it is unique.\npub fn factor_cospan(\n    f: &Match, g: &Match,\n    family: &[Overlap],                    // what the enumerator returned\n) -> Result<(usize, Mediator), MultiSumFailure>;\n// MultiSumFailure::None    ⇒ enumeration incomplete  (completeness bug)\n// MultiSumFailure::Many(_) ⇒ family not minimal      (universality bug)\n\n/// Axiom (iv), source pushforward: instantiating a cell's INPUT face along a\n/// substitution yields a finite multi-op-Cartesian family of lifted cells.\npub fn pushforward_src(cell: &Cell, sub: &Subst) -> Vec<CellLift>;\n\n/// Axiom (v), target pushforward: on the OUTPUT face the lift may exist only\n/// after a residue — the recorded extra substitution the composite still owes.\npub struct Residue { pub post: Subst }     // lifts f as (post ∘ f); Def 2.8\npub fn pushforward_tgt(cell: &Cell, sub: &Subst) -> Vec<(CellLift, Residue)>;\n\n/// Axiom (iii), horizontal decomposition: a cell over a composed seam factors\n/// as per-frame cells followed by a globular iso (Remark 3.3 (11)).\npub fn decompose_horizontal(\n    cell: &Cell, seam: &[FrameId],\n) -> Option<(Vec<Cell>, GlobularIso)>;\n\n// The suite: generated inputs → each law → per-axiom verdict entry. A failing\n// axiom names its invariant; the verdict note records which theorems (Thm\n// 3.4/3.5) are thereby available and on which fragment.")
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "Once the suite is green, the concurrency theorem (Thm 3.4) and the associativity theorem (Thm 3.5) hold for the cell store by the universal proofs —")
+                            (ConsInlineGlued (Bold
+                                 (ConsInline (Txt "no per-system re-derivation")
+                                   BaseInline))
+                              (ConsInline (Txt
+                                   ". The two standing test-only contracts become theorem-backed, with the differentials retained as adequacy witnesses. The suite runs on the")
+                                (ConsInlineGlued (TermRef term_cell_visible_fragment)
+                                  (ConsInline (Txt "; natives remain opaque and outside every claim.")
+                                    BaseInline))))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "Three remarks from the framework’s colloquium presentation (secondary provenance, a talk")
+                              (ConsInlineGlued (CiteRef cite_J_50)
+                                (ConsInline (Txt
+                                     ") sharpen how to hold the axioms. The fibrational reformulation was reverse-engineered from a Beck–Chevalley observation of Garner’s: the axioms are the residue of a naturality analysis, so testing them empirically per system is the intended use. Residual multi-opfibrations were conjecturally located near Tholen’s semi-final lifts, up to quotient. And the indexed side — what the Grothendieck construction of these multi-opfibrations yields — is explicitly unexplored. The last is a research door gandr is unusually placed to look through; it is recorded in the open questions (")
+                                  (ConsInlineGlued (XRef anchor_ta_open_questions)
+                                    (ConsInline (Txt ").")
+                                      BaseInline))))))
+                         BaseBlock))))))))
+        (ConsSection (MkSection
+             anchor_ta_convolution
+             "Convolution face"
+             InheritSectionStatus
+             (ConsBlock (ProseBlock
+                  (ConsInline (Txt
+                       "Over a double category, vertical presheaves F : D₁ → Set carry a")
+                    (ConsInlineGlued (TermDef term_convolution "convolution")
+                      (ConsInline (Txt
+                           " F * G = Lan(F × G) along horizontal composition — the coend formula (8) of the FSCD paper")
+                        (ConsInlineGlued (CiteRef cite_J_27)
+                          (ConsInline (Txt ". The")
+                            (ConsInlineGlued (TermDef term_representable "representable")
+                              (ConsInline (Txt
+                                   " Δ̂_r = D₁(r, −), all the ways r instantiates, categorifies the rule-algebra basis vector δ(r).")
+                                BaseInline))))))))
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt "Convolution is")
+                      (ConsInlineGlued (Bold
+                           (ConsInline (Txt "oplax associative in general")
+                             BaseInline))
+                        (ConsInline (Txt
+                             " (Thm 3.5): associativity is structure to be earned, not assumed. It is strongly associative under the positive cylindrical decomposition property — the n-ary horizontal composition functors are globular relative opfibrations (Def 5.1, Prop 5.8, Thm 5.5).")
+                          BaseInline))))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "Under the")
+                        (ConsInline (TermRef term_crdc)
+                          (ConsInline (Txt
+                               " axioms, Δ̂_r₂ * Δ̂_r₁ ≅ Σ Δ̂_composite (Thms 6.1/6.3): ")
+                            (ConsInlineGlued (Bold
+                                 (ConsInline (Txt
+                                      "the fan-out family is the coefficient set of a genuine associative product one level up")
+                                   BaseInline))
+                              (ConsInline (Txt ".")
+                                BaseInline))))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "The face is adopted as specification, not a second engine. The presheaf level is the reflection face’s natural query altitude: Δ̂_r is precisely the")
+                          (ConsInline (TermRef term_tabulator)
+                            (ConsInline (Txt
+                                 "’s instantiation-table query, now with a product. The categorified concurrency isomorphism is the overlap enumerator’s")
+                              (ConsInlineGlued (TermDef term_completeness_contract "completeness contract")
+                                (ConsInline (Txt ": ")
+                                  (ConsInlineGlued (Bold
+                                       (ConsInline (Txt
+                                            "every element of the convolution factors through exactly one enumerated composite")
+                                         BaseInline))
+                                    (ConsInline (Txt
+                                         ". It lands as differential rows — generated instances of both directions — not as new machinery.")
+                                      BaseInline))))))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt
+                               "The VDC-honest form has a citation. gandr has no horizontal composition to Kan-extend along, and the virtual statement exists in the literature: Thompson and Carlson define a colax convolution on presheaves over a VDC by a coend on the multicell profunctor — no horizontal composition assumed (their Example 7.11")
+                            (ConsInlineGlued (CiteRef cite_Q_23)
+                              (ConsInline (Txt
+                                   "). It is colax by default and becomes strong under positive globular decompositions (their Def 7.2), which the authors state generalize the rabbit paper’s cylindrical decomposition property.")
+                                BaseInline))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "Two further facts calibrate the odds. Cospan-style VDCs are always exponentiable with globular decompositions (Prop 6.3, 7.4), and gandr’s overlap data is multi-span-shaped. The exponentiability chain (Thm 5.11) names the conditions the crDC suite tests on the virtual side: decomposable multicells ⇔ pro-representability ⇔ malleability ⇔ the Span completion exists, with the cellular Conduché condition of Thm 4.14 as the 2-layer criterion.")
+                              BaseInline))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "Cor 7.15 is the unconditional floor: every VDC embeds in a locally cocomplete completion with composites and restrictions. ")
+                                (ConsInlineGlued (Bold
+                                     (ConsInline (Txt "Composites exist one level up")
+                                       BaseInline))
+                                  (ConsInline (Txt " is a theorem, not a slogan, even before any suite passes.")
+                                    BaseInline))))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt
+                                     "The cylindrical decomposition property is a distinct obligation, not a corollary of the crDC axioms (the rabbit-calculus colloquium, secondary provenance")
+                                  (ConsInlineGlued (CiteRef cite_J_51)
+                                    (ConsInline (Txt
+                                         "). The suite therefore carries it — in its virtual form, positive globular decompositions — as its own line item. Unconditional oplaxity is the honest default either way.")
+                                      BaseInline))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "The same talk records a lead: an unpublished linear-term-rewriting double category over continuation types and second-order λ-calculus, slides-only. That is the nearest published-adjacent term-level model for gandr’s loose arrows; vet against the dictionary when the paper lands.")
+                                    BaseInline))
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "One direction is recorded from the FSCD conclusion: the rule algebra and its representation on states unify through the Yoneda embedding — compose rules and apply rules to states become one operation. The sequent kernel already embodies the operational half — states are cut-shaped, matches are shallow; the presheaf face names the mathematical half.")
+                                      BaseInline))
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "The CFVDC cross-check (the internal-univalence Agda substrate): the virtual honesty and the split restriction match — the formalization gives loose paths no composition at all, and restriction is literal precomposition, split at components by construction. Convolution itself has no counterpart there — no presheaf category, no Day convolution, no associators — so the face’s claims stand on the papers alone.")
+                                        BaseInline))
+                                   (ConsBlock (ApiCodeBlock
+                                        "rust"
+                                        "// theory-virtual-doctrines — the Δ̂ query surface and the completeness\n// differential. Specification-backed: convolve() is DEFINED as what the\n// overlap enumerator + composition already compute; the contract below is\n// what the crDC suite earns it.\n\npub struct Representable { pub rule: RelationRef }   // Δ̂_r: instances of r\n\n/// The categorified rule-algebra product: the overlap-indexed composite family.\npub fn convolve(r2: &Representable, r1: &Representable) -> Vec<Representable>;\n// CONTRACT (categorified concurrency, Thms 6.1/6.3; virtual form Ex 7.11):\n//   soundness:     every returned composite arises from a joint instance;\n//   completeness:  every joint instance of (r2, r1) sharing a seam factors\n//                  through EXACTLY ONE returned composite.\n// Differential rows (both directions, generated instances):\n//   synthesize(joint_instance)  ∈ convolve(r2, r1)\n//   analyze(composite_instance) = the unique (overlap, joint_instance) pair\n// Associativity ledger: convolve is colax by default; each green crDC-suite\n// axiom row upgrades a fragment to strong — the verdict note IS the ledger.")
+                                     BaseBlock)))))))))))))
+          (ConsSection (MkSection
+               anchor_ta_normal_form
+               "Normal form"
+               InheritSectionStatus
+               (ConsBlock (ProseBlock
+                    (ConsInline (Txt "Behr and Kock define ≡_N = rst(≡_A ∪ ≡_T ∪ ≡_S)")
+                      (ConsInlineGlued (CiteRef cite_J_45)
+                        (ConsInline (Txt
+                             ". The three generators: abstraction isomorphisms; trivial-unit insertion and removal; and")
+                          (ConsInlineGlued (TermDef term_shift_equivalence "shift equivalence")
+                            (ConsInline (Txt
+                                 ", the exchange of adjacent, causally independent constituents, whose splitting form commutes an inner interface with trivial overlap — the abstraction and shift definitions of the tracelets paper (its Def 4/5")
+                              (ConsInlineGlued (CiteRef cite_J_44)
+                                (ConsInline (Txt ").")
+                                  BaseInline))))))))
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt "Every tracelet is ≡_N-equivalent to a disjoint union of")
+                        (ConsInlineGlued (TermDef term_primitive_tracelet "primitive")
+                          (ConsInline (Txt " — splitting-free — tracelets. The multiset is")
+                            (ConsInlineGlued (Bold
+                                 (ConsInline (Txt "unique up to isomorphism and permutation")
+                                   BaseInline))
+                              (ConsInline (Txt
+                                   " (Lemma 4.1, Props 4.2/5.4), and the shift quotient is the free symmetric monoidal category on primitives (Thm 4.4).")
+                                BaseInline))))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "On gandr’s tracelet and cell-application paths: ≡_A is content addressing, already the store’s identity; ≡_T is empty-path and unit elimination, already the path calculus’s unit laws; ≡_S is new — two adjacent cell applications whose positions are disjoint and whose overlap is trivial commute. The normalizer factors a certificate into its causally connected components — the")
+                          (ConsInline (TermRef term_primitive_tracelet)
+                            (ConsInline (Txt "s, with the surgery of the tracelets paper (its Cor 1")
+                              (ConsInlineGlued (CiteRef cite_J_44)
+                                (ConsInline (Txt ") made computational —")
+                                  (ConsInlineGlued (Bold
+                                       (ConsInline (Txt "orders independent components canonically by content address")
+                                         BaseInline))
+                                    (ConsInline (Txt
+                                         ", and within the schedule places each application at its earliest causal position.")
+                                      BaseInline))))))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt "The uniqueness theorem makes this a")
+                            (ConsInlineGlued (TermDef term_tracelet_normal_form "tracelet normal form")
+                              (ConsInline (Txt
+                                   ", not a heuristic: NF(T) is a multiset of primitive certificates plus a")
+                                (ConsInlineGlued (TermDef term_canonical_schedule "canonical schedule")
+                                  (ConsInline (Txt ", computable by union-find over the")
+                                    (ConsInline (TermRef term_overlap_support)
+                                      (ConsInline (Txt " relation plus a stable sort.")
+                                        BaseInline))))))))
+                       (ConsBlock (ApiCodeBlock
+                            "rust"
+                            "// theory-computads — the tracelet normal form. Additive beside the\n// as-built Tracelet { overlap, path_a, path_b, joins_at }; replay untouched.\n\n/// A primitive component: a causally connected sub-certificate (no splitting\n/// vertex — no inner interface with trivial overlap). Content-addressed.\npub struct PrimCert { pub apps: Vec<CellApp> }        // in causal order\npub struct PrimId(ContentHash);                       // the Lyndon order key\n\npub struct TraceletNf {\n    /// The unique primitive multiset (Behr–Kock Prop 4.2/5.4), keyed and\n    /// ordered by content address — canonical, not chosen.\n    pub primitives: BTreeMap<PrimId, (PrimCert, u32)>,\n    /// The canonical schedule: each application at its earliest causal\n    /// position; ties broken by PrimId order (the PBW/Lyndon basis order).\n    pub schedule: Vec<CellApp>,\n}\n\n/// union-find over the overlap-support relation, then a stable sort.\npub fn normalize(t: &Tracelet, supp: &OverlapSupport) -> TraceletNf;\n\n/// Fast path: NF-equal ⇒ replay-equal (sound under-approximation; the\n/// converse is NEVER claimed — replay remains the semantic oracle).\npub fn nf_equal(a: &TraceletNf, b: &TraceletNf) -> bool;\n\n// Differential (adequacy): generated t, u with nf_equal(NF(t), NF(u)) must\n// satisfy cells_equal(t, u) by replay. A violation is the KILL SIGNAL:\n// a position/overlap bookkeeping bug — the lane stops.")
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt "≡_N is a")
+                                (ConsInlineGlued (Bold
+                                     (ConsInline (Txt "decidable under-approximation of replay-equivalence")
+                                       BaseInline))
+                                  (ConsInline (Txt
+                                       ". Shift-equivalent tracelets evaluate identically by construction, so NF(a) = NF(b) implies cells_equal(a, b) by replay. The converse is never claimed. This is exactly the cheap-comparison-with-oracle shape the certificate rationale wants, and it answers the reflection face’s replay-equivalence-cost question in the affirmative, with a citation.")
+                                    BaseInline))))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt
+                                     "The adequacy differential carries the kill-signal pin: a shift-equivalent pair with divergent replays is a soundness bug in position or overlap bookkeeping, and it stops the lane.")
+                                  BaseInline))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "The without-K check passes by construction: ≡_S permutes genuinely independent components and identifies strictly less than")
+                                    (ConsInlineGlued (TermRef term_replay_equivalence)
+                                      (ConsInline (Txt
+                                           ", which the certificate design already adopted as identity. No new collapse enters, and the no-blanket-fillers discipline is untouched — the quotient is earned per pair by the trivial-overlap witness, never adjoined.")
+                                        BaseInline))))
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "What it buys. Fast-path cells_equal: compare normal forms, falling back to replay only where a caller insists — the fast path decides equality, the slow path decides equivalence. Compression: certificates store the primitive multiset plus a minimal schedule instead of an arbitrary serialization.")
+                                      BaseInline))
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "Coherence-cell elimination: the 3-cell relating Seq(A,B) and Seq(B,A) for independent A and B becomes definitional under ≡_S. A whole class of interchange obligations is discharged by normalization instead of carried. This also supplies the principled future semantics for the declined horizontal sugar: accept it exactly on disjoint positions, where the two sequential readings are ≡_S-equal.")
+                                        BaseInline))
+                                   BaseBlock)))))))))))
+            (ConsSection (MkSection
+                 anchor_ta_bracket
+                 "Bracket oracle"
+                 InheritSectionStatus
+                 (ConsBlock (ProseBlock
+                      (ConsInline (Txt
+                           "The enveloping theorem (Thm 5.12): the tracelet Hopf algebra is U(L_T), for L_T the")
+                        (ConsInline (TermRef term_primitive_tracelet)
+                          (ConsInline (Txt
+                               "s under the commutator [T,T′]_⋄ = T⋄T′ − T′⋄T, where ⋄ sums over all overlaps")
+                            (ConsInlineGlued (CiteRef cite_J_45)
+                              (ConsInline (Txt ". The trivial and disjoint terms cancel in the commutator. ")
+                                (ConsInlineGlued (Bold
+                                     (ConsInline (Txt "The bracket’s support is exactly the set of nontrivial overlaps")
+                                       BaseInline))
+                                  (ConsInline (Txt
+                                       ": [T,T′]_⋄ = 0 ⇔ no nontrivial overlap ⇔ the two are freely reorderable.")
+                                    BaseInline))))))))
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "The engineering shadow of the Lie algebra is therefore not a vector space but a relation: the")
+                          (ConsInlineGlued (TermDef term_overlap_support "overlap support")
+                            (ConsInline (Txt
+                                 ", a symmetric relation on primitive cells — and, memoized, on primitive certificates — recording the enumerated nontrivial overlaps, computed by the machinery the completion engine already runs and cached as first-class data. Bracket-vanishes is an O(1) lookup.")
+                              BaseInline))))
+                     (ConsBlock (ApiCodeBlock
+                          "rust"
+                          "// theory-computads — the overlap-support cache and parallel replay.\n// The Lie bracket’s engineering shadow: a relation, not a vector space.\n\npub struct OverlapSupport { /* symmetric, memoized; rows keyed by content */ }\nimpl OverlapSupport {\n    /// \"[a, b] ≠ 0\": at least one nontrivial overlap exists. O(1) after the\n    /// first enumeration (which the completion engine runs anyway).\n    pub fn interferes(&self, a: &PrimId, b: &PrimId) -> bool;\n    /// \"[a, b] = 0\": freely reorderable — the ≡_S normalizer’s edge test,\n    /// the scheduler’s independence test, and the replay parallelism test\n    /// are THE SAME LOOKUP.\n    pub fn independent(&self, a: &PrimId, b: &PrimId) -> bool;\n}\n\npub struct ReplayPlan {\n    /// Antichains of the causal partial order: each level replays in\n    /// parallel (or on demand); levels sequence.\n    pub levels: Vec<Vec<PrimId>>,\n    /// Fuel = critical path (longest chain), NOT schedule length — the\n    /// transport-fuel cost hook of the identity/univalence lane, now a\n    /// computed number.\n    pub critical_path: u64,\n}\npub fn plan_replay(nf: &TraceletNf, supp: &OverlapSupport) -> ReplayPlan;\n// Differential: parallel replay outcome ≡ sequential replay outcome on every\n// generated certificate (independence is by-theorem, the test is the witness).")
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt "The consumers share")
+                              (ConsInlineGlued (Bold
+                                   (ConsInline (Txt "one lookup")
+                                     BaseInline))
+                                (ConsInline (Txt
+                                     ". The ≡_S normalizer’s union-find runs on this relation. The completion loop schedules by it — independent critical pairs process in parallel, dependent ones serialize. Certificate replay reads it — independent primitives replay in parallel or on demand.")
+                                  BaseInline))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "Transport-by-replay’s fuel is accounted at the critical path of the causal partial order, not the serialization length. The relation is also a structural cousin of the certificate design’s acyclicity gate: both are reachability questions, now over shared data.")
+                                BaseInline))
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt
+                                     "PBW is the schedule theorem: the enveloping-algebra structure warrants that ordered products of primitives — any fixed total order refining the causal order — form a basis. The")
+                                  (ConsInline (TermRef term_canonical_schedule)
+                                    (ConsInline (Txt
+                                         " therefore loses nothing, and Lyndon-style ordering by content address makes it strict and stable. The")
+                                      (ConsInlineGlued (TermDef term_replay_plan "replay plan")
+                                        (ConsInline (Txt
+                                             " is the operational face: antichain levels of the causal partial order, with the critical path as the fuel figure.")
+                                          BaseInline))))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "The full Hopf structure — formal sums, the coproduct as all splittings, the antipode — stays metatheory currency. Two readings are recorded as direction only: the coproduct as the space of cache-key decompositions for incremental recomputation over certificate stores, and the antipode as systematic inverse-certificate construction on the invertible lane. Neither is scoped; either would arrive by its own design pass, behind the division-of-labor firewall.")
+                                    BaseInline))
+                               BaseBlock))))))))
+              (ConsSection (MkSection
+                   anchor_ta_signatures
+                   "Causal signatures"
+                   InheritSectionStatus
+                   (ConsBlock (ProseBlock
+                        (ConsInline (Txt
+                             "Chen’s identity — the signature of a concatenation is the tensor of the signatures — makes truncated path signatures homomorphic certificate invariants. gandr adopts the discipline, not any library: certificate kinds may carry a truncated")
+                          (ConsInlineGlued (TermDef term_causal_signature "causal signature")
+                            (ConsInline (Txt
+                                 ". Level 1 is the occurrence multiset of primitive cells — exactly the connected-components filtration that makes the bialgebra connected (Thm 5.11")
+                              (ConsInlineGlued (CiteRef cite_J_45)
+                                (ConsInline (Txt
+                                     "). Level 2 is ordered-pair counts along the causal order, the cheapest interference-sensitive layer.")
+                                  BaseInline))))))
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt "Composition updates the")
+                            (ConsInline (TermRef term_causal_signature)
+                              (ConsInline (Txt
+                                   " homomorphically, and the store checks agreement on compose. As a conservativity alarm — the univalence-base grade-alarm pattern verbatim — a composition law that fails signature balance is a")
+                                (ConsInlineGlued (Bold
+                                     (ConsInline (Txt "specification bug found analytically")
+                                       BaseInline))
+                                  (ConsInline (Txt
+                                       ", before any failed proof or divergent differential. As a prefilter: unequal signatures imply not ≡_N-equal, so the normal-form comparison is skipped entirely. ")
+                                    (ConsInlineGlued (Bold
+                                         (ConsInline (Txt "Advisory, never soundness-bearing")
+                                           BaseInline))
+                                      (ConsInline (Txt "; the grade slots ride the core’s")
+                                        (ConsInline (TermRef term_grade)
+                                          (ConsInline (Txt " carrier, and the imbalance data reads off the")
+                                            (ConsInlineGlued (TermRef term_overlap_support)
+                                              (ConsInline (Txt ".")
+                                                BaseInline))))))))))))
+                       (ConsBlock (ApiCodeBlock
+                            "rust"
+                            "// theory-computads — causal signatures. Advisory: alarms and prefilters\n// only; nothing downstream may DEPEND on a signature for soundness.\n\npub struct CausalSig1(BTreeMap<CellId, u32>);            // occurrence multiset\npub struct CausalSig2(BTreeMap<(CellId, CellId), u32>);  // causal ordered pairs\n\n/// Chen-shape composition law, checked at certificate-compose time:\n///   sig1(a ⋄ b) = sig1(a) + sig1(b)                       (always)\n///   sig2(a ⋄ b) = sig2(a) + sig2(b) + cross(a, b)         (cross from supp)\n/// A imbalance is a CONSERVATIVITY ALARM (spec bug), not a rejection.\npub fn check_sig_balance(a: &TraceletNf, b: &TraceletNf, composed: &TraceletNf)\n    -> Result<(), SigAlarm>;\n\n/// Prefilter: different signatures ⇒ not ≡_N-equal ⇒ skip nf_equal entirely.\npub fn sig_prefilter(a: &CausalSig1, b: &CausalSig1) -> bool;")
+                         BaseBlock))))
+                (ConsSection (MkSection
+                     anchor_ta_feta
+                     "Pathway queries"
+                     InheritSectionStatus
+                     (ConsBlock (ProseBlock
+                          (ConsInline (Txt "The tracelets paper’s FETA algorithm (its section 4")
+                            (ConsInlineGlued (CiteRef cite_J_44)
+                              (ConsInline (Txt
+                                   ") synthesizes, statically, the maximally compressed derivation traces ending in a designated target rule E — composing tracelets with the rule set (composition compatible with rule composition, and associative, its Thm 1")
+                                (ConsInlineGlued (CiteRef cite_J_44)
+                                  (ConsInline (Txt
+                                       "), imposing that E occurs only last, and quotienting by ≡_A ∪ ≡_S — never evaluating on an initial state.")
+                                    BaseInline))))))
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "The gandr rendering is an inspection-protocol query family — what minimal cell compositions can produce this pattern, or reach this diagnostic? — over the cell store. Queries are bounded by the completion budget and reported as tracelets, which are already inspectable and replayable. The rabbit-calculus colloquium")
+                              (ConsInlineGlued (CiteRef cite_J_51)
+                                (ConsInline (Txt
+                                     " frames the tracelet program’s ambition as the categorical home of Huet–Lévy causality, the Lévy families of redexes. That is exactly the reading under which these queries are")
+                                  (ConsInlineGlued (Bold
+                                       (ConsInline (Txt "causal explanations, not searches")
+                                         BaseInline))
+                                    (ConsInline (Txt ".")
+                                      BaseInline))))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "Customers: diagnostics-side explanation (how can this state arise), targeted critical-pair exploration in the completion loop, and — one era later — adapter-chain synthesis in the protocol lane. Cheap here for the same reason fusion is: seams are shallow, so composition search is at the")
+                                (ConsInlineGlued (TermRef term_cut)
+                                  (ConsInline (Txt ", not in tree traversal.")
+                                    BaseInline))))
+                           (ConsBlock (ApiCodeBlock
+                                "rust"
+                                "// theory-computads / inspection protocol — pathway queries.\n// FETA shape: compose tracelets toward a target, compress by ≡, never touch\n// a program state. Budgeted like completion (decline-with-report).\n\npub struct PathwayQuery {\n    pub target: CellId,          // the event that must occur, and occur LAST\n    pub max_len: u32,            // N_max; budget posture, not a search promise\n}\npub struct Pathway { pub nf: TraceletNf }   // reported in normal form\n\n/// P_1 = { T(target) }; P_n = compress( extend(P_{n-1}) minus those where\n/// target could fire earlier ) — the E ≺_C condition of the FETA algorithm.\npub fn pathways(q: &PathwayQuery, store: &CellStore) -> Result<Vec<Pathway>, Budget>;\n// Consumers: \"how can this diagnostic arise\" explanations; targeted\n// critical-pair exploration; (later) protocol adapter-chain synthesis.")
+                             BaseBlock)))))
+                  (ConsSection (MkSection
+                       anchor_ta_constrained
+                       "Constrained overlaps"
+                       InheritSectionStatus
+                       (ConsBlock (ProseBlock
+                            (ConsInline (Txt
+                                 "When cells carry side conditions, composition must reject constraint-violating overlaps. The verified discipline")
+                              (ConsInlineGlued (CiteRef cite_J_46)
+                                (ConsInline (Txt ": decompose each forbidden pattern into its")
+                                  (ConsInlineGlued (TermDef term_forbidden_relation "forbidden relations")
+                                    (ConsInline (Txt " — span decompositions (Def 6). A candidate")
+                                      (ConsInline (TermRef term_overlap)
+                                        (ConsInline (Txt
+                                             " violates the constraint iff a forbidden relation embeds into the overlap span by a double-pullback embedding (Thm 3). The doomed composite is")
+                                          (ConsInlineGlued (Bold
+                                               (ConsInline (Txt "rejected before it is built")
+                                                 BaseInline))
+                                            (ConsInline (Txt
+                                                 ", and the same data yields minimal constraint-preserving application conditions (Cor 1).")
+                                              BaseInline))))))))))
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "The gandr rendering is an optimization lane, evidence-gated: compile per-seam side-condition classes — η-polarity,")
+                                (ConsInline (TermRef term_variance)
+                                  (ConsInline (Txt " and acyclicity,")
+                                    (ConsInline (TermRef term_grade)
+                                      (ConsInline (Txt
+                                           " constraints — to span-level tests on the overlap itself, precomputed per constraint class; optionally host non-linear")
+                                        (ConsInline (TermRef term_overlap)
+                                          (ConsInline (Txt
+                                               " enumeration on the already-proposed solver interface, following ReSMT’s declarative encoding — graphs, spans, and pushouts as Z3 theories, models up to iso. The current per-seam checks remain the reference semantics and the differential’s oracle.")
+                                            BaseInline))))))))
+                           (ConsBlock (ApiCodeBlock
+                                "rust"
+                                "// theory-computads (optimization lane) — span-level constraint tests.\n\n/// A constraint class compiled once to its forbidden relations (GCM Def 6):\n/// the span decompositions of each forbidden pattern.\npub fn compile_constraint(class: &ConstraintClass) -> Vec<ForbiddenRelation>;\n\n/// Thm 3 shape: the candidate composite violates the constraint iff a\n/// forbidden relation embeds into the OVERLAP SPAN by a double-pullback\n/// embedding — tested before any composite is constructed.\npub fn overlap_admissible(o: &Overlap, forb: &[ForbiddenRelation]) -> bool;\n// Differential oracle: the existing per-seam check on the constructed\n// composite; admissibility must agree on every generated instance.")
+                             BaseBlock))))
+                    (ConsSection (MkSection
+                         anchor_ta_bifibration
+                         "Bifibration firewall"
+                         InheritSectionStatus
+                         (ConsBlock (ProseBlock
+                              (ConsInline (Txt
+                                   "If the crDC suite fails an opfibrational axiom, the universal repair exists: the free (P,N)-fibration on the source and target functors adjoins exactly the missing pushforwards, with a clean proof theory — objects are alternating push/pull formulas, arrows are cut-free sequent derivations modulo permutation")
+                                (ConsInlineGlued (CiteRef cite_J_42)
+                                  (ConsInline (Txt
+                                       ". And Z(C) = Bif(id_C), the free double category with companions and conjoints, is the")
+                                    (ConsInlineGlued (TermDef term_zigzag "zigzag double category")
+                                      (ConsInline (Txt ".")
+                                        BaseInline))))))
+                           (ConsBlock (RegisterBlock
+                                OrderedList
+                                (ConsItem (MkItem
+                                     "The decidability cliff"
+                                     (ConsInline (Txt
+                                          "derivation equality is canonical — maximally multifocused normal forms — exactly when the base is")
+                                       (ConsInlineGlued (TermDef term_factorization_preorder "factorization preordered")
+                                         (ConsInline (Txt
+                                              "; without it, 2-cell equality in such free constructions is undecidable (Dawson–Paré–Pronk, via the free-bifibration paper’s section 3). Hence the rule, in the univalence-base STOP shape: ")
+                                           (ConsInlineGlued (Bold
+                                                (ConsInline (Txt
+                                                     "freely adjoining fibrational structure is an owner STOP whose entry condition is a factorization-preorder check")
+                                                  BaseInline))
+                                             (ConsInline (Txt
+                                                  " on the seam category. Content-addressed first-order syntax plausibly qualifies via canonical context and substitution factorization — testable, not assumed.")
+                                               BaseInline))))))
+                                  (ConsItem (MkItem
+                                       "Companions and conjoints are free"
+                                       (ConsInline (Txt
+                                            "the graph and cograph loose arrows of tight substitutions — which the restriction calculus implicitly uses — cost no axioms; the zigzag construction manufactures them universally.")
+                                         BaseInline))
+                                    (ConsItem (MkItem
+                                         "The focusing convergence"
+                                         (ConsInline (Txt
+                                              "the canonical forms of the free bifibration are obtained by proof-theoretic focusing — the same technology as the sequent kernel’s own")
+                                           (ConsInline (TermRef term_focusing)
+                                             (ConsInline (Txt
+                                                  " translation. The kernel gandr already built is the natural host for this proof theory; if the STOP is ever taken, no foreign engine is needed.")
+                                               BaseInline))))
+                                      BaseItem))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "The CFVDC cross-check: no bifibration or zigzag completion exists in the internal-univalence substrate. The closest universal-repair-shaped structure is its Squier completion of coherence — a repair of missing coherence, not of missing fibrational structure. ")
+                                    (ConsInlineGlued (Bold
+                                         (ConsInline (Txt "The doctrine stands on the free-bifibration paper alone")
+                                           BaseInline))
+                                      (ConsInline (Txt ".")
+                                        BaseInline))))
+                               BaseBlock))))
+                      (ConsSection (MkSection
+                           anchor_ta_doctrine
+                           "Doctrine alignment"
+                           InheritSectionStatus
+                           (ConsBlock (ProseBlock
+                                (ConsInline (Txt
+                                     "The 2-dimensional fragment of a shape block — sorts, constructors, operations, rules — is precisely a presentation of a")
+                                  (ConsInlineGlued (TermDef term_cartesian_double_theory "cartesian double theory")
+                                    (ConsInline (Txt " (Lambert–Patterson Def 6.1")
+                                      (ConsInlineGlued (CiteRef cite_Q_24)
+                                        (ConsInline (Txt "; finite-product form, Patterson Def 10.1")
+                                          (ConsInlineGlued (CiteRef cite_Q_25)
+                                            (ConsInline (Txt ").")
+                                              BaseInline))))))))
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "Its models are product-preserving lax double functors, and they carry functorial semantics, morphisms of models, free and initial models, and a virtual double category of models (LP Cor 8.17/10.8; P Cor 11.7). The modules-as-instances reading of the higher-cells design is thus")
+                                    (ConsInlineGlued (Bold
+                                         (ConsInline (Txt "not an analogy but an instance")
+                                           BaseInline))
+                                      (ConsInline (Txt ".")
+                                        BaseInline))))
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "The crisp gap is equally valuable: Lambert–Patterson impose coherence — pentagon, triangle — as equations between cells, where gandr declares coherence as proof-relevant meta 3-cells. The double-theory literature is strictly 2-dimensional, and the 3-cell layer is exactly the frontier its authors name; gandr’s routing is therefore")
+                                      (ConsInlineGlued (Bold
+                                           (ConsInline (Txt "ahead of, not in conflict with")
+                                             BaseInline))
+                                        (ConsInline (Txt
+                                             ", the doctrine literature, and the higher-cells design is unchanged.")
+                                          BaseInline))))
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "The dictionary’s cartesian law is refined, not repaired — tested against the right universal property. First, the framed, double pairing–projection bijection, not the weaker globular one (P Ex 6.10). Second, expecting")
+                                        (ConsInlineGlued (Bold
+                                             (ConsInline (Txt "iso-strong, never strict")
+                                               BaseInline))
+                                          (ConsInline (Txt
+                                               ": products of relation-shaped loose arrows are genuinely lax in general, iso under bijective indexing (P Def 7.1, Thm 6.5). Third, decomposed as parallel-products-of-signatures plus restriction along structure arrows (P Thm 8.6). Products-preserved-by-restriction — the law’s second clause — is verified sound at the source (LP Lem 4.13(v)).")
+                                            BaseInline))))
+                                   (ConsBlock (ProseBlock
+                                        (ConsInline (Txt
+                                             "A bare VDC is not cartesian in Patterson’s sense — his product apparatus needs a genuine double category. gandr’s legitimate cartesian claims live at two altitudes: the tight and object layer, with local products-with-restriction; and the VDC of models.")
+                                          BaseInline))
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "Neither paper defines Nasu’s cartesian fibrational VDC — the reflection face’s actual semantic target")
+                                            (ConsInlineGlued (CiteRef cite_Q_1)
+                                              (ConsInlineGlued (CiteRef cite_Q_2)
+                                                (ConsInline (Txt
+                                                     ". Reconciling Nasu-cartesian with LP/Patterson-cartesian therefore needs a direct pass over Nasu’s definitions, filed as a follow-up read. Until then, the dictionary-test verdict note names which cartesian notion each law instance tested.")
+                                                  BaseInline)))))
+                                       (ConsBlock (ProseBlock
+                                            (ConsInline (Txt
+                                                 "The CFVDC cross-check supports the legitimate claims: the substrate carries local cartesian structure on loose arrows — a terminal profunctor and level-wise products with β/η laws — and restrictions preserve local products on the nose at components, exactly the (a)-clause. The models-level apparatus of clause (b) has no counterpart there.")
+                                              BaseInline))
+                                         BaseBlock))))))))
+                        (ConsSection (MkSection
+                             anchor_ta_acceleration
+                             "Acceleration band"
+                             InheritSectionStatus
+                             (ConsBlock (ProseBlock
+                                  (ConsInline (Txt
+                                       "Three order-independence properties, one per layer, align — and their alignment is what makes batched and parallel execution semantics-preserving rather than merely fast. The")
+                                    (ConsInlineGlued (TermDef term_acceleration_band "acceleration band")
+                                      (ConsInline (Txt " is the engineering that alignment licenses.")
+                                        BaseInline))))
+                               (ConsBlock (RegisterBlock
+                                    OrderedList
+                                    (ConsItem (MkItem
+                                         "logical"
+                                         (ConsInline (Txt
+                                              "≡_S: schedules of independent work are interchangeable, with unique primitive factorization — the normal-form section (Behr–Kock, by theorem).")
+                                           BaseInline))
+                                      (ConsItem (MkItem
+                                           "algebraic"
+                                           (ConsInline (Txt
+                                                "Chen homomorphism: the signature combine is associative, so segment computation is a parallel scan — the signature section (rough-path theory).")
+                                             BaseInline))
+                                        (ConsItem (MkItem
+                                             "representational"
+                                             (ConsInline (Txt
+                                                  "prolly-tree history-independence: chunked state converges regardless of update order — the granular store.")
+                                               BaseInline))
+                                          BaseItem))))
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "The engineering precedent is real: the signatory line computes truncated signatures by divide-and-conquer over segments, with a dense truncated-tensor-multiplication combine, batched on GPU")
+                                        (ConsInlineGlued (CiteRef cite_J_47)
+                                          (ConsInline (Txt
+                                               ". That is precisely the shape of the level-1 and level-2 invariants, so the")
+                                            (ConsInline (TermRef term_causal_signature)
+                                              (ConsInline (Txt
+                                                   " lane is accelerable by construction. The massive-terms regime supplies what small terms never could: batch width sufficient to amortize accelerator dispatch, with prolly chunk boundaries as the natural data-parallel work units.")
+                                                BaseInline))))))
+                                   (ConsBlock (RegisterBlock
+                                        OrderedList
+                                        (ConsItem (MkItem
+                                             "Batched signature scans"
+                                             (ConsInline (Txt
+                                                  "(advisory): per-certificate truncated signatures over cell-application streams, computed as a parallel scan and batched across a certificate store. Consumers: the prefilters and alarms, store-scale dedup and clustering of certificates, cache keys.")
+                                               BaseInline))
+                                          (ConsItem (MkItem
+                                               "Overlap screening"
+                                               (ConsInline (Txt
+                                                    "(advisory, sound-direction-only): content-fingerprint summaries per prolly chunk — bitset or Bloom over symbol and position classes — with pairwise intersection as batched AND-popcount. The screen may only say definitely-no-overlap: a screened-out pair never reaches the exact enumerator; a surviving pair always does. False negatives are structurally excluded — the fingerprint over-approximates, and the exact enumerator remains the oracle.")
+                                                 BaseInline))
+                                            (ConsItem (MkItem
+                                                 "Chunk-parallel replay and rehash"
+                                                 (ConsInline (Txt
+                                                      "(exact, differentialed): a replay-plan level touches pairwise-disjoint regions of the chunked state; the whole level applies as one batched tree surgery followed by one batched rehash of the touched spines — BLAKE3’s tree mode is already SIMD- and multicore-parallel. History-independence makes the batch result independent of intra-level order — the representational twin of the ≡_S theorem that licensed the level. Multicore and SIMD first; GPU only where hashing width earns it.")
+                                                   BaseInline))
+                                              (ConsItem (MkItem
+                                                   "Rule-algebra numerics"
+                                                   (ConsInline (Txt
+                                                        "(analysis band, direction only): pattern-count observables and their commutator evolution equations are genuinely linear-algebraic — the one place the linear currency becomes operationally real. Strictly outside the kernel and outside this component’s scope; recorded because corpus-scale rewriting analytics is where it would land.")
+                                                     BaseInline))
+                                                BaseItem)))))
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "A raw depth-2 signature of a serialized schedule is not ≡_S-invariant — the schedules a·b and b·a differ in the antisymmetric block. Signatures are therefore computed on the canonical schedule, where they are well-defined on ≡_S classes.")
+                                            BaseInline))
+                                       (ConsBlock (ProseBlock
+                                            (ConsInline (Txt "The antisymmetric depth-2 block — the")
+                                              (ConsInlineGlued (TermDef term_levy_area "Lévy area")
+                                                (ConsInline (Txt
+                                                     " — is then not noise but signal: it is the numerical shadow of the Lie bracket. For a pair recorded independent in the overlap support, the area must vanish on every observed schedule. A nonzero area is a signature-grade alarm — a mis-recorded independence — caught by arithmetic before any replay diverges.")
+                                                  BaseInline))))
+                                         (ConsBlock (ProseBlock
+                                              (ConsInline (Txt "The rough-path tree-like-equivalence theorem")
+                                                (ConsInlineGlued (CiteRef cite_J_48)
+                                                  (ConsInline (Txt
+                                                       " is the analytic twin of the ≡_T unit quotient: backtracking that cancels is invisible. That is the correct behavior for an invariant of causal content.")
+                                                    BaseInline))))
+                                           (ConsBlock (ProseBlock
+                                                (ConsInlineGlued (Bold
+                                                     (ConsInline (Txt "The firewall is binding")
+                                                       BaseInline))
+                                                  (ConsInline (Txt
+                                                       ". Accelerator results are either advisory — screens, signatures, alarms, plans — or exact-and-differentialed — hashing and batched surgery, with the sequential discrete path as the standing oracle. No accelerator result is ever soundness-bearing; the kernel never links the band; numeric nondeterminism is unobservable — bit-reproducible integer or fixed-point kernels, or advisory-only outputs. Adoption is measurement-first: SIMD before GPU, with a dispatch-amortization benchmark as the gate for any GPU dependency — a wide batch that fails to beat the multicore scan is a no.")
+                                                    BaseInline)))
+                                             (ConsBlock (ApiCodeBlock
+                                                  "rust"
+                                                  "// theory-computads / the granular store — the acceleration band.\n// Everything here is EITHER advisory OR exact-and-differentialed; the kernel\n// never links this module.\n\n/// Truncated causal signature in the tensor algebra over the primitive-cell\n/// feature space (d = |primitive classes| or a hashed feature dimension).\n/// Depth 1 ≡ CausalSig1; depth 2 ≡ CausalSig2 + the Lévy-area block.\npub struct TruncSig<const M: usize> { /* dense [d], [d×d], …, [d^M] blocks */ }\n\n/// Chen scan: associative combine ⇒ parallel reduction over schedule\n/// segments; the combine is truncated tensor multiplication — dense batched\n/// linear algebra (the signatory precedent). Backend: SIMD now; GPU when the\n/// batch is wide enough (the massive-terms regime), behind the acceleration-band benchmark.\npub fn sig_scan<const M: usize>(nf: &TraceletNf) -> TruncSig<M>;\npub fn sig_batch<const M: usize>(store: &[TraceletNf]) -> Vec<TruncSig<M>>;\n\n/// The Lévy-area reading: the antisymmetric depth-2 block IS the empirical\n/// bracket. Pairs recorded independent in OverlapSupport must show zero area\n/// on every observed schedule — nonzero area is a signature-grade alarm\n/// (mis-recorded independence), found numerically before any replay diverges.\npub fn area_alarms(sig: &TruncSig<2>, supp: &OverlapSupport) -> Vec<SigAlarm>;\n\n/// Overlap screening over chunk fingerprints (bitset/Bloom per prolly chunk;\n/// batched AND-popcount). SOUND DIRECTION ONLY: `No` is definitive (the\n/// fingerprint over-approximates), `Maybe` goes to the exact enumerator.\npub enum MaybeOverlap { No, Maybe }\npub fn screen_overlaps(a: &ChunkSummary, b: &ChunkSummary) -> MaybeOverlap;\n\n/// Chunk-parallel replay: one ReplayPlan level = one batched tree surgery\n/// over pairwise-disjoint chunk sets + one batched spine rehash (BLAKE3 tree\n// mode). History-independent chunking ⇒ the batch result is independent of\n/// intra-level order — the representational twin of ≡_S.\npub fn replay_level_batched(state: &ChunkedState, level: &[PrimId]) -> ChunkedState;\n// Differential: replay_level_batched ≡ sequential replay of the same level\n// on every generated certificate — the replay differential, widened to the store.")
+                                               BaseBlock))))))))))
+                          (ConsSection (MkSection
+                               anchor_ta_staging
+                               "Staging and gates"
+                               InheritSectionStatus
+                               (ConsBlock (ProseBlock
+                                    (ConsInline (Txt
+                                         "The ladder stages the landing; each rung carries its gate, and the kill signals follow the register. The rungs are additive over the engine as built — nothing spends frozen-core budget, and every landing is evidence-gated. ")
+                                      (ConsInlineGlued (Bold
+                                           (ConsInline (Txt "Every rung is a design pass")
+                                             BaseInline))
+                                        (ConsInline (Txt
+                                             " — nothing here is built; the metatheory rung is dormant, unscheduled.")
+                                          BaseInline))))
+                                 (ConsBlock (RegisterBlock
+                                      OrderedList
+                                      (ConsItem (MkItem
+                                           "suite"
+                                           (ConsInline (Txt "The crDC suite (")
+                                             (ConsInlineGlued (XRef anchor_ta_crdc)
+                                               (ConsInline (Txt
+                                                    ") plus the virtual-side line items — positive globular decompositions, the cellular Conduché condition — extending the dictionary test, with a verdict note. ")
+                                                 (ConsInlineGlued (Italic
+                                                      (ConsInline (Txt "Gate: the dictionary-test lane green; per-axiom go/no-go.")
+                                                        BaseInline))
+                                                   BaseInline)))))
+                                        (ConsItem (MkItem
+                                             "normal form"
+                                             (ConsInline (Txt "≡_S plus primitive factorization on the tracelet (")
+                                               (ConsInlineGlued (XRef anchor_ta_normal_form)
+                                                 (ConsInline (Txt
+                                                      "); the normal-form fast path for cells_equal; the NF-implies-replay differential; the kill-signal pin. ")
+                                                   (ConsInlineGlued (Italic
+                                                        (ConsInline (Txt "Gate: the sequent kernel’s L2 lane; zero frozen-core surface.")
+                                                          BaseInline))
+                                                     BaseInline)))))
+                                          (ConsItem (MkItem
+                                               "support"
+                                               (ConsInline (Txt
+                                                    "The overlap-support cache plus parallel and demand replay plus critical-path fuel accounting (")
+                                                 (ConsInlineGlued (XRef anchor_ta_bracket)
+                                                   (ConsInline (Txt "). ")
+                                                     (ConsInlineGlued (Italic
+                                                          (ConsInline (Txt "Gate: the normal-form rung.")
+                                                            BaseInline))
+                                                       BaseInline)))))
+                                            (ConsItem (MkItem
+                                                 "convolution"
+                                                 (ConsInline (Txt "Convolution-face rows (")
+                                                   (ConsInlineGlued (XRef anchor_ta_convolution)
+                                                     (ConsInline (Txt
+                                                          "): the enumerator-completeness differential in both directions; Δ̂-level queries in theory-virtual-doctrines. ")
+                                                       (ConsInlineGlued (Italic
+                                                            (ConsInline (Txt "Gate: the suite verdict; the reflection face’s query lane.")
+                                                              BaseInline))
+                                                         BaseInline)))))
+                                              (ConsItem (MkItem
+                                                   "signatures"
+                                                   (ConsInline (Txt "Causal-signature invariants on certificate kinds (")
+                                                     (ConsInlineGlued (XRef anchor_ta_signatures)
+                                                       (ConsInline (Txt "). ")
+                                                         (ConsInlineGlued (Italic
+                                                              (ConsInline (Txt
+                                                                   "Gate: the certificate-format decision, with the univalence-base grade lane.")
+                                                                BaseInline))
+                                                           BaseInline)))))
+                                                (ConsItem (MkItem
+                                                     "feta"
+                                                     (ConsInline (Txt "FETA queries in the inspection protocol (")
+                                                       (ConsInlineGlued (XRef anchor_ta_feta)
+                                                         (ConsInline (Txt "). ")
+                                                           (ConsInlineGlued (Italic
+                                                                (ConsInline (Txt "Gate: the normal-form rung plus the inspection-protocol lane.")
+                                                                  BaseInline))
+                                                             BaseInline)))))
+                                                  (ConsItem (MkItem
+                                                       "metatheory"
+                                                       (ConsInline (Txt
+                                                            "Metatheory: the U(L)/PBW statement on the Agda face; coproduct-as-cache-keys; antipode/rollback; the decomposition-space note as a knowledge aside. ")
+                                                         (ConsInlineGlued (Italic
+                                                              (ConsInline (Txt "Gate: the metatheory lane; unscheduled.")
+                                                                BaseInline))
+                                                           BaseInline)))
+                                                    (ConsItem (MkItem
+                                                         "acceleration"
+                                                         (ConsInline (Txt "The acceleration band (")
+                                                           (ConsInlineGlued (XRef anchor_ta_acceleration)
+                                                             (ConsInline (Txt
+                                                                  "): batched signature scans, overlap screening, chunk-parallel replay and rehash. ")
+                                                               (ConsInlineGlued (Italic
+                                                                    (ConsInline (Txt
+                                                                         "Gate: support plus the granular-store lane; measurement-first — SIMD before GPU, with a dispatch-amortization benchmark.")
+                                                                      BaseInline))
+                                                                 BaseInline)))))
+                                                      BaseItem)))))))))
+                                   (ConsBlock (ProseBlock
+                                        (ConsInline (Txt "The kill signals.")
+                                          (ConsInline (Bold
+                                               (ConsInline (Txt "An NF-equal, replay-divergent pair")
+                                                 BaseInline))
+                                            (ConsInline (Txt " is the normal-form soundness stop.")
+                                              (ConsInline (Bold
+                                                   (ConsInline (Txt "A crDC-suite failure")
+                                                     BaseInline))
+                                                (ConsInline (Txt " is informative, not fatal — each names an invariant.")
+                                                  (ConsInline (Bold
+                                                       (ConsInline (Txt "A factorization-preorder failure")
+                                                         BaseInline))
+                                                    (ConsInline (Txt " closes the free-bifibration door; the STOP stays shut.")
+                                                      (ConsInline (Bold
+                                                           (ConsInline (Txt "Any pressure to represent formal sums or antipodes in the kernel")
+                                                             BaseInline))
+                                                        (ConsInline (Txt " is a division-of-labor violation: return to design.")
+                                                          BaseInline))))))))))
+                                     BaseBlock))))
+                            (ConsSection (MkSection
+                                 anchor_ta_corpus_plan
+                                 "Corpus-examples plan"
+                                 InheritSectionStatus
+                                 (ConsBlock (ProseBlock
+                                      (ConsInline (Txt
+                                           "All rows are gated on the owning rungs; engine-family examples unless noted. The pathological rows are the golden outputs of the suite’s failure modes — the mutation-adequacy witnesses of the staging ladder’s kill signals. ")
+                                        (ConsInlineGlued (Bold
+                                             (ConsInline (Txt "Every row is a design pass")
+                                               BaseInline))
+                                          (ConsInline (Txt ".")
+                                            BaseInline))))
+                                   (ConsBlock (RegisterBlock
+                                        OrderedList
+                                        (ConsItem (MkItem
+                                             "tracelet-normal-form.gandr (model)"
+                                             (ConsInline (Txt
+                                                  "A derivation with independent steps; its primitive factorization and canonical schedule rendered.")
+                                               BaseInline))
+                                          (ConsItem (MkItem
+                                               "parallel-replay.gandr (model)"
+                                               (ConsInline (Txt
+                                                    "Transport along a certificate whose fuel bill shows critical-path, not serialization, cost.")
+                                                 BaseInline))
+                                            (ConsItem (MkItem
+                                                 "convolution-composite.gandr (model)"
+                                                 (ConsInline (Txt
+                                                      "A two-rule seam; the enumerated family rendered as the sum-of-representables decomposition.")
+                                                   BaseInline))
+                                              (ConsItem (MkItem
+                                                   "shift-divergent-replay.gandr (pathological)"
+                                                   (ConsInline (Txt
+                                                        "The normal-form kill-signal pin — constructed only as a mutation-adequacy witness: an engine mutant that mis-tracks positions must be caught.")
+                                                     BaseInline))
+                                                (ConsItem (MkItem
+                                                     "overlap-family-incomplete.gandr (pathological)"
+                                                     (ConsInline (Txt
+                                                          "A cospan of matches not factoring through the enumerated family — the suite multi-sum failure golden, if one exists; otherwise the suite documents vacuity.")
+                                                       BaseInline))
+                                                  (ConsItem (MkItem
+                                                       "signature-imbalance.gandr (pathological)"
+                                                       (ConsInline (Txt
+                                                            "A certificate composition whose declared signature fails the homomorphism check; decline is the golden.")
+                                                         BaseInline))
+                                                    BaseItem)))))))
+                                     BaseBlock)))
+                              (ConsSection (MkSection
+                                   anchor_ta_open_questions
+                                   "Open questions"
+                                   InheritSectionStatus
+                                   (ConsBlock (ProseBlock
+                                        (ConsInline (Txt
+                                             "What the design deliberately leaves unresolved, collected so later rungs inherit the questions rather than rediscover them.")
+                                          BaseInline))
+                                     (ConsBlock (RegisterBlock
+                                          UnorderedList
+                                          (ConsItem (MkItem
+                                               "Normal-form-keyed storage"
+                                               (ConsInline (Txt
+                                                    "should the store key on NF — deduplicating shift-equivalent certificates at insertion — or only the comparator use it? Store-keying is more aggressive and interacts with provenance: two differently-derived, shift-equivalent certificates collapse to one stored artifact.")
+                                                 BaseInline))
+                                            (ConsItem (MkItem
+                                                 "Residues in practice"
+                                                 (ConsInline (Txt
+                                                      "which gandr cell classes actually exercise the residual part of the target axiom — where does pushforward force post-normalization? The suite answers empirically, and the answer shapes how much of Def 2.8’s generality the suite rung must implement.")
+                                                   BaseInline))
+                                              (ConsItem (MkItem
+                                                   "Non-linear patterns versus multi-sums"
+                                                   (ConsInline (Txt
+                                                        "with non-linear patterns admitted, is the overlap family still finite and multi-universal, or does an occurs-check fragment need fencing?")
+                                                     BaseInline))
+                                                (ConsItem (MkItem
+                                                     "The oplax band"
+                                                     (ConsInline (Txt
+                                                          "if the suite passes only partially, the convolution face is oplax-but-not-strong on some fragment — is the oplax comparison map itself worth exposing as a query (it measures exactly the failure), or is the verdict note enough?")
+                                                       BaseInline))
+                                                  (ConsItem (MkItem
+                                                       "Coproduct as incremental-recomputation keys"
+                                                       (ConsInline (Txt
+                                                            "the splitting coproduct enumerates cache decompositions of a certificate store; does this meet the incremental-pipeline design or duplicate it?")
+                                                         BaseInline))
+                                                    (ConsItem (MkItem
+                                                         "Signature truncation depth"
+                                                         (ConsInline (Txt
+                                                              "is level 2 — ordered pairs — ever worth its cost over level 1, given that the overlap-support cache already carries interference data?")
+                                                           BaseInline))
+                                                      (ConsItem (MkItem
+                                                           "Cartesian reconciliation"
+                                                           (ConsInline (Txt
+                                                                "does Nasu’s cartesian fibrational VDC — the reflection face’s semantic target — restrict to the LP/Patterson cartesian notions on the fragments where both apply? Requires a direct pass over Nasu’s definitions; until settled, the verdict note names which cartesian notion each law instance tested.")
+                                                             BaseInline))
+                                                        (ConsItem (MkItem
+                                                             "The indexed side"
+                                                             (ConsInline (Txt
+                                                                  "what does the Grothendieck construction of the source and target multi-opfibrations yield over gandr’s cell store, and does it meet the reflection face’s fibrational reading? Unscoped research; the reflection face is already fibration-shaped, so gandr is a natural place to look.")
+                                                               BaseInline))
+                                                          (ConsItem (MkItem
+                                                               "Feature space for signatures"
+                                                               (ConsInline (Txt
+                                                                    "a fixed basis of primitive-cell classes — exact, unbounded dimension — versus a hashed feature dimension — bounded, collision-blurred alarms? Advisory status makes collisions benign for soundness, but alarm precision and prefilter selectivity both depend on the choice; measure at the acceleration rung.")
+                                                                 BaseInline))
+                                                            (ConsItem (MkItem
+                                                                 "The analysis band"
+                                                                 (ConsInline (Txt
+                                                                      "do corpus-scale rewriting analytics — pattern-count observables, commutator evolution — ever become a gandr tool? The one place the linear currency is operationally real; strictly outside the kernel; unscoped.")
+                                                                   BaseInline))
+                                                              BaseItem)))))))))))
+                                       BaseBlock)))
+                                (ConsSection (MkSection
+                                     anchor_ta_adr
+                                     "Draft ADR candidate"
+                                     InheritSectionStatus
+                                     (ConsBlock (ProseBlock
+                                          (ConsInline (Txt
+                                               "The decision-record candidate, stated once for the architecture review. The clauses condense the ten decisions; the division of labor is restated; the rung-to-bead mapping follows.")
+                                            BaseInline))
+                                       (ConsBlock (RegisterBlock
+                                            OrderedList
+                                            (ConsItem (MkItem
+                                                 "The crDC suite"
+                                                 (ConsInline (Txt
+                                                      "the fibrational axioms — multi-sums, a strong multi-opfibration source, a residual multi-opfibration target, horizontal decomposition — are adopted as a staged property suite over the cell store, extending the dictionary test and following the TRS[Σ] template; a green suite upgrades the fused-equals-two-step and grafting-associativity contracts to theorem-backed, with differentials retained as witnesses.")
+                                                   BaseInline))
+                                              (ConsItem (MkItem
+                                                   "The convolution face as specification"
+                                                   (ConsInline (Txt
+                                                        "representables categorify rule interfaces, and the categorified concurrency theorem is the overlap enumerator’s completeness contract; the VDC-honest form is multicategorical Day convolution, with oplaxity the default and strength measured by the suite.")
+                                                     BaseInline))
+                                                (ConsItem (MkItem
+                                                     "Certificate normal forms"
+                                                     (ConsInline (Txt
+                                                          "the shift-equivalence plus primitive-factorization quotient is adopted as a decidable under-approximation of replay-equivalence — fast-path comparison, compressed storage, canonical PBW/Lyndon schedules, definitional discharge of serialization coherence — with replay the standing oracle and a kill-signal pin on divergence.")
+                                                       BaseInline))
+                                                  (ConsItem (MkItem
+                                                       "The bracket as its support"
+                                                       (ConsInline (Txt
+                                                            "a cached pairwise overlap relation driving normalization, completion scheduling, parallel and demand certificate replay, and critical-path fuel accounting.")
+                                                         BaseInline))
+                                                    (ConsItem (MkItem
+                                                         "Causal signatures"
+                                                         (ConsInline (Txt
+                                                              "graded invariants adopted as advisory smoke alarms on certificate kinds.")
+                                                           BaseInline))
+                                                      (ConsItem (MkItem
+                                                           "FETA"
+                                                           (ConsInline (Txt "static pathway synthesis joins the inspection protocol.")
+                                                             BaseInline))
+                                                        (ConsItem (MkItem
+                                                             "Constrained overlaps"
+                                                             (ConsInline (Txt
+                                                                  "side-condition classes may compile to span-level forbidden-relation tests, optionally solver-hosted.")
+                                                               BaseInline))
+                                                          (ConsItem (MkItem
+                                                               "The free-bifibration STOP"
+                                                               (ConsInline (Txt
+                                                                    "freely adjoining missing fibrational structure — free bifibration, zigzag completion — is an owner STOP gated on a factorization-preorder check.")
+                                                                 BaseInline))
+                                                            (ConsItem (MkItem
+                                                                 "The acceleration band"
+                                                                 (ConsInline (Txt
+                                                                      "admitted over the granular store — batched Chen-scan signatures, sound-direction overlap screening, chunk-parallel replay and rehash — advisory or exact-and-differentialed only, SIMD-first with a dispatch-amortization benchmark gating any GPU dependency; no accelerator result is soundness-bearing, and the kernel never links the band.")
+                                                                   BaseInline))
+                                                              BaseItem))))))))))
+                                         (ConsBlock (ProseBlock
+                                              (ConsInlineGlued (Bold
+                                                   (ConsInline (Txt "Division of labor is binding")
+                                                     BaseInline))
+                                                (ConsInline (Txt
+                                                     ": Hopf, Lie, and PBW are metatheory currency; the kernel ships canonical forms, caches, counters, and replay — never formal sums, antipodes, or word problems.")
+                                                  BaseInline)))
+                                           (ConsBlock (ProseBlock
+                                                (ConsInline (Txt
+                                                     "The landing is staged across the epic’s children; the register maps the ladder’s rungs and the two doctrine items to their beads.")
+                                                  BaseInline))
+                                             (ConsBlock (RegisterBlock
+                                                  OrderedList
+                                                  (ConsItem (MkItem
+                                                       "crDC suite"
+                                                       (ConsInlineGlued (CodeInline "gandr-5lf.3")
+                                                         (ConsInline (Txt " — the crDC suite against theory-computads.")
+                                                           BaseInline)))
+                                                    (ConsItem (MkItem
+                                                         "normal form"
+                                                         (ConsInlineGlued (CodeInline "gandr-5lf.4")
+                                                           (ConsInline (Txt " — the ≡_N normal form.")
+                                                             BaseInline)))
+                                                      (ConsItem (MkItem
+                                                           "overlap support"
+                                                           (ConsInlineGlued (CodeInline "gandr-5lf.5")
+                                                             (ConsInline (Txt " — the overlap-support cache and parallel replay.")
+                                                               BaseInline)))
+                                                        (ConsItem (MkItem
+                                                             "convolution face"
+                                                             (ConsInlineGlued (CodeInline "gandr-5lf.6")
+                                                               (ConsInline (Txt " — the convolution-face differentials and Δ̂ queries.")
+                                                                 BaseInline)))
+                                                          (ConsItem (MkItem
+                                                               "causal signatures"
+                                                               (ConsInlineGlued (CodeInline "gandr-5lf.7")
+                                                                 (ConsInline (Txt " — causal-signature invariants.")
+                                                                   BaseInline)))
+                                                            (ConsItem (MkItem
+                                                                 "feta"
+                                                                 (ConsInlineGlued (CodeInline "gandr-5lf.8")
+                                                                   (ConsInline (Txt " — FETA inspection queries.")
+                                                                     BaseInline)))
+                                                              (ConsItem (MkItem
+                                                                   "metatheory"
+                                                                   (ConsInlineGlued (CodeInline "gandr-5lf.9")
+                                                                     (ConsInline (Txt
+                                                                          " — the Agda metatheory statement, live with the Agda reboot lane.")
+                                                                       BaseInline)))
+                                                                (ConsItem (MkItem
+                                                                     "acceleration band"
+                                                                     (ConsInlineGlued (CodeInline "gandr-5lf.10")
+                                                                       (ConsInline (Txt ", ")
+                                                                         (ConsInlineGlued (CodeInline "gandr-5lf.11")
+                                                                           (ConsInline (Txt " — the SIMD spike, then the band evaluation.")
+                                                                             BaseInline)))))
+                                                                  (ConsItem (MkItem
+                                                                       "preorder check"
+                                                                       (ConsInlineGlued (CodeInline "gandr-5lf.12")
+                                                                         (ConsInline (Txt " — the factorization-preorder check.")
+                                                                           BaseInline)))
+                                                                    (ConsItem (MkItem
+                                                                         "cartesian refinement"
+                                                                         (ConsInlineGlued (CodeInline "gandr-5lf.13")
+                                                                           (ConsInline (Txt " — the cartesian-law refinement.")
+                                                                             BaseInline)))
+                                                                      (ConsItem (MkItem
+                                                                           "Nasu read"
+                                                                           (ConsInlineGlued (CodeInline "gandr-5lf.14")
+                                                                             (ConsInline (Txt " — the Nasu-cartesian read.")
+                                                                               BaseInline)))
+                                                                        BaseItem))))))))))))
+                                               BaseBlock))))))
+                                  BaseSection))))))))))))))))
+  (ConsCiteKey cite_J_26
+    (ConsCiteKey cite_J_27
+      (ConsCiteKey cite_J_42
+        (ConsCiteKey cite_J_44
+          (ConsCiteKey cite_J_45
+            (ConsCiteKey cite_J_46
+              (ConsCiteKey cite_J_47
+                (ConsCiteKey cite_J_48
+                  (ConsCiteKey cite_J_49
+                    (ConsCiteKey cite_J_50
+                      (ConsCiteKey cite_J_51
+                        (ConsCiteKey cite_Q_1
+                          (ConsCiteKey cite_Q_2
+                            (ConsCiteKey cite_Q_13
+                              (ConsCiteKey cite_Q_23
+                                (ConsCiteKey cite_Q_24
+                                  (ConsCiteKey cite_Q_25 BaseCiteKey)))))))))))))))))

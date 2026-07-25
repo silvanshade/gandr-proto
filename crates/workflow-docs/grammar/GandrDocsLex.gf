@@ -1,8 +1,12 @@
 abstract GandrDocsLex = GandrDocs ** {
   fun
     -- terms (generated from the corpus term registry)
+    term_acceleration_band : Term ;
     term_boundary_polarity : Term ;
     term_boundary_theorem : Term ;
+    term_canonical_schedule : Term ;
+    term_cartesian_double_theory : Term ;
+    term_causal_signature : Term ;
     term_cc_normal_form : Term ;
     term_cell_store : Term ;
     term_cell_visible_fragment : Term ;
@@ -12,15 +16,19 @@ abstract GandrDocsLex = GandrDocs ** {
     term_command : Term ;
     term_command_cell : Term ;
     term_command_il : Term ;
+    term_completeness_contract : Term ;
     term_completion : Term ;
     term_component : Term ;
     term_computation_type : Term ;
     term_consumer : Term ;
     term_conversion_firewall : Term ;
+    term_convolution : Term ;
     term_core_ir : Term ;
+    term_crdc : Term ;
     term_cut : Term ;
     term_data_declaration : Term ;
     term_decl_table : Term ;
+    term_decomposition_space : Term ;
     term_directed_hom : Term ;
     term_directed_j : Term ;
     term_directed_rewrite : Term ;
@@ -30,7 +38,9 @@ abstract GandrDocsLex = GandrDocs ** {
     term_effect_row : Term ;
     term_effect_signature : Term ;
     term_exhaustiveness : Term ;
+    term_factorization_preorder : Term ;
     term_focusing : Term ;
+    term_forbidden_relation : Term ;
     term_frozen_core : Term ;
     term_fusion_by_completion : Term ;
     term_generative_nominal : Term ;
@@ -44,13 +54,16 @@ abstract GandrDocsLex = GandrDocs ** {
     term_instantiation_slot : Term ;
     term_interchange_laxator : Term ;
     term_l_machine : Term ;
+    term_levy_area : Term ;
     term_literature_correspondence : Term ;
     term_loose_arrow : Term ;
     term_matching_modulo : Term ;
     term_message_theory : Term ;
+    term_metatheory_currency : Term ;
     term_native_builtin : Term ;
     term_operation_frame : Term ;
     term_overlap : Term ;
+    term_overlap_support : Term ;
     term_path_type : Term ;
     term_pattern : Term ;
     term_phase_gates : Term ;
@@ -58,6 +71,7 @@ abstract GandrDocsLex = GandrDocs ** {
     term_polarity_orientation : Term ;
     term_polygraph_presentation : Term ;
     term_preserved_boundary : Term ;
+    term_primitive_tracelet : Term ;
     term_producer : Term ;
     term_productivity_ladder : Term ;
     term_produoidal_category : Term ;
@@ -72,9 +86,14 @@ abstract GandrDocsLex = GandrDocs ** {
     term_reflection_face : Term ;
     term_reified_stack : Term ;
     term_replay_equivalence : Term ;
+    term_replay_plan : Term ;
+    term_representable : Term ;
+    term_residue : Term ;
     term_respect_obligation : Term ;
     term_restriction : Term ;
     term_scale_as_ideal : Term ;
+    term_semantic_currency : Term ;
+    term_shift_equivalence : Term ;
     term_sigma_type : Term ;
     term_split_motive : Term ;
     term_status : Term ;
@@ -85,6 +104,8 @@ abstract GandrDocsLex = GandrDocs ** {
     term_tabulator : Term ;
     term_tight_arrow : Term ;
     term_tracelet : Term ;
+    term_tracelet_algebra : Term ;
+    term_tracelet_normal_form : Term ;
     term_two_region_store : Term ;
     term_two_zone_context : Term ;
     term_value_type : Term ;
@@ -93,6 +114,7 @@ abstract GandrDocsLex = GandrDocs ** {
     term_virtual_double_category : Term ;
     term_virtual_line : Term ;
     term_without_k_unification : Term ;
+    term_zigzag : Term ;
     -- cite keys (generated from refs.yml)
     cite_A_10 : CiteKey ;
     cite_A_11a : CiteKey ;
@@ -574,6 +596,23 @@ abstract GandrDocsLex = GandrDocs ** {
     anchor_sk_phases : Anchor ;
     anchor_sk_strategy : Anchor ;
     anchor_spec_index : Anchor ;
+    anchor_ta_acceleration : Anchor ;
+    anchor_ta_adr : Anchor ;
+    anchor_ta_bifibration : Anchor ;
+    anchor_ta_bracket : Anchor ;
+    anchor_ta_constrained : Anchor ;
+    anchor_ta_convolution : Anchor ;
+    anchor_ta_corpus_plan : Anchor ;
+    anchor_ta_crdc : Anchor ;
+    anchor_ta_doctrine : Anchor ;
+    anchor_ta_feta : Anchor ;
+    anchor_ta_normal_form : Anchor ;
+    anchor_ta_objects : Anchor ;
+    anchor_ta_open_questions : Anchor ;
+    anchor_ta_overview : Anchor ;
+    anchor_ta_signatures : Anchor ;
+    anchor_ta_staging : Anchor ;
+    anchor_tracelet_algebra : Anchor ;
     anchor_vdc_reflection : Anchor ;
     anchor_vdcr_additivity : Anchor ;
     anchor_vdcr_certificates : Anchor ;

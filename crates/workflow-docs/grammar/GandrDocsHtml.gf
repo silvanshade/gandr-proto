@@ -10,7 +10,7 @@ concrete GandrDocsHtml of GandrDocs = {
     Term = { key , text : Str } ;
     Anchor = { id , title : Str } ;
     CiteKey = { key : Str } ;
-    [Anchor] = { s , pfx : Str ; ne : Presence } ;
+    [Anchor] = { s , pfx , items : Str ; ne : Presence } ;
     [CiteKey] = { s : Str ; ne : Presence } ;
   lin
     MkComponent a t st grounds derives secs refs =
@@ -53,6 +53,7 @@ concrete GandrDocsHtml of GandrDocs = {
     UnorderedList = "ul" ;
     MkItem lead xs = "<li><strong>" ++ "​" ++ lead.s ++ "​" ++ "</strong> — " ++ xs.s ++ "​" ++ "</li>" ;
     MkPlainItem xs = "<li>" ++ "​" ++ xs.s ++ "​" ++ "</li>" ;
+    MkRefItem a xs = "<li><a class=\"xref\" href=\"#" ++ "​" ++ a.id ++ "​" ++ "\"><strong>" ++ "​" ++ a.title ++ "​" ++ "</strong></a> — " ++ xs.s ++ "​" ++ "</li>" ;
     ApiCodeBlock lang payload = "<pre><code class=\"lang-" ++ "​" ++ lang.s ++ " api\">" ++ "​" ++ payload.s ++ "​" ++ "</code></pre>" ;
     PlainCodeBlock lang payload = "<pre><code class=\"lang-" ++ "​" ++ lang.s ++ "​" ++ "\">" ++ "​" ++ payload.s ++ "​" ++ "</code></pre>" ;
     ExpectCodeBlock lang expect payload =
@@ -89,21 +90,23 @@ concrete GandrDocsHtml of GandrDocs = {
     ConsItem x xs = { s = x ++ xs.s } ;
     BaseCiteKey = { s = "" ; ne = Absent } ;
     ConsCiteKey x xs = { s = "<li id=\"ref-" ++ "​" ++ x.key ++ "​" ++ "\">[" ++ "​" ++ x.key ++ "​" ++ "]</li>" ++ xs.s ; ne = Present } ;
-    BaseAnchor = { s = "" ; pfx = "" ; ne = Absent } ;
-    ConsAnchor x xs = { s = x.id ++ xs.pfx ++ xs.s ; pfx = "​," ; ne = Present } ;
+    BaseAnchor = { s = "" ; pfx = "" ; items = "" ; ne = Absent } ;
+    ConsAnchor x xs = { s = x.id ++ xs.pfx ++ xs.s ; pfx = "​," ; items = "<li>" ++ "​" ++ x.id ++ "​" ++ "</li>" ++ xs.items ; ne = Present } ;
   oper
-    -- the provenance line: one mono paragraph naming the declared edges,
-    -- absent when both lists are empty (the legacy renderer's contract)
-    prov : { s : Str ; pfx : Str ; ne : Presence } -> Str -> { s : Str ; pfx : Str ; ne : Presence } -> Str -> Str =
+    -- the provenance block: two labelled bullet lists of the declared edges,
+    -- entries sorted lexicographically in the source; absent when both lists
+    -- are empty (the legacy renderer's contract)
+    prov : { s : Str ; pfx : Str ; items : Str ; ne : Presence } -> Str -> { s : Str ; pfx : Str ; items : Str ; ne : Presence } -> Str -> Str =
       \grounds , glabel , derives , dlabel ->
         case <grounds.ne , derives.ne> of {
           <Absent , Absent> => "" ;
-          <Present , Absent> => provP (edge glabel grounds.s) ;
-          <Absent , Present> => provP (edge dlabel derives.s) ;
-          <Present , Present> => provP (edge glabel grounds.s ++ edge dlabel derives.s)
+          <Present , Absent> => provDiv (edgeUl glabel grounds.items) ;
+          <Absent , Present> => provDiv (edgeUl dlabel derives.items) ;
+          <Present , Present> => provDiv (edgeUl glabel grounds.items ++ edgeUl dlabel derives.items)
         } ;
-    edge : Str -> Str -> Str = \label , ids -> label ++ "​" ++ ":" ++ ids ;
-    provP : Str -> Str = \t -> "<p class=\"mono\">" ++ "​" ++ t ++ "​" ++ "</p>" ;
+    edgeUl : Str -> Str -> Str = \label , items ->
+      "<div class=\"prov-group\"><span class=\"prov-label\">" ++ "​" ++ label ++ "​" ++ "</span><ul class=\"prov\">" ++ "​" ++ items ++ "​" ++ "</ul></div>" ;
+    provDiv : Str -> Str = \t -> "<div class=\"prov mono\">" ++ "​" ++ t ++ "​" ++ "</div>" ;
     -- the references block: absent when the component declares no cite keys
     refsBlock : { s : Str ; ne : Presence } -> Str = \refs ->
       case refs.ne of {
