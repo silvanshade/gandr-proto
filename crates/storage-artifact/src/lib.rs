@@ -73,12 +73,23 @@ pub use crate::error::ManifestError;
 pub use crate::manifest::ARTIFACT_IDENTITY_LEN;
 pub use crate::manifest::ArtifactIdentity;
 pub use crate::manifest::ArtifactManifest;
+pub use crate::manifest::ArtifactRecordCount;
 pub use crate::manifest::CHUNKER_COMMITMENT_LEN;
+pub use crate::manifest::ChunkerCommitment;
+pub use crate::manifest::EncodedManifest;
+pub use crate::manifest::InnerFormatVersion;
 pub use crate::manifest::MANIFEST_FORMAT_VERSION_V1;
 pub use crate::manifest::MANIFEST_MAGIC;
+pub use crate::manifest::ManifestBytes;
+pub use crate::manifest::ManifestFormatVersion;
 pub use crate::record::ADMISSION_KEY_LEN;
+pub use crate::record::AdmissionIndex;
+pub use crate::record::AdmissionKey;
+pub use crate::record::ArtifactHeader;
 pub use crate::record::ArtifactRecord;
 pub use crate::record::ArtifactRecordSet;
+pub use crate::record::ReassembledArtifact;
+pub use crate::record::RecordBytes;
 
 /// A built artifact: the prolly-tree root, its stored root node hash, and the
 /// canonical manifest and identity minted over them.
@@ -176,12 +187,13 @@ where
     let tree = ProllyTree::build(record_refs.as_slice(), params, store)?;
     let root = tree.root().clone();
     let root_node_hash = tree.root_node_hash();
+    let chunker_commitment = ChunkerCommitment::try_from(root.params().chunker_parameter_bytes())?;
     let manifest = ArtifactManifest::new(
         records.inner_format_version(),
-        root.params().chunker_parameter_bytes(),
-        root.record_count(),
+        chunker_commitment,
+        ArtifactRecordCount::from(root.record_count()),
         root_node_hash,
-    )?;
+    );
     let identity = manifest.identity();
 
     return Ok(BuiltArtifact {

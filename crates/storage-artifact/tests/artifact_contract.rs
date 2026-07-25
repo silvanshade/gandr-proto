@@ -21,13 +21,42 @@ mod tests
     use gandr_kernel_core::FORMAT_VERSION_V1;
     use gandr_kernel_core::LevelSignature;
     use gandr_kernel_core::write;
+    use gandr_storage_artifact::AdmissionIndex;
     use gandr_storage_artifact::ArtifactRecord;
     use gandr_storage_artifact::ArtifactRecordSet;
+    use gandr_storage_artifact::RecordBytes;
     use gandr_storage_artifact::build;
     use gandr_storage_prolly_trees::InMemoryBlockStore;
     use gandr_storage_prolly_trees::ProllyTree;
     use gandr_storage_prolly_trees::TreeParams;
     use proptest::prelude::*;
+
+    /// Borrowed declaration-kind choices for one generated environment.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct DeclarationKinds<'kinds>(
+        /// `true` chooses a definition; `false` chooses an axiom.
+        &'kinds [bool],
+    );
+
+    impl<'kinds> From<&'kinds [bool]> for DeclarationKinds<'kinds>
+    {
+        #[inline]
+        fn from(kinds: &'kinds [bool]) -> Self
+        {
+            return Self(kinds);
+        }
+    }
+
+    /// One semantic record fixture before ownership is transferred.
+    #[derive(Clone, Copy)]
+    struct RecordFixture<'record>
+    {
+        /// Admission-order key for the fixture record.
+        admission_index: AdmissionIndex,
+        /// Borrowed declaration-segment bytes.
+        value: RecordBytes<'record>,
+    }
 
     /// An environment whose declarations share subterms across and within
     /// declarations (a `def unit`, a `def pair(unit, unit)`, and an `axiom`).
@@ -66,10 +95,10 @@ mod tests
     /// Build an environment from a sequence of declaration kinds (`true` a
     /// `def unit`, `false` an `axiom`) — every declaration nameless and
     /// bypass-admitted, so the outer layer sees arbitrary declaration counts.
-    fn environment_from_kinds(kinds: &[bool]) -> Environment
+    fn environment_from_kinds(kinds: DeclarationKinds<'_>) -> Environment
     {
         let mut environment = Environment::new();
-        for &is_def in kinds {
+        for &is_def in kinds.0 {
             let declaration = {
                 let mut builder = environment.stage();
                 let declared = builder.arena().value_type_unit();
@@ -94,8 +123,8 @@ mod tests
         let records = ArtifactRecordSet::from_environment(&environment);
 
         assert_eq!(
-            records.reassemble(),
-            bytes,
+            records.reassemble().as_ref(),
+            bytes.as_slice(),
             "header plus records in key order reproduces the artifact byte-for-byte"
         );
 
@@ -107,8 +136,8 @@ mod tests
             "the manifest binds the declaration-record count"
         );
         assert_eq!(
-            records.reassemble(),
-            bytes,
+            records.reassemble().as_ref(),
+            bytes.as_slice(),
             "building does not disturb reassembly"
         );
     }
@@ -139,15 +168,39 @@ mod tests
     #[test]
     fn any_perturbation_changes_the_identity()
     {
-        let base_records = alloc_records(&[(0, b"alpha".as_slice()), (1, b"beta".as_slice())]);
-        let perturbed_records =
-            alloc_records(&[(0, b"alpha".as_slice()), (1, b"BETA!".as_slice())]);
+        let base_records = alloc_records(&[
+            RecordFixture {
+                admission_index: 0_u64.into(),
+                value: b"alpha".as_slice().into(),
+            },
+            RecordFixture {
+                admission_index: 1_u64.into(),
+                value: b"beta".as_slice().into(),
+            },
+        ]);
+        let perturbed_records = alloc_records(&[
+            RecordFixture {
+                admission_index: 0_u64.into(),
+                value: b"alpha".as_slice().into(),
+            },
+            RecordFixture {
+                admission_index: 1_u64.into(),
+                value: b"BETA!".as_slice().into(),
+            },
+        ]);
 
-        let base =
-            ArtifactRecordSet::from_records(FORMAT_VERSION_V1, b"header", base_records).unwrap();
-        let perturbed =
-            ArtifactRecordSet::from_records(FORMAT_VERSION_V1, b"header", perturbed_records)
-                .unwrap();
+        let base = ArtifactRecordSet::from_records(
+            FORMAT_VERSION_V1.into(),
+            b"header".as_slice().into(),
+            base_records,
+        )
+        .unwrap();
+        let perturbed = ArtifactRecordSet::from_records(
+            FORMAT_VERSION_V1.into(),
+            b"header".as_slice().into(),
+            perturbed_records,
+        )
+        .unwrap();
 
         let mut base_store = InMemoryBlockStore::new();
         let mut perturbed_store = InMemoryBlockStore::new();
@@ -227,12 +280,16 @@ mod tests
             kinds in prop::collection::vec(any::<bool>(), 0 .. 10_usize)
         )
         {
-            let environment = environment_from_kinds(&kinds);
+            let environment = environment_from_kinds(kinds.as_slice().into());
             let bytes = write(&environment);
             let records = ArtifactRecordSet::from_environment(&environment);
 
-            prop_assert_eq!(records.reassemble(), bytes);
-            prop_assert_eq!(records.record_count(), u64::try_from(kinds.len()).unwrap());
+            let reassembled = records.reassemble();
+            prop_assert_eq!(reassembled.as_ref(), bytes.as_slice());
+            prop_assert_eq!(
+                u64::from(records.record_count()),
+                u64::try_from(kinds.len()).unwrap()
+            );
 
             let mut first_store = InMemoryBlockStore::new();
             let mut second_store = InMemoryBlockStore::new();
@@ -244,12 +301,12 @@ mod tests
         }
     }
 
-    /// Build owned records from `(admission index, value)` pairs.
-    fn alloc_records(pairs: &[(u64, &[u8])]) -> Vec<ArtifactRecord>
+    /// Build owned records from semantic fixture pairs.
+    fn alloc_records(fixtures: &[RecordFixture<'_>]) -> Vec<ArtifactRecord>
     {
-        return pairs
+        return fixtures
             .iter()
-            .map(|&(index, value)| ArtifactRecord::new(index, value))
+            .map(|fixture| ArtifactRecord::new(fixture.admission_index, fixture.value))
             .collect();
     }
 }

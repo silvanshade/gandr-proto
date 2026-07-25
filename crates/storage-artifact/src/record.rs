@@ -29,9 +29,146 @@ use gandr_kernel_core::write_segmented;
 use gandr_storage_prolly_trees::RecordRef;
 
 use crate::error::ArtifactError;
+use crate::manifest::ArtifactRecordCount;
+use crate::manifest::InnerFormatVersion;
 
 /// The fixed byte width of a declaration record's admission-index key.
 pub const ADMISSION_KEY_LEN: usize = 8;
+
+/// Admission-order index carried by one declaration record.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct AdmissionIndex(u64);
+
+impl From<u64> for AdmissionIndex
+{
+    #[inline]
+    fn from(index: u64) -> Self
+    {
+        return Self(index);
+    }
+}
+
+impl From<AdmissionIndex> for u64
+{
+    #[inline]
+    fn from(index: AdmissionIndex) -> Self
+    {
+        return index.0;
+    }
+}
+
+/// Fixed-width big-endian key for one admission index.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct AdmissionKey([u8; ADMISSION_KEY_LEN]);
+
+impl From<AdmissionIndex> for AdmissionKey
+{
+    #[inline]
+    fn from(index: AdmissionIndex) -> Self
+    {
+        return Self(index.0.to_be_bytes());
+    }
+}
+
+impl From<AdmissionKey> for AdmissionIndex
+{
+    #[inline]
+    fn from(key: AdmissionKey) -> Self
+    {
+        return Self(u64::from_be_bytes(key.0));
+    }
+}
+
+impl AsRef<[u8; ADMISSION_KEY_LEN]> for AdmissionKey
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8; ADMISSION_KEY_LEN]
+    {
+        return &self.0;
+    }
+}
+
+impl AsRef<[u8]> for AdmissionKey
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return &self.0;
+    }
+}
+
+/// Borrowed declaration-segment bytes for one artifact record.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RecordBytes<'record>(&'record [u8]);
+
+impl<'record> From<&'record [u8]> for RecordBytes<'record>
+{
+    #[inline]
+    fn from(bytes: &'record [u8]) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl AsRef<[u8]> for RecordBytes<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
+
+/// Borrowed canonical header preceding an artifact's declaration records.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ArtifactHeader<'header>(&'header [u8]);
+
+impl<'header> From<&'header [u8]> for ArtifactHeader<'header>
+{
+    #[inline]
+    fn from(header: &'header [u8]) -> Self
+    {
+        return Self(header);
+    }
+}
+
+impl AsRef<[u8]> for ArtifactHeader<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
+
+/// Owned canonical bytes reconstructed from an artifact record set.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReassembledArtifact(Vec<u8>);
+
+impl AsRef<[u8]> for ReassembledArtifact
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0.as_slice();
+    }
+}
+
+impl core::ops::Deref for ReassembledArtifact
+{
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target
+    {
+        return self.0.as_slice();
+    }
+}
 
 /// One declaration record: its admission index as a fixed-width big-endian key
 /// and its declaration-segment bytes as the value.
@@ -40,7 +177,7 @@ pub const ADMISSION_KEY_LEN: usize = 8;
 pub struct ArtifactRecord
 {
     /// The admission index, big-endian (so byte order matches numeric order).
-    key: [u8; ADMISSION_KEY_LEN],
+    key: AdmissionKey,
     /// The declaration segment bytes.
     value: Box<[u8]>,
 }
@@ -51,20 +188,20 @@ impl ArtifactRecord
     #[inline]
     #[must_use]
     pub fn new(
-        admission_index: u64,
-        value: &[u8],
+        admission_index: AdmissionIndex,
+        value: RecordBytes<'_>,
     ) -> Self
     {
         return Self {
-            key: admission_index.to_be_bytes(),
-            value: Box::<[u8]>::from(value),
+            key: AdmissionKey::from(admission_index),
+            value: Box::<[u8]>::from(value.as_ref()),
         };
     }
 
-    /// Returns the fixed-width admission-index key bytes.
+    /// Returns the fixed-width admission-index key.
     #[inline]
     #[must_use]
-    pub const fn key(&self) -> &[u8; ADMISSION_KEY_LEN]
+    pub const fn key(&self) -> &AdmissionKey
     {
         return &self.key;
     }
@@ -72,17 +209,17 @@ impl ArtifactRecord
     /// Returns the admission index this record is keyed by.
     #[inline]
     #[must_use]
-    pub const fn admission_index(&self) -> u64
+    pub const fn admission_index(&self) -> AdmissionIndex
     {
-        return u64::from_be_bytes(self.key);
+        return AdmissionIndex(u64::from_be_bytes(self.key.0));
     }
 
     /// Returns the declaration segment bytes.
     #[inline]
     #[must_use]
-    pub fn value(&self) -> &[u8]
+    pub fn value(&self) -> RecordBytes<'_>
     {
-        return self.value.as_ref();
+        return RecordBytes(self.value.as_ref());
     }
 
     /// Returns a borrowed prolly-tree record view of this declaration record.
@@ -90,7 +227,8 @@ impl ArtifactRecord
     #[must_use]
     pub fn as_record_ref(&self) -> RecordRef<'_>
     {
-        return RecordRef::new(self.key.as_slice(), self.value.as_ref());
+        let key: &[u8] = self.key.as_ref();
+        return RecordRef::new(key, self.value.as_ref());
     }
 }
 
@@ -113,7 +251,7 @@ impl ArtifactRecord
 pub struct ArtifactRecordSet
 {
     /// The inner kernel export format version the records were cut from.
-    inner_format_version: u16,
+    inner_format_version: InnerFormatVersion,
     /// The artifact header preceding the first declaration segment.
     header: Box<[u8]>,
     /// The records, strictly ascending and unique by key.
@@ -159,12 +297,15 @@ impl ArtifactRecordSet
     {
         let mut records = Vec::with_capacity(segmented.segment_count());
         for (index, segment) in segmented.segments().enumerate() {
-            let admission_index = u64::try_from(index).unwrap_or(u64::MAX);
-            records.push(ArtifactRecord::new(admission_index, segment));
+            let admission_index = AdmissionIndex::from(u64::try_from(index).unwrap_or(u64::MAX));
+            records.push(ArtifactRecord::new(
+                admission_index,
+                RecordBytes::from(segment),
+            ));
         }
 
         return Self {
-            inner_format_version: FORMAT_VERSION_V1,
+            inner_format_version: InnerFormatVersion::from(FORMAT_VERSION_V1),
             header: Box::<[u8]>::from(segmented.header()),
             records,
         };
@@ -188,17 +329,17 @@ impl ArtifactRecordSet
     /// [`ArtifactError::DuplicateAdmissionKey`].
     #[inline]
     pub fn from_records(
-        inner_format_version: u16,
-        header: &[u8],
+        inner_format_version: InnerFormatVersion,
+        header: ArtifactHeader<'_>,
         records: Vec<ArtifactRecord>,
     ) -> Result<Self, ArtifactError>
     {
-        let mut first_seen: BTreeMap<[u8; ADMISSION_KEY_LEN], u64> = BTreeMap::new();
+        let mut first_seen: BTreeMap<AdmissionKey, u64> = BTreeMap::new();
         for (position, record) in records.iter().enumerate() {
             let current_index = u64::try_from(position).unwrap_or(u64::MAX);
             if let Some(&first_index) = first_seen.get(record.key()) {
                 return Err(ArtifactError::DuplicateAdmissionKey {
-                    key: record.admission_index(),
+                    key: u64::from(record.admission_index()),
                     first_index,
                     second_index: current_index,
                 });
@@ -211,7 +352,7 @@ impl ArtifactRecordSet
 
         return Ok(Self {
             inner_format_version,
-            header: Box::<[u8]>::from(header),
+            header: Box::<[u8]>::from(header.as_ref()),
             records: sorted,
         });
     }
@@ -220,7 +361,7 @@ impl ArtifactRecordSet
     /// from.
     #[inline]
     #[must_use]
-    pub const fn inner_format_version(&self) -> u16
+    pub const fn inner_format_version(&self) -> InnerFormatVersion
     {
         return self.inner_format_version;
     }
@@ -228,9 +369,9 @@ impl ArtifactRecordSet
     /// Returns the artifact header carried for reassembly.
     #[inline]
     #[must_use]
-    pub fn header(&self) -> &[u8]
+    pub fn header(&self) -> ArtifactHeader<'_>
     {
-        return self.header.as_ref();
+        return ArtifactHeader(self.header.as_ref());
     }
 
     /// Returns the records, strictly ascending and unique by key.
@@ -244,9 +385,9 @@ impl ArtifactRecordSet
     /// Returns the number of declaration records.
     #[inline]
     #[must_use]
-    pub fn record_count(&self) -> u64
+    pub fn record_count(&self) -> ArtifactRecordCount
     {
-        return u64::try_from(self.records.len()).unwrap_or(u64::MAX);
+        return ArtifactRecordCount::from(u64::try_from(self.records.len()).unwrap_or(u64::MAX));
     }
 
     /// Returns borrowed prolly-tree record views, in key order, for tree build.
@@ -273,13 +414,13 @@ impl ArtifactRecordSet
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn reassemble(&self) -> Vec<u8>
+    pub fn reassemble(&self) -> ReassembledArtifact
     {
         let mut out = Vec::<u8>::from(self.header.as_ref());
         for record in &self.records {
-            out.extend_from_slice(record.value());
+            out.extend_from_slice(record.value().as_ref());
         }
-        return out;
+        return ReassembledArtifact(out);
     }
 }
 
@@ -299,18 +440,21 @@ mod tests
     fn from_records_sorts_any_permutation_canonically()
     {
         let forward = vec![
-            ArtifactRecord::new(0, b"zero"),
-            ArtifactRecord::new(1, b"one"),
-            ArtifactRecord::new(2, b"two"),
+            ArtifactRecord::new(0_u64.into(), b"zero".as_slice().into()),
+            ArtifactRecord::new(1_u64.into(), b"one".as_slice().into()),
+            ArtifactRecord::new(2_u64.into(), b"two".as_slice().into()),
         ];
         let reversed = vec![
-            ArtifactRecord::new(2, b"two"),
-            ArtifactRecord::new(1, b"one"),
-            ArtifactRecord::new(0, b"zero"),
+            ArtifactRecord::new(2_u64.into(), b"two".as_slice().into()),
+            ArtifactRecord::new(1_u64.into(), b"one".as_slice().into()),
+            ArtifactRecord::new(0_u64.into(), b"zero".as_slice().into()),
         ];
-        let from_forward = ArtifactRecordSet::from_records(1, b"header", forward).expect("unique");
+        let from_forward =
+            ArtifactRecordSet::from_records(1_u16.into(), b"header".as_slice().into(), forward)
+                .expect("unique");
         let from_reversed =
-            ArtifactRecordSet::from_records(1, b"header", reversed).expect("unique");
+            ArtifactRecordSet::from_records(1_u16.into(), b"header".as_slice().into(), reversed)
+                .expect("unique");
         assert_eq!(
             from_forward, from_reversed,
             "a permuted input yields the identical canonical record set"
@@ -319,6 +463,7 @@ mod tests
             .records()
             .iter()
             .map(ArtifactRecord::admission_index)
+            .map(u64::from)
             .collect();
         assert_eq!(
             indices,
@@ -331,8 +476,11 @@ mod tests
     #[test]
     fn a_duplicate_admission_key_is_rejected()
     {
-        let records = vec![ArtifactRecord::new(3, b"a"), ArtifactRecord::new(3, b"b")];
-        match ArtifactRecordSet::from_records(1, b"header", records) {
+        let records = vec![
+            ArtifactRecord::new(3_u64.into(), b"a".as_slice().into()),
+            ArtifactRecord::new(3_u64.into(), b"b".as_slice().into()),
+        ];
+        match ArtifactRecordSet::from_records(1_u16.into(), b"header".as_slice().into(), records) {
             | Err(ArtifactError::DuplicateAdmissionKey {
                 key,
                 first_index,
