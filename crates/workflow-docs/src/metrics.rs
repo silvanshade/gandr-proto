@@ -36,6 +36,157 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::error::GfDocsError;
 
+/// Borrowed sample set for one word-count distribution.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct WordCountSamples<'samples>(&'samples [u32]);
+
+impl<'samples> From<&'samples [u32]> for WordCountSamples<'samples>
+{
+    #[inline]
+    fn from(samples: &'samples [u32]) -> Self
+    {
+        Self(samples)
+    }
+}
+
+/// Word count for one measured prose fragment.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct WordCount(u32);
+
+impl From<WordCount> for u32
+{
+    #[inline]
+    fn from(count: WordCount) -> Self
+    {
+        count.0
+    }
+}
+
+/// Median value derived from a word-count sample set.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Median(f64);
+
+impl From<Median> for f64
+{
+    #[inline]
+    fn from(median: Median) -> Self
+    {
+        median.0
+    }
+}
+
+/// Nesting depth of one measured section.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct SectionDepth(u32);
+
+impl SectionDepth
+{
+    /// Return the depth of a nested section.
+    #[must_use]
+    fn child(self) -> Self
+    {
+        Self(self.0.saturating_add(1))
+    }
+}
+
+/// Whether the preceding block introduced the next payload with prose.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct PreviousBlockWasProse(bool);
+
+/// Whether the leading block of a nested container is prose.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct LeadingBlockIsProse(bool);
+
+impl From<LeadingBlockIsProse> for bool
+{
+    #[inline]
+    fn from(value: LeadingBlockIsProse) -> Self
+    {
+        value.0
+    }
+}
+
+/// Whether an inline appears within emphasis.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct EmphasisState(bool);
+
+/// Borrowed prose text participating in word measurement.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ParagraphText<'text>(&'text str);
+
+impl<'text> From<&'text str> for ParagraphText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
+/// Borrowed prose text carrying encoded `HTML` entities.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct EscapedProse<'text>(&'text str);
+
+impl<'text> From<&'text str> for EscapedProse<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
+/// Expected S-expression constructor.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ExpectedConstructor<'text>(&'text str);
+
+impl<'text> From<&'text str> for ExpectedConstructor<'text>
+{
+    #[inline]
+    fn from(expected: &'text str) -> Self
+    {
+        Self(expected)
+    }
+}
+
+/// One bare S-expression atom.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct SexpAtom<'text>(&'text str);
+
+impl AsRef<str> for SexpAtom<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        self.0
+    }
+}
+
+/// Constructor tag of one encoded `GF` list.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ListTag<'text>(&'text str);
+
+impl<'text> From<&'text str> for ListTag<'text>
+{
+    #[inline]
+    fn from(tag: &'text str) -> Self
+    {
+        Self(tag)
+    }
+}
+
 /// The display texts the linearized-prose lane resolves references through:
 /// term constants to their rendered text, anchor constants to their target
 /// titles — both extracted from the compiled grammar by the runtime (never
@@ -133,13 +284,14 @@ impl Dist
     /// Compute the distribution of one sample set (`None` when empty).
     #[inline]
     #[must_use]
-    pub fn from_samples(samples: &[u32]) -> Option<Self>
+    pub fn from_samples(samples: WordCountSamples<'_>) -> Option<Self>
     {
-        let (first, rest) = samples.split_first()?;
-        let mut sorted = samples.to_vec();
+        let (first, rest) = samples.0.split_first()?;
+        let mut sorted = samples.0.to_vec();
         sorted.sort_unstable();
         let count = u32::try_from(sorted.len()).unwrap_or(u32::MAX);
         let sum = samples
+            .0
             .iter()
             .fold(0_u32, |acc, sample| acc.saturating_add(*sample));
         let mean = f64::from(sum) / f64::from(count);
@@ -151,7 +303,7 @@ impl Dist
             })
             .sum::<f64>()
             / f64::from(count);
-        let median = median_of(&sorted);
+        let median = f64::from(median_of(sorted.as_slice().into()));
         let p90_rank = count
             .saturating_mul(9)
             .saturating_add(9)
@@ -177,15 +329,15 @@ impl Dist
 }
 
 /// The median of a sorted, nonempty sample slice.
-fn median_of(sorted: &[u32]) -> f64
+fn median_of(sorted: WordCountSamples<'_>) -> Median
 {
-    let middle = sorted.len().checked_div(2).unwrap_or(0);
-    if sorted.len() % 2 == 1 {
-        return sorted.get(middle).copied().map_or(0.0, f64::from);
+    let middle = sorted.0.len().checked_div(2).unwrap_or(0);
+    if sorted.0.len() % 2 == 1 {
+        return Median(sorted.0.get(middle).copied().map_or(0.0, f64::from));
     }
-    let lower = sorted.get(middle.saturating_sub(1)).copied().unwrap_or(0);
-    let upper = sorted.get(middle).copied().unwrap_or(0);
-    f64::midpoint(f64::from(lower), f64::from(upper))
+    let lower = sorted.0.get(middle.saturating_sub(1)).copied().unwrap_or(0);
+    let upper = sorted.0.get(middle).copied().unwrap_or(0);
+    Median(f64::midpoint(f64::from(lower), f64::from(upper)))
 }
 
 /// One section's shape (Lane A): counts only, in reading order.
@@ -315,7 +467,7 @@ pub fn analyze(
     views: &LexiconViews,
 ) -> Result<Report, GfDocsError>
 {
-    let args = expect_app(tree, "MkComponent")?;
+    let args = expect_app(tree, "MkComponent".into())?;
     let [
         ref _anchor,
         ref _title,
@@ -329,8 +481,8 @@ pub fn analyze(
         return Err(GfDocsError::Parse("MkComponent arity is not seven".into()));
     };
     let mut accum = DocumentAccum::default();
-    walk_list(sections, "Section", &mut |section| {
-        measure_section(section, 1, views, &mut accum)
+    walk_list(sections, "Section".into(), &mut |section| {
+        measure_section(section, SectionDepth(1), views, &mut accum)
     })?;
     Ok(finish(accum))
 }
@@ -347,7 +499,7 @@ pub fn paragraph_texts(
     views: &LexiconViews,
 ) -> Result<Vec<String>, GfDocsError>
 {
-    let args = expect_app(tree, "MkComponent")?;
+    let args = expect_app(tree, "MkComponent".into())?;
     let [
         ref _anchor,
         ref _title,
@@ -361,7 +513,7 @@ pub fn paragraph_texts(
         return Err(GfDocsError::Parse("MkComponent arity is not seven".into()));
     };
     let mut paragraphs = Vec::new();
-    walk_list(sections, "Section", &mut |section| {
+    walk_list(sections, "Section".into(), &mut |section| {
         harvest_section_paragraphs(section, views, &mut paragraphs)
     })?;
     Ok(paragraphs)
@@ -381,12 +533,12 @@ fn harvest_section_paragraphs(
     paragraphs: &mut Vec<String>,
 ) -> Result<(), GfDocsError>
 {
-    let args = expect_app(section, "MkSection")?;
+    let args = expect_app(section, "MkSection".into())?;
     let [ref _anchor, ref _title, ref _status, ref blocks] = *args
     else {
         return Err(GfDocsError::Parse("MkSection arity is not four".into()));
     };
-    walk_list(blocks, "Block", &mut |block| {
+    walk_list(blocks, "Block".into(), &mut |block| {
         harvest_block_paragraphs(block, views, paragraphs)
     })
 }
@@ -421,7 +573,7 @@ fn harvest_block_paragraphs(
             let blocks = args
                 .get(1)
                 .ok_or_else(|| GfDocsError::Parse("ExampleBlock arity is not two".into()))?;
-            walk_list(blocks, "Block", &mut |inner| {
+            walk_list(blocks, "Block".into(), &mut |inner| {
                 harvest_block_paragraphs(inner, views, paragraphs)
             })?;
         },
@@ -551,8 +703,8 @@ fn finish(accum: DocumentAccum) -> Report
         sections: accum.sections,
         prose_words,
         paragraphs,
-        sentence_words: Dist::from_samples(&accum.sentence_words),
-        paragraph_words: Dist::from_samples(&accum.paragraph_words),
+        sentence_words: Dist::from_samples(accum.sentence_words.as_slice().into()),
+        paragraph_words: Dist::from_samples(accum.paragraph_words.as_slice().into()),
         sentences_per_paragraph_mean,
         emphasis_per_100_words,
         paragraphs_with_emphasis,
@@ -576,12 +728,12 @@ fn finish(accum: DocumentAccum) -> Report
 /// - input recursion: structural descent over the input section tree.
 fn measure_section(
     section: &Sexp,
-    depth: u32,
+    depth: SectionDepth,
     views: &LexiconViews,
     accum: &mut DocumentAccum,
 ) -> Result<(), GfDocsError>
 {
-    let args = expect_app(section, "MkSection")?;
+    let args = expect_app(section, "MkSection".into())?;
     let [ref _anchor, ref title, ref _status, ref blocks] = *args
     else {
         return Err(GfDocsError::Parse("MkSection arity is not four".into()));
@@ -589,7 +741,7 @@ fn measure_section(
     let title = quoted(title)?;
     let mut report = SectionReport {
         title: title.clone(),
-        depth,
+        depth: depth.0,
         paragraphs: 0,
         sentences: 0,
         prose_words: 0,
@@ -597,8 +749,8 @@ fn measure_section(
         emphasis_spans: 0,
         paragraphs_with_emphasis: 0,
     };
-    let mut prev_was_prose = false;
-    walk_list(blocks, "Block", &mut |block| {
+    let mut prev_was_prose = PreviousBlockWasProse::default();
+    walk_list(blocks, "Block".into(), &mut |block| {
         measure_block(
             block,
             &title,
@@ -624,7 +776,7 @@ fn measure_section(
 fn measure_block(
     block: &Sexp,
     section_title: &String,
-    prev_was_prose: &mut bool,
+    prev_was_prose: &mut PreviousBlockWasProse,
     views: &LexiconViews,
     accum: &mut DocumentAccum,
     report: &mut SectionReport,
@@ -641,38 +793,35 @@ fn measure_block(
                 .ok_or_else(|| GfDocsError::Parse(format!("{head} has no inline argument")))?;
             let measure = measure_inlines(inlines, views)?;
             absorb_paragraph(measure, accum, report);
-            *prev_was_prose = true;
+            prev_was_prose.0 = true;
         },
         | "NestedSection" => {
             let nested = args.first().ok_or_else(|| {
                 GfDocsError::Parse("NestedSection has no section argument".into())
             })?;
-            measure_section(nested, report.depth.saturating_add(1), views, accum)?;
+            measure_section(nested, SectionDepth(report.depth).child(), views, accum)?;
         },
         | "ExampleBlock" => {
-            // An example whose own leading block is prose is self-introducing:
-            // its inner prose orients the reader before the inner payload, so
-            // the container does not separately owe an introduction.
             let blocks = args
                 .get(1)
                 .ok_or_else(|| GfDocsError::Parse("ExampleBlock arity is not two".into()))?;
             accum.payload_blocks = accum.payload_blocks.saturating_add(1);
             report.payload_blocks = report.payload_blocks.saturating_add(1);
-            if !leading_block_is_prose(blocks) {
+            if !bool::from(leading_block_is_prose(blocks)) {
                 accum.weave_violations = accum.weave_violations.saturating_add(1);
                 accum.findings.push(format!(
                     "weave: {section_title}: {head} opens without inner prose"
                 ));
             }
-            *prev_was_prose = true;
-            let mut inner_prev = false;
-            walk_list(blocks, "Block", &mut |inner| {
+            prev_was_prose.0 = true;
+            let mut inner_prev = PreviousBlockWasProse::default();
+            walk_list(blocks, "Block".into(), &mut |inner| {
                 measure_block(inner, section_title, &mut inner_prev, views, accum, report)
             })?;
         },
         | _ => {
             check_weave(head, section_title, *prev_was_prose, accum, report);
-            *prev_was_prose = false;
+            prev_was_prose.0 = false;
         },
     }
     Ok(())
@@ -683,14 +832,14 @@ fn measure_block(
 fn check_weave(
     head: &String,
     section_title: &String,
-    prev_was_prose: bool,
+    prev_was_prose: PreviousBlockWasProse,
     accum: &mut DocumentAccum,
     report: &mut SectionReport,
 )
 {
     accum.payload_blocks = accum.payload_blocks.saturating_add(1);
     report.payload_blocks = report.payload_blocks.saturating_add(1);
-    if !prev_was_prose {
+    if !prev_was_prose.0 {
         accum.weave_violations = accum.weave_violations.saturating_add(1);
         accum.findings.push(format!(
             "weave: {section_title}: {head} lacks a prose introduction"
@@ -700,15 +849,15 @@ fn check_weave(
 
 /// Whether a block list's leading block is prose (the self-introducing
 /// example pattern).
-fn leading_block_is_prose(blocks: &Sexp) -> bool
+fn leading_block_is_prose(blocks: &Sexp) -> LeadingBlockIsProse
 {
     let Sexp::App { ref args, .. } = *blocks
     else {
-        return false;
+        return LeadingBlockIsProse(false);
     };
-    args.first().is_some_and(|block| {
+    LeadingBlockIsProse(args.first().is_some_and(|block| {
         matches!(*block, Sexp::App { ref head, .. } if head == "ProseBlock" || head == "DefinitionBlock")
-    })
+    }))
 }
 
 /// Fold one prose paragraph's measure into the accumulations.
@@ -723,7 +872,7 @@ fn absorb_paragraph(
     let sentence_count = u32::try_from(sentences.len()).unwrap_or(u32::MAX);
     let mut paragraph_words = 0_u32;
     for sentence in sentences {
-        let words = count_words(sentence);
+        let words = u32::from(count_words(sentence.into()));
         paragraph_words = paragraph_words.saturating_add(words);
         accum.sentence_words.push(words);
     }
@@ -759,10 +908,10 @@ fn measure_inlines(
 ) -> Result<ParagraphMeasure, GfDocsError>
 {
     let mut measure = ParagraphMeasure::default();
-    walk_list(inlines, "Inline", &mut |inline| {
-        measure_inline(inline, views, &mut measure, false)
+    walk_list(inlines, "Inline".into(), &mut |inline| {
+        measure_inline(inline, views, &mut measure, EmphasisState::default())
     })?;
-    measure.text = unescape(&measure.text);
+    measure.text = unescape(measure.text.as_str().into());
     Ok(measure)
 }
 
@@ -778,7 +927,7 @@ fn measure_inline(
     inline: &Sexp,
     views: &LexiconViews,
     measure: &mut ParagraphMeasure,
-    emphasized: bool,
+    emphasized: EmphasisState,
 ) -> Result<(), GfDocsError>
 {
     let Sexp::App { ref head, ref args } = *inline
@@ -792,7 +941,7 @@ fn measure_inline(
                 return Err(GfDocsError::Parse("Txt arity is not one".into()));
             };
             let text = quoted(text)?;
-            push_words(&text, measure, emphasized);
+            push_words(text.as_str().into(), measure, emphasized);
         },
         | "Bold" | "Italic" => {
             let [ref children] = *args.as_slice()
@@ -800,8 +949,8 @@ fn measure_inline(
                 return Err(GfDocsError::Parse(format!("{head} arity is not one")));
             };
             measure.emphasis_spans = measure.emphasis_spans.saturating_add(1);
-            walk_list(children, "Inline", &mut |child| {
-                measure_inline(child, views, measure, true)
+            walk_list(children, "Inline".into(), &mut |child| {
+                measure_inline(child, views, measure, EmphasisState(true))
             })?;
         },
         | "TermDef" => {
@@ -809,8 +958,11 @@ fn measure_inline(
             else {
                 return Err(GfDocsError::Parse("TermDef arity is not two".into()));
             };
-            measure.ref_constants.insert(atom_of(term)?.to_owned());
-            push_words(&quoted(display)?, measure, emphasized);
+            measure
+                .ref_constants
+                .insert(atom_of(term)?.as_ref().to_owned());
+            let display = quoted(display)?;
+            push_words(display.as_str().into(), measure, emphasized);
         },
         | "TermRef" => {
             let [ref term] = *args.as_slice()
@@ -819,13 +971,13 @@ fn measure_inline(
             };
             let name = atom_of(term)?;
             measure.term_refs = measure.term_refs.saturating_add(1);
-            measure.ref_constants.insert(name.to_owned());
+            measure.ref_constants.insert(name.as_ref().to_owned());
             let text = views
                 .terms
-                .get(name)
+                .get(name.as_ref())
                 .cloned()
-                .unwrap_or_else(|| name.to_owned());
-            push_words(&text, measure, emphasized);
+                .unwrap_or_else(|| name.as_ref().to_owned());
+            push_words(text.as_str().into(), measure, emphasized);
         },
         | "XRef" => {
             let [ref anchor] = *args.as_slice()
@@ -834,13 +986,13 @@ fn measure_inline(
             };
             let name = atom_of(anchor)?;
             measure.xrefs = measure.xrefs.saturating_add(1);
-            measure.ref_constants.insert(name.to_owned());
+            measure.ref_constants.insert(name.as_ref().to_owned());
             let text = views
                 .anchors
-                .get(name)
+                .get(name.as_ref())
                 .cloned()
-                .unwrap_or_else(|| name.to_owned());
-            push_words(&text, measure, emphasized);
+                .unwrap_or_else(|| name.as_ref().to_owned());
+            push_words(text.as_str().into(), measure, emphasized);
         },
         | "CiteRef" => {
             measure.cites = measure.cites.saturating_add(1);
@@ -858,37 +1010,39 @@ fn measure_inline(
 /// Append text to the paragraph and count its words (tracking emphasized
 /// words separately).
 fn push_words(
-    text: &str,
+    text: ParagraphText<'_>,
     measure: &mut ParagraphMeasure,
-    emphasized: bool,
+    emphasized: EmphasisState,
 )
 {
-    if !measure.text.is_empty() && !text.is_empty() {
+    if !measure.text.is_empty() && !text.0.is_empty() {
         measure.text.push(' ');
     }
-    measure.text.push_str(text);
-    if emphasized {
-        let words = count_words(text);
+    measure.text.push_str(text.0);
+    if emphasized.0 {
+        let words = u32::from(count_words(text));
         measure.emphasis_words = measure.emphasis_words.saturating_add(words);
     }
 }
 
 /// Count words: whitespace tokens containing at least one alphanumeric
 /// character (code tokens count as one word; stray punctuation as none).
-fn count_words(text: &str) -> u32
+fn count_words(text: ParagraphText<'_>) -> WordCount
 {
     let count = text
+        .0
         .split_whitespace()
         .filter(|token| token.chars().any(char::is_alphanumeric))
         .count();
-    u32::try_from(count).unwrap_or(u32::MAX)
+    WordCount(u32::try_from(count).unwrap_or(u32::MAX))
 }
 
 /// Resolve the `HTML`-entity forms the tree stores (`&lt;` `&gt;` `&amp;`)
 /// back to the characters a reader reads.
-fn unescape(text: &str) -> String
+fn unescape(text: EscapedProse<'_>) -> String
 {
-    text.replace("&lt;", "<")
+    text.0
+        .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&amp;", "&")
 }
@@ -896,31 +1050,33 @@ fn unescape(text: &str) -> String
 /// The arguments of a constructor application, or a parse error.
 fn expect_app<'tree>(
     tree: &'tree Sexp,
-    expected: &str,
+    expected: ExpectedConstructor<'_>,
 ) -> Result<&'tree [Sexp], GfDocsError>
 {
     let Sexp::App { ref head, ref args } = *tree
     else {
         return Err(GfDocsError::Parse(format!(
-            "expected {expected}, found an atom"
+            "expected {}, found an atom",
+            expected.0,
         )));
     };
-    if head != expected {
+    if head != expected.0 {
         return Err(GfDocsError::Parse(format!(
-            "expected {expected}, found {head}"
+            "expected {}, found {head}",
+            expected.0,
         )));
     }
     Ok(args)
 }
 
 /// The text of a bare-atom node.
-fn atom_of(tree: &Sexp) -> Result<&str, GfDocsError>
+fn atom_of(tree: &Sexp) -> Result<SexpAtom<'_>, GfDocsError>
 {
     let Sexp::Atom(ref atom) = *tree
     else {
         return Err(GfDocsError::Parse("expected a bare atom".into()));
     };
-    Ok(atom)
+    Ok(SexpAtom(atom))
 }
 
 /// The unquoted text of a string-literal atom.
@@ -939,10 +1095,11 @@ fn quoted(tree: &Sexp) -> Result<String, GfDocsError>
 /// distinction the metrics do not make.
 fn walk_list(
     tree: &Sexp,
-    tag: &str,
+    tag: ListTag<'_>,
     visit: &mut dyn FnMut(&Sexp) -> Result<(), GfDocsError>,
 ) -> Result<(), GfDocsError>
 {
+    let tag = tag.0;
     let mut cursor = tree;
     loop {
         match cursor {
@@ -1017,15 +1174,16 @@ mod tests
     }
 
     /// A text inline.
-    fn txt(text: &str) -> Sexp
+    fn txt(text: ParagraphText<'_>) -> Sexp
     {
-        Sexp::app("Txt", vec![Sexp::string(text)])
+        Sexp::app("Txt", vec![Sexp::string(text.0)])
     }
 
     #[test]
     fn dist_computes_exact_statistics()
     {
-        let dist = Dist::from_samples(&[10, 20, 30, 40]).expect("nonempty");
+        let dist =
+            Dist::from_samples(WordCountSamples::from(&[10, 20, 30, 40][..])).expect("nonempty");
         assert_eq!(dist.count, 4);
         assert_eq!(dist.min, 10);
         assert_eq!(dist.max, 40);
@@ -1038,10 +1196,10 @@ mod tests
     #[test]
     fn dist_handles_odd_and_single_samples()
     {
-        let odd = Dist::from_samples(&[5, 1, 9]).expect("nonempty");
+        let odd = Dist::from_samples(WordCountSamples::from(&[5, 1, 9][..])).expect("nonempty");
         assert!((odd.median - 5.0).abs() < f64::EPSILON);
         assert!((odd.p90 - 9.0).abs() < f64::EPSILON);
-        let single = Dist::from_samples(&[7]).expect("nonempty");
+        let single = Dist::from_samples(WordCountSamples::from(&[7][..])).expect("nonempty");
         assert!((single.mean - 7.0).abs() < f64::EPSILON);
         assert!((single.stdev - 0.0).abs() < f64::EPSILON);
     }
@@ -1056,19 +1214,24 @@ mod tests
     #[test]
     fn word_count_treats_code_tokens_as_one_word()
     {
-        assert_eq!(count_words("the eliminator f[<](p, rec n ih) produces"), 7);
-        assert_eq!(count_words("— ; ..."), 0);
+        assert_eq!(
+            u32::from(count_words(
+                "the eliminator f[<](p, rec n ih) produces".into(),
+            )),
+            7,
+        );
+        assert_eq!(u32::from(count_words("— ; ...".into())), 0);
     }
 
     #[test]
     fn term_and_cross_references_resolve_display_text()
     {
         let tree = component_with_blocks(vec![prose(vec![
-            txt("The"),
+            txt("The".into()),
             Sexp::app("TermRef", vec![Sexp::atom("term_frozen_core")]),
-            txt("ride the"),
+            txt("ride the".into()),
             Sexp::app("XRef", vec![Sexp::atom("anchor_rs_ladder")]),
-            txt("presentation."),
+            txt("presentation.".into()),
         ])]);
         let report = analyze(&tree, &views()).expect("analyze");
         // 1 + 2 + 2 + 6 + 1 words across the resolved references.
@@ -1081,11 +1244,14 @@ mod tests
     fn emphasis_density_counts_spans_and_words()
     {
         let mut bold_children = Sexp::atom("BaseInline");
-        bold_children = Sexp::app("ConsInline", vec![txt("exactly one idea"), bold_children]);
+        bold_children = Sexp::app("ConsInline", vec![
+            txt("exactly one idea".into()),
+            bold_children,
+        ]);
         let tree = component_with_blocks(vec![prose(vec![
-            txt("A paragraph carries"),
+            txt("A paragraph carries".into()),
             Sexp::app("Bold", vec![bold_children]),
-            txt("per the doctrine."),
+            txt("per the doctrine.".into()),
         ])]);
         let report = analyze(&tree, &views()).expect("analyze");
         assert_eq!(report.sections.first().map(|s| s.emphasis_spans), Some(1));
@@ -1101,7 +1267,7 @@ mod tests
             Sexp::atom("BaseTxt"),
         ]);
         let tree = component_with_blocks(vec![
-            prose(vec![txt("An introduction.")]),
+            prose(vec![txt("An introduction.".into())]),
             payload.clone(),
             payload,
         ]);
@@ -1116,14 +1282,14 @@ mod tests
     fn adjacent_paragraphs_share_reference_chains()
     {
         let first = prose(vec![
-            txt("The"),
+            txt("The".into()),
             Sexp::app("TermRef", vec![Sexp::atom("term_frozen_core")]),
-            txt("enters."),
+            txt("enters.".into()),
         ]);
         let second = prose(vec![
-            txt("Again the"),
+            txt("Again the".into()),
             Sexp::app("TermRef", vec![Sexp::atom("term_frozen_core")]),
-            txt("returns."),
+            txt("returns.".into()),
         ]);
         let tree = component_with_blocks(vec![first, second]);
         let report = analyze(&tree, &views()).expect("analyze");
@@ -1134,7 +1300,7 @@ mod tests
     fn entities_unescape_before_word_counting()
     {
         let text = "add[&lt;](p, n) computes";
-        let measure_tree = component_with_blocks(vec![prose(vec![txt(text)])]);
+        let measure_tree = component_with_blocks(vec![prose(vec![txt(text.into())])]);
         let report = analyze(&measure_tree, &views()).expect("analyze");
         assert_eq!(report.prose_words, 3);
     }

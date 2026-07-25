@@ -16,6 +16,8 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::fmt;
+use core::str::FromStr;
 
 use crate::model::CiteKey;
 use crate::model::Status;
@@ -39,39 +41,55 @@ pub enum DocClass
 
 impl DocClass
 {
-    /// Resolve a class from its canonical root element name.
-    #[inline]
-    #[must_use]
-    pub fn parse(root: &str) -> Option<Self>
-    {
-        match root {
-            | "research-record" => Some(Self::ResearchRecord),
-            | "workflow-doc" => Some(Self::WorkflowDoc),
-            | "crate-status" => Some(Self::CrateStatus),
-            | _ => None,
-        }
-    }
+    /// Every document class, in root-element declaration order.
+    pub const ALL: [Self; 3] = [Self::ResearchRecord, Self::WorkflowDoc, Self::CrateStatus];
+}
 
-    /// Return the canonical root element name of the class.
+impl AsRef<str> for DocClass
+{
     #[inline]
-    #[must_use]
-    pub const fn root_name(self) -> &'static str
+    fn as_ref(&self) -> &'static str
     {
-        match self {
+        match *self {
             | Self::ResearchRecord => "research-record",
             | Self::WorkflowDoc => "workflow-doc",
             | Self::CrateStatus => "crate-status",
         }
     }
+}
 
-    /// Return every canonical root element name, for diagnostics.
+impl fmt::Display for DocClass
+{
     #[inline]
-    #[must_use]
-    pub const fn root_names() -> [&'static str; 3]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
     {
-        ["research-record", "workflow-doc", "crate-status"]
+        f.write_str(self.as_ref())
     }
 }
+
+impl FromStr for DocClass
+{
+    type Err = UnknownDocClass;
+
+    #[inline]
+    fn from_str(root: &str) -> Result<Self, Self::Err>
+    {
+        match root {
+            | "research-record" => Ok(Self::ResearchRecord),
+            | "workflow-doc" => Ok(Self::WorkflowDoc),
+            | "crate-status" => Ok(Self::CrateStatus),
+            | _ => Err(UnknownDocClass),
+        }
+    }
+}
+
+/// Rejection returned when a root element does not name a document class.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct UnknownDocClass;
 
 /// A prose document: the class-tagged root element of one file.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -116,9 +134,23 @@ impl Banner
     /// Whether the banner carries no orientation line and no notes.
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> bool
+    pub fn is_empty(&self) -> BannerEmpty
     {
-        self.read_when.is_none() && self.notes.is_empty()
+        BannerEmpty(self.read_when.is_none() && self.notes.is_empty())
+    }
+}
+
+/// Whether a document banner carries no content.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BannerEmpty(bool);
+
+impl From<BannerEmpty> for bool
+{
+    #[inline]
+    fn from(value: BannerEmpty) -> Self
+    {
+        value.0
     }
 }
 
@@ -232,21 +264,51 @@ pub struct DocTable
 }
 
 /// A single table body row.
+#[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub struct DocRow
+pub struct DocRow(Vec<DocCell>);
+
+impl AsRef<[DocCell]> for DocRow
 {
-    /// The cells of this row in column order.
-    pub cells: Vec<DocCell>,
+    #[inline]
+    fn as_ref(&self) -> &[DocCell]
+    {
+        &self.0
+    }
+}
+
+impl From<Vec<DocCell>> for DocRow
+{
+    #[inline]
+    fn from(cells: Vec<DocCell>) -> Self
+    {
+        Self(cells)
+    }
 }
 
 /// A single table cell of inline content.
+#[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub struct DocCell
+pub struct DocCell(Vec<DocInline>);
+
+impl AsRef<[DocInline]> for DocCell
 {
-    /// Inline cell content.
-    pub content: Vec<DocInline>,
+    #[inline]
+    fn as_ref(&self) -> &[DocInline]
+    {
+        &self.0
+    }
+}
+
+impl From<Vec<DocInline>> for DocCell
+{
+    #[inline]
+    fn from(content: Vec<DocInline>) -> Self
+    {
+        Self(content)
+    }
 }
 
 /// A verbatim code listing.
@@ -292,10 +354,34 @@ pub struct Label
 }
 
 /// A reference to a coined label defined elsewhere in the same document.
+#[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub struct LabelRef
+pub struct LabelRef(String);
+
+impl AsRef<str> for LabelRef
 {
-    /// Referenced label key.
-    pub key: String,
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        &self.0
+    }
+}
+
+impl From<String> for LabelRef
+{
+    #[inline]
+    fn from(key: String) -> Self
+    {
+        Self(key)
+    }
+}
+
+impl From<&str> for LabelRef
+{
+    #[inline]
+    fn from(key: &str) -> Self
+    {
+        Self(key.to_owned())
+    }
 }

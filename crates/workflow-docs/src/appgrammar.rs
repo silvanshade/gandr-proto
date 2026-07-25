@@ -21,7 +21,7 @@ use alloc::collections::BTreeMap;
 use crate::lexicon::Lexicon;
 
 /// The category a domain entry declares.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum DomainCat
 {
@@ -39,12 +39,10 @@ pub enum DomainCat
     Adv,
 }
 
-impl DomainCat
+impl AsRef<str> for DomainCat
 {
-    /// The `GF` category name.
     #[inline]
-    #[must_use]
-    pub fn gf_cat(&self) -> &'static str
+    fn as_ref(&self) -> &'static str
     {
         match *self {
             | Self::CN => "CN",
@@ -53,26 +51,6 @@ impl DomainCat
             | Self::A => "A",
             | Self::V => "V",
             | Self::Adv => "Adv",
-        }
-    }
-
-    /// The `lin` form for one display text of this category (`ParadigmsEng`
-    /// qualified: `SyntaxEng` re-exports conflicting constructor names).
-    #[inline]
-    #[must_use]
-    pub fn gf_lin(
-        &self,
-        text: &str,
-    ) -> String
-    {
-        let quoted = gf_quote(text);
-        match *self {
-            | Self::CN => format!("mkCN (ParadigmsEng.mkN {quoted})"),
-            | Self::ON => format!("ParadigmsEng.mkON {quoted}"),
-            | Self::N => format!("ParadigmsEng.mkN {quoted}"),
-            | Self::A => format!("ParadigmsEng.mkA {quoted}"),
-            | Self::V => format!("ParadigmsEng.mkV {quoted}"),
-            | Self::Adv => format!("ParadigmsEng.mkAdv {quoted}"),
         }
     }
 }
@@ -88,6 +66,75 @@ pub struct DomainEntry
     pub cat: DomainCat,
     /// The English display form.
     pub text: String,
+}
+
+impl DomainEntry
+{
+    /// Render this entry's concrete `GF` linearization.
+    #[must_use]
+    fn gf_lin(&self) -> String
+    {
+        let quoted = gf_quote(GfStringText::from(self.text.as_str()));
+        match self.cat {
+            | DomainCat::CN => format!("mkCN (ParadigmsEng.mkN {quoted})"),
+            | DomainCat::ON => format!("ParadigmsEng.mkON {quoted}"),
+            | DomainCat::N => format!("ParadigmsEng.mkN {quoted}"),
+            | DomainCat::A => format!("ParadigmsEng.mkA {quoted}"),
+            | DomainCat::V => format!("ParadigmsEng.mkV {quoted}"),
+            | DomainCat::Adv => format!("ParadigmsEng.mkAdv {quoted}"),
+        }
+    }
+}
+
+/// Maximum number of general-supplement entries to retain.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SeedLimit(usize);
+
+impl From<usize> for SeedLimit
+{
+    #[inline]
+    fn from(limit: usize) -> Self
+    {
+        Self(limit)
+    }
+}
+
+impl From<SeedLimit> for usize
+{
+    #[inline]
+    fn from(limit: SeedLimit) -> Self
+    {
+        limit.0
+    }
+}
+
+/// One lowercased word considered by the suffix classifier.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct SeedWord<'text>(&'text str);
+
+impl<'text> From<&'text str> for SeedWord<'text>
+{
+    #[inline]
+    fn from(word: &'text str) -> Self
+    {
+        Self(word)
+    }
+}
+
+/// Text quoted into one generated `GF` string literal.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct GfStringText<'text>(&'text str);
+
+impl<'text> From<&'text str> for GfStringText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
 }
 
 /// Classify the docs lexicon's term records into domain entries.
@@ -162,19 +209,19 @@ const PROPER_PHRASES: &[&str] = &["Liquid Haskell", "Simply Typed"];
 /// Classify one lowercased word by suffix (the documented heuristic:
 /// adverbs `-ly`; adjectives `-ive -ous -al -ent -ant -able -ible -full
 /// -less -ic`; verbs `-ize -ise -ate -ify`; otherwise noun).
-fn classify_suffix(word: &str) -> DomainCat
+fn classify_suffix(word: SeedWord<'_>) -> DomainCat
 {
     const ADJ: &[&str] = &[
         "ive", "ous", "al", "ent", "ant", "able", "ible", "full", "less", "ic",
     ];
     const VERB: &[&str] = &["ize", "ise", "ate", "ify"];
-    if word.ends_with("ly") {
+    if word.0.ends_with("ly") {
         return DomainCat::Adv;
     }
-    if ADJ.iter().any(|suffix| word.ends_with(suffix)) {
+    if ADJ.iter().any(|suffix| word.0.ends_with(suffix)) {
         return DomainCat::A;
     }
-    if VERB.iter().any(|suffix| word.ends_with(suffix)) {
+    if VERB.iter().any(|suffix| word.0.ends_with(suffix)) {
         return DomainCat::V;
     }
     DomainCat::N
@@ -205,11 +252,12 @@ struct Tally
 pub fn seed_general<K>(
     texts: &[String],
     mut is_known: K,
-    limit: usize,
+    limit: SeedLimit,
 ) -> Vec<DomainEntry>
 where
     K: FnMut(&str) -> bool,
 {
+    let limit = usize::from(limit);
     let mut tallies: BTreeMap<String, Tally> = BTreeMap::new();
     for text in texts {
         for token in text.split_whitespace() {
@@ -256,7 +304,10 @@ where
                 POS_OVERRIDES
                     .iter()
                     .find(|&&(word, _)| word == lower)
-                    .map_or_else(|| classify_suffix(&lower), |&(_, cat)| cat)
+                    .map_or_else(
+                        || classify_suffix(SeedWord::from(lower.as_str())),
+                        |&(_, cat)| cat,
+                    )
             };
             let prefix = if cat == DomainCat::ON { "on" } else { "gen" };
             Some(DomainEntry {
@@ -307,16 +358,13 @@ pub fn path_line(rgl_src: &std::path::Path) -> String
 pub fn render_abstract(entries: &[DomainEntry]) -> String
 {
     use core::fmt::Write as _;
-    let mut by_cat: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    let mut by_cat: BTreeMap<DomainCat, Vec<&str>> = BTreeMap::new();
     for entry in entries {
-        by_cat
-            .entry(entry.cat.gf_cat())
-            .or_default()
-            .push(&entry.fun);
+        by_cat.entry(entry.cat).or_default().push(&entry.fun);
     }
     let mut out = String::from("abstract GandrTermsAbs = Cat ** {\n\x20 fun\n");
     for (cat, funs) in by_cat {
-        let _res = writeln!(out, "    {} : {cat} ;", funs.join(" , "));
+        let _res = writeln!(out, "    {} : {} ;", funs.join(" , "), cat.as_ref());
     }
     out.push_str("}\n");
     out
@@ -332,12 +380,7 @@ pub fn render_concrete(entries: &[DomainEntry]) -> String
         "concrete GandrTermsEng of GandrTermsAbs = CatEng ** open ParadigmsEng, SyntaxEng in {\n\x20 flags coding = utf8 ;\n\x20 lin\n",
     );
     for entry in entries {
-        let _res = writeln!(
-            out,
-            "    {} = {} ;",
-            entry.fun,
-            entry.cat.gf_lin(&entry.text)
-        );
+        let _res = writeln!(out, "    {} = {} ;", entry.fun, entry.gf_lin());
     }
     out.push_str("}\n");
     out
@@ -360,11 +403,11 @@ pub fn render_composition_concrete() -> String
 }
 
 /// Quote text as a `GF` string literal.
-fn gf_quote(text: &str) -> String
+fn gf_quote(text: GfStringText<'_>) -> String
 {
-    let mut out = String::with_capacity(text.len().saturating_add(2));
+    let mut out = String::with_capacity(text.0.len().saturating_add(2));
     out.push('"');
-    for ch in text.chars() {
+    for ch in text.0.chars() {
         match ch {
             | '"' => out.push_str("\\\""),
             | '\\' => out.push_str("\\\\"),
@@ -383,12 +426,12 @@ mod tests
     #[test]
     fn suffix_heuristic_classifies()
     {
-        assert_eq!(classify_suffix("convergent"), DomainCat::A);
-        assert_eq!(classify_suffix("recursive"), DomainCat::A);
-        assert_eq!(classify_suffix("normalize"), DomainCat::V);
-        assert_eq!(classify_suffix("locally"), DomainCat::Adv);
-        assert_eq!(classify_suffix("corecursion"), DomainCat::N);
-        assert_eq!(classify_suffix("eliminator"), DomainCat::N);
+        assert_eq!(classify_suffix("convergent".into()), DomainCat::A);
+        assert_eq!(classify_suffix("recursive".into()), DomainCat::A);
+        assert_eq!(classify_suffix("normalize".into()), DomainCat::V);
+        assert_eq!(classify_suffix("locally".into()), DomainCat::Adv);
+        assert_eq!(classify_suffix("corecursion".into()), DomainCat::N);
+        assert_eq!(classify_suffix("eliminator".into()), DomainCat::N);
     }
 
     #[test]
@@ -398,7 +441,7 @@ mod tests
             "Idris handles elaboration; idris-like systems recur".to_owned(),
             "corecursion corecursion corecursion".to_owned(),
         ];
-        let entries = seed_general(&texts, |_| false, 10);
+        let entries = seed_general(&texts, |_| false, 10_usize.into());
         let idris = entries.iter().find(|entry| entry.fun == "on_idris");
         assert!(idris.is_some());
         assert_eq!(idris.map(|entry| entry.cat), Some(DomainCat::ON));
@@ -410,7 +453,7 @@ mod tests
     fn seeder_subtracts_known_words()
     {
         let texts = vec!["the cat corecursion".to_owned()];
-        let entries = seed_general(&texts, |word| word == "cat", 10);
+        let entries = seed_general(&texts, |word| word == "cat", 10_usize.into());
         assert!(entries.iter().all(|entry| entry.fun != "gen_cat"));
         assert!(entries.iter().any(|entry| entry.fun == "gen_corecursion"));
     }
@@ -434,7 +477,7 @@ mod tests
     fn gf_quote_escapes()
     {
         assert_eq!(
-            gf_quote("say \"hi\" \\ done"),
+            gf_quote("say \"hi\" \\ done".into()),
             "\"say \\\"hi\\\" \\\\ done\""
         );
     }

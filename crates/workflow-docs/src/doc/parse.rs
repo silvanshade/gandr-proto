@@ -17,6 +17,7 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::str::FromStr as _;
 use std::path::Path;
 
 use roxmltree::Document as XmlDocument;
@@ -68,6 +69,85 @@ struct DocBlockFrame<'tree, 'input>
     title: String,
 }
 
+/// Borrowed `XML` source for one prose document.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct DocumentXml<'source>(&'source str);
+
+impl<'source> From<&'source str> for DocumentXml<'source>
+{
+    #[inline]
+    fn from(source: &'source str) -> Self
+    {
+        Self(source)
+    }
+}
+
+/// Shared source location and diagnostic sink for one parse.
+struct ParseContext<'parse>
+{
+    /// Path rendered in diagnostics.
+    path: &'parse str,
+    /// Accumulated structural diagnostics.
+    diagnostics: &'parse mut Vec<Diagnostic>,
+}
+
+/// One `XML` attribute name.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct AttributeName<'name>(&'name str);
+
+impl<'name> From<&'name str> for AttributeName<'name>
+{
+    #[inline]
+    fn from(name: &'name str) -> Self
+    {
+        Self(name)
+    }
+}
+
+/// One `XML` element name.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ElementName<'name>(&'name str);
+
+impl<'name> From<&'name str> for ElementName<'name>
+{
+    #[inline]
+    fn from(name: &'name str) -> Self
+    {
+        Self(name)
+    }
+}
+
+/// Raw lifecycle-status text at the parsing seam.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct StatusText<'text>(&'text str);
+
+impl<'text> From<&'text str> for StatusText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
+/// Raw prose text awaiting whitespace normalization.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ProseText<'text>(&'text str);
+
+impl<'text> From<&'text str> for ProseText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
 /// Parse one prose-document file into a model plus structural diagnostics.
 ///
 /// # Errors
@@ -75,16 +155,22 @@ struct DocBlockFrame<'tree, 'input>
 #[inline]
 pub fn parse_doc_document(
     path: &Path,
-    xml: &str,
+    xml: DocumentXml<'_>,
 ) -> Result<DocParsed, DocError>
 {
-    let tree = XmlDocument::parse(xml).map_err(|error| DocError::Xml {
+    let tree = XmlDocument::parse(xml.0).map_err(|error| DocError::Xml {
         path: path.to_path_buf(),
         detail: error.to_string(),
     })?;
     let path_text = path.display().to_string();
     let mut diagnostics = Vec::new();
-    let document = parse_record(tree.root_element(), &path_text, &mut diagnostics);
+    let document = {
+        let mut context = ParseContext {
+            path: path_text.as_str(),
+            diagnostics: &mut diagnostics,
+        };
+        parse_record(tree.root_element(), &mut context)
+    };
     Ok(DocParsed {
         document,
         diagnostics,
@@ -94,35 +180,47 @@ pub fn parse_doc_document(
 /// Parse the class-tagged root element.
 fn parse_record(
     root: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> Option<DocRecord>
 {
     let name = root.tag_name().name();
-    let Some(class) = DocClass::parse(name)
+    let Ok(class) = DocClass::from_str(name)
     else {
-        diagnostics.push(Diagnostic::new(
-            "unknown-root",
-            element_location(path_text, name),
+        context.diagnostics.push(Diagnostic::new(
+            "unknown-root".into(),
+            element_location(context, ElementName::from(name)),
             format!(
                 "root element must be one of [{}], found <{name}>",
-                DocClass::root_names().join(", ")
+                DocClass::ALL.map(|class| class.to_string()).join(", ")
             ),
         ));
         return None;
     };
-    let root_name = class.root_name();
-    let id = required_attribute(root, "id", path_text, root_name, diagnostics)?;
-    let title = required_attribute(root, "title", path_text, root_name, diagnostics)?;
-    let status = required_status(root, path_text, root_name, diagnostics)?;
+    let root_name = class.as_ref();
+    let id = required_attribute(
+        root,
+        AttributeName::from("id"),
+        ElementName::from(root_name),
+        context,
+    )?;
+    let title = required_attribute(
+        root,
+        AttributeName::from("title"),
+        ElementName::from(root_name),
+        context,
+    )?;
+    let status = required_status(root, ElementName::from(root_name), context)?;
     let crate_scope = match class {
-        | DocClass::CrateStatus => {
-            required_attribute(root, "crate", path_text, root_name, diagnostics)
-        },
+        | DocClass::CrateStatus => required_attribute(
+            root,
+            AttributeName::from("crate"),
+            ElementName::from(root_name),
+            context,
+        ),
         | DocClass::ResearchRecord | DocClass::WorkflowDoc => None,
     };
-    let (banner, block_nodes) = split_banner(root, path_text, diagnostics);
-    let blocks = parse_blocks(block_nodes, path_text, diagnostics);
+    let (banner, block_nodes) = split_banner(root, context);
+    let blocks = parse_blocks(block_nodes, context);
     Some(DocRecord {
         class,
         id,
@@ -131,7 +229,7 @@ fn parse_record(
         crate_scope,
         banner,
         blocks,
-        source_path: path_text.to_owned(),
+        source_path: context.path.to_owned(),
     })
 }
 
@@ -139,8 +237,7 @@ fn parse_record(
 /// misplaced banner.
 fn split_banner<'tree, 'input>(
     root: Node<'tree, 'input>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> (Banner, Vec<Node<'tree, 'input>>)
 {
     let children: Vec<Node<'tree, 'input>> = root.children().filter(Node::is_element).collect();
@@ -150,13 +247,13 @@ fn split_banner<'tree, 'input>(
     for (index, child) in children.iter().enumerate() {
         if child.tag_name().name() == "banner" {
             if index == 0 && !seen_banner {
-                banner = parse_banner(*child, path_text, diagnostics);
+                banner = parse_banner(*child, context);
                 seen_banner = true;
             }
             else {
-                diagnostics.push(Diagnostic::new(
-                    "misplaced-banner",
-                    element_location(path_text, "banner"),
+                context.diagnostics.push(Diagnostic::new(
+                    "misplaced-banner".into(),
+                    element_location(context, ElementName::from("banner")),
                     "the <banner> must be the first and only banner child".to_owned(),
                 ));
             }
@@ -166,9 +263,9 @@ fn split_banner<'tree, 'input>(
         }
     }
     if !seen_banner {
-        diagnostics.push(Diagnostic::new(
-            "missing-banner",
-            element_location(path_text, "banner"),
+        context.diagnostics.push(Diagnostic::new(
+            "missing-banner".into(),
+            element_location(context, ElementName::from("banner")),
             "a prose document must open with a <banner> element".to_owned(),
         ));
     }
@@ -178,8 +275,7 @@ fn split_banner<'tree, 'input>(
 /// Parse a banner element into its orientation line and free notes.
 fn parse_banner(
     node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> Banner
 {
     let mut banner = Banner::default();
@@ -187,22 +283,20 @@ fn parse_banner(
         match child.tag_name().name() {
             | "read-when" => {
                 if banner.read_when.is_some() {
-                    diagnostics.push(Diagnostic::new(
-                        "duplicate-read-when",
-                        element_location(path_text, "read-when"),
+                    context.diagnostics.push(Diagnostic::new(
+                        "duplicate-read-when".into(),
+                        element_location(context, ElementName::from("read-when")),
                         "a banner carries at most one <read-when> line".to_owned(),
                     ));
                 }
                 else {
-                    banner.read_when = Some(parse_inlines(child, path_text, diagnostics));
+                    banner.read_when = Some(parse_inlines(child, context));
                 }
             },
-            | "note" => banner
-                .notes
-                .push(parse_inlines(child, path_text, diagnostics)),
-            | other => diagnostics.push(Diagnostic::new(
-                "unexpected-child",
-                element_location(path_text, other),
+            | "note" => banner.notes.push(parse_inlines(child, context)),
+            | other => context.diagnostics.push(Diagnostic::new(
+                "unexpected-child".into(),
+                element_location(context, ElementName::from(other)),
                 "banner accepts only <read-when> and <note> children".to_owned(),
             )),
         }
@@ -231,8 +325,7 @@ fn parse_banner(
 /// - witness: `tests::nested_blocks_parse_exact_tree`.
 fn parse_blocks(
     top: Vec<Node<'_, '_>>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> Vec<DocBlock>
 {
     let mut pending = top;
@@ -245,8 +338,13 @@ fn parse_blocks(
             if node.tag_name().name() == "section" {
                 let id = node.attribute("id").map(str::to_owned);
                 let date = node.attribute("date").map(str::to_owned);
-                let title = required_attribute(node, "title", path_text, "section", diagnostics)
-                    .unwrap_or_default();
+                let title = required_attribute(
+                    node,
+                    AttributeName::from("title"),
+                    ElementName::from("section"),
+                    context,
+                )
+                .unwrap_or_default();
                 frames.push(DocBlockFrame {
                     pending,
                     blocks,
@@ -257,7 +355,7 @@ fn parse_blocks(
                 pending = reversed_element_children(node);
                 blocks = Vec::new();
             }
-            else if let Some(block) = parse_leaf_block(node, path_text, diagnostics) {
+            else if let Some(block) = parse_leaf_block(node, context) {
                 blocks.push(block);
             }
         }
@@ -297,20 +395,19 @@ fn reversed_element_children<'tree, 'input>(parent: Node<'tree, 'input>)
 /// Parse one non-container block element.
 fn parse_leaf_block(
     node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> Option<DocBlock>
 {
     let name = node.tag_name().name();
     match name {
-        | "prose" => Some(DocBlock::Prose(parse_inlines(node, path_text, diagnostics))),
-        | "list" => Some(DocBlock::List(parse_list(node, path_text, diagnostics))),
-        | "table" => Some(DocBlock::Table(parse_table(node, path_text, diagnostics))),
+        | "prose" => Some(DocBlock::Prose(parse_inlines(node, context))),
+        | "list" => Some(DocBlock::List(parse_list(node, context))),
+        | "table" => Some(DocBlock::Table(parse_table(node, context))),
         | "code" => Some(DocBlock::Code(parse_code(node))),
         | other => {
-            diagnostics.push(Diagnostic::new(
-                "unknown-block",
-                element_location(path_text, other),
+            context.diagnostics.push(Diagnostic::new(
+                "unknown-block".into(),
+                element_location(context, ElementName::from(other)),
                 format!("unknown block element <{other}>"),
             ));
             None
@@ -321,8 +418,7 @@ fn parse_leaf_block(
 /// Parse a list block into its items.
 fn parse_list(
     node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> DocList
 {
     let ordered = node
@@ -333,13 +429,13 @@ fn parse_list(
         if child.tag_name().name() == "item" {
             items.push(DocItem {
                 lead: child.attribute("lead").map(str::to_owned),
-                body: parse_inlines(child, path_text, diagnostics),
+                body: parse_inlines(child, context),
             });
         }
         else {
-            diagnostics.push(Diagnostic::new(
-                "unexpected-child",
-                element_location(path_text, child.tag_name().name()),
+            context.diagnostics.push(Diagnostic::new(
+                "unexpected-child".into(),
+                element_location(context, ElementName::from(child.tag_name().name())),
                 "list accepts only <item> children".to_owned(),
             ));
         }
@@ -350,8 +446,7 @@ fn parse_list(
 /// Parse a table block into its header row and body rows.
 fn parse_table(
     node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> DocTable
 {
     let caption = node
@@ -363,30 +458,28 @@ fn parse_table(
         match child.tag_name().name() {
             | "header" => {
                 if header.is_some() {
-                    diagnostics.push(Diagnostic::new(
-                        "duplicate-header",
-                        element_location(path_text, "header"),
+                    context.diagnostics.push(Diagnostic::new(
+                        "duplicate-header".into(),
+                        element_location(context, ElementName::from("header")),
                         "a table carries at most one <header> row".to_owned(),
                     ));
                 }
                 else {
-                    header = Some(parse_cells(child, path_text, diagnostics));
+                    header = Some(parse_cells(child, context));
                 }
             },
-            | "row" => rows.push(DocRow {
-                cells: parse_cells(child, path_text, diagnostics),
-            }),
-            | other => diagnostics.push(Diagnostic::new(
-                "unexpected-child",
-                element_location(path_text, other),
+            | "row" => rows.push(DocRow::from(parse_cells(child, context))),
+            | other => context.diagnostics.push(Diagnostic::new(
+                "unexpected-child".into(),
+                element_location(context, ElementName::from(other)),
                 "table accepts only <header> and <row> children".to_owned(),
             )),
         }
     }
     let header = header.unwrap_or_else(|| {
-        diagnostics.push(Diagnostic::new(
-            "missing-header",
-            element_location(path_text, "table"),
+        context.diagnostics.push(Diagnostic::new(
+            "missing-header".into(),
+            element_location(context, ElementName::from("table")),
             "a table must declare a <header> row".to_owned(),
         ));
         Vec::new()
@@ -401,21 +494,18 @@ fn parse_table(
 /// Parse the `<cell>` children of a table row.
 fn parse_cells(
     node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> Vec<DocCell>
 {
     let mut cells = Vec::new();
     for child in node.children().filter(Node::is_element) {
         if child.tag_name().name() == "cell" {
-            cells.push(DocCell {
-                content: parse_inlines(child, path_text, diagnostics),
-            });
+            cells.push(DocCell::from(parse_inlines(child, context)));
         }
         else {
-            diagnostics.push(Diagnostic::new(
-                "unexpected-child",
-                element_location(path_text, child.tag_name().name()),
+            context.diagnostics.push(Diagnostic::new(
+                "unexpected-child".into(),
+                element_location(context, ElementName::from(child.tag_name().name())),
                 "a table row accepts only <cell> children".to_owned(),
             ));
         }
@@ -437,20 +527,19 @@ fn parse_code(node: Node<'_, '_>) -> DocCode
 /// Parse the inline children of an element in document order.
 fn parse_inlines(
     parent: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> Vec<DocInline>
 {
     let mut inlines = Vec::new();
     for child in parent.children() {
         if child.is_text() {
-            let text = collapse_whitespace(child.text().unwrap_or_default());
+            let text = collapse_whitespace(ProseText::from(child.text().unwrap_or_default()));
             if !text.is_empty() {
                 inlines.push(DocInline::Text(text));
             }
         }
         else if child.is_element()
-            && let Some(inline) = parse_inline(child, path_text, diagnostics)
+            && let Some(inline) = parse_inline(child, context)
         {
             inlines.push(inline);
         }
@@ -461,31 +550,45 @@ fn parse_inlines(
 /// Parse one inline element.
 fn parse_inline(
     node: Node<'_, '_>,
-    path_text: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    context: &mut ParseContext<'_>,
 ) -> Option<DocInline>
 {
     match node.tag_name().name() {
         | "inline-code" => Some(DocInline::InlineCode(element_text(node))),
         | "label" => {
-            let key = required_attribute(node, "key", path_text, "label", diagnostics)?;
+            let key = required_attribute(
+                node,
+                AttributeName::from("key"),
+                ElementName::from("label"),
+                context,
+            )?;
             Some(DocInline::Label(Label {
                 key,
                 text: element_text(node),
             }))
         },
         | "ref" => {
-            let key = required_attribute(node, "key", path_text, "ref", diagnostics)?;
-            Some(DocInline::Ref(LabelRef { key }))
+            let key = required_attribute(
+                node,
+                AttributeName::from("key"),
+                ElementName::from("ref"),
+                context,
+            )?;
+            Some(DocInline::Ref(LabelRef::from(key)))
         },
         | "cite" => {
-            let key = required_attribute(node, "key", path_text, "cite", diagnostics)?;
-            Some(DocInline::Cite(CiteKey { key }))
+            let key = required_attribute(
+                node,
+                AttributeName::from("key"),
+                ElementName::from("cite"),
+                context,
+            )?;
+            Some(DocInline::Cite(CiteKey::from(key)))
         },
         | other => {
-            diagnostics.push(Diagnostic::new(
-                "unknown-inline",
-                element_location(path_text, other),
+            context.diagnostics.push(Diagnostic::new(
+                "unknown-inline".into(),
+                element_location(context, ElementName::from(other)),
                 format!("unknown inline element <{other}>"),
             ));
             None
@@ -497,21 +600,20 @@ fn parse_inline(
 // classes when the component parser retired with the XML corpus) ────────────
 
 /// Read a required attribute, pushing a diagnostic when it is absent.
-pub(crate) fn required_attribute(
+fn required_attribute(
     node: Node<'_, '_>,
-    name: &str,
-    path_text: &str,
-    element: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    name: AttributeName<'_>,
+    element: ElementName<'_>,
+    context: &mut ParseContext<'_>,
 ) -> Option<String>
 {
-    match node.attribute(name) {
+    match node.attribute(name.0) {
         | Some(value) => Some(value.to_owned()),
         | None => {
-            diagnostics.push(Diagnostic::new(
-                "missing-attribute",
-                element_location(path_text, element),
-                format!("<{element}> is missing required attribute {name}"),
+            context.diagnostics.push(Diagnostic::new(
+                "missing-attribute".into(),
+                element_location(context, element),
+                format!("<{}> is missing required attribute {}", element.0, name.0),
             ));
             None
         },
@@ -520,33 +622,31 @@ pub(crate) fn required_attribute(
 
 /// Read the required status attribute, pushing a diagnostic when absent or
 /// malformed.
-pub(crate) fn required_status(
+fn required_status(
     node: Node<'_, '_>,
-    path_text: &str,
-    element: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    element: ElementName<'_>,
+    context: &mut ParseContext<'_>,
 ) -> Option<Status>
 {
-    let raw = required_attribute(node, "status", path_text, element, diagnostics)?;
-    parse_status_value(&raw, path_text, element, diagnostics)
+    let raw = required_attribute(node, "status".into(), element, context)?;
+    parse_status_value(raw.as_str().into(), element, context)
 }
 
 /// Parse a status value, pushing a diagnostic when it is not canonical.
 fn parse_status_value(
-    raw: &str,
-    path_text: &str,
-    element: &str,
-    diagnostics: &mut Vec<Diagnostic>,
+    raw: StatusText<'_>,
+    element: ElementName<'_>,
+    context: &mut ParseContext<'_>,
 ) -> Option<Status>
 {
-    match Status::parse(raw) {
-        | Some(status) => Some(status),
-        | None => {
-            let allowed = Status::spellings().to_vec();
-            diagnostics.push(Diagnostic::new(
-                "invalid-status",
-                element_location(path_text, element),
-                format!("status '{raw}' is not one of [{}]", allowed.join(", ")),
+    match Status::from_str(raw.0) {
+        | Ok(status) => Some(status),
+        | Err(_) => {
+            let allowed = Status::ALL.map(|status| status.to_string());
+            context.diagnostics.push(Diagnostic::new(
+                "invalid-status".into(),
+                element_location(context, element),
+                format!("status '{}' is not one of [{}]", raw.0, allowed.join(", ")),
             ));
             None
         },
@@ -565,14 +665,14 @@ pub(crate) fn element_text(node: Node<'_, '_>) -> String
 
 /// Collapse internal whitespace runs to single spaces, preserving boundary
 /// spacing.
-pub(crate) fn collapse_whitespace(input: &str) -> String
+fn collapse_whitespace(input: ProseText<'_>) -> String
 {
-    let core: String = input.split_whitespace().collect::<Vec<&str>>().join(" ");
+    let core: String = input.0.split_whitespace().collect::<Vec<&str>>().join(" ");
     if core.is_empty() {
         return core;
     }
-    let lead = input.starts_with(char::is_whitespace);
-    let trail = input.ends_with(char::is_whitespace);
+    let lead = input.0.starts_with(char::is_whitespace);
+    let trail = input.0.ends_with(char::is_whitespace);
     let mut out = String::new();
     if lead {
         out.push(' ');
@@ -585,12 +685,12 @@ pub(crate) fn collapse_whitespace(input: &str) -> String
 }
 
 /// Build a diagnostic location string from a path and element name.
-pub(crate) fn element_location(
-    path_text: &str,
-    element: &str,
+fn element_location(
+    context: &ParseContext<'_>,
+    element: ElementName<'_>,
 ) -> String
 {
-    format!("{path_text}:<{element}>")
+    format!("{}:<{}>", context.path, element.0)
 }
 
 #[cfg(test)]
@@ -615,7 +715,7 @@ mod tests
             </section>
             <table caption="C"><header><cell>H</cell></header><row><cell>x</cell></row></table>
         </research-record>"#;
-        let parsed = parse_doc_document(std::path::Path::new("mem:r.xml"), xml)?;
+        let parsed = parse_doc_document(std::path::Path::new("mem:r.xml"), xml.into())?;
 
         assert!(
             parsed.diagnostics.is_empty(),
@@ -663,7 +763,7 @@ mod tests
         let xml = r#"<workflow-doc id="w" title="T" status="built">
             <prose>no banner here</prose>
         </workflow-doc>"#;
-        let parsed = parse_doc_document(std::path::Path::new("mem:w.xml"), xml)?;
+        let parsed = parse_doc_document(std::path::Path::new("mem:w.xml"), xml.into())?;
         assert!(
             parsed
                 .diagnostics

@@ -63,6 +63,53 @@ pub mod typst_leaf;
 
 pub use error::GfDocsError;
 
+/// Stable machine-readable diagnostic category.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct DiagnosticCode(&'static str);
+
+impl From<&'static str> for DiagnosticCode
+{
+    #[inline]
+    fn from(code: &'static str) -> Self
+    {
+        Self(code)
+    }
+}
+
+impl AsRef<str> for DiagnosticCode
+{
+    #[inline]
+    fn as_ref(&self) -> &'static str
+    {
+        self.0
+    }
+}
+
+impl PartialEq<&str> for DiagnosticCode
+{
+    #[inline]
+    fn eq(
+        &self,
+        other: &&str,
+    ) -> bool
+    {
+        self.0 == *other
+    }
+}
+
+impl fmt::Display for DiagnosticCode
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
+    {
+        f.write_str(self.0)
+    }
+}
+
 /// Non-fatal specification violation reported by the parse-validate pass.
 ///
 /// A run that produces one or more diagnostics fails the check; the diagnostics
@@ -76,7 +123,7 @@ pub use error::GfDocsError;
 pub struct Diagnostic
 {
     /// Stable diagnostic kind, such as `duplicate-id` or `unresolved-cite`.
-    pub code: &'static str,
+    pub code: DiagnosticCode,
     /// Human-readable, single-line explanation of the violation.
     pub message: String,
     /// Source location: the file path and, where known, the element or
@@ -90,7 +137,7 @@ impl Diagnostic
     #[inline]
     #[must_use]
     pub fn new<Location, Message>(
-        code: &'static str,
+        code: DiagnosticCode,
         location: Location,
         message: Message,
     ) -> Self

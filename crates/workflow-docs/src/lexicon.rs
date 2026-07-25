@@ -20,6 +20,146 @@ use gandr_workflow_grammatical_framework::sexp::unquote;
 use crate::bibliography;
 use crate::error::GfDocsError;
 
+/// Stable corpus term key.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct TermKey<'text>(&'text str);
+
+impl<'text> From<&'text str> for TermKey<'text>
+{
+    #[inline]
+    fn from(key: &'text str) -> Self
+    {
+        Self(key)
+    }
+}
+
+/// Display text associated with a term or anchor.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct DisplayText<'text>(&'text str);
+
+impl<'text> From<&'text str> for DisplayText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
+/// Bibliography key admitted to the generated cite namespace.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct CitationKey<'text>(&'text str);
+
+impl<'text> From<&'text str> for CitationKey<'text>
+{
+    #[inline]
+    fn from(key: &'text str) -> Self
+    {
+        Self(key)
+    }
+}
+
+/// Corpus-wide anchor identifier.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct AnchorId<'text>(&'text str);
+
+impl<'text> From<&'text str> for AnchorId<'text>
+{
+    #[inline]
+    fn from(id: &'text str) -> Self
+    {
+        Self(id)
+    }
+}
+
+/// Constructor family of one encoded `GF` list.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ListCategory<'text>(&'text str);
+
+impl<'text> From<&'text str> for ListCategory<'text>
+{
+    #[inline]
+    fn from(category: &'text str) -> Self
+    {
+        Self(category)
+    }
+}
+
+/// Expected application constructor.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ExpectedHead<'text>(&'text str);
+
+impl<'text> From<&'text str> for ExpectedHead<'text>
+{
+    #[inline]
+    fn from(head: &'text str) -> Self
+    {
+        Self(head)
+    }
+}
+
+/// One parsed S-expression atom.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct SexpAtom<'text>(&'text str);
+
+impl AsRef<str> for SexpAtom<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        self.0
+    }
+}
+
+/// Generated constant name awaiting reverse mangling.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ConstantName<'text>(&'text str);
+
+impl<'text> From<&'text str> for ConstantName<'text>
+{
+    #[inline]
+    fn from(constant: &'text str) -> Self
+    {
+        Self(constant)
+    }
+}
+
+/// Required namespace prefix on a generated constant.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ConstantPrefix<'text>(&'text str);
+
+impl<'text> From<&'text str> for ConstantPrefix<'text>
+{
+    #[inline]
+    fn from(prefix: &'text str) -> Self
+    {
+        Self(prefix)
+    }
+}
+
+/// Text quoted as one `GF` string literal.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct GfStringText<'text>(&'text str);
+
+impl<'text> From<&'text str> for GfStringText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
 /// The collected lexicon: three namespaces of constant records, each keyed by
 /// `GF` constant name for deterministic (sorted) emission.
 #[derive(Clone, Debug, Default)]
@@ -56,27 +196,29 @@ impl Lexicon
     /// a constant collision between distinct keys.
     fn insert_term(
         &mut self,
-        key: &str,
-        text: &str,
+        key: TermKey<'_>,
+        text: DisplayText<'_>,
     ) -> Result<(), GfDocsError>
     {
         let constant = term_const(key);
         match self.terms.get(&constant) {
-            | Some(&(ref existing_key, ref existing_text)) if existing_key == key => {
-                if existing_text != text {
+            | Some(&(ref existing_key, ref existing_text)) if existing_key == key.0 => {
+                if existing_text != text.0 {
                     return Err(GfDocsError::Translation(format!(
-                        "term '{key}' declares conflicting display texts: '{existing_text}' vs '{text}'"
+                        "term '{}' declares conflicting display texts: '{existing_text}' vs '{}'",
+                        key.0, text.0,
                     )));
                 }
             },
             | Some(&(ref existing_key, _)) => {
                 return Err(GfDocsError::Translation(format!(
-                    "term keys '{existing_key}' and '{key}' mangle to the same constant '{constant}'"
+                    "term keys '{existing_key}' and '{}' mangle to the same constant '{constant}'",
+                    key.0,
                 )));
             },
             | None => {
                 self.terms
-                    .insert(constant, (key.to_owned(), text.to_owned()));
+                    .insert(constant, (key.0.to_owned(), text.0.to_owned()));
             },
         }
         Ok(())
@@ -89,18 +231,19 @@ impl Lexicon
     /// keys.
     fn insert_cite(
         &mut self,
-        key: &str,
+        key: CitationKey<'_>,
     ) -> Result<(), GfDocsError>
     {
         let constant = cite_const(key);
         if let Some(existing_key) = self.cites.get(&constant)
-            && existing_key != key
+            && existing_key != key.0
         {
             return Err(GfDocsError::Translation(format!(
-                "cite keys '{existing_key}' and '{key}' mangle to the same constant '{constant}'"
+                "cite keys '{existing_key}' and '{}' mangle to the same constant '{constant}'",
+                key.0,
             )));
         }
-        self.cites.insert(constant, key.to_owned());
+        self.cites.insert(constant, key.0.to_owned());
         Ok(())
     }
 
@@ -111,25 +254,27 @@ impl Lexicon
     /// between distinct ids (the single-namespace detector).
     fn insert_anchor(
         &mut self,
-        id: &str,
-        title: &str,
+        id: AnchorId<'_>,
+        title: DisplayText<'_>,
     ) -> Result<(), GfDocsError>
     {
         let constant = anchor_const(id);
         match self.anchors.get(&constant) {
-            | Some(&(ref existing_id, _)) if existing_id == id => {
+            | Some(&(ref existing_id, _)) if existing_id == id.0 => {
                 return Err(GfDocsError::Translation(format!(
-                    "anchor id '{id}' is declared twice in the corpus"
+                    "anchor id '{}' is declared twice in the corpus",
+                    id.0,
                 )));
             },
             | Some(&(ref existing_id, _)) => {
                 return Err(GfDocsError::Translation(format!(
-                    "anchor ids '{existing_id}' and '{id}' mangle to the same constant '{constant}'"
+                    "anchor ids '{existing_id}' and '{}' mangle to the same constant '{constant}'",
+                    id.0,
                 )));
             },
             | None => {
                 self.anchors
-                    .insert(constant, (id.to_owned(), title.to_owned()));
+                    .insert(constant, (id.0.to_owned(), title.0.to_owned()));
             },
         }
         Ok(())
@@ -169,20 +314,24 @@ impl Lexicon
             let _res = writeln!(
                 out,
                 "    {constant} = {{ key = {} ; text = {} }} ;",
-                gf_str(key),
-                gf_str(text)
+                gf_str(key.as_str().into()),
+                gf_str(text.as_str().into()),
             );
         }
         for (constant, key) in &self.cites {
-            let _res = writeln!(out, "    {constant} = {{ key = {} }} ;", gf_str(key));
+            let _res = writeln!(
+                out,
+                "    {constant} = {{ key = {} }} ;",
+                gf_str(key.as_str().into()),
+            );
         }
         for (constant, entry) in &self.anchors {
             let (ref id, ref title) = *entry;
             let _res = writeln!(
                 out,
                 "    {constant} = {{ id = {} ; title = {} }} ;",
-                gf_str(id),
-                gf_str(title)
+                gf_str(id.as_str().into()),
+                gf_str(title.as_str().into()),
             );
         }
         out.push_str("}\n");
@@ -226,7 +375,7 @@ where
     let bibliography =
         bibliography::load(refs_path).map_err(|e| GfDocsError::Model(e.to_string()))?;
     for key in bibliography.key_set() {
-        lexicon.insert_cite(&key)?;
+        lexicon.insert_cite(key.as_str().into())?;
     }
     Ok(lexicon)
 }
@@ -239,7 +388,7 @@ fn collect_gfd(
     lexicon: &mut Lexicon,
 ) -> Result<(), GfDocsError>
 {
-    let args = expect_app(tree, "MkComponent")?;
+    let args = expect_app(tree, "MkComponent".into())?;
     let [
         ref anchor,
         ref title,
@@ -252,8 +401,10 @@ fn collect_gfd(
     else {
         return Err(GfDocsError::Parse("MkComponent arity is not seven".into()));
     };
-    lexicon.insert_anchor(&anchor_id(anchor)?, &quoted(title)?)?;
-    walk_list(sections, "Section", &mut |section| {
+    let anchor_id = anchor_id(anchor)?;
+    let title = quoted(title)?;
+    lexicon.insert_anchor(anchor_id.as_str().into(), title.as_str().into())?;
+    walk_list(sections, "Section".into(), &mut |section| {
         collect_section(section, lexicon)
     })
 }
@@ -264,13 +415,17 @@ fn collect_section(
     lexicon: &mut Lexicon,
 ) -> Result<(), GfDocsError>
 {
-    let args = expect_app(section, "MkSection")?;
+    let args = expect_app(section, "MkSection".into())?;
     let [ref anchor, ref title, ref _status, ref blocks] = *args
     else {
         return Err(GfDocsError::Parse("MkSection arity is not four".into()));
     };
-    lexicon.insert_anchor(&anchor_id(anchor)?, &quoted(title)?)?;
-    walk_list(blocks, "Block", &mut |block| collect_block(block, lexicon))
+    let anchor_id = anchor_id(anchor)?;
+    let title = quoted(title)?;
+    lexicon.insert_anchor(anchor_id.as_str().into(), title.as_str().into())?;
+    walk_list(blocks, "Block".into(), &mut |block| {
+        collect_block(block, lexicon)
+    })
 }
 
 /// Dispatch one block to its collector.
@@ -298,12 +453,12 @@ fn collect_block(
                     "DefinitionBlock arity is not three".into(),
                 ));
             };
-            let key = unmangle(atom_of(term)?, "term_")?;
-            lexicon.insert_anchor(
-                &anchor_id(anchor)?,
-                &escape_text(&format!("{key} (definition)")),
-            )?;
-            lexicon.insert_term(&key, &escape_text(&key))?;
+            let key = unmangle(atom_of(term)?.as_ref().into(), "term_".into())?;
+            let anchor_id = anchor_id(anchor)?;
+            let title = escape_text(format!("{key} (definition)").as_str().into());
+            lexicon.insert_anchor(anchor_id.as_str().into(), title.as_str().into())?;
+            let display = escape_text(key.as_str().into());
+            lexicon.insert_term(key.as_str().into(), display.as_str().into())?;
             harvest_inline_terms(body, lexicon)
         },
         | "RuleBlock" => {
@@ -311,14 +466,18 @@ fn collect_block(
             else {
                 return Err(GfDocsError::Parse("RuleBlock arity is not four".into()));
             };
-            lexicon.insert_anchor(&anchor_id(anchor)?, &quoted(name)?)
+            let anchor_id = anchor_id(anchor)?;
+            let title = quoted(name)?;
+            lexicon.insert_anchor(anchor_id.as_str().into(), title.as_str().into())
         },
         | "DiagramBlock" => {
             let [ref anchor, ref caption, ref _cite, ref _source] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("DiagramBlock arity is not four".into()));
             };
-            lexicon.insert_anchor(&anchor_id(anchor)?, &quoted(caption)?)
+            let anchor_id = anchor_id(anchor)?;
+            let title = quoted(caption)?;
+            lexicon.insert_anchor(anchor_id.as_str().into(), title.as_str().into())
         },
         | "ProseBlock" => {
             let [ref inlines] = *args.as_slice()
@@ -332,14 +491,18 @@ fn collect_block(
             else {
                 return Err(GfDocsError::Parse("ExampleBlock arity is not two".into()));
             };
-            walk_list(blocks, "Block", &mut |inner| collect_block(inner, lexicon))
+            walk_list(blocks, "Block".into(), &mut |inner| {
+                collect_block(inner, lexicon)
+            })
         },
         | "RegisterBlock" | "PlainRegisterBlock" => {
             let [ref _order, ref items] = *args.as_slice()
             else {
                 return Err(GfDocsError::Parse("register arity is not two".into()));
             };
-            walk_list(items, "Item", &mut |item| collect_item(item, lexicon))
+            walk_list(items, "Item".into(), &mut |item| {
+                collect_item(item, lexicon)
+            })
         },
         | "InventoryBlock" | "StagingPlanBlock" | "DecisionTableBlock" => {
             let [ref _caption, ref header, ref rows] = *args.as_slice()
@@ -347,7 +510,7 @@ fn collect_block(
                 return Err(GfDocsError::Parse("table arity is not three".into()));
             };
             collect_row(header, lexicon)?;
-            walk_list(rows, "Row", &mut |row| collect_row(row, lexicon))
+            walk_list(rows, "Row".into(), &mut |row| collect_row(row, lexicon))
         },
         | _ => Ok(()),
     }
@@ -400,8 +563,8 @@ fn collect_row(
     else {
         return Err(GfDocsError::Parse("row arity is not one".into()));
     };
-    walk_list(cells, "Cell", &mut |cell| {
-        let args = expect_app(cell, "MkCell")?;
+    walk_list(cells, "Cell".into(), &mut |cell| {
+        let args = expect_app(cell, "MkCell".into())?;
         let [ref content] = *args
         else {
             return Err(GfDocsError::Parse("MkCell arity is not one".into()));
@@ -424,7 +587,9 @@ fn harvest_inline_terms(
                     else {
                         return Err(GfDocsError::Parse("TermDef arity is not two".into()));
                     };
-                    lexicon.insert_term(&unmangle(atom_of(term)?, "term_")?, &quoted(display)?)?;
+                    let key = unmangle(atom_of(term)?.as_ref().into(), "term_".into())?;
+                    let display = quoted(display)?;
+                    lexicon.insert_term(key.as_str().into(), display.as_str().into())?;
                 },
                 | "Bold" | "Italic" => {
                     let [ref inner] = *args.as_slice()
@@ -444,10 +609,11 @@ fn harvest_inline_terms(
 /// element.
 fn walk_list(
     list: &Sexp,
-    category: &str,
+    category: ListCategory<'_>,
     visit: &mut dyn FnMut(&Sexp) -> Result<(), GfDocsError>,
 ) -> Result<(), GfDocsError>
 {
+    let category = category.0;
     let mut cursor = list;
     loop {
         match cursor {
@@ -493,23 +659,26 @@ fn walk_list_any(
 /// The arguments of an application with the expected head constructor.
 fn expect_app<'tree>(
     sexp: &'tree Sexp,
-    head: &str,
+    head: ExpectedHead<'_>,
 ) -> Result<&'tree [Sexp], GfDocsError>
 {
     match sexp {
         | &Sexp::App {
             head: ref actual,
             ref args,
-        } if actual == head => Ok(args),
-        | _ => Err(GfDocsError::Parse(format!("expected a {head} application"))),
+        } if actual == head.0 => Ok(args),
+        | _ => Err(GfDocsError::Parse(format!(
+            "expected a {} application",
+            head.0,
+        ))),
     }
 }
 
 /// The text of an atom expression.
-fn atom_of(sexp: &Sexp) -> Result<&str, GfDocsError>
+fn atom_of(sexp: &Sexp) -> Result<SexpAtom<'_>, GfDocsError>
 {
     match sexp {
-        | &Sexp::Atom(ref text) => Ok(text),
+        | &Sexp::Atom(ref text) => Ok(SexpAtom(text)),
         | _ => Err(GfDocsError::Parse("expected an atom".into())),
     }
 }
@@ -517,28 +686,31 @@ fn atom_of(sexp: &Sexp) -> Result<&str, GfDocsError>
 /// The unquoted text of a string-literal atom expression.
 fn quoted(sexp: &Sexp) -> Result<String, GfDocsError>
 {
-    unquote((atom_of(sexp)?).into())
+    unquote(atom_of(sexp)?.as_ref().into())
         .ok_or_else(|| GfDocsError::Parse("expected a string literal".into()))
 }
 
 /// The id behind an anchor constant.
 fn anchor_id(sexp: &Sexp) -> Result<String, GfDocsError>
 {
-    unmangle(atom_of(sexp)?, "anchor_")
+    unmangle(atom_of(sexp)?.as_ref().into(), "anchor_".into())
 }
 
 /// Reverse the corpus key-to-constant mangle (`prefix` stripped, `_` back to
 /// `-`): exact under the lexicon's own collision detector (no corpus key
 /// contains an underscore).
 fn unmangle(
-    constant: &str,
-    prefix: &str,
+    constant: ConstantName<'_>,
+    prefix: ConstantPrefix<'_>,
 ) -> Result<String, GfDocsError>
 {
     constant
-        .strip_prefix(prefix)
+        .0
+        .strip_prefix(prefix.0)
         .map(|rest| rest.replace('_', "-"))
-        .ok_or_else(|| GfDocsError::Parse(format!("'{constant}' lacks the '{prefix}' prefix")))
+        .ok_or_else(|| {
+            GfDocsError::Parse(format!("'{}' lacks the '{}' prefix", constant.0, prefix.0))
+        })
 }
 
 // ── lexicon constant naming and `GF`/text escaping (the shared contract) ────
@@ -546,39 +718,33 @@ fn unmangle(
 /// The lexicon constant for a term key.
 #[inline]
 #[must_use]
-pub fn term_const(key: &str) -> String
+fn term_const(key: TermKey<'_>) -> String
 {
-    format!("term_{}", mangle(key))
+    format!("term_{}", key.0.replace('-', "_"))
 }
 
 /// The lexicon constant for a cite key.
 #[inline]
 #[must_use]
-pub fn cite_const(key: &str) -> String
+fn cite_const(key: CitationKey<'_>) -> String
 {
-    format!("cite_{}", mangle(key))
+    format!("cite_{}", key.0.replace('-', "_"))
 }
 
 /// The lexicon constant for an anchor id.
 #[inline]
 #[must_use]
-pub fn anchor_const(id: &str) -> String
+fn anchor_const(id: AnchorId<'_>) -> String
 {
-    format!("anchor_{}", mangle(id))
-}
-
-/// Map a corpus key to a `GF`-safe identifier fragment.
-fn mangle(key: &str) -> String
-{
-    key.replace('-', "_")
+    format!("anchor_{}", id.0.replace('-', "_"))
 }
 
 /// Quote text as a `GF` string literal.
-pub(crate) fn gf_str(text: &str) -> String
+fn gf_str(text: GfStringText<'_>) -> String
 {
-    let mut out = String::with_capacity(text.len().saturating_add(2));
+    let mut out = String::with_capacity(text.0.len().saturating_add(2));
     out.push('"');
-    for ch in text.chars() {
+    for ch in text.0.chars() {
         match ch {
             | '"' => out.push_str("\\\""),
             | '\\' => out.push_str("\\\\"),
@@ -597,10 +763,10 @@ pub(crate) fn gf_str(text: &str) -> String
 /// Text-destined strings (`Txt` prose, titles, captions, display texts) are
 /// emitted raw by the linearization; escaping is the content boundary's job,
 /// applied exactly once.
-pub(crate) fn escape_text(text: &str) -> String
+fn escape_text(text: DisplayText<'_>) -> String
 {
-    let mut out = String::with_capacity(text.len());
-    for ch in text.chars() {
+    let mut out = String::with_capacity(text.0.len());
+    for ch in text.0.chars() {
         match ch {
             | '&' => out.push_str("&amp;"),
             | '<' => out.push_str("&lt;"),

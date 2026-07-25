@@ -211,7 +211,7 @@ mod tests
         let page = build_page(
             &runtime,
             &ExprText::new(gfd()?),
-            "component-vocabulary",
+            "component-vocabulary".into(),
             &context,
             &[],
         )?;

@@ -27,7 +27,7 @@ pub fn format_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, DocError>
 {
     let mut changed = Vec::new();
     for path in paths {
-        if format::format_file(path)? {
+        if bool::from(format::format_file(path)?) {
             changed.push(path.clone());
         }
     }
@@ -136,7 +136,7 @@ pub fn check_docs(
             path: file.clone(),
             source,
         })?;
-        let parsed = parse_doc_document(&file, &text)?;
+        let parsed = parse_doc_document(&file, text.as_str().into())?;
         diagnostics.extend(parsed.diagnostics);
         if let Some(record) = parsed.document {
             records.push(record);

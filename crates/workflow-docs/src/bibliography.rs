@@ -30,7 +30,7 @@ impl Bibliography
         cite: &CiteKey,
     ) -> Option<&Reference>
     {
-        self.entries.get(&cite.key)
+        self.entries.get(cite.as_ref())
     }
 
     /// Copy the stable keys for document-class validation and lexicon
@@ -44,9 +44,9 @@ impl Bibliography
 
     /// Parse an in-memory bibliography fixture.
     #[cfg(test)]
-    pub(crate) fn parse_source(source: &str) -> Result<Self, DocError>
+    pub(crate) fn parse_source(source: BibliographySource<'_>) -> Result<Self, DocError>
     {
-        parse(Path::new("mem:refs.yml"), BibliographySource(source))
+        parse(Path::new("mem:refs.yml"), source)
     }
 }
 
@@ -151,7 +151,16 @@ impl ReferenceLocator
 /// Borrowed source text for a bibliography parse.
 #[repr(transparent)]
 #[derive(Clone, Copy)]
-struct BibliographySource<'source>(&'source str);
+pub(crate) struct BibliographySource<'source>(&'source str);
+
+impl<'source> From<&'source str> for BibliographySource<'source>
+{
+    #[inline]
+    fn from(source: &'source str) -> Self
+    {
+        Self(source)
+    }
+}
 
 /// Fields consumed from each Hayagriva record.
 #[derive(Clone, Copy)]
@@ -361,11 +370,10 @@ U:
 M:
   type: misc
   title: Metadata Minimum
-"#,
+"#
+            .into(),
         )?;
-        let doi = bibliography.get(&CiteKey {
-            key: "D".to_owned(),
-        });
+        let doi = bibliography.get(&CiteKey::from("D".to_owned()));
         assert_eq!(
             doi.and_then(Reference::author).map(String::as_str),
             Some("Ada & Bob"),
@@ -383,25 +391,19 @@ M:
             Some(ReferenceLocator::Doi(value)) if value == "10.1000/example"
         ));
 
-        let arxiv = bibliography.get(&CiteKey {
-            key: "A".to_owned(),
-        });
+        let arxiv = bibliography.get(&CiteKey::from("A".to_owned()));
         assert!(matches!(
             arxiv.and_then(Reference::locator),
             Some(ReferenceLocator::Arxiv(value)) if value == "2402.00002"
         ));
 
-        let url = bibliography.get(&CiteKey {
-            key: "U".to_owned(),
-        });
+        let url = bibliography.get(&CiteKey::from("U".to_owned()));
         assert!(matches!(
             url.and_then(Reference::locator),
             Some(ReferenceLocator::Url(value)) if value == "https://example.test/thesis"
         ));
 
-        let minimum = bibliography.get(&CiteKey {
-            key: "M".to_owned(),
-        });
+        let minimum = bibliography.get(&CiteKey::from("M".to_owned()));
         assert!(minimum.and_then(Reference::author).is_none());
         assert!(minimum.and_then(Reference::venue).is_none());
         assert!(minimum.and_then(Reference::date).is_none());
@@ -413,7 +415,8 @@ M:
     #[test]
     fn missing_title_is_rejected()
     {
-        let result = Bibliography::parse_source("BROKEN:\n  type: article\n  author: Nobody\n");
+        let result =
+            Bibliography::parse_source("BROKEN:\n  type: article\n  author: Nobody\n".into());
         assert!(matches!(
             result,
             Err(DocError::Yaml { ref detail, .. })

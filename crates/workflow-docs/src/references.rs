@@ -35,41 +35,55 @@ pub fn render_references(
     format!("<h2>References</h2>\n<ul class=\"refs\">\n{rows}</ul>\n")
 }
 
+/// Text escaped into one rendered bibliography row.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct ReferenceText<'text>(&'text str);
+
+impl<'text> From<&'text str> for ReferenceText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
 /// Render one stable-anchor bibliography row.
 fn render_reference(
     cite: &CiteKey,
     bibliography: &Bibliography,
 ) -> String
 {
-    let key = escape(&cite.key);
+    let key = escape(cite.as_ref().into());
     let Some(reference) = bibliography.get(cite)
     else {
         return format!("<li id=\"ref-{key}\"><span class=\"ref-key\">[{key}]</span></li>\n");
     };
     let mut row = format!("<li id=\"ref-{key}\"><span class=\"ref-key\">[{key}]</span> ");
     if let Some(author) = reference.author() {
-        row.push_str(&escape(author));
+        row.push_str(&escape(author.as_str().into()));
         row.push_str(". ");
     }
     row.push_str("<cite>");
-    row.push_str(&escape(reference.title()));
+    row.push_str(&escape(reference.title().as_str().into()));
     row.push_str("</cite>.");
     match (reference.venue(), reference.date()) {
         | (Some(venue), Some(date)) => {
             row.push(' ');
-            row.push_str(&escape(venue));
+            row.push_str(&escape(venue.as_str().into()));
             row.push_str(", ");
-            row.push_str(&escape(date));
+            row.push_str(&escape(date.as_str().into()));
             row.push('.');
         },
         | (Some(venue), None) => {
             row.push(' ');
-            row.push_str(&escape(venue));
+            row.push_str(&escape(venue.as_str().into()));
             row.push('.');
         },
         | (None, Some(date)) => {
             row.push(' ');
-            row.push_str(&escape(date));
+            row.push_str(&escape(date.as_str().into()));
             row.push('.');
         },
         | (None, None) => {},
@@ -78,9 +92,9 @@ fn render_reference(
         let href = locator.href();
         let label = locator.label();
         row.push_str(" <a class=\"ref-locator\" href=\"");
-        row.push_str(&escape(&href));
+        row.push_str(&escape(href.as_str().into()));
         row.push_str("\">");
-        row.push_str(&escape(&label));
+        row.push_str(&escape(label.as_str().into()));
         row.push_str("</a>.");
     }
     row.push_str("</li>\n");
@@ -88,10 +102,10 @@ fn render_reference(
 }
 
 /// Escape `HTML` text content.
-fn escape(text: &str) -> String
+fn escape(text: ReferenceText<'_>) -> String
 {
-    let mut out = String::with_capacity(text.len());
-    for character in text.chars() {
+    let mut out = String::with_capacity(text.0.len());
+    for character in text.0.chars() {
         match character {
             | '&' => out.push_str("&amp;"),
             | '<' => out.push_str("&lt;"),

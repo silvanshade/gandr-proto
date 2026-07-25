@@ -1,6 +1,8 @@
 //! Shared vocabulary types carried across the documentation lanes.
 
 use alloc::string::String;
+use core::fmt;
+use core::str::FromStr;
 
 /// Lifecycle status carried by every component (and optionally by a section).
 ///
@@ -24,27 +26,22 @@ pub enum Status
 
 impl Status
 {
-    /// Parse a status from its canonical attribute spelling.
-    #[inline]
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self>
-    {
-        match text {
-            | "built" => Some(Self::Built),
-            | "partial" => Some(Self::Partial),
-            | "adopted-unbuilt" => Some(Self::AdoptedUnbuilt),
-            | "design-pass" => Some(Self::DesignPass),
-            | "dormant" => Some(Self::Dormant),
-            | _ => None,
-        }
-    }
+    /// Every lifecycle status, in declaration order.
+    pub const ALL: [Self; 5] = [
+        Self::Built,
+        Self::Partial,
+        Self::AdoptedUnbuilt,
+        Self::DesignPass,
+        Self::Dormant,
+    ];
+}
 
-    /// Return the canonical attribute spelling of the status.
+impl AsRef<str> for Status
+{
     #[inline]
-    #[must_use]
-    pub const fn as_str(self) -> &'static str
+    fn as_ref(&self) -> &'static str
     {
-        match self {
+        match *self {
             | Self::Built => "built",
             | Self::Partial => "partial",
             | Self::AdoptedUnbuilt => "adopted-unbuilt",
@@ -52,40 +49,72 @@ impl Status
             | Self::Dormant => "dormant",
         }
     }
+}
 
-    /// Every canonical spelling, in declaration order.
+impl fmt::Display for Status
+{
     #[inline]
-    #[must_use]
-    pub const fn spellings() -> &'static [&'static str]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
     {
-        &[
-            "built",
-            "partial",
-            "adopted-unbuilt",
-            "design-pass",
-            "dormant",
-        ]
+        f.write_str(self.as_ref())
     }
 }
 
-/// A cite-key reference resolved against the references file.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
-pub struct CiteKey
+impl FromStr for Status
 {
-    /// Bibliography key, resolved against the hayagriva references file.
-    pub key: String,
+    type Err = UnknownStatus;
+
+    #[inline]
+    fn from_str(text: &str) -> Result<Self, Self::Err>
+    {
+        match text {
+            | "built" => Ok(Self::Built),
+            | "partial" => Ok(Self::Partial),
+            | "adopted-unbuilt" => Ok(Self::AdoptedUnbuilt),
+            | "design-pass" => Ok(Self::DesignPass),
+            | "dormant" => Ok(Self::Dormant),
+            | _ => Err(UnknownStatus),
+        }
+    }
 }
 
-impl CiteKey
+/// Rejection returned when a lifecycle-status spelling is not canonical.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct UnknownStatus;
+
+/// A cite-key reference resolved against the references file.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[non_exhaustive]
+pub struct CiteKey(String);
+
+impl AsRef<str> for CiteKey
 {
-    /// Build a cite key from its stable corpus spelling.
     #[inline]
-    #[must_use]
-    pub fn new(key: &str) -> Self
+    fn as_ref(&self) -> &str
     {
-        Self {
-            key: key.to_owned(),
-        }
+        &self.0
+    }
+}
+
+impl From<&str> for CiteKey
+{
+    #[inline]
+    fn from(key: &str) -> Self
+    {
+        Self(key.to_owned())
+    }
+}
+
+impl From<String> for CiteKey
+{
+    #[inline]
+    fn from(key: String) -> Self
+    {
+        Self(key)
     }
 }

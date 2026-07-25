@@ -46,6 +46,90 @@ pub enum Leaf
     Missing(String),
 }
 
+/// Borrowed source for one math leaf.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct MathSource<'source>(&'source str);
+
+impl<'source> From<&'source str> for MathSource<'source>
+{
+    #[inline]
+    fn from(source: &'source str) -> Self
+    {
+        Self(source)
+    }
+}
+
+/// Borrowed premise text for one inference-rule leaf.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct RulePremises<'source>(&'source str);
+
+impl<'source> From<&'source str> for RulePremises<'source>
+{
+    #[inline]
+    fn from(source: &'source str) -> Self
+    {
+        Self(source)
+    }
+}
+
+/// Borrowed conclusion text for one inference-rule leaf.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct RuleConclusion<'source>(&'source str);
+
+impl<'source> From<&'source str> for RuleConclusion<'source>
+{
+    #[inline]
+    fn from(source: &'source str) -> Self
+    {
+        Self(source)
+    }
+}
+
+/// Borrowed source for one diagram leaf.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct DiagramSource<'source>(&'source str);
+
+impl<'source> From<&'source str> for DiagramSource<'source>
+{
+    #[inline]
+    fn from(source: &'source str) -> Self
+    {
+        Self(source)
+    }
+}
+
+/// Complete generated Typst document source.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct TypstDocument<'source>(&'source str);
+
+impl<'source> From<&'source str> for TypstDocument<'source>
+{
+    #[inline]
+    fn from(source: &'source str) -> Self
+    {
+        Self(source)
+    }
+}
+
+/// Whether the Typst process completed successfully.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct TypstSucceeded(bool);
+
+impl From<TypstSucceeded> for bool
+{
+    #[inline]
+    fn from(succeeded: TypstSucceeded) -> Self
+    {
+        succeeded.0
+    }
+}
+
 /// Compile an inline or display math leaf to inline `SVG`.
 ///
 /// # Errors
@@ -53,12 +137,12 @@ pub enum Leaf
 /// be written.
 #[inline]
 pub fn compile_math(
-    source: &str,
+    source: MathSource<'_>,
     cache_dir: &Path,
 ) -> Result<Leaf, DocError>
 {
-    let document = format!("{PRELUDE}\n$ {source} $\n");
-    compile_typst(&document, cache_dir)
+    let document = format!("{PRELUDE}\n$ {} $\n", source.0);
+    compile_typst(document.as_str().into(), cache_dir)
 }
 
 /// Compile an inference rule (premises over a conclusion) to inline `SVG`.
@@ -68,13 +152,13 @@ pub fn compile_math(
 /// be written.
 #[inline]
 pub fn compile_rule(
-    premises: &str,
-    conclusion: &str,
+    premises: RulePremises<'_>,
+    conclusion: RuleConclusion<'_>,
     cache_dir: &Path,
 ) -> Result<Leaf, DocError>
 {
-    let document = format!("{PRELUDE}\n$ frac({premises}, {conclusion}) $\n");
-    compile_typst(&document, cache_dir)
+    let document = format!("{PRELUDE}\n$ frac({}, {}) $\n", premises.0, conclusion.0);
+    compile_typst(document.as_str().into(), cache_dir)
 }
 
 /// Compile a diagram leaf (fletcher source) to inline `SVG`.
@@ -84,17 +168,17 @@ pub fn compile_rule(
 /// be written.
 #[inline]
 pub fn compile_diagram(
-    source: &str,
+    source: DiagramSource<'_>,
     cache_dir: &Path,
 ) -> Result<Leaf, DocError>
 {
-    let document = format!("{DIAGRAM_HEADER}\n{source}\n");
-    compile_typst(&document, cache_dir)
+    let document = format!("{DIAGRAM_HEADER}\n{}\n", source.0);
+    compile_typst(document.as_str().into(), cache_dir)
 }
 
 /// Compile a full typst document to inline `SVG`, using the content-hash cache.
 fn compile_typst(
-    document: &str,
+    document: TypstDocument<'_>,
     cache_dir: &Path,
 ) -> Result<Leaf, DocError>
 {
@@ -102,20 +186,20 @@ fn compile_typst(
         path: cache_dir.to_path_buf(),
         source,
     })?;
-    let digest = blake3::hash(document.as_bytes()).to_hex();
+    let digest = blake3::hash(document.0.as_bytes()).to_hex();
     let stem = digest.as_str();
     let input = cache_dir.join(format!("{stem}.typ"));
     let output = cache_dir.join(format!("{stem}.svg"));
     if output.exists() {
         return read_svg(&output);
     }
-    std::fs::write(&input, document).map_err(|source| DocError::Io {
+    std::fs::write(&input, document.0).map_err(|source| DocError::Io {
         path: input.clone(),
         source,
     })?;
     match run_typst(cache_dir, &input, &output) {
-        | Ok(true) => read_svg(&output),
-        | Ok(false) => Ok(Leaf::Missing(String::from(
+        | Ok(succeeded) if bool::from(succeeded) => read_svg(&output),
+        | Ok(_) => Ok(Leaf::Missing(String::from(
             "typst compile failed (see stderr); leaf rendered as a source placeholder",
         ))),
         | Err(reason) => Ok(Leaf::Missing(reason)),
@@ -127,7 +211,7 @@ fn run_typst(
     root: &Path,
     input: &Path,
     output: &Path,
-) -> Result<bool, String>
+) -> Result<TypstSucceeded, String>
 {
     let invocation = Command::new("typst")
         .arg("compile")
@@ -139,7 +223,7 @@ fn run_typst(
         .arg(output)
         .output();
     match invocation {
-        | Ok(result) => Ok(result.status.success()),
+        | Ok(result) => Ok(TypstSucceeded(result.status.success())),
         | Err(error) => Err(format!(
             "typst tool unavailable ({error}); leaf rendered as a source placeholder"
         )),

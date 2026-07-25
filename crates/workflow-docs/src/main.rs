@@ -41,6 +41,65 @@ const HTML_LANG: &str = "GandrDocsLexHtml";
 /// The GF release the toolchain lane pins.
 const GF_VERSION: &str = "3.12";
 
+/// Corpus component stem used to derive one index entry.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct CorpusStem<'stem>(&'stem str);
+
+impl<'stem> From<&'stem str> for CorpusStem<'stem>
+{
+    #[inline]
+    fn from(stem: &'stem str) -> Self
+    {
+        Self(stem)
+    }
+}
+
+/// Named CLI flag whose following argument is a path.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct FlagName<'name>(&'name str);
+
+impl<'name> From<&'name str> for FlagName<'name>
+{
+    #[inline]
+    fn from(name: &'name str) -> Self
+    {
+        Self(name)
+    }
+}
+
+/// Requested lexicon lane behavior.
+#[derive(Clone, Copy)]
+enum LexiconMode
+{
+    /// Write generated lexicon modules.
+    Write,
+    /// Verify that committed lexicon modules are current.
+    Check,
+}
+
+/// Platform-specific pinned GF release asset.
+struct ReleaseAsset
+{
+    /// Asset filename published by GF.
+    filename: &'static str,
+    /// Archive extension and extraction discriminator.
+    extension: &'static str,
+}
+
+/// One external command invocation.
+#[derive(Clone, Copy)]
+struct CommandSpec<'command>
+{
+    /// Executable name or path.
+    program: &'command str,
+    /// Ordered command arguments.
+    arguments: &'command [&'command str],
+    /// Environment additions.
+    environment: &'command [(&'command str, String)],
+}
+
 /// Entry point: `toolchain` | `grammar` | `lexicon [--check]` | `check-all` |
 /// `build-all --out O` | `check --pgf P --lang L --gfd G` | `build --pgf P
 /// --lang L --gfd G --out O` | `check-docs` | `fmt [FILES...]`.
@@ -67,29 +126,35 @@ fn run(args: &[String]) -> Result<(), String>
         | Some("toolchain") => toolchain(),
         | Some("grammar") => grammar(),
         | Some("check") => {
-            let pgf = flag(args, "--pgf")?;
-            let lang = flag(args, "--lang")?;
-            let gfd = flag(args, "--gfd")?;
+            let pgf = flag(args, "--pgf".into())?;
+            let lang = flag(args, "--lang".into())?;
+            let gfd = flag(args, "--gfd".into())?;
             let runtime = PyPgf::new(&pgf, &LanguageName::new(lang.to_string_lossy().into_owned()))
                 .map_err(|e| e.to_string())?;
             do_check(&runtime, &gfd)
         },
         | Some("build") => {
-            let pgf = flag(args, "--pgf")?;
-            let lang = flag(args, "--lang")?;
-            let gfd = flag(args, "--gfd")?;
-            let out = flag(args, "--out")?;
+            let pgf = flag(args, "--pgf".into())?;
+            let lang = flag(args, "--lang".into())?;
+            let gfd = flag(args, "--gfd".into())?;
+            let out = flag(args, "--out".into())?;
             let runtime = PyPgf::new(&pgf, &LanguageName::new(lang.to_string_lossy().into_owned()))
                 .map_err(|e| e.to_string())?;
             do_build(&runtime, &gfd, &out)
         },
         | Some("lexicon") => {
             let runtime = corpus_runtime()?;
-            lexicon(&runtime, args.iter().any(|arg| arg == "--check"))
+            let mode = if args.iter().any(|arg| arg == "--check") {
+                LexiconMode::Check
+            }
+            else {
+                LexiconMode::Write
+            };
+            lexicon(&runtime, mode)
         },
         | Some("check-all") => check_all(&corpus_runtime()?),
         | Some("build-all") => {
-            let out = flag(args, "--out")?;
+            let out = flag(args, "--out".into())?;
             build_all(&corpus_runtime()?, &out)
         },
         | Some("check-docs") => check_docs_lane(),
@@ -158,18 +223,18 @@ fn gf_make(
 ) -> Result<(), String>
 {
     let (gf, lib) = gf_toolchain()?;
-    run_command(
-        &gf.to_string_lossy(),
-        &[
+    run_command(CommandSpec {
+        program: &gf.to_string_lossy(),
+        arguments: &[
             "--make",
             &format!("--output-dir={}", out_dir.display()),
             &source.to_string_lossy(),
         ],
-        &[(
+        environment: &[(
             "DYLD_FALLBACK_LIBRARY_PATH",
             lib.to_string_lossy().into_owned(),
         )],
-    )
+    })
 }
 
 /// The app-grammar lane body: generate the domain application grammar
@@ -221,7 +286,7 @@ fn app_grammar(runtime: &PyPgf) -> Result<(), String>
             known_cache.insert(word.to_owned(), known);
             known
         },
-        100_000,
+        100_000_usize.into(),
     );
     let supplement_count = supplement.len();
     entries.extend(supplement);
@@ -321,7 +386,7 @@ fn fmt_lane(files: &[String]) -> Result<(), String>
 /// `checkExpr` lane over every corpus `.gfd`.
 fn check_all(runtime: &PyPgf) -> Result<(), String>
 {
-    lexicon(runtime, true)?;
+    lexicon(runtime, LexiconMode::Check)?;
     for gfd in corpus_files()? {
         let text = std::fs::read_to_string(&gfd).map_err(|e| e.to_string())?;
         runtime
@@ -359,10 +424,10 @@ fn build_all(
             .read_tree(&expr)
             .map_err(|e| format!("{}: {e}", gfd.display()))?;
         let toc = toc_entries(&tree, &views).map_err(|e| format!("{}: {e}", gfd.display()))?;
-        let page = build_page(runtime, &expr, &stem, &context, &toc)
+        let page = build_page(runtime, &expr, stem.as_str().into(), &context, &toc)
             .map_err(|e| format!("{}: {e}", gfd.display()))?;
         std::fs::write(out.join(format!("{stem}.html")), page).map_err(|e| e.to_string())?;
-        entries.push(index_entry(&tree, &stem)?);
+        entries.push(index_entry(&tree, stem.as_str().into())?);
         println!("built: {stem}.html");
     }
     copy_fonts(out).map_err(|e| e.to_string())?;
@@ -389,15 +454,18 @@ fn corpus_files() -> Result<Vec<PathBuf>, String>
 /// by the runtime — the bindings-first doctrine).
 fn index_entry(
     tree: &Sexp,
-    stem: &str,
+    stem: CorpusStem<'_>,
 ) -> Result<IndexEntry, String>
 {
     let Sexp::App { ref head, ref args } = *tree
     else {
-        return Err(format!("{stem}: corpus root is not an application"));
+        return Err(format!("{}: corpus root is not an application", stem.0));
     };
     if head != "MkComponent" {
-        return Err(format!("{stem}: corpus root is {head}, not MkComponent"));
+        return Err(format!(
+            "{}: corpus root is {head}, not MkComponent",
+            stem.0
+        ));
     }
     let [
         ref _anchor,
@@ -409,27 +477,37 @@ fn index_entry(
         ref _refs,
     ] = *args.as_slice()
     else {
-        return Err(format!("{stem}: MkComponent arity is not seven"));
+        return Err(format!("{}: MkComponent arity is not seven", stem.0));
     };
     let Sexp::Atom(ref title) = *title
     else {
-        return Err(format!("{stem}: MkComponent title/status is not an atom"));
+        return Err(format!(
+            "{}: MkComponent title/status is not an atom",
+            stem.0
+        ));
     };
     let Sexp::Atom(ref status) = *status
     else {
-        return Err(format!("{stem}: MkComponent title/status is not an atom"));
+        return Err(format!(
+            "{}: MkComponent title/status is not an atom",
+            stem.0
+        ));
     };
     let title = gandr_workflow_grammatical_framework::sexp::unquote((title).into())
-        .ok_or_else(|| format!("{stem}: MkComponent title is not a string literal"))?;
+        .ok_or_else(|| format!("{}: MkComponent title is not a string literal", stem.0))?;
     let status = match status.as_str() {
         | "StatusBuilt" => "built",
         | "StatusPartial" => "partial",
         | "StatusAdoptedUnbuilt" => "adopted-unbuilt",
         | "StatusDesignPass" => "design-pass",
         | "StatusDormant" => "dormant",
-        | other => return Err(format!("{stem}: unknown status constructor {other}")),
+        | other => return Err(format!("{}: unknown status constructor {other}", stem.0)),
     };
-    Ok(IndexEntry::new(stem, &title, status))
+    Ok(IndexEntry::new(
+        stem.0.into(),
+        title.as_str().into(),
+        status.into(),
+    ))
 }
 
 /// The lexicon lane body: generate the corpus-wide `GF` lexicon modules at
@@ -437,7 +515,7 @@ fn index_entry(
 /// (`--check`, the derived-file gate pattern).
 fn lexicon(
     runtime: &PyPgf,
-    check: bool,
+    mode: LexiconMode,
 ) -> Result<(), String>
 {
     let root = PathBuf::from(REPO_ROOT);
@@ -450,7 +528,7 @@ fn lexicon(
         ("GandrDocsLexHtml.gf", lexicon.render_concrete()),
     ] {
         let path = grammar_dir.join(name);
-        if check {
+        if matches!(mode, LexiconMode::Check) {
             let committed = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
             if committed != text {
                 return Err(format!("{} is stale; run the lexicon lane", path.display()));
@@ -499,7 +577,7 @@ fn do_build(
         let tree = runtime.read_tree(&expr).map_err(|e| e.to_string())?;
         let views = metrics::LexiconViews::load(runtime).map_err(|e| e.to_string())?;
         let toc = toc_entries(&tree, &views).map_err(|e| e.to_string())?;
-        build_page(runtime, &expr, fallback, &context, &toc).map_err(|e| e.to_string())?
+        build_page(runtime, &expr, fallback.into(), &context, &toc).map_err(|e| e.to_string())?
     };
     if let Some(dir) = out.parent() {
         copy_fonts(dir).map_err(|e| e.to_string())?;
@@ -513,7 +591,10 @@ fn toolchain() -> Result<(), String>
 {
     let root = PathBuf::from(REPO_ROOT);
     let target = root.join("target");
-    let (asset, ext) = release_asset()?;
+    let ReleaseAsset {
+        filename: asset,
+        extension: ext,
+    } = release_asset()?;
     let base = target
         .join("gf-toolchain")
         .join(if ext == "pkg" { "Payload" } else { "" });
@@ -526,32 +607,32 @@ fn toolchain() -> Result<(), String>
         "https://github.com/GrammaticalFramework/gf-core/releases/download/release-{GF_VERSION}/{asset}"
     );
     let archive = target.join(format!("gf-release.{ext}"));
-    run_command(
-        "curl",
-        &["-fsSL", "-o", &archive.to_string_lossy(), &url],
-        &[],
-    )?;
+    run_command(CommandSpec {
+        program: "curl",
+        arguments: &["-fsSL", "-o", &archive.to_string_lossy(), &url],
+        environment: &[],
+    })?;
     if ext == "pkg" {
-        run_command(
-            "pkgutil",
-            &[
+        run_command(CommandSpec {
+            program: "pkgutil",
+            arguments: &[
                 "--expand-full",
                 &archive.to_string_lossy(),
                 &target.join("gf-toolchain").to_string_lossy(),
             ],
-            &[],
-        )?;
+            environment: &[],
+        })?;
     }
     else {
-        run_command(
-            "dpkg-deb",
-            &[
+        run_command(CommandSpec {
+            program: "dpkg-deb",
+            arguments: &[
                 "-x",
                 &archive.to_string_lossy(),
                 &target.join("gf-toolchain").to_string_lossy(),
             ],
-            &[],
-        )?;
+            environment: &[],
+        })?;
     }
     if !gf.exists() {
         return Err(format!(
@@ -560,20 +641,30 @@ fn toolchain() -> Result<(), String>
         ));
     }
     let lib = base.join("usr/local/lib");
-    run_command(&gf.to_string_lossy(), &["--version"], &[(
-        "DYLD_FALLBACK_LIBRARY_PATH",
-        lib.to_string_lossy().into_owned(),
-    )])?;
+    run_command(CommandSpec {
+        program: &gf.to_string_lossy(),
+        arguments: &["--version"],
+        environment: &[(
+            "DYLD_FALLBACK_LIBRARY_PATH",
+            lib.to_string_lossy().into_owned(),
+        )],
+    })?;
     println!("gf {GF_VERSION} provisioned at {}", gf.display());
     Ok(())
 }
 
 /// The release asset for this platform.
-fn release_asset() -> Result<(&'static str, &'static str), String>
+fn release_asset() -> Result<ReleaseAsset, String>
 {
     match (std::env::consts::OS, std::env::consts::ARCH) {
-        | ("macos", "aarch64") => Ok(("gf-3.12-macos-arm.pkg", "pkg")),
-        | ("linux", "x86_64") => Ok(("gf-3.12-ubuntu-24.04.deb", "deb")),
+        | ("macos", "aarch64") => Ok(ReleaseAsset {
+            filename: "gf-3.12-macos-arm.pkg",
+            extension: "pkg",
+        }),
+        | ("linux", "x86_64") => Ok(ReleaseAsset {
+            filename: "gf-3.12-ubuntu-24.04.deb",
+            extension: "deb",
+        }),
         | (os, arch) => Err(format!("no pinned GF asset for {os}/{arch}")),
     }
 }
@@ -597,18 +688,18 @@ fn grammar() -> Result<(), String>
     let out_dir = root.join("target/gf");
     std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
     let source = root.join("crates/workflow-docs/grammar/GandrDocsLexHtml.gf");
-    run_command(
-        &gf.to_string_lossy(),
-        &[
+    run_command(CommandSpec {
+        program: &gf.to_string_lossy(),
+        arguments: &[
             "--make",
             &format!("--output-dir={}", out_dir.display()),
             &source.to_string_lossy(),
         ],
-        &[(
+        environment: &[(
             "DYLD_FALLBACK_LIBRARY_PATH",
             lib.to_string_lossy().into_owned(),
         )],
-    )?;
+    })?;
     if !out_dir.join("GandrDocsLex.pgf").exists() {
         return Err("grammar compilation did not produce GandrDocsLex.pgf".to_owned());
     }
@@ -627,21 +718,21 @@ fn grammar() -> Result<(), String>
 }
 
 /// Run an external command, failing with its stderr on nonzero exit.
-fn run_command(
-    program: &str,
-    arguments: &[&str],
-    env: &[(&str, String)],
-) -> Result<(), String>
+fn run_command(spec: CommandSpec<'_>) -> Result<(), String>
 {
-    let mut command = std::process::Command::new(program);
-    command
-        .args(arguments)
-        .current_dir(REPO_ROOT)
-        .envs(env.iter().map(|&(k, ref v)| (k, v.clone())));
-    let output = command.output().map_err(|e| format!("{program}: {e}"))?;
+    let mut command = std::process::Command::new(spec.program);
+    command.args(spec.arguments).current_dir(REPO_ROOT).envs(
+        spec.environment
+            .iter()
+            .map(|&(key, ref value)| (key, value.clone())),
+    );
+    let output = command
+        .output()
+        .map_err(|error| format!("{}: {error}", spec.program))?;
     if !output.status.success() {
         return Err(format!(
-            "{program} exited {}: {}",
+            "{} exited {}: {}",
+            spec.program,
             output.status,
             String::from_utf8_lossy(&output.stderr)
         ));
@@ -652,14 +743,14 @@ fn run_command(
 /// Extract the value following a named flag.
 fn flag(
     args: &[String],
-    name: &str,
+    name: FlagName<'_>,
 ) -> Result<PathBuf, String>
 {
     let position = args
         .iter()
-        .position(|arg| arg == name)
-        .ok_or_else(|| format!("missing {name}"))?;
+        .position(|arg| arg == name.0)
+        .ok_or_else(|| format!("missing {}", name.0))?;
     args.get(position.saturating_add(1))
         .map(PathBuf::from)
-        .ok_or_else(|| format!("missing value after {name}"))
+        .ok_or_else(|| format!("missing value after {}", name.0))
 }

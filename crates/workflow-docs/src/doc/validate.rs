@@ -17,6 +17,47 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::fmt;
+
+/// Source path attached to diagnostics for one document.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct DocumentPath<'path>(&'path str);
+
+impl<'path> From<&'path str> for DocumentPath<'path>
+{
+    #[inline]
+    fn from(path: &'path str) -> Self
+    {
+        Self(path)
+    }
+}
+
+impl fmt::Display for DocumentPath<'_>
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result
+    {
+        f.write_str(self.0)
+    }
+}
+
+/// Whether a document class admits coined labels.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct LabelAdmission(bool);
+
+impl From<LabelAdmission> for bool
+{
+    #[inline]
+    fn from(admission: LabelAdmission) -> Self
+    {
+        admission.0
+    }
+}
 
 use crate::Diagnostic;
 use crate::doc::model::Banner;
@@ -60,9 +101,9 @@ impl DocCorpus
 /// research-record affordance; the other classes carry no such device.
 #[inline]
 #[must_use]
-const fn admits_labels(class: DocClass) -> bool
+const fn admits_labels(class: DocClass) -> LabelAdmission
 {
-    matches!(class, DocClass::ResearchRecord)
+    LabelAdmission(matches!(class, DocClass::ResearchRecord))
 }
 
 /// Validate a prose-document corpus, returning every violation as a diagnostic.
@@ -79,12 +120,12 @@ pub fn validate_doc_corpus(corpus: &DocCorpus) -> Vec<Diagnostic>
         let location = format!(
             "{}:<{}#{}>",
             record.source_path,
-            record.class.root_name(),
+            record.class.as_ref(),
             record.id,
         );
         if let Some(first) = ids.get(&record.id) {
             diagnostics.push(Diagnostic::new(
-                "duplicate-id",
+                "duplicate-id".into(),
                 location,
                 format!("id '{}' already declared at {first}", record.id),
             ));
@@ -105,7 +146,7 @@ fn validate_record(
     diagnostics: &mut Vec<Diagnostic>,
 )
 {
-    let path = record.source_path.as_str();
+    let path: DocumentPath<'_> = record.source_path.as_str().into();
     check_banner(record.class, &record.banner, path, diagnostics);
 
     let mut labels: BTreeMap<String, String> = BTreeMap::new();
@@ -150,7 +191,7 @@ fn validate_record(
         let (key, location) = (&entry.0, &entry.1);
         if !labels.contains_key(key) {
             diagnostics.push(Diagnostic::new(
-                "unresolved-label",
+                "unresolved-label".into(),
                 location.clone(),
                 format!("label '{key}' is referenced but never coined in this document"),
             ));
@@ -160,7 +201,7 @@ fn validate_record(
         let (key, location) = (&entry.0, &entry.1);
         if !reference_keys.contains(key) {
             diagnostics.push(Diagnostic::new(
-                "unresolved-cite",
+                "unresolved-cite".into(),
                 location.clone(),
                 format!("cite key '{key}' is not present in the references file"),
             ));
@@ -172,20 +213,20 @@ fn validate_record(
 fn check_banner(
     class: DocClass,
     banner: &Banner,
-    path: &str,
+    path: DocumentPath<'_>,
     diagnostics: &mut Vec<Diagnostic>,
 )
 {
-    if banner.is_empty() {
+    if bool::from(banner.is_empty()) {
         diagnostics.push(Diagnostic::new(
-            "empty-banner",
+            "empty-banner".into(),
             format!("{path}:<banner>"),
             "a prose document banner must carry a read-when line or a note".to_owned(),
         ));
     }
     if class == DocClass::WorkflowDoc && banner.read_when.is_none() {
         diagnostics.push(Diagnostic::new(
-            "missing-read-when",
+            "missing-read-when".into(),
             format!("{path}:<banner>"),
             "a workflow document banner must carry a <read-when> line".to_owned(),
         ));
@@ -213,7 +254,7 @@ fn check_banner(
 fn collect_block_inlines(
     block: &DocBlock,
     class: DocClass,
-    path: &str,
+    path: DocumentPath<'_>,
     labels: &mut BTreeMap<String, String>,
     refs: &mut Vec<(String, String)>,
     cites: &mut Vec<(String, String)>,
@@ -232,12 +273,12 @@ fn collect_block_inlines(
             },
             | DocBlock::Table(ref table) => {
                 for cell in &table.header {
-                    collect_inlines(&cell.content, class, path, labels, refs, cites, diagnostics);
+                    collect_inlines(cell.as_ref(), class, path, labels, refs, cites, diagnostics);
                 }
                 for row in &table.rows {
-                    for cell in &row.cells {
+                    for cell in row.as_ref() {
                         collect_inlines(
-                            &cell.content,
+                            cell.as_ref(),
                             class,
                             path,
                             labels,
@@ -257,7 +298,7 @@ fn collect_block_inlines(
 fn collect_inlines(
     inlines: &[DocInline],
     class: DocClass,
-    path: &str,
+    path: DocumentPath<'_>,
     labels: &mut BTreeMap<String, String>,
     refs: &mut Vec<(String, String)>,
     cites: &mut Vec<(String, String)>,
@@ -269,19 +310,19 @@ fn collect_inlines(
             | DocInline::Text(_) | DocInline::InlineCode(_) => {},
             | DocInline::Label(ref label) => {
                 let location = format!("{path}:<label key='{}'>", label.key);
-                if !admits_labels(class) {
+                if !bool::from(admits_labels(class)) {
                     diagnostics.push(Diagnostic::new(
-                        "disallowed-inline",
+                        "disallowed-inline".into(),
                         location.clone(),
                         format!(
                             "<label> is only permitted in a research-record, not a {}",
-                            class.root_name()
+                            class.as_ref()
                         ),
                     ));
                 }
                 if let Some(first) = labels.get(&label.key) {
                     diagnostics.push(Diagnostic::new(
-                        "duplicate-label",
+                        "duplicate-label".into(),
                         location,
                         format!(
                             "label '{}' already coined at {first} (define-once)",
@@ -294,25 +335,25 @@ fn collect_inlines(
                 }
             },
             | DocInline::Ref(ref label_ref) => {
-                if !admits_labels(class) {
+                if !bool::from(admits_labels(class)) {
                     diagnostics.push(Diagnostic::new(
-                        "disallowed-inline",
-                        format!("{path}:<ref key='{}'>", label_ref.key),
+                        "disallowed-inline".into(),
+                        format!("{path}:<ref key='{}'>", label_ref.as_ref()),
                         format!(
                             "<ref> is only permitted in a research-record, not a {}",
-                            class.root_name()
+                            class.as_ref()
                         ),
                     ));
                 }
                 refs.push((
-                    label_ref.key.clone(),
-                    format!("{path}:<ref key='{}'>", label_ref.key),
+                    label_ref.as_ref().to_owned(),
+                    format!("{path}:<ref key='{}'>", label_ref.as_ref()),
                 ));
             },
             | DocInline::Cite(ref cite) => {
                 cites.push((
-                    cite.key.clone(),
-                    format!("{path}:<cite key='{}'>", cite.key),
+                    cite.as_ref().to_owned(),
+                    format!("{path}:<cite key='{}'>", cite.as_ref()),
                 ));
             },
         }
@@ -346,6 +387,34 @@ mod tests
     use crate::model::CiteKey;
     use crate::model::Status;
 
+    /// Document id carried by a validation fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct FixtureDocumentId<'id>(&'id str);
+
+    impl<'id> From<&'id str> for FixtureDocumentId<'id>
+    {
+        #[inline]
+        fn from(id: &'id str) -> Self
+        {
+            Self(id)
+        }
+    }
+
+    /// Coined-label key carried by a validation fixture.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct FixtureLabelKey<'key>(&'key str);
+
+    impl<'key> From<&'key str> for FixtureLabelKey<'key>
+    {
+        #[inline]
+        fn from(key: &'key str) -> Self
+        {
+            Self(key)
+        }
+    }
+
     /// Render diagnostics as a single Display line for assert context.
     fn summary(diagnostics: &[Diagnostic]) -> String
     {
@@ -358,13 +427,13 @@ mod tests
 
     /// Build a minimal research-record with a non-empty banner and the blocks.
     fn research(
-        id: &str,
+        id: FixtureDocumentId<'_>,
         blocks: Vec<DocBlock>,
     ) -> DocRecord
     {
         DocRecord {
             class: DocClass::ResearchRecord,
-            id: id.to_owned(),
+            id: id.0.to_owned(),
             title: "T".to_owned(),
             status: Status::DesignPass,
             crate_scope: None,
@@ -373,7 +442,7 @@ mod tests
                 notes: alloc::vec![alloc::vec![DocInline::Text("scope".to_owned())]],
             },
             blocks,
-            source_path: format!("mem:{id}.xml"),
+            source_path: format!("mem:{}.xml", id.0),
         }
     }
 
@@ -396,11 +465,11 @@ mod tests
     }
 
     /// A coined label with a fixed display text.
-    fn label(key: &str) -> DocInline
+    fn label(key: FixtureLabelKey<'_>) -> DocInline
     {
         DocInline::Label(Label {
-            key: key.to_owned(),
-            text: key.to_owned(),
+            key: key.0.to_owned(),
+            text: key.0.to_owned(),
         })
     }
 
@@ -409,9 +478,9 @@ mod tests
     fn duplicate_label_is_flagged()
     {
         let corpus = DocCorpus::new(
-            alloc::vec![research("r", alloc::vec![
-                prose(alloc::vec![label("R1")]),
-                prose(alloc::vec![label("R1")]),
+            alloc::vec![research("r".into(), alloc::vec![
+                prose(alloc::vec![label("R1".into())]),
+                prose(alloc::vec![label("R1".into())]),
             ])],
             BTreeSet::new(),
         );
@@ -428,10 +497,8 @@ mod tests
     fn unresolved_label_reference_is_flagged()
     {
         let corpus = DocCorpus::new(
-            alloc::vec![research("r", alloc::vec![list_of(alloc::vec![
-                DocInline::Ref(LabelRef {
-                    key: "ghost".to_owned(),
-                })
+            alloc::vec![research("r".into(), alloc::vec![list_of(alloc::vec![
+                DocInline::Ref(LabelRef::from("ghost")),
             ])])],
             BTreeSet::new(),
         );
@@ -449,10 +516,8 @@ mod tests
     fn cite_resolution_tracks_the_reference_keys()
     {
         let corpus = DocCorpus::new(
-            alloc::vec![research("r", alloc::vec![prose(alloc::vec![
-                DocInline::Cite(CiteKey {
-                    key: "A-1a".to_owned(),
-                })
+            alloc::vec![research("r".into(), alloc::vec![prose(alloc::vec![
+                DocInline::Cite(CiteKey::from("A-1a")),
             ])])],
             BTreeSet::new(),
         );
@@ -466,10 +531,8 @@ mod tests
         let mut keys = BTreeSet::new();
         keys.insert("A-1a".to_owned());
         let resolvable = DocCorpus::new(
-            alloc::vec![research("r", alloc::vec![prose(alloc::vec![
-                DocInline::Cite(CiteKey {
-                    key: "A-1a".to_owned(),
-                })
+            alloc::vec![research("r".into(), alloc::vec![prose(alloc::vec![
+                DocInline::Cite(CiteKey::from("A-1a")),
             ])])],
             keys,
         );
@@ -495,7 +558,7 @@ mod tests
                 read_when: Some(alloc::vec![DocInline::Text("editing".to_owned())]),
                 notes: Vec::new(),
             },
-            blocks: alloc::vec![prose(alloc::vec![label("R1")])],
+            blocks: alloc::vec![prose(alloc::vec![label("R1".into())])],
             source_path: "mem:w.xml".to_owned(),
         };
         let corpus = DocCorpus::new(alloc::vec![workflow], BTreeSet::new());
@@ -541,16 +604,16 @@ mod tests
             id: None,
             date: None,
             title: "Inner".to_owned(),
-            blocks: alloc::vec![prose(alloc::vec![label("R1")])],
+            blocks: alloc::vec![prose(alloc::vec![label("R1".into())])],
         });
         let outer = DocBlock::Section(DocSection {
             id: None,
             date: None,
             title: "Outer".to_owned(),
-            blocks: alloc::vec![prose(alloc::vec![label("R1")]), inner],
+            blocks: alloc::vec![prose(alloc::vec![label("R1".into())]), inner],
         });
         let corpus = DocCorpus::new(
-            alloc::vec![research("r", alloc::vec![outer])],
+            alloc::vec![research("r".into(), alloc::vec![outer])],
             BTreeSet::new(),
         );
         let diagnostics = validate_doc_corpus(&corpus);

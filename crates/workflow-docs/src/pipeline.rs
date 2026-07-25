@@ -54,6 +54,151 @@ impl<'shared> PostContext<'shared>
     }
 }
 
+/// Borrowed rendered markup consumed by one post-processing pass.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct RenderedMarkup<'markup>(&'markup str);
+
+impl<'markup> From<&'markup str> for RenderedMarkup<'markup>
+{
+    #[inline]
+    fn from(markup: &'markup str) -> Self
+    {
+        Self(markup)
+    }
+}
+
+/// Borrowed page title consumed by the document shell.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct PageTitle<'title>(&'title str);
+
+impl<'title> From<&'title str> for PageTitle<'title>
+{
+    #[inline]
+    fn from(title: &'title str) -> Self
+    {
+        Self(title)
+    }
+}
+
+/// Borrowed component id consumed by an index row.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct IndexComponentId<'id>(&'id str);
+
+impl<'id> From<&'id str> for IndexComponentId<'id>
+{
+    #[inline]
+    fn from(id: &'id str) -> Self
+    {
+        Self(id)
+    }
+}
+
+/// Borrowed component title consumed by an index row.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct IndexComponentTitle<'title>(&'title str);
+
+impl<'title> From<&'title str> for IndexComponentTitle<'title>
+{
+    #[inline]
+    fn from(title: &'title str) -> Self
+    {
+        Self(title)
+    }
+}
+
+/// Borrowed component status consumed by an index row.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct IndexComponentStatus<'status>(&'status str);
+
+impl<'status> From<&'status str> for IndexComponentStatus<'status>
+{
+    #[inline]
+    fn from(status: &'status str) -> Self
+    {
+        Self(status)
+    }
+}
+
+/// One table-of-contents nesting depth.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct TocDepth(u32);
+
+impl From<u32> for TocDepth
+{
+    #[inline]
+    fn from(depth: u32) -> Self
+    {
+        Self(depth)
+    }
+}
+
+impl From<TocDepth> for u32
+{
+    #[inline]
+    fn from(depth: TocDepth) -> Self
+    {
+        depth.0
+    }
+}
+
+impl TocDepth
+{
+    /// Advance to the next heading depth.
+    #[inline]
+    fn next(self) -> Self
+    {
+        Self(self.0.saturating_add(1))
+    }
+}
+
+/// One regular expression selecting an escapable payload.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct PayloadPattern<'pattern>(&'pattern str);
+
+impl<'pattern> From<&'pattern str> for PayloadPattern<'pattern>
+{
+    #[inline]
+    fn from(pattern: &'pattern str) -> Self
+    {
+        Self(pattern)
+    }
+}
+
+/// Entity-escaped payload text awaiting compilation.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct EscapedPayload<'text>(&'text str);
+
+impl<'text> From<&'text str> for EscapedPayload<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
+/// Text escaped into one generated `HTML` attribute.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct AttributeText<'text>(&'text str);
+
+impl<'text> From<&'text str> for AttributeText<'text>
+{
+    #[inline]
+    fn from(text: &'text str) -> Self
+    {
+        Self(text)
+    }
+}
+
 /// The design-language stylesheet (gandr-4l9), embedded at compile time so
 /// every rendered page is self-contained.
 const STYLESHEET: &str = include_str!("../assets/gandr-docs.css");
@@ -75,11 +220,11 @@ where
     R: GfRuntime + ?Sized,
 {
     let html = runtime.check_and_linearize(gfd)?;
-    let html = strip_glue_markers(&html);
-    let html = escape_payloads(&html);
-    let html = splice_leaves(&html, context.cache_dir)?;
-    let html = enrich_references(&html, context.bibliography);
-    Ok(renumber_headings(&html))
+    let html = strip_glue_markers(html.as_str().into());
+    let html = escape_payloads(html.as_str().into());
+    let html = splice_leaves(html.as_str().into(), context.cache_dir)?;
+    let html = enrich_references(html.as_str().into(), context.bibliography);
+    Ok(renumber_headings(html.as_str().into()))
 }
 
 /// Validate one `.gfd` document and render the full standalone `HTML` page.
@@ -100,7 +245,7 @@ where
 pub fn build_page<R>(
     runtime: &R,
     gfd: &ExprText,
-    fallback_title: &str,
+    fallback_title: PageTitle<'_>,
     context: &PostContext<'_>,
     toc: &[TocEntry],
 ) -> Result<String, GfDocsError>
@@ -108,8 +253,8 @@ where
     R: GfRuntime + ?Sized,
 {
     let body = build_body(runtime, gfd, context)?;
-    let title = extract_h1(&body).unwrap_or(fallback_title);
-    Ok(shell_with_toc(title, &body, toc))
+    let title = extract_h1(body.as_str().into()).unwrap_or(fallback_title);
+    Ok(shell_with_toc(title, body.as_str().into(), toc))
 }
 
 /// One component-listing row for the corpus index page.
@@ -131,15 +276,15 @@ impl IndexEntry
     #[inline]
     #[must_use]
     pub fn new(
-        id: &str,
-        title: &str,
-        status: &str,
+        id: IndexComponentId<'_>,
+        title: IndexComponentTitle<'_>,
+        status: IndexComponentStatus<'_>,
     ) -> Self
     {
         Self {
-            id: id.to_owned(),
-            title: title.to_owned(),
-            status: status.to_owned(),
+            id: id.0.to_owned(),
+            title: title.0.to_owned(),
+            status: status.0.to_owned(),
         }
     }
 }
@@ -164,7 +309,7 @@ pub fn render_index(entries: &[IndexEntry]) -> String
         items.push_str("</span></li>\n");
     }
     let body = format!("<h1>gandr specification corpus</h1>\n<ul class=\"index\">\n{items}</ul>\n");
-    shell("gandr specification corpus", &body)
+    shell("gandr specification corpus".into(), body.as_str().into())
 }
 
 /// One table-of-contents row: a section's `HTML` id, its title, and its
@@ -195,7 +340,7 @@ pub fn toc_entries(
 ) -> Result<Vec<TocEntry>, GfDocsError>
 {
     let mut entries = Vec::new();
-    collect_toc(tree, 1, views, &mut entries)?;
+    collect_toc(tree, TocDepth::from(1), views, &mut entries)?;
     Ok(entries)
 }
 
@@ -213,7 +358,7 @@ pub fn toc_entries(
 /// - input recursion: none.
 fn collect_toc(
     tree: &Sexp,
-    depth: u32,
+    depth: TocDepth,
     views: &metrics::LexiconViews,
     entries: &mut Vec<TocEntry>,
 ) -> Result<(), GfDocsError>
@@ -248,8 +393,12 @@ fn collect_toc(
                 .get(anchor_name)
                 .ok_or_else(|| GfDocsError::Parse(format!("{anchor_name}: no lexicon id")))?
                 .clone();
-            entries.push(TocEntry { id, title, depth });
-            depth.saturating_add(1)
+            entries.push(TocEntry {
+                id,
+                title,
+                depth: u32::from(depth),
+            });
+            depth.next()
         }
         else {
             depth
@@ -265,8 +414,8 @@ fn collect_toc(
 /// design-language stylesheet inline, the viewport meta, and the
 /// `<main class="page"><article>` landmarks.
 fn shell(
-    title: &str,
-    body: &str,
+    title: PageTitle<'_>,
+    body: RenderedMarkup<'_>,
 ) -> String
 {
     shell_with_toc(title, body, &[])
@@ -276,11 +425,13 @@ fn shell(
 /// section table of contents in the left rail (empty when there are no
 /// entries — the corpus index stays bare).
 fn shell_with_toc(
-    title: &str,
-    body: &str,
+    title: PageTitle<'_>,
+    body: RenderedMarkup<'_>,
     toc: &[TocEntry],
 ) -> String
 {
+    let title = title.0;
+    let body = body.0;
     let mut nav = String::new();
     if !toc.is_empty() {
         use core::fmt::Write as _;
@@ -353,17 +504,20 @@ pub fn copy_fonts(out_dir: &Path) -> Result<(), GfDocsError>
 ///
 /// One `h1` per page exists by grammatical construction (`MkComponent` is the
 /// sole `Component` linearization), so the first match is the component title.
-fn extract_h1(html: &str) -> Option<&str>
+fn extract_h1(html: RenderedMarkup<'_>) -> Option<PageTitle<'_>>
 {
-    let (_, after_open) = html.split_once("<h1>")?;
-    after_open.split_once("</h1>").map(|(title, _)| title)
+    let (_, after_open) = html.0.split_once("<h1>")?;
+    after_open
+        .split_once("</h1>")
+        .map(|(title, _)| PageTitle::from(title))
 }
 
 /// Remove the zero-width glue markers (U+200B) the linearization inserts at
 /// bind points, together with their single surrounding join spaces.
-fn strip_glue_markers(html: &str) -> String
+fn strip_glue_markers(html: RenderedMarkup<'_>) -> String
 {
-    html.replace(" \u{200B} ", "")
+    html.0
+        .replace(" \u{200B} ", "")
         .replace(" \u{200B}", "")
         .replace("\u{200B} ", "")
         .replace('\u{200B}', "")
@@ -378,9 +532,9 @@ fn strip_glue_markers(html: &str) -> String
 /// (Prose `Txt` leaves interleave with constructor-emitted tags and cannot be
 /// escaped in the post-pass; raw `<` in prose is an authoring error — see
 /// `docs/workflow/gfd.md`.)
-fn escape_payloads(html: &str) -> String
+fn escape_payloads(html: RenderedMarkup<'_>) -> String
 {
-    let mut out = html.to_owned();
+    let mut out = html.0.to_owned();
     for pattern in [
         r"(?s)(<pre><code[^>]*>)(.*?)(</code></pre>)",
         r"(?s)(<dt>)(.*?)(</dt>)",
@@ -388,18 +542,19 @@ fn escape_payloads(html: &str) -> String
         r#"(?s)(<div class="diagram-slot"[^>]*>)(.*?)(</div>)"#,
         r#"(?s)(<span class="math[^>]*>)(.*?)(</span>)"#,
     ] {
-        out = escape_scoped(&out, pattern);
+        out = escape_scoped(out.as_str().into(), pattern.into());
     }
     out
 }
 
 /// Escape `& < >` in the middle capture group of `pattern` throughout `html`.
 fn escape_scoped(
-    html: &str,
-    pattern: &str,
+    html: RenderedMarkup<'_>,
+    pattern: PayloadPattern<'_>,
 ) -> String
 {
-    let Ok(pattern) = regex::Regex::new(pattern)
+    let html = html.0;
+    let Ok(pattern) = regex::Regex::new(pattern.0)
     else {
         return html.to_owned();
     };
@@ -430,16 +585,18 @@ fn escape_scoped(
 
 /// Reverse the payload escaping (`&lt;` `&gt;` then `&amp;`, in that order)
 /// for a raw-payload container's text content.
-fn unescape_entities(text: &str) -> String
+fn unescape_entities(text: EscapedPayload<'_>) -> String
 {
-    text.replace("&lt;", "<")
+    text.0
+        .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&amp;", "&")
 }
 
 /// Escape text for an attribute value (`& < > "`).
-fn attr_escape(text: &str) -> String
+fn attr_escape(text: AttributeText<'_>) -> String
 {
+    let text = text.0;
     let mut out = String::with_capacity(text.len());
     for ch in text.chars() {
         match ch {
@@ -460,20 +617,21 @@ fn attr_escape(text: &str) -> String
 /// `SVG` (or the placeholder on a missing/failed compile, matching the legacy
 /// renderer's fallback contract).
 fn splice_leaves(
-    html: &str,
+    html: RenderedMarkup<'_>,
     cache_dir: &Path,
 ) -> Result<String, GfDocsError>
 {
     let html = splice_math(html, cache_dir)?;
-    splice_diagrams(&html, cache_dir)
+    splice_diagrams(html.as_str().into(), cache_dir)
 }
 
 /// Splice inline and display math spans.
 fn splice_math(
-    html: &str,
+    html: RenderedMarkup<'_>,
     cache_dir: &Path,
 ) -> Result<String, GfDocsError>
 {
+    let html = html.0;
     let Ok(pattern) = regex::Regex::new(r#"(?s)<span class="(math(?: math-block)?)">(.*?)</span>"#)
     else {
         return Ok(html.to_owned());
@@ -489,13 +647,13 @@ fn splice_math(
             out.push_str(text);
         }
         last = whole.end();
-        let source = unescape_entities(source.as_str());
-        let leaf = typst_leaf::compile_math(&source, cache_dir)
+        let source = unescape_entities(source.as_str().into());
+        let leaf = typst_leaf::compile_math(source.as_str().into(), cache_dir)
             .map_err(|e| GfDocsError::Model(e.to_string()))?;
         out.push_str("<span class=\"");
         out.push_str(kind.as_str());
         out.push_str("\" role=\"math\" aria-label=\"");
-        out.push_str(&attr_escape(&source));
+        out.push_str(&attr_escape(source.as_str().into()));
         out.push_str("\">");
         out.push_str(&leaf_markup(leaf));
         out.push_str("</span>");
@@ -508,10 +666,11 @@ fn splice_math(
 
 /// Splice diagram slots (fletcher commutative diagrams).
 fn splice_diagrams(
-    html: &str,
+    html: RenderedMarkup<'_>,
     cache_dir: &Path,
 ) -> Result<String, GfDocsError>
 {
+    let html = html.0;
     let Ok(pattern) = regex::Regex::new(r#"(?s)(<div class="diagram-slot"[^>]*>)(.*?)(</div>)"#)
     else {
         return Ok(html.to_owned());
@@ -528,7 +687,8 @@ fn splice_diagrams(
             out.push_str(text);
         }
         last = whole.end();
-        let leaf = typst_leaf::compile_diagram(&unescape_entities(source.as_str()), cache_dir)
+        let source = unescape_entities(source.as_str().into());
+        let leaf = typst_leaf::compile_diagram(source.as_str().into(), cache_dir)
             .map_err(|e| GfDocsError::Model(e.to_string()))?;
         out.push_str(open.as_str());
         out.push_str(&leaf_markup(leaf));
@@ -553,10 +713,11 @@ fn leaf_markup(leaf: Leaf) -> String
 /// pass substitutes the legacy renderer's full bibliography rows (the reused
 /// [`render_references`]) for the same keys in the same order.
 fn enrich_references(
-    html: &str,
+    html: RenderedMarkup<'_>,
     bibliography: &Bibliography,
 ) -> String
 {
+    let html = html.0;
     let Some((before, rest)) = html.split_once("<h2>References</h2><ul class=\"refs\">")
     else {
         return html.to_owned();
@@ -568,7 +729,7 @@ fn enrich_references(
     let keys = rows
         .split("<li id=\"ref-")
         .skip(1)
-        .filter_map(|row| row.split_once('\"').map(|(key, _)| CiteKey::new(key)))
+        .filter_map(|row| row.split_once('\"').map(|(key, _)| CiteKey::from(key)))
         .collect::<Vec<_>>();
     let rendered = render_references(&keys, bibliography);
     format!("{before}{rendered}{after}")
@@ -591,8 +752,9 @@ fn enrich_references(
 ///   2 + the number of enclosing section/example containers; all other markup
 ///   passes through byte-identically.
 /// - panics: none.
-fn renumber_headings(html: &str) -> String
+fn renumber_headings(html: RenderedMarkup<'_>) -> String
 {
+    let html = html.0;
     let Ok(tag) = regex::Regex::new(r"<(/?)(section|div|h2|h3)([^>]*)>")
     else {
         return html.to_owned();
