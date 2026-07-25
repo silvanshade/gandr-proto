@@ -56,8 +56,8 @@ Adding any Agda library or tool requires maintainer sign-off **first** — delib
 The facade is what lets the tree re-choose its foundations without a sweep through every proof, and what keeps the vocabulary gandr's own.
 
 `agda:deps` vendors stdlib into the gitignored `metatheory/vendor/`.
-It is **opt-in and not a dependency of `agda:check`**: until a module actually imports stdlib, the gate must not pay a network fetch to prove a tree that does not need one.
-When the first import lands, run `agda:deps` and add `-i metatheory/vendor/agda-stdlib/src` to the `agda:check` line in the same change.
+The facade landed, so `agda:check` now passes `-i metatheory/vendor/agda-stdlib/src` and **a fresh checkout must run `agda:deps` before its first `agda:check`**.
+It stays a separate task rather than a gate dependency so a warm tree does not re-enter the fetch path on every run.
 
 ## The done-rule
 

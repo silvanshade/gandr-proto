@@ -15,10 +15,10 @@
 
 ["agda:deps"]
 description = "Vendor the pinned agda-stdlib (v2.4, verified under Agda 2.8.0) into the gitignored metatheory vendor tree"
-# OPT-IN, and deliberately NOT a dependency of `agda:check`: nothing under
-# `metatheory/src` imports agda-stdlib yet, so the gate must not pay a network
-# fetch to prove a tree that does not need one. When the first module imports it,
-# run this task and add `-i metatheory/vendor/agda-stdlib/src` to `agda:check`.
+# REQUIRED BEFORE `agda:check`: `Gandr.Prelude.*` is the house facade over
+# agda-stdlib (docs/workflow/agda.md), so the tree no longer type-checks without
+# the vendored copy. Still a separate task rather than a dependency, so a warm
+# tree does not re-enter the fetch path on every gate run.
 # Idempotent: an existing checkout is left alone.
 run = '''
 set -eu
@@ -35,6 +35,6 @@ fi
 ["agda:check"]
 description = "Type-check the gandr Agda metatheory under Agda 2.8.0 (strict root via aifix + OPTIONS policy sweep)"
 run = """
-aifix batch agda --fail-on-diagnostics -- -v0 -i metatheory/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Everything.agda
+aifix batch agda --fail-on-diagnostics -- -v0 -i metatheory/src -i metatheory/vendor/agda-stdlib/src --warning=noUnsupportedIndexedMatch metatheory/src/Gandr/Everything.agda
 cargo run --quiet -p gandr-workflow-gates -- options-policy --workspace-root .
 """
