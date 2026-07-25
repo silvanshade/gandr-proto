@@ -24,8 +24,7 @@ Run the **narrowest gate that proves your change** before any commit; the merge 
 | `mise run cargo:nextest`            | the current Rust test scope                                                                                                                   |
 | `mise run cargo:doc-check`          | workspace rustdoc builds with intra-doc links resolved (private items, `-D warnings`, pinned nightly)                                         |
 | `mise run toolchain:pin-check`      | every toolchain reference point agrees with the mise pins (nightly/stable rustc, the materialized Dylint driver file, the typst doc-tool pin) |
-| `mise run cargo:dylint:recursion`   | merge-tier project-local recursion contracts across Dylint-covered workspace targets                                                          |
-| `mise run cargo:dylint:local`       | strict project-local Dylint scope at `-D warnings` (the primitive-boundary lane; ten crates excluded pending gandr-vp8)                       |
+| `mise run cargo:dylint:local`       | strict project-local Dylint scope at `-D warnings` across covered workspace targets                                                           |
 | `mise run cargo:dylint`             | strict project-local plus pinned upstream rules across Dylint-covered workspace targets                                                       |
 | `mise run agda:check`               | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                                                            |
 
@@ -35,10 +34,10 @@ The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles
 
 `.config/wt.toml` `[pre-merge]` is the merge wall — any non-zero exit aborts `wt merge`:
 
-* **`gate:merge`** — the composed merge check, ordered: `toolchain:pin-check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `cargo:build`, `cargo:clippy`, `cargo:dylint:recursion`, `cargo:dylint:local`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
+* **`gate:merge`** — the composed merge check, ordered: `toolchain:pin-check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `cargo:build`, `cargo:clippy`, `cargo:dylint:local`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
   The cheap drift/docs checks fail fast up front; `toolchain:pin-check` (restored per `gandr-wvd.20`, 2026-07-24) holds its fcw.13 first position.
-  The recursion lane loads `gandr-workflow-dylint` over the full covered scope with exactly the `primitive-signature` / `single-field-struct-needs-transparent-repr` relaxations; `cargo:dylint:local` then runs the strict project-local lane at `-D warnings`, so the primitive boundary gates merges again — ten crates (storage-*, kernel-core, core-checker, core-sequent, workflow-docs, workflow-grammatical-framework, surface-engine, theory-levitation) are excluded pending the `gandr-vp8` remediation (575 findings, census 2026-07-24), with the recursion lane keeping them covered in the meantime.
-  `gandr-workflow-gates` and the driver itself remain excluded from both lanes under `gandr-0ze` and `gandr-3yh`.
+  `cargo:dylint:local` loads `gandr-workflow-dylint` over the full covered scope at `-D warnings`; the 575 primitive-boundary and transparent-representation findings in the 2026-07-24 census were remediated under `gandr-vp8`.
+  `gandr-workflow-gates` and the driver itself remain excluded under `gandr-0ze` and `gandr-3yh`.
   The full upstream Dylint inventory remains on-demand and in the parked push tier.
   `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently; it documents the whole workspace including the nightly-only `gandr-workflow-dylint` driver (like `cargo:clippy`) and so carries no `--exclude` set.
   It sits between `cargo:dylint:local` and `cargo:nextest` because it is a compile-class static check whose failures are cheap and localized, and grouping it with the other static analyzers surfaces doc breakage before the more expensive test run.

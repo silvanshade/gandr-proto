@@ -269,7 +269,7 @@ Cross-cutting reconciliation the port must price once:
 
 ## 8. Wall and config integration (per crate, per rung)
 
-The six-task merge wall is `gate:merge` (`mise.toml:868`): `cargo:build`, `cargo:clippy`, `cargo:dylint:recursion`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
+The six-task Rust-and-format portion of `gate:merge` is `cargo:build`, `cargo:clippy`, `cargo:dylint:local`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
 Per-crate obligations the coordinator mints into each rung:
 
 * **Commitlint scopes — RETIRED OBLIGATION (owner consolidation, 2026-07-21).** The per-crate scope registration this bullet originally prescribed (the `wvd.23` trap: each new crate's dir-scope added before its first commit) is superseded: the vocabulary is now CLOSED at eleven broad scopes (`GANDR_SCOPES` in `.commitlintrc.mts` — the seven crate-category prefixes + `analysis`/`docs`/`repo`/`spec`), and per-crate scopes no longer exist.

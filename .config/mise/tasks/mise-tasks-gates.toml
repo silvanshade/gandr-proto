@@ -5,9 +5,8 @@
 # returns with the surface-grammar port (see the parked task above).
 # Wall order: the cheap drift/docs checks fail fast up front (pin-check first,
 # its fcw.13 position), then the Rust sweep; treefmt stays last as the
-# whole-tree normalization check. cargo:dylint:local (strict) joins
-# cargo:dylint:recursion so the primitive-boundary lane gates merges again
-# (gandr-vp8 tracks restoring the excluded crates).
+# whole-tree normalization check. The strict project-local Dylint lane gates
+# recursion and primitive-boundary contracts together.
 ["gate:merge"]
 description = "Run the native pre-merge gate"
 run = [
@@ -17,7 +16,6 @@ run = [
   { task = "docs:reference-integrity" },
   { task = "cargo:build" },
   { task = "cargo:clippy" },
-  { task = "cargo:dylint:recursion" },
   { task = "cargo:dylint:local" },
   { task = "cargo:doc-check" },
   { task = "cargo:nextest" },

@@ -100,7 +100,7 @@ At S1 the kernel's conversion is **type-only** and vacuously C5-quarantined (B2.
 * The value/computation term alpha-equality (`convertible_values`/`convertible_computations`) is **implemented, quarantined, and not invoked** — "the seed the term-indexed extensions (El/description codes, S2+) will grow beta onto."
 * **Every conversion face is iterative over a heap worklist** — it computes the same relation as the derived `PartialEq` but the derived version recurses on depth and would overflow; the worklist keeps it total at any depth.
 
-**The B4 charter, restated against the seed:** B4 grows the quarantined alpha-equality into a **conversion-with-β** by adding the whnf/definitional-unfolding steps (§4.5) — but the iterative-worklist mandate is non-negotiable: the recursion dylint (`cargo:dylint:recursion`, a `gate:merge` task) gates merges, and the recursive-reference checker (H-A in the B2.1 record) is a depth-budgeted stopgap owing a defunctionalized successor.
+**The B4 charter, restated against the seed:** B4 grows the quarantined alpha-equality into a **conversion-with-β** by adding the whnf/definitional-unfolding steps (§4.5) — but the iterative-worklist mandate is non-negotiable: the recursion lint in `cargo:dylint:local` gates merges, and the recursive-reference checker (H-A in the B2.1 record) is a depth-budgeted stopgap owing a defunctionalized successor.
 Every normalizer/conversion face B4 adds is iterative from birth.
 
 ### 2.4 The representation — D1(C) arena

@@ -1372,59 +1372,6 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         ))));
     };
 
-    let cargo_dylint_recursion = toml_table_at(&mise_tasks_cargo, &["cargo:dylint:recursion"])?;
-    assert_string_sequence(
-        &toml_table_string_array(cargo_dylint_recursion, "depends")?,
-        ["toolchain:materialize"],
-        "cargo:dylint:recursion must materialize the pinned driver toolchain",
-    );
-    let Some(recursion_env) = cargo_dylint_recursion
-        .get("env")
-        .and_then(toml::Value::as_table)
-    else {
-        return Err(Box::new(std::io::Error::other(
-            "cargo:dylint:recursion has no environment table",
-        )));
-    };
-    assert_eq!(
-        toml_table_string(recursion_env, "CARGO_TARGET_DIR")?.0,
-        "{{ config_root }}/target/dylint-recursion",
-        "recursion-relaxed artifacts must be isolated from the strict lane"
-    );
-    assert_eq!(
-        toml_table_string(recursion_env, "DYLINT_RUSTFLAGS")?.0,
-        "-D warnings -A primitive-signature -A single-field-struct-needs-transparent-repr",
-        "recursion gate may allow only the two tracked unrelated local lints"
-    );
-    let cargo_dylint_recursion_script = toml_table_string(cargo_dylint_recursion, "run")?;
-    let recursion_invocations = parse_dylint_invocations(cargo_dylint_recursion_script)?;
-    let [recursion_pass] = recursion_invocations.as_slice()
-    else {
-        return Err(Box::new(std::io::Error::other(format!(
-            "expected one cargo:dylint:recursion invocation, found {}",
-            recursion_invocations.len()
-        ))));
-    };
-    assert_string_sequence(
-        &recursion_pass.dylint_args,
-        &["--lib", EXPECTED_LOCAL_DYLINT_LIB, "--no-deps"],
-        "recursion Dylint pass argument inventory changed",
-    );
-    assert_string_sequence(
-        &recursion_pass.cargo_args,
-        &[
-            "--workspace",
-            "--exclude",
-            "gandr-workflow-gates",
-            "--exclude",
-            "gandr-workflow-dylint",
-            "--all-targets",
-            "--features=full",
-        ],
-        "recursion Dylint pass must keep the full project scope while the \
-         strict-lane exclusions (gandr-vp8) are remediated",
-    );
-
     let cargo_dylint = toml_table_at(&mise_tasks_cargo, &["cargo:dylint"])?;
     assert_string_sequence(
         &toml_table_string_array(cargo_dylint, "depends")?,
@@ -1480,8 +1427,6 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
             "gandr-workflow-gates",
             "--exclude",
             "gandr-workflow-dylint",
-            "--exclude",
-            "gandr-storage-prolly-trees",
             "--all-targets",
             "--features=full",
         ],
@@ -1608,7 +1553,6 @@ fn merge_gate_task_order_is_locked() -> TestResult
             "docs:reference-integrity",
             "cargo:build",
             "cargo:clippy",
-            "cargo:dylint:recursion",
             "cargo:dylint:local",
             "cargo:doc-check",
             "cargo:nextest",
