@@ -1,34 +1,75 @@
-# Workflow: Agda house style (metatheory)
+# Workflow: the Agda metatheory
 
-> Read when: touching `metatheory/` (Agda is the sole proof vehicle, ADR-30).
+> Read when: touching `metatheory/`.
+> Agda is the sole proof vehicle.
 
-**House-style rules: IU ADR-2, adopted by reference.** The `metatheory/` tree adopts the sister **internal-univalence** (IU) library's numbered `HS-n` discipline wholesale (purpose-built records over raw Σ; explicit record instances; record types imported at file top, projections opened at use site; `hiding`/`using` one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder; every definition carries a comment).
-The rules live in IU's `docs/spec/ADR.md` §ADR-2 and are cited bare (`HS-n`) from gandr comments.
+## What this document is, and is not
 
-**gandr deltas.**
+This file owns the **workflow**: layout, flags, gates, dependency policy, commit shape, and the done-rule.
+It deliberately does **not** carry doctrine — the mathematical plan lives in the Agda module headers themselves, and the lane's scope and rationale live on its tracker epic.
+That split is a decision, not an omission: the reboot has no separate design document, so a header and the code beneath it can never drift apart, and there is exactly one place to read for "why is this module shaped this way".
 
-* Vocabulary is the dictionary's, not IU's: construct names come from the calf/decalf line via the dictionary's `agda_module:` column (the `docs/gandr/dictionary.yml` artifact is retired under `gandr-fcw.8` Y1, unported with the rest of the metatheory tree); IU's ∞-graph layer letters are not transliterated onto gandr constructs.
-* The engine layer is consumed from IU as a pinned, read-only git submodule (`metatheory/upstream/internal-univalence`; the `iu:check` gate guards initialized-clean-at-pin).
-  Improvements land upstream, then the pin bumps — integration record in `metatheory/README.md` §"Upstream integration".
+Consequently: do not restate a theorem, a substrate decision, or a scope fence here.
+Record it in the module header that owns it, and reference the epic.
 
-**Agda-DbC stance.** The TYPE is the contract; do not port the Rust `# Contract` block.
-Every definition carries a comment (HS-15); load-bearing insight lives in the manual/dictionary and the code cites its sections.
-Mandatory marks are reserved for trust-story exceptions only: signature parameters standing for assumptions, any future with-K or unsafe island, gradual/`Blame` boundaries.
+## Substrate: port-as-source
 
-**Flags and the gate.**
+The metatheory is built **port-as-source** under the `Gandr.*` namespace.
+There is no internal-univalence submodule, no `metatheory/upstream/`, and no `iu:check` pin gate.
 
-* Per-file `OPTIONS`: `--safe --without-K --hidden-argument-puns` mandated on every module under `metatheory/src`, enforced by the Rust `source_policy::run_options_policy` sweep (`mise run test:options-policy`; CLI subcommand `options-policy`; exemptions enumerated per flag with justification).
-  The without-K mandate is binding project-wide (ADR-76): neither UIP nor definitional proof-irrelevance may enter through any shortcut.
-* `--guardedness` is need-based and **infective**: any module importing the upstream coinductive `Internal.Graph` (directly or transitively) must carry it.
-* Strict root / holey leaf: `Gandr.Everything` is the strict root — everything it imports is `--safe` and green.
-  Mid-proof work lives in a **declared holey leaf** (not imported by the root, checked with `--expected-code UnsolvedInteractionMetas`, enumerated in the `--safe` exemption list).
+The sister internal-univalence library remains a _reference_ — its structures are read, understood, and re-derived here under gandr's own naming and its own scope.
+A submodule would import that library's research frontier and its release cadence into this gate, which is the wrong coupling for a tree whose purpose is to justify gandr's design.
+Every ported module records its divergences in a port-delta note so the debt stays auditable.
+
+House policy on external research artifacts applies unchanged: read and cite, never vendor, port, or depend on a companion mechanization, regardless of license.
+
+## House style
+
+Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `hiding`/`using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder rather than deep `where` nesting; and **every definition carries a comment**.
+
+Two disciplines are load-bearing rather than cosmetic, and both exist to keep structures computing under `--without-K`:
+
+* **Witness syntax stays first-order and constructor-headed.** A defined function must never appear in a matchable index.
+  Where an operation would otherwise enter an index, speak it through the inductive _graph_ of that operation as a witness relation.
+* **No identity-shaped constructor repeats a frame variable across its result indices.** Identity and diagonal cases are derived, never adjoined as constructor shapes.
+
+**Agda-DbC stance.** The type is the contract; do not port the Rust `# Contract` comment block.
+Load-bearing insight lives in the module header and the code cites it.
+Mandatory marks are reserved for genuine trust-story exceptions: signature parameters standing for assumptions, and any future with-K or unsafe island.
+
+## Flags and the gate
+
+* Per-file `OPTIONS`: `--safe --without-K --hidden-argument-puns` on every module under `metatheory/src`, enforced by the Rust `source_policy` sweep (`options-policy` subcommand; exemptions are enumerated per flag with a justification).
+  The without-K mandate is binding: neither UIP nor definitional proof-irrelevance may enter through any shortcut.
+* `--guardedness` is need-based and **infective**: any module that transitively imports a coinductive carrier must carry it.
+* **Strict root / holey leaf.** `Gandr.Everything` is the strict root — everything it imports is `--safe` and green.
+  Mid-proof work lives in a _declared holey leaf_: a module the root does not import, checked on its own gate line with `--expected-code UnsolvedInteractionMetas`.
   Zero silent postulates, ever.
-* `mise run agda:check` = aifix over the strict root + the policy sweep.
+  Add a leaf's gate line in the same change as the leaf; a line ahead of its module is a gate that cannot fail.
+* `mise run agda:check` = the strict root through aifix plus the OPTIONS-policy sweep.
 
-**Dependencies.** Adding any Agda library or tool requires maintainer sign-off **first** — deliberately stricter than the Rust/TS trees.
-External research artifacts (mechanizations, companion code) are reference-only: read and cite, never vendor, port, or depend on, regardless of license.
+## Dependencies
 
-**The done-rule.** A metatheory milestone is DONE only when `agda:check` is green AND its doc face lands in the same motion — the dictionary/manual lock-step entry for new vocabulary, or the port-delta note for ported layers.
+Adding any Agda library or tool requires maintainer sign-off **first** — deliberately stricter than the Rust and TypeScript trees.
+
+`agda-stdlib` is **admitted** (pinned v2.4, verified under Agda 2.8.0), with one condition: it is consumed behind a thin house facade under `Gandr.Prelude.*`, never imported directly by a substantive module.
+The facade is what lets the tree re-choose its foundations without a sweep through every proof, and what keeps the vocabulary gandr's own.
+
+`agda:deps` vendors stdlib into the gitignored `metatheory/vendor/`.
+It is **opt-in and not a dependency of `agda:check`**: until a module actually imports stdlib, the gate must not pay a network fetch to prove a tree that does not need one.
+When the first import lands, run `agda:deps` and add `-i metatheory/vendor/agda-stdlib/src` to the `agda:check` line in the same change.
+
+## The done-rule
+
+A metatheory milestone is done only when `agda:check` is green **and** its documentation face lands in the same motion — the module header for new structure, or the port-delta note for a ported layer.
 Gate-green alone is half a milestone.
 
-**Commits.** Keep `metatheory/**` in a separate commit from the Rust it mirrors (distinct artifact whose history may be reorganized); the `docs/gandr/**` dictionary face may ride with either.
+A green gate is also not proof of _meaning_.
+State residuals honestly in the module header: a theorem that is reduced but not discharged says so, and a scope cut says what it cut and why it does not weaken the result.
+
+## Commits
+
+Keep `metatheory/**` in a **separate commit** from the Rust it mirrors — it is a distinct artifact whose history may be reorganized independently.
+Repository plumbing (mise tasks, gates, this document) rides with whichever side it serves.
+
+Commit messages follow the repository convention; `.commitlintrc.mts` is authoritative, including the canonical agent-trailer registry.
