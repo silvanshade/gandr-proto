@@ -12,6 +12,7 @@ const AGENT_EMAIL_HOSTS: readonly string[] = ["anthropic.com", "moonshot.ai", "o
 
 const CANONICAL_AGENT_TRAILERS: readonly string[] = [
   "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+  "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>",
   "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
   "Co-Authored-By: Kimi k3 (kimi-code) <noreply@moonshot.ai>",
   "Co-Authored-By: OpenAI Codex GPT-5.5 <noreply@openai.com>",
