@@ -59,6 +59,60 @@
 -- Also out of scope, deliberately: leaves (cell CONTENT, which no structural
 -- generator inspects) and an empty code (`𝟘` would make `Val` uninhabited and
 -- the distributor's inverse partial; see Gandr.Arena.Code).
+--
+-- ── WHY THERE IS NO FAITHFULNESS THEOREM HERE ───────────────────────────────
+-- The obvious next theorem is FAITHFULNESS: that the rule congruence on edit
+-- words generates exactly the kernel of realization, so two words with equal
+-- realization are congruent. It is not here, it is not coming, and the reason
+-- is written out because the omission looks like a gap and is not one. A
+-- reader who has just been told that the hard coherence family dissolves will
+-- reasonably ask why the theorem that family exists to serve was not then
+-- proved.
+--
+-- Faithfulness is the COMPLETENESS half of an edit calculus: semantic
+-- equality forces syntactic congruence. Its soundness half — congruent words
+-- have equal realization — is the direction gandr consumes, and it is cheap.
+--
+-- gandr's design never asks for the completeness half. Certificates are
+-- compared at replay-equivalence, and the engine's normal-form test is
+-- specified as a DECIDABLE UNDER-APPROXIMATION of that relation: normal-form
+-- equality implies replay agreement, and the converse is never claimed. A
+-- pair that is normal-form-equal but replay-divergent is a KILL SIGNAL for
+-- the lane, not a soundness hole to be closed by a theorem. The metatheory
+-- therefore owes an implication, not an equivalence.
+--
+-- That alone would make faithfulness merely unnecessary. What makes declining
+-- it PRINCIPLED is this module. In the tree-shaped presentation the expensive
+-- part of a faithfulness proof is a per-generator canonicalization at general
+-- codes: each structural generator must be shown to commute with
+-- normalization, consuming its own coherence family as it goes, and the
+-- distributor's case dominates the cost. That is exactly the family shown
+-- above to be presentational. The work is not being skipped because it is
+-- hard — it has been located, and the part that made it hard has been shown
+-- to be an artifact of representing a bracketing the arena does not
+-- represent.
+--
+-- What survives once that is removed is the symmetric-group word problem over
+-- the three permutation generators: a classical result, no easier or harder
+-- for anything gandr does, and read by no gandr consumer. The lane's filing
+-- hypothesis (gandr-5lf.9.2) had already isolated it as the one part of the
+-- congruence expected to be mathematically irreducible, so stopping here
+-- stops exactly at the predicted boundary rather than short of it.
+--
+-- THE CONDITION THAT REVERSES THIS: if the normal-form test is ever promoted
+-- from an under-approximation to a DECISION PROCEDURE for replay-equivalence,
+-- completeness becomes load-bearing and faithfulness returns to the arc.
+-- Anyone making that change should read this paragraph first.
+--
+-- ── WHAT REPLACES IT ────────────────────────────────────────────────────────
+-- `Rigid` is the reusable part, and it is worth more here than the theorem
+-- that was declined. It is a SEMANTIC invariant — moving no cell — that
+-- happens to be closed under the syntax, so it settles equations a purely
+-- syntactic argument would have to earn with a normalization and a
+-- critical-pair analysis. `rigid-coherence` is that trade made once. The same
+-- trade is worth looking for wherever a subgroupoid of a presented structure
+-- is invisible to the semantics, and it is what the reflection kit filed as
+-- gandr-5lf.9.8 is meant to mechanize.
 ------------------------------------------------------------------------------
 
 module Gandr.Arena.Coherence where
