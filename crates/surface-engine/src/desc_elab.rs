@@ -128,7 +128,9 @@ pub struct DescElab
 ///   (`crates/gandr-surface-engine/tests/desc_elab.rs`).
 #[inline]
 #[must_use]
-pub fn elaborate_data_descs<'source, S: Into<PipelineSource<'source>>>(source: S) -> DescElab
+pub fn elaborate_data_descs<'source, S>(source: S) -> DescElab
+where
+    S: Into<PipelineSource<'source>>,
 {
     let source = source.into();
     let Ok(tree) = SynTree::parse(source.0)

@@ -35,6 +35,12 @@
 //! - witness: `gandr_theory_graphs::determinism::gandr_theory_graphs::subprocess_exact_maximum_perturbation_is_accepted`
 //! - witness: `gandr_theory_graphs::determinism::gandr_theory_graphs::subprocess_oversized_perturbation_fails_gracefully`
 
+#![allow(
+    clippy::print_stderr,
+    clippy::print_stdout,
+    reason = "standard io allowed for binaries"
+)]
+
 extern crate alloc;
 
 use core::error::Error;
@@ -305,6 +311,7 @@ impl EdgeSource for OwnedAdj
             .map_or_else(|| EMPTY.iter().copied(), |row| row.iter().copied());
     }
 }
+
 /// Print canonical rows for the integration determinism harness.
 fn main() -> Result<(), Box<dyn Error>>
 {
@@ -313,6 +320,7 @@ fn main() -> Result<(), Box<dyn Error>>
     println!("{stdout}");
     return Ok(());
 }
+
 /// Run every public wrapper covered by the process determinism probe.
 fn rows() -> Result<Vec<String>, Box<dyn Error>>
 {
@@ -448,6 +456,7 @@ fn perturb_allocations(count: PerturbationCount)
     drop(scratch);
     return Ok(());
 }
+
 /// Build the named precedence diamond used by determinism rows.
 ///
 /// # Contract
@@ -489,6 +498,7 @@ fn precedence_probe() -> Result<PrecProbe, Box<dyn Error>>
         tight,
     });
 }
+
 /// Build a small public walk index and return its stable fingerprint.
 ///
 /// # Contract
@@ -527,6 +537,7 @@ fn walk_probe_fingerprint() -> Result<Fingerprint, Box<dyn Error>>
 
     return Ok(index.fingerprint());
 }
+
 /// Render a list of dense node ids.
 fn render_nodes(nodes: &[NodeId]) -> String
 {
@@ -537,11 +548,13 @@ fn render_nodes(nodes: &[NodeId]) -> String
         .join(",");
     return format!("[{body}]");
 }
+
 /// Render strongly-connected components.
 fn render_components(scc: &StronglyConnectedComponents) -> String
 {
     return render_node_sets(&scc.components);
 }
+
 /// Render a concrete cycle witness, or the absence of one.
 fn render_cycle_witness(witness: Option<&CycleWitness>) -> String
 {
@@ -555,6 +568,7 @@ fn render_cycle_witness(witness: Option<&CycleWitness>) -> String
         render_pairs(&witness.edges)
     );
 }
+
 /// Render reachability rows as `source->[targets]`.
 fn render_reachability(reachability: &Reachability) -> String
 {
@@ -566,6 +580,7 @@ fn render_reachability(reachability: &Reachability) -> String
         .join(",");
     return format!("[{body}]");
 }
+
 /// Render a DAG's transitive closure and reduction edges.
 fn render_reduction_closure(reduction: &TransitiveReductionClosure) -> String
 {
@@ -575,6 +590,7 @@ fn render_reduction_closure(reduction: &TransitiveReductionClosure) -> String
         render_pairs(&reduction.reduction_edges)
     );
 }
+
 /// Render immediate-dominator rows.
 fn render_dominators(dominators: &ImmediateDominators) -> String
 {
@@ -597,6 +613,7 @@ fn render_dominators(dominators: &ImmediateDominators) -> String
         .join(",");
     return format!("start={},rows=[{body}]", dominators.start);
 }
+
 /// Render shortest-path length rows.
 fn render_distances(distances: &ShortestPathLengths) -> String
 {
@@ -608,6 +625,7 @@ fn render_distances(distances: &ShortestPathLengths) -> String
         .join(",");
     return format!("start={},rows=[{body}]", distances.start);
 }
+
 /// Render bounded simple paths.
 fn render_paths(paths: &AllSimplePaths) -> String
 {
@@ -619,6 +637,7 @@ fn render_paths(paths: &AllSimplePaths) -> String
         render_node_sets(&paths.paths)
     );
 }
+
 /// Render condensation components and component edges.
 fn render_condensation(condensation: &Condensation) -> String
 {
@@ -628,6 +647,7 @@ fn render_condensation(condensation: &Condensation) -> String
         render_pairs(&condensation.edges)
     );
 }
+
 /// Render declared precedence groups in dense id order.
 fn render_prec_groups(dag: &PrecDag) -> String
 {
@@ -638,6 +658,7 @@ fn render_prec_groups(dag: &PrecDag) -> String
         .join(",");
     return format!("[{body}]");
 }
+
 /// Render precedence edges in canonical tighter-to-looser order.
 fn render_prec_edges(dag: &PrecDag) -> String
 {
@@ -648,6 +669,7 @@ fn render_prec_edges(dag: &PrecDag) -> String
         .join(",");
     return format!("[{body}]");
 }
+
 /// Render precedence ids in deterministic linear-extension order.
 fn render_precs(precs: &[Prec]) -> String
 {
@@ -658,6 +680,7 @@ fn render_precs(precs: &[Prec]) -> String
         .join(",");
     return format!("[{body}]");
 }
+
 /// Render the full concrete precedence comparison matrix.
 ///
 /// # Contract
@@ -702,6 +725,7 @@ fn render_prec_comparisons(probe: &PrecProbe) -> String
     }
     return format!("[{}]", cells.join(","));
 }
+
 /// Render boundary comparison rows for bottom, concrete, and root bounds.
 ///
 /// # Contract
@@ -743,6 +767,7 @@ fn render_prec_boundaries(probe: &PrecProbe) -> String
     }
     return format!("[{}]", cells.join(","));
 }
+
 /// Render nested dense node-id lists.
 fn render_node_sets(sets: &[Vec<NodeId>]) -> String
 {
@@ -753,6 +778,7 @@ fn render_node_sets(sets: &[Vec<NodeId>]) -> String
         .join(",");
     return format!("[{body}]");
 }
+
 /// Render a list of dense node-id pairs.
 fn render_pairs<P>(pairs: &[P]) -> String
 where
@@ -765,6 +791,7 @@ where
         .join(",");
     return format!("[{body}]");
 }
+
 /// Render canonical simulation rows as `subject->[candidates]`.
 fn render_simulation(simulation: &Simulation) -> String
 {

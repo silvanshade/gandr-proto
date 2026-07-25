@@ -2,10 +2,6 @@
     test,
     allow(
         clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
         reason = "contract tests relax the production wall per docs/workflow/rust.md"
     )
 )]

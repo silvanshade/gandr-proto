@@ -52,7 +52,9 @@ impl OriginNodeId
     /// Builds an origin node ID from its raw local ordinal.
     #[inline]
     #[must_use]
-    pub fn new<O: Into<OriginNodeOrdinal>>(raw: O) -> Self
+    pub fn new<O>(raw: O) -> Self
+    where
+        O: Into<OriginNodeOrdinal>,
     {
         Self { raw: raw.into().0 }
     }
@@ -462,10 +464,12 @@ impl OriginMap
     /// [`OriginNodeId`] instead.
     #[inline]
     #[must_use]
-    pub fn get_path<'path, P: Into<OriginPathRef<'path>>>(
+    pub fn get_path<'path, P>(
         &self,
         path: P,
     ) -> Option<&OriginEntry>
+    where
+        P: Into<OriginPathRef<'path>>,
     {
         let path = path.into();
         let id = self.path_index.get(path.0)?;
@@ -475,10 +479,12 @@ impl OriginMap
     /// Returns the stable ID currently associated with a legacy path.
     #[inline]
     #[must_use]
-    pub fn id_for_path<'path, P: Into<OriginPathRef<'path>>>(
+    pub fn id_for_path<'path, P>(
         &self,
         path: P,
     ) -> Option<OriginNodeId>
+    where
+        P: Into<OriginPathRef<'path>>,
     {
         self.path_index.get(path.into().0).copied()
     }
@@ -680,10 +686,12 @@ pub enum TermRef<'term>
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn resolve<'term, 'path, P: Into<OriginPathRef<'path>>>(
+pub fn resolve<'term, 'path, P>(
     term: &'term Term,
     path: P,
 ) -> Option<TermRef<'term>>
+where
+    P: Into<OriginPathRef<'path>>,
 {
     let path = path.into();
     let start = match *term {

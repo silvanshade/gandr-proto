@@ -352,10 +352,6 @@ fn ascribe_comp_payload(
 }
 
 #[cfg(test)]
-#[expect(
-    clippy::expect_used,
-    reason = "linker shape tests use expect to keep setup failures legible (docs/workflow/rust.md)"
-)]
 mod tests
 {
     use gandr_core_checker::control::Dir;

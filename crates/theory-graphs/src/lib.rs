@@ -9,10 +9,6 @@
     test,
     allow(
         clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        clippy::unwrap_used,
         reason = "the standard test-allow set keeps graph contract tests readable (docs/workflow/rust.md)"
     )
 )]

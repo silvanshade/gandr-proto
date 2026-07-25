@@ -358,7 +358,7 @@ impl CstBuilder
     /// - witness: `gandr_surface_syntax::builder::tests::builder_rejects_duplicate_parents`
     /// - witness: `gandr_surface_syntax::builder::tests::builder_round_trips_tile_text`
     #[inline]
-    pub fn node<I: IntoIterator<Item = NodeId>>(
+    pub fn node<I>(
         &mut self,
         kind: NodeKind,
         material: Material,
@@ -366,6 +366,8 @@ impl CstBuilder
         range: TextRange,
         children: I,
     ) -> Result<NodeId, BuildError>
+    where
+        I: IntoIterator<Item = NodeId>,
     {
         Self::validate_interior_shape(kind, material)?;
         let id = self.next_node_id()?;

@@ -108,7 +108,9 @@ impl Program
 impl FromIterator<Item> for Program
 {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = Item>>(iter: I) -> Self
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = Item>,
     {
         Self {
             items: iter.into_iter().collect(),

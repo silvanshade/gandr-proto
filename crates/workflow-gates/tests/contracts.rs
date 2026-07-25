@@ -892,10 +892,12 @@ fn run_reports_findings_in_deterministic_path_order()
     };
 }
 
-fn ok_or_report<'semantic, T, E: fmt::Display>(
+fn ok_or_report<'semantic, T, E>(
     result: Result<T, E>,
     context: impl Into<ContextText<'semantic>>,
 ) -> Option<T>
+where
+    E: fmt::Display,
 {
     let context = context.into().0;
     result

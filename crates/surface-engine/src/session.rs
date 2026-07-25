@@ -231,11 +231,13 @@ impl Session
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn constructor_name<T: Into<ConstructorTag>>(
+    pub fn constructor_name<T>(
         &self,
         id: &DataId,
         tag: T,
     ) -> Option<ConstructorName<'_>>
+    where
+        T: Into<ConstructorTag>,
     {
         let tag = usize::from(tag.into());
         self.data
@@ -280,10 +282,12 @@ impl Session
     ///
     /// Returns the lowering [`LowerError`] for an infrastructure failure.
     #[inline]
-    pub fn submit<'source, S: Into<PipelineSource<'source>>>(
+    pub fn submit<'source, S>(
         &mut self,
         source: S,
     ) -> Result<Submission, LowerError>
+    where
+        S: Into<PipelineSource<'source>>,
     {
         let source = source.into();
         let lowered = lower_source_total_seeded(source, &self.foreign, &self.codata, &self.data)?;

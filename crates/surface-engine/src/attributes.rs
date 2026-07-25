@@ -326,7 +326,9 @@ pub fn run(
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn lookup<'name, N: Into<AttributeName<'name>>>(name: N) -> Option<&'static AttrSchema>
+pub fn lookup<'name, N>(name: N) -> Option<&'static AttrSchema>
+where
+    N: Into<AttributeName<'name>>,
 {
     let name = name.into();
     REGISTRY.iter().find(|schema| schema.name == name.0)

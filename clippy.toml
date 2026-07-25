@@ -1,5 +1,12 @@
 #:tombi toml-version = "v1.0.0"
 
+allow-dbg-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-unwrap-in-tests = true
+
 # Transitive version splits we cannot unify (they enter the graph only under the
 # dev/`proptest-strategies` feature, via proptest's rand chain): `getrandom`
 # 0.3/0.4 and its UEFI backend `r-efi` 5/6. `hashbrown` 0.16/0.17 is the same

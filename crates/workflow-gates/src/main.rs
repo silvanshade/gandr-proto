@@ -12,6 +12,11 @@
     clippy::field_scoped_visibility_modifiers,
     reason = "ported crate predates the current lint wall; parked for triage (gandr-0ze)"
 )]
+#![allow(
+    clippy::print_stderr,
+    clippy::print_stdout,
+    reason = "standard io allowed for binaries"
+)]
 
 use std::env;
 use std::ffi::OsStr;

@@ -158,15 +158,13 @@ const OPERATOR_BUILTINS: &[(&str, NativePrim)] = &[
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn is_module_member<
-    'module,
-    'member,
-    M: Into<PreludeModuleName<'module>>,
-    B: Into<PreludeMemberName<'member>>,
->(
+pub fn is_module_member<'module, 'member, M, B>(
     module: M,
     member: B,
 ) -> MatchDecision
+where
+    M: Into<PreludeModuleName<'module>>,
+    B: Into<PreludeMemberName<'member>>,
 {
     let module = module.into();
     let member = member.into();
@@ -191,7 +189,9 @@ pub fn is_module_member<
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn is_module<'name, N: Into<PreludeModuleName<'name>>>(name: N) -> MatchDecision
+pub fn is_module<'name, N>(name: N) -> MatchDecision
+where
+    N: Into<PreludeModuleName<'name>>,
 {
     let name = name.into();
     MatchDecision(

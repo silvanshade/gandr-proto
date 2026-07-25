@@ -14,14 +14,10 @@
     test,
     allow(
         clippy::arithmetic_side_effects,
-        clippy::expect_used,
-        clippy::indexing_slicing,
         clippy::needless_pass_by_value,
-        clippy::panic,
         clippy::pattern_type_mismatch,
         clippy::std_instead_of_alloc,
         clippy::std_instead_of_core,
-        clippy::unwrap_used,
         reason = "the standard test-allow set plus test-local by-value helper params, match-ergonomics bindings, and std-path imports keeps unit and subprocess-probe tests readable (docs/workflow/rust.md)"
     )
 )]

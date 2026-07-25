@@ -3,6 +3,12 @@
 //! and rendering, the prose-document-class gate, and canonical `XML`
 //! formatting.
 
+#![allow(
+    clippy::print_stderr,
+    clippy::print_stdout,
+    reason = "standard io allowed for binaries"
+)]
+
 extern crate alloc;
 
 use alloc::collections::BTreeMap;

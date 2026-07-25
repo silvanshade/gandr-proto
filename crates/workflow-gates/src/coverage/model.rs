@@ -1251,10 +1251,11 @@ mod tests
 
     /// Assert that a typed model constructor fails with a stable diagnostic
     /// fragment.
-    fn assert_error_contains<'semantic, T: core::fmt::Debug>(
+    fn assert_error_contains<'semantic, T>(
         result: Result<T, crate::GateError>,
         expected: impl Into<super::ExpectedText<'semantic>>,
-    )
+    ) where
+        T: core::fmt::Debug,
     {
         let expected = expected.into().0;
         let error = result.unwrap_err();

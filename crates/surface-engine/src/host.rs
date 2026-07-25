@@ -118,10 +118,12 @@ impl HostModule
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn member<'operation, O: Into<HostOperation<'operation>>>(
+    pub fn member<'operation, O>(
         &self,
         operation: O,
     ) -> Option<&HostMember>
+    where
+        O: Into<HostOperation<'operation>>,
     {
         let operation = operation.into();
         self.members.iter().find(|member| member.op == operation.0)
@@ -215,7 +217,9 @@ pub const HOST_MODULES: &[HostModule] = &[
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn is_host_module<'name, N: Into<HostModuleName<'name>>>(name: N) -> MatchDecision
+pub fn is_host_module<'name, N>(name: N) -> MatchDecision
+where
+    N: Into<HostModuleName<'name>>,
 {
     MatchDecision(host_module(name).is_some())
 }
@@ -226,7 +230,9 @@ pub fn is_host_module<'name, N: Into<HostModuleName<'name>>>(name: N) -> MatchDe
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn host_module<'name, N: Into<HostModuleName<'name>>>(name: N) -> Option<&'static HostModule>
+pub fn host_module<'name, N>(name: N) -> Option<&'static HostModule>
+where
+    N: Into<HostModuleName<'name>>,
 {
     let name = name.into();
     HOST_MODULES.iter().find(|module| module.name == name.0)

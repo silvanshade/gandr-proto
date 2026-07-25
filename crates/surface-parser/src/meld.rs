@@ -2449,7 +2449,9 @@ impl<'pbg> MeldState<'pbg>
     ///   conversion on ordinary inputs; the saturating arm is unreachable in
     ///   practice.
     /// - witness: `gandr_surface_parser::acceptance::corpus_parses_totally`
-    fn wire_len<T: From<u32>>(count: CheckpointCount) -> T
+    fn wire_len<T>(count: CheckpointCount) -> T
+    where
+        T: From<u32>,
     {
         let len = usize::from(count);
         debug_assert!(

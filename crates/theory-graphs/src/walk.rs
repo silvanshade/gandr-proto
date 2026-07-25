@@ -1178,13 +1178,16 @@ enum SwingKeyMode
 }
 
 /// Build filtered transitive rows.
-fn filter_transitive_rows<S: WalkSym>(rows: DirectRows<S>)
--> Result<DirectRows<S>, WalkBuildError>
+fn filter_transitive_rows<S>(rows: DirectRows<S>) -> Result<DirectRows<S>, WalkBuildError>
+where
+    S: WalkSym,
 {
     filter_direct_rows::<S>(rows)
 }
 /// Build filtered direct rows.
-fn filter_direct_rows<S: WalkSym>(rows: DirectRows<S>) -> Result<DirectRows<S>, WalkBuildError>
+fn filter_direct_rows<S>(rows: DirectRows<S>) -> Result<DirectRows<S>, WalkBuildError>
+where
+    S: WalkSym,
 {
     let mut filtered = BTreeMap::new();
     for (key, walks) in rows {
@@ -1196,10 +1199,12 @@ fn filter_direct_rows<S: WalkSym>(rows: DirectRows<S>) -> Result<DirectRows<S>, 
     Ok(filtered)
 }
 /// Construct all direct rows from explicit steps and swing closures.
-fn direct_rows<S: WalkSym>(
+fn direct_rows<S>(
     spec: &WalkSpec<S>,
     mode: SwingKeyMode,
 ) -> Result<DirectRows<S>, WalkBuildError>
+where
+    S: WalkSym,
 {
     let mut rows: BTreeMap<_, Vec<_>> = BTreeMap::new();
     for &(dir, ref src, ref dst, ref walk) in &spec.direct_steps {
@@ -1220,10 +1225,12 @@ fn direct_rows<S: WalkSym>(
     Ok(rows)
 }
 /// Build all exact-End outer closures.
-fn transitive_rows<S: WalkSym>(
+fn transitive_rows<S>(
     spec: &WalkSpec<S>,
     direct_rows: &DirectRows<S>,
 ) -> Result<DirectRows<S>, WalkBuildError>
+where
+    S: WalkSym,
 {
     let mut rows: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let ends = canonical_ends(spec);
@@ -1303,7 +1310,9 @@ fn transitive_rows<S: WalkSym>(
     Ok(rows)
 }
 /// Return canonical ends including root.
-fn canonical_ends<S: WalkSym>(spec: &WalkSpec<S>) -> Vec<End<S::Stance>>
+fn canonical_ends<S>(spec: &WalkSpec<S>) -> Vec<End<S::Stance>>
+where
+    S: WalkSym,
 {
     let mut ends: Vec<End<S::Stance>> = spec.ends.iter().cloned().collect();
     ends.push(End::Root);
@@ -1329,12 +1338,14 @@ fn guard_cap<N, T>(
     }
 }
 /// Run one seeded swing closure.
-fn swing_closure<S: WalkSym>(
+fn swing_closure<S>(
     spec: &WalkSpec<S>,
     dir: Dir,
     start: &S::Nonterminal,
     mode: SwingKeyMode,
 ) -> Result<SwingClosureOutput<S>, WalkBuildError>
+where
+    S: WalkSym,
 {
     let mut arcs_by_source: BTreeMap<S::Nonterminal, Vec<SwingArc<S>>> = BTreeMap::new();
     for arc in &spec.swing_arcs {
@@ -1381,9 +1392,9 @@ fn swing_closure<S: WalkSym>(
 }
 
 /// Canonicalize valid minimal walks.
-fn canonical_walks<S: WalkSym>(
-    walks: Vec<MachineWalk<S>>
-) -> Result<Vec<MachineWalk<S>>, WalkBuildError>
+fn canonical_walks<S>(walks: Vec<MachineWalk<S>>) -> Result<Vec<MachineWalk<S>>, WalkBuildError>
+where
+    S: WalkSym,
 {
     let mut kept = Vec::new();
     for walk in walks {
@@ -1412,7 +1423,9 @@ fn canonical_walks<S: WalkSym>(
     Ok(output)
 }
 /// Return whether the source minimality filter retains a walk.
-fn minimal<S: WalkSym>(walk: &MachineWalk<S>) -> Result<WalkMinimal, WalkBuildError>
+fn minimal<S>(walk: &MachineWalk<S>) -> Result<WalkMinimal, WalkBuildError>
+where
+    S: WalkSym,
 {
     let has_equality_shape = walk.is_eq()?;
     if bool::from(has_equality_shape) {
@@ -1438,10 +1451,12 @@ fn minimal<S: WalkSym>(walk: &MachineWalk<S>) -> Result<WalkMinimal, WalkBuildEr
     Ok(WalkMinimal::from(true))
 }
 /// Build canonical mold projection rows.
-fn mold_rows<S: WalkSym>(
+fn mold_rows<S>(
     spec: &WalkSpec<S>,
     transitive_rows: &DirectRows<S>,
 ) -> MoldRows<S>
+where
+    S: WalkSym,
 {
     let mut rows: MoldRows<S> = BTreeMap::new();
     if spec.root_entry.is_some() {
@@ -1467,7 +1482,9 @@ fn mold_rows<S: WalkSym>(
     rows
 }
 /// Insert-order canonicalization helper.
-fn canonicalize<T: Ord>(values: &mut Vec<T>)
+fn canonicalize<T>(values: &mut Vec<T>)
+where
+    T: Ord,
 {
     values.sort();
     values.dedup();
@@ -1486,10 +1503,12 @@ enum QueryKind
 }
 
 /// Build stable query rows from canonical direct rows.
-fn query_rows<S: WalkSym>(
+fn query_rows<S>(
     direct_rows: &DirectRows<S>,
     kind: QueryKind,
 ) -> Result<QueryRows<S>, WalkBuildError>
+where
+    S: WalkSym,
 {
     let mut rows: BTreeMap<_, Vec<_>> = BTreeMap::new();
     for (direct_key, walks) in direct_rows {
@@ -1581,10 +1600,12 @@ impl<N: Clone, T: Clone> PartialWalk<N, T>
 }
 
 /// Compute a swing seen key.
-fn seen_key<S: WalkSym>(
+fn seen_key<S>(
     nonterminal: &S::Nonterminal,
     mode: SwingKeyMode,
 ) -> (S::Sort, Option<S::Bounds>)
+where
+    S: WalkSym,
 {
     match mode {
         | SwingKeyMode::SortBounds => (
@@ -1626,7 +1647,9 @@ struct FallbackSwing<N: Ord>
 }
 
 /// Build a canonical walk sort key.
-fn canonical_walk_key<S: WalkSym>(walk: &MachineWalk<S>) -> Result<WalkSortKey<S>, WalkBuildError>
+fn canonical_walk_key<S>(walk: &MachineWalk<S>) -> Result<WalkSortKey<S>, WalkBuildError>
+where
+    S: WalkSym,
 {
     let height = walk.height()?;
     let mut count = 0_u32;
@@ -1676,12 +1699,14 @@ fn canonical_walk_key<S: WalkSym>(walk: &MachineWalk<S>) -> Result<WalkSortKey<S
 }
 
 /// Compute the stable framed FNV fingerprint.
-fn fingerprint_index<S: WalkSym>(
+fn fingerprint_index<S>(
     max_chain_len: WalkChainLength,
     direct_rows: &DirectRows<S>,
     transitive_rows: &DirectRows<S>,
     mold_rows: &MoldRows<S>,
 ) -> Result<Fingerprint, WalkBuildError>
+where
+    S: WalkSym,
 {
     let mut hash = Fnv64::new();
     hash.write_bytes(b"gandr.walk.v1");
@@ -1707,11 +1732,13 @@ fn fingerprint_index<S: WalkSym>(
 }
 
 /// Hash walk rows.
-fn hash_walk_rows<S: WalkSym>(
+fn hash_walk_rows<S>(
     hash: &mut Fnv64,
     tag: FingerprintByte,
     rows: &DirectRows<S>,
 ) -> Result<(), WalkBuildError>
+where
+    S: WalkSym,
 {
     hash.write_byte(tag);
     let row_count = u32::try_from(rows.len())?;
@@ -1734,10 +1761,11 @@ fn hash_walk_rows<S: WalkSym>(
 }
 
 /// Hash one exact end.
-fn hash_end<S: WalkSym>(
+fn hash_end<S>(
     hash: &mut Fnv64,
     end: &End<S::Stance>,
-)
+) where
+    S: WalkSym,
 {
     match *end {
         | End::Root => hash.write_byte(0),
@@ -1749,10 +1777,12 @@ fn hash_end<S: WalkSym>(
 }
 
 /// Hash one walk shape.
-fn hash_walk<S: WalkSym>(
+fn hash_walk<S>(
     hash: &mut Fnv64,
     walk: &MachineWalk<S>,
 ) -> Result<(), WalkBuildError>
+where
+    S: WalkSym,
 {
     let chain_len = walk.chain_len()?;
     let swing_count = u32::try_from(walk.swings.len())?;

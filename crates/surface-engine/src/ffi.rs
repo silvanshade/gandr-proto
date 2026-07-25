@@ -197,10 +197,12 @@ impl ForeignModule
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn function<'operation, O: Into<ForeignOperation<'operation>>>(
+    pub fn function<'operation, O>(
         &self,
         operation: O,
     ) -> Option<&ForeignFn>
+    where
+        O: Into<ForeignOperation<'operation>>,
     {
         let operation = operation.into();
         self.functions
