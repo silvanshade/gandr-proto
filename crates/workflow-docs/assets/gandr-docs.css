@@ -326,6 +326,10 @@ div.prov .prov-group {
   margin: 0.15em 0;
 }
 
+div.prov .prov-group + .prov-group {
+  margin-top: 0.6em;
+}
+
 span.prov-label {
   color: var(--rule);
 }
