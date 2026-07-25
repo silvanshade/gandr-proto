@@ -68,6 +68,7 @@
   The sole signature exception is a method implementing a trait defined in an external crate.
   This rule proves only that a nominal transparent boundary exists; it does not validate field visibility, conversion traits, documentation, or the rest of the workspace Clippy contract.
   After any `primitive_signature` remediation, run the package-scoped equivalent of `cargo:clippy` (`--all-targets --features=full -- -D warnings`) before removing that package from a strict-Dylint exclusion.
+  This scoped check is a diagnostic prerequisite, never unit-completion evidence: after the source and strict-lane wiring land together, do not complete or leave the remediation unit until the full `mise run gate:merge` wall passes.
   Project-local rules also enforce source-grounded recursive `# Termination` contracts and reject false `input recursion: none` claims.
   `mise run cargo:dylint:recursion` puts that rule on the merge wall by running only the project-local driver over the Dylint-covered workspace targets; `gandr-workflow-gates` and the driver itself retain the same explicit exclusions as the strict lane.
   It denies every warning except the unrelated `primitive_signature` and `single_field_struct_needs_transparent_repr` debt tracked in `gandr-vp8`; the strict `cargo:dylint:local` and full `cargo:dylint` tasks retain `-D warnings` and therefore do not claim those rules are clean.
