@@ -383,6 +383,337 @@ const MACH_V1_GEAR_TABLE: [u64; 0x100_usize] = [
     0xCED3_4DD0_5B9A_775A_u64,
 ];
 
+/// Define an opaque integer carrier whose only primitive conversions are exact
+/// implementations of the standard [`From`] trait.
+macro_rules! semantic_integer
+{
+    (
+        $(#[$attribute:meta])*
+        $visibility:vis struct $name:ident($primitive:ty);
+    ) => {
+        $(#[$attribute])*
+        #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+        #[repr(transparent)]
+        $visibility struct $name($primitive);
+
+        impl From<$primitive> for $name
+        {
+            #[inline]
+            fn from(value: $primitive) -> Self
+            {
+                return Self(value);
+            }
+        }
+
+        impl From<$name> for $primitive
+        {
+            #[inline]
+            fn from(value: $name) -> Self
+            {
+                return value.0;
+            }
+        }
+    };
+}
+
+semantic_integer! {
+    /// A canonical byte count, used for chunk limits and measured payload sizes.
+    pub struct ByteCount(u64);
+}
+
+semantic_integer! {
+    /// A canonical byte-stream position.
+    pub struct BytePosition(u64);
+}
+
+semantic_integer! {
+    /// A bounded per-chunk record count.
+    pub struct RecordCount(u32);
+}
+
+semantic_integer! {
+    /// A position in canonical record order.
+    pub struct RecordPosition(u64);
+}
+
+semantic_integer! {
+    /// Raw seed-policy discriminator carried by parameter commitments.
+    pub struct SeedKind(u8);
+}
+
+semantic_integer! {
+    /// Number of input records for which a scanner reserves boundary capacity.
+    struct RecordCapacity(usize);
+}
+
+semantic_integer! {
+    /// Record distance used to advance a canonical record position.
+    struct RecordDistance(u64);
+}
+
+semantic_integer! {
+    /// Chunk-local Gear hash state.
+    struct GearState(u64);
+}
+
+semantic_integer! {
+    /// One value selected from the committed Gear table.
+    struct GearValue(u64);
+}
+
+semantic_integer! {
+    /// Gear predicate mask derived from the target byte count.
+    struct CutMask(u64);
+}
+
+semantic_integer! {
+    /// One canonical input byte.
+    struct InputByte(u8);
+}
+
+semantic_integer! {
+    /// A position in the fixed parameter commitment.
+    struct CommitmentIndex(usize);
+}
+
+semantic_integer! {
+    /// A fixed field offset in the parameter commitment.
+    struct CommitmentOffset(usize);
+}
+
+semantic_integer! {
+    /// One byte of the parameter commitment.
+    struct CommitmentByte(u8);
+}
+
+semantic_integer! {
+    /// One big-endian 16-bit commitment field.
+    struct CommitmentWord(u16);
+}
+
+semantic_integer! {
+    /// A private decision returned by chunk-boundary predicates.
+    struct CutDecision(bool);
+}
+
+impl From<RecordCount> for RecordDistance
+{
+    #[inline]
+    fn from(count: RecordCount) -> Self
+    {
+        return Self(u64::from(count.0));
+    }
+}
+
+impl ByteCount
+{
+    /// Adds two byte counts while preserving the requested failure operation.
+    fn checked_add(
+        self,
+        rhs: Self,
+        operation: ArithmeticOperation,
+    ) -> Result<Self, ChunkerError>
+    {
+        return match self.0.checked_add(rhs.0) {
+            | Some(sum) => Ok(Self(sum)),
+            | None => Err(ChunkerError::ArithmeticOverflow { operation }),
+        };
+    }
+}
+
+impl BytePosition
+{
+    /// Advances a byte position by a byte count.
+    fn checked_advance(
+        self,
+        count: ByteCount,
+        operation: ArithmeticOperation,
+    ) -> Result<Self, ChunkerError>
+    {
+        return match self.0.checked_add(count.0) {
+            | Some(position) => Ok(Self(position)),
+            | None => Err(ChunkerError::ArithmeticOverflow { operation }),
+        };
+    }
+
+    /// Measures a byte count from an earlier position.
+    fn checked_distance_from(
+        self,
+        start: Self,
+        operation: ArithmeticOperation,
+    ) -> Result<ByteCount, ChunkerError>
+    {
+        return match self.0.checked_sub(start.0) {
+            | Some(distance) => Ok(ByteCount(distance)),
+            | None => Err(ChunkerError::ArithmeticOverflow { operation }),
+        };
+    }
+}
+
+impl RecordCount
+{
+    /// Increments a bounded per-chunk record count.
+    fn checked_increment(
+        self,
+        operation: ArithmeticOperation,
+    ) -> Result<Self, ChunkerError>
+    {
+        return match self.0.checked_add(0x01_u32) {
+            | Some(count) => Ok(Self(count)),
+            | None => Err(ChunkerError::ArithmeticOverflow { operation }),
+        };
+    }
+}
+
+impl RecordPosition
+{
+    /// Advances a canonical record position by a record distance.
+    fn checked_advance(
+        self,
+        distance: RecordDistance,
+        operation: ArithmeticOperation,
+    ) -> Result<Self, ChunkerError>
+    {
+        return match self.0.checked_add(distance.0) {
+            | Some(position) => Ok(Self(position)),
+            | None => Err(ChunkerError::ArithmeticOverflow { operation }),
+        };
+    }
+
+    /// Advances to the next canonical record position.
+    fn checked_next(self) -> Result<Self, ChunkerError>
+    {
+        return self.checked_advance(RecordDistance(0x01_u64), ArithmeticOperation::RecordIndex);
+    }
+}
+
+/// Caller-provided public salt mixed into each chunk-local Gear state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct SeedSalt
+{
+    /// Exact committed salt bytes.
+    bytes: [u8; 0x20_usize],
+}
+
+impl From<[u8; 0x20_usize]> for SeedSalt
+{
+    #[inline]
+    fn from(bytes: [u8; 0x20_usize]) -> Self
+    {
+        return Self { bytes };
+    }
+}
+
+impl AsRef<[u8; 0x20_usize]> for SeedSalt
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8; 0x20_usize]
+    {
+        return &self.bytes;
+    }
+}
+
+/// Stable fixed-order parameter commitment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct ParameterCommitment
+{
+    /// Canonical commitment bytes.
+    bytes: [u8; PARAMETER_COMMITMENT_LEN],
+}
+
+impl AsRef<[u8]> for ParameterCommitment
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.bytes.as_ref();
+    }
+}
+
+/// Borrowed canonical bytes supplied to [`chunk_spans`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct CanonicalBytes<'bytes>
+{
+    /// Borrowed canonical byte stream.
+    bytes: &'bytes [u8],
+}
+
+impl<'bytes> From<&'bytes [u8]> for CanonicalBytes<'bytes>
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8]) -> Self
+    {
+        return Self { bytes };
+    }
+}
+
+impl AsRef<[u8]> for CanonicalBytes<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.bytes;
+    }
+}
+
+/// Borrowed ordered canonical record slices supplied to
+/// [`chunk_record_slices`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct CanonicalRecords<'records>
+{
+    /// Borrowed canonical records in their committed order.
+    records: &'records [&'records [u8]],
+}
+
+impl<'records> From<&'records [&'records [u8]]> for CanonicalRecords<'records>
+{
+    #[inline]
+    fn from(records: &'records [&'records [u8]]) -> Self
+    {
+        return Self { records };
+    }
+}
+
+impl<'records> AsRef<[&'records [u8]]> for CanonicalRecords<'records>
+{
+    #[inline]
+    fn as_ref(&self) -> &[&'records [u8]]
+    {
+        return self.records;
+    }
+}
+
+/// One borrowed canonical record consumed by the scanner.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+struct CanonicalRecord<'record>
+{
+    /// Borrowed canonical record bytes.
+    bytes: &'record [u8],
+}
+
+impl<'record> From<&'record [u8]> for CanonicalRecord<'record>
+{
+    #[inline]
+    fn from(bytes: &'record [u8]) -> Self
+    {
+        return Self { bytes };
+    }
+}
+
+impl AsRef<[u8]> for CanonicalRecord<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.bytes;
+    }
+}
+
 /// Local algorithm profile identifier committed into chunker parameters.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
@@ -399,16 +730,14 @@ impl AlgorithmVersion
     pub const FASTCDC_2020: Self = Self {
         raw: ALGORITHM_FASTCDC_2020_RAW,
     };
+}
 
-    /// Creates a supported algorithm version from raw commitment bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ChunkerError::UnsupportedAlgorithmVersion`] when `raw` is not
-    /// implemented by this crate.
+impl TryFrom<u16> for AlgorithmVersion
+{
+    type Error = ChunkerError;
+
     #[inline]
-    #[must_use = "unsupported algorithm versions must be handled"]
-    pub const fn from_raw(raw: u16) -> Result<Self, ChunkerError>
+    fn try_from(raw: u16) -> Result<Self, Self::Error>
     {
         if raw == ALGORITHM_FASTCDC_2020_RAW {
             return Ok(Self { raw });
@@ -416,19 +745,14 @@ impl AlgorithmVersion
 
         return Err(ChunkerError::UnsupportedAlgorithmVersion { raw });
     }
+}
 
-    /// Returns the raw committed algorithm version.
+impl From<AlgorithmVersion> for u16
+{
     #[inline]
-    #[must_use]
-    pub const fn raw(self) -> u16
+    fn from(version: AlgorithmVersion) -> Self
     {
-        return self.raw;
-    }
-
-    /// Returns whether this crate implements the algorithm profile.
-    const fn is_supported(self) -> bool
-    {
-        return self.raw == ALGORITHM_FASTCDC_2020_RAW;
+        return version.raw;
     }
 }
 
@@ -448,16 +772,14 @@ impl GearTableVersion
     pub const MACH_V1: Self = Self {
         raw: GEAR_TABLE_MACH_V1_RAW,
     };
+}
 
-    /// Creates a supported Gear table version from raw commitment bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ChunkerError::UnsupportedGearTableVersion`] when `raw` is not
-    /// implemented by this crate.
+impl TryFrom<u16> for GearTableVersion
+{
+    type Error = ChunkerError;
+
     #[inline]
-    #[must_use = "unsupported Gear table versions must be handled"]
-    pub const fn from_raw(raw: u16) -> Result<Self, ChunkerError>
+    fn try_from(raw: u16) -> Result<Self, Self::Error>
     {
         if raw == GEAR_TABLE_MACH_V1_RAW {
             return Ok(Self { raw });
@@ -465,19 +787,14 @@ impl GearTableVersion
 
         return Err(ChunkerError::UnsupportedGearTableVersion { raw });
     }
+}
 
-    /// Returns the raw committed Gear table version.
+impl From<GearTableVersion> for u16
+{
     #[inline]
-    #[must_use]
-    pub const fn raw(self) -> u16
+    fn from(version: GearTableVersion) -> Self
     {
-        return self.raw;
-    }
-
-    /// Returns whether this crate implements the Gear table.
-    const fn is_supported(self) -> bool
-    {
-        return self.raw == GEAR_TABLE_MACH_V1_RAW;
+        return version.raw;
     }
 }
 
@@ -489,7 +806,7 @@ pub struct SeedPolicy
     /// Raw seed kind plus support marker.
     kind: SeedPolicyKind,
     /// Caller-provided salt bytes, or all zeroes for [`SeedPolicy::NONE`].
-    salt: [u8; 0x20_usize],
+    salt: SeedSalt,
 }
 
 impl SeedPolicy
@@ -497,13 +814,15 @@ impl SeedPolicy
     /// Deterministic scan with no public salt.
     pub const NONE: Self = Self {
         kind: SeedPolicyKind::None,
-        salt: [0_u8; 0x20_usize],
+        salt: SeedSalt {
+            bytes: [0_u8; 0x20_usize],
+        },
     };
 
     /// Creates a supported caller-provided public salt policy.
     #[inline]
     #[must_use]
-    pub const fn public_salt(salt: [u8; 0x20_usize]) -> Self
+    pub const fn public_salt(salt: SeedSalt) -> Self
     {
         return Self {
             kind: SeedPolicyKind::PublicSalt,
@@ -515,34 +834,30 @@ impl SeedPolicy
     /// forward-compatible decoding.
     #[inline]
     #[must_use]
-    pub const fn unsupported(kind: u8) -> Self
+    pub const fn unsupported(kind: SeedKind) -> Self
     {
         return Self {
             kind: SeedPolicyKind::Unsupported(kind),
-            salt: [0_u8; 0x20_usize],
+            salt: SeedSalt {
+                bytes: [0_u8; 0x20_usize],
+            },
         };
     }
 
-    /// Returns the raw seed kind committed into parameter bytes.
+    /// Returns the seed kind committed into parameter bytes.
     #[inline]
     #[must_use]
-    pub const fn kind(&self) -> u8
+    pub const fn kind(&self) -> SeedKind
     {
         return self.kind.raw();
     }
 
-    /// Returns the committed public salt bytes.
+    /// Returns the committed public salt.
     #[inline]
     #[must_use]
-    pub const fn salt_bytes(&self) -> &[u8; 0x20_usize]
+    pub const fn salt(&self) -> &SeedSalt
     {
         return &self.salt;
-    }
-
-    /// Returns whether this crate supports this seed policy.
-    const fn is_supported(&self) -> bool
-    {
-        return self.kind.is_supported();
     }
 }
 
@@ -555,27 +870,18 @@ enum SeedPolicyKind
     /// A caller-provided public salt is mixed into the chunk-local Gear state.
     PublicSalt,
     /// Unsupported raw seed kind decoded from future parameter bytes.
-    Unsupported(u8),
+    Unsupported(SeedKind),
 }
 
 impl SeedPolicyKind
 {
-    /// Returns the raw seed kind committed into parameter bytes.
-    const fn raw(self) -> u8
+    /// Returns the seed kind committed into parameter bytes.
+    const fn raw(self) -> SeedKind
     {
         return match self {
-            | Self::None => SEED_KIND_NONE,
-            | Self::PublicSalt => SEED_KIND_PUBLIC_SALT,
-            | Self::Unsupported(raw) => raw,
-        };
-    }
-
-    /// Returns whether this crate implements this seed kind.
-    const fn is_supported(self) -> bool
-    {
-        return match self {
-            | Self::None | Self::PublicSalt => true,
-            | Self::Unsupported(_raw) => false,
+            | Self::None => SeedKind(SEED_KIND_NONE),
+            | Self::PublicSalt => SeedKind(SEED_KIND_PUBLIC_SALT),
+            | Self::Unsupported(kind) => kind,
         };
     }
 }
@@ -596,16 +902,14 @@ impl NormalizationPolicy
     pub const NONE: Self = Self {
         raw: NORMALIZATION_NONE_RAW,
     };
+}
 
-    /// Creates a supported normalization policy from raw commitment bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ChunkerError::UnsupportedNormalizationPolicy`] when `raw` is
-    /// not implemented by this crate.
+impl TryFrom<u8> for NormalizationPolicy
+{
+    type Error = ChunkerError;
+
     #[inline]
-    #[must_use = "unsupported normalization policies must be handled"]
-    pub const fn from_raw(raw: u8) -> Result<Self, ChunkerError>
+    fn try_from(raw: u8) -> Result<Self, Self::Error>
     {
         if raw == NORMALIZATION_NONE_RAW {
             return Ok(Self { raw });
@@ -613,19 +917,14 @@ impl NormalizationPolicy
 
         return Err(ChunkerError::UnsupportedNormalizationPolicy { raw });
     }
+}
 
-    /// Returns the raw committed normalization policy.
+impl From<NormalizationPolicy> for u8
+{
     #[inline]
-    #[must_use]
-    pub const fn raw(self) -> u8
+    fn from(policy: NormalizationPolicy) -> Self
     {
-        return self.raw;
-    }
-
-    /// Returns whether this crate implements this normalization policy.
-    const fn is_supported(self) -> bool
-    {
-        return self.raw == NORMALIZATION_NONE_RAW;
+        return policy.raw;
     }
 }
 
@@ -645,16 +944,14 @@ impl RecordBoundaryRule
     pub const BETWEEN_RECORDS: Self = Self {
         raw: RECORD_BOUNDARY_BETWEEN_RECORDS_RAW,
     };
+}
 
-    /// Creates a supported record-boundary rule from raw commitment bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ChunkerError::UnsupportedRecordBoundaryRule`] when `raw` is
-    /// not implemented by this crate.
+impl TryFrom<u8> for RecordBoundaryRule
+{
+    type Error = ChunkerError;
+
     #[inline]
-    #[must_use = "unsupported record-boundary rules must be handled"]
-    pub const fn from_raw(raw: u8) -> Result<Self, ChunkerError>
+    fn try_from(raw: u8) -> Result<Self, Self::Error>
     {
         if raw == RECORD_BOUNDARY_BETWEEN_RECORDS_RAW {
             return Ok(Self { raw });
@@ -662,19 +959,14 @@ impl RecordBoundaryRule
 
         return Err(ChunkerError::UnsupportedRecordBoundaryRule { raw });
     }
+}
 
-    /// Returns the raw committed record-boundary rule.
+impl From<RecordBoundaryRule> for u8
+{
     #[inline]
-    #[must_use]
-    pub const fn raw(self) -> u8
+    fn from(rule: RecordBoundaryRule) -> Self
     {
-        return self.raw;
-    }
-
-    /// Returns whether this crate implements this boundary rule.
-    const fn is_supported(self) -> bool
-    {
-        return self.raw == RECORD_BOUNDARY_BETWEEN_RECORDS_RAW;
+        return rule.raw;
     }
 }
 
@@ -684,17 +976,17 @@ impl RecordBoundaryRule
 pub struct ChunkLimits
 {
     /// Minimum bytes before hash-predicate cuts are allowed.
-    min_bytes: u64,
+    min_bytes: ByteCount,
     /// Target bytes used to derive the Gear cut mask.
-    target_bytes: u64,
+    target_bytes: ByteCount,
     /// Hard byte cap for a chunk.
-    max_bytes: u64,
+    max_bytes: ByteCount,
     /// Minimum records before hash-predicate cuts are allowed.
-    min_records: u32,
+    min_records: RecordCount,
     /// Target records committed for the current profile and future profiles.
-    target_records: u32,
+    target_records: RecordCount,
     /// Hard record-count cap for a chunk.
-    max_records: u32,
+    max_records: RecordCount,
 }
 
 impl ChunkLimits
@@ -709,45 +1001,45 @@ impl ChunkLimits
     #[inline]
     #[must_use = "invalid chunk limits must be handled"]
     pub const fn new(
-        min_bytes: u64,
-        target_bytes: u64,
-        max_bytes: u64,
-        min_records: u32,
-        target_records: u32,
-        max_records: u32,
+        min_bytes: ByteCount,
+        target_bytes: ByteCount,
+        max_bytes: ByteCount,
+        min_records: RecordCount,
+        target_records: RecordCount,
+        max_records: RecordCount,
     ) -> Result<Self, ChunkerError>
     {
-        if min_bytes == 0_u64 || target_bytes == 0_u64 || max_bytes == 0_u64 {
+        if min_bytes.0 == 0_u64 || target_bytes.0 == 0_u64 || max_bytes.0 == 0_u64 {
             return Err(ChunkerError::InvalidParameters {
                 reason: InvalidParameterReason::ZeroByteLimit,
             });
         }
 
-        if min_records == 0_u32 || target_records == 0_u32 || max_records == 0_u32 {
+        if min_records.0 == 0_u32 || target_records.0 == 0_u32 || max_records.0 == 0_u32 {
             return Err(ChunkerError::InvalidParameters {
                 reason: InvalidParameterReason::ZeroRecordLimit,
             });
         }
 
-        if min_bytes > target_bytes {
+        if min_bytes.0 > target_bytes.0 {
             return Err(ChunkerError::InvalidParameters {
                 reason: InvalidParameterReason::MinByteExceedsTargetByte,
             });
         }
 
-        if target_bytes > max_bytes {
+        if target_bytes.0 > max_bytes.0 {
             return Err(ChunkerError::InvalidParameters {
                 reason: InvalidParameterReason::InvertedByteLimits,
             });
         }
 
-        if target_bytes > MAX_TARGET_BYTES {
+        if target_bytes.0 > MAX_TARGET_BYTES {
             return Err(ChunkerError::InvalidParameters {
                 reason: InvalidParameterReason::TargetByteExceedsU32,
             });
         }
 
-        if min_records > target_records || target_records > max_records {
+        if min_records.0 > target_records.0 || target_records.0 > max_records.0 {
             return Err(ChunkerError::InvalidParameters {
                 reason: InvalidParameterReason::InvertedRecordLimits,
             });
@@ -769,19 +1061,19 @@ impl ChunkLimits
     pub const fn default_fastcdc() -> Self
     {
         return Self {
-            min_bytes: DEFAULT_MIN_BYTES,
-            target_bytes: DEFAULT_TARGET_BYTES,
-            max_bytes: DEFAULT_MAX_BYTES,
-            min_records: DEFAULT_MIN_RECORDS,
-            target_records: DEFAULT_TARGET_RECORDS,
-            max_records: DEFAULT_MAX_RECORDS,
+            min_bytes: ByteCount(DEFAULT_MIN_BYTES),
+            target_bytes: ByteCount(DEFAULT_TARGET_BYTES),
+            max_bytes: ByteCount(DEFAULT_MAX_BYTES),
+            min_records: RecordCount(DEFAULT_MIN_RECORDS),
+            target_records: RecordCount(DEFAULT_TARGET_RECORDS),
+            max_records: RecordCount(DEFAULT_MAX_RECORDS),
         };
     }
 
     /// Returns the minimum byte count before hash cuts are allowed.
     #[inline]
     #[must_use]
-    pub const fn min_bytes(&self) -> u64
+    pub const fn min_bytes(&self) -> ByteCount
     {
         return self.min_bytes;
     }
@@ -789,7 +1081,7 @@ impl ChunkLimits
     /// Returns the target byte count used to derive the Gear cut mask.
     #[inline]
     #[must_use]
-    pub const fn target_bytes(&self) -> u64
+    pub const fn target_bytes(&self) -> ByteCount
     {
         return self.target_bytes;
     }
@@ -797,7 +1089,7 @@ impl ChunkLimits
     /// Returns the hard maximum byte count for a chunk.
     #[inline]
     #[must_use]
-    pub const fn max_bytes(&self) -> u64
+    pub const fn max_bytes(&self) -> ByteCount
     {
         return self.max_bytes;
     }
@@ -805,7 +1097,7 @@ impl ChunkLimits
     /// Returns the minimum record count before hash cuts are allowed.
     #[inline]
     #[must_use]
-    pub const fn min_records(&self) -> u32
+    pub const fn min_records(&self) -> RecordCount
     {
         return self.min_records;
     }
@@ -813,7 +1105,7 @@ impl ChunkLimits
     /// Returns the committed target record count.
     #[inline]
     #[must_use]
-    pub const fn target_records(&self) -> u32
+    pub const fn target_records(&self) -> RecordCount
     {
         return self.target_records;
     }
@@ -821,7 +1113,7 @@ impl ChunkLimits
     /// Returns the hard maximum record count for a chunk.
     #[inline]
     #[must_use]
-    pub const fn max_records(&self) -> u32
+    pub const fn max_records(&self) -> RecordCount
     {
         return self.max_records;
     }
@@ -854,11 +1146,11 @@ pub struct ChunkerParams
     /// Validated byte and record limits.
     limits: ChunkLimits,
     /// Stable fixed-order parameter commitment bytes.
-    commitment: [u8; PARAMETER_COMMITMENT_LEN],
+    commitment: ParameterCommitment,
     /// Initial Gear state for each chunk after seed-policy mixing.
-    initial_state: u64,
+    initial_state: GearState,
     /// Gear cut mask derived from target bytes.
-    cut_mask: u64,
+    cut_mask: CutMask,
 }
 
 impl ChunkerParams
@@ -881,33 +1173,9 @@ impl ChunkerParams
         limits: ChunkLimits,
     ) -> Result<Self, ChunkerError>
     {
-        if !algorithm_version.is_supported() {
-            return Err(ChunkerError::UnsupportedAlgorithmVersion {
-                raw: algorithm_version.raw(),
-            });
-        }
-
-        if !gear_table_version.is_supported() {
-            return Err(ChunkerError::UnsupportedGearTableVersion {
-                raw: gear_table_version.raw(),
-            });
-        }
-
-        if !seed_policy.is_supported() {
+        if let SeedPolicyKind::Unsupported(kind) = seed_policy.kind {
             return Err(ChunkerError::UnsupportedSeedPolicy {
-                kind: seed_policy.kind(),
-            });
-        }
-
-        if !normalization_policy.is_supported() {
-            return Err(ChunkerError::UnsupportedNormalizationPolicy {
-                raw: normalization_policy.raw(),
-            });
-        }
-
-        if !record_boundary_rule.is_supported() {
-            return Err(ChunkerError::UnsupportedRecordBoundaryRule {
-                raw: record_boundary_rule.raw(),
+                kind: u8::from(kind),
             });
         }
 
@@ -966,12 +1234,12 @@ impl ChunkerParams
         };
     }
 
-    /// Returns the stable fixed-order parameter commitment bytes.
+    /// Returns the stable fixed-order parameter commitment.
     #[inline]
     #[must_use]
-    pub fn commitment_bytes(&self) -> &[u8]
+    pub const fn commitment_bytes(&self) -> &ParameterCommitment
     {
-        return self.commitment.as_ref();
+        return &self.commitment;
     }
 
     /// Returns the committed algorithm version.
@@ -1023,13 +1291,13 @@ impl ChunkerParams
     }
 
     /// Returns the chunk-local initial Gear state.
-    const fn initial_state(&self) -> u64
+    const fn initial_state(&self) -> GearState
     {
         return self.initial_state;
     }
 
     /// Returns the Gear cut mask.
-    const fn cut_mask(&self) -> u64
+    const fn cut_mask(&self) -> CutMask
     {
         return self.cut_mask;
     }
@@ -1052,10 +1320,10 @@ impl Default for ChunkerParams
 )]
 pub struct ByteSpan
 {
-    /// Inclusive start byte offset.
-    pub start: u64,
-    /// Exclusive end byte offset.
-    pub end: u64,
+    /// Inclusive start byte position.
+    pub start: BytePosition,
+    /// Exclusive end byte position.
+    pub end: BytePosition,
 }
 
 impl ByteSpan
@@ -1064,25 +1332,25 @@ impl ByteSpan
     #[inline]
     #[must_use]
     pub const fn new(
-        start: u64,
-        end: u64,
+        start: BytePosition,
+        end: BytePosition,
     ) -> Self
     {
         return Self { start, end };
     }
 
-    /// Returns the inclusive start byte offset.
+    /// Returns the inclusive start byte position.
     #[inline]
     #[must_use]
-    pub const fn start(&self) -> u64
+    pub const fn start(&self) -> BytePosition
     {
         return self.start;
     }
 
-    /// Returns the exclusive end byte offset.
+    /// Returns the exclusive end byte position.
     #[inline]
     #[must_use]
-    pub const fn end(&self) -> u64
+    pub const fn end(&self) -> BytePosition
     {
         return self.end;
     }
@@ -1096,10 +1364,10 @@ impl ByteSpan
 )]
 pub struct RecordSpan
 {
-    /// Inclusive start record index.
-    pub start: u64,
-    /// Exclusive end record index.
-    pub end: u64,
+    /// Inclusive start record position.
+    pub start: RecordPosition,
+    /// Exclusive end record position.
+    pub end: RecordPosition,
 }
 
 impl RecordSpan
@@ -1108,25 +1376,25 @@ impl RecordSpan
     #[inline]
     #[must_use]
     pub const fn new(
-        start: u64,
-        end: u64,
+        start: RecordPosition,
+        end: RecordPosition,
     ) -> Self
     {
         return Self { start, end };
     }
 
-    /// Returns the inclusive start record index.
+    /// Returns the inclusive start record position.
     #[inline]
     #[must_use]
-    pub const fn start(&self) -> u64
+    pub const fn start(&self) -> RecordPosition
     {
         return self.start;
     }
 
-    /// Returns the exclusive end record index.
+    /// Returns the exclusive end record position.
     #[inline]
     #[must_use]
-    pub const fn end(&self) -> u64
+    pub const fn end(&self) -> RecordPosition
     {
         return self.end;
     }
@@ -1491,27 +1759,28 @@ impl fmt::Display for ArithmeticOperation
 #[must_use = "the returned chunk spans or chunking error must be handled"]
 #[inline]
 pub fn chunk_record_slices(
-    records: &[&[u8]],
+    records: CanonicalRecords<'_>,
     params: &ChunkerParams,
 ) -> Result<Vec<ChunkSpan>, ChunkerError>
 {
-    let mut scan = ChunkScan::new(params, records.len());
-    let mut record_index = 0_u64;
-    let mut next_start = 0_u64;
+    let records = records.as_ref();
+    let mut scan = ChunkScan::new(params, RecordCapacity::from(records.len()));
+    let mut record_index = RecordPosition::from(0_u64);
+    let mut next_start = BytePosition::from(0_u64);
     for record_ref in records {
-        let record = *record_ref;
-        let record_len = match u64::try_from(record.len()) {
-            | Ok(len) => len,
+        let record = CanonicalRecord::from(*record_ref);
+        let record_len = match u64::try_from(record.as_ref().len()) {
+            | Ok(len) => ByteCount::from(len),
             | Err(_error) => {
                 return Err(ChunkerError::ArithmeticOverflow {
                     operation: ArithmeticOperation::RecordLength,
                 });
             },
         };
-        let record_end = checked_add_u64(next_start, record_len, ArithmeticOperation::ByteOffset)?;
+        let record_end = next_start.checked_advance(record_len, ArithmeticOperation::ByteOffset)?;
         scan.consume_record(record_index, next_start, record_end, record)?;
         next_start = record_end;
-        record_index = checked_add_u64(record_index, 0x01_u64, ArithmeticOperation::RecordIndex)?;
+        record_index = record_index.checked_next()?;
     }
 
     scan.finish(record_index)?;
@@ -1533,22 +1802,23 @@ pub fn chunk_record_slices(
 #[must_use = "the returned chunk spans or chunking error must be handled"]
 #[inline]
 pub fn chunk_spans(
-    canonical_bytes: &[u8],
+    canonical_bytes: CanonicalBytes<'_>,
     record_spans: &[ByteSpan],
     params: &ChunkerParams,
 ) -> Result<Vec<ChunkSpan>, ChunkerError>
 {
+    let canonical_bytes = canonical_bytes.as_ref();
     let canonical_len = match u64::try_from(canonical_bytes.len()) {
-        | Ok(len) => len,
+        | Ok(len) => BytePosition::from(len),
         | Err(_error) => {
             return Err(ChunkerError::ArithmeticOverflow {
                 operation: ArithmeticOperation::ByteOffset,
             });
         },
     };
-    let mut scan = ChunkScan::new(params, record_spans.len());
-    let mut expected_start = 0_u64;
-    let mut record_index = 0_u64;
+    let mut scan = ChunkScan::new(params, RecordCapacity::from(record_spans.len()));
+    let mut expected_start = BytePosition::from(0_u64);
+    let mut record_index = RecordPosition::from(0_u64);
     let mut span_index = 0_usize;
 
     for candidate_ref in record_spans {
@@ -1560,12 +1830,12 @@ pub fn chunk_spans(
         if byte_bounds.end() > canonical_len {
             return Err(ChunkerError::RecordSpanOutOfBounds {
                 index: span_index,
-                end: byte_bounds.end(),
-                canonical_len,
+                end: u64::from(byte_bounds.end()),
+                canonical_len: u64::from(canonical_len),
             });
         }
 
-        let start = match usize::try_from(byte_bounds.start()) {
+        let start = match usize::try_from(u64::from(byte_bounds.start())) {
             | Ok(start) => start,
             | Err(_error) => {
                 return Err(ChunkerError::ArithmeticOverflow {
@@ -1573,7 +1843,7 @@ pub fn chunk_spans(
                 });
             },
         };
-        let end = match usize::try_from(byte_bounds.end()) {
+        let end = match usize::try_from(u64::from(byte_bounds.end())) {
             | Ok(end) => end,
             | Err(_error) => {
                 return Err(ChunkerError::ArithmeticOverflow {
@@ -1585,14 +1855,19 @@ pub fn chunk_spans(
         else {
             return Err(ChunkerError::RecordSpanOutOfBounds {
                 index: span_index,
-                end: byte_bounds.end(),
-                canonical_len,
+                end: u64::from(byte_bounds.end()),
+                canonical_len: u64::from(canonical_len),
             });
         };
 
-        scan.consume_record(record_index, byte_bounds.start(), byte_bounds.end(), record)?;
+        scan.consume_record(
+            record_index,
+            byte_bounds.start(),
+            byte_bounds.end(),
+            CanonicalRecord::from(record),
+        )?;
         expected_start = byte_bounds.end();
-        record_index = checked_add_u64(record_index, 0x01_u64, ArithmeticOperation::RecordIndex)?;
+        record_index = record_index.checked_next()?;
         span_index = match span_index.checked_add(0x01_usize) {
             | Some(next) => next,
             | None => {
@@ -1605,8 +1880,8 @@ pub fn chunk_spans(
 
     if expected_start != canonical_len {
         return Err(ChunkerError::UncoveredCanonicalBytes {
-            covered_end: expected_start,
-            canonical_len,
+            covered_end: u64::from(expected_start),
+            canonical_len: u64::from(canonical_len),
         });
     }
 
@@ -1620,23 +1895,23 @@ struct ChunkScan
     /// Validated byte and record limits for this scan.
     limits: ChunkLimits,
     /// Initial Gear state for each newly opened chunk.
-    initial_state: u64,
+    initial_state: GearState,
     /// Gear cut mask for the committed target size.
-    cut_mask: u64,
+    cut_mask: CutMask,
     /// Allocated boundary output.
     chunks: Vec<ChunkSpan>,
     /// Current chunk-local Gear state.
-    state: u64,
-    /// Start byte offset for the current chunk.
-    chunk_start_byte: u64,
-    /// Start record index for the current chunk.
-    chunk_start_record: u64,
+    state: GearState,
+    /// Start byte position for the current chunk.
+    chunk_start_byte: BytePosition,
+    /// Start record position for the current chunk.
+    chunk_start_record: RecordPosition,
     /// Current chunk byte count.
-    chunk_bytes: u64,
+    chunk_bytes: ByteCount,
     /// Current chunk record count.
-    chunk_records: u32,
-    /// End byte offset of the last consumed record.
-    last_record_end: u64,
+    chunk_records: RecordCount,
+    /// End byte position of the last consumed record.
+    last_record_end: BytePosition,
 }
 
 impl ChunkScan
@@ -1645,7 +1920,7 @@ impl ChunkScan
     /// record.
     fn new(
         params: &ChunkerParams,
-        record_capacity: usize,
+        record_capacity: RecordCapacity,
     ) -> Self
     {
         let initial_state = params.initial_state();
@@ -1653,66 +1928,62 @@ impl ChunkScan
             limits: *params.limits(),
             initial_state,
             cut_mask: params.cut_mask(),
-            chunks: Vec::with_capacity(record_capacity),
+            chunks: Vec::with_capacity(record_capacity.0),
             state: initial_state,
-            chunk_start_byte: 0_u64,
-            chunk_start_record: 0_u64,
-            chunk_bytes: 0_u64,
-            chunk_records: 0_u32,
-            last_record_end: 0_u64,
+            chunk_start_byte: BytePosition::from(0_u64),
+            chunk_start_record: RecordPosition::from(0_u64),
+            chunk_bytes: ByteCount::from(0_u64),
+            chunk_records: RecordCount::from(0_u32),
+            last_record_end: BytePosition::from(0_u64),
         };
     }
 
     /// Consumes one complete canonical record and may emit a boundary after it.
     fn consume_record(
         &mut self,
-        record_index: u64,
-        record_start: u64,
-        record_end: u64,
-        record: &[u8],
+        record_index: RecordPosition,
+        record_start: BytePosition,
+        record_end: BytePosition,
+        record: CanonicalRecord<'_>,
     ) -> Result<(), ChunkerError>
     {
         let record_len =
-            checked_sub_u64(record_end, record_start, ArithmeticOperation::RecordLength)?;
+            record_end.checked_distance_from(record_start, ArithmeticOperation::RecordLength)?;
         if record_len > self.limits.max_bytes() {
             return Err(ChunkerError::RecordByteLengthCapViolation {
-                record_index,
-                record_len,
-                max_bytes: self.limits.max_bytes(),
+                record_index: u64::from(record_index),
+                record_len: u64::from(record_len),
+                max_bytes: u64::from(self.limits.max_bytes()),
             });
         }
 
-        if self.chunk_records != 0_u32 {
-            let bytes_if_added = checked_add_u64(
-                self.chunk_bytes,
-                record_len,
-                ArithmeticOperation::ChunkByteCount,
-            )?;
-            let records_if_added = checked_add_u32(
-                self.chunk_records,
-                0x01_u32,
-                ArithmeticOperation::ChunkRecordCount,
-            )?;
+        if self.chunk_records != RecordCount::from(0_u32) {
+            let bytes_if_added = self
+                .chunk_bytes
+                .checked_add(record_len, ArithmeticOperation::ChunkByteCount)?;
+            let records_if_added = self
+                .chunk_records
+                .checked_increment(ArithmeticOperation::ChunkRecordCount)?;
 
             if bytes_if_added > self.limits.max_bytes() {
-                if !self.chunk_satisfies_minimum_limits() {
+                if !bool::from(self.chunk_satisfies_minimum_limits()) {
                     return Err(ChunkerError::ChunkByteCapViolation {
-                        chunk_start_record: self.chunk_start_record,
-                        next_record_index: record_index,
-                        attempted_bytes: bytes_if_added,
-                        max_bytes: self.limits.max_bytes(),
+                        chunk_start_record: u64::from(self.chunk_start_record),
+                        next_record_index: u64::from(record_index),
+                        attempted_bytes: u64::from(bytes_if_added),
+                        max_bytes: u64::from(self.limits.max_bytes()),
                     });
                 }
 
                 self.emit_boundary(BoundaryReason::MaxByteCap)?;
             }
             else if records_if_added > self.limits.max_records() {
-                if !self.chunk_satisfies_minimum_limits() {
+                if !bool::from(self.chunk_satisfies_minimum_limits()) {
                     return Err(ChunkerError::ChunkRecordCapViolation {
-                        chunk_start_record: self.chunk_start_record,
-                        next_record_index: record_index,
-                        attempted_records: records_if_added,
-                        max_records: self.limits.max_records(),
+                        chunk_start_record: u64::from(self.chunk_start_record),
+                        next_record_index: u64::from(record_index),
+                        attempted_records: u32::from(records_if_added),
+                        max_records: u32::from(self.limits.max_records()),
                     });
                 }
 
@@ -1720,40 +1991,36 @@ impl ChunkScan
             }
         }
 
-        if self.chunk_records == 0_u32 {
+        if self.chunk_records == RecordCount::from(0_u32) {
             self.chunk_start_byte = record_start;
             self.chunk_start_record = record_index;
             self.state = self.initial_state;
         }
 
         self.state = consume_record_bytes(self.state, record);
-        self.chunk_bytes = checked_add_u64(
-            self.chunk_bytes,
-            record_len,
-            ArithmeticOperation::ChunkByteCount,
-        )?;
-        self.chunk_records = checked_add_u32(
-            self.chunk_records,
-            0x01_u32,
-            ArithmeticOperation::ChunkRecordCount,
-        )?;
+        self.chunk_bytes = self
+            .chunk_bytes
+            .checked_add(record_len, ArithmeticOperation::ChunkByteCount)?;
+        self.chunk_records = self
+            .chunk_records
+            .checked_increment(ArithmeticOperation::ChunkRecordCount)?;
         self.last_record_end = record_end;
 
         if self.chunk_bytes > self.limits.max_bytes() {
             return Err(ChunkerError::ChunkByteCapViolation {
-                chunk_start_record: self.chunk_start_record,
-                next_record_index: record_index,
-                attempted_bytes: self.chunk_bytes,
-                max_bytes: self.limits.max_bytes(),
+                chunk_start_record: u64::from(self.chunk_start_record),
+                next_record_index: u64::from(record_index),
+                attempted_bytes: u64::from(self.chunk_bytes),
+                max_bytes: u64::from(self.limits.max_bytes()),
             });
         }
 
         if self.chunk_records > self.limits.max_records() {
             return Err(ChunkerError::ChunkRecordCapViolation {
-                chunk_start_record: self.chunk_start_record,
-                next_record_index: record_index,
-                attempted_records: self.chunk_records,
-                max_records: self.limits.max_records(),
+                chunk_start_record: u64::from(self.chunk_start_record),
+                next_record_index: u64::from(record_index),
+                attempted_records: u32::from(self.chunk_records),
+                max_records: u32::from(self.limits.max_records()),
             });
         }
 
@@ -1763,7 +2030,7 @@ impl ChunkScan
         else if self.chunk_records == self.limits.max_records() {
             self.emit_boundary(BoundaryReason::MaxRecordCap)?;
         }
-        else if self.hash_predicate_allows_cut() {
+        else if bool::from(self.hash_predicate_allows_cut()) {
             self.emit_boundary(BoundaryReason::HashPredicate)?;
         }
 
@@ -1773,13 +2040,12 @@ impl ChunkScan
     /// Emits the final non-empty remainder chunk.
     fn finish(
         &mut self,
-        next_record_index: u64,
+        next_record_index: RecordPosition,
     ) -> Result<(), ChunkerError>
     {
-        if self.chunk_records != 0_u32 {
-            let expected_end_record = checked_add_u64(
-                self.chunk_start_record,
-                u64::from(self.chunk_records),
+        if self.chunk_records != RecordCount::from(0_u32) {
+            let expected_end_record = self.chunk_start_record.checked_advance(
+                RecordDistance::from(self.chunk_records),
                 ArithmeticOperation::RecordIndex,
             )?;
             if expected_end_record != next_record_index {
@@ -1801,21 +2067,23 @@ impl ChunkScan
 
     /// Returns whether the current chunk has satisfied minimum byte and record
     /// limits.
-    const fn chunk_satisfies_minimum_limits(&self) -> bool
+    const fn chunk_satisfies_minimum_limits(&self) -> CutDecision
     {
-        return self.chunk_bytes >= self.limits.min_bytes()
-            && self.chunk_records >= self.limits.min_records();
+        return CutDecision(
+            self.chunk_bytes.0 >= self.limits.min_bytes().0
+                && self.chunk_records.0 >= self.limits.min_records().0,
+        );
     }
 
     /// Returns whether the current complete-record boundary satisfies the hash
     /// predicate.
-    const fn hash_predicate_allows_cut(&self) -> bool
+    const fn hash_predicate_allows_cut(&self) -> CutDecision
     {
-        if !self.chunk_satisfies_minimum_limits() {
-            return false;
+        if !self.chunk_satisfies_minimum_limits().0 {
+            return CutDecision(false);
         }
 
-        return (self.state & self.cut_mask) == 0_u64;
+        return CutDecision((self.state.0 & self.cut_mask.0) == 0_u64);
     }
 
     /// Emits a boundary for the current non-empty chunk and resets chunk-local
@@ -1825,13 +2093,12 @@ impl ChunkScan
         reason: BoundaryReason,
     ) -> Result<(), ChunkerError>
     {
-        if self.chunk_records == 0_u32 {
+        if self.chunk_records == RecordCount::from(0_u32) {
             return Ok(());
         }
 
-        let record_end = checked_add_u64(
-            self.chunk_start_record,
-            u64::from(self.chunk_records),
+        let record_end = self.chunk_start_record.checked_advance(
+            RecordDistance::from(self.chunk_records),
             ArithmeticOperation::RecordIndex,
         )?;
         self.chunks.push(ChunkSpan::new(
@@ -1841,8 +2108,8 @@ impl ChunkScan
         ));
         self.chunk_start_byte = self.last_record_end;
         self.chunk_start_record = record_end;
-        self.chunk_bytes = 0_u64;
-        self.chunk_records = 0_u32;
+        self.chunk_bytes = ByteCount::from(0_u64);
+        self.chunk_records = RecordCount::from(0_u32);
         self.state = self.initial_state;
 
         return Ok(());
@@ -1851,13 +2118,13 @@ impl ChunkScan
 
 /// Consumes bytes into the FastCDC-inspired chunk-local Gear state.
 fn consume_record_bytes(
-    mut state: u64,
-    record: &[u8],
-) -> u64
+    mut state: GearState,
+    record: CanonicalRecord<'_>,
+) -> GearState
 {
-    for byte_ref in record {
-        let byte = *byte_ref;
-        state = state.rotate_left(0x01_u32).wrapping_add(gear_for(byte));
+    for byte_ref in record.as_ref() {
+        let byte = InputByte::from(*byte_ref);
+        state.0 = state.0.rotate_left(0x01_u32).wrapping_add(gear_for(byte).0);
     }
 
     return state;
@@ -1866,53 +2133,53 @@ fn consume_record_bytes(
 /// Returns the Mach v1 Gear value for a byte.
 ///
 /// # Contract
-/// - requires: nothing; every `u8` maps to a table entry.
-/// - ensures: returns `MACH_V1_GEAR_TABLE[byte]`.
+/// - requires: nothing; every [`InputByte`] maps to a table entry.
+/// - ensures: returns the corresponding `MACH_V1_GEAR_TABLE` entry.
 /// - provides: the Gear mixing value for one input byte.
-/// - fails: cannot fail; the `unwrap_or` fallback is unreachable because
-///   `usize::from(byte)` is always in `0..=255` and the table has 256 entries.
+/// - fails: cannot fail; the fallback is unreachable because an input byte
+///   always names one of the table's 256 entries.
 /// - panics: none.
-fn gear_for(byte: u8) -> u64
+fn gear_for(byte: InputByte) -> GearValue
 {
-    let index = usize::from(byte);
+    let index = usize::from(byte.0);
 
     // `usize::from(byte)` is always in `0..=255` and `MACH_V1_GEAR_TABLE` has
     // exactly 256 entries, so the lookup always resolves; the fallback keeps the
     // access total without `unsafe` (gandr forbids partial functions).
-    return MACH_V1_GEAR_TABLE.get(index).copied().unwrap_or(0_u64);
+    return GearValue(MACH_V1_GEAR_TABLE.get(index).copied().unwrap_or(0_u64));
 }
 
-/// Returns a bit mask whose expected predicate interval tracks the target size.
-const fn cut_mask_for_target(target_bytes: u64) -> u64
+/// Returns a predicate mask whose expected interval tracks the target size.
+const fn cut_mask_for_target(target_bytes: ByteCount) -> CutMask
 {
-    if target_bytes <= 0x01_u64 {
-        return 0_u64;
+    if target_bytes.0 <= 0x01_u64 {
+        return CutMask(0_u64);
     }
 
-    let Some(power) = target_bytes.checked_next_power_of_two()
+    let Some(power) = target_bytes.0.checked_next_power_of_two()
     else {
-        return u64::MAX;
+        return CutMask(u64::MAX);
     };
     let Some(mask) = power.checked_sub(0x01_u64)
     else {
-        return 0_u64;
+        return CutMask(0_u64);
     };
 
-    return mask;
+    return CutMask(mask);
 }
 
 /// Derives deterministic chunk-local initial state from the committed seed
 /// policy.
-fn derive_initial_state(seed_policy: &SeedPolicy) -> u64
+fn derive_initial_state(seed_policy: &SeedPolicy) -> GearState
 {
-    let mut state = GEAR_STATE_IV ^ u64::from(seed_policy.kind());
-    for byte_ref in seed_policy.salt_bytes() {
+    let mut state = GEAR_STATE_IV ^ u64::from(u8::from(seed_policy.kind()));
+    for byte_ref in seed_policy.salt().as_ref() {
         let byte = *byte_ref;
         state = state.rotate_left(0x05_u32) ^ u64::from(byte);
         state = state.wrapping_mul(SEED_MIX_MULTIPLIER);
     }
 
-    return state;
+    return GearState(state);
 }
 
 /// Builds the fixed-order parameter commitment bytes.
@@ -1923,97 +2190,110 @@ fn build_parameter_commitment(
     normalization_policy: NormalizationPolicy,
     record_boundary_rule: RecordBoundaryRule,
     limits: &ChunkLimits,
-) -> [u8; PARAMETER_COMMITMENT_LEN]
+) -> ParameterCommitment
 {
-    return core::array::from_fn(|index| {
-        return commitment_byte_at(
-            index,
-            algorithm_version,
-            gear_table_version,
-            seed_policy,
-            normalization_policy,
-            record_boundary_rule,
-            limits,
-        );
-    });
+    return ParameterCommitment {
+        bytes: core::array::from_fn(|index| {
+            return commitment_byte_at(
+                CommitmentIndex::from(index),
+                algorithm_version,
+                gear_table_version,
+                seed_policy,
+                normalization_policy,
+                record_boundary_rule,
+                limits,
+            )
+            .0;
+        }),
+    };
 }
 
 /// Returns one byte from the parameter commitment by position.
 fn commitment_byte_at(
-    index: usize,
+    index: CommitmentIndex,
     algorithm_version: AlgorithmVersion,
     gear_table_version: GearTableVersion,
     seed_policy: &SeedPolicy,
     normalization_policy: NormalizationPolicy,
     record_boundary_rule: RecordBoundaryRule,
     limits: &ChunkLimits,
-) -> u8
+) -> CommitmentByte
 {
-    return match index {
+    return match index.0 {
         | 0x00_usize ..= 0x07_usize => magic_byte(index),
         | 0x08_usize ..= 0x09_usize => u16_be_byte(
-            COMMITMENT_FORMAT_VERSION,
-            relative_index(index, COMMITMENT_FORMAT_VERSION_OFFSET),
+            CommitmentWord::from(COMMITMENT_FORMAT_VERSION),
+            relative_index(
+                index,
+                CommitmentOffset::from(COMMITMENT_FORMAT_VERSION_OFFSET),
+            ),
         ),
         | 0x0A_usize ..= 0x0B_usize => u16_be_byte(
-            algorithm_version.raw(),
-            relative_index(index, COMMITMENT_ALGORITHM_OFFSET),
+            CommitmentWord::from(u16::from(algorithm_version)),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_ALGORITHM_OFFSET)),
         ),
         | 0x0C_usize ..= 0x0D_usize => u16_be_byte(
-            gear_table_version.raw(),
-            relative_index(index, COMMITMENT_TABLE_OFFSET),
+            CommitmentWord::from(u16::from(gear_table_version)),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_TABLE_OFFSET)),
         ),
-        | 0x0E_usize => seed_policy.kind(),
-        | 0x0F_usize ..= 0x2E_usize => {
-            salt_byte(seed_policy, relative_index(index, COMMITMENT_SALT_OFFSET))
-        },
-        | 0x2F_usize => normalization_policy.raw(),
-        | 0x30_usize => record_boundary_rule.raw(),
+        | 0x0E_usize => CommitmentByte::from(u8::from(seed_policy.kind())),
+        | 0x0F_usize ..= 0x2E_usize => salt_byte(
+            seed_policy,
+            relative_index(index, CommitmentOffset::from(COMMITMENT_SALT_OFFSET)),
+        ),
+        | 0x2F_usize => CommitmentByte::from(u8::from(normalization_policy)),
+        | 0x30_usize => CommitmentByte::from(u8::from(record_boundary_rule)),
         | 0x31_usize ..= 0x38_usize => u64_be_byte(
             limits.min_bytes(),
-            relative_index(index, COMMITMENT_MIN_BYTES_OFFSET),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_MIN_BYTES_OFFSET)),
         ),
         | 0x39_usize ..= 0x40_usize => u64_be_byte(
             limits.target_bytes(),
-            relative_index(index, COMMITMENT_TARGET_BYTES_OFFSET),
+            relative_index(
+                index,
+                CommitmentOffset::from(COMMITMENT_TARGET_BYTES_OFFSET),
+            ),
         ),
         | 0x41_usize ..= 0x48_usize => u64_be_byte(
             limits.max_bytes(),
-            relative_index(index, COMMITMENT_MAX_BYTES_OFFSET),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_MAX_BYTES_OFFSET)),
         ),
         | 0x49_usize ..= 0x4C_usize => u32_be_byte(
             limits.min_records(),
-            relative_index(index, COMMITMENT_MIN_RECORDS_OFFSET),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_MIN_RECORDS_OFFSET)),
         ),
         | 0x4D_usize ..= 0x50_usize => u32_be_byte(
             limits.target_records(),
-            relative_index(index, COMMITMENT_TARGET_RECORDS_OFFSET),
+            relative_index(
+                index,
+                CommitmentOffset::from(COMMITMENT_TARGET_RECORDS_OFFSET),
+            ),
         ),
         | 0x51_usize ..= 0x54_usize => u32_be_byte(
             limits.max_records(),
-            relative_index(index, COMMITMENT_MAX_RECORDS_OFFSET),
+            relative_index(index, CommitmentOffset::from(COMMITMENT_MAX_RECORDS_OFFSET)),
         ),
-        | _other => 0_u8,
+        | _other => CommitmentByte::from(0_u8),
     };
 }
 
-/// Computes a byte position relative to a known field offset.
+/// Computes a commitment position relative to a known field offset.
 const fn relative_index(
-    index: usize,
-    offset: usize,
-) -> usize
+    index: CommitmentIndex,
+    offset: CommitmentOffset,
+) -> CommitmentIndex
 {
-    if let Some(relative) = index.checked_sub(offset) {
-        return relative;
+    if let Some(relative) = index.0.checked_sub(offset.0) {
+        return CommitmentIndex(relative);
     }
 
-    return usize::MAX;
+    return CommitmentIndex(usize::MAX);
 }
 
 /// Returns one magic byte by position.
-const fn magic_byte(index: usize) -> u8
+const fn magic_byte(index: CommitmentIndex) -> CommitmentByte
 {
-    return match index {
+    return CommitmentByte(match index.0 {
         | 0x00_usize => b'M',
         | 0x01_usize => b'P',
         | 0x02_usize => b'B',
@@ -2023,67 +2303,67 @@ const fn magic_byte(index: usize) -> u8
         | 0x06_usize => b'0',
         | 0x07_usize => b'1',
         | _other => 0_u8,
-    };
+    });
 }
 
 /// Returns one salt byte by position.
 fn salt_byte(
     seed_policy: &SeedPolicy,
-    index: usize,
-) -> u8
+    index: CommitmentIndex,
+) -> CommitmentByte
 {
     let mut cursor = 0_usize;
-    for byte_ref in seed_policy.salt_bytes() {
-        if cursor == index {
-            return *byte_ref;
+    for byte_ref in seed_policy.salt().as_ref() {
+        if cursor == index.0 {
+            return CommitmentByte::from(*byte_ref);
         }
         cursor = match cursor.checked_add(0x01_usize) {
             | Some(next) => next,
-            | None => return 0_u8,
+            | None => return CommitmentByte::from(0_u8),
         };
     }
 
-    return 0_u8;
+    return CommitmentByte::from(0_u8);
 }
 
-/// Returns one big-endian byte from a `u16`.
+/// Returns one big-endian byte from a 16-bit commitment field.
 const fn u16_be_byte(
-    value: u16,
-    index: usize,
-) -> u8
+    value: CommitmentWord,
+    index: CommitmentIndex,
+) -> CommitmentByte
 {
-    let [b0, b1] = value.to_be_bytes();
-    return match index {
+    let [b0, b1] = value.0.to_be_bytes();
+    return CommitmentByte(match index.0 {
         | 0x00_usize => b0,
         | 0x01_usize => b1,
         | _other => 0_u8,
-    };
+    });
 }
 
-/// Returns one big-endian byte from a `u32`.
+/// Returns one big-endian byte from a record-count commitment field.
 const fn u32_be_byte(
-    value: u32,
-    index: usize,
-) -> u8
+    value: RecordCount,
+    index: CommitmentIndex,
+) -> CommitmentByte
 {
-    let [b0, b1, b2, b3] = value.to_be_bytes();
-    return match index {
+    let [b0, b1, b2, b3] = value.0.to_be_bytes();
+    return CommitmentByte(match index.0 {
         | 0x00_usize => b0,
         | 0x01_usize => b1,
         | 0x02_usize => b2,
         | 0x03_usize => b3,
         | _other => 0_u8,
-    };
+    });
 }
 
-/// Returns one big-endian byte from a `u64`.
+/// Returns one big-endian byte from a byte-count commitment field.
 const fn u64_be_byte(
-    value: u64,
-    index: usize,
-) -> u8
+    value: ByteCount,
+    index: CommitmentIndex,
+) -> CommitmentByte
 {
-    let [b0, b1, b2, b3, b4, b5, b6, b7] = value.to_be_bytes();
-    return match index {
+    let [b0, b1, b2, b3, b4, b5, b6, b7] = value.0.to_be_bytes();
+    return CommitmentByte(match index.0 {
         | 0x00_usize => b0,
         | 0x01_usize => b1,
         | 0x02_usize => b2,
@@ -2093,44 +2373,5 @@ const fn u64_be_byte(
         | 0x06_usize => b6,
         | 0x07_usize => b7,
         | _other => 0_u8,
-    };
-}
-
-/// Checked `u64` addition for scanner offsets and counters.
-const fn checked_add_u64(
-    lhs: u64,
-    rhs: u64,
-    operation: ArithmeticOperation,
-) -> Result<u64, ChunkerError>
-{
-    return match lhs.checked_add(rhs) {
-        | Some(sum) => Ok(sum),
-        | None => Err(ChunkerError::ArithmeticOverflow { operation }),
-    };
-}
-
-/// Checked `u64` subtraction for record length derivation.
-const fn checked_sub_u64(
-    lhs: u64,
-    rhs: u64,
-    operation: ArithmeticOperation,
-) -> Result<u64, ChunkerError>
-{
-    return match lhs.checked_sub(rhs) {
-        | Some(difference) => Ok(difference),
-        | None => Err(ChunkerError::ArithmeticOverflow { operation }),
-    };
-}
-
-/// Checked `u32` addition for per-chunk record counts.
-const fn checked_add_u32(
-    lhs: u32,
-    rhs: u32,
-    operation: ArithmeticOperation,
-) -> Result<u32, ChunkerError>
-{
-    return match lhs.checked_add(rhs) {
-        | Some(sum) => Ok(sum),
-        | None => Err(ChunkerError::ArithmeticOverflow { operation }),
-    };
+    });
 }

@@ -50,8 +50,15 @@ mod tests
 
     fn one_record_per_leaf_params() -> TreeParams
     {
-        let limits = ChunkLimits::new(1_u64, 64_u64, 4096_u64, 1_u32, 1_u32, 1_u32)
-            .expect("one-record leaf chunk limits should be valid");
+        let limits = ChunkLimits::new(
+            1_u64.into(),
+            64_u64.into(),
+            4096_u64.into(),
+            1_u32.into(),
+            1_u32.into(),
+            1_u32.into(),
+        )
+        .expect("one-record leaf chunk limits should be valid");
         let chunker_params = ChunkerParams::new(
             AlgorithmVersion::FASTCDC_2020,
             GearTableVersion::MACH_V1,

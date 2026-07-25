@@ -301,8 +301,15 @@ mod tests
 
     fn compact_params() -> TreeParams
     {
-        let limits = ChunkLimits::new(1_u64, 64_u64, 4096_u64, 2_u32, 2_u32, 2_u32)
-            .expect("compact chunk limits should be valid");
+        let limits = ChunkLimits::new(
+            1_u64.into(),
+            64_u64.into(),
+            4096_u64.into(),
+            2_u32.into(),
+            2_u32.into(),
+            2_u32.into(),
+        )
+        .expect("compact chunk limits should be valid");
         let chunker_params = ChunkerParams::new(
             AlgorithmVersion::FASTCDC_2020,
             GearTableVersion::MACH_V1,

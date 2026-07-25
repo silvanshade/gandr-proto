@@ -22,6 +22,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
+use gandr_storage_chunker::CanonicalRecords;
 use gandr_storage_chunker::chunk_record_slices;
 
 use crate::error::ProllyBaoError;
@@ -1810,7 +1811,10 @@ impl PortableProofTree
         let owned_records = own_records(records);
         let canonical_records = canonical_record_bytes(records)?;
         let record_slices = borrowed_slices(canonical_records.as_ref());
-        let chunk_spans = chunk_record_slices(record_slices.as_ref(), params.chunker_params())?;
+        let chunk_spans = chunk_record_slices(
+            CanonicalRecords::from(record_slices.as_ref()),
+            params.chunker_params(),
+        )?;
 
         let mut leaves = Vec::<LeafBuild>::new();
 
@@ -1820,11 +1824,11 @@ impl PortableProofTree
         else {
             for span in chunk_spans {
                 let start = usize_from_u64(
-                    span.records.start,
+                    u64::from(span.records.start),
                     "chunk start record index does not fit usize",
                 )?;
                 let end = usize_from_u64(
-                    span.records.end,
+                    u64::from(span.records.end),
                     "chunk end record index does not fit usize",
                 )?;
                 let chunk_records =
@@ -2726,7 +2730,7 @@ fn ensure_supported_params(params: &TreeParams) -> Result<(), ProllyBaoError>
         });
     }
 
-    if params.chunker_parameter_bytes() != params.chunker_params().commitment_bytes() {
+    if params.chunker_parameter_bytes() != params.chunker_params().commitment_bytes().as_ref() {
         return Err(ProllyBaoError::IncompatibleTreeParameters {
             context: "chunker commitment copy does not match chunker parameters",
         });

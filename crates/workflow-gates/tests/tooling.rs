@@ -1481,8 +1481,6 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
             "--exclude",
             "gandr-workflow-dylint",
             "--exclude",
-            "gandr-storage-chunker",
-            "--exclude",
             "gandr-storage-prolly-trees",
             "--exclude",
             "gandr-workflow-docs",

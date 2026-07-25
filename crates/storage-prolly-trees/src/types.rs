@@ -204,7 +204,7 @@ impl TreeParams
         chunker_params: ChunkerParams,
     ) -> Self
     {
-        let chunker_parameter_bytes = Box::<[u8]>::from(chunker_params.commitment_bytes());
+        let chunker_parameter_bytes = Box::<[u8]>::from(chunker_params.commitment_bytes().as_ref());
 
         return Self {
             kind,
