@@ -187,11 +187,12 @@ where
     let tree = ProllyTree::build(record_refs.as_slice(), params, store)?;
     let root = tree.root().clone();
     let root_node_hash = tree.root_node_hash();
-    let chunker_commitment = ChunkerCommitment::try_from(root.params().chunker_parameter_bytes())?;
+    let chunker_commitment =
+        ChunkerCommitment::try_from(root.params().chunker_parameter_commitment().as_ref())?;
     let manifest = ArtifactManifest::new(
         records.inner_format_version(),
         chunker_commitment,
-        ArtifactRecordCount::from(root.record_count()),
+        ArtifactRecordCount::from(u64::from(root.record_count())),
         root_node_hash,
     );
     let identity = manifest.identity();

@@ -20,21 +20,24 @@
 //!   reconstruction remain outside this module.
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 
 use crate::error::ProllyBaoError;
 #[cfg(feature = "proofs")]
 use crate::proof::MembershipProof;
 #[cfg(feature = "proofs")]
 use crate::proof::NonMembershipProof;
+use crate::proof::OwnedSnapshotBytes;
 use crate::proof::PortableProofTree;
 #[cfg(feature = "proofs")]
 use crate::proof::RangeProof;
+use crate::proof::SnapshotBuffer;
 use crate::store::BlockStore;
 use crate::types::KeyRangeRef;
 use crate::types::NodeHash;
 use crate::types::Record;
+use crate::types::RecordKey;
 use crate::types::RecordRef;
+use crate::types::RecordValue;
 use crate::types::StoredNodeRef;
 use crate::types::TreeParams;
 use crate::types::TreeRoot;
@@ -46,6 +49,7 @@ use crate::types::TreeRoot;
     reason = "public API intentionally uses ProllyTree terminology"
 )]
 #[non_exhaustive]
+#[repr(transparent)]
 pub struct ProllyTree
 {
     /// Proof-oriented tree carrying encoded nodes and owned records.
@@ -145,7 +149,7 @@ impl ProllyTree
     #[inline]
     pub fn encode_snapshot_bytes(
         &self,
-        out: &mut Vec<u8>,
+        out: &mut SnapshotBuffer,
     ) -> Result<(), ProllyBaoError>
     {
         return self.portable.encode_snapshot_bytes(out);
@@ -161,7 +165,7 @@ impl ProllyTree
     /// Returns an error when the underlying portable tree cannot represent a
     /// length or count in the deterministic snapshot format.
     #[inline]
-    pub fn to_snapshot_bytes(&self) -> Result<Box<[u8]>, ProllyBaoError>
+    pub fn to_snapshot_bytes(&self) -> Result<OwnedSnapshotBytes, ProllyBaoError>
     {
         return self.portable.to_snapshot_bytes();
     }
@@ -171,8 +175,8 @@ impl ProllyTree
     #[must_use]
     pub fn lookup(
         &self,
-        key: &[u8],
-    ) -> Option<&[u8]>
+        key: RecordKey<'_>,
+    ) -> Option<RecordValue<'_>>
     {
         return self.portable.lookup(key);
     }
@@ -202,7 +206,7 @@ impl ProllyTree
     #[cfg(feature = "proofs")]
     pub fn prove_membership(
         &self,
-        key: &[u8],
+        key: RecordKey<'_>,
     ) -> Result<MembershipProof, ProllyBaoError>
     {
         return self.portable.prove_membership(key);
@@ -217,7 +221,7 @@ impl ProllyTree
     #[cfg(feature = "proofs")]
     pub fn prove_non_membership(
         &self,
-        key: &[u8],
+        key: RecordKey<'_>,
     ) -> Result<NonMembershipProof, ProllyBaoError>
     {
         return self.portable.prove_non_membership(key);

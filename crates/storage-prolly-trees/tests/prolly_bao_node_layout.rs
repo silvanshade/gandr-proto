@@ -11,6 +11,9 @@
 )]
 
 #[cfg(test)]
+mod support;
+
+#[cfg(test)]
 mod tests
 {
     use gandr_storage_chunker::AlgorithmVersion;
@@ -20,16 +23,27 @@ mod tests
     use gandr_storage_chunker::NormalizationPolicy;
     use gandr_storage_chunker::RecordBoundaryRule;
     use gandr_storage_chunker::SeedPolicy;
+    use gandr_storage_prolly_trees::EncodedLength;
     use gandr_storage_prolly_trees::EncodedNodeKind;
     use gandr_storage_prolly_trees::EncodedNodeLayout;
     use gandr_storage_prolly_trees::NODE_HASH_LEN;
+    use gandr_storage_prolly_trees::NodeChildCount;
+    use gandr_storage_prolly_trees::NodeOccupancy;
     use gandr_storage_prolly_trees::PortableProofTree;
     use gandr_storage_prolly_trees::ProllyBaoError;
     use gandr_storage_prolly_trees::ProofNode;
     use gandr_storage_prolly_trees::RecordRef;
     use gandr_storage_prolly_trees::TreeParams;
+    use gandr_storage_prolly_trees::TreeRecordCount;
     use gandr_storage_prolly_trees::hash_encoded_node;
     use gandr_storage_prolly_trees::inspect_encoded_node;
+
+    use crate::support::ByteOffset;
+    use crate::support::FixtureBytes;
+    use crate::support::FixtureBytesMut;
+    use crate::support::FixtureLong;
+    use crate::support::OwnedFixtureBytes;
+    use crate::support::TestContext;
 
     const NODE_MAGIC: &[u8] = b"prolly-bao:node:v1";
     const NODE_VERSION_LEN: usize = 2_usize;
@@ -105,7 +119,7 @@ mod tests
         );
         assert_eq!(
             layout.record_count(),
-            Some(0_u64),
+            Some(TreeRecordCount::from(0_u64)),
             "empty leaf should report zero records"
         );
         assert_eq!(
@@ -113,7 +127,11 @@ mod tests
             None,
             "leaf layout should not report an internal child count"
         );
-        assert!(layout.is_empty(), "zero-record leaf should be marked empty");
+        assert_eq!(
+            layout.occupancy(),
+            NodeOccupancy::Empty,
+            "zero-record leaf should be marked empty"
+        );
     }
 
     #[test]
@@ -135,7 +153,7 @@ mod tests
         );
         assert_eq!(
             layout.record_count(),
-            Some(1_u64),
+            Some(TreeRecordCount::from(1_u64)),
             "single-record leaf should report one record"
         );
         assert_eq!(
@@ -143,8 +161,9 @@ mod tests
             None,
             "leaf layout should not report an internal child count"
         );
-        assert!(
-            !layout.is_empty(),
+        assert_eq!(
+            layout.occupancy(),
+            NodeOccupancy::NonEmpty,
             "single-record leaf should not be marked empty"
         );
     }
@@ -174,11 +193,12 @@ mod tests
         );
         assert_eq!(
             root_layout.child_count(),
-            Some(3_u64),
+            Some(NodeChildCount::from(3_u64)),
             "one-record-per-leaf params should produce three child references"
         );
-        assert!(
-            !root_layout.is_empty(),
+        assert_eq!(
+            root_layout.occupancy(),
+            NodeOccupancy::NonEmpty,
             "internal root with child references should not be marked empty"
         );
         assert_eq!(
@@ -196,7 +216,7 @@ mod tests
             );
             assert_eq!(
                 leaf_layout.record_count(),
-                Some(1_u64),
+                Some(TreeRecordCount::from(1_u64)),
                 "one-record-per-leaf params should produce one record per leaf"
             );
             assert_eq!(
@@ -204,8 +224,9 @@ mod tests
                 None,
                 "leaf child nodes should not report internal child counts"
             );
-            assert!(
-                !leaf_layout.is_empty(),
+            assert_eq!(
+                leaf_layout.occupancy(),
+                NodeOccupancy::NonEmpty,
                 "single-record child leaves should not be marked empty"
             );
         }
@@ -222,12 +243,12 @@ mod tests
             .expect("valid leaf bytes should include node magic");
         *wrong_magic_first ^= 0x01_u8;
         let wrong_magic_error = expect_inspection_failure(
-            wrong_magic.as_slice(),
-            "wrong node magic should fail inspection",
+            (wrong_magic.as_slice()).into(),
+            ("wrong node magic should fail inspection").into(),
         );
         assert_malformed_node_error(
             &wrong_magic_error,
-            "wrong node magic should report malformed node bytes",
+            ("wrong node magic should report malformed node bytes").into(),
         );
 
         let mut unsupported_kind = valid_leaf.clone();
@@ -236,12 +257,12 @@ mod tests
             .expect("valid leaf bytes should include a kind byte");
         *unsupported_kind_slot = 0xff_u8;
         let unsupported_kind_error = expect_inspection_failure(
-            unsupported_kind.as_slice(),
-            "unsupported node kind should fail inspection",
+            (unsupported_kind.as_slice()).into(),
+            ("unsupported node kind should fail inspection").into(),
         );
         assert_malformed_node_error(
             &unsupported_kind_error,
-            "unsupported node kind should report malformed node bytes",
+            ("unsupported node kind should report malformed node bytes").into(),
         );
 
         let truncated_len = NODE_HEADER_LEN + 4_usize;
@@ -249,40 +270,40 @@ mod tests
             .get(.. truncated_len)
             .expect("valid leaf bytes should include a truncated record-count prefix");
         let truncated_length_error = expect_inspection_failure(
-            truncated_length,
-            "truncated leaf length field should fail inspection",
+            (truncated_length).into(),
+            ("truncated leaf length field should fail inspection").into(),
         );
         assert_malformed_node_error(
             &truncated_length_error,
-            "truncated leaf length field should report malformed node bytes",
+            ("truncated leaf length field should report malformed node bytes").into(),
         );
 
         let mut trailing_bytes = valid_leaf.clone();
         trailing_bytes.push(0x00_u8);
         let trailing_bytes_error = expect_inspection_failure(
-            trailing_bytes.as_slice(),
-            "trailing node bytes should fail inspection",
+            (trailing_bytes.as_slice()).into(),
+            ("trailing node bytes should fail inspection").into(),
         );
         assert_malformed_node_error(
             &trailing_bytes_error,
-            "trailing node bytes should report malformed node bytes",
+            ("trailing node bytes should report malformed node bytes").into(),
         );
 
         let mut malformed_child_reference = internal_root_bytes();
         let child_record_count_offset =
-            first_child_record_count_offset(malformed_child_reference.as_slice());
+            first_child_record_count_offset((malformed_child_reference.as_slice()).into());
         overwrite_be_u64(
-            malformed_child_reference.as_mut_slice(),
+            (malformed_child_reference.as_mut_slice()).into(),
             child_record_count_offset,
-            0_u64,
+            (0_u64).into(),
         );
         let malformed_child_error = expect_inspection_failure(
-            malformed_child_reference.as_slice(),
-            "malformed child reference should fail inspection",
+            (malformed_child_reference.as_slice()).into(),
+            ("malformed child reference should fail inspection").into(),
         );
         assert_malformed_node_error(
             &malformed_child_error,
-            "malformed child reference should report malformed node bytes",
+            ("malformed child reference should report malformed node bytes").into(),
         );
     }
 
@@ -293,7 +314,7 @@ mod tests
 
         assert_eq!(
             layout.encoded_len(),
-            node.bytes().len(),
+            EncodedLength::from(node.bytes().as_ref().len()),
             "layout should report the exact canonical node byte length"
         );
         assert_eq!(
@@ -305,7 +326,7 @@ mod tests
         return layout;
     }
 
-    fn single_leaf_bytes() -> Vec<u8>
+    fn single_leaf_bytes() -> OwnedFixtureBytes
     {
         let fixture_records = [RecordRef::new(b"a", b"alpha")];
         let tree = PortableProofTree::build(fixture_records.as_slice(), TreeParams::current())
@@ -315,10 +336,10 @@ mod tests
             .first()
             .expect("single-record fixture should carry a root node");
 
-        return Vec::<u8>::from(node.bytes());
+        return node.bytes().as_ref().to_vec().into();
     }
 
-    fn internal_root_bytes() -> Vec<u8>
+    fn internal_root_bytes() -> OwnedFixtureBytes
     {
         let tree = build_multi_leaf_tree();
         let node = tree
@@ -332,32 +353,33 @@ mod tests
             "multi-leaf fixture root should be internal"
         );
 
-        return Vec::<u8>::from(node.bytes());
+        return node.bytes().as_ref().to_vec().into();
     }
 
     fn expect_inspection_failure(
-        bytes: &[u8],
-        context: &'static str,
+        bytes: FixtureBytes<'_>,
+        context: TestContext,
     ) -> ProllyBaoError
     {
-        return inspect_encoded_node(bytes).expect_err(context);
+        return inspect_encoded_node(bytes.as_ref().into()).expect_err(context.into());
     }
 
     fn assert_malformed_node_error(
         error: &ProllyBaoError,
-        context: &'static str,
+        context: TestContext,
     )
     {
+        let context: &'static str = context.into();
         assert!(
             matches!(error, ProllyBaoError::MalformedNodeBytes { .. }),
             "{context}"
         );
     }
 
-    fn first_child_record_count_offset(bytes: &[u8]) -> usize
+    fn first_child_record_count_offset(bytes: FixtureBytes<'_>) -> ByteOffset
     {
-        let first_separator_len = read_be_u64(bytes, INTERNAL_CHILD_SECTION_OFFSET);
-        let first_separator_len_usize = usize::try_from(first_separator_len)
+        let first_separator_len = read_be_u64(bytes, INTERNAL_CHILD_SECTION_OFFSET.into());
+        let first_separator_len_usize = usize::try_from(u64::from(first_separator_len))
             .expect("first separator length should fit usize in fixture bytes");
         let after_separator_len = INTERNAL_CHILD_SECTION_OFFSET
             .checked_add(U64_LEN)
@@ -368,14 +390,17 @@ mod tests
 
         return after_separator_key
             .checked_add(NODE_HASH_LEN)
-            .expect("first child record-count offset should not overflow");
+            .expect("first child record-count offset should not overflow")
+            .into();
     }
 
     fn read_be_u64(
-        bytes: &[u8],
-        offset: usize,
-    ) -> u64
+        bytes: FixtureBytes<'_>,
+        offset: ByteOffset,
+    ) -> FixtureLong
     {
+        let bytes = bytes.as_ref();
+        let offset = usize::from(offset);
         let end = offset
             .checked_add(U64_LEN)
             .expect("u64 field end offset should not overflow");
@@ -385,15 +410,18 @@ mod tests
         let mut encoded = [0_u8; U64_LEN];
         encoded.copy_from_slice(field);
 
-        return u64::from_be_bytes(encoded);
+        return u64::from_be_bytes(encoded).into();
     }
 
     fn overwrite_be_u64(
-        bytes: &mut [u8],
-        offset: usize,
-        value: u64,
+        mut bytes: FixtureBytesMut<'_>,
+        offset: ByteOffset,
+        value: FixtureLong,
     )
     {
+        let bytes = bytes.as_mut();
+        let offset = usize::from(offset);
+        let value = u64::from(value);
         let end = offset
             .checked_add(U64_LEN)
             .expect("u64 field end offset should not overflow");

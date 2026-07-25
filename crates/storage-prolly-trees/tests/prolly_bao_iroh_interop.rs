@@ -11,6 +11,9 @@
 )]
 
 #[cfg(test)]
+mod support;
+
+#[cfg(test)]
 mod tests
 {
     use gandr_storage_chunker::AlgorithmVersion;
@@ -31,9 +34,14 @@ mod tests
     use gandr_storage_prolly_trees::WitnessTranscript;
     use gandr_storage_prolly_trees::verify_snapshot_bytes;
 
+    use crate::support::FixtureBytes;
+    use crate::support::FixtureBytesMut;
+    use crate::support::OwnedFixtureBytes;
+
     const SNAPSHOT_MAGIC: &[u8] = b"prolly-bao:snapshot:v1";
     const WITNESS_MAGIC: &[u8] = b"prolly-bao:witness:v1";
 
+    #[repr(transparent)]
     #[derive(Default)]
     struct DeterministicBlobCache
     {
@@ -44,9 +52,10 @@ mod tests
     {
         fn store(
             &mut self,
-            bytes: &[u8],
+            bytes: FixtureBytes<'_>,
         ) -> blake3::Hash
         {
+            let bytes = bytes.as_ref();
             let hash = blake3::hash(bytes);
 
             if self.read(&hash).is_none() {
@@ -59,12 +68,12 @@ mod tests
         fn read(
             &self,
             hash: &blake3::Hash,
-        ) -> Option<&[u8]>
+        ) -> Option<FixtureBytes<'_>>
         {
             for entry in self.entries.as_slice() {
                 let (stored_hash, bytes) = (&entry.0, entry.1.as_ref());
                 if stored_hash == hash {
-                    return Some(bytes);
+                    return Some(bytes.into());
                 }
             }
 
@@ -96,20 +105,23 @@ mod tests
         );
 
         let mut cache = DeterministicBlobCache::default();
-        let snapshot_hash = cache.store(snapshot_bytes.as_ref());
+        let snapshot_hash = cache.store((snapshot_bytes.as_ref()).into());
         let readback = cache
             .read(&snapshot_hash)
             .expect("stored snapshot bytes should be present under their flat BLAKE3 hash");
 
         assert_eq!(
-            readback,
+            readback.as_ref(),
             snapshot_bytes.as_ref(),
             "cache readback should recover the exact canonical snapshot bytes"
         );
 
-        let verified =
-            verify_snapshot_bytes(readback, first_tree.root(), first_tree.root().params())
-                .expect("snapshot bytes should remain bound to the Prolly-Bao root");
+        let verified = verify_snapshot_bytes(
+            readback.as_ref().into(),
+            first_tree.root(),
+            first_tree.root().params(),
+        )
+        .expect("snapshot bytes should remain bound to the Prolly-Bao root");
         assert_eq!(
             verified.root(),
             first_tree.root(),
@@ -122,10 +134,10 @@ mod tests
         );
 
         let mut tampered = Vec::<u8>::from(snapshot_bytes.as_ref());
-        flip_last_byte(tampered.as_mut_slice());
+        flip_last_byte((tampered.as_mut_slice()).into());
         assert!(
             verify_snapshot_bytes(
-                tampered.as_slice(),
+                tampered.as_slice().into(),
                 first_tree.root(),
                 first_tree.root().params()
             )
@@ -145,7 +157,7 @@ mod tests
 
         let wrong_root_tree = build_wrong_root_tree();
         let wrong_root_error = verify_snapshot_bytes(
-            snapshot_bytes.as_ref(),
+            (snapshot_bytes.as_ref()).into(),
             wrong_root_tree.root(),
             wrong_root_tree.root().params(),
         )
@@ -158,17 +170,23 @@ mod tests
             "wrong root should fail through the root/hash verifier path"
         );
 
-        let truncated = prefix_without_last_byte(snapshot_bytes.as_ref());
+        let truncated = prefix_without_last_byte((snapshot_bytes.as_ref()).into());
         assert!(
-            verify_snapshot_bytes(truncated, first_tree.root(), first_tree.root().params())
-                .is_err(),
+            verify_snapshot_bytes(
+                truncated.as_ref().into(),
+                first_tree.root(),
+                first_tree.root().params()
+            )
+            .is_err(),
             "truncated snapshot bytes must fail verification"
         );
 
-        let unsupported_version =
-            bytes_with_unsupported_version(snapshot_bytes.as_ref(), SNAPSHOT_MAGIC);
+        let unsupported_version = bytes_with_unsupported_version(
+            (snapshot_bytes.as_ref()).into(),
+            (SNAPSHOT_MAGIC).into(),
+        );
         let unsupported_error = verify_snapshot_bytes(
-            unsupported_version.as_slice(),
+            (unsupported_version.as_slice()).into(),
             first_tree.root(),
             first_tree.root().params(),
         )
@@ -187,8 +205,9 @@ mod tests
     {
         let first_tree = build_tree();
         let second_tree = build_tree();
-        let witness_bytes = membership_witness_bytes(&first_tree, b"c");
-        let rebuilt_witness_bytes = membership_witness_bytes(&second_tree, b"c");
+        let witness_bytes = membership_witness_bytes(&first_tree, (b"c".as_slice()).into());
+        let rebuilt_witness_bytes =
+            membership_witness_bytes(&second_tree, (b"c".as_slice()).into());
 
         assert_eq!(
             first_tree.root(),
@@ -202,25 +221,25 @@ mod tests
         );
 
         let mut cache = DeterministicBlobCache::default();
-        let witness_hash = cache.store(witness_bytes.as_ref());
+        let witness_hash = cache.store((witness_bytes.as_ref()).into());
         let readback = cache
             .read(&witness_hash)
             .expect("stored witness bytes should be present under their flat BLAKE3 hash");
 
         assert_eq!(
-            readback,
+            readback.as_ref(),
             witness_bytes.as_ref(),
             "cache readback should recover the exact witness bytes"
         );
 
-        let decoded = WitnessTranscript::decode(readback)
+        let decoded = WitnessTranscript::decode(readback.as_ref().into())
             .expect("readback witness bytes should decode as a native transcript");
         decoded
             .verify_membership(
                 first_tree.root(),
                 first_tree.root().params(),
-                b"c",
-                b"charlie",
+                (b"c").into(),
+                (b"charlie").into(),
             )
             .expect("witness semantics should remain bound to the Prolly-Bao root");
 
@@ -229,8 +248,8 @@ mod tests
             .verify_membership(
                 wrong_root_tree.root(),
                 wrong_root_tree.root().params(),
-                b"c",
-                b"charlie",
+                (b"c").into(),
+                (b"charlie").into(),
             )
             .expect_err("witness bytes must not verify under a different root context");
         assert!(
@@ -242,9 +261,9 @@ mod tests
         );
 
         let mut tampered = Vec::<u8>::from(witness_bytes.as_ref());
-        flip_last_byte(tampered.as_mut_slice());
+        flip_last_byte((tampered.as_mut_slice()).into());
         assert!(
-            WitnessTranscript::decode(tampered.as_slice()).is_err(),
+            WitnessTranscript::decode(tampered.as_slice().into()).is_err(),
             "mutated witness bytes must fail decode before semantic verification"
         );
         assert!(
@@ -256,15 +275,15 @@ mod tests
             "missing local cache entries must stay absent"
         );
 
-        let truncated = prefix_without_last_byte(witness_bytes.as_ref());
+        let truncated = prefix_without_last_byte((witness_bytes.as_ref()).into());
         assert!(
-            WitnessTranscript::decode(truncated).is_err(),
+            WitnessTranscript::decode(truncated.as_ref().into()).is_err(),
             "truncated witness bytes must fail decode"
         );
 
         let unsupported_version =
-            bytes_with_unsupported_version(witness_bytes.as_ref(), WITNESS_MAGIC);
-        let unsupported_error = WitnessTranscript::decode(unsupported_version.as_slice())
+            bytes_with_unsupported_version((witness_bytes.as_ref()).into(), (WITNESS_MAGIC).into());
+        let unsupported_error = WitnessTranscript::decode((unsupported_version.as_slice()).into())
             .expect_err("unsupported witness versions must fail closed");
         assert!(
             matches!(
@@ -347,30 +366,35 @@ mod tests
 
     fn membership_witness_bytes(
         tree: &PortableProofTree,
-        key: &[u8],
-    ) -> Box<[u8]>
+        key: FixtureBytes<'_>,
+    ) -> OwnedFixtureBytes
     {
         let proof = tree
-            .prove_membership(key)
+            .prove_membership(key.as_ref().into())
             .expect("existing key should produce a membership proof");
         let witness = WitnessTranscript::from_membership_proof(proof)
             .expect("membership proof should form a witness transcript");
 
         return witness
             .to_bytes()
-            .expect("membership witness should encode to deterministic bytes");
+            .expect("membership witness should encode to deterministic bytes")
+            .as_ref()
+            .to_vec()
+            .into();
     }
 
-    fn flip_last_byte(bytes: &mut [u8])
+    fn flip_last_byte(mut bytes: FixtureBytesMut<'_>)
     {
+        let bytes = bytes.as_mut();
         let last = bytes
             .last_mut()
             .expect("fixture bytes should include at least one byte");
         *last ^= 0x01_u8;
     }
 
-    fn prefix_without_last_byte(bytes: &[u8]) -> &[u8]
+    fn prefix_without_last_byte<'bytes>(bytes: FixtureBytes<'bytes>) -> FixtureBytes<'bytes>
     {
+        let bytes: &'bytes [u8] = bytes.into();
         let truncated_len = bytes
             .len()
             .checked_sub(1_usize)
@@ -378,16 +402,17 @@ mod tests
 
         return bytes
             .get(.. truncated_len)
-            .expect("truncated prefix should be in bounds");
+            .expect("truncated prefix should be in bounds")
+            .into();
     }
 
     fn bytes_with_unsupported_version(
-        bytes: &[u8],
-        magic: &[u8],
-    ) -> Vec<u8>
+        bytes: FixtureBytes<'_>,
+        magic: FixtureBytes<'_>,
+    ) -> OwnedFixtureBytes
     {
-        let mut unsupported_version = Vec::<u8>::from(bytes);
-        let version_offset = magic.len();
+        let mut unsupported_version = Vec::<u8>::from(bytes.as_ref());
+        let version_offset = magic.as_ref().len();
         let version_end = version_offset
             .checked_add(2_usize)
             .expect("version field offset should not overflow");
@@ -396,6 +421,6 @@ mod tests
             .expect("fixture bytes should include a version field")
             .copy_from_slice(2_u16.to_be_bytes().as_ref());
 
-        return unsupported_version;
+        return unsupported_version.into();
     }
 }

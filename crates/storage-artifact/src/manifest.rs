@@ -426,7 +426,7 @@ impl ArtifactManifest
         out.extend_from_slice(&commitment_len.to_be_bytes());
         out.extend_from_slice(commitment);
         out.extend_from_slice(&u64::from(self.record_count).to_be_bytes());
-        out.extend_from_slice(self.root_node_hash.as_slice());
+        out.extend_from_slice(self.root_node_hash.as_ref());
         return EncodedManifest(out);
     }
 
@@ -587,7 +587,7 @@ impl<'bytes> ManifestCursor<'bytes>
         let bytes = self.take(ByteCount(NODE_HASH_LEN))?;
         let array =
             <[u8; NODE_HASH_LEN]>::try_from(bytes.0).map_err(|_error| ManifestError::Truncated)?;
-        return Ok(NodeHash::from_bytes(array));
+        return Ok(NodeHash::from(array));
     }
 }
 
@@ -609,7 +609,7 @@ mod tests
     fn golden_manifest() -> ArtifactManifest
     {
         let commitment = [0_u8; CHUNKER_COMMITMENT_LEN];
-        let root = NodeHash::from_bytes([0_u8; ARTIFACT_IDENTITY_LEN]);
+        let root = NodeHash::from([0_u8; ARTIFACT_IDENTITY_LEN]);
         return ArtifactManifest::new(
             MANIFEST_FORMAT_VERSION_V1.into(),
             commitment.into(),
@@ -691,7 +691,7 @@ mod tests
             MANIFEST_FORMAT_VERSION_V1.wrapping_add(1).into(),
             [0_u8; CHUNKER_COMMITMENT_LEN].into(),
             0_u64.into(),
-            NodeHash::from_bytes([0_u8; ARTIFACT_IDENTITY_LEN]),
+            NodeHash::from([0_u8; ARTIFACT_IDENTITY_LEN]),
         );
         assert_ne!(
             other_inner.identity(),
@@ -705,7 +705,7 @@ mod tests
             MANIFEST_FORMAT_VERSION_V1.into(),
             perturbed_commitment.into(),
             0_u64.into(),
-            NodeHash::from_bytes([0_u8; ARTIFACT_IDENTITY_LEN]),
+            NodeHash::from([0_u8; ARTIFACT_IDENTITY_LEN]),
         );
         assert_ne!(
             other_commitment.identity(),
@@ -717,7 +717,7 @@ mod tests
             MANIFEST_FORMAT_VERSION_V1.into(),
             [0_u8; CHUNKER_COMMITMENT_LEN].into(),
             1_u64.into(),
-            NodeHash::from_bytes([0_u8; ARTIFACT_IDENTITY_LEN]),
+            NodeHash::from([0_u8; ARTIFACT_IDENTITY_LEN]),
         );
         assert_ne!(
             other_count.identity(),
@@ -731,7 +731,7 @@ mod tests
             MANIFEST_FORMAT_VERSION_V1.into(),
             [0_u8; CHUNKER_COMMITMENT_LEN].into(),
             0_u64.into(),
-            NodeHash::from_bytes(perturbed_hash),
+            NodeHash::from(perturbed_hash),
         );
         assert_ne!(
             other_hash.identity(),

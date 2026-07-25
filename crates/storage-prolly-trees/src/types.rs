@@ -1,14 +1,330 @@
 //! Public value types for Prolly-Bao roots, records, stores, and proofs.
 
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::fmt;
 
 use gandr_storage_chunker::ChunkerParams;
+use gandr_storage_chunker::ParameterCommitment;
 
 use crate::error::ProllyBaoError;
 
 /// Length in bytes of every opaque BLAKE3 node identity.
 pub const NODE_HASH_LEN: usize = blake3::OUT_LEN;
+
+/// Borrowed canonical record-key bytes.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RecordKey<'bytes>(&'bytes [u8]);
+
+impl<'bytes> From<&'bytes [u8]> for RecordKey<'bytes>
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8]) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl<'bytes, const LEN: usize> From<&'bytes [u8; LEN]> for RecordKey<'bytes>
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8; LEN]) -> Self
+    {
+        return Self(bytes.as_slice());
+    }
+}
+
+impl AsRef<[u8]> for RecordKey<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
+
+impl<'bytes> From<RecordKey<'bytes>> for &'bytes [u8]
+{
+    #[inline]
+    fn from(key: RecordKey<'bytes>) -> Self
+    {
+        return key.0;
+    }
+}
+
+impl From<RecordKey<'_>> for Box<[u8]>
+{
+    #[inline]
+    fn from(key: RecordKey<'_>) -> Self
+    {
+        return Self::from(key.as_ref());
+    }
+}
+
+/// Owned canonical record-key bytes.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OwnedRecordKey(Box<[u8]>);
+
+impl From<Box<[u8]>> for OwnedRecordKey
+{
+    #[inline]
+    fn from(bytes: Box<[u8]>) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl From<RecordKey<'_>> for OwnedRecordKey
+{
+    #[inline]
+    fn from(key: RecordKey<'_>) -> Self
+    {
+        return Self(key.into());
+    }
+}
+
+impl<'bytes> From<&'bytes [u8]> for OwnedRecordKey
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8]) -> Self
+    {
+        return Self(bytes.into());
+    }
+}
+
+impl<'bytes, const LEN: usize> From<&'bytes [u8; LEN]> for OwnedRecordKey
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8; LEN]) -> Self
+    {
+        return Self(bytes.as_slice().into());
+    }
+}
+
+impl AsRef<[u8]> for OwnedRecordKey
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0.as_ref();
+    }
+}
+
+/// Borrowed canonical record-value bytes.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RecordValue<'bytes>(&'bytes [u8]);
+
+impl<'bytes> From<&'bytes [u8]> for RecordValue<'bytes>
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8]) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl<'bytes, const LEN: usize> From<&'bytes [u8; LEN]> for RecordValue<'bytes>
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8; LEN]) -> Self
+    {
+        return Self(bytes.as_slice());
+    }
+}
+
+impl AsRef<[u8]> for RecordValue<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
+
+impl<'bytes> From<RecordValue<'bytes>> for &'bytes [u8]
+{
+    #[inline]
+    fn from(value: RecordValue<'bytes>) -> Self
+    {
+        return value.0;
+    }
+}
+
+impl From<RecordValue<'_>> for Box<[u8]>
+{
+    #[inline]
+    fn from(value: RecordValue<'_>) -> Self
+    {
+        return Self::from(value.as_ref());
+    }
+}
+
+/// Owned canonical record-value bytes.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OwnedRecordValue(Box<[u8]>);
+
+impl From<Box<[u8]>> for OwnedRecordValue
+{
+    #[inline]
+    fn from(bytes: Box<[u8]>) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl From<RecordValue<'_>> for OwnedRecordValue
+{
+    #[inline]
+    fn from(value: RecordValue<'_>) -> Self
+    {
+        return Self(value.into());
+    }
+}
+
+impl<'bytes> From<&'bytes [u8]> for OwnedRecordValue
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8]) -> Self
+    {
+        return Self(bytes.into());
+    }
+}
+
+impl<'bytes, const LEN: usize> From<&'bytes [u8; LEN]> for OwnedRecordValue
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8; LEN]) -> Self
+    {
+        return Self(bytes.as_slice().into());
+    }
+}
+
+impl AsRef<[u8]> for OwnedRecordValue
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0.as_ref();
+    }
+}
+
+/// Borrowed canonical encoded-node bytes.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct EncodedNode<'bytes>(&'bytes [u8]);
+
+impl<'bytes> From<&'bytes [u8]> for EncodedNode<'bytes>
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8]) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl<'bytes, const LEN: usize> From<&'bytes [u8; LEN]> for EncodedNode<'bytes>
+{
+    #[inline]
+    fn from(bytes: &'bytes [u8; LEN]) -> Self
+    {
+        return Self(bytes.as_slice());
+    }
+}
+
+impl AsRef<[u8]> for EncodedNode<'_>
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0;
+    }
+}
+
+impl<'bytes> From<EncodedNode<'bytes>> for &'bytes [u8]
+{
+    #[inline]
+    fn from(node: EncodedNode<'bytes>) -> Self
+    {
+        return node.0;
+    }
+}
+
+impl From<EncodedNode<'_>> for Box<[u8]>
+{
+    #[inline]
+    fn from(node: EncodedNode<'_>) -> Self
+    {
+        return Self::from(node.as_ref());
+    }
+}
+
+/// Owned canonical encoded-node bytes.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct OwnedEncodedNode(Box<[u8]>);
+
+impl From<Box<[u8]>> for OwnedEncodedNode
+{
+    #[inline]
+    fn from(bytes: Box<[u8]>) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl From<Vec<u8>> for OwnedEncodedNode
+{
+    #[inline]
+    fn from(bytes: Vec<u8>) -> Self
+    {
+        return Self(bytes.into_boxed_slice());
+    }
+}
+
+impl From<EncodedNode<'_>> for OwnedEncodedNode
+{
+    #[inline]
+    fn from(node: EncodedNode<'_>) -> Self
+    {
+        return Self(node.into());
+    }
+}
+
+impl AsRef<[u8]> for OwnedEncodedNode
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0.as_ref();
+    }
+}
+
+/// Number of canonical records represented by a tree root.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct TreeRecordCount(u64);
+
+impl From<u64> for TreeRecordCount
+{
+    #[inline]
+    fn from(count: u64) -> Self
+    {
+        return Self(count);
+    }
+}
+
+impl From<TreeRecordCount> for u64
+{
+    #[inline]
+    fn from(count: TreeRecordCount) -> Self
+    {
+        return count.0;
+    }
+}
 
 /// Opaque BLAKE3 identity for an encoded Prolly-Bao node.
 #[repr(transparent)]
@@ -17,41 +333,6 @@ pub struct NodeHash(
     /// Raw BLAKE3 output bytes.
     [u8; NODE_HASH_LEN],
 );
-
-impl NodeHash
-{
-    /// Creates a node hash from raw BLAKE3 output bytes.
-    #[inline]
-    #[must_use]
-    pub const fn from_bytes(bytes: [u8; NODE_HASH_LEN]) -> Self
-    {
-        return Self(bytes);
-    }
-
-    /// Returns the hash as a fixed-size byte array.
-    #[inline]
-    #[must_use]
-    pub const fn as_bytes(&self) -> &[u8; NODE_HASH_LEN]
-    {
-        return &self.0;
-    }
-
-    /// Returns the hash as a byte slice.
-    #[inline]
-    #[must_use]
-    pub const fn as_slice(&self) -> &[u8]
-    {
-        return &self.0;
-    }
-
-    /// Consumes the hash and returns the raw bytes.
-    #[inline]
-    #[must_use]
-    pub const fn into_bytes(self) -> [u8; NODE_HASH_LEN]
-    {
-        return self.0;
-    }
-}
 
 impl fmt::Debug for NodeHash
 {
@@ -86,7 +367,16 @@ impl From<[u8; NODE_HASH_LEN]> for NodeHash
     #[inline]
     fn from(bytes: [u8; NODE_HASH_LEN]) -> Self
     {
-        return Self::from_bytes(bytes);
+        return Self(bytes);
+    }
+}
+
+impl From<NodeHash> for [u8; NODE_HASH_LEN]
+{
+    #[inline]
+    fn from(hash: NodeHash) -> Self
+    {
+        return hash.0;
     }
 }
 
@@ -95,7 +385,7 @@ impl AsRef<[u8]> for NodeHash
     #[inline]
     fn as_ref(&self) -> &[u8]
     {
-        return self.as_slice();
+        return self.0.as_slice();
     }
 }
 
@@ -104,7 +394,7 @@ impl AsRef<[u8; NODE_HASH_LEN]> for NodeHash
     #[inline]
     fn as_ref(&self) -> &[u8; NODE_HASH_LEN]
     {
-        return self.as_bytes();
+        return &self.0;
     }
 }
 
@@ -130,14 +420,15 @@ impl EncodingVersion
 {
     /// Current encoding version for newly built roots.
     pub const CURRENT: Self = Self::V1;
+}
 
-    /// Returns the stable integer representation for committed material.
+impl From<EncodingVersion> for u16
+{
     #[inline]
-    #[must_use]
-    pub const fn as_u16(self) -> u16
+    fn from(version: EncodingVersion) -> Self
     {
-        match self {
-            | Self::V1 => return 1_u16,
+        match version {
+            | EncodingVersion::V1 => return 1_u16,
         }
     }
 }
@@ -187,8 +478,8 @@ pub struct TreeParams
     separator_convention: SeparatorConvention,
     /// Chunker parameters used for record-safe boundary detection.
     chunker_params: ChunkerParams,
-    /// Stable chunker parameter commitment bytes copied into root material.
-    chunker_parameter_bytes: Box<[u8]>,
+    /// Stable chunker parameter commitment copied into root material.
+    chunker_parameter_commitment: ParameterCommitment,
 }
 
 impl TreeParams
@@ -204,7 +495,7 @@ impl TreeParams
         chunker_params: ChunkerParams,
     ) -> Self
     {
-        let chunker_parameter_bytes = Box::<[u8]>::from(chunker_params.commitment_bytes().as_ref());
+        let chunker_parameter_commitment = chunker_params.commitment_bytes().clone();
 
         return Self {
             kind,
@@ -212,7 +503,7 @@ impl TreeParams
             hash_algorithm,
             separator_convention,
             chunker_params,
-            chunker_parameter_bytes,
+            chunker_parameter_commitment,
         };
     }
 
@@ -271,12 +562,13 @@ impl TreeParams
         return &self.chunker_params;
     }
 
-    /// Returns the stable chunker parameter bytes committed in root material.
+    /// Returns the stable chunker parameter commitment copied into root
+    /// material.
     #[inline]
     #[must_use]
-    pub fn chunker_parameter_bytes(&self) -> &[u8]
+    pub const fn chunker_parameter_commitment(&self) -> &ParameterCommitment
     {
-        return self.chunker_parameter_bytes.as_ref();
+        return &self.chunker_parameter_commitment;
     }
 }
 
@@ -303,7 +595,10 @@ impl fmt::Debug for TreeParams
             .field("encoding_version", &self.encoding_version)
             .field("hash_algorithm", &self.hash_algorithm)
             .field("separator_convention", &self.separator_convention)
-            .field("chunker_parameter_bytes", &self.chunker_parameter_bytes)
+            .field(
+                "chunker_parameter_commitment",
+                &self.chunker_parameter_commitment,
+            )
             .finish_non_exhaustive();
     }
 }
@@ -320,7 +615,7 @@ impl PartialEq for TreeParams
             && self.encoding_version == other.encoding_version
             && self.hash_algorithm == other.hash_algorithm
             && self.separator_convention == other.separator_convention
-            && self.chunker_parameter_bytes == other.chunker_parameter_bytes;
+            && self.chunker_parameter_commitment == other.chunker_parameter_commitment;
     }
 }
 
@@ -338,7 +633,7 @@ pub struct TreeRoot
     /// Parameters committed by the root.
     params: TreeParams,
     /// Number of canonical records represented by the tree.
-    record_count: u64,
+    record_count: TreeRecordCount,
 }
 
 impl TreeRoot
@@ -350,7 +645,7 @@ impl TreeRoot
     pub const fn new(
         hash: NodeHash,
         params: TreeParams,
-        record_count: u64,
+        record_count: TreeRecordCount,
     ) -> Self
     {
         return Self {
@@ -379,7 +674,7 @@ impl TreeRoot
     /// Returns the number of canonical records represented by this root.
     #[inline]
     #[must_use]
-    pub const fn record_count(&self) -> u64
+    pub const fn record_count(&self) -> TreeRecordCount
     {
         return self.record_count;
     }
@@ -391,9 +686,9 @@ impl TreeRoot
 pub struct RecordRef<'record>
 {
     /// Canonical record key bytes.
-    key: &'record [u8],
+    key: RecordKey<'record>,
     /// Canonical record value bytes.
-    value: &'record [u8],
+    value: RecordValue<'record>,
 }
 
 impl<'record> RecordRef<'record>
@@ -401,18 +696,24 @@ impl<'record> RecordRef<'record>
     /// Creates a borrowed canonical record reference.
     #[inline]
     #[must_use]
-    pub const fn new(
-        key: &'record [u8],
-        value: &'record [u8],
+    pub fn new<K, V>(
+        key: K,
+        value: V,
     ) -> Self
+    where
+        K: Into<RecordKey<'record>>,
+        V: Into<RecordValue<'record>>,
     {
-        return Self { key, value };
+        return Self {
+            key: key.into(),
+            value: value.into(),
+        };
     }
 
     /// Returns the canonical key bytes.
     #[inline]
     #[must_use]
-    pub const fn key(&self) -> &'record [u8]
+    pub const fn key(&self) -> RecordKey<'record>
     {
         return self.key;
     }
@@ -420,7 +721,7 @@ impl<'record> RecordRef<'record>
     /// Returns the canonical value bytes.
     #[inline]
     #[must_use]
-    pub const fn value(&self) -> &'record [u8]
+    pub const fn value(&self) -> RecordValue<'record>
     {
         return self.value;
     }
@@ -432,9 +733,9 @@ impl<'record> RecordRef<'record>
 pub struct Record
 {
     /// Canonical record key bytes.
-    key: Box<[u8]>,
+    key: OwnedRecordKey,
     /// Canonical record value bytes.
-    value: Box<[u8]>,
+    value: OwnedRecordValue,
 }
 
 impl Record
@@ -447,8 +748,8 @@ impl Record
         value: V,
     ) -> Self
     where
-        K: Into<Box<[u8]>>,
-        V: Into<Box<[u8]>>,
+        K: Into<OwnedRecordKey>,
+        V: Into<OwnedRecordValue>,
     {
         return Self {
             key: key.into(),
@@ -459,17 +760,17 @@ impl Record
     /// Returns the canonical key bytes.
     #[inline]
     #[must_use]
-    pub fn key(&self) -> &[u8]
+    pub fn key(&self) -> RecordKey<'_>
     {
-        return self.key.as_ref();
+        return self.key.as_ref().into();
     }
 
     /// Returns the canonical value bytes.
     #[inline]
     #[must_use]
-    pub fn value(&self) -> &[u8]
+    pub fn value(&self) -> RecordValue<'_>
     {
-        return self.value.as_ref();
+        return self.value.as_ref().into();
     }
 
     /// Returns a borrowed view of this owned record.
@@ -478,14 +779,6 @@ impl Record
     pub fn as_record_ref(&self) -> RecordRef<'_>
     {
         return RecordRef::new(self.key(), self.value());
-    }
-
-    /// Splits this record into owned key and value byte buffers.
-    #[inline]
-    #[must_use]
-    pub fn into_parts(self) -> (Box<[u8]>, Box<[u8]>)
-    {
-        return (self.key, self.value);
     }
 }
 
@@ -506,9 +799,9 @@ pub enum KeyBound<'key>
     /// No bound on this side of the range.
     Unbounded,
     /// Bound includes the named key.
-    Included(&'key [u8]),
+    Included(RecordKey<'key>),
     /// Bound excludes the named key.
-    Excluded(&'key [u8]),
+    Excluded(RecordKey<'key>),
 }
 
 impl<'key> KeyBound<'key>
@@ -516,34 +809,27 @@ impl<'key> KeyBound<'key>
     /// Creates an inclusive key bound.
     #[inline]
     #[must_use]
-    pub const fn included(key: &'key [u8]) -> Self
+    pub fn included<K>(key: K) -> Self
+    where
+        K: Into<RecordKey<'key>>,
     {
-        return Self::Included(key);
+        return Self::Included(key.into());
     }
 
     /// Creates an exclusive key bound.
     #[inline]
     #[must_use]
-    pub const fn excluded(key: &'key [u8]) -> Self
+    pub fn excluded<K>(key: K) -> Self
+    where
+        K: Into<RecordKey<'key>>,
     {
-        return Self::Excluded(key);
-    }
-
-    /// Returns `true` when this bound is unbounded.
-    #[inline]
-    #[must_use]
-    pub const fn is_unbounded(self) -> bool
-    {
-        match self {
-            | Self::Unbounded => return true,
-            | Self::Included(_) | Self::Excluded(_) => return false,
-        }
+        return Self::Excluded(key.into());
     }
 
     /// Returns the bound key when the bound is inclusive or exclusive.
     #[inline]
     #[must_use]
-    pub const fn key(self) -> Option<&'key [u8]>
+    pub const fn key(self) -> Option<RecordKey<'key>>
     {
         match self {
             | Self::Unbounded => return None,
@@ -577,7 +863,9 @@ impl<'key> KeyRangeRef<'key>
         end: KeyBound<'key>,
     ) -> Result<Self, ProllyBaoError>
     {
-        if bounds_are_reversed(start, end) {
+        if let (Some(start_key), Some(end_key)) = (start.key(), end.key())
+            && start_key > end_key
+        {
             return Err(ProllyBaoError::RangeBound {
                 context: "start key sorts after end key",
             });
@@ -614,19 +902,6 @@ impl<'key> KeyRangeRef<'key>
     }
 }
 
-/// Returns `true` when bounded range keys are reversed.
-#[inline]
-fn bounds_are_reversed(
-    start: KeyBound<'_>,
-    end: KeyBound<'_>,
-) -> bool
-{
-    match (start.key(), end.key()) {
-        | (Some(start_key), Some(end_key)) => return start_key > end_key,
-        | _ => return false,
-    }
-}
-
 /// Borrowed encoded node bytes loaded from or offered to a block store.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
@@ -635,7 +910,7 @@ pub struct StoredNodeRef<'node>
     /// Expected opaque hash for the encoded node bytes.
     hash: NodeHash,
     /// Encoded node bytes.
-    bytes: &'node [u8],
+    bytes: EncodedNode<'node>,
 }
 
 impl<'node> StoredNodeRef<'node>
@@ -645,7 +920,7 @@ impl<'node> StoredNodeRef<'node>
     #[must_use]
     pub const fn new(
         hash: NodeHash,
-        bytes: &'node [u8],
+        bytes: EncodedNode<'node>,
     ) -> Self
     {
         return Self { hash, bytes };
@@ -662,7 +937,7 @@ impl<'node> StoredNodeRef<'node>
     /// Returns the encoded node bytes.
     #[inline]
     #[must_use]
-    pub const fn bytes(&self) -> &'node [u8]
+    pub const fn bytes(&self) -> EncodedNode<'node>
     {
         return self.bytes;
     }
@@ -692,8 +967,8 @@ pub struct ProofEnvelope
     kind: ProofKind,
     /// Encoding version committed by the proof.
     encoding_version: EncodingVersion,
-    /// Chunker parameter bytes committed by the proof.
-    chunker_parameter_bytes: Box<[u8]>,
+    /// Chunker parameter commitment copied into the proof.
+    chunker_parameter_commitment: ParameterCommitment,
 }
 
 impl ProofEnvelope
@@ -707,13 +982,13 @@ impl ProofEnvelope
     ) -> Self
     {
         let encoding_version = root.params().encoding_version();
-        let chunker_parameter_bytes = Box::<[u8]>::from(root.params().chunker_parameter_bytes());
+        let chunker_parameter_commitment = root.params().chunker_parameter_commitment().clone();
 
         return Self {
             root,
             kind,
             encoding_version,
-            chunker_parameter_bytes,
+            chunker_parameter_commitment,
         };
     }
 
@@ -741,11 +1016,11 @@ impl ProofEnvelope
         return self.encoding_version;
     }
 
-    /// Returns the chunker parameter bytes committed by the proof.
+    /// Returns the chunker parameter commitment copied into the proof.
     #[inline]
     #[must_use]
-    pub fn chunker_parameter_bytes(&self) -> &[u8]
+    pub const fn chunker_parameter_commitment(&self) -> &ParameterCommitment
     {
-        return self.chunker_parameter_bytes.as_ref();
+        return &self.chunker_parameter_commitment;
     }
 }

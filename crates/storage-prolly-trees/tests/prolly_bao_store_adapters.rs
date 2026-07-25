@@ -31,6 +31,9 @@ mod tests
     use gandr_storage_prolly_trees::NODE_HASH_LEN;
     use gandr_storage_prolly_trees::NodeHash;
     use gandr_storage_prolly_trees::NodeSegmentEntry;
+    use gandr_storage_prolly_trees::PackedSegmentBytes;
+    use gandr_storage_prolly_trees::PackedSegmentLength;
+    use gandr_storage_prolly_trees::PackedSegmentOffset;
     use gandr_storage_prolly_trees::PackedSegmentStore;
     use gandr_storage_prolly_trees::PortableProofTree;
     use gandr_storage_prolly_trees::ProllyBaoError;
@@ -109,7 +112,7 @@ mod tests
 
     fn raw_parts_from_tree(
         tree: &PortableProofTree
-    ) -> (Vec<u8>, BTreeMap<NodeHash, NodeSegmentEntry>)
+    ) -> (PackedSegmentBytes, BTreeMap<NodeHash, NodeSegmentEntry>)
     {
         return packed_store_from_tree(tree).into_raw_parts();
     }
@@ -124,13 +127,13 @@ mod tests
 
     fn different_hash(hash: NodeHash) -> NodeHash
     {
-        let mut bytes = *hash.as_bytes();
+        let mut bytes: [u8; NODE_HASH_LEN] = hash.into();
         let first_byte = bytes
             .first_mut()
             .expect("node hash bytes should include a first byte");
         *first_byte ^= 0xff_u8;
 
-        return NodeHash::from_bytes(bytes);
+        return NodeHash::from(bytes);
     }
 
     #[test]
@@ -176,7 +179,7 @@ mod tests
     {
         let tree = build_tree();
         let store = packed_store_from_tree(&tree);
-        let missing_hash = NodeHash::from_bytes([0xa5_u8; NODE_HASH_LEN]);
+        let missing_hash = NodeHash::from([0xa5_u8; NODE_HASH_LEN]);
         let missing_error = store
             .load(missing_hash)
             .expect_err("missing packed node hash should be rejected");
@@ -207,12 +210,16 @@ mod tests
             "mismatched raw segment bytes should fail hash verification"
         );
 
-        let malformed_segment = Vec::<u8>::from(b"not-a-prolly-bao-node".as_slice());
-        let malformed_hash = hash_encoded_node(malformed_segment.as_slice());
+        let malformed_segment =
+            PackedSegmentBytes::from(Vec::<u8>::from(b"not-a-prolly-bao-node".as_slice()));
+        let malformed_hash = hash_encoded_node(malformed_segment.as_ref().into());
         let mut malformed_index = BTreeMap::new();
         let _malformed_previous = malformed_index.insert(
             malformed_hash,
-            NodeSegmentEntry::new(0_usize, malformed_segment.len()),
+            NodeSegmentEntry::new(
+                PackedSegmentOffset::from(0_usize),
+                PackedSegmentLength::from(malformed_segment.as_ref().len()),
+            ),
         );
         let malformed_error =
             PackedSegmentStore::from_raw_parts(malformed_segment, malformed_index)
@@ -225,7 +232,10 @@ mod tests
         let (bounds_segment, mut bounds_index) = raw_parts_from_tree(&tree);
         let _bounds_previous = bounds_index.insert(
             first_proof_node.hash(),
-            NodeSegmentEntry::new(bounds_segment.len(), first_entry.length()),
+            NodeSegmentEntry::new(
+                PackedSegmentOffset::from(bounds_segment.as_ref().len()),
+                first_entry.length(),
+            ),
         );
         let bounds_error = PackedSegmentStore::from_raw_parts(bounds_segment, bounds_index)
             .expect_err("out-of-bounds raw segment entry should be rejected");
@@ -251,7 +261,8 @@ mod tests
             .get(&first_proof_node.hash())
             .expect("valid raw index should contain the first proof node");
         let corrupt_byte = corrupt_segment
-            .get_mut(corrupt_entry.offset())
+            .as_mut()
+            .get_mut(usize::from(corrupt_entry.offset()))
             .expect("valid raw entry offset should point inside the segment");
         *corrupt_byte ^= 0x01_u8;
         let corrupt_error = PackedSegmentStore::from_raw_parts(corrupt_segment, corrupt_index)

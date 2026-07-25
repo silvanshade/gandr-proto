@@ -26,6 +26,7 @@ use alloc::vec::Vec;
 
 use crate::error::ProllyBaoError;
 use crate::proof::verify_stored_node;
+use crate::types::EncodedNode;
 use crate::types::NodeHash;
 use crate::types::StoredNodeRef;
 
@@ -106,6 +107,7 @@ pub trait BlockStore
     reason = "public API intentionally names the in-memory BlockStore implementation"
 )]
 #[non_exhaustive]
+#[repr(transparent)]
 pub struct InMemoryBlockStore
 {
     /// Encoded nodes keyed by their opaque BLAKE3 identity.
@@ -161,11 +163,114 @@ impl BlockStore for InMemoryBlockStore
             .nodes
             .get(&hash)
             .ok_or(ProllyBaoError::UnknownNodeHash { hash })?;
-        let node = StoredNodeRef::new(hash, bytes.as_ref());
+        let node = StoredNodeRef::new(hash, bytes.as_ref().into());
 
         verify_stored_node(node)?;
 
         return Ok(node);
+    }
+}
+
+/// Byte offset inside a packed encoded-node segment.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct PackedSegmentOffset(usize);
+
+impl From<usize> for PackedSegmentOffset
+{
+    #[inline]
+    fn from(offset: usize) -> Self
+    {
+        return Self(offset);
+    }
+}
+
+impl From<PackedSegmentOffset> for usize
+{
+    #[inline]
+    fn from(offset: PackedSegmentOffset) -> Self
+    {
+        return offset.0;
+    }
+}
+
+/// Byte length of one encoded node inside a packed segment.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct PackedSegmentLength(usize);
+
+impl From<usize> for PackedSegmentLength
+{
+    #[inline]
+    fn from(length: usize) -> Self
+    {
+        return Self(length);
+    }
+}
+
+impl From<PackedSegmentLength> for usize
+{
+    #[inline]
+    fn from(length: PackedSegmentLength) -> Self
+    {
+        return length.0;
+    }
+}
+
+/// Owned bytes carrying one packed encoded-node segment.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PackedSegmentBytes(Vec<u8>);
+
+impl From<Vec<u8>> for PackedSegmentBytes
+{
+    #[inline]
+    fn from(bytes: Vec<u8>) -> Self
+    {
+        return Self(bytes);
+    }
+}
+
+impl From<PackedSegmentBytes> for Vec<u8>
+{
+    #[inline]
+    fn from(bytes: PackedSegmentBytes) -> Self
+    {
+        return bytes.0;
+    }
+}
+
+impl AsRef<[u8]> for PackedSegmentBytes
+{
+    #[inline]
+    fn as_ref(&self) -> &[u8]
+    {
+        return self.0.as_slice();
+    }
+}
+
+impl AsMut<[u8]> for PackedSegmentBytes
+{
+    #[inline]
+    fn as_mut(&mut self) -> &mut [u8]
+    {
+        return self.0.as_mut_slice();
+    }
+}
+
+impl PackedSegmentBytes
+{
+    /// Appends one canonical encoded node and returns its packed range.
+    fn append(
+        &mut self,
+        bytes: EncodedNode<'_>,
+    ) -> NodeSegmentEntry
+    {
+        let offset = PackedSegmentOffset::from(self.0.len());
+        let length = PackedSegmentLength::from(bytes.as_ref().len());
+        self.0.extend_from_slice(bytes.as_ref());
+
+        return NodeSegmentEntry::new(offset, length);
     }
 }
 
@@ -175,9 +280,9 @@ impl BlockStore for InMemoryBlockStore
 pub struct NodeSegmentEntry
 {
     /// Byte offset where the encoded node starts inside the packed segment.
-    offset: usize,
+    offset: PackedSegmentOffset,
     /// Byte length of the encoded node inside the packed segment.
-    length: usize,
+    length: PackedSegmentLength,
 }
 
 impl NodeSegmentEntry
@@ -186,8 +291,8 @@ impl NodeSegmentEntry
     #[inline]
     #[must_use]
     pub const fn new(
-        offset: usize,
-        length: usize,
+        offset: PackedSegmentOffset,
+        length: PackedSegmentLength,
     ) -> Self
     {
         return Self { offset, length };
@@ -196,7 +301,7 @@ impl NodeSegmentEntry
     /// Returns the byte offset where the encoded node starts.
     #[inline]
     #[must_use]
-    pub const fn offset(&self) -> usize
+    pub const fn offset(&self) -> PackedSegmentOffset
     {
         return self.offset;
     }
@@ -204,18 +309,18 @@ impl NodeSegmentEntry
     /// Returns the byte length of the encoded node.
     #[inline]
     #[must_use]
-    pub const fn length(&self) -> usize
+    pub const fn length(&self) -> PackedSegmentLength
     {
         return self.length;
     }
 
     /// Returns the exclusive end offset for this entry.
     #[inline]
-    fn checked_end(&self) -> Result<usize, ProllyBaoError>
+    fn checked_end(&self) -> Result<PackedSegmentOffset, ProllyBaoError>
     {
-        return self
-            .offset
-            .checked_add(self.length)
+        return usize::from(self.offset)
+            .checked_add(usize::from(self.length))
+            .map(PackedSegmentOffset::from)
             .ok_or(ProllyBaoError::MalformedNodeBytes {
                 context: "packed segment entry length overflow",
             });
@@ -243,7 +348,7 @@ impl NodeSegmentEntry
 pub struct PackedSegmentStore
 {
     /// Append-only byte segment containing encoded nodes.
-    segment: Vec<u8>,
+    segment: PackedSegmentBytes,
     /// Deterministic node-hash index into `segment`.
     index: BTreeMap<NodeHash, NodeSegmentEntry>,
 }
@@ -256,7 +361,7 @@ impl PackedSegmentStore
     pub const fn new() -> Self
     {
         return Self {
-            segment: Vec::new(),
+            segment: PackedSegmentBytes(Vec::new()),
             index: BTreeMap::new(),
         };
     }
@@ -275,11 +380,11 @@ impl PackedSegmentStore
     /// unsupported node encodings.
     #[inline]
     pub fn from_raw_parts(
-        segment: Vec<u8>,
+        segment: PackedSegmentBytes,
         index: BTreeMap<NodeHash, NodeSegmentEntry>,
     ) -> Result<Self, ProllyBaoError>
     {
-        verify_packed_segment_index(segment.as_slice(), &index)?;
+        verify_packed_segment_index(&segment, &index)?;
 
         return Ok(Self { segment, index });
     }
@@ -287,7 +392,7 @@ impl PackedSegmentStore
     /// Consumes this store into raw segment bytes and its deterministic index.
     #[inline]
     #[must_use]
-    pub fn into_raw_parts(self) -> (Vec<u8>, BTreeMap<NodeHash, NodeSegmentEntry>)
+    pub fn into_raw_parts(self) -> (PackedSegmentBytes, BTreeMap<NodeHash, NodeSegmentEntry>)
     {
         return (self.segment, self.index);
     }
@@ -312,12 +417,8 @@ impl BlockStore for PackedSegmentStore
     {
         verify_stored_node(node)?;
 
-        let offset = self.segment.len();
-        let length = node.bytes().len();
-        self.segment.extend_from_slice(node.bytes());
-        let _previous = self
-            .index
-            .insert(node.node_hash(), NodeSegmentEntry::new(offset, length));
+        let entry = self.segment.append(node.bytes());
+        let _previous = self.index.insert(node.node_hash(), entry);
 
         return Ok(());
     }
@@ -332,7 +433,7 @@ impl BlockStore for PackedSegmentStore
             .index
             .get(&hash)
             .ok_or(ProllyBaoError::UnknownNodeHash { hash })?;
-        let bytes = packed_entry_bytes(self.segment.as_slice(), *entry)?;
+        let bytes = packed_entry_bytes(&self.segment, *entry)?;
         let node = StoredNodeRef::new(hash, bytes);
 
         verify_stored_node(node)?;
@@ -343,11 +444,11 @@ impl BlockStore for PackedSegmentStore
 
 /// Verifies that every indexed packed node range is usable and disjoint.
 fn verify_packed_segment_index(
-    segment: &[u8],
+    segment: &PackedSegmentBytes,
     index: &BTreeMap<NodeHash, NodeSegmentEntry>,
 ) -> Result<(), ProllyBaoError>
 {
-    let mut occupied_ranges = BTreeMap::new();
+    let mut occupied_ranges = BTreeMap::<PackedSegmentOffset, PackedSegmentOffset>::new();
 
     for entry in index.values() {
         let range_start = entry.offset();
@@ -368,14 +469,16 @@ fn verify_packed_segment_index(
 /// Returns encoded node bytes for one packed entry.
 #[inline]
 fn packed_entry_bytes(
-    segment: &[u8],
+    segment: &PackedSegmentBytes,
     entry: NodeSegmentEntry,
-) -> Result<&[u8], ProllyBaoError>
+) -> Result<EncodedNode<'_>, ProllyBaoError>
 {
     let range_end = entry.checked_end()?;
 
     return segment
-        .get(entry.offset() .. range_end)
+        .as_ref()
+        .get(usize::from(entry.offset()) .. usize::from(range_end))
+        .map(EncodedNode::from)
         .ok_or(ProllyBaoError::MalformedNodeBytes {
             context: "packed segment entry is outside segment",
         });
@@ -383,9 +486,9 @@ fn packed_entry_bytes(
 
 /// Rejects a packed range that overlaps already-indexed ranges.
 fn ensure_packed_entry_is_disjoint(
-    occupied_ranges: &BTreeMap<usize, usize>,
-    range_start: usize,
-    range_end: usize,
+    occupied_ranges: &BTreeMap<PackedSegmentOffset, PackedSegmentOffset>,
+    range_start: PackedSegmentOffset,
+    range_end: PackedSegmentOffset,
 ) -> Result<(), ProllyBaoError>
 {
     if let Some(previous_range) = occupied_ranges.range(..= range_start).next_back() {
