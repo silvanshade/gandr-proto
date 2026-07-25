@@ -17,6 +17,9 @@ Every load-bearing artifact lives in a block, and every block gets an introducin
 When density hurts readability, the sanctioned response is to spread out, explain, and link (`TermRef`, `XRef`, `CiteRef`) — never to drop or flatten.
 Decision-trail rationale is inlined restated in current terms (pre-reboot record numbers stay banned; their load-bearing content does not).
 
+The weave is also **timeless**: the component records what the design is and does, not the biography of how it was reached — the corpus is written toward the technical manual it becomes.
+Superseded verdicts, session archaeology, and “what changed” narratives stay in the ledger, the beads, and the decision records; the reasons a decision binds are inlined in current terms as always, and provenance that is content-honesty (a claim resting on a talk or a delegated close-read) is marked at the claim, because that is about the source, not the session.
+
 Every component change **declares its source set** — for absorptions, the ledger row (`docs/research/`); for net-new components, the commissioning bead — and gets the mandatory two-axis fidelity review of `docs/workflow/review.md` §"Documentation fidelity review": zero dropped load-bearing content classes.
 
 ## The lanes

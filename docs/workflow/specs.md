@@ -10,6 +10,17 @@
 2. Natural prose and conversational tone are an aspiration beyond that.
    When the two axes conflict, the first wins, always.
 
+## The register is timeless
+
+Component prose is written for the technical manual the corpus becomes: it says what the design **is and does**, forward-looking, never how the design was reached.
+Absorption is not a chronicle — superseded verdicts, “what changed” narratives, and session archaeology (who ran which pass, when, on what steer) are decision-record and bead content, and they live there, not in the component.
+Load-bearing rationale is unaffected: the reasons a decision binds stay inlined in current terms, as they always have.
+What leaves is the retrospective _framing_ — “earlier passes filed this as X”, “two things changed since”, “this component absorbs the Y session” — replaced by the positive statement the framing was carrying.
+Status carries the time dimension: the status attributes (`built`, `partial`, `adopted-unbuilt`, `design-pass`, `dormant`) are where a reader learns what is realized and what is pending, and the staging section sequences the future.
+Provenance that is itself content-honesty — a claim resting on a talk transcript or a delegated close-read — stays marked at the claim, because that is about the source, not the session.
+Decision and rung tags are semantic names, section anchors, or tracker ids — never letter serials (`R1`, `T0`) in titles or prose.
+The test: a reader meeting the corpus as a manual learns the design without learning its biography.
+
 ## The per-document procedure
 
 1. **Declare the source set before writing.** Absorption: the source files (and the ledger row, once `docs/research/absorption-ledger.xml` exists).
