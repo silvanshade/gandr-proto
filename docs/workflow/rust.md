@@ -66,6 +66,8 @@
   `gandr-workflow-dylint` requires `#[repr(transparent)]` on every single-field struct and rejects project-defined function or method signatures that expose types from the [official primitive index](https://doc.rust-lang.org/std/primitive/index.html).
   Primitive detection follows aliases and non-nominal structural/generic containers; a semantically named transparent wrapper is the boundary, with explicit utility traits.
   The sole signature exception is a method implementing a trait defined in an external crate.
+  This rule proves only that a nominal transparent boundary exists; it does not validate field visibility, conversion traits, documentation, or the rest of the workspace Clippy contract.
+  After any `primitive_signature` remediation, run the package-scoped equivalent of `cargo:clippy` (`--all-targets --features=full -- -D warnings`) before removing that package from a strict-Dylint exclusion.
   Project-local rules also enforce source-grounded recursive `# Termination` contracts and reject false `input recursion: none` claims.
   `mise run cargo:dylint:recursion` puts that rule on the merge wall by running only the project-local driver over the Dylint-covered workspace targets; `gandr-workflow-gates` and the driver itself retain the same explicit exclusions as the strict lane.
   It denies every warning except the unrelated `primitive_signature` and `single_field_struct_needs_transparent_repr` debt tracked in `gandr-vp8`; the strict `cargo:dylint:local` and full `cargo:dylint` tasks retain `-D warnings` and therefore do not claim those rules are clean.
@@ -95,7 +97,7 @@ The rollout established these durable findings and actions:
 2. **Recursion claims require call-graph evidence.** Free functions and methods are checked by recursive SCC, including nested calls and generic arguments.
    Recursion over caller-owned input must become an explicit bounded worklist; documentation alone cannot relabel it as non-recursive.
 3. **Mutation-before-error paths are architectural evidence.** Preserve the isolated upstream non-local-effect pass and investigate its `gandr-core-checker` lib-test panic; never disable the lint globally.
-4. **Future rules should encode cross-module invariants.** Tracked follow-up candidates: checker/machine constructor parity, atomic force-state transitions, subprocess-boundary policy, nominal-id replay provenance, and semantic-wrapper escape prevention.
+4. **Future rules should encode cross-module invariants.** Tracked follow-up candidates: checker/machine constructor parity, atomic force-state transitions, subprocess-boundary policy, and nominal-id replay provenance; semantic-wrapper escape prevention is tracked by `gandr-3da`.
 
 * **Dependencies.** Use the `find-best-rust-crates` skill before adding a nontrivial crate, but treat external implementations as design references rather than automatic dependencies.
   Machinery that is load-bearing for the core or certified-kernel boundary — including recursion/control runtimes, graph representations and algorithms, proof-state machinery, and semantic normalization — stays gandr-owned even when reimplementation costs more.

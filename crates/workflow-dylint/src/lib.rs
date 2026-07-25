@@ -99,6 +99,11 @@ declare_lint! {
     ///
     /// Bare primitives erase semantic roles at crate boundaries. Nominal domain
     /// wrappers keep distinct meanings distinct for humans, tools, and agents.
+    /// This lint establishes only that the signature reaches a local nominal
+    /// transparent boundary. The wrapper's field visibility, conversion traits,
+    /// documentation, and other workspace lint obligations remain the
+    /// responsibility of Clippy and `docs/workflow/rust.md`.
+    ///
     ///
     /// ### Example
     ///
