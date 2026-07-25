@@ -422,7 +422,7 @@ fn every_rejection_has_a_stable_exclusion_class()
         (BridgeRejection::MachineNumericLiteral, "machine-numeric"),
     ] {
         assert_eq!(
-            rejection.exclusion_class(),
+            rejection.exclusion_class().as_ref(),
             class,
             "{rejection:?} belongs to the {class} class"
         );

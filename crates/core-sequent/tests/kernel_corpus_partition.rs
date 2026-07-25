@@ -130,13 +130,13 @@ mod tests
             | Term::Value(value) => {
                 let mut scratch = TermArena::new();
                 if let Err(rejection) = lower_value(&context, &mut scratch, value) {
-                    return Err(String::from(rejection.exclusion_class()));
+                    return Err(String::from(rejection.exclusion_class().as_ref()));
                 }
             },
             | Term::Comp(comp) => {
                 let mut scratch = TermArena::new();
                 if let Err(rejection) = lower_comp(&context, &mut scratch, comp) {
-                    return Err(String::from(rejection.exclusion_class()));
+                    return Err(String::from(rejection.exclusion_class().as_ref()));
                 }
             },
             | _ => return Err(String::from("non-term-item")),
@@ -152,7 +152,9 @@ mod tests
                 };
                 match lower_value_definition(&context, builder.arena(), value, &core_type) {
                     | Ok(ids) => ids,
-                    | Err(rejection) => return Err(String::from(rejection.exclusion_class())),
+                    | Err(rejection) => {
+                        return Err(String::from(rejection.exclusion_class().as_ref()));
+                    },
                 }
             },
             | Term::Comp(comp) => {
@@ -162,7 +164,9 @@ mod tests
                 };
                 match lower_computation_definition(&context, builder.arena(), comp, &core_type) {
                     | Ok(ids) => ids,
-                    | Err(rejection) => return Err(String::from(rejection.exclusion_class())),
+                    | Err(rejection) => {
+                        return Err(String::from(rejection.exclusion_class().as_ref()));
+                    },
                 }
             },
             | _ => return Err(String::from("non-term-item")),

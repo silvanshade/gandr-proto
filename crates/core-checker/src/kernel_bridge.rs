@@ -205,6 +205,20 @@ pub enum BridgeRejection
     UnsupportedBaseAtom(String),
 }
 
+/// Stable corpus-partition class for one bridge rejection.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct BridgeExclusionClass(&'static str);
+
+impl AsRef<str> for BridgeExclusionClass
+{
+    #[inline]
+    fn as_ref(&self) -> &str
+    {
+        self.0
+    }
+}
+
 impl BridgeRejection
 {
     /// The coarse exclusion class this rejection belongs to — the rationale tag
@@ -221,14 +235,14 @@ impl BridgeRejection
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub const fn exclusion_class(&self) -> &'static str
+    pub const fn exclusion_class(&self) -> BridgeExclusionClass
     {
         match *self {
-            | Self::UnboundName(_) => "open-free-name",
+            | Self::UnboundName(_) => BridgeExclusionClass("open-free-name"),
             | Self::ValueHole
             | Self::ComputationHole
             | Self::UnknownValueType
-            | Self::UnknownComputationType => "hole-unknown",
+            | Self::UnknownComputationType => BridgeExclusionClass("hole-unknown"),
             | Self::Perform
             | Self::Handle
             | Self::Resume
@@ -236,9 +250,11 @@ impl BridgeRejection
             | Self::Shift
             | Self::ReifiedStackValue
             | Self::ReifiedStackType
-            | Self::NonEmptyEffectRow => "effects-control",
-            | Self::Native => "native",
-            | Self::DataConstructor | Self::DataEliminator | Self::DataType => "declared-data",
+            | Self::NonEmptyEffectRow => BridgeExclusionClass("effects-control"),
+            | Self::Native => BridgeExclusionClass("native"),
+            | Self::DataConstructor | Self::DataEliminator | Self::DataType => {
+                BridgeExclusionClass("declared-data")
+            },
             | Self::ListValue
             | Self::ListType
             | Self::ListEliminator
@@ -247,14 +263,33 @@ impl BridgeRejection
             | Self::RecordProjection
             | Self::WithComputation
             | Self::WithType
-            | Self::Projection => "structural-stock",
-            | Self::SigmaType | Self::SplitEliminator => "sigma-split",
-            | Self::PathType | Self::HereProof | Self::WalkEliminator => "identity",
-            | Self::UniverseType => "universe",
-            | Self::MachineNumericLiteral | Self::UnsupportedBaseAtom(_) => "machine-numeric",
+            | Self::Projection => BridgeExclusionClass("structural-stock"),
+            | Self::SigmaType | Self::SplitEliminator => BridgeExclusionClass("sigma-split"),
+            | Self::PathType | Self::HereProof | Self::WalkEliminator => {
+                BridgeExclusionClass("identity")
+            },
+            | Self::UniverseType => BridgeExclusionClass("universe"),
+            | Self::MachineNumericLiteral | Self::UnsupportedBaseAtom(_) => {
+                BridgeExclusionClass("machine-numeric")
+            },
         }
     }
 }
+
+/// Borrowed source name at the checker-to-kernel bridge.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct BridgeName<'name>(&'name str);
+
+/// Borrowed binder stack used for de Bruijn resolution.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct LocalScope<'scope, 'name>(&'scope [&'name str]);
+
+/// Core integer carried across the checker-to-kernel bridge.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct BridgeInteger(i64);
 
 /// The elaborator's naming environment for the bridge: the map from a free core
 /// name to the admission index of the prior kernel declaration it resolves to.
@@ -263,8 +298,9 @@ impl BridgeRejection
 /// every free name is [`BridgeRejection::UnboundName`]; a multi-declaration
 /// elaboration populates it so a later declaration references an earlier one
 /// through a [`Value::Constant`](gandr_kernel_core) admission index (the
-/// append- only environment's cross-declaration reference form,
+/// append-only environment's cross-declaration reference form,
 /// kernel-boundary.md §3).
+#[repr(transparent)]
 #[derive(Clone, Debug, Default)]
 pub struct BridgeContext
 {
@@ -303,10 +339,10 @@ impl BridgeContext
     #[must_use]
     fn constant(
         &self,
-        name: &str,
+        name: BridgeName<'_>,
     ) -> Option<ConstantIndex>
     {
-        self.constants.get(name).copied()
+        self.constants.get(name.0).copied()
     }
 }
 
@@ -472,7 +508,7 @@ fn lower_type<'core>(
         let mut produced: TypeOut = match goal {
             | TypeGoal::Value(spec) => match *spec {
                 | ValueType::Atom(ref name) => {
-                    TypeOut::Value(arena.value_type_base(base_atom(name)?))
+                    TypeOut::Value(arena.value_type_base(base_atom(BridgeName(name.as_str()))?))
                 },
                 | ValueType::Unit => TypeOut::Value(arena.value_type_unit()),
                 | ValueType::Prod(ref first, ref second) => {
@@ -577,13 +613,13 @@ fn lower_type<'core>(
 /// - fails: [`BridgeRejection::UnsupportedBaseAtom`] for any other atom.
 /// - panics: none.
 #[inline]
-fn base_atom(name: &str) -> Result<BaseType, BridgeRejection>
+fn base_atom(name: BridgeName<'_>) -> Result<BaseType, BridgeRejection>
 {
-    match name {
+    match name.0 {
         | "Integer" => Ok(BaseType::Integer),
         | "String" => Ok(BaseType::String),
         | "Numeric" => Ok(BaseType::Numeric),
-        | _ => Err(BridgeRejection::UnsupportedBaseAtom(String::from(name))),
+        | _ => Err(BridgeRejection::UnsupportedBaseAtom(String::from(name.0))),
     }
 }
 
@@ -782,20 +818,20 @@ pub fn lower_comp(
 fn resolve_name(
     context: &BridgeContext,
     arena: &mut TermArena,
-    locals: &[&str],
-    name: &str,
+    locals: LocalScope<'_, '_>,
+    name: BridgeName<'_>,
 ) -> Result<ValueId, BridgeRejection>
 {
-    if let Some(position) = locals.iter().rposition(|bound| *bound == name) {
+    if let Some(position) = locals.0.iter().rposition(|bound| *bound == name.0) {
         // Innermost binder is the last slot; its de Bruijn index is 0.
-        let steps = locals.len().saturating_sub(1).saturating_sub(position);
+        let steps = locals.0.len().saturating_sub(1).saturating_sub(position);
         let index = u32::try_from(steps).unwrap_or(u32::MAX);
         return Ok(arena.value_variable(DeBruijnIndex::from(index)));
     }
     if let Some(index) = context.constant(name) {
         return Ok(arena.value_constant(index));
     }
-    Err(BridgeRejection::UnboundName(String::from(name)))
+    Err(BridgeRejection::UnboundName(String::from(name.0)))
 }
 
 /// The shared iterative engine for term lowering.
@@ -825,12 +861,15 @@ fn lower_term<'core>(
     'expand: loop {
         let mut produced: TermOut = match goal {
             | TermGoal::Value(spec) => match *spec {
-                | Value::Var(ref name) => {
-                    TermOut::Value(resolve_name(context, arena, &locals, name)?)
-                },
+                | Value::Var(ref name) => TermOut::Value(resolve_name(
+                    context,
+                    arena,
+                    LocalScope(&locals),
+                    BridgeName(name.as_str()),
+                )?),
                 | Value::Unit => TermOut::Value(arena.value_unit()),
                 | Value::Int(literal) => {
-                    TermOut::Value(arena.value_literal(integer_literal(literal)))
+                    TermOut::Value(arena.value_literal(integer_literal(BridgeInteger(literal))))
                 },
                 | Value::Str(ref text) => TermOut::Value(
                     arena.value_literal(Literal::Text(StringLiteral::new(text.clone()))),
@@ -1050,40 +1089,34 @@ const fn kernel_side(side: CoreSide) -> KernelSide
 /// - fails: never.
 /// - panics: none.
 #[inline]
-fn integer_literal(n: i64) -> Literal
+fn integer_literal(integer: BridgeInteger) -> Literal
 {
-    let sign = if n < 0 {
+    let sign = if integer.0 < 0 {
         Sign::Negative
     }
     else {
         Sign::NonNegative
     };
-    let magnitude = Magnitude::from_decimal_text(decimal_text(n.unsigned_abs()))
-        .unwrap_or_else(Magnitude::zero);
+    let mut remaining = integer.0.unsigned_abs();
+    let decimal = if remaining == 0 {
+        String::from("0")
+    }
+    else {
+        let mut buffer: Vec<u8> = Vec::new();
+        while remaining > 0 {
+            let digit = u8::try_from(remaining % 10).unwrap_or(0);
+            buffer.push(b'0'.saturating_add(digit));
+            remaining /= 10;
+        }
+        buffer.reverse();
+        let mut digits = String::new();
+        for byte in buffer {
+            digits.push(char::from(byte));
+        }
+        digits
+    };
+    let magnitude = Magnitude::from_decimal_text(decimal).unwrap_or_else(Magnitude::zero);
     Literal::Integer(IntegerLiteral::new(sign, magnitude))
-}
-
-/// A `u64`'s canonical decimal text (a tiny allocator so no `format!` is
-/// needed).
-#[inline]
-fn decimal_text(value: u64) -> String
-{
-    if value == 0 {
-        return String::from("0");
-    }
-    let mut buffer: Vec<u8> = Vec::new();
-    let mut remaining = value;
-    while remaining > 0 {
-        let digit = u8::try_from(remaining % 10).unwrap_or(0);
-        buffer.push(b'0'.saturating_add(digit));
-        remaining /= 10;
-    }
-    buffer.reverse();
-    let mut digits = String::new();
-    for byte in buffer {
-        digits.push(char::from(byte));
-    }
-    digits
 }
 
 // ----- Value-polarity declaration lowering (B2.1 decision 3) -----
