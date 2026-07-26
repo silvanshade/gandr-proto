@@ -133,7 +133,10 @@ open import Relation.Binary.PropositionalEquality
 -- even be the same code — the grade is heterogeneous — so this covers every
 -- parallel pair of routes the hierarchy can build.
 rigid-coherence
-  : {c d d′ : Code} (r : Rigid c d) (s : Rigid c d′) (x : Val c)
+  : ∀ {c d d′}
+  → (r : Rigid c d)
+  → (s : Rigid c d′)
+  → (x : Val c)
   → app r x ≐ app s x
 rigid-coherence r s x = trans (fixed r x) (sym (fixed s x))
 
@@ -146,55 +149,70 @@ rigid-coherence r s x = trans (fixed r x) (sym (fixed s x))
 -- ── Mac Lane's pentagon for ⊗ ───────────────────────────────────────────────
 -- ((a ⊗ b) ⊗ c) ⊗ d ⇒ a ⊗ (b ⊗ (c ⊗ d)), two arrows against three.
 
-pentagon-⊗-short : {a b c d : Code} → Rigid (((a ⊗ b) ⊗ c) ⊗ d) (a ⊗ (b ⊗ (c ⊗ d)))
+pentagon-⊗-short
+  : ∀ {a b c d}
+  → Rigid (((a ⊗ b) ⊗ c) ⊗ d) (a ⊗ (b ⊗ (c ⊗ d)))
 pentagon-⊗-short {a} {b} {c} {d} =
   rigid-∘ (rigid-⊗assoc {a ⊗ b} {c} {d})
           (rigid-⊗assoc {a} {b} {c ⊗ d})
 
-pentagon-⊗-long : {a b c d : Code} → Rigid (((a ⊗ b) ⊗ c) ⊗ d) (a ⊗ (b ⊗ (c ⊗ d)))
+pentagon-⊗-long
+  : ∀ {a b c d}
+  → Rigid (((a ⊗ b) ⊗ c) ⊗ d) (a ⊗ (b ⊗ (c ⊗ d)))
 pentagon-⊗-long {a} {b} {c} {d} =
   rigid-∘ (rigid-⊗ (rigid-⊗assoc {a} {b} {c}) (rigid-id {d}))
   (rigid-∘ (rigid-⊗assoc {a} {b ⊗ c} {d})
            (rigid-⊗ (rigid-id {a}) (rigid-⊗assoc {b} {c} {d})))
 
 coh-pentagon-⊗
-  : {a b c d : Code} (x : Val (((a ⊗ b) ⊗ c) ⊗ d))
+  : ∀ {a b c d}
+  → (x : Val (((a ⊗ b) ⊗ c) ⊗ d))
   → app (pentagon-⊗-short {a} {b} {c} {d}) x ≐ app (pentagon-⊗-long {a} {b} {c} {d}) x
 coh-pentagon-⊗ {a} {b} {c} {d} =
   rigid-coherence (pentagon-⊗-short {a} {b} {c} {d}) (pentagon-⊗-long {a} {b} {c} {d})
 
 -- ── Mac Lane's triangle for ⊗ ───────────────────────────────────────────────
--- (a⊗𝟙)⊗b ⇒ a⊗b: reassociate then cancel on the left, or cancel on the right.
+-- (a ⊗ 𝟙) ⊗ b ⇒ a⊗b: reassociate then cancel on the left, or cancel on the right.
 
-triangle-⊗-via-assoc : {a b : Code} → Rigid ((a ⊗ 𝟙) ⊗ b) (a ⊗ b)
+triangle-⊗-via-assoc
+  : ∀ {a b}
+  → Rigid ((a ⊗ 𝟙) ⊗ b) (a ⊗ b)
 triangle-⊗-via-assoc {a} {b} =
   rigid-∘ (rigid-⊗assoc {a} {𝟙} {b})
           (rigid-⊗ (rigid-id {a}) (rigid-⊗unitl {b}))
 
-triangle-⊗-direct : {a b : Code} → Rigid ((a ⊗ 𝟙) ⊗ b) (a ⊗ b)
+triangle-⊗-direct
+  : ∀ {a b}
+  → Rigid ((a ⊗ 𝟙) ⊗ b) (a ⊗ b)
 triangle-⊗-direct {a} {b} = rigid-⊗ (rigid-⊗unitr {a}) (rigid-id {b})
 
 coh-triangle-⊗
-  : {a b : Code} (x : Val ((a ⊗ 𝟙) ⊗ b))
+  : ∀ {a b}
+  → (x : Val ((a ⊗ 𝟙) ⊗ b))
   → app (triangle-⊗-via-assoc {a} {b}) x ≐ app (triangle-⊗-direct {a} {b}) x
 coh-triangle-⊗ {a} {b} =
   rigid-coherence (triangle-⊗-via-assoc {a} {b}) (triangle-⊗-direct {a} {b})
 
 -- ── The pentagon for ⊕ ──────────────────────────────────────────────────────
 
-pentagon-⊕-short : {a b c d : Code} → Rigid (((a ⊕ b) ⊕ c) ⊕ d) (a ⊕ (b ⊕ (c ⊕ d)))
+pentagon-⊕-short
+  : ∀ {a b c d}
+  → Rigid (((a ⊕ b) ⊕ c) ⊕ d) (a ⊕ (b ⊕ (c ⊕ d)))
 pentagon-⊕-short {a} {b} {c} {d} =
   rigid-∘ (rigid-⊕assoc {a ⊕ b} {c} {d})
           (rigid-⊕assoc {a} {b} {c ⊕ d})
 
-pentagon-⊕-long : {a b c d : Code} → Rigid (((a ⊕ b) ⊕ c) ⊕ d) (a ⊕ (b ⊕ (c ⊕ d)))
+pentagon-⊕-long
+  : ∀ {a b c d}
+  → Rigid (((a ⊕ b) ⊕ c) ⊕ d) (a ⊕ (b ⊕ (c ⊕ d)))
 pentagon-⊕-long {a} {b} {c} {d} =
   rigid-∘ (rigid-⊕ (rigid-⊕assoc {a} {b} {c}) (rigid-id {d}))
   (rigid-∘ (rigid-⊕assoc {a} {b ⊕ c} {d})
            (rigid-⊕ (rigid-id {a}) (rigid-⊕assoc {b} {c} {d})))
 
 coh-pentagon-⊕
-  : {a b c d : Code} (x : Val (((a ⊕ b) ⊕ c) ⊕ d))
+  : ∀ {a b c d}
+  → (x : Val (((a ⊕ b) ⊕ c) ⊕ d))
   → app (pentagon-⊕-short {a} {b} {c} {d}) x ≐ app (pentagon-⊕-long {a} {b} {c} {d}) x
 coh-pentagon-⊕ {a} {b} {c} {d} =
   rigid-coherence (pentagon-⊕-short {a} {b} {c} {d}) (pentagon-⊕-long {a} {b} {c} {d})
@@ -203,12 +221,14 @@ coh-pentagon-⊕ {a} {b} {c} {d} =
 -- The inverse side of the whole hierarchy, at full diagram shape.
 
 coh-⊗assoc-inverse
-  : {a b c : Code} (x : Val ((a ⊗ b) ⊗ c)) → ⊗assoc⁻¹ (⊗assoc x) ≡ x
+  : ∀ {a b c}
+  → (x : Val ((a ⊗ b) ⊗ c)) → ⊗assoc⁻¹ (⊗assoc x) ≡ x
 coh-⊗assoc-inverse {a} {b} {c} =
   rigid-inv (rigid-⊗assoc {a} {b} {c}) (rigid-⊗assoc⁻¹ {a} {b} {c})
 
 coh-⊕assoc-inverse
-  : {a b c : Code} (x : Val ((a ⊕ b) ⊕ c)) → ⊕assoc⁻¹ (⊕assoc x) ≡ x
+  : ∀ {a b c}
+  → (x : Val ((a ⊕ b) ⊕ c)) → ⊕assoc⁻¹ (⊕assoc x) ≡ x
 coh-⊕assoc-inverse {a} {b} {c} =
   rigid-inv (rigid-⊕assoc {a} {b} {c}) (rigid-⊕assoc⁻¹ {a} {b} {c})
 
