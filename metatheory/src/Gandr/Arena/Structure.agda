@@ -39,10 +39,21 @@ module Gandr.Arena.Structure where
 open import Gandr.Arena.Code
 open import Gandr.Arena.Offset
 open import Gandr.Arena.Value
-open import Gandr.Prelude.Data
-open import Gandr.Prelude.Equality
-open import Gandr.Prelude.Fin
-open import Gandr.Prelude.Nat
+
+private
+  module Fin where
+    open import Data.Fin public
+      hiding (module Fin)
+  open Fin
+  module ℕ where
+    open import Data.Nat public
+      hiding (module ℕ)
+    open import Data.Nat.Properties public
+  open ℕ
+
+open import Data.Product
+open import Data.Sum
+open import Relation.Binary.PropositionalEquality
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- The unit code is a singleton. Needed by both unitors: cancelling a unit is
@@ -50,7 +61,7 @@ open import Gandr.Prelude.Nat
 -- ════════════════════════════════════════════════════════════════════════════
 
 𝟙-η : (x : Val 𝟙) → x ≡ unit
-𝟙-η (cell fzero) = refl
+𝟙-η (cell zero) = refl
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE RIGID CLASS. A rigid map relabels nothing: it carries a value to the
@@ -88,54 +99,59 @@ rigid-∘ r s =
 -- Whiskering a rigid map into a product preserves rigidity. This is the step
 -- the presented calculus cannot take for free: there, a reassociation deep in
 -- a code must be slid past every generator between it and the root.
-⊗map-fixed
+⊗-map-fixed
   : {c c′ d d′ : Code}
   → (f : Val c → Val c′) (g : Val d → Val d′)
   → size d ≡ size d′
   → ((u : Val c) → f u ≐ u)
   → ((v : Val d) → g v ≐ v)
-  → (x : Val (c ⊗ d)) → ⊗map f g x ≐ x
-⊗map-fixed {c} {c′} {d} {d′} f g e hf hg =
-  ⊗-ind (⊗map {c} {c′} {d} {d′} f g) (λ x → x)
+  → (x : Val (c ⊗ d)) → ⊗-map f g x ≐ x
+⊗-map-fixed {c} {c′} {d} {d′} f g e hf hg =
+  ⊗-ind (⊗-map {c} {c′} {d} {d′} f g) (λ x → x)
     (λ u v →
-      trans (≡-≐ (⊗map-pair f g u v))
+      trans (≡-≐ (⊗-map-pair f g u v))
       (trans (ix-pair {c′} {d′} (f u) (g v))
-      (trans (cong₂ (⊗ix (size d′)) (hf u) (hg v))
-      (trans (cong (λ z → ⊗ix z (ix u) (ix v)) (sym e))
+      (trans (cong₂ (⊗-ix (size d′)) (hf u) (hg v))
+      (trans (cong (λ z → ⊗-ix z (ix u) (ix v)) (sym e))
              (sym (ix-pair {c} {d} u v))))))
 
--- The same, for a sum.
-⊕map-fixed
-  : {c c′ d d′ : Code}
-  → (f : Val c → Val c′) (g : Val d → Val d′)
-  → size c ≡ size c′
-  → ((u : Val c) → f u ≐ u)
-  → ((v : Val d) → g v ≐ v)
-  → (x : Val (c ⊕ d)) → ⊕map f g x ≐ x
-⊕map-fixed {c} {c′} {d} {d′} f g e hf hg =
-  ⊕-ind (⊕map {c} {c′} {d} {d′} f g) (λ x → x)
-    (λ i →
-      trans (≡-≐ (⊕map-inl f g i))
-      (trans (ix-inl {c′} {d′} (f i))
-      (trans (hf i)
-             (sym (ix-inl {c} {d} i)))))
-    (λ j →
-      trans (≡-≐ (⊕map-inr f g j))
-      (trans (ix-inr {c′} {d′} (g j))
-      (trans (cong₂ ⊕ixʳ (sym e) (hg j))
-             (sym (ix-inr {c} {d} j)))))
+opaque
+  unfolding ⊗-ix
+  unfolding ⊗-ixˡ
+  unfolding ⊗-ixʳ
+
+  -- The same, for a sum.
+  ⊕-map-fixed
+    : {c c′ d d′ : Code}
+    → (f : Val c → Val c′) (g : Val d → Val d′)
+    → size c ≡ size c′
+    → ((u : Val c) → f u ≐ u)
+    → ((v : Val d) → g v ≐ v)
+    → (x : Val (c ⊕ d)) → ⊕-map f g x ≐ x
+  ⊕-map-fixed {c} {c′} {d} {d′} f g e hf hg =
+    ⊕-ind (⊕-map {c} {c′} {d} {d′} f g) (λ x → x)
+      (λ i →
+        trans (≡-≐ (⊕-map-inl f g i))
+        (trans (ix-inl {c′} {d′} (f i))
+        (trans (hf i)
+              (sym (ix-inl {c} {d} i)))))
+      (λ j →
+        trans (≡-≐ (⊕-map-inr f g j))
+        (trans (ix-inr {c′} {d′} (g j))
+        (trans (cong₂ ⊗-ixʳ (sym e) (hg j))
+              (sym (ix-inr {c} {d} j)))))
 
 rigid-⊗ : {c c′ d d′ : Code} → Rigid c c′ → Rigid d d′ → Rigid (c ⊗ d) (c′ ⊗ d′)
 rigid-⊗ r s =
-  rigid (⊗map (app r) (app s))
+  rigid (⊗-map (app r) (app s))
         (cong₂ _*_ (ext r) (ext s))
-        (⊗map-fixed (app r) (app s) (ext s) (fixed r) (fixed s))
+        (⊗-map-fixed (app r) (app s) (ext s) (fixed r) (fixed s))
 
 rigid-⊕ : {c c′ d d′ : Code} → Rigid c c′ → Rigid d d′ → Rigid (c ⊕ d) (c′ ⊕ d′)
 rigid-⊕ r s =
-  rigid (⊕map (app r) (app s))
-        (cong₂ _+_ (ext r) (ext s))
-        (⊕map-fixed (app r) (app s) (ext r) (fixed r) (fixed s))
+  rigid (⊕-map (app r) (app s))
+        (cong₂ ℕ._+_ (ext r) (ext s))
+        (⊕-map-fixed (app r) (app s) (ext r) (fixed r) (fixed s))
 
 -- ── What rigidity buys ──────────────────────────────────────────────────────
 
@@ -161,31 +177,31 @@ rigid-inv r s x = ≐-≡ (trans (fixed s (app r x)) (fixed r x))
 ⊗assoc-on p w = pair (proj₁ p) (pair (proj₂ p) w)
 
 ⊗assoc : {c d e : Code} → Val ((c ⊗ d) ⊗ e) → Val (c ⊗ (d ⊗ e))
-⊗assoc x = ⊗assoc-on (⊗split (proj₁ (⊗split x))) (proj₂ (⊗split x))
+⊗assoc x = ⊗assoc-on (⊗-split (proj₁ (⊗-split x))) (proj₂ (⊗-split x))
 
 ⊗assoc-pair
   : {c d e : Code} (u : Val c) (v : Val d) (w : Val e)
   → ⊗assoc (pair (pair u v) w) ≡ pair u (pair v w)
 ⊗assoc-pair u v w =
-  trans (cong (λ p → ⊗assoc-on (⊗split (proj₁ p)) (proj₂ p)) (⊗split-pair (pair u v) w))
-        (cong (λ p → ⊗assoc-on p w) (⊗split-pair u v))
+  trans (cong (λ p → ⊗assoc-on (⊗-split (proj₁ p)) (proj₂ p)) (⊗-split-pair (pair u v) w))
+        (cong (λ p → ⊗assoc-on p w) (⊗-split-pair u v))
 
 -- Rebuild a right-nested product as a left-nested one.
 ⊗assoc⁻¹-on : {c d e : Code} → Val c → Val d × Val e → Val ((c ⊗ d) ⊗ e)
 ⊗assoc⁻¹-on u q = pair (pair u (proj₁ q)) (proj₂ q)
 
 ⊗assoc⁻¹ : {c d e : Code} → Val (c ⊗ (d ⊗ e)) → Val ((c ⊗ d) ⊗ e)
-⊗assoc⁻¹ x = ⊗assoc⁻¹-on (proj₁ (⊗split x)) (⊗split (proj₂ (⊗split x)))
+⊗assoc⁻¹ x = ⊗assoc⁻¹-on (proj₁ (⊗-split x)) (⊗-split (proj₂ (⊗-split x)))
 
 ⊗assoc⁻¹-pair
   : {c d e : Code} (u : Val c) (v : Val d) (w : Val e)
   → ⊗assoc⁻¹ (pair u (pair v w)) ≡ pair (pair u v) w
 ⊗assoc⁻¹-pair u v w =
-  trans (cong (λ p → ⊗assoc⁻¹-on (proj₁ p) (⊗split (proj₂ p))) (⊗split-pair u (pair v w)))
-        (cong (⊗assoc⁻¹-on u) (⊗split-pair v w))
+  trans (cong (λ p → ⊗assoc⁻¹-on (proj₁ p) (⊗-split (proj₂ p))) (⊗-split-pair u (pair v w)))
+        (cong (⊗assoc⁻¹-on u) (⊗-split-pair v w))
 
 -- THE COLLAPSE, product side: reassociating names the same cell. This is the
--- statement the whole spike turns on, and its proof is `⊗ix-assoc` — the
+-- statement the whole spike turns on, and its proof is `⊗-ix-assoc` — the
 -- semiring law — whiskered through the arena's β-rules.
 ⊗assoc-fixed
   : {c d e : Code} (x : Val ((c ⊗ d) ⊗ e)) → ⊗assoc x ≐ x
@@ -196,9 +212,9 @@ rigid-inv r s x = ≐-≡ (trans (fixed s (app r x)) (fixed r x))
         (λ u v →
           trans (≡-≐ (⊗assoc-pair u v w))
           (trans (ix-pair u (pair v w))
-          (trans (cong (⊗ix (size d * size e) (ix u)) (ix-pair v w))
-          (trans (sym (⊗ix-assoc (size d) (size e) (ix u) (ix v) (ix w)))
-          (trans (cong (λ z → ⊗ix (size e) z (ix w)) (sym (ix-pair u v)))
+          (trans (cong (⊗-ix (size d * size e) (ix u)) (ix-pair v w))
+          (trans (sym (⊗-ix-assoc (size d) (size e) (ix u) (ix v) (ix w)))
+          (trans (cong (λ z → ⊗-ix (size e) z (ix w)) (sym (ix-pair u v)))
                  (sym (ix-pair (pair u v) w)))))))
         y)
 
@@ -211,9 +227,9 @@ rigid-inv r s x = ≐-≡ (trans (fixed s (app r x)) (fixed r x))
         (λ v w →
           trans (≡-≐ (⊗assoc⁻¹-pair u v w))
           (trans (ix-pair (pair u v) w)
-          (trans (cong (λ z → ⊗ix (size e) z (ix w)) (ix-pair u v))
-          (trans (⊗ix-assoc (size d) (size e) (ix u) (ix v) (ix w))
-          (trans (cong (⊗ix (size d * size e) (ix u)) (sym (ix-pair v w)))
+          (trans (cong (λ z → ⊗-ix (size e) z (ix w)) (ix-pair u v))
+          (trans (⊗-ix-assoc (size d) (size e) (ix u) (ix v) (ix w))
+          (trans (cong (⊗-ix (size d * size e) (ix u)) (sym (ix-pair v w)))
                  (sym (ix-pair u (pair v w))))))))
         y)
 
@@ -227,25 +243,25 @@ rigid-⊗assoc⁻¹ {c} {d} {e} =
 -- ── ⊗ unitors ───────────────────────────────────────────────────────────────
 
 ⊗unitr : {c : Code} → Val (c ⊗ 𝟙) → Val c
-⊗unitr x = proj₁ (⊗split x)
+⊗unitr x = proj₁ (⊗-split x)
 
 ⊗unitr⁻¹ : {c : Code} → Val c → Val (c ⊗ 𝟙)
 ⊗unitr⁻¹ u = pair u unit
 
 ⊗unitr-pair : {c : Code} (u : Val c) (z : Val 𝟙) → ⊗unitr (pair u z) ≡ u
-⊗unitr-pair u z = cong proj₁ (⊗split-pair u z)
+⊗unitr-pair u z = cong proj₁ (⊗-split-pair u z)
 
 ⊗unitr-fixed : {c : Code} (x : Val (c ⊗ 𝟙)) → ⊗unitr x ≐ x
 ⊗unitr-fixed =
   ⊗-ind ⊗unitr (λ x → x)
     (λ u z →
       trans (≡-≐ (⊗unitr-pair u z))
-      (trans (sym (⊗ix-unitʳ (ix u)))
-      (trans (cong (⊗ix (suc zero) (ix u)) (sym (cong ix (𝟙-η z))))
+      (trans (sym (⊗-ix-unitʳ (ix u)))
+      (trans (cong (⊗-ix (suc zero) (ix u)) (sym (cong ix (𝟙-η z))))
              (sym (ix-pair u z)))))
 
 ⊗unitr⁻¹-fixed : {c : Code} (u : Val c) → ⊗unitr⁻¹ u ≐ u
-⊗unitr⁻¹-fixed u = trans (ix-pair u unit) (⊗ix-unitʳ (ix u))
+⊗unitr⁻¹-fixed u = trans (ix-pair u unit) (⊗-ix-unitʳ (ix u))
 
 rigid-⊗unitr : {c : Code} → Rigid (c ⊗ 𝟙) c
 rigid-⊗unitr {c} = rigid ⊗unitr (*-identityʳ (size c)) ⊗unitr-fixed
@@ -254,25 +270,25 @@ rigid-⊗unitr⁻¹ : {c : Code} → Rigid c (c ⊗ 𝟙)
 rigid-⊗unitr⁻¹ {c} = rigid ⊗unitr⁻¹ (sym (*-identityʳ (size c))) ⊗unitr⁻¹-fixed
 
 ⊗unitl : {c : Code} → Val (𝟙 ⊗ c) → Val c
-⊗unitl x = proj₂ (⊗split x)
+⊗unitl x = proj₂ (⊗-split x)
 
 ⊗unitl⁻¹ : {c : Code} → Val c → Val (𝟙 ⊗ c)
 ⊗unitl⁻¹ v = pair unit v
 
 ⊗unitl-pair : {c : Code} (z : Val 𝟙) (v : Val c) → ⊗unitl (pair z v) ≡ v
-⊗unitl-pair z v = cong proj₂ (⊗split-pair z v)
+⊗unitl-pair z v = cong proj₂ (⊗-split-pair z v)
 
 ⊗unitl-fixed : {c : Code} (x : Val (𝟙 ⊗ c)) → ⊗unitl x ≐ x
 ⊗unitl-fixed {c} =
   ⊗-ind ⊗unitl (λ x → x)
     (λ z v →
       trans (≡-≐ (⊗unitl-pair z v))
-      (trans (sym (⊗ix-unitˡ (size c) (ix v)))
-      (trans (cong (λ t → ⊗ix (size c) t (ix v)) (sym (cong ix (𝟙-η z))))
+      (trans (sym (⊗-ix-unitˡ (size c) (ix v)))
+      (trans (cong (λ t → ⊗-ix (size c) t (ix v)) (sym (cong ix (𝟙-η z))))
              (sym (ix-pair z v)))))
 
 ⊗unitl⁻¹-fixed : {c : Code} (v : Val c) → ⊗unitl⁻¹ v ≐ v
-⊗unitl⁻¹-fixed {c} v = trans (ix-pair unit v) (⊗ix-unitˡ (size c) (ix v))
+⊗unitl⁻¹-fixed {c} v = trans (ix-pair unit v) (⊗-ix-unitˡ (size c) (ix v))
 
 rigid-⊗unitl : {c : Code} → Rigid (𝟙 ⊗ c) c
 rigid-⊗unitl {c} = rigid ⊗unitl (*-identityˡ (size c)) ⊗unitl-fixed
@@ -283,104 +299,109 @@ rigid-⊗unitl⁻¹ {c} = rigid ⊗unitl⁻¹ (sym (*-identityˡ (size c))) ⊗u
 -- ── ⊕ associator ────────────────────────────────────────────────────────────
 
 ⊕assoc : {c d e : Code} → Val ((c ⊕ d) ⊕ e) → Val (c ⊕ (d ⊕ e))
-⊕assoc x = [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕split y)) , (λ w → inr (inr w)) ]′ (⊕split x)
+⊕assoc x = [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕-split y)) , (λ w → inr (inr w)) ]′ (⊕-split x)
 
 ⊕assoc-inl-inl
   : {c d e : Code} (i : Val c) → ⊕assoc {c} {d} {e} (inl (inl i)) ≡ inl i
 ⊕assoc-inl-inl {c} {d} i =
-  trans (cong [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕split y)) , (λ w → inr (inr w)) ]′
-              (⊕split-inl (inl {c} {d} i)))
-        (cong [ inl , (λ v → inr (inl v)) ]′ (⊕split-inl i))
+  trans (cong [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕-split y)) , (λ w → inr (inr w)) ]′
+              (⊕-split-inl (inl {c} {d} i)))
+        (cong [ inl , (λ v → inr (inl v)) ]′ (⊕-split-inl i))
 
 ⊕assoc-inl-inr
   : {c d e : Code} (j : Val d) → ⊕assoc {c} {d} {e} (inl (inr j)) ≡ inr (inl j)
 ⊕assoc-inl-inr {c} {d} j =
-  trans (cong [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕split y)) , (λ w → inr (inr w)) ]′
-              (⊕split-inl (inr {c} {d} j)))
-        (cong [ inl , (λ v → inr (inl v)) ]′ (⊕split-inr j))
+  trans (cong [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕-split y)) , (λ w → inr (inr w)) ]′
+              (⊕-split-inl (inr {c} {d} j)))
+        (cong [ inl , (λ v → inr (inl v)) ]′ (⊕-split-inr j))
 
 ⊕assoc-inr
   : {c d e : Code} (k : Val e) → ⊕assoc {c} {d} {e} (inr k) ≡ inr (inr k)
 ⊕assoc-inr k =
-  cong [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕split y)) , (λ w → inr (inr w)) ]′
-       (⊕split-inr k)
+  cong [ (λ y → [ inl , (λ v → inr (inl v)) ]′ (⊕-split y)) , (λ w → inr (inr w)) ]′
+       (⊕-split-inr k)
 
 ⊕assoc⁻¹ : {c d e : Code} → Val (c ⊕ (d ⊕ e)) → Val ((c ⊕ d) ⊕ e)
 ⊕assoc⁻¹ x =
-  [ (λ i → inl (inl i)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕split y)) ]′ (⊕split x)
+  [ (λ i → inl (inl i)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕-split y)) ]′ (⊕-split x)
 
 ⊕assoc⁻¹-inl
   : {c d e : Code} (i : Val c) → ⊕assoc⁻¹ {c} {d} {e} (inl i) ≡ inl (inl i)
 ⊕assoc⁻¹-inl i =
-  cong [ (λ i′ → inl (inl i′)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕split y)) ]′
-       (⊕split-inl i)
+  cong [ (λ i′ → inl (inl i′)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕-split y)) ]′
+       (⊕-split-inl i)
 
 ⊕assoc⁻¹-inr-inl
   : {c d e : Code} (j : Val d) → ⊕assoc⁻¹ {c} {d} {e} (inr (inl j)) ≡ inl (inr j)
 ⊕assoc⁻¹-inr-inl {c} {d} {e} j =
-  trans (cong [ (λ i′ → inl (inl i′)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕split y)) ]′
-              (⊕split-inr (inl {d} {e} j)))
-        (cong [ (λ v → inl (inr v)) , inr ]′ (⊕split-inl j))
+  trans (cong [ (λ i′ → inl (inl i′)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕-split y)) ]′
+              (⊕-split-inr (inl {d} {e} j)))
+        (cong [ (λ v → inl (inr v)) , inr ]′ (⊕-split-inl j))
 
 ⊕assoc⁻¹-inr-inr
   : {c d e : Code} (k : Val e) → ⊕assoc⁻¹ {c} {d} {e} (inr (inr k)) ≡ inr k
 ⊕assoc⁻¹-inr-inr {c} {d} {e} k =
-  trans (cong [ (λ i′ → inl (inl i′)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕split y)) ]′
-              (⊕split-inr (inr {d} {e} k)))
-        (cong [ (λ v → inl (inr v)) , inr ]′ (⊕split-inr k))
+  trans (cong [ (λ i′ → inl (inl i′)) , (λ y → [ (λ v → inl (inr v)) , inr ]′ (⊕-split y)) ]′
+              (⊕-split-inr (inr {d} {e} k)))
+        (cong [ (λ v → inl (inr v)) , inr ]′ (⊕-split-inr k))
 
--- THE COLLAPSE, sum side. Left injections are offset-invariant outright; the
--- one case with content is the doubly-right one, and there the law is exactly
--- additive associativity of the two block widths.
-⊕assoc-fixed
-  : {c d e : Code} (x : Val ((c ⊕ d) ⊕ e)) → ⊕assoc x ≐ x
-⊕assoc-fixed {c} {d} {e} =
-  ⊕-ind (⊕assoc {c} {d} {e}) (λ x → x)
-    (λ y →
-      ⊕-ind (λ z → ⊕assoc {c} {d} {e} (inl {c ⊕ d} {e} z)) (λ z → inl {c ⊕ d} {e} z)
-        (λ i →
-          trans (≡-≐ (⊕assoc-inl-inl {c} {d} {e} i))
-          (trans (ix-inl {c} {d ⊕ e} i)
-          (trans (sym (ix-inl {c} {d} i))
-                 (sym (ix-inl {c ⊕ d} {e} (inl {c} {d} i))))))
-        (λ j →
-          trans (≡-≐ (⊕assoc-inl-inr {c} {d} {e} j))
-          (trans (ix-inr {c} {d ⊕ e} (inl {d} {e} j))
-          (trans (cong (⊕ixʳ (size c)) (ix-inl {d} {e} j))
-          (trans (sym (ix-inr {c} {d} j))
-                 (sym (ix-inl {c ⊕ d} {e} (inr {c} {d} j)))))))
-        y)
-    (λ k →
-      trans (≡-≐ (⊕assoc-inr {c} {d} {e} k))
-      (trans (ix-inr {c} {d ⊕ e} (inr {d} {e} k))
-      (trans (cong (⊕ixʳ (size c)) (ix-inr {d} {e} k))
-      (trans (sym (⊕ix-assoc (size c) (size d) (ix k)))
-             (sym (ix-inr {c ⊕ d} {e} k))))))
+opaque
+  unfolding ⊗-ix
+  unfolding ⊗-ixˡ
+  unfolding ⊗-ixʳ
 
-⊕assoc⁻¹-fixed
-  : {c d e : Code} (x : Val (c ⊕ (d ⊕ e))) → ⊕assoc⁻¹ x ≐ x
-⊕assoc⁻¹-fixed {c} {d} {e} =
-  ⊕-ind (⊕assoc⁻¹ {c} {d} {e}) (λ x → x)
-    (λ i →
-      trans (≡-≐ (⊕assoc⁻¹-inl {c} {d} {e} i))
-      (trans (ix-inl {c ⊕ d} {e} (inl {c} {d} i))
-      (trans (ix-inl {c} {d} i)
-             (sym (ix-inl {c} {d ⊕ e} i)))))
-    (λ y →
-      ⊕-ind (λ z → ⊕assoc⁻¹ {c} {d} {e} (inr {c} {d ⊕ e} z)) (λ z → inr {c} {d ⊕ e} z)
-        (λ j →
-          trans (≡-≐ (⊕assoc⁻¹-inr-inl {c} {d} {e} j))
-          (trans (ix-inl {c ⊕ d} {e} (inr {c} {d} j))
-          (trans (ix-inr {c} {d} j)
-          (trans (cong (⊕ixʳ (size c)) (sym (ix-inl {d} {e} j)))
-                 (sym (ix-inr {c} {d ⊕ e} (inl {d} {e} j)))))))
-        (λ k →
-          trans (≡-≐ (⊕assoc⁻¹-inr-inr {c} {d} {e} k))
-          (trans (ix-inr {c ⊕ d} {e} k)
-          (trans (⊕ix-assoc (size c) (size d) (ix k))
-          (trans (cong (⊕ixʳ (size c)) (sym (ix-inr {d} {e} k)))
-                 (sym (ix-inr {c} {d ⊕ e} (inr {d} {e} k)))))))
-        y)
+  -- THE COLLAPSE, sum side. Left injections are offset-invariant outright; the
+  -- one case with content is the doubly-right one, and there the law is exactly
+  -- additive associativity of the two block widths.
+  ⊕assoc-fixed
+    : {c d e : Code} (x : Val ((c ⊕ d) ⊕ e)) → ⊕assoc x ≐ x
+  ⊕assoc-fixed {c} {d} {e} =
+    ⊕-ind (⊕assoc {c} {d} {e}) (λ x → x)
+      (λ y →
+        ⊕-ind (λ z → ⊕assoc {c} {d} {e} (inl {c ⊕ d} {e} z)) (λ z → inl {c ⊕ d} {e} z)
+          (λ i →
+            trans (≡-≐ (⊕assoc-inl-inl {c} {d} {e} i))
+            (trans (ix-inl {c} {d ⊕ e} i)
+            (trans (sym (ix-inl {c} {d} i))
+                  (sym (ix-inl {c ⊕ d} {e} (inl {c} {d} i))))))
+          (λ j →
+            trans (≡-≐ (⊕assoc-inl-inr {c} {d} {e} j))
+            (trans (ix-inr {c} {d ⊕ e} (inl {d} {e} j))
+            (trans (cong (⊗-ixʳ (size c)) (ix-inl {d} {e} j))
+            (trans (sym (ix-inr {c} {d} j))
+                  (sym (ix-inl {c ⊕ d} {e} (inr {c} {d} j)))))))
+          y)
+      (λ k →
+        trans (≡-≐ (⊕assoc-inr {c} {d} {e} k))
+        (trans (ix-inr {c} {d ⊕ e} (inr {d} {e} k))
+        (trans (cong (⊗-ixʳ (size c)) (ix-inr {d} {e} k))
+        (trans (sym (⊗-ix-assocʳ (size c) (size d) (ix k)))
+              (sym (ix-inr {c ⊕ d} {e} k))))))
+
+  ⊕assoc⁻¹-fixed
+    : {c d e : Code} (x : Val (c ⊕ (d ⊕ e))) → ⊕assoc⁻¹ x ≐ x
+  ⊕assoc⁻¹-fixed {c} {d} {e} =
+    ⊕-ind (⊕assoc⁻¹ {c} {d} {e}) (λ x → x)
+      (λ i →
+        trans (≡-≐ (⊕assoc⁻¹-inl {c} {d} {e} i))
+        (trans (ix-inl {c ⊕ d} {e} (inl {c} {d} i))
+        (trans (ix-inl {c} {d} i)
+              (sym (ix-inl {c} {d ⊕ e} i)))))
+      (λ y →
+        ⊕-ind (λ z → ⊕assoc⁻¹ {c} {d} {e} (inr {c} {d ⊕ e} z)) (λ z → inr {c} {d ⊕ e} z)
+          (λ j →
+            trans (≡-≐ (⊕assoc⁻¹-inr-inl {c} {d} {e} j))
+            (trans (ix-inl {c ⊕ d} {e} (inr {c} {d} j))
+            (trans (ix-inr {c} {d} j)
+            (trans (cong (⊗-ixʳ (size c)) (sym (ix-inl {d} {e} j)))
+                  (sym (ix-inr {c} {d ⊕ e} (inl {d} {e} j)))))))
+          (λ k →
+            trans (≡-≐ (⊕assoc⁻¹-inr-inr {c} {d} {e} k))
+            (trans (ix-inr {c ⊕ d} {e} k)
+            (trans (⊗-ix-assocʳ (size c) (size d) (ix k))
+            (trans (cong (⊗-ixʳ (size c)) (sym (ix-inr {d} {e} k)))
+                  (sym (ix-inr {c} {d ⊕ e} (inr {d} {e} k)))))))
+          y)
 
 rigid-⊕assoc : {c d e : Code} → Rigid ((c ⊕ d) ⊕ e) (c ⊕ (d ⊕ e))
 rigid-⊕assoc {c} {d} {e} = rigid ⊕assoc (+-assoc (size c) (size d) (size e)) ⊕assoc-fixed
@@ -399,15 +420,15 @@ rigid-⊕assoc⁻¹ {c} {d} {e} =
 -- ── ⊗ symmetry: the transpose ───────────────────────────────────────────────
 
 ⊗comm : {c d : Code} → Val (c ⊗ d) → Val (d ⊗ c)
-⊗comm x = pair (proj₂ (⊗split x)) (proj₁ (⊗split x))
+⊗comm x = pair (proj₂ (⊗-split x)) (proj₁ (⊗-split x))
 
 ⊗comm-pair : {c d : Code} (u : Val c) (v : Val d) → ⊗comm (pair u v) ≡ pair v u
-⊗comm-pair u v = cong (λ p → pair (proj₂ p) (proj₁ p)) (⊗split-pair u v)
+⊗comm-pair u v = cong (λ p → pair (proj₂ p) (proj₁ p)) (⊗-split-pair u v)
 
 -- The transpose's offset law: source `b * i + j` becomes target `a * j + i`.
 ⊗comm-ix
   : {c d : Code} (u : Val c) (v : Val d)
-  → ix (⊗comm (pair u v)) ≡ ⊗ix (size c) (ix v) (ix u)
+  → ix (⊗comm (pair u v)) ≡ ⊗-ix (size c) (ix v) (ix u)
 ⊗comm-ix u v = trans (≡-≐ (⊗comm-pair u v)) (ix-pair v u)
 
 ⊗comm-invol : {c d : Code} (x : Val (c ⊗ d)) → ⊗comm (⊗comm x) ≡ x
@@ -419,13 +440,13 @@ rigid-⊕assoc⁻¹ {c} {d} {e} =
 -- ── ⊕ symmetry: the block swap ──────────────────────────────────────────────
 
 ⊕swap : {c d : Code} → Val (c ⊕ d) → Val (d ⊕ c)
-⊕swap x = [ (λ i → inr i) , (λ j → inl j) ]′ (⊕split x)
+⊕swap x = [ (λ i → inr i) , (λ j → inl j) ]′ (⊕-split x)
 
 ⊕swap-inl : {c d : Code} (i : Val c) → ⊕swap {c} {d} (inl i) ≡ inr i
-⊕swap-inl i = cong [ (λ i′ → inr i′) , (λ j → inl j) ]′ (⊕split-inl i)
+⊕swap-inl i = cong [ (λ i′ → inr i′) , (λ j → inl j) ]′ (⊕-split-inl i)
 
 ⊕swap-inr : {c d : Code} (j : Val d) → ⊕swap {c} {d} (inr j) ≡ inl j
-⊕swap-inr j = cong [ (λ i → inr i) , (λ j′ → inl j′) ]′ (⊕split-inr j)
+⊕swap-inr j = cong [ (λ i → inr i) , (λ j′ → inl j′) ]′ (⊕-split-inr j)
 
 ⊕swap-invol : {c d : Code} (x : Val (c ⊕ d)) → ⊕swap (⊕swap x) ≡ x
 ⊕swap-invol {c} {d} x =
@@ -440,44 +461,44 @@ dist-on : {c d e : Code} → Val c → Val d ⊎ Val e → Val ((c ⊗ d) ⊕ (c
 dist-on u = [ (λ v → inl (pair u v)) , (λ w → inr (pair u w)) ]′
 
 dist : {c d e : Code} → Val (c ⊗ (d ⊕ e)) → Val ((c ⊗ d) ⊕ (c ⊗ e))
-dist x = dist-on (proj₁ (⊗split x)) (⊕split (proj₂ (⊗split x)))
+dist x = dist-on (proj₁ (⊗-split x)) (⊕-split (proj₂ (⊗-split x)))
 
 dist-inl
   : {c d e : Code} (u : Val c) (v : Val d)
   → dist {c} {d} {e} (pair u (inl v)) ≡ inl (pair u v)
 dist-inl {c} {d} {e} u v =
-  trans (cong (λ p → dist-on (proj₁ p) (⊕split (proj₂ p))) (⊗split-pair u (inl {d} {e} v)))
-        (cong (dist-on u) (⊕split-inl v))
+  trans (cong (λ p → dist-on (proj₁ p) (⊕-split (proj₂ p))) (⊗-split-pair u (inl {d} {e} v)))
+        (cong (dist-on u) (⊕-split-inl v))
 
 dist-inr
   : {c d e : Code} (u : Val c) (w : Val e)
   → dist {c} {d} {e} (pair u (inr w)) ≡ inr (pair u w)
 dist-inr {c} {d} {e} u w =
-  trans (cong (λ p → dist-on (proj₁ p) (⊕split (proj₂ p))) (⊗split-pair u (inr {d} {e} w)))
-        (cong (dist-on u) (⊕split-inr w))
+  trans (cong (λ p → dist-on (proj₁ p) (⊕-split (proj₂ p))) (⊗-split-pair u (inr {d} {e} w)))
+        (cong (dist-on u) (⊕-split-inr w))
 
 undist-on : {c d e : Code} → Val (c ⊗ d) ⊎ Val (c ⊗ e) → Val (c ⊗ (d ⊕ e))
 undist-on =
-  [ (λ y → pair (proj₁ (⊗split y)) (inl (proj₂ (⊗split y))))
-  , (λ z → pair (proj₁ (⊗split z)) (inr (proj₂ (⊗split z))))
+  [ (λ y → pair (proj₁ (⊗-split y)) (inl (proj₂ (⊗-split y))))
+  , (λ z → pair (proj₁ (⊗-split z)) (inr (proj₂ (⊗-split z))))
   ]′
 
 undist : {c d e : Code} → Val ((c ⊗ d) ⊕ (c ⊗ e)) → Val (c ⊗ (d ⊕ e))
-undist x = undist-on (⊕split x)
+undist x = undist-on (⊕-split x)
 
 undist-inl
   : {c d e : Code} (u : Val c) (v : Val d)
   → undist {c} {d} {e} (inl (pair u v)) ≡ pair u (inl v)
 undist-inl {c} {d} {e} u v =
-  trans (cong undist-on (⊕split-inl (pair u v)))
-        (cong (λ p → pair (proj₁ p) (inl (proj₂ p))) (⊗split-pair u v))
+  trans (cong undist-on (⊕-split-inl (pair u v)))
+        (cong (λ p → pair (proj₁ p) (inl (proj₂ p))) (⊗-split-pair u v))
 
 undist-inr
   : {c d e : Code} (u : Val c) (w : Val e)
   → undist {c} {d} {e} (inr (pair u w)) ≡ pair u (inr w)
 undist-inr {c} {d} {e} u w =
-  trans (cong undist-on (⊕split-inr (pair u w)))
-        (cong (λ p → pair (proj₁ p) (inr (proj₂ p))) (⊗split-pair u w))
+  trans (cong undist-on (⊕-split-inr (pair u w)))
+        (cong (λ p → pair (proj₁ p) (inr (proj₂ p))) (⊗-split-pair u w))
 
 dist-undist : {c d e : Code} (x : Val (c ⊗ (d ⊕ e))) → undist (dist x) ≡ x
 dist-undist {c} {d} {e} x =

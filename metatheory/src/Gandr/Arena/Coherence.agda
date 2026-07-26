@@ -121,9 +121,8 @@ open import Gandr.Arena.Code
 open import Gandr.Arena.Offset
 open import Gandr.Arena.Structure
 open import Gandr.Arena.Value
-open import Gandr.Prelude.Data
-open import Gandr.Prelude.Equality
-open import Gandr.Prelude.Nat
+
+open import Relation.Binary.PropositionalEquality
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE GENERAL THEOREM. Every coherence obligation over the associativity/unit
@@ -145,7 +144,7 @@ rigid-coherence r s x = trans (fixed r x) (sym (fixed s x))
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- ── Mac Lane's pentagon for ⊗ ───────────────────────────────────────────────
--- ((a⊗b)⊗c)⊗d ⇒ a⊗(b⊗(c⊗d)), two arrows against three.
+-- ((a ⊗ b) ⊗ c) ⊗ d ⇒ a ⊗ (b ⊗ (c ⊗ d)), two arrows against three.
 
 pentagon-⊗-short : {a b c d : Code} → Rigid (((a ⊗ b) ⊗ c) ⊗ d) (a ⊗ (b ⊗ (c ⊗ d)))
 pentagon-⊗-short {a} {b} {c} {d} =
@@ -229,21 +228,21 @@ coh-nat-⊗assoc
   : {a a′ b b′ c c′ : Code}
   → (f : Val a → Val a′) (g : Val b → Val b′) (h : Val c → Val c′)
   → (x : Val ((a ⊗ b) ⊗ c))
-  → ⊗map f (⊗map g h) (⊗assoc x) ≐ ⊗assoc (⊗map (⊗map f g) h x)
+  → ⊗-map f (⊗-map g h) (⊗assoc x) ≐ ⊗assoc (⊗-map (⊗-map f g) h x)
 coh-nat-⊗assoc {a} {a′} {b} {b′} {c} {c′} f g h =
-  ⊗-ind (λ x → ⊗map f (⊗map g h) (⊗assoc {a} {b} {c} x))
-        (λ x → ⊗assoc {a′} {b′} {c′} (⊗map (⊗map f g) h x))
+  ⊗-ind (λ x → ⊗-map f (⊗-map g h) (⊗assoc {a} {b} {c} x))
+        (λ x → ⊗assoc {a′} {b′} {c′} (⊗-map (⊗-map f g) h x))
     (λ y w →
-      ⊗-ind (λ z → ⊗map f (⊗map g h) (⊗assoc {a} {b} {c} (pair z w)))
-            (λ z → ⊗assoc {a′} {b′} {c′} (⊗map (⊗map f g) h (pair z w)))
+      ⊗-ind (λ z → ⊗-map f (⊗-map g h) (⊗assoc {a} {b} {c} (pair z w)))
+            (λ z → ⊗assoc {a′} {b′} {c′} (⊗-map (⊗-map f g) h (pair z w)))
         (λ u v →
-          ≡-≐ (trans (cong (⊗map f (⊗map g h)) (⊗assoc-pair u v w))
-               (trans (⊗map-pair f (⊗map g h) u (pair v w))
-               (trans (cong (pair (f u)) (⊗map-pair g h v w))
+          ≡-≐ (trans (cong (⊗-map f (⊗-map g h)) (⊗assoc-pair u v w))
+               (trans (⊗-map-pair f (⊗-map g h) u (pair v w))
+               (trans (cong (pair (f u)) (⊗-map-pair g h v w))
                (trans (sym (⊗assoc-pair (f u) (g v) (h w)))
                       (cong (⊗assoc {a′} {b′} {c′})
-                            (sym (trans (⊗map-pair (⊗map f g) h (pair u v) w)
-                                        (cong (λ t → pair t (h w)) (⊗map-pair f g u v))))))))))
+                            (sym (trans (⊗-map-pair (⊗-map f g) h (pair u v) w)
+                                        (cong (λ t → pair t (h w)) (⊗-map-pair f g u v))))))))))
         y)
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -263,8 +262,8 @@ hexagon-⊕-across {a} {b} {c} x =
 -- (a⊕b)⊕c ⇒ (b⊕a)⊕c ⇒ b⊕(a⊕c) ⇒ b⊕(c⊕a)
 hexagon-⊕-around : {a b c : Code} → Val ((a ⊕ b) ⊕ c) → Val (b ⊕ (c ⊕ a))
 hexagon-⊕-around {a} {b} {c} x =
-  ⊕map (λ y → y) (⊕swap {a} {c})
-    (⊕assoc {b} {a} {c} (⊕map (⊕swap {a} {b}) (λ y → y) x))
+  ⊕-map (λ y → y) (⊕swap {a} {c})
+    (⊕assoc {b} {a} {c} (⊕-map (⊕swap {a} {b}) (λ y → y) x))
 
 -- The three summand cases, each route computed to normal form.
 
@@ -280,11 +279,11 @@ hexagon-⊕-around-ll
   : {a b c : Code} (i : Val a)
   → hexagon-⊕-around {a} {b} {c} (inl (inl i)) ≡ inr {b} {c ⊕ a} (inr {c} {a} i)
 hexagon-⊕-around-ll {a} {b} {c} i =
-  trans (cong (λ y → ⊕map (λ z → z) (⊕swap {a} {c}) (⊕assoc {b} {a} {c} y))
-              (trans (⊕map-inl (⊕swap {a} {b}) (λ z → z) (inl {a} {b} i))
+  trans (cong (λ y → ⊕-map (λ z → z) (⊕swap {a} {c}) (⊕assoc {b} {a} {c} y))
+              (trans (⊕-map-inl (⊕swap {a} {b}) (λ z → z) (inl {a} {b} i))
                      (cong (inl {b ⊕ a} {c}) (⊕swap-inl {a} {b} i))))
-  (trans (cong (⊕map (λ z → z) (⊕swap {a} {c})) (⊕assoc-inl-inr {b} {a} {c} i))
-  (trans (⊕map-inr (λ z → z) (⊕swap {a} {c}) (inl {a} {c} i))
+  (trans (cong (⊕-map (λ z → z) (⊕swap {a} {c})) (⊕assoc-inl-inr {b} {a} {c} i))
+  (trans (⊕-map-inr (λ z → z) (⊕swap {a} {c}) (inl {a} {c} i))
          (cong (inr {b} {c ⊕ a}) (⊕swap-inl {a} {c} i))))
 
 hexagon-⊕-across-lr
@@ -299,11 +298,11 @@ hexagon-⊕-around-lr
   : {a b c : Code} (j : Val b)
   → hexagon-⊕-around {a} {b} {c} (inl (inr j)) ≡ inl {b} {c ⊕ a} j
 hexagon-⊕-around-lr {a} {b} {c} j =
-  trans (cong (λ y → ⊕map (λ z → z) (⊕swap {a} {c}) (⊕assoc {b} {a} {c} y))
-              (trans (⊕map-inl (⊕swap {a} {b}) (λ z → z) (inr {a} {b} j))
+  trans (cong (λ y → ⊕-map (λ z → z) (⊕swap {a} {c}) (⊕assoc {b} {a} {c} y))
+              (trans (⊕-map-inl (⊕swap {a} {b}) (λ z → z) (inr {a} {b} j))
                      (cong (inl {b ⊕ a} {c}) (⊕swap-inr {a} {b} j))))
-  (trans (cong (⊕map (λ z → z) (⊕swap {a} {c})) (⊕assoc-inl-inl {b} {a} {c} j))
-         (⊕map-inl (λ z → z) (⊕swap {a} {c}) j))
+  (trans (cong (⊕-map (λ z → z) (⊕swap {a} {c})) (⊕assoc-inl-inl {b} {a} {c} j))
+         (⊕-map-inl (λ z → z) (⊕swap {a} {c}) j))
 
 hexagon-⊕-across-r
   : {a b c : Code} (k : Val c)
@@ -317,10 +316,10 @@ hexagon-⊕-around-r
   : {a b c : Code} (k : Val c)
   → hexagon-⊕-around {a} {b} {c} (inr k) ≡ inr {b} {c ⊕ a} (inl {c} {a} k)
 hexagon-⊕-around-r {a} {b} {c} k =
-  trans (cong (λ y → ⊕map (λ z → z) (⊕swap {a} {c}) (⊕assoc {b} {a} {c} y))
-              (⊕map-inr (⊕swap {a} {b}) (λ z → z) k))
-  (trans (cong (⊕map (λ z → z) (⊕swap {a} {c})) (⊕assoc-inr {b} {a} {c} k))
-  (trans (⊕map-inr (λ z → z) (⊕swap {a} {c}) (inr {a} {c} k))
+  trans (cong (λ y → ⊕-map (λ z → z) (⊕swap {a} {c}) (⊕assoc {b} {a} {c} y))
+              (⊕-map-inr (⊕swap {a} {b}) (λ z → z) k))
+  (trans (cong (⊕-map (λ z → z) (⊕swap {a} {c})) (⊕assoc-inr {b} {a} {c} k))
+  (trans (⊕-map-inr (λ z → z) (⊕swap {a} {c}) (inr {a} {c} k))
          (cong (inr {b} {c ⊕ a}) (⊕swap-inr {a} {c} k))))
 
 -- THE HEXAGON.
@@ -358,27 +357,27 @@ coh-nat-dist
   : {c c′ d d′ e e′ : Code}
   → (f : Val c → Val c′) (g : Val d → Val d′) (h : Val e → Val e′)
   → (x : Val (c ⊗ (d ⊕ e)))
-  → ⊕map (⊗map f g) (⊗map f h) (dist x) ≐ dist (⊗map f (⊕map g h) x)
+  → ⊕-map (⊗-map f g) (⊗-map f h) (dist x) ≐ dist (⊗-map f (⊕-map g h) x)
 coh-nat-dist {c} {c′} {d} {d′} {e} {e′} f g h =
-  ⊗-ind (λ x → ⊕map (⊗map f g) (⊗map f h) (dist {c} {d} {e} x))
-        (λ x → dist {c′} {d′} {e′} (⊗map f (⊕map g h) x))
+  ⊗-ind (λ x → ⊕-map (⊗-map f g) (⊗-map f h) (dist {c} {d} {e} x))
+        (λ x → dist {c′} {d′} {e′} (⊗-map f (⊕-map g h) x))
     (λ u y →
-      ⊕-ind (λ z → ⊕map (⊗map f g) (⊗map f h) (dist {c} {d} {e} (pair u z)))
-            (λ z → dist {c′} {d′} {e′} (⊗map f (⊕map g h) (pair {c} {d ⊕ e} u z)))
+      ⊕-ind (λ z → ⊕-map (⊗-map f g) (⊗-map f h) (dist {c} {d} {e} (pair u z)))
+            (λ z → dist {c′} {d′} {e′} (⊗-map f (⊕-map g h) (pair {c} {d ⊕ e} u z)))
         (λ v →
-          ≡-≐ (trans (cong (⊕map (⊗map f g) (⊗map f h)) (dist-inl u v))
-               (trans (⊕map-inl (⊗map f g) (⊗map f h) (pair u v))
-               (trans (cong (inl {c′ ⊗ d′} {c′ ⊗ e′}) (⊗map-pair f g u v))
+          ≡-≐ (trans (cong (⊕-map (⊗-map f g) (⊗-map f h)) (dist-inl u v))
+               (trans (⊕-map-inl (⊗-map f g) (⊗-map f h) (pair u v))
+               (trans (cong (inl {c′ ⊗ d′} {c′ ⊗ e′}) (⊗-map-pair f g u v))
                (trans (sym (dist-inl (f u) (g v)))
                       (cong (dist {c′} {d′} {e′})
-                            (sym (trans (⊗map-pair f (⊕map g h) u (inl {d} {e} v))
-                                        (cong (pair (f u)) (⊕map-inl g h v))))))))))
+                            (sym (trans (⊗-map-pair f (⊕-map g h) u (inl {d} {e} v))
+                                        (cong (pair (f u)) (⊕-map-inl g h v))))))))))
         (λ w →
-          ≡-≐ (trans (cong (⊕map (⊗map f g) (⊗map f h)) (dist-inr u w))
-               (trans (⊕map-inr (⊗map f g) (⊗map f h) (pair u w))
-               (trans (cong (inr {c′ ⊗ d′} {c′ ⊗ e′}) (⊗map-pair f h u w))
+          ≡-≐ (trans (cong (⊕-map (⊗-map f g) (⊗-map f h)) (dist-inr u w))
+               (trans (⊕-map-inr (⊗-map f g) (⊗-map f h) (pair u w))
+               (trans (cong (inr {c′ ⊗ d′} {c′ ⊗ e′}) (⊗-map-pair f h u w))
                (trans (sym (dist-inr (f u) (h w)))
                       (cong (dist {c′} {d′} {e′})
-                            (sym (trans (⊗map-pair f (⊕map g h) u (inr {d} {e} w))
-                                        (cong (pair (f u)) (⊕map-inr g h w))))))))))
+                            (sym (trans (⊗-map-pair f (⊕-map g h) u (inr {d} {e} w))
+                                        (cong (pair (f u)) (⊕-map-inr g h w))))))))))
         y)

@@ -18,7 +18,7 @@
 
 module Gandr.Arena.Code where
 
-open import Gandr.Prelude.Nat
+open import Data.Nat
 
 infixr 3 _⊕_
 infixr 4 _⊗_
@@ -31,7 +31,7 @@ data Code : Set where
 
 -- The flat measure. A product multiplies extents (row-major layout), a sum
 -- adds them (blocks laid end to end).
-size : Code → Nat
-size 𝟙       = suc zero
+size : Code → ℕ
+size 𝟙       = 1
 size (c ⊗ d) = size c * size d
 size (c ⊕ d) = size c + size d

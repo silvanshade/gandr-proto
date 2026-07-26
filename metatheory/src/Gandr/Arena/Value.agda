@@ -27,7 +27,7 @@
 -- which is exactly where the transports would otherwise have been.
 --
 -- ── THE INTERFACE ───────────────────────────────────────────────────────────
--- `pair`/`inl`/`inr` construct, `⊗split`/`⊕split` eliminate, β and η relate
+-- `pair`/`inl`/`inr` construct, `⊗-split`/`⊕-split` eliminate, β and η relate
 -- them, `⊗-ind`/`⊕-ind` do induction at the grade, and `ix-pair`/`ix-inl`/
 -- `ix-inr` connect the algebra to the offset arithmetic of Gandr.Arena.Offset.
 -- Everything downstream speaks through this interface: no proof below reaches
@@ -39,10 +39,18 @@ module Gandr.Arena.Value where
 
 open import Gandr.Arena.Code
 open import Gandr.Arena.Offset
-open import Gandr.Prelude.Data
-open import Gandr.Prelude.Equality
-open import Gandr.Prelude.Fin
-open import Gandr.Prelude.Nat
+
+private
+  module Fin where
+    open import Data.Fin public
+      hiding (module Fin)
+    open import Data.Fin.Properties public
+  open Fin
+
+open import Data.Nat
+open import Data.Product
+open import Data.Sum
+open import Relation.Binary.PropositionalEquality
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- The carrier and the grade.
@@ -57,7 +65,7 @@ record Val (c : Code) : Set where
 open Val public
 
 -- The raw offset a value names. This is what the grade is measured at.
-ix : {c : Code} → Val c → Nat
+ix : {c : Code} → Val c → ℕ
 ix x = toℕ (pos x)
 
 infix 4 _≐_
@@ -105,7 +113,7 @@ x ≐ y = ix x ≡ ix y
 
 -- The unit code spans one cell, at offset 0.
 unit : Val 𝟙
-unit = cell fzero
+unit = cell zero
 
 -- Row-major pairing.
 pair : {c d : Code} → Val c → Val d → Val (c ⊗ d)
@@ -125,24 +133,30 @@ inr {c} j = cell (size c ↑ʳ pos j)
 ix-unit : ix unit ≡ zero
 ix-unit = refl
 
-ix-pair
-  : {c d : Code} (u : Val c) (v : Val d)
-  → ix (pair u v) ≡ ⊗ix (size d) (ix u) (ix v)
-ix-pair u v = toℕ-combine (pos u) (pos v)
+module _ where
+opaque
+  unfolding ⊗-ix
+  unfolding ⊗-ixˡ
+  unfolding ⊗-ixʳ
 
-ix-inl
-  : {c d : Code} (i : Val c)
-  → ix (inl {c} {d} i) ≡ ⊕ixˡ (ix i)
-ix-inl {d} i = toℕ-↑ˡ (pos i) (size d)
+  ix-pair
+    : {c d : Code} (u : Val c) (v : Val d)
+    → ix (pair u v) ≡ ⊗-ix (size d) (ix u) (ix v)
+  ix-pair u v = toℕ-combine (pos u) (pos v)
 
-ix-inr
-  : {c d : Code} (j : Val d)
-  → ix (inr {c} {d} j) ≡ ⊕ixʳ (size c) (ix j)
-ix-inr {c} j = toℕ-↑ʳ (size c) (pos j)
+  ix-inl
+    : {c d : Code} (i : Val c)
+    → ix (inl {c} {d} i) ≡ ⊗-ixˡ (ix i)
+  ix-inl {d} i = toℕ-↑ˡ (pos i) (size d)
+
+  ix-inr
+    : {c d : Code} (j : Val d)
+    → ix (inr {c} {d} j) ≡ ⊗-ixʳ (size c) (ix j)
+  ix-inr {c} j = toℕ-↑ʳ (size c) (pos j)
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- Elimination. The encoding's inverses (`remQuot`, `splitAt`, `join`) appear
--- ONLY in this section; downstream proofs speak through `⊗split`/`⊕split` and
+-- ONLY in this section; downstream proofs speak through `⊗-split`/`⊕-split` and
 -- the β/η rules, and never mention the encoding again.
 -- ════════════════════════════════════════════════════════════════════════════
 
@@ -158,40 +172,40 @@ injs : {c d : Code} → Fin (size c) ⊎ Fin (size d) → Val c ⊎ Val d
 injs = [ (λ i → inj₁ (cell i)) , (λ j → inj₂ (cell j)) ]′
 
 -- Decompose a product value into its two factors.
-⊗split : {c d : Code} → Val (c ⊗ d) → Val c × Val d
-⊗split {c} {d} x = cells {c} {d} (remQuot (size d) (pos x))
+⊗-split : {c d : Code} → Val (c ⊗ d) → Val c × Val d
+⊗-split {c} {d} x = cells {c} {d} (remQuot (size d) (pos x))
 
 -- Decide which block of a sum a value lies in, and give its position there.
-⊕split : {c d : Code} → Val (c ⊕ d) → Val c ⊎ Val d
-⊕split {c} {d} x = injs {c} {d} (splitAt (size c) (pos x))
+⊕-split : {c d : Code} → Val (c ⊕ d) → Val c ⊎ Val d
+⊕-split {c} {d} x = injs {c} {d} (splitAt (size c) (pos x))
 
 -- The β-rules: eliminating a constructor returns what was built.
-⊗split-pair
+⊗-split-pair
   : {c d : Code} (u : Val c) (v : Val d)
-  → ⊗split (pair u v) ≡ (u , v)
-⊗split-pair {c} {d} u v = cong (cells {c} {d}) (remQuot-combine (pos u) (pos v))
+  → ⊗-split (pair u v) ≡ (u , v)
+⊗-split-pair {c} {d} u v = cong (cells {c} {d}) (remQuot-combine (pos u) (pos v))
 
-⊕split-inl
+⊕-split-inl
   : {c d : Code} (i : Val c)
-  → ⊕split (inl {c} {d} i) ≡ inj₁ i
-⊕split-inl {c} {d} i = cong (injs {c} {d}) (splitAt-↑ˡ (size c) (pos i) (size d))
+  → ⊕-split (inl {c} {d} i) ≡ inj₁ i
+⊕-split-inl {c} {d} i = cong (injs {c} {d}) (splitAt-↑ˡ (size c) (pos i) (size d))
 
-⊕split-inr
+⊕-split-inr
   : {c d : Code} (j : Val d)
-  → ⊕split (inr {c} {d} j) ≡ inj₂ j
-⊕split-inr {c} {d} j = cong (injs {c} {d}) (splitAt-↑ʳ (size c) (size d) (pos j))
+  → ⊕-split (inr {c} {d} j) ≡ inj₂ j
+⊕-split-inr {c} {d} j = cong (injs {c} {d}) (splitAt-↑ʳ (size c) (size d) (pos j))
 
 -- The η-rules: every value is in constructor form. These are what make the
 -- induction principles complete — the arena has no values the algebra cannot
 -- name.
 ⊗-η
   : {c d : Code} (x : Val (c ⊗ d))
-  → pair (proj₁ (⊗split x)) (proj₂ (⊗split x)) ≡ x
+  → pair (proj₁ (⊗-split x)) (proj₂ (⊗-split x)) ≡ x
 ⊗-η {c} {d} x = cong cell (combine-remQuot {size c} (size d) (pos x))
 
 ⊕-η
   : {c d : Code} (x : Val (c ⊕ d))
-  → [ inl , inr ]′ (⊕split x) ≡ x
+  → [ inl , inr ]′ (⊕-split x) ≡ x
 ⊕-η {c} {d} x with splitAt (size c) (pos x) in eq
 ... | inj₁ i = cong cell (trans (cong (join (size c) (size d)) (sym eq))
                                 (join-splitAt (size c) (size d) (pos x)))
@@ -206,7 +220,7 @@ injs = [ (λ i → inj₁ (cell i)) , (λ j → inj₂ (cell j)) ]′
   → ((u : Val c) (v : Val d) → f (pair u v) ≐ g (pair u v))
   → (x : Val (c ⊗ d))
   → f x ≐ g x
-⊗-ind f g h x = ≐-at f g (⊗-η x) (h (proj₁ (⊗split x)) (proj₂ (⊗split x)))
+⊗-ind f g h x = ≐-at f g (⊗-η x) (h (proj₁ (⊗-split x)) (proj₂ (⊗-split x)))
 
 -- To compare two maps out of a sum at the grade, compare them on injections.
 ⊕-ind
@@ -217,7 +231,7 @@ injs = [ (λ i → inj₁ (cell i)) , (λ j → inj₂ (cell j)) ]′
   → ((j : Val d) → f (inr j) ≐ g (inr j))
   → (x : Val (c ⊕ d))
   → f x ≐ g x
-⊕-ind f g hl hr x with ⊕split x in eq
+⊕-ind f g hl hr x with ⊕-split x in eq
 ... | inj₁ i = ≐-at f g (trans (cong [ inl , inr ]′ (sym eq)) (⊕-η x)) (hl i)
 ... | inj₂ j = ≐-at f g (trans (cong [ inl , inr ]′ (sym eq)) (⊕-η x)) (hr j)
 
@@ -230,43 +244,43 @@ injs = [ (λ i → inj₁ (cell i)) , (λ j → inj₂ (cell j)) ]′
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- Map both factors of a product.
-⊗map
+⊗-map
   : {c c′ d d′ : Code}
   → (Val c → Val c′)
   → (Val d → Val d′)
   → Val (c ⊗ d) → Val (c′ ⊗ d′)
-⊗map f g x = pair (f (proj₁ (⊗split x))) (g (proj₂ (⊗split x)))
+⊗-map f g x = pair (f (proj₁ (⊗-split x))) (g (proj₂ (⊗-split x)))
 
 -- Map both summands of a sum.
-⊕map
+⊕-map
   : {c c′ d d′ : Code}
   → (Val c → Val c′)
   → (Val d → Val d′)
   → Val (c ⊕ d) → Val (c′ ⊕ d′)
-⊕map f g x = [ (λ i → inl (f i)) , (λ j → inr (g j)) ]′ (⊕split x)
+⊕-map f g x = [ (λ i → inl (f i)) , (λ j → inr (g j)) ]′ (⊕-split x)
 
 -- The computation rules. Whiskering is the encoding's round trip, so each
 -- rule is the corresponding β-rule pushed through the mapped functions.
-⊗map-pair
+⊗-map-pair
   : {c c′ d d′ : Code}
   → (f : Val c → Val c′) (g : Val d → Val d′)
   → (u : Val c) (v : Val d)
-  → ⊗map f g (pair u v) ≡ pair (f u) (g v)
-⊗map-pair f g u v =
-  cong (λ p → pair (f (proj₁ p)) (g (proj₂ p))) (⊗split-pair u v)
+  → ⊗-map f g (pair u v) ≡ pair (f u) (g v)
+⊗-map-pair f g u v =
+  cong (λ p → pair (f (proj₁ p)) (g (proj₂ p))) (⊗-split-pair u v)
 
-⊕map-inl
+⊕-map-inl
   : {c c′ d d′ : Code}
   → (f : Val c → Val c′) (g : Val d → Val d′)
   → (i : Val c)
-  → ⊕map f g (inl {c} {d} i) ≡ inl (f i)
-⊕map-inl f g i =
-  cong [ (λ i′ → inl (f i′)) , (λ j → inr (g j)) ]′ (⊕split-inl i)
+  → ⊕-map f g (inl {c} {d} i) ≡ inl (f i)
+⊕-map-inl f g i =
+  cong [ (λ i′ → inl (f i′)) , (λ j → inr (g j)) ]′ (⊕-split-inl i)
 
-⊕map-inr
+⊕-map-inr
   : {c c′ d d′ : Code}
   → (f : Val c → Val c′) (g : Val d → Val d′)
   → (j : Val d)
-  → ⊕map f g (inr {c} {d} j) ≡ inr (g j)
-⊕map-inr f g j =
-  cong [ (λ i → inl (f i)) , (λ j′ → inr (g j′)) ]′ (⊕split-inr j)
+  → ⊕-map f g (inr {c} {d} j) ≡ inr (g j)
+⊕-map-inr f g j =
+  cong [ (λ i → inl (f i)) , (λ j′ → inr (g j′)) ]′ (⊕-split-inr j)

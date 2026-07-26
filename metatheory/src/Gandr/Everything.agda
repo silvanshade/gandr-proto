@@ -17,7 +17,3 @@ import Gandr.Arena.Offset
 import Gandr.Arena.Structure
 import Gandr.Arena.Tree
 import Gandr.Arena.Value
-import Gandr.Prelude.Data
-import Gandr.Prelude.Equality
-import Gandr.Prelude.Fin
-import Gandr.Prelude.Nat

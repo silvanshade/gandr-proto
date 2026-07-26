@@ -33,8 +33,11 @@ module Gandr.Arena.Tree where
 open import Gandr.Arena.Code
 open import Gandr.Arena.Structure
 open import Gandr.Arena.Value
-open import Gandr.Prelude.Data
-open import Gandr.Prelude.Equality
+
+open import Data.Product
+open import Data.Sum
+open import Data.Unit
+open import Relation.Binary.PropositionalEquality
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- The tree-shaped presentation: a value is a nested pair-and-injection term,
@@ -59,8 +62,8 @@ flat (c ⊕ d) (inj₂ s)  = inr (flat d s)
 
 tree : (c : Code) → Val c → Tree c
 tree 𝟙       x = tt
-tree (c ⊗ d) x = tree c (proj₁ (⊗split x)) , tree d (proj₂ (⊗split x))
-tree (c ⊕ d) x = [ (λ i → inj₁ (tree c i)) , (λ j → inj₂ (tree d j)) ]′ (⊕split x)
+tree (c ⊗ d) x = tree c (proj₁ (⊗-split x)) , tree d (proj₂ (⊗-split x))
+tree (c ⊕ d) x = [ (λ i → inj₁ (tree c i)) , (λ j → inj₂ (tree d j)) ]′ (⊕-split x)
 
 -- ── The two presentations are isomorphic ────────────────────────────────────
 
@@ -68,23 +71,23 @@ tree-flat : (c : Code) (t : Tree c) → tree c (flat c t) ≡ t
 tree-flat 𝟙       tt       = refl
 tree-flat (c ⊗ d) (t , s)  =
   trans (cong (λ p → tree c (proj₁ p) , tree d (proj₂ p))
-              (⊗split-pair (flat c t) (flat d s)))
+              (⊗-split-pair (flat c t) (flat d s)))
         (cong₂ _,_ (tree-flat c t) (tree-flat d s))
 tree-flat (c ⊕ d) (inj₁ t) =
   trans (cong [ (λ i → inj₁ (tree c i)) , (λ j → inj₂ (tree d j)) ]′
-              (⊕split-inl (flat c t)))
+              (⊕-split-inl (flat c t)))
         (cong inj₁ (tree-flat c t))
 tree-flat (c ⊕ d) (inj₂ s) =
   trans (cong [ (λ i → inj₁ (tree c i)) , (λ j → inj₂ (tree d j)) ]′
-              (⊕split-inr (flat d s)))
+              (⊕-split-inr (flat d s)))
         (cong inj₂ (tree-flat d s))
 
 flat-tree : (c : Code) (x : Val c) → flat c (tree c x) ≡ x
 flat-tree 𝟙       x = sym (𝟙-η x)
 flat-tree (c ⊗ d) x =
-  trans (cong₂ pair (flat-tree c (proj₁ (⊗split x))) (flat-tree d (proj₂ (⊗split x))))
+  trans (cong₂ pair (flat-tree c (proj₁ (⊗-split x))) (flat-tree d (proj₂ (⊗-split x))))
         (⊗-η x)
-flat-tree (c ⊕ d) x with ⊕split x in eq
+flat-tree (c ⊕ d) x with ⊕-split x in eq
 ... | inj₁ i =
   trans (cong inl (flat-tree c i))
         (trans (cong [ inl , inr ]′ (sym eq)) (⊕-η x))
