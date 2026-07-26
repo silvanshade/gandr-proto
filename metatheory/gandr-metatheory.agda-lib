@@ -1,2 +1,3 @@
 name: gandr-metatheory
-include: src
+depend: standard-library-2.3
+include: src vendor/agda-stdlib
