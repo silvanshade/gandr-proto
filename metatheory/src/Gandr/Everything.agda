@@ -28,4 +28,5 @@ import Gandr.Profunctor.Yoneda
 import Gandr.Rigid
 import Gandr.Setoid
 import Gandr.Shape.Decidable
+import Gandr.Shape.Graft
 import Gandr.Shape.Graph
