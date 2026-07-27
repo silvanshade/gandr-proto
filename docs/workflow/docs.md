@@ -104,9 +104,12 @@ The convention (authored docs are clean by construction):
   Math holding a literal `|` inside a pipe-table cell needs `\|`.
 * **Display math** — a fenced code block tagged `math`; **never** bare `$$…$$` (MD013 reflow joins it to one line).
 * **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.
-* **Emphasis never spans a sentence boundary, and a sentence's period sits _outside_ it** — write `**the rule**.` rather than `**the rule.**` (both shown as code spans here so this bullet does not demonstrate the defect on itself).
-  Under `reflow-mode = "semantic-line-breaks"` at `line-length = 0`, a paragraph ending a sentence inside an emphasis span is not split at its sentence boundaries; the reflow emits a doubled space, MD064 strips it, and the reflow re-emits it.
-  That is an **auto-fix conflict loop** (`MD064 -> MD013 -> MD064`), and on detecting one rumdl abandons the rest of that file's fixes — so unrelated issues silently stop being applied while `rumdl fmt` still reports them as fixable.
-  The observed case stalled an 1800-line document at an unchanged issue count for eight passes, 245 of them misaligned tables nowhere near the offending paragraph, and cleared in one pass once the period moved outside the emphasis.
-  **`rumdl fmt` diagnoses this itself**, naming the cycle and the file, so never discard its output when a format pass will not converge — `rumdl check` alone reports only the symptoms.
-  No configuration avoids the loop while keeping both semantic line breaks and reflow auto-fix, so the convention is the mitigation; the defect is upstream's, and the same cycle has already been fixed once for `sentence-per-line`.
+* **Write every paragraph expecting the line breaks to fall at sentence boundaries** — that is what `reflow-mode = "semantic-line-breaks"` means, and inline formatting must not straddle one of those boundaries.
+  A sentence's period therefore sits _outside_ the emphasis that ends it: write `**the rule**.` rather than `**the rule.**` (both are code spans here so this bullet cannot demonstrate the defect on itself).
+  **Dangling formatting** — an emphasis span that swallows the full stop it ends on — is the violation, and rumdl has no good answer to it: the repair is to move the closing marker inward, and nothing in the document tells the formatter whether that matches the author's intent.
+  So it neither repairs nor rejects it.
+  Instead the reflow stops splitting that paragraph at its sentence boundaries and emits a doubled space, MD064 strips the space, the reflow re-emits it — an **auto-fix conflict loop** (`MD064 -> MD013 -> MD064`), on detection of which rumdl abandons the rest of that file's fixes.
+  Unrelated issues then stop being applied: the observed case stalled an 1800-line document for eight passes, 245 of them misaligned tables nowhere near the offending paragraph, and cleared in one pass once the period moved outside the emphasis.
+  **The merge wall does catch this** — `rumdl-verify` fails `treefmt:check` — but its advice, "run `rumdl fmt` to automatically fix N of N issues", is false here and will loop anyone who follows it.
+  Only `rumdl fmt`'s own output names the cycle, and it still exits `0` after writing the stuck file, so read that output rather than trusting its exit code.
+  No configuration avoids the loop while keeping both semantic line breaks and reflow auto-fix; the convention is the mitigation, and the defect is upstream's (the same cycle was fixed once already for `sentence-per-line`).
