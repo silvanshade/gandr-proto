@@ -17,6 +17,7 @@ import Gandr.Arena.Offset
 import Gandr.Arena.Structure
 import Gandr.Arena.Tree
 import Gandr.Arena.Value
+import Gandr.Arity.Path
 import Gandr.Category
 import Gandr.Category.Functor
 import Gandr.Category.Reasoning
