@@ -1,4 +1,4 @@
-{-# OPTIONS --safe --without-K --hidden-argument-puns #-}
+{-# OPTIONS --safe --guardedness --without-K --hidden-argument-puns #-}
 
 ------------------------------------------------------------------------------
 -- Gandr.Everything — the strict gate root (docs/workflow/agda.md).
@@ -17,3 +17,4 @@ import Gandr.Arena.Offset
 import Gandr.Arena.Structure
 import Gandr.Arena.Tree
 import Gandr.Arena.Value
+import Gandr.Graph
