@@ -198,6 +198,17 @@ A module that opts out states why in its header.
 A metatheory milestone is done only when `agda:check` is green **and** its documentation face lands in the same motion — the module header for new structure, or the port-delta note for a ported layer.
 Gate-green alone is half a milestone.
 
+**At every session close, sweep the durable faces in this order and update each one that the session's work moved.** Not only the artifact you happened to touch: a claim left standing in a document nobody re-read is how a retracted diagnosis gets cited downstream, which is the failure this tree has already paid for twice.
+
+1. **Module headers** — the design record for the structure they own; new content, retracted claims, and located walls all live here first.
+2. **This file** — a rule that recurred, a gate change, a dependency or commit-shape change.
+3. **`docs/gandr/spec/proposal-metatheory-consolidated.md`** — the prose design record: §2.4's substrate table, the section owning the changed layer, and §15's build-order status lines.
+   Say explicitly when no decision or commitment moved.
+4. **The arc's own work list and decision log**, wherever the project's contributor notes keep them — next steps, status, and the lessons whose authoritative home is nonetheless item 2 or 3.
+5. **The tracker** — progress as a comment on the owning item, then push.
+
+Check the _whole_ of each artifact, not the section you edited last: status tables, build-order rows, and "as built" amendments go stale silently, and a superseded sketch must be marked superseded rather than deleted, so the amendment above it stays legible.
+
 A green gate is also not proof of _meaning_.
 State residuals honestly in the module header: a theorem that is reduced but not discharged says so, and a scope cut says what it cut and why it does not weaken the result.
 
