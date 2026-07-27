@@ -18,5 +18,7 @@ import Gandr.Arena.Structure
 import Gandr.Arena.Tree
 import Gandr.Arena.Value
 import Gandr.Category
+import Gandr.Category.Functor
+import Gandr.Category.Reasoning
 import Gandr.Graph
 import Gandr.Setoid
