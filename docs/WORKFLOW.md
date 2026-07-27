@@ -34,11 +34,17 @@ This is the **routing layer**: the base operating doctrine lives in the shared c
 
 ## Quality gates, in one breath
 
+**Discover the task surface before invoking any project tooling — `mise tasks --local`.** A `mise` task is the stable entry point, and it usually carries environment the bare binary does not.
+`treefmt`, `treefmt:check` and `cargo:fmt` all export the pinned nightly, because `rustfmt.toml` relies on nightly-only options that stable `rustfmt` **silently ignores** rather than rejecting.
+So a bare `treefmt` reformats the whole tree against the wrong style, reports success, and leaves a diff no gate asked for.
+The hazard shape is general: it applies to every tool whose task body sets a toolchain, a variable, or a config path, so reach for the task rather than the binary even when the bare invocation looks equivalent.
+Narrow, file-scoped checks (`rumdl check <file>`, `typos <file>`) stay useful while iterating — but the tree-wide verdict is the task's.
+
 Run the **narrowest gate that proves your change** before any commit; the merge wall (`gate:merge`) runs the composed sweep automatically ([workflow/ci.md](workflow/ci.md); the push tier and hosted CI are parked during the reboot).
 Docs: `treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `test:doc-gates`.
 Rust: `cargo:clippy` (pass/fail only — triage via aifix), `cargo:nextest`.
 Agda: `agda:check`.
-Editing a registered corpus doc updates its `docs/gandr/MANIFEST.yml` b3sum in the same commit.
+Adding a doc under `docs/gandr/` registers it in `docs/gandr/MANIFEST.yml` with a b3sum and at least one edge, and editing a registered corpus doc updates that b3sum — both in the same commit, and `docs:manifest-drift` is what catches either omission.
 
 ## Standing principles (the short forms)
 
