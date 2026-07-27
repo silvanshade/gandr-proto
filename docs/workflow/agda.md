@@ -33,6 +33,10 @@ Two disciplines are load-bearing rather than cosmetic, and both exist to keep st
   Where an operation would otherwise enter an index, speak it through the inductive _graph_ of that operation as a witness relation.
 * **No identity-shaped constructor repeats a frame variable across its result indices.** Identity and diagonal cases are derived, never adjoined as constructor shapes.
 
+**Migrate, never duplicate.** When a definition belongs in a different module than the one it sits in, move it and update its importers.
+Never write a second copy: two definitions of the same thing are _definitionally equal_, so the gate cannot see the drift, and the copies diverge silently the first time one is edited.
+The rule is symmetric and applies across the whole tree; the split between `Gandr.Category`'s carrier-level instances and `Gandr.Category.Instances`' constructed ones is the worked example, and both headers state it.
+
 **Agda-DbC stance.** The type is the contract; do not port the Rust `# Contract` comment block.
 Load-bearing insight lives in the module header and the code cites it.
 Mandatory marks are reserved for genuine trust-story exceptions: signature parameters standing for assumptions, and any future with-K or unsafe island.
@@ -88,6 +92,14 @@ Gate-green alone is half a milestone.
 
 A green gate is also not proof of _meaning_.
 State residuals honestly in the module header: a theorem that is reduced but not discharged says so, and a scope cut says what it cut and why it does not weaken the result.
+
+Two ways a module passes the gate while proving nothing, both of which the author must close rather than the gate:
+
+* **A parameterized module carrying assumptions must be instantiated somewhere.** Agda type-checks a module body whether or not its parameters can ever be supplied, so a module whose hypotheses are jointly unsatisfiable is green and vacuous.
+  Discharge the parameters at a concrete witness in the same change, and say in the header that the witness is what makes the assumptions satisfiable.
+  `Gandr.Rigid`'s `Multiset` against the natural numbers is the exemplar.
+* **A predicate that nothing refutes may be vacuous.** A structure defined over a predicate proves nothing if no object fails it.
+  Exhibit a counterexample alongside the examples — `Gandr.Shape.Graph`'s diamond and wheel are what stop its connectivity and wheel-freeness lemmas from being statements about an empty type.
 
 ## Commits
 

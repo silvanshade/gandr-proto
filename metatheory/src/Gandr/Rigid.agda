@@ -30,6 +30,16 @@
 -- the input and output legs. Rigidity is a property of the REPRESENTATION, not
 -- of the objects, and this record is that property stated as structure.
 --
+-- ── ON `opaque` ─────────────────────────────────────────────────────────────
+-- Absent, and this module owes the reason. Two of its statements are
+-- DEFINITIONAL and would be destroyed by sealing: `canon-split` says the
+-- idempotent factors through its splitting with nothing inserted, which is
+-- `refl` only while `nf` and `emb` unfold, and `nf-ext` matches `Nf`'s
+-- constructor. Everything else here is a proof term that nothing eliminates, so
+-- its unfolding is not a cost to control and opacity would buy nothing against
+-- that. Sealing the arithmetic of a normal form is the discipline's target; a
+-- module whose content IS the definitional factorization is not.
+--
 -- ── TWO THINGS IN THIS TREE ARE CALLED `Rigid`, AND THEY ARE DIFFERENT ──────
 -- `Gandr.Arena.Structure.Rigid c d` is a MAP between codes that relabels
 -- nothing — a map with a fixed-point certificate on offsets — and its payoff is

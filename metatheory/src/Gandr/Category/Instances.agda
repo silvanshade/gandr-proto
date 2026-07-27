@@ -60,6 +60,15 @@
 -- precisely what a tree without SET does not have. `homᵒ` below supplies the
 -- object part, which is all the enrichment statement needs.
 --
+-- ── ON `opaque` ─────────────────────────────────────────────────────────────
+-- Absent, and this module owes the reason. `SETOID`'s three coherence cells are
+-- reflexivity ONLY because `idn₀` and `seq₀` unfold definitionally; sealing them
+-- would turn `mon-λ`, `mon-ρ` and `mon-α` from `refl` into obligations that
+-- cannot be discharged at all, since nothing else relates the two composites.
+-- The same carrier-layer argument `Gandr.Graph` and `Gandr.Category` make, one
+-- level up: these definitions exist to be unfolded, and their definitional
+-- equalities are what the instance is.
+--
 -- ── WHERE THE OTHER INSTANCES LIVE, AND WHAT TO DO IF YOU WANT THEM HERE ────
 -- `ℂ.Id`, `ℂ.𝟘`, `ℂ.𝟙`, `ℂ.!`, `ℂ._×_`, `ℂ.fst`, `ℂ.snd` and `ℂ.⟨_,_⟩` stay in
 -- `Gandr.Category`. They are definitional companions of `𝔾`'s objects — each is
