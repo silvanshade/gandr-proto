@@ -113,6 +113,17 @@ nd = "nd"
 # VDC/equipment prose; typos rewrites "transfors" → "transforms".
 transfor = "transfor"
 transfors = "transfors"
+# "operad" is the standard name for the algebraic structure (operads, dioperads,
+# properads, modular operads); typos rewrites it to "operand". The *.agda
+# exclude already covers the metatheory modules; this covers the Markdown prose.
+operad = "operad"
+Operad = "Operad"
+# "substitude" — the Batanin–Kock–Weber structure (a monad in the bicategory of
+# generalised species); typos rewrites "Substitudes" → "Substitutes".
+substitude = "substitude"
+Substitude = "Substitude"
+substitudes = "substitudes"
+Substitudes = "Substitudes"
 
 [default.extend-identifiers]
 CertiCoq = "CertiCoq"
