@@ -60,7 +60,9 @@
 -- the assumption that it needs them. What IS built here is the operation, its
 -- computational checks, the structural theorem below, and the unit laws — and
 -- those unit laws are what MEASURE the cost of not having the graph, which is
--- the input the extraction wanted.
+-- the input the extraction wanted. The extraction itself, and the list of what
+-- this kit still owes it, is `Gandr.Arity.Path`'s header §*What the second
+-- instance actually showed*.
 --
 -- ── WHAT IS PROVED ─────────────────────────────────────────────────────────
 -- `verts-graft` — grafting CONCATENATES the vertex listings, in order. This is

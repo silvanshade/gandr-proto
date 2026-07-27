@@ -32,13 +32,89 @@
 -- — as if they were the general shape. The interface is extracted once the
 -- second kit exists and the genuinely shared part is visible.
 --
--- What is expected to be shared, recorded so the extraction has a target: the
--- carrier, a unit, a multiplication spoken only through its graph, and the four
--- derived lemmas below (totality, functionality, associativity, whiskering).
--- What is expected NOT to be shared: the unit's status. Here `here` is a
--- constructor; in the many-out kit the identity must be DERIVED, because an
--- identity-shaped constructor repeating a frame variable across its result
--- indices is exactly the discipline violation this tree forbids.
+-- The target recorded in advance was: the carrier, a unit, a multiplication
+-- spoken only through its graph, and the four derived lemmas below (totality,
+-- functionality, associativity, whiskering); with the unit's STATUS named as
+-- the one thing expected not to generalize.
+--
+-- ── WHAT THE SECOND INSTANCE ACTUALLY SHOWED ────────────────────────────────
+-- `Gandr.Shape.Graph` and `Gandr.Shape.Graft` are now that instance: `Shape Γ Δ`
+-- over `List Ob`, with `idn` derived and `graft` composing along the shared
+-- interface. Reading the two side by side moves three things, and only the
+-- first was anticipated.
+--
+--   * **The unit's status differs, and further than expected.** It is not only
+--     that `here` is a constructor and `idn` a construction. It reaches into
+--     which unit LAW is free: here `nil : Cat p here p` IS the right unit,
+--     because concatenation recurses on its second argument, and `cat-idnˡ`
+--     below has to be proved. In the graph kit neither side is a constructor
+--     and both laws are lemmas. So an interface cannot present either unit law
+--     as structure; both are fields.
+--
+--   * **The multiplication's ATOMICITY does not generalize, and this is the
+--     expensive one.** `_++_` is one structural recursion, so one inductive
+--     graph speaks it. `graft` is a composite of nine operations — the vertex
+--     interleaving forces a whiskering, which forces a wire-threading, which
+--     forces an insertion exchange — and the witness discipline does not stop
+--     at the outermost: each auxiliary's result sits in the next one's graph
+--     index. "A multiplication spoken only through its graph" is therefore one
+--     relation in this kit and nine in that one. An interface may still demand
+--     it, but it must demand it as a FIELD an instance supplies however it can,
+--     never as a construction, and the asymmetry has to be stated where a
+--     reader meets it rather than discovered by whoever writes the instance.
+--
+--   * **Functionality cannot be demanded at propositional equality.**
+--     `cat-fun` is h-level free because `Cat`'s constructors carry no
+--     existential witness: every path in an index is determined by the indices
+--     around it. The graph kit's cannot be. Its carrier's `node` carries
+--     `Append` witnesses, so the graph of grafting must existentially quantify
+--     the whiskered operand's witness, and two witnesses of the same grafting
+--     may differ there. Identifying them is `append-uniq`, whose price is
+--     `UIP Ob`. So a `mul-fun` landing in `_≡_` charges the law layer an
+--     h-level condition in one instance and nothing in the other.
+--
+-- The measurement that pins this down is in `Gandr.Shape.Graft`: stated on the
+-- FUNCTION, that kit's unit laws cost exactly `UIP Ob` and are proved at that
+-- price; stated on the GRAPH they would cost nothing, because the witness is
+-- the existential the relation never commits to. Read together with the point
+-- above, the h-level charge does not vanish — it MOVES. Function-side it lands
+-- on the unit laws; graph-side it lands on functionality.
+--
+-- What removes it from both is the heterogeneous comparison. `Same` below was
+-- introduced as the K-free way to compare paths with different endpoints; the
+-- extraction gives it a second and larger job, because a structural equality
+-- can ignore the witness layer that propositional equality has to identify. So
+-- the interface's functionality lemma should land in `Same`, and `Same` is not
+-- an optional convenience for the heterogeneous case — it is the equality the
+-- laws are stated at, and the graph kit owes one before the record can be
+-- written.
+--
+-- ── THE PROPOSED INTERFACE, AND WHAT IS STILL OWED ──────────────────────────
+-- Recorded rather than written, because two of its fields have no inhabitant in
+-- the graph kit yet and a record with one instance is the mistake this section
+-- opens by naming.
+--
+--   Iface     : Set                                  -- positions / interfaces
+--   Ar        : Iface → Iface → Set                  -- the arities
+--   Same      : Ar a b → Ar a b′ → Set               -- structural equality
+--   idn       : (a : Iface) → Ar a a                 -- constructor OR derived
+--   mul       : Ar a b → Ar b c → Ar a c
+--   Mul       : Ar a b → Ar b c → Ar a c → Set       -- its graph
+--   mul-graph : (p : Ar a b) (q : Ar b c) → Mul p q (mul p q)
+--   mul-fun   : Mul p q r → Mul p q r′ → Same r r′   -- NOT _≡_
+--   mul-idnˡ  : (q : Ar a b) → Mul (idn a) q q
+--   mul-idnʳ  : (p : Ar a b) → Mul p (idn b) p
+--   mul-assoc : Mul p q r → Mul r s t → Mul q s u → Mul p u t
+--   mul-whisk : Mul g h gh → Mul h f r → Mul g r gr → Mul gh f gr
+--
+-- This module supplies every field. The graph kit supplies `Iface`, `Ar`, `idn`
+-- and `mul`, and owes `Same`, `Mul`, and the six lemmas over them.
+--
+-- Two defects in this module were found by attempting the extraction rather
+-- than by reading it, which is the argument for having run the pass before
+-- building the nine graphs: `cat-idnˡ` was absent, and `cat-whisk` was stated
+-- with the DEFINED concatenation in two of `Cat`'s index positions — see its
+-- comment for why that survived local review. Both are repaired below.
 --
 -- ── THE TWO WITNESS DISCIPLINES, WHICH ARE WHY THIS MODULE LOOKS ODD ────────
 -- Both exist to keep structures computing under `--without-K`.
@@ -74,6 +150,7 @@ private
       using (_≡_)
       renaming (refl to idn)
       renaming (cong to fun*)
+      renaming (subst to coe*)
 open ≡
   using (_≡_)
 
@@ -158,17 +235,42 @@ module _ {ℓ} {Pos : Set ℓ} {Edge : Pos → Pos → Set ℓ} where
   cat-assoc w₁ nil nil = w₁
   cat-assoc w₁ (cons w₂) (cons w₃) = cons (cat-assoc w₁ w₂ w₃)
 
-  -- Left-whiskering a witness by a fixed prefix. Recursion on the witness, which
-  -- avoids the general reassociation — this is what a consumer needs to move an
-  -- empty-arity cell past an adjacent frame.
+  -- The LEFT unit, which is a lemma rather than a constructor. `nil` gives the
+  -- right unit definitionally, because concatenation recurses on its second
+  -- argument; the other side has to be earned. Worth noting against the graph
+  -- kit, where the unit is itself a construction and BOTH laws are lemmas: the
+  -- asymmetry between the units is not only about the unit's status, it reaches
+  -- into which of its two laws comes for free.
+  cat-idnˡ
+    : ∀ {a b}
+    → (q : Path Pos Edge a b)
+    → Cat Pos Edge here q q
+  cat-idnˡ here = nil
+  cat-idnˡ (then q g) = cons (cat-idnˡ q)
+
+  -- Left-whiskering, spoken entirely through witnesses: from `g++h=gh`,
+  -- `h++f=r` and `g++r=gr`, derive `gh++f=gr`. This is what a consumer needs to
+  -- move an empty-arity cell past an adjacent frame.
+  --
+  -- An earlier revision stated it as `Cat (g ++ h) f (g ++ r)`, which put the
+  -- DEFINED concatenation into two of `Cat`'s index positions — the exact thing
+  -- this module's own header forbids, and it survived because `Cat`'s
+  -- constructors leave the first index a variable, so nothing local ever had to
+  -- match on it. That is the shape of the failure the discipline warns about:
+  -- safe at the site that writes it, stuck at the first consumer that must
+  -- match a specific index. Restated over witnesses it costs one extra premise
+  -- and one transport in the unit case.
   cat-whisk
     : ∀ {i a b c}
-    → (g : Path Pos Edge i a)
-    → {h : Path Pos Edge a b} {f : Path Pos Edge b c} {r : Path Pos Edge a c}
+    → {g : Path Pos Edge i a} {h : Path Pos Edge a b} {f : Path Pos Edge b c}
+    → {gh : Path Pos Edge i b} {r : Path Pos Edge a c} {gr : Path Pos Edge i c}
+    → Cat Pos Edge g h gh
     → Cat Pos Edge h f r
-    → Cat Pos Edge (g ++ h) f (g ++ r)
-  cat-whisk g nil = nil
-  cat-whisk g (cons w) = cons (cat-whisk g w)
+    → Cat Pos Edge g r gr
+    → Cat Pos Edge gh f gr
+  cat-whisk {gh} w₁ nil w₃ =
+    ≡.coe* (λ z → Cat Pos Edge gh here z) (cat-fun w₁ w₃) nil
+  cat-whisk w₁ (cons w₂) (cons w₃) = cons (cat-whisk w₁ w₂ w₃)
 
 ------------------------------------------------------------------------------
 -- Heterogeneous structural equality: the K-free half of the comparison. See
