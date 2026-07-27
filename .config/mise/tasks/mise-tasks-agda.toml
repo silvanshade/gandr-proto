@@ -15,10 +15,10 @@
 
 ["agda:deps"]
 description = "Vendor the pinned agda-stdlib (v2.4, verified under Agda 2.8.0) into the gitignored metatheory vendor tree"
-# REQUIRED BEFORE `agda:check`: `Gandr.Prelude.*` is the house facade over
-# agda-stdlib (docs/workflow/agda.md), so the tree no longer type-checks without
-# the vendored copy. Still a separate task rather than a dependency, so a warm
-# tree does not re-enter the fetch path on every gate run.
+# REQUIRED BEFORE `agda:check`: the tree imports agda-stdlib directly
+# (docs/workflow/agda.md), so it does not type-check without the vendored copy.
+# Still a separate task rather than a dependency, so a warm tree does not
+# re-enter the fetch path on every gate run.
 # Idempotent: an existing checkout is left alone.
 run = '''
 set -eu

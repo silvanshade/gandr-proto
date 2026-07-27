@@ -52,12 +52,34 @@ Mandatory marks are reserved for genuine trust-story exceptions: signature param
 
 Adding any Agda library or tool requires maintainer sign-off **first** — deliberately stricter than the Rust and TypeScript trees.
 
-`agda-stdlib` is **admitted** (pinned v2.4, verified under Agda 2.8.0), with one condition: it is consumed behind a thin house facade under `Gandr.Prelude.*`, never imported directly by a substantive module.
-The facade is what lets the tree re-choose its foundations without a sweep through every proof, and what keeps the vocabulary gandr's own.
+`agda-stdlib` is **admitted** (pinned v2.4, verified under Agda 2.8.0) and is imported **directly**.
 
-`agda:deps` vendors stdlib into the gitignored `metatheory/vendor/`.
-The facade landed, so `agda:check` now passes `-i metatheory/vendor/agda-stdlib/src` and **a fresh checkout must run `agda:deps` before its first `agda:check`**.
+An earlier revision of this file required a house facade under `Gandr.Prelude.*` and forbade direct imports.
+That facade is **withdrawn**: maintaining a parallel vocabulary over a library this tree wants to lean on heavily cost more than the foundation-swap freedom it bought, and the swap it insured against is not on the arc.
+What replaces it is per-module repackaging — a `private module` that re-exports the stdlib names a module actually uses, under the names that module wants (`Gandr.Arena.Structure`'s `module Fin` / `module ℕ`, `Gandr.Graph`'s `module 𝕊`).
+That keeps the vocabulary local and legible at each use site without a tree-wide surface to maintain.
+
+`agda:deps` vendors stdlib into the gitignored `metatheory/vendor/`, so `agda:check` passes `-i metatheory/vendor/agda-stdlib/src` and **a fresh checkout must run `agda:deps` before its first `agda:check`**.
 It stays a separate task rather than a gate dependency so a warm tree does not re-enter the fetch path on every run.
+
+## Solvers
+
+Proofs reach for a solver before they are written by hand, and the reach is **on demand** — a solver is a prerequisite of the first proof that wants it, never a speculative port.
+
+1. **Use the stdlib solver if one fits.** `Gandr.Arena.Offset` against `Data.Nat.Solver` is the exemplar.
+2. **If none fits, build it first**, packaged exactly as stdlib packages its own (`Algebra.Solver.Monoid`'s `Expression` / `Normal` / `Solver` / facade split), so local and provided solvers present one interface.
+3. **Until then, leave the obligation by hand with a code note naming the solver that should discharge it.** An unmarked hand proof of solver-shaped work is the drift this rule exists to prevent.
+
+Goals are **quoted by hand** into the solver's expression syntax, as `Gandr.Arena.Offset` does.
+Reflection-based tactic macros (`Tactic.RingSolver`, `Tactic.MonoidSolver`) are declined as too brittle; proof-by-reflection solvers built on `Relation.Binary.Reflection` are not macros and are the intended target.
+
+## Opacity
+
+`opaque` is the default for a definition whose unfolding is a cost to be controlled, with `unfolding` naming each consumer that needs it — `Gandr.Arena.Offset`'s `⊗-ix` family is the exemplar.
+
+The deliberate exception is the carrier layer.
+`Gandr.Graph`'s definitions exist to be unfolded: every consumer meets them through copattern matching on `ϵ°`/`δ°`, and sealing them would sever the definitional equalities the whole tower is built from.
+A module that opts out states why in its header.
 
 ## The done-rule
 
