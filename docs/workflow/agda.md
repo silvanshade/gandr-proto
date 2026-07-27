@@ -23,11 +23,38 @@ Every ported module records its divergences in a port-delta note so the debt sta
 
 House policy on external research artifacts applies unchanged: read and cite, never vendor, port, or depend on a companion mechanization, regardless of license.
 
+## Representation: familial first
+
+**The standing rule of this tree.** **Before writing a structure, ask what it is a family _over_, and index it by that.** Prefer an inductive family indexed by the data that determines its shape; reach for a record or a Σ only for what genuinely varies independently of the index.
+Functions into data — `Fin n → A` and its relatives — are the last resort, not the default.
+
+This plays to the strength of the setting rather than working around it.
+Five things follow, and they compound:
+
+* **Impossible cases stop being expressible, so nobody writes them.** `Gandr.Graph`'s coproduct is the exemplar and is worth reading before designing anything here.
+  The naive encoding gives `δ°` by cases on a sum, so the mixed `inl`/`inr` pairs must be assigned `𝟘` and _every consumer at every dimension_ then discharges two cases that have no inhabitants.
+  Carrying the boundary constraint in the constructors instead — `Σ⊕δ`, indexed by the pair — means the mixed homs have no constructors at all, `[_,_]` is two clauses per level, and coverage discharges the rest.
+  A case you never write is a case that can never drift.
+* **The cost of the naive choice scales with dimension.** A four-way split is an annoyance at dimension 0 and is `4ⁿ` at dimension `n`.
+  In an ∞-graph tower that is the difference between a usable structure and an unusable one.
+* **It is what makes the two witness disciplines below achievable** rather than aspirational.
+  A family whose indices are constructor-headed satisfies them by construction; a table forces a projection or a `lookup` into every statement, and proofs then proceed by rewriting instead of by matching.
+  Rewriting is where `--without-K` friction accumulates.
+* **Equality becomes structural.** Inductive data has decidable propositional equality whenever its payloads do, by ordinary induction.
+  Function-typed fields need function extensionality, which `--safe --without-K` does not have and will not be given.
+  When a structure's equality is out of reach, treat that as evidence the encoding is wrong before concluding the setting is limited — the two are easy to confuse and the mistake is expensive.
+* **The index is usually the interface, which is what later abstraction quantifies over.** A carrier with no index cannot instantiate an interface that has one.
+
+Two honest limits, so the rule is applied rather than recited.
+A family can _over-determine_: a term calculus for a structure may admit several derivations of one object, and when it does, the redundancy is real and `Gandr.Rigid` is what reconciles it — do not pretend a canonical section is free.
+And this is a rule about the _metatheory's_ presentation, not about gandr's storage layout, which stays flat and tabular; the section discipline is the bridge between them.
+
 ## House style
 
 Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `hiding`/`using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder rather than deep `where` nesting; and **every definition carries a comment**.
 
-Two disciplines are load-bearing rather than cosmetic, and both exist to keep structures computing under `--without-K`:
+Two disciplines are load-bearing rather than cosmetic.
+Both are instances of the representation rule above, and both exist to keep structures computing under `--without-K`:
 
 * **Witness syntax stays first-order and constructor-headed.** A defined function must never appear in a matchable index.
   Where an operation would otherwise enter an index, speak it through the inductive _graph_ of that operation as a witness relation.

@@ -78,6 +78,9 @@ Commit messages are enforced by `commitlint`; `.commitlintrc.mts` is authoritati
   Separate header, body, and footer with blank lines; omit a trailing period from the subject.
 * Agent co-author trailers must match the canonical registry byte-for-byte.
   Session trailers are prohibited.
+* **Never begin a body line with `word:`.** The parser reads any such line as the start of the footer, so the prose above it stops being the body and `footer-leading-blank` rejects the message.
+  This bites on ordinary sentences — `Note: …`, `Caveat: …`, `Exception: …` — and the error names the footer rather than the line that caused it, so it reads as unrelated.
+  Reword (`One caveat is that …`) or move the colon off the line start.
 * Inspect `.commitlintrc.mts` before inventing a type, scope, or trailer.
 
 The `no-machine-local-paths` hook and commitlint are lexical backstops; classification remains the rule.
