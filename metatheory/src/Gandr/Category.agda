@@ -230,6 +230,13 @@ module ℂ where
   -- Instances. Each is a named object rather than an appeal to an ambient one,
   -- so a later result that quantifies over categories genuinely has these in
   -- range.
+  --
+  -- These are the CARRIER-LEVEL instances: each is read off one of `𝔾`'s
+  -- objects by copattern matching, and nothing is constructed. Instances with
+  -- content — SETOID above all — live in `Gandr.Category.Instances`. If one of
+  -- these is ever wanted there, MIGRATE it rather than writing a second copy:
+  -- a duplicate would be definitionally equal to the original and so invisible
+  -- to the gate. The rule holds in both directions.
   -- ═══════════════════════════════════════════════════════════════════════════
 
   -- The category a `Set` presents through its identity type. This is the one

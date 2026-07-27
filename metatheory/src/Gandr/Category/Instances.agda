@@ -60,11 +60,22 @@
 -- precisely what a tree without SET does not have. `homᵒ` below supplies the
 -- object part, which is all the enrichment statement needs.
 --
--- ── WHERE THE OTHER INSTANCES LIVE ──────────────────────────────────────────
--- `ℂ.Id`, `ℂ.𝟘`, `ℂ.𝟙` and `ℂ._×_` stay in `Gandr.Category`. They are
--- definitional companions of `𝔾`'s objects — each one is read off its carrier
--- by copattern matching and nothing is constructed — whereas the instances here
--- are built. This module holds the instances that have content.
+-- ── WHERE THE OTHER INSTANCES LIVE, AND WHAT TO DO IF YOU WANT THEM HERE ────
+-- `ℂ.Id`, `ℂ.𝟘`, `ℂ.𝟙`, `ℂ.!`, `ℂ._×_`, `ℂ.fst`, `ℂ.snd` and `ℂ.⟨_,_⟩` stay in
+-- `Gandr.Category`. They are definitional companions of `𝔾`'s objects — each is
+-- read off its carrier by copattern matching and nothing is constructed —
+-- whereas the instances here are built. This module holds the instances that
+-- have content, and that is the whole of the split.
+--
+-- **If this module ever needs them, MIGRATE them; do not re-derive them.** The
+-- split above is a judgement call about where a definition reads best, not a
+-- claim that the two sets are different in kind, so the moment a consumer wants
+-- `ℂ.Id` alongside `SETOID` the right move is to move the definition and its
+-- header note across and update `Gandr.Category`'s importers — not to write a
+-- second `Id` here. A duplicate would be definitionally equal to the original
+-- and therefore invisible to the gate, which is exactly the kind of drift that
+-- is cheap to prevent now and expensive to find later. The same rule applies in
+-- reverse: nothing here should be re-derived in `Gandr.Category`.
 ------------------------------------------------------------------------------
 
 module Gandr.Category.Instances where
