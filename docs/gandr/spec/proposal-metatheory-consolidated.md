@@ -514,7 +514,14 @@ record Cell (Γ Δ : List Ob) : Set where   -- gandr's cell shape, C1
   field shape  : Shape Γ Δ
         simply : SimplyConn shape
   wheel-free : WheelFree shape            -- DERIVED, by Rmk 2.36
+
+corolla : (A B : List Ob) → Shape A B     -- one vertex; a Cell for EVERY profile
+idn     : (Γ : List Ob) → Shape Γ Γ       -- DERIVED: no vertex, one wire per leg
+graft   : Shape Γ Δ → Shape Δ Θ → Shape Γ Θ   -- the multiplication; idn is its unit
 ```
+
+Grafting is **total and does not preserve the predicates**, which is the claim §5.3 makes rather than a defect: connectivity is a predicate on objects, so any two shapes compose and cell-ness is checked of the result.
+Two corollas grafted along two legs reconverge, and that composite is exhibited and refuted rather than left to the reader.
 
 **Three things this corrects in the earlier sketch, each of which cost something.** The incidence maps were **functions** (`src tgt : E → Maybe V`, `inp out : (v : V) → List E`) — the encoding the representation principle now forbids.
 It put no interface in the index, so no arity abstraction could quantify over it, and it forced lemmas whose only job was to refute states the encoding admitted and the object does not have.
@@ -530,7 +537,26 @@ The relevant literature is explicit that the cartesian natural transformation en
 
 **No arity interface record has been extracted yet, on purpose.** One instance does not determine an abstraction.
 Extracting a record from the linear kit alone would encode that case's accidents as though they were the general shape — that positions are objects rather than lists, and that the unit is a _constructor_ rather than something the many-out kit must _derive_.
-The linear kit's header records what the interface is expected to be and names that one expected non-generalization; the record is extracted when the second instance exists.
+
+The second instance now exists — `graft : Shape Γ Δ → Shape Δ Θ → Shape Γ Θ`, composing along the whole shared interface — so the extraction pass has been run against both, and its record is the linear kit's header.
+Three things moved, and only the first was anticipated.
+
+* **The unit's status differs further than predicted.** It is not only that one unit is a constructor and the other a construction; it reaches into which unit _law_ is free.
+  The linear graph's unit clause **is** the right unit, because concatenation recurses on its second argument, so the left unit is a lemma.
+  In the graph kit neither side is a constructor and both laws are lemmas.
+  Neither unit law can be presented as structure.
+* **The multiplication's _atomicity_ does not generalize, and this is the expensive one.** Concatenation is one structural recursion, so one inductive graph speaks it.
+  Grafting is a composite of nine operations — the vertex interleaving forces a whiskering, which forces a wire-threading, which forces an insertion exchange — and the witness discipline does not stop at the outermost, because each auxiliary's result sits in the next one's graph index.
+  So "a multiplication spoken only through its graph" is one relation in one kit and nine in the other.
+  The interface may still demand it, but only as a **field** an instance supplies however it can.
+* **Functionality cannot be demanded at propositional equality.** The linear kit's is h-level free because its graph's constructors carry no existential witness.
+  The graph kit's cannot be: its carrier's vertex constructor carries `Append` witnesses, so grafting's graph must existentially quantify the whiskered operand's witness, and identifying two of them is witness uniqueness, whose price is set-ness of the colours.
+  Measured from the other side, the same charge appears function-side instead: stated on the function, the graph kit's unit laws cost exactly that condition and are proved at that price.
+  **The h-level charge does not vanish, it moves** — function-side onto the unit laws, graph-side onto functionality.
+  What removes it from both is the heterogeneous structural comparison, which can ignore the witness layer that propositional equality has to identify.
+  So the interface's functionality lemma lands there, and that comparison stops being an optional convenience for the different-endpoints case.
+
+The record itself is still unwritten, because two of its fields have no inhabitant in the graph kit yet and a record with one instance is the mistake this paragraph opens by naming.
 
 ### 5.5 The telescope
 
@@ -1619,7 +1645,7 @@ The Agda substrate is landed through the categorical layers and the section disc
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------- |
 | **S-1**  | **Write the scoping minute** — ordering is a representation section (C3); the parallel direction stays symmetric (C4). Amend every place that currently says "pending the planarity ruling"                                                                                           | unblocks everything downstream; urgent because the term face is next (§3.3)                        | hours                |
 | **S-2**  | **Strengthen the normal-form contract** to the _iff_ its source states; record the false converse and the cost-not-decidability framing                                                                                                                                               | a correctness statement gandr already owns and does not claim                                      | hours, no new source |
-| **S-3**  | **The graph arity kit** (§5.4) — the second instance, indexed by its interfaces, with the listings as carried data. **Objects LANDED**; what remains is the arity _operations_ — grafting through its inductive graph, and the heterogeneous comparison                               | whether the two-kit design is real                                                                 | 1–2 days             |
+| **S-3**  | **The graph arity kit** (§5.4) — the second instance, indexed by its interfaces, with the listings as carried data. **Objects and grafting LANDED**, with the unit laws and the vertex-listing theorem; what remains is grafting's inductive _graph_ and the heterogeneous comparison | whether the two-kit design is real                                                                 | 1–2 days             |
 | **S-4**  | **Edge-determined decidability** (§7.1) — encode the determination lemma, derive object equality                                                                                                                                                                                      | whether decidable equality survives _without_ essential discreteness. Keystone                     | 1–2 days             |
 | **S-5**  | **The finiteness gate** — implement the simple-connectivity check and measure how many real cells satisfy it                                                                                                                                                                          | whether C1 is free or a real restriction. Cheap and could invalidate C1, so run early              | 1 day                |
 | **S-6**  | **The description-as-graphical-species map** (§9.2) — map the actual description constructors onto a species profile                                                                                                                                                                  | whether §9's identification holds at all. **Do this before S-8**                                   | 1 day                |
