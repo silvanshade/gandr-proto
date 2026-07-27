@@ -133,6 +133,14 @@ Case splitting degrades, because the fold sits in a matchable position; and the 
 Re-indexing syntactically retires both at once and lets the interpretation descend an explicit well-founded measure instead.
 Any construction tempted to index a datatype by something it computes should read that outcome as the expected one.
 
+**Never `with` on a recursive call in a definition that will be reasoned about.** A `with` compiles to an auxiliary function the caller cannot name, so `f (c x)` becomes a term stuck on something no lemma can reach: `cong` and `rewrite` cannot see the recursive call, and every fact about `f` has to be re-established by matching at each use site instead of once.
+Write the recursive clause as an **application** — the sum eliminator, a `map`, or a projection out of a record, since records have eta and their projections compute on any term at all.
+The recursive call is then a visible subterm and one `cong` reaches it.
+
+This is cheap up front and expensive to retrofit, and it does not announce itself: the `with` form type-checks, computes correctly on closed data, and only fails when the first lemma _about_ the function is attempted — which can be a session or a module later.
+The tell is a definition of the shape `f (c x) with f x`, and the repair is mechanical.
+`Gandr.Shape.Graph`'s `split`, `origin` and `dest` and `Gandr.Shape.Graft`'s listing algebra are the worked examples; both headers say why.
+
 **Migrate, never duplicate.** When a definition belongs in a different module than the one it sits in, move it and update its importers.
 Never write a second copy: two definitions of the same thing are _definitionally equal_, so the gate cannot see the drift, and the copies diverge silently the first time one is edited.
 The rule is symmetric and applies across the whole tree; the split between `Gandr.Category`'s carrier-level instances and `Gandr.Category.Instances`' constructed ones is the worked example, and both headers state it.
