@@ -1,6 +1,6 @@
 # Proposal: the metatheory, consolidated — from the sequent kernel to stratified univalence
 
-* **Status**: Proposal (consolidation pass, 2026-07-26).
+* **Status**: Proposal (consolidation pass, 2026-07-26; amended once the shape kit landed familially — §2.4, §5.4, §7.1 and §15's S-3/S-7 rows carry that amendment, and no decision M1–M22 or commitment C1–C6 is changed by it).
   No decision face yet; §15 carries the draft decision candidates.
   Nothing here spends frozen-core budget.
   This document is written to be **self-contained**.
@@ -236,19 +236,24 @@ Rigidity is a property of the representation, stated as structure.
 
 The following are typechecked under `--safe --without-K` (with `--guardedness` where coinduction is needed), imported by the strict gate root:
 
-| Module                        | Content                                                                                                        |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `Gandr.Graph`                 | ∞-graphs and ∞-maps; `𝟘`/`𝟙`/`⊕`/`⊗`; discrete and codiscrete; the globes; the exponential; disc telescopes    |
-| `Gandr.Setoid`                | the lawless proof-relevant equivalence, plus conversion to the standard-library bundle                         |
-| `Gandr.Category`, `.Functor`  | categories, functors, natural transformations; coherences as witnessed 2-cells                                 |
-| `Gandr.Category.Reasoning`    | the combinator suite the standard library does not supply                                                      |
-| `Gandr.Category.Instances`    | `SETOID` as a named object, with purpose-built homs at the carrier's universe level                            |
-| `Gandr.Profunctor`, `.Yoneda` | two-sided profunctors, dinaturality, restriction; the hom-profunctor correspondence in the value setoids       |
-| `Gandr.Arity.Path`            | the linear arity kit: snoc paths, witnessed concatenation, the graph-of-multiplication relation and its kit    |
-| `Gandr.Rigid`                 | §2.3, with the effective-quotient reading                                                                      |
-| `Gandr.Arena.*`               | the flat layout algebra: codes, offsets, bounded values, generator rigidity, the coherence verdict (§7.3–§7.4) |
+| Module                        | Content                                                                                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Gandr.Graph`                 | ∞-graphs and ∞-maps; `𝟘`/`𝟙`/`⊕`/`⊗`; discrete and codiscrete; the globes; the exponential; disc telescopes                                                                                 |
+| `Gandr.Setoid`                | the lawless proof-relevant equivalence, plus conversion to the standard-library bundle                                                                                                      |
+| `Gandr.Category`, `.Functor`  | categories, functors, natural transformations; coherences as witnessed 2-cells                                                                                                              |
+| `Gandr.Category.Reasoning`    | the combinator suite the standard library does not supply                                                                                                                                   |
+| `Gandr.Category.Instances`    | `SETOID` as a named object, with purpose-built homs at the carrier's universe level                                                                                                         |
+| `Gandr.Profunctor`, `.Yoneda` | two-sided profunctors, dinaturality, restriction; the hom-profunctor correspondence in the value setoids                                                                                    |
+| `Gandr.Arity.Path`            | the linear arity kit: snoc paths, witnessed concatenation, the graph-of-multiplication relation and its kit                                                                                 |
+| `Gandr.Shape.Graph`           | the graph arity kit: `Shape Γ Δ` indexed by its `List Ob` interfaces, listings primary and incidence derived; the connectivity predicates with their refuters; decidable equality of shapes |
+| `Gandr.Shape.Decidable`       | maps of shapes, with tabulated actions; edge-determination and the decision it buys                                                                                                         |
+| `Gandr.Rigid`                 | §2.3, with the effective-quotient reading                                                                                                                                                   |
+| `Gandr.Arena.*`               | the flat layout algebra: codes, offsets, bounded values, generator rigidity, the coherence verdict (§7.3–§7.4)                                                                              |
 
-Three conventions are settled and worth recording because they are easy to re-litigate:
+**The representation principle is binding on everything in this table, and is recorded nowhere else in this document.** `docs/workflow/agda.md` § _Representation: familial first_ requires a structure to be an inductive family indexed by the data that determines its shape; it carries a STOP clause halting any functional or higher-order encoding of a structure's _data_ pending design input; and — added after the shape kit was rebuilt under it — it requires that any design suggesting it will need decidable equality be **spiked before the representation is built on**, never deferred.
+Two of its rules govern every index below: the arity monad's units may head a matchable index and its multiplication may not, entering instead as the inductive graph of that operation; and a datatype is indexed **syntactically**, never by its own interpretation.
+
+Three further conventions are settled and worth recording because they are easy to re-litigate:
 
 1. **No prelude facade.** The standard library is imported directly and repackaged per-module through qualified private re-exports.
 2. **No custom reasoning syntax.** A category's hom is a genuine standard-library setoid bundle — the standard library's equivalence structure is exactly as lawless as this development's and never truncates — so the bundle plus multi-setoid reasoning covers every chain.
@@ -491,23 +496,34 @@ The landed linear kit is `Gandr.Arity.Path`: over a set of positions and an edge
 The second kit is the graph record, with the listing carried as **data in the object** rather than as a property proved about it:
 
 ```agda
-record Graph : Set where
-  field
-    V E     : FinSet
-    src tgt : E → Maybe V                 -- Nothing = a dangling leg (port)
-    -- the ORDERED representation: a chosen linear order on each vertex's ports
-    inp out : (v : V) → List E
-    inp-iso : (v : V) → Bijective (inp v) (fibre tgt v)
-    out-iso : (v : V) → Bijective (out v) (fibre src v)
+-- `Shape Γ Δ` — a finite directed graph whose dangling ends ARE its interface:
+-- `Γ` the input legs in order, `Δ` the output legs. As landed.
+data Shape : List Ob → List Ob → Set where
+  -- no vertex: the remaining sources are matched onto the remaining sinks
+  wires : Match Γ Δ → Shape Γ Δ
+  -- a vertex with in-profile `A` and out-profile `B`, whose ports are
+  -- published to the REST of the graph: `B` joins the sources, `A` the sinks
+  node  : (A B : List Ob) → Append B Γ Γ′ → Append A Δ Δ′
+        → Shape Γ′ Δ′ → Shape Γ Δ
 
-WheelFree  : Graph → Set     -- no directed cycle
-Connected  : Graph → Set     -- one component
-SimplyConn : Graph → Set     -- Connected, and no undirected cycle either
+WheelFree  : Shape Γ Δ → Set     -- no directed cycle
+Connected  : Shape Γ Δ → Set     -- one component
+SimplyConn : Shape Γ Δ → Set     -- Connected, and no undirected cycle either
 
-record Cell : Set where      -- gandr's cell shape, C1
-  field graph : Graph
-        wf    : WheelFree graph × SimplyConn graph
+record Cell (Γ Δ : List Ob) : Set where   -- gandr's cell shape, C1
+  field shape  : Shape Γ Δ
+        simply : SimplyConn shape
+  wheel-free : WheelFree shape            -- DERIVED, by Rmk 2.36
 ```
+
+**Three things this corrects in the earlier sketch, each of which cost something.** The incidence maps were **functions** (`src tgt : E → Maybe V`, `inp out : (v : V) → List E`) — the encoding the representation principle now forbids.
+It put no interface in the index, so no arity abstraction could quantify over it, and it forced lemmas whose only job was to refute states the encoding admitted and the object does not have.
+The listings were **derived and constrained by laws**; they are now **primary**, and the six laws are gone, because a listing that enumerates its fibre exactly once is what the matching _is_.
+And `Cell`'s `wf` pair was **redundant** — wheel-freeness follows from simple connectivity (Rmk 2.36), so carrying both as fields would have permitted an inconsistent `Cell`.
+
+**Why `node` publishes its ports to the rest of the graph rather than consuming from a pool.** A pool discipline would force a topological order and make wheel-freeness _structural_.
+That sounds like a gain and is a loss: the wheel becomes inexpressible, `WheelFree` loses its refuter, and Rmk 2.36's separation has nothing left to separate.
+The same objection retires the more aggressive variant in which cells are **generated** inductively so that both connectivity predicates become structural — it cannot express the diamond either, so it does not replace the validated carrier but sits over it as an adequacy pair, and it is deferred to the pasting layer with that as its contract rather than declined.
 
 That the ordering is _carried data_ rather than a checked condition is not an implementation detail.
 The relevant literature is explicit that the cartesian natural transformation encoding a planar structure is **a structure, not a property**: ordering is data the system stores, not a condition it verifies.
@@ -649,12 +665,24 @@ Recorded so it is not re-argued.
 > A graphical map is uniquely determined by its action on the **finite edge set**.
 
 ```agda
--- cite, do not reprove
-edge-determined : (f g : G ⟶ H) → (∀ e → act f e ≡ act g e) → f ≡ g
+-- PROVED for this tree's own homomorphisms, with a hypothesis; see below
+edge-determined : Grounded S → (∀ e → actE f e ≡ actE g e) → f ≐ g
 
-_≟map_ : (f g : G ⟶ H) → Dec (f ≡ g)     -- finite edge set ⇒ decidable
-_≟obj_ : (G H : Graph)  → Dec (G ≅ H)     -- via the listings, then edge-extensionality
+_≟≐_   : Dec (f ≐ g)                        -- finite edge set ⇒ decidable
+_≟ˢ_   : (S T : Shape Γ Δ) → Dec (S ≡ T)    -- landed; see the h-level note
+_≟obj_ : (S T : Shape Γ Δ) → Dec (S ≅ T)    -- ISOMORPHISM: still open
 ```
+
+**"Cite, do not reprove" was wrong for these, and the correction strengthens M7 rather than qualifying it.** The published corollary is about _graphical_ maps — subgraph inclusions, a larger and more delicate class — so what this tree can establish is the analogue for its own homomorphisms, and that analogue is **proved** rather than imported.
+The target `f ≡ g` was unreachable under the functional encoding and is reachable under the familial one: a map's action is a finite table, and a table carried as data has pointwise agreement implying propositional equality by ordinary induction.
+
+**The analogue needs a no-isolated-vertices hypothesis**, whose necessity is exhibited rather than asserted: the arity-zero corolla is a legitimate cell shape and an isolated vertex at the same time, so two maps out of it agree on every edge vacuously while remaining free to send its vertex anywhere.
+
+**Equality of shapes costs an h-level condition, not decidability, and the two must not be conflated.** Comparing two wiring witnesses at fixed indices cannot be done by pattern matching — one index is forced, so the match would have to delete a reflexive equation — but that is a limit of pattern matching, not of the setting.
+Routing the witness through a recursively computed code discharges it, and what closes the residual equation is UIP on the **colours alone**; decidable equality is merely the constructive supplier of that set-ness, and is spent only where a decision is actually computed.
+An earlier reading of this obstruction as the SETOID-not-SET commitment "paying rent" is withdrawn — it was a property of the encoding, not of the theory.
+
+**Decidable equality at _isomorphism_ remains genuinely open**, and is not the above: deciding it means searching a space of candidate maps; that space is finite, so the decision exists, but realizing it needs an enumeration this tree does not have.
 
 Hom-sets in the graphical category are therefore **finite**, and morphism equality is **decidable**.
 This is where gandr's decidable equality actually comes from, and three things follow:
@@ -1587,21 +1615,21 @@ Stated so each is checkable rather than assumed.
 
 The Agda substrate is landed through the categorical layers and the section discipline; the queue below is what remains, ordered by what unblocks the most.
 
-| #        | Item                                                                                                                                                                                        | Decides                                                                                            | Cost                 |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------- |
-| **S-1**  | **Write the scoping minute** — ordering is a representation section (C3); the parallel direction stays symmetric (C4). Amend every place that currently says "pending the planarity ruling" | unblocks everything downstream; urgent because the term face is next (§3.3)                        | hours                |
-| **S-2**  | **Strengthen the normal-form contract** to the _iff_ its source states; record the false converse and the cost-not-decidability framing                                                     | a correctness statement gandr already owns and does not claim                                      | hours, no new source |
-| **S-3**  | **The graph arity kit** (§5.4) — the second instance, with the listings as carried data                                                                                                     | whether the two-kit design is real                                                                 | 1–2 days             |
-| **S-4**  | **Edge-determined decidability** (§7.1) — encode the determination lemma, derive object equality                                                                                            | whether decidable equality survives _without_ essential discreteness. Keystone                     | 1–2 days             |
-| **S-5**  | **The finiteness gate** — implement the simple-connectivity check and measure how many real cells satisfy it                                                                                | whether C1 is free or a real restriction. Cheap and could invalidate C1, so run early              | 1 day                |
-| **S-6**  | **The description-as-graphical-species map** (§9.2) — map the actual description constructors onto a species profile                                                                        | whether §9's identification holds at all. **Do this before S-8**                                   | 1 day                |
-| **S-7**  | **Extract the arity interface** once S-3 exists, and generalize the telescope over it (§5.5)                                                                                                | whether M1 is executable rather than a slogan                                                      | 2–3 days             |
-| **S-8**  | **The Reedy structure on the site** — degree, the two subcategories, factorization, with "unique up to iso" discharged through canonicalization                                             | whether strata and fuel really are one object. Keystone                                            | 2–3 days             |
-| **S-9**  | **Equivalence certificates and per-degree checking** on a toy signature with one nontrivial automorphism                                                                                    | whether equivalence certificates are genuinely finite and small                                    | 1–2 days             |
-| **S-10** | **Descent** — the univalence theorem restricted to the dioperad rung, plus the admissibility check (§8.5)                                                                                   | the payoff. Highest ceiling in the list                                                            | 2–3 days             |
-| **S-11** | **Fuelled transport and cost accounting** on the toy signature                                                                                                                              | whether "replay, not composition" is real in code, and whether M12's two measures separate cleanly | 1–2 days             |
-| **S-12** | **Supply the tile relation** and instantiate the axiom interface non-vacuously (§12.4)                                                                                                      | four theorems by citation; turns a vacuous pass into real inheritance                              | 2 days               |
-| **S-13** | **Re-check the unverified bipermutative locator and its rigidity package** (§18)                                                                                                            | citation hygiene on the one report never adversarially checked                                     | minutes              |
+| #        | Item                                                                                                                                                                                                                                                                                  | Decides                                                                                            | Cost                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------- |
+| **S-1**  | **Write the scoping minute** — ordering is a representation section (C3); the parallel direction stays symmetric (C4). Amend every place that currently says "pending the planarity ruling"                                                                                           | unblocks everything downstream; urgent because the term face is next (§3.3)                        | hours                |
+| **S-2**  | **Strengthen the normal-form contract** to the _iff_ its source states; record the false converse and the cost-not-decidability framing                                                                                                                                               | a correctness statement gandr already owns and does not claim                                      | hours, no new source |
+| **S-3**  | **The graph arity kit** (§5.4) — the second instance, indexed by its interfaces, with the listings as carried data. **Objects LANDED**; what remains is the arity _operations_ — grafting through its inductive graph, and the heterogeneous comparison                               | whether the two-kit design is real                                                                 | 1–2 days             |
+| **S-4**  | **Edge-determined decidability** (§7.1) — encode the determination lemma, derive object equality                                                                                                                                                                                      | whether decidable equality survives _without_ essential discreteness. Keystone                     | 1–2 days             |
+| **S-5**  | **The finiteness gate** — implement the simple-connectivity check and measure how many real cells satisfy it                                                                                                                                                                          | whether C1 is free or a real restriction. Cheap and could invalidate C1, so run early              | 1 day                |
+| **S-6**  | **The description-as-graphical-species map** (§9.2) — map the actual description constructors onto a species profile                                                                                                                                                                  | whether §9's identification holds at all. **Do this before S-8**                                   | 1 day                |
+| **S-7**  | **Extract the arity interface** once S-3 exists, and generalize the telescope over it (§5.5). This edge is valid only because S-3 produces an interface-**indexed** carrier: an unindexed one leaves the abstraction nothing to quantify over, and the dependency then fails silently | whether M1 is executable rather than a slogan                                                      | 2–3 days             |
+| **S-8**  | **The Reedy structure on the site** — degree, the two subcategories, factorization, with "unique up to iso" discharged through canonicalization                                                                                                                                       | whether strata and fuel really are one object. Keystone                                            | 2–3 days             |
+| **S-9**  | **Equivalence certificates and per-degree checking** on a toy signature with one nontrivial automorphism                                                                                                                                                                              | whether equivalence certificates are genuinely finite and small                                    | 1–2 days             |
+| **S-10** | **Descent** — the univalence theorem restricted to the dioperad rung, plus the admissibility check (§8.5)                                                                                                                                                                             | the payoff. Highest ceiling in the list                                                            | 2–3 days             |
+| **S-11** | **Fuelled transport and cost accounting** on the toy signature                                                                                                                                                                                                                        | whether "replay, not composition" is real in code, and whether M12's two measures separate cleanly | 1–2 days             |
+| **S-12** | **Supply the tile relation** and instantiate the axiom interface non-vacuously (§12.4)                                                                                                                                                                                                | four theorems by citation; turns a vacuous pass into real inheritance                              | 2 days               |
+| **S-13** | **Re-check the unverified bipermutative locator and its rigidity package** (§18)                                                                                                                                                                                                      | citation hygiene on the one report never adversarially checked                                     | minutes              |
 
 ```text
 S-1 ─┬─> S-2                                            (paper only, do first)

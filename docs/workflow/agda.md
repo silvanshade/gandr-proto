@@ -78,6 +78,42 @@ Two honest limits, so the rule is applied rather than recited.
 A family can _over-determine_: a term calculus for a structure may admit several derivations of one object, and when it does, the redundancy is real and `Gandr.Rigid` is what reconciles it — do not pretend a canonical section is free.
 And this is a rule about the _metatheory's_ presentation, not about gandr's storage layout, which stays flat and tabular; the section discipline is the bridge between them.
 
+### Decidable equality is spiked first, never deferred
+
+**The moment a design suggests it will need decidable equality — or any propositional-equality statement about a structure's data — stop and spike it before building on the representation.** This takes priority over almost anything else in flight.
+It is not a nice-to-have check: the answer _determines_ the representation, and the representation is the one thing that is expensive to retrofit.
+
+The failure mode this prevents is specific.
+A decidability question that is deferred does not sit still — work continues over an encoding whose equality theory nobody has checked, consumers accumulate against it, and by the time the question is asked the answer can no longer change anything.
+A deferred decidability question is a wrong-path generator.
+
+**The spike must produce a typechecked decision procedure, or a located failure with the exact stuck unification.** A plan for one does not count, and neither does a reasoned argument that it will work out.
+
+**Two obstructions look identical from the symptom side, and only one of them is a representation defect.** Telling them apart is most of the value of running the spike early:
+
+* **Function-typed fields** — a structure stores `Fin n → A` where a `Vec`/`All`/inductive family would carry the same information.
+  Pointwise agreement then cannot be upgraded to propositional equality without function extensionality, which `--safe --without-K` does not have.
+  **This is a representation defect**, it is what the rule above is for, and the repair is to carry the data.
+* **Forced-index deletion** — two witnesses of an inductive family are compared at _fixed_ indices, and matching the second one has to eliminate a reflexive equation such as `x = x` or `ys = ys`.
+  **This is not a representation defect and not a foundation limit.** It is a gap in what pattern matching alone can do, and it has a standard discharge.
+
+The discharge, recorded because it is otherwise re-derived each time: **concentrate the whole debt into one injectivity lemma**, rather than letting it spread across every proof that needs a comparison.
+Send the witness to a **recursively computed code** built from `⊥`/`×`/`⊎`/`≡`, whose inhabitants compare without matching any index, and prove the round trip is the identity — every split is then on a single argument or on a plain list.
+Where a constructor carries an argument that appears in a _later_ argument's type, or an existential implicit, route its injectivity through a **view plus a UIP-based projection** rather than through `refl`.
+
+**The price is an h-level condition, not decidability, and the two must not be conflated.** What closes the residual reflexive equation is `UIP` on the **index type alone** — not on generators, not on the structure itself.
+Decidable equality is the standard constructive _supplier_ of that set-ness, through Hedberg, and is genuinely required only where a decision is actually **computed**.
+So parameterize a uniqueness or injectivity lemma by `UIP Ob`, and reserve `DecidableEquality Ob` for the decision procedures themselves; a consumer that needs only the law layer must not be made to pay for decidability.
+Whichever is taken, it appears in the signature — never as a postulate, and marked at its definition site as the trust-story exception it is.
+
+Three corollaries, each of which was got wrong before it was checked:
+
+* **A blocked `refl` match is not evidence the statement is false.** Uniqueness of a graph-of-multiplication witness reads like it needs K and does not — the fact holds, only the pattern match fails.
+  Record a wall only after the code route has been tried.
+* **Refutations project, they do not match.** Once a `with` has identified one component, `no λ { refl → … }` will fail on the component already identified; discharge it with `cong` through a projection instead.
+* **Relocating the obligation is not discharging it.** A view refactor, a re-indexing for constructor-headed invertibility, or carrying the equation as data will each move the K-step somewhere else without removing it.
+  When the obligation is genuinely the K-step, meet it at the h-level condition rather than redesigning around it a fourth time.
+
 ## House style
 
 Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `hiding`/`using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder rather than deep `where` nesting; and **every definition carries a comment**.
@@ -86,8 +122,16 @@ Two disciplines are load-bearing rather than cosmetic.
 Both are instances of the representation rule above, and both exist to keep structures computing under `--without-K`:
 
 * **Witness syntax stays first-order and constructor-headed.** A defined function must never appear in a matchable index.
-  Where an operation would otherwise enter an index, speak it through the inductive _graph_ of that operation as a witness relation.
+  Indices may carry the arity monad's **units** (`[]`, `_∷_`, `leaf`); its **multiplication** — append, flatten, graft, substitution — never does, and enters instead as the inductive _graph_ of that operation, a witness relation.
 * **No identity-shaped constructor repeats a frame variable across its result indices.** Identity and diagonal cases are derived, never adjoined as constructor shapes.
+
+**These two are not to be re-derived locally, and a local typecheck is not evidence that an exception is safe.** A defined function in an index is stuck unification waiting to happen ("green slime"): it may check fine at the site that introduces it, because that site's own indices are still variables, and then fail at the first consumer that has to match a specific index shape.
+Three shapes trip the first rule and are worth recognising by sight: a **declared diagonal** (`nil : ∀ Γ → Web Γ Γ`); a **chunked index type**, where a flattening function reaches into index position; and **singleton-chunk index expressions**.
+
+The strongest form of the rule, and the one that cost the most to learn: **index a datatype syntactically, never by its own interpretation.** A cell complex indexed by the fold that interprets it — rather than by the syntactic spheres — breaks in two directions at once.
+Case splitting degrades, because the fold sits in a matchable position; and the `--safe` size-change termination checker cannot certify a recursion whose sibling-sphere sub-terms are themselves fold applications, so the fold needs a `TERMINATING` pragma and its module loses `--safe`.
+Re-indexing syntactically retires both at once and lets the interpretation descend an explicit well-founded measure instead.
+Any construction tempted to index a datatype by something it computes should read that outcome as the expected one.
 
 **Migrate, never duplicate.** When a definition belongs in a different module than the one it sits in, move it and update its importers.
 Never write a second copy: two definitions of the same thing are _definitionally equal_, so the gate cannot see the drift, and the copies diverge silently the first time one is edited.
