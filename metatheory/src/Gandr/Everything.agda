@@ -20,6 +20,7 @@ import Gandr.Arena.Value
 import Gandr.Arity.Path
 import Gandr.Category
 import Gandr.Category.Functor
+import Gandr.Category.Instances
 import Gandr.Category.Reasoning
 import Gandr.Graph
 import Gandr.Profunctor
