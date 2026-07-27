@@ -343,6 +343,15 @@ hexagon-⊕-around-r {a} {b} {c} k =
          (cong (inr {b} {c ⊕ a}) (⊕swap-inr {a} {c} k))))
 
 -- THE HEXAGON.
+--
+-- SOLVER NOTE. This and `coh-nat-dist` below are the only proofs in the module
+-- that a solver could take, and the solver does not exist yet. `rigid-coherence`
+-- already discharges everything built from the associativity/unit hierarchy, so
+-- what is left here is words in the three NON-rigid generators — `⊗comm`,
+-- `⊕swap`, `dist` — which is the symmetric-group word problem. agda-stdlib has
+-- no Coxeter or word-problem solver, so both stay hand-proved by β-rule chasing
+-- until one is built. Do not read the hand proofs as a preference: the standing
+-- rule is solver-first, and these are marked so the debt stays visible.
 coh-hexagon-⊕
   : {a b c : Code} (x : Val ((a ⊕ b) ⊕ c))
   → hexagon-⊕-across {a} {b} {c} x ≐ hexagon-⊕-around {a} {b} {c} x
@@ -371,6 +380,10 @@ coh-hexagon-⊕ {a} {b} {c} =
 -- This is the one square whose analogue in the presented calculus must be
 -- imposed per generator — and it is the reason distributivity is the hard case
 -- there. Here it is an induction with two cases.
+--
+-- SOLVER NOTE. See `coh-hexagon-⊕` above: this is the second of the two
+-- obligations over the non-rigid generators, and it moves to the word solver
+-- when that solver is built.
 -- ════════════════════════════════════════════════════════════════════════════
 
 coh-nat-dist

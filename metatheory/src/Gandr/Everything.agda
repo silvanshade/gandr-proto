@@ -21,4 +21,6 @@ import Gandr.Category
 import Gandr.Category.Functor
 import Gandr.Category.Reasoning
 import Gandr.Graph
+import Gandr.Profunctor
+import Gandr.Profunctor.Yoneda
 import Gandr.Setoid
