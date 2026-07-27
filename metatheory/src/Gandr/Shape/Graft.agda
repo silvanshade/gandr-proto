@@ -52,9 +52,15 @@
 -- That is a real difference between the two instances and it is what
 -- `Gandr.Arity` has to be designed against: an interface that asks only for "a
 -- multiplication and its graph" is satisfied cheaply by the linear kit and
--- expensively by this one. The graphs are NOT built in this revision; what is
--- built is the operation, its computational checks, and the one structural
--- theorem below that does not need them.
+-- expensively by this one.
+--
+-- The graphs are NOT built in this revision, deliberately and on the owner's
+-- ruling: the interface extraction is done first, so that what gets built is
+-- the graph the interface turns out to need rather than nine graphs built on
+-- the assumption that it needs them. What IS built here is the operation, its
+-- computational checks, the structural theorem below, and the unit laws — and
+-- those unit laws are what MEASURE the cost of not having the graph, which is
+-- the input the extraction wanted.
 --
 -- ── WHAT IS PROVED ─────────────────────────────────────────────────────────
 -- `verts-graft` — grafting CONCATENATES the vertex listings, in order. This is
@@ -66,16 +72,27 @@
 -- listings determine the shape then associativity is on the nose, and if they
 -- do not then the difference is exactly a section-discipline obligation.
 --
--- The unit laws are checked by COMPUTATION at concrete data rather than proved
--- in general, and the reason is worth recording rather than leaving as a gap.
--- Proved in general and stated on the function, `graft (idn Γ) T ≡ T` is FALSE
--- without an h-level condition: `preplug` rebuilds each vertex's `Append`
--- witness with `append-graph`, so the two sides agree only once witnesses at
--- equal indices are identified, which is `append-uniq` and costs `UIP Ob`. The
--- law layer must not be charged that. Stated on the GRAPH the existential
--- witness is free — the relation does not commit to `append-graph`'s choice —
--- so the general unit laws belong to the graph layer and are deferred with it,
--- not to this one.
+-- `graft-idnˡ` and `graft-idnʳ` — the derived unit is a two-sided unit, in
+-- general, at the exact price of `UIP Ob` and nothing more. That price is the
+-- second half of the finding above and it is measured rather than asserted:
+-- `preplug` and `graft` rebuild each vertex's `Append` witness with
+-- `append-graph`, so the two sides of each law are the same shape carrying
+-- possibly-different witnesses at EQUAL indices. `append-fun` closes the
+-- indices free; closing the witnesses is `append-uniq`, whose hypothesis is
+-- set-ness of the colours. The listing-algebra unit lemmas underneath pay
+-- nothing at all, so the charge is located precisely and is not diffuse.
+--
+-- Both laws also hold by `refl` at the worked examples, where the indices are
+-- closed lists and the witness comparison computes away. So the hypothesis is
+-- buying that one comparison and the general statement is not stronger than the
+-- concrete one in any other respect.
+--
+-- Stated on the GRAPH instead, the same laws would pay nothing: the whiskered
+-- operand is an existential the relation never commits to, so the unit case
+-- picks the operand's own witness and the comparison never arises. That is the
+-- sharpest available statement of what the graph buys, and it is a REASON
+-- INDEPENDENT of keeping defined functions out of matchable indices — which is
+-- the only reason `Gandr.Arity.Path`'s header records.
 ------------------------------------------------------------------------------
 
 module Gandr.Shape.Graft where
@@ -97,6 +114,9 @@ open import Gandr.Shape.Graph
   using (wires)
   using (node)
   using (append-graph)
+  using (append-fun)
+  using (append-uniq)
+  using (idn-match)
   using (verts)
   using (Vtx)
   using (Arc)
@@ -115,10 +135,16 @@ open import Gandr.Shape.Graph
   using (𝟙)
   using (𝟚)
   using (_≟ˢ_)
+  using (_≟⊤_)
 
+open import Axiom.UniquenessOfIdentityProofs
+  using (UIP)
+  using (module Decidable⇒UIP)
 open import Data.Bool.Base
   using (true)
   using (false)
+open import Data.List.Properties
+  renaming (≡-dec to list-dec)
 open import Data.List.Base
   using (List)
   using ([])
@@ -161,6 +187,20 @@ module _ {ℓ} {Ob : Set ℓ} where
       -- and the one that now goes in first
       inner : Insert Ob x ds mid
 
+  -- Reindexing an exchange past an element both lists lead with. This exists so
+  -- that `insert-swap`'s recursive clause can be an APPLICATION rather than a
+  -- `with` on the recursive call: records have eta, so the projections below
+  -- compute on any term at all, and the recursive call stays a visible subterm
+  -- that a later `cong` can reach. Same rule as `Gandr.Shape.Graph`'s `split`,
+  -- and the unit laws are what it is spent on.
+  exchange-tail
+    : ∀ {x y w ds dˣ}
+    → Exchange x y ds dˣ
+    → Exchange x y (w ∷ ds) (w ∷ dˣ)
+  Exchange.mid (exchange-tail {w} e) = w ∷ Exchange.mid e
+  Exchange.outer (exchange-tail e) = tail (Exchange.outer e)
+  Exchange.inner (exchange-tail e) = tail (Exchange.inner e)
+
   insert-swap
     : ∀ {x y ds d dˣ}
     → Insert Ob x d dˣ
@@ -168,8 +208,7 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Exchange x y ds dˣ
   insert-swap head k = exchange _ (tail k) head
   insert-swap (tail j) head = exchange _ head j
-  insert-swap (tail j) (tail k) with insert-swap j k
-  ... | exchange _ o v = exchange _ (tail o) (tail v)
+  insert-swap (tail j) (tail k) = exchange-tail (insert-swap j k)
 
   -- Threading one matched wire through a matching: a new source at `i`, a new
   -- sink at `j`, joined to each other, with every existing pair left alone.
@@ -182,8 +221,9 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Match Ob Γ Δ
     → Match Ob Γˣ Δˣ
   match-insert head j m = j ∷ m
-  match-insert (tail i) j (k ∷ m) with insert-swap j k
-  ... | exchange _ o v = o ∷ match-insert i v m
+  match-insert (tail i) j (k ∷ m) =
+    Exchange.outer (insert-swap j k)
+      ∷ match-insert i (Exchange.inner (insert-swap j k)) m
 
   -- Whiskering a matching by a block of wires on the left. Each element of the
   -- block takes the position beside itself, which is one `head` per element and
@@ -209,15 +249,26 @@ module _ {ℓ} {Ob : Set ℓ} where
       -- and the matching that survives
       body : Match Ob Γ rest
 
+  -- Lifting a removal past a leading matched pair, on the same footing as
+  -- `exchange-tail`: an application rather than a `with`, so the recursion
+  -- stays reachable.
+  removed-tail
+    : ∀ {x y Γ us Θ}
+    → Insert Ob y us Θ
+    → Removed x Γ us
+    → Removed x (y ∷ Γ) Θ
+  Removed.rest (removed-tail k r) = Exchange.mid (insert-swap k (Removed.spot r))
+  Removed.spot (removed-tail k r) = Exchange.outer (insert-swap k (Removed.spot r))
+  Removed.body (removed-tail k r) =
+    Exchange.inner (insert-swap k (Removed.spot r)) ∷ Removed.body r
+
   match-remove
     : ∀ {x Γ Δ Θ}
     → Insert Ob x Γ Δ
     → Match Ob Δ Θ
     → Removed x Γ Θ
   match-remove head (j ∷ n) = removed _ j n
-  match-remove (tail i) (k ∷ n) with match-remove i n
-  ... | removed _ j n′ with insert-swap k j
-  ...   | exchange _ o v = removed _ o (v ∷ n′)
+  match-remove (tail i) (k ∷ n) = removed-tail k (match-remove i n)
 
   -- Composing two matchings: each source takes its partner's partner, and the
   -- rest is the composite of what remains on both sides.
@@ -227,8 +278,9 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Match Ob Δ Θ
     → Match Ob Γ Θ
   match-comp [] [] = []
-  match-comp (i ∷ m) n with match-remove i n
-  ... | removed _ j n′ = j ∷ match-comp m n′
+  match-comp (i ∷ m) n =
+    Removed.spot (match-remove i n)
+      ∷ match-comp m (Removed.body (match-remove i n))
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- WHISKERING, ONE WIRE AT A TIME. This is the crossing, paid for without a
@@ -364,6 +416,112 @@ module _ {ℓ} {Ob : Set ℓ} where
         (verts-graft S (lwhisk q (append-graph A Θ) T))
         (cong (verts S ++_) (verts-lwhisk q (append-graph A Θ) T)))
 
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE UNIT, ON THE LISTING ALGEBRA. Everything here is h-level free: the
+  -- identity matching is a two-sided unit for composition and is fixed by
+  -- whiskering, and no witness is ever compared. The h-level condition arrives
+  -- only at the shape level, and only for the reason the next section states.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  match-comp-idnˡ
+    : ∀ {Γ Θ}
+    → (n : Match Ob Γ Θ)
+    → match-comp (idn-match Γ) n ≡ n
+  match-comp-idnˡ [] = refl
+  match-comp-idnˡ (j ∷ n) = cong (j ∷_) (match-comp-idnˡ n)
+
+  -- Removing a source from the identity matching leaves the identity on what
+  -- remains, and hands back the very position that was removed.
+  match-remove-idn
+    : ∀ {x Γ Δ}
+    → (i : Insert Ob x Γ Δ)
+    → match-remove i (idn-match Δ) ≡ removed Γ i (idn-match Γ)
+  match-remove-idn head = refl
+  match-remove-idn (tail i) = cong (removed-tail head) (match-remove-idn i)
+
+  match-comp-idnʳ
+    : ∀ {Γ Δ}
+    → (m : Match Ob Γ Δ)
+    → match-comp m (idn-match Δ) ≡ m
+  match-comp-idnʳ [] = refl
+  match-comp-idnʳ (i ∷ m) =
+    trans
+      (cong
+        (λ r → Removed.spot r ∷ match-comp m (Removed.body r))
+        (match-remove-idn i))
+      (cong (i ∷_) (match-comp-idnʳ m))
+
+  -- Whiskering the identity matching by a block gives the identity again.
+  match-lwhisk-idn
+    : ∀ {A Γ Γ′}
+    → (p : Append Ob A Γ Γ′)
+    → match-lwhisk p p (idn-match Γ) ≡ idn-match Γ′
+  match-lwhisk-idn nil = refl
+  match-lwhisk-idn (cons p) = cong (head ∷_) (match-lwhisk-idn p)
+
+  -- and so does whiskering the identity SHAPE, since it is a wiring
+  lwhisk-idn
+    : ∀ {A Δ Δ′}
+    → (q : Append Ob A Δ Δ′)
+    → lwhisk q q (idn Δ) ≡ idn Δ′
+  lwhisk-idn nil = refl
+  lwhisk-idn (cons q) = cong (wire-in head head) (lwhisk-idn q)
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- THE UNIT LAWS, AND THE EXACT PRICE OF STATING THEM ON THE FUNCTION.
+--
+-- The derived unit is a two-sided unit for grafting — that is the claim the
+-- carrier's `idn` has to make good on, since `Gandr.Arity.Path`'s header named
+-- the unit's status as the one thing it expected NOT to generalize.
+--
+-- Both laws hold, and they cost `UIP Ob` and nothing else. The reason is local
+-- and worth naming: `preplug` and `graft` rebuild each vertex's `Append`
+-- witness with `append-graph`, so the two sides of each law are the same shape
+-- carrying possibly-different witnesses at EQUAL indices. `append-fun` closes
+-- the indices with no hypothesis; closing the witnesses is `append-uniq`, whose
+-- price is set-ness of the colours. Nothing else in either proof pays anything.
+--
+-- This is what the same laws stated on the graph of grafting would NOT pay:
+-- there the witness is an existential the relation never commits to, so the
+-- unit constructor picks the operand's own witness and the question does not
+-- arise. That is the sharpest available statement of what the graph is for,
+-- and it is a second reason beyond keeping defined functions out of indices.
+--
+-- The instantiation is at the worked examples below, where both laws hold by
+-- `refl` — at concrete indices the witness comparison computes away, so the
+-- hypothesis is doing exactly the work the general case needs and no more.
+-- ════════════════════════════════════════════════════════════════════════════
+
+module _ {ℓ} {Ob : Set ℓ} (uipᵒ : UIP Ob) (uipˡ : UIP (List Ob)) where
+
+  graft-idnˡ
+    : ∀ {Γ Θ}
+    → (T : Shape Ob Γ Θ)
+    → graft (idn Γ) T ≡ T
+  graft-idnˡ (wires n) = cong wires (match-comp-idnˡ n)
+  graft-idnˡ {Γ} (node A B p q T) with append-fun p (append-graph B Γ)
+  ... | refl with append-uniq uipᵒ uipˡ p (append-graph B Γ)
+  ...   | refl =
+    cong
+      (node A B (append-graph B Γ) q)
+      (trans
+        (cong (λ m → preplug m T) (match-lwhisk-idn (append-graph B Γ)))
+        (graft-idnˡ T))
+
+  graft-idnʳ
+    : ∀ {Γ Δ}
+    → (S : Shape Ob Γ Δ)
+    → graft S (idn Δ) ≡ S
+  graft-idnʳ (wires m) = cong wires (match-comp-idnʳ m)
+  graft-idnʳ {Δ} (node A B p q S) with append-fun q (append-graph A Δ)
+  ... | refl with append-uniq uipᵒ uipˡ q (append-graph A Δ)
+  ...   | refl =
+    cong
+      (node A B p (append-graph A Δ))
+      (trans
+        (cong (graft S) (lwhisk-idn (append-graph A Δ)))
+        (graft-idnʳ S))
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- WORKED CHECKS, at the unit colour set. Each of these RUNS the operation and
 -- pins its answer, so a definition that type-checked while computing the wrong
@@ -387,19 +545,36 @@ chain-graft-agrees = refl
 chain-graft-apart : does (chain-grafted ≟ˢ corolla 𝟚 𝟙) ≡ false
 chain-graft-apart = refl
 
--- The derived unit is a unit, on both sides, at this instance.
-graft-idnˡ : graft (idn 𝟚) (corolla 𝟚 𝟙) ≡ corolla 𝟚 𝟙
-graft-idnˡ = refl
+-- The unit laws, at concrete data, hold by `refl`: the witness comparison the
+-- general proof spends `UIP Ob` on computes away once the indices are closed
+-- lists. So the hypothesis buys exactly that comparison and nothing else.
+corolla-idnˡ : graft (idn 𝟚) (corolla 𝟚 𝟙) ≡ corolla 𝟚 𝟙
+corolla-idnˡ = refl
 
-graft-idnʳ : graft (corolla 𝟚 𝟙) (idn 𝟙) ≡ corolla 𝟚 𝟙
-graft-idnʳ = refl
+corolla-idnʳ : graft (corolla 𝟚 𝟙) (idn 𝟙) ≡ corolla 𝟚 𝟙
+corolla-idnʳ = refl
 
--- and grafting a two-vertex composite past a unit still lands on itself
+-- and a two-vertex composite past a unit still lands on itself
 chain-idnˡ : graft (idn 𝟚) chain ≡ chain
 chain-idnˡ = refl
 
 chain-idnʳ : graft chain (idn 𝟙) ≡ chain
 chain-idnʳ = refl
+
+-- AND THE GENERAL LAWS ARE DISCHARGED HERE, which is what stops the
+-- `UIP`-parameterized module above from being green and vacuous: the unit type
+-- has decidable equality, so Hedberg supplies both hypotheses.
+uipᵒ : UIP ⊤
+uipᵒ = Decidable⇒UIP.≡-irrelevant _≟⊤_
+
+uipˡ : UIP (List ⊤)
+uipˡ = Decidable⇒UIP.≡-irrelevant (list-dec _≟⊤_)
+
+graft-unitˡ : (T : Shape ⊤ 𝟚 𝟙) → graft (idn 𝟚) T ≡ T
+graft-unitˡ = graft-idnˡ uipᵒ uipˡ
+
+graft-unitʳ : (S : Shape ⊤ 𝟚 𝟙) → graft S (idn 𝟙) ≡ S
+graft-unitʳ = graft-idnʳ uipᵒ uipˡ
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- GRAFTING IS TOTAL AND DOES NOT PRESERVE THE CELL PREDICATES. That is the
