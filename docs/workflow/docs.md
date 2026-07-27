@@ -104,3 +104,8 @@ The convention (authored docs are clean by construction):
   Math holding a literal `|` inside a pipe-table cell needs `\|`.
 * **Display math** — a fenced code block tagged `math`; **never** bare `$$…$$` (MD013 reflow joins it to one line).
 * **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.
+* **Emphasis never spans a sentence boundary, and a sentence's period sits _outside_ it** — write `**the rule**.` rather than `**the rule.**` (both shown as code spans here so this bullet does not demonstrate the defect on itself).
+  The reflow reads an emphasis span that swallows its own full stop as continuing prose, so a paragraph holding one is collapsed onto a single line with a doubled space — which `rumdl` then flags (MD064, MD013) and **cannot fix**.
+  The pass is not idempotent and need not converge: while that paragraph survives, other fixes in the same file may go unapplied, and `rumdl fmt` keeps reporting them as auto-fixable.
+  The observed case stalled a 1800-line document at an unchanged issue count for eight consecutive passes — 245 of them misaligned tables nowhere near the offending paragraph — and went clean in one pass once the period moved outside the emphasis.
+  A bold lead-in opening a paragraph (`**Lead-in.** Prose follows…`) is the one safe interior period, and only while nothing later in the same paragraph closes a sentence inside emphasis.
