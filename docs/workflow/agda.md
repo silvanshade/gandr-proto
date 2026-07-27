@@ -28,6 +28,32 @@ House policy on external research artifacts applies unchanged: read and cite, ne
 **The standing rule of this tree.** **Before writing a structure, ask what it is a family _over_, and index it by that.** Prefer an inductive family indexed by the data that determines its shape; reach for a record or a Σ only for what genuinely varies independently of the index.
 Functions into data — `Fin n → A` and its relatives — are the last resort, not the default.
 
+### STOP: a functional or higher-order encoding requires design input first
+
+**If you find yourself needing — or merely inclined toward — a functional or higher-order encoding for a structure's _data_, stop and raise it with the maintainer before writing it.** This is a hard gate, not a preference to weigh against convenience.
+Proceeding under a stated assumption is **not** available here: the cost of the wrong encoding is not paid in the module that chooses it, but by every consumer afterwards, and by the abstraction that later cannot be extracted over it.
+
+**What trips the gate.** Any of these, on their own:
+
+* a field or carrier typed `Fin n → A` — a finite table written as a function;
+* a structure stored as a function where an inductive family or a `Vec` would carry the same information;
+* a record whose _identity_ matters (it will be compared, stored, addressed, or canonicalized) and which has function-typed fields;
+* wanting function extensionality, or reaching for a bespoke pointwise relation to stand in for an equality that "cannot" be proved;
+* writing a lemma whose only job is to refute a configuration the encoding permits and the object does not have;
+* catching yourself **explaining** a limitation as inherent to the setting.
+
+That last one is the failure mode this rule exists for, and it is the one that does real damage: an encoding defect described as a property of the theory reads as settled, gets cited downstream, and stops being questioned.
+`--without-K` and SETOID-not-SET are both genuine and both load-bearing — which is exactly why an encoding artifact dressed in their language survives review.
+Before attributing a wall to the foundation, produce the counterexample that shows the same statement holds under an inductive encoding, or stop.
+
+**What does _not_ trip it.** Functions as _operations_ are fine and pervasive: an `∞Map`'s cell action, a category's composition, a profunctor's actions, derived operations such as concatenation, and accessors over a family.
+The rule is about the **encoding** — what the structure _is_ — not about its interface.
+The question to ask is whether the function is standing in for data that could be carried directly.
+
+**What to do when it trips.** Stop and surface it.
+Name the structure, what it is a family over, the encoding you were about to write and the indexed alternative, and what each costs.
+Do not route around a missing equality; do not weaken a statement to fit the encoding; do not record the obstruction as a located wall and continue — a wall that is really an encoding defect is worse than an open obligation, because it looks discharged.
+
 This plays to the strength of the setting rather than working around it.
 Five things follow, and they compound:
 
