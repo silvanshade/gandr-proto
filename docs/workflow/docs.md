@@ -105,7 +105,8 @@ The convention (authored docs are clean by construction):
 * **Display math** — a fenced code block tagged `math`; **never** bare `$$…$$` (MD013 reflow joins it to one line).
 * **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.
 * **Emphasis never spans a sentence boundary, and a sentence's period sits _outside_ it** — write `**the rule**.` rather than `**the rule.**` (both shown as code spans here so this bullet does not demonstrate the defect on itself).
-  The reflow reads an emphasis span that swallows its own full stop as continuing prose, so a paragraph holding one is collapsed onto a single line with a doubled space — which `rumdl` then flags (MD064, MD013) and **cannot fix**.
-  The pass is not idempotent and need not converge: while that paragraph survives, other fixes in the same file may go unapplied, and `rumdl fmt` keeps reporting them as auto-fixable.
-  The observed case stalled a 1800-line document at an unchanged issue count for eight consecutive passes — 245 of them misaligned tables nowhere near the offending paragraph — and went clean in one pass once the period moved outside the emphasis.
-  A bold lead-in opening a paragraph (`**Lead-in.** Prose follows…`) is the one safe interior period, and only while nothing later in the same paragraph closes a sentence inside emphasis.
+  Under `reflow-mode = "semantic-line-breaks"` at `line-length = 0`, a paragraph ending a sentence inside an emphasis span is not split at its sentence boundaries; the reflow emits a doubled space, MD064 strips it, and the reflow re-emits it.
+  That is an **auto-fix conflict loop** (`MD064 -> MD013 -> MD064`), and on detecting one rumdl abandons the rest of that file's fixes — so unrelated issues silently stop being applied while `rumdl fmt` still reports them as fixable.
+  The observed case stalled an 1800-line document at an unchanged issue count for eight passes, 245 of them misaligned tables nowhere near the offending paragraph, and cleared in one pass once the period moved outside the emphasis.
+  **`rumdl fmt` diagnoses this itself**, naming the cycle and the file, so never discard its output when a format pass will not converge — `rumdl check` alone reports only the symptoms.
+  No configuration avoids the loop while keeping both semantic line breaks and reflow auto-fix, so the convention is the mitigation; the defect is upstream's, and the same cycle has already been fixed once for `sentence-per-line`.
