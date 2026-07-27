@@ -64,6 +64,15 @@
 -- or in a vertex's port order, are different objects here. That is the section
 -- discipline, and reconciling it is `Gandr.Rigid`'s job, not this module's.
 --
+-- The derived operations are written with the sum ELIMINATOR rather than with
+-- a `with` on their recursive call, and that is a working rule rather than a
+-- taste: a `with` compiles to an auxiliary function the caller cannot name, so
+-- `split (cons p) (there i)` becomes a term stuck on something no lemma can
+-- rewrite, and every fact about it has to be re-proved by matching at each use
+-- site. Written compositionally the recursive call is a visible subterm and
+-- one `cong` reaches it. `split`, `origin` and `dest` are all in that form, and
+-- `split-left`/`split-right`/`swap-follow` are what it buys.
+--
 -- ── EQUALITY: WHAT THE OBSTRUCTION IS, AND WHAT IT IS NOT ───────────────────
 -- The funext obstruction the tabular presentation reported is genuinely gone:
 -- there are no function-typed fields left. A DIFFERENT obstruction sits behind
@@ -168,14 +177,37 @@
 -- because without an inhabited closed directed walk `ranked⇒wheel-free` would
 -- prove nothing.
 --
+-- ── THE COROLLA FAMILY, AND WHY IT IS GENERIC RATHER THAN AN EXAMPLE ────────
+-- `corolla A B` is one vertex with in-profile `A` and out-profile `B`, and
+-- `corolla-cell` promotes it to a `Cell` for EVERY pair of profiles over ANY
+-- colour set. That is the difference between the worked examples, which show
+-- the predicates are not vacuous at one colour set, and this, which shows the
+-- cell class is populated at every arity — so nothing above can be a theorem
+-- about a family with finitely many inhabitants.
+--
+-- Its wiring is `swap-match`, the matching that sends a concatenation to the
+-- same two blocks in the other order: the corolla's sources are `B ++ A`, its
+-- out-ports followed by its input legs, and its sinks are `A ++ B`, its
+-- in-ports followed by its output legs, so every port crosses to the leg of
+-- the same name. `swap-follow` is the fact this needs and the only one — an
+-- edge of one block lands in that block on the other side — from which every
+-- edge has a leg end, hence no arc, hence all four certificates at once.
+--
+-- The block swap is the arity's SYMMETRY and it is not an artifact of the
+-- presentation. Grafting must interleave two operands' vertex blocks, and
+-- `node` publishes its ports to one end of the interface; whichever end that
+-- is, the other operand's block has to cross it. Choosing the opposite end
+-- moves the crossing from one whiskering to the other and does not remove it.
+--
 -- ── WHAT THIS MODULE DOES NOT CLAIM ─────────────────────────────────────────
 -- There are no graphical MAPS here, hence no `Γ`, no `Θ`, no Segal condition,
 -- and no nerve. `Gandr.Shape.Decidable` builds the map layer. The arity
 -- OPERATIONS — grafting through its inductive graph, and the heterogeneous
--- comparison — are the next increment and are not attempted, for the reason
--- `Gandr.Arity.Path`'s header gives: one instance does not determine an
--- abstraction. The unit is already DERIVED here (`idn`), which is the one
--- thing that header predicted would not generalize from the linear kit.
+-- comparison — are not here either; `Gandr.Shape.Graft` builds them over the
+-- listing algebra this module ends with. The unit is already DERIVED here
+-- (`idn`), which is the one thing `Gandr.Arity.Path`'s header predicted would
+-- not generalize from the linear kit, and the symmetry (`swap-match`) is here
+-- because the corolla needs it, not because grafting does — though it does.
 --
 -- That the carrier's objects are exactly the finite directed graphs with legs
 -- is a design claim, not a mechanized one: a graph determines the vertex list
@@ -199,7 +231,10 @@ open ℕ
 open import Axiom.UniquenessOfIdentityProofs
   using (UIP)
   using (module Decidable⇒UIP)
+open import Data.Empty
+  using (⊥-elim)
 open import Data.Empty.Polymorphic
+  using ()
   renaming (⊥ to ⊥ℓ)
 open import Data.List.Base
   using (List)
@@ -239,6 +274,11 @@ open import Data.Sum.Base
   using (_⊎_)
   using (inj₁)
   using (inj₂)
+  using (swap)
+  renaming ([_,_]′ to case⊎)
+  renaming (map to smap)
+open import Function.Base
+  using (id)
 open import Data.Unit.Base
   using (⊤)
   using (tt)
@@ -285,6 +325,39 @@ lookup
   → A
 lookup (x ∷ xs) here = x
 lookup (x ∷ xs) (there i) = lookup xs i
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SUM PLUMBING. Every incidence value below is a sum — a vertex or a leg — and
+-- the derived operations reindex one side at a time. These three facts are all
+-- that is ever needed about that, and they are stated once rather than being
+-- re-derived by `with` at each use site.
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- The two one-sided reindexings commute, because each is the two-sided one
+-- with the other component left alone.
+smap-exch
+  : ∀ {a b c d} {A : Set a} {B : Set b} {C : Set c} {D : Set d}
+  → (f : A → C) (g : B → D)
+  → (s : A ⊎ B)
+  → smap f id (smap id g s) ≡ smap id g (smap f id s)
+smap-exch f g (inj₁ i) = refl
+smap-exch f g (inj₂ j) = refl
+
+-- Exchanging the sides commutes with reindexing them.
+swap-smap
+  : ∀ {a b c d} {A : Set a} {B : Set b} {C : Set c} {D : Set d}
+  → (f : A → C) (g : B → D)
+  → (s : A ⊎ B)
+  → swap (smap f g s) ≡ smap g f (swap s)
+swap-smap f g (inj₁ i) = refl
+swap-smap f g (inj₂ j) = refl
+
+-- The two injections are distinct. This is what lets a leg end refute an arc,
+-- which demands a vertex — an `inj₁` — at both ends.
+inj₂≢inj₁
+  : ∀ {a b} {A : Set a} {B : Set b} {x : B} {y : A}
+  → inj₂ {A = A} x ≢ inj₁ y
+inj₂≢inj₁ ()
 
 module _ {ℓ} (Ob : Set ℓ) where
 
@@ -460,6 +533,14 @@ module _ {ℓ} {Ob : Set ℓ} where
 
   -- Splitting a position along an `Append` witness. Structural recursion on
   -- the witness, so no cardinality arithmetic and no re-indexing plumbing.
+  --
+  -- The recursive clause reindexes through `smap` rather than through a `with`
+  -- on the recursive call, and that is deliberate: a `with` compiles to an
+  -- auxiliary the caller cannot name, so `split (cons p) (there i)` is stuck on
+  -- a term no lemma can rewrite. Written compositionally it reduces to an
+  -- application whose argument IS the recursive call, and every fact below
+  -- about `split` is then one `cong` away. `origin` and `dest` are written the
+  -- same way for the same reason.
   split
     : ∀ {xs ys zs}
     → Append Ob xs ys zs
@@ -467,9 +548,69 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Ix xs ⊎ Ix ys
   split nil i = inj₂ i
   split (cons p) here = inj₁ here
-  split (cons p) (there i) with split p i
-  ... | inj₁ j = inj₁ (there j)
-  ... | inj₂ j = inj₂ j
+  split (cons p) (there i) = smap there id (split p i)
+
+  -- The two injections `split` inverts: a position of the prefix, and a
+  -- position of the suffix, each read as a position of the concatenation.
+  left
+    : ∀ {xs ys zs}
+    → Append Ob xs ys zs
+    → Ix xs
+    → Ix zs
+  left nil ()
+  left (cons p) here = here
+  left (cons p) (there i) = there (left p i)
+
+  right
+    : ∀ {xs ys zs}
+    → Append Ob xs ys zs
+    → Ix ys
+    → Ix zs
+  right nil j = j
+  right (cons p) j = there (right p j)
+
+  -- Where a position of a concatenation came from. This is a VIEW rather than
+  -- a sum: a consumer eliminates it by matching, which refines the position it
+  -- was given, instead of carrying an equation it then has to transport along.
+  data Part {xs ys zs} (p : Append Ob xs ys zs) : Ix zs → Set ℓ where
+    -- a position of the prefix
+    front
+      : (i : Ix xs)
+      → Part p (left p i)
+    -- a position of the suffix
+    back
+      : (j : Ix ys)
+      → Part p (right p j)
+
+  part
+    : ∀ {xs ys zs}
+    → (p : Append Ob xs ys zs)
+    → (e : Ix zs)
+    → Part p e
+  part nil e = back e
+  part (cons p) here = front here
+  part (cons p) (there e) with part p e
+  ... | front i = front (there i)
+  ... | back j = back j
+
+  -- And the two injections are sections of `split`, which is what makes the
+  -- view's two cases compute.
+  split-left
+    : ∀ {xs ys zs}
+    → (p : Append Ob xs ys zs)
+    → (i : Ix xs)
+    → split p (left p i) ≡ inj₁ i
+  split-left nil ()
+  split-left (cons p) here = refl
+  split-left (cons p) (there i) = cong (smap there id) (split-left p i)
+
+  split-right
+    : ∀ {xs ys zs}
+    → (p : Append Ob xs ys zs)
+    → (j : Ix ys)
+    → split p (right p j) ≡ inj₂ j
+  split-right nil j = refl
+  split-right (cons p) j = cong (smap there id) (split-right p j)
 
   -- Reading an insertion as the position it chose.
   slot
@@ -500,6 +641,106 @@ module _ {ℓ} {Ob : Set ℓ} where
   follow (i ∷ m) (there e) = past i (follow m e)
 
   -- ══════════════════════════════════════════════════════════════════════════
+  -- THE BLOCK SWAP. `swap-match` matches a concatenation onto the same two
+  -- blocks in the other order, and it is what wires a vertex to its own legs:
+  -- the corolla's sources are `B ++ A` — its out-ports, then its input legs —
+  -- and its sinks are `A ++ B`, its in-ports then its output legs.
+  --
+  -- It is the SYMMETRY of the arity, and it is not avoidable by presentation.
+  -- Grafting has to interleave the two operands' vertex blocks, and `node`
+  -- publishes its ports to one end of the interface, so whichever end that is,
+  -- the other operand's block has to cross it.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Appending nothing renames nothing, so the witness IS a matching.
+  match-nil
+    : ∀ {ys zs}
+    → Append Ob ys [] zs
+    → Match Ob ys zs
+  match-nil nil = []
+  match-nil (cons p) = head ∷ match-nil p
+
+  -- and it is the identity on positions, read through `split`
+  nil-follow
+    : ∀ {ys zs}
+    → (p : Append Ob ys [] zs)
+    → (e : Ix ys)
+    → split p (follow (match-nil p) e) ≡ inj₁ e
+  nil-follow nil ()
+  nil-follow (cons p) here = refl
+  nil-follow (cons p) (there e) = cong (smap there id) (nil-follow p e)
+
+  -- The position an element occupies when it is inserted between a prefix and
+  -- a suffix. Both `Append` witnesses are supplied, so the position is named by
+  -- the witnesses rather than computed from a length.
+  insert-mid
+    : ∀ {as x ys r s}
+    → Append Ob as ys r
+    → Append Ob as (x ∷ ys) s
+    → Insert Ob x r s
+  insert-mid nil nil = head
+  insert-mid (cons p) (cons q) = tail (insert-mid p q)
+
+  -- That position is the head of the suffix block.
+  mid-slot
+    : ∀ {as x ys r s}
+    → (p : Append Ob as ys r)
+    → (q : Append Ob as (x ∷ ys) s)
+    → split q (slot (insert-mid p q)) ≡ inj₂ here
+  mid-slot nil nil = refl
+  mid-slot (cons p) (cons q) = cong (smap there id) (mid-slot p q)
+
+  -- and every other position is where it was, with the suffix side shifted
+  -- past the inserted element
+  mid-past
+    : ∀ {as x ys r s}
+    → (p : Append Ob as ys r)
+    → (q : Append Ob as (x ∷ ys) s)
+    → (w : Ix r)
+    → split q (past (insert-mid p q) w) ≡ smap id there (split p w)
+  mid-past nil nil w = refl
+  mid-past (cons p) (cons q) here = refl
+  mid-past (cons p) (cons q) (there w) =
+    trans
+      (cong (smap there id) (mid-past p q w))
+      (smap-exch there there (split p w))
+
+  -- The block swap itself: each source of the prefix block takes the position
+  -- its own block occupies on the other side, and the suffix block is then
+  -- matched by recursion. The existential remainder is supplied by
+  -- `append-graph`, which is the sanctioned way to speak concatenation's value.
+  swap-match
+    : ∀ {xs ys zs ws}
+    → Append Ob xs ys zs
+    → Append Ob ys xs ws
+    → Match Ob zs ws
+  swap-match nil q = match-nil q
+  swap-match {ys} (cons {xs} p) q =
+    insert-mid (append-graph ys xs) q ∷ swap-match p (append-graph ys xs)
+
+  -- AND WHAT IT DOES, which is the fact every consumer actually wants: an edge
+  -- in one block lands in that same block on the other side. Stated through
+  -- `split` on both sides, so it says the blocks are exchanged and nothing
+  -- inside a block is permuted.
+  swap-follow
+    : ∀ {xs ys zs ws}
+    → (p : Append Ob xs ys zs)
+    → (q : Append Ob ys xs ws)
+    → (e : Ix zs)
+    → split q (follow (swap-match p q) e) ≡ swap (split p e)
+  swap-follow nil q e = nil-follow q e
+  swap-follow {ys} (cons {xs} p) q here = mid-slot (append-graph ys xs) q
+  swap-follow {ys} (cons {xs} p) q (there e) =
+    trans
+      (mid-past
+        (append-graph ys xs)
+        q
+        (follow (swap-match p (append-graph ys xs)) e))
+      (trans
+        (cong (smap id there) (swap-follow p (append-graph ys xs) e))
+        (sym (swap-smap there id (split p e))))
+
+  -- ══════════════════════════════════════════════════════════════════════════
   -- INCIDENCE, DERIVED. An edge's source end is at a vertex's out-port or at
   -- an input leg; its sink end is at a vertex's in-port or at an output leg.
   -- Both are computed by tracing the edge outward through the node chain.
@@ -511,11 +752,11 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Edg S
     → Vtx S ⊎ Ix Γ
   origin (wires m) e = inj₂ e
-  origin (node A B p q S) e with origin S e
-  ... | inj₁ v = inj₁ (there v)
-  ... | inj₂ i with split p i
-  ...   | inj₁ _ = inj₁ here
-  ...   | inj₂ j = inj₂ j
+  origin (node A B p q S) e =
+    case⊎
+      (λ v → inj₁ (there v))
+      (λ i → smap (λ _ → here) id (split p i))
+      (origin S e)
 
   dest
     : ∀ {Γ Δ}
@@ -523,11 +764,11 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Edg S
     → Vtx S ⊎ Ix Δ
   dest (wires m) e = inj₂ (follow m e)
-  dest (node A B p q S) e with dest S e
-  ... | inj₁ v = inj₁ (there v)
-  ... | inj₂ i with split q i
-  ...   | inj₁ _ = inj₁ here
-  ...   | inj₂ j = inj₂ j
+  dest (node A B p q S) e =
+    case⊎
+      (λ v → inj₁ (there v))
+      (λ i → smap (λ _ → here) id (split q i))
+      (dest S e)
 
   -- `Arc` is the directed incidence — an edge with BOTH ends attached — and
   -- `Link` is the same edge read in either orientation. Only `Link` is a
@@ -880,6 +1121,94 @@ module _ {ℓ} {Ob : Set ℓ} where
     wheel-free : WheelFree shape
     wheel-free = simply-conn⇒wheel-free simply
 
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE COROLLA FAMILY. One vertex with in-profile `A` and out-profile `B`,
+  -- every port wired straight to the leg beside it. This is `Cell`'s GENERIC
+  -- inhabitant: one for every pair of profiles, over any colour set, so the
+  -- cell class is not a statement about a class the tree cannot populate.
+  --
+  -- It is also the free generator of the arity — the shape of a single
+  -- operation — so the pasting layer above will meet it as the base case of
+  -- every generated term, and it is worth having its incidence proved once
+  -- rather than re-read off each example.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  corolla
+    : (A B : List Ob)
+    → Shape Ob A B
+  corolla A B =
+    node A B (append-graph B A) (append-graph A B)
+      (wires (swap-match (append-graph B A) (append-graph A B)))
+
+  -- Its out-profile block runs from the vertex to an output leg. This is where
+  -- `swap-follow` is spent: the edge is a source of the `B` block, so it lands
+  -- in the `B` block of the sinks, which is the leg side.
+  corolla-out
+    : ∀ {A B}
+    → (i : Ix B)
+    → dest (corolla A B) (left (append-graph B A) i) ≡ inj₂ i
+  corolla-out {A} {B} i =
+    cong
+      (smap (λ _ → here) id)
+      (trans
+        (swap-follow (append-graph B A) (append-graph A B) (left (append-graph B A) i))
+        (cong swap (split-left (append-graph B A) i)))
+
+  -- and its in-profile block runs from an input leg to the vertex, which needs
+  -- only the section law, since `origin` reads the source pool directly
+  corolla-in
+    : ∀ {A B}
+    → (j : Ix A)
+    → origin (corolla A B) (right (append-graph B A) j) ≡ inj₂ j
+  corolla-in {A} {B} j =
+    cong (smap (λ _ → here) id) (split-right (append-graph B A) j)
+
+  -- So NO edge of a corolla has both ends at a vertex — every edge has a leg
+  -- end. That single fact discharges every certificate below, and it is why
+  -- the corolla is a cell for arbitrary profiles rather than only for the
+  -- small ones that can be checked by hand.
+  corolla-no-arc
+    : ∀ {A B e u v}
+    → ¬ Arc (corolla A B) e u v
+  corolla-no-arc {A} {B} {e} a with part (append-graph B A) e
+  ... | front i = inj₂≢inj₁ (trans (sym (corolla-out i)) (Arc.into a))
+  ... | back j = inj₂≢inj₁ (trans (sym (corolla-in j)) (Arc.from a))
+
+  corolla-no-link
+    : ∀ {A B e u v}
+    → ¬ Link (corolla A B) e u v
+  corolla-no-link (along a) = corolla-no-arc a
+  corolla-no-link (against a) = corolla-no-arc a
+
+  -- The matching certificate holds for the strongest possible reason: there is
+  -- no link at all, so neither a loop nor a branch can be exhibited.
+  corolla-matched
+    : ∀ {A B}
+    → Matched (corolla A B)
+  Matched.unlooped corolla-matched e v l = corolla-no-link l
+  Matched.unbranched corolla-matched e f u v w l l′ = ⊥-elim (corolla-no-link l)
+
+  -- One vertex, reachable from itself.
+  corolla-connected
+    : ∀ {A B}
+    → Connected (corolla A B)
+  Connected.root corolla-connected = here
+  Connected.span corolla-connected here = stop
+  Connected.span corolla-connected (there ())
+
+  corolla-simply
+    : ∀ {A B}
+    → SimplyConn (corolla A B)
+  SimplyConn.connected corolla-simply = corolla-connected
+  SimplyConn.acyclic corolla-simply = matched⇒acyclic corolla-matched
+
+  -- EVERY PROFILE HAS A CELL.
+  corolla-cell
+    : (A B : List Ob)
+    → Cell A B
+  Cell.shape (corolla-cell A B) = corolla A B
+  Cell.simply (corolla-cell A B) = corolla-simply
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- EQUALITY, LAYER 0: THE CODES. Each witness family is sent to a recursively
 -- COMPUTED type built from `⊥`/`×`/`⊎`/`≡`, whose inhabitants can be compared
@@ -1207,6 +1536,18 @@ point-cell : Cell [] []
 Cell.shape point-cell = point
 Cell.simply point-cell = point-simply
 
+-- It is the arity-zero member of the corolla family, on the nose: with both
+-- profiles empty the two `Append` witnesses and the block swap all collapse to
+-- their empty clauses. So the hand-written example and the generic family
+-- agree, and neither is an independent definition of the other.
+point≡corolla : point ≡ corolla [] []
+point≡corolla = refl
+
+-- The generic family at a nontrivial profile — `C(2;1)`, the shape `chain`'s
+-- first vertex has — checked by computation rather than by typing.
+corolla-2-1 : Shape ⊤ 𝟚 𝟙
+corolla-2-1 = corolla 𝟚 𝟙
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- EXAMPLE 3: A TWO-VERTEX COMPOSITE. `C(2;1)` feeding `C(1;1)`. Reading the
 -- innermost pools: the sources are `out₁ ++ out₀ ++ Γ` and the sinks are
@@ -1448,3 +1789,13 @@ decides-apart = refl
 -- recognised as itself, so the negative answer is not the only one in range
 decides-same : does (diamond ≟ˢ diamond) ≡ true
 decides-same = refl
+
+-- The generic corolla is recognised as itself, which is what checks that its
+-- block swap COMPUTES at a nontrivial profile rather than merely typing.
+decides-corolla : does (corolla-2-1 ≟ˢ corolla-2-1) ≡ true
+decides-corolla = refl
+
+-- and it is not the chain, which spans the same interface with two vertices —
+-- the interface does not determine the shape, and the decision sees that
+decides-corolla-apart : does (corolla-2-1 ≟ˢ chain) ≡ false
+decides-corolla-apart = refl
