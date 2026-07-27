@@ -46,6 +46,9 @@ That last one is the failure mode this rule exists for, and it is the one that d
 `--without-K` and SETOID-not-SET are both genuine and both load-bearing — which is exactly why an encoding artifact dressed in their language survives review.
 Before attributing a wall to the foundation, produce the counterexample that shows the same statement holds under an inductive encoding, or stop.
 
+This is the encoding-layer instance of a general failure, and the general form is worth knowing because it recurs in literature sweeps and design analysis: see [review.md](review.md) §"Declining is a claim too — the counterfactual test".
+The shared shape is a judgement that holds our setting fixed and therefore resolves against whatever is being judged.
+
 **What does _not_ trip it.** Functions as _operations_ are fine and pervasive: an `∞Map`'s cell action, a category's composition, a profunctor's actions, derived operations such as concatenation, and accessors over a family.
 The rule is about the **encoding** — what the structure _is_ — not about its interface.
 The question to ask is whether the function is standing in for data that could be carried directly.

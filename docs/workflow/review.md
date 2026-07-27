@@ -55,6 +55,38 @@ When reporting, present challenges as things to engineer around, bracketed — n
 **Every adversary pass writes a human-inspectable report artifact** — reasoning, citations, severity, each finding's binding-vs-challenged disposition — under `adversary/` in the sibling `wyrd-notes` repository; the deliverable cites it briefly, never inlines it.
 The point is auditability: a later reader sees _why_ a branch was challenged.
 
+## Declining is a claim too — the counterfactual test
+
+The previous section says an impossibility result gets its applicability checked before it binds.
+That check is **not enough on its own**, because it is usually run statically: _does the hypothesis hold for our object, as our object currently stands?_ That question holds fixed the thing most likely to be wrong.
+In a design still being built the setting is a variable too — and usually the cheaper one to move — so the static question is under-specified and its default resolution is biased toward rejection.
+
+**Adversarial stance amplifies this rather than catching it.** An adversary's success condition is finding a defeater, and under a static reading a mismatch with the current setting _is_ one.
+The remedy is **not** to soften the adversarial pass; uncritical acceptance is the worse failure and fills the tree with machinery that never carries weight.
+The remedy is to make the **decline** an adversarial target in its own right: having found the mismatch, attack your own rejection.
+
+**The tell, which is checkable by reading.** A decline whose stated reason is a fact about _us_ rather than a fact about _the machinery_ — "doesn't apply because our setting is X", "the wrong theory for our case", "that's just what our foundational commitment costs".
+Each names one of our properties; none asks whether that property should hold.
+When a rejection's reason is load-bearing vocabulary from our own design, it reads as settled and stops being questioned — which is exactly when it needs to be.
+
+**Before a decline binds, answer four questions.** Not "does this apply", which is static, but:
+
+1. **_Should_ it apply?** If our setting were free to be whatever it ideally is, is this the right fit?
+   Ask this **first**, before compatibility.
+2. **What exact delta would make it apply?** Name it concretely.
+   A decline with no nameable delta is an intuition, not a finding.
+3. **What does that delta cost, and what kind of change is it?** Distinguish a **representation** change — usually cheap, especially early — from a **commitment** change, which is expensive.
+   _A decline that rests on a representation choice is not a decline._
+4. **What would it unlock — or eliminate?** Both directions.
+   Retiring machinery is a payoff too, and often the larger one.
+
+**Why the test tilts this way: the two errors are not symmetric.** A wrong acceptance is loud and self-limiting — the machinery fails to carry weight and you find out.
+A wrong rejection is silent and compounding — it produces no signal at any later point, and the design ossifies around the gap.
+Rejection errors are undetectable by construction, so they have to be made expensive on purpose.
+
+**Record the delta, not just the verdict.** "Challenged, not refuted" only works if a later sweep can re-open a branch cheaply instead of re-deriving it from scratch.
+The delta and its cost are what make that possible, and they belong in the adversary report artifact alongside the finding.
+
 ## Research-question tasks — deliver the outlook
 
 A task investigating a research question delivers, alongside findings, a brief **outlook**: **evidence for** vs **evidence against** as short bullets, plus a one-line **Net** (decisive, not hedged).
