@@ -30,6 +30,22 @@
 -- the input and output legs. Rigidity is a property of the REPRESENTATION, not
 -- of the objects, and this record is that property stated as structure.
 --
+-- ── TWO THINGS IN THIS TREE ARE CALLED `Rigid`, AND THEY ARE DIFFERENT ──────
+-- `Gandr.Arena.Structure.Rigid c d` is a MAP between codes that relabels
+-- nothing — a map with a fixed-point certificate on offsets — and its payoff is
+-- `rigid-unique`: any two parallel rigid maps are the same map, so the rigid
+-- words form one equivalence class per source/target pair. The record here is a
+-- CANONICALIZATION on a setoid. Different arity, different carrier, different
+-- payoff; neither is a special case of the other, and nothing imports both.
+--
+-- The shared idea, which is why the name recurs rather than collides by
+-- accident: in both, the representation carries structure the semantics cannot
+-- see, and rigidity is the certificate that it does not leak. There the surplus
+-- is bracketing, killed by flattening; here it is ordering, killed by the
+-- canonical section. Naming both `Rigid` is a judgement call and it is recorded
+-- rather than assumed — if a module ever needs both in scope, this note is
+-- where the rename decision should start.
+--
 -- ── WHY THIS IS THE KEYSTONE, AND EXACTLY WHAT IS PROVED ────────────────────
 -- This tree has SETOID, not SET, and the standing consequence is that quotients
 -- NEED NOT BE EFFECTIVE. `Rigid` is precisely the extra structure that makes
