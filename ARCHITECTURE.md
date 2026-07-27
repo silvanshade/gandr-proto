@@ -25,14 +25,15 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `docs/spec/`                             | the specification corpus: validated XML components, `refs.yml` (derived Hayagriva bibliography)                  |
 | `docs/research/`                         | landed research and design studies, incl. the wyrd→reboot [crate port map](docs/research/crate-port-map.md)      |
 | `docs/gandr/`                            | the design corpus root (reboot stub: index + BLAKE3 `MANIFEST.yml`)                                              |
+| `metatheory/`                            | the Agda metatheory, built port-as-source under `Gandr.*` over a vendored agda-stdlib — no submodule, no facade  |
 | `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
-| `scripts/`                               | typed project scripts (Nushell gate checks, the `refs.yml` re-derivation generator)                              |
+| `scripts/`                               | legacy Nushell helpers, retired for new work ([docs/workflow/scripting.md](docs/workflow/scripting.md))          |
 | `mise.toml`                              | canonical task and gate bodies plus the toolchain pins (stable + dated nightly)                                  |
 | `treefmt.toml` and the formatter configs | the format wall: rumdl, typos, sizelint, rustfmt, oxfmt, tombi and friends                                       |
 | `prek.toml`, `.config/wt.toml`           | commit-hook and worktree/merge-hook wiring (the local merge wall)                                                |
 | [PLAN.html](PLAN.html)                   | the approved build-out plan                                                                                      |
 
-Referenced by guidance but not yet landed: `metatheory/` (the Agda metatheory tree and its pinned internal-univalence submodule; house style ready in [docs/workflow/agda.md](docs/workflow/agda.md)), `docs/adr/`, `docs/KNOWLEDGE.md` and `docs/HAZARDS.md` (the corpus-trust and hazard catalogues `AGENTS.md` cites), and hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
+Referenced by guidance but not yet landed: `docs/adr/`, `docs/KNOWLEDGE.md` and `docs/HAZARDS.md` (the corpus-trust and hazard catalogues `AGENTS.md` cites), and hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
 
 ## Domains
 

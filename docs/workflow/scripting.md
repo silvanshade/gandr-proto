@@ -13,8 +13,15 @@ Project gate policy and landing orchestration live in the Rust crate `crates/wor
 Its stable human, hook, and (future) CI entrypoints are the task names in `mise.toml`; task bodies route into `cargo run --quiet -p gandr-workflow-gates -- <subcommand>`.
 Use a stable `mise run <task>` at callsites so command spelling, arguments, and prerequisites have one owner; invoke the CLI directly only when implementing or diagnosing that boundary.
 
-Small and pipeline-shaped work that is **not** gate policy stays in typed **Nushell** under `scripts/` (project policy: typed only — Nushell for small/pipeline scripts, TypeScript for larger; no untyped `bash`/`sh`).
-Each is reached through its named `mise` task or `prek` hook, never inlined:
+**New scripting starts as a `mise` task body, and graduates to a `workflow-*` Rust crate if it outgrows one.** There is no third home.
+A task body is the cheapest thing that already has a name, a callsite discipline, and a place in the gate wall; when one accumulates real logic, branching, or its own tests, it graduates into `gandr-workflow-gates` (or a sibling `workflow-*` crate) rather than growing in place.
+
+Nushell is **retired for new work**.
+The remaining `.nu` helpers below are legacy: keep them working, do not extend them, and prefer migrating one to a task body or the Rust crate whenever it is touched substantively.
+The retirement is for measured reasons — Nushell startup cost showed up in gate latency, and its harness behaviour proved unreliable enough to distrust in hooks.
+The long-run destination is that this scripting layer is written in gandr itself; until then the two homes above are the whole policy.
+
+The legacy helpers, each reached through its named `mise` task or `prek` hook, never inlined:
 
 * `scripts/check-conflict-markers.nu` — the `docs:conflict-markers` gate and its pre-commit hook;
 * `scripts/check-machine-local-paths.nu` — the `no-machine-local-paths` pre-commit hook (publishable-history backstop);
@@ -23,7 +30,7 @@ Each is reached through its named `mise` task or `prek` hook, never inlined:
 * `scripts/refs-yml/*.nu` — the `docs/spec/refs.yml` generator ([docs.md](docs.md)).
 
 The vendored agentic-dev core is a separate ownership domain that is **not yet vendored in the reboot**: `.agents/core` does not exist, so its shared-core calls (`core:check`, `core-init`, the Worktrunk ADR guard) are parked and re-grow with the core.
-Until then, the checks that would delegate to the core run as the project-local Nushell above.
+Until then, the checks that would delegate to the core run as the legacy helpers above.
 Do not revive retired project gate scripts, and do not fold a typed helper into the Rust crate ad hoc — graduate one into `gandr-workflow-gates` only when it becomes gate policy.
 
 ## One typed CLI, domain-owned modules
