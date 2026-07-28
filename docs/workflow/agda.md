@@ -187,8 +187,12 @@ The category-theory layer is not a fixed list to be completed once.
 **When a characterization needs a structure the tree does not have, build it** — and build it against the consumer that demanded it, never speculatively.
 
 At the time of writing the tree has categories, functors, natural transformations, profunctors and their (di)naturality, the Yoneda material, and the ∞-graph ambient.
-Structures known to be wanted and not yet present include monoidal and skew-monoidal categories, monads and relative monads, comonads, algebras and coalgebras for a (co)monad, bialgebras and Hopf algebras, distributive laws, adjunctions, isomorphisms and groupoids, and universal properties stated inside a `Category` rather than only as ∞-graph constructions.
+Structures known to be wanted and not yet present include monoidal and skew-monoidal categories, monads and relative monads, comonads, algebras and coalgebras for a (co)monad, bialgebras and Hopf algebras, distributive laws, adjunctions, isomorphisms and groupoids, **duoidal and produoidal categories, and lax promonoidal structures (equivalently, multicategories)**, and universal properties stated inside a `Category` rather than only as ∞-graph constructions.
 **That enumeration is a seed, not a boundary.** Anything else a characterization turns out to need — Kleisli and Eilenberg–Moore categories, ends and coends, enrichment, fibrations, presheaves and nerves, Reedy structure — is in scope on the same terms.
+
+**A structure with two tensors may be lax where a single tensor would be strong, and that is a place to look before reaching for `Monoidal`.** Where two tensors are mixed into one — a sequential composition glued along a parallel one — the mixed product is typically unital on both sides but only **lax associative**, with the laxity indexed by permutations, and what it presents is a **lax promonoidal structure, i.e. a multicategory**, rather than a monoidal category.
+Under the precision-and-coherence-burden rule that is the better characterization when it fits: it is finer, and its coherence obligation is an inclusion of permutations rather than an invertible associator to construct.
+Reach for it when an operation has unitors that hold on the nose and an associativity that does not.
 
 Two of those are load-bearing rather than speculative and are worth naming: **algebras for a monad**, because the objects the nerve theory is about are exactly algebras of a monad on graphical species; and **distributive laws**, because the published route to the circuit-algebra monad is an iterated one.
 Both are cited in the module headers that will need them.
