@@ -1,12 +1,18 @@
 {-# OPTIONS --safe --without-K --hidden-argument-puns #-}
 
 ------------------------------------------------------------------------------
--- Gandr.Shape.Graft — the arity OPERATION on the cell shape: plugging one
--- shape's output legs into another's input legs.
+-- Gandr.Shape.Graft — the arity OPERATIONS on the cell shape: plugging one
+-- shape's output legs into another's input legs, and placing two shapes side
+-- by side.
 --
 -- `Gandr.Shape.Graph` landed the objects and the derived unit; this module
 -- lands the multiplication. Together they are the graph-shaped arity kit that
 -- `Gandr.Arity` is to be extracted from alongside `Gandr.Arity.Path`.
+--
+-- The module's NAME is now narrower than its content, and that is recorded
+-- rather than fixed: `graft` and `merge` are the two operations of one arity
+-- and belong together, so the boundary to draw when a third arrives is
+-- "listing algebra" against "shape operations", not "graft" against "merge".
 --
 -- ── WHAT GRAFTING IS HERE, AND WHY THAT IS THE RIGHT ANALOGUE ───────────────
 -- The linear kit's multiplication is `Path a b → Path b c → Path a c`, chaining
@@ -64,7 +70,60 @@
 -- this kit still owes it, is `Gandr.Arity.Path`'s header §*What the second
 -- instance actually showed*.
 --
+-- ── THE SECOND OPERATION: THE MERGER, AND WHY IT IS DERIVED ────────────────
+-- `merge` places two shapes side by side, concatenating both interfaces:
+--
+--   merge : Append Γ₁ Γ₂ Γ → Append Δ₁ Δ₂ Δ → Shape Γ₁ Δ₁ → Shape Γ₂ Δ₂
+--         → Shape Γ Δ
+--
+-- It is stated over `Append` WITNESSES rather than over `_++_` so that no
+-- index downstream has to unify against a computed list — the discipline
+-- `node` already follows — and it is DERIVED rather than adjoined as a
+-- constructor. That choice is load-bearing in the same direction as `idn`
+-- being derived: as a constructor, one graph would have many terms, one per
+-- merge order and association, and the carrier would stop being canonical.
+-- Derived, a merge computes to an ordinary corollas-plus-matching term.
+--
+-- Only the FIRST operand's vertices peel cleanly, and the asymmetry is the
+-- same one grafting has. `node` publishes its ports to the front of the
+-- interface, so a vertex of the second operand would have to publish in front
+-- of the first operand's whole block — a block crossing, hence a permutation.
+-- The first operand's wiring is threaded into the second instead, one position
+-- at a time through `wire-in` and `cap-in`, which is `lwhisk`'s technique; and
+-- `merge-idn` proves `lwhisk` IS this operation at an identity operand rather
+-- than merely resembling it.
+--
+-- The cut needed one new piece of listing algebra, `match-cap`, standing to
+-- `match-insert` as a cut stands to a wire. Everything else was already here.
+--
 -- ── WHAT IS PROVED ─────────────────────────────────────────────────────────
+-- `verts-merge` — merging CONCATENATES the vertex listings too, first operand
+-- first, so both operands survive intact and the composite's order is pinned.
+-- Two consequences are exhibited rather than asserted: a merge of two cells
+-- need not be a cell, and the predicate it loses is CONNECTIVITY (`bigon` is
+-- the grafting counterpart, losing acyclicity); and `⊠` is NOT commutative on
+-- the nose. The second is not a defect. The source's identification of
+-- `⊠(φ,ψ)` with `⊠(ψ,φ)` on closed components is an identification of
+-- ISOMORPHISM CLASSES, and gandr's representation is an ordered section rather
+-- than the quotient (C3), so that identification is `Gandr.Rigid`'s obligation
+-- and stating it as an equation here would be false. `merge-swap-apart`
+-- exhibits the failure.
+--
+-- `cap-swap` — a cut does not care which of its two ports is named first. The
+-- content is that it holds by `refl`: `Match` writes a capped pair once, at
+-- its earlier port, so the identification is discharged by the representation
+-- being canonical rather than imposed on it. It is proved where the wiring
+-- underneath is flow-through; the case of a cut over a wiring that already
+-- caps needs a three-way `insert-swap` coherence which no consumer has asked
+-- for, and that residue is stated at the lemma.
+--
+-- What the merger still OWES: an incidence theorem. `verts-merge` says what
+-- happens to the vertices, and nothing yet says what happens to `origin` and
+-- `dest` — so "a merge of two connected shapes has exactly two components" can
+-- only be exhibited at concrete data (`two-points`), not proved in general.
+-- That is the next lemma of this module, and it is what a general Axis A
+-- statement would be built on.
+--
 -- `verts-graft` — grafting CONCATENATES the vertex listings, in order. This is
 -- more than bookkeeping: it says the operation neither duplicates nor drops a
 -- vertex, and it pins the composite's vertex ORDER, which is representation
@@ -113,6 +172,7 @@ open import Gandr.Shape.Graph
   using ([])
   using (_∷_)
   using (cap)
+  using (CapFree)
   using (Shape)
   using (wires)
   using (node)
@@ -131,9 +191,16 @@ open import Gandr.Shape.Graph
   using (hop)
   using (opening)
   using (apart)
+  using (adj)
+  using (Reach)
+  using (stop)
+  using (onward)
+  using (Connected)
   using (SimplyConn)
   using (idn)
   using (corolla)
+  using (point)
+  using (wheel)
   using (chain)
   using (𝟙)
   using (𝟚)
@@ -171,6 +238,7 @@ open import Data.Maybe.Base
   using (just)
 open import Data.Unit.Base
   using (⊤)
+  using (tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_)
   using (refl)
@@ -246,6 +314,72 @@ module _ {ℓ} {Ob : Set ℓ} where
   match-insert (tail i) j (cap k m) =
     cap (Exchange.outer (insert-swap i k))
       (match-insert (Exchange.inner (insert-swap i k)) j m)
+
+  -- Threading one CAPPED pair through a matching: two new sources, joined to
+  -- each other and to no sink, with every existing pair left alone. This is
+  -- `match-insert`'s partner — that one adds a wire, this one adds a cut — and
+  -- the sinks are untouched because a cap consumes none.
+  --
+  -- The two positions are given as nested insertions rather than as two
+  -- positions in one list, for the reason `Insert` is a relation at all: the
+  -- second position is only meaningful once the first element is in.
+  match-cap
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → Insert Ob x Γ˘ Γˣ
+    → Insert Ob y Γ Γ˘
+    → Match Ob Γ Δ
+    → Match Ob Γˣ Δ
+  -- the capped source is the first one, so it is the cap constructor's own
+  -- shape and its partner is the datum
+  match-cap head j m = cap j m
+  -- and the same cut named the other way round: the PARTNER now comes first,
+  -- and the constructor is symmetric in exactly this way — `cap-swap` below
+  -- is that observation as an equation
+  match-cap (tail i) head m = cap i m
+  -- otherwise the leading source keeps its own partner and the cut happens
+  -- further along
+  match-cap (tail i) (tail j) (k ∷ m) = k ∷ match-cap i j m
+  match-cap (tail i) (tail j) (cap k m) =
+    cap
+      (Exchange.outer
+        (insert-swap i (Exchange.outer (insert-swap j k))))
+      (match-cap
+        (Exchange.inner
+          (insert-swap i (Exchange.outer (insert-swap j k))))
+        (Exchange.inner (insert-swap j k))
+        m)
+
+  -- An insertion re-read after a block is appended on its right. The position
+  -- does not move — everything it inserts past is still in front of it — but
+  -- the list it inserts into grows, and that longer list is not determined by
+  -- the inputs, so it is carried rather than computed.
+  record Widened (x : Ob) (ys Ξ Δ : List Ob) : Set ℓ where
+    constructor widened
+    field
+      -- the remainder, with the block appended
+      rest : List Ob
+      -- the witness that it is that
+      keep : Append Ob ys Ξ rest
+      -- and the position, read in the extended list
+      spot : Insert Ob x rest Δ
+
+  -- Lifting past an element both lists lead with, as an application rather
+  -- than a `with` on the recursive call — the same rule as `exchange-tail`.
+  widened-tail
+    : ∀ {x w ys Ξ Δ}
+    → Widened x ys Ξ Δ
+    → Widened x (w ∷ ys) Ξ (w ∷ Δ)
+  Widened.rest (widened-tail {w} r) = w ∷ Widened.rest r
+  Widened.keep (widened-tail r) = cons (Widened.keep r)
+  Widened.spot (widened-tail r) = tail (Widened.spot r)
+
+  insert-widen
+    : ∀ {x ys zs Ξ Δ}
+    → Insert Ob x ys zs
+    → Append Ob zs Ξ Δ
+    → Widened x ys Ξ Δ
+  insert-widen head (cons q) = widened _ q head
+  insert-widen (tail i) (cons q) = widened-tail (insert-widen i q)
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- COMPARING TWO INSERTIONS INTO ONE LIST. Composition with caps has to ask
@@ -525,6 +659,28 @@ module _ {ℓ} {Ob : Set ℓ} where
         (insert-shift q (append-graph A Δˣ) j)
         S)
 
+  -- Threading one CUT through a shape: two new input legs, capped to each
+  -- other and touching no vertex. `wire-in`'s partner, and the only place the
+  -- cap enters a shape from outside.
+  --
+  -- Both positions shift past each published block exactly as a wire's do —
+  -- one `tail` per element, no permutation — because a cut is two legs and a
+  -- leg is a leg. That the cap costs no more than a wire here is the concrete
+  -- form of the claim that the boundary `∩` is a wiring notion.
+  cap-in
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → Insert Ob x Γ˘ Γˣ
+    → Insert Ob y Γ Γ˘
+    → Shape Ob Γ Δ
+    → Shape Ob Γˣ Δ
+  cap-in i j (wires m) = wires (match-cap i j m)
+  cap-in {Γ˘} {Γˣ} i j (node A B p q S) =
+    node A B (append-graph B Γˣ) q
+      (cap-in
+        (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+        (insert-shift p (append-graph B Γ˘) j)
+        S)
+
   -- Whiskering a shape by a block of wires on the left, wire by wire.
   lwhisk
     : ∀ {A Γ Γ′ Δ Δ′}
@@ -566,6 +722,114 @@ module _ {ℓ} {Ob : Set ℓ} where
       (graft S (lwhisk q (append-graph A Θ) T))
 
   -- ══════════════════════════════════════════════════════════════════════════
+  -- THE MERGER `⊠`. The arity's SECOND operation: two shapes side by side,
+  -- their interfaces concatenated. Grafting composes along a shared interface;
+  -- merging shares nothing, and the composite is disconnected exactly when its
+  -- operands do not already reach each other.
+  --
+  -- It is DERIVED rather than a constructor, and that is the load-bearing
+  -- choice. As a constructor the same graph would have one term per merge
+  -- order and association, so the carrier would stop being canonical and
+  -- `Gandr.Rigid` would inherit a quotient it does not have today. Derived, a
+  -- merge computes to an ordinary corollas-plus-matching term — the one the
+  -- listings already name — and `verts-merge` below says which one.
+  --
+  -- The interfaces are related by `Append` WITNESSES rather than by `_++_`, so
+  -- no index anywhere downstream has to unify against a computed list. That is
+  -- the same discipline `node` itself follows.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Re-associating two concatenations. A vertex publishes its ports to the
+  -- front of ITS operand's interface; in the merged shape it must publish to
+  -- the front of the whole one, and what the recursive merge is then stated
+  -- over is the other bracketing. The two readings are the same list, and this
+  -- carries both witnesses that say so without ever writing `_++_`.
+  record Regroup (B Γ′ Ξ Γ : List Ob) : Set ℓ where
+    constructor regroup
+    field
+      -- the interface the recursive merge spans
+      whole : List Ob
+      -- the block, published to the MERGED interface
+      front : Append Ob B Γ whole
+      -- and the operand's own extended interface, still a prefix of it
+      back : Append Ob Γ′ Ξ whole
+
+  -- the lifting, applied rather than `with`-ed, as everywhere else here
+  regroup-cons
+    : ∀ {b B Γ′ Ξ Γ}
+    → Regroup B Γ′ Ξ Γ
+    → Regroup (b ∷ B) (b ∷ Γ′) Ξ Γ
+  Regroup.whole (regroup-cons {b} r) = b ∷ Regroup.whole r
+  Regroup.front (regroup-cons r) = cons (Regroup.front r)
+  Regroup.back (regroup-cons r) = cons (Regroup.back r)
+
+  append-regroup
+    : ∀ {B Γ₁ Γ′ Ξ Γ}
+    → Append Ob B Γ₁ Γ′
+    → Append Ob Γ₁ Ξ Γ
+    → Regroup B Γ′ Ξ Γ
+  append-regroup nil r = regroup _ nil r
+  append-regroup (cons p) r = regroup-cons (append-regroup p r)
+
+  -- Merging a pure WIRING into a shape: the wiring has no vertex, so this
+  -- threads its wires and its cuts into the second operand one at a time and
+  -- keeps that operand's vertices untouched.
+  --
+  -- One at a time is what avoids a permutation. Placing the whole block `Γ₁`
+  -- in front of `Γ₂` would have to commute that block past every published
+  -- port block on the way in; a single position commutes past a block by
+  -- `insert-shift`, which adds one `tail` per element and permutes nothing.
+  -- This is `lwhisk`'s technique, generalized from identity wires to an
+  -- arbitrary wiring — and `merge-idn` below proves that it IS the
+  -- generalization, not merely an analogue.
+  wires-in
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → Append Ob Γ₁ Γ₂ Γ
+    → Append Ob Δ₁ Δ₂ Δ
+    → Match Ob Γ₁ Δ₁
+    → Shape Ob Γ₂ Δ₂
+    → Shape Ob Γ Δ
+  wires-in nil nil [] T = T
+  wires-in (cons p) q (i ∷ m) T =
+    wire-in
+      head
+      (Widened.spot (insert-widen i q))
+      (wires-in p (Widened.keep (insert-widen i q)) m T)
+  wires-in (cons p) q (cap j m) T =
+    cap-in
+      head
+      (Widened.spot (insert-widen j p))
+      (wires-in (Widened.keep (insert-widen j p)) q m T)
+
+  -- THE MERGER. Recursion on the FIRST operand: each of its vertices is
+  -- republished at the front of the MERGED interface, which is the only thing
+  -- that changes, and the second operand is untouched until the first runs out
+  -- of vertices.
+  --
+  -- Only the first operand's vertices peel cleanly. A vertex of the SECOND
+  -- would have to publish its ports in front of the first operand's whole
+  -- interface, which is the block crossing, so the second operand is never
+  -- recursed on — `wires-in` threads the first operand's wiring into it
+  -- instead, and pays for the crossing one position at a time.
+  merge
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → Append Ob Γ₁ Γ₂ Γ
+    → Append Ob Δ₁ Δ₂ Δ
+    → Shape Ob Γ₁ Δ₁
+    → Shape Ob Γ₂ Δ₂
+    → Shape Ob Γ Δ
+  merge p q (wires m) T = wires-in p q m T
+  merge p q (node A B p₁ q₁ S) T =
+    node A B
+      (Regroup.front (append-regroup p₁ p))
+      (Regroup.front (append-regroup q₁ q))
+      (merge
+        (Regroup.back (append-regroup p₁ p))
+        (Regroup.back (append-regroup q₁ q))
+        S
+        T)
+
+  -- ══════════════════════════════════════════════════════════════════════════
   -- WHAT GRAFTING DOES TO THE VERTEX LISTING. The listing is the shape's
   -- primary content, so this is the structural statement available without the
   -- graph relation, and it has teeth: no vertex is duplicated, none is dropped,
@@ -587,6 +851,22 @@ module _ {ℓ} {Ob : Set ℓ} where
       (verts-wire-in
         (insert-shift p (append-graph B Γˣ) i)
         (insert-shift q (append-graph A Δˣ) j)
+        S)
+
+  -- and neither does threading a cut, for the same reason
+  verts-cap-in
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (S : Shape Ob Γ Δ)
+    → verts (cap-in i j S) ≡ verts S
+  verts-cap-in i j (wires m) = refl
+  verts-cap-in {Γ˘} {Γˣ} i j (node A B p q S) =
+    cong
+      (prof A B ∷_)
+      (verts-cap-in
+        (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+        (insert-shift p (append-graph B Γ˘) j)
         S)
 
   -- and neither does whiskering by a block of them
@@ -627,6 +907,56 @@ module _ {ℓ} {Ob : Set ℓ} where
       (trans
         (verts-graft S (lwhisk q (append-graph A Θ) T))
         (cong (verts S ++_) (verts-lwhisk q (append-graph A Θ) T)))
+
+  -- AND THE SAME STATEMENT FOR THE MERGER, which is what makes Axis A a
+  -- theorem rather than a discipline: the two operands' vertices both survive,
+  -- neither is duplicated, and the composite's order is the concatenation —
+  -- first operand first, exactly as for grafting.
+  --
+  -- The order is the content. `verts (merge p q S T) ≡ verts T ++ verts S` is
+  -- FALSE, and `merge-swap-apart` at the bottom of this file exhibits a pair
+  -- it fails on. So the merger is not commutative on the nose, and it must not
+  -- be: under C3 the vertex order is representation content, so commutativity
+  -- of `⊠` is a `Gandr.Rigid` obligation and not an equation here.
+  verts-wires-in
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (m : Match Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → verts (wires-in p q m T) ≡ verts T
+  verts-wires-in nil nil [] T = refl
+  verts-wires-in (cons p) q (i ∷ m) T =
+    trans
+      (verts-wire-in
+        head
+        (Widened.spot (insert-widen i q))
+        (wires-in p (Widened.keep (insert-widen i q)) m T))
+      (verts-wires-in p (Widened.keep (insert-widen i q)) m T)
+  verts-wires-in (cons p) q (cap j m) T =
+    trans
+      (verts-cap-in
+        head
+        (Widened.spot (insert-widen j p))
+        (wires-in (Widened.keep (insert-widen j p)) q m T))
+      (verts-wires-in (Widened.keep (insert-widen j p)) q m T)
+
+  verts-merge
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → verts (merge p q S T) ≡ verts S ++ verts T
+  verts-merge p q (wires m) T = verts-wires-in p q m T
+  verts-merge p q (node A B p₁ q₁ S) T =
+    cong
+      (prof A B ∷_)
+      (verts-merge
+        (Regroup.back (append-regroup p₁ p))
+        (Regroup.back (append-regroup q₁ q))
+        S
+        T)
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE UNIT, ON THE LISTING ALGEBRA. Everything here is h-level free: the
@@ -701,6 +1031,59 @@ module _ {ℓ} {Ob : Set ℓ} where
     → lwhisk q q (idn Δ) ≡ idn Δ′
   lwhisk-idn nil = refl
   lwhisk-idn (cons q) = cong (wire-in head head) (lwhisk-idn q)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- WHAT THE MERGER SUBSUMES, AND WHAT IT LEAVES TO `Gandr.Rigid`. Both facts
+  -- are h-level free — no witness is compared in either — which is why they
+  -- sit here rather than below.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- WHISKERING IS THE MERGER AT AN IDENTITY OPERAND, on the nose. `lwhisk` was
+  -- written for grafting, before there was a merger to state it as; this says
+  -- the two agree definitionally clause for clause, so nothing has been
+  -- duplicated and the older operation is the special case it looked like.
+  merge-idn
+    : ∀ {A Γ Γ′ Δ Δ′}
+    → (p : Append Ob A Γ Γ′)
+    → (q : Append Ob A Δ Δ′)
+    → (T : Shape Ob Γ Δ)
+    → merge p q (idn A) T ≡ lwhisk p q T
+  merge-idn nil nil T = refl
+  merge-idn (cons p) (cons q) T = cong (wire-in head head) (merge-idn p q T)
+
+  -- THE CONTRACTION SWAP `ζ_{x,y} = ζ_{y,x}`, as an equation. A cut does not
+  -- care which of its two ports is named first: capping `x` at the outer slot
+  -- to `y` at the inner one is the same TERM as capping `y` outer to `x`
+  -- inner, where "the same two slots, in the other order" is what
+  -- `insert-swap` computes.
+  --
+  -- The first two clauses are the content and hold by `refl`, because `Match`
+  -- presents a cut canonically — the capped pair is written once, at its
+  -- earlier port, so there is no second term to identify. That is the same
+  -- reason the pre-cap wiring had one term per bijection, and it means the
+  -- identification is discharged by the representation rather than imposed on
+  -- it.
+  --
+  -- SCOPE, stated rather than assumed: the wiring underneath is required to be
+  -- flow-through. The remaining case — a cut over a wiring that ALREADY caps —
+  -- needs the three-way coherence of `insert-swap` (two ports and the existing
+  -- cap's partner, pushed past each other in two orders, whose intermediate
+  -- lists differ), which is a hexagon this file does not have and which no
+  -- consumer has yet asked for. It is an owed lemma, not a wall.
+  cap-swap
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → {m : Match Ob Γ Δ}
+    → CapFree m
+    → match-cap i j m
+        ≡ match-cap
+            (Exchange.outer (insert-swap i j))
+            (Exchange.inner (insert-swap i j))
+            m
+  cap-swap head j c = refl
+  cap-swap (tail i) head c = refl
+  cap-swap (tail i) (tail j) (k ∷ c) = cong (k ∷_) (cap-swap i j c)
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE UNIT LAWS, AND THE EXACT PRICE OF STATING THEM ON THE FUNCTION.
@@ -857,3 +1240,133 @@ bigon-cycle =
 -- all of `Shape`, and `Cell` is cut out of the result afterwards.
 bigon-not-simply : ¬ SimplyConn bigon
 bigon-not-simply sc = SimplyConn.acyclic sc bigon-cycle
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- WORKED CHECKS FOR THE MERGER. Same discipline as the grafting checks above:
+-- each of these RUNS the operation, so a definition that type-checked while
+-- computing the wrong composite fails here.
+--
+-- Three things are checked and they are the three claims the merger makes:
+-- the composite carries BOTH operands' vertices in order; the composite is
+-- DISCONNECTED when the operands do not reach each other, which is Axis A
+-- becoming an object of the theory rather than a discipline outside it; and
+-- the merger is NOT commutative on the nose, which is the section discipline
+-- showing up exactly where the source says it must.
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- FIRST, THE WIRING ITSELF, pinned on both constructors. These are the checks
+-- that would fail if the positions were widened wrongly — the types alone do
+-- not see it, because over one colour every wiring at an interface has the
+-- same type.
+--
+-- A CROSSING beside a plain wire. Source `0` takes sink `1` and source `1`
+-- takes sink `0`, and the merged-in wire takes the sink beside itself: the two
+-- operands do not interleave, and the crossing is not disturbed by the
+-- widening that moves its sink positions past the second operand's block.
+cross-merge
+  : merge
+      (append-graph 𝟚 𝟙)
+      (append-graph 𝟚 𝟙)
+      (wires (tail head ∷ head ∷ []))
+      (idn 𝟙)
+    ≡ wires (tail head ∷ head ∷ head ∷ [])
+cross-merge = refl
+
+-- A CUT beside a plain wire, which is the same check on the other constructor:
+-- the cap keeps its partner and the wire keeps its sink.
+cut-wire-merge
+  : merge (append-graph 𝟚 𝟙) nil (wires (cap head [])) (idn 𝟙)
+    ≡ wires (cap head (head ∷ []))
+cut-wire-merge = refl
+
+-- Two isolated vertices — the smallest disconnected shape, built rather than
+-- written out. Neither operand has a port, so the composite has no edge at
+-- all and its two components are visibly separate.
+two-points : Shape ⊤ [] []
+two-points = merge nil nil point point
+
+-- both vertices, in order, off `verts-merge` rather than asserted
+two-points-verts : verts two-points ≡ prof [] [] ∷ prof [] [] ∷ []
+two-points-verts = verts-merge nil nil point point
+
+-- the two vertices, named
+p₀ p₁ : Vtx two-points
+p₀ = here
+p₁ = there here
+
+p₀≢p₁ : ¬ (p₀ ≡ p₁)
+p₀≢p₁ ()
+
+-- There is no edge, so there is no adjacency, so reachability is equality.
+two-points-still : ∀ {u v} → Reach two-points u v → u ≡ v
+two-points-still stop = refl
+two-points-still (onward r (adj () _))
+
+-- SO THE MERGE OF TWO CELLS NEED NOT BE A CELL, and the failing predicate is
+-- the OTHER one this time: `bigon` above is a graft that loses acyclicity;
+-- this is a merge that loses connectivity. Both operands are cells by
+-- `point-cell`. Disconnection is now something the substrate can say.
+two-points-disconnected : ¬ Connected two-points
+two-points-disconnected c =
+  p₀≢p₁
+    (trans
+      (sym (two-points-still (Connected.span c p₀)))
+      (two-points-still (Connected.span c p₁)))
+
+two-points-not-simply : ¬ SimplyConn two-points
+two-points-not-simply sc = two-points-disconnected (SimplyConn.connected sc)
+
+-- THE MERGER IS NOT COMMUTATIVE ON THE NOSE. `⊠(φ,ψ) = ⊠(ψ,φ)` holds of the
+-- ISOMORPHISM CLASSES the source's monad takes, and the two sides here differ
+-- by exactly that isomorphism — the swap of two closed components. gandr's
+-- representation is an ordered section and not the quotient (C3), so the
+-- decision procedure sees the difference and reports it. This identification
+-- is therefore `Gandr.Rigid`'s obligation, not an equation on `merge`.
+merge-swap-apart
+  : does (merge nil nil point wheel ≟ˢ merge nil nil wheel point) ≡ false
+merge-swap-apart = refl
+
+-- and the negative check is not vacuous: the composite is the second operand
+-- with the first operand's vertex republished in front of it
+merge-point-wheel : merge nil nil point wheel ≡ node [] [] nil nil wheel
+merge-point-wheel = refl
+
+-- A merge at a NONTRIVIAL interface: `C(2;1) ⊠ C(1;1)`, spanning the two
+-- interfaces concatenated. This is the shape Axis A keeps outside the
+-- substrate today — two independent redexes side by side — as one object.
+corollas-apart : Shape ⊤ (tt ∷ tt ∷ tt ∷ []) 𝟚
+corollas-apart =
+  merge (append-graph 𝟚 𝟙) (append-graph 𝟙 𝟙) (corolla 𝟚 𝟙) (corolla 𝟙 𝟙)
+
+corollas-apart-verts : verts corollas-apart ≡ prof 𝟚 𝟙 ∷ prof 𝟙 𝟙 ∷ []
+corollas-apart-verts =
+  verts-merge (append-graph 𝟚 𝟙) (append-graph 𝟙 𝟙) (corolla 𝟚 𝟙) (corolla 𝟙 𝟙)
+
+-- The same two corollas merged the other way round span the SAME interface —
+-- `𝟙 ++ 𝟚` and `𝟚 ++ 𝟙` are one list — and are a different shape. So
+-- non-commutativity is not an artifact of the closed case above; it is the
+-- vertex order, which is representation content everywhere.
+corollas-swapped : Shape ⊤ (tt ∷ tt ∷ tt ∷ []) 𝟚
+corollas-swapped =
+  merge (append-graph 𝟙 𝟚) (append-graph 𝟙 𝟙) (corolla 𝟙 𝟙) (corolla 𝟚 𝟙)
+
+corollas-swap-apart : does (corollas-apart ≟ˢ corollas-swapped) ≡ false
+corollas-swap-apart = refl
+
+-- MERGING A CUT. The left operand is the vertexless `Shape 𝟚 []` — gandr's
+-- own cut — and the composite has three sources against one sink, an
+-- imbalance no cap-free wiring can span. So inhabiting this type is itself the
+-- check that the cap survived the merge; `cap-in` is what carried it.
+cut-merge : Shape ⊤ (tt ∷ tt ∷ tt ∷ []) 𝟙
+cut-merge =
+  merge (append-graph 𝟚 𝟙) nil (wires (cap head [])) (corolla 𝟙 𝟙)
+
+-- the wiring operand contributes no vertex, as a wiring never does
+cut-merge-verts : verts cut-merge ≡ prof 𝟙 𝟙 ∷ []
+cut-merge-verts =
+  verts-merge (append-graph 𝟚 𝟙) nil (wires (cap head [])) (corolla 𝟙 𝟙)
+
+-- and the composite is not the vertexless cut at the same interface, which is
+-- the other inhabitant of this imbalanced type
+cut-merge-apart : does (cut-merge ≟ˢ wires (cap head (head ∷ []))) ≡ false
+cut-merge-apart = refl
