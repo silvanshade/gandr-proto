@@ -220,7 +220,9 @@ module _ {ℓ} {Ob : Set ℓ} where
       -- equation rather than a case split
       onE-src : (e : Edg S) → origin T (actE e) ≡ smap actV actI (origin S e)
       -- and likewise its target
-      onE-tgt : (e : Edg S) → dest T (actE e) ≡ smap actV actO (dest S e)
+      -- and likewise its target, which since the cap exists may be a leg at
+      -- EITHER polarity, so the leg action is the pair of the two
+      onE-tgt : (e : Edg S) → dest T (actE e) ≡ smap actV (smap actI actO) (dest S e)
 
   open GMap public
 
@@ -345,10 +347,15 @@ module _ {ℓ} {Ob : Set ℓ} where
     ... | attached e (entering p) =
       inj₁-injective
         (trans
-          (sym (trans (onE-tgt f e) (cong (smap (actV f) (actO f)) p)))
+          (sym
+            (trans
+              (onE-tgt f e)
+              (cong (smap (actV f) (smap (actI f) (actO f))) p)))
           (trans
             (cong (dest T) (h e))
-            (trans (onE-tgt g e) (cong (smap (actV g) (actO g)) p))))
+            (trans
+              (onE-tgt g e)
+              (cong (smap (actV g) (smap (actI g) (actO g))) p))))
 
     -- A map is determined by its action on the edge set. The analogue of HRY
     -- Cor 6.62 for these maps — proved, not cited; see the header for what the

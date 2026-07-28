@@ -397,6 +397,25 @@ module _ {ℓ} {Ob : Set ℓ} where
       → Match Ob Γ′ Δ
       → Unhit y Γ Δ
 
+  -- the two liftings, as applications rather than `with`s on the recursive
+  -- call, so a later `cong` can reach through them
+  unhit-tail
+    : ∀ {y x C Γ Δ}
+    → Insert Ob x C Δ
+    → Unhit y Γ C
+    → Unhit y (x ∷ Γ) Δ
+  unhit-tail i (unhit p body) = unhit (tail p) (i ∷ body)
+
+  unhit-cap
+    : ∀ {y w z us us′ Δ}
+    → Insert Ob z us us′
+    → Unhit y us Δ
+    → Unhit y (w ∷ us′) Δ
+  unhit-cap k (unhit p body) =
+    unhit
+      (tail (Exchange.outer (insert-swap k p)))
+      (cap (Exchange.inner (insert-swap k p)) body)
+
   match-unhit
     : ∀ {y Γ Δ Δˣ}
     → Insert Ob y Δ Δˣ
@@ -404,13 +423,17 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Unhit y Γ Δ
   match-unhit j (i ∷ m) with insert-view j i
   ... | same = unhit head m
-  ... | apart j′ i′ with match-unhit j′ m
-  ...   | unhit p body = unhit (tail p) (i′ ∷ body)
-  match-unhit j (cap k m) with match-unhit j m
-  ... | unhit p body =
-    unhit
-      (tail (Exchange.outer (insert-swap k p)))
-      (cap (Exchange.inner (insert-swap k p)) body)
+  ... | apart j′ i′ = unhit-tail i′ (match-unhit j′ m)
+  match-unhit j (cap k m) = unhit-cap k (match-unhit j m)
+
+  -- Removing a sink from the identity hands back the position it was given,
+  -- and leaves the identity on what remains.
+  match-unhit-idn
+    : ∀ {y Γ Δ}
+    → (j : Insert Ob y Γ Δ)
+    → match-unhit j (idn-match Δ) ≡ unhit j (idn-match Γ)
+  match-unhit-idn head = refl
+  match-unhit-idn (tail j) = cong (unhit-tail head) (match-unhit-idn j)
 
   -- the source list shrinks by one per insertion, which is the measure the
   -- composition below recurses on
@@ -612,33 +635,56 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- only at the shape level, and only for the reason the next section states.
   -- ══════════════════════════════════════════════════════════════════════════
 
+  -- Both unit laws are proved over an ARBITRARY accessibility witness and then
+  -- instantiated, because two witnesses for the same measure are equal only
+  -- propositionally: a proof that fixed one could not be applied under the
+  -- other, which is the standard price of leaving structural recursion.
+  match-comp-acc-idnˡ
+    : ∀ {Γ Θ}
+    → (a : Acc _<_ (length Γ))
+    → (n : Match Ob Γ Θ)
+    → match-comp-acc a (idn-match Γ) n ≡ n
+  match-comp-acc-idnˡ a [] = refl
+  match-comp-acc-idnˡ (acc rec) (j ∷ n) =
+    cong (j ∷_) (match-comp-acc-idnˡ (rec (n<1+n _)) n)
+  match-comp-acc-idnˡ (acc rec) (cap k n)
+    with match-unhit k (idn-match _) | match-unhit-idn k
+  ... | .(unhit k (idn-match _)) | refl =
+    cong (cap k) (match-comp-acc-idnˡ _ n)
+
   match-comp-idnˡ
     : ∀ {Γ Θ}
     → (n : Match Ob Γ Θ)
     → match-comp (idn-match Γ) n ≡ n
-  match-comp-idnˡ [] = refl
-  match-comp-idnˡ (j ∷ n) = cong (j ∷_) (match-comp-idnˡ n)
+  match-comp-idnˡ n = match-comp-acc-idnˡ _ n
 
   -- Removing a source from the identity matching leaves the identity on what
   -- remains, and hands back the very position that was removed.
   match-remove-idn
     : ∀ {x Γ Δ}
     → (i : Insert Ob x Γ Δ)
-    → match-remove i (idn-match Δ) ≡ removed Γ i (idn-match Γ)
+    → match-remove i (idn-match Δ) ≡ through i (idn-match Γ)
   match-remove-idn head = refl
-  match-remove-idn (tail i) = cong (removed-tail head) (match-remove-idn i)
+  match-remove-idn (tail i) = cong (removal-tail head) (match-remove-idn i)
+
+  match-comp-acc-idnʳ
+    : ∀ {Γ Δ}
+    → (a : Acc _<_ (length Γ))
+    → (m : Match Ob Γ Δ)
+    → match-comp-acc a m (idn-match Δ) ≡ m
+  match-comp-acc-idnʳ a [] = refl
+  match-comp-acc-idnʳ (acc rec) (i ∷ m)
+    with match-remove i (idn-match _) | match-remove-idn i
+  ... | .(through i (idn-match _)) | refl =
+    cong (i ∷_) (match-comp-acc-idnʳ (rec (n<1+n _)) m)
+  match-comp-acc-idnʳ (acc rec) (cap k m) =
+    cong (cap k) (match-comp-acc-idnʳ _ m)
 
   match-comp-idnʳ
     : ∀ {Γ Δ}
     → (m : Match Ob Γ Δ)
     → match-comp m (idn-match Δ) ≡ m
-  match-comp-idnʳ [] = refl
-  match-comp-idnʳ (i ∷ m) =
-    trans
-      (cong
-        (λ r → Removed.spot r ∷ match-comp m (Removed.body r))
-        (match-remove-idn i))
-      (cong (i ∷_) (match-comp-idnʳ m))
+  match-comp-idnʳ m = match-comp-acc-idnʳ _ m
 
   -- Whiskering the identity matching by a block gives the identity again.
   match-lwhisk-idn
