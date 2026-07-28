@@ -300,6 +300,33 @@ The rule is symmetric and applies across the whole tree; the split between `Gand
 Load-bearing insight lives in the module header and the code cites it.
 Mandatory marks are reserved for genuine trust-story exceptions: signature parameters standing for assumptions, strict or decidable-equality-consuming definitions, and any future with-K or unsafe island.
 
+## Reading the literature is part of the build, and it is ordered
+
+**Reading that would change what gets built is scheduled before the building.** This is the same rule that governs the module split — moving a boundary twice is where the cost is — applied to characterizations rather than to files.
+A source that tells us which record an operation fills is cheaper read than rebuilt around.
+
+**Rank sources by what they gate, then by closeness.** Topical closeness alone is the wrong criterion: the nearest paper to a subject is often the one that settles nothing we are about to do.
+The ladder, in order:
+
+1. the source whose development **is** ours, and which names the structures we are about to define;
+2. the source that carries the theorem the arc is aimed at, and gates the machinery built for it;
+3. the machinery that **discharges** coherence, which is only useful once we know which coherence we owe;
+4. sources that sharpen statements _about_ our object — presentations, deltas, near-misses — and gate nothing;
+5. attribution and translation debts, which are documentation rather than build.
+
+The arc's current assignment of sources to these rungs lives on its tracker epic, not here; it changes as the arc moves, and this section is the rule that produces it.
+
+### Terminology follows the ladder, and a name may not assert an unchecked correspondence
+
+**Where a structure we build already has a name in a higher-ranked source, use that name.** Minting a parallel vocabulary for a structure the literature has already named is how a tree becomes unreadable to everyone but its author, and it hides the fact that a result is available.
+
+Three guards, and the third is the one that has already cost something here:
+
+* Where two sources name the same structure, **the higher rung owns the name**.
+* Where a source's structure is _more general_ than ours, take the name and **state the restriction** rather than inventing a diminutive.
+* **A name is a claim.** Adopt it where the correspondence is _proved_; mark it explicitly as a candidate where it is conjectured; and never let a name assert a correspondence nobody has checked.
+  The disambiguation recorded below under the circuit carrier's layer letter is the worked example of what the third guard is for: two available words, both ambiguous, and the ambiguities running in opposite directions.
+
 ## Namespacing, the layer letters, and the structure dress
 
 **Namespacing is an engineering concern and is taken seriously.** The apparatus — packaging, local instance opens, one-name-per-line imports, the layer letters below — exists to optimize the ergonomics of referring to the right definition, and formalization at this scale is reached _through_ that discipline rather than despite it.
