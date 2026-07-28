@@ -620,3 +620,85 @@ at°-⋆ : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
   → (𝒮° : Everywhere 𝒮 Ξ)
   → at° 𝒮° ⋆ ≡ 𝒮° .here°
 at°-⋆ 𝒮° = refl
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- CERTIFYING OVER A REGION OF ADDRESSES — which is what a structure whose
+-- content STOPS actually has.
+--
+-- `Everywhere` demands the structure at every address, forever. That is the
+-- right hypothesis for a carrier with genuine cells all the way up — `Id` and
+-- the doctrines over it — and the wrong one for a structure whose content
+-- stops, which is every `Set`-level structure in this tree.
+--
+-- The general form makes the REGION a parameter: `At 𝒮 Ξ P` certifies `𝒮` at
+-- exactly the addresses satisfying `P`. `Everywhere` is the total region, a
+-- `Set`-level structure is the singleton region `{⋆}`, and a bounded depth sits
+-- between. One vocabulary covers all three, and which one a structure has is
+-- stated in its signature rather than discovered.
+--
+-- ── WHY THIS GATES RATHER THAN LABELS, and it is the code that does it ───────
+-- Out of region there is no structure to apply a combinator through, and the
+-- author does not have to arrange that. `Disc` is a CODE with injective
+-- constructors, so an out-of-region address is discharged by CONSTRUCTOR
+-- DISJOINTNESS: `at⋆`'s second clause is `()`. Reasoning above a declared
+-- region is therefore not merely unwise and not merely unmarked — the region
+-- witness has no inhabitant, so the suite CANNOT BE FORMED there.
+--
+-- That is a second dividend from reifying the address. The code was introduced
+-- so a statement could BIND its dimension; it also lets a statement REFUSE one.
+--
+-- ── WHAT THIS REPLACES, RECORDED SO IT IS NOT RE-PROPOSED ────────────────────
+-- The alternative was to extend every `Set`-level structure upward until
+-- `Everywhere` held. Two ways, both rejected on evidence:
+--
+--   * with `𝟙` — the certification above the content becomes a VACUOUS
+--     category whose laws are `tt`, and the whole combinator suite is then
+--     available at those addresses returning `tt`, with nothing at the use site
+--     marking an informative application apart from an empty one. That is the
+--     silent discharge the truncation rule exists to prevent, arriving through
+--     the door uniformity opens.
+--   * with `Id` — honest, and it does hold (`ℂ.Id°`), but it leaves "the
+--     identity tower is the intended content" and "the tower is filler for a
+--     region we do not observe" indistinguishable in the type.
+--
+-- Neither is needed. The region says which addresses carry content, so `≡°`
+-- keeps its `𝟘` and nothing is extended, truncated, or marked.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+-- The certification of `𝒮` over the addresses of `Ξ` that `P` admits.
+At : ∀ {ℓ} (𝒮 : ∞Graph ℓ → Set ℓ) (Ξ : ∞Graph ℓ) (P : Disc Ξ → Set ℓ) → Set ℓ
+At 𝒮 Ξ P = (Θ : Disc Ξ) → P Θ → 𝒮 (⟦Disc⟧ Ξ Θ)
+
+-- The two ends of the range, named so a signature reads as a claim about where
+-- a structure has content.
+
+-- every address
+Total : ∀ {ℓ} {Ξ : ∞Graph ℓ} → Disc Ξ → Set ℓ
+Total _ = 𝕊.⊤
+
+-- the carrier, and nothing above it
+Only⋆ : ∀ {ℓ} {Ξ : ∞Graph ℓ} → Disc Ξ → Set ℓ
+Only⋆ Θ = Θ ≡ ⋆
+
+-- A BARE STRUCTURE IS THE CERTIFICATION OVER `Only⋆`, and the second clause is
+-- the gate: there is no address above `⋆` for which a witness can be supplied,
+-- so nothing can ask this structure for content it does not have.
+at⋆ : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
+  → 𝒮 Ξ
+  → At 𝒮 Ξ Only⋆
+at⋆ 𝒮₀ ⋆ refl = 𝒮₀
+at⋆ 𝒮₀ (Θ ▸ᵈ x ⇴ y) ()
+
+-- AND A DIMENSION-WISE CERTIFICATION IS THE CERTIFICATION OVER `Total`, so
+-- nothing statable against `Everywhere` is lost by stating it against `At`.
+everywhere→At : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
+  → Everywhere 𝒮 Ξ
+  → At 𝒮 Ξ Total
+everywhere→At 𝒮° Θ _ = at° 𝒮° Θ
+
+-- and reading either back at `⋆` is the structure on the nose, as `at°-⋆` is
+-- one door up: the region costs a consumer at the carrier nothing.
+at⋆-⋆ : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
+  → (𝒮₀ : 𝒮 Ξ)
+  → at⋆ {𝒮 = 𝒮} {Ξ = Ξ} 𝒮₀ ⋆ refl ≡ 𝒮₀
+at⋆-⋆ 𝒮₀ = refl

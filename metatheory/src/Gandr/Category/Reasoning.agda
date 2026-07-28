@@ -30,13 +30,15 @@
 -- coherences. Nothing here is strict, and nothing needs decidable equality.
 --
 -- ── AND THEY HOLD AT EVERY DIMENSION, THROUGH THE ADDRESS ───────────────────
--- `Reasoning` takes one `Category`, which reaches 1-cells up to 2-cells and no
--- further. `Reasoning°` below takes an `Everywhere Category` and a bound
--- telescope instead, so the same suite is available at every dimension — by
--- module application, with nothing restated. It is an ADDITIONAL entry point
--- and never a re-parameterization of the first: the certification is strictly
--- stronger than the structure, and `Set`-level structures provably fail it.
--- The section over `Reasoning°` carries the argument.
+-- `Reasoning` binds a carrier and an ADDRESS in it, and takes the structure
+-- there. So one suite serves every dimension: a consumer at the carrier passes
+-- `⋆`, where `⟦Disc⟧ Ξ ⋆` is `Ξ` definitionally and nothing is paid; a consumer
+-- holding a tower passes any address it has content at. Nothing is restated and
+-- nothing is proved twice.
+--
+-- Which addresses a structure HAS content at is not this module's question —
+-- it is the certification's, and `Gandr.Graph.At` is where a structure declares
+-- its region. The section below the suite says how the two meet.
 --
 -- ── WHEN TO REACH FOR A SOLVER INSTEAD ──────────────────────────────────────
 -- These combinators are for proofs a solver cannot yet take. The standing rule
@@ -52,10 +54,14 @@ open import Gandr.Graph
   using (ϵ°)
   using (δ°)
   using (Disc)
+  using (⟦Disc⟧)
   using (⋆)
   using (_▸ᵈ_⇴_)
   using (Everywhere)
+  using (Total)
   using (at°)
+  using (at⋆)
+  using (everywhere→At)
 open import Gandr.Setoid
   using (bundle)
 open import Gandr.Category
@@ -82,7 +88,13 @@ open import Relation.Binary.PropositionalEquality
 -- syntax recover it by unification.
 open import Relation.Binary.Reasoning.MultiSetoid public
 
-module Reasoning {ℓ} {B : ∞Graph ℓ} (ℬ : Category B) where
+module Reasoning {ℓ} (Ξ : ∞Graph ℓ) (Θ : Disc Ξ) (ℬ : Category (⟦Disc⟧ Ξ Θ)) where
+
+  -- The graph this suite reasons in: the carrier read AT THE BOUND ADDRESS. At
+  -- `Θ = ⋆` it is `Ξ` definitionally, so a consumer reasoning at the carrier
+  -- writes `⋆` and pays nothing further — no transport, no second module.
+  B : ∞Graph ℓ
+  B = ⟦Disc⟧ Ξ Θ
 
   -- The hom-setoid at a pair of 0-cells, as a stdlib bundle: 1-cells `a ⇴ b`
   -- under the 2-cell equivalence the category supplies over them. This is what
@@ -383,30 +395,34 @@ module Reasoning {ℓ} {B : ∞Graph ℓ} (ℬ : Category B) where
   assoc²⁻¹ f g h k = ℬ .inv₁ (assoc² f g h k)
 
 -- ══════════════════════════════════════════════════════════════════════════════
--- THE SAME SUITE, READ AT AN ADDRESS.
+-- SUPPLYING THE STRUCTURE AT THE BOUND ADDRESS — one door, two suppliers.
 --
--- `Reasoning` above takes ONE `Category`, so it reasons about 1-cells up to
--- 2-cells and stops there: a step one dimension further needs a `Category` on
--- `B .δ° a b`, and a bare `Category B` does not supply one. `Everywhere
--- Category` supplies them all, `at°` reads off the one at a bound telescope, and
--- that module application is the whole of "the combinators hold at every
--- dimension". Nothing is restated, and nothing is proved twice.
+-- The suite above takes the structure AT an address, which is all it ever
+-- needed. What varies between consumers is not the suite but WHERE THEY HAVE
+-- CONTENT, and that is the certification's business rather than the reasoning
+-- layer's:
 --
--- ── AN ADDITIONAL DOOR, NEVER A RE-PARAMETERIZATION ──────────────────────────
--- The certification is a STRICTLY STRONGER hypothesis than the structure, and
--- the layer's own main consumer provably fails it: every `Set`-level structure
--- in this tree presents through `𝔾.≡°`, which stops with `𝟘` above its 1-cells,
--- and `ℂ.≡°-not-everywhere` refutes `Everywhere Category` there. So the
--- carrier-level `Reasoning` stays the primitive. A suite re-parameterized by the
--- certification would be a suite the `Set`-level structures could not use.
+--   * a structure with content at the carrier alone — every `Set`-level
+--     structure here — supplies `𝔾.at⋆ ℬ ⋆ refl`, which is `ℬ`;
+--   * a structure certified at every dimension supplies
+--     `𝔾.everywhere→At 𝒞 Θ _`, i.e. `at° 𝒞 Θ`, at any `Θ` it likes;
+--   * anything in between supplies its own region.
 --
--- At `⋆` the two doors open on the same room, definitionally — `Gandr.Graph`'s
--- `at°-⋆` — so a consumer that already reasons at the carrier is unchanged when
--- it is read as reasoning at the empty telescope.
+-- There is no second entry point and no stronger hypothesis anywhere in the
+-- layer. An earlier revision made `Everywhere Category` the hypothesis of a
+-- parallel suite and argued that the carrier-level one had to stay primitive
+-- because `Set`-level structures fail the certification. Both halves were
+-- confused: the failure is real but it is a fact about `≡°`'s REGION, not a
+-- reason for two doors, and `Reasoning` never took the certification in the
+-- first place — it took a `Category`, exactly as it does now.
+--
+-- ── THE GATE IS AT THE SUPPLIER, WHICH IS WHERE IT BELONGS ───────────────────
+-- Asking a `Set`-level structure to reason one dimension up is not a runtime
+-- disappointment and not an unmarked mistake: `at⋆` admits no address but `⋆`,
+-- by constructor disjointness on the address code, so the argument cannot be
+-- produced. The author declares the region once, at the structure, and every
+-- statement over it inherits the refusal.
 -- ══════════════════════════════════════════════════════════════════════════════
-
-module Reasoning° {ℓ} {Ξ : ∞Graph ℓ} (𝒞 : Everywhere Category Ξ) (Θ : Disc Ξ)
-  = Reasoning (at° 𝒞 Θ)
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- WORKED: ONE COMBINATOR, TWO ADDRESSES OF ONE TOWER.
@@ -427,16 +443,26 @@ module Reasoning° {ℓ} {Ξ : ∞Graph ℓ} (𝒞 : Everywhere Category Ξ) (Θ
 -- by hand, and stdlib does not carry it — and the proof is the generic
 -- combinator, applied. Nothing is transported and nothing is restated.
 --
--- ONE ERGONOMIC CAVEAT, WHICH IS NOT THE ADDRESS'S DOING. A combinator whose
--- CELLS are implicit cannot be restated this way without passing them: at `⋆`
--- the cell type is `trans p q ≡ …`, and `trans` is a defined function, so
--- unification cannot recover `p` and `q` from it. That is the ordinary
--- non-injectivity of a defined symbol and it bites a hand-written restatement
--- exactly as hard; `assoc²` takes its cells explicitly and so is free of it.
+-- WHERE THE ADDRESS PAYS ERGONOMICALLY: IT ABSORBS THE BOUNDARY ASCRIPTIONS.
+-- A law stated by hand at dimension `n` writes one type ascription per
+-- quantified variable, and each is a longer projection spine than the last — at
+-- dimension 2, `{a b : Ξ .ϵ°}`, then `{f g : Ξ .δ° a b .ϵ°}`, then cells at
+-- `Ξ .δ° a b .δ° f g .ϵ°`. Binding ONE `Θ : Disc Ξ` replaces that whole chain:
+-- `_▸ᵈ_⇴_` types each boundary pair from the prefix already built, so the
+-- iterated boundary requirement RESOLVES the ascriptions rather than the author
+-- restating them. The saving grows with dimension exactly as the spine does,
+-- which is why it is the address's payoff and not a convenience.
+--
+-- One narrower fact, recorded next to it because the two are easy to conflate:
+-- a combinator whose CELLS are implicit still cannot be restated at `⋆` without
+-- passing them, since the cell type reads `trans p q ≡ …` and `trans` is a
+-- defined symbol, which unification cannot invert. That is the ordinary
+-- non-injectivity of a defined symbol, it has nothing to do with the address,
+-- and `assoc²` — whose cells are explicit — never meets it.
 trans-assoc² : ∀ {ℓ} {A : Set ℓ} {v w x y z : A}
   → (p : v ≡ w) (q : w ≡ x) (r : x ≡ y) (s : y ≡ z)
   → trans (trans (trans p q) r) s ≡ trans p (trans q (trans r s))
-trans-assoc² {A} = Reasoning°.assoc² (ℂ.Id° A) ⋆
+trans-assoc² {A} = Reasoning.assoc² _ ⋆ (everywhere→At (ℂ.Id° A) ⋆ _)
 
 -- And one dimension up. The structure at `⋆ ▸ᵈ x ⇴ y` is the structure of the
 -- tower one dimension up read at `⋆`, on the nose — so the same pasting for

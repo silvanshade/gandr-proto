@@ -286,24 +286,40 @@ module ℂ where
   Id° A .here° = Id A
   Id° A .up° x y = Id° (≡._≡_ x y)
 
-  -- AND THE REFUTATION, which is why the reasoning layer keeps its
-  -- carrier-level form rather than being re-parameterized by the certification.
-  -- `𝔾.≡°` stops with `𝟘` above its 1-cells, so one dimension up there are no
-  -- cells for `idn₀` to produce and `Everywhere Category (𝔾.≡° A)` is
-  -- UNINHABITED — the same shape of refutation as `Gandr.Setoid`'s, one doctrine
-  -- up, and it bites in the same place.
+  -- AND THE REFUTATION, WHICH BITES ONE DIMENSION LOWER THAN IT LOOKS. `𝔾.≡°`
+  -- stops with `𝟘` above its 1-cells, so a `Category` over it must produce a
+  -- 2-cell — `idn₁` at any 1-cell — out of nothing. So it is not merely the
+  -- CERTIFICATION that fails on `≡°`: the bare structure already does.
   --
-  -- What it costs is worth stating, because it is a design constraint and not a
-  -- curiosity: `≡°` is how EVERY `Set`-level structure in this tree presents as
-  -- a category, so `Everywhere Category` is a strictly stronger hypothesis that
-  -- the layer's main consumer provably fails. A statement that wants to hold at
-  -- every dimension may take the certification; a statement that wants to hold
-  -- of the tree's own structures may not.
+  -- This is stated first, and separately, because the weaker form is the one
+  -- that misleads. `Everywhere Category (𝔾.≡° A)` is refuted too, but only as a
+  -- corollary, and reading that corollary as a SEPARATION of the certification
+  -- from the structure is an error this record carried until it was checked:
+  -- both are absurd here, so `≡°` witnesses no gap between them.
+  --
+  -- What `≡°` does witness is a REGION. Its content stops at the 1-cells, and
+  -- `Gandr.Graph.At` is where that is said — `At Setoid (≡° A) Only⋆` holds
+  -- (`Gandr.Setoid.≡ˢ` is the structure), while `At Category (≡° A) Only⋆` does
+  -- not, because `Category` asks for one dimension more than `≡°` carries.
+  --
+  -- Note the doctrines therefore differ, and the difference is the point of
+  -- naming regions at all: `Setoid` has content at dimensions 0–1 and `Category`
+  -- at 0–2, so the same carrier serves one and fails the other. A `Set`-level
+  -- CATEGORY presents with `≡°` on each HOM — `δ° x y = ≡° (H x y)` — and that
+  -- carrier's region is `Only⋆`.
+  ≡°-not-category : ∀ {ℓ} {A : Set ℓ}
+    → A
+    → Category (𝔾.≡° A)
+    → ⊥
+  ≡°-not-category a 𝒞 = 𝒞 .idn₁ {a} {a} ≡.idn
+
+  -- the corollary, kept because it is the statement the certification layer
+  -- quotes, and because a predicate nothing refutes may be vacuous
   ≡°-not-everywhere : ∀ {ℓ} {A : Set ℓ}
     → A
     → Everywhere Category (𝔾.≡° A)
     → ⊥
-  ≡°-not-everywhere a 𝒞° = 𝒞° .up° a a .here° .idn₀ ≡.idn
+  ≡°-not-everywhere a 𝒞° = ≡°-not-category a (𝒞° .here°)
 
   -- The empty category: the unique structure on `𝔾.𝟘`. Every clause is absurd,
   -- there being no cells to define at any dimension.

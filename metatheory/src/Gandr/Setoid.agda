@@ -126,6 +126,18 @@ Idˢ A .up° x y = Idˢ (x ≡ y)
 -- its trivial dimensions with `𝟙` would satisfy `Everywhere Setoid` for free and
 -- the certification would say nothing at all — which is exactly the silent
 -- discharge the truncation rule exists to prevent.
+--
+-- ── AND HERE IT GENUINELY SEPARATES, WHICH ONE DOCTRINE UP IT DOES NOT ───────
+-- Worth stating side by side, because the two look alike and are not. `Setoid`
+-- has content at dimensions 0 and 1, and `≡°` carries exactly those — so `≡ˢ`
+-- above INHABITS the structure while the certification below is refuted, and
+-- the gap between them is real here.
+--
+-- `Category` asks for one dimension more than `≡°` carries, so over `≡°` the
+-- bare structure is already uninhabited (`Gandr.Category.ℂ.≡°-not-category`)
+-- and the corresponding refutation separates nothing. Stated in the vocabulary
+-- that makes the difference visible: `≡°`'s REGION is `Only⋆` for `Setoid` and
+-- empty for `Category`, and `Gandr.Graph.At` is where a structure says which.
 ≡°-not-everywhere
   : ∀ {ℓ} {A : Set ℓ}
   → A

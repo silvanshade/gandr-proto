@@ -37,6 +37,7 @@ open import Gandr.Graph
   using (δ°)
   using (ϵ↬)
   using (δ↬)
+  using (⋆)
   using (module 𝔾)
 open import Gandr.Category
   using (Category)
@@ -119,7 +120,7 @@ seq-nat : ∀ {ℓ} {A B : ∞Graph ℓ} {𝒜 : Category A} {ℬ : Category B}
   → (β : Nat G H)
   → Nat F H
 seq-nat {ℬ} α β .cmp a = ℬ .seq₀ (α .cmp a) (β .cmp a)
-seq-nat {ℬ} α β .nat f = Reasoning.glue ℬ (α .nat f) (β .nat f)
+seq-nat {ℬ} α β .nat f = Reasoning.glue _ ⋆ ℬ (α .nat f) (β .nat f)
 
 -- Horizontal composition: `α : F ⟹ F′` in the middle category and
 -- `β : G ⟹ G′` in the target compose to `F⋆G ⟹ F′⋆G′`. The square threads the
@@ -134,7 +135,7 @@ hcomp-nat : ∀ {ℓ} {A B C : ∞Graph ℓ} {𝒜 : Category A} {ℬ : Category
 hcomp-nat {𝒞} {F} {F′} {G} {G′} α β .cmp a =
   𝒞 .seq₀ (G .δ↬ .ϵ↬ (α .cmp a)) (β .cmp (F′ .ϵ↬ a))
 hcomp-nat {𝒞} {F} {F′} {G} {G′} α β .nat {a₀} {a₁} f =
-  Reasoning.glue 𝒞 Gnat (β .nat F′f)
+  Reasoning.glue _ ⋆ 𝒞 Gnat (β .nat F′f)
   where
     α₀ = α .cmp a₀
     α₁ = α .cmp a₁
