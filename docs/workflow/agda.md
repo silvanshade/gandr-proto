@@ -212,7 +212,8 @@ That ∞-graph is **`Gandr.Graph.𝔾.≡°`**, and the `Setoid` on it is **`Gan
   It asserts nothing and discharges nothing, and if a structure later turns out to have genuine higher cells the dimension opens up.
 * **`𝟙` above** — **forbidden by default.** A terminal hom makes every coherence hold automatically, silently discharging obligations nobody checked.
   That is the failure mode, and it is what "do not truncate prematurely" is about.
-  Use it only with a stated reason.
+  Use it only with a stated reason — `Setoids`' homotopies are the one place in the tree that has one.
+  A convention that fills trivial higher dimensions with `𝟙` as a matter of course is **not** this tree's convention, and a reader arriving with that habit should read this bullet as the correction.
 * **Forcing `UIP`** — **out of scope entirely.** The `--without-K` mandate is binding and neither UIP nor definitional proof-irrelevance may enter through any shortcut.
   Note that using `_≡_` as a structure's 1-cells carries no UIP claim: nothing above it is asserted, so no two proofs of `f ≡ g` are ever identified.
   Where a specific result genuinely needs set-ness, it takes `UIP Ob` as a **parameter**, as the grafting unit laws do.
@@ -247,7 +248,22 @@ Existing `trans` ladders are converted when their module is next touched, and th
 
 ## House style
 
-Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `hiding`/`using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder rather than deep `where` nesting; and **every definition carries a comment**.
+Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; and **every definition carries a comment**.
+
+Five rules the one-line summary does not carry, each of which has cost something somewhere:
+
+* **Never rename a record field into local domain jargon.** Projecting `seq₀` to a local `compose` or `⊗` hides which algebra discharges the step, and the whole point of opening the instance at the use site is that the discharging structure is one `open` away.
+  Jargon worth having becomes an actual structure with its own record, not an alias.
+* **Package operations; fuse a local data or record module into one external view.** `open X public hiding (module X)` is the shape, so a consumer opens one module rather than three.
+* **Name strictness honestly.** A strict structure says so in its name — `FreeStrictInvolutiveWordCategory`, not `FreeCategory`.
+  See the marking rule below.
+* **Weak by default; the marks go on strictness and decidability.** Every structure and law here reads as weak unless marked: no `weak`/`Weak` prefixes, no E-prefixes, no "up to higher cells" call-outs.
+  The literature marks weakness because its ambient default is strict; ours is not, and importing that convention would decorate the normal case while leaving the exceptional case unmarked.
+  Conversely, **every definition or proof that is strict, or that consumes decidable equality of cells, carries a definition-site comment saying so** — `-- STRICT: <what>` / `-- DECIDABLE EQUALITY: of <what>` — because that is exactly where collapse and the K-floor live, and exactly what a reader auditing the trust story must be able to find.
+  `Gandr.Category`'s private `≡` module — propositional equality read as the strict category on a `Set` — is the tree's worked example and the only strict instance in it.
+* **Parallel modules keep parallel order.** Where two modules deliberately mirror each other's vocabulary — the `Set` layer against the ∞-graph layer, a `Base` against its `Properties` — corresponding definitions appear in the same order.
+  The mirroring is load-bearing documentation: it lets the two be read side by side, and order drift breaks that reading.
+  Reorder only when genuinely landing the missing counterparts, never speculatively.
 
 Two disciplines are load-bearing rather than cosmetic.
 Both are instances of the representation rule above, and both exist to keep structures computing under `--without-K`:
@@ -278,7 +294,137 @@ The rule is symmetric and applies across the whole tree; the split between `Gand
 
 **Agda-DbC stance.** The type is the contract; do not port the Rust `# Contract` comment block.
 Load-bearing insight lives in the module header and the code cites it.
-Mandatory marks are reserved for genuine trust-story exceptions: signature parameters standing for assumptions, and any future with-K or unsafe island.
+Mandatory marks are reserved for genuine trust-story exceptions: signature parameters standing for assumptions, strict or decidable-equality-consuming definitions, and any future with-K or unsafe island.
+
+## Namespacing, the layer letters, and the structure dress
+
+**Namespacing is an engineering concern and is taken seriously.** The apparatus — packaging, local instance opens, one-name-per-line imports, the layer letters below — exists to optimize the ergonomics of referring to the right definition, and formalization at this scale is reached _through_ that discipline rather than despite it.
+**Every new `data`, `record` or `module` performs the analysis explicitly:** what is the bare working vocabulary in each scope; which names stay qualified and under which qualifier; what stages behind an auxiliary namespace; what the instance-open reads like at the use site.
+An addition that leaks awkward qualification to its use sites is a defect, not a matter of taste.
+
+### The layer letters
+
+One combinator vocabulary is deliberately reused at every layer — `idn`, `seq`, `inv` mean the same thing one dimension apart — so bare names collide exactly where the style wants them reused.
+One letter per layer makes each use site precise:
+
+| layer                                                              | letter | status                                                     |
+| ------------------------------------------------------------------ | ------ | ---------------------------------------------------------- |
+| `Set`                                                              | `𝕊`    | landed (`Gandr.Graph`, `Gandr.Category`)                   |
+| ∞-graphs — the ambient                                             | `𝔾`    | landed                                                     |
+| 1-categories **and their doctrines**                               | `ℂ`    | landed                                                     |
+| the circuit-algebra carrier — wirings, shapes, the listing algebra | `𝕎`    | **decided, not yet applied** — lands with the package move |
+| 1-groupoids                                                        | `ℾ`    | when the module materializes                               |
+| ∞-groupoids                                                        | `ℾ∞`   | suffix, not subscript, in code                             |
+| free / cellular-extension formers                                  | `𝔉`    | when the module materializes                               |
+| virtual double categories                                          | `𝔻`    | **reserved** — nothing claims it without a note here       |
+
+Two decisions inside that table are worth their reasons.
+
+**`𝕎` for the circuit-algebra carrier.** The carrier already mirrors the vocabulary — `idn` and `idn-match` sit unqualified beside `𝔾.idn` and `ℂ.idn₀` — so it is a layer in the sense that matters, and it gets a letter rather than a rename.
+
+#### Wiring, not Feynman — the distinction, kept because it is easy to get backwards
+
+Both words are live in the neighbouring literature and both are ambiguous; what settles it is **which way each ambiguity runs**.
+
+| term                 | what it retrieves                                                                                                                                                                                                      | fit to this carrier                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **wiring diagram**   | Spivak's _operad of wiring diagrams_ and the applied-category-theory line built on it; **circuit algebras** in the Bar-Natan–Dancso sense, which are defined by non-planar wiring diagrams; and, as noise, electronics | the second **is** this carrier; the first is a neighbouring formalism for the same idea                 |
+| **Feynman category** | Kaufmann–Ward's _Feynman categories_ — a specific formalism, equivalent to groupoid-coloured operads                                                                                                                   | **a different object.** This carrier is a circuit algebra on the nonunital rung, not a Feynman category |
+| **Feynman graph**    | Joyal–Kock's Feynman-graph formalism and graphical species, which the circuit-algebra source builds on                                                                                                                 | right for the **shape**, wrong for the **wiring** — it names half the layer                             |
+
+So: wiring's ambiguity is between two formalisms of the _same_ idea, and a reader who imports the wrong one is close to right.
+Feynman's ambiguity is between two _different_ objects, and a reader who imports the wrong one has been told something false — which is the failure mode this design record has already been corrected for twice, both times on attributions of exactly this shape.
+
+**Where Feynman is right, it is a citation and not a name.** The shape carrier does correspond to Joyal–Kock's Feynman graphs, the translation lemma between the two presentations is a **known-owed obligation**, and both belong in the shape module's header when the package move lands.
+
+Two neighbours are worth naming so the near-misses are not rediscovered as identifications:
+
+* D. I. Spivak (2013), "The operad of wiring diagrams: formalizing a graphical language for databases, recursion, and plug-and-play circuits", arXiv:1305.0297.
+  Its wiring diagrams are **hierarchically nested boxes with ports**, not a matching datum — a different object under the same word, which is why the word needs the disambiguation above rather than a citation.
+* S. Libkind and D. J. Myers (2025), "Towards a double operadic theory of systems", arXiv:2505.18329.
+  Its **undirected** wiring diagrams are cospans of finite sets, so arbitrary merging is allowed; this carrier's wiring is **downward** — every sink hit exactly once, no cup, and the nodeless loop inexpressible — so it sits strictly **below** the undirected operad.
+  That paper's §8 also reads diagrammatic interaction patterns as the **free** processes of a doctrine, which is a candidate characterization of the wiring layer itself and is filed as one.
+
+The Kaufmann–Ward and Bar-Natan–Dancso attributions above remain recall-grade; verify before either reaches a citation-bearing surface.
+
+**The doctrines live under `ℂ`.** `Monoidal`, `SkewMonoidal`, `Monad`, `Algebra`, `RelativeMonad`, `DistributiveLaw`, `Adjunction` and the rest are certifications at the 1-category layer and speak its vocabulary, so they share its letter rather than spending one each.
+`ℂ` already holds `Category`, `Map` and `Nat`; the inventory grows inside it.
+
+### The variable dress
+
+| dress         | meaning                                                                               |
+| ------------- | ------------------------------------------------------------------------------------- |
+| `A`, `B`      | carriers                                                                              |
+| `𝒜`, `ℬ`, `𝒞` | calligraphic — the structure over a carrier (smooth / semantic)                       |
+| `𝔄`           | fraktur — the free structure or cellular extension over a carrier (rigid / syntactic) |
+| `𝐀`, `𝐁`      | bold — indexed families of carriers; bold means bundled                               |
+| `Ξ`           | carriers in records                                                                   |
+| `Θ`           | telescopes (discs)                                                                    |
+| `Φ`           | spheres                                                                               |
+
+### The `#`-dress, for staging
+
+A module named `#X` is an auxiliary namespace whose purpose is to **free the bare name `X`** for the current scope's public definition: `#X` holds the components, and the public `X` is then defined by projection out of it.
+Typically `private`; `#` is a legal Agda name character that marks auxiliary status visually, greps as a family, and can never collide with mathematical notation.
+
+**Staging is the only sanctioned use here.** The other shape the convention allows elsewhere — repackaging a layer's or a library's same-named operations under `#L` — is not adopted: this tree's requalification modules (`Gandr.Graph`'s `𝕊`, `Gandr.Arena.Structure`'s `Fin` and `ℕ`) free no bare name, so a `#` on them would be noise, and the layer letters already cover the mirror-vocabulary case.
+
+## The boundary telescope
+
+A cell's type is a spine of projections — `Ξ .δ° a b .δ° f g .ϵ°` — and it grows with dimension.
+**Implicit arguments can never elide it, and this is a theorem about the unifier rather than a limitation to work around.** Reconstructing the prefix from a cell's type poses a constraint of the form `ϵ° ?Ξ ≈ ϵ° Ξ₀` — a metavariable under a projection — which Agda solves only by eta-expanding the metavariable, and **coinductive records have no eta**.
+Anything that tries to infer a carrier or a boundary from a cell will get stuck, every time, and no amount of restructuring the record changes that.
+
+The route around it is not inference, and it is not a macro.
+It is to **bind the telescope explicitly, as a first-order inductive code**.
+
+### The code, and why it is a code
+
+`Gandr.Graph`'s `Base` module carries the reified telescope: `Disc` — `⋆` for the carrier itself, `Θ ▸ᵈ x ⇴ y` to descend one parallel pair — together with `⟦Disc⟧`, which interprets a telescope as the ∞-graph it lands in.
+`Disc` is **inductive with injective constructors**, which is what the projection spine is not: it can be matched on, recursed over, and discriminated.
+
+This is one instance of a sort discipline worth stating once, because the known failure modes of higher-dimensional formalization are violations of it:
+
+| the piece needs to be…                   | render it as…                                               | here                                                                                        |
+| ---------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| discriminated, matched, or recursed over | a **code** — inductive, injective constructors, first-order | `Disc`, the witness relations, the arity kits' graphs                                       |
+| witnessed or transported along           | a **certificate** — a cell, proof-relevant, carried         | 2-cells, the law witnesses, `Append` and friends where they are carried rather than matched |
+| neither                                  | **unobserved**                                              | object equality; record identity                                                            |
+
+Forcing a certificate into a code is what UIP and premature truncation are; leaving no code column is what makes an instance unwritable, because unification has nothing to grip.
+
+### What it buys, verified
+
+A statement generic in the dimension **binds one `Θ` as a parameter** and is written over `⟦Disc⟧ Ξ Θ`.
+Nothing is inferred from a cell, so the negative result above never fires.
+Four properties were checked directly rather than assumed:
+
+* `⟦Disc⟧ Ξ ⋆` is `Ξ` — by `refl`;
+* `⟦Disc⟧ Ξ (⋆ ▸ᵈ x ⇴ y)` is `Ξ ▸ᵍ x ⇴ y`, and the two-step case likewise — by `refl`.
+  So **a generic statement instantiates at a concrete address definitionally**: the telescope form is not a second, parallel way of saying things, it is the same signature with the depth abstracted.
+* A structure can be certified at **every** dimension by a coinductive record carrying the structure at this dimension and the same record one dimension up;
+* and the address lookup is a recursion **on the code**, so `at 𝒞 ⋆` is the carrier-level structure on the nose.
+
+That last pair is the payoff: a reasoning combinator, a law, or a lemma is written **once** against a structure at a bound telescope and holds at every dimension, instead of being restated per dimension or reached only through a spine nobody can abstract over.
+
+### Consequences, and the two things this rules out
+
+* **The write-side macro is unnecessary.** A reflection macro that reconstructs the elided prefix from a cell's type is the obvious alternative design, and the unifier result above is exactly what would force one.
+  With the telescope bound rather than inferred, there is nothing to reconstruct.
+* **No reflection, and no tactic engine.** Not "not yet" — not at all, under this record.
+  Reflection here is fragile in exactly the way that costs a tree its `--safe` story and its debuggability, and the telescope removes the one motivation that made it look necessary.
+  Revisiting this is a decision to be recorded, not a judgement call at a call site.
+* **`DISPLAY` stays.** `Gandr.Graph` already rewrites the projection spines to the derived formers (`_϶`, `_▸ᵍ_⇴_`), which is a display concern and carries no trust weight.
+  **Elided where stated, explicit where computed:** as-written cell types display with their telescopes elided to the top parallel pair; a reduced or computed type keeps the full telescope, and the elided form must stay visually distinct enough to signal that a prefix was dropped.
+
+### The telescope-former dress
+
+The boundary-pair formers are one descent family, tagged by structure with superscript modifier letters: `_▸ᵍ_⇴_` on the carrier, and `⋆` with `_▸ᵈ_⇴_` for disc telescopes.
+A sphere telescope, when it arrives, takes `⋆` with `_▸ˢ_⇴_`; the two `⋆` bases overload across their datatypes, both being the empty telescope.
+Interpretation transforms the tag — `⟦Disc⟧ (Θ ▸ᵈ x ⇴ y)` is `⟦Disc⟧ Θ ▸ᵍ x ⇴ y`, a disc step interpreting as a graph step.
+Tags are lowercase throughout, since Unicode has no modifier capital S and a mixed-case set would be worse than a uniform lowercase one.
+
+**Bare `▸` is reserved.** The tagging exists to free it, and nothing claims it without a note here.
 
 ## Flags and the gate
 
@@ -324,14 +470,27 @@ Proofs reach for a solver before they are written by hand, and the reach is **on
 
 Goals are **quoted by hand** into the solver's expression syntax, as `Gandr.Arena.Offset` does.
 Reflection-based tactic macros (`Tactic.RingSolver`, `Tactic.MonoidSolver`) are declined as too brittle; proof-by-reflection solvers built on `Relation.Binary.Reflection` are not macros and are the intended target.
+This is the same line the telescope section draws: **the trusted content is an object-level function with a soundness proof, never a metaprogram**, and nothing in this tree quotes or unquotes syntax.
+
+The direction of record for a future coherence solver, so it is not re-derived: its kernel should be **this tree's own machinery instantiated at the free structure it decides** — the normal-form function as the normalizer, the rewrite path as the emitted coherence cell — so the solver is the machinery's first consumer and a demonstrator that it computes, rather than a bespoke normalizer bolted on beside it.
+No solver lands before a proof demands it.
 
 ## Opacity
 
 `opaque` is the default for a definition whose unfolding is a cost to be controlled, with `unfolding` naming each consumer that needs it — `Gandr.Arena.Offset`'s `⊗-ix` family is the exemplar.
 
-The deliberate exception is the carrier layer.
-`Gandr.Graph`'s definitions exist to be unfolded: every consumer meets them through copattern matching on `ϵ°`/`δ°`, and sealing them would sever the definitional equalities the whole tower is built from.
-A module that opts out states why in its header.
+The placement policy, stated as three classes:
+
+* **Never opaque — the compute surface.** Definitions whose definitional computation _is_ the design: the carrier layer, `⟦Disc⟧` and its disappearing-boundary behaviour, and any future normal-form function.
+  `Gandr.Graph`'s definitions exist to be unfolded — every consumer meets them through copattern matching on `ϵ°`/`δ°`, and sealing them would sever the definitional equalities the whole tower is built from.
+* **Opaque by default — derived reasoning and law surfaces off the compute path.** Combinator kits and law witnesses assembled over a primitive eliminator or over other combinators, where a use site should consume the type rather than the reduction behaviour.
+* **Opaque as unfolding control**, where a deep coinductive tower makes normalization a performance concern.
+
+**Every `opaque unfolding` block names its computation dependence** — a one-line comment saying _why_ reduction is needed at that site.
+Blanket unfolding, whether whole-module or an unfocused name list, is a defect.
+A module that opts out of the default states why in its header.
+
+One dividend worth knowing, because it looks like a coincidence otherwise: an opaque definition is a rigid head the elaborator unifies spine-wise, the same way a record field is, so sealing a derived combinator can make previously-pinned implicits inferable.
 
 ## The done-rule
 
