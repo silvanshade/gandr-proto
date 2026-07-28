@@ -1402,6 +1402,16 @@ module _ {ℓ} {Ob : Set ℓ} where
   mview (i ∷ m) = just (_ , i , m)
   mview (cap j m) = nothing
 
+  -- the cap's view. It carries TWO existentials — the partner's colour and the
+  -- sources that remain — where the cons view carries one, so taking it apart
+  -- costs two UIP-based projections rather than one.
+  cview
+    : ∀ {x xs′ ys}
+    → Match Ob (x ∷ xs′) ys
+    → Maybe (Σ Ob (λ y → Σ (List Ob) (λ xs → Insert Ob y xs xs′ × Match Ob xs ys)))
+  cview (i ∷ m) = nothing
+  cview (cap j m) = just (_ , _ , j , m)
+
   -- the profiles a shape's outermost node declares, as a flat non-dependent
   -- projection: this is what refutes a profile mismatch
   profs : ∀ {Γ Δ} → Shape Ob Γ Δ → Maybe (List Ob × List Ob)
@@ -1517,6 +1527,15 @@ module _ {ℓ} {Ob : Set ℓ} (_≟ᵒ_ : DecidableEquality Ob) where
     let e = ,-injʳ-uip uipˡ (just-injective (cong mview eq))
     in ,-injectiveˡ e , ,-injectiveʳ e
 
+  -- and the cap likewise, through its own view and one projection more
+  cap-inj
+    : ∀ {x y xs xs′ ys} {i j : Insert Ob y xs xs′} {m n : Match Ob xs ys}
+    → cap {x = x} i m ≡ cap {x = x} j n
+    → (i ≡ j) × (m ≡ n)
+  cap-inj eq =
+    let e = ,-injʳ-uip uipˡ (,-injʳ-uip uipᵒ (just-injective (cong cview eq)))
+    in ,-injectiveˡ e , ,-injectiveʳ e
+
   match?
     : ∀ {xs zs : List Ob}
     → (m n : Match Ob xs zs)
@@ -1527,6 +1546,18 @@ module _ {ℓ} {Ob : Set ℓ} (_≟ᵒ_ : DecidableEquality Ob) where
   ... | yes refl with insert? uipᵒ uipˡ i j | match? m n
   ...   | no ¬p | _ = no λ eq → ¬p (proj₁ (∷-inj eq))
   ...   | _ | no ¬p = no λ eq → ¬p (proj₂ (∷-inj eq))
+  ...   | yes refl | yes refl = yes refl
+  match? (_ ∷ _) (cap _ _) = no λ ()
+  match? (cap _ _) (_ ∷ _) = no λ ()
+  match? (cap {y = y} {xs = xs} i m) (cap {y = y′} {xs = xs″} j n)
+    with y ≟ᵒ y′ | xs ≟ˡ xs″
+  ... | no ¬p | _ =
+    no λ eq → ¬p (cong (λ z → maybe′ proj₁ y (cview z)) eq)
+  ... | _ | no ¬p =
+    no λ eq → ¬p (cong (λ z → maybe′ (λ v → proj₁ (proj₂ v)) xs (cview z)) eq)
+  ... | yes refl | yes refl with insert? uipᵒ uipˡ i j | match? m n
+  ...   | no ¬p | _ = no λ eq → ¬p (proj₁ (cap-inj eq))
+  ...   | _ | no ¬p = no λ eq → ¬p (proj₂ (cap-inj eq))
   ...   | yes refl | yes refl = yes refl
 
   -- and the node is injective in its recursive argument, once its profiles and
