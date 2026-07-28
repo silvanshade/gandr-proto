@@ -300,6 +300,44 @@ module 𝔾 where
   codisc A .δ° x y = 𝟙
 
   -- ═══════════════════════════════════════════════════════════════════════════
+  -- The DISCRETE SETOID ON THE IDENTITY TYPE, which is `disc` shifted one
+  -- dimension: the elements, their equality as 1-cells, and nothing above.
+  --
+  -- This is how a `Set`-level structure presents as a `Category` — the hom at a
+  -- pair of objects is `≡° (H x y)`, so the 2-cells are `f ≡ g` and `homˢ` is
+  -- the identity setoid. `Category`'s fields all land at or below that level:
+  -- `idn₁`/`seq₁`/`inv₁` are `refl`/`trans`/`sym`, and `seq↕`, `mon-λ`, `mon-ρ`
+  -- and `mon-α` are `≡`-cells. The record is LAWLESS AT ITS LAST DIMENSION —
+  -- it states the laws and imposes no coherence among them — which is exactly
+  -- what this presentation supports.
+  --
+  -- ── WHY `𝟘` ABOVE, AND NOT `Id` AND NOT `𝟙` ────────────────────────────────
+  -- Three choices for what sits above the last dimension that carries content,
+  -- and conflating them is the failure mode:
+  --
+  --   * `𝟘` — the correct one. It says there are no cells there. It asserts
+  --     nothing and discharges nothing, and if the structure later turns out to
+  --     carry genuine 2-cells the dimension simply opens up.
+  --   * `𝟙` — forbidden by default. A terminal hom makes every coherence above
+  --     hold automatically, silently discharging obligations nobody checked.
+  --     That is what "do not truncate prematurely" is about; use it only with a
+  --     stated reason, as `Setoids`' homotopies do.
+  --   * `Id` — honest but not minimal. It continues with the identity type at
+  --     every dimension, so it offers a whole tower no consumer asks for; `≡°`
+  --     is `Id` stopped at dimension 1 by `𝟘` rather than by `𝟙`.
+  --
+  -- Using `_≡_` as a structure's 1-cells carries NO UIP claim, and this is
+  -- worth stating because it reads like one: nothing above the 1-cells is
+  -- asserted, so no two proofs of `f ≡ g` are ever identified. Where a result
+  -- genuinely needs set-ness it takes `UIP` as a signature parameter, which is
+  -- what the grafting unit laws do.
+  -- ═══════════════════════════════════════════════════════════════════════════
+
+  ≡° : ∀ {ℓ} → Set ℓ → ∞Graph ℓ
+  ≡° A .ϵ° = A
+  ≡° A .δ° x y = disc (x ≡ y)
+
+  -- ═══════════════════════════════════════════════════════════════════════════
   -- The globes. `𝕪 n` is the n-globe — the representable presheaf at `n`,
   -- rendered coinductively: two poles at every dimension below `n`, one cell at
   -- `n`, nothing above. These are the definable internal intervals — an n-cell

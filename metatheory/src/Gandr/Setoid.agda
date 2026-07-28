@@ -36,8 +36,13 @@ open import Gandr.Graph
   using (∞Graph)
   using (ϵ°)
   using (δ°)
+  using (module 𝔾)
 
 import Relation.Binary.Bundles as Bundles
+open import Relation.Binary.PropositionalEquality
+  using (refl)
+  using (trans)
+  using (sym)
 
 -- Reflexivity, transitivity and symmetry on the cells of `Ξ`, proof-relevantly
 -- and without laws: the base the Category and Groupoid towers sit over.
@@ -78,6 +83,17 @@ open Setoid public
 -- is the CATEGORICAL combinator suite — reassociation ladders, cancellers,
 -- square extensions — which is `Gandr.Category.Reasoning`'s job.
 -- ══════════════════════════════════════════════════════════════════════════════
+
+-- THE DISCRETE SETOID ON THE IDENTITY TYPE: `refl`, `trans` and `sym`, over
+-- `Gandr.Graph.≡°`. This is the `Setoid` every `Set`-level structure in this
+-- tree presents, so `bundle (≡ˢ _)` is the bundle their reasoning chains run
+-- in — the `Set`-level counterpart of reading a category's hom-setoid off
+-- `homˢ`, and the reason a chain in a `Set`-level module is the same chain as
+-- one in the profunctor layer rather than a second vocabulary.
+≡ˢ : ∀ {ℓ} (A : Set ℓ) → Setoid (𝔾.≡° A)
+≡ˢ A .idnˢ a = refl
+≡ˢ A .seqˢ = trans
+≡ˢ A .invˢ = sym
 
 -- The stdlib setoid bundle this structure presents. Both levels are `ℓ`: the
 -- cells and the relation on them live in the same universe, since the relation

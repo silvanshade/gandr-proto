@@ -1,4 +1,16 @@
-{-# OPTIONS --safe --without-K --hidden-argument-puns #-}
+{-# OPTIONS --safe --guardedness --without-K --hidden-argument-puns #-}
+
+-- `--guardedness` is here for the REASONING VOCABULARY and for nothing else:
+-- `Gandr.Setoid` sits over the coinductive ∞-graph carrier and the flag is
+-- infective, so every module that reasons acquires it. That is the accepted
+-- trade — ONE reasoning vocabulary everywhere is worth more than one flag
+-- saved, since a second style is a standing invitation to a third.
+--
+-- What the flag does NOT license is reshaping anything to avoid it. After the
+-- role split `…/Properties` and `…/Structure` will carry it for exactly this
+-- reason; only `…/Base`, which proves nothing, comes out free of it, and that
+-- is a precision worth taking because it is free there rather than a boundary
+-- worth moving a definition for.
 
 ------------------------------------------------------------------------------
 -- Gandr.Shape.Graft — the arity OPERATIONS on the cell shape: plugging one
@@ -193,6 +205,9 @@
 
 module Gandr.Shape.Graft where
 
+open import Gandr.Setoid
+  using (≡ˢ)
+  using (bundle)
 open import Gandr.Shape.Graph
   using (here)
   using (there)
@@ -327,21 +342,18 @@ open import Relation.Binary.PropositionalEquality
   using (cong₂)
   using (subst)
   using (sym)
-  using (module ≡-Reasoning)
 open import Relation.Nullary.Decidable
   using (does)
 open import Relation.Nullary.Negation
   using (¬_)
 
 -- The reasoning vocabulary for this module's multi-step equational arguments.
--- It is the discrete-setoid chain specialized to `_≡_`, which is what every
--- structure here presents: a `Set`-level carrier whose hom-setoid relation IS
--- the identity type. The categorical suite (`Gandr.Category.Reasoning`) is NOT
--- used, and the reason is a flag rather than a preference — it sits over the
--- coinductive ∞-graph carrier and so carries `--guardedness`, which is
--- infective, so importing it here would put that flag on the whole cell shape
--- for syntax alone. Same chain, same intermediate terms, no flag.
-open ≡-Reasoning
+-- It is the tree's own, unchanged: `Reasoning.MultiSetoid` over a bundle, with
+-- `Gandr.Profunctor.Yoneda` as the worked example. `bundle (≡ˢ _)` is the
+-- `Set`-level bundle — the discrete setoid on the identity type — which is
+-- what every structure in this module presents, so a chain here reads exactly
+-- as a chain over a category's hom-setoid does.
+open import Relation.Binary.Reasoning.MultiSetoid
 
 module _ {ℓ} {Ob : Set ℓ} where
 
@@ -3131,14 +3143,14 @@ module _ {ℓ} {Ob : Set ℓ} where
   cap-swap (tail i) head m = refl
   cap-swap (tail i) (tail j) (k ∷ m) = cong (k ∷_) (cap-swap i j m)
   cap-swap (tail i) (tail j) (cap k m) =
-    begin
+    begin⟨ bundle (≡ˢ _) ⟩
       cap
         (Tower.peak (tower-lo i j k))
         (match-cap
           (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
           (Exchange.inner (insert-swap j k))
           m)
-    ≡⟨ cong
+    ≈⟨ cong
          (cap (Tower.peak (tower-lo i j k)))
          (cap-swap
            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
@@ -3150,7 +3162,7 @@ module _ {ℓ} {Ob : Set ℓ} where
           (Tower.step (tower-lo i j k))
           (Tower.base (tower-lo i j k))
           m)
-    ≡⟨ cong
+    ≈⟨ cong
          (λ t → cap (Tower.peak t) (match-cap (Tower.step t) (Tower.base t) m))
          (insert-swap-braid i j k) ⟩
       cap

@@ -202,6 +202,7 @@ The bridge is the **discrete setoid on the identity type**, one dimension up fro
 * the hom at `(x, y)` — an ∞-graph whose 0-cells are the morphisms and whose **1-cells are `f ≡ g`**, so the setoid relation _is_ the identity type and `Category.homˢ` is the identity setoid;
 * **above that, `𝟘`.**
 
+That ∞-graph is **`Gandr.Graph.𝔾.≡°`**, and the `Setoid` on it is **`Gandr.Setoid.≡ˢ`**; both carry the reasoning below.
 `Category`'s fields all land at or below that level — `mon-λ`, `mon-ρ`, `mon-α` and `seq↕` are `≡`-cells — which is the record being _lawless at its last dimension_: it states the laws and imposes no coherence among them.
 
 **Empty above, never trivial, and this is not a truncation.** Three things must be kept apart:
@@ -216,6 +217,9 @@ The bridge is the **discrete setoid on the identity type**, one dimension up fro
   Note that using `_≡_` as a structure's 1-cells carries no UIP claim: nothing above it is asserted, so no two proofs of `f ≡ g` are ever identified.
   Where a specific result genuinely needs set-ness, it takes `UIP Ob` as a **parameter**, as the grafting unit laws do.
 
+A fourth choice exists and is also wrong here: `Gandr.Graph.𝔾.Id` continues with the identity type at **every** dimension.
+It is honest — nothing is truncated — but it offers a whole tower no consumer asks for, so `≡°` is `Id` stopped at dimension 1 by `𝟘` rather than by `𝟙`.
+
 The same pattern repeats for the discrete category, the discrete groupoid, and the rest.
 
 ### Equational proofs use setoid reasoning, everywhere
@@ -224,7 +228,13 @@ The same pattern repeats for the discrete category, the discrete groupoid, and t
 `Gandr.Profunctor.Yoneda` is the worked example — `begin⟨ bundle (P .std a b) ⟩ … ≈⟨ … ⟩ … ∎`.
 
 **This applies to the `Set`-level structures too, and that is the point.** Under the discrete-setoid presentation above, a hom-setoid's relation _is_ `_≡_`, so a reasoning chain there is exactly a chain of `trans` — the same proof, written in the vocabulary the rest of the tree uses.
+The bundle to name is **`bundle (≡ˢ _)`**, and `Gandr.Shape.Graft`'s `cap-swap` is the worked example on that side.
 Nothing about it is more expensive.
+
+**A `Set`-level module pays `--guardedness` for this, and that is the accepted trade.** `Gandr.Setoid` sits over the coinductive ∞-graph carrier, so the flag is infective and reaches any module that reasons.
+Take it rather than reaching for `≡-Reasoning`: **one vocabulary everywhere is worth more than one flag saved**, because a second style is a standing invitation to a third.
+Under a role split that means `X/Properties` and `X/Structure` carry the flag as a matter of course, and only `X/Base` — which proves nothing — comes out free of it.
+**Never reshape a module, move a definition, or split a proof to chase the flag.** Take the precision where it is free; it is worth nothing where it is not.
 
 Two reasons it is a rule rather than a taste:
 
@@ -275,6 +285,9 @@ Mandatory marks are reserved for genuine trust-story exceptions: signature param
 * Per-file `OPTIONS`: `--safe --without-K --hidden-argument-puns` on every module under `metatheory/src`, enforced by the Rust `source_policy` sweep (`options-policy` subcommand; exemptions are enumerated per flag with a justification).
   The without-K mandate is binding: neither UIP nor definitional proof-irrelevance may enter through any shortcut.
 * `--guardedness` is need-based and **infective**: any module that transitively imports a coinductive carrier must carry it.
+  Reasoning is such a need — `Gandr.Setoid` is over the ∞-graph carrier — and a `Set`-level module takes the flag rather than reason in a second vocabulary.
+  A module carrying the flag for that reason alone says so at the top of the file.
+  Being flag-free is a property of a module that only _defines_; it is never a reason to reshape one.
 * **Strict root / holey leaf.** `Gandr.Everything` is the strict root — everything it imports is `--safe` and green.
   Mid-proof work lives in a _declared holey leaf_: a module the root does not import, checked on its own gate line with `--expected-code UnsolvedInteractionMetas`.
   Zero silent postulates, ever.
