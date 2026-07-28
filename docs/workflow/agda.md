@@ -218,6 +218,23 @@ The bridge is the **discrete setoid on the identity type**, one dimension up fro
 
 The same pattern repeats for the discrete category, the discrete groupoid, and the rest.
 
+### Equational proofs use setoid reasoning, everywhere
+
+**Any multi-step equational argument is written as a reasoning chain, not as a nest of `trans`.** The vocabulary is `Relation.Binary.Reasoning.MultiSetoid`, re-exported by `Gandr.Category.Reasoning`, with `Gandr.Setoid.bundle` turning a `Setoid` into the stdlib bundle the syntax takes; `Gandr.Category.Reasoning.homᵇ` produces the hom-setoid bundle from a `Category`.
+`Gandr.Profunctor.Yoneda` is the worked example — `begin⟨ bundle (P .std a b) ⟩ … ≈⟨ … ⟩ … ∎`.
+
+**This applies to the `Set`-level structures too, and that is the point.** Under the discrete-setoid presentation above, a hom-setoid's relation _is_ `_≡_`, so a reasoning chain there is exactly a chain of `trans` — the same proof, written in the vocabulary the rest of the tree uses.
+Nothing about it is more expensive.
+
+Two reasons it is a rule rather than a taste:
+
+* **The chain names its intermediate terms.** `trans (cong f p) (trans q (cong g r))` hides what is being rewritten to what; a chain shows the sequence, and a reader can check a single step without reconstructing the whole ladder.
+* **It survives the structure gaining 2-cells.** A proof written against the hom-setoid does not change when a structure later has a genuine equivalence in place of `_≡_`; a `trans` ladder is rewritten from scratch.
+  Given that this tree's whole direction is to characterize structures more finely, that is not hypothetical.
+
+Single-step arguments — one `cong`, one `refl`, one lemma applied — stay as they are; the rule is about ladders.
+Existing `trans` ladders are converted when their module is next touched, and the modules under the cell shape are the standing backlog.
+
 ## House style
 
 Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `hiding`/`using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder rather than deep `where` nesting; and **every definition carries a comment**.
