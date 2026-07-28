@@ -514,6 +514,29 @@ open 𝔾 public
 -- from a carrier `Ξ`, and `⟦Disc⟧` interprets it as the ∞-graph it lands in —
 -- the generic cell position. The structure towers' descent and the cell
 -- complex's spheres index over this.
+--
+-- ── WHY THE ADDRESS IS A CODE, AND NOT A SPINE OF PROJECTIONS ─────────────────
+-- A cell's type is written `Ξ .δ° a b .δ° f g .ϵ°`, and that spine grows with
+-- dimension. It cannot be abstracted over by an implicit argument, and this is
+-- a fact about the unifier rather than an ergonomic complaint: recovering the
+-- prefix from a cell's type poses a constraint `ϵ° ?Ξ ≈ ϵ° Ξ₀`, a metavariable
+-- under a projection, which Agda solves only by eta-expanding the metavariable
+-- — and COINDUCTIVE RECORDS HAVE NO ETA. Anything that tries to infer a carrier
+-- or a boundary from a cell is stuck, always, and no rearrangement of the
+-- record changes it.
+--
+-- So the address is REIFIED. `Disc` is inductive with injective constructors:
+-- it can be matched on, recursed over, and bound as an ordinary parameter. A
+-- statement generic in the dimension binds one `Θ` and reads `⟦Disc⟧ Θ`; the
+-- interpretation computes away at any concrete telescope, so such a statement
+-- instantiates back to the hand-written spine DEFINITIONALLY rather than up to
+-- a transport. The telescope form is not a second way of saying things — it is
+-- the same signature with the depth abstracted.
+--
+-- This is the sort discipline the workflow document states once: what must be
+-- discriminated, matched, or recursed over is a CODE; what must be witnessed or
+-- transported along is a CERTIFICATE; forcing either into the other's column is
+-- what the known failure modes of higher-dimensional formalization are.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 module Base {ℓ} (Ξ : ∞Graph ℓ) where
@@ -528,4 +551,59 @@ module Base {ℓ} (Ξ : ∞Graph ℓ) where
     ⟦Disc⟧ : Disc → ∞Graph ℓ
     ⟦Disc⟧ ⋆ = Ξ
     ⟦Disc⟧ (Θ ▸ᵈ x ⇴ y) = ⟦Disc⟧ Θ ▸ᵍ x ⇴ y
-open Base
+-- Exported, unqualified, on the same footing as `_▸ᵍ_⇴_`: the telescope is
+-- ADDRESSING VOCABULARY for the carrier, not one of the operations that stay
+-- behind `𝔾.` to keep a layer's mirror names free.
+open Base public
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- CERTIFYING A STRUCTURE AT EVERY DIMENSION, and reading it off at an address.
+--
+-- `Everywhere 𝒮 Ξ` carries an `𝒮` at `Ξ` and the same certification over every
+-- parallel pair — so one former serves `Setoid`, `Category`, `Groupoid` and
+-- every doctrine above them, rather than each tower being rebuilt by hand.
+-- The point is what it does for STATEMENTS: a law or a reasoning combinator is
+-- written once against the structure at a bound `Θ` and holds at every
+-- dimension, instead of being restated per dimension or reached only through a
+-- spine nothing can abstract over.
+--
+-- It asserts a structure at each dimension and NOTHING RELATING THE DIMENSIONS.
+-- That is weaker than an ω-structure, deliberately and by the naming rule: what
+-- is here is dimensionwise certification, so it is not called an ω-anything.
+-- Interchange and the cross-dimensional coherences enter with the structures
+-- that provide them, as their own fields, where they can be witnessed.
+--
+-- Note what it does NOT hold of, because the failure is informative: `≡°` puts
+-- `𝟘` above its 1-cells, so `Everywhere Setoid (≡° A)` is UNINHABITED — there
+-- are no 2-cells to be reflexive at. `𝔾.Id` is the carrier that does carry it,
+-- and `Gandr.Setoid.Idˢ` is the instance. That is the `𝟘`-versus-`Id` choice
+-- showing up as a theorem rather than as a preference.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+record Everywhere {ℓ} (𝒮 : ∞Graph ℓ → Set ℓ) (Ξ : ∞Graph ℓ) : Set ℓ where
+  coinductive
+  field
+    -- the structure at this dimension
+    here° : 𝒮 Ξ
+    -- and the same certification over each parallel pair
+    up° : (x y : Ξ .ϵ°) → Everywhere 𝒮 (Ξ ▸ᵍ x ⇴ y)
+open Everywhere public
+
+-- Walking a telescope down to the address it names. The recursion is on the
+-- CODE — inductive, injective constructors — which is exactly what the spine of
+-- projections is not, and is the whole reason the code is there.
+walk° : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
+  → Everywhere 𝒮 Ξ
+  → (Θ : Disc Ξ)
+  → Everywhere 𝒮 (⟦Disc⟧ Ξ Θ)
+walk° 𝒮° ⋆ = 𝒮°
+walk° 𝒮° (Θ ▸ᵈ x ⇴ y) = walk° 𝒮° Θ .up° x y
+
+-- and reading the structure off there. At the empty telescope this is the
+-- carrier-level structure on the nose, so nothing is paid for going through the
+-- address.
+at° : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
+  → Everywhere 𝒮 Ξ
+  → (Θ : Disc Ξ)
+  → 𝒮 (⟦Disc⟧ Ξ Θ)
+at° 𝒮° Θ = walk° 𝒮° Θ .here°

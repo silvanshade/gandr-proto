@@ -36,10 +36,16 @@ open import Gandr.Graph
   using (∞Graph)
   using (ϵ°)
   using (δ°)
+  using (Everywhere)
+  using (here°)
+  using (up°)
   using (module 𝔾)
 
 import Relation.Binary.Bundles as Bundles
+open import Data.Empty.Polymorphic
+  using (⊥)
 open import Relation.Binary.PropositionalEquality
+  using (_≡_)
   using (refl)
   using (trans)
   using (sym)
@@ -94,6 +100,38 @@ open Setoid public
 ≡ˢ A .idnˢ a = refl
 ≡ˢ A .seqˢ = trans
 ≡ˢ A .invˢ = sym
+
+-- THE IDENTITY-TYPE TOWER IS A SETOID AT EVERY DIMENSION, which is the honest
+-- form of "propositional equality is an equivalence relation": not once, but at
+-- each level of the tower of equalities-between-equalities, by the same three
+-- constructors each time. The corecursion is the statement — one dimension up
+-- from `Id A` is `Id (x ≡ y)`, and the same instance serves it.
+--
+-- This is `Everywhere`'s reason to exist, stated at the smallest carrier that
+-- has one. Its counterpart `≡ˢ` above is NOT an instance of it and cannot be —
+-- `≡°` stops with `𝟘` above its 1-cells, so there is no 2-cell for `idnˢ` to
+-- produce — and that is refuted below rather than asserted.
+Idˢ : ∀ {ℓ} (A : Set ℓ) → Everywhere Setoid (𝔾.Id A)
+Idˢ A .here° .idnˢ a = refl
+Idˢ A .here° .seqˢ = trans
+Idˢ A .here° .invˢ = sym
+Idˢ A .up° x y = Idˢ (x ≡ y)
+
+-- AND THE REFUTATION, so the distinction above is a theorem and `Everywhere` is
+-- not a predicate everything satisfies. One inhabitant of `A` is enough: ask the
+-- certification for its structure one dimension up from a point to itself, and
+-- `idnˢ` there must produce a cell of `𝟘` out of `refl`.
+--
+-- Read the other way round, this is what `𝟘`-above buys. A carrier that filled
+-- its trivial dimensions with `𝟙` would satisfy `Everywhere Setoid` for free and
+-- the certification would say nothing at all — which is exactly the silent
+-- discharge the truncation rule exists to prevent.
+≡°-not-everywhere
+  : ∀ {ℓ} {A : Set ℓ}
+  → A
+  → Everywhere Setoid (𝔾.≡° A)
+  → ⊥
+≡°-not-everywhere a S° = S° .up° a a .here° .idnˢ refl
 
 -- The stdlib setoid bundle this structure presents. Both levels are `ℓ`: the
 -- cells and the relation on them live in the same universe, since the relation
