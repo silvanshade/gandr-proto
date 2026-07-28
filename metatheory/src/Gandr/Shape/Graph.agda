@@ -246,6 +246,7 @@ open import Data.List.Properties
 open import Data.Maybe.Base
   using (Maybe)
   using (just)
+  using (maybe′)
   using (nothing)
 open import Data.Maybe.Properties
   using (just-injective)
@@ -414,6 +415,20 @@ module _ {ℓ} (Ob : Set ℓ) where
       → Insert x ys zs
       → Match xs ys
       → Match (x ∷ xs) zs
+    -- the first source takes another SOURCE as its partner, chosen out of the
+    -- sources that remain; the position of that choice is the datum, exactly
+    -- as for `_∷_`. This is the boundary `∩` — gandr's cut — and it is what
+    -- makes the wiring all of the DOWNWARD category rather than only its
+    -- bijective part. No constructor pairs two sinks: that would be the cup
+    -- `∪`, and its absence is what keeps the nodeless loop inexpressible.
+    -- Colours are unconstrained on purpose: which caps are legitimate is a
+    -- question about polarity, kept expressible and refutable by predicate
+    -- rather than inexpressible by typing — the choice `node` makes for wheels.
+    cap
+      : ∀ {x y xs xs′ ys}
+      → Insert y xs xs′
+      → Match xs ys
+      → Match (x ∷ xs′) ys
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE CARRIER. `Shape Γ Δ` is a finite directed graph with input legs `Γ`
@@ -630,15 +645,73 @@ module _ {ℓ} {Ob : Set ℓ} where
   past (tail i) here = here
   past (tail i) (there j) = there (past i j)
 
+  -- `past`'s inverse view: a position in the extended list is either the
+  -- inserted element itself, or one of the originals. `split`'s analogue for
+  -- `Insert`, and it is what reads a cap from the partner's side.
+  isplit
+    : ∀ {x ys zs}
+    → Insert Ob x ys zs
+    → Ix zs
+    → ⊤ ⊎ Ix ys
+  isplit head here = inj₁ tt
+  isplit head (there j) = inj₂ j
+  isplit (tail i) here = inj₂ here
+  isplit (tail i) (there j) = smap id there (isplit i j)
+
   -- Following an edge through the matching, from its source position to its
   -- sink position.
   follow
     : ∀ {xs zs}
     → Match Ob xs zs
     → Ix xs
+    → Ix xs ⊎ Ix zs
+  follow (i ∷ m) here = inj₂ (slot i)
+  follow (i ∷ m) (there e) = smap there (past i) (follow m e)
+  follow (cap j m) here = inj₁ (there (slot j))
+  follow (cap j m) (there e) =
+    case⊎
+      (λ _ → inj₁ here)
+      (λ e′ → smap (λ i → there (past j i)) id (follow m e′))
+      (isplit j e)
+
+  -- A wiring is FLOW-THROUGH when it has no cap: every source takes a sink.
+  -- This is the pre-cap fragment — the bijective part `Σ = dBD ∩ uBD` of the
+  -- downward category — named as a predicate rather than carved out as a type,
+  -- which is the same discipline `WheelFree` follows.
+  data CapFree : ∀ {xs zs} → Match Ob xs zs → Set ℓ where
+    []
+      : CapFree []
+    _∷_
+      : ∀ {x xs ys zs}
+      → (i : Insert Ob x ys zs)
+      → {m : Match Ob xs ys}
+      → CapFree m
+      → CapFree (i ∷ m)
+
+  -- On a flow-through wiring, following an edge lands on a sink, so the sum
+  -- collapses and the original total function is recovered. Every fact proved
+  -- before the cap existed is a fact about THIS function.
+  follow⁺
+    : ∀ {xs zs}
+    → {m : Match Ob xs zs}
+    → CapFree m
+    → Ix xs
     → Ix zs
-  follow (i ∷ m) here = slot i
-  follow (i ∷ m) (there e) = past i (follow m e)
+  follow⁺ (i ∷ c) here = slot i
+  follow⁺ (i ∷ c) (there e) = past i (follow⁺ c e)
+
+  -- and the two agree, which is the bridge every consumer of the old lemmas
+  -- crosses exactly once
+  follow-capfree
+    : ∀ {xs zs}
+    → {m : Match Ob xs zs}
+    → (c : CapFree m)
+    → (e : Ix xs)
+    → follow m e ≡ inj₂ (follow⁺ c e)
+  follow-capfree (i ∷ c) here = refl
+  follow-capfree (i ∷ c) (there e) =
+    cong (smap there (past i)) (follow-capfree c e)
+
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE BLOCK SWAP. `swap-match` matches a concatenation onto the same two
@@ -660,12 +733,20 @@ module _ {ℓ} {Ob : Set ℓ} where
   match-nil nil = []
   match-nil (cons p) = head ∷ match-nil p
 
+  -- and it is flow-through: the pre-cap lemmas below are facts about `follow⁺`
+  match-nil-capfree
+    : ∀ {ys zs}
+    → (p : Append Ob ys [] zs)
+    → CapFree (match-nil p)
+  match-nil-capfree nil = []
+  match-nil-capfree (cons p) = head ∷ match-nil-capfree p
+
   -- and it is the identity on positions, read through `split`
   nil-follow
     : ∀ {ys zs}
     → (p : Append Ob ys [] zs)
     → (e : Ix ys)
-    → split p (follow (match-nil p) e) ≡ inj₁ e
+    → split p (follow⁺ (match-nil-capfree p) e) ≡ inj₁ e
   nil-follow nil ()
   nil-follow (cons p) here = refl
   nil-follow (cons p) (there e) = cong (smap there id) (nil-follow p e)
@@ -718,6 +799,17 @@ module _ {ℓ} {Ob : Set ℓ} where
   swap-match {ys} (cons {xs} p) q =
     insert-mid (append-graph ys xs) q ∷ swap-match p (append-graph ys xs)
 
+  -- the block swap is flow-through too — it permutes sources onto sinks and
+  -- never caps
+  swap-match-capfree
+    : ∀ {xs ys zs ws}
+    → (p : Append Ob xs ys zs)
+    → (q : Append Ob ys xs ws)
+    → CapFree (swap-match p q)
+  swap-match-capfree nil q = match-nil-capfree q
+  swap-match-capfree {ys} (cons {xs} p) q =
+    insert-mid (append-graph ys xs) q ∷ swap-match-capfree p (append-graph ys xs)
+
   -- AND WHAT IT DOES, which is the fact every consumer actually wants: an edge
   -- in one block lands in that same block on the other side. Stated through
   -- `split` on both sides, so it says the blocks are exchanged and nothing
@@ -727,7 +819,7 @@ module _ {ℓ} {Ob : Set ℓ} where
     → (p : Append Ob xs ys zs)
     → (q : Append Ob ys xs ws)
     → (e : Ix zs)
-    → split q (follow (swap-match p q) e) ≡ swap (split p e)
+    → split q (follow⁺ (swap-match-capfree p q) e) ≡ swap (split p e)
   swap-follow nil q e = nil-follow q e
   swap-follow {ys} (cons {xs} p) q here = mid-slot (append-graph ys xs) q
   swap-follow {ys} (cons {xs} p) q (there e) =
@@ -735,7 +827,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       (mid-past
         (append-graph ys xs)
         q
-        (follow (swap-match p (append-graph ys xs)) e))
+        (follow⁺ (swap-match-capfree p (append-graph ys xs)) e))
       (trans
         (cong (smap id there) (swap-follow p (append-graph ys xs) e))
         (sym (swap-smap there id (split p e))))
@@ -758,16 +850,28 @@ module _ {ℓ} {Ob : Set ℓ} where
       (λ i → smap (λ _ → here) id (split p i))
       (origin S e)
 
+  -- A BOUNDARY POINT of a shape: an input leg or an output leg. Polarity is
+  -- carried data here rather than a positional convention, because a capped
+  -- edge ends at a SOURCE and the incidence has to be able to say so. This is
+  -- the orientation datum arriving where it is actually needed.
+  Leg
+    : List Ob
+    → List Ob
+    → Set ℓ
+  Leg Γ Δ = Ix Γ ⊎ Ix Δ
+
   dest
     : ∀ {Γ Δ}
     → (S : Shape Ob Γ Δ)
     → Edg S
-    → Vtx S ⊎ Ix Δ
+    → Vtx S ⊎ Leg Γ Δ
   dest (wires m) e = inj₂ (follow m e)
   dest (node A B p q S) e =
     case⊎
       (λ v → inj₁ (there v))
-      (λ i → smap (λ _ → here) id (split q i))
+      (case⊎
+        (λ i → smap (λ _ → here) inj₁ (split p i))
+        (λ j → smap (λ _ → here) inj₂ (split q j)))
       (dest S e)
 
   -- `Arc` is the directed incidence — an edge with BOTH ends attached — and
@@ -1146,13 +1250,21 @@ module _ {ℓ} {Ob : Set ℓ} where
   corolla-out
     : ∀ {A B}
     → (i : Ix B)
-    → dest (corolla A B) (left (append-graph B A) i) ≡ inj₂ i
+    → dest (corolla A B) (left (append-graph B A) i) ≡ inj₂ (inj₂ i)
   corolla-out {A} {B} i =
-    cong
-      (smap (λ _ → here) id)
-      (trans
-        (swap-follow (append-graph B A) (append-graph A B) (left (append-graph B A) i))
-        (cong swap (split-left (append-graph B A) i)))
+    trans
+      (cong
+        (case⊎
+          (λ j → smap (λ _ → here) inj₁ (split (append-graph B A) j))
+          (λ j → smap (λ _ → here) inj₂ (split (append-graph A B) j)))
+        (follow-capfree
+          (swap-match-capfree (append-graph B A) (append-graph A B))
+          (left (append-graph B A) i)))
+      (cong
+        (smap (λ _ → here) inj₂)
+        (trans
+          (swap-follow (append-graph B A) (append-graph A B) (left (append-graph B A) i))
+          (cong swap (split-left (append-graph B A) i))))
 
   -- and its in-profile block runs from an input leg to the vertex, which needs
   -- only the section law, since `origin` reads the source pool directly
@@ -1286,8 +1398,9 @@ module _ {ℓ} {Ob : Set ℓ} where
   mview
     : ∀ {x xs zs}
     → Match Ob (x ∷ xs) zs
-    → Σ (List Ob) (λ ys → Insert Ob x ys zs × Match Ob xs ys)
-  mview (i ∷ m) = _ , i , m
+    → Maybe (Σ (List Ob) (λ ys → Insert Ob x ys zs × Match Ob xs ys))
+  mview (i ∷ m) = just (_ , i , m)
+  mview (cap j m) = nothing
 
   -- the profiles a shape's outermost node declares, as a flat non-dependent
   -- projection: this is what refutes a profile mismatch
@@ -1401,7 +1514,7 @@ module _ {ℓ} {Ob : Set ℓ} (_≟ᵒ_ : DecidableEquality Ob) where
     → (i ∷ m) ≡ (j ∷ n)
     → (i ≡ j) × (m ≡ n)
   ∷-inj eq =
-    let e = ,-injʳ-uip uipˡ (cong mview eq)
+    let e = ,-injʳ-uip uipˡ (just-injective (cong mview eq))
     in ,-injectiveˡ e , ,-injectiveʳ e
 
   match?
@@ -1410,7 +1523,7 @@ module _ {ℓ} {Ob : Set ℓ} (_≟ᵒ_ : DecidableEquality Ob) where
     → Dec (m ≡ n)
   match? [] [] = yes refl
   match? (_∷_ {ys} i m) (_∷_ {ys = ys′} j n) with ys ≟ˡ ys′
-  ... | no ¬p = no λ eq → ¬p (cong (λ z → proj₁ (mview z)) eq)
+  ... | no ¬p = no λ eq → ¬p (cong (λ z → maybe′ proj₁ ys (mview z)) eq)
   ... | yes refl with insert? uipᵒ uipˡ i j | match? m n
   ...   | no ¬p | _ = no λ eq → ¬p (proj₁ (∷-inj eq))
   ...   | _ | no ¬p = no λ eq → ¬p (proj₂ (∷-inj eq))
