@@ -180,6 +180,29 @@ open import Gandr.Shape.Graph
   using (append-fun)
   using (append-uniq)
   using (idn-match)
+  using (Ix)
+  using (Wire)
+  using (slot)
+  using (past)
+  using (split)
+  using (right)
+  using (split-right)
+  using (smap-exch)
+  using (Slot)
+  using (taken)
+  using (spare)
+  using (islot)
+  using (match-edges)
+  using (ends)
+  using (pool)
+  using (copool)
+  using (wiring)
+  using (edges)
+  using (Edg)
+  using (Leg)
+  using (route)
+  using (end₀)
+  using (end₁)
   using (verts)
   using (Vtx)
   using (Attach)
@@ -239,11 +262,26 @@ open import Data.Maybe.Base
 open import Data.Unit.Base
   using (⊤)
   using (tt)
+open import Data.Product.Base
+  using (_×_)
+  using (_,_)
+  using (proj₁)
+  using (proj₂)
+  renaming (map to pmap)
+open import Data.Sum.Base
+  using (_⊎_)
+  using (inj₁)
+  using (inj₂)
+  renaming ([_,_]′ to case⊎)
+  renaming (map to smap)
+open import Function.Base
+  using (id)
 open import Relation.Binary.PropositionalEquality
   using (_≡_)
   using (refl)
   using (trans)
   using (cong)
+  using (cong₂)
   using (subst)
   using (sym)
 open import Relation.Nullary.Decidable
@@ -380,6 +418,355 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Widened x ys Ξ Δ
   insert-widen head (cons q) = widened _ q head
   insert-widen (tail i) (cons q) = widened-tail (insert-widen i q)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- WHAT THE TWO THREADING OPERATIONS DO TO THE EDGE LISTING AND TO THE
+  -- INCIDENCE. `match-insert` adds one wire and `match-cap` adds one cut, so
+  -- each adds exactly one entry to the edge listing and moves no other. This
+  -- section says WHERE the entry goes and WHAT its two ends are, which is the
+  -- listing-algebra half of the merger's incidence theorem.
+  --
+  -- The two facts are stated separately for the fresh entry and for the stale
+  -- ones because they are used separately: the fresh wire is what the merger
+  -- contributes, and the stale ones are what the second operand keeps.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Swapping two nested insertions moves neither element. Three readings of
+  -- that, and every reindexing in this section is spent on one of them.
+  swap-slotˡ
+    : ∀ {x y ds d dˣ}
+    → (j : Insert Ob x d dˣ)
+    → (k : Insert Ob y ds d)
+    → past (Exchange.outer (insert-swap j k))
+        (slot (Exchange.inner (insert-swap j k)))
+      ≡ slot j
+  swap-slotˡ head k = refl
+  swap-slotˡ (tail j) head = refl
+  swap-slotˡ (tail j) (tail k) = cong there (swap-slotˡ j k)
+
+  swap-slotʳ
+    : ∀ {x y ds d dˣ}
+    → (j : Insert Ob x d dˣ)
+    → (k : Insert Ob y ds d)
+    → slot (Exchange.outer (insert-swap j k)) ≡ past j (slot k)
+  swap-slotʳ head k = refl
+  swap-slotʳ (tail j) head = refl
+  swap-slotʳ (tail j) (tail k) = cong there (swap-slotʳ j k)
+
+  swap-past
+    : ∀ {x y ds d dˣ}
+    → (j : Insert Ob x d dˣ)
+    → (k : Insert Ob y ds d)
+    → (z : Ix ds)
+    → past (Exchange.outer (insert-swap j k))
+        (past (Exchange.inner (insert-swap j k)) z)
+      ≡ past j (past k z)
+  swap-past head k z = refl
+  swap-past (tail j) head z = refl
+  swap-past (tail j) (tail k) here = refl
+  swap-past (tail j) (tail k) (there z) = cong there (swap-past j k z)
+
+  -- Both ends of an edge are reindexed by the same map, so the pair-level
+  -- congruence is stated once. Eta for pairs is what makes this enough.
+  legs-cong
+    : ∀ {a b} {A : Set a} {B : Set b} {f g : A → B}
+    → ((z : A) → f z ≡ g z)
+    → (x : A × A)
+    → (f (proj₁ x) , f (proj₂ x)) ≡ (g (proj₁ x) , g (proj₂ x))
+  legs-cong e x = cong₂ _,_ (e (proj₁ x)) (e (proj₂ x))
+
+  -- AN ENTRY THREADED INTO THE EDGE LISTING. The entry itself is carried rather
+  -- than computed, because `match-cap` names a cut by whichever of its two
+  -- ports comes first and the two namings of one cut differ — which is
+  -- `cap-swap`'s observation showing up in the listing.
+  record Threaded (es fs : List (Wire Ob)) : Set ℓ where
+    constructor threaded
+    field
+      -- the entry that was added
+      wire : Wire Ob
+      -- and where it went
+      spot : Insert (Wire Ob) wire es fs
+
+  threaded-tail
+    : ∀ {w es fs}
+    → Threaded es fs
+    → Threaded (w ∷ es) (w ∷ fs)
+  Threaded.wire (threaded-tail t) = Threaded.wire t
+  Threaded.spot (threaded-tail t) = tail (Threaded.spot t)
+
+  -- Threading a wire adds one `flow` entry, at the position the new source
+  -- takes in the order the wiring consumes its sources.
+  match-insert-edges
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → Threaded (match-edges m) (match-edges (match-insert i j m))
+  match-insert-edges head j m = threaded _ head
+  match-insert-edges (tail i) j (k ∷ m) =
+    threaded-tail (match-insert-edges i (Exchange.inner (insert-swap j k)) m)
+  match-insert-edges (tail i) j (cap k m) =
+    threaded-tail (match-insert-edges (Exchange.inner (insert-swap i k)) j m)
+
+  -- and threading a cut adds one `cut` entry, on the same footing
+  match-cap-edges
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (m : Match Ob Γ Δ)
+    → Threaded (match-edges m) (match-edges (match-cap i j m))
+  match-cap-edges head j m = threaded _ head
+  match-cap-edges (tail i) head m = threaded _ head
+  match-cap-edges (tail i) (tail j) (k ∷ m) =
+    threaded-tail (match-cap-edges i j m)
+  match-cap-edges (tail i) (tail j) (cap k m) =
+    threaded-tail
+      (match-cap-edges
+        (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+        (Exchange.inner (insert-swap j k))
+        m)
+
+  -- THE FRESH WIRE'S ENDS are the source and the sink it was given, and
+  -- nothing else. This is the statement that would fail if a widening had
+  -- moved a position it should not have.
+  ends-match-insert
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → ends (match-insert i j m)
+        (slot (Threaded.spot (match-insert-edges i j m)))
+      ≡ (inj₁ (slot i) , inj₂ (slot j))
+  ends-match-insert head j m = refl
+  ends-match-insert (tail i) j (k ∷ m) =
+    trans
+      (cong
+        (pmap
+          (smap there (past (Exchange.outer (insert-swap j k))))
+          (smap there (past (Exchange.outer (insert-swap j k)))))
+        (ends-match-insert i (Exchange.inner (insert-swap j k)) m))
+      (cong (λ z → inj₁ (there (slot i)) , inj₂ z) (swap-slotˡ j k))
+  ends-match-insert (tail i) j (cap k m) =
+    trans
+      (cong
+        (pmap
+          (smap (λ w → there (past (Exchange.outer (insert-swap i k)) w)) id)
+          (smap (λ w → there (past (Exchange.outer (insert-swap i k)) w)) id))
+        (ends-match-insert (Exchange.inner (insert-swap i k)) j m))
+      (cong (λ z → inj₁ (there z) , inj₂ (slot j)) (swap-slotˡ i k))
+
+  -- and every OTHER wire keeps its ends, read in the extended pools
+  ends-match-insert-past
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → (e : Ix (match-edges m))
+    → ends (match-insert i j m)
+        (past (Threaded.spot (match-insert-edges i j m)) e)
+      ≡ pmap (smap (past i) (past j)) (smap (past i) (past j)) (ends m e)
+  ends-match-insert-past head j m e = refl
+  ends-match-insert-past (tail i) j (k ∷ m) here =
+    cong (λ z → inj₁ here , inj₂ z) (swap-slotʳ j k)
+  ends-match-insert-past (tail i) j (k ∷ m) (there e) =
+    trans
+      (cong
+        (pmap
+          (smap there (past (Exchange.outer (insert-swap j k))))
+          (smap there (past (Exchange.outer (insert-swap j k)))))
+        (ends-match-insert-past i (Exchange.inner (insert-swap j k)) m e))
+      (legs-cong step (ends m e))
+    where
+      step
+        : (z : _)
+        → smap there (past (Exchange.outer (insert-swap j k)))
+            (smap (past i) (past (Exchange.inner (insert-swap j k))) z)
+          ≡ smap (past (tail i)) (past j) (smap there (past k) z)
+      step (inj₁ w) = refl
+      step (inj₂ w) = cong inj₂ (swap-past j k w)
+  ends-match-insert-past (tail i) j (cap k m) here =
+    cong (λ z → inj₁ here , inj₁ (there z)) (swap-slotʳ i k)
+  ends-match-insert-past (tail i) j (cap k m) (there e) =
+    trans
+      (cong
+        (pmap
+          (smap (λ w → there (past (Exchange.outer (insert-swap i k)) w)) id)
+          (smap (λ w → there (past (Exchange.outer (insert-swap i k)) w)) id))
+        (ends-match-insert-past (Exchange.inner (insert-swap i k)) j m e))
+      (legs-cong step (ends m e))
+    where
+      step
+        : (z : _)
+        → smap (λ w → there (past (Exchange.outer (insert-swap i k)) w)) id
+            (smap (past (Exchange.inner (insert-swap i k))) (past j) z)
+          ≡ smap (past (tail i)) (past j) (smap (λ w → there (past k w)) id z)
+      step (inj₁ w) = cong (λ z → inj₁ (there z)) (swap-past i k w)
+      step (inj₂ w) = refl
+
+  -- A CUT'S TWO ENDS, AS AN UNORDERED PAIR. A wire's ends are its source and
+  -- its sink and the listing names them in that order; a cut's are two sources
+  -- and the listing names them in whichever order they stand in the pool. Both
+  -- orders occur — `match-cap (tail i) head` is the clause that flips them —
+  -- so this is what the statement below can claim, and it is `cap-swap`'s
+  -- observation appearing in the incidence rather than in the wiring.
+  data Ends {a} {A : Set a} (u v : A) : A × A → Set a where
+    -- named in the pool's own order
+    forwards
+      : Ends u v (u , v)
+    -- and named the other way round, which is the same cut
+    backwards
+      : Ends u v (v , u)
+
+  ends-map
+    : ∀ {a b} {A : Set a} {B : Set b} {u v : A} {x : A × A}
+    → (f : A → B)
+    → Ends u v x
+    → Ends (f u) (f v) (f (proj₁ x) , f (proj₂ x))
+  ends-map f forwards = forwards
+  ends-map f backwards = backwards
+
+  ends-cast
+    : ∀ {a} {A : Set a} {u u′ v v′ : A} {x : A × A}
+    → u ≡ u′
+    → v ≡ v′
+    → Ends u v x
+    → Ends u′ v′ x
+  ends-cast refl refl e = e
+
+  -- THE FRESH CUT'S ENDS are the two sources it was given — both of them
+  -- SOURCES, which is what the cap was added to be able to say, and neither of
+  -- them a sink.
+  ends-match-cap
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (m : Match Ob Γ Δ)
+    → Ends {A = Leg Γˣ Δ}
+        (inj₁ (slot i))
+        (inj₁ (past i (slot j)))
+        (ends (match-cap i j m) (slot (Threaded.spot (match-cap-edges i j m))))
+  ends-match-cap head j m = forwards
+  ends-match-cap (tail i) head m = backwards
+  ends-match-cap (tail i) (tail j) (k ∷ m) =
+    ends-map (smap there (past k)) (ends-match-cap i j m)
+  ends-match-cap (tail i) (tail j) (cap k m) =
+    ends-cast
+      (cong (λ z → inj₁ (there z)) (swap-slotˡ i (Exchange.outer (insert-swap j k))))
+      (cong
+        (λ z → inj₁ (there z))
+        (trans
+          (swap-past
+            i
+            (Exchange.outer (insert-swap j k))
+            (slot (Exchange.inner (insert-swap j k))))
+          (cong (past i) (swap-slotˡ j k))))
+      (ends-map
+        (smap
+          (λ w →
+            there
+              (past
+                (Exchange.outer
+                  (insert-swap i (Exchange.outer (insert-swap j k))))
+                w))
+          id)
+        (ends-match-cap
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+          (Exchange.inner (insert-swap j k))
+          m))
+
+  -- and every other wire keeps its ends: the cut consumes no sink, so only the
+  -- source pool is reindexed, and by both new positions at once
+  ends-match-cap-past
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (m : Match Ob Γ Δ)
+    → (e : Ix (match-edges m))
+    → ends (match-cap i j m) (past (Threaded.spot (match-cap-edges i j m)) e)
+      ≡ pmap
+          (smap (λ z → past i (past j z)) id)
+          (smap (λ z → past i (past j z)) id)
+          (ends m e)
+  ends-match-cap-past head j m e = refl
+  ends-match-cap-past (tail i) head m e = refl
+  ends-match-cap-past (tail i) (tail j) (k ∷ m) here = refl
+  ends-match-cap-past (tail i) (tail j) (k ∷ m) (there e) =
+    trans
+      (cong
+        (pmap (smap there (past k)) (smap there (past k)))
+        (ends-match-cap-past i j m e))
+      (legs-cong step (ends m e))
+    where
+      step
+        : (z : _)
+        → smap there (past k) (smap (λ w → past i (past j w)) id z)
+          ≡ smap (λ w → past (tail i) (past (tail j) w)) id
+              (smap there (past k) z)
+      step (inj₁ w) = refl
+      step (inj₂ w) = refl
+  ends-match-cap-past (tail i) (tail j) (cap k m) here =
+    cong
+      (λ z → inj₁ here , inj₁ (there z))
+      (trans
+        (swap-slotʳ i (Exchange.outer (insert-swap j k)))
+        (cong (past i) (swap-slotʳ j k)))
+  ends-match-cap-past (tail i) (tail j) (cap k m) (there e) =
+    trans
+      (cong
+        (pmap
+          (smap
+            (λ w →
+              there
+                (past
+                  (Exchange.outer
+                    (insert-swap i (Exchange.outer (insert-swap j k))))
+                  w))
+            id)
+          (smap
+            (λ w →
+              there
+                (past
+                  (Exchange.outer
+                    (insert-swap i (Exchange.outer (insert-swap j k))))
+                  w))
+            id))
+        (ends-match-cap-past
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+          (Exchange.inner (insert-swap j k))
+          m
+          e))
+      (legs-cong step (ends m e))
+    where
+      step
+        : (z : _)
+        → smap
+            (λ w →
+              there
+                (past
+                  (Exchange.outer
+                    (insert-swap i (Exchange.outer (insert-swap j k))))
+                  w))
+            id
+            (smap
+              (λ w →
+                past
+                  (Exchange.inner
+                    (insert-swap i (Exchange.outer (insert-swap j k))))
+                  (past (Exchange.inner (insert-swap j k)) w))
+              id
+              z)
+          ≡ smap (λ w → past (tail i) (past (tail j) w)) id
+              (smap (λ w → there (past k w)) id z)
+      step (inj₁ w) =
+        cong
+          (λ z → inj₁ (there z))
+          (trans
+            (swap-past
+              i
+              (Exchange.outer (insert-swap j k))
+              (past (Exchange.inner (insert-swap j k)) w))
+            (cong (past i) (swap-past j k w)))
+      step (inj₂ w) = refl
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- COMPARING TWO INSERTIONS INTO ONE LIST. Composition with caps has to ask

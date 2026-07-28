@@ -815,6 +815,32 @@ module _ {ℓ} {Ob : Set ℓ} where
   isplit (tail i) here = inj₂ here
   isplit (tail i) (there j) = smap id there (isplit i j)
 
+  -- and the same question as a VIEW rather than a sum. `Part` is `Append`'s;
+  -- this is `Insert`'s, and it is what a recursion over the EXTENDED listing
+  -- needs: eliminating it refines the position into the one the insertion took
+  -- or one of the ones it did not, instead of handing back an equation the
+  -- consumer then has to transport along.
+  data Slot {x ys zs} (i : Insert Ob x ys zs) : Ix zs → Set ℓ where
+    -- the position the insertion took
+    taken
+      : Slot i (slot i)
+    -- and one of the positions it did not
+    spare
+      : (j : Ix ys)
+      → Slot i (past i j)
+
+  islot
+    : ∀ {x ys zs}
+    → (i : Insert Ob x ys zs)
+    → (e : Ix zs)
+    → Slot i e
+  islot head here = taken
+  islot head (there j) = spare j
+  islot (tail i) here = spare here
+  islot (tail i) (there e) with islot i e
+  ... | taken = taken
+  ... | spare j = spare (there j)
+
   -- Following an edge through the matching, from its source position to its
   -- sink position.
   follow
