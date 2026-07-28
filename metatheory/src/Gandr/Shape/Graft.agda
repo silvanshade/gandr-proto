@@ -109,13 +109,25 @@
 -- and stating it as an equation here would be false. `merge-swap-apart`
 -- exhibits the failure.
 --
--- `cap-swap` — a cut does not care which of its two ports is named first. The
--- content is that it holds by `refl`: `Match` writes a capped pair once, at
--- its earlier port, so the identification is discharged by the representation
--- being canonical rather than imposed on it. It is proved where the wiring
--- underneath is flow-through; the case of a cut over a wiring that already
--- caps needs a three-way `insert-swap` coherence which no consumer has asked
--- for, and that residue is stated at the lemma.
+-- `cap-swap` — a cut does not care which of its two ports is named first, over
+-- ANY wiring. The content of the base cases is that they hold by `refl`:
+-- `Match` writes a capped pair once, at its earlier port, so the
+-- identification is discharged by the representation being canonical rather
+-- than imposed on it. The case of a cut over a wiring that ALREADY caps is
+-- the three-way coherence of `insert-swap`, and that is now stated and proved
+-- as the listing algebra's own law — see the next paragraph.
+--
+-- THE LISTING ALGEBRA IS SYMMETRIC, and saying so is what closed `cap-swap`.
+-- `insert-swap-invol` says swapping two nested positions twice returns them,
+-- and `insert-swap-braid` says a three-layer tower reversed low-high-low and
+-- reversed high-low-high agree — the braid relation `σ₁σ₂σ₁ = σ₂σ₁σ₂`, which
+-- with the involution is the SYMMETRIC group's presentation on a tower's two
+-- generators. An earlier revision called the missing piece a hexagon; it is
+-- not one, since a hexagon is the braiding against an associator and there is
+-- no tensor here to associate. Naming the structure is what turned the open
+-- case from a chase into one `cong`, and `Tower` — three insertions with their
+-- intermediate lists as FIELDS — is what let the coherence be stated as a
+-- homogeneous equation instead of a transport.
 --
 -- `merge-apart` — the merger's INCIDENCE theorem, and the general form of what
 -- `two-points` could previously only exhibit. `verts-merge` says both operands'
@@ -195,7 +207,6 @@ open import Gandr.Shape.Graph
   using ([])
   using (_∷_)
   using (cap)
-  using (CapFree)
   using (Shape)
   using (wires)
   using (node)
@@ -316,10 +327,21 @@ open import Relation.Binary.PropositionalEquality
   using (cong₂)
   using (subst)
   using (sym)
+  using (module ≡-Reasoning)
 open import Relation.Nullary.Decidable
   using (does)
 open import Relation.Nullary.Negation
   using (¬_)
+
+-- The reasoning vocabulary for this module's multi-step equational arguments.
+-- It is the discrete-setoid chain specialized to `_≡_`, which is what every
+-- structure here presents: a `Set`-level carrier whose hom-setoid relation IS
+-- the identity type. The categorical suite (`Gandr.Category.Reasoning`) is NOT
+-- used, and the reason is a flag rather than a preference — it sits over the
+-- coinductive ∞-graph carrier and so carries `--guardedness`, which is
+-- infective, so importing it here would put that flag on the whole cell shape
+-- for syntax alone. Same chain, same intermediate terms, no flag.
+open ≡-Reasoning
 
 module _ {ℓ} {Ob : Set ℓ} where
 
@@ -366,6 +388,154 @@ module _ {ℓ} {Ob : Set ℓ} where
   insert-swap head k = exchange _ (tail k) head
   insert-swap (tail j) head = exchange _ head j
   insert-swap (tail j) (tail k) = exchange-tail (insert-swap j k)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE EXCHANGE'S OWN LAWS: THE LISTING ALGEBRA IS SYMMETRIC. What
+  -- `insert-swap` is, is a SYMMETRY on towers of nested insertions — the
+  -- symmetric group acting on a tower's LAYERS — and the two laws here are
+  -- that characterization rather than a description of it:
+  --
+  --   * `insert-swap-invol` — swapping twice returns the two positions it was
+  --     given. This is what separates a SYMMETRIC structure from a merely
+  --     braided one, and it is what lets `cap-swap` be an equation between the
+  --     two namings of ONE cut rather than a statement about an orbit.
+  --   * `insert-swap-braid` — the three-way coherence: three nested insertions
+  --     reversed by swapping low, high, low agree with the same three reversed
+  --     high, low, high.
+  --
+  -- The three readings in the incidence section below — `swap-slotˡ`,
+  -- `swap-slotʳ`, `swap-past` — complete the picture from the other side: the
+  -- action moves no ELEMENT, only the order in which the positions were named.
+  --
+  -- ON THE NAME, because this coherence has been called a hexagon and it is
+  -- not one. A hexagon is the braiding against an ASSOCIATOR, and there is no
+  -- tensor here to associate: inserting is not a monoidal product on lists.
+  -- What the three-way coherence is, is the BRAID RELATION `σ₁σ₂σ₁ = σ₂σ₁σ₂` —
+  -- the Yang–Baxter equation — for the family `insert-swap`; and together with
+  -- the involution it is the SYMMETRIC group's presentation on the two
+  -- generators of a three-layer tower, not the braid group's. The obligation
+  -- has the shape the hexagon reading predicted, which is why establishing the
+  -- frame first was worth it; only the name was wrong.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Swapping twice returns the two positions it was given. Stated over
+  -- `Exchange` rather than as two equations, so the intermediate list is
+  -- compared ALONG WITH the positions instead of being fixed in advance —
+  -- which is what makes this a homogeneous equation and not a transport.
+  insert-swap-invol
+    : ∀ {x y ds d dˣ}
+    → (i : Insert Ob x d dˣ)
+    → (j : Insert Ob y ds d)
+    → insert-swap
+        (Exchange.outer (insert-swap i j))
+        (Exchange.inner (insert-swap i j))
+      ≡ exchange d i j
+  insert-swap-invol head j = refl
+  insert-swap-invol (tail i) head = refl
+  insert-swap-invol (tail i) (tail j) =
+    cong exchange-tail (insert-swap-invol i j)
+
+  -- Three nested insertions as ONE package. The two intermediate lists are
+  -- FIELDS rather than indices — `Exchange`'s device one dimension up — and
+  -- that is what makes two towers comparable by an ordinary equation: the
+  -- lists a reversal passes through are not determined by its inputs, so a
+  -- statement that pinned them as indices could not be homogeneous, and the
+  -- coherence below would need a transport before it could be stated at all.
+  record Tower (x y z : Ob) (ds dˣ : List Ob) : Set ℓ where
+    constructor tower
+    field
+      -- the list with the first element in
+      low : List Ob
+      -- and with the second one in as well
+      high : List Ob
+      -- the element that goes in first
+      base : Insert Ob x ds low
+      -- the one that goes in second
+      step : Insert Ob y low high
+      -- and the one that goes in last
+      peak : Insert Ob z high dˣ
+
+  -- Reindexing a tower past an element every list leads with: `exchange-tail`
+  -- one dimension up, and copatterns for the same reason — the reversals below
+  -- have to stay visible subterms of each other under `tail`.
+  tower-tail
+    : ∀ {x y z w ds dˣ}
+    → Tower x y z ds dˣ
+    → Tower x y z (w ∷ ds) (w ∷ dˣ)
+  Tower.low (tower-tail {w} t) = w ∷ Tower.low t
+  Tower.high (tower-tail {w} t) = w ∷ Tower.high t
+  Tower.base (tower-tail t) = tail (Tower.base t)
+  Tower.step (tower-tail t) = tail (Tower.step t)
+  Tower.peak (tower-tail t) = tail (Tower.peak t)
+
+  -- REVERSING A TOWER, LOW PAIR FIRST. `k` puts `z` in, then `j` puts `y` in,
+  -- then `i` puts `x` in; this hands back the same three positions with the
+  -- order of naming reversed, reached by swapping the low pair, then the high
+  -- pair, then the low pair again.
+  tower-lo
+    : ∀ {x y z ds d d˘ dˣ}
+    → (i : Insert Ob x d˘ dˣ)
+    → (j : Insert Ob y d d˘)
+    → (k : Insert Ob z ds d)
+    → Tower x y z ds dˣ
+  tower-lo {ds} {d˘} {dˣ} i j k =
+    tower
+      (Exchange.mid lo₃)
+      (Exchange.mid lo₂)
+      (Exchange.inner lo₃)
+      (Exchange.outer lo₃)
+      (Exchange.outer lo₂)
+    where
+      lo₁ : Exchange _ _ ds d˘
+      lo₁ = insert-swap j k
+      lo₂ : Exchange _ _ (Exchange.mid lo₁) dˣ
+      lo₂ = insert-swap i (Exchange.outer lo₁)
+      lo₃ : Exchange _ _ ds (Exchange.mid lo₂)
+      lo₃ = insert-swap (Exchange.inner lo₂) (Exchange.inner lo₁)
+
+  -- and the same reversal reached the other way round, swapping the high pair
+  -- first. The two routes are the two sides of the braid relation.
+  tower-hi
+    : ∀ {x y z ds d d˘ dˣ}
+    → (i : Insert Ob x d˘ dˣ)
+    → (j : Insert Ob y d d˘)
+    → (k : Insert Ob z ds d)
+    → Tower x y z ds dˣ
+  tower-hi {ds} {d} {dˣ} i j k =
+    tower
+      (Exchange.mid hi₂)
+      (Exchange.mid hi₃)
+      (Exchange.inner hi₂)
+      (Exchange.inner hi₃)
+      (Exchange.outer hi₃)
+    where
+      hi₁ : Exchange _ _ d dˣ
+      hi₁ = insert-swap i j
+      hi₂ : Exchange _ _ ds (Exchange.mid hi₁)
+      hi₂ = insert-swap (Exchange.inner hi₁) k
+      hi₃ : Exchange _ _ (Exchange.mid hi₂) dˣ
+      hi₃ = insert-swap (Exchange.outer hi₁) (Exchange.outer hi₂)
+
+  -- THE BRAID RELATION. The two reversals agree, layer for layer and list for
+  -- list. Three of the four cases hold by `refl` — the reversal is forced as
+  -- soon as any of the three positions is at the front — and the fourth is the
+  -- recursion under `tail`, so the whole coherence costs one `cong`.
+  --
+  -- The `refl` at `(tail i) (tail j) head` is worth naming: it is eta for
+  -- `Exchange` doing the work, since the low route reaches the tower as an
+  -- `insert-swap` and the high route reaches it as an explicitly built
+  -- `exchange` of that same swap's three components.
+  insert-swap-braid
+    : ∀ {x y z ds d d˘ dˣ}
+    → (i : Insert Ob x d˘ dˣ)
+    → (j : Insert Ob y d d˘)
+    → (k : Insert Ob z ds d)
+    → tower-lo i j k ≡ tower-hi i j k
+  insert-swap-braid head j k = refl
+  insert-swap-braid (tail i) head k = refl
+  insert-swap-braid (tail i) (tail j) head = refl
+  insert-swap-braid (tail i) (tail j) (tail k) =
+    cong tower-tail (insert-swap-braid i j k)
 
   -- Threading one matched wire through a matching: a new source at `i`, a new
   -- sink at `j`, joined to each other, with every existing pair left alone.
@@ -2938,26 +3108,58 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- identification is discharged by the representation rather than imposed on
   -- it.
   --
-  -- SCOPE, stated rather than assumed: the wiring underneath is required to be
-  -- flow-through. The remaining case — a cut over a wiring that ALREADY caps —
-  -- needs the three-way coherence of `insert-swap` (two ports and the existing
-  -- cap's partner, pushed past each other in two orders, whose intermediate
-  -- lists differ), which is a hexagon this file does not have and which no
-  -- consumer has yet asked for. It is an owed lemma, not a wall.
+  -- IT HOLDS IN GENERAL, over any wiring. An earlier revision proved it only
+  -- where the wiring underneath was flow-through, because the remaining case —
+  -- a cut over a wiring that ALREADY caps — pushes the two new ports and the
+  -- existing cap's partner past each other in two orders whose intermediate
+  -- lists differ. That is `insert-swap-braid`, and with the exchange's laws
+  -- stated as the listing algebra's symmetry the case is no longer a chase: it
+  -- is one `cong` over the braid, under one `cong` over the recursion. The
+  -- hypothesis is gone, and what removed it was naming the structure rather
+  -- than finding a trick.
   cap-swap
     : ∀ {x y Γ Γ˘ Γˣ Δ}
     → (i : Insert Ob x Γ˘ Γˣ)
     → (j : Insert Ob y Γ Γ˘)
-    → {m : Match Ob Γ Δ}
-    → CapFree m
+    → (m : Match Ob Γ Δ)
     → match-cap i j m
         ≡ match-cap
             (Exchange.outer (insert-swap i j))
             (Exchange.inner (insert-swap i j))
             m
-  cap-swap head j c = refl
-  cap-swap (tail i) head c = refl
-  cap-swap (tail i) (tail j) (k ∷ c) = cong (k ∷_) (cap-swap i j c)
+  cap-swap head j m = refl
+  cap-swap (tail i) head m = refl
+  cap-swap (tail i) (tail j) (k ∷ m) = cong (k ∷_) (cap-swap i j m)
+  cap-swap (tail i) (tail j) (cap k m) =
+    begin
+      cap
+        (Tower.peak (tower-lo i j k))
+        (match-cap
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+          (Exchange.inner (insert-swap j k))
+          m)
+    ≡⟨ cong
+         (cap (Tower.peak (tower-lo i j k)))
+         (cap-swap
+           (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+           (Exchange.inner (insert-swap j k))
+           m) ⟩
+      cap
+        (Tower.peak (tower-lo i j k))
+        (match-cap
+          (Tower.step (tower-lo i j k))
+          (Tower.base (tower-lo i j k))
+          m)
+    ≡⟨ cong
+         (λ t → cap (Tower.peak t) (match-cap (Tower.step t) (Tower.base t) m))
+         (insert-swap-braid i j k) ⟩
+      cap
+        (Tower.peak (tower-hi i j k))
+        (match-cap
+          (Tower.step (tower-hi i j k))
+          (Tower.base (tower-hi i j k))
+          m)
+    ∎
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE UNIT LAWS, AND THE EXACT PRICE OF STATING THEM ON THE FUNCTION.
