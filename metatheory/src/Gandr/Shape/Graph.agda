@@ -150,6 +150,19 @@
 -- edge with a free end cannot sit on an undirected cycle. That is the correct
 -- reading — the interface of a cell is not part of its topology.
 --
+-- **Both readings are claimed for CAP-FREE shapes, and the scope is not a
+-- hedge.** `Edg` lists the source ends, which was a listing of edges only
+-- because every edge had exactly one of them. A capped edge has two source
+-- ends and no sink end, so it takes two positions and the derived incidence
+-- gives one wire two antiparallel arcs. `gluing` below is the receipt: two
+-- vertices joined by a single contracted wire, refuting `WheelFree` and
+-- `Acyclic` though the graph has neither feedback nor a cycle. The example
+-- states the two available repairs. Nothing landed depends on the difference —
+-- `Cell` demands simple connectivity and every shape built today is cap-free,
+-- which is what `CapFree` names — but the predicates are the part of the cap
+-- that has not been paid for, and saying so is cheaper than a later reader
+-- discovering it.
+--
 -- ── WHAT IS PROVED, AND WHY THE DIAMOND IS THE LOAD-BEARING EXAMPLE ─────────
 -- `SimplyConn` is STRICTLY stronger than `WheelFree` (HRY Rmk 2.36), and both
 -- halves of that are exhibited rather than asserted:
@@ -1648,6 +1661,32 @@ edge-legs
   : origin edge here ≡ inj₂ here
 edge-legs = refl
 
+-- THE CUT — the boundary `∩`, and the shape this carrier could not write
+-- before the cap. Two input legs wired to each other, no vertex: take a
+-- producer and a consumer and cut them. Its interface is two sources against
+-- NO sink, which is the downward category's `dBD(m,n) = ∅ for n > m` appearing
+-- as a fact about terms rather than as an imposed condition.
+cut : Shape ⊤ 𝟚 []
+cut = wires (cap head [])
+
+cut-no-vertex : verts cut ≡ []
+cut-no-vertex = refl
+
+-- Each end runs to the OTHER SOURCE. This is what `Leg`'s polarity was added
+-- for: without it the incidence has nowhere to land, since neither end is a
+-- sink and the shape has no sinks at all.
+cut-out : dest cut here ≡ inj₂ (inj₁ (there here))
+cut-out = refl
+
+cut-back : dest cut (there here) ≡ inj₂ (inj₁ here)
+cut-back = refl
+
+-- and it is no cell, for the empty shape's reason rather than the cap's:
+-- connectivity wants a vertex and a wiring has none
+cut-unconnected : ¬ Connected cut
+cut-unconnected c with Connected.root c
+... | ()
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- EXAMPLE 2: THE ARITY-ZERO COROLLA. One vertex, no ports at all — a
 -- legitimate cell shape that is also an isolated vertex. It is what makes the
@@ -1898,6 +1937,84 @@ wheel-wheeled wf = wf wheel-turn
 -- The content lemma, used forwards.
 wheel-not-simply : ¬ SimplyConn wheel
 wheel-not-simply sc = wheel-wheeled (simply-conn⇒wheel-free sc)
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- EXAMPLE 6: A SELF-GLUING, AND THE LOCATED COST OF THE CAP. Two vertices,
+-- each with one output, their two out-ports capped to each other. As a graph
+-- that is ONE edge between two vertices: connected, and with `β₁ = 0`.
+--
+-- The carrier reports otherwise, and the reason is worth stating exactly
+-- rather than filing as a curiosity. `Edg S = Ix (pool S)` lists the SOURCE
+-- ENDS. Before the cap that was a listing of edges, because every edge had
+-- exactly one source end and one sink end. A capped edge has TWO source ends
+-- and no sink end, so it occupies two positions of the listing, and the
+-- derived incidence orients each of them toward the other's vertex. One wire
+-- therefore presents as two antiparallel arcs — a directed cycle and a bigon.
+--
+-- So `WheelFree` and `Acyclic` OVER-REPORT on capped shapes, and the
+-- correspondence the header claims for them — `β₁ = 0` read as `Acyclic` — is
+-- a statement about cap-free shapes. Nothing landed depends on it: `Cell`
+-- demands simple connectivity, and every shape any consumer builds today is
+-- cap-free (`CapFree` names that fragment, and `swap-match` and `match-nil`
+-- are proved to lie in it). The predicates are what the cap has not yet been
+-- paid for, and this example is the receipt.
+--
+-- TWO REPAIRS, both real, neither taken here because the choice is a design
+-- one and this module's job is to exhibit the obligation:
+--
+--   * carry the COLOUR INVOLUTION and read the polarity — a legitimate cap
+--     joins `c` to `ω c`, so exactly one of its two ends is the producer, the
+--     edge is that end, and the other end is the same edge seen from the other
+--     side. This is the one the design record already points at, and it says
+--     the involution is not only a legitimacy predicate on caps: it is what
+--     makes a capped wire's incidence single-valued.
+--   * or quotient the listing by the cap pairing — an edge is a source end
+--     modulo the cap. That fixes the COUNT with no involution, and leaves the
+--     direction to a convention rather than to the colours.
+-- ════════════════════════════════════════════════════════════════════════════
+
+gluing : Shape ⊤ [] []
+gluing =
+  node [] 𝟙 (cons nil) nil
+    (node [] 𝟙 (cons nil) nil
+      (wires (cap head [])))
+
+-- the two vertices, named
+n₀ n₁ : Vtx gluing
+n₀ = here
+n₁ = there here
+
+-- One wire, and the incidence gives it BOTH directions — read off the derived
+-- incidence, not asserted.
+gluing-down : Arc gluing here n₁ n₀
+gluing-down = arc refl refl
+
+gluing-up : Arc gluing (there here) n₀ n₁
+gluing-up = arc refl refl
+
+-- so there is a closed directed walk, though the graph has no feedback
+gluing-turn : Dir gluing n₀ n₀ (just here)
+gluing-turn = next here (next (there here) idle gluing-up) gluing-down
+
+gluing-wheeled : ¬ WheelFree gluing
+gluing-wheeled wf = wf gluing-turn
+
+-- and a reduced closed undirected walk, though the graph has no cycle: the two
+-- positions are distinct, so reducedness — which exists to exclude exactly
+-- this, walking out and back along one edge — does not see that they are one
+-- edge
+gluing-cycle : Walk gluing n₀ n₀ (just here)
+gluing-cycle =
+  hop here
+    (hop (there here) stay (along gluing-up) opening)
+    (along gluing-down)
+    (apart (λ ()))
+
+gluing-cyclic : ¬ Acyclic gluing
+gluing-cyclic ac = ac gluing-cycle
+
+gluing-not-simply : ¬ SimplyConn gluing
+gluing-not-simply sc = SimplyConn.acyclic sc gluing-cycle
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE DECISION, AT A CONCRETE COLOUR SET. The three equality layers above are
