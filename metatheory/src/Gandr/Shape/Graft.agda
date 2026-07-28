@@ -201,8 +201,10 @@ open import Gandr.Shape.Graph
   using (Edg)
   using (Leg)
   using (route)
+  using (step-out)
   using (end₀)
   using (end₁)
+  using (incid)
   using (verts)
   using (Vtx)
   using (Attach)
@@ -1344,6 +1346,300 @@ module _ {ℓ} {Ob : Set ℓ} where
         (Regroup.back (append-regroup q₁ q))
         S
         T)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- WHAT THE THREADING OPERATIONS DO TO THE INCIDENCE. `verts-wire-in` says
+  -- they add no vertex; this says what they do to the edges' ENDS, which is the
+  -- shape-level half of the merger's incidence theorem.
+  --
+  -- Everything is stated about `incid` — both ends at once — because both are
+  -- routed outward by the same node step and reindexed by the same maps, so
+  -- one statement carries what two would say twice. The node step is where the
+  -- work is: a position shifted past a published block never lands IN the
+  -- block, so a threaded wire touches no vertex, and the positions it did not
+  -- take split exactly as they did before, so nothing else moves.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Shifting a position past a published block leaves it where it was, read in
+  -- the longer list.
+  slot-shift
+    : ∀ {a B Γ Γ′ Γˣ Γˣ′}
+    → (p : Append Ob B Γ Γ′)
+    → (r : Append Ob B Γˣ Γˣ′)
+    → (i : Insert Ob a Γ Γˣ)
+    → slot (insert-shift p r i) ≡ right r (slot i)
+  slot-shift nil nil i = refl
+  slot-shift (cons p) (cons r) i = cong there (slot-shift p r i)
+
+  -- so it never lands in the block — which is why a threaded wire meets no
+  -- vertex, however many vertices it is threaded past
+  split-shift
+    : ∀ {a B Γ Γ′ Γˣ Γˣ′}
+    → (p : Append Ob B Γ Γ′)
+    → (r : Append Ob B Γˣ Γˣ′)
+    → (i : Insert Ob a Γ Γˣ)
+    → split r (slot (insert-shift p r i)) ≡ inj₂ (slot i)
+  split-shift p r i =
+    trans (cong (split r) (slot-shift p r i)) (split-right r (slot i))
+
+  -- and the positions it did not take are split exactly as they were
+  split-shift-past
+    : ∀ {a B Γ Γ′ Γˣ Γˣ′}
+    → (p : Append Ob B Γ Γ′)
+    → (r : Append Ob B Γˣ Γˣ′)
+    → (i : Insert Ob a Γ Γˣ)
+    → (z : Ix Γ′)
+    → split r (past (insert-shift p r i) z) ≡ smap id (past i) (split p z)
+  split-shift-past nil nil i z = refl
+  split-shift-past (cons p) (cons r) i here = refl
+  split-shift-past (cons p) (cons r) i (there z) =
+    trans
+      (cong (smap there id) (split-shift-past p r i z))
+      (smap-exch there (past i) (split p z))
+
+  -- Threading a wire keeps every vertex, in place. This is `verts-wire-in`'s
+  -- content as a map rather than as an equation, which is what a statement
+  -- about the incidence needs: the ends are positions, and a position has to be
+  -- carried across by a function rather than transported along a list equality.
+  vtx-wire-in
+    : ∀ {a Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob a Γ Γˣ)
+    → (j : Insert Ob a Δ Δˣ)
+    → (U : Shape Ob Γ Δ)
+    → Vtx U
+    → Vtx (wire-in i j U)
+  vtx-wire-in i j (wires m) ()
+  vtx-wire-in i j (node A B p q U) here = here
+  vtx-wire-in {Γˣ} {Δˣ} i j (node A B p q U) (there v) =
+    there
+      (vtx-wire-in
+        (insert-shift p (append-graph B Γˣ) i)
+        (insert-shift q (append-graph A Δˣ) j)
+        U
+        v)
+
+  vtx-cap-in
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (U : Shape Ob Γ Δ)
+    → Vtx U
+    → Vtx (cap-in i j U)
+  vtx-cap-in i j (wires m) ()
+  vtx-cap-in i j (node A B p q U) here = here
+  vtx-cap-in {Γ˘} {Γˣ} i j (node A B p q U) (there v) =
+    there
+      (vtx-cap-in
+        (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+        (insert-shift p (append-graph B Γ˘) j)
+        U
+        v)
+
+  -- and each adds its one entry to the shape's edge listing, at the position
+  -- the listing algebra already located. Nodes contribute no edge, so this is
+  -- the wiring's own answer carried outward unchanged.
+  edge-wire-in
+    : ∀ {a Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob a Γ Γˣ)
+    → (j : Insert Ob a Δ Δˣ)
+    → (U : Shape Ob Γ Δ)
+    → Threaded (edges U) (edges (wire-in i j U))
+  edge-wire-in i j (wires m) = match-insert-edges i j m
+  edge-wire-in {Γˣ} {Δˣ} i j (node A B p q U) =
+    edge-wire-in
+      (insert-shift p (append-graph B Γˣ) i)
+      (insert-shift q (append-graph A Δˣ) j)
+      U
+
+  edge-cap-in
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (U : Shape Ob Γ Δ)
+    → Threaded (edges U) (edges (cap-in i j U))
+  edge-cap-in i j (wires m) = match-cap-edges i j m
+  edge-cap-in {Γ˘} {Γˣ} i j (node A B p q U) =
+    edge-cap-in
+      (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+      (insert-shift p (append-graph B Γ˘) j)
+      U
+
+  -- THE THREADED WIRE TOUCHES NO VERTEX. Both of its ends are legs of the whole
+  -- shape — the input leg and the output leg it was given — however many
+  -- vertices it was threaded past. This is the statement the merger needs, and
+  -- it is what makes placing two shapes side by side join nothing.
+  ends-wire-in
+    : ∀ {a Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob a Γ Γˣ)
+    → (j : Insert Ob a Δ Δˣ)
+    → (U : Shape Ob Γ Δ)
+    → incid (wire-in i j U) (slot (Threaded.spot (edge-wire-in i j U)))
+      ≡ (inj₂ (inj₁ (slot i)) , inj₂ (inj₂ (slot j)))
+  ends-wire-in i j (wires m) = cong (pmap inj₂ inj₂) (ends-match-insert i j m)
+  ends-wire-in {Γˣ} {Δˣ} i j (node A B p q U) =
+    trans
+      (cong
+        (pmap
+          (step-out (append-graph B Γˣ) (append-graph A Δˣ))
+          (step-out (append-graph B Γˣ) (append-graph A Δˣ)))
+        (ends-wire-in
+          (insert-shift p (append-graph B Γˣ) i)
+          (insert-shift q (append-graph A Δˣ) j)
+          U))
+      (cong₂
+        _,_
+        (cong (smap (λ _ → here) inj₁) (split-shift p (append-graph B Γˣ) i))
+        (cong (smap (λ _ → here) inj₂) (split-shift q (append-graph A Δˣ) j)))
+
+  -- and the threaded CUT touches no vertex either, with both ends input legs
+  ends-cap-in
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (U : Shape Ob Γ Δ)
+    → Ends
+        (inj₂ (inj₁ (slot i)))
+        (inj₂ (inj₁ (past i (slot j))))
+        (incid (cap-in i j U) (slot (Threaded.spot (edge-cap-in i j U))))
+  ends-cap-in i j (wires m) = ends-map inj₂ (ends-match-cap i j m)
+  ends-cap-in {Γ˘} {Γˣ} i j (node A B p q U) =
+    ends-cast
+      (cong
+        (smap (λ _ → here) inj₁)
+        (split-shift (append-graph B Γ˘) (append-graph B Γˣ) i))
+      (cong
+        (smap (λ _ → here) inj₁)
+        (trans
+          (split-shift-past
+            (append-graph B Γ˘)
+            (append-graph B Γˣ)
+            i
+            (slot (insert-shift p (append-graph B Γ˘) j)))
+          (cong
+            (smap id (past i))
+            (split-shift p (append-graph B Γ˘) j))))
+      (ends-map
+        (step-out (append-graph B Γˣ) q)
+        (ends-cap-in
+          (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+          (insert-shift p (append-graph B Γ˘) j)
+          U))
+
+  -- AND EVERY OTHER EDGE KEEPS ITS INCIDENCE, at the same vertex and the same
+  -- leg, read in the extended interfaces. So threading changes the graph in
+  -- exactly one place, which is the other half of what the merger needs.
+  ends-wire-in-past
+    : ∀ {a Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob a Γ Γˣ)
+    → (j : Insert Ob a Δ Δˣ)
+    → (U : Shape Ob Γ Δ)
+    → (e : Edg U)
+    → incid (wire-in i j U) (past (Threaded.spot (edge-wire-in i j U)) e)
+      ≡ pmap
+          (smap (vtx-wire-in i j U) (smap (past i) (past j)))
+          (smap (vtx-wire-in i j U) (smap (past i) (past j)))
+          (incid U e)
+  ends-wire-in-past i j (wires m) e =
+    cong (pmap inj₂ inj₂) (ends-match-insert-past i j m e)
+  ends-wire-in-past {Γˣ} {Δˣ} i j (node A B p q U) e =
+    trans
+      (cong
+        (pmap
+          (step-out (append-graph B Γˣ) (append-graph A Δˣ))
+          (step-out (append-graph B Γˣ) (append-graph A Δˣ)))
+        (ends-wire-in-past
+          (insert-shift p (append-graph B Γˣ) i)
+          (insert-shift q (append-graph A Δˣ) j)
+          U
+          e))
+      (legs-cong step (incid U e))
+    where
+      step
+        : (z : Vtx U ⊎ Leg _ _)
+        → step-out (append-graph B Γˣ) (append-graph A Δˣ)
+            (smap
+              (vtx-wire-in
+                (insert-shift p (append-graph B Γˣ) i)
+                (insert-shift q (append-graph A Δˣ) j)
+                U)
+              (smap
+                (past (insert-shift p (append-graph B Γˣ) i))
+                (past (insert-shift q (append-graph A Δˣ) j)))
+              z)
+          ≡ smap
+              (vtx-wire-in i j (node A B p q U))
+              (smap (past i) (past j))
+              (step-out p q z)
+      step (inj₁ v) = refl
+      step (inj₂ (inj₁ z))
+        with split p z | split-shift-past p (append-graph B Γˣ) i z
+      ... | inj₁ b | eq = cong (smap (λ _ → here) inj₁) eq
+      ... | inj₂ w | eq = cong (smap (λ _ → here) inj₁) eq
+      step (inj₂ (inj₂ z))
+        with split q z | split-shift-past q (append-graph A Δˣ) j z
+      ... | inj₁ b | eq = cong (smap (λ _ → here) inj₂) eq
+      ... | inj₂ w | eq = cong (smap (λ _ → here) inj₂) eq
+
+  ends-cap-in-past
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (U : Shape Ob Γ Δ)
+    → (e : Edg U)
+    → incid (cap-in i j U) (past (Threaded.spot (edge-cap-in i j U)) e)
+      ≡ pmap
+          (smap (vtx-cap-in i j U) (smap (λ z → past i (past j z)) id))
+          (smap (vtx-cap-in i j U) (smap (λ z → past i (past j z)) id))
+          (incid U e)
+  ends-cap-in-past i j (wires m) e =
+    cong (pmap inj₂ inj₂) (ends-match-cap-past i j m e)
+  ends-cap-in-past {Γ˘} {Γˣ} i j (node A B p q U) e =
+    trans
+      (cong
+        (pmap (step-out (append-graph B Γˣ) q) (step-out (append-graph B Γˣ) q))
+        (ends-cap-in-past
+          (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+          (insert-shift p (append-graph B Γ˘) j)
+          U
+          e))
+      (legs-cong step (incid U e))
+    where
+      step
+        : (z : Vtx U ⊎ Leg _ _)
+        → step-out (append-graph B Γˣ) q
+            (smap
+              (vtx-cap-in
+                (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+                (insert-shift p (append-graph B Γ˘) j)
+                U)
+              (smap
+                (λ w →
+                  past
+                    (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+                    (past (insert-shift p (append-graph B Γ˘) j) w))
+                id)
+              z)
+          ≡ smap
+              (vtx-cap-in i j (node A B p q U))
+              (smap (λ w → past i (past j w)) id)
+              (step-out p q z)
+      step (inj₁ v) = refl
+      step (inj₂ (inj₁ z))
+        with split p z
+           | trans
+               (split-shift-past
+                 (append-graph B Γ˘)
+                 (append-graph B Γˣ)
+                 i
+                 (past (insert-shift p (append-graph B Γ˘) j) z))
+               (cong
+                 (smap id (past i))
+                 (split-shift-past p (append-graph B Γ˘) j z))
+      ... | inj₁ b | eq = cong (smap (λ _ → here) inj₁) eq
+      ... | inj₂ w | eq = cong (smap (λ _ → here) inj₁) eq
+      step (inj₂ (inj₂ z)) with split q z
+      ... | inj₁ b = refl
+      ... | inj₂ w = refl
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE UNIT, ON THE LISTING ALGEBRA. Everything here is h-level free: the

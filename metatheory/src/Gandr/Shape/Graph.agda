@@ -1050,6 +1050,24 @@ module _ {ℓ} {Ob : Set ℓ} where
       (smap (λ w → there (past j w)) id)
       (ends m e)
 
+  -- ONE STEP of that routing, past one vertex. An end that was at the inner
+  -- shape's boundary is at this vertex's port — because the vertex published
+  -- that port — or it is still a leg of the whole. Named rather than inlined
+  -- because every statement about what an operation does to the incidence has
+  -- to commute with exactly this step.
+  step-out
+    : ∀ {Γ Δ Γ′ Δ′ A B} {S : Shape Ob Γ′ Δ′}
+    → Append Ob B Γ Γ′
+    → Append Ob A Δ Δ′
+    → Vtx S ⊎ Leg Γ′ Δ′
+    → Ix (prof A B ∷ verts S) ⊎ Leg Γ Δ
+  step-out p q =
+    case⊎
+      (λ v → inj₁ (there v))
+      (case⊎
+        (λ i → smap (λ _ → here) inj₁ (split p i))
+        (λ j → smap (λ _ → here) inj₂ (split q j)))
+
   -- Routing an end outward through the node chain: it is at a vertex's port,
   -- or it is a leg of the whole shape. This is the recursion the incidence
   -- used to carry inline, named once now that both ends need it.
@@ -1059,13 +1077,7 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Leg (pool S) (copool S)
     → Vtx S ⊎ Leg Γ Δ
   route (wires m) l = inj₂ l
-  route (node A B p q S) l =
-    case⊎
-      (λ v → inj₁ (there v))
-      (case⊎
-        (λ i → smap (λ _ → here) inj₁ (split p i))
-        (λ j → smap (λ _ → here) inj₂ (split q j)))
-      (route S l)
+  route (node A B p q S) l = step-out p q (route S l)
 
   -- and the two ends of an edge of a SHAPE, which is the incidence
   end₀
@@ -1081,6 +1093,16 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Edg S
     → Vtx S ⊎ Leg Γ Δ
   end₁ S e = route S (proj₂ (ends (wiring S) e))
+
+  -- and both at once. An operation's effect on the incidence is one statement
+  -- about this pair rather than two about its components, because both ends are
+  -- routed and reindexed by the same maps.
+  incid
+    : ∀ {Γ Δ}
+    → (S : Shape Ob Γ Δ)
+    → Edg S
+    → (Vtx S ⊎ Leg Γ Δ) × (Vtx S ⊎ Leg Γ Δ)
+  incid S e = end₀ S e , end₁ S e
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE FLOW-THROUGH BRIDGE. On a wiring with no cut the wires and the sources
