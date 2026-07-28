@@ -90,7 +90,10 @@ mod tests
     {
         let shift = u128::from(bool::from(strict));
         let holds = valuation_family(left, right).iter().all(|valuation| {
-            u128::from(eval_ast(left, valuation)) + shift <= u128::from(eval_ast(right, valuation))
+            u128::from(eval_ast(left, valuation))
+                .checked_add(shift)
+                .unwrap()
+                <= u128::from(eval_ast(right, valuation))
         });
         OrderComparison::from(holds)
     }
@@ -108,7 +111,7 @@ mod tests
         let mut vars = BTreeSet::new();
         collect_vars(left, &mut vars);
         collect_vars(right, &mut vars);
-        let spike = LevelValue::from(u128::from(succ_count(right)) + 1);
+        let spike = LevelValue::from(u128::from(succ_count(right)).checked_add(1).unwrap());
         let mut family = vec![BTreeMap::new()];
         for &index in &vars {
             let mut valuation = BTreeMap::new();
