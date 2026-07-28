@@ -181,6 +181,18 @@ Those are all preferences for directed, non-invertible structure with a decision
 **Characterizing something more finely than the literature does is a result, not a liberty.** Where we can show a structure is skew-monoidal, or lax where the literature says strong, or relative-monadic where it says monadic, that is a sharper statement and it should be taken.
 Record what the finer characterization buys, so a later reader does not "simplify" it back.
 
+### The machinery inventory is open, and demand-driven
+
+The category-theory layer is not a fixed list to be completed once.
+**When a characterization needs a structure the tree does not have, build it** — and build it against the consumer that demanded it, never speculatively.
+
+At the time of writing the tree has categories, functors, natural transformations, profunctors and their (di)naturality, the Yoneda material, and the ∞-graph ambient.
+Structures known to be wanted and not yet present include monoidal and skew-monoidal categories, monads and relative monads, comonads, algebras and coalgebras for a (co)monad, bialgebras and Hopf algebras, distributive laws, adjunctions, isomorphisms and groupoids, and universal properties stated inside a `Category` rather than only as ∞-graph constructions.
+**That enumeration is a seed, not a boundary.** Anything else a characterization turns out to need — Kleisli and Eilenberg–Moore categories, ends and coends, enrichment, fibrations, presheaves and nerves, Reedy structure — is in scope on the same terms.
+
+Two of those are load-bearing rather than speculative and are worth naming: **algebras for a monad**, because the objects the nerve theory is about are exactly algebras of a monad on graphical species; and **distributive laws**, because the published route to the circuit-algebra monad is an iterated one.
+Both are cited in the module headers that will need them.
+
 ### How a `Set`-level structure presents as a `Category`
 
 `Category` is a structure over an `∞Graph`, so 2-cells are where its laws live; most structures in this tree are `Set`-level, with propositional `_≡_` for equality.
