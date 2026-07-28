@@ -14,8 +14,6 @@
 //! universe-constant, universe-variable, and lift serialization the bridge-fed
 //! corpus never reaches.
 
-mod common;
-
 /// The C5 lift/universe golden round-trips.
 #[cfg(test)]
 mod tests

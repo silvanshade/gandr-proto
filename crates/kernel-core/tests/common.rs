@@ -1,12 +1,24 @@
-//! Shared integration-test support: arena-independent **spec** trees describing
-//! S1 terms/types, an **iterative** materializer that builds a spec into a
-//! [`TermArena`] (recursion is disallowed even in tests, ADR-47), and proptest
-//! strategies over the specs.
+#![allow(dead_code, reason = "tests")]
+
+//! Shared integration-test support.
+//!
+//! Arena-independent **spec** trees describing S1 terms/types, an **iterative**
+//! materializer that builds a spec into a [`TermArena`] (recursion is
+//! disallowed even in tests, ADR-47), and proptest strategies over the specs.
 //!
 //! The D1(C) arena restructure means a term/type only exists as ids in an
 //! arena. Tests describe structure with the owned spec trees below, then
 //! materialize them into whichever arena they need (a bare [`TermArena`] for
 //! conversion, or a declaration's content via [`stage_def`]/[`stage_axiom`]).
+
+#![allow(
+    clippy::allow_attributes,
+    clippy::arithmetic_side_effects,
+    clippy::expect_used,
+    clippy::missing_panics_doc,
+    unused_imports,
+    reason = "tests"
+)]
 
 use gandr_kernel_core::BaseType;
 use gandr_kernel_core::CompTypeId;
@@ -23,6 +35,7 @@ use gandr_kernel_strata::Level;
 
 /// A description of a value type, independent of any arena.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum ValueTypeSpec
 {
     Base(BaseType),
@@ -36,6 +49,7 @@ pub enum ValueTypeSpec
 
 /// A description of a computation type.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum CompTypeSpec
 {
     Returner(Box<ValueTypeSpec>),
@@ -44,6 +58,7 @@ pub enum CompTypeSpec
 
 /// A description of a value term.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum ValueSpec
 {
     Variable(u32),
@@ -58,6 +73,7 @@ pub enum ValueSpec
 
 /// A description of a computation term.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum ComputationSpec
 {
     Lambda(Box<Self>),
@@ -127,6 +143,7 @@ fn expect_comp_type(
 }
 
 /// Materialize a value type spec into `arena`, iteratively.
+#[inline]
 pub fn materialize_value_type(
     arena: &mut TermArena,
     spec: &ValueTypeSpec,
@@ -137,6 +154,7 @@ pub fn materialize_value_type(
 }
 
 /// Materialize a computation type spec into `arena`, iteratively.
+#[inline]
 pub fn materialize_comp_type(
     arena: &mut TermArena,
     spec: &CompTypeSpec,
@@ -157,39 +175,39 @@ fn materialize_type<'spec>(
     'expand: loop {
         let mut produced: TypeOut = match goal {
             | TypeGoal::Value(spec) => match spec {
-                | ValueTypeSpec::Base(base) => TypeOut::Value(arena.value_type_base(*base)),
-                | ValueTypeSpec::Unit => TypeOut::Value(arena.value_type_unit()),
-                | ValueTypeSpec::Universe(level) => {
+                | &ValueTypeSpec::Base(ref base) => TypeOut::Value(arena.value_type_base(*base)),
+                | &ValueTypeSpec::Unit => TypeOut::Value(arena.value_type_unit()),
+                | &ValueTypeSpec::Universe(ref level) => {
                     TypeOut::Value(arena.value_type_universe(level.clone()))
                 },
-                | ValueTypeSpec::Product(first, second) => {
+                | &ValueTypeSpec::Product(ref first, ref second) => {
                     frames.push(TypeFrame::ProductSecond(second));
                     goal = TypeGoal::Value(first);
                     continue 'expand;
                 },
-                | ValueTypeSpec::Sum(first, second) => {
+                | &ValueTypeSpec::Sum(ref first, ref second) => {
                     frames.push(TypeFrame::SumSecond(second));
                     goal = TypeGoal::Value(first);
                     continue 'expand;
                 },
-                | ValueTypeSpec::Thunk(body) => {
+                | &ValueTypeSpec::Thunk(ref body) => {
                     frames.push(TypeFrame::Thunk);
                     goal = TypeGoal::Comp(body);
                     continue 'expand;
                 },
-                | ValueTypeSpec::Lift(inner, target) => {
+                | &ValueTypeSpec::Lift(ref inner, ref target) => {
                     frames.push(TypeFrame::Lift(target.clone()));
                     goal = TypeGoal::Value(inner);
                     continue 'expand;
                 },
             },
             | TypeGoal::Comp(spec) => match spec {
-                | CompTypeSpec::Returner(result) => {
+                | &CompTypeSpec::Returner(ref result) => {
                     frames.push(TypeFrame::Returner);
                     goal = TypeGoal::Value(result);
                     continue 'expand;
                 },
-                | CompTypeSpec::Arrow(domain, codomain) => {
+                | &CompTypeSpec::Arrow(ref domain, ref codomain) => {
                     frames.push(TypeFrame::ArrowCodomain(codomain));
                     goal = TypeGoal::Value(domain);
                     continue 'expand;
@@ -326,6 +344,7 @@ fn expect_comp(
 }
 
 /// Materialize a value spec into `arena`, iteratively.
+#[inline]
 pub fn materialize_value(
     arena: &mut TermArena,
     spec: &ValueSpec,
@@ -336,6 +355,7 @@ pub fn materialize_value(
 }
 
 /// Materialize a computation spec into `arena`, iteratively.
+#[inline]
 pub fn materialize_computation(
     arena: &mut TermArena,
     spec: &ComputationSpec,
@@ -356,64 +376,64 @@ fn materialize_term<'spec>(
     'expand: loop {
         let mut produced: TermOut = match goal {
             | TermGoal::Value(spec) => match spec {
-                | ValueSpec::Variable(index) => TermOut::Value(
+                | &ValueSpec::Variable(ref index) => TermOut::Value(
                     arena.value_variable(gandr_kernel_core::DeBruijnIndex::from(*index)),
                 ),
-                | ValueSpec::Constant(index) => TermOut::Value(
+                | &ValueSpec::Constant(ref index) => TermOut::Value(
                     arena.value_constant(gandr_kernel_core::ConstantIndex::from(*index)),
                 ),
-                | ValueSpec::Unit => TermOut::Value(arena.value_unit()),
-                | ValueSpec::Literal(literal) => {
+                | &ValueSpec::Unit => TermOut::Value(arena.value_unit()),
+                | &ValueSpec::Literal(ref literal) => {
                     TermOut::Value(arena.value_literal(literal.clone()))
                 },
-                | ValueSpec::Pair(first, second) => {
+                | &ValueSpec::Pair(ref first, ref second) => {
                     frames.push(TermFrame::PairSecond(second));
                     goal = TermGoal::Value(first);
                     continue 'expand;
                 },
-                | ValueSpec::Injection(side, body) => {
+                | &ValueSpec::Injection(ref side, ref body) => {
                     frames.push(TermFrame::Injection(*side));
                     goal = TermGoal::Value(body);
                     continue 'expand;
                 },
-                | ValueSpec::Thunk(body) => {
+                | &ValueSpec::Thunk(ref body) => {
                     frames.push(TermFrame::Thunk);
                     goal = TermGoal::Comp(body);
                     continue 'expand;
                 },
-                | ValueSpec::Lift(target, body) => {
+                | &ValueSpec::Lift(ref target, ref body) => {
                     frames.push(TermFrame::Lift(target.clone()));
                     goal = TermGoal::Value(body);
                     continue 'expand;
                 },
             },
             | TermGoal::Comp(spec) => match spec {
-                | ComputationSpec::Lambda(body) => {
+                | &ComputationSpec::Lambda(ref body) => {
                     frames.push(TermFrame::Lambda);
                     goal = TermGoal::Comp(body);
                     continue 'expand;
                 },
-                | ComputationSpec::Application(head, argument) => {
+                | &ComputationSpec::Application(ref head, ref argument) => {
                     frames.push(TermFrame::ApplicationArgument(argument));
                     goal = TermGoal::Comp(head);
                     continue 'expand;
                 },
-                | ComputationSpec::Return(value) => {
+                | &ComputationSpec::Return(ref value) => {
                     frames.push(TermFrame::Return);
                     goal = TermGoal::Value(value);
                     continue 'expand;
                 },
-                | ComputationSpec::Bind(bound, body) => {
+                | &ComputationSpec::Bind(ref bound, ref body) => {
                     frames.push(TermFrame::BindBody(body));
                     goal = TermGoal::Comp(bound);
                     continue 'expand;
                 },
-                | ComputationSpec::Force(value) => {
+                | &ComputationSpec::Force(ref value) => {
                     frames.push(TermFrame::Force);
                     goal = TermGoal::Value(value);
                     continue 'expand;
                 },
-                | ComputationSpec::Case(scrutinee, on_left, on_right) => {
+                | &ComputationSpec::Case(ref scrutinee, ref on_left, ref on_right) => {
                     frames.push(TermFrame::CaseScrutineeThenLeft { on_left, on_right });
                     goal = TermGoal::Value(scrutinee);
                     continue 'expand;
@@ -511,6 +531,7 @@ fn materialize_term<'spec>(
 
 /// Stage a `Def` declaration, materializing its declared type and body into the
 /// environment arena.
+#[inline]
 pub fn stage_def(
     environment: &mut Environment,
     levels: LevelSignature,
@@ -526,6 +547,7 @@ pub fn stage_def(
 
 /// Stage an `Axiom` declaration, materializing its declared type into the
 /// arena.
+#[inline]
 pub fn stage_axiom(
     environment: &mut Environment,
     levels: LevelSignature,
@@ -545,11 +567,13 @@ use gandr_kernel_core::NumericLiteral;
 use gandr_kernel_core::Sign;
 use gandr_kernel_core::StringLiteral;
 use gandr_kernel_strata::LevelConstant;
+use gandr_kernel_strata::LevelError;
 use gandr_kernel_strata::LevelVar;
 use gandr_kernel_strata::LevelVarIndex;
 use proptest::prelude::*;
 
 /// A small constant or single-variable level (`var + offset`, offset ≤ 3).
+#[inline]
 pub fn arb_level() -> impl Strategy<Value = Level>
 {
     prop_oneof![
@@ -567,6 +591,7 @@ pub fn arb_level() -> impl Strategy<Value = Level>
 }
 
 /// A base-type atom.
+#[inline]
 pub fn arb_base_type() -> impl Strategy<Value = BaseType>
 {
     prop_oneof![
@@ -582,6 +607,7 @@ pub fn arb_base_type() -> impl Strategy<Value = BaseType>
 struct MagnitudeSample(u64);
 
 /// A small literal (integer, text, or numeric).
+#[inline]
 pub fn arb_literal() -> impl Strategy<Value = Literal>
 {
     let sign = prop_oneof![Just(Sign::NonNegative), Just(Sign::Negative)];
@@ -628,6 +654,7 @@ fn alloc_format(value: MagnitudeSample) -> String
 }
 
 /// A bounded value-type spec (computation types under thunks and arrows).
+#[inline]
 pub fn arb_value_type_spec() -> impl Strategy<Value = ValueTypeSpec>
 {
     let leaf = prop_oneof![
@@ -657,6 +684,7 @@ pub fn arb_value_type_spec() -> impl Strategy<Value = ValueTypeSpec>
 }
 
 /// A bounded computation-type spec.
+#[inline]
 pub fn arb_comp_type_spec() -> impl Strategy<Value = CompTypeSpec>
 {
     prop_oneof![
@@ -672,6 +700,7 @@ pub fn arb_comp_type_spec() -> impl Strategy<Value = CompTypeSpec>
 
 /// A bounded value spec, exercising every value former and, under thunks, every
 /// computation former.
+#[inline]
 pub fn arb_value_spec() -> impl Strategy<Value = ValueSpec>
 {
     let leaf = prop_oneof![
@@ -725,6 +754,7 @@ pub fn arb_value_spec() -> impl Strategy<Value = ValueSpec>
 }
 
 /// A bounded computation spec built from generated values.
+#[inline]
 pub fn arb_computation_spec() -> impl Strategy<Value = ComputationSpec>
 {
     prop_oneof![

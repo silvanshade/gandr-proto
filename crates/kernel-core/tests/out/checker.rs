@@ -8,8 +8,6 @@
 //! confirms the choke point is **total** — an arbitrary body is always accepted
 //! or rejected, never a panic or a divergence.
 
-mod common;
-
 /// The kernel-native golden corpus and totality property.
 #[cfg(test)]
 mod tests

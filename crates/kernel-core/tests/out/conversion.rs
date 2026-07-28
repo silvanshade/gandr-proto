@@ -6,8 +6,6 @@
 //! these laws also witness that the iterative worklist agrees with reflexive
 //! equality on every generated input, at any depth, without recursing.
 
-mod common;
-
 /// Conversion laws over generated types and terms.
 #[cfg(test)]
 mod tests

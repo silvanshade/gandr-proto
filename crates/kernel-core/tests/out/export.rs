@@ -14,8 +14,6 @@
 //! DAG rejected by the artifact-total budget, and the table-size cap), with
 //! boundary goldens for all three budget constants.
 
-mod common;
-
 /// The differential and rejection suite.
 #[cfg(test)]
 mod tests
@@ -118,7 +116,7 @@ mod tests
     {
         let mut remaining = value.0;
         loop {
-            let low = (remaining & 0x7f) as u8;
+            let low = (remaining & 0x7f).to_le_bytes()[0];
             remaining >>= 7_u32;
             if remaining == 0 {
                 out.push(low);
@@ -452,7 +450,7 @@ mod tests
             let declared = arena.value_type_unit();
             let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
             shared_env.add_decl_unchecked(declaration);
-        }
+        };
         let mut unshared_env = Environment::new();
         {
             let mut builder = unshared_env.stage();
@@ -463,7 +461,7 @@ mod tests
             let declared = arena.value_type_unit();
             let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
             unshared_env.add_decl_unchecked(declaration);
-        }
+        };
         assert_eq!(
             write(&shared_env),
             write(&unshared_env),
@@ -648,9 +646,9 @@ mod tests
         bytes.extend_from_slice(b"007"); // non-canonical (leading zeros)
         put_uvarint(&mut bytes, WireValue(0)); // root_declared
         put_uvarint(&mut bytes, WireValue(1)); // root_body
-        for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, WireValue(0)); // R3 slots
-        }
+        core::iter::repeat_n(0u64, 4usize).for_each(|v| {
+            put_uvarint(&mut bytes, WireValue(v)); // R3 slots
+        });
         assert_eq!(
             decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
@@ -675,9 +673,9 @@ mod tests
         bytes.extend_from_slice(b"1a"); // non-digit
         put_uvarint(&mut bytes, WireValue(0));
         put_uvarint(&mut bytes, WireValue(1));
-        for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, WireValue(0));
-        }
+        core::iter::repeat_n(0u64, 4usize).for_each(|v| {
+            put_uvarint(&mut bytes, WireValue(v));
+        });
         assert_eq!(
             decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
@@ -705,9 +703,9 @@ mod tests
         put_uvarint(&mut bytes, WireValue(2));
         put_uvarint(&mut bytes, WireValue(0)); // root_declared
         put_uvarint(&mut bytes, WireValue(3)); // root_body
-        for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, WireValue(0));
-        }
+        core::iter::repeat_n(0u64, 4usize).for_each(|v| {
+            put_uvarint(&mut bytes, WireValue(v));
+        });
         assert_eq!(
             decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
@@ -735,9 +733,9 @@ mod tests
         put_uvarint(&mut bytes, WireValue(1));
         put_uvarint(&mut bytes, WireValue(0)); // root_declared
         put_uvarint(&mut bytes, WireValue(3)); // root_body
-        for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, WireValue(0));
-        }
+        core::iter::repeat_n(0u64, 4usize).for_each(|v| {
+            put_uvarint(&mut bytes, WireValue(v));
+        });
         assert_eq!(
             decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
@@ -760,9 +758,9 @@ mod tests
         put_uvarint(&mut bytes, WireValue(0));
         put_uvarint(&mut bytes, WireValue(0)); // root_declared
         put_uvarint(&mut bytes, WireValue(1)); // root_body
-        for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, WireValue(0));
-        }
+        core::iter::repeat_n(0u64, 4usize).for_each(|v| {
+            put_uvarint(&mut bytes, WireValue(v));
+        });
         assert_eq!(
             decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
@@ -786,9 +784,9 @@ mod tests
         put_uvarint(&mut bytes, WireValue(1));
         put_uvarint(&mut bytes, WireValue(0));
         put_uvarint(&mut bytes, WireValue(1));
-        for _ in 0 .. 4 {
-            put_uvarint(&mut bytes, WireValue(0));
-        }
+        core::iter::repeat_n(0u64, 4usize).for_each(|v| {
+            put_uvarint(&mut bytes, WireValue(v));
+        });
         assert_eq!(
             decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
@@ -881,7 +879,7 @@ mod tests
             let declared = arena.value_type_unit();
             let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
             over_env.add_decl_unchecked(declaration);
-        }
+        };
         let over = write(&over_env);
         assert_eq!(
             decode(over.as_ref().into()).unwrap_err(),
@@ -980,7 +978,8 @@ mod tests
         let depth =
             usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 2).expect("the depth fits");
         let contribution = 1_u64 << (depth + 1); // = MAX_EXPANDED_TERM_WORK / 2
-        let count = usize::try_from(MAX_ARTIFACT_EXPANDED_WORK / contribution).expect("count fits");
+        let count = usize::try_from(MAX_ARTIFACT_EXPANDED_WORK.div_euclid(contribution))
+            .expect("count fits");
         // Just at the cap: accepts (the artifact arm rejects strictly over).
         let at_cap = write(&shared_diamond_environment(
             FixtureCount(count),
@@ -1164,12 +1163,12 @@ mod tests
     ) -> LevelSignature
     {
         match spec {
-            | DeclSpec::Def(signature, declared, body) => {
+            | &DeclSpec::Def(ref signature, ref declared, ref body) => {
                 let declaration = common::stage_def(environment, signature.clone(), declared, body);
                 let _id = environment.add_decl_unchecked(declaration);
                 signature.clone()
             },
-            | DeclSpec::Axiom(signature, declared) => {
+            | &DeclSpec::Axiom(ref signature, ref declared) => {
                 let declaration = common::stage_axiom(environment, signature.clone(), declared);
                 let _id = environment.add_decl_unchecked(declaration);
                 signature.clone()
