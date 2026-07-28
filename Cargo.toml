@@ -22,7 +22,7 @@ members = [
   # "crates/theory-computads",
   # "crates/theory-graphs",
   # "crates/theory-levitation",
-  # "crates/theory-nominal-automata",
+  "crates/theory-nominal-automata",
   # "crates/theory-orders",
   # "crates/theory-recursion",
   # "crates/theory-virtual-doctrines",

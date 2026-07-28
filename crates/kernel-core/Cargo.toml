@@ -24,4 +24,4 @@ workspace = true
 gandr-kernel-strata.workspace = true
 
 [dev-dependencies]
-proptest = { workspace = true }
+proptest.workspace = true
