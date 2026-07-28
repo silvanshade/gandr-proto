@@ -23,21 +23,6 @@ Every ported module records its divergences in a port-delta note so the debt sta
 
 House policy on external research artifacts applies unchanged: read and cite, never vendor, port, or depend on a companion mechanization, regardless of license.
 
-### What the wiring can and cannot say
-
-`Match` wires each source to a partner: a **sink** (the flow-through wire) or **another source** (the cap, which is the cut).
-No constructor pairs two sinks.
-That absence is load-bearing rather than incidental, and three properties follow from it:
-
-* **The wiring is downward.** Every sink is reached by exactly one source, so `Match Γ Δ` is inhabited only when `Γ` is at least as long as `Δ`, with the difference paid in caps.
-* **The nodeless loop is inexpressible.** A closed circle with no vertex needs a cap composed with a cup; the cup does not exist, so the object cannot be written and no scalar has to be assigned to it.
-* **Composition never manufactures one either.** Composing two wirings fuses two through-strands into a cap wherever the second wiring caps — and that is the only new pairing it can make.
-  With no cup for a cap to close against, a composite of downward wirings is downward and closed-component-free.
-  The property is structural, not a side condition to check.
-
-If a cup is ever added, all three go at once.
-Do not add one to make an operation total; make the operation say what it means instead.
-
 ## Representation: familial first
 
 **The standing rule of this tree.** **Before writing a structure, ask what it is a family _over_, and index it by that.** Prefer an inductive family indexed by the data that determines its shape; reach for a record or a Σ only for what genuinely varies independently of the index.
