@@ -6,6 +6,7 @@
 > **Legacy scripts:** the existing `scripts/` tree is obsolete and migration-bound.
 > Do not add new scripts.
 > Continue to follow this document when invoking, maintaining, or diagnosing existing scripts until they are replaced.
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Keep the ownership boundary explicit
 

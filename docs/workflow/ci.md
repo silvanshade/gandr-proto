@@ -1,6 +1,7 @@
 # Workflow: quality gates and the local merge wall
 
 > Read when: choosing which gate proves a change, understanding the merge wall, or asking where hosted CI and the scheduled campaigns went.
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## The wall is local during the reboot
 

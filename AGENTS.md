@@ -17,6 +17,9 @@ Substantive process guidance belongs in the routed workflow documents; reference
   Surface the opportunity either way.
 * **Leave touched areas better.** Report undocumented engineering improvements and hazards; noticing and staying silent is the failure mode.
 * **State uncertainty.** Say when current code or documentation does not prove a claim, and report unexpected harness, tool, or configuration failures immediately.
+* **A refutation is the most expensive claim available here, and it binds only with the owner's sign-off.** Before recording that something does not apply, is not needed, cannot be done, or is the wrong structure, read [`docs/workflow/review.md`](docs/workflow/review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — **whatever the task**, not only when reviewing.
+  A wrong acceptance is loud and self-limiting; a wrong rejection is silent, compounding, and has been this project's recurring failure.
+  The one-line test: _is the reason a fact about the machinery, or a fact about us?_ A reason that names one of our own properties is a representation question, not a refutation.
 * **Verify behavior.** A green build is not proof.
   Exercise the changed behavior and add or update tests when behavior changes.
 * **Gates prove structure, not meaning.** Substantial or publishable-stakes changes require an independent adversarial review before landing.

@@ -5,6 +5,10 @@ This is the **routing layer**: the base operating doctrine lives in the shared c
 
 > **Do not read every sub-workflow up front.** Each one names the tasks it serves; load the one your task matches, when it matches.
 > This file plus `AGENTS.md` is enough orientation for most work.
+>
+> **One exception, because task-scoping is what defeated it.** [workflow/review.md](workflow/review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" are **standing rules for every task**, not review-task guidance.
+> They fire whenever you are about to record that something does not apply, is not needed, cannot be done, or is the wrong structure — which happens most often in the middle of ordinary implementation work, where nothing would otherwise route you there.
+> **A refutation binds only with the owner's sign-off**, and the recurring cost in this project has been refutations that were never read as claims.
 
 ## Source of truth
 
@@ -15,22 +19,22 @@ This is the **routing layer**: the base operating doctrine lives in the shared c
 
 ## The sub-workflow files
 
-| Read                                                             | When your task involves                                                        |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [workflow/tracker.md](workflow/tracker.md)                       | creating/closing/triaging beads, dependency edges, tracker audits              |
-| [workflow/beads-graph-sweep.xml](workflow/beads-graph-sweep.xml) | graph-wide bead classification, normalization, redundancy, citation sweeps     |
-| [workflow/worktrees.md](workflow/worktrees.md)                   | worktree lifecycle, merging, `wt` hooks, mutating sub-agents, governance docs  |
-| [workflow/ci.md](workflow/ci.md)                                 | choosing gates, the local merge wall, coverage, fuzzing, the parked CI surface |
-| [workflow/rust.md](workflow/rust.md)                             | writing or reviewing Rust; `# Contract` / `# Adequacy` conventions             |
-| [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)   | adequacy hypotheses, survivor triage, mutation campaigns                       |
-| [workflow/soundness.md](workflow/soundness.md)                   | checker/machine/subtype/effect/grade changes, coherence oracles                |
-| [workflow/corpus.md](workflow/corpus.md)                         | gandr-corpus examples, the feature landing rule, `gandr-pro`                   |
-| [workflow/agda.md](workflow/agda.md)                             | anything under `metatheory/`                                                   |
-| [workflow/scripting.md](workflow/scripting.md)                   | project scripts (Nushell/TS), reading diagnostics (aifix)                      |
-| [workflow/review.md](workflow/review.md)                         | adversarial review, interpreting adversary findings, research outlooks         |
-| [workflow/specs.md](workflow/specs.md)                           | authoring/editing `docs/spec` components, re-absorptions, doc fidelity         |
-| [workflow/gfd.md](workflow/gfd.md)                               | authoring `.gfd` documents (GF pipeline: layout, lexica, validation)           |
-| [workflow/docs.md](workflow/docs.md)                             | adding/restructuring docs, formatter posture, math-dense Markdown              |
+| Read                                                             | When your task involves                                                                                                                   |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| [workflow/tracker.md](workflow/tracker.md)                       | creating/closing/triaging beads, dependency edges, tracker audits                                                                         |
+| [workflow/beads-graph-sweep.xml](workflow/beads-graph-sweep.xml) | graph-wide bead classification, normalization, redundancy, citation sweeps                                                                |
+| [workflow/worktrees.md](workflow/worktrees.md)                   | worktree lifecycle, merging, `wt` hooks, mutating sub-agents, governance docs                                                             |
+| [workflow/ci.md](workflow/ci.md)                                 | choosing gates, the local merge wall, coverage, fuzzing, the parked CI surface                                                            |
+| [workflow/rust.md](workflow/rust.md)                             | writing or reviewing Rust; `# Contract` / `# Adequacy` conventions                                                                        |
+| [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)   | adequacy hypotheses, survivor triage, mutation campaigns                                                                                  |
+| [workflow/soundness.md](workflow/soundness.md)                   | checker/machine/subtype/effect/grade changes, coherence oracles                                                                           |
+| [workflow/corpus.md](workflow/corpus.md)                         | gandr-corpus examples, the feature landing rule, `gandr-pro`                                                                              |
+| [workflow/agda.md](workflow/agda.md)                             | anything under `metatheory/`                                                                                                              |
+| [workflow/scripting.md](workflow/scripting.md)                   | project scripts (Nushell/TS), reading diagnostics (aifix)                                                                                 |
+| [workflow/review.md](workflow/review.md)                         | adversarial review, interpreting adversary findings, research outlooks — **and, standing for every task, declining or refuting anything** |
+| [workflow/specs.md](workflow/specs.md)                           | authoring/editing `docs/spec` components, re-absorptions, doc fidelity                                                                    |
+| [workflow/gfd.md](workflow/gfd.md)                               | authoring `.gfd` documents (GF pipeline: layout, lexica, validation)                                                                      |
+| [workflow/docs.md](workflow/docs.md)                             | adding/restructuring docs, formatter posture, math-dense Markdown                                                                         |
 
 ## Quality gates, in one breath
 

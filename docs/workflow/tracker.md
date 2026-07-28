@@ -3,6 +3,7 @@
 > Read when: creating, closing, or triaging beads; wiring dependencies; auditing tracker state.
 > Base discipline: `.agents/core/core/WORKFLOW.md` §"Issue tracking".
 > This file is the gandr delta.
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Source of truth and sync
 

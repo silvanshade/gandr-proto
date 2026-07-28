@@ -3,6 +3,7 @@
 > Read when: creating, editing, or re-absorbing any `docs/spec/` component; the posture also governs `docs/research/` records.
 > **Pipeline note (2026-07-22):** the corpus is migrating to the GF-native pipeline (`gandr-2vv`); `.gfd` authoring is governed by [gfd.md](gfd.md), and this document's discipline (fidelity bar, two-register weave, reviews) carries over unchanged.
 > Base practice: `docs/spec/README.md` (the authoring discipline), [review.md](review.md) §"Documentation fidelity review" (the mandatory review), [docs.md](docs.md) (the economy posture).
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## The priority order
 

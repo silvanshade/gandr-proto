@@ -3,6 +3,7 @@
 > Read when: adding or restructuring documentation, or authoring math-dense Markdown.
 > Base statement: `.agents/core/core/WORKFLOW.md` §"Documentation economy".
 > Corpus trust machinery (MANIFEST/BLAKE3, edge vocabulary, authority): `docs/KNOWLEDGE.md`.
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Documentation economy — the gandr posture
 

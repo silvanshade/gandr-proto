@@ -1,6 +1,6 @@
 # Workflow: adversarial review and research verdicts
 
-> Read when: preparing a substantial change for landing, running or interpreting an adversarial pass, or closing a research-question task.
+> Read when: preparing a substantial change for landing, running or interpreting an adversarial pass, closing a research-question task — **or before recording that anything does not apply, is not needed, or cannot be done.** That last trigger is not scoped to review work: §"Declining is a claim too" and §"Refutations bind only with owner sign-off" are standing rules for every task in this tree, and a refutation binds only with the owner's sign-off.
 > Base practice: `.agents/core/core/WORKFLOW.md` §"Adversarial review of substantial changes".
 
 ## When and how
@@ -125,6 +125,63 @@ Rejection errors are undetectable by construction, so they have to be made expen
 
 **Record the delta, not just the verdict.** "Challenged, not refuted" only works if a later sweep can re-open a branch cheaply instead of re-deriving it from scratch.
 The delta and its cost are what make that possible, and they belong in the adversary report artifact alongside the finding.
+
+## Refutations bind only with owner sign-off
+
+A decline sets something aside; a **refutation** closes it — "does not apply", "is not needed", "cannot be done", "is the wrong structure", "is a category error".
+That is the strongest claim available here, and it is the most expensive one this project has made.
+
+**The evidence is a pattern, not an anecdote.** The machinery that turned out to be load-bearing — virtual double categories, the tracelet algebra, the circuit algebra — was in each case ruled out or passed over first, and recovered only after owner pushback and re-analysis.
+None of those recoveries needed new information.
+Each needed one unexamined premise unpacked.
+So the failure mode is not ignorance; it is that a refutation, once written down fluently, stops being read as a claim at all.
+
+Three rules follow, and the third is the instrument.
+
+### 1. An agent proposes a refutation; it never lands one
+
+Until the owner signs off, the finding is recorded as **challenged** with its delta (§"Before a decline binds") — never as refuted, dead, or ruled out, in the deliverable, the tracker and the design record alike.
+Sign-off is a decision the owner makes, so the report must give them something to decide on: state what would have to be true for the answer to flip, not only why it is currently no.
+
+### 2. Skepticism scales with how established the target is
+
+Refuting something the tree has already established — a landed finding, a documented decision, a named structure, a source previously judged relevant — carries a **heavier** burden than declining something novel, not a lighter one.
+The intuition runs the other way ("we already looked at this"), which is exactly why it needs saying.
+**The burden is on the refutation.** An established claim is not disturbed by an argument that merely sounds tidier than it does.
+
+### 3. Enumerate the premises, and tag each one
+
+A refutation is only as strong as its weakest premise, and the recurring failure is that nobody lists them.
+So list them, and tag each:
+
+| the premise is…                                                                                       | tag         | what it can carry                                    |
+| ----------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------- |
+| a fact about **the machinery** — a theorem's hypothesis, a definition's shape, a published result     | `machinery` | a refutation                                         |
+| a fact about **us** — our current representation, presentation, naming, ambient, or design commitment | `ours`      | **nothing.** It makes this a representation question |
+
+**Gate: a refutation resting on any `ours` premise is not a refutation.** Report it as the opportunist lead it actually is — _"this would apply if we changed X"_ — and hand the decision over.
+This is the four-questions test made mechanical, and unlike the questions it is checkable by a reader who was not present for the reasoning.
+
+**Two worked instances, both from 2026-07-28, both caught by the owner rather than the author.** "The pair is not duoidal — grafting is composition, not a tensor" rested on _the objects are the profiles_, which is `ours`.
+"The dimension-wise certification cannot be the reasoning layer's hypothesis" rested on _every `Set`-level structure presents through the discrete setoid on the identity type_, which is `ours`.
+Both read as facts about the machinery; both were facts about a representation we chose and are free to change.
+
+### When the adversarial pass is required, and what it must be given
+
+Not every turn and not every change — that dilutes it to a ritual.
+It fires on:
+
+* **closeout, before handoff** — the consolidated pass over what the session is about to leave behind;
+* **every reversal** of a landed finding, decision, or characterization;
+* **every first-time characterization claim** — "X **is** a Y" — because a name is a claim ([agda.md](agda.md) §"Terminology follows the ladder"), and a naming claim fails in precisely the way a reversal does.
+  A reversal-only trigger misses these: one of the two instances above was a naming claim, not a reversal.
+
+**Ask the owner before running one.** The pass costs real budget, and the owner may already know the answer.
+
+**Give the reviewer the code and the primary source — never the author's write-up.** This is the "independent" bullet above, and it is not a formality: both instances above are invisible in the author's summary and visible in the Agda signatures plus one section of the source.
+A reviewer handed the rationale ratifies its frame, and the frame is what was wrong.
+
+**One standing lens, cheap enough to run without an agent:** _is this a fact about us, or a fact about the machinery?_ It fires on both instances above and on all three historical ones.
 
 ## Research-question tasks — deliver the outlook
 

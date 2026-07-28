@@ -3,6 +3,7 @@
 > Read when: writing or reviewing Rust in `crates/`.
 > The `Cargo.toml` `[workspace.lints]` wall and `mise run cargo:dylint` are the enforcement; this file is the rationale and the parts those linters cannot check.
 > Test obligations for the blocks defined here: [mutation-adequacy.md](mutation-adequacy.md).
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## The conventions
 

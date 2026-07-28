@@ -2,6 +2,7 @@
 
 > Read when: writing or editing any `.gfd` file — spec components, and (as the GF pipeline lands, per the owner) workflow docs and other durable project documents.
 > Base practice: [specs.md](specs.md) (the spec-corpus discipline), `docs/gandr/spec/proposal-docs-gf-pipeline.md` (the architecture), `docs/gandr/spec/internalizing-gf.md` (mechanics log).
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## What a `.gfd` file is
 

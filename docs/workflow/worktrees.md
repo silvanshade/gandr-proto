@@ -3,6 +3,7 @@
 > Read when: creating or removing a worktree, merging a branch, launching a mutating sub-agent, or debugging a `wt` hook.
 > Base lifecycle (`wt switch --create` / `wt merge --no-squash main` / `wt remove`, the squash gotcha, hook approvals, governance-docs-on-main): `.agents/core/core/WORKFLOW.md` §"Worktrees and merging".
 > This file is the gandr delta.
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Layout and trust
 

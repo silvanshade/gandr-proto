@@ -1,6 +1,7 @@
 # Workflow: soundness testing (checker / machine / evaluator)
 
 > Read when: changing the checker, the typing machine, the subtype relation, effect/grade arithmetic, or an evaluator the differentials compare.
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 The `checker ≡ machine` differential suite (ADR-9) proves the recursive checker and the typing machine **agree**, not that either is **correct**: a soundness bug both share — the common case, since they are derived from each other — leaves them agreeing on the wrong answer, invisible at any case count.
 The same holds for every differential in the project; the CEK-oracle differentials (`eval ≡ run`, the `L ≡ run` sequent rows) retired with the CEK at B1 stage F, leaving the L machine (`crates/core-sequent`) the sole operational driver, now pinned by checked-in snapshots captured from the final CEK-agreeing run (the corpus outcome-snapshot sweep plus the property differential, `crates/core-sequent/tests/differential.rs`).

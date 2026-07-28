@@ -3,6 +3,7 @@
 > Read when: writing `# Adequacy` blocks or their tests, triaging mutation survivors, or scheduling a mutation campaign.
 > Decisions: ADR-71 (adequacy discipline), ADR-72 (killability as an API-adequacy law).
 > Containment/safety for actually running mutants: `docs/HAZARDS.md`; scheduling: [ci.md](ci.md).
+> **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 The vocabulary, first: a **mutant** is a program variant produced by one small mechanical change (cargo-mutants replaces a function body with a default value, deletes a unary operator, or swaps a binary operator).
 A test suite **kills** a mutant when at least one test fails on it; a mutant every test passes is a **survivor**.
