@@ -94,6 +94,7 @@ open import Data.Nat
   renaming (suc to succ)
 open import Relation.Binary.PropositionalEquality.Core
   using (_≡_)
+  using (refl)
 
 -- The layer letter is 𝔾: a wrapper module mirroring 𝕊 one dimension up, so
 -- later layers requalify as 𝔾.idn / 𝔾.seq rather than minting fresh names.
@@ -607,3 +608,15 @@ at° : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
   → (Θ : Disc Ξ)
   → 𝒮 (⟦Disc⟧ Ξ Θ)
 at° 𝒮° Θ = walk° 𝒮° Θ .here°
+
+-- THE PIN THAT MAKES THE ADDRESS FREE, and the reason a generic statement costs
+-- a consumer nothing. At the empty telescope the lookup is the carrier-level
+-- structure ON THE NOSE — both the walk and the interpretation compute away — so
+-- anything parameterized by `at° 𝒮° Θ` agrees with its hand-written form at
+-- `Θ = ⋆` definitionally, with no transport to insert and no use site to edit.
+-- This is what bounds the migration to the telescope form: it is the same
+-- signature with the depth abstracted, not a second way of saying things.
+at°-⋆ : ∀ {ℓ} {𝒮 : ∞Graph ℓ → Set ℓ} {Ξ : ∞Graph ℓ}
+  → (𝒮° : Everywhere 𝒮 Ξ)
+  → at° 𝒮° ⋆ ≡ 𝒮° .here°
+at°-⋆ 𝒮° = refl

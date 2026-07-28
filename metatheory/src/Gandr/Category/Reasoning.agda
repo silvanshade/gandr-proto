@@ -29,6 +29,15 @@
 -- Every one of them is a 2-cell built from `seq₁`/`inv₁`/`seq↕` and the three
 -- coherences. Nothing here is strict, and nothing needs decidable equality.
 --
+-- ── AND THEY HOLD AT EVERY DIMENSION, THROUGH THE ADDRESS ───────────────────
+-- `Reasoning` takes one `Category`, which reaches 1-cells up to 2-cells and no
+-- further. `Reasoning°` below takes an `Everywhere Category` and a bound
+-- telescope instead, so the same suite is available at every dimension — by
+-- module application, with nothing restated. It is an ADDITIONAL entry point
+-- and never a re-parameterization of the first: the certification is strictly
+-- stronger than the structure, and `Set`-level structures provably fail it.
+-- The section over `Reasoning°` carries the argument.
+--
 -- ── WHEN TO REACH FOR A SOLVER INSTEAD ──────────────────────────────────────
 -- These combinators are for proofs a solver cannot yet take. The standing rule
 -- is solver-first: a chain that is pure reassociation and unit-cancellation is
@@ -42,10 +51,16 @@ open import Gandr.Graph
   using (∞Graph)
   using (ϵ°)
   using (δ°)
+  using (Disc)
+  using (⋆)
+  using (_▸ᵈ_⇴_)
+  using (Everywhere)
+  using (at°)
 open import Gandr.Setoid
   using (bundle)
 open import Gandr.Category
   using (Category)
+  using (module ℂ)
   using (idn₀)
   using (seq₀)
   using (idn₁)
@@ -57,6 +72,10 @@ open import Gandr.Category
   using (mon-α)
 
 import Relation.Binary.Bundles as Bundles
+open import Relation.Binary.PropositionalEquality
+  using (_≡_)
+  using (refl)
+  using (trans)
 
 -- The stdlib reasoning vocabulary, re-exported so a consumer opens ONE module.
 -- `begin⟨ S ⟩` names the hom-setoid a chain runs in; the step and terminator
@@ -281,6 +300,34 @@ module Reasoning {ℓ} {B : ∞Graph ℓ} (ℬ : Category B) where
         (seqʳ* a η)
         (ℬ .inv₁ (ℬ .mon-α a i g)))
 
+  -- Paste two squares along their shared edge — the vertical composition of
+  -- commuting squares, and the one combinator the naturality proofs in
+  -- `Gandr.Category.Functor` were each open-coding as a four-step chain.
+  --
+  --        p₀        q₀
+  --   a₀ ─────→ b₀ ─────→ c₀
+  --   │    □₀   │    □₁   │
+  -- u │       v │       w │
+  --   ↓         ↓         ↓
+  --   a₁ ─────→ b₁ ─────→ c₁
+  --        p₁        q₁
+  --
+  -- Both squares are stated in the DIAGRAMMATIC direction the tree composes in,
+  -- so each hypothesis reads "across then down ≈ down then across".
+  glue : ∀ {a₀ a₁ b₀ b₁ c₀ c₁}
+    → {p₀ : B .δ° a₀ b₀ .ϵ°} {q₀ : B .δ° b₀ c₀ .ϵ°}
+    → {u : B .δ° a₀ a₁ .ϵ°} {v : B .δ° b₀ b₁ .ϵ°} {w : B .δ° c₀ c₁ .ϵ°}
+    → {p₁ : B .δ° a₁ b₁ .ϵ°} {q₁ : B .δ° b₁ c₁ .ϵ°}
+    → B .δ° a₀ b₁ .δ° (ℬ .seq₀ p₀ v) (ℬ .seq₀ u p₁) .ϵ°
+    → B .δ° b₀ c₁ .δ° (ℬ .seq₀ q₀ w) (ℬ .seq₀ v q₁) .ϵ°
+    → B .δ° a₀ c₁ .δ° (ℬ .seq₀ (ℬ .seq₀ p₀ q₀) w) (ℬ .seq₀ u (ℬ .seq₀ p₁ q₁)) .ϵ°
+  glue {a₀} {c₁} {p₀} {q₀} {u} {v} {w} {p₁} {q₁} □₀ □₁ =
+    begin⟨ homᵇ a₀ c₁ ⟩
+      ℬ .seq₀ (ℬ .seq₀ p₀ q₀) w  ≈⟨ pullʳ □₁ ⟩
+      ℬ .seq₀ p₀ (ℬ .seq₀ v q₁)  ≈⟨ pullˡ □₀ ⟩
+      ℬ .seq₀ (ℬ .seq₀ u p₁) q₁  ≈⟨ ℬ .mon-α u q₁ p₁ ⟩
+      ℬ .seq₀ u (ℬ .seq₀ p₁ q₁)  ∎
+
   -- Extend a square on both sides at once.
   extend² : ∀ {u v w x y}
     → {a : B .δ° u v .ϵ°}
@@ -334,3 +381,69 @@ module Reasoning {ℓ} {B : ∞Graph ℓ} (ℬ : Category B) where
     → (f : B .δ° v w .ϵ°) (g : B .δ° w x .ϵ°) (h : B .δ° x y .ϵ°) (k : B .δ° y z .ϵ°)
     → B .δ° v z .δ° (ℬ .seq₀ f (ℬ .seq₀ g (ℬ .seq₀ h k))) (ℬ .seq₀ (ℬ .seq₀ (ℬ .seq₀ f g) h) k) .ϵ°
   assoc²⁻¹ f g h k = ℬ .inv₁ (assoc² f g h k)
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- THE SAME SUITE, READ AT AN ADDRESS.
+--
+-- `Reasoning` above takes ONE `Category`, so it reasons about 1-cells up to
+-- 2-cells and stops there: a step one dimension further needs a `Category` on
+-- `B .δ° a b`, and a bare `Category B` does not supply one. `Everywhere
+-- Category` supplies them all, `at°` reads off the one at a bound telescope, and
+-- that module application is the whole of "the combinators hold at every
+-- dimension". Nothing is restated, and nothing is proved twice.
+--
+-- ── AN ADDITIONAL DOOR, NEVER A RE-PARAMETERIZATION ──────────────────────────
+-- The certification is a STRICTLY STRONGER hypothesis than the structure, and
+-- the layer's own main consumer provably fails it: every `Set`-level structure
+-- in this tree presents through `𝔾.≡°`, which stops with `𝟘` above its 1-cells,
+-- and `ℂ.≡°-not-everywhere` refutes `Everywhere Category` there. So the
+-- carrier-level `Reasoning` stays the primitive. A suite re-parameterized by the
+-- certification would be a suite the `Set`-level structures could not use.
+--
+-- At `⋆` the two doors open on the same room, definitionally — `Gandr.Graph`'s
+-- `at°-⋆` — so a consumer that already reasons at the carrier is unchanged when
+-- it is read as reasoning at the empty telescope.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+module Reasoning° {ℓ} {Ξ : ∞Graph ℓ} (𝒞 : Everywhere Category Ξ) (Θ : Disc Ξ)
+  = Reasoning (at° 𝒞 Θ)
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- WORKED: ONE COMBINATOR, TWO ADDRESSES OF ONE TOWER.
+--
+-- `ℂ.Id°` certifies the identity-type tower as a category at every dimension, so
+-- `glue` is available at every address of it. Neither reading below is proved:
+-- each IS the generic combinator, instantiated. That is the claim the telescope
+-- was adopted for, exercised against a combinator the tree actually uses rather
+-- than against a spike.
+--
+-- These are computational pins; they move to the role split's `Examples` module
+-- when it lands.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+-- At `⋆`: the four-fold associativity of `trans`, in ordinary propositional
+-- vocabulary. The statement mentions no dimension, no telescope and no address —
+-- it is what a consumer holding only propositional equality would have written
+-- by hand, and stdlib does not carry it — and the proof is the generic
+-- combinator, applied. Nothing is transported and nothing is restated.
+--
+-- ONE ERGONOMIC CAVEAT, WHICH IS NOT THE ADDRESS'S DOING. A combinator whose
+-- CELLS are implicit cannot be restated this way without passing them: at `⋆`
+-- the cell type is `trans p q ≡ …`, and `trans` is a defined function, so
+-- unification cannot recover `p` and `q` from it. That is the ordinary
+-- non-injectivity of a defined symbol and it bites a hand-written restatement
+-- exactly as hard; `assoc²` takes its cells explicitly and so is free of it.
+trans-assoc² : ∀ {ℓ} {A : Set ℓ} {v w x y z : A}
+  → (p : v ≡ w) (q : w ≡ x) (r : x ≡ y) (s : y ≡ z)
+  → trans (trans (trans p q) r) s ≡ trans p (trans q (trans r s))
+trans-assoc² {A} = Reasoning°.assoc² (ℂ.Id° A) ⋆
+
+-- And one dimension up. The structure at `⋆ ▸ᵈ x ⇴ y` is the structure of the
+-- tower one dimension up read at `⋆`, on the nose — so the same pasting for
+-- 2-PATHS is `glue-path` at the path type, and the dimension is a parameter
+-- rather than a restatement. Before the address existed this was not statable at
+-- all: the type of a cell there is a projection spine, and no implicit can
+-- reconstruct it.
+Id°-↑ : ∀ {ℓ} {A : Set ℓ} {x y : A}
+  → at° (ℂ.Id° A) (⋆ ▸ᵈ x ⇴ y) ≡ at° (ℂ.Id° (x ≡ y)) ⋆
+Id°-↑ = refl

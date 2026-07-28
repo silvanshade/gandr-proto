@@ -27,6 +27,19 @@
 -- structures over the same carrier are comparable without a coercion. This is
 -- what makes "we have SETOID, not SET" structural rather than a caveat in prose.
 --
+-- ── AT ONE DIMENSION, OR AT EVERY DIMENSION ─────────────────────────────────
+-- `Category Ξ` is the structure at ONE address. `Everywhere Category Ξ` is the
+-- certification at all of them, and `ℂ.Id°` below is the worked instance —
+-- what shows the address machinery carries the DOCTRINES and not only the
+-- setoid layer that first demanded it.
+--
+-- The two are not interchangeable, and `ℂ.≡°-not-everywhere` is why: the
+-- discrete setoid on the identity type — how every `Set`-level structure in
+-- this tree presents as a category — admits no such certification, because it
+-- stops with `𝟘` above its 1-cells. So the certification is a strictly stronger
+-- hypothesis, available where a carrier has genuine cells all the way up and
+-- never assumable in general.
+--
 -- ── ON `opaque` ─────────────────────────────────────────────────────────────
 -- Absent, for the same reason as `Gandr.Graph`: every consumer meets these
 -- through copattern matching, and the instances below are definitional
@@ -49,12 +62,18 @@ open import Gandr.Graph
   using (δ°)
   using (ϵ↬)
   using (δ↬)
+  using (Everywhere)
+  using (here°)
+  using (up°)
   using (module 𝔾)
 open import Gandr.Setoid
   using (Setoid)
   using (idnˢ)
   using (seqˢ)
   using (invˢ)
+
+open import Data.Empty.Polymorphic
+  using (⊥)
 
 -- The `Set`-level structure the category layer mirrors one dimension up: the
 -- pair vocabulary the product category computes in, and the unique cell of the
@@ -253,6 +272,38 @@ module ℂ where
   Id A .mon-λ = ≡.mon-λ
   Id A .mon-ρ = ≡.mon-ρ
   Id A .mon-α = ≡.mon-α
+
+  -- THE SAME TOWER, CERTIFIED AT EVERY DIMENSION — the worked `Everywhere
+  -- Category`, and what shows the certification carries the DOCTRINES and not
+  -- only the setoid `Gandr.Setoid.Idˢ` certifies one layer down. One dimension
+  -- up from `𝔾.Id A` over a parallel pair is `𝔾.Id (x ≡ y)`, so the same
+  -- instance serves there and the corecursion is the whole statement.
+  --
+  -- The dress: the bare name is the structure AT THE CARRIER, `°` marks its
+  -- certification at every address, and `at° (Id° A) ⋆` is `Id A` on the nose
+  -- (`Gandr.Graph.at°-⋆`), so the two never drift apart.
+  Id° : ∀ {ℓ} (A : Set ℓ) → Everywhere Category (𝔾.Id A)
+  Id° A .here° = Id A
+  Id° A .up° x y = Id° (≡._≡_ x y)
+
+  -- AND THE REFUTATION, which is why the reasoning layer keeps its
+  -- carrier-level form rather than being re-parameterized by the certification.
+  -- `𝔾.≡°` stops with `𝟘` above its 1-cells, so one dimension up there are no
+  -- cells for `idn₀` to produce and `Everywhere Category (𝔾.≡° A)` is
+  -- UNINHABITED — the same shape of refutation as `Gandr.Setoid`'s, one doctrine
+  -- up, and it bites in the same place.
+  --
+  -- What it costs is worth stating, because it is a design constraint and not a
+  -- curiosity: `≡°` is how EVERY `Set`-level structure in this tree presents as
+  -- a category, so `Everywhere Category` is a strictly stronger hypothesis that
+  -- the layer's main consumer provably fails. A statement that wants to hold at
+  -- every dimension may take the certification; a statement that wants to hold
+  -- of the tree's own structures may not.
+  ≡°-not-everywhere : ∀ {ℓ} {A : Set ℓ}
+    → A
+    → Everywhere Category (𝔾.≡° A)
+    → ⊥
+  ≡°-not-everywhere a 𝒞° = 𝒞° .up° a a .here° .idn₀ ≡.idn
 
   -- The empty category: the unique structure on `𝔾.𝟘`. Every clause is absurd,
   -- there being no cells to define at any dimension.

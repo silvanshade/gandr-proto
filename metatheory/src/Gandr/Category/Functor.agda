@@ -119,21 +119,7 @@ seq-nat : ∀ {ℓ} {A B : ∞Graph ℓ} {𝒜 : Category A} {ℬ : Category B}
   → (β : Nat G H)
   → Nat F H
 seq-nat {ℬ} α β .cmp a = ℬ .seq₀ (α .cmp a) (β .cmp a)
-seq-nat {ℬ} {F} {G} {H} α β .nat {a₀} {a₁} f =
-  begin⟨ homᵇ (F .ϵ↬ a₀) (H .ϵ↬ a₁) ⟩
-    ℬ .seq₀ (ℬ .seq₀ α₀ β₀) Hf  ≈⟨ pullʳ (β .nat f) ⟩
-    ℬ .seq₀ α₀ (ℬ .seq₀ Gf β₁)  ≈⟨ pullˡ (α .nat f) ⟩
-    ℬ .seq₀ (ℬ .seq₀ Ff α₁) β₁  ≈⟨ ℬ .mon-α Ff β₁ α₁ ⟩
-    ℬ .seq₀ Ff (ℬ .seq₀ α₁ β₁)  ∎
-  where
-    open Reasoning ℬ
-    α₀ = α .cmp a₀
-    α₁ = α .cmp a₁
-    β₀ = β .cmp a₀
-    β₁ = β .cmp a₁
-    Ff = F .δ↬ .ϵ↬ f
-    Gf = G .δ↬ .ϵ↬ f
-    Hf = H .δ↬ .ϵ↬ f
+seq-nat {ℬ} α β .nat f = Reasoning.glue ℬ (α .nat f) (β .nat f)
 
 -- Horizontal composition: `α : F ⟹ F′` in the middle category and
 -- `β : G ⟹ G′` in the target compose to `F⋆G ⟹ F′⋆G′`. The square threads the
@@ -148,26 +134,16 @@ hcomp-nat : ∀ {ℓ} {A B C : ∞Graph ℓ} {𝒜 : Category A} {ℬ : Category
 hcomp-nat {𝒞} {F} {F′} {G} {G′} α β .cmp a =
   𝒞 .seq₀ (G .δ↬ .ϵ↬ (α .cmp a)) (β .cmp (F′ .ϵ↬ a))
 hcomp-nat {𝒞} {F} {F′} {G} {G′} α β .nat {a₀} {a₁} f =
-  begin⟨ homᵇ (G .ϵ↬ (F .ϵ↬ a₀)) (G′ .ϵ↬ (F′ .ϵ↬ a₁)) ⟩
-    𝒞 .seq₀ (𝒞 .seq₀ Gα₀ βF′a₀) G′F′f  ≈⟨ pullʳ (β .nat F′f) ⟩
-    𝒞 .seq₀ Gα₀ (𝒞 .seq₀ GF′f βF′a₁)   ≈⟨ pullˡ Gnat ⟩
-    𝒞 .seq₀ (𝒞 .seq₀ GFf Gα₁) βF′a₁    ≈⟨ 𝒞 .mon-α GFf βF′a₁ Gα₁ ⟩
-    𝒞 .seq₀ GFf (𝒞 .seq₀ Gα₁ βF′a₁)    ∎
+  Reasoning.glue 𝒞 Gnat (β .nat F′f)
   where
-    open Reasoning 𝒞
     α₀ = α .cmp a₀
     α₁ = α .cmp a₁
     Ff = F .δ↬ .ϵ↬ f
     F′f = F′ .δ↬ .ϵ↬ f
-    Gα₀ = G .δ↬ .ϵ↬ α₀
-    Gα₁ = G .δ↬ .ϵ↬ α₁
-    GFf = G .δ↬ .ϵ↬ Ff
-    GF′f = G .δ↬ .ϵ↬ F′f
-    G′F′f = G′ .δ↬ .ϵ↬ F′f
-    βF′a₀ = β .cmp (F′ .ϵ↬ a₀)
-    βF′a₁ = β .cmp (F′ .ϵ↬ a₁)
     -- The target functor's image of the source square, translated through the
-    -- composition-preservation cells so it lands at the right boundary.
+    -- composition-preservation cells so it lands at the right boundary. This is
+    -- the one place `seq₀⇒` does real work, and the only reason this proof is
+    -- not `glue` applied to the two squares it is handed.
     Gnat =
       𝒞 .seq₁
         (𝒞 .inv₁ (G .seq₀⇒ α₀ F′f))
