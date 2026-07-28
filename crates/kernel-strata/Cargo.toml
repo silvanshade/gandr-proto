@@ -10,17 +10,17 @@ description = "The minimal certified kernel's level oracle -- canonical {0, +1, 
 license.workspace = true
 publish.workspace = true
 
-# TCB dependency wall (kernel-boundary.md section 2): a gandr-kernel-* crate
-# depends only on other gandr-kernel-* crates and core/alloc. Dev-dependencies
-# are exempt -- test code is not shipped trust.
-[dependencies]
-
-[dev-dependencies]
-proptest = { workspace = true }
-
 [features]
 default = []
 full = []
 
 [lints]
 workspace = true
+
+# TCB dependency wall (kernel-boundary.md section 2): a gandr-kernel-* crate
+# depends only on other gandr-kernel-* crates and core/alloc. Dev-dependencies
+# are exempt -- test code is not shipped trust.
+[dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
