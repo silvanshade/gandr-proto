@@ -112,6 +112,7 @@ open import Gandr.Shape.Graph
   using (Match)
   using ([])
   using (_∷_)
+  using (cap)
   using (Shape)
   using (wires)
   using (node)
@@ -152,6 +153,20 @@ open import Data.List.Base
   using ([])
   using (_∷_)
   using (_++_)
+  using (length)
+open import Data.Nat.Base
+  using (ℕ)
+  using (suc)
+  using (_<_)
+  using (s≤s)
+open import Data.Nat.Induction
+  using (<-wellFounded)
+open import Data.Nat.Properties
+  using (n<1+n)
+  using (<-trans)
+open import Induction.WellFounded
+  using (Acc)
+  using (acc)
 open import Data.Maybe.Base
   using (just)
 open import Data.Unit.Base
@@ -161,6 +176,8 @@ open import Relation.Binary.PropositionalEquality
   using (refl)
   using (trans)
   using (cong)
+  using (subst)
+  using (sym)
 open import Relation.Nullary.Decidable
   using (does)
 open import Relation.Nullary.Negation
@@ -226,6 +243,50 @@ module _ {ℓ} {Ob : Set ℓ} where
   match-insert (tail i) j (k ∷ m) =
     Exchange.outer (insert-swap j k)
       ∷ match-insert i (Exchange.inner (insert-swap j k)) m
+  match-insert (tail i) j (cap k m) =
+    cap (Exchange.outer (insert-swap i k))
+      (match-insert (Exchange.inner (insert-swap i k)) j m)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- COMPARING TWO INSERTIONS INTO ONE LIST. Composition with caps has to ask
+  -- whether the source it is removing IS the one a cap already took, so the
+  -- construction direction (`insert-swap`) is not enough and the ANALYSIS
+  -- direction is owed: two insertions into the same list are either the same
+  -- slot or two different slots, and in the second case each can be re-read
+  -- past the other.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  data InsertView
+    : ∀ {x y A B Δ}
+    → Insert Ob x A Δ
+    → Insert Ob y B Δ
+    → Set ℓ where
+    -- the same slot, so the insertions are equal and so are their remainders
+    same
+      : ∀ {x A Δ}
+      → {i : Insert Ob x A Δ}
+      → InsertView i i
+    -- different slots: `C` is the list with BOTH removed, and each insertion
+    -- reappears past the other
+    apart
+      : ∀ {x y A B C Δ}
+      → {i : Insert Ob x A Δ}
+      → {k : Insert Ob y B Δ}
+      → Insert Ob x C B
+      → Insert Ob y C A
+      → InsertView i k
+
+  insert-view
+    : ∀ {x y A B Δ}
+    → (i : Insert Ob x A Δ)
+    → (k : Insert Ob y B Δ)
+    → InsertView i k
+  insert-view head head = same
+  insert-view head (tail k) = apart head k
+  insert-view (tail i) head = apart i head
+  insert-view (tail i) (tail k) with insert-view i k
+  ... | same = same
+  ... | apart i′ k′ = apart (tail i′) (tail k′)
 
   -- Whiskering a matching by a block of wires on the left. Each element of the
   -- block takes the position beside itself, which is one `head` per element and
@@ -264,13 +325,142 @@ module _ {ℓ} {Ob : Set ℓ} where
   Removed.body (removed-tail k r) =
     Exchange.inner (insert-swap k (Removed.spot r)) ∷ Removed.body r
 
+  -- Removing a source is no longer single-valued: the source either ran
+  -- THROUGH to a sink, as it always did before the cap existed, or it was
+  -- CAPPED to another source, in which case both leave together and what is
+  -- carried is where the partner sat.
+  data Removal (x : Ob) : List Ob → List Ob → Set ℓ where
+    through
+      : ∀ {Γ Θ rest}
+      → Insert Ob x rest Θ
+      → Match Ob Γ rest
+      → Removal x Γ Θ
+    capped
+      : ∀ {Γ Γ′ Θ y}
+      → Insert Ob y Γ′ Γ
+      → Match Ob Γ′ Θ
+      → Removal x Γ Θ
+
+  -- lifting a removal past a leading matched pair, on both branches
+  removal-tail
+    : ∀ {x y Γ us Θ}
+    → Insert Ob y us Θ
+    → Removal x Γ us
+    → Removal x (y ∷ Γ) Θ
+  removal-tail k (through spot body) =
+    through
+      (Exchange.outer (insert-swap k spot))
+      (Exchange.inner (insert-swap k spot) ∷ body)
+  removal-tail k (capped ins body) = capped (tail ins) (k ∷ body)
+
   match-remove
     : ∀ {x Γ Δ Θ}
     → Insert Ob x Γ Δ
     → Match Ob Δ Θ
-    → Removed x Γ Θ
-  match-remove head (j ∷ n) = removed _ j n
-  match-remove (tail i) (k ∷ n) = removed-tail k (match-remove i n)
+    → Removal x Γ Θ
+  match-remove head (j ∷ n) = through j n
+  match-remove head (cap k n) = capped k n
+  match-remove (tail i) (k ∷ n) = removal-tail k (match-remove i n)
+  match-remove (tail i) (cap k n) with insert-view i k
+  -- the source being removed IS the one the cap took: it is capped to the
+  -- head, which sits at the front of what remains
+  ... | same = capped head n
+  -- otherwise the cap stands and the removal happens inside it
+  ... | apart i′ k′ = removal-recap k′ (match-remove i′ n)
+    where
+      -- the leading cap is re-applied around whatever the removal left: its
+      -- partner still sits in the tail, and if the removal itself capped, that
+      -- partner has to be read past this one
+      removal-recap
+        : ∀ {x y w C Γ₀ Θ}
+        → Insert Ob y C Γ₀
+        → Removal x C Θ
+        → Removal x (w ∷ Γ₀) Θ
+      removal-recap j (through spot body) = through spot (cap j body)
+      removal-recap j (capped ins body) =
+        capped
+          (tail (Exchange.outer (insert-swap j ins)))
+          (cap (Exchange.inner (insert-swap j ins)) body)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE INVERSE LOOKUP. Composition needs the other direction too: when the
+  -- second wiring caps, the strand that arrives has to be traced BACK through
+  -- the first to the source that sent it, and both leave together. Every sink
+  -- is hit by exactly one source and only a through-wire reaches a sink, so
+  -- this is total and the colour is determined.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  data Unhit (y : Ob) (Γ Δ : List Ob) : Set ℓ where
+    unhit
+      : ∀ {Γ′}
+      → Insert Ob y Γ′ Γ
+      → Match Ob Γ′ Δ
+      → Unhit y Γ Δ
+
+  match-unhit
+    : ∀ {y Γ Δ Δˣ}
+    → Insert Ob y Δ Δˣ
+    → Match Ob Γ Δˣ
+    → Unhit y Γ Δ
+  match-unhit j (i ∷ m) with insert-view j i
+  ... | same = unhit head m
+  ... | apart j′ i′ with match-unhit j′ m
+  ...   | unhit p body = unhit (tail p) (i′ ∷ body)
+  match-unhit j (cap k m) with match-unhit j m
+  ... | unhit p body =
+    unhit
+      (tail (Exchange.outer (insert-swap k p)))
+      (cap (Exchange.inner (insert-swap k p)) body)
+
+  -- the source list shrinks by one per insertion, which is the measure the
+  -- composition below recurses on
+  insert-length
+    : ∀ {x ys zs}
+    → Insert Ob x ys zs
+    → length zs ≡ suc (length ys)
+  insert-length head = refl
+  insert-length (tail i) = cong suc (insert-length i)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- COMPOSITION. Three ways a source can leave: capped already by the first
+  -- wiring, run through both, or run through the first into a cap of the
+  -- second — and the third is the one the cap introduced, where two through
+  -- strands fuse into a cap of the composite. That last case recurses on a
+  -- matching produced by `match-unhit` rather than on a subterm, so the
+  -- recursion is well-founded on the length of the source list rather than
+  -- structural.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  match-comp-acc
+    : ∀ {Γ Δ Θ}
+    → Acc _<_ (length Γ)
+    → Match Ob Γ Δ
+    → Match Ob Δ Θ
+    → Match Ob Γ Θ
+  match-comp-acc a [] [] = []
+  match-comp-acc (acc rec) (cap {xs = xs} i m) n =
+    cap i
+      (match-comp-acc
+        (rec
+          (subst
+            (λ z → length xs < suc z)
+            (sym (insert-length i))
+            (<-trans (n<1+n _) (n<1+n _))))
+        m
+        n)
+  match-comp-acc (acc rec) (_∷_ {xs = xs} i m) n with match-remove i n
+  ... | through spot body = spot ∷ match-comp-acc (rec (n<1+n _)) m body
+  ... | capped ins body with match-unhit ins m
+  ...   | unhit {Γ′ = xs′} p m′ =
+    cap p
+      (match-comp-acc
+        (rec
+          (subst
+            (λ z → length xs′ < suc z)
+            (sym (insert-length p))
+            (<-trans (n<1+n _) (n<1+n _))))
+        m′
+        body)
 
   -- Composing two matchings: each source takes its partner's partner, and the
   -- rest is the composite of what remains on both sides.
@@ -279,10 +469,7 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Match Ob Γ Δ
     → Match Ob Δ Θ
     → Match Ob Γ Θ
-  match-comp [] [] = []
-  match-comp (i ∷ m) n =
-    Removed.spot (match-remove i n)
-      ∷ match-comp m (Removed.body (match-remove i n))
+  match-comp {Γ} = match-comp-acc (<-wellFounded (length Γ))
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- WHISKERING, ONE WIRE AT A TIME. This is the crossing, paid for without a
