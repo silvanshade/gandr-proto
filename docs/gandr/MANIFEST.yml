@@ -24,6 +24,6 @@ nodes:
       - { rel: registered-under, to: README.md }
   - path: spec/proposal-metatheory-consolidated.md
     role: proposal
-    b3: d017fbd9f823808214da3076eda0bd49885c6e403ad8ca75f9aa09530b20e7b8
+    b3: 218c45dfcd78a11f5bdabf87ca5b232162b681002e2fea46b2df587304cdf5de
     edges:
       - { rel: registered-under, to: README.md }
