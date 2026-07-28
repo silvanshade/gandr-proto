@@ -114,6 +114,98 @@ Three corollaries, each of which was got wrong before it was checked:
 * **Relocating the obligation is not discharging it.** A view refactor, a re-indexing for constructor-headed invertibility, or carrying the equation as data will each move the K-step somewhere else without removing it.
   When the obligation is genuinely the K-step, meet it at the h-level condition rather than redesigning around it a fourth time.
 
+## Build the residual now; parameterize what will not close
+
+**Implement the remaining pieces and the suggested lemmas as they occur.** Recording an owed lemma at its site and moving on is no longer the default.
+
+**Where a piece will not fully close, discharge what closes and make the rest parameters of a module** — so what is being assumed, and what is left to prove, appears in a signature rather than in a comment.
+The form already exists in this tree: `Gandr.Shape.Graft`'s unit laws sit in `module _ (uipᵒ : UIP Ob) (uipˡ : UIP (List Ob))` and are discharged at `Ob = ⊤` below.
+This section extends that from h-level conditions to **any** undischarged obligation.
+The surrounding discipline is unchanged: zero silent postulates, an assumption appears in the signature and never as a postulate, and a mid-proof module is a declared holey leaf gated on its own line.
+
+**Why this is a rule and not a preference.** A deferred residual is a claim that nothing depends on it.
+Three residuals taken rather than deferred, in consecutive sessions on the cell shape, each found something structural: that the edge set named half-edges and every predicate above it was wrong on exactly the shapes the cut had been added to express; that the colour involution was load-bearing for the incidence rather than a legitimacy predicate; and that a cut's ports being unordered constrains which theorem about merging is _statable_.
+Each was a wrong assumption that would otherwise have been built over.
+
+**What this is not.** It is not a licence to assume a hard result and continue over it.
+An assumed hypothesis must be named, stated as a parameter of the smallest module that needs it, recorded in that module's header with what it would take to discharge, and filed on the tracker.
+A hypothesis nobody can say how to discharge is a design smell, not a parameter.
+
+## Package layout
+
+Three packages, split by what a thing **is**, not by when it was built.
+
+* **`Gandr.Prelude.*`** — generic type theory: list positions, insertion and concatenation relations and their views, sum and product plumbing, decidability and h-level helpers.
+  Nothing that knows about an algebraic structure.
+  _Test:_ would this make sense in a library that had never heard of gandr?
+* **`Gandr.Foundations.*`** — the mathematics gandr is built **on**, including everything that exists in the literature prior to gandr: ∞-graphs, setoids, the category-theory tower, monoidal and monadic machinery, the circuit-algebra carrier and its operations, arenas, nerves, Reedy structure.
+  _Test:_ is this gandr's own contribution, or the ground it stands on?
+* **`Gandr.Metatheory.*`** — gandr's own theory: the machine, the term representation and its interpretation, the CwF instance, the judgement encodings, decidability and normalization results, and the account of how the circuit-algebra machinery combines with the rest of the language.
+  _Test:_ would it be wrong to attribute this to anyone but gandr?
+
+**Within a package, split by role rather than by topic**, on the stdlib pattern:
+
+```text
+X/Base.agda         definitions, constructors, derived operations. No theorems.
+X/Properties.agda   the lemmas and theorems about Base.
+X/Structure.agda    the categorical instances (below). Fold into Properties when
+                    small; keep apart when it carries the interface.
+X/Examples.agda     worked instances, computational pins, refutations.
+```
+
+Each split module carries the part of the old header that belongs to it.
+The headers are the design record; a split that leaves a header behind has lost it.
+`Migrate, never duplicate` applies throughout.
+
+## Characterize before building, at the most precise structure available
+
+**Before building a structure or an operation, say what it is categorically and lay the instances out — then build.** Setoid where appropriate, then the category and/or groupoid, then the monoidal structure if there is one, then the monad or relative monad if there is one; say what is functorial and what is natural.
+**Define the instances.** **Naming them is not doing it.**
+
+Two reasons, and the second is the one a long build loses sight of:
+
+1. It makes the tree legible — one instance replaces a hundred loose lemmas.
+2. **It enumerates the obligations.** An instance you cannot fill is a hole you did not know you had.
+   Running this once over the tree as it stood turned up two that were on no list: associativity of the wiring composition, and of grafting.
+   A `Category` instance would have refused to typecheck without them.
+
+### Characterize at the most precise structure, and prefer the lightest coherence burden
+
+Two demands, in this order.
+**Precision:** name the finest structure the thing actually has, not the nearest familiar one.
+**Coherence burden:** among characterizations that fit, **strongly prefer the one whose coherence is most manageable** — most decidable, least dependent on a strictness theorem.
+
+Concretely: **prefer `SkewMonoidal` to `Monoidal` where it fits.** Dropping invertibility of the structural maps is not a weakening to apologize for — it is what makes coherence tractable, and it is in character for this tree, whose recurring devices are carrying a witness instead of an equation, ordering a representation as a section rather than a quotient, and localizing a choice where a global gluing property fails.
+Those are all preferences for directed, non-invertible structure with a decision procedure over invertible structure with a strictness theorem.
+
+**Characterizing something more finely than the literature does is a result, not a liberty.** Where we can show a structure is skew-monoidal, or lax where the literature says strong, or relative-monadic where it says monadic, that is a sharper statement and it should be taken.
+Record what the finer characterization buys, so a later reader does not "simplify" it back.
+
+### How a `Set`-level structure presents as a `Category`
+
+`Category` is a structure over an `∞Graph`, so 2-cells are where its laws live; most structures in this tree are `Set`-level, with propositional `_≡_` for equality.
+The bridge is the **discrete setoid on the identity type**, one dimension up from `Gandr.Graph`'s `disc`:
+
+* 0-cells — the objects;
+* the hom at `(x, y)` — an ∞-graph whose 0-cells are the morphisms and whose **1-cells are `f ≡ g`**, so the setoid relation _is_ the identity type and `Category.homˢ` is the identity setoid;
+* **above that, `𝟘`.**
+
+`Category`'s fields all land at or below that level — `mon-λ`, `mon-ρ`, `mon-α` and `seq↕` are `≡`-cells — which is the record being _lawless at its last dimension_: it states the laws and imposes no coherence among them.
+
+**Empty above, never trivial, and this is not a truncation.** Three things must be kept apart:
+
+* **`𝟘` above the last dimension that carries content** — the correct choice.
+  It says there are no cells there.
+  It asserts nothing and discharges nothing, and if a structure later turns out to have genuine higher cells the dimension opens up.
+* **`𝟙` above** — **forbidden by default.** A terminal hom makes every coherence hold automatically, silently discharging obligations nobody checked.
+  That is the failure mode, and it is what "do not truncate prematurely" is about.
+  Use it only with a stated reason.
+* **Forcing `UIP`** — **out of scope entirely.** The `--without-K` mandate is binding and neither UIP nor definitional proof-irrelevance may enter through any shortcut.
+  Note that using `_≡_` as a structure's 1-cells carries no UIP claim: nothing above it is asserted, so no two proofs of `f ≡ g` are ever identified.
+  Where a specific result genuinely needs set-ness, it takes `UIP Ob` as a **parameter**, as the grafting unit laws do.
+
+The same pattern repeats for the discrete category, the discrete groupoid, and the rest.
+
 ## House style
 
 Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `hiding`/`using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; the flat proof-term ladder rather than deep `where` nesting; and **every definition carries a comment**.
@@ -170,6 +262,12 @@ An earlier revision of this file required a house facade under `Gandr.Prelude.*`
 That facade is **withdrawn**: maintaining a parallel vocabulary over a library this tree wants to lean on heavily cost more than the foundation-swap freedom it bought, and the swap it insured against is not on the arc.
 What replaces it is per-module repackaging — a `private module` that re-exports the stdlib names a module actually uses, under the names that module wants (`Gandr.Arena.Structure`'s `module Fin` / `module ℕ`, `Gandr.Graph`'s `module 𝕊`).
 That keeps the vocabulary local and legible at each use site without a tree-wide surface to maintain.
+
+**The `Gandr.Prelude.*` namespace is reinstated (2026-07-28), with a different meaning, and the facade stays withdrawn.** What is withdrawn is a **facade over `agda-stdlib`**: a parallel vocabulary that re-exports stdlib names and a ban on importing stdlib directly.
+Both stay withdrawn — direct stdlib imports remain mandatory, and per-module repackaging remains the way to localize vocabulary.
+What `Gandr.Prelude.*` now means is a home for **gandr's own generic definitions**: list positions and their views, insertion and concatenation relations, sum and product plumbing, decidability and h-level helpers — anything that would make sense in a library that had never heard of gandr.
+Today these sit wherever they were first needed, which is why the namespace is wanted; see the package layout above.
+The test is ownership, not provenance: if we defined it and it knows nothing about an algebraic structure, it is prelude; if stdlib defines it, import it directly.
 
 `agda:deps` vendors stdlib into the gitignored `metatheory/vendor/`, so `agda:check` passes `-i metatheory/vendor/agda-stdlib/src` and **a fresh checkout must run `agda:deps` before its first `agda:check`**.
 It stays a separate task rather than a gate dependency so a warm tree does not re-enter the fetch path on every run.
