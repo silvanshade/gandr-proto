@@ -132,14 +132,20 @@
 -- vertex's published ports on the way in, and a position shifted past a
 -- published block never lands in the block.
 --
--- What is still OWED is the converse half — that each operand's own adjacencies
--- SURVIVE into the composite, which upgrades "disconnected" to "exactly two
--- components". The second operand's are nearly free, since `ends-wire-in-past`
--- and `ends-cap-in-past` already say its edges keep their incidence. The first
--- operand's are the work, because its edges arrive as the FRESH edges of the
--- threading steps, and there a cut's two ends are an unordered pair — so the
--- statement has to be about `Link`, which is symmetric, rather than about the
--- ordered incidence.
+-- `merge-components` — the converse half, and the two together. Each operand's
+-- own adjacencies also SURVIVE into the composite, so reachability in a merge of
+-- two connected shapes is exactly agreement of the side: no walk crosses, and
+-- every pair on one side is joined. That is "exactly two components, and they
+-- are the operands", and neither half implies the other.
+--
+-- The two halves of the converse are not symmetric, and the asymmetry is the
+-- merger's own. The SECOND operand's edges are the ones the threading left
+-- alone, so its half is `ends-wire-in-past` and `ends-cap-in-past` composed down
+-- the recursion. The FIRST operand's are the FRESH edges the threading added, so
+-- its half relates a threaded wire's ends to that wire's ends in the operand —
+-- and there a cut's two ends are an unordered pair, so what is true is a
+-- statement about `Link`, which is symmetric, and not one about the ordered
+-- incidence. `ends-link` is where that is spent.
 --
 -- `verts-graft` — grafting CONCATENATES the vertex listings, in order. This is
 -- more than bookkeeping: it says the operation neither duplicates nor drops a
@@ -202,6 +208,7 @@ open import Gandr.Shape.Graph
   using (slot)
   using (past)
   using (split)
+  using (left)
   using (right)
   using (split-right)
   using (smap-exch)
@@ -235,6 +242,7 @@ open import Gandr.Shape.Graph
   using (apart)
   using (adj)
   using (Link)
+  using (link-sym)
   using (Reach)
   using (stop)
   using (onward)
@@ -254,6 +262,8 @@ open import Gandr.Shape.Graph
 open import Axiom.UniquenessOfIdentityProofs
   using (UIP)
   using (module Decidable⇒UIP)
+open import Data.Empty
+  using (⊥-elim)
 open import Data.Bool.Base
   using (Bool)
   using (true)
@@ -2140,6 +2150,689 @@ module _ {ℓ} {Ob : Set ℓ} where
           (side-vtxʳ p q S T v)))
 
   -- ══════════════════════════════════════════════════════════════════════════
+  -- THE CONVERSE: EACH OPERAND'S OWN ADJACENCIES SURVIVE. `merge-apart` says
+  -- the composite has no edge the operands did not; this says it has no fewer.
+  -- Together they say the composite's components are exactly the two operands.
+  --
+  -- The two halves are not symmetric and the asymmetry is the merger's own. The
+  -- SECOND operand's edges are the ones the threading left alone, so its half
+  -- is `ends-wire-in-past` and `ends-cap-in-past` composed down the recursion.
+  -- The FIRST operand's edges are the FRESH ones the threading added, so its
+  -- half has to relate a threaded wire's ends to that wire's ends in the
+  -- operand — and there a cut's two ends are an unordered pair, so what is true
+  -- is a statement about `Link`, which is symmetric, and not one about the
+  -- ordered incidence.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- A widened insertion takes the position the un-widened one did, and leaves
+  -- the appended block where it was.
+  widen-left
+    : ∀ {x ys zs Ξ Δ}
+    → (i : Insert Ob x ys zs)
+    → (q : Append Ob zs Ξ Δ)
+    → slot (Widened.spot (insert-widen i q)) ≡ left q (slot i)
+  widen-left head (cons q) = refl
+  widen-left (tail i) (cons q) = cong there (widen-left i q)
+
+  widen-left-past
+    : ∀ {x ys zs Ξ Δ}
+    → (i : Insert Ob x ys zs)
+    → (q : Append Ob zs Ξ Δ)
+    → (w : Ix ys)
+    → past (Widened.spot (insert-widen i q))
+        (left (Widened.keep (insert-widen i q)) w)
+      ≡ left q (past i w)
+  widen-left-past head (cons q) w = refl
+  widen-left-past (tail i) (cons q) here = refl
+  widen-left-past (tail i) (cons q) (there w) =
+    cong there (widen-left-past i q w)
+
+  widen-right
+    : ∀ {x ys zs Ξ Δ}
+    → (i : Insert Ob x ys zs)
+    → (q : Append Ob zs Ξ Δ)
+    → (w : Ix Ξ)
+    → past (Widened.spot (insert-widen i q))
+        (right (Widened.keep (insert-widen i q)) w)
+      ≡ right q w
+  widen-right head (cons q) w = refl
+  widen-right (tail i) (cons q) w = cong there (widen-right i q w)
+
+  -- and re-associating the two concatenations leaves each operand's positions
+  -- where they were — `regroup-side`'s exact form, which the converse needs
+  regroup-left
+    : ∀ {B Γ₁ Γ′ Γ₂ Γ}
+    → (p₁ : Append Ob B Γ₁ Γ′)
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (z : Ix Γ′)
+    → split (Regroup.front (append-regroup p₁ p))
+        (left (Regroup.back (append-regroup p₁ p)) z)
+      ≡ smap id (left p) (split p₁ z)
+  regroup-left nil p z = refl
+  regroup-left (cons p₁) p here = refl
+  regroup-left (cons p₁) p (there z) =
+    trans
+      (cong (smap there id) (regroup-left p₁ p z))
+      (smap-exch there (left p) (split p₁ z))
+
+  regroup-right
+    : ∀ {B Γ₁ Γ′ Γ₂ Γ}
+    → (p₁ : Append Ob B Γ₁ Γ′)
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (w : Ix Γ₂)
+    → split (Regroup.front (append-regroup p₁ p))
+        (right (Regroup.back (append-regroup p₁ p)) w)
+      ≡ inj₂ (right p w)
+  regroup-right nil p w = refl
+  regroup-right (cons p₁) p w = cong (smap there id) (regroup-right p₁ p w)
+
+  -- ── THE SECOND OPERAND'S HALF ──────────────────────────────────────────────
+
+  -- Its edges are the ones the threading left alone, so naming them in the
+  -- composite is iterating "the position this insertion did not take".
+  thread-edgʳ
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (m : Match Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → Edg T
+    → Edg (wires-in p q m T)
+  thread-edgʳ nil nil [] T e = e
+  thread-edgʳ (cons p) q (i ∷ m) T e =
+    past
+      (Threaded.spot
+        (edge-wire-in
+          head
+          (Widened.spot (insert-widen i q))
+          (wires-in p (Widened.keep (insert-widen i q)) m T)))
+      (thread-edgʳ p (Widened.keep (insert-widen i q)) m T e)
+  thread-edgʳ (cons p) q (cap j m) T e =
+    past
+      (Threaded.spot
+        (edge-cap-in
+          head
+          (Widened.spot (insert-widen j p))
+          (wires-in (Widened.keep (insert-widen j p)) q m T)))
+      (thread-edgʳ (Widened.keep (insert-widen j p)) q m T e)
+
+  -- and each keeps the vertex and the leg it had, read on the second operand's
+  -- side of the merged interfaces
+  ends-thread-right
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (m : Match Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → (e : Edg T)
+    → incid (wires-in p q m T) (thread-edgʳ p q m T e)
+      ≡ pmap
+          (smap (vtx-wires-in p q m T) (smap (right p) (right q)))
+          (smap (vtx-wires-in p q m T) (smap (right p) (right q)))
+          (incid T e)
+  ends-thread-right nil nil [] T e = legs-cong step (incid T e)
+    where
+      step
+        : (z : _)
+        → z
+          ≡ smap
+              (vtx-wires-in nil nil [] T)
+              (smap (right nil) (right nil))
+              z
+      step (inj₁ v) = refl
+      step (inj₂ (inj₁ w)) = refl
+      step (inj₂ (inj₂ w)) = refl
+  ends-thread-right (cons p) q (i ∷ m) T e =
+    trans
+      (ends-wire-in-past head jʷ U (thread-edgʳ p qʷ m T e))
+      (trans
+        (cong (pmap F F) (ends-thread-right p qʷ m T e))
+        (legs-cong step (incid T e)))
+    where
+      jʷ = Widened.spot (insert-widen i q)
+      qʷ = Widened.keep (insert-widen i q)
+      U = wires-in p qʷ m T
+      F = smap (vtx-wire-in head jʷ U) (smap (past head) (past jʷ))
+
+      step
+        : (z : _)
+        → F (smap (vtx-wires-in p qʷ m T) (smap (right p) (right qʷ)) z)
+          ≡ smap
+              (vtx-wires-in (cons p) q (i ∷ m) T)
+              (smap (right (cons p)) (right q))
+              z
+      step (inj₁ v) = refl
+      step (inj₂ (inj₁ w)) = refl
+      step (inj₂ (inj₂ w)) = cong (λ z → inj₂ (inj₂ z)) (widen-right i q w)
+  ends-thread-right (cons p) q (cap j m) T e =
+    trans
+      (ends-cap-in-past head jᶜ U (thread-edgʳ pᶜ q m T e))
+      (trans
+        (cong (pmap G G) (ends-thread-right pᶜ q m T e))
+        (legs-cong step (incid T e)))
+    where
+      jᶜ = Widened.spot (insert-widen j p)
+      pᶜ = Widened.keep (insert-widen j p)
+      U = wires-in pᶜ q m T
+      G = smap (vtx-cap-in head jᶜ U) (smap (λ z → past head (past jᶜ z)) id)
+
+      step
+        : (z : _)
+        → G (smap (vtx-wires-in pᶜ q m T) (smap (right pᶜ) (right q)) z)
+          ≡ smap
+              (vtx-wires-in (cons p) q (cap j m) T)
+              (smap (right (cons p)) (right q))
+              z
+      step (inj₁ v) = refl
+      step (inj₂ (inj₁ w)) =
+        cong (λ z → inj₂ (inj₁ (there z))) (widen-right j p w)
+      step (inj₂ (inj₂ w)) = refl
+
+  edgʳ
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → Edg T
+    → Edg (merge p q S T)
+  edgʳ p q (wires m) T e = thread-edgʳ p q m T e
+  edgʳ p q (node A B p₁ q₁ S) T e =
+    edgʳ
+      (Regroup.back (append-regroup p₁ p))
+      (Regroup.back (append-regroup q₁ q))
+      S
+      T
+      e
+
+  ends-merge-right
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → (e : Edg T)
+    → incid (merge p q S T) (edgʳ p q S T e)
+      ≡ pmap
+          (smap (vtxʳ p q S T) (smap (right p) (right q)))
+          (smap (vtxʳ p q S T) (smap (right p) (right q)))
+          (incid T e)
+  ends-merge-right p q (wires m) T e = ends-thread-right p q m T e
+  ends-merge-right p q (node A B p₁ q₁ S) T e =
+    trans
+      (cong (pmap So So) (ends-merge-right pᵣ qᵣ S T e))
+      (legs-cong step (incid T e))
+    where
+      pᵣ = Regroup.back (append-regroup p₁ p)
+      qᵣ = Regroup.back (append-regroup q₁ q)
+      So =
+        step-out
+          (Regroup.front (append-regroup p₁ p))
+          (Regroup.front (append-regroup q₁ q))
+
+      step
+        : (z : _)
+        → So (smap (vtxʳ pᵣ qᵣ S T) (smap (right pᵣ) (right qᵣ)) z)
+          ≡ smap
+              (vtxʳ p q (node A B p₁ q₁ S) T)
+              (smap (right p) (right q))
+              z
+      step (inj₁ v) = refl
+      step (inj₂ (inj₁ w)) =
+        cong (smap (λ _ → here) inj₁) (regroup-right p₁ p w)
+      step (inj₂ (inj₂ w)) =
+        cong (smap (λ _ → here) inj₂) (regroup-right q₁ q w)
+
+  attach-right
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → {e : Edg T} {u v : Vtx T}
+    → Attach T e u v
+    → Attach (merge p q S T) (edgʳ p q S T e) (vtxʳ p q S T u) (vtxʳ p q S T v)
+  attach-right p q S T {e} a =
+    attach
+      (trans
+        (cong proj₁ (ends-merge-right p q S T e))
+        (cong
+          (smap (vtxʳ p q S T) (smap (right p) (right q)))
+          (Attach.from a)))
+      (trans
+        (cong proj₂ (ends-merge-right p q S T e))
+        (cong
+          (smap (vtxʳ p q S T) (smap (right p) (right q)))
+          (Attach.into a)))
+
+  link-right
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → {e : Edg T} {u v : Vtx T}
+    → Link T e u v
+    → Link (merge p q S T) (edgʳ p q S T e) (vtxʳ p q S T u) (vtxʳ p q S T v)
+  link-right p q S T (along a) = along (attach-right p q S T a)
+  link-right p q S T (against a) = against (attach-right p q S T a)
+
+  reach-right
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → {u v : Vtx T}
+    → Reach T u v
+    → Reach (merge p q S T) (vtxʳ p q S T u) (vtxʳ p q S T v)
+  reach-right p q S T stop = stop
+  reach-right p q S T (onward r (adj e l)) =
+    onward (reach-right p q S T r) (adj (edgʳ p q S T e) (link-right p q S T l))
+
+  -- ── THE FIRST OPERAND'S HALF ───────────────────────────────────────────────
+  -- Its edges are the FRESH ones the threading added, one per wire and one per
+  -- cut of its wiring, so naming them is reading the threading's own position.
+
+  ends-eq
+    : ∀ {a} {A : Set a} {u v : A} {x : A × A}
+    → x ≡ (u , v)
+    → Ends u v x
+  ends-eq refl = forwards
+
+  ends-index
+    : ∀ {a} {A : Set a} {u v : A} {x y : A × A}
+    → x ≡ y
+    → Ends u v x
+    → Ends u v y
+  ends-index refl e = e
+
+  thread-edgˡ
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (m : Match Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → Ix (match-edges m)
+    → Edg (wires-in p q m T)
+  thread-edgˡ nil nil [] T ()
+  thread-edgˡ (cons p) q (i ∷ m) T here =
+    slot
+      (Threaded.spot
+        (edge-wire-in
+          head
+          (Widened.spot (insert-widen i q))
+          (wires-in p (Widened.keep (insert-widen i q)) m T)))
+  thread-edgˡ (cons p) q (i ∷ m) T (there e) =
+    past
+      (Threaded.spot
+        (edge-wire-in
+          head
+          (Widened.spot (insert-widen i q))
+          (wires-in p (Widened.keep (insert-widen i q)) m T)))
+      (thread-edgˡ p (Widened.keep (insert-widen i q)) m T e)
+  thread-edgˡ (cons p) q (cap j m) T here =
+    slot
+      (Threaded.spot
+        (edge-cap-in
+          head
+          (Widened.spot (insert-widen j p))
+          (wires-in (Widened.keep (insert-widen j p)) q m T)))
+  thread-edgˡ (cons p) q (cap j m) T (there e) =
+    past
+      (Threaded.spot
+        (edge-cap-in
+          head
+          (Widened.spot (insert-widen j p))
+          (wires-in (Widened.keep (insert-widen j p)) q m T)))
+      (thread-edgˡ (Widened.keep (insert-widen j p)) q m T e)
+
+  -- and each keeps the ends it had in the wiring, read on the FIRST operand's
+  -- side of the merged interfaces — as an unordered pair, because a cut's are
+  ends-thread-left
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (m : Match Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → (e : Ix (match-edges m))
+    → Ends
+        (inj₂ (smap (left p) (left q) (proj₁ (ends m e))))
+        (inj₂ (smap (left p) (left q) (proj₂ (ends m e))))
+        (incid (wires-in p q m T) (thread-edgˡ p q m T e))
+  ends-thread-left nil nil [] T ()
+  ends-thread-left (cons p) q (i ∷ m) T here =
+    ends-eq
+      (trans
+        (ends-wire-in
+          head
+          (Widened.spot (insert-widen i q))
+          (wires-in p (Widened.keep (insert-widen i q)) m T))
+        (cong
+          (λ z → inj₂ (inj₁ here) , inj₂ (inj₂ z))
+          (widen-left i q)))
+  ends-thread-left (cons p) q (i ∷ m) T (there e) =
+    ends-cast
+      (step (proj₁ (ends m e)))
+      (step (proj₂ (ends m e)))
+      (ends-index
+        (sym (ends-wire-in-past head jʷ U (thread-edgˡ p qʷ m T e)))
+        (ends-map F (ends-thread-left p qʷ m T e)))
+    where
+      jʷ = Widened.spot (insert-widen i q)
+      qʷ = Widened.keep (insert-widen i q)
+      U = wires-in p qʷ m T
+      F = smap (vtx-wire-in head jʷ U) (smap (past head) (past jʷ))
+
+      step
+        : (z : _)
+        → F (inj₂ (smap (left p) (left qʷ) z))
+          ≡ inj₂
+              (smap (left (cons p)) (left q) (smap there (past i) z))
+      step (inj₁ w) = refl
+      step (inj₂ w) = cong (λ y → inj₂ (inj₂ y)) (widen-left-past i q w)
+  ends-thread-left (cons p) q (cap j m) T here =
+    ends-cast
+      refl
+      (cong (λ z → inj₂ (inj₁ (there z))) (widen-left j p))
+      (ends-cap-in
+        head
+        (Widened.spot (insert-widen j p))
+        (wires-in (Widened.keep (insert-widen j p)) q m T))
+  ends-thread-left (cons p) q (cap j m) T (there e) =
+    ends-cast
+      (step (proj₁ (ends m e)))
+      (step (proj₂ (ends m e)))
+      (ends-index
+        (sym (ends-cap-in-past head jᶜ U (thread-edgˡ pᶜ q m T e)))
+        (ends-map G (ends-thread-left pᶜ q m T e)))
+    where
+      jᶜ = Widened.spot (insert-widen j p)
+      pᶜ = Widened.keep (insert-widen j p)
+      U = wires-in pᶜ q m T
+      G = smap (vtx-cap-in head jᶜ U) (smap (λ z → past head (past jᶜ z)) id)
+
+      step
+        : (z : _)
+        → G (inj₂ (smap (left pᶜ) (left q) z))
+          ≡ inj₂
+              (smap
+                (left (cons p))
+                (left q)
+                (smap (λ w → there (past j w)) id z))
+      step (inj₁ w) =
+        cong (λ y → inj₂ (inj₁ (there y))) (widen-left-past j p w)
+      step (inj₂ w) = refl
+
+  edgˡ
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → Edg S
+    → Edg (merge p q S T)
+  edgˡ p q (wires m) T e = thread-edgˡ p q m T e
+  edgˡ p q (node A B p₁ q₁ S) T e =
+    edgˡ
+      (Regroup.back (append-regroup p₁ p))
+      (Regroup.back (append-regroup q₁ q))
+      S
+      T
+      e
+
+  ends-merge-left
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → (e : Edg S)
+    → Ends
+        (smap (vtxˡ p q S T) (smap (left p) (left q)) (end₀ S e))
+        (smap (vtxˡ p q S T) (smap (left p) (left q)) (end₁ S e))
+        (incid (merge p q S T) (edgˡ p q S T e))
+  ends-merge-left p q (wires m) T e = ends-thread-left p q m T e
+  ends-merge-left p q (node A B p₁ q₁ S) T e =
+    ends-cast
+      (step (end₀ S e))
+      (step (end₁ S e))
+      (ends-map So (ends-merge-left pᵣ qᵣ S T e))
+    where
+      pᵣ = Regroup.back (append-regroup p₁ p)
+      qᵣ = Regroup.back (append-regroup q₁ q)
+      So =
+        step-out
+          (Regroup.front (append-regroup p₁ p))
+          (Regroup.front (append-regroup q₁ q))
+
+      step
+        : (z : _)
+        → So (smap (vtxˡ pᵣ qᵣ S T) (smap (left pᵣ) (left qᵣ)) z)
+          ≡ smap
+              (vtxˡ p q (node A B p₁ q₁ S) T)
+              (smap (left p) (left q))
+              (step-out p₁ q₁ z)
+      step (inj₁ v) = refl
+      step (inj₂ (inj₁ z)) with split p₁ z | regroup-left p₁ p z
+      ... | inj₁ b | eq = cong (smap (λ _ → here) inj₁) eq
+      ... | inj₂ w | eq = cong (smap (λ _ → here) inj₁) eq
+      step (inj₂ (inj₂ z)) with split q₁ z | regroup-left q₁ q z
+      ... | inj₁ b | eq = cong (smap (λ _ → here) inj₂) eq
+      ... | inj₂ w | eq = cong (smap (λ _ → here) inj₂) eq
+
+  -- An edge whose two ends are the same two vertices in SOME order is a
+  -- traversal between them, in the order the traversal chooses. This is why
+  -- the first operand's half is about `Link` and cannot be about `incid`.
+  ends-link
+    : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {e : Edg S} {u v : Vtx S}
+      {x : (Vtx S ⊎ Leg Γ Δ) × (Vtx S ⊎ Leg Γ Δ)}
+    → Ends (inj₁ u) (inj₁ v) x
+    → incid S e ≡ x
+    → Link S e u v
+  ends-link forwards eq = along (attach (cong proj₁ eq) (cong proj₂ eq))
+  ends-link backwards eq = against (attach (cong proj₁ eq) (cong proj₂ eq))
+
+  link-left
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → {e : Edg S} {u v : Vtx S}
+    → Link S e u v
+    → Link (merge p q S T) (edgˡ p q S T e) (vtxˡ p q S T u) (vtxˡ p q S T v)
+  link-left p q S T {e} (along a) =
+    ends-link
+      (ends-cast
+        (cong (smap (vtxˡ p q S T) (smap (left p) (left q))) (Attach.from a))
+        (cong (smap (vtxˡ p q S T) (smap (left p) (left q))) (Attach.into a))
+        (ends-merge-left p q S T e))
+      refl
+  link-left p q S T {e} (against a) =
+    link-sym
+      (ends-link
+        (ends-cast
+          (cong (smap (vtxˡ p q S T) (smap (left p) (left q))) (Attach.from a))
+          (cong (smap (vtxˡ p q S T) (smap (left p) (left q))) (Attach.into a))
+          (ends-merge-left p q S T e))
+        refl)
+
+  reach-left
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → {u v : Vtx S}
+    → Reach S u v
+    → Reach (merge p q S T) (vtxˡ p q S T u) (vtxˡ p q S T v)
+  reach-left p q S T stop = stop
+  reach-left p q S T (onward r (adj e l)) =
+    onward (reach-left p q S T r) (adj (edgˡ p q S T e) (link-left p q S T l))
+
+  -- ── AND EVERY VERTEX OF THE COMPOSITE IS ONE OPERAND'S ─────────────────────
+  -- The last thing the components statement needs, and the reason it is a view
+  -- rather than an inverse: eliminating it refines the vertex instead of
+  -- handing back an equation the consumer then has to transport a walk along.
+
+  data Onto {Γ Δ Γ′ Δ′} {U : Shape Ob Γ Δ} {V : Shape Ob Γ′ Δ′}
+      (f : Vtx U → Vtx V)
+    : Vtx V → Set ℓ where
+    hits
+      : (v : Vtx U)
+      → Onto f (f v)
+
+  onto-wire-in
+    : ∀ {a Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob a Γ Γˣ)
+    → (j : Insert Ob a Δ Δˣ)
+    → (U : Shape Ob Γ Δ)
+    → (x : Vtx (wire-in i j U))
+    → Onto (vtx-wire-in i j U) x
+  onto-wire-in i j (wires m) ()
+  onto-wire-in i j (node A B p q U) here = hits here
+  onto-wire-in {Γˣ} {Δˣ} i j (node A B p q U) (there x)
+    with onto-wire-in
+           (insert-shift p (append-graph B Γˣ) i)
+           (insert-shift q (append-graph A Δˣ) j)
+           U
+           x
+  ... | hits v = hits (there v)
+
+  onto-cap-in
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (U : Shape Ob Γ Δ)
+    → (z : Vtx (cap-in i j U))
+    → Onto (vtx-cap-in i j U) z
+  onto-cap-in i j (wires m) ()
+  onto-cap-in i j (node A B p q U) here = hits here
+  onto-cap-in {Γ˘} {Γˣ} i j (node A B p q U) (there z)
+    with onto-cap-in
+           (insert-shift (append-graph B Γ˘) (append-graph B Γˣ) i)
+           (insert-shift p (append-graph B Γ˘) j)
+           U
+           z
+  ... | hits v = hits (there v)
+
+  onto-wires-in
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (m : Match Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → (x : Vtx (wires-in p q m T))
+    → Onto (vtx-wires-in p q m T) x
+  onto-wires-in nil nil [] T x = hits x
+  onto-wires-in (cons p) q (i ∷ m) T x
+    with onto-wire-in
+           head
+           (Widened.spot (insert-widen i q))
+           (wires-in p (Widened.keep (insert-widen i q)) m T)
+           x
+  ... | hits w
+    with onto-wires-in p (Widened.keep (insert-widen i q)) m T w
+  ... | hits v = hits v
+  onto-wires-in (cons p) q (cap j m) T x
+    with onto-cap-in
+           head
+           (Widened.spot (insert-widen j p))
+           (wires-in (Widened.keep (insert-widen j p)) q m T)
+           x
+  ... | hits w
+    with onto-wires-in (Widened.keep (insert-widen j p)) q m T w
+  ... | hits v = hits v
+
+  data VtxOf {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+      (p : Append Ob Γ₁ Γ₂ Γ)
+      (q : Append Ob Δ₁ Δ₂ Δ)
+      (S : Shape Ob Γ₁ Δ₁)
+      (T : Shape Ob Γ₂ Δ₂)
+    : Vtx (merge p q S T) → Set ℓ where
+    -- a vertex of the first operand
+    fromˡ
+      : (u : Vtx S)
+      → VtxOf p q S T (vtxˡ p q S T u)
+    -- or one of the second
+    fromʳ
+      : (v : Vtx T)
+      → VtxOf p q S T (vtxʳ p q S T v)
+
+  vtx-of
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → (x : Vtx (merge p q S T))
+    → VtxOf p q S T x
+  vtx-of p q (wires m) T x with onto-wires-in p q m T x
+  ... | hits v = fromʳ v
+  vtx-of p q (node A B p₁ q₁ S) T here = fromˡ here
+  vtx-of p q (node A B p₁ q₁ S) T (there x)
+    with vtx-of
+           (Regroup.back (append-regroup p₁ p))
+           (Regroup.back (append-regroup q₁ q))
+           S
+           T
+           x
+  ... | fromˡ u = fromˡ (there u)
+  ... | fromʳ v = fromʳ v
+
+  -- ── THE COMPONENTS OF A MERGE ARE EXACTLY THE TWO OPERANDS ─────────────────
+
+  -- Two vertices on the same side are joined, if the operands are.
+  merge-reach
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → Connected S
+    → Connected T
+    → (x y : Vtx (merge p q S T))
+    → side-vtx p q S T x ≡ side-vtx p q S T y
+    → Reach (merge p q S T) x y
+  merge-reach p q S T cS cT x y eq
+    with vtx-of p q S T x | vtx-of p q S T y
+  ... | fromˡ u | fromˡ u′ = reach-left p q S T (reach-any cS u u′)
+  ... | fromʳ v | fromʳ v′ = reach-right p q S T (reach-any cT v v′)
+  ... | fromˡ u | fromʳ v =
+    ⊥-elim
+      (true≢false
+        (trans
+          (sym (side-vtxˡ p q S T u))
+          (trans eq (side-vtxʳ p q S T v))))
+  ... | fromʳ v | fromˡ u =
+    ⊥-elim
+      (true≢false
+        (trans
+          (sym (side-vtxˡ p q S T u))
+          (trans (sym eq) (side-vtxʳ p q S T v))))
+
+  -- SO REACHABILITY IN A MERGE OF TWO CONNECTED SHAPES IS EXACTLY AGREEMENT OF
+  -- THE SIDE. Both directions together are "exactly two components, and they
+  -- are the operands": no walk crosses (`reach-side`, the merger joins
+  -- nothing), and every pair on one side is joined (`merge-reach`, each
+  -- operand's own adjacencies survive). Neither half implies the other, and
+  -- `merge-disconnected` is the first half read at one pair of vertices.
+  merge-components
+    : ∀ {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ}
+    → (p : Append Ob Γ₁ Γ₂ Γ)
+    → (q : Append Ob Δ₁ Δ₂ Δ)
+    → (S : Shape Ob Γ₁ Δ₁)
+    → (T : Shape Ob Γ₂ Δ₂)
+    → Connected S
+    → Connected T
+    → (x y : Vtx (merge p q S T))
+    → (Reach (merge p q S T) x y → side-vtx p q S T x ≡ side-vtx p q S T y)
+      × (side-vtx p q S T x ≡ side-vtx p q S T y → Reach (merge p q S T) x y)
+  merge-components p q S T cS cT x y =
+    reach-side p q S T , merge-reach p q S T cS cT x y
+
+  -- ══════════════════════════════════════════════════════════════════════════
   -- THE UNIT, ON THE LISTING ALGEBRA. Everything here is h-level free: the
   -- identity matching is a two-sided unit for composition and is fixed by
   -- whiskering, and no witness is ever compared. The h-level condition arrives
@@ -2559,6 +3252,28 @@ corollas-apart-disconnected =
     (corolla 𝟙 𝟙)
     here
     here
+
+-- AND THE CONVERSE HALF, EXERCISED. Every operand above has a single vertex, so
+-- "each operand's own adjacencies survive" says nothing about them. `bigon` is
+-- two vertices joined by two parallel edges, so merging it with a point is the
+-- smallest case where the claim has content: its own adjacency must reappear in
+-- a composite that now has a second component beside it.
+bigon-point : Shape ⊤ [] []
+bigon-point = merge nil nil bigon point
+
+bigon-point-joined
+  : Reach
+      bigon-point
+      (vtxˡ nil nil bigon point g₀)
+      (vtxˡ nil nil bigon point g₁)
+bigon-point-joined =
+  reach-left nil nil bigon point (onward stop (adj here (along bigon-att₀)))
+
+-- and the composite is disconnected all the same, which is the other half. The
+-- two together are `merge-components` at this shape: three vertices, two
+-- components, and which is which is read off the side.
+bigon-point-disconnected : ¬ Connected bigon-point
+bigon-point-disconnected = merge-disconnected nil nil bigon point g₀ here
 
 -- MERGING A CUT. The left operand is the vertexless `Shape 𝟚 []` — gandr's
 -- own cut — and the composite has three sources against one sink, an
