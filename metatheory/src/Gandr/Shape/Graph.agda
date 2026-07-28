@@ -30,16 +30,29 @@
 -- first*, and its STOP clause. This module is written under it.
 --
 -- ── THE CARRIER, AND WHY IT HAS EXACTLY TWO CONSTRUCTORS ────────────────────
--- Read `Shape Γ Δ` as a wiring problem. Every edge has one SOURCE end and one
--- SINK end. The source ends are the input legs together with the out-ports of
--- the vertices; the sink ends are the in-ports of the vertices together with
--- the output legs. A graph is precisely a colour-preserving bijection between
--- those two collections — nothing more.
+-- Read `Shape Γ Δ` as a wiring problem. The ENDS are of two kinds: the source
+-- ends are the input legs together with the out-ports of the vertices, and the
+-- sink ends are the in-ports of the vertices together with the output legs. A
+-- graph is a colour-preserving PAIRING of those ends — nothing more.
 --
 --   * `node A B` declares a vertex with in-profile `A` and out-profile `B`.
 --     The REST of the graph sees `B` as extra sources and `A` as extra sinks.
---   * `wires m` closes the graph off with no further vertex, matching the
---     remaining sources onto the remaining sinks.
+--   * `wires m` closes the graph off with no further vertex, pairing up the
+--     remaining ends.
+--
+-- The pairing is DOWNWARD: a source takes a sink, or it takes another source —
+-- the cut — and no constructor pairs two sinks. So an edge has two ends, but
+-- not one of each kind, and the two facts that follow are the difference
+-- between this carrier and the one an earlier revision had:
+--
+--   * `Match Γ Δ` is inhabited only when `Γ` is at least as long as `Δ`, the
+--     difference paid in cuts. The downward category's emptiness for `n > m` is
+--     REPRODUCED here rather than imposed.
+--   * the nodeless loop is inexpressible, because closing a circle with no
+--     vertex needs a cut composed with its opposite, and the opposite — a
+--     pairing of two SINKS — has no constructor. Composition cannot manufacture
+--     one either: it fuses two through-strands into a cut, and that is the only
+--     new pairing it makes.
 --
 -- That the vertex publishes its ports to the rest — rather than consuming from
 -- a pool already accumulated — is what keeps the carrier general. A pool
@@ -51,8 +64,23 @@
 -- ── THE LISTINGS ARE PRIMARY AND THE INCIDENCE IS DERIVED ───────────────────
 -- This inverts the previous presentation. `A` and `B` are the chosen linear
 -- orders on the vertex's ports, carried as data in the constructor, and the
--- matching is the chosen wiring; `origin` and `dest` are then computed by
--- tracing an edge outward through the node chain, splitting at each profile.
+-- matching is the chosen wiring; the two ends of an edge are then computed by
+-- tracing outward through the node chain, splitting at each profile.
+--
+-- There are TWO listings and they are on the same footing. `verts` lists the
+-- vertices, one entry per `node`; `edges` lists the edges, one entry per pair
+-- the wiring makes — a `flow` for a source that took a sink, a `cut` for a
+-- source that took another source.
+--
+-- **The edge listing is not the source pool, and conflating them was a real
+-- defect.** Before the cut existed the two coincided, because every edge had
+-- exactly one source end, so an earlier revision took `Ix (pool S)` for the
+-- edge set. A cut has TWO source ends and no sink end, so under that reading
+-- one wire occupied two positions and the derived incidence gave it two
+-- antiparallel arcs: the edge count was wrong, and `WheelFree` and `Acyclic`
+-- reported cycles in graphs that have none. Listing the edges directly fixes
+-- both at once, and it is what lets reducedness — which is keyed on edge
+-- identity — mean what it says.
 --
 -- Two consequences worth stating, because they are what the re-presentation
 -- bought. The six listing laws are GONE — there is nothing to state, because a
@@ -70,7 +98,7 @@
 -- `split (cons p) (there i)` becomes a term stuck on something no lemma can
 -- rewrite, and every fact about it has to be re-proved by matching at each use
 -- site. Written compositionally the recursive call is a visible subterm and
--- one `cong` reaches it. `split`, `origin` and `dest` are all in that form, and
+-- one `cong` reaches it. `split`, `ends` and `route` are all in that form, and
 -- `split-left`/`split-right`/`swap-follow` are what it buys.
 --
 -- ── EQUALITY: WHAT THE OBSTRUCTION IS, AND WHAT IT IS NOT ───────────────────
@@ -146,22 +174,35 @@
 -- condition is itself an inductive relation — a defined function never enters a
 -- matchable index, in keeping with `Gandr.Arity.Path`'s witness discipline.
 --
--- Legs never link: `Arc` demands that both ends of an edge be attached, so an
--- edge with a free end cannot sit on an undirected cycle. That is the correct
--- reading — the interface of a cell is not part of its topology.
+-- Legs never link: `Attach` demands that both ends of an edge be attached, so
+-- an edge with a free end cannot sit on an undirected cycle. That is the
+-- correct reading — the interface of a cell is not part of its topology.
 --
--- **Both readings are claimed for CAP-FREE shapes, and the scope is not a
--- hedge.** `Edg` lists the source ends, which was a listing of edges only
--- because every edge had exactly one of them. A capped edge has two source
--- ends and no sink end, so it takes two positions and the derived incidence
--- gives one wire two antiparallel arcs. `gluing` below is the receipt: two
--- vertices joined by a single contracted wire, refuting `WheelFree` and
--- `Acyclic` though the graph has neither feedback nor a cycle. The example
--- states the two available repairs. Nothing landed depends on the difference —
--- `Cell` demands simple connectivity and every shape built today is cap-free,
--- which is what `CapFree` names — but the predicates are the part of the cap
--- that has not been paid for, and saying so is cheaper than a later reader
--- discovering it.
+-- **Both readings hold on EVERY shape, cuts included**, and that is a property
+-- of the edge listing rather than a restriction: a cut is one edge, so walking
+-- out along it and back is a repeat, which reducedness rejects. `gluing` below
+-- is the worked case — two vertices joined by one contracted wire, connected
+-- and acyclic and a cell, exactly as the graph says.
+--
+-- ── DIRECTION IS A SEPARATE QUESTION, AND IT IS THE PALETTE'S ───────────────
+-- `Attach` says where an edge's ends are. `Arc` says which way it RUNS, and
+-- those come apart at the cut: a flow-through wire runs from its source end to
+-- its sink end, and the wiring alone settles that, but a cut joins two SOURCE
+-- ends and nothing about the graph says which of them produces.
+--
+-- What says it is the colour. A `Palette` is an involution on colours — the
+-- dual colour is the same wire seen from its other end — together with an
+-- ORIENTATION assigning each colour a pole, with dual colours opposite. Then a
+-- legitimate cut joins `c` to its dual, its two ends have opposite poles, and
+-- `cut-oriented` reads its direction off them.
+--
+-- So the directed notions — `Arc`, `Dir`, `WheelFree`, `Ranked` — take the
+-- polarity and the undirected ones do not, and that asymmetry is the point:
+-- everything that does not need an orientation is stated without one and holds
+-- on every shape. The involution is therefore not merely a predicate saying
+-- which cuts are legitimate; it is what gives a cut's incidence a direction at
+-- all, and `mono-unoriented` shows the distinction has teeth — one self-dual
+-- colour admits no palette, so at that colour set a cut genuinely runs nowhere.
 --
 -- ── WHAT IS PROVED, AND WHY THE DIAMOND IS THE LOAD-BEARING EXAMPLE ─────────
 -- `SimplyConn` is STRICTLY stronger than `WheelFree` (HRY Rmk 2.36), and both
@@ -245,6 +286,7 @@ open import Axiom.UniquenessOfIdentityProofs
   using (UIP)
   using (module Decidable⇒UIP)
 open import Data.Empty
+  using (⊥)
   using (⊥-elim)
 open import Data.Empty.Polymorphic
   using ()
@@ -269,6 +311,7 @@ open import Data.Product.Base
   using (_,_)
   using (proj₁)
   using (proj₂)
+  renaming (map to pmap)
 open import Data.Product.Properties
   using (,-injectiveˡ)
   using (,-injectiveʳ)
@@ -304,6 +347,7 @@ open import Relation.Binary.PropositionalEquality
   using (trans)
   using (cong)
   using (cong₂)
+  using (subst)
 open import Relation.Nullary.Negation
   using (¬_)
 
@@ -373,6 +417,50 @@ inj₂≢inj₁
   → inj₂ {A = A} x ≢ inj₁ y
 inj₂≢inj₁ ()
 
+-- ════════════════════════════════════════════════════════════════════════════
+-- POLARITY. A colour either produces or consumes, and that is the datum — the
+-- ORIENTATION of the palette, in the source's vocabulary — which decides which
+-- way a cut runs. It is not needed to say a shape exists, nor to say what its
+-- edges are, nor to traverse one undirected; it is needed exactly to give a
+-- cut a direction, and it appears exactly there.
+--
+-- A flow-through wire needs none of this: the wiring already runs it from its
+-- source end to its sink end. So the polarity is the price of the CUT, and of
+-- nothing else.
+-- ════════════════════════════════════════════════════════════════════════════
+
+data Pole : Set where
+  -- the colour of something that produces
+  produces : Pole
+  -- and of something that consumes
+  consumes : Pole
+
+-- the other one
+flip : Pole → Pole
+flip produces = consumes
+flip consumes = produces
+
+-- A PALETTE: an involution on the colours — the dual colour is the same wire
+-- seen from its other end — together with an ORIENTATION of it, which says
+-- which end of a dual pair produces.
+--
+-- The involution alone does not orient anything: `c` and `dual c` are
+-- interchangeable until something breaks the symmetry, and `pole` is what
+-- breaks it. That is why both fields are here and why `pole-dual` is the law
+-- that matters: it is what makes a palette ORIENTED rather than merely
+-- involutive, and `mono-unoriented` at the bottom of this module shows the
+-- distinction is real by exhibiting a colour set that admits no palette at all.
+record Palette {ℓ} (Ob : Set ℓ) : Set ℓ where
+  field
+    -- the same wire, seen from the other end
+    dual : Ob → Ob
+    -- seeing it from the other end twice is seeing it
+    dual² : (c : Ob) → dual (dual c) ≡ c
+    -- which end produces
+    pole : Ob → Pole
+    -- and the other end therefore consumes
+    pole-dual : (c : Ob) → pole (dual c) ≡ flip (pole c)
+
 module _ {ℓ} (Ob : Set ℓ) where
 
   -- A vertex's port listing: its input ports and its output ports, each in the
@@ -385,6 +473,26 @@ module _ {ℓ} (Ob : Set ℓ) where
       dom : List Ob
       -- the ordered output ports
       cod : List Ob
+
+  -- AN EDGE, listed by what the wiring pairs. This is the second listing, on
+  -- the same footing as the vertex listing, and it is what makes the edge set
+  -- an object the carrier can name rather than a coincidence of the source
+  -- pool: a flow-through wire has one source end and one sink end, and a cut
+  -- has two source ends and none. Before the cap those coincided, which is why
+  -- an earlier revision could take the source pool for the edge set.
+  data Wire : Set ℓ where
+    -- a source taken to a sink, of its own colour
+    flow
+      : Ob
+      → Wire
+    -- two sources taken to each other. The colours are unconstrained here for
+    -- the reason `node` leaves wheels expressible: which cuts are legitimate is
+    -- a question about polarity and is answered by a refutable predicate, not
+    -- by what can be written
+    cut
+      : Ob
+      → Ob
+      → Wire
 
   -- The graph of concatenation. `nil` is the unit clause of a
   -- graph-of-multiplication witness, which is why it may copy `ys` across two
@@ -544,7 +652,10 @@ module _ {ℓ} {Ob : Set ℓ} where
     → List Ob
   outs {S} v = Prof.cod (lookup (verts S) v)
 
-  -- The innermost source pool: one element per edge of the shape.
+  -- The innermost pools — the shape's ENDS. Every source end is an input leg
+  -- or a vertex out-port; every sink end is a vertex in-port or an output leg.
+  -- These are half-edges, not edges: the wiring is what pairs them, and a cut
+  -- pairs two of the first kind.
   pool
     : ∀ {Γ Δ}
     → Shape Ob Γ Δ
@@ -552,12 +663,45 @@ module _ {ℓ} {Ob : Set ℓ} where
   pool (wires {Γ} m) = Γ
   pool (node A B p q S) = pool S
 
+  copool
+    : ∀ {Γ Δ}
+    → Shape Ob Γ Δ
+    → List Ob
+  copool (wires {Δ} m) = Δ
+  copool (node A B p q S) = copool S
+
+  -- and the wiring itself, which is the only thing at the bottom of the chain
+  wiring
+    : ∀ {Γ Δ}
+    → (S : Shape Ob Γ Δ)
+    → Match Ob (pool S) (copool S)
+  wiring (wires m) = m
+  wiring (node A B p q S) = wiring S
+
+  -- THE EDGE LISTING, which is the shape's second primary content. One entry
+  -- per pair the wiring makes: a `flow` per source that took a sink, a `cut`
+  -- per source that took another source. A cut is ONE entry, which is the
+  -- whole point — it has two ends, and an edge is not an end.
+  match-edges
+    : ∀ {Γ Δ}
+    → Match Ob Γ Δ
+    → List (Wire Ob)
+  match-edges [] = []
+  match-edges (_∷_ {x} i m) = flow x ∷ match-edges m
+  match-edges (cap {x} {y} j m) = cut x y ∷ match-edges m
+
+  edges
+    : ∀ {Γ Δ}
+    → Shape Ob Γ Δ
+    → List (Wire Ob)
+  edges S = match-edges (wiring S)
+
   -- The edges of a shape, on the same footing as its vertices.
   Edg
     : ∀ {Γ Δ}
     → Shape Ob Γ Δ
     → Set ℓ
-  Edg S = Ix (pool S)
+  Edg S = Ix (edges S)
 
   -- Splitting a position along an `Append` witness. Structural recursion on
   -- the witness, so no cardinality arithmetic and no re-indexing plumbing.
@@ -567,7 +711,7 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- auxiliary the caller cannot name, so `split (cons p) (there i)` is stuck on
   -- a term no lemma can rewrite. Written compositionally it reduces to an
   -- application whose argument IS the recursive call, and every fact below
-  -- about `split` is then one `cong` away. `origin` and `dest` are written the
+  -- about `split` is then one `cong` away. `ends` and `route` are written the
   -- same way for the same reason.
   split
     : ∀ {xs ys zs}
@@ -851,64 +995,229 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- Both are computed by tracing the edge outward through the node chain.
   -- ══════════════════════════════════════════════════════════════════════════
 
-  origin
-    : ∀ {Γ Δ}
-    → (S : Shape Ob Γ Δ)
-    → Edg S
-    → Vtx S ⊎ Ix Γ
-  origin (wires m) e = inj₂ e
-  origin (node A B p q S) e =
-    case⊎
-      (λ v → inj₁ (there v))
-      (λ i → smap (λ _ → here) id (split p i))
-      (origin S e)
-
   -- A BOUNDARY POINT of a shape: an input leg or an output leg. Polarity is
   -- carried data here rather than a positional convention, because a capped
-  -- edge ends at a SOURCE and the incidence has to be able to say so. This is
-  -- the orientation datum arriving where it is actually needed.
+  -- edge ends at a SOURCE and the incidence has to be able to say so.
   Leg
     : List Ob
     → List Ob
     → Set ℓ
   Leg Γ Δ = Ix Γ ⊎ Ix Δ
 
-  dest
+  -- THE TWO ENDS OF A WIRE, as positions in the innermost pools. A flow wire's
+  -- ends are its source and its sink, in that order; a cut's are its two
+  -- sources, the earlier one first. Both ends have the same type, which is the
+  -- correction the cap forced: an end is an end, and which of them the wire
+  -- runs FROM is a separate question that `Forth`/`Back` below answer.
+  ends
+    : ∀ {Γ Δ}
+    → (m : Match Ob Γ Δ)
+    → Ix (match-edges m)
+    → Leg Γ Δ × Leg Γ Δ
+  ends (i ∷ m) here = inj₁ here , inj₂ (slot i)
+  ends (i ∷ m) (there e) =
+    pmap (smap there (past i)) (smap there (past i)) (ends m e)
+  ends (cap j m) here = inj₁ here , inj₁ (there (slot j))
+  ends (cap j m) (there e) =
+    pmap
+      (smap (λ w → there (past j w)) id)
+      (smap (λ w → there (past j w)) id)
+      (ends m e)
+
+  -- Routing an end outward through the node chain: it is at a vertex's port,
+  -- or it is a leg of the whole shape. This is the recursion the incidence
+  -- used to carry inline, named once now that both ends need it.
+  route
     : ∀ {Γ Δ}
     → (S : Shape Ob Γ Δ)
-    → Edg S
+    → Leg (pool S) (copool S)
     → Vtx S ⊎ Leg Γ Δ
-  dest (wires m) e = inj₂ (follow m e)
-  dest (node A B p q S) e =
+  route (wires m) l = inj₂ l
+  route (node A B p q S) l =
     case⊎
       (λ v → inj₁ (there v))
       (case⊎
         (λ i → smap (λ _ → here) inj₁ (split p i))
         (λ j → smap (λ _ → here) inj₂ (split q j)))
-      (dest S e)
+      (route S l)
 
-  -- `Arc` is the directed incidence — an edge with BOTH ends attached — and
-  -- `Link` is the same edge read in either orientation. Only `Link` is a
-  -- datatype, because only the orientation is ever case-analysed.
-  record Arc {Γ Δ} (S : Shape Ob Γ Δ) (e : Edg S) (u v : Vtx S) : Set ℓ where
-    constructor arc
+  -- and the two ends of an edge of a SHAPE, which is the incidence
+  end₀
+    : ∀ {Γ Δ}
+    → (S : Shape Ob Γ Δ)
+    → Edg S
+    → Vtx S ⊎ Leg Γ Δ
+  end₀ S e = route S (proj₁ (ends (wiring S) e))
+
+  end₁
+    : ∀ {Γ Δ}
+    → (S : Shape Ob Γ Δ)
+    → Edg S
+    → Vtx S ⊎ Leg Γ Δ
+  end₁ S e = route S (proj₂ (ends (wiring S) e))
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE FLOW-THROUGH BRIDGE. On a wiring with no cut the wires and the sources
+  -- are one listing, position for position, because every source takes exactly
+  -- one sink. That identification is what re-points every fact proved before
+  -- the cap — `swap-follow` above, and the corolla's incidence below — at the
+  -- WIRE rather than at the source end, with its proof term untouched.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  wire⁺
+    : ∀ {xs zs} {m : Match Ob xs zs}
+    → CapFree m
+    → Ix xs
+    → Ix (match-edges m)
+  wire⁺ (i ∷ c) here = here
+  wire⁺ (i ∷ c) (there e) = there (wire⁺ c e)
+
+  src⁺
+    : ∀ {xs zs} {m : Match Ob xs zs}
+    → CapFree m
+    → Ix (match-edges m)
+    → Ix xs
+  src⁺ (i ∷ c) here = here
+  src⁺ (i ∷ c) (there e) = there (src⁺ c e)
+
+  wire-src
+    : ∀ {xs zs} {m : Match Ob xs zs}
+    → (c : CapFree m)
+    → (e : Ix (match-edges m))
+    → wire⁺ c (src⁺ c e) ≡ e
+  wire-src (i ∷ c) here = refl
+  wire-src (i ∷ c) (there e) = cong there (wire-src c e)
+
+  -- and the ends of such a wire are its source and the sink it follows to
+  ends-capfree
+    : ∀ {xs zs} {m : Match Ob xs zs}
+    → (c : CapFree m)
+    → (e : Ix xs)
+    → ends m (wire⁺ c e) ≡ (inj₁ e , inj₂ (follow⁺ c e))
+  ends-capfree (i ∷ c) here = refl
+  ends-capfree (i ∷ c) (there e) =
+    cong
+      (pmap (smap there (past i)) (smap there (past i)))
+      (ends-capfree c e)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- ATTACHMENT, THEN DIRECTION. These are two questions and the cap is what
+  -- separated them. `Attach` says where a wire's ends are, in the listing's own
+  -- order, and claims nothing about which way it runs; `Arc` adds the
+  -- direction, and for a cut the direction is a fact about COLOURS.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  record Attach {Γ Δ} (S : Shape Ob Γ Δ) (e : Edg S) (u v : Vtx S) : Set ℓ where
+    constructor attach
     field
-      -- `e` leaves `u`
-      from : origin S e ≡ inj₁ u
-      -- `e` enters `v`
-      into : dest S e ≡ inj₁ v
+      -- `e` meets `u` at its first end
+      from : end₀ S e ≡ inj₁ u
+      -- and `v` at its second
+      into : end₁ S e ≡ inj₁ v
+
+  -- `e` runs along the listing, from its first end to its second.
+  data Forth (pol : Ob → Pole) : Wire Ob → Set ℓ where
+    -- every flow-through wire, with no appeal to colours: the wiring itself
+    -- orients it, source end to sink end
+    flowing
+      : ∀ {x}
+      → Forth pol (flow x)
+    -- and a cut whose EARLIER end is the producer
+    earlier
+      : ∀ {x y}
+      → pol x ≡ produces
+      → pol y ≡ consumes
+      → Forth pol (cut x y)
+
+  -- and against it, from its second end to its first. Only a cut can: a flow
+  -- wire's second end is a sink, which consumes by construction.
+  data Back (pol : Ob → Pole) : Wire Ob → Set ℓ where
+    later
+      : ∀ {x y}
+      → pol x ≡ consumes
+      → pol y ≡ produces
+      → Back pol (cut x y)
+
+  -- A LEGITIMATE CUT IS ORIENTED — which is what the involution is FOR, and
+  -- the reason it is not merely a predicate saying which cuts are allowed. A
+  -- cut joining a colour to its dual runs one way or the other, and which way
+  -- is read off the poles.
+  --
+  -- Without this the directed layer would be silent on every cut: a cut has two
+  -- source ends, so the wiring cannot orient it, and nothing else in the
+  -- carrier could. With it, the wire's direction is a computed consequence of
+  -- the colours the shape already carries.
+  -- The case analysis, taking the pole it splits on as data plus the equation
+  -- naming it, so the two branches can be read back into the constructors. A
+  -- `with` would abstract the pole out of the goal, where it does not appear,
+  -- and leave the equations unreachable.
+  cut-oriented-at
+    : (P : Palette Ob)
+    → (x : Ob)
+    → (p : Pole)
+    → Palette.pole P x ≡ p
+    → Forth (Palette.pole P) (cut x (Palette.dual P x))
+      ⊎ Back (Palette.pole P) (cut x (Palette.dual P x))
+  cut-oriented-at P x produces eq =
+    inj₁ (earlier eq (trans (Palette.pole-dual P x) (cong flip eq)))
+  cut-oriented-at P x consumes eq =
+    inj₂ (later eq (trans (Palette.pole-dual P x) (cong flip eq)))
+
+  cut-oriented
+    : (P : Palette Ob)
+    → (x : Ob)
+    → Forth (Palette.pole P) (cut x (Palette.dual P x))
+      ⊎ Back (Palette.pole P) (cut x (Palette.dual P x))
+  cut-oriented P x = cut-oriented-at P x (Palette.pole P x) refl
+
+  -- A WIRE RUNS AT MOST ONE WAY, which is what makes a directed walk mean
+  -- anything. This is the property the pre-`Wire` incidence silently lacked:
+  -- reading a cut as two antiparallel edges let a walk leave along a wire and
+  -- come back along the same one.
+  forth-not-back
+    : ∀ {pol w}
+    → Forth pol w
+    → Back pol w
+    → ⊥
+  forth-not-back (earlier p q) (later p′ q′)
+    with trans (sym p) p′
+  ... | ()
+
+  -- `Arc S e u v`: the wire `e` runs from `u` to `v`, both ends attached.
+  data Arc (pol : Ob → Pole) {Γ Δ} (S : Shape Ob Γ Δ) (e : Edg S) (u v : Vtx S)
+    : Set ℓ where
+    -- oriented along the listing, so its first end is the tail
+    forth
+      : Forth pol (lookup (edges S) e)
+      → Attach S e u v
+      → Arc pol S e u v
+    -- oriented against it, so its second end is
+    back
+      : Back pol (lookup (edges S) e)
+      → Attach S e v u
+      → Arc pol S e u v
 
   data Link {Γ Δ} (S : Shape Ob Γ Δ) (e : Edg S) : Vtx S → Vtx S → Set ℓ where
-    -- traverse `e` in its own direction
+    -- traverse `e` from its first end to its second
     along
       : ∀ {u v}
-      → Arc S e u v
+      → Attach S e u v
       → Link S e u v
-    -- traverse `e` against its direction
+    -- and the other way. NO POLARITY IS NEEDED: an undirected traversal does
+    -- not ask which end produces, which is why the undirected layer below is
+    -- correct on every shape while the directed one needs a polarity
     against
       : ∀ {u v}
-      → Arc S e v u
+      → Attach S e v u
       → Link S e u v
+
+  -- an arc is in particular a traversal, whichever way it was oriented
+  arc⇒link
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ} {e u v}
+    → Arc pol S e u v
+    → Link S e u v
+  arc⇒link (forth _ a) = along a
+  arc⇒link (back _ a) = against a
 
   -- Links are symmetric, which is what makes undirected reachability an
   -- equivalence and what the diamond's cycle is built from.
@@ -1002,18 +1311,19 @@ module _ {ℓ} {Ob : Set ℓ} where
       → Fresh e b
       → Walk S u v (just e)
 
-  data Dir {Γ Δ} (S : Shape Ob Γ Δ) (u : Vtx S) : Vtx S → Maybe (Edg S) → Set ℓ where
+  data Dir (pol : Ob → Pole) {Γ Δ} (S : Shape Ob Γ Δ) (u : Vtx S)
+    : Vtx S → Maybe (Edg S) → Set ℓ where
     -- the empty directed walk
     idle
-      : Dir S u u nothing
+      : Dir pol S u u nothing
     -- extend by one arc; no freshness is imposed, since a directed walk cannot
     -- backtrack except through a self-loop, which `dir⇒walk` handles
     next
       : ∀ {m v b}
       → (e : Edg S)
-      → Dir S u m b
-      → Arc S e m v
-      → Dir S u v (just e)
+      → Dir pol S u m b
+      → Arc pol S e m v
+      → Dir pol S u v (just e)
 
   -- Every reduced walk is in particular a reachability witness. This is the
   -- forgetful direction and it is cheap; the converse is not needed and is not
@@ -1032,11 +1342,17 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- ══════════════════════════════════════════════════════════════════════════
 
   -- No directed cycle: no closed directed walk that traversed at least one arc.
+  -- Stated AT A POLARITY, because a cut's direction is a fact about colours and
+  -- there is no answer without one. That is not a scope cut hidden in a name:
+  -- at a polarity that orients nothing — the monochrome one, where every colour
+  -- produces — this says only that the flow-through fragment has no feedback,
+  -- and `mono-unoriented` below exhibits exactly that.
   WheelFree
     : ∀ {Γ Δ}
+    → (Ob → Pole)
     → Shape Ob Γ Δ
     → Set ℓ
-  WheelFree S = ∀ {v : Vtx S} {e : Edg S} → ¬ Dir S v v (just e)
+  WheelFree pol S = ∀ {v : Vtx S} {e : Edg S} → ¬ Dir pol S v v (just e)
 
   -- No undirected cycle: no closed REDUCED walk that traversed at least one
   -- edge. The `just e` index is what "nontrivial" means here.
@@ -1076,19 +1392,19 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- every wheel at once, and is what every worked example below uses.
   -- ══════════════════════════════════════════════════════════════════════════
 
-  record Ranked {Γ Δ} (S : Shape Ob Γ Δ) : Set ℓ where
+  record Ranked (pol : Ob → Pole) {Γ Δ} (S : Shape Ob Γ Δ) : Set ℓ where
     field
       -- the height of a vertex
       rank : Vtx S → ℕ
       -- every arc goes strictly uphill
-      climbs : (e : Edg S) (u v : Vtx S) → Arc S e u v → rank u < rank v
+      climbs : (e : Edg S) (u v : Vtx S) → Arc pol S e u v → rank u < rank v
 
   -- A nonempty directed walk strictly increases rank. Recursion peels the last
   -- arc, so the two clauses are "one arc" and "more than one".
   dir-rank
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {u v e}
-    → (R : Ranked S)
-    → Dir S u v (just e)
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ} {u v e}
+    → (R : Ranked pol S)
+    → Dir pol S u v (just e)
     → Ranked.rank R u < Ranked.rank R v
   dir-rank R (next e idle a) = Ranked.climbs R e _ _ a
   dir-rank R (next e (next f d a′) a) =
@@ -1097,9 +1413,9 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- Hence a ranked shape is wheel-free: a closed directed walk would put a
   -- rank strictly below itself.
   ranked⇒wheel-free
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ}
-    → Ranked S
-    → WheelFree S
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ}
+    → Ranked pol S
+    → WheelFree pol S
   ranked⇒wheel-free R d = ℕ.n≮n _ (dir-rank R d)
 
   -- ══════════════════════════════════════════════════════════════════════════
@@ -1164,59 +1480,72 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- Acyclicity kills self-loops outright, since a loop at `v` is already a
   -- reduced closed walk of length one.
   loop-free
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {e v}
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ} {e v}
     → Acyclic S
-    → ¬ Arc S e v v
-  loop-free ac a = ac (hop _ stay (along a) opening)
+    → ¬ Arc pol S e v v
+  loop-free ac a = ac (hop _ stay (arc⇒link a) opening)
 
-  -- The last arc of a nonempty directed walk ends where the walk does.
-  dir-into
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {u v e}
-    → Dir S u v (just e)
-    → dest S e ≡ inj₁ v
-  dir-into (next _ _ a) = Arc.into a
+  -- The last arc of a nonempty directed walk is an arc INTO where the walk
+  -- ends. Which of the wire's two ends that is depends on how the wire is
+  -- oriented, so the arc is handed back whole rather than projected.
+  dir-last
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ} {u v e}
+    → Dir pol S u v (just e)
+    → Σ (Vtx S) (λ w → Arc pol S e w v)
+  dir-last (next _ _ a) = _ , a
 
   -- If a directed walk's next arc repeats its last edge then that edge is a
-  -- self-loop: the repeated edge must both end and start at the shared vertex.
+  -- self-loop: the repeated wire must both end and start at the shared vertex.
   -- This is the only obstruction to reading a directed walk as a reduced one.
+  --
+  -- The mixed cases are where the corrected edge identity earns its keep: they
+  -- would have the ONE wire oriented both ways at once, which `forth-not-back`
+  -- refutes. Under the earlier reading — a cut presented as two antiparallel
+  -- edges — they were not refutable, because they were not false.
   arc-repeat
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {u m v : Vtx S} {e f : Edg S}
-    → Dir S u m (just f)
-    → Arc S e m v
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ} {u m v : Vtx S} {e f : Edg S}
+    → Dir pol S u m (just f)
+    → Arc pol S e m v
     → e ≡ f
-    → Arc S e m m
-  arc-repeat d a refl = arc (Arc.from a) (dir-into d)
+    → Arc pol S e m m
+  arc-repeat d a refl with dir-last d
+  arc-repeat d (forth o a) refl | _ , forth o′ a′ =
+    forth o (attach (Attach.from a) (Attach.into a′))
+  arc-repeat d (back o a) refl | _ , back o′ a′ =
+    back o (attach (Attach.from a′) (Attach.into a))
+  arc-repeat d (forth o a) refl | _ , back o′ a′ = ⊥-elim (forth-not-back o o′)
+  arc-repeat d (back o a) refl | _ , forth o′ a′ = ⊥-elim (forth-not-back o′ o)
 
   -- So, given no self-loops, every directed walk IS a reduced undirected walk,
   -- with the same last-edge index.
   dir⇒walk
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {u v : Vtx S} {b}
-    → ((e : Edg S) (w : Vtx S) → ¬ Arc S e w w)
-    → Dir S u v b
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ} {u v : Vtx S} {b}
+    → ((e : Edg S) (w : Vtx S) → ¬ Arc pol S e w w)
+    → Dir pol S u v b
     → Walk S u v b
   dir⇒walk nl idle = stay
-  dir⇒walk nl (next e idle a) = hop e stay (along a) opening
+  dir⇒walk nl (next e idle a) = hop e stay (arc⇒link a) opening
   dir⇒walk nl (next e (next f d a′) a) =
     hop e
       (dir⇒walk nl (next f d a′))
-      (along a)
+      (arc⇒link a)
       (apart (λ eq → nl e _ (arc-repeat (next f d a′) a eq)))
 
-  -- Undirected acyclicity implies wheel-freeness. Note the order of the two
-  -- steps: acyclicity is used FIRST to remove self-loops, and only then is the
-  -- directed walk reinterpreted, because the reinterpretation is unsound in the
-  -- presence of a loop.
+  -- Undirected acyclicity implies wheel-freeness, AT EVERY POLARITY. The
+  -- quantifier is the content: no orientation of the cuts can produce feedback
+  -- in a shape that has no undirected cycle, so the undirected predicate is
+  -- the stronger one and it is the one `Cell` carries.
   acyclic⇒wheel-free
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ}
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ}
     → Acyclic S
-    → WheelFree S
+    → WheelFree pol S
   acyclic⇒wheel-free ac d = ac (dir⇒walk (λ _ _ → loop-free ac) d)
 
   -- HRY Rmk 2.36, easy direction.
   simply-conn⇒wheel-free
-    : ∀ {Γ Δ} {S : Shape Ob Γ Δ}
+    : ∀ {pol Γ Δ} {S : Shape Ob Γ Δ}
     → SimplyConn S
-    → WheelFree S
+    → WheelFree pol S
   simply-conn⇒wheel-free sc = acyclic⇒wheel-free (SimplyConn.acyclic sc)
 
   -- ══════════════════════════════════════════════════════════════════════════
@@ -1234,9 +1563,11 @@ module _ {ℓ} {Ob : Set ℓ} where
       -- connected, and free of undirected cycles
       simply : SimplyConn shape
 
-    -- and therefore free of directed cycles, at no extra cost
-    wheel-free : WheelFree shape
-    wheel-free = simply-conn⇒wheel-free simply
+    -- and therefore free of directed cycles under EVERY polarity, at no extra
+    -- cost — which is why the cell carries the undirected predicate and not
+    -- this one
+    wheel-free : (pol : Ob → Pole) → WheelFree pol shape
+    wheel-free pol = simply-conn⇒wheel-free simply
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE COROLLA FAMILY. One vertex with in-profile `A` and out-profile `B`,
@@ -1257,22 +1588,31 @@ module _ {ℓ} {Ob : Set ℓ} where
     node A B (append-graph B A) (append-graph A B)
       (wires (swap-match (append-graph B A) (append-graph A B)))
 
+  -- Its wiring is flow-through — a corolla has no cut — so its wires are its
+  -- sources, and the bridge above carries the block-swap lemma across.
+  corolla-capfree
+    : ∀ {A B}
+    → CapFree (swap-match (append-graph B A) (append-graph A B))
+  corolla-capfree {A} {B} =
+    swap-match-capfree (append-graph B A) (append-graph A B)
+
   -- Its out-profile block runs from the vertex to an output leg. This is where
-  -- `swap-follow` is spent: the edge is a source of the `B` block, so it lands
-  -- in the `B` block of the sinks, which is the leg side.
+  -- `swap-follow` is spent: the wire's source end is in the `B` block, so its
+  -- sink end lands in the `B` block on the other side, which is the leg side.
   corolla-out
     : ∀ {A B}
     → (i : Ix B)
-    → dest (corolla A B) (left (append-graph B A) i) ≡ inj₂ (inj₂ i)
+    → end₁ (corolla A B) (wire⁺ (corolla-capfree {A} {B}) (left (append-graph B A) i))
+      ≡ inj₂ (inj₂ i)
   corolla-out {A} {B} i =
     trans
       (cong
-        (case⊎
-          (λ j → smap (λ _ → here) inj₁ (split (append-graph B A) j))
-          (λ j → smap (λ _ → here) inj₂ (split (append-graph A B) j)))
-        (follow-capfree
-          (swap-match-capfree (append-graph B A) (append-graph A B))
-          (left (append-graph B A) i)))
+        (λ z →
+          case⊎
+            (λ j → smap (λ _ → here) inj₁ (split (append-graph B A) j))
+            (λ j → smap (λ _ → here) inj₂ (split (append-graph A B) j))
+            (proj₂ z))
+        (ends-capfree (corolla-capfree {A} {B}) (left (append-graph B A) i)))
       (cong
         (smap (λ _ → here) inj₂)
         (trans
@@ -1280,30 +1620,58 @@ module _ {ℓ} {Ob : Set ℓ} where
           (cong swap (split-left (append-graph B A) i))))
 
   -- and its in-profile block runs from an input leg to the vertex, which needs
-  -- only the section law, since `origin` reads the source pool directly
+  -- only the section law, since a wire's first end is its source
   corolla-in
     : ∀ {A B}
     → (j : Ix A)
-    → origin (corolla A B) (right (append-graph B A) j) ≡ inj₂ j
+    → end₀ (corolla A B) (wire⁺ (corolla-capfree {A} {B}) (right (append-graph B A) j))
+      ≡ inj₂ (inj₁ j)
   corolla-in {A} {B} j =
-    cong (smap (λ _ → here) id) (split-right (append-graph B A) j)
+    trans
+      (cong
+        (λ z →
+          case⊎
+            (λ w → smap (λ _ → here) inj₁ (split (append-graph B A) w))
+            (λ w → smap (λ _ → here) inj₂ (split (append-graph A B) w))
+            (proj₁ z))
+        (ends-capfree (corolla-capfree {A} {B}) (right (append-graph B A) j)))
+      (cong (smap (λ _ → here) inj₁) (split-right (append-graph B A) j))
 
-  -- So NO edge of a corolla has both ends at a vertex — every edge has a leg
+  -- So NO wire of a corolla has both ends at a vertex — every wire has a leg
   -- end. That single fact discharges every certificate below, and it is why
   -- the corolla is a cell for arbitrary profiles rather than only for the
   -- small ones that can be checked by hand.
-  corolla-no-arc
+  corolla-no-attach-at
+    : ∀ {A B} {u v}
+    → (s : Ix (B ++ A))
+    → ¬ Attach (corolla A B) (wire⁺ (corolla-capfree {A} {B}) s) u v
+  corolla-no-attach-at {A} {B} s a with part (append-graph B A) s
+  ... | front i = inj₂≢inj₁ (trans (sym (corolla-out i)) (Attach.into a))
+  ... | back j = inj₂≢inj₁ (trans (sym (corolla-in j)) (Attach.from a))
+
+  corolla-no-attach
     : ∀ {A B e u v}
-    → ¬ Arc (corolla A B) e u v
-  corolla-no-arc {A} {B} {e} a with part (append-graph B A) e
-  ... | front i = inj₂≢inj₁ (trans (sym (corolla-out i)) (Arc.into a))
-  ... | back j = inj₂≢inj₁ (trans (sym (corolla-in j)) (Arc.from a))
+    → ¬ Attach (corolla A B) e u v
+  corolla-no-attach {A} {B} {e} {u} {v} a =
+    corolla-no-attach-at
+      {u = u}
+      {v = v}
+      (src⁺ (corolla-capfree {A} {B}) e)
+      (subst
+        (λ z → Attach (corolla A B) z u v)
+        (sym (wire-src (corolla-capfree {A} {B}) e))
+        a)
 
   corolla-no-link
     : ∀ {A B e u v}
     → ¬ Link (corolla A B) e u v
-  corolla-no-link (along a) = corolla-no-arc a
-  corolla-no-link (against a) = corolla-no-arc a
+  corolla-no-link (along a) = corolla-no-attach a
+  corolla-no-link (against a) = corolla-no-attach a
+
+  corolla-no-arc
+    : ∀ {pol A B e u v}
+    → ¬ Arc pol (corolla A B) e u v
+  corolla-no-arc a = corolla-no-link (arc⇒link a)
 
   -- The matching certificate holds for the strongest possible reason: there is
   -- no link at all, so neither a loop nor a branch can be exhibited.
@@ -1621,6 +1989,25 @@ module _ {ℓ} {Ob : Set ℓ} (_≟ᵒ_ : DecidableEquality Ob) where
 𝟚 : List ⊤
 𝟚 = tt ∷ tt ∷ []
 
+-- THE MONOCHROME POLARITY, at which every colour produces. It is the only
+-- polarity available on one self-dual colour, and it orients NO cut — which is
+-- the honest state of the examples below, all of which are flow-through and so
+-- need no orientation at all. `mono-unoriented` is what stops this from being
+-- a quiet weakening: at this colour set there is no palette to be had.
+mono : ⊤ → Pole
+mono _ = produces
+
+-- and the smallest colour set that DOES admit one: the two poles themselves,
+-- dual to each other. This is the oriented palette, and `polar` below is the
+-- shape whose cut it orients.
+duality : Palette Pole
+Palette.dual duality = flip
+Palette.dual² duality produces = refl
+Palette.dual² duality consumes = refl
+Palette.pole duality = id
+Palette.pole-dual duality produces = refl
+Palette.pole-dual duality consumes = refl
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- EXAMPLE 1: THE EMPTY SHAPE, and the EXCEPTIONAL EDGE. Both are vertex-free.
 -- The empty shape is wheel-free and acyclic but NOT connected — `β₀ = 0`, not
@@ -1632,7 +2019,7 @@ empty : Shape ⊤ [] []
 empty = wires []
 
 -- No vertices, so ranking and matching are vacuous.
-empty-ranked : Ranked empty
+empty-ranked : Ranked mono empty
 Ranked.rank empty-ranked ()
 Ranked.climbs empty-ranked ()
 
@@ -1640,7 +2027,7 @@ empty-matched : Matched empty
 Matched.unlooped empty-matched ()
 Matched.unbranched empty-matched ()
 
-empty-wheel-free : WheelFree empty
+empty-wheel-free : WheelFree mono empty
 empty-wheel-free = ranked⇒wheel-free empty-ranked
 
 empty-acyclic : Acyclic empty
@@ -1656,35 +2043,45 @@ empty-unconnected c with Connected.root c
 edge : Shape ⊤ 𝟙 𝟙
 edge = idn 𝟙
 
--- Its one edge is a leg at both ends, so it is no arc and carries no topology.
+-- Its one wire is a leg at both ends — an input leg and an output leg — so it
+-- is no arc and carries no topology.
 edge-legs
-  : origin edge here ≡ inj₂ here
+  : end₀ edge here ≡ inj₂ (inj₁ here)
 edge-legs = refl
+
+edge-legs′
+  : end₁ edge here ≡ inj₂ (inj₂ here)
+edge-legs′ = refl
 
 -- THE CUT — the boundary `∩`, and the shape this carrier could not write
 -- before the cap. Two input legs wired to each other, no vertex: take a
 -- producer and a consumer and cut them. Its interface is two sources against
 -- NO sink, which is the downward category's `dBD(m,n) = ∅ for n > m` appearing
 -- as a fact about terms rather than as an imposed condition.
-cut : Shape ⊤ 𝟚 []
-cut = wires (cap head [])
+cutting : Shape ⊤ 𝟚 []
+cutting = wires (cap head [])
 
-cut-no-vertex : verts cut ≡ []
-cut-no-vertex = refl
+cutting-no-vertex : verts cutting ≡ []
+cutting-no-vertex = refl
 
--- Each end runs to the OTHER SOURCE. This is what `Leg`'s polarity was added
--- for: without it the incidence has nowhere to land, since neither end is a
--- sink and the shape has no sinks at all.
-cut-out : dest cut here ≡ inj₂ (inj₁ (there here))
-cut-out = refl
+-- ONE wire, whose two ends are the two source legs. That it is one and not two
+-- is the edge listing doing its job: a cut has two ends and is one edge.
+cutting-one-wire : edges cutting ≡ cut tt tt ∷ []
+cutting-one-wire = refl
 
-cut-back : dest cut (there here) ≡ inj₂ (inj₁ here)
-cut-back = refl
+-- and both of its ends are SOURCE legs, which is what `Leg`'s polarity was
+-- added for: without it the incidence has nowhere to land, since neither end
+-- is a sink and the shape has no sinks at all.
+cutting-end₀ : end₀ cutting here ≡ inj₂ (inj₁ here)
+cutting-end₀ = refl
+
+cutting-end₁ : end₁ cutting here ≡ inj₂ (inj₁ (there here))
+cutting-end₁ = refl
 
 -- and it is no cell, for the empty shape's reason rather than the cap's:
 -- connectivity wants a vertex and a wiring has none
-cut-unconnected : ¬ Connected cut
-cut-unconnected c with Connected.root c
+cutting-unconnected : ¬ Connected cutting
+cutting-unconnected c with Connected.root c
 ... | ()
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -1698,7 +2095,7 @@ point : Shape ⊤ [] []
 point = node [] [] nil nil (wires [])
 
 -- No edges, so no arcs, so both certificates are discharged by absurdity.
-point-ranked : Ranked point
+point-ranked : Ranked mono point
 Ranked.rank point-ranked _ = 0
 Ranked.climbs point-ranked ()
 
@@ -1751,19 +2148,25 @@ c₁ = there here
 
 -- The internal edge is source `1`: vertex `0`'s output feeding vertex `1`.
 chain-internal
-  : origin chain (there here) ≡ inj₁ c₀
+  : end₀ chain (there here) ≡ inj₁ c₀
 chain-internal = refl
 
-chain-ranked : Ranked chain
+chain-ranked : Ranked mono chain
 Ranked.rank chain-ranked here = 0
 Ranked.rank chain-ranked (there here) = 1
 Ranked.rank chain-ranked (there (there ()))
-Ranked.climbs chain-ranked here u v ()
-Ranked.climbs chain-ranked (there here) _ _ (arc refl refl) = ℕ.n<1+n 0
-Ranked.climbs chain-ranked (there (there here)) u v (arc () _)
-Ranked.climbs chain-ranked (there (there (there here))) u v (arc () _)
+Ranked.climbs chain-ranked here u v (forth flowing (attach _ ()))
+Ranked.climbs chain-ranked here u v (back () _)
+Ranked.climbs chain-ranked (there here) _ _ (forth flowing (attach refl refl)) =
+  ℕ.n<1+n 0
+Ranked.climbs chain-ranked (there here) _ _ (back () _)
+Ranked.climbs chain-ranked (there (there here)) u v (forth flowing (attach () _))
+Ranked.climbs chain-ranked (there (there here)) u v (back () _)
+Ranked.climbs
+  chain-ranked (there (there (there here))) u v (forth flowing (attach () _))
+Ranked.climbs chain-ranked (there (there (there here))) u v (back () _)
 
-chain-wheel-free : WheelFree chain
+chain-wheel-free : WheelFree mono chain
 chain-wheel-free = ranked⇒wheel-free chain-ranked
 
 -- The only linkable edge is the internal one: the other three each dangle at
@@ -1772,27 +2175,27 @@ chain-link
   : ∀ {e u v}
   → Link chain e u v
   → e ≡ there here
-chain-link {e = here} (along (arc _ ()))
-chain-link {e = here} (against (arc _ ()))
+chain-link {e = here} (along (attach _ ()))
+chain-link {e = here} (against (attach _ ()))
 chain-link {e = there here} _ = refl
-chain-link {e = there (there here)} (along (arc () _))
-chain-link {e = there (there here)} (against (arc () _))
-chain-link {e = there (there (there here))} (along (arc () _))
-chain-link {e = there (there (there here))} (against (arc () _))
+chain-link {e = there (there here)} (along (attach () _))
+chain-link {e = there (there here)} (against (attach () _))
+chain-link {e = there (there (there here))} (along (attach () _))
+chain-link {e = there (there (there here))} (against (attach () _))
 
 -- The internal edge runs between the two DISTINCT vertices, so it is no loop.
 chain-unlooped : (e : Edg chain) (v : Vtx chain) → ¬ Link chain e v v
-chain-unlooped here v (along (arc _ ()))
-chain-unlooped here v (against (arc _ ()))
-chain-unlooped (there here) here (along (arc refl ()))
-chain-unlooped (there here) here (against (arc refl ()))
-chain-unlooped (there here) (there here) (along (arc () _))
-chain-unlooped (there here) (there here) (against (arc () _))
+chain-unlooped here v (along (attach _ ()))
+chain-unlooped here v (against (attach _ ()))
+chain-unlooped (there here) here (along (attach refl ()))
+chain-unlooped (there here) here (against (attach refl ()))
+chain-unlooped (there here) (there here) (along (attach () _))
+chain-unlooped (there here) (there here) (against (attach () _))
 chain-unlooped (there here) (there (there ())) _
-chain-unlooped (there (there here)) v (along (arc () _))
-chain-unlooped (there (there here)) v (against (arc () _))
-chain-unlooped (there (there (there here))) v (along (arc () _))
-chain-unlooped (there (there (there here))) v (against (arc () _))
+chain-unlooped (there (there here)) v (along (attach () _))
+chain-unlooped (there (there here)) v (against (attach () _))
+chain-unlooped (there (there (there here))) v (along (attach () _))
+chain-unlooped (there (there (there here))) v (against (attach () _))
 
 chain-matched : Matched chain
 Matched.unlooped chain-matched = chain-unlooped
@@ -1803,7 +2206,7 @@ chain-connected : Connected chain
 Connected.root chain-connected = c₀
 Connected.span chain-connected here = stop
 Connected.span chain-connected (there here) =
-  onward stop (adj (there here) (along (arc refl refl)))
+  onward stop (adj (there here) (along (attach refl refl)))
 Connected.span chain-connected (there (there ()))
 
 chain-simply : SimplyConn chain
@@ -1841,45 +2244,73 @@ d₂ = there (there here)
 d₃ = there (there (there here))
 
 -- the four arcs, read off the derived incidence rather than asserted
-diamond-2→3 : Arc diamond here d₂ d₃
-diamond-2→3 = arc refl refl
+diamond-at-2→3 : Attach diamond here d₂ d₃
+diamond-at-2→3 = attach refl refl
 
-diamond-1→3 : Arc diamond (there here) d₁ d₃
-diamond-1→3 = arc refl refl
+diamond-at-1→3 : Attach diamond (there here) d₁ d₃
+diamond-at-1→3 = attach refl refl
 
-diamond-0→1 : Arc diamond (there (there here)) d₀ d₁
-diamond-0→1 = arc refl refl
+diamond-at-0→1 : Attach diamond (there (there here)) d₀ d₁
+diamond-at-0→1 = attach refl refl
 
-diamond-0→2 : Arc diamond (there (there (there here))) d₀ d₂
-diamond-0→2 = arc refl refl
+diamond-at-0→2 : Attach diamond (there (there (there here))) d₀ d₂
+diamond-at-0→2 = attach refl refl
+
+-- and every one of them is a flow-through wire, so the wiring orients it with
+-- no appeal to colours
+diamond-2→3 : Arc mono diamond here d₂ d₃
+diamond-2→3 = forth flowing diamond-at-2→3
+
+diamond-1→3 : Arc mono diamond (there here) d₁ d₃
+diamond-1→3 = forth flowing diamond-at-1→3
+
+diamond-0→1 : Arc mono diamond (there (there here)) d₀ d₁
+diamond-0→1 = forth flowing diamond-at-0→1
+
+diamond-0→2 : Arc mono diamond (there (there (there here))) d₀ d₂
+diamond-0→2 = forth flowing diamond-at-0→2
 
 -- Heights `0 < 1 < 2`, with the two middle vertices at the same height.
-diamond-ranked : Ranked diamond
+diamond-ranked : Ranked mono diamond
 Ranked.rank diamond-ranked here = 0
 Ranked.rank diamond-ranked (there here) = 1
 Ranked.rank diamond-ranked (there (there here)) = 1
 Ranked.rank diamond-ranked (there (there (there here))) = 2
 Ranked.rank diamond-ranked (there (there (there (there ()))))
-Ranked.climbs diamond-ranked here _ _ (arc refl refl) = ℕ.n<1+n 1
-Ranked.climbs diamond-ranked (there here) _ _ (arc refl refl) = ℕ.n<1+n 1
-Ranked.climbs diamond-ranked (there (there here)) _ _ (arc refl refl) = ℕ.n<1+n 0
-Ranked.climbs diamond-ranked (there (there (there here))) _ _ (arc refl refl) =
+Ranked.climbs diamond-ranked here _ _ (forth flowing (attach refl refl)) =
+  ℕ.n<1+n 1
+Ranked.climbs diamond-ranked here _ _ (back () _)
+Ranked.climbs
+  diamond-ranked (there here) _ _ (forth flowing (attach refl refl)) =
+  ℕ.n<1+n 1
+Ranked.climbs diamond-ranked (there here) _ _ (back () _)
+Ranked.climbs
+  diamond-ranked (there (there here)) _ _ (forth flowing (attach refl refl)) =
   ℕ.n<1+n 0
+Ranked.climbs diamond-ranked (there (there here)) _ _ (back () _)
+Ranked.climbs
+  diamond-ranked
+  (there (there (there here)))
+  _
+  _
+  (forth flowing (attach refl refl)) =
+  ℕ.n<1+n 0
+Ranked.climbs diamond-ranked (there (there (there here))) _ _ (back () _)
 
-diamond-wheel-free : WheelFree diamond
+diamond-wheel-free : WheelFree mono diamond
 diamond-wheel-free = ranked⇒wheel-free diamond-ranked
 
 diamond-connected : Connected diamond
 Connected.root diamond-connected = d₀
 Connected.span diamond-connected here = stop
 Connected.span diamond-connected (there here) =
-  onward stop (adj (there (there here)) (along diamond-0→1))
+  onward stop (adj (there (there here)) (along diamond-at-0→1))
 Connected.span diamond-connected (there (there here)) =
-  onward stop (adj (there (there (there here))) (along diamond-0→2))
+  onward stop (adj (there (there (there here))) (along diamond-at-0→2))
 Connected.span diamond-connected (there (there (there here))) =
   onward
-    (onward stop (adj (there (there here)) (along diamond-0→1)))
-    (adj (there here) (along diamond-1→3))
+    (onward stop (adj (there (there here)) (along diamond-at-0→1)))
+    (adj (there here) (along diamond-at-1→3))
 Connected.span diamond-connected (there (there (there (there ()))))
 
 -- The cycle, read out: `0` along edge `2` to `1`, along edge `1` to `3`,
@@ -1890,12 +2321,12 @@ diamond-cycle =
   hop (there (there (there here)))
     (hop here
       (hop (there here)
-        (hop (there (there here)) stay (along diamond-0→1) opening)
-        (along diamond-1→3)
+        (hop (there (there here)) stay (along diamond-at-0→1) opening)
+        (along diamond-at-1→3)
         (apart (λ ())))
-      (against diamond-2→3)
+      (against diamond-at-2→3)
       (apart (λ ())))
-    (against diamond-0→2)
+    (against diamond-at-0→2)
     (apart (λ ()))
 
 diamond-cyclic : ¬ Acyclic diamond
@@ -1923,15 +2354,16 @@ diamond-not-simply sc = SimplyConn.acyclic sc diamond-cycle
 wheel : Shape ⊤ [] []
 wheel = node 𝟙 𝟙 (cons nil) (cons nil) (wires (head ∷ []))
 
--- the loop, read off the derived incidence: one edge, both ends at the vertex
-wheel-loop : Arc wheel here here here
-wheel-loop = arc refl refl
+-- the loop, read off the derived incidence: one flow-through wire, both ends
+-- at the vertex, oriented by the wiring with no appeal to colours
+wheel-loop : Arc mono wheel here here here
+wheel-loop = forth flowing (attach refl refl)
 
 -- The closed directed walk of length one.
-wheel-turn : Dir wheel here here (just here)
+wheel-turn : Dir mono wheel here here (just here)
 wheel-turn = next here idle wheel-loop
 
-wheel-wheeled : ¬ WheelFree wheel
+wheel-wheeled : ¬ WheelFree mono wheel
 wheel-wheeled wf = wf wheel-turn
 
 -- The content lemma, used forwards.
@@ -1939,38 +2371,20 @@ wheel-not-simply : ¬ SimplyConn wheel
 wheel-not-simply sc = wheel-wheeled (simply-conn⇒wheel-free sc)
 
 -- ════════════════════════════════════════════════════════════════════════════
--- EXAMPLE 6: A SELF-GLUING, AND THE LOCATED COST OF THE CAP. Two vertices,
--- each with one output, their two out-ports capped to each other. As a graph
--- that is ONE edge between two vertices: connected, and with `β₁ = 0`.
+-- EXAMPLE 6: A SELF-GLUING, AT TWO PALETTES. Two vertices, each with one
+-- output, their two out-ports capped to each other. As a graph that is ONE
+-- edge between two vertices: connected, with `β₁ = 0`, and with no feedback.
 --
--- The carrier reports otherwise, and the reason is worth stating exactly
--- rather than filing as a curiosity. `Edg S = Ix (pool S)` lists the SOURCE
--- ENDS. Before the cap that was a listing of edges, because every edge had
--- exactly one source end and one sink end. A capped edge has TWO source ends
--- and no sink end, so it occupies two positions of the listing, and the
--- derived incidence orients each of them toward the other's vertex. One wire
--- therefore presents as two antiparallel arcs — a directed cycle and a bigon.
+-- The pair of examples below is the whole argument for separating attachment
+-- from direction. The graph is the same at both palettes and every UNDIRECTED
+-- fact about it is the same — one wire, one link, connected, acyclic, a cell.
+-- What differs is whether the wire RUNS anywhere, and that is not a property
+-- of the graph at all: it is the palette's orientation, which the monochrome
+-- colour set does not have and the two-pole one does.
 --
--- So `WheelFree` and `Acyclic` OVER-REPORT on capped shapes, and the
--- correspondence the header claims for them — `β₁ = 0` read as `Acyclic` — is
--- a statement about cap-free shapes. Nothing landed depends on it: `Cell`
--- demands simple connectivity, and every shape any consumer builds today is
--- cap-free (`CapFree` names that fragment, and `swap-match` and `match-nil`
--- are proved to lie in it). The predicates are what the cap has not yet been
--- paid for, and this example is the receipt.
---
--- TWO REPAIRS, both real, neither taken here because the choice is a design
--- one and this module's job is to exhibit the obligation:
---
---   * carry the COLOUR INVOLUTION and read the polarity — a legitimate cap
---     joins `c` to `ω c`, so exactly one of its two ends is the producer, the
---     edge is that end, and the other end is the same edge seen from the other
---     side. This is the one the design record already points at, and it says
---     the involution is not only a legitimacy predicate on caps: it is what
---     makes a capped wire's incidence single-valued.
---   * or quotient the listing by the cap pairing — an edge is a source end
---     modulo the cap. That fixes the COUNT with no involution, and leaves the
---     direction to a convention rather than to the colours.
+-- Read the two together and the arc's claim is discharged in the carrier: an
+-- orientation is extra structure, the involution is what supplies it, and a
+-- shape is expressible with or without one.
 -- ════════════════════════════════════════════════════════════════════════════
 
 gluing : Shape ⊤ [] []
@@ -1984,37 +2398,113 @@ n₀ n₁ : Vtx gluing
 n₀ = here
 n₁ = there here
 
--- One wire, and the incidence gives it BOTH directions — read off the derived
--- incidence, not asserted.
-gluing-down : Arc gluing here n₁ n₀
-gluing-down = arc refl refl
+-- ONE wire — not two — and its two ends are the two vertices.
+gluing-one-wire : edges gluing ≡ cut tt tt ∷ []
+gluing-one-wire = refl
 
-gluing-up : Arc gluing (there here) n₀ n₁
-gluing-up = arc refl refl
+gluing-attach : Attach gluing here n₁ n₀
+gluing-attach = attach refl refl
 
--- so there is a closed directed walk, though the graph has no feedback
-gluing-turn : Dir gluing n₀ n₀ (just here)
-gluing-turn = next here (next (there here) idle gluing-up) gluing-down
+gluing-link : Link gluing here n₁ n₀
+gluing-link = along gluing-attach
 
-gluing-wheeled : ¬ WheelFree gluing
-gluing-wheeled wf = wf gluing-turn
+-- It is connected, through that one wire.
+gluing-connected : Connected gluing
+Connected.root gluing-connected = n₀
+Connected.span gluing-connected here = stop
+Connected.span gluing-connected (there here) =
+  onward stop (adj here (against gluing-attach))
+Connected.span gluing-connected (there (there ()))
 
--- and a reduced closed undirected walk, though the graph has no cycle: the two
--- positions are distinct, so reducedness — which exists to exclude exactly
--- this, walking out and back along one edge — does not see that they are one
--- edge
-gluing-cycle : Walk gluing n₀ n₀ (just here)
-gluing-cycle =
-  hop here
-    (hop (there here) stay (along gluing-up) opening)
-    (along gluing-down)
-    (apart (λ ()))
+-- And ACYCLIC, which is the correction: one wire cannot be walked out along
+-- and back, because reducedness is keyed on the wire and there is only one.
+gluing-matched : Matched gluing
+Matched.unlooped gluing-matched here here (along (attach () _))
+Matched.unlooped gluing-matched here here (against (attach () _))
+Matched.unlooped gluing-matched here (there here) (along (attach _ ()))
+Matched.unlooped gluing-matched here (there here) (against (attach _ ()))
+Matched.unlooped gluing-matched here (there (there ())) _
+Matched.unbranched gluing-matched here here u v w l l′ = refl
 
-gluing-cyclic : ¬ Acyclic gluing
-gluing-cyclic ac = ac gluing-cycle
+gluing-simply : SimplyConn gluing
+SimplyConn.connected gluing-simply = gluing-connected
+SimplyConn.acyclic gluing-simply = matched⇒acyclic gluing-matched
 
-gluing-not-simply : ¬ SimplyConn gluing
-gluing-not-simply sc = SimplyConn.acyclic sc gluing-cycle
+-- so a self-gluing of two cells IS a cell, which is what the graph says
+gluing-cell : Cell [] []
+Cell.shape gluing-cell = gluing
+Cell.simply gluing-cell = gluing-simply
+
+-- AND AT THIS PALETTE THE WIRE RUNS NOWHERE. Both its ends produce, because
+-- the one colour is self-dual and `mono` is the only polarity available, so
+-- neither direction is inhabited. This is not a gap in the carrier — it is
+-- what an unoriented palette means, and `mono-unoriented` says the colour set
+-- admits no orientation at all.
+gluing-no-arc
+  : ∀ {e u v}
+  → ¬ Arc mono gluing e u v
+gluing-no-arc {e = here} (forth (earlier _ ()) _)
+gluing-no-arc {e = here} (back (later () _) _)
+gluing-no-arc {e = there ()}
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- THE SAME SHAPE OVER THE ORIENTED PALETTE, where the cut does run. The two
+-- out-ports are dual — one produces, one consumes — so the wire has a
+-- direction, and it is the one the polarity dictates rather than one the
+-- representation chose.
+-- ════════════════════════════════════════════════════════════════════════════
+
+gluing⁺ : Shape Pole [] []
+gluing⁺ =
+  node [] (produces ∷ []) (cons nil) nil
+    (node [] (consumes ∷ []) (cons nil) nil
+      (wires (cap head [])))
+
+-- the producer and the consumer
+m₀ m₁ : Vtx gluing⁺
+m₀ = here
+m₁ = there here
+
+-- its one wire joins a colour to its dual, which is what makes the cut
+-- legitimate
+gluing⁺-one-wire : edges gluing⁺ ≡ cut consumes produces ∷ []
+gluing⁺-one-wire = refl
+
+-- AND SO IT RUNS, from the producing end to the consuming one. Note the
+-- direction is `back`: the wire's first end is the consumer, so the arc goes
+-- against the listing — which is exactly the datum the listing does not have
+-- and the palette does.
+gluing⁺-arc : Arc (Palette.pole duality) gluing⁺ here m₀ m₁
+gluing⁺-arc = back (later refl refl) (attach refl refl)
+
+-- one arc, no cycle: the shape is wheel-free at the palette that orients it,
+-- and it is so for the undirected reason rather than by vacuity
+gluing⁺-matched : Matched gluing⁺
+Matched.unlooped gluing⁺-matched here here (along (attach () _))
+Matched.unlooped gluing⁺-matched here here (against (attach () _))
+Matched.unlooped gluing⁺-matched here (there here) (along (attach _ ()))
+Matched.unlooped gluing⁺-matched here (there here) (against (attach _ ()))
+Matched.unlooped gluing⁺-matched here (there (there ())) _
+Matched.unbranched gluing⁺-matched here here u v w l l′ = refl
+
+gluing⁺-wheel-free : WheelFree (Palette.pole duality) gluing⁺
+gluing⁺-wheel-free = acyclic⇒wheel-free (matched⇒acyclic gluing⁺-matched)
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- AND THE PALETTE THAT DOES NOT EXIST. One self-dual colour admits no
+-- orientation: its dual is itself, so its pole would have to be its own
+-- opposite. This is what makes the monochrome examples' silence about cuts a
+-- fact rather than an omission, and it is why the two-pole colour set had to
+-- be introduced to exhibit an oriented cut at all.
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- no pole is its own opposite
+pole-fix : (p : Pole) → ¬ (p ≡ flip p)
+pole-fix produces ()
+pole-fix consumes ()
+
+mono-unoriented : ¬ Palette ⊤
+mono-unoriented P = pole-fix (Palette.pole P tt) (Palette.pole-dual P tt)
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE DECISION, AT A CONCRETE COLOUR SET. The three equality layers above are

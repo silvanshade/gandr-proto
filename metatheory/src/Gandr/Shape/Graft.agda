@@ -182,8 +182,8 @@ open import Gandr.Shape.Graph
   using (idn-match)
   using (verts)
   using (Vtx)
-  using (Arc)
-  using (arc)
+  using (Attach)
+  using (attach)
   using (along)
   using (against)
   using (Walk)
@@ -1219,19 +1219,19 @@ g₁ = there here
 
 -- and the two parallel edges, read off the DERIVED incidence — grafting put
 -- them there, nothing here asserts them
-bigon-arc₀ : Arc bigon here g₀ g₁
-bigon-arc₀ = arc refl refl
+bigon-att₀ : Attach bigon here g₀ g₁
+bigon-att₀ = attach refl refl
 
-bigon-arc₁ : Arc bigon (there here) g₀ g₁
-bigon-arc₁ = arc refl refl
+bigon-att₁ : Attach bigon (there here) g₀ g₁
+bigon-att₁ = attach refl refl
 
 -- The cycle: out along one edge and back against the other. The two edges are
 -- distinct, so the walk is reduced and the composite is not acyclic.
 bigon-cycle : Walk bigon g₀ g₀ (just (there here))
 bigon-cycle =
   hop (there here)
-    (hop here stay (along bigon-arc₀) opening)
-    (against bigon-arc₁)
+    (hop here stay (along bigon-att₀) opening)
+    (against bigon-att₁)
     (apart (λ ()))
 
 -- SO THE GRAFT OF TWO CELLS NEED NOT BE A CELL. Both operands are corollas and

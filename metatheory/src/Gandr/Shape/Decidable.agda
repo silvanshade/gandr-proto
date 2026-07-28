@@ -71,9 +71,9 @@ open import Gandr.Shape.Graph
   using (Vtx)
   using (Edg)
   using (verts)
-  using (pool)
-  using (origin)
-  using (dest)
+  using (edges)
+  using (end₀)
+  using (end₁)
   using (point)
   using (chain)
 
@@ -197,7 +197,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       -- the action on vertices
       onV : Tab (Vtx T) (verts S)
       -- the action on edges
-      onE : Tab (Edg T) (pool S)
+      onE : Tab (Edg T) (edges S)
       -- and on each interface
       onI : Tab (Ix Γ′) Γ
       onO : Tab (Ix Δ′) Δ
@@ -216,13 +216,18 @@ module _ {ℓ} {Ob : Set ℓ} where
     actO = app onO
 
     field
-      -- an edge's source goes to its image's source — legs included, in one
-      -- equation rather than a case split
-      onE-src : (e : Edg S) → origin T (actE e) ≡ smap actV actI (origin S e)
-      -- and likewise its target
-      -- and likewise its target, which since the cap exists may be a leg at
-      -- EITHER polarity, so the leg action is the pair of the two
-      onE-tgt : (e : Edg S) → dest T (actE e) ≡ smap actV (smap actI actO) (dest S e)
+      -- a wire's first end goes to its image's first end — legs included, in
+      -- one equation rather than a case split, and at either polarity, since
+      -- with the cut an end may be a source leg or a sink leg
+      onE-end₀
+        : (e : Edg S)
+        → end₀ T (actE e) ≡ smap actV (smap actI actO) (end₀ S e)
+      -- and likewise its second. The two ends are on the same footing here,
+      -- which is the correction the cut forced: an end is an end, and which
+      -- way the wire runs is a question this layer does not ask
+      onE-end₁
+        : (e : Edg S)
+        → end₁ T (actE e) ≡ smap actV (smap actI actO) (end₁ S e)
 
   open GMap public
 
@@ -235,10 +240,10 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- Which end of `e` the vertex `v` sits at. A datatype rather than a sum,
   -- because the two cases are eliminated separately in every consumer.
   data Side {Γ Δ} (S : Shape Ob Γ Δ) (e : Edg S) (v : Vtx S) : Set ℓ where
-    -- `e` leaves `v`
-    leaving : origin S e ≡ inj₁ v → Side S e v
-    -- `e` enters `v`
-    entering : dest S e ≡ inj₁ v → Side S e v
+    -- `e` meets `v` at its first end
+    leaving : end₀ S e ≡ inj₁ v → Side S e v
+    -- or at its second
+    entering : end₁ S e ≡ inj₁ v → Side S e v
 
   -- Some edge is incident to `v`, at one end or the other.
   record Attached {Γ Δ} (S : Shape Ob Γ Δ) (v : Vtx S) : Set ℓ where
@@ -340,21 +345,26 @@ module _ {ℓ} {Ob : Set ℓ} where
     ... | attached e (leaving p) =
       inj₁-injective
         (trans
-          (sym (trans (onE-src f e) (cong (smap (actV f) (actI f)) p)))
+          (sym
+            (trans
+              (onE-end₀ f e)
+              (cong (smap (actV f) (smap (actI f) (actO f))) p)))
           (trans
-            (cong (origin T) (h e))
-            (trans (onE-src g e) (cong (smap (actV g) (actI g)) p))))
+            (cong (end₀ T) (h e))
+            (trans
+              (onE-end₀ g e)
+              (cong (smap (actV g) (smap (actI g) (actO g))) p))))
     ... | attached e (entering p) =
       inj₁-injective
         (trans
           (sym
             (trans
-              (onE-tgt f e)
+              (onE-end₁ f e)
               (cong (smap (actV f) (smap (actI f) (actO f))) p)))
           (trans
-            (cong (dest T) (h e))
+            (cong (end₁ T) (h e))
             (trans
-              (onE-tgt g e)
+              (onE-end₁ g e)
               (cong (smap (actV g) (smap (actI g) (actO g))) p))))
 
     -- A map is determined by its action on the edge set. The analogue of HRY
@@ -377,7 +387,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       map′
         edge-determined
         (λ p e → p .atE e)
-        (ix-all? (pool S) (λ e → actE f e ≟ᵉ actE g e))
+        (ix-all? (edges S) (λ e → actE f e ≟ᵉ actE g e))
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE HYPOTHESIS IS NECESSARY. Without `Grounded`, edge-extensionality fails,
@@ -397,8 +407,8 @@ pt w .onV = w ∷ []
 pt w .onE = []
 pt w .onI = []
 pt w .onO = []
-pt w .onE-src ()
-pt w .onE-tgt ()
+pt w .onE-end₀ ()
+pt w .onE-end₁ ()
 
 -- Two such maps agree on every edge, vacuously.
 pt-agree : (e : Edg point) → actE (pt here) e ≡ actE (pt (there here)) e
