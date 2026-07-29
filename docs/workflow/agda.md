@@ -282,7 +282,10 @@ A chain is read down its **terms**; the steps are apparatus beside them, and the
 * **Terms hold one column.** **A step is indented two from its term**, and anything the step needs on further lines is indented two again, de-indenting when it closes.
   Where a term and its whole step fit on one line, put them there with the `≈⟨` columns aligned — `Gandr.Profunctor.Yoneda`'s `yoneda-from` is that form, and it is the nicest one when it fits.
   What must not happen is a step wrapping at the same indentation as the terms, because then the two read as one column of alternating things.
-* **A reverse step is `≈⟨ p ⟨`, never `sym p`.** stdlib's `≈⟨_⟨` takes the proof the other way round, so the `sym` disappears from the chain and the closing bracket carries the direction — visible at a glance where a nested `sym (…)` is not.
+* **A reverse step is `≈⁻¹⟨ p ⟩`, never `sym p` and not stdlib's `≈⟨ p ⟨`.** Taking the proof the other way round is right — a `sym` wrapped around a multi-line proof hides the direction inside the step — but stdlib puts the mark on the **closing** bracket, which is the far end of exactly the steps that need it, and an opening and a closing angle differing only in orientation do not survive skimming.
+  So the direction goes on the relation, as an inverse.
+  `Gandr.Setoid.step-≈⁻¹` **is** stdlib's backward step re-syntaxed and nothing more: no combinator is reimplemented, the transitivity and the `IsRelatedTo` stay the library's, and stdlib's own form remains in scope and is not an error.
+  Align the `≈` columns, so the two step forms read as one column.
   `Gandr.Shape.Graft`'s associativity chains are the worked examples.
 * **No `subst` blob inside a chain.** A transported arithmetic side-condition spread over three lines says less than the one-line lemma it stands for.
   Name the little lemma; if the pattern repeats, hoist it beside the definition it serves.
