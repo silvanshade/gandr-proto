@@ -1437,6 +1437,24 @@ module _ {ℓ} {Ob : Set ℓ} where
       unhit (tail i) (cap k m)
     ∎
 
+  -- The three above, packaged as the two retractions they are. With the
+  -- recovery below, each is an inverse and the pair is the isomorphism this
+  -- section claims.
+  match-remove-roundtrip
+    : ∀ {x Γ Γˣ Θ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (r : Removal x Γ Θ)
+    → match-remove i (removal→match i r) ≡ r
+  match-remove-roundtrip i (through spot body) = match-remove-insert i spot body
+  match-remove-roundtrip i (capped ins body) = match-remove-cut i ins body
+
+  match-unhit-roundtrip
+    : ∀ {y Γ Δ Δˣ}
+    → (j : Insert Ob y Δ Δˣ)
+    → (u : Unhit y Γ Δ)
+    → match-unhit j (unhit→match j u) ≡ u
+  match-unhit-roundtrip j (unhit p body) = match-unhit-insert p j body
+
   -- ── CONSTRUCTION AFTER ANALYSIS ────────────────────────────────────────────
   --
   -- The other round trip, and the one that does the work below: a lookup loses
