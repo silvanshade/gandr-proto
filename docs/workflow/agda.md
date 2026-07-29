@@ -275,29 +275,45 @@ Two reasons it is a rule rather than a taste:
 Single-step arguments — one `cong`, one `refl`, one lemma applied — stay as they are; the rule is about ladders.
 Existing `trans` ladders are converted when their module is next touched, and the modules under the cell shape are the standing backlog.
 
-#### How a chain is laid out, and the three things that do not go in one
+#### How a chain is laid out, and the four things that do not go in one
 
 A chain is read down its **terms**; the steps are apparatus beside them, and the layout says so.
+`Gandr.Shape.Graft`'s `assoc-∷-capped` is the worked example of every rule below and is the one to copy.
 
-* **The terms hold one column and every step begins on its term's line.** `begin⟨ … ⟩` and `∎` take the statement's own indentation, the terms four further in, and the `≈` marks align down the chain.
-  A step that fits stays on that line; one that does not leaves its marker there and continues beneath, indented four from `begin`.
-  `Gandr.Profunctor.Yoneda`'s `yoneda-from` is the form where everything fits, and it is the nicest one.
-  What must not happen is a step wrapping at the terms' own indentation, because then the two read as one column of alternating things.
+* **`begin`, every step, and `∎` hold one column; the terms are indented two further in.** `begin⟨ … ⟩` and `∎` take the statement's own indentation, each `≈` mark starts a line at that same indentation, and the terms sit between them two columns in.
+  So the chain reads as a ladder — an outer column of relations with the terms nested inside it — and a step's own length never disturbs the terms:
+
+  ```agda
+  begin⟨ bundle (≡ˢ _) ⟩
+    [ z ↦ match-comp z o ]· match-comp (i ∷ m) n
+  ≈·⟨ match-comp-∷-capped i m n ins body p m′ eq₁ eq₄ ⟩
+    match-comp (cap p (match-comp m′ body)) o
+  ≈⟨ match-comp-cap p (match-comp m′ body) o ⟩
+    …
+  ∎
+  ```
+
+  A step whose proof does not fit continues **two in from its own marker**, and its closing `⟩` goes on a line of its own back in the step column.
+  **Nothing is aligned to the right.** Mirroring the steps into a right-hand column — the `agda-categories` presentation this tree briefly emulated — is declined: it is re-flowed by hand on every edit, and it degrades exactly when a step grows, which is when the reader most needs the layout to hold.
 * **A reverse step is `≈⁻¹⟨ p ⟩`, never `sym p` and not stdlib's `≈⟨ p ⟨`.** Taking the proof the other way round is right — a `sym` wrapped around a multi-line proof hides the direction inside the step — but stdlib puts the mark on the **closing** bracket, which is the far end of exactly the steps that need it, and an opening and a closing angle differing only in orientation do not survive skimming.
   So the direction goes on the relation, as an inverse.
   `Gandr.Setoid.step-≈⁻¹` **is** stdlib's backward step re-syntaxed and nothing more: no combinator is reimplemented, the transitivity and the `IsRelatedTo` stay the library's, and stdlib's own form remains in scope and is not an error.
+  It is a general-setoid step, so it also replaces an `invˢ` or an `inv₁` applied to a whole step — `Gandr.Profunctor.Yoneda`'s `yoneda-to` is the worked example on that side.
 * **A step that rewrites under something marks the head rather than wrapping the step in `cong`.** Most `Set`-level steps are congruences, so `≈⟨ cong f p ⟩` repeats `cong` down the whole chain.
-  Write the term as `[ f ]· u` — the same term, with its head marked — and the step as `≈·⟨ p ⟩`; the combinator is `Gandr.Setoid.step-≈·`.
-  Two things about it are forced rather than chosen, and both are worth knowing before reaching for a variant.
+  Write the term as `[ x ↦ f ]· u` — the same term `f[x := u]`, with the rewritten position named — and the step as `≈·⟨ p ⟩`; the combinator is `Gandr.Setoid.step-≈·`.
+  **The head is a binder, not a function slot**, because the rewritten position is usually not the last argument: `[ x ↦ cap q x ]·`, `[ x ↦ spot₂ ∷ x ]·` and `[ r ↦ removal-comp r o ]·` all need the hole named, and a section or a bare lambda there reads as apparatus rather than as the term.
+  Agda's `syntax` binds it directly, so nothing in the term is spelled twice.
+  Two further things about it are forced rather than chosen, and both are worth knowing before reaching for a variant.
   **The head and the argument must be separate slots.** A step of the shape `x ≈[ f ]⟨ p ⟩` cannot be written at all: it must build `x ≡ f v` from `cong f p : f u ≡ f v`, so it needs `x ≡ f u`, which is unavailable for an abstract `x` — Agda rejects the definition with `f _x != x`.
-  Taking `f` and `u` separately makes the step's own index `f u`, and there is nothing left to reconcile.
+  Taking the head and `u` separately makes the step's own index `f u`, and there is nothing left to reconcile.
   **And the marker cannot be plain `≈⟨`**, because the argument slot swallows `u ≈⟨ p ⟩ rest` and Agda reports the ambiguity; the dot appearing in both halves of the device is the better reading anyway.
   This is `Set`-level vocabulary, because `cong` is what makes it: a general setoid wants a congruence witness rather than a function, which is the structure's own business.
+* **No `trans` inside a chain: a nested argument that needs several steps is its own `begin` block.** A step whose proof is a `trans` ladder has a chain hidden inside a chain, which is the very thing the outer chain was written to stop.
+  Open a second `begin⟨ … ⟩ … ∎` in the argument position instead, parenthesized, laid out by the same rule one level in — its steps in the argument's column, its terms two further.
+  `assoc-∷-fuse′` carries two of them, and each one is a four-term chain that was a three-deep `trans` nest.
 * **No `subst` blob inside a chain.** A transported arithmetic side-condition spread over three lines says less than the one-line lemma it stands for.
   Name the little lemma; if the pattern repeats, hoist it beside the definition it serves.
   `insert-shrink` is the worked example — five sites of `subst`-and-`<-trans` over `insert-length` replaced by an ordinary induction on the insertion, which also shortened `match-comp-acc` itself.
-
-`Gandr.Shape.Graft`'s associativity chains are the worked examples of all four.
 
 ## House style
 
