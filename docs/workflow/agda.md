@@ -228,6 +228,27 @@ It is honest — nothing is truncated — but it offers a whole tower no consume
 
 The same pattern repeats for the discrete category, the discrete groupoid, and the rest.
 
+### A structure that stops declares a region; it is not extended to reach one
+
+Truncating with `𝟘` has a consequence that must be met head-on rather than routed around: a **dimension-wise certification cannot hold** of such a carrier, because certifying at every address demands cells at every address and there are none above the content.
+The tempting repair is to extend the carrier upward until the certification holds.
+**Do not.** Both ways of doing it were built and checked, and both cost more than they pay:
+
+* **with `𝟙`** — the certification above the content becomes a _vacuous_ structure whose laws are discharged by `tt`, and the whole reasoning suite is then available at those addresses returning `tt`, with nothing at the use site distinguishing an informative application from an empty one.
+  That is precisely the silent discharge the `𝟙` bullet above forbids, re-entering through the door that uniformity opens.
+* **with `Id`** — honest, and it does hold, but it leaves _"the identity tower is the intended content"_ and _"the tower is filler for a region nobody observes"_ indistinguishable in the type.
+
+**The region is the parameter instead.** `Gandr.Graph.At 𝒮 Ξ P` certifies `𝒮` at exactly the addresses admitted by `P`; `Everywhere` is the total region (`Total`), a structure whose content stops at the carrier is the singleton region (`Only⋆`, supplied by `at⋆`), and bounded depth sits between.
+So `≡°` keeps its `𝟘`, nothing is extended, nothing is marked, and where a structure has content is **stated in its signature** rather than discovered by whoever next needs it.
+
+**This gates rather than labels, and the address code is what does it.** `Disc` has injective constructors, so an out-of-region address is discharged by **constructor disjointness** — `at⋆`'s second clause is `()`.
+Reasoning above a declared region is therefore not merely unwise and not merely unmarked: the region witness has no inhabitant, so the suite cannot be formed there.
+That is a second dividend from reifying the address — the code was introduced so a statement could _bind_ its dimension, and it also lets a statement _refuse_ one.
+
+**The region is per doctrine, not per carrier, and the two must not be conflated.** `Setoid` has content at dimensions 0–1 and `Category` at 0–2, so one carrier can serve the first and fail the second: over `≡°`, `Setoid` is inhabited (`≡ˢ`) while `Category` is not (`ℂ.≡°-not-category`).
+A `Set`-level _category_ accordingly presents with `≡°` on each **hom** — `δ° x y = ≡° (H x y)` — and that carrier's region is `Only⋆`.
+Reading a refutation of the certification as evidence that the certification is _stronger than the structure_ is an error this tree made and shipped; check the bare structure first.
+
 ### Equational proofs use setoid reasoning, everywhere
 
 **Any multi-step equational argument is written as a reasoning chain, not as a nest of `trans`.** The vocabulary is `Relation.Binary.Reasoning.MultiSetoid`, re-exported by `Gandr.Category.Reasoning`, with `Gandr.Setoid.bundle` turning a `Setoid` into the stdlib bundle the syntax takes; `Gandr.Category.Reasoning.homᵇ` produces the hom-setoid bundle from a `Category`.
@@ -438,6 +459,17 @@ Four properties were checked directly rather than assumed:
 * and the address lookup is a recursion **on the code**, so `at 𝒞 ⋆` is the carrier-level structure on the nose.
 
 That last pair is the payoff: a reasoning combinator, a law, or a lemma is written **once** against a structure at a bound telescope and holds at every dimension, instead of being restated per dimension or reached only through a spine nobody can abstract over.
+
+**Ergonomically, what the address absorbs is the boundary ascriptions.** A law stated by hand at dimension `n` writes one type ascription per quantified variable, each a longer projection spine than the last — at dimension 2, `{a b : Ξ .ϵ°}`, then `{f g : Ξ .δ° a b .ϵ°}`, then the cells.
+Binding one `Θ : Disc Ξ` replaces that whole chain, because `_▸ᵈ_⇴_` types each boundary pair from the prefix already built, so the iterated boundary requirement **resolves** the ascriptions rather than the author restating them.
+The saving grows with dimension exactly as the spine does.
+
+**A statement binds its carrier EXPLICITLY.** This is the same negative result one step on: leaving the carrier implicit under a non-trivial address puts a metavariable under a projection — `⟦Disc⟧ ?Ξ (⋆ ▸ᵈ x ⇴ y)` is `?Ξ .δ° x y` — and Agda reports it blocked, exactly as this section predicts.
+With the carrier bound, every address elaborates.
+At `⋆` it is still inferable, since `⟦Disc⟧ ?Ξ ⋆` reduces to `?Ξ` with no projection in the way, so the common case writes `_`.
+
+**A structure is supplied at the bound address, and where it _has_ content is the certification's business.** A reasoning module takes the carrier, an address, and the structure there; `Gandr.Graph.At` is where a structure declares the region it is certified over, and `at⋆` / `everywhere→At` are its two ends.
+There is deliberately **one** entry point: a suite parameterized by the certification rather than by the structure would fix a region in the interface, which is the one thing that varies between consumers.
 
 ### Consequences, and the two things this rules out
 
