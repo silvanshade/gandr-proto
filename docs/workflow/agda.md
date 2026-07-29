@@ -247,7 +247,10 @@ That is a second dividend from reifying the address — the code was introduced 
 
 **The region is per doctrine, not per carrier, and the two must not be conflated.** `Setoid` has content at dimensions 0–1 and `Category` at 0–2, so one carrier can serve the first and fail the second: over `≡°`, `Setoid` is inhabited (`≡ˢ`) while `Category` is not (`ℂ.≡°-not-category`).
 A `Set`-level _category_ accordingly presents with `≡°` on each **hom** — `δ° x y = ≡° (H x y)` — and that carrier's region is `Only⋆`.
+That former is **`Gandr.Graph.𝔾.homs°`**, taking the objects and the hom family.
+It is named once rather than inlined because every `Set`-level category instance goes through it, and its name is deliberately descriptive: what the family at the homs composes into is the `Category` instance's claim, never the carrier's.
 Reading a refutation of the certification as evidence that the certification is _stronger than the structure_ is an error this tree made and shipped; check the bare structure first.
+**`homs°` is where that separation is real**, and it is the reason the former is worth naming twice over: `Gandr.Shape.Structure.WIRING` inhabits the bare `Category`, and `Gandr.Category.ℂ.homs°-not-everywhere` refutes the dimension-wise certification over the same carrier.
 
 ### Equational proofs use setoid reasoning, everywhere
 
@@ -286,7 +289,9 @@ Five rules the one-line summary does not carry, each of which has cost something
 * **Weak by default; the marks go on strictness and decidability.** Every structure and law here reads as weak unless marked: no `weak`/`Weak` prefixes, no E-prefixes, no "up to higher cells" call-outs.
   The literature marks weakness because its ambient default is strict; ours is not, and importing that convention would decorate the normal case while leaving the exceptional case unmarked.
   Conversely, **every definition or proof that is strict, or that consumes decidable equality of cells, carries a definition-site comment saying so** — `-- STRICT: <what>` / `-- DECIDABLE EQUALITY: of <what>` — because that is exactly where collapse and the K-floor live, and exactly what a reader auditing the trust story must be able to find.
-  `Gandr.Category`'s private `≡` module — propositional equality read as the strict category on a `Set` — is the tree's worked example and the only strict instance in it.
+  `Gandr.Category`'s private `≡` module — propositional equality read as the strict category on a `Set` — is the tree's worked example.
+  It is **not** the only strict definition, and the reason is structural rather than incidental: a `Set`-level structure presents with `_≡_` at its 2-cells (§"How a `Set`-level structure presents as a `Category`"), so its laws are equations by construction and **every such instance is strict in that sense and carries the mark** — `Gandr.Shape.Structure.WIRING` is the worked one, `Gandr.Category.Instances.SETOID` is strict for the neighbouring reason that its coherences are reflexive.
+  The mark is what carries this, not the name: a name says "strict" where a weak variant of the _same_ structure exists to be confused with it, which is why `FreeStrictInvolutiveWordCategory` is marked in its name and a `Set`-level instance is not.
 * **Parallel modules keep parallel order.** Where two modules deliberately mirror each other's vocabulary — the `Set` layer against the ∞-graph layer, a `Base` against its `Properties` — corresponding definitions appear in the same order.
   The mirroring is load-bearing documentation: it lets the two be read side by side, and order drift breaks that reading.
   Reorder only when genuinely landing the missing counterparts, never speculatively.
