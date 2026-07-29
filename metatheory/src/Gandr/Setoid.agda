@@ -192,13 +192,21 @@ step-≈⁻¹ = step-≈-⟨
 syntax step-≈⁻¹ x yRz y≈x = x ≈⁻¹⟨ y≈x ⟩ yRz
 
 -- ══════════════════════════════════════════════════════════════════════════════
--- A CONGRUENCE STEP, WITH THE FUNCTION IN A SLOT.
+-- A CONGRUENCE STEP, WITH THE REWRITTEN POSITION MARKED IN THE TERM.
 --
 -- Most steps of a `Set`-level chain rewrite UNDER something, so most of them
 -- read `≈⟨ cong f p ⟩` and the `cong` is noise repeated down the whole chain.
--- Moving `f` into the term line — `[ f ]· u` for what would otherwise be
--- written `f u` — takes it out of every step at once, and the bracket keeps a
--- lambda from running into its argument.
+-- Moving the head into the term line — `[ x ↦ f x ]· u` for what would
+-- otherwise be written `f u` — takes it out of every step at once.
+--
+-- ── WHY THE HEAD IS A BINDER AND NOT A FUNCTION SLOT ────────────────────────
+-- The head is written with its own bound variable rather than as a bare
+-- function, because a rewrite is almost never at the argument of a one-place
+-- head: `cap q _`, `spot₂ ∷ _` and `λ r → removal-comp r o` all need the hole
+-- named, and a section or a lambda in that slot reads as apparatus rather than
+-- as the term. Agda's `syntax` binds it directly — `syntax step-≈· (λ x → f) …`
+-- — so `[ x ↦ f ]· u` IS `f[x := u]` with the rewritten position marked, and
+-- nothing in the term is spelled twice.
 --
 -- ── WHY THE TERM SPLITS RATHER THAN THE STEP SHRINKING ──────────────────────
 -- A step of the shape `x ≈[ f ]⟨ p ⟩` cannot be written at all: it must build
@@ -229,4 +237,4 @@ step-≈·
   → u ≡ v
   → IsRelatedTo (bundle (≡ˢ A)) (f u) z
 step-≈· f u rest p = step-≈-⟩ (f u) rest (cong f p)
-syntax step-≈· f u rest p = [ f ]· u ≈·⟨ p ⟩ rest
+syntax step-≈· (λ x → f) u rest p = [ x ↦ f ]· u ≈·⟨ p ⟩ rest

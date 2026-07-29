@@ -33,12 +33,11 @@ open import Gandr.Graph
   using (δ°)
 open import Gandr.Setoid
   using (bundle)
-  using (invˢ)
+  using (step-≈⁻¹)
 open import Gandr.Category
   using (Category)
   using (idn₀)
   using (seq₀)
-  using (inv₁)
   using (mon-λ)
   using (mon-ρ)
 open import Gandr.Profunctor
@@ -74,11 +73,16 @@ module _ {ℓ} {Ξ : ∞Graph ℓ} {𝒞 : Category Ξ} (P : Profunctor 𝒞 �
   yoneda-to ν .cmp a = ν .cmp (𝒞 .idn₀ a)
   yoneda-to ν .dinat {a} {b} f =
     begin⟨ bundle (P .std a b) ⟩
-      P .actʳ (ν .cmp (𝒞 .idn₀ a)) f  ≈⟨ P .std a b .invˢ (ν .natʳ (𝒞 .idn₀ a) f) ⟩
-      ν .cmp (𝒞 .seq₀ (𝒞 .idn₀ a) f)  ≈⟨ ν .cmp* (𝒞 .mon-λ f) ⟩
-      ν .cmp f                        ≈⟨ ν .cmp* (𝒞 .inv₁ (𝒞 .mon-ρ f)) ⟩
-      ν .cmp (𝒞 .seq₀ f (𝒞 .idn₀ b))  ≈⟨ ν .natˡ f (𝒞 .idn₀ b) ⟩
-      P .actˡ f (ν .cmp (𝒞 .idn₀ b))  ∎
+      P .actʳ (ν .cmp (𝒞 .idn₀ a)) f
+    ≈⁻¹⟨ ν .natʳ (𝒞 .idn₀ a) f ⟩
+      ν .cmp (𝒞 .seq₀ (𝒞 .idn₀ a) f)
+    ≈⟨ ν .cmp* (𝒞 .mon-λ f) ⟩
+      ν .cmp f
+    ≈⁻¹⟨ ν .cmp* (𝒞 .mon-ρ f) ⟩
+      ν .cmp (𝒞 .seq₀ f (𝒞 .idn₀ b))
+    ≈⟨ ν .natˡ f (𝒞 .idn₀ b) ⟩
+      P .actˡ f (ν .cmp (𝒞 .idn₀ b))
+    ∎
 
   -- Extend a wedge along the right action. Left naturality routes the staged
   -- action through the wedge condition and the exchange law; right naturality
@@ -88,10 +92,14 @@ module _ {ℓ} {Ξ : ∞Graph ℓ} {𝒞 : Category Ξ} (P : Profunctor 𝒞 �
   yoneda-from w .cmp* {a} σ = P .actʳ↕ σ (w .cmp a)
   yoneda-from w .natˡ {a′} {a} {b} f h =
     begin⟨ bundle (P .std a′ b) ⟩
-      P .actʳ (w .cmp a′) (𝒞 .seq₀ f h)   ≈⟨ P .act-seqʳ (w .cmp a′) f h ⟩
-      P .actʳ (P .actʳ (w .cmp a′) f) h   ≈⟨ P .actʳ* h (w .dinat f) ⟩
-      P .actʳ (P .actˡ f (w .cmp a)) h    ≈⟨ P .act-xchg f (w .cmp a) h ⟩
-      P .actˡ f (P .actʳ (w .cmp a) h)    ∎
+      P .actʳ (w .cmp a′) (𝒞 .seq₀ f h)
+    ≈⟨ P .act-seqʳ (w .cmp a′) f h ⟩
+      P .actʳ (P .actʳ (w .cmp a′) f) h
+    ≈⟨ P .actʳ* h (w .dinat f) ⟩
+      P .actʳ (P .actˡ f (w .cmp a)) h
+    ≈⟨ P .act-xchg f (w .cmp a) h ⟩
+      P .actˡ f (P .actʳ (w .cmp a) h)
+    ∎
   yoneda-from w .natʳ {a} h g = P .act-seqʳ (w .cmp a) h g
 
   -- Round trip at the wedge: extending then restricting returns the diagonal,
@@ -110,6 +118,9 @@ module _ {ℓ} {Ξ : ∞Graph ℓ} {𝒞 : Category Ξ} (P : Profunctor 𝒞 �
     .ϵ°
   yoneda-to-from ν {a} {b} h =
     begin⟨ bundle (P .std a b) ⟩
-      P .actʳ (ν .cmp (𝒞 .idn₀ a)) h  ≈⟨ P .std a b .invˢ (ν .natʳ (𝒞 .idn₀ a) h) ⟩
-      ν .cmp (𝒞 .seq₀ (𝒞 .idn₀ a) h)  ≈⟨ ν .cmp* (𝒞 .mon-λ h) ⟩
-      ν .cmp h                        ∎
+      P .actʳ (ν .cmp (𝒞 .idn₀ a)) h
+    ≈⁻¹⟨ ν .natʳ (𝒞 .idn₀ a) h ⟩
+      ν .cmp (𝒞 .seq₀ (𝒞 .idn₀ a) h)
+    ≈⟨ ν .cmp* (𝒞 .mon-λ h) ⟩
+      ν .cmp h
+    ∎

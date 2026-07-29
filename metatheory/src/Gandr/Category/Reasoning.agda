@@ -335,10 +335,14 @@ module Reasoning {ℓ} (Ξ : ∞Graph ℓ) (Θ : Disc Ξ) (ℬ : Category (⟦Di
     → B .δ° a₀ c₁ .δ° (ℬ .seq₀ (ℬ .seq₀ p₀ q₀) w) (ℬ .seq₀ u (ℬ .seq₀ p₁ q₁)) .ϵ°
   glue {a₀} {c₁} {p₀} {q₀} {u} {v} {w} {p₁} {q₁} □₀ □₁ =
     begin⟨ homᵇ a₀ c₁ ⟩
-      ℬ .seq₀ (ℬ .seq₀ p₀ q₀) w  ≈⟨ pullʳ □₁ ⟩
-      ℬ .seq₀ p₀ (ℬ .seq₀ v q₁)  ≈⟨ pullˡ □₀ ⟩
-      ℬ .seq₀ (ℬ .seq₀ u p₁) q₁  ≈⟨ ℬ .mon-α u q₁ p₁ ⟩
-      ℬ .seq₀ u (ℬ .seq₀ p₁ q₁)  ∎
+      ℬ .seq₀ (ℬ .seq₀ p₀ q₀) w
+    ≈⟨ pullʳ □₁ ⟩
+      ℬ .seq₀ p₀ (ℬ .seq₀ v q₁)
+    ≈⟨ pullˡ □₀ ⟩
+      ℬ .seq₀ (ℬ .seq₀ u p₁) q₁
+    ≈⟨ ℬ .mon-α u q₁ p₁ ⟩
+      ℬ .seq₀ u (ℬ .seq₀ p₁ q₁)
+    ∎
 
   -- Extend a square on both sides at once.
   extend² : ∀ {u v w x y}
