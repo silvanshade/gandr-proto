@@ -141,6 +141,16 @@
 -- intermediate lists as FIELDS — is what let the coherence be stated as a
 -- homogeneous equation instead of a transport.
 --
+-- `insert-swap-coh⁴` carries the same statement one layer up, for the four
+-- nested insertions a cut over a wire over a cut presents. It adds NO
+-- generator: both of its routes are reduced words for one permutation, so the
+-- relation follows from the braid and from far-apart transpositions commuting.
+-- Its cost is the finding: two of its four bases are `refl` and the other two
+-- are one `cong` of `insert-swap-braid` ITSELF, so a rung of this ladder is
+-- the rung below re-used rather than new work. That was measured against a
+-- prediction that all four would be `refl`, and the deviation runs in the
+-- cheap direction.
+--
 -- AND THE TWO LOOKUPS ARE VIEWS OF THE TWO THREADINGS, which is the
 -- characterization the composition proofs run on. `match-remove i` is inverse
 -- to `removal→match i` and `match-unhit j` to `unhit→match j`, both round trips
@@ -150,16 +160,20 @@
 -- lookup is a recursion and no lemma reaches past it, while a rebuild is a
 -- construction and computes.
 --
+-- `match-cap-insert` — threading a cut and threading a wire COMMUTE, up to
+-- reindexing by nested `insert-swap`s. No hypothesis, no composition and no
+-- lookup appears in it, and it is the bottom of the development above: through
+-- the views, both of the commutation laws below reduce to it. Its cut-meets-cut
+-- clause is what asked for the four-layer coherence, and caps meeting caps is
+-- where every coherence debt in this file has landed, `cap-swap`'s included.
+--
 -- WHAT REMAINS OPEN, stated where a reader meets it. Associativity of
 -- `match-comp` is a module parameter twice over — `match-remove-comp` and
--- `match-unhit-comp`, discharged at `Ob = ⊥` for satisfiability only. Through
--- the views those two reduce to ONE hypothesis-free identity, that threading a
--- cut and threading a wire commute up to reindexing by nested `insert-swap`s.
--- Four of that identity's five clauses discharge here — two by the involution,
--- one by `refl`, one by its own induction — and the fifth, where a cut meets a
--- cut, asks for a FOUR-layer coherence where the file has the exchange at two
--- and the braid at three. Caps meeting caps is where every coherence debt in
--- this file has landed, `cap-swap`'s included.
+-- `match-unhit-comp`, discharged at `Ob = ⊥` for satisfiability only. What is
+-- owed between `match-cap-insert` and those two is a chain of derivations, not
+-- another coherence: how `match-unhit` sees a `match-cap`, then what
+-- composition does to a rebuilt matching, then the two laws through the
+-- recovery and the round trips.
 --
 -- AND THE ARITY OF SUCH A DEBT IS NOT ARBITRARY, which is worth knowing before
 -- reaching for heavier machinery: it is the number of positions the operations
@@ -239,6 +253,7 @@ open import Gandr.Setoid
   using (≡ˢ)
   using (bundle)
   using (step-≈·)
+  using (step-≈·⁻¹)
   using (step-≈⁻¹)
 open import Gandr.Shape.Graph
   using (here)
@@ -449,6 +464,18 @@ module _ {ℓ} {Ob : Set ℓ} where
   --   * `insert-swap-braid` — the three-way coherence: three nested insertions
   --     reversed by swapping low, high, low agree with the same three reversed
   --     high, low, high.
+  --   * `insert-swap-coh⁴` — the same coherence one layer up, for the four
+  --     nested insertions a cut over a wire over a cut presents. It is NOT a
+  --     third generator: both routes are reduced words for one permutation, so
+  --     the relation follows from the braid and from far-apart transpositions
+  --     commuting, and the proof says exactly that — two of its four bases ARE
+  --     `insert-swap-braid`, under one `cong`, and the other two are `refl`.
+  --
+  -- WHAT THAT COSTS PER LAYER, since the ladder's finiteness is the question a
+  -- reader will have. A rung is one record, one reindexing, two plantings, two
+  -- routes, and a five-clause proof whose only content is the rung below. So
+  -- the arity of a coherence bounds its cost rather than compounding it, and
+  -- the bound on the arity is the section on `match-cap-insert` below.
   --
   -- The three readings in the incidence section below — `swap-slotˡ`,
   -- `swap-slotʳ`, `swap-past` — complete the picture from the other side: the
@@ -583,6 +610,169 @@ module _ {ℓ} {Ob : Set ℓ} where
   insert-swap-braid (tail i) (tail j) head = refl
   insert-swap-braid (tail i) (tail j) (tail k) =
     cong tower-tail (insert-swap-braid i j k)
+
+  -- FOUR nested insertions as one package: `Tower` one layer up, and the same
+  -- device for the same reason — three intermediate lists as FIELDS, so that
+  -- two four-layer reorderings are compared by an ordinary equation rather
+  -- than through a transport. The layer count is what the superscript says and
+  -- it is all the superscript says.
+  record Tower⁴ (x y z w : Ob) (ds dˣ : List Ob) : Set ℓ where
+    constructor tower⁴
+    field
+      -- the list with the first element in
+      low : List Ob
+      -- with the second one in as well
+      mid : List Ob
+      -- and with the third
+      high : List Ob
+      -- the element that goes in first
+      base : Insert Ob x ds low
+      -- the one that goes in second
+      step : Insert Ob y low mid
+      -- the one that goes in third
+      rise : Insert Ob z mid high
+      -- and the one that goes in last
+      peak : Insert Ob w high dˣ
+
+  -- Reindexing past an element every list leads with: `tower-tail` one layer
+  -- up, copatterns for the same reason.
+  tower⁴-tail
+    : ∀ {x y z w u ds dˣ}
+    → Tower⁴ x y z w ds dˣ
+    → Tower⁴ x y z w (u ∷ ds) (u ∷ dˣ)
+  Tower⁴.low (tower⁴-tail {u} t) = u ∷ Tower⁴.low t
+  Tower⁴.mid (tower⁴-tail {u} t) = u ∷ Tower⁴.mid t
+  Tower⁴.high (tower⁴-tail {u} t) = u ∷ Tower⁴.high t
+  Tower⁴.base (tower⁴-tail t) = tail (Tower⁴.base t)
+  Tower⁴.step (tower⁴-tail t) = tail (Tower⁴.step t)
+  Tower⁴.rise (tower⁴-tail t) = tail (Tower⁴.rise t)
+  Tower⁴.peak (tower⁴-tail t) = tail (Tower⁴.peak t)
+
+  -- REORDERING A FOUR-TOWER, LOWEST PAIR FIRST. `c` puts `w` in, then `p` puts
+  -- `z` in, then `k` puts `y` in, then `i` puts `x` in; this hands back the
+  -- same four positions in the order `y`, `x`, `z`, `w` — the cut's two ports
+  -- at the bottom in the other order, the wire and the underlying cap above
+  -- them — reached by carrying the base all the way to the peak and then the
+  -- new base to one below it.
+  tower⁴-lo
+    : ∀ {x y z w ds d₁ d₂ d₃ dˣ}
+    → (i : Insert Ob x d₃ dˣ)
+    → (k : Insert Ob y d₂ d₃)
+    → (p : Insert Ob z d₁ d₂)
+    → (c : Insert Ob w ds d₁)
+    → Tower⁴ y x z w ds dˣ
+  tower⁴-lo {ds} {d₂} {d₃} {dˣ} i k p c =
+    tower⁴
+      (Exchange.mid lo₄)
+      (Exchange.mid lo₅)
+      (Exchange.mid lo₃)
+      (Exchange.inner lo₄)
+      (Exchange.inner lo₅)
+      (Exchange.outer lo₅)
+      (Exchange.outer lo₃)
+    where
+      lo₁ : Exchange _ _ ds d₂
+      lo₁ = insert-swap p c
+      lo₂ : Exchange _ _ (Exchange.mid lo₁) d₃
+      lo₂ = insert-swap k (Exchange.outer lo₁)
+      lo₃ : Exchange _ _ (Exchange.mid lo₂) dˣ
+      lo₃ = insert-swap i (Exchange.outer lo₂)
+      lo₄ : Exchange _ _ ds (Exchange.mid lo₂)
+      lo₄ = insert-swap (Exchange.inner lo₂) (Exchange.inner lo₁)
+      lo₅ : Exchange _ _ (Exchange.mid lo₄) (Exchange.mid lo₃)
+      lo₅ = insert-swap (Exchange.inner lo₃) (Exchange.outer lo₄)
+
+  -- and the same reordering reached by starting one pair higher: carry the
+  -- THIRD layer to the peak first, and the base after it. The two routes are
+  -- the two sides of the coherence below.
+  tower⁴-hi
+    : ∀ {x y z w ds d₁ d₂ d₃ dˣ}
+    → (i : Insert Ob x d₃ dˣ)
+    → (k : Insert Ob y d₂ d₃)
+    → (p : Insert Ob z d₁ d₂)
+    → (c : Insert Ob w ds d₁)
+    → Tower⁴ y x z w ds dˣ
+  tower⁴-hi {ds} {d₁} {d₃} {dˣ} i k p c =
+    tower⁴
+      (Exchange.mid hi₃)
+      (Exchange.mid hi₄)
+      (Exchange.mid hi₅)
+      (Exchange.inner hi₃)
+      (Exchange.inner hi₄)
+      (Exchange.inner hi₅)
+      (Exchange.outer hi₅)
+    where
+      hi₁ : Exchange _ _ d₁ d₃
+      hi₁ = insert-swap k p
+      hi₂ : Exchange _ _ (Exchange.mid hi₁) dˣ
+      hi₂ = insert-swap i (Exchange.outer hi₁)
+      hi₃ : Exchange _ _ ds (Exchange.mid hi₁)
+      hi₃ = insert-swap (Exchange.inner hi₁) c
+      hi₄ : Exchange _ _ (Exchange.mid hi₃) (Exchange.mid hi₂)
+      hi₄ = insert-swap (Exchange.inner hi₂) (Exchange.outer hi₃)
+      hi₅ : Exchange _ _ (Exchange.mid hi₄) dˣ
+      hi₅ = insert-swap (Exchange.outer hi₂) (Exchange.outer hi₄)
+
+  -- A three-tower with a fourth layer planted at the `step` slot, at the front
+  -- of its list. This is what BOTH routes reduce to when the topmost insertion
+  -- is `head`, which is why the coherence's first base is the braid and not
+  -- `refl`: putting `x` at the front makes every swap that moves it forced,
+  -- and what is left over is the three-layer statement about the other three.
+  tower⁴-step
+    : ∀ {x y z w ds dˣ}
+    → Tower y z w ds dˣ
+    → Tower⁴ y x z w ds (x ∷ dˣ)
+  Tower⁴.low (tower⁴-step t) = Tower.low t
+  Tower⁴.mid (tower⁴-step {x} t) = x ∷ Tower.low t
+  Tower⁴.high (tower⁴-step {x} t) = x ∷ Tower.high t
+  Tower⁴.base (tower⁴-step t) = Tower.base t
+  Tower⁴.step (tower⁴-step t) = head
+  Tower⁴.rise (tower⁴-step t) = tail (Tower.step t)
+  Tower⁴.peak (tower⁴-step t) = tail (Tower.peak t)
+
+  -- and planted at the `base` slot instead, which is where the second layer
+  -- lands when IT is the one at the front
+  tower⁴-base
+    : ∀ {x y z w ds dˣ}
+    → Tower x z w ds dˣ
+    → Tower⁴ y x z w ds (y ∷ dˣ)
+  Tower⁴.low (tower⁴-base {y} {ds} t) = y ∷ ds
+  Tower⁴.mid (tower⁴-base {y} t) = y ∷ Tower.low t
+  Tower⁴.high (tower⁴-base {y} t) = y ∷ Tower.high t
+  Tower⁴.base (tower⁴-base t) = head
+  Tower⁴.step (tower⁴-base t) = tail (Tower.base t)
+  Tower⁴.rise (tower⁴-base t) = tail (Tower.step t)
+  Tower⁴.peak (tower⁴-base t) = tail (Tower.peak t)
+
+  -- THE FOUR-LAYER COHERENCE. The two reorderings agree, layer for layer and
+  -- list for list.
+  --
+  -- MEASURED, AND THE MEASUREMENT IS THE POINT. The prediction carried into
+  -- this proof was that its bases would be `refl`, as `insert-swap-braid`'s
+  -- three are. Two are; the other two are ONE `cong` of the braid itself, and
+  -- that is the better outcome rather than a worse one: it says a rung of this
+  -- ladder is not new work but the rung below re-used, so the cost of the
+  -- next layer — if anything ever asks for one — is one `cong` and not one
+  -- coherence chase.
+  --
+  -- The asymmetry between the bases is worth naming, because it looks like an
+  -- accident and is not. A base with one of the two UPPER positions at the
+  -- front leaves the other three to be reordered, which is the braid; a base
+  -- with one of the two LOWER positions at the front leaves both routes
+  -- computing the same term, so nothing is left to prove.
+  insert-swap-coh⁴
+    : ∀ {x y z w ds d₁ d₂ d₃ dˣ}
+    → (i : Insert Ob x d₃ dˣ)
+    → (k : Insert Ob y d₂ d₃)
+    → (p : Insert Ob z d₁ d₂)
+    → (c : Insert Ob w ds d₁)
+    → tower⁴-lo i k p c ≡ tower⁴-hi i k p c
+  insert-swap-coh⁴ head k p c = cong tower⁴-step (insert-swap-braid k p c)
+  insert-swap-coh⁴ (tail i) head p c = cong tower⁴-base (insert-swap-braid i p c)
+  insert-swap-coh⁴ (tail i) (tail k) head c = refl
+  insert-swap-coh⁴ (tail i) (tail k) (tail p) head = refl
+  insert-swap-coh⁴ (tail i) (tail k) (tail p) (tail c) =
+    cong tower⁴-tail (insert-swap-coh⁴ i k p c)
 
   -- Threading one matched wire through a matching: a new source at `i`, a new
   -- sink at `j`, joined to each other, with every existing pair left alone.
@@ -1484,6 +1674,126 @@ module _ {ℓ} {Ob : Set ℓ} where
     → (u : Unhit y Γ Δ)
     → match-unhit j (unhit→match j u) ≡ u
   match-unhit-roundtrip j (unhit p body) = match-unhit-insert p j body
+
+  -- ── THE TWO THREADINGS COMMUTE ─────────────────────────────────────────────
+  --
+  -- Threading a cut and threading a wire commute, up to reindexing by nested
+  -- `insert-swap`s. This is the bottom of the whole development: both
+  -- commutation laws for `match-comp` reduce, through the views above, to this
+  -- one statement, and it mentions neither composition nor a lookup — it is a
+  -- fact about the two CONSTRUCTIONS alone, with no hypothesis.
+  --
+  -- WHERE ITS ARITY COMES FROM, which is what bounds the coherence it needs.
+  -- `match-cap` threads two positions and `match-insert` threads one, and the
+  -- matching underneath contributes the head they meet. So the cut-meets-cut
+  -- clause has four nested insertions in play and needs the four-layer
+  -- coherence above — exactly as `cap-swap`, a cut against an underlying cap,
+  -- needed the three-layer one. Nothing here asks two cuts to commute, which
+  -- is what a fifth layer would take.
+  --
+  -- The clauses divide the way the arity predicts. Where either of the cut's
+  -- two ports is at the front the reindexing is undone by the INVOLUTION
+  -- alone, and those two clauses are one backward congruence each. Where the
+  -- wire's position is at the front nothing has moved. Where the matching
+  -- underneath threads a wire the statement is its own induction. Only where
+  -- the matching underneath CAPS are four positions in play at once.
+  match-cap-insert
+    : ∀ {x y z Γ Γ′ Γ˘ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (k : Insert Ob y Γ Γ˘)
+    → (p : Insert Ob z Γ′ Γ)
+    → (j : Insert Ob z Δ Δˣ)
+    → (t : Match Ob Γ′ Δ)
+    → match-cap i k (match-insert p j t)
+      ≡ match-insert
+          (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k p))))
+          j
+          (match-cap
+            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k p))))
+            (Exchange.inner (insert-swap k p))
+            t)
+  match-cap-insert head k p j t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ cap (Exchange.outer e) (match-insert (Exchange.inner e) j t) ]·
+        exchange _ k p
+    ≈·⁻¹⟨ insert-swap-invol k p ⟩
+      match-insert
+        (Exchange.outer (insert-swap head (Exchange.outer (insert-swap k p))))
+        j
+        (match-cap
+          (Exchange.inner (insert-swap head (Exchange.outer (insert-swap k p))))
+          (Exchange.inner (insert-swap k p))
+          t)
+    ∎
+  match-cap-insert (tail i) head p j t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ cap (Exchange.outer e) (match-insert (Exchange.inner e) j t) ]·
+        exchange _ i p
+    ≈·⁻¹⟨ insert-swap-invol i p ⟩
+      match-insert
+        (Exchange.outer (insert-swap (tail i) (Exchange.outer (insert-swap head p))))
+        j
+        (match-cap
+          (Exchange.inner (insert-swap (tail i) (Exchange.outer (insert-swap head p))))
+          (Exchange.inner (insert-swap head p))
+          t)
+    ∎
+  match-cap-insert (tail i) (tail k) head j t = refl
+  match-cap-insert (tail i) (tail k) (tail p) j (c ∷ t) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ Exchange.outer (insert-swap j c) ∷ m ]·
+        match-cap i k (match-insert p (Exchange.inner (insert-swap j c)) t)
+    ≈·⟨ match-cap-insert i k p (Exchange.inner (insert-swap j c)) t ⟩
+      match-insert
+        (Exchange.outer
+          (insert-swap (tail i) (Exchange.outer (insert-swap (tail k) (tail p)))))
+        j
+        (match-cap
+          (Exchange.inner
+            (insert-swap (tail i) (Exchange.outer (insert-swap (tail k) (tail p)))))
+          (Exchange.inner (insert-swap (tail k) (tail p)))
+          (c ∷ t))
+    ∎
+  match-cap-insert (tail i) (tail k) (tail p) j (cap c t) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ cap
+              (Exchange.outer
+                (insert-swap i
+                  (Exchange.outer
+                    (insert-swap k (Exchange.outer (insert-swap p c))))))
+              m ]·
+        match-cap
+          (Exchange.inner
+            (insert-swap i
+              (Exchange.outer (insert-swap k (Exchange.outer (insert-swap p c))))))
+          (Exchange.inner (insert-swap k (Exchange.outer (insert-swap p c))))
+          (match-insert (Exchange.inner (insert-swap p c)) j t)
+    ≈·⟨ match-cap-insert
+          (Exchange.inner
+            (insert-swap i
+              (Exchange.outer (insert-swap k (Exchange.outer (insert-swap p c))))))
+          (Exchange.inner (insert-swap k (Exchange.outer (insert-swap p c))))
+          (Exchange.inner (insert-swap p c))
+          j
+          t ⟩
+      [ T ↦ cap
+              (Tower⁴.peak T)
+              (match-insert
+                (Tower⁴.rise T)
+                j
+                (match-cap (Tower⁴.step T) (Tower⁴.base T) t)) ]·
+        tower⁴-lo i k p c
+    ≈·⟨ insert-swap-coh⁴ i k p c ⟩
+      match-insert
+        (Exchange.outer
+          (insert-swap (tail i) (Exchange.outer (insert-swap (tail k) (tail p)))))
+        j
+        (match-cap
+          (Exchange.inner
+            (insert-swap (tail i) (Exchange.outer (insert-swap (tail k) (tail p)))))
+          (Exchange.inner (insert-swap (tail k) (tail p)))
+          (cap c t))
+    ∎
 
   -- ── CONSTRUCTION AFTER ANALYSIS ────────────────────────────────────────────
   --
