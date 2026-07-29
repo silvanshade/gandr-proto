@@ -33,12 +33,19 @@
 -- what shows the address machinery carries the DOCTRINES and not only the
 -- setoid layer that first demanded it.
 --
--- The two are not interchangeable, and `ℂ.≡°-not-everywhere` is why: the
--- discrete setoid on the identity type — how every `Set`-level structure in
--- this tree presents as a category — admits no such certification, because it
--- stops with `𝟘` above its 1-cells. So the certification is a strictly stronger
--- hypothesis, available where a carrier has genuine cells all the way up and
--- never assumable in general.
+-- The two are not interchangeable, and `ℂ.homs°-not-everywhere` is why: the
+-- carrier a `Set`-level CATEGORY presents on — objects, a hom family, equality
+-- of morphisms as the 2-cells and `𝟘` above — carries an INHABITED `Category`
+-- (`Gandr.Shape.Structure.WIRING` is the worked one) and admits no
+-- certification, there being nothing one dimension above a hom for `idn₀` to
+-- produce. So the certification is a strictly stronger hypothesis, available
+-- where a carrier has genuine cells all the way up and never assumable in
+-- general.
+--
+-- `ℂ.≡°-not-everywhere` does NOT show that, and reading it as if it did is an
+-- error this header carried: `Category (𝔾.≡° A)` is ITSELF uninhabited, so both
+-- hypotheses are absurd there and nothing is separated. The two refutations
+-- differ by a doctrine, not by a hypothesis — see `ℂ.≡°-not-category` below.
 --
 -- ── ON `opaque` ─────────────────────────────────────────────────────────────
 -- Absent, for the same reason as `Gandr.Graph`: every consumer meets these
@@ -258,10 +265,14 @@ module ℂ where
   -- to the gate. The rule holds in both directions.
   -- ═══════════════════════════════════════════════════════════════════════════
 
-  -- The category a `Set` presents through its identity type. This is the one
-  -- STRICT instance in the tree — every law is an equation, because the ambient
-  -- equality supplies them — and it is exactly the boundary where a setoid
-  -- becomes a set.
+  -- The category a `Set` presents through its identity type, and exactly the
+  -- boundary where a setoid becomes a set.
+  --
+  -- STRICT: every law is an equation, because the ambient equality supplies
+  -- them. It is the tree's WORKED example of strictness and NOT the only one —
+  -- a `Set`-level structure presents with `≡` at its 2-cells, so its laws are
+  -- equations for the same reason, and `Gandr.Shape.Structure.WIRING` carries
+  -- the same mark. What is special here is the carrier, not the strictness.
   Id : ∀ {ℓ} (A : Set ℓ) → Category (𝔾.Id A)
   Id A .idn₀ a = ≡.idn
   Id A .seq₀ = ≡.seq
@@ -320,6 +331,21 @@ module ℂ where
     → Everywhere Category (𝔾.≡° A)
     → ⊥
   ≡°-not-everywhere a 𝒞° = ≡°-not-category a (𝒞° .here°)
+
+  -- AND HERE THE CERTIFICATION GENUINELY SEPARATES FROM THE STRUCTURE, which is
+  -- what the two lemmas above do not do and were once read as doing. `𝔾.homs°`
+  -- is the carrier a `Set`-level category presents on, so the bare `Category`
+  -- over it is INHABITED — `Gandr.Shape.Structure.WIRING` is one — while the
+  -- certification is refuted: the hom at `(x , y)` is `≡° (H x y)`, and asking
+  -- for the structure one dimension up lands in exactly the refutation above.
+  --
+  -- One morphism is enough, and it is what the two lemmas above needed a point
+  -- for: the refutation bites at a hom, so the carrier must have one.
+  homs°-not-everywhere : ∀ {ℓ} {O : Set ℓ} {H : O → O → Set ℓ} {x y}
+    → H x y
+    → Everywhere Category (𝔾.homs° O H)
+    → ⊥
+  homs°-not-everywhere {x} {y} f 𝒞° = ≡°-not-category f (𝒞° .up° x y .here°)
 
   -- The empty category: the unique structure on `𝔾.𝟘`. Every clause is absurd,
   -- there being no cells to define at any dimension.

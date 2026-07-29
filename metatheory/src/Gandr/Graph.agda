@@ -339,6 +339,32 @@ module 𝔾 where
   ≡° A .δ° x y = disc (x ≡ y)
 
   -- ═══════════════════════════════════════════════════════════════════════════
+  -- THE SAME CHOICE ONE DIMENSION UP: objects and a HOM FAMILY, with
+  -- propositional equality of morphisms as the 2-cells and nothing above.
+  --
+  -- `≡°` gives a `Set` the shape a `Set`-level SETOID needs — content at
+  -- dimensions 0 and 1, which is exactly `Setoid`'s reach. A `Set`-level
+  -- CATEGORY needs one dimension more, and its 1-cells are not equalities of
+  -- objects but a family indexed by a parallel pair of them. So the hom at
+  -- `(x , y)` is `≡° (H x y)`: the morphisms, their equalities, and `𝟘` above.
+  --
+  -- Every `Set`-level category in this tree goes through this former, which is
+  -- why it is named once here rather than inlined at the first instance. Its
+  -- REGION for `Category` is `Only⋆` — content at dimensions 0–2, and none at
+  -- any address above the carrier — so a consumer certifies with `at⋆` and
+  -- `Everywhere Category` is refuted (`Gandr.Category.ℂ.homs°-not-everywhere`).
+  --
+  -- ── THE NAME IS DESCRIPTIVE, AND DELIBERATELY CLAIMS NOTHING ────────────────
+  -- `H` is whatever family the caller puts at the homs. Whether it composes,
+  -- and what category it is when it does, is the `Category` instance's business
+  -- and its header's; nothing is asserted by the carrier.
+  -- ═══════════════════════════════════════════════════════════════════════════
+
+  homs° : ∀ {ℓ} (O : Set ℓ) (H : O → O → Set ℓ) → ∞Graph ℓ
+  homs° O H .ϵ° = O
+  homs° O H .δ° x y = ≡° (H x y)
+
+  -- ═══════════════════════════════════════════════════════════════════════════
   -- The globes. `𝕪 n` is the n-globe — the representable presheaf at `n`,
   -- rendered coinductively: two poles at every dimension below `n`, one cell at
   -- `n`, nothing above. These are the definable internal intervals — an n-cell
