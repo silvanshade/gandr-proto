@@ -290,6 +290,26 @@ Five rules the one-line summary does not carry, each of which has cost something
 * **Parallel modules keep parallel order.** Where two modules deliberately mirror each other's vocabulary — the `Set` layer against the ∞-graph layer, a `Base` against its `Properties` — corresponding definitions appear in the same order.
   The mirroring is load-bearing documentation: it lets the two be read side by side, and order drift breaks that reading.
   Reorder only when genuinely landing the missing counterparts, never speculatively.
+* **Write a boundary in context style, not as a projection spine.** `Ξ ▸ᵍ a ⇴ b ▸ᵍ f ⇴ f′ ϶`, not `Ξ .δ° a b .δ° f f′ .ϵ°`.
+  The formers are the projections — `_▸ᵍ_⇴_` **is** `δ°` and `_϶` **is** `ϵ°`, defined beside the ∞-graph record — so the two are the same type on the nose and nothing is paid for the readable one.
+  The reason it is a rule rather than a taste: the `DISPLAY` pragmas already rewrite spines _to_ these formers, so a spine in the source means the source and every goal, error and reduced type disagree, and the reader translates by hand.
+  Fixity note, since it is the one thing that bites: `_϶` is `infix 0`, the loosest in the file, so it wants to be the last token of its type or parenthesized — after an arrow and inside `(x : … ϶)` it is fine, which covers essentially every field.
+
+### Telescopes where the address is bound; spines where the address is literal
+
+Two devices name a position in the tower and they are not interchangeable.
+
+**A statement generic in the dimension binds `(Θ : Disc Ξ)` and reads `⟦Disc⟧ Ξ Θ`.** Nothing is inferred from a cell, so the negative result above never fires, and the telescope absorbs the per-variable boundary ascriptions.
+
+**A structure record does not.** Its field types name _literal_ dimensions, and pushing telescopes into them is wrong on three counts, the first decisive:
+
+* **A telescope names one address; a record's fields are multi-address relations.** Two-cell composition relates homs at `(a,b)`, `(b,c)` and `(a,c)` — three separate codes whose shared prefixes the syntax cannot factor.
+* **There is no dimension to abstract.** A structure record certifies at _one_ address by design, which is exactly why the region-indexed certification layers over it rather than being baked in.
+* **The ergonomic payoff does not materialize.** The quantified endpoints still have to be bound, because the field needs them at specific dimensions in specific combinations, so the telescoped field is longer rather than shorter.
+
+**And the hazard behind the rule, which is easy to misdiagnose.** A telescope applied to a constructor tree _reduces_, so it raises no matching obligation at a use site — that is not what goes wrong.
+What goes wrong is one step further: `⟦Disc⟧` is a **defined function** and therefore non-injective for unification, so the moment an address must be _recovered_ rather than _given_, it is stuck.
+That is this document's own "a defined function must never appear in a matchable index", and it is why the telescope is safe in a reasoning module — there `Θ` is a bound parameter and nothing is inverted.
 
 Two disciplines are load-bearing rather than cosmetic.
 Both are instances of the representation rule above, and both exist to keep structures computing under `--without-K`:
