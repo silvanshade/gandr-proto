@@ -1028,6 +1028,57 @@ module _ {ℓ} {Ob : Set ℓ} where
   ... | same = same
   ... | apart i′ k′ = apart (tail i′) (tail k′)
 
+  -- THE VIEW'S TWO VALUES, NAMED. `insert-view` is the only `with` in the
+  -- listing algebra that is not on a recursive call, and a proof cannot see
+  -- past it either: every fact about `match-remove` or `match-unhit` at a cap
+  -- has to say which verdict the view returned. These two say it at the only
+  -- positions the algebra ever compares, so no consumer re-derives them.
+
+  -- A position compared with itself is the same slot.
+  insert-view-refl
+    : ∀ {x A Δ}
+    → (i : Insert Ob x A Δ)
+    → insert-view i i ≡ same
+  insert-view-refl head = refl
+  insert-view-refl (tail i) with insert-view i i | insert-view-refl i
+  ... | .same | refl = refl
+
+  -- And a position compared with one read past it is apart, with the exchange
+  -- supplying both halves of the verdict. This is the ANALYSIS direction
+  -- agreeing with the CONSTRUCTION direction: `insert-swap` builds the two
+  -- slots in the other order, and `insert-view` recovers exactly those.
+  insert-view-swap
+    : ∀ {x y ds d dˣ}
+    → (i : Insert Ob x d dˣ)
+    → (k : Insert Ob y ds d)
+    → insert-view i (Exchange.outer (insert-swap i k))
+      ≡ apart (Exchange.inner (insert-swap i k)) k
+  insert-view-swap head k = refl
+  insert-view-swap (tail i) head = refl
+  insert-view-swap (tail i) (tail k)
+    with insert-view i (Exchange.outer (insert-swap i k)) | insert-view-swap i k
+  ... | .(apart (Exchange.inner (insert-swap i k)) k) | refl = refl
+
+  -- And the same fact read the other way round: an apart verdict IS an
+  -- exchange. `insert-view-swap` says the analysis agrees with a construction
+  -- that was already given; this says every analysis comes from one, so a
+  -- proof that split on the view can go back to `insert-swap` and use its laws.
+  insert-view-apart-swap
+    : ∀ {x y A B C Δ}
+    → (i : Insert Ob x A Δ)
+    → (k : Insert Ob y B Δ)
+    → (i′ : Insert Ob x C B)
+    → (k′ : Insert Ob y C A)
+    → insert-view i k ≡ apart i′ k′
+    → insert-swap i k′ ≡ exchange B k i′
+  insert-view-apart-swap head head i′ k′ ()
+  insert-view-apart-swap head (tail k) .head .k refl = refl
+  insert-view-apart-swap (tail i) head .i .head refl = refl
+  insert-view-apart-swap (tail i) (tail k) i′ k′ e with insert-view i k in v | e
+  ... | same | ()
+  ... | apart i₀ k₀ | refl =
+    cong exchange-tail (insert-view-apart-swap i k i₀ k₀ v)
+
   -- Whiskering a matching by a block of wires on the left. Each element of the
   -- block takes the position beside itself, which is one `head` per element and
   -- no permutation at all.
@@ -1093,6 +1144,22 @@ module _ {ℓ} {Ob : Set ℓ} where
       (Exchange.inner (insert-swap k spot) ∷ body)
   removal-tail k (capped ins body) = capped (tail ins) (k ∷ body)
 
+  -- Re-applying a leading cap around whatever a removal left. Its partner
+  -- still sits in the tail, and if the removal itself capped, that partner has
+  -- to be read past this one. Top-level rather than local to the clause that
+  -- uses it, because every fact about `match-remove` at a cap is stated
+  -- through it.
+  removal-recap
+    : ∀ {x y w C Γ₀ Θ}
+    → Insert Ob y C Γ₀
+    → Removal x C Θ
+    → Removal x (w ∷ Γ₀) Θ
+  removal-recap j (through spot body) = through spot (cap j body)
+  removal-recap j (capped ins body) =
+    capped
+      (tail (Exchange.outer (insert-swap j ins)))
+      (cap (Exchange.inner (insert-swap j ins)) body)
+
   match-remove
     : ∀ {x Γ Δ Θ}
     → Insert Ob x Γ Δ
@@ -1107,20 +1174,31 @@ module _ {ℓ} {Ob : Set ℓ} where
   ... | same = capped head n
   -- otherwise the cap stands and the removal happens inside it
   ... | apart i′ k′ = removal-recap k′ (match-remove i′ n)
-    where
-      -- the leading cap is re-applied around whatever the removal left: its
-      -- partner still sits in the tail, and if the removal itself capped, that
-      -- partner has to be read past this one
-      removal-recap
-        : ∀ {x y w C Γ₀ Θ}
-        → Insert Ob y C Γ₀
-        → Removal x C Θ
-        → Removal x (w ∷ Γ₀) Θ
-      removal-recap j (through spot body) = through spot (cap j body)
-      removal-recap j (capped ins body) =
-        capped
-          (tail (Exchange.outer (insert-swap j ins)))
-          (cap (Exchange.inner (insert-swap j ins)) body)
+
+  -- THE TWO CAP CLAUSES, RESTATED SO A PROOF CAN REACH THEM. The clause above
+  -- is a `with` on `insert-view`, so its right-hand side is an auxiliary no
+  -- lemma can name — the same wall a `with` on a recursive call builds, from
+  -- the same cause. These two say what the clause does once the verdict is
+  -- known, taking the verdict as an ARGUMENT with its defining equation.
+  match-remove-cap-same
+    : ∀ {x w A Δ Θ}
+    → (i : Insert Ob x A Δ)
+    → (n : Match Ob A Θ)
+    → match-remove (tail {y = w} i) (cap i n) ≡ capped head n
+  match-remove-cap-same i n with insert-view i i | insert-view-refl i
+  ... | .same | refl = refl
+
+  match-remove-cap-apart
+    : ∀ {x y w A B C Δ Θ}
+    → (i : Insert Ob x A Δ)
+    → (k : Insert Ob y B Δ)
+    → (n : Match Ob B Θ)
+    → (i′ : Insert Ob x C B)
+    → (k′ : Insert Ob y C A)
+    → insert-view i k ≡ apart i′ k′
+    → match-remove (tail {y = w} i) (cap k n) ≡ removal-recap k′ (match-remove i′ n)
+  match-remove-cap-apart i k n i′ k′ e with insert-view i k | e
+  ... | .(apart i′ k′) | refl = refl
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE INVERSE LOOKUP. Composition needs the other direction too: when the
@@ -1165,6 +1243,427 @@ module _ {ℓ} {Ob : Set ℓ} where
   ... | same = unhit head m
   ... | apart j′ i′ = unhit-tail i′ (match-unhit j′ m)
   match-unhit j (cap k m) = unhit-cap k (match-unhit j m)
+
+  -- and the same two, for the same reason
+  match-unhit-∷-same
+    : ∀ {y xs ys Δˣ}
+    → (j : Insert Ob y ys Δˣ)
+    → (m : Match Ob xs ys)
+    → match-unhit j (j ∷ m) ≡ unhit head m
+  match-unhit-∷-same j m with insert-view j j | insert-view-refl j
+  ... | .same | refl = refl
+
+  match-unhit-∷-apart
+    : ∀ {x y xs ys C Δ Δˣ}
+    → (j : Insert Ob y Δ Δˣ)
+    → (i : Insert Ob x ys Δˣ)
+    → (m : Match Ob xs ys)
+    → (j′ : Insert Ob y C ys)
+    → (i′ : Insert Ob x C Δ)
+    → insert-view j i ≡ apart j′ i′
+    → match-unhit j (i ∷ m) ≡ unhit-tail i′ (match-unhit j′ m)
+  match-unhit-∷-apart j i m j′ i′ e with insert-view j i | e
+  ... | .(apart j′ i′) | refl = refl
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE TWO LOOKUPS ARE VIEWS, NOT SUMMARIES — and that is the characterization
+  -- the rest of this file leans on.
+  --
+  -- `match-insert` threads a wire and `match-cap` threads a cut; those are the
+  -- CONSTRUCTION direction, and `match-remove` / `match-unhit` are the ANALYSIS
+  -- direction, one for a marked source and one for a marked sink. Each pair is
+  -- INVERSE:
+  --
+  --   Removal x Γ Θ  ≅  Match (Γ with x at i) Θ        at a fixed source `i`
+  --   Unhit y Γ Δ    ≅  Match Γ (Δ with y at j)        at a fixed sink `j`
+  --
+  -- Both directions are proved below. What that buys is the ability to answer
+  -- "what does an operation do to a matching, given what one lookup returned"
+  -- by REBUILDING the matching from the lookup and computing — which is how
+  -- every fact about composition against a lookup is reached, since the lookup
+  -- itself is defined by recursion and the rebuild is not.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Putting a removed source back where it came from.
+  removal→match
+    : ∀ {x Γ Γˣ Θ}
+    → Insert Ob x Γ Γˣ
+    → Removal x Γ Θ
+    → Match Ob Γˣ Θ
+  removal→match i (through spot body) = match-insert i spot body
+  removal→match i (capped ins body) = match-cap i ins body
+
+  -- and putting a traced-back sink back where it came from
+  unhit→match
+    : ∀ {y Γ Δ Δˣ}
+    → Insert Ob y Δ Δˣ
+    → Unhit y Γ Δ
+    → Match Ob Γ Δˣ
+  unhit→match j (unhit p body) = match-insert p j body
+
+  -- ── ANALYSIS AFTER CONSTRUCTION ────────────────────────────────────────────
+
+  -- Threading a wire and then removing its source hands back exactly what was
+  -- threaded. The recursive clause is the exchange's INVOLUTION: the position
+  -- pair `match-insert` built is read back by `match-remove` in the other
+  -- order, and `insert-swap-invol` is the statement that this returns them.
+  match-remove-insert
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → match-remove i (match-insert i j m) ≡ through j m
+  match-remove-insert head j m = refl
+  match-remove-insert (tail i) j (k ∷ m) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ r ↦ removal-tail (Exchange.outer (insert-swap j k)) r ]·
+        match-remove i (match-insert i (Exchange.inner (insert-swap j k)) m)
+    ≈·⟨ match-remove-insert i (Exchange.inner (insert-swap j k)) m ⟩
+      [ e ↦ through (Exchange.outer e) (Exchange.inner e ∷ m) ]·
+        insert-swap (Exchange.outer (insert-swap j k)) (Exchange.inner (insert-swap j k))
+    ≈·⟨ insert-swap-invol j k ⟩
+      through j (k ∷ m)
+    ∎
+  match-remove-insert (tail i) j (cap k m) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-remove
+        (tail i)
+        (cap
+          (Exchange.outer (insert-swap i k))
+          (match-insert (Exchange.inner (insert-swap i k)) j m))
+    ≈⟨ match-remove-cap-apart i
+         (Exchange.outer (insert-swap i k))
+         (match-insert (Exchange.inner (insert-swap i k)) j m)
+         (Exchange.inner (insert-swap i k))
+         k
+         (insert-view-swap i k) ⟩
+      [ r ↦ removal-recap k r ]·
+        match-remove
+          (Exchange.inner (insert-swap i k))
+          (match-insert (Exchange.inner (insert-swap i k)) j m)
+    ≈·⟨ match-remove-insert (Exchange.inner (insert-swap i k)) j m ⟩
+      through j (cap k m)
+    ∎
+
+  -- Threading a cut and then removing one of its two sources hands back the
+  -- other one and the matching underneath.
+  match-remove-cut
+    : ∀ {x y Γ Γ˘ Γˣ Θ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (m : Match Ob Γ Θ)
+    → match-remove i (match-cap i j m) ≡ capped j m
+  match-remove-cut head j m = refl
+  match-remove-cut (tail i) head m = match-remove-cap-same i m
+  match-remove-cut (tail i) (tail j) (k ∷ m) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ r ↦ removal-tail k r ]· match-remove i (match-cap i j m)
+    ≈·⟨ match-remove-cut i j m ⟩
+      capped (tail j) (k ∷ m)
+    ∎
+  match-remove-cut (tail i) (tail j) (cap k m) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-remove
+        (tail i)
+        (cap
+          (Exchange.outer (insert-swap i (Exchange.outer (insert-swap j k))))
+          (match-cap
+            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+            (Exchange.inner (insert-swap j k))
+            m))
+    ≈⟨ match-remove-cap-apart i
+         (Exchange.outer (insert-swap i (Exchange.outer (insert-swap j k))))
+         (match-cap
+           (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+           (Exchange.inner (insert-swap j k))
+           m)
+         (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+         (Exchange.outer (insert-swap j k))
+         (insert-view-swap i (Exchange.outer (insert-swap j k))) ⟩
+      [ r ↦ removal-recap (Exchange.outer (insert-swap j k)) r ]·
+        match-remove
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+          (match-cap
+            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+            (Exchange.inner (insert-swap j k))
+            m)
+    ≈·⟨ match-remove-cut
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+          (Exchange.inner (insert-swap j k))
+          m ⟩
+      [ e ↦ capped (tail (Exchange.outer e)) (cap (Exchange.inner e) m) ]·
+        insert-swap (Exchange.outer (insert-swap j k)) (Exchange.inner (insert-swap j k))
+    ≈·⟨ insert-swap-invol j k ⟩
+      capped (tail j) (cap k m)
+    ∎
+
+  -- Threading a wire and then tracing its SINK back hands back the source it
+  -- was threaded at. The mirror of `match-remove-insert`, and the exchange
+  -- laws it uses are the same two.
+  match-unhit-insert
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → match-unhit j (match-insert i j m) ≡ unhit i m
+  match-unhit-insert head j m = match-unhit-∷-same j m
+  match-unhit-insert (tail i) j (k ∷ m) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-unhit
+        j
+        (Exchange.outer (insert-swap j k)
+          ∷ match-insert i (Exchange.inner (insert-swap j k)) m)
+    ≈⟨ match-unhit-∷-apart j
+         (Exchange.outer (insert-swap j k))
+         (match-insert i (Exchange.inner (insert-swap j k)) m)
+         (Exchange.inner (insert-swap j k))
+         k
+         (insert-view-swap j k) ⟩
+      [ u ↦ unhit-tail k u ]·
+        match-unhit
+          (Exchange.inner (insert-swap j k))
+          (match-insert i (Exchange.inner (insert-swap j k)) m)
+    ≈·⟨ match-unhit-insert i (Exchange.inner (insert-swap j k)) m ⟩
+      unhit (tail i) (k ∷ m)
+    ∎
+  match-unhit-insert (tail i) j (cap k m) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ u ↦ unhit-cap (Exchange.outer (insert-swap i k)) u ]·
+        match-unhit j (match-insert (Exchange.inner (insert-swap i k)) j m)
+    ≈·⟨ match-unhit-insert (Exchange.inner (insert-swap i k)) j m ⟩
+      [ e ↦ unhit (tail (Exchange.outer e)) (cap (Exchange.inner e) m) ]·
+        insert-swap (Exchange.outer (insert-swap i k)) (Exchange.inner (insert-swap i k))
+    ≈·⟨ insert-swap-invol i k ⟩
+      unhit (tail i) (cap k m)
+    ∎
+
+  -- ── CONSTRUCTION AFTER ANALYSIS ────────────────────────────────────────────
+  --
+  -- The other round trip, and the one that does the work below: a lookup loses
+  -- nothing, so the matching can be REBUILT from it. Every fact of the form
+  -- "what does an operation do to `o`, given what a lookup on `o` returned" is
+  -- reached by rebuilding `o` and computing, because the rebuild is a
+  -- construction and the lookup is a recursion.
+  --
+  -- The hypothesis is oriented `r ≡ match-remove i o`, against the unfolding
+  -- lemmas' own direction. That is deliberate: a rebuild consumes the lookup's
+  -- value on its LEFT — `r` is refined by matching, and the chain then reads
+  -- from the rebuilt term towards `o` — so the other orientation would put a
+  -- reversed congruence in every step.
+  mutual
+
+    match-remove-recover
+      : ∀ {x Γ Γˣ Θ}
+      → (i : Insert Ob x Γ Γˣ)
+      → (o : Match Ob Γˣ Θ)
+      → (r : Removal x Γ Θ)
+      → r ≡ match-remove i o
+      → removal→match i r ≡ o
+    match-remove-recover head (j ∷ o) .(through j o) refl = refl
+    match-remove-recover head (cap k o) .(capped k o) refl = refl
+    match-remove-recover (tail i) (k ∷ o) .(removal-tail k (match-remove i o)) refl =
+      recover-∷ i k o (match-remove i o) refl
+    match-remove-recover (tail i) (cap c o) r eq =
+      recover-cap i c o (insert-view i c) refl r eq
+
+    -- the removed source ran past a matched pair, which the rebuild re-threads
+    recover-∷
+      : ∀ {x w Γ Γˣ ys Θ}
+      → (i : Insert Ob x Γ Γˣ)
+      → (k : Insert Ob w ys Θ)
+      → (o : Match Ob Γˣ ys)
+      → (r : Removal x Γ ys)
+      → r ≡ match-remove i o
+      → removal→match (tail i) (removal-tail k r) ≡ k ∷ o
+    recover-∷ i k o (through s b) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ e ↦ Exchange.outer e ∷ match-insert i (Exchange.inner e) b ]·
+          insert-swap
+            (Exchange.outer (insert-swap k s))
+            (Exchange.inner (insert-swap k s))
+      ≈·⟨ insert-swap-invol k s ⟩
+        [ m ↦ k ∷ m ]· match-insert i s b
+      ≈·⟨ match-remove-recover i o (through s b) eq ⟩
+        k ∷ o
+      ∎
+    recover-∷ i k o (capped ins b) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ m ↦ k ∷ m ]· match-cap i ins b
+      ≈·⟨ match-remove-recover i o (capped ins b) eq ⟩
+        k ∷ o
+      ∎
+
+    -- or it met a cap, and the verdict decides whether the cap was its own
+    recover-cap
+      : ∀ {x y w A B Γˣ Θ}
+      → (i : Insert Ob x A Γˣ)
+      → (c : Insert Ob y B Γˣ)
+      → (o : Match Ob B Θ)
+      → (v : InsertView i c)
+      → insert-view i c ≡ v
+      → (r : Removal x (w ∷ A) Θ)
+      → r ≡ match-remove (tail {y = w} i) (cap c o)
+      → removal→match (tail i) r ≡ cap c o
+    recover-cap i .i o same _ r eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ r₀ ↦ removal→match (tail i) r₀ ]· r
+      ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
+             r
+           ≈⟨ eq ⟩
+             match-remove (tail i) (cap i o)
+           ≈⟨ match-remove-cap-same i o ⟩
+             capped head o
+           ∎) ⟩
+        cap i o
+      ∎
+    recover-cap i c o (apart i′ c′) ev r eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ r₀ ↦ removal→match (tail i) r₀ ]· r
+      ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
+             r
+           ≈⟨ eq ⟩
+             match-remove (tail i) (cap c o)
+           ≈⟨ match-remove-cap-apart i c o i′ c′ ev ⟩
+             removal-recap c′ (match-remove i′ o)
+           ∎) ⟩
+        removal→match (tail i) (removal-recap c′ (match-remove i′ o))
+      ≈⟨ recover-recap i c o i′ c′ ev (match-remove i′ o) refl ⟩
+        cap c o
+      ∎
+
+    -- and re-applying that cap around the rebuild is where the exchange's own
+    -- two laws are spent: the involution to read the recapped pair back, and
+    -- the apart verdict as an exchange to put the cap where it came from
+    recover-recap
+      : ∀ {x y w A B C Γˣ Θ}
+      → (i : Insert Ob x A Γˣ)
+      → (c : Insert Ob y B Γˣ)
+      → (o : Match Ob B Θ)
+      → (i′ : Insert Ob x C B)
+      → (c′ : Insert Ob y C A)
+      → insert-view i c ≡ apart i′ c′
+      → (r : Removal x C Θ)
+      → r ≡ match-remove i′ o
+      → removal→match (tail {y = w} i) (removal-recap c′ r) ≡ cap c o
+    recover-recap i c o i′ c′ ev (through s b) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ e ↦ cap (Exchange.outer e) (match-insert (Exchange.inner e) s b) ]·
+          insert-swap i c′
+      ≈·⟨ insert-view-apart-swap i c i′ c′ ev ⟩
+        [ m ↦ cap c m ]· match-insert i′ s b
+      ≈·⟨ match-remove-recover i′ o (through s b) eq ⟩
+        cap c o
+      ∎
+    recover-recap i c o i′ c′ ev (capped ins b) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ e ↦ cap
+                (Exchange.outer (insert-swap i (Exchange.outer e)))
+                (match-cap
+                  (Exchange.inner (insert-swap i (Exchange.outer e)))
+                  (Exchange.inner e)
+                  b) ]·
+          insert-swap
+            (Exchange.outer (insert-swap c′ ins))
+            (Exchange.inner (insert-swap c′ ins))
+      ≈·⟨ insert-swap-invol c′ ins ⟩
+        [ e ↦ cap (Exchange.outer e) (match-cap (Exchange.inner e) ins b) ]·
+          insert-swap i c′
+      ≈·⟨ insert-view-apart-swap i c i′ c′ ev ⟩
+        [ m ↦ cap c m ]· match-cap i′ ins b
+      ≈·⟨ match-remove-recover i′ o (capped ins b) eq ⟩
+        cap c o
+      ∎
+
+  -- and the same for the inverse lookup, whose single constructor makes it
+  -- shorter by exactly the case analysis `Removal` needs
+  mutual
+
+    match-unhit-recover
+      : ∀ {y Γ Δ Δˣ}
+      → (j : Insert Ob y Δ Δˣ)
+      → (m : Match Ob Γ Δˣ)
+      → (u : Unhit y Γ Δ)
+      → u ≡ match-unhit j m
+      → unhit→match j u ≡ m
+    match-unhit-recover j (i ∷ m) u eq =
+      recover-hit j i m (insert-view j i) refl u eq
+    match-unhit-recover j (cap c m) .(unhit-cap c (match-unhit j m)) refl =
+      recover-uncap j c m (match-unhit j m) refl
+
+    recover-hit
+      : ∀ {x y xs ys Δ Δˣ}
+      → (j : Insert Ob y Δ Δˣ)
+      → (i : Insert Ob x ys Δˣ)
+      → (m : Match Ob xs ys)
+      → (v : InsertView j i)
+      → insert-view j i ≡ v
+      → (u : Unhit y (x ∷ xs) Δ)
+      → u ≡ match-unhit j (i ∷ m)
+      → unhit→match j u ≡ i ∷ m
+    recover-hit j .j m same _ u eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ u₀ ↦ unhit→match j u₀ ]· u
+      ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
+             u
+           ≈⟨ eq ⟩
+             match-unhit j (j ∷ m)
+           ≈⟨ match-unhit-∷-same j m ⟩
+             unhit head m
+           ∎) ⟩
+        j ∷ m
+      ∎
+    recover-hit j i m (apart j′ i′) ev u eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ u₀ ↦ unhit→match j u₀ ]· u
+      ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
+             u
+           ≈⟨ eq ⟩
+             match-unhit j (i ∷ m)
+           ≈⟨ match-unhit-∷-apart j i m j′ i′ ev ⟩
+             unhit-tail i′ (match-unhit j′ m)
+           ∎) ⟩
+        unhit→match j (unhit-tail i′ (match-unhit j′ m))
+      ≈⟨ recover-untail j i m j′ i′ ev (match-unhit j′ m) refl ⟩
+        i ∷ m
+      ∎
+
+    recover-untail
+      : ∀ {x y xs ys C Δ Δˣ}
+      → (j : Insert Ob y Δ Δˣ)
+      → (i : Insert Ob x ys Δˣ)
+      → (m : Match Ob xs ys)
+      → (j′ : Insert Ob y C ys)
+      → (i′ : Insert Ob x C Δ)
+      → insert-view j i ≡ apart j′ i′
+      → (u : Unhit y xs C)
+      → u ≡ match-unhit j′ m
+      → unhit→match j (unhit-tail i′ u) ≡ i ∷ m
+    recover-untail j i m j′ i′ ev (unhit p t) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ e ↦ Exchange.outer e ∷ match-insert p (Exchange.inner e) t ]· insert-swap j i′
+      ≈·⟨ insert-view-apart-swap j i j′ i′ ev ⟩
+        [ m₀ ↦ i ∷ m₀ ]· match-insert p j′ t
+      ≈·⟨ match-unhit-recover j′ m (unhit p t) eq ⟩
+        i ∷ m
+      ∎
+
+    recover-uncap
+      : ∀ {y z w xs xs′ Δ Δˣ}
+      → (j : Insert Ob y Δ Δˣ)
+      → (c : Insert Ob z xs xs′)
+      → (m : Match Ob xs Δˣ)
+      → (u : Unhit y xs Δ)
+      → u ≡ match-unhit j m
+      → unhit→match j (unhit-cap {w = w} c u) ≡ cap {x = w} c m
+    recover-uncap j c m (unhit p t) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ e ↦ cap (Exchange.outer e) (match-insert (Exchange.inner e) j t) ]·
+          insert-swap (Exchange.outer (insert-swap c p)) (Exchange.inner (insert-swap c p))
+      ≈·⟨ insert-swap-invol c p ⟩
+        [ m₀ ↦ cap c m₀ ]· match-insert p j t
+      ≈·⟨ match-unhit-recover j m (unhit p t) eq ⟩
+        cap c m
+      ∎
 
   -- Removing a sink from the identity hands back the position it was given,
   -- and leaves the identity on what remains.
