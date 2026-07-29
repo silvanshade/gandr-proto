@@ -43,8 +43,15 @@
 -- the witness that says so — the empty colour set, where the profile is unique
 -- and the only wiring is the empty one. That discharges the vacuity risk a
 -- parameterized module carries and NOTHING ELSE: it is a degenerate instance
--- and is no evidence at all for the general case. The general discharge is the
--- next unit of the refactor, and when it lands the parameter comes off.
+-- and is no evidence at all for the general case.
+--
+-- **What the general discharge now costs is stated rather than estimated.**
+-- `Gandr.Shape.Graft` proves associativity from exactly two commutation laws —
+-- that removing a source from a composite is removing it from the first wiring
+-- and composing that removal with the second, and that tracing a sink back
+-- through a composite is tracing it back through the second and then the
+-- first. The reduction is machine-checked; the two laws are open. When they
+-- land, this parameter comes off and `WIRING` is unconditional.
 --
 -- ── ONE CORRESPONDENCE, RECORDED AS A CANDIDATE ─────────────────────────────
 -- The arc's analysis reads this category as the DOWNWARD BRAUER CATEGORY of the
@@ -84,13 +91,12 @@ open import Gandr.Category
 open import Gandr.Shape.Graph
   using (Match)
   using ([])
-  using (_∷_)
-  using (cap)
   using (idn-match)
 open import Gandr.Shape.Graft
   using (match-comp)
   using (match-comp-idnˡ)
   using (match-comp-idnʳ)
+  using (match-comp-assoc-⊥)
 
 open import Data.Empty.Polymorphic
   using (⊥)
@@ -171,25 +177,13 @@ module _ {ℓ} (Ob : Set ℓ)
 -- The assumption is satisfiable, and this is the whole of what that shows.
 ------------------------------------------------------------------------------
 
--- Associativity over the EMPTY colour set, where there is one profile and one
--- wiring, so both composites are the empty matching. Every other constructor
--- of `Match` needs a colour, and there are none.
+-- The degenerate wiring category: the empty colour set, where there is one
+-- profile and one wiring. Named so the discharge is a definition the gate
+-- checks rather than a remark in this header.
 --
--- This exists to discharge the module parameter at a concrete witness, because
--- a parameterized module type-checks whether or not its hypotheses can ever be
--- met, and a module whose assumptions are unsatisfiable is green and vacuous.
--- It is evidence of exactly that and of nothing else.
-match-comp-assoc-⊥ : ∀ {ℓ} {Γ Δ Θ Ξ : List (⊥ {ℓ})}
-  → (m : Match ⊥ Γ Δ)
-  → (n : Match ⊥ Δ Θ)
-  → (o : Match ⊥ Θ Ξ)
-  → match-comp (match-comp m n) o ≡ match-comp m (match-comp n o)
-match-comp-assoc-⊥ [] [] [] = refl
-match-comp-assoc-⊥ (_∷_ {x = ()} _ _) _ _
-match-comp-assoc-⊥ (cap {x = ()} _ _) _ _
-
--- The degenerate wiring category the witness supplies: one object, one
--- morphism. Named so the discharge is a definition the gate checks rather than
--- a remark in this header.
+-- The associativity it supplies is `Gandr.Shape.Graft.match-comp-assoc-⊥` and
+-- is not re-proved here: that module owns the theorem and its own two
+-- commutation laws, and a second proof of the same fact would be
+-- definitionally equal to the first and so invisible to the gate.
 WIRING⊥ : ∀ {ℓ} → Category (𝔾.homs° (List (⊥ {ℓ})) (Match ⊥))
 WIRING⊥ = WIRING ⊥ match-comp-assoc-⊥

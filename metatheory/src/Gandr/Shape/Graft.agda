@@ -290,6 +290,9 @@ open import Axiom.UniquenessOfIdentityProofs
   using (module Decidable⇒UIP)
 open import Data.Empty
   using (⊥-elim)
+open import Data.Empty.Polymorphic
+  using ()
+  renaming (⊥ to ⊥°)
 open import Data.Bool.Base
   using (Bool)
   using (true)
@@ -3072,6 +3075,399 @@ module _ {ℓ} {Ob : Set ℓ} where
     → match-comp m (idn-match Δ) ≡ m
   match-comp-idnʳ m = match-comp-acc-idnʳ _ m
 
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- ASSOCIATIVITY, ON THE LISTING ALGEBRA — and first, the price of leaving
+  -- structural recursion, paid ONCE.
+  --
+  -- `match-comp` recurses on a well-founded measure and splits on two `with`s,
+  -- so a proof about it faces two obstructions at every use site: the
+  -- accessibility witness is threaded through the term, and the composite is
+  -- stuck behind an auxiliary that no lemma can name. The unit laws paid both
+  -- costs directly, by re-deriving over an arbitrary `Acc`. That does not scale
+  -- to associativity, which meets the same obstruction three times over.
+  --
+  -- So it is paid once here, as an INTERFACE, and every proof after it reads as
+  -- if `match-comp` were defined by structural recursion:
+  --
+  --   * `match-comp-acc-irr` — the witness does not matter. Two runs at the
+  --     same measure agree, so a statement never has to fix one.
+  --   * the three UNFOLDING lemmas — what `match-comp` does on each head form,
+  --     stated about `match-comp` itself and taking the `with` scrutinee's
+  --     value as an ARGUMENT with its defining equation. Past these, no proof
+  --     below mentions an accessibility witness or the internal auxiliary.
+  --
+  -- ── AND THE RULE THE PROOFS THEMSELVES OBEY, WHICH IS THE SAME RULE ────────
+  -- The associativity proof passes every scrutinee as an argument rather than
+  -- meeting it with a `with`. A `with` there rewrites the goal into
+  -- `match-comp`'s own internal auxiliary — measured, not guessed — and the
+  -- unfolding lemmas can no longer reach it. This is the file's standing rule
+  -- about `with` on a recursive call, met from the consumer's side.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Two accessibility witnesses at the same measure give the same composite.
+  -- Not a fact about `Acc` in general — it is proved by the recursion, exactly
+  -- as the unit laws are.
+  match-comp-acc-irr
+    : ∀ {Γ Δ Θ}
+    → (a b : Acc _<_ (length Γ))
+    → (m : Match Ob Γ Δ)
+    → (n : Match Ob Δ Θ)
+    → match-comp-acc a m n ≡ match-comp-acc b m n
+  match-comp-acc-irr a b [] [] = refl
+  match-comp-acc-irr (acc r) (acc s) (cap i m) n =
+    cong (cap i) (match-comp-acc-irr _ _ m n)
+  match-comp-acc-irr (acc r) (acc s) (i ∷ m) n with match-remove i n
+  ... | through spot body = cong (spot ∷_) (match-comp-acc-irr _ _ m body)
+  ... | capped ins body with match-unhit ins m
+  ...   | unhit p m′ = cong (cap p) (match-comp-acc-irr _ _ m′ body)
+
+  -- A cap survives composition untouched: it is already the composite's own.
+  match-comp-cap
+    : ∀ {x y xs xs′ ys Θ}
+    → (i : Insert Ob y xs xs′)
+    → (m : Match Ob xs ys)
+    → (n : Match Ob ys Θ)
+    → match-comp (cap {x = x} i m) n ≡ cap i (match-comp m n)
+  match-comp-cap i m n = cong (cap i) (match-comp-acc-irr _ _ m n)
+
+  -- A source that ran through takes its partner's partner.
+  match-comp-∷-through
+    : ∀ {x xs ys zs Θ rest}
+    → (i : Insert Ob x ys zs)
+    → (m : Match Ob xs ys)
+    → (n : Match Ob zs Θ)
+    → (spot : Insert Ob x rest Θ)
+    → (body : Match Ob ys rest)
+    → match-remove i n ≡ through spot body
+    → match-comp (i ∷ m) n ≡ spot ∷ match-comp m body
+  match-comp-∷-through i m n spot body e with match-remove i n | e
+  ... | .(through spot body) | refl =
+    cong (spot ∷_) (match-comp-acc-irr _ _ m body)
+
+  -- And a source whose partner the second wiring capped fuses two through
+  -- strands into one cap of the composite.
+  match-comp-∷-capped
+    : ∀ {x y xs xs′ ys zs Θ rest}
+    → (i : Insert Ob x ys zs)
+    → (m : Match Ob xs ys)
+    → (n : Match Ob zs Θ)
+    → (ins : Insert Ob y xs′ ys)
+    → (body : Match Ob xs′ Θ)
+    → (p : Insert Ob y rest xs)
+    → (m′ : Match Ob rest xs′)
+    → match-remove i n ≡ capped ins body
+    → match-unhit ins m ≡ unhit p m′
+    → match-comp (i ∷ m) n ≡ cap p (match-comp m′ body)
+  match-comp-∷-capped i m n ins body p m′ e e′ with match-remove i n | e
+  ... | .(capped ins body) | refl with match-unhit ins m | e′
+  ...   | .(unhit p m′) | refl =
+    cong (cap p) (match-comp-acc-irr _ _ m′ body)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- WHAT COMPOSITION DOES TO A REMOVAL AND TO AN INVERSE LOOKUP. These are the
+  -- shape of the two facts associativity turns on, written as operations so
+  -- that the facts can be stated as equations rather than as case analyses.
+  --
+  -- Every clause is an APPLICATION and every split is on an ARGUMENT, so a
+  -- later `cong` reaches through them — the same discipline `split`, `origin`
+  -- and the listing algebra follow, and for the same reason.
+  --
+  -- `Removal` already carries its intermediate list as a constructor argument,
+  -- so these are homogeneous equations with nothing to transport along. That
+  -- is the device the exchange's `Tower` introduced, arriving where it was
+  -- predicted to.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- The second wiring capped the strand's partner, so the partner is one of
+  -- ITS sources — a sink of the first — and has to be traced back through the
+  -- first wiring. Two through strands fuse into one cap.
+  removal-fuse
+    : ∀ {x y Γ Γ′ Θ}
+    → Match Ob Γ′ Θ
+    → Unhit y Γ Γ′
+    → Removal x Γ Θ
+  removal-fuse body₂ (unhit p body′) = capped p (match-comp body′ body₂)
+
+  -- The strand ran through the first wiring to a sink; what the second wiring
+  -- does with that sink is the whole of the case analysis.
+  removal-plug
+    : ∀ {x Γ rest Θ}
+    → Match Ob Γ rest
+    → Removal x rest Θ
+    → Removal x Γ Θ
+  removal-plug body (through spot₂ body₂) = through spot₂ (match-comp body body₂)
+  removal-plug body (capped ins₂ body₂) = removal-fuse body₂ (match-unhit ins₂ body)
+
+  -- Composing a removal with a further wiring. A cap already made by the first
+  -- wiring stands; a through strand is passed to the second.
+  removal-comp
+    : ∀ {x Γ Δ Θ}
+    → Removal x Γ Δ
+    → Match Ob Δ Θ
+    → Removal x Γ Θ
+  removal-comp (through spot body) o = removal-plug body (match-remove spot o)
+  removal-comp (capped ins body) o = capped ins (match-comp body o)
+
+  -- Carrying an inverse lookup's result forward along a further wiring.
+  unhit-post
+    : ∀ {y Γ Δ Θ}
+    → Match Ob Δ Θ
+    → Unhit y Γ Δ
+    → Unhit y Γ Θ
+  unhit-post o (unhit q m′) = unhit q (match-comp m′ o)
+
+  -- and the composite's own inverse lookup: trace back through the second
+  -- wiring, then trace that result back through the first.
+  unhit-comp
+    : ∀ {y Γ Δ Θ}
+    → Match Ob Γ Δ
+    → Unhit y Δ Θ
+    → Unhit y Γ Θ
+  unhit-comp m (unhit p′ body′) = unhit-post body′ (match-unhit p′ m)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- ASSOCIATIVITY, OVER THE TWO COMMUTATION LAWS IT TURNS ON.
+  --
+  -- The theorem reduces to exactly two facts, and this module is that
+  -- reduction — machine-checked, so what remains of the wiring category's
+  -- associativity is those two and nothing else:
+  --
+  --   * `match-remove-comp` — removing a source from a composite is removing
+  --     it from the first wiring and then composing that removal with the
+  --     second;
+  --   * `match-unhit-comp` — tracing a sink back through a composite is
+  --     tracing it back through the second and then through the first.
+  --
+  -- Both are statements about the listing algebra alone, with no accessibility
+  -- witness in sight, which is what the interface above bought. They are
+  -- PARAMETERS rather than comments so that what is assumed is in the
+  -- signature, and they are discharged at the empty colour set below the
+  -- examples — which shows the module is not vacuous and nothing more.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  module _
+    (match-remove-comp
+      : ∀ {x Γ Γˣ Δ Θ}
+      → (i : Insert Ob x Γ Γˣ)
+      → (n : Match Ob Γˣ Δ)
+      → (o : Match Ob Δ Θ)
+      → match-remove i (match-comp n o) ≡ removal-comp (match-remove i n) o)
+    (match-unhit-comp
+      : ∀ {y Γ Δ Θ Θˣ}
+      → (j : Insert Ob y Θ Θˣ)
+      → (m : Match Ob Γ Δ)
+      → (n : Match Ob Δ Θˣ)
+      → match-unhit j (match-comp m n) ≡ unhit-comp m (match-unhit j n))
+    where
+
+    -- The recursion is on the source list's length, as `match-comp`'s own is.
+    -- The five clauses below are its three cases and the two further splits the
+    -- cap forces, each one an auxiliary taking the scrutinee and its equation.
+    mutual
+
+      match-comp-assoc-acc
+        : ∀ {Γ Δ Θ Ξ}
+        → Acc _<_ (length Γ)
+        → (m : Match Ob Γ Δ)
+        → (n : Match Ob Δ Θ)
+        → (o : Match Ob Θ Ξ)
+        → match-comp (match-comp m n) o ≡ match-comp m (match-comp n o)
+      match-comp-assoc-acc a [] [] [] = refl
+      match-comp-assoc-acc (acc rec) (cap {xs} i m) n o =
+        begin⟨ bundle (≡ˢ _) ⟩
+          match-comp (match-comp (cap i m) n) o
+        ≈⟨ cong (λ z → match-comp z o) (match-comp-cap i m n) ⟩
+          match-comp (cap i (match-comp m n)) o
+        ≈⟨ match-comp-cap i (match-comp m n) o ⟩
+          cap i (match-comp (match-comp m n) o)
+        ≈⟨ cong (cap i)
+             (match-comp-assoc-acc
+               (rec (subst (λ z → length xs < suc z)
+                      (sym (insert-length i))
+                      (<-trans (n<1+n _) (n<1+n _))))
+               m n o) ⟩
+          cap i (match-comp m (match-comp n o))
+        ≈⟨ sym (match-comp-cap i m (match-comp n o)) ⟩
+          match-comp (cap i m) (match-comp n o)
+        ∎
+      match-comp-assoc-acc a (i ∷ m) n o =
+        assoc-∷ a i m n o (match-remove i n) refl
+
+      -- the leading source either ran through the first wiring or was capped
+      assoc-∷
+        : ∀ {x xs ys zs Θ Ξ}
+        → Acc _<_ (length (x ∷ xs))
+        → (i : Insert Ob x ys zs)
+        → (m : Match Ob xs ys)
+        → (n : Match Ob zs Θ)
+        → (o : Match Ob Θ Ξ)
+        → (r : Removal x ys Θ)
+        → match-remove i n ≡ r
+        → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
+      assoc-∷ a i m n o (through spot body) eq₁ =
+        assoc-∷-through a i m n o spot body eq₁ (match-remove spot o) refl
+      assoc-∷ a i m n o (capped ins body) eq₁ =
+        assoc-∷-capped a i m n o ins body eq₁ (match-unhit ins m) refl
+
+      -- CAPPED BY THE FIRST WIRING: the cap is the composite's, and both sides
+      -- are that cap over a composite one source shorter
+      assoc-∷-capped
+        : ∀ {x y xs xs′ ys zs Θ Ξ}
+        → Acc _<_ (length (x ∷ xs))
+        → (i : Insert Ob x ys zs)
+        → (m : Match Ob xs ys)
+        → (n : Match Ob zs Θ)
+        → (o : Match Ob Θ Ξ)
+        → (ins : Insert Ob y xs′ ys)
+        → (body : Match Ob xs′ Θ)
+        → match-remove i n ≡ capped ins body
+        → (u : Unhit y xs xs′)
+        → match-unhit ins m ≡ u
+        → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
+      assoc-∷-capped (acc rec) i m n o ins body eq₁ (unhit {Γ′ = rest} p m′) eq₄ =
+        begin⟨ bundle (≡ˢ _) ⟩
+          match-comp (match-comp (i ∷ m) n) o
+        ≈⟨ cong (λ z → match-comp z o)
+             (match-comp-∷-capped i m n ins body p m′ eq₁ eq₄) ⟩
+          match-comp (cap p (match-comp m′ body)) o
+        ≈⟨ match-comp-cap p (match-comp m′ body) o ⟩
+          cap p (match-comp (match-comp m′ body) o)
+        ≈⟨ cong (cap p)
+             (match-comp-assoc-acc
+               (rec (subst (λ z → length rest < suc z)
+                      (sym (insert-length p))
+                      (<-trans (n<1+n _) (n<1+n _))))
+               m′ body o) ⟩
+          cap p (match-comp m′ (match-comp body o))
+        ≈⟨ sym
+             (match-comp-∷-capped i m (match-comp n o) ins (match-comp body o) p m′
+               (trans (match-remove-comp i n o)
+                 (cong (λ r → removal-comp r o) eq₁))
+               eq₄) ⟩
+          match-comp (i ∷ m) (match-comp n o)
+        ∎
+
+      -- RAN THROUGH THE FIRST: what becomes of it is the second wiring's
+      -- business, and it is the same question one wiring along
+      assoc-∷-through
+        : ∀ {x xs ys zs Θ Ξ rest}
+        → Acc _<_ (length (x ∷ xs))
+        → (i : Insert Ob x ys zs)
+        → (m : Match Ob xs ys)
+        → (n : Match Ob zs Θ)
+        → (o : Match Ob Θ Ξ)
+        → (spot : Insert Ob x rest Θ)
+        → (body : Match Ob ys rest)
+        → match-remove i n ≡ through spot body
+        → (r₂ : Removal x rest Ξ)
+        → match-remove spot o ≡ r₂
+        → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
+      assoc-∷-through (acc rec) i m n o spot body eq₁ (through spot₂ body₂) eq₂ =
+        begin⟨ bundle (≡ˢ _) ⟩
+          match-comp (match-comp (i ∷ m) n) o
+        ≈⟨ cong (λ z → match-comp z o)
+             (match-comp-∷-through i m n spot body eq₁) ⟩
+          match-comp (spot ∷ match-comp m body) o
+        ≈⟨ match-comp-∷-through spot (match-comp m body) o spot₂ body₂ eq₂ ⟩
+          spot₂ ∷ match-comp (match-comp m body) body₂
+        ≈⟨ cong (spot₂ ∷_)
+             (match-comp-assoc-acc (rec (n<1+n _)) m body body₂) ⟩
+          spot₂ ∷ match-comp m (match-comp body body₂)
+        ≈⟨ sym
+             (match-comp-∷-through i m (match-comp n o) spot₂
+               (match-comp body body₂)
+               (trans (match-remove-comp i n o)
+                 (trans (cong (λ r → removal-comp r o) eq₁)
+                   (cong (removal-plug body) eq₂)))) ⟩
+          match-comp (i ∷ m) (match-comp n o)
+        ∎
+      assoc-∷-through a i m n o spot body eq₁ (capped ins₂ body₂) eq₂ =
+        assoc-∷-fuse a i m n o spot body eq₁ ins₂ body₂ eq₂
+          (match-unhit ins₂ body) refl
+
+      -- AND CAPPED BY THE SECOND, which is the case the cap introduced: the
+      -- partner is a source of the second wiring, so it is traced back through
+      -- the first — twice, once to reach that source's own partner
+      assoc-∷-fuse
+        : ∀ {x y xs ys zs Θ Ξ rest rest′}
+        → Acc _<_ (length (x ∷ xs))
+        → (i : Insert Ob x ys zs)
+        → (m : Match Ob xs ys)
+        → (n : Match Ob zs Θ)
+        → (o : Match Ob Θ Ξ)
+        → (spot : Insert Ob x rest Θ)
+        → (body : Match Ob ys rest)
+        → match-remove i n ≡ through spot body
+        → (ins₂ : Insert Ob y rest′ rest)
+        → (body₂ : Match Ob rest′ Ξ)
+        → match-remove spot o ≡ capped ins₂ body₂
+        → (u : Unhit y ys rest′)
+        → match-unhit ins₂ body ≡ u
+        → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
+      assoc-∷-fuse a i m n o spot body eq₁ ins₂ body₂ eq₂ (unhit p body′) eq₃ =
+        assoc-∷-fuse′ a i m n o spot body eq₁ ins₂ body₂ eq₂ p body′ eq₃
+          (match-unhit p m) refl
+
+      assoc-∷-fuse′
+        : ∀ {x y xs ys ys′ zs Θ Ξ rest rest′}
+        → Acc _<_ (length (x ∷ xs))
+        → (i : Insert Ob x ys zs)
+        → (m : Match Ob xs ys)
+        → (n : Match Ob zs Θ)
+        → (o : Match Ob Θ Ξ)
+        → (spot : Insert Ob x rest Θ)
+        → (body : Match Ob ys rest)
+        → match-remove i n ≡ through spot body
+        → (ins₂ : Insert Ob y rest′ rest)
+        → (body₂ : Match Ob rest′ Ξ)
+        → match-remove spot o ≡ capped ins₂ body₂
+        → (p : Insert Ob y ys′ ys)
+        → (body′ : Match Ob ys′ rest′)
+        → match-unhit ins₂ body ≡ unhit p body′
+        → (u : Unhit y xs ys′)
+        → match-unhit p m ≡ u
+        → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
+      assoc-∷-fuse′ (acc rec) i m n o spot body eq₁ ins₂ body₂ eq₂ p body′ eq₃
+        (unhit {Γ′ = rest″} q m₀′) eq₄ =
+        begin⟨ bundle (≡ˢ _) ⟩
+          match-comp (match-comp (i ∷ m) n) o
+        ≈⟨ cong (λ z → match-comp z o)
+             (match-comp-∷-through i m n spot body eq₁) ⟩
+          match-comp (spot ∷ match-comp m body) o
+        ≈⟨ match-comp-∷-capped spot (match-comp m body) o ins₂ body₂ q
+             (match-comp m₀′ body′)
+             eq₂
+             (trans (match-unhit-comp ins₂ m body)
+               (trans (cong (unhit-comp m) eq₃) (cong (unhit-post body′) eq₄))) ⟩
+          cap q (match-comp (match-comp m₀′ body′) body₂)
+        ≈⟨ cong (cap q)
+             (match-comp-assoc-acc
+               (rec (subst (λ z → length rest″ < suc z)
+                      (sym (insert-length q))
+                      (<-trans (n<1+n _) (n<1+n _))))
+               m₀′ body′ body₂) ⟩
+          cap q (match-comp m₀′ (match-comp body′ body₂))
+        ≈⟨ sym
+             (match-comp-∷-capped i m (match-comp n o) p
+               (match-comp body′ body₂) q m₀′
+               (trans (match-remove-comp i n o)
+                 (trans (cong (λ r → removal-comp r o) eq₁)
+                   (trans (cong (removal-plug body) eq₂)
+                     (cong (removal-fuse body₂) eq₃))))
+               eq₄) ⟩
+          match-comp (i ∷ m) (match-comp n o)
+        ∎
+
+    -- ASSOCIATIVITY OF THE WIRING COMPOSITION, with the accessibility witness
+    -- supplied. This is the `mon-α` of `Gandr.Shape.Structure.WIRING`.
+    match-comp-assoc
+      : ∀ {Γ Δ Θ Ξ}
+      → (m : Match Ob Γ Δ)
+      → (n : Match Ob Δ Θ)
+      → (o : Match Ob Θ Ξ)
+      → match-comp (match-comp m n) o ≡ match-comp m (match-comp n o)
+    match-comp-assoc = match-comp-assoc-acc (<-wellFounded _)
+
   -- Whiskering the identity matching by a block gives the identity again.
   match-lwhisk-idn
     : ∀ {A Γ Γ′}
@@ -3197,6 +3593,45 @@ module _ {ℓ} {Ob : Set ℓ} where
 -- `refl` — at concrete indices the witness comparison computes away, so the
 -- hypothesis is doing exactly the work the general case needs and no more.
 -- ════════════════════════════════════════════════════════════════════════════
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- THE TWO COMMUTATION LAWS ARE SATISFIABLE, and this is the whole of what that
+-- shows. Over the EMPTY colour set every `Insert` is absurd — each of its
+-- constructors carries a colour, and there are none — so both laws hold
+-- vacuously and the associativity theorem is available there.
+--
+-- A parameterized module type-checks whether or not its hypotheses can ever be
+-- met, so a module whose assumptions are unsatisfiable is green and vacuous.
+-- This is what rules that out, and it is NO evidence for the general case: the
+-- wiring at `Ob = ⊥` has one profile and one matching. Proving the two laws in
+-- general is the open work, and it is the whole of what the wiring category's
+-- associativity still owes.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+match-remove-comp-⊥
+  : ∀ {ℓ} {x : ⊥° {ℓ}} {Γ Γˣ Δ Θ}
+  → (i : Insert ⊥° x Γ Γˣ)
+  → (n : Match ⊥° Γˣ Δ)
+  → (o : Match ⊥° Δ Θ)
+  → match-remove i (match-comp n o) ≡ removal-comp (match-remove i n) o
+match-remove-comp-⊥ {x = ()} i n o
+
+match-unhit-comp-⊥
+  : ∀ {ℓ} {y : ⊥° {ℓ}} {Γ Δ Θ Θˣ}
+  → (j : Insert ⊥° y Θ Θˣ)
+  → (m : Match ⊥° Γ Δ)
+  → (n : Match ⊥° Δ Θˣ)
+  → match-unhit j (match-comp m n) ≡ unhit-comp m (match-unhit j n)
+match-unhit-comp-⊥ {y = ()} j m n
+
+-- and so the theorem, at the witness that discharges it
+match-comp-assoc-⊥
+  : ∀ {ℓ} {Γ Δ Θ Ξ}
+  → (m : Match (⊥° {ℓ}) Γ Δ)
+  → (n : Match ⊥° Δ Θ)
+  → (o : Match ⊥° Θ Ξ)
+  → match-comp (match-comp m n) o ≡ match-comp m (match-comp n o)
+match-comp-assoc-⊥ = match-comp-assoc match-remove-comp-⊥ match-unhit-comp-⊥
 
 module _ {ℓ} {Ob : Set ℓ} (uipᵒ : UIP Ob) (uipˡ : UIP (List Ob)) where
 
