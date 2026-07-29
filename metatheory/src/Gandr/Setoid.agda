@@ -44,6 +44,7 @@ open import Gandr.Graph
 import Relation.Binary.Bundles as Bundles
 open import Relation.Binary.Reasoning.MultiSetoid
   using (IsRelatedTo)
+  using (step-≈-⟩)
   using (step-≈-⟨)
 open import Data.Empty.Polymorphic
   using (⊥)
@@ -52,6 +53,7 @@ open import Relation.Binary.PropositionalEquality
   using (refl)
   using (trans)
   using (sym)
+  using (cong)
 
 -- Reflexivity, transitivity and symmetry on the cells of `Ξ`, proof-relevantly
 -- and without laws: the base the Category and Groupoid towers sit over.
@@ -188,3 +190,43 @@ step-≈⁻¹
   → IsRelatedTo S x z
 step-≈⁻¹ = step-≈-⟨
 syntax step-≈⁻¹ x yRz y≈x = x ≈⁻¹⟨ y≈x ⟩ yRz
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- A CONGRUENCE STEP, WITH THE FUNCTION IN A SLOT.
+--
+-- Most steps of a `Set`-level chain rewrite UNDER something, so most of them
+-- read `≈⟨ cong f p ⟩` and the `cong` is noise repeated down the whole chain.
+-- Moving `f` into the term line — `[ f ]· u` for what would otherwise be
+-- written `f u` — takes it out of every step at once, and the bracket keeps a
+-- lambda from running into its argument.
+--
+-- ── WHY THE TERM SPLITS RATHER THAN THE STEP SHRINKING ──────────────────────
+-- A step of the shape `x ≈[ f ]⟨ p ⟩` cannot be written at all: it must build
+-- `x ≡ f v` out of `cong f p : f u ≡ f v`, so it needs `x ≡ f u`, and for an
+-- abstract `x` that is unavailable — Agda rejects the definition with
+-- `f _x != x`. Taking `f` and `u` SEPARATELY is what makes it typeable, since
+-- the step's own index is then `f u` and there is nothing left to reconcile.
+-- The chain still shows the whole term, just with its head marked.
+--
+-- ── WHY THE STEP IS `≈·⟨` AND NOT `≈⟨` ──────────────────────────────────────
+-- Plain `≈⟨` there is genuinely AMBIGUOUS and Agda says so: the argument slot
+-- `u` can itself swallow `u ≈⟨ p ⟩ rest`, so the same text parses two ways. A
+-- marker of its own settles it, and it pays for itself — the dot now appears in
+-- both halves of the device, so the marked head and its step read as one thing.
+--
+-- This is `Set`-level vocabulary and says so: `cong` is what makes it, so it is
+-- available exactly where the bundle is `bundle (≡ˢ _)`. A general setoid needs
+-- a congruence witness rather than a function, which is the structure's own
+-- business — `Category`'s `seq↕` and its relatives.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+infixr 2 step-≈·
+step-≈·
+  : ∀ {a b} {A : Set a} {B : Set b} {v : B} {z : A}
+  → (f : B → A)
+  → (u : B)
+  → IsRelatedTo (bundle (≡ˢ A)) (f v) z
+  → u ≡ v
+  → IsRelatedTo (bundle (≡ˢ A)) (f u) z
+step-≈· f u rest p = step-≈-⟩ (f u) rest (cong f p)
+syntax step-≈· f u rest p = [ f ]· u ≈·⟨ p ⟩ rest

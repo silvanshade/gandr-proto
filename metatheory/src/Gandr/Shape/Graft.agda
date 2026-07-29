@@ -208,6 +208,7 @@ module Gandr.Shape.Graft where
 open import Gandr.Setoid
   using (≡ˢ)
   using (bundle)
+  using (step-≈·)
   using (step-≈⁻¹)
 open import Gandr.Shape.Graph
   using (here)
@@ -3271,16 +3272,12 @@ module _ {ℓ} {Ob : Set ℓ} where
       match-comp-assoc-acc a [] [] [] = refl
       match-comp-assoc-acc (acc rec) (cap i m) n o =
         begin⟨ bundle (≡ˢ _) ⟩
-          match-comp (match-comp (cap i m) n) o
-            ≈⟨ cong (λ z → match-comp z o) (match-comp-cap i m n) ⟩
-          match-comp (cap i (match-comp m n)) o
-            ≈⟨ match-comp-cap i (match-comp m n) o ⟩
-          cap i (match-comp (match-comp m n) o)
-            ≈⟨ cong (cap i)
-                 (match-comp-assoc-acc (rec (insert-shrink i)) m n o) ⟩
-          cap i (match-comp m (match-comp n o))
-          ≈⁻¹⟨ match-comp-cap i m (match-comp n o) ⟩
-          match-comp (cap i m) (match-comp n o)
+            [ (λ z → match-comp z o) ]· match-comp (cap i m) n   ≈·⟨ match-comp-cap i m n ⟩
+            match-comp (cap i (match-comp m n)) o                ≈⟨ match-comp-cap i (match-comp m n) o ⟩
+            [ cap i ]· match-comp (match-comp m n) o             ≈·⟨
+                match-comp-assoc-acc (rec (insert-shrink i)) m n o ⟩
+            cap i (match-comp m (match-comp n o))                ≈⁻¹⟨ match-comp-cap i m (match-comp n o) ⟩
+            match-comp (cap i m) (match-comp n o)
         ∎
       match-comp-assoc-acc a (i ∷ m) n o =
         assoc-∷ a i m n o (match-remove i n) refl
@@ -3318,20 +3315,16 @@ module _ {ℓ} {Ob : Set ℓ} where
         → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
       assoc-∷-capped (acc rec) i m n o ins body eq₁ (unhit p m′) eq₄ =
         begin⟨ bundle (≡ˢ _) ⟩
-          match-comp (match-comp (i ∷ m) n) o
-            ≈⟨ cong (λ z → match-comp z o)
-                 (match-comp-∷-capped i m n ins body p m′ eq₁ eq₄) ⟩
-          match-comp (cap p (match-comp m′ body)) o
-            ≈⟨ match-comp-cap p (match-comp m′ body) o ⟩
-          cap p (match-comp (match-comp m′ body) o)
-            ≈⟨ cong (cap p)
-                 (match-comp-assoc-acc (rec (insert-shrink p)) m′ body o) ⟩
-          cap p (match-comp m′ (match-comp body o))
-          ≈⁻¹⟨ match-comp-∷-capped i m (match-comp n o) ins (match-comp body o) p m′
-                 (trans (match-remove-comp i n o)
-                   (cong (λ r → removal-comp r o) eq₁))
-                 eq₄ ⟩
-          match-comp (i ∷ m) (match-comp n o)
+            [ (λ z → match-comp z o) ]· match-comp (i ∷ m) n   ≈·⟨
+                match-comp-∷-capped i m n ins body p m′ eq₁ eq₄ ⟩
+            match-comp (cap p (match-comp m′ body)) o          ≈⟨ match-comp-cap p (match-comp m′ body) o ⟩
+            [ cap p ]· match-comp (match-comp m′ body) o       ≈·⟨
+                match-comp-assoc-acc (rec (insert-shrink p)) m′ body o ⟩
+            cap p (match-comp m′ (match-comp body o))          ≈⁻¹⟨
+                match-comp-∷-capped i m (match-comp n o) ins (match-comp body o) p m′
+                  (trans (match-remove-comp i n o) (cong (λ r → removal-comp r o) eq₁))
+                  eq₄ ⟩
+            match-comp (i ∷ m) (match-comp n o)
         ∎
 
       -- RAN THROUGH THE FIRST: what becomes of it is the second wiring's
@@ -3351,21 +3344,17 @@ module _ {ℓ} {Ob : Set ℓ} where
         → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
       assoc-∷-through (acc rec) i m n o spot body eq₁ (through spot₂ body₂) eq₂ =
         begin⟨ bundle (≡ˢ _) ⟩
-          match-comp (match-comp (i ∷ m) n) o
-            ≈⟨ cong (λ z → match-comp z o)
-                 (match-comp-∷-through i m n spot body eq₁) ⟩
-          match-comp (spot ∷ match-comp m body) o
-            ≈⟨ match-comp-∷-through spot (match-comp m body) o spot₂ body₂ eq₂ ⟩
-          spot₂ ∷ match-comp (match-comp m body) body₂
-            ≈⟨ cong (spot₂ ∷_)
-                 (match-comp-assoc-acc (rec (n<1+n _)) m body body₂) ⟩
-          spot₂ ∷ match-comp m (match-comp body body₂)
-          ≈⁻¹⟨ match-comp-∷-through i m (match-comp n o) spot₂
-                 (match-comp body body₂)
-                 (trans (match-remove-comp i n o)
-                   (trans (cong (λ r → removal-comp r o) eq₁)
-                     (cong (removal-plug body) eq₂))) ⟩
-          match-comp (i ∷ m) (match-comp n o)
+            [ (λ z → match-comp z o) ]· match-comp (i ∷ m) n     ≈·⟨ match-comp-∷-through i m n spot body eq₁ ⟩
+            match-comp (spot ∷ match-comp m body) o              ≈⟨
+                match-comp-∷-through spot (match-comp m body) o spot₂ body₂ eq₂ ⟩
+            [ spot₂ ∷_ ]· match-comp (match-comp m body) body₂   ≈·⟨
+                match-comp-assoc-acc (rec (n<1+n _)) m body body₂ ⟩
+            spot₂ ∷ match-comp m (match-comp body body₂)         ≈⁻¹⟨
+                match-comp-∷-through i m (match-comp n o) spot₂ (match-comp body body₂)
+                  (trans (match-remove-comp i n o)
+                    (trans (cong (λ r → removal-comp r o) eq₁)
+                      (cong (removal-plug body) eq₂))) ⟩
+            match-comp (i ∷ m) (match-comp n o)
         ∎
       assoc-∷-through a i m n o spot body eq₁ (capped ins₂ body₂) eq₂ =
         assoc-∷-fuse a i m n o spot body eq₁ ins₂ body₂ eq₂
@@ -3416,28 +3405,22 @@ module _ {ℓ} {Ob : Set ℓ} where
       assoc-∷-fuse′ (acc rec) i m n o spot body eq₁ ins₂ body₂ eq₂ p body′ eq₃
         (unhit q m₀′) eq₄ =
         begin⟨ bundle (≡ˢ _) ⟩
-          match-comp (match-comp (i ∷ m) n) o
-            ≈⟨ cong (λ z → match-comp z o)
-                 (match-comp-∷-through i m n spot body eq₁) ⟩
-          match-comp (spot ∷ match-comp m body) o
-            ≈⟨ match-comp-∷-capped spot (match-comp m body) o ins₂ body₂ q
-                 (match-comp m₀′ body′)
-                 eq₂
-                 (trans (match-unhit-comp ins₂ m body)
-                   (trans (cong (unhit-comp m) eq₃)
-                     (cong (unhit-post body′) eq₄))) ⟩
-          cap q (match-comp (match-comp m₀′ body′) body₂)
-            ≈⟨ cong (cap q)
-                 (match-comp-assoc-acc (rec (insert-shrink q)) m₀′ body′ body₂) ⟩
-          cap q (match-comp m₀′ (match-comp body′ body₂))
-          ≈⁻¹⟨ match-comp-∷-capped i m (match-comp n o) p
-                 (match-comp body′ body₂) q m₀′
-                 (trans (match-remove-comp i n o)
-                   (trans (cong (λ r → removal-comp r o) eq₁)
-                     (trans (cong (removal-plug body) eq₂)
-                       (cong (removal-fuse body₂) eq₃))))
-                 eq₄ ⟩
-          match-comp (i ∷ m) (match-comp n o)
+            [ (λ z → match-comp z o) ]· match-comp (i ∷ m) n     ≈·⟨ match-comp-∷-through i m n spot body eq₁ ⟩
+            match-comp (spot ∷ match-comp m body) o              ≈⟨
+                match-comp-∷-capped spot (match-comp m body) o ins₂ body₂ q
+                  (match-comp m₀′ body′) eq₂
+                  (trans (match-unhit-comp ins₂ m body)
+                    (trans (cong (unhit-comp m) eq₃) (cong (unhit-post body′) eq₄))) ⟩
+            [ cap q ]· match-comp (match-comp m₀′ body′) body₂   ≈·⟨
+                match-comp-assoc-acc (rec (insert-shrink q)) m₀′ body′ body₂ ⟩
+            cap q (match-comp m₀′ (match-comp body′ body₂))      ≈⁻¹⟨
+                match-comp-∷-capped i m (match-comp n o) p (match-comp body′ body₂) q m₀′
+                  (trans (match-remove-comp i n o)
+                    (trans (cong (λ r → removal-comp r o) eq₁)
+                      (trans (cong (removal-plug body) eq₂)
+                        (cong (removal-fuse body₂) eq₃))))
+                  eq₄ ⟩
+            match-comp (i ∷ m) (match-comp n o)
         ∎
 
     -- ASSOCIATIVITY OF THE WIRING COMPOSITION, with the accessibility witness
