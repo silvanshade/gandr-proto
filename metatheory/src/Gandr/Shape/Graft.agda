@@ -208,6 +208,7 @@ module Gandr.Shape.Graft where
 open import Gandr.Setoid
   using (≡ˢ)
   using (bundle)
+  using (step-≈⁻¹)
 open import Gandr.Shape.Graph
   using (here)
   using (there)
@@ -3278,7 +3279,7 @@ module _ {ℓ} {Ob : Set ℓ} where
             ≈⟨ cong (cap i)
                  (match-comp-assoc-acc (rec (insert-shrink i)) m n o) ⟩
           cap i (match-comp m (match-comp n o))
-            ≈⟨ match-comp-cap i m (match-comp n o) ⟨
+          ≈⁻¹⟨ match-comp-cap i m (match-comp n o) ⟩
           match-comp (cap i m) (match-comp n o)
         ∎
       match-comp-assoc-acc a (i ∷ m) n o =
@@ -3326,10 +3327,10 @@ module _ {ℓ} {Ob : Set ℓ} where
             ≈⟨ cong (cap p)
                  (match-comp-assoc-acc (rec (insert-shrink p)) m′ body o) ⟩
           cap p (match-comp m′ (match-comp body o))
-            ≈⟨ match-comp-∷-capped i m (match-comp n o) ins (match-comp body o) p m′
+          ≈⁻¹⟨ match-comp-∷-capped i m (match-comp n o) ins (match-comp body o) p m′
                  (trans (match-remove-comp i n o)
                    (cong (λ r → removal-comp r o) eq₁))
-                 eq₄ ⟨
+                 eq₄ ⟩
           match-comp (i ∷ m) (match-comp n o)
         ∎
 
@@ -3359,11 +3360,11 @@ module _ {ℓ} {Ob : Set ℓ} where
             ≈⟨ cong (spot₂ ∷_)
                  (match-comp-assoc-acc (rec (n<1+n _)) m body body₂) ⟩
           spot₂ ∷ match-comp m (match-comp body body₂)
-            ≈⟨ match-comp-∷-through i m (match-comp n o) spot₂
+          ≈⁻¹⟨ match-comp-∷-through i m (match-comp n o) spot₂
                  (match-comp body body₂)
                  (trans (match-remove-comp i n o)
                    (trans (cong (λ r → removal-comp r o) eq₁)
-                     (cong (removal-plug body) eq₂))) ⟨
+                     (cong (removal-plug body) eq₂))) ⟩
           match-comp (i ∷ m) (match-comp n o)
         ∎
       assoc-∷-through a i m n o spot body eq₁ (capped ins₂ body₂) eq₂ =
@@ -3429,13 +3430,13 @@ module _ {ℓ} {Ob : Set ℓ} where
             ≈⟨ cong (cap q)
                  (match-comp-assoc-acc (rec (insert-shrink q)) m₀′ body′ body₂) ⟩
           cap q (match-comp m₀′ (match-comp body′ body₂))
-            ≈⟨ match-comp-∷-capped i m (match-comp n o) p
+          ≈⁻¹⟨ match-comp-∷-capped i m (match-comp n o) p
                  (match-comp body′ body₂) q m₀′
                  (trans (match-remove-comp i n o)
                    (trans (cong (λ r → removal-comp r o) eq₁)
                      (trans (cong (removal-plug body) eq₂)
                        (cong (removal-fuse body₂) eq₃))))
-                 eq₄ ⟨
+                 eq₄ ⟩
           match-comp (i ∷ m) (match-comp n o)
         ∎
 

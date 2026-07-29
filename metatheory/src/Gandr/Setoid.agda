@@ -42,6 +42,9 @@ open import Gandr.Graph
   using (module 𝔾)
 
 import Relation.Binary.Bundles as Bundles
+open import Relation.Binary.Reasoning.MultiSetoid
+  using (IsRelatedTo)
+  using (step-≈-⟨)
 open import Data.Empty.Polymorphic
   using (⊥)
 open import Relation.Binary.PropositionalEquality
@@ -158,3 +161,30 @@ bundle {Ξ} S = record
       ; trans = S .seqˢ
       }
   }
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- THE REVERSE STEP, IN THE HOUSE NOTATION.
+--
+-- A chain step that runs the other way is stdlib's `x ≈⟨ p ⟨ y`, which flips
+-- the CLOSING bracket to carry the direction. That is the one place the
+-- vocabulary is hard to read: the mark is at the far end of the proof, which is
+-- exactly where a multi-line step puts it out of sight, and an opening and a
+-- closing angle that differ by orientation alone do not survive skimming.
+--
+-- So the direction is written where a reader looks for it — on the relation,
+-- as an inverse. `≈⁻¹⟨ p ⟩` IS stdlib's backward step, re-syntaxed and nothing
+-- more: no combinator is reimplemented, so the reasoning machinery, its
+-- transitivity and its `IsRelatedTo` are the library's own. stdlib's own form
+-- stays in scope and is not an error; this is the one the tree writes.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+infixr 2 step-≈⁻¹
+step-≈⁻¹
+  : ∀ {a ℓ} {S : Bundles.Setoid a ℓ}
+  → (x : Bundles.Setoid.Carrier S)
+  → ∀ {y z}
+  → IsRelatedTo S y z
+  → Bundles.Setoid._≈_ S y x
+  → IsRelatedTo S x z
+step-≈⁻¹ = step-≈-⟨
+syntax step-≈⁻¹ x yRz y≈x = x ≈⁻¹⟨ y≈x ⟩ yRz
