@@ -183,6 +183,34 @@ A reviewer handed the rationale ratifies its frame, and the frame is what was wr
 
 **One standing lens, cheap enough to run without an agent:** _is this a fact about us, or a fact about the machinery?_ It fires on both instances above and on all three historical ones.
 
+## A recalled citation that turns out to be on-target is still unverified
+
+The corpus discipline says to verify a source's **identity**, not merely its presence.
+This section is the case that discipline is weakest against, because it does not look like a failure at all.
+
+**The shape.** A citation is produced from recall rather than from a bibliography — author, title, sometimes a venue, all stated with the fluency of something read.
+Later the paper is obtained, and it is **real and on-subject**.
+The referent was right; the citation was invented.
+
+**Why that is the dangerous case rather than the lucky one.** Being on-target reads as confirmation, so the entry is quietly promoted from recalled to checked without anyone checking anything, and the wrong author, title or year rides downstream on the strength of the subject matching.
+A citation that pointed at nothing would have been caught the moment someone looked for it.
+
+**The tell, and it is checkable.** A citation transcribed from a real bibliography preserves the authorship, because the author list is the part you copy.
+**Recall gets the topic right and the metadata wrong** — a wrong title _and_ a wrong author count on a paper that nonetheless exists is the signature, and it means recall, not a transcription slip.
+
+Three rules follow:
+
+* **A not-held list cannot come from a filename sweep**, since you cannot sweep for what is absent.
+  Whenever one is written, say where it came from — a named source's bibliography, or recall.
+  An unattributed list of things to obtain is recall until proven otherwise.
+* **Obtaining the paper verifies the paper, never the citation.** Read the title page and correct the entry in place; do not let "it turned out to exist" stand in for having checked it.
+* **Do not manufacture the provenance afterwards.** If the source of an association is unknown, record it as unknown.
+  Reconstructing a plausible origin for a citation is the same failure one level up, and it is harder to catch because it explains the evidence.
+
+Worked instance, 2026-07-28: a duoidal-bibliography entry recorded from recall as a solo-authored paper under a title matching nothing.
+The paper it pointed at is real, on-subject and now held — with three authors and a different title.
+It was cited in neither of the two held sources most likely to carry it, one of which predates it outright.
+
 ## Research-question tasks — deliver the outlook
 
 A task investigating a research question delivers, alongside findings, a brief **outlook**: **evidence for** vs **evidence against** as short bullets, plus a one-line **Net** (decisive, not hedged).
