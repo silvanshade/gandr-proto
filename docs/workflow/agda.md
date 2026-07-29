@@ -363,6 +363,11 @@ This is cheap up front and expensive to retrofit, and it does not announce itsel
 The tell is a definition of the shape `f (c x) with f x`, and the repair is mechanical.
 `Gandr.Shape.Graph`'s `split`, `origin` and `dest` and `Gandr.Shape.Graft`'s listing algebra are the worked examples; both headers say why.
 
+**The same rule fires from the CONSUMER's side, and that half is easy to miss.** A proof about such a definition must not meet the definition's own scrutinee with a `with` either: the with-abstraction rewrites the goal into the definition's internal auxiliary — Agda's error names it — and any lemma stated about the definition can no longer reach the goal.
+Pass the scrutinee to a helper as an **argument** together with its defining equation, and split on the argument; the goal then stays in the vocabulary the lemmas are about.
+`Gandr.Shape.Graft`'s associativity proof is the worked example: one auxiliary per case the scrutinee forces, and no `with` anywhere in the proof.
+The pair of halves is what makes a well-founded definition reasonable about at all — an unfolding lemma per head form on the definition's side, arguments-with-equations on the proof's.
+
 **Migrate, never duplicate.** When a definition belongs in a different module than the one it sits in, move it and update its importers.
 Never write a second copy: two definitions of the same thing are _definitionally equal_, so the gate cannot see the drift, and the copies diverge silently the first time one is edited.
 The rule is symmetric and applies across the whole tree; the split between `Gandr.Category`'s carrier-level instances and `Gandr.Category.Instances`' constructed ones is the worked example, and both headers state it.
