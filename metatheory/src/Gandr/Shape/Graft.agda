@@ -141,6 +141,26 @@
 -- intermediate lists as FIELDS — is what let the coherence be stated as a
 -- homogeneous equation instead of a transport.
 --
+-- AND THE TWO LOOKUPS ARE VIEWS OF THE TWO THREADINGS, which is the
+-- characterization the composition proofs run on. `match-remove i` is inverse
+-- to `removal→match i` and `match-unhit j` to `unhit→match j`, both round trips
+-- proved, so `Removal` and `Unhit` lose nothing and a matching can be REBUILT
+-- from either lookup. That is what makes a fact of the form "what does an
+-- operation do to `o`, given what a lookup on `o` returned" reachable at all: a
+-- lookup is a recursion and no lemma reaches past it, while a rebuild is a
+-- construction and computes.
+--
+-- WHAT REMAINS OPEN, stated where a reader meets it. Associativity of
+-- `match-comp` is a module parameter twice over — `match-remove-comp` and
+-- `match-unhit-comp`, discharged at `Ob = ⊥` for satisfiability only. Through
+-- the views those two reduce to ONE hypothesis-free identity, that threading a
+-- cut and threading a wire commute up to reindexing by nested `insert-swap`s.
+-- Four of that identity's five clauses discharge here — two by the involution,
+-- one by `refl`, one by its own induction — and the fifth, where a cut meets a
+-- cut, asks for a FOUR-layer coherence where the file has the exchange at two
+-- and the braid at three. Caps meeting caps is where every coherence debt in
+-- this file has landed, `cap-swap`'s included.
+--
 -- `merge-apart` — the merger's INCIDENCE theorem, and the general form of what
 -- `two-points` could previously only exhibit. `verts-merge` says both operands'
 -- vertices survive; this says no edge of the composite runs from one operand's
