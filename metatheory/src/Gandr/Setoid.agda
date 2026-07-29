@@ -238,3 +238,28 @@ step-≈·
   → IsRelatedTo (bundle (≡ˢ A)) (f u) z
 step-≈· f u rest p = step-≈-⟩ (f u) rest (cong f p)
 syntax step-≈· (λ x → f) u rest p = [ x ↦ f ]· u ≈·⟨ p ⟩ rest
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- AND THE SAME STEP TAKEN BACKWARDS.
+--
+-- The two devices are independent — a step can rewrite under something AND run
+-- the other way — so the pair wants four markers, not three. Leaving the fourth
+-- out puts `cong` back into exactly the steps the congruence device was added to
+-- clear, and it puts a `sym` around it, which is the thing `≈⁻¹⟨_⟩` exists to
+-- stop. So the grid is closed.
+--
+-- The proof reads in the same direction as `≈·⟨_⟩`'s — `p : u ≡ v` — and what
+-- changes is which end the marked term sits at: here the term written is `f v`
+-- and the chain continues at `f u`.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+infixr 2 step-≈·⁻¹
+step-≈·⁻¹
+  : ∀ {a b} {A : Set a} {B : Set b} {u : B} {z : A}
+  → (f : B → A)
+  → (v : B)
+  → IsRelatedTo (bundle (≡ˢ A)) (f u) z
+  → u ≡ v
+  → IsRelatedTo (bundle (≡ˢ A)) (f v) z
+step-≈·⁻¹ f v rest p = step-≈-⟨ (f v) rest (cong f p)
+syntax step-≈·⁻¹ (λ x → f) v rest p = [ x ↦ f ]· v ≈·⁻¹⟨ p ⟩ rest

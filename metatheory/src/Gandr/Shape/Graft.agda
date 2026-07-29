@@ -1483,11 +1483,12 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- reached by rebuilding `o` and computing, because the rebuild is a
   -- construction and the lookup is a recursion.
   --
-  -- The hypothesis is oriented `r ≡ match-remove i o`, against the unfolding
-  -- lemmas' own direction. That is deliberate: a rebuild consumes the lookup's
-  -- value on its LEFT — `r` is refined by matching, and the chain then reads
-  -- from the rebuilt term towards `o` — so the other orientation would put a
-  -- reversed congruence in every step.
+  -- The hypothesis reads `match-remove i o ≡ r`, the same direction the
+  -- unfolding lemmas use, so there is one orientation in the file and not two.
+  -- A rebuild consumes the lookup's value on the LEFT — `r` is refined by
+  -- matching and the chain reads from the rebuilt term towards `o` — so the
+  -- steps that carry the hypothesis take it backwards, which is what the two
+  -- inverse markers are for.
   mutual
 
     match-remove-recover
@@ -1495,7 +1496,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (i : Insert Ob x Γ Γˣ)
       → (o : Match Ob Γˣ Θ)
       → (r : Removal x Γ Θ)
-      → r ≡ match-remove i o
+      → match-remove i o ≡ r
       → removal→match i r ≡ o
     match-remove-recover head (j ∷ o) .(through j o) refl = refl
     match-remove-recover head (cap k o) .(capped k o) refl = refl
@@ -1511,7 +1512,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (k : Insert Ob w ys Θ)
       → (o : Match Ob Γˣ ys)
       → (r : Removal x Γ ys)
-      → r ≡ match-remove i o
+      → match-remove i o ≡ r
       → removal→match (tail i) (removal-tail k r) ≡ k ∷ o
     recover-∷ i k o (through s b) eq =
       begin⟨ bundle (≡ˢ _) ⟩
@@ -1540,14 +1541,14 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (v : InsertView i c)
       → insert-view i c ≡ v
       → (r : Removal x (w ∷ A) Θ)
-      → r ≡ match-remove (tail {y = w} i) (cap c o)
+      → match-remove (tail {y = w} i) (cap c o) ≡ r
       → removal→match (tail i) r ≡ cap c o
     recover-cap i .i o same _ r eq =
       begin⟨ bundle (≡ˢ _) ⟩
         [ r₀ ↦ removal→match (tail i) r₀ ]· r
       ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
              r
-           ≈⟨ eq ⟩
+           ≈⁻¹⟨ eq ⟩
              match-remove (tail i) (cap i o)
            ≈⟨ match-remove-cap-same i o ⟩
              capped head o
@@ -1559,7 +1560,7 @@ module _ {ℓ} {Ob : Set ℓ} where
         [ r₀ ↦ removal→match (tail i) r₀ ]· r
       ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
              r
-           ≈⟨ eq ⟩
+           ≈⁻¹⟨ eq ⟩
              match-remove (tail i) (cap c o)
            ≈⟨ match-remove-cap-apart i c o i′ c′ ev ⟩
              removal-recap c′ (match-remove i′ o)
@@ -1581,7 +1582,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (c′ : Insert Ob y C A)
       → insert-view i c ≡ apart i′ c′
       → (r : Removal x C Θ)
-      → r ≡ match-remove i′ o
+      → match-remove i′ o ≡ r
       → removal→match (tail {y = w} i) (removal-recap c′ r) ≡ cap c o
     recover-recap i c o i′ c′ ev (through s b) eq =
       begin⟨ bundle (≡ˢ _) ⟩
@@ -1621,7 +1622,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (j : Insert Ob y Δ Δˣ)
       → (m : Match Ob Γ Δˣ)
       → (u : Unhit y Γ Δ)
-      → u ≡ match-unhit j m
+      → match-unhit j m ≡ u
       → unhit→match j u ≡ m
     match-unhit-recover j (i ∷ m) u eq =
       recover-hit j i m (insert-view j i) refl u eq
@@ -1636,14 +1637,14 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (v : InsertView j i)
       → insert-view j i ≡ v
       → (u : Unhit y (x ∷ xs) Δ)
-      → u ≡ match-unhit j (i ∷ m)
+      → match-unhit j (i ∷ m) ≡ u
       → unhit→match j u ≡ i ∷ m
     recover-hit j .j m same _ u eq =
       begin⟨ bundle (≡ˢ _) ⟩
         [ u₀ ↦ unhit→match j u₀ ]· u
       ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
              u
-           ≈⟨ eq ⟩
+           ≈⁻¹⟨ eq ⟩
              match-unhit j (j ∷ m)
            ≈⟨ match-unhit-∷-same j m ⟩
              unhit head m
@@ -1655,7 +1656,7 @@ module _ {ℓ} {Ob : Set ℓ} where
         [ u₀ ↦ unhit→match j u₀ ]· u
       ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
              u
-           ≈⟨ eq ⟩
+           ≈⁻¹⟨ eq ⟩
              match-unhit j (i ∷ m)
            ≈⟨ match-unhit-∷-apart j i m j′ i′ ev ⟩
              unhit-tail i′ (match-unhit j′ m)
@@ -1674,7 +1675,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (i′ : Insert Ob x C Δ)
       → insert-view j i ≡ apart j′ i′
       → (u : Unhit y xs C)
-      → u ≡ match-unhit j′ m
+      → match-unhit j′ m ≡ u
       → unhit→match j (unhit-tail i′ u) ≡ i ∷ m
     recover-untail j i m j′ i′ ev (unhit p t) eq =
       begin⟨ bundle (≡ˢ _) ⟩
@@ -1691,7 +1692,7 @@ module _ {ℓ} {Ob : Set ℓ} where
       → (c : Insert Ob z xs xs′)
       → (m : Match Ob xs Δˣ)
       → (u : Unhit y xs Δ)
-      → u ≡ match-unhit j m
+      → match-unhit j m ≡ u
       → unhit→match j (unhit-cap {w = w} c u) ≡ cap {x = w} c m
     recover-uncap j c m (unhit p t) eq =
       begin⟨ bundle (≡ˢ _) ⟩
