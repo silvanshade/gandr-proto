@@ -167,13 +167,30 @@
 -- clause is what asked for the four-layer coherence, and caps meeting caps is
 -- where every coherence debt in this file has landed, `cap-swap`'s included.
 --
+-- `match-unhit-cut` and `match-comp-cut` are what it was proved FOR, and they
+-- are the first two rungs above it. Tracing a sink back through a cut wiring
+-- is tracing it back through the wiring underneath and re-applying the cut
+-- (`unhit-recap`); and a cut commutes with composition on the left, because a
+-- cut consumes no sink and the second wiring never sees it. The second is the
+-- first proof in the file to mirror `match-comp`'s own recursion, and it pays
+-- the same measure for the same reason: the fused case recurses on a matching
+-- that `match-unhit` produced rather than on a subterm.
+--
 -- WHAT REMAINS OPEN, stated where a reader meets it. Associativity of
 -- `match-comp` is a module parameter twice over — `match-remove-comp` and
--- `match-unhit-comp`, discharged at `Ob = ⊥` for satisfiability only. What is
--- owed between `match-cap-insert` and those two is a chain of derivations, not
--- another coherence: how `match-unhit` sees a `match-cap`, then what
--- composition does to a rebuilt matching, then the two laws through the
--- recovery and the round trips.
+-- `match-unhit-comp`, discharged at `Ob = ⊥` for satisfiability only. The cut
+-- half of the route to them is the two lemmas above; the WIRE half is not
+-- written, and it is not symmetric with the cut half. `match-comp-cut` closes
+-- because a cut leaves the second wiring's sources alone, so the composite
+-- looks up the same source the operand did. Threading a WIRE moves the
+-- lookup: the composite's leading source sits at
+-- `Exchange.outer (insert-swap spot c)` where the operand's sat at `spot`, so
+-- the two sides consult the second wiring at two DIFFERENT positions. What
+-- closes that gap is not another coherence but two more construction-level
+-- statements in the family `match-cap-insert` belongs to — what `match-remove`
+-- sees of a threaded wire, and of a threaded cut, at a position APART from the
+-- one threaded. Neither is written. This is the fact recorded as "removing two
+-- different sources in either order", located precisely rather than estimated.
 --
 -- AND THE ARITY OF SUCH A DEBT IS NOT ARBITRARY, which is worth knowing before
 -- reaching for heavier machinery: it is the number of positions the operations
@@ -1454,6 +1471,25 @@ module _ {ℓ} {Ob : Set ℓ} where
       (tail (Exchange.outer (insert-swap k p)))
       (cap (Exchange.inner (insert-swap k p)) body)
 
+  -- Re-applying a cut at ANY pair of ports, rather than at the head. This is
+  -- to `unhit-cap` what `match-cap` is to the `cap` constructor, and its body
+  -- is `match-cap-insert`'s right-hand side: the traced-back source is pushed
+  -- past both new ports, and the cut is re-applied at the positions that
+  -- reindexing leaves.
+  unhit-recap
+    : ∀ {x y z Γ Γ˘ Γˣ Δ}
+    → Insert Ob x Γ˘ Γˣ
+    → Insert Ob z Γ Γ˘
+    → Unhit y Γ Δ
+    → Unhit y Γˣ Δ
+  unhit-recap i k (unhit p body) =
+    unhit
+      (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k p))))
+      (match-cap
+        (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k p))))
+        (Exchange.inner (insert-swap k p))
+        body)
+
   match-unhit
     : ∀ {y Γ Δ Δˣ}
     → Insert Ob y Δ Δˣ
@@ -1794,6 +1830,151 @@ module _ {ℓ} {Ob : Set ℓ} where
           (Exchange.inner (insert-swap (tail k) (tail p)))
           (cap c t))
     ∎
+
+  -- ── AND WHAT THE INVERSE LOOKUP SEES OF A CUT ──────────────────────────────
+  --
+  -- `match-unhit-cut` is `match-cap-insert`'s consumer and the reason it was
+  -- proved: tracing a sink back through a wiring that has just been cut is
+  -- tracing it back through the wiring underneath and re-applying the cut.
+  -- Composition needs exactly this, because the fused case of `match-comp`
+  -- traces a sink back through the FIRST wiring, and when that wiring is a cut
+  -- over something else the trace has to be pushed inside it.
+  --
+  -- The four small facts below say what `unhit-recap` does at each shape the
+  -- induction meets. Three of them hold by `refl` once the lookup's result is
+  -- in constructor form; the fourth is the four-layer coherence, taken
+  -- backwards, and it is where `match-cap-insert`'s own hard clause is spent a
+  -- second time.
+
+  -- the cut's outer port at the front, so the cut IS the head
+  unhit-recap-outer
+    : ∀ {x y z Γ Γ˘ Δ}
+    → (k : Insert Ob z Γ Γ˘)
+    → (u : Unhit y Γ Δ)
+    → unhit-cap {w = x} k u ≡ unhit-recap {x = x} head k u
+  unhit-recap-outer k (unhit p body) = refl
+
+  -- and its inner port at the front, which is the same cut named the other way
+  unhit-recap-inner
+    : ∀ {x y z Γ Γˣ Δ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (u : Unhit y Γ Δ)
+    → unhit-cap {w = z} i u ≡ unhit-recap (tail {y = z} i) head u
+  unhit-recap-inner i (unhit p body) = refl
+
+  -- recapping past a matched pair the trace stepped over
+  unhit-recap-tail
+    : ∀ {v x y z Γ Γ˘ Γˣ Δ Δ˘}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (k : Insert Ob z Γ Γ˘)
+    → (c : Insert Ob v Δ Δ˘)
+    → (u : Unhit y Γ Δ)
+    → unhit-tail c (unhit-recap i k u)
+      ≡ unhit-recap (tail i) (tail k) (unhit-tail c u)
+  unhit-recap-tail i k c (unhit p body) = refl
+
+  -- and past a CAP it stepped over, which is where four positions meet: the
+  -- cut's two ports, the cap's partner, and the traced-back source
+  unhit-recap-cap
+    : ∀ {v w x y z Γ Γ₀ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (k : Insert Ob z Γ₀ Γ˘)
+    → (c : Insert Ob v Γ Γ₀)
+    → (u : Unhit y Γ Δ)
+    → unhit-cap {w = w}
+        (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k c))))
+        (unhit-recap
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+          (Exchange.inner (insert-swap k c))
+          u)
+      ≡ unhit-recap (tail {y = w} i) (tail {y = w} k) (unhit-cap {w = w} c u)
+  unhit-recap-cap i k c (unhit p body) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ T ↦ unhit
+              (tail (Tower⁴.peak T))
+              (cap
+                (Tower⁴.rise T)
+                (match-cap (Tower⁴.step T) (Tower⁴.base T) body)) ]·
+        tower⁴-hi i k c p
+    ≈·⁻¹⟨ insert-swap-coh⁴ i k c p ⟩
+      unhit-recap (tail i) (tail k) (unhit-cap c (unhit p body))
+    ∎
+
+  -- Tracing a sink back through a cut wiring. The `∷` clause splits on the
+  -- position comparison `match-unhit` itself splits on, so it is met from the
+  -- consumer's side — the verdict passed as an argument with its defining
+  -- equation, never as a `with`.
+  mutual
+
+    match-unhit-cut
+      : ∀ {x y z Γ Γ˘ Γˣ Δ Δˣ}
+      → (i : Insert Ob x Γ˘ Γˣ)
+      → (k : Insert Ob z Γ Γ˘)
+      → (j : Insert Ob y Δ Δˣ)
+      → (m : Match Ob Γ Δˣ)
+      → match-unhit j (match-cap i k m) ≡ unhit-recap i k (match-unhit j m)
+    match-unhit-cut head k j m = unhit-recap-outer k (match-unhit j m)
+    match-unhit-cut (tail i) head j m = unhit-recap-inner i (match-unhit j m)
+    match-unhit-cut (tail i) (tail k) j (c ∷ m) =
+      unhit-cut-∷ i k j c m (insert-view j c) refl
+    match-unhit-cut (tail i) (tail k) j (cap c m) =
+      begin⟨ bundle (≡ˢ _) ⟩
+        [ u ↦ unhit-cap
+                (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k c))))
+                u ]·
+          match-unhit
+            j
+            (match-cap
+              (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+              (Exchange.inner (insert-swap k c))
+              m)
+      ≈·⟨ match-unhit-cut
+            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+            (Exchange.inner (insert-swap k c))
+            j
+            m ⟩
+        unhit-cap
+          (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k c))))
+          (unhit-recap
+            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+            (Exchange.inner (insert-swap k c))
+            (match-unhit j m))
+      ≈⟨ unhit-recap-cap i k c (match-unhit j m) ⟩
+        unhit-recap (tail i) (tail k) (unhit-cap c (match-unhit j m))
+      ∎
+
+    -- the leading pair either IS the sink being traced, or is stepped over
+    unhit-cut-∷
+      : ∀ {v x y z Γ Γ˘ Γˣ ys Δ Δˣ}
+      → (i : Insert Ob x Γ˘ Γˣ)
+      → (k : Insert Ob z Γ Γ˘)
+      → (j : Insert Ob y Δ Δˣ)
+      → (c : Insert Ob v ys Δˣ)
+      → (m : Match Ob Γ ys)
+      → (w : InsertView j c)
+      → insert-view j c ≡ w
+      → match-unhit j (c ∷ match-cap i k m)
+        ≡ unhit-recap (tail i) (tail k) (match-unhit j (c ∷ m))
+    unhit-cut-∷ i k j .j m same _ =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-unhit j (j ∷ match-cap i k m)
+      ≈⟨ match-unhit-∷-same j (match-cap i k m) ⟩
+        [ u ↦ unhit-recap (tail i) (tail k) u ]· unhit head m
+      ≈·⁻¹⟨ match-unhit-∷-same j m ⟩
+        unhit-recap (tail i) (tail k) (match-unhit j (j ∷ m))
+      ∎
+    unhit-cut-∷ i k j c m (apart j′ c′) ev =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-unhit j (c ∷ match-cap i k m)
+      ≈⟨ match-unhit-∷-apart j c (match-cap i k m) j′ c′ ev ⟩
+        [ u ↦ unhit-tail c′ u ]· match-unhit j′ (match-cap i k m)
+      ≈·⟨ match-unhit-cut i k j′ m ⟩
+        unhit-tail c′ (unhit-recap i k (match-unhit j′ m))
+      ≈⟨ unhit-recap-tail i k c′ (match-unhit j′ m) ⟩
+        [ u ↦ unhit-recap (tail i) (tail k) u ]· unhit-tail c′ (match-unhit j′ m)
+      ≈·⁻¹⟨ match-unhit-∷-apart j c m j′ c′ ev ⟩
+        unhit-recap (tail i) (tail k) (match-unhit j (c ∷ m))
+      ∎
 
   -- ── CONSTRUCTION AFTER ANALYSIS ────────────────────────────────────────────
   --
@@ -4017,6 +4198,173 @@ module _ {ℓ} {Ob : Set ℓ} where
   ... | .(capped ins body) | refl with match-unhit ins m | e′
   ...   | .(unhit p m′) | refl =
     cong (cap p) (match-comp-acc-irr _ _ m′ body)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- A CUT COMMUTES WITH COMPOSITION ON THE LEFT. Cutting two sources together
+  -- and then composing is composing and then cutting: the cut consumes no
+  -- sink, so the second wiring never sees it.
+  --
+  -- The proof is the first one to mirror `match-comp`'s OWN recursion, and it
+  -- pays the same measure — the fused case recurses on a matching that
+  -- `match-unhit` produced rather than on a subterm, so it descends on the
+  -- length of the source list. The statement itself carries no accessibility
+  -- witness, so no irrelevance lemma is needed above it: two witnesses prove
+  -- the same equation.
+  --
+  -- What it costs beyond that is exactly `match-unhit-cut`, in the fused case:
+  -- the trace back through the first wiring meets the cut, and pushing the
+  -- trace inside the cut is what needed the four-layer coherence.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  mutual
+
+    match-comp-cut-acc
+      : ∀ {x y Γ Γ˘ Γˣ Ξ Θ}
+      → Acc _<_ (length Γ)
+      → (i : Insert Ob x Γ˘ Γˣ)
+      → (k : Insert Ob y Γ Γ˘)
+      → (m : Match Ob Γ Ξ)
+      → (o : Match Ob Ξ Θ)
+      → match-comp (match-cap i k m) o ≡ match-cap i k (match-comp m o)
+    -- either port at the front makes the cut the composite's own head
+    match-comp-cut-acc ac head k m o = match-comp-cap k m o
+    match-comp-cut-acc ac (tail i) head m o = match-comp-cap i m o
+    -- the leading source is matched, so the composite's head is whatever the
+    -- second wiring does with it
+    match-comp-cut-acc ac (tail i) (tail k) (c ∷ m) o =
+      comp-cut-∷ ac i k c m o (match-remove c o) refl
+    -- or the leading source is already capped, and that cap stands
+    match-comp-cut-acc (acc rec) (tail i) (tail k) (cap c m) o =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (cap
+            (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k c))))
+            (match-cap
+              (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+              (Exchange.inner (insert-swap k c))
+              m))
+          o
+      ≈⟨ match-comp-cap
+           (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k c))))
+           (match-cap
+             (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+             (Exchange.inner (insert-swap k c))
+             m)
+           o ⟩
+        [ M ↦ cap
+                (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k c))))
+                M ]·
+          match-comp
+            (match-cap
+              (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+              (Exchange.inner (insert-swap k c))
+              m)
+            o
+      ≈·⟨ match-comp-cut-acc
+            (rec (insert-shrink c))
+            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k c))))
+            (Exchange.inner (insert-swap k c))
+            m
+            o ⟩
+        [ M ↦ match-cap (tail i) (tail k) M ]· cap c (match-comp m o)
+      ≈·⁻¹⟨ match-comp-cap c m o ⟩
+        match-cap (tail i) (tail k) (match-comp (cap c m) o)
+      ∎
+
+    -- what the second wiring does with the leading source, taken as an
+    -- argument with its defining equation rather than met by a `with`
+    comp-cut-∷
+      : ∀ {v x y Γ Γ˘ Γˣ ys zs Θ}
+      → Acc _<_ (suc (length Γ))
+      → (i : Insert Ob x Γ˘ Γˣ)
+      → (k : Insert Ob y Γ Γ˘)
+      → (c : Insert Ob v ys zs)
+      → (m : Match Ob Γ ys)
+      → (o : Match Ob zs Θ)
+      → (r : Removal v ys Θ)
+      → match-remove c o ≡ r
+      → match-comp (c ∷ match-cap i k m) o
+        ≡ match-cap (tail i) (tail k) (match-comp (c ∷ m) o)
+    comp-cut-∷ (acc rec) i k c m o (through spot body) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp (c ∷ match-cap i k m) o
+      ≈⟨ match-comp-∷-through c (match-cap i k m) o spot body eq ⟩
+        [ M ↦ spot ∷ M ]· match-comp (match-cap i k m) body
+      ≈·⟨ match-comp-cut-acc (rec (n<1+n _)) i k m body ⟩
+        [ M ↦ match-cap (tail i) (tail k) M ]· (spot ∷ match-comp m body)
+      ≈·⁻¹⟨ match-comp-∷-through c m o spot body eq ⟩
+        match-cap (tail i) (tail k) (match-comp (c ∷ m) o)
+      ∎
+    comp-cut-∷ ac i k c m o (capped ins body) eq =
+      comp-cut-fuse ac i k c m o ins body eq (match-unhit ins m) refl
+
+    -- and the trace back through the cut wiring, likewise
+    comp-cut-fuse
+      : ∀ {u v x y Γ Γ˘ Γˣ ys zs xs′ Θ}
+      → Acc _<_ (suc (length Γ))
+      → (i : Insert Ob x Γ˘ Γˣ)
+      → (k : Insert Ob y Γ Γ˘)
+      → (c : Insert Ob v ys zs)
+      → (m : Match Ob Γ ys)
+      → (o : Match Ob zs Θ)
+      → (ins : Insert Ob u xs′ ys)
+      → (body : Match Ob xs′ Θ)
+      → match-remove c o ≡ capped ins body
+      → (u₀ : Unhit u Γ xs′)
+      → match-unhit ins m ≡ u₀
+      → match-comp (c ∷ match-cap i k m) o
+        ≡ match-cap (tail i) (tail k) (match-comp (c ∷ m) o)
+    comp-cut-fuse (acc rec) i k c m o ins body eq (unhit p m′) eq′ =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp (c ∷ match-cap i k m) o
+      ≈⟨ match-comp-∷-capped c (match-cap i k m) o ins body
+           (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k p))))
+           (match-cap
+             (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k p))))
+             (Exchange.inner (insert-swap k p))
+             m′)
+           eq
+           (begin⟨ bundle (≡ˢ _) ⟩
+              match-unhit ins (match-cap i k m)
+            ≈⟨ match-unhit-cut i k ins m ⟩
+              [ u ↦ unhit-recap i k u ]· match-unhit ins m
+            ≈·⟨ eq′ ⟩
+              unhit
+                (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k p))))
+                (match-cap
+                  (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k p))))
+                  (Exchange.inner (insert-swap k p))
+                  m′)
+            ∎) ⟩
+        [ M ↦ cap
+                (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k p))))
+                M ]·
+          match-comp
+            (match-cap
+              (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k p))))
+              (Exchange.inner (insert-swap k p))
+              m′)
+            body
+      ≈·⟨ match-comp-cut-acc
+            (rec (insert-shrink p))
+            (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k p))))
+            (Exchange.inner (insert-swap k p))
+            m′
+            body ⟩
+        [ M ↦ match-cap (tail i) (tail k) M ]· cap p (match-comp m′ body)
+      ≈·⁻¹⟨ match-comp-∷-capped c m o ins body p m′ eq eq′ ⟩
+        match-cap (tail i) (tail k) (match-comp (c ∷ m) o)
+      ∎
+
+  -- and the theorem, at the witness the measure supplies
+  match-comp-cut
+    : ∀ {x y Γ Γ˘ Γˣ Ξ Θ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (k : Insert Ob y Γ Γ˘)
+    → (m : Match Ob Γ Ξ)
+    → (o : Match Ob Ξ Θ)
+    → match-comp (match-cap i k m) o ≡ match-cap i k (match-comp m o)
+  match-comp-cut {Γ} = match-comp-cut-acc (<-wellFounded (length Γ))
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- WHAT COMPOSITION DOES TO A REMOVAL AND TO AN INVERSE LOOKUP. These are the
