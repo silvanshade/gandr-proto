@@ -308,6 +308,9 @@ A chain is read down its **terms**; the steps are apparatus beside them, and the
   Taking the head and `u` separately makes the step's own index `f u`, and there is nothing left to reconcile.
   **And the marker cannot be plain `≈⟨`**, because the argument slot swallows `u ≈⟨ p ⟩ rest` and Agda reports the ambiguity; the dot appearing in both halves of the device is the better reading anyway.
   This is `Set`-level vocabulary, because `cong` is what makes it: a general setoid wants a congruence witness rather than a function, which is the structure's own business.
+* **The two markers above are independent, so there are four and not three.** A step can rewrite under something _and_ run the other way, and that one is **`≈·⁻¹⟨ p ⟩`** (`Gandr.Setoid.step-≈·⁻¹`).
+  Its proof reads in the same direction as `≈·⟨ p ⟩`'s — `p : u ≡ v` — and what moves is which end carries the marked term: the term written is `f v` and the chain continues at `f u`.
+  Closing the grid is not tidiness: without it a backwards congruence is written `≈⁻¹⟨ cong f p ⟩`, which is the `cong` the third bullet removes and the `sym` the second one removes, both back in the same step.
 * **No `trans` inside a chain: a nested argument that needs several steps is its own `begin` block.** A step whose proof is a `trans` ladder has a chain hidden inside a chain, which is the very thing the outer chain was written to stop.
   Open a second `begin⟨ … ⟩ … ∎` in the argument position instead, parenthesized, laid out by the same rule one level in — its steps in the argument's column, its terms two further.
   `assoc-∷-fuse′` carries two of them, and each one is a four-term chain that was a three-deep `trans` nest.
