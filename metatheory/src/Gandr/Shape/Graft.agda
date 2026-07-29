@@ -314,7 +314,7 @@ open import Data.Nat.Induction
   using (<-wellFounded)
 open import Data.Nat.Properties
   using (n<1+n)
-  using (<-trans)
+  using (n≤1+n)
 open import Induction.WellFounded
   using (Acc)
   using (acc)
@@ -1182,6 +1182,18 @@ module _ {ℓ} {Ob : Set ℓ} where
   insert-length head = refl
   insert-length (tail i) = cong suc (insert-length i)
 
+  -- AND THE MEASURE STEP ITSELF, NAMED. Every recursion below that descends
+  -- through an insertion needs exactly this, and it is an ordinary induction on
+  -- the insertion rather than arithmetic over `insert-length`: transporting the
+  -- length equation and then chaining two `n<1+n`s is three lines of noise at
+  -- five sites, and it says less than the one line it replaces.
+  insert-shrink
+    : ∀ {x ys zs}
+    → Insert Ob x ys zs
+    → length ys < suc (length zs)
+  insert-shrink head = s≤s (n≤1+n _)
+  insert-shrink (tail i) = s≤s (insert-shrink i)
+
   -- ══════════════════════════════════════════════════════════════════════════
   -- COMPOSITION. Three ways a source can leave: capped already by the first
   -- wiring, run through both, or run through the first into a cap of the
@@ -1199,29 +1211,12 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Match Ob Δ Θ
     → Match Ob Γ Θ
   match-comp-acc a [] [] = []
-  match-comp-acc (acc rec) (cap {xs = xs} i m) n =
-    cap i
-      (match-comp-acc
-        (rec
-          (subst
-            (λ z → length xs < suc z)
-            (sym (insert-length i))
-            (<-trans (n<1+n _) (n<1+n _))))
-        m
-        n)
-  match-comp-acc (acc rec) (_∷_ {xs = xs} i m) n with match-remove i n
+  match-comp-acc (acc rec) (cap i m) n =
+    cap i (match-comp-acc (rec (insert-shrink i)) m n)
+  match-comp-acc (acc rec) (i ∷ m) n with match-remove i n
   ... | through spot body = spot ∷ match-comp-acc (rec (n<1+n _)) m body
   ... | capped ins body with match-unhit ins m
-  ...   | unhit {Γ′ = xs′} p m′ =
-    cap p
-      (match-comp-acc
-        (rec
-          (subst
-            (λ z → length xs′ < suc z)
-            (sym (insert-length p))
-            (<-trans (n<1+n _) (n<1+n _))))
-        m′
-        body)
+  ...   | unhit p m′ = cap p (match-comp-acc (rec (insert-shrink p)) m′ body)
 
   -- Composing two matchings: each source takes its partner's partner, and the
   -- rest is the composite of what remains on both sides.
@@ -3273,21 +3268,17 @@ module _ {ℓ} {Ob : Set ℓ} where
         → (o : Match Ob Θ Ξ)
         → match-comp (match-comp m n) o ≡ match-comp m (match-comp n o)
       match-comp-assoc-acc a [] [] [] = refl
-      match-comp-assoc-acc (acc rec) (cap {xs} i m) n o =
+      match-comp-assoc-acc (acc rec) (cap i m) n o =
         begin⟨ bundle (≡ˢ _) ⟩
           match-comp (match-comp (cap i m) n) o
-        ≈⟨ cong (λ z → match-comp z o) (match-comp-cap i m n) ⟩
+            ≈⟨ cong (λ z → match-comp z o) (match-comp-cap i m n) ⟩
           match-comp (cap i (match-comp m n)) o
-        ≈⟨ match-comp-cap i (match-comp m n) o ⟩
+            ≈⟨ match-comp-cap i (match-comp m n) o ⟩
           cap i (match-comp (match-comp m n) o)
-        ≈⟨ cong (cap i)
-             (match-comp-assoc-acc
-               (rec (subst (λ z → length xs < suc z)
-                      (sym (insert-length i))
-                      (<-trans (n<1+n _) (n<1+n _))))
-               m n o) ⟩
+            ≈⟨ cong (cap i)
+                 (match-comp-assoc-acc (rec (insert-shrink i)) m n o) ⟩
           cap i (match-comp m (match-comp n o))
-        ≈⟨ sym (match-comp-cap i m (match-comp n o)) ⟩
+            ≈⟨ match-comp-cap i m (match-comp n o) ⟨
           match-comp (cap i m) (match-comp n o)
         ∎
       match-comp-assoc-acc a (i ∷ m) n o =
@@ -3324,26 +3315,21 @@ module _ {ℓ} {Ob : Set ℓ} where
         → (u : Unhit y xs xs′)
         → match-unhit ins m ≡ u
         → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
-      assoc-∷-capped (acc rec) i m n o ins body eq₁ (unhit {Γ′ = rest} p m′) eq₄ =
+      assoc-∷-capped (acc rec) i m n o ins body eq₁ (unhit p m′) eq₄ =
         begin⟨ bundle (≡ˢ _) ⟩
           match-comp (match-comp (i ∷ m) n) o
-        ≈⟨ cong (λ z → match-comp z o)
-             (match-comp-∷-capped i m n ins body p m′ eq₁ eq₄) ⟩
+            ≈⟨ cong (λ z → match-comp z o)
+                 (match-comp-∷-capped i m n ins body p m′ eq₁ eq₄) ⟩
           match-comp (cap p (match-comp m′ body)) o
-        ≈⟨ match-comp-cap p (match-comp m′ body) o ⟩
+            ≈⟨ match-comp-cap p (match-comp m′ body) o ⟩
           cap p (match-comp (match-comp m′ body) o)
-        ≈⟨ cong (cap p)
-             (match-comp-assoc-acc
-               (rec (subst (λ z → length rest < suc z)
-                      (sym (insert-length p))
-                      (<-trans (n<1+n _) (n<1+n _))))
-               m′ body o) ⟩
+            ≈⟨ cong (cap p)
+                 (match-comp-assoc-acc (rec (insert-shrink p)) m′ body o) ⟩
           cap p (match-comp m′ (match-comp body o))
-        ≈⟨ sym
-             (match-comp-∷-capped i m (match-comp n o) ins (match-comp body o) p m′
-               (trans (match-remove-comp i n o)
-                 (cong (λ r → removal-comp r o) eq₁))
-               eq₄) ⟩
+            ≈⟨ match-comp-∷-capped i m (match-comp n o) ins (match-comp body o) p m′
+                 (trans (match-remove-comp i n o)
+                   (cong (λ r → removal-comp r o) eq₁))
+                 eq₄ ⟨
           match-comp (i ∷ m) (match-comp n o)
         ∎
 
@@ -3365,20 +3351,19 @@ module _ {ℓ} {Ob : Set ℓ} where
       assoc-∷-through (acc rec) i m n o spot body eq₁ (through spot₂ body₂) eq₂ =
         begin⟨ bundle (≡ˢ _) ⟩
           match-comp (match-comp (i ∷ m) n) o
-        ≈⟨ cong (λ z → match-comp z o)
-             (match-comp-∷-through i m n spot body eq₁) ⟩
+            ≈⟨ cong (λ z → match-comp z o)
+                 (match-comp-∷-through i m n spot body eq₁) ⟩
           match-comp (spot ∷ match-comp m body) o
-        ≈⟨ match-comp-∷-through spot (match-comp m body) o spot₂ body₂ eq₂ ⟩
+            ≈⟨ match-comp-∷-through spot (match-comp m body) o spot₂ body₂ eq₂ ⟩
           spot₂ ∷ match-comp (match-comp m body) body₂
-        ≈⟨ cong (spot₂ ∷_)
-             (match-comp-assoc-acc (rec (n<1+n _)) m body body₂) ⟩
+            ≈⟨ cong (spot₂ ∷_)
+                 (match-comp-assoc-acc (rec (n<1+n _)) m body body₂) ⟩
           spot₂ ∷ match-comp m (match-comp body body₂)
-        ≈⟨ sym
-             (match-comp-∷-through i m (match-comp n o) spot₂
-               (match-comp body body₂)
-               (trans (match-remove-comp i n o)
-                 (trans (cong (λ r → removal-comp r o) eq₁)
-                   (cong (removal-plug body) eq₂)))) ⟩
+            ≈⟨ match-comp-∷-through i m (match-comp n o) spot₂
+                 (match-comp body body₂)
+                 (trans (match-remove-comp i n o)
+                   (trans (cong (λ r → removal-comp r o) eq₁)
+                     (cong (removal-plug body) eq₂))) ⟨
           match-comp (i ∷ m) (match-comp n o)
         ∎
       assoc-∷-through a i m n o spot body eq₁ (capped ins₂ body₂) eq₂ =
@@ -3428,33 +3413,29 @@ module _ {ℓ} {Ob : Set ℓ} where
         → match-unhit p m ≡ u
         → match-comp (match-comp (i ∷ m) n) o ≡ match-comp (i ∷ m) (match-comp n o)
       assoc-∷-fuse′ (acc rec) i m n o spot body eq₁ ins₂ body₂ eq₂ p body′ eq₃
-        (unhit {Γ′ = rest″} q m₀′) eq₄ =
+        (unhit q m₀′) eq₄ =
         begin⟨ bundle (≡ˢ _) ⟩
           match-comp (match-comp (i ∷ m) n) o
-        ≈⟨ cong (λ z → match-comp z o)
-             (match-comp-∷-through i m n spot body eq₁) ⟩
+            ≈⟨ cong (λ z → match-comp z o)
+                 (match-comp-∷-through i m n spot body eq₁) ⟩
           match-comp (spot ∷ match-comp m body) o
-        ≈⟨ match-comp-∷-capped spot (match-comp m body) o ins₂ body₂ q
-             (match-comp m₀′ body′)
-             eq₂
-             (trans (match-unhit-comp ins₂ m body)
-               (trans (cong (unhit-comp m) eq₃) (cong (unhit-post body′) eq₄))) ⟩
+            ≈⟨ match-comp-∷-capped spot (match-comp m body) o ins₂ body₂ q
+                 (match-comp m₀′ body′)
+                 eq₂
+                 (trans (match-unhit-comp ins₂ m body)
+                   (trans (cong (unhit-comp m) eq₃)
+                     (cong (unhit-post body′) eq₄))) ⟩
           cap q (match-comp (match-comp m₀′ body′) body₂)
-        ≈⟨ cong (cap q)
-             (match-comp-assoc-acc
-               (rec (subst (λ z → length rest″ < suc z)
-                      (sym (insert-length q))
-                      (<-trans (n<1+n _) (n<1+n _))))
-               m₀′ body′ body₂) ⟩
+            ≈⟨ cong (cap q)
+                 (match-comp-assoc-acc (rec (insert-shrink q)) m₀′ body′ body₂) ⟩
           cap q (match-comp m₀′ (match-comp body′ body₂))
-        ≈⟨ sym
-             (match-comp-∷-capped i m (match-comp n o) p
-               (match-comp body′ body₂) q m₀′
-               (trans (match-remove-comp i n o)
-                 (trans (cong (λ r → removal-comp r o) eq₁)
-                   (trans (cong (removal-plug body) eq₂)
-                     (cong (removal-fuse body₂) eq₃))))
-               eq₄) ⟩
+            ≈⟨ match-comp-∷-capped i m (match-comp n o) p
+                 (match-comp body′ body₂) q m₀′
+                 (trans (match-remove-comp i n o)
+                   (trans (cong (λ r → removal-comp r o) eq₁)
+                     (trans (cong (removal-plug body) eq₂)
+                       (cong (removal-fuse body₂) eq₃))))
+                 eq₄ ⟨
           match-comp (i ∷ m) (match-comp n o)
         ∎
 
