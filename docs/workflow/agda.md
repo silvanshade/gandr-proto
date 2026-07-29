@@ -275,25 +275,29 @@ Two reasons it is a rule rather than a taste:
 Single-step arguments — one `cong`, one `refl`, one lemma applied — stay as they are; the rule is about ladders.
 Existing `trans` ladders are converted when their module is next touched, and the modules under the cell shape are the standing backlog.
 
-#### How a chain is laid out, and the two things that do not go in one
+#### How a chain is laid out, and the three things that do not go in one
 
 A chain is read down its **terms**; the steps are apparatus beside them, and the layout says so.
 
-* **Terms hold one column.** **A step is indented two from its term**, and anything the step needs on further lines is indented two again, de-indenting when it closes.
-  Where a term and its whole step fit on one line, put them there with the `≈⟨` columns aligned — `Gandr.Profunctor.Yoneda`'s `yoneda-from` is that form, and it is the nicest one when it fits.
-  What must not happen is a step wrapping at the same indentation as the terms, because then the two read as one column of alternating things.
+* **The terms hold one column and every step begins on its term's line.** `begin⟨ … ⟩` and `∎` take the statement's own indentation, the terms four further in, and the `≈` marks align down the chain.
+  A step that fits stays on that line; one that does not leaves its marker there and continues beneath, indented four from `begin`.
+  `Gandr.Profunctor.Yoneda`'s `yoneda-from` is the form where everything fits, and it is the nicest one.
+  What must not happen is a step wrapping at the terms' own indentation, because then the two read as one column of alternating things.
 * **A reverse step is `≈⁻¹⟨ p ⟩`, never `sym p` and not stdlib's `≈⟨ p ⟨`.** Taking the proof the other way round is right — a `sym` wrapped around a multi-line proof hides the direction inside the step — but stdlib puts the mark on the **closing** bracket, which is the far end of exactly the steps that need it, and an opening and a closing angle differing only in orientation do not survive skimming.
   So the direction goes on the relation, as an inverse.
   `Gandr.Setoid.step-≈⁻¹` **is** stdlib's backward step re-syntaxed and nothing more: no combinator is reimplemented, the transitivity and the `IsRelatedTo` stay the library's, and stdlib's own form remains in scope and is not an error.
-  Align the `≈` columns, so the two step forms read as one column.
-  `Gandr.Shape.Graft`'s associativity chains are the worked examples.
+* **A step that rewrites under something marks the head rather than wrapping the step in `cong`.** Most `Set`-level steps are congruences, so `≈⟨ cong f p ⟩` repeats `cong` down the whole chain.
+  Write the term as `[ f ]· u` — the same term, with its head marked — and the step as `≈·⟨ p ⟩`; the combinator is `Gandr.Setoid.step-≈·`.
+  Two things about it are forced rather than chosen, and both are worth knowing before reaching for a variant.
+  **The head and the argument must be separate slots.** A step of the shape `x ≈[ f ]⟨ p ⟩` cannot be written at all: it must build `x ≡ f v` from `cong f p : f u ≡ f v`, so it needs `x ≡ f u`, which is unavailable for an abstract `x` — Agda rejects the definition with `f _x != x`.
+  Taking `f` and `u` separately makes the step's own index `f u`, and there is nothing left to reconcile.
+  **And the marker cannot be plain `≈⟨`**, because the argument slot swallows `u ≈⟨ p ⟩ rest` and Agda reports the ambiguity; the dot appearing in both halves of the device is the better reading anyway.
+  This is `Set`-level vocabulary, because `cong` is what makes it: a general setoid wants a congruence witness rather than a function, which is the structure's own business.
 * **No `subst` blob inside a chain.** A transported arithmetic side-condition spread over three lines says less than the one-line lemma it stands for.
   Name the little lemma; if the pattern repeats, hoist it beside the definition it serves.
   `insert-shrink` is the worked example — five sites of `subst`-and-`<-trans` over `insert-length` replaced by an ordinary induction on the insertion, which also shortened `match-comp-acc` itself.
 
-**A congruence slot in the step was tried and cannot be had**, recorded so it is not re-attempted: a step of the shape `x ≈[ f ]⟨ p ⟩` must build `x ≡ f v` from `cong f p : f u ≡ f v`, which needs `x ≡ f u` — unavailable for an abstract `x`, and Agda rejects the definition with `f _x != x`.
-The variant that does typecheck indexes the step by `f u` and therefore has no slot left for the term, so the chain would show the function where the reader wants the term.
-Write `≈⟨ cong f p ⟩`; the layout above is what makes the multi-line cases readable, not a shorter step.
+`Gandr.Shape.Graft`'s associativity chains are the worked examples of all four.
 
 ## House style
 
