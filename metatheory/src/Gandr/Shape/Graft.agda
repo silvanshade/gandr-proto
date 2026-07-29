@@ -161,6 +161,16 @@
 -- and the braid at three. Caps meeting caps is where every coherence debt in
 -- this file has landed, `cap-swap`'s included.
 --
+-- AND THE ARITY OF SUCH A DEBT IS NOT ARBITRARY, which is worth knowing before
+-- reaching for heavier machinery: it is the number of positions the operations
+-- in play THREAD, plus the head they meet. `match-insert` threads one and
+-- `match-cap` threads two, while the block operations — `insert-shift` and
+-- `match-lwhisk` — thread NONE, being pure `tail` and `head` with no exchange
+-- in them at all. So `cap-swap` is a cut plus an underlying cap, three; the
+-- residual above is a cut plus a wire plus an underlying cap, four; and
+-- whiskering and merging contribute nothing to this ladder however large their
+-- blocks. A fifth layer needs two cuts to commute, which nothing here asks for.
+--
 -- `merge-apart` — the merger's INCIDENCE theorem, and the general form of what
 -- `two-points` could previously only exhibit. `verts-merge` says both operands'
 -- vertices survive; this says no edge of the composite runs from one operand's
