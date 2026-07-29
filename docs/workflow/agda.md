@@ -275,6 +275,23 @@ Two reasons it is a rule rather than a taste:
 Single-step arguments — one `cong`, one `refl`, one lemma applied — stay as they are; the rule is about ladders.
 Existing `trans` ladders are converted when their module is next touched, and the modules under the cell shape are the standing backlog.
 
+#### How a chain is laid out, and the two things that do not go in one
+
+A chain is read down its **terms**; the steps are apparatus beside them, and the layout says so.
+
+* **Terms hold one column.** **A step is indented two from its term**, and anything the step needs on further lines is indented two again, de-indenting when it closes.
+  Where a term and its whole step fit on one line, put them there with the `≈⟨` columns aligned — `Gandr.Profunctor.Yoneda`'s `yoneda-from` is that form, and it is the nicest one when it fits.
+  What must not happen is a step wrapping at the same indentation as the terms, because then the two read as one column of alternating things.
+* **A reverse step is `≈⟨ p ⟨`, never `sym p`.** stdlib's `≈⟨_⟨` takes the proof the other way round, so the `sym` disappears from the chain and the closing bracket carries the direction — visible at a glance where a nested `sym (…)` is not.
+  `Gandr.Shape.Graft`'s associativity chains are the worked examples.
+* **No `subst` blob inside a chain.** A transported arithmetic side-condition spread over three lines says less than the one-line lemma it stands for.
+  Name the little lemma; if the pattern repeats, hoist it beside the definition it serves.
+  `insert-shrink` is the worked example — five sites of `subst`-and-`<-trans` over `insert-length` replaced by an ordinary induction on the insertion, which also shortened `match-comp-acc` itself.
+
+**A congruence slot in the step was tried and cannot be had**, recorded so it is not re-attempted: a step of the shape `x ≈[ f ]⟨ p ⟩` must build `x ≡ f v` from `cong f p : f u ≡ f v`, which needs `x ≡ f u` — unavailable for an abstract `x`, and Agda rejects the definition with `f _x != x`.
+The variant that does typecheck indexes the step by `f u` and therefore has no slot left for the term, so the chain would show the function where the reader wants the term.
+Write `≈⟨ cong f p ⟩`; the layout above is what makes the multi-line cases readable, not a shorter step.
+
 ## House style
 
 Purpose-built records over raw sigma types; explicit record instances; record types imported at file top with projections opened at the use site; `using` listing one name per line; no `private variable` blocks; copattern style for record values; eager arrow-leading line breaks; and **every definition carries a comment**.
