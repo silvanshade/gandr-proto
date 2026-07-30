@@ -37,7 +37,7 @@ The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles
 * **`gate:merge`** — the composed merge check, ordered: `toolchain:pin-check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `cargo:build`, `cargo:clippy`, `cargo:dylint:local`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
   The cheap drift/docs checks fail fast up front; `toolchain:pin-check` (restored per `gandr-wvd.20`, 2026-07-24) holds its fcw.13 first position.
   `cargo:dylint:local` loads `gandr-workflow-dylint` over the full covered scope at `-D warnings`; the 575 primitive-boundary and transparent-representation findings in the 2026-07-24 census were remediated under `gandr-vp8`.
-  `gandr-workflow-gates` and the driver itself remain excluded under `gandr-0ze` and `gandr-3yh`.
+  Every workspace member is covered with no exclusions: `gandr-workflow-gates` and the driver itself joined the covered scope 2026-07-30 when `gandr-0ze` and `gandr-3yh` closed.
   The full upstream Dylint inventory remains on-demand and in the parked push tier.
   `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently; it documents the whole workspace including the nightly-only `gandr-workflow-dylint` driver (like `cargo:clippy`) and so carries no `--exclude` set.
   It sits between `cargo:dylint:local` and `cargo:nextest` because it is a compile-class static check whose failures are cheap and localized, and grouping it with the other static analyzers surfaces doc breakage before the more expensive test run.

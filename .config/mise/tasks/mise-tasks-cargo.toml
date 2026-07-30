@@ -36,8 +36,6 @@ cargo dylint \
   --no-deps \
   -- \
   --workspace \
-  --exclude gandr-workflow-gates \
-  --exclude gandr-workflow-dylint \
   --all-targets \
   --features=full
 """
@@ -83,8 +81,6 @@ cargo dylint \
   --no-deps \
   -- \
   --workspace \
-  --exclude gandr-workflow-gates \
-  --exclude gandr-workflow-dylint \
   --all-targets \
   --features=full
 
@@ -96,8 +92,6 @@ cargo dylint \
   --no-deps \
   -- \
   --workspace \
-  --exclude gandr-workflow-gates \
-  --exclude gandr-workflow-dylint \
   --all-targets \
   --features=full
 
@@ -109,8 +103,6 @@ cargo dylint \
   --no-deps \
   -- \
   --workspace \
-  --exclude gandr-workflow-gates \
-  --exclude gandr-workflow-dylint \
   --all-targets \
   --features=full
 
@@ -121,8 +113,6 @@ cargo dylint \
   --no-deps \
   -- \
   --workspace \
-  --exclude gandr-workflow-gates \
-  --exclude gandr-workflow-dylint \
   --all-targets \
   --features=full
 """

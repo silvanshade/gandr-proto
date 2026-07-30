@@ -70,7 +70,7 @@
   This scoped check is a diagnostic prerequisite, never unit-completion evidence: after the source and strict-lane wiring land together, do not complete or leave the remediation unit until the full `mise run gate:merge` wall passes.
   Project-local rules also enforce source-grounded recursive `# Termination` contracts and reject false `input recursion: none` claims.
   `mise run cargo:dylint:local` puts those contracts on the merge wall by running the project-local driver at `-D warnings` over every covered workspace target.
-  Only `gandr-workflow-gates` and the driver itself remain excluded under their tracked lint-debt work; the temporary recursion-relaxed lane and its isolated target directory were removed after `gandr-vp8` remediated the primitive-boundary debt.
+  Every workspace member is covered, `gandr-workflow-gates` and the driver included (gandr-0ze and gandr-3yh closed 2026-07-30 with the last crate-local overrides remediated and the lane exclusions removed in the same change); the temporary recursion-relaxed lane and its isolated target directory were removed after `gandr-vp8` remediated the primitive-boundary debt.
   **Known blind spot (2026-07-20):** the recursion rule sees only crate-local source-level call edges — derived-trait recursion (`Clone`/`PartialEq`/`Hash`/`Debug` on a recursive owned type routes through non-local std generics such as `Box<T>: Clone`, so no crate-local edge ever exists) and compiler-generated drop glue (no HIR function at all) are structurally invisible to it.
   Closure-mediated recursion is likewise invisible (2026-07-23, gandr-aaq): a self-call wrapped in a closure argument (`walk_list(xs, \&mut |x| f(x))`) produces no extracted edge, so a recursive walker shaped that way passes unmeasured while the identical direct recursion is held to the contract — write the explicit work stack regardless, treating the lint as a floor, not a proof.
   Destruction/duplication totality on recursive owned types is therefore **not gate-proven**; the mitigations are flat/arena representations or manual worklist impls, and a complementary type-plane lint is tracked as `gandr-cfo`.
@@ -82,11 +82,10 @@ The 2026-07-17 restoration re-enabled the Rust workspace and removed phased pack
 
 * build, documentation, nextest, careful, coverage, Miri, live graph-gate discovery, and Clippy address the complete enabled workspace; Dylint addresses the complete Dylint-covered subset;
 * `cargo:clippy` checks every enabled workspace target with `features=full`, including the in-workspace `gandr-workflow-dylint` driver;
-* every workspace-wide Dylint pass uses the same package scope, excluding `gandr-workflow-gates` and `gandr-workflow-dylint`; the pinned non-local-effect lint remains a separate driver invocation but uses the same package and target selection;
-* `gandr-workflow-gates` remains excluded while its crate-local lint-wall overrides are triaged by `gandr-0ze`; the driver remains excluded pending workspace lint-wall adoption under `gandr-3yh`;
+* every workspace-wide Dylint pass uses the same package scope — the complete enabled workspace with no exclusions (the `gandr-workflow-gates` and `gandr-workflow-dylint` exclusions closed 2026-07-30 under gandr-0ze and gandr-3yh); the pinned non-local-effect lint remains a separate driver invocation but uses the same package and target selection;
 * Clippy and Dylint run as the local `mise run cargo:clippy` and `mise run cargo:dylint` gates over those respective scopes; the hosted CI that ran them as separate dependency-free jobs — and the `ci_contracts` test locking their job independence and exact package scopes — is parked for the reboot, returning with the `.github/workflows/` surface (`gandr-kk7`; [ci.md](ci.md)).
 
-New untracked package allowlists or exclusions are prohibited; the two tracked Dylint exclusions above remain visible until their owning beads close.
+New untracked package allowlists or exclusions are prohibited; the Dylint lanes have carried zero exclusions since gandr-0ze and gandr-3yh closed (2026-07-30).
 
 The rollout established these durable findings and actions:
 
