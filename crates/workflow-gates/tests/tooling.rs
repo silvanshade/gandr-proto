@@ -55,7 +55,7 @@ impl<'item, 'text> From<&'item &'text str> for TextText<'text>
     #[inline]
     fn from(value: &'item &'text str) -> Self
     {
-        Self(*value)
+        Self(value)
     }
 }
 
@@ -64,7 +64,7 @@ impl<'item, 'text> From<&'item &'text str> for KeyText<'text>
     #[inline]
     fn from(value: &'item &'text str) -> Self
     {
-        Self(*value)
+        Self(value)
     }
 }
 
@@ -73,7 +73,7 @@ impl<'item, 'text> From<&'item &'text str> for ExpectedText<'text>
     #[inline]
     fn from(value: &'item &'text str) -> Self
     {
-        Self(*value)
+        Self(value)
     }
 }
 
@@ -384,7 +384,7 @@ where
 /// Return the workspace Dylint metadata library tables.
 fn dylint_metadata_libraries(manifest: &toml::Value) -> TestResult<Vec<&toml::Table>>
 {
-    let dylint = toml_table_at(manifest, &["workspace", "metadata", "dylint"])?;
+    let dylint = toml_table_at(manifest, ["workspace", "metadata", "dylint"])?;
     let Some(libraries_value) = dylint.get("libraries")
     else {
         return Err(Box::new(std::io::Error::other(
@@ -773,11 +773,11 @@ fn top_level_command_inventory_is_exact() -> TestResult
 fn utf8_safe_usage_handling_is_stable() -> TestResult
 {
     assert_usage(
-        cli::parse_command(os_args(&["gandr-workflow-gates"])),
+        cli::parse_command(os_args(["gandr-workflow-gates"])),
         cli::usage_text().into().0,
     )?;
     assert_usage(
-        cli::parse_command(os_args(&[
+        cli::parse_command(os_args([
             "gandr-workflow-gates",
             "docs-manifest",
             "--manifest",
@@ -840,13 +840,13 @@ fn pure_fixture_documentation_commands_dispatch_cleanly() -> TestResult
     ))?;
     let manifest = fixture.manifest_string();
 
-    assert_clean(cli::run_with_args(os_args(&[
+    assert_clean(cli::run_with_args(os_args([
         "gandr-workflow-gates",
         "docs-manifest",
         "--manifest",
         manifest.as_str(),
     ]))?)?;
-    assert_clean(cli::run_with_args(os_args(&[
+    assert_clean(cli::run_with_args(os_args([
         "gandr-workflow-gates",
         "docs-reference",
         "--manifest",
@@ -944,7 +944,7 @@ fn process_stdout_stderr_and_status_are_exact() -> TestResult
 #[test]
 fn workflow_plan_selection_is_typed_without_execution() -> TestResult
 {
-    let push_workflow = cli::parse_command(os_args(&[
+    let push_workflow = cli::parse_command(os_args([
         "gandr-workflow-gates",
         "workflow",
         "push",
@@ -970,7 +970,7 @@ fn workflow_plan_selection_is_typed_without_execution() -> TestResult
     }
 
     let merge_workflow =
-        cli::parse_command(os_args(&["gandr-workflow-gates", "workflow", "merge"]))?;
+        cli::parse_command(os_args(["gandr-workflow-gates", "workflow", "merge"]))?;
     match merge_workflow {
         | cli::Command::Workflow { tier, cwd } => {
             assert_eq!("merge", tier.as_str().as_ref());
@@ -989,7 +989,7 @@ fn workflow_plan_selection_is_typed_without_execution() -> TestResult
 #[test]
 fn agda_deps_plan_uses_sanitized_git_commands_without_execution() -> TestResult
 {
-    let root_parsed = cli::parse_command(os_args(&[
+    let root_parsed = cli::parse_command(os_args([
         "gandr-workflow-gates",
         "agda-deps",
         "--workspace-root",
@@ -1006,7 +1006,7 @@ fn agda_deps_plan_uses_sanitized_git_commands_without_execution() -> TestResult
         },
     }
 
-    let default_parsed = cli::parse_command(os_args(&["gandr-workflow-gates", "agda-deps"]))?;
+    let default_parsed = cli::parse_command(os_args(["gandr-workflow-gates", "agda-deps"]))?;
     match default_parsed {
         | cli::Command::AgdaDeps { workspace_root } => {
             assert_eq!(None, workspace_root);
@@ -1024,7 +1024,7 @@ fn agda_deps_plan_uses_sanitized_git_commands_without_execution() -> TestResult
     assert!(clone_plan.sanitized_git().0);
     assert_eq!(
         clone_plan.args(),
-        os_strings(&[
+        os_strings([
             "clone",
             "--depth",
             "1",
@@ -1041,7 +1041,7 @@ fn agda_deps_plan_uses_sanitized_git_commands_without_execution() -> TestResult
     assert!(fetch_plan.sanitized_git().0);
     assert_eq!(
         fetch_plan.args(),
-        os_strings(&[
+        os_strings([
             "-C",
             "metatheory/vendor/agda-stdlib",
             "fetch",
@@ -1058,7 +1058,7 @@ fn agda_deps_plan_uses_sanitized_git_commands_without_execution() -> TestResult
     assert!(checkout_plan.sanitized_git().0);
     assert_eq!(
         checkout_plan.args(),
-        os_strings(&[
+        os_strings([
             "-C",
             "metatheory/vendor/agda-stdlib",
             "checkout",
@@ -1076,7 +1076,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
 {
     let current_dir = gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?;
 
-    let snapshot = cli::parse_command(os_args(&["gandr-workflow-gates", "mutants", "snapshot"]))?;
+    let snapshot = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "snapshot"]))?;
     match snapshot {
         | cli::Command::Mutants {
             command: MutantsCommand::Snapshot,
@@ -1089,7 +1089,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
         },
     }
 
-    let push = cli::parse_command(os_args(&["gandr-workflow-gates", "mutants", "push"]))?;
+    let push = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "push"]))?;
     match push {
         | cli::Command::Mutants {
             command:
@@ -1108,7 +1108,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
         },
     }
 
-    let merge = cli::parse_command(os_args(&["gandr-workflow-gates", "mutants", "merge"]))?;
+    let merge = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "merge"]))?;
     match merge {
         | cli::Command::Mutants {
             command: MutantsCommand::Merge,
@@ -1121,7 +1121,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
         },
     }
 
-    let scheduled = cli::parse_command(os_args(&[
+    let scheduled = cli::parse_command(os_args([
         "gandr-workflow-gates",
         "mutants",
         "scheduled",
@@ -1146,7 +1146,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
         },
     }
 
-    let clean = cli::parse_command(os_args(&["gandr-workflow-gates", "mutants", "clean"]))?;
+    let clean = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "clean"]))?;
     match clean {
         | cli::Command::Mutants {
             command: MutantsCommand::Clean,
@@ -1165,7 +1165,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
         },
     }
 
-    let sweep = cli::parse_command(os_args(&["gandr-workflow-gates", "mutants", "sweep"]))?;
+    let sweep = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "sweep"]))?;
     match sweep {
         | cli::Command::Mutants {
             command: MutantsCommand::Sweep,
@@ -1178,7 +1178,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
         },
     }
 
-    let explicit = cli::parse_command(os_args(&[
+    let explicit = cli::parse_command(os_args([
         "gandr-workflow-gates",
         "mutants",
         "merge",
@@ -1335,10 +1335,10 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
 
     let workspace_mise_tasks = workspace_mise_tasks(&workspace);
     let mise_tasks_cargo = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-cargo.toml"))?;
-    let cargo_clippy = toml_table_at(&mise_tasks_cargo, &["cargo:clippy"])?;
+    let cargo_clippy = toml_table_at(&mise_tasks_cargo, ["cargo:clippy"])?;
     let cargo_clippy_script = toml_table_string(cargo_clippy, "run")?;
     let clippy_commands = parse_cargo_invocations(cargo_clippy_script);
-    let [workspace_pass] = clippy_commands.as_slice()
+    let [ref workspace_pass] = *clippy_commands.as_slice()
     else {
         return Err(Box::new(std::io::Error::other(format!(
             "expected one cargo:clippy invocation, found {}",
@@ -1351,7 +1351,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         "cargo:clippy enabled-workspace scope changed",
     );
 
-    let cargo_dylint_local = toml_table_at(&mise_tasks_cargo, &["cargo:dylint:local"])?;
+    let cargo_dylint_local = toml_table_at(&mise_tasks_cargo, ["cargo:dylint:local"])?;
     assert_string_sequence(
         &toml_table_string_array(cargo_dylint_local, "depends")?,
         ["toolchain:materialize"],
@@ -1377,7 +1377,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     let cargo_dylint_local_script = toml_table_string(cargo_dylint_local, "run")?;
     let local_invocations = parse_dylint_invocations(cargo_dylint_local_script)?;
-    let [custom_pass] = local_invocations.as_slice()
+    let [ref custom_pass] = *local_invocations.as_slice()
     else {
         return Err(Box::new(std::io::Error::other(format!(
             "expected one cargo:dylint:local invocation, found {}",
@@ -1385,7 +1385,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         ))));
     };
 
-    let cargo_dylint = toml_table_at(&mise_tasks_cargo, &["cargo:dylint"])?;
+    let cargo_dylint = toml_table_at(&mise_tasks_cargo, ["cargo:dylint"])?;
     assert_string_sequence(
         &toml_table_string_array(cargo_dylint, "depends")?,
         ["cargo:dylint:local"],
@@ -1429,12 +1429,12 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
 
     assert_string_sequence(
         &custom_pass.dylint_args,
-        &["--lib", EXPECTED_LOCAL_DYLINT_LIB, "--no-deps"],
+        ["--lib", EXPECTED_LOCAL_DYLINT_LIB, "--no-deps"],
         "project-local Dylint pass argument inventory changed",
     );
     assert_string_sequence(
         &custom_pass.cargo_args,
-        &[
+        [
             "--workspace",
             "--exclude",
             "gandr-workflow-gates",
@@ -1454,7 +1454,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &upstream_pass.cargo_args,
-        &[
+        [
             "--workspace",
             "--exclude",
             "gandr-workflow-gates",
@@ -1468,7 +1468,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
 
     assert_string_sequence(
         &non_local_pass.dylint_args,
-        &[
+        [
             "--lib",
             "non_local_effect_before_unhandled_error",
             "--no-deps",
@@ -1477,7 +1477,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &non_local_pass.cargo_args,
-        &[
+        [
             "--workspace",
             "--exclude",
             "gandr-workflow-gates",
@@ -1491,12 +1491,12 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
 
     assert_string_sequence(
         &crate_wide_pass.dylint_args,
-        &["--lib", "crate_wide_allow", "--no-deps"],
+        ["--lib", "crate_wide_allow", "--no-deps"],
         "crate-wide-allow Dylint pass must stay isolated",
     );
     assert_string_sequence(
         &crate_wide_pass.cargo_args,
-        &[
+        [
             "--workspace",
             "--exclude",
             "gandr-workflow-gates",
@@ -1513,12 +1513,12 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
 
     assert_string_sequence(
         &register_lints_pass.dylint_args,
-        &["--lib", "register_lints_warn", "--no-deps"],
+        ["--lib", "register_lints_warn", "--no-deps"],
         "register-lints-warn Dylint pass must stay isolated",
     );
     assert_string_sequence(
         &register_lints_pass.cargo_args,
-        &[
+        [
             "--workspace",
             "--exclude",
             "gandr-workflow-gates",
@@ -1540,7 +1540,7 @@ fn merge_gate_task_order_is_locked() -> TestResult
     let workspace = workspace_root()?;
     let workspace_mise_tasks = workspace_mise_tasks(&workspace);
     let mise_tasks_gates = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-gates.toml"))?;
-    let gate_merge = toml_table_at(&mise_tasks_gates, &["gate:merge"])?;
+    let gate_merge = toml_table_at(&mise_tasks_gates, ["gate:merge"])?;
     let Some(merge_steps) = gate_merge.get("run").and_then(toml::Value::as_array)
     else {
         return Err(Box::new(std::io::Error::other(
@@ -1584,7 +1584,7 @@ fn treefmt_check_task_policy_is_locked() -> TestResult
     let workspace_mise_tasks = workspace_mise_tasks(&workspace);
     let mise_tasks_maintenance =
         parse_toml_file(&workspace_mise_tasks.join("mise-tasks-maintenance.toml"))?;
-    let treefmt_check = toml_table_at(&mise_tasks_maintenance, &["treefmt:check"])?;
+    let treefmt_check = toml_table_at(&mise_tasks_maintenance, ["treefmt:check"])?;
     let treefmt_check_script = toml_table_string(treefmt_check, "run")?;
     assert_eq!(
         treefmt_check_script.0.trim(),
@@ -1601,7 +1601,7 @@ fn doc_check_task_policy_is_locked() -> TestResult
     let workspace = workspace_root()?;
     let workspace_mise_tasks = workspace_mise_tasks(&workspace);
     let mise_tasks_cargo = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-cargo.toml"))?;
-    let cargo_doc_check = toml_table_at(&mise_tasks_cargo, &["cargo:doc-check"])?;
+    let cargo_doc_check = toml_table_at(&mise_tasks_cargo, ["cargo:doc-check"])?;
     let doc_check_script = toml_table_string(cargo_doc_check, "run")?;
     assert!(
         doc_check_script
@@ -1614,7 +1614,7 @@ fn doc_check_task_policy_is_locked() -> TestResult
         "cargo:doc-check must deny every rustdoc warning"
     );
     let doc_commands = parse_cargo_invocations(doc_check_script);
-    let [doc_pass] = doc_commands.as_slice()
+    let [ref doc_pass] = *doc_commands.as_slice()
     else {
         return Err(Box::new(std::io::Error::other(format!(
             "expected one cargo:doc-check invocation, found {}",
@@ -1668,7 +1668,7 @@ fn gates_fuzz_configuration_is_closed() -> TestResult
 #[test]
 fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
 {
-    let all_fuzz = cli::parse_command(os_args(&["gandr-workflow-gates", "fuzz-smoke"]))?;
+    let all_fuzz = cli::parse_command(os_args(["gandr-workflow-gates", "fuzz-smoke"]))?;
     match all_fuzz {
         | cli::Command::FuzzSmoke { plan } => {
             assert_eq!(
@@ -1686,7 +1686,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
         },
     }
 
-    let gates_fuzz = cli::parse_command(os_args(&[
+    let gates_fuzz = cli::parse_command(os_args([
         "gandr-workflow-gates",
         "fuzz-smoke",
         "--target",
@@ -1711,7 +1711,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
 
     assert_eq!(
         cli::fuzz_build_args(cli::FuzzSmokeTarget::Lower),
-        os_strings(&[
+        os_strings([
             "afl",
             "build",
             "--manifest-path",
@@ -1722,7 +1722,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
     );
     assert_eq!(
         cli::fuzz_build_args(cli::FuzzSmokeTarget::Parity),
-        os_strings(&[
+        os_strings([
             "afl",
             "build",
             "--manifest-path",
@@ -1735,7 +1735,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
     );
     assert_eq!(
         cli::fuzz_build_args(cli::FuzzSmokeTarget::Gates),
-        os_strings(&[
+        os_strings([
             "afl",
             "build",
             "--manifest-path",
@@ -1775,7 +1775,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
         PathBuf::from("fuzz/corpus/gates")
     );
     assert_usage(
-        cli::parse_command(os_args(&[
+        cli::parse_command(os_args([
             "gandr-workflow-gates",
             "fuzz-smoke",
             "--target",

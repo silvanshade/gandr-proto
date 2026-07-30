@@ -2940,7 +2940,7 @@ fn stale_witness() {}
         let findings = analyze_source(
             Path::new("grammar.rs"),
             source,
-            &witnesses(&["grammar::present"]),
+            &witnesses(["grammar::present"]),
         )?;
         let pairs = finding_pairs(&findings);
         let expected = [

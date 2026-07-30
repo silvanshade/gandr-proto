@@ -6,7 +6,7 @@ impl<'item, 'text> From<&'item &'text str> for WitnessText<'text>
     #[inline]
     fn from(value: &'item &'text str) -> Self
     {
-        Self(*value)
+        Self(value)
     }
 }
 
@@ -65,7 +65,7 @@ pub fn line_docs() {}
         analyze_source(
             Path::new("sample.rs"),
             source,
-            &witness_set(&["pkg::crate_docs", "pkg::block_docs", "pkg::line_docs"]),
+            &witness_set(["pkg::crate_docs", "pkg::block_docs", "pkg::line_docs"]),
         ),
         "analyze_source",
     )
@@ -104,7 +104,7 @@ pub unsafe fn unsafe_capable() -> Result<(), ()> { Ok(()) }
         analyze_source(
             Path::new("sample.rs"),
             source,
-            &witness_set(&["unsafe_contract"]),
+            &witness_set(["unsafe_contract"]),
         ),
         "analyze_source",
     )
@@ -194,7 +194,7 @@ pub mod nested {
         analyze_source(
             Path::new("sample.rs"),
             source,
-            &witness_set(&[
+            &witness_set([
                 "field_contract",
                 "variant_contract",
                 "method_contract",
@@ -712,7 +712,7 @@ pub fn aq_missing_adequacy() {}
         analyze_source(
             Path::new("sample.rs"),
             source,
-            &witness_set(&["ok", "good::substring_extra"]),
+            &witness_set(["ok", "good::substring_extra"]),
         ),
         "analyze_source",
     )
@@ -789,7 +789,7 @@ pub fn wrong_adequacy_heading() {}
         analyze_source(
             Path::new("wrong-headings.rs"),
             source,
-            &witness_set(&["ok"]),
+            &witness_set(["ok"]),
         ),
         "analyze_source",
     )

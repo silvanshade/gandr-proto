@@ -35,7 +35,7 @@ impl<'item, 'text> From<&'item &'text str> for RelativeText<'text>
     #[inline]
     fn from(value: &'item &'text str) -> Self
     {
-        Self(*value)
+        Self(value)
     }
 }
 gandr_workflow_gates::semantic_copy!(pub struct ThroughputCountCount(u64));

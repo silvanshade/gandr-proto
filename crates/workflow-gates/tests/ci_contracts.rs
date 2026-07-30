@@ -126,7 +126,7 @@ fn clippy_and_dylint_jobs_are_independent() -> TestResult
     let workflow_path = workspace.join(WORKFLOW_PATH);
     let source = gandr_workflow_gates::support::HOST_FILESYSTEM.read_to_string(&workflow_path)?;
     let documents = YamlLoader::load_from_str(&source)?;
-    let [document] = documents.as_slice()
+    let [ref document] = *documents.as_slice()
     else {
         return Err(Box::new(std::io::Error::other(format!(
             "CI workflow must contain exactly one YAML document, found {}",
@@ -447,9 +447,9 @@ fn required_yaml_value<'yaml>(
 ) -> TestResult<&'yaml Yaml>
 {
     yaml_mapping_value(mapping, key).ok_or_else(|| {
-        Box::new(std::io::Error::other(format!(
+        Box::<dyn Error>::from(std::io::Error::other(format!(
             "{context} must contain `{key}`"
-        ))) as Box<dyn Error>
+        )))
     })
 }
 
@@ -502,7 +502,8 @@ fn yaml_job_runs_mise_task(
         else {
             continue;
         };
-        if let Some(Yaml::String(run)) = yaml_mapping_value(step, "run")
+        if let Some(yaml) = yaml_mapping_value(step, "run")
+            && let Yaml::String(ref run) = *yaml
             && run.trim() == expected
         {
             return Ok(true);
