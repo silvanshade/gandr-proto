@@ -192,6 +192,19 @@ struct Reader<'tree>
     cst: &'tree Cst,
 }
 
+/// The three parallel member lists of a declaration table under elaboration:
+/// one member run appends into the constructor, observation (operation), or
+/// cell list by its lead label, and the lists grow together across the block.
+struct MemberLists<'lists>
+{
+    /// The constructor descriptors accumulated so far.
+    ctors: &'lists mut Vec<CtorDesc>,
+    /// The observation (operation) descriptors accumulated so far.
+    ops: &'lists mut Vec<OpDesc>,
+    /// The cell faces accumulated so far.
+    cells: &'lists mut Vec<CellFace>,
+}
+
 /// The empty provenance span used when a CST lookup misses unexpectedly.
 fn empty_surface_span() -> SurfaceSpan
 {
@@ -320,14 +333,17 @@ impl<'tree> Reader<'tree>
         let mut ctors: Vec<CtorDesc> = Vec::new();
         let mut ops: Vec<OpDesc> = Vec::new();
         let mut cells: Vec<CellFace> = Vec::new();
+        let mut lists = MemberLists {
+            ctors: &mut ctors,
+            ops: &mut ops,
+            cells: &mut cells,
+        };
         for member in split_members(self, &member_region) {
             self.member(
                 &member,
                 TypeName::from(name.as_str()),
                 polarity,
-                &mut ctors,
-                &mut ops,
-                &mut cells,
+                &mut lists,
                 elab,
             );
         }
@@ -373,18 +389,12 @@ impl<'tree> Reader<'tree>
 
     /// Elaborate one member run into the growing constructor / operation / cell
     /// lists.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "one member appends into the three parallel member lists of the decl table; threading them is clearer than a wrapper struct for a stage-0 reader"
-    )]
     fn member(
         &self,
         run: &[NodeId],
         type_name: TypeName<'_>,
         polarity: DeclPolarity,
-        ctors: &mut Vec<CtorDesc>,
-        ops: &mut Vec<OpDesc>,
-        cells: &mut Vec<CellFace>,
+        lists: &mut MemberLists<'_>,
         elab: &mut DescElab,
     )
     {
@@ -395,22 +405,22 @@ impl<'tree> Reader<'tree>
         match self.label(first).map(|label| label.0) {
             | Some("op") => {
                 if let Some(op) = self.op_member(run) {
-                    ops.push(op);
+                    lists.ops.push(op);
                 }
             },
             | Some("rule") => {
                 if let Some(cell) = self.rule_member(run) {
-                    cells.push(cell);
+                    lists.cells.push(cell);
                 }
             },
             | Some("constructor") => {
                 if let Some(ctor) = self.ctor_member(run, type_name, elab) {
-                    ctors.push(ctor);
+                    lists.ctors.push(ctor);
                 }
             },
             // A lowercase-led member of a `codata` block: an observation.
             | _ if matches!(polarity, DeclPolarity::Codata) => {
-                self.observation_member(run, type_name, ctors, ops, elab);
+                self.observation_member(run, type_name, lists.ctors, lists.ops, elab);
             },
             | _ => {},
         }

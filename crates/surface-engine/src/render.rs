@@ -16,7 +16,7 @@ use gandr_core_checker::types::ValueType;
 /// Renders a type (either polarity).
 ///
 /// # Contract
-/// - ensures: total over `Ty` (unknown variants render as `?`).
+/// - ensures: total over `Ty`.
 /// - panics: none for interactive-scale types; recursion follows the type
 ///   structure, whose depth callers guard.
 #[inline]
@@ -26,7 +26,6 @@ pub fn ty(ty: &Ty) -> String
     match *ty {
         | Ty::Value(ref value_type) => value_ty(value_type),
         | Ty::Comp(ref comp_type) => comp_ty(comp_type),
-        | _ => "?".to_owned(),
     }
 }
 

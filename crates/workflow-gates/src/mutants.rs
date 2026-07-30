@@ -530,11 +530,11 @@ where
     Runner: sandbox::MsbAdapter,
     Sink: sandbox::CampaignReportSink,
 {
-    match command {
+    match *command {
         | MutantsCommand::Snapshot => {
             run_snapshot_with_environment(host, infrastructure, runner, options)
         },
-        | MutantsCommand::Push { range } => {
+        | MutantsCommand::Push { ref range } => {
             let diff = range::push_diff_plan(range);
             run_diff_campaign_with_environment(
                 host,
@@ -561,8 +561,8 @@ where
             )
         },
         | MutantsCommand::Scheduled {
-            from_ref,
-            to_ref,
+            ref from_ref,
+            ref to_ref,
         } => {
             let (diff, archive_ref) =
                 resolve_scheduled_diff_with_host(host, options, from_ref, to_ref)?;
@@ -582,8 +582,8 @@ where
         },
         | MutantsCommand::Clean => run_clean_with_environment(infrastructure, runner),
         | MutantsCommand::Guest {
-            package,
-            diff,
+            ref package,
+            ref diff,
         } => run_guest(package.as_deref(), diff.as_deref()),
     }
 }
@@ -1663,9 +1663,9 @@ fn msb_output_detail(output: &sandbox::CommandOutcome) -> String
 /// Render a `Result` as compact failure detail for cleanup precedence messages.
 fn result_detail(result: &Result<(), GateError>) -> String
 {
-    match result {
+    match *result {
         | Ok(()) => String::new(),
-        | Err(error) => error.to_string(),
+        | Err(ref error) => error.to_string(),
     }
 }
 

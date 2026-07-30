@@ -503,10 +503,6 @@ impl Focuser
                         work.push(FocusTask::BuildDataCtor { tag });
                         work.push(FocusTask::Value(payload.as_ref()));
                     },
-                    | _ => {
-                        let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
-                        results.push(FocusResult::Producer(producer));
-                    },
                 },
                 | FocusTask::Comp { comp, cont } => match *comp {
                     | Comp::Abs(ref binder, _, ref body) => {
@@ -756,12 +752,6 @@ impl Focuser
                             });
                         }
                         work.push(FocusTask::Value(scrut.as_ref()));
-                    },
-                    | _ => {
-                        let producer = self.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
-                        let command =
-                            self.cut(Polarity::Positive, producer, cont, FocusOrigin::Unsupported)?;
-                        results.push(FocusResult::Command(command));
                     },
                 },
                 | FocusTask::Delimiter {
@@ -1791,14 +1781,6 @@ pub fn focus_term(term: &Term) -> Result<Focused, FocusError>
     match *term {
         | Term::Value(ref value) => focus_value(value),
         | Term::Comp(ref comp) => focus_comp(comp),
-        | _ => {
-            // A future top-level sort focuses as an opaque hole against `★`.
-            let mut focuser = Focuser::new();
-            let top = focuser.new_consumer(ConsumerNode::Top)?;
-            let producer = focuser.new_producer(ProducerNode::Lit(Lit::Hole(0)))?;
-            let root = focuser.cut(Polarity::Positive, producer, top, FocusOrigin::Unsupported)?;
-            Ok(finalize(focuser, root))
-        },
     }
 }
 

@@ -58,10 +58,10 @@ mod tests
     use gandr_surface_engine::lower::LoweredItem;
     use gandr_surface_engine::lower::lower_source_total;
 
-    use crate::TestDecision;
-    use crate::TestInteger;
-    use crate::TestPath;
-    use crate::TestText;
+    use crate::common::TestDecision;
+    use crate::common::TestInteger;
+    use crate::common::TestPath;
+    use crate::common::TestText;
 
     /// Lowers an inline source in total mode (every input lowers).
     fn lower<'text>(source: impl Into<TestText<'text>>) -> Lowered
@@ -88,10 +88,10 @@ mod tests
     ) -> TestDecision
     {
         match (left, right) {
-            | (Term::Value(left_value), Term::Value(right_value)) => {
+            | (&Term::Value(left_value), &Term::Value(right_value)) => {
                 nodes_eq_mod_holes(EqNode::Value(left_value, right_value))
             },
-            | (Term::Comp(left_comp), Term::Comp(right_comp)) => {
+            | (&Term::Comp(left_comp), &Term::Comp(right_comp)) => {
                 nodes_eq_mod_holes(EqNode::Comp(left_comp, right_comp))
             },
             | _ => false.into(),
@@ -104,40 +104,40 @@ mod tests
         let mut pending = vec![root];
         while let Some(node) = pending.pop() {
             match node {
-                | EqNode::Value(Value::Hole(_), Value::Hole(_))
-                | EqNode::Value(Value::Unit, Value::Unit)
-                | EqNode::Comp(Comp::Hole(_), Comp::Hole(_)) => {},
-                | EqNode::Value(Value::Var(left), Value::Var(right)) if left == right => {},
-                | EqNode::Value(Value::Int(left), Value::Int(right)) if left == right => {},
-                | EqNode::Value(Value::Str(left), Value::Str(right)) if left == right => {},
-                | EqNode::Value(Value::Num(left), Value::Num(right)) if left == right => {},
-                | EqNode::Value(Value::Stk(left), Value::Stk(right)) if left == right => {},
+                | EqNode::Value(&Value::Hole(_), &Value::Hole(_))
+                | EqNode::Value(&Value::Unit, &Value::Unit)
+                | EqNode::Comp(&Comp::Hole(_), &Comp::Hole(_)) => {},
+                | EqNode::Value(&Value::Var(left), &Value::Var(right)) if left == right => {},
+                | EqNode::Value(&Value::Int(left), &Value::Int(right)) if left == right => {},
+                | EqNode::Value(&Value::Str(left), &Value::Str(right)) if left == right => {},
+                | EqNode::Value(&Value::Num(left), &Value::Num(right)) if left == right => {},
+                | EqNode::Value(&Value::Stk(left), &Value::Stk(right)) if left == right => {},
                 | EqNode::Value(
-                    Value::Pair(left_fst, left_snd),
-                    Value::Pair(right_fst, right_snd),
+                    &Value::Pair(left_fst, left_snd),
+                    &Value::Pair(right_fst, right_snd),
                 ) => {
                     pending.push(EqNode::Value(left_snd, right_snd));
                     pending.push(EqNode::Value(left_fst, right_fst));
                 },
                 | EqNode::Value(
-                    Value::Inj(left_side, left_payload),
-                    Value::Inj(right_side, right_payload),
+                    &Value::Inj(left_side, left_payload),
+                    &Value::Inj(right_side, right_payload),
                 ) if left_side == right_side => {
                     pending.push(EqNode::Value(left_payload, right_payload));
                 },
                 | EqNode::Value(
-                    Value::Annot(left_inner, left_ty),
-                    Value::Annot(right_inner, right_ty),
+                    &Value::Annot(left_inner, left_ty),
+                    &Value::Annot(right_inner, right_ty),
                 ) if left_ty == right_ty => {
                     pending.push(EqNode::Value(left_inner, right_inner));
                 },
                 | EqNode::Value(
-                    Value::Thunk(left_grade, left_body),
-                    Value::Thunk(right_grade, right_body),
+                    &Value::Thunk(left_grade, left_body),
+                    &Value::Thunk(right_grade, right_body),
                 ) if left_grade == right_grade => {
                     pending.push(EqNode::Comp(left_body, right_body));
                 },
-                | EqNode::Value(Value::List(left), Value::List(right))
+                | EqNode::Value(&Value::List(left), &Value::List(right))
                     if left.len() == right.len() =>
                 {
                     pending.extend(
@@ -146,7 +146,7 @@ mod tests
                             .map(|(left, right)| EqNode::Value(left, right)),
                     );
                 },
-                | EqNode::Value(Value::Record(left), Value::Record(right))
+                | EqNode::Value(&Value::Record(left), &Value::Record(right))
                     if left.keys().eq(right.keys()) =>
                 {
                     pending.extend(
@@ -156,48 +156,48 @@ mod tests
                     );
                 },
                 | EqNode::Comp(
-                    Comp::Abs(left_name, left_ann, left_body),
-                    Comp::Abs(right_name, right_ann, right_body),
+                    &Comp::Abs(left_name, left_ann, left_body),
+                    &Comp::Abs(right_name, right_ann, right_body),
                 ) if left_name == right_name && left_ann == right_ann => {
                     pending.push(EqNode::Comp(left_body, right_body));
                 },
                 | EqNode::Comp(
-                    Comp::App(left_head, left_arg),
-                    Comp::App(right_head, right_arg),
+                    &Comp::App(left_head, left_arg),
+                    &Comp::App(right_head, right_arg),
                 ) => {
                     pending.push(EqNode::Value(left_arg, right_arg));
                     pending.push(EqNode::Comp(left_head, right_head));
                 },
-                | EqNode::Comp(Comp::Ret(left), Comp::Ret(right))
-                | EqNode::Comp(Comp::Force(left), Comp::Force(right))
-                | EqNode::Comp(Comp::Dup(left), Comp::Dup(right))
-                | EqNode::Comp(Comp::Drop(left), Comp::Drop(right)) => {
+                | EqNode::Comp(&Comp::Ret(left), &Comp::Ret(right))
+                | EqNode::Comp(&Comp::Force(left), &Comp::Force(right))
+                | EqNode::Comp(&Comp::Dup(left), &Comp::Dup(right))
+                | EqNode::Comp(&Comp::Drop(left), &Comp::Drop(right)) => {
                     pending.push(EqNode::Value(left, right));
                 },
                 | EqNode::Comp(
-                    Comp::Bind(left_bound, left_name, left_rest),
-                    Comp::Bind(right_bound, right_name, right_rest),
+                    &Comp::Bind(left_bound, left_name, left_rest),
+                    &Comp::Bind(right_bound, right_name, right_rest),
                 ) if left_name == right_name => {
                     pending.push(EqNode::Comp(left_rest, right_rest));
                     pending.push(EqNode::Comp(left_bound, right_bound));
                 },
                 | EqNode::Comp(
-                    Comp::Case(left_scrutinee, left_arm1, left_arm2),
-                    Comp::Case(right_scrutinee, right_arm1, right_arm2),
+                    &Comp::Case(left_scrutinee, left_arm1, left_arm2),
+                    &Comp::Case(right_scrutinee, right_arm1, right_arm2),
                 ) if left_arm1.0 == right_arm1.0 && left_arm2.0 == right_arm2.0 => {
                     pending.push(EqNode::Comp(&left_arm2.1, &right_arm2.1));
                     pending.push(EqNode::Comp(&left_arm1.1, &right_arm1.1));
                     pending.push(EqNode::Value(left_scrutinee, right_scrutinee));
                 },
                 | EqNode::Comp(
-                    Comp::Split {
+                    &Comp::Split {
                         scrut: left_scrutinee,
                         fst_name: left_first,
                         snd_name: left_second,
                         body: left_body,
                         ..
                     },
-                    Comp::Split {
+                    &Comp::Split {
                         scrut: right_scrutinee,
                         fst_name: right_first,
                         snd_name: right_second,
@@ -211,24 +211,24 @@ mod tests
                     pending.push(EqNode::Value(left_scrutinee, right_scrutinee));
                 },
                 | EqNode::Comp(
-                    Comp::With(left_first, left_second),
-                    Comp::With(right_first, right_second),
+                    &Comp::With(left_first, left_second),
+                    &Comp::With(right_first, right_second),
                 ) => {
                     pending.push(EqNode::Comp(left_second, right_second));
                     pending.push(EqNode::Comp(left_first, right_first));
                 },
                 | EqNode::Comp(
-                    Comp::Prj(left_side, left_target),
-                    Comp::Prj(right_side, right_target),
+                    &Comp::Prj(left_side, left_target),
+                    &Comp::Prj(right_side, right_target),
                 ) if left_side == right_side => {
                     pending.push(EqNode::Comp(left_target, right_target));
                 },
                 | EqNode::Comp(
-                    Comp::RecordProj {
+                    &Comp::RecordProj {
                         record: left_record,
                         label: left_label,
                     },
-                    Comp::RecordProj {
+                    &Comp::RecordProj {
                         record: right_record,
                         label: right_label,
                     },
@@ -236,19 +236,19 @@ mod tests
                     pending.push(EqNode::Value(left_record, right_record));
                 },
                 | EqNode::Comp(
-                    Comp::Perform(left_sig, left_op, left_arg),
-                    Comp::Perform(right_sig, right_op, right_arg),
+                    &Comp::Perform(left_sig, left_op, left_arg),
+                    &Comp::Perform(right_sig, right_op, right_arg),
                 ) if left_sig == right_sig && left_op == right_op => {
                     pending.push(EqNode::Value(left_arg, right_arg));
                 },
                 | EqNode::Comp(
-                    Comp::Handle {
+                    &Comp::Handle {
                         sig: left_sig,
                         scrutinee: left_scrutinee,
                         ret: left_ret,
                         ops: left_ops,
                     },
-                    Comp::Handle {
+                    &Comp::Handle {
                         sig: right_sig,
                         scrutinee: right_scrutinee,
                         ret: right_ret,
@@ -271,30 +271,30 @@ mod tests
                     pending.push(EqNode::Comp(left_scrutinee, right_scrutinee));
                 },
                 | EqNode::Comp(
-                    Comp::Resume(left_stack, left_body),
-                    Comp::Resume(right_stack, right_body),
+                    &Comp::Resume(left_stack, left_body),
+                    &Comp::Resume(right_stack, right_body),
                 ) => {
                     pending.push(EqNode::Comp(left_body, right_body));
                     pending.push(EqNode::Value(left_stack, right_stack));
                 },
-                | EqNode::Comp(Comp::Reset(left), Comp::Reset(right)) => {
+                | EqNode::Comp(&Comp::Reset(left), &Comp::Reset(right)) => {
                     pending.push(EqNode::Comp(left, right));
                 },
                 | EqNode::Comp(
-                    Comp::Shift(left_binder, left_body),
-                    Comp::Shift(right_binder, right_body),
+                    &Comp::Shift(left_binder, left_body),
+                    &Comp::Shift(right_binder, right_body),
                 ) if left_binder == right_binder => {
                     pending.push(EqNode::Comp(left_body, right_body));
                 },
                 | EqNode::Comp(
-                    Comp::ListCase {
+                    &Comp::ListCase {
                         scrut: left_scrutinee,
                         nil: left_nil,
                         head: left_head,
                         tail: left_tail,
                         cons: left_cons,
                     },
-                    Comp::ListCase {
+                    &Comp::ListCase {
                         scrut: right_scrutinee,
                         nil: right_nil,
                         head: right_head,
@@ -350,7 +350,7 @@ mod tests
 
             assert_eq!(1, script.actions.len(), "exactly one action: {script:?}");
             match script.actions.first().expect("one action") {
-                | Action::SetInt { path, from, to } => {
+                | &Action::SetInt { path, from, to } => {
                     assert_eq!(*path, vec![0, 0, 0, 0, 1].into(), "the literal's term path");
                     assert_eq!((1, 2), (*from, *to), "1 became 2");
                 },
@@ -388,7 +388,7 @@ mod tests
                 .collect();
             assert_eq!(1, inserts.len(), "exactly one insertion: {script:?}");
             match inserts.first().expect("one insert") {
-                | Action::InsertItem { at, item } => {
+                | &&Action::InsertItem { at, item } => {
                     assert_eq!(0, *at, "inserted at the front of the new list");
                     assert_eq!(Some("inserted"), item.name.as_deref());
                 },
@@ -1798,9 +1798,9 @@ mod tests
         {
             let path = path.into().0;
             match resolve(term, path) {
-                | Some(TermRef::Value(Value::Int(literal))) => Some((*literal).into()),
-                | Some(TermRef::Comp(Comp::Ret(value))) => match &**value {
-                    | Value::Int(literal) => Some((*literal).into()),
+                | Some(TermRef::Value(&Value::Int(literal))) => Some((*literal).into()),
+                | Some(TermRef::Comp(&Comp::Ret(value))) => match &**value {
+                    | &Value::Int(literal) => Some((*literal).into()),
                     | _ => None,
                 },
                 | _ => None,

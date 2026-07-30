@@ -730,10 +730,6 @@ fn value_result(
             kind: node.kind(),
             byte_range: node.byte_range(),
         }),
-        | Ok(_) => Err(LowerError::Unsupported {
-            kind: node.kind(),
-            byte_range: node.byte_range(),
-        }),
         | Err(error) => Err(error),
     }
 }
@@ -751,10 +747,6 @@ fn comp_result(
         | Ok(_) | Err(_) if total => Ok(CompType::Unknown),
         | Ok(Ty::Value(_)) => Err(LowerError::TypeSortMismatch {
             expected: SORT_COMP_TYPE,
-            kind: node.kind(),
-            byte_range: node.byte_range(),
-        }),
-        | Ok(_) => Err(LowerError::Unsupported {
             kind: node.kind(),
             byte_range: node.byte_range(),
         }),

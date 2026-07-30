@@ -328,8 +328,6 @@ mod tests
         match *term {
             | Term::Comp(ref comp) => comp.clone(),
             | Term::Value(ref value) => Comp::ret(value.clone()),
-            // A future top-level sort runs as an opaque hole.
-            | _ => Comp::hole(0),
         }
     }
 

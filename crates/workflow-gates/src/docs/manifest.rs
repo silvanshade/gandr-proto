@@ -544,8 +544,8 @@ where
 /// Return a YAML string slice.
 fn yaml_string(value: &Yaml) -> impl Into<OptionalYamlStringText<'_>>
 {
-    match value {
-        | Yaml::String(text) => Some(text.as_str()),
+    match *value {
+        | Yaml::String(ref text) => Some(text.as_str()),
         | _ => None,
     }
 }
@@ -703,7 +703,7 @@ where
 {
     let key_name = key_name.into().0;
     for (key, value) in mapping {
-        if let Yaml::String(candidate) = key
+        if let Yaml::String(ref candidate) = *key
             && candidate == key_name
         {
             return Some(value);
@@ -740,8 +740,8 @@ where
     Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
-    match value {
-        | Yaml::Array(values) => Ok(values),
+    match *value {
+        | Yaml::Array(ref values) => Ok(values),
         | _ => Err(GateError::operational(format!(
             "manifest shape error: {}: {detail}",
             manifest_path.display()
@@ -784,8 +784,8 @@ where
     Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
-    match value {
-        | Yaml::Hash(mapping) => Ok(mapping),
+    match *value {
+        | Yaml::Hash(ref mapping) => Ok(mapping),
         | _ => Err(GateError::operational(format!(
             "manifest shape error: {}: {detail}",
             manifest_path.display()

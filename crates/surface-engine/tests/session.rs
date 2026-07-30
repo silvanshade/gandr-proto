@@ -27,8 +27,8 @@ mod tests
     use gandr_surface_engine::session::Session;
     use gandr_surface_engine::session::Submission;
 
-    use crate::TestDecision;
-    use crate::TestText;
+    use crate::common::TestDecision;
+    use crate::common::TestText;
     /// Later items in a single whole-file submission type against definitions
     /// that earlier items bound, so the report and outcomes agree.
     #[test]

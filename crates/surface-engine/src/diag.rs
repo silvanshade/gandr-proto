@@ -190,8 +190,10 @@ pub enum Severity
 /// `SHAPE_COMP`) are unreachable by construction (`error.rs` module doc; a
 /// conformance meta-test pins this), so they need no dedicated shape here —
 /// they would arrive as an ordinary [`Self::ShapeMismatch`] if they ever did.
-/// [`Self::Other`] is the forward-compatible catch-all for `TypeError`'s
-/// `non_exhaustive` growth.
+/// [`Self::Other`] is the reserved catch-all for an upstream variant this
+/// mirror does not model: unconstructable today (the [`detail_of`] match is
+/// total — an added upstream variant is a compile-visible change there) and
+/// retained so the serde wire shape stays stable.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "codecs", serde(tag = "kind", content = "data"))]
@@ -386,9 +388,11 @@ pub struct GoalReport
 /// [`Mark`] kind lives here, exactly as [`DiagnosticDetail`] mirrors
 /// [`TypeError`]. Types and grades are rendered to strings via
 /// [`core::fmt::Debug`] (the module's rendering decision). [`Self::Other`] is
-/// the forward-compatible catch-all for [`Mark`]'s `non_exhaustive` growth; the
-/// [`MarkReport::is_error`] flag (read from [`Mark::is_error`]) still
-/// classifies such a mark authoritatively.
+/// the reserved catch-all for a [`Mark`] kind this mirror does not model:
+/// unconstructable today (the [`mark_detail`] match is total — an added
+/// upstream kind is a compile-visible change there) and retained so the serde
+/// wire shape stays stable. The [`MarkReport::is_error`] flag (read from
+/// [`Mark::is_error`]) still classifies such a mark authoritatively.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "codecs", serde(tag = "kind", content = "data"))]
@@ -633,7 +637,7 @@ pub fn report(
         let base_len = item_base.bindings().len();
         item_bases.push(item_base.clone());
         match item_machine_result(item, &item_base) {
-            | Some(Ok(ty)) => {
+            | Ok(ty) => {
                 let holey = hole_items.get(item_index).copied().unwrap_or(true);
                 if !holey
                     && let Some(ref name) = item.name
@@ -642,14 +646,16 @@ pub fn report(
                     ctx.bind(name.clone(), value_type);
                 }
             },
-            | Some(Err((error, failure))) => diagnostics.push(build_diagnostic(
-                item_index.into(),
-                &error,
-                &failure,
-                lowered,
-                base_len.into(),
-            )),
-            | None => {},
+            | Err(pair) => {
+                let (error, failure) = *pair;
+                diagnostics.push(build_diagnostic(
+                    item_index.into(),
+                    &error,
+                    &failure,
+                    lowered,
+                    base_len.into(),
+                ));
+            },
         }
         push_marks_for_item(item_index.into(), item, &item_base, lowered, &mut marks);
     }
@@ -818,36 +824,34 @@ pub fn diagnostics(
 
 /// Drives one item through the machine to its first failure, returning the
 /// error and the captured [`FailureState`], or [`None`] if it types to
-/// `Done` (or its sort is unknown).
+/// `Done`.
 fn first_failure(
     item: &LoweredItem,
     base: &Ctx,
 ) -> Option<(TypeError, FailureState)>
 {
     match item_machine_result(item, base) {
-        | Some(Err((error, failure))) => Some((error, failure)),
-        | _ => None,
+        | Err(pair) => Some(*pair),
+        | Ok(_) => None,
     }
 }
 
-/// Drives one item through the machine, returning the typed terminal result,
-/// the first failure, or [`None`] for an unknown sort / future terminal state.
+/// Drives one item through the machine, returning the typed terminal result
+/// or the first failure.
 fn item_machine_result(
     item: &LoweredItem,
     base: &Ctx,
-) -> Option<Result<Ty, (TypeError, FailureState)>>
+) -> Result<Ty, Box<(TypeError, FailureState)>>
 {
-    let mut state = initial_state(item, base)?;
+    let mut state = initial_state(item, base);
     loop {
         match step(state) {
             | Outcome::Step(next) => state = next,
-            | Outcome::Done(ty) => return Some(Ok(ty)),
+            | Outcome::Done(ty) => return Ok(ty),
             | Outcome::Error {
                 error,
                 state: failure,
-            } => return Some(Err((error, failure))),
-            // Any future non-error terminal outcome is not bindable.
-            | _ => return None,
+            } => return Err(Box::new((error, failure))),
         }
     }
 }
@@ -913,9 +917,6 @@ fn detail_of(error: &TypeError) -> DiagnosticDetail
             lower: format!("{lower:?}"),
             upper: format!("{upper:?}"),
         },
-        // `TypeError` is non-exhaustive upstream; a future variant surfaces
-        // here with its `Display` message intact.
-        | _ => DiagnosticDetail::Other,
     }
 }
 
@@ -961,7 +962,6 @@ fn mentions_data(ty: &Ty) -> DataMention
     DataMention(match *ty {
         | Ty::Value(ref value) => value_mentions_data(value).0,
         | Ty::Comp(ref comp) => comp_mentions_data(comp).0,
-        | _ => false,
     })
 }
 
@@ -1235,7 +1235,8 @@ fn frame_description(frame: &Frame) -> (ContextRole<'static>, String, Option<Str
             "checking an annotated value".to_owned(),
             None,
         ),
-        // `Frame` is non-exhaustive upstream.
+        // Frames without a dedicated rendering above share the generic
+        // obligation prose.
         | _ => (
             ContextRole("Frame"),
             "checking a pending obligation".to_owned(),
@@ -1383,12 +1384,7 @@ fn push_marks_for_item(
         // source identity and type failures for the submission.
         return;
     }
-    let Some(marking) = mark_item(item, base)
-    else {
-        // `Term` is non-exhaustive upstream; an unknown sort contributes
-        // no marks, exactly as it contributes no diagnostic.
-        return;
-    };
+    let marking = mark_item(item, base);
     let target = u32::try_from(item_index.0).unwrap_or(u32::MAX);
     for (node_path, node_id) in marking.compatibility_paths() {
         let Some(facts) = marking.get(*node_id)
@@ -1459,27 +1455,23 @@ fn recursive_mark_depth_exceeded(
 
 /// Marks one lowered item against its recorded ascription when the sorts match,
 /// otherwise in inference mode — the marking counterpart of
-/// [`initial_state`](crate::goals). Returns [`None`] for an item whose term
-/// sort is unknown (`Term` is non-exhaustive upstream).
+/// [`initial_state`](crate::goals). The dispatch is total over `Term`'s two
+/// sorts (its upstream growth point is retired; an added sort is a
+/// compile-visible change here).
 fn mark_item(
     item: &LoweredItem,
     base: &Ctx,
-) -> Option<Marking>
+) -> Marking
 {
     match (&item.term, &item.ascription) {
-        | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => Some(mark_value(
-            base.clone(),
-            value.clone(),
-            Dir::Check(expected.clone()),
-        )),
-        | (&Term::Value(ref value), _) => Some(mark_value(base.clone(), value.clone(), Dir::Infer)),
-        | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => Some(mark_comp(
-            base.clone(),
-            comp.clone(),
-            Dir::Check(expected.clone()),
-        )),
-        | (&Term::Comp(ref comp), _) => Some(mark_comp(base.clone(), comp.clone(), Dir::Infer)),
-        | _ => None,
+        | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
+            mark_value(base.clone(), value.clone(), Dir::Check(expected.clone()))
+        },
+        | (&Term::Value(ref value), _) => mark_value(base.clone(), value.clone(), Dir::Infer),
+        | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => {
+            mark_comp(base.clone(), comp.clone(), Dir::Check(expected.clone()))
+        },
+        | (&Term::Comp(ref comp), _) => mark_comp(base.clone(), comp.clone(), Dir::Infer),
     }
 }
 
@@ -1518,8 +1510,5 @@ fn mark_detail(mark: &Mark) -> MarkDetail
         | Mark::Stuck { hint } => MarkDetail::Stuck {
             hint: hint.to_owned(),
         },
-        // `Mark` is non-exhaustive upstream; a future kind surfaces here as
-        // `Other`, with `MarkReport::is_error` still classifying it.
-        | _ => MarkDetail::Other,
     }
 }

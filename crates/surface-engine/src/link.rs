@@ -164,14 +164,11 @@ pub fn link_program(lowered: &Lowered) -> LinkResult<Comp>
                 }
                 bindings.push(Binding {
                     name: name.clone(),
-                    bound: item_comp(item, index.into())?,
+                    bound: item_comp(item),
                 });
             },
             | None => {
-                final_target = Some((index, {
-                    let item_comp = item_comp(item, index.into())?;
-                    core::convert::identity(item_comp)
-                }));
+                final_target = Some((index, item_comp(item)));
             },
         }
     }
@@ -209,73 +206,53 @@ fn validate_name(
 
 /// Converts one lowered item into the computation the outer file bind will run.
 ///
-/// # Errors
-/// Returns [`LinkError::UnsupportedTermShape`] for future term/ascription
-/// shapes.
 fn item_comp(
     item: &LoweredItem,
-    index: ItemIndex,
-) -> LinkResult<Comp>
+) -> Comp
 {
-    term_to_comp(&item.term, item.ascription.as_ref(), index)
+    term_to_comp(&item.term, item.ascription.as_ref())
 }
 
 /// Converts one lowered term plus its item ascription into a runnable
 /// computation.
-///
-/// # Errors
-/// Returns [`LinkError::UnsupportedTermShape`] for future term/ascription
-/// shapes.
 fn term_to_comp(
     term: &Term,
     ascription: Option<&Ty>,
-    index: ItemIndex,
-) -> LinkResult<Comp>
+) -> Comp
 {
     match *term {
-        | Term::Value(ref value) => value_to_comp(value.clone(), ascription, index),
-        | Term::Comp(ref comp) => comp_to_comp(comp.clone(), ascription, index),
-        | _ => Err(LinkError::UnsupportedTermShape { index: index.0 }),
+        | Term::Value(ref value) => value_to_comp(value.clone(), ascription),
+        | Term::Comp(ref comp) => comp_to_comp(comp.clone(), ascription),
     }
 }
 
 /// Coerces a value item to `ret`, preserving any item ascription.
-///
-/// # Errors
-/// Returns [`LinkError::UnsupportedTermShape`] for future ascription sorts.
 fn value_to_comp(
     value: Value,
     ascription: Option<&Ty>,
-    index: ItemIndex,
-) -> LinkResult<Comp>
+) -> Comp
 {
     match ascription {
-        | None => Ok(Comp::ret(value)),
-        | Some(&Ty::Value(ref value_ty)) => Ok(Comp::ret(ascribe_value(value, value_ty.clone()))),
-        | Some(&Ty::Comp(ref comp_ty)) => Ok(ascribe_comp(Comp::ret(value), comp_ty.clone())),
-        | Some(_) => Err(LinkError::UnsupportedTermShape { index: index.0 }),
+        | None => Comp::ret(value),
+        | Some(&Ty::Value(ref value_ty)) => Comp::ret(ascribe_value(value, value_ty.clone())),
+        | Some(&Ty::Comp(ref comp_ty)) => ascribe_comp(Comp::ret(value), comp_ty.clone()),
     }
 }
 
 /// Preserves a computation item, adding any item ascription in a sort-correct
 /// way.
-///
-/// # Errors
-/// Returns [`LinkError::UnsupportedTermShape`] for future ascription sorts.
 fn comp_to_comp(
     comp: Comp,
     ascription: Option<&Ty>,
-    index: ItemIndex,
-) -> LinkResult<Comp>
+) -> Comp
 {
     match ascription {
-        | None => Ok(comp),
-        | Some(&Ty::Comp(ref comp_ty)) => Ok(ascribe_comp(comp, comp_ty.clone())),
+        | None => comp,
+        | Some(&Ty::Comp(ref comp_ty)) => ascribe_comp(comp, comp_ty.clone()),
         | Some(&Ty::Value(ref value_ty)) if comp_payload_has_ascription(&comp, value_ty).0 => {
-            Ok(comp)
+            comp
         },
-        | Some(&Ty::Value(ref value_ty)) => Ok(ascribe_comp_payload(comp, value_ty.clone())),
-        | Some(_) => Err(LinkError::UnsupportedTermShape { index: index.0 }),
+        | Some(&Ty::Value(ref value_ty)) => ascribe_comp_payload(comp, value_ty.clone()),
     }
 }
 

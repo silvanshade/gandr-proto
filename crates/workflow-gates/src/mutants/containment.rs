@@ -429,10 +429,10 @@ fn no_host_filesystem_proof(markers: &[PathBuf]) -> ContainmentProof
 fn guest_sentinel_proof(sentinel: &GuestSentinel) -> ContainmentProof
 {
     let ok = matches!(sentinel, GuestSentinel::Valid);
-    let detail = match sentinel {
+    let detail = match *sentinel {
         | GuestSentinel::Valid => format!("{SENTINEL_PATH} contains {SENTINEL_TOKEN}"),
         | GuestSentinel::Absent => format!("{SENTINEL_PATH} is absent or unreadable"),
-        | GuestSentinel::Invalid { observed } => {
+        | GuestSentinel::Invalid { ref observed } => {
             format!("{SENTINEL_PATH} contains `{observed}`, not required token `{SENTINEL_TOKEN}`")
         },
     };

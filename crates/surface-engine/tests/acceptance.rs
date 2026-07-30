@@ -60,12 +60,12 @@ mod tests
     use gandr_surface_engine::origin::resolve;
     use gandr_surface_engine::prelude_ctx;
 
-    use crate::TestCount;
-    use crate::TestDecision;
-    use crate::TestOwnedPath;
-    use crate::TestPath;
-    use crate::TestPathComponent;
-    use crate::TestText;
+    use crate::common::TestCount;
+    use crate::common::TestDecision;
+    use crate::common::TestOwnedPath;
+    use crate::common::TestPath;
+    use crate::common::TestPathComponent;
+    use crate::common::TestText;
 
     /// The `current/` fixtures inside the A2.1 covered fragment: these must
     /// lower without error and have committed golden snapshots.

@@ -552,8 +552,8 @@ fn diff_term(
                 out,
             );
         },
-        // Sort changed at the root (or a future `Term` sort): replace wholesale
-        // with whichever sort the new term has.
+        // Sort changed at the root: replace wholesale with whichever sort the
+        // new term has.
         | (_, &Term::Value(ref new_value)) => out.push(Action::Replace {
             path: prefix.to_vec().into(),
             to: Subtree::Value(new_value.clone()),
@@ -562,10 +562,6 @@ fn diff_term(
             path: prefix.to_vec().into(),
             to: Subtree::Comp(new_comp.clone()),
         }),
-        // A future non-exhaustive `Term` sort we cannot represent: emit
-        // nothing (the unreconstructable residual; documented partial
-        // coverage). Unreachable today — `Term` is `Value | Comp`.
-        | _ => {},
     }
 }
 
@@ -2166,8 +2162,6 @@ fn rebuild_term(
     match *term {
         | Term::Value(ref value) => Term::Value(rebuild_value(value, &root_path, plan)),
         | Term::Comp(ref comp) => Term::Comp(rebuild_comp(comp, &root_path, plan)),
-        // A future `Term` sort: nothing to rebuild against, return as-is.
-        | _ => term.clone(),
     }
 }
 

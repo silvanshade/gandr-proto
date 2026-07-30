@@ -2412,10 +2412,6 @@ impl Lowerer<'_>
                     | Ty::Comp(comp_ty) => Ok(comp_ty),
                     // A value-sorted motive is the F-wrapped special case.
                     | Ty::Value(value_ty) => Ok(CompType::returner(value_ty)),
-                    | _ => Err(LowerError::Unsupported {
-                        kind: ty_node.kind(),
-                        byte_range: ty_node.byte_range(),
-                    }),
                 }
             },
             // Shape 2: the motive-body identity former `Path(c, e1, e2)`.
@@ -2585,17 +2581,6 @@ impl Lowerer<'_>
             let slot = match side {
                 | Side::Fst => &mut inl,
                 | Side::Snd => &mut inr,
-                // `Side` is non-exhaustive upstream; future sides are out of
-                // the binary-sum fragment.
-                | _ => {
-                    if bool::from(self.total()) {
-                        continue;
-                    }
-                    return Err(LowerError::Unsupported {
-                        kind: arm_node.kind(),
-                        byte_range: arm_node.byte_range(),
-                    });
-                },
             };
             if slot.is_some() {
                 // [SPECULATIVE DECISION] Duplicate arms for one constructor

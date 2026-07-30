@@ -132,8 +132,10 @@ pub enum ItemOutcome
     /// parse-completeness validator) and the holes are listed as goals in the
     /// submission's report.
     Holey,
-    /// An item of unknown sort (`Term` is `non_exhaustive` upstream); no
-    /// success information is derivable.
+    /// An item of unknown sort — the forward-compatible shape for a future
+    /// `Term` sort. Never produced today: the sort dispatch is total over
+    /// `Term`'s two sorts, and an added sort is a compile-visible change at
+    /// every match.
     Unknown,
 }
 
@@ -404,8 +406,9 @@ impl Default for Session
 /// # Contract
 /// - ensures: returns `Some(Ok(ty))` with the item's value/computation type on
 ///   success, `Some(Err(error))` with the first [`TypeError`] on a typing
-///   failure, and `None` only for an item of unknown sort (`Term` is
-///   `non_exhaustive` upstream).
+///   failure. The `Option` is vestigial: `Term`'s upstream growth point is
+///   retired, so the sort dispatch is total and `None` is never returned (an
+///   added sort would be a compile-visible change at the dispatch).
 /// - panics: none; typing is driven by [`gandr_core_checker::machine`], whose
 ///   continuation stack is heap-allocated, so input-scaled nesting in the term
 ///   does not consume the host call stack during item type determination.
@@ -416,7 +419,7 @@ pub fn item_type(
     base: &Ctx,
 ) -> Option<Result<Ty, TypeError>>
 {
-    let state = initial_state(item, base)?;
+    let state = initial_state(item, base);
     Some(machine::run(state).0)
 }
 
@@ -462,8 +465,5 @@ fn term_into_comp(term: &Term) -> Comp
     match *term {
         | Term::Value(ref value) => Comp::ret(value.clone()),
         | Term::Comp(ref comp) => comp.clone(),
-        // `Term` is non_exhaustive upstream; a future sort is driven as `ret
-        // ()` so the chain stays total (it never arises in v0).
-        | _ => Comp::ret(Value::Unit),
     }
 }

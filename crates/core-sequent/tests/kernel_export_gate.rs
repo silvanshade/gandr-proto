@@ -387,29 +387,27 @@ mod tests
         let context = BridgeContext::new();
         // Structural / free-name probe: an out-of-S1 node or open name loses to
         // any later typing verdict (the S1-eligibility criterion).
-        match term {
-            | Term::Value(value) => {
+        match *term {
+            | Term::Value(ref value) => {
                 let mut scratch = TermArena::new();
                 lower_value(&context, &mut scratch, value).ok()?;
             },
-            | Term::Comp(comp) => {
+            | Term::Comp(ref comp) => {
                 let mut scratch = TermArena::new();
                 lower_comp(&context, &mut scratch, comp).ok()?;
             },
-            | _ => return None,
         }
         let mut environment = Environment::new();
         let mut builder = environment.stage();
-        let ids = match term {
-            | Term::Value(value) => {
+        let ids = match *term {
+            | Term::Value(ref value) => {
                 let core_type = infer_value(Ctx::new(), value.clone()).ok()?;
                 lower_value_definition(&context, builder.arena(), value, &core_type).ok()?
             },
-            | Term::Comp(comp) => {
+            | Term::Comp(ref comp) => {
                 let core_type = infer_comp(Ctx::new(), comp.clone()).ok()?;
                 lower_computation_definition(&context, builder.arena(), comp, &core_type).ok()?
             },
-            | _ => return None,
         };
         let (declared_id, body_id) = ids;
         let declaration = builder.def(LevelSignature::monomorphic(), declared_id, body_id);

@@ -652,7 +652,7 @@ mod tests
                     .map(|index| (ct(NameRef::from(format!("P{index}").as_str())), ct(NameRef::from(format!("V{index}").as_str()))))
                     .collect::<Vec<_>>(),
             );
-            let chosen = pick % diagram.entries.len();
+            let chosen = pick.checked_rem(diagram.entries.len()).expect("entries are nonempty");
             let object = diagram.entries[chosen].0.clone();
             prop_assert_eq!(
                 coyoneda_collapse(&object, &diagram),

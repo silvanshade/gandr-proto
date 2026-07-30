@@ -837,7 +837,6 @@ fn eval_label(eval: &Eval) -> String
         | Eval::Value(_) => "non-ret terminal".to_owned(),
         | Eval::Stuck(ref reason) => format!("stuck:{}", stuck_label(reason)),
         | Eval::Blame(ref blame) => format!("blame:{}", blame_label(blame)),
-        | _ => "other".to_owned(),
     }
 }
 
@@ -874,7 +873,6 @@ pub fn blame_label(blame: &Blame) -> HarnessLabel
         | Blame::Hole => "hole".into(),
         | Blame::ShiftNoReset => "shift-no-reset".into(),
         | Blame::PerformNoHandler => "perform-no-handler".into(),
-        | _ => "blame".into(),
     }
 }
 
@@ -887,7 +885,6 @@ fn outcome_label(outcome: &ItemOutcome) -> HarnessLabel
         | ItemOutcome::TypeError { .. } => "type-error".into(),
         | ItemOutcome::Holey => "holey".into(),
         | ItemOutcome::Unknown => "unknown".into(),
-        | _ => "other".into(),
     }
 }
 
@@ -1080,10 +1077,6 @@ where
                 let prefix = match side {
                     | Side::Fst => "Inl(",
                     | Side::Snd => "Inr(",
-                    | _ => {
-                        output.push_str("<opaque>");
-                        continue;
-                    },
                 };
                 steps.push(RenderStep::Text(")"));
                 steps.push(RenderStep::Value {
@@ -1156,7 +1149,6 @@ fn render_num(num: NumLit) -> String
         | NumLit::I64(n) => format!("{n}i64"),
         | NumLit::F32(bits) => format!("{}f32", f32::from_bits(bits)),
         | NumLit::F64(bits) => format!("{}f64", f64::from_bits(bits)),
-        | _ => "<num>".to_owned(),
     }
 }
 
@@ -1167,7 +1159,6 @@ fn shell_label(outcome: &ShellOutcome) -> String
         | ShellOutcome::Completed(_) => "completed".to_owned(),
         | ShellOutcome::Exited { code } => format!("exited with {code}"),
         | ShellOutcome::HostFailed(ref error) => format!("host failed: {error}"),
-        | _ => "other".to_owned(),
     }
 }
 

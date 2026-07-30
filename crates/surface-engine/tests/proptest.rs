@@ -94,7 +94,6 @@ mod tests
                 assert_eq!(rec, mach, "checker and machine must agree on {item:?}");
                 mach
             },
-            | _ => panic!("unknown term sort in {item:?}"),
         }
     }
 

@@ -32,7 +32,7 @@ mod tests
     use gandr_surface_engine::lower::lower_source;
     use gandr_surface_engine::lower::lower_source_total;
 
-    use crate::TestText;
+    use crate::common::TestText;
 
     fn atom<'text>(name: impl Into<TestText<'text>>) -> ValueType
     {

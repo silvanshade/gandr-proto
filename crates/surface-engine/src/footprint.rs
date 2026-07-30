@@ -32,8 +32,8 @@
 //! checkpoint survive an input change that should have killed it).
 //! [`footprint_of`] therefore captures every free variable exactly, and marks
 //! the footprint [`Footprint::opaque`] on any core node it cannot represent (a
-//! reified stack, an identity-eliminator form, or a future non-exhaustive
-//! variant): an opaque footprint is treated as reading *everything*, forcing
+//! reified stack, an identity form, a declared-data node, or a native
+//! builtin): an opaque footprint is treated as reading *everything*, forcing
 //! the item to be re-typed rather than adopted. Over-approximation only costs
 //! reuse; it never loses soundness.
 
@@ -66,9 +66,10 @@ pub struct Footprint
     /// ambient typing context.
     pub names: BTreeSet<String>,
     /// Set when the scan met a core node it cannot represent as a read-set (a
-    /// reified [`Value::Stk`], an identity form, or a future non-exhaustive
-    /// variant). An opaque footprint reads *everything* conservatively, so its
-    /// item is never adopted — the safe over-approximation.
+    /// reified [`Value::Stk`], an identity proof [`Value::Here`], a declared-
+    /// data node, or a native builtin). An opaque footprint reads *everything*
+    /// conservatively, so its item is never adopted — the safe
+    /// over-approximation.
     pub opaque: bool,
     /// Set when the term carries a hole ([`Value::Hole`] / [`Comp::Hole`]): the
     /// item is parse-incomplete, matching the session's "holey items are not
@@ -267,7 +268,8 @@ fn scan_comp<'term>(
             stack.push(Work::Cmp(as_cmp(body), extend(scope, binder)));
         },
         | Comp::Hole(_) => footprint.has_hole = true,
-        // A future non-exhaustive `Comp` variant: conservatively opaque.
+        // A declared-data case, native builtin, or identity walk — the forms
+        // the read-set walk does not represent: conservatively opaque.
         | _ => footprint.opaque = true,
     }
 }
@@ -326,9 +328,9 @@ fn scan_value<'term>(
         | Value::Annot(ref inner, _) => {
             stack.push(Work::Val(as_val(inner), Rc::clone(scope)));
         },
-        // A reified stack ([`Value::Stk`]), an identity form ([`Value::Here`]),
-        // or a future non-exhaustive variant: read-set unrepresentable, so
-        // conservatively opaque (never adopted).
+        // A reified stack ([`Value::Stk`]), an identity proof
+        // ([`Value::Here`]), or a data constructor ([`Value::Ctor`]): read-set
+        // unrepresentable, so conservatively opaque (never adopted).
         | _ => footprint.opaque = true,
     }
 }
@@ -377,8 +379,6 @@ pub fn footprint_of(term: &Term) -> Footprint
     match *term {
         | Term::Value(ref value) => stack.push(Work::Val(value, root)),
         | Term::Comp(ref comp) => stack.push(Work::Cmp(comp, root)),
-        // A future `Term` sort we cannot represent: conservatively opaque.
-        | _ => footprint.opaque = true,
     }
     while let Some(work) = stack.pop() {
         match work {

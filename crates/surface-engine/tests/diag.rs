@@ -11,8 +11,9 @@
 //! 3. [`tests::invariants`] — every diagnostic span lies within the source; the
 //!    envelope carries [`SCHEMA_VERSION`].
 //! 4. [`tests::roundtrip`] — `serde_json` round-trip stability for every
-//!    report, plus a hand-written wire-shape pin for the `non_exhaustive`
-//!    `Other` / `EffectRowMismatch` marks the corpus cannot construct.
+//!    report, plus a hand-written wire-shape pin for the reserved `Other` /
+//!    surface-unreachable `EffectRowMismatch` marks the corpus cannot
+//!    construct.
 //! 5. [`tests::semantic_marks`] — the incremental-pipeline design marks surface
 //!    (`semantic-marks work`): each reachable mark kind is covered, the marks
 //!    oracle holds at the pipeline boundary (error marks iff ill-typed;
@@ -54,7 +55,7 @@ mod tests
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;
 
-    use crate::TestText;
+    use crate::common::TestText;
 
     /// The error corpus: `(name, descriptor, source)`. `descriptor` is the
     /// reachable-variant identity this fixture must drive — the bare kind, or
@@ -339,9 +340,9 @@ mod tests
             }
         }
 
-        /// The forward-compat catch-all `Other` and the surface-unreachable
-        /// `EffectRowMismatch` cannot be constructed here (`MarkReport` /
-        /// `MarkDetail` are `non_exhaustive`), so their wire shape is pinned by
+        /// The reserved catch-all `Other` and the surface-unreachable
+        /// `EffectRowMismatch` cannot be constructed from the corpus (no
+        /// surface source yields them), so their wire shape is pinned by
         /// round-tripping a hand-written JSON image: `Other` is the bare
         /// `{"kind":"Other"}` with no `data` key, the tagged
         /// `EffectRowMismatch` nests under `data`, and both survive
@@ -440,7 +441,6 @@ mod tests
                 | MarkDetail::Thunkability { .. } => "Thunkability".into(),
                 | MarkDetail::Stuck { .. } => "Stuck".into(),
                 | MarkDetail::Other => "Other".into(),
-                | _ => "?".into(),
             }
         }
         /// Each reachable mark kind is surfaced by its corpus fixture — the
@@ -595,24 +595,21 @@ mod tests
             fn marking_of(
                 item: &LoweredItem,
                 base: &Ctx,
-            ) -> Option<Marking>
+            ) -> Marking
             {
                 match (&item.term, &item.ascription) {
-                    | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => Some(
-                        mark_value(base.clone(), value.clone(), Dir::Check(expected.clone())),
-                    ),
+                    | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
+                        mark_value(base.clone(), value.clone(), Dir::Check(expected.clone()))
+                    },
                     | (&Term::Value(ref value), _) => {
-                        Some(mark_value(base.clone(), value.clone(), Dir::Infer))
+                        mark_value(base.clone(), value.clone(), Dir::Infer)
                     },
-                    | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => Some(mark_comp(
-                        base.clone(),
-                        comp.clone(),
-                        Dir::Check(expected.clone()),
-                    )),
+                    | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => {
+                        mark_comp(base.clone(), comp.clone(), Dir::Check(expected.clone()))
+                    },
                     | (&Term::Comp(ref comp), _) => {
-                        Some(mark_comp(base.clone(), comp.clone(), Dir::Infer))
+                        mark_comp(base.clone(), comp.clone(), Dir::Infer)
                     },
-                    | _ => None,
                 }
             }
 
@@ -626,10 +623,7 @@ mod tests
                     panic!("total lowering must succeed: {error}\n{source}")
                 });
                 for (item_index, item) in lowered.items.iter().enumerate() {
-                    let Some(marking) = marking_of(item, &base)
-                    else {
-                        continue;
-                    };
+                    let marking = marking_of(item, &base);
                     let target = u32::try_from(item_index).expect("corpus item index fits u32");
                     for (node_path, node_id) in marking.compatibility_paths() {
                         let Some(facts) = marking.get(*node_id)

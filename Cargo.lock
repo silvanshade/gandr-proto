@@ -597,6 +597,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-core-sequent"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "gandr-core-checker",
+ "gandr-kernel-core",
+ "gandr-kernel-strata",
+ "gandr-storage-artifact",
+ "gandr-storage-prolly-trees",
+ "gandr-surface-engine",
+ "proptest",
+]
+
+[[package]]
 name = "gandr-kernel-core"
 version = "0.0.0"
 dependencies = [
@@ -609,6 +623,15 @@ name = "gandr-kernel-strata"
 version = "0.0.0"
 dependencies = [
  "proptest",
+]
+
+[[package]]
+name = "gandr-runtime-host"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-core-sequent",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -634,6 +657,37 @@ dependencies = [
  "bao",
  "blake3",
  "gandr-storage-chunker",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "gandr-surface-corpus"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-core-sequent",
+ "gandr-runtime-host",
+ "gandr-surface-engine",
+ "gandr-theory-levitation",
+]
+
+[[package]]
+name = "gandr-surface-engine"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-core-sequent",
+ "gandr-runtime-host",
+ "gandr-surface-grammar",
+ "gandr-surface-parser",
+ "gandr-surface-syntax",
+ "gandr-theory-levitation",
+ "gandr-theory-nominal-automata",
+ "gandr-theory-orders",
+ "gandr-theory-recursion",
+ "proptest",
+ "serde",
+ "serde_json",
  "thiserror 2.0.19",
 ]
 
@@ -668,6 +722,16 @@ dependencies = [
 [[package]]
 name = "gandr-surface-syntax"
 version = "0.0.0"
+
+[[package]]
+name = "gandr-theory-computads"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-sequent",
+ "gandr-theory-graphs",
+ "gandr-theory-levitation",
+ "proptest",
+]
 
 [[package]]
 name = "gandr-theory-graphs"
@@ -705,6 +769,16 @@ dependencies = [
 [[package]]
 name = "gandr-theory-recursion"
 version = "0.0.0"
+
+[[package]]
+name = "gandr-theory-virtual-doctrines"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-sequent",
+ "gandr-theory-computads",
+ "gandr-theory-levitation",
+ "proptest",
+]
 
 [[package]]
 name = "gandr-workflow-dylint"

@@ -1,12 +1,7 @@
-//! Consolidated integration-test binary for `gandr-surface-engine`.
-
-#![allow(
-    clippy::missing_inline_in_public_items,
-    reason = "integration-test helpers do not need cross-crate inlining hints"
-)]
-
-extern crate alloc;
-extern crate proptest as proptest_crate;
+//! Shared test-boundary helper newtypes for the `gandr-surface-engine`
+//! integration suites: the `restriction`-group lints forbid passing plain
+//! borrowed/owned scalars and paths across helper boundaries, so each suite
+//! takes the purpose-named wrapper and converts at the call site.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -14,7 +9,7 @@ use alloc::vec::Vec;
 /// Borrowed prose, source text, or labels crossing test-helper boundaries.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct TestText<'text>(pub &'text str);
+pub struct TestText<'text>(pub &'text str);
 
 impl<'text> From<&'text str> for TestText<'text>
 {
@@ -43,12 +38,12 @@ impl<'text> From<&'text String> for TestText<'text>
 /// Borrowed origin or term path crossing test-helper boundaries.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct TestPath<'path>(pub &'path [u32]);
+pub struct TestPath<'path>(pub &'path [u32]);
 
 /// Owned origin or term path crossing test-helper boundaries.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TestOwnedPath(pub Vec<u32>);
+pub struct TestOwnedPath(pub Vec<u32>);
 
 impl core::ops::Deref for TestOwnedPath
 {
@@ -96,7 +91,7 @@ macro_rules! test_copy_boundary {
     ($name:ident, $inner:ty) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-        pub(crate) struct $name(pub $inner);
+        pub struct $name(pub $inner);
 
         impl From<$inner> for $name
         {
@@ -108,6 +103,7 @@ macro_rules! test_copy_boundary {
 
         impl From<$name> for $inner
         {
+            #[inline]
             fn from(value: $name) -> Self
             {
                 value.0
@@ -130,20 +126,3 @@ impl core::ops::Not for TestDecision
         !self.0
     }
 }
-
-mod acceptance;
-mod attributes;
-mod desc_elab;
-mod diag;
-mod diag_attr;
-mod diag_frames;
-mod edit;
-mod edit_extra;
-mod goals_extra;
-mod incremental;
-mod origin_identity;
-mod proptest;
-mod session;
-mod surface;
-mod total;
-mod types;

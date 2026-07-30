@@ -110,26 +110,25 @@ mod tests
     {
         let context = BridgeContext::new();
         // 1. Structural / free-name verdict from lowering the term alone.
-        match term {
-            | Term::Value(value) => {
+        match *term {
+            | Term::Value(ref value) => {
                 let mut scratch = TermArena::new();
                 if let Err(rejection) = lower_value(&context, &mut scratch, value) {
                     return Err(String::from(rejection.exclusion_class().as_ref()));
                 }
             },
-            | Term::Comp(comp) => {
+            | Term::Comp(ref comp) => {
                 let mut scratch = TermArena::new();
                 if let Err(rejection) = lower_comp(&context, &mut scratch, comp) {
                     return Err(String::from(rejection.exclusion_class().as_ref()));
                 }
             },
-            | _ => return Err(String::from("non-term-item")),
         }
         // 2. Type inference (empty context) + admission (value-polarity Def).
         let mut environment = Environment::new();
         let mut builder = environment.stage();
-        let ids = match term {
-            | Term::Value(value) => {
+        let ids = match *term {
+            | Term::Value(ref value) => {
                 let Ok(core_type) = infer_value(Ctx::new(), value.clone())
                 else {
                     return Err(String::from("not-typeable"));
@@ -141,7 +140,7 @@ mod tests
                     },
                 }
             },
-            | Term::Comp(comp) => {
+            | Term::Comp(ref comp) => {
                 let Ok(core_type) = infer_comp(Ctx::new(), comp.clone())
                 else {
                     return Err(String::from("not-typeable"));
@@ -153,7 +152,6 @@ mod tests
                     },
                 }
             },
-            | _ => return Err(String::from("non-term-item")),
         };
         let (declared_id, body_id) = ids;
         let declaration = builder.def(LevelSignature::monomorphic(), declared_id, body_id);
@@ -290,7 +288,8 @@ mod tests
     {
         let mut counts: BTreeMap<String, usize> = BTreeMap::new();
         for row in rows {
-            *counts.entry(row.class.clone()).or_insert(0) += 1;
+            let count = counts.entry(row.class.clone()).or_insert(0);
+            *count = count.saturating_add(1);
         }
         ClassCardinalities(counts)
     }

@@ -506,9 +506,9 @@ fn dep_kind_reaches_default_graph(
     else {
         return Err(malformed_metadata("dep_kinds[] missing `kind`"));
     };
-    match kind {
+    match *kind {
         | Value::Null => Ok(DepKindReachesDefaultGraphFlag(true)),
-        | Value::String(name) if name == "normal" || name == "build" => {
+        | Value::String(ref name) if name == "normal" || name == "build" => {
             Ok(DepKindReachesDefaultGraphFlag(true))
         },
         | Value::String(_) => Ok(DepKindReachesDefaultGraphFlag(false)),

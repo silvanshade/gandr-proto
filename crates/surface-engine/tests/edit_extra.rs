@@ -23,7 +23,7 @@ mod tests
     use gandr_surface_engine::lower::Lowered;
     use gandr_surface_engine::lower::lower_source_total;
 
-    use crate::TestText;
+    use crate::common::TestText;
     #[test]
     fn a_vanishing_or_appearing_computation_hole_is_erase_or_fill()
     {

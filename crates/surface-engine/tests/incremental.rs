@@ -42,7 +42,7 @@ mod tests
     use gandr_surface_engine::lower::Lowered;
     use gandr_surface_engine::lower::lower_source_total;
 
-    use crate::TestText;
+    use crate::common::TestText;
 
     /// Runs the gate: checkpoints `base`, resumes onto `edited`, and asserts
     /// the resumed typings equal a from-scratch re-type of `edited`.
@@ -176,8 +176,8 @@ mod tests
             // incremental path tracked that move.
             match (&resumed.typings[0], &resumed.typings[1]) {
                 | (
-                    ItemTyping::Definition { name: x_name, .. },
-                    ItemTyping::Definition { name: y_name, .. },
+                    &ItemTyping::Definition { name: x_name, .. },
+                    &ItemTyping::Definition { name: y_name, .. },
                 ) => {
                     assert_eq!("x", x_name);
                     assert_eq!("y", y_name);
@@ -245,7 +245,7 @@ mod tests
         use gandr_surface_engine::checkpoint::resume;
         use gandr_surface_engine::lower::lower_source_total;
 
-        use crate::TestCount;
+        use crate::common::TestCount;
         use crate::proptest_crate::collection::vec;
         use crate::proptest_crate::prelude::*;
 

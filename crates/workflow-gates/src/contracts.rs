@@ -62,7 +62,7 @@ impl<'text> From<&'_ &'text str> for NameText<'text>
     #[inline]
     fn from(value: &'_ &'text str) -> Self
     {
-        Self(*value)
+        Self(value)
     }
 }
 crate::semantic_str!(pub struct ScriptText);
@@ -2322,7 +2322,9 @@ enum TestcaseValidationFrame<'value>
     /// Validate one testcase entry.
     Entry
     {
+        /// The testcase record under validation.
         value: &'value Value,
+        /// Whether the record must carry a testcase name.
         requires_name: RequiresNameFlag,
     },
 }
@@ -2333,16 +2335,23 @@ enum WitnessTraversalFrame<'value>
     /// Visit a general JSON value while carrying package/crate context.
     Value
     {
+        /// The JSON value under traversal.
         value: &'value Value,
+        /// Nearest enclosing package name, if any.
         package: Option<String>,
+        /// Nearest enclosing crate name, if any.
         crate_name: Option<String>,
+        /// Whether this value sits inside a testcase collection.
         is_testcase_context: IsTestcaseContextFlag,
     },
     /// Visit a testcase collection while carrying package/crate context.
     Collection
     {
+        /// The testcase collection under traversal.
         value: &'value Value,
+        /// Nearest enclosing package name, if any.
         package: Option<String>,
+        /// Nearest enclosing crate name, if any.
         crate_name: Option<String>,
     },
 }
@@ -2353,7 +2362,7 @@ enum WitnessTraversalFrame<'value>
 /// - reason: each loop validates one testcase record or existing nested
 ///   testcase record.
 /// - measure: unvisited JSON testcase collection nodes.
-/// - boundedness: serde_json stores a finite tree parsed from one nextest JSON
+/// - boundedness: `serde_json` stores a finite tree parsed from one nextest JSON
 ///   payload.
 /// - input recursion: none.
 fn validate_testcase_collection(value: &Value) -> Result<(), GateError>
@@ -2545,7 +2554,7 @@ fn collect_witness_frames(
                 package,
                 crate_name,
             } => {
-                push_testcase_collection_frames(value, &package, &crate_name, witnesses, &mut frames);
+                push_testcase_collection_frames(value, package.as_deref(), crate_name.as_deref(), witnesses, &mut frames);
             },
         }
     }
@@ -2554,8 +2563,8 @@ fn collect_witness_frames(
 /// Push testcase collection children onto the witness worklist.
 fn push_testcase_collection_frames<'value>(
     value: &'value Value,
-    package: &Option<String>,
-    crate_name: &Option<String>,
+    package: Option<&str>,
+    crate_name: Option<&str>,
     witnesses: &mut BTreeSet<String>,
     frames: &mut Vec<WitnessTraversalFrame<'value>>,
 )
@@ -2565,19 +2574,19 @@ fn push_testcase_collection_frames<'value>(
             for item in items.iter().rev() {
                 frames.push(WitnessTraversalFrame::Value {
                     value: item,
-                    package: package.clone(),
-                    crate_name: crate_name.clone(),
+                    package: package.map(String::from),
+                    crate_name: crate_name.map(String::from),
                     is_testcase_context: IsTestcaseContextFlag(true),
                 });
             }
         },
         | Value::Object(ref object) => {
             for (name, item) in object.iter().rev() {
-                insert_aliases(witnesses, name, package.as_deref(), crate_name.as_deref());
+                insert_aliases(witnesses, name, package, crate_name);
                 frames.push(WitnessTraversalFrame::Value {
                     value: item,
-                    package: package.clone(),
-                    crate_name: crate_name.clone(),
+                    package: package.map(String::from),
+                    crate_name: crate_name.map(String::from),
                     is_testcase_context: IsTestcaseContextFlag(true),
                 });
             }

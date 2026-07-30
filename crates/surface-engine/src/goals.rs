@@ -239,12 +239,7 @@ fn observe_item(
 )
 {
     let base_len = ContextLength(base.bindings().len());
-    let Some(mut state) = initial_state(item, base)
-    else {
-        // `Term` is non-exhaustive upstream; nothing to observe for an
-        // unknown sort.
-        return;
-    };
+    let mut state = initial_state(item, base);
     loop {
         match *state.control() {
             | Control::DescendValue {
@@ -253,9 +248,8 @@ fn observe_item(
             } => {
                 let expected = match *dir {
                     | Dir::Check(ref ty) => Some(Ty::Value(ty.clone())),
-                    // `Dir` is non-exhaustive upstream; only checking mode
-                    // carries a goal type.
-                    | _ => None,
+                    // Only checking mode carries a goal type.
+                    | Dir::Infer => None,
                 };
                 record(
                     goals,
@@ -273,7 +267,7 @@ fn observe_item(
                 let expected = match *dir {
                     | Dir::Check(ref ty) => Some(Ty::Comp(ty.clone())),
                     // As above: only checking mode carries a goal type.
-                    | _ => None,
+                    | Dir::Infer => None,
                 };
                 record(
                     goals,
@@ -288,8 +282,8 @@ fn observe_item(
         }
         match machine::step(state) {
             | machine::Outcome::Step(next) => state = next,
-            // Done, Error, and any future terminal outcome end observation.
-            | _ => return,
+            // Done and Error end observation.
+            | machine::Outcome::Done(_) | machine::Outcome::Error { .. } => return,
         }
     }
 }
@@ -300,33 +294,26 @@ fn observe_item(
 ///
 /// Shared by the goals report (pass 2 below) and the A2.4 diagnostics
 /// surface ([`crate::diag`]) so both drive items through the machine
-/// identically. Returns [`None`] for an item whose term sort is unknown
-/// (`Term` is non-exhaustive upstream).
+/// identically. The dispatch is total over `Term`'s two sorts (its upstream
+/// growth point is retired; an added sort is a compile-visible change here).
 pub(crate) fn initial_state(
     item: &crate::lower::LoweredItem,
     base: &Ctx,
-) -> Option<machine::State>
+) -> machine::State
 {
     match (&item.term, &item.ascription) {
-        | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => Some(
-            machine::State::new_value(base.clone(), value.clone(), Dir::Check(expected.clone())),
-        ),
-        | (&Term::Value(ref value), _) => Some(machine::State::new_value(
-            base.clone(),
-            value.clone(),
-            Dir::Infer,
-        )),
-        | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => Some(machine::State::new_comp(
-            base.clone(),
-            comp.clone(),
-            Dir::Check(expected.clone()),
-        )),
-        | (&Term::Comp(ref comp), _) => Some(machine::State::new_comp(
-            base.clone(),
-            comp.clone(),
-            Dir::Infer,
-        )),
-        | _ => None,
+        | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
+            machine::State::new_value(base.clone(), value.clone(), Dir::Check(expected.clone()))
+        },
+        | (&Term::Value(ref value), _) => {
+            machine::State::new_value(base.clone(), value.clone(), Dir::Infer)
+        },
+        | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => {
+            machine::State::new_comp(base.clone(), comp.clone(), Dir::Check(expected.clone()))
+        },
+        | (&Term::Comp(ref comp), _) => {
+            machine::State::new_comp(base.clone(), comp.clone(), Dir::Infer)
+        },
     }
 }
 

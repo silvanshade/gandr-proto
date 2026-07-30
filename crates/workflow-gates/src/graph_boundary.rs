@@ -573,8 +573,8 @@ fn inspect_module_item_tree<'context>(
         };
 
         for item in step.items {
-            match item {
-                | Item::Mod(module) => {
+            match *item {
+                | Item::Mod(ref module) => {
                     let module_public = is_visible_api(&module.vis).into().0;
                     if let Some(child_items) = module.content.as_ref().map(|content| &content.1) {
                         if module_public {
@@ -600,7 +600,7 @@ fn inspect_module_item_tree<'context>(
                         });
                     }
                 },
-                | Item::Use(item_use) if is_visible_api(&item_use.vis).into().0 => {
+                | Item::Use(ref item_use) if is_visible_api(&item_use.vis).into().0 => {
                     let roots = forbidden_roots_in_use_tree(&item_use.tree, None, &aliases);
                     emit_roots(
                         &roots,
@@ -612,7 +612,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::ExternCrate(item_extern) if is_visible_api(&item_extern.vis).into().0 =>
+                | Item::ExternCrate(ref item_extern) if is_visible_api(&item_extern.vis).into().0 =>
                 {
                     let mut roots = BTreeSet::new();
                     if is_graph_stack_name(&item_extern.ident.to_string()).into().0 {
@@ -628,7 +628,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Fn(item_fn) if is_visible_api(&item_fn.vis).into().0 => {
+                | Item::Fn(ref item_fn) if is_visible_api(&item_fn.vis).into().0 => {
                     let roots = roots_in_signature(&item_fn.sig, &aliases);
                     emit_roots(
                         &roots,
@@ -640,7 +640,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Type(item_type) if is_visible_api(&item_type.vis).into().0 => {
+                | Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_type.generics, |visitor| {
                         visitor.visit_generics(&item_type.generics);
@@ -656,7 +656,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Const(item_const) if is_visible_api(&item_const.vis).into().0 => {
+                | Item::Const(ref item_const) if is_visible_api(&item_const.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_const.generics, |visitor| {
                         visitor.visit_generics(&item_const.generics);
@@ -672,7 +672,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Static(item_static) if is_visible_api(&item_static.vis).into().0 => {
+                | Item::Static(ref item_static) if is_visible_api(&item_static.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.visit_type(&item_static.ty);
                     emit_roots(
@@ -685,7 +685,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Struct(item_struct) if is_visible_api(&item_struct.vis).into().0 => {
+                | Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_struct.generics, |visitor| {
                         visitor.visit_generics(&item_struct.generics);
@@ -701,7 +701,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Union(item_union) if is_visible_api(&item_union.vis).into().0 => {
+                | Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_union.generics, |visitor| {
                         visitor.visit_generics(&item_union.generics);
@@ -719,7 +719,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Enum(item_enum) if is_visible_api(&item_enum.vis).into().0 => {
+                | Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_enum.generics, |visitor| {
                         visitor.visit_generics(&item_enum.generics);
@@ -737,7 +737,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Trait(item_trait) if is_visible_api(&item_trait.vis).into().0 => {
+                | Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_trait.generics, |visitor| {
                         visitor.visit_generics(&item_trait.generics);
@@ -758,7 +758,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::TraitAlias(item_trait_alias)
+                | Item::TraitAlias(ref item_trait_alias)
                     if is_visible_api(&item_trait_alias.vis).into().0 =>
                 {
                     let mut visitor = GraphStackVisitor::new(&aliases);
@@ -778,13 +778,13 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::ForeignMod(item_foreign) => {
+                | Item::ForeignMod(ref item_foreign) => {
                     inspect_foreign_items(item_foreign, &aliases, &current, findings);
                 },
-                | Item::Impl(item_impl) => {
+                | Item::Impl(ref item_impl) => {
                     inspect_impl_item(item_impl, &aliases, &public_types, &current, findings);
                 },
-                | Item::Macro(item_macro)
+                | Item::Macro(ref item_macro)
                     if item_macro
                         .attrs
                         .iter()
@@ -798,7 +798,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     ));
                 },
-                | Item::Verbatim(tokens) => {
+                | Item::Verbatim(ref tokens) => {
                     if tokens.to_string().contains("pub") {
                         findings.push(finding(
                             "public-graph-boundary",
@@ -823,15 +823,15 @@ fn inspect_trait_item(
     visitor: &mut GraphStackVisitor<'_>,
 )
 {
-    match trait_item {
-        | TraitItem::Const(item_const) => {
+    match *trait_item {
+        | TraitItem::Const(ref item_const) => {
             visitor.with_type_generics(&item_const.generics, |visitor| {
                 visitor.visit_generics(&item_const.generics);
                 visitor.visit_type(&item_const.ty);
             });
         },
-        | TraitItem::Fn(item_fn) => visitor.visit_signature(&item_fn.sig),
-        | TraitItem::Type(item_type) => {
+        | TraitItem::Fn(ref item_fn) => visitor.visit_signature(&item_fn.sig),
+        | TraitItem::Type(ref item_type) => {
             visitor.with_type_generics(&item_type.generics, |visitor| {
                 visitor.visit_generics(&item_type.generics);
                 for bound in &item_type.bounds {
@@ -842,8 +842,8 @@ fn inspect_trait_item(
                 }
             });
         },
-        | TraitItem::Macro(item_macro) => visitor.visit_trait_item_macro(item_macro),
-        | TraitItem::Verbatim(_tokens) => {},
+        | TraitItem::Macro(ref item_macro) => visitor.visit_trait_item_macro(item_macro),
+        | TraitItem::Verbatim(ref _tokens) => {},
         | _ => {},
     }
 }
@@ -896,13 +896,13 @@ fn module_aliases(
     while changed {
         changed = false;
         for item in items {
-            match item {
-                | Item::Use(item_use) => {
+            match *item {
+                | Item::Use(ref item_use) => {
                     changed |= collect_use_aliases(&item_use.tree, None, &mut context)
                         .into()
                         .0;
                 },
-                | Item::ExternCrate(item_extern) => {
+                | Item::ExternCrate(ref item_extern) => {
                     let root = item_extern.ident.to_string();
                     if is_graph_stack_name(&root).into().0 {
                         let local = item_extern
@@ -912,7 +912,7 @@ fn module_aliases(
                         changed |= context.named.insert(local, root).is_none();
                     }
                 },
-                | Item::Type(item_type) => {
+                | Item::Type(ref item_type) => {
                     let mut visitor = GraphStackVisitor::new(&context);
                     visitor.visit_type(&item_type.ty);
                     if let Some(root) = visitor.roots.iter().next() {
@@ -934,20 +934,20 @@ fn public_type_names(items: &[Item]) -> BTreeSet<String>
 {
     items
         .iter()
-        .filter_map(|item| match item {
-            | Item::Struct(item_struct) if is_visible_api(&item_struct.vis).into().0 => {
+        .filter_map(|item| match *item {
+            | Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 => {
                 Some(item_struct.ident.to_string())
             },
-            | Item::Enum(item_enum) if is_visible_api(&item_enum.vis).into().0 => {
+            | Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
                 Some(item_enum.ident.to_string())
             },
-            | Item::Union(item_union) if is_visible_api(&item_union.vis).into().0 => {
+            | Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
                 Some(item_union.ident.to_string())
             },
-            | Item::Type(item_type) if is_visible_api(&item_type.vis).into().0 => {
+            | Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
                 Some(item_type.ident.to_string())
             },
-            | Item::Trait(item_trait) if is_visible_api(&item_trait.vis).into().0 => {
+            | Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
                 Some(item_trait.ident.to_string())
             },
             | _ => None,
@@ -960,12 +960,12 @@ fn declared_type_names(items: &[Item]) -> BTreeSet<String>
 {
     items
         .iter()
-        .filter_map(|item| match item {
-            | Item::Struct(item_struct) => Some(item_struct.ident.to_string()),
-            | Item::Enum(item_enum) => Some(item_enum.ident.to_string()),
-            | Item::Union(item_union) => Some(item_union.ident.to_string()),
-            | Item::Type(item_type) => Some(item_type.ident.to_string()),
-            | Item::Trait(item_trait) => Some(item_trait.ident.to_string()),
+        .filter_map(|item| match *item {
+            | Item::Struct(ref item_struct) => Some(item_struct.ident.to_string()),
+            | Item::Enum(ref item_enum) => Some(item_enum.ident.to_string()),
+            | Item::Union(ref item_union) => Some(item_union.ident.to_string()),
+            | Item::Type(ref item_type) => Some(item_type.ident.to_string()),
+            | Item::Trait(ref item_trait) => Some(item_trait.ident.to_string()),
             | _ => None,
         })
         .collect()
@@ -1012,8 +1012,8 @@ where
         inherited_root: inherited_root.into().0.map(str::to_owned),
     }];
     while let Some(step) = work.pop() {
-        match step.tree {
-            | UseTree::Path(path) => {
+        match *step.tree {
+            | UseTree::Path(ref path) => {
                 let ident_text = path.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1024,7 +1024,7 @@ where
                     inherited_root: Some(root),
                 });
             },
-            | UseTree::Name(name) => {
+            | UseTree::Name(ref name) => {
                 let local = name.ident.to_string();
                 if let Some(root) = step
                     .inherited_root
@@ -1036,7 +1036,7 @@ where
                     changed |= context.local_types.insert(local);
                 }
             },
-            | UseTree::Rename(rename) => {
+            | UseTree::Rename(ref rename) => {
                 let ident_text = rename.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1060,7 +1060,7 @@ where
                     changed |= context.forbidden_glob_roots.insert(root);
                 }
             },
-            | UseTree::Group(group) => {
+            | UseTree::Group(ref group) => {
                 for item in group.items.iter().rev() {
                     work.push(UseTreeWork {
                         tree: item,
@@ -1090,8 +1090,8 @@ fn self_type_is_public(
     local_types: &BTreeSet<String>,
 ) -> impl Into<SelfTypeIsPublicFlag>
 {
-    match self_ty {
-        | syn::Type::Path(type_path) => {
+    match *self_ty {
+        | syn::Type::Path(ref type_path) => {
             type_path
                 .path
                 .segments
@@ -1209,8 +1209,8 @@ where
         inherited_root: inherited_root.into().0.map(str::to_owned),
     }];
     while let Some(step) = work.pop() {
-        match step.tree {
-            | UseTree::Path(path) => {
+        match *step.tree {
+            | UseTree::Path(ref path) => {
                 let ident_text = path.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1224,7 +1224,7 @@ where
                     inherited_root: Some(root),
                 });
             },
-            | UseTree::Name(name) => {
+            | UseTree::Name(ref name) => {
                 let ident_text = name.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1234,7 +1234,7 @@ where
                     roots.insert(root);
                 }
             },
-            | UseTree::Rename(rename) => {
+            | UseTree::Rename(ref rename) => {
                 let ident_text = rename.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1252,7 +1252,7 @@ where
                     roots.insert(root);
                 }
             },
-            | UseTree::Group(group) => {
+            | UseTree::Group(ref group) => {
                 for item in group.items.iter().rev() {
                     work.push(UseTreeWork {
                         tree: item,
@@ -1310,22 +1310,22 @@ fn use_tree_declaration(tree: &UseTree) -> String
     let mut frames = vec![UseTreeRenderFrame::Tree(tree)];
     while let Some(frame) = frames.pop() {
         match frame {
-            | UseTreeRenderFrame::Tree(tree) => match tree {
-                | UseTree::Path(path) => {
+            | UseTreeRenderFrame::Tree(tree) => match *tree {
+                | UseTree::Path(ref path) => {
                     frames.push(UseTreeRenderFrame::Tree(&path.tree));
                     frames.push(UseTreeRenderFrame::StaticText("::"));
                     frames.push(UseTreeRenderFrame::OwnedText(path.ident.to_string()));
                 },
-                | UseTree::Name(name) => {
+                | UseTree::Name(ref name) => {
                     frames.push(UseTreeRenderFrame::OwnedText(name.ident.to_string()));
                 },
-                | UseTree::Rename(rename) => {
+                | UseTree::Rename(ref rename) => {
                     frames.push(UseTreeRenderFrame::OwnedText(rename.rename.to_string()));
                     frames.push(UseTreeRenderFrame::StaticText(" as "));
                     frames.push(UseTreeRenderFrame::OwnedText(rename.ident.to_string()));
                 },
                 | UseTree::Glob(_) => frames.push(UseTreeRenderFrame::StaticText("*")),
-                | UseTree::Group(group) => {
+                | UseTree::Group(ref group) => {
                     frames.push(UseTreeRenderFrame::StaticText("}"));
                     for (index, item) in group.items.iter().rev().enumerate() {
                         if index > 0 {
@@ -1630,18 +1630,18 @@ fn inspect_impl_item(
         let mut visitor = GraphStackVisitor::new(aliases);
         visitor.local_types.extend(impl_type_names);
         for impl_item in &item_impl.items {
-            match impl_item {
-                | ImplItem::Const(item_const)
+            match *impl_item {
+                | ImplItem::Const(ref item_const)
                     if item_impl.trait_.is_some() || is_visible_api(&item_const.vis).into().0 =>
                 {
                     visitor.visit_type(&item_const.ty);
                 },
-                | ImplItem::Fn(method)
+                | ImplItem::Fn(ref method)
                     if item_impl.trait_.is_some() || is_visible_api(&method.vis).into().0 =>
                 {
                     visitor.visit_signature(&method.sig);
                 },
-                | ImplItem::Type(item_type)
+                | ImplItem::Type(ref item_type)
                     if item_impl.trait_.is_some() || is_visible_api(&item_type.vis).into().0 =>
                 {
                     visitor.with_type_generics(&item_type.generics, |visitor| {
@@ -1649,8 +1649,8 @@ fn inspect_impl_item(
                         visitor.visit_type(&item_type.ty);
                     });
                 },
-                | ImplItem::Macro(item_macro) => visitor.visit_impl_item_macro(item_macro),
-                | ImplItem::Verbatim(_tokens) => {},
+                | ImplItem::Macro(ref item_macro) => visitor.visit_impl_item_macro(item_macro),
+                | ImplItem::Verbatim(ref _tokens) => {},
                 | _ => {},
             }
         }
@@ -1797,8 +1797,8 @@ fn inspect_foreign_items(
 )
 {
     for item in &item_foreign.items {
-        match item {
-            | syn::ForeignItem::Fn(item_fn) if is_visible_api(&item_fn.vis).into().0 => {
+        match *item {
+            | syn::ForeignItem::Fn(ref item_fn) if is_visible_api(&item_fn.vis).into().0 => {
                 let roots = roots_in_signature(&item_fn.sig, aliases);
                 emit_roots(
                     &roots,
@@ -1810,7 +1810,7 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Static(item_static)
+            | syn::ForeignItem::Static(ref item_static)
                 if is_visible_api(&item_static.vis).into().0 =>
             {
                 let mut visitor = GraphStackVisitor::new(aliases);
@@ -1825,7 +1825,7 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Type(item_type) if is_visible_api(&item_type.vis).into().0 => {
+            | syn::ForeignItem::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
                 emit_roots(
                     &BTreeSet::new(),
                     findings,
@@ -1836,7 +1836,7 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Macro(item_macro) => {
+            | syn::ForeignItem::Macro(ref item_macro) => {
                 let mut visitor = GraphStackVisitor::new(aliases);
                 visitor.visit_foreign_item_macro(item_macro);
                 emit_roots(
@@ -1849,7 +1849,7 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Verbatim(_tokens) => {},
+            | syn::ForeignItem::Verbatim(ref _tokens) => {},
             | _ => {},
         }
     }

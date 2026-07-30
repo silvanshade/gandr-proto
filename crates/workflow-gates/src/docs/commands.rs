@@ -425,8 +425,8 @@ where
     Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
-    match value {
-        | Value::Object(object) => object
+    match *value {
+        | Value::Object(ref object) => object
             .get(field)
             .ok_or_else(|| GateError::operational(format!("page-balance probe missing `{field}`"))),
         | _ => Err(GateError::operational(
@@ -444,8 +444,8 @@ where
     Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
-    match value {
-        | Value::Array(rows) => Ok(rows),
+    match *value {
+        | Value::Array(ref rows) => Ok(rows),
         | _ => Err(GateError::operational(detail)),
     }
 }
@@ -477,8 +477,8 @@ where
     Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
-    match value {
-        | Value::String(text) => Ok(JsonStringText(text)),
+    match *value {
+        | Value::String(ref text) => Ok(JsonStringText(text)),
         | _ => Err(GateError::operational(detail)),
     }
 }

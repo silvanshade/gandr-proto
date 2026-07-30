@@ -988,8 +988,8 @@ mod tests
             {
                 continue;
             }
-            let replace = decisions.0[cursor % decisions.0.len()];
-            cursor += 1;
+            let replace = decisions.0[cursor.checked_rem(decisions.0.len()).expect("decisions are nonempty")];
+            cursor = cursor.saturating_add(1);
             if !replace {
                 continue;
             }
@@ -1002,7 +1002,7 @@ mod tests
                 | Node::Cons(_) => Node::Cons(ConsPat::meta(format!("{stem}c{fresh}"))),
                 | _ => continue,
             };
-            fresh += 1;
+            fresh = fresh.saturating_add(1);
             let Some(Node::Cmd(rebuilt)) = splice_at(&Node::Cmd(out.clone()), &pos, replacement)
             else {
                 continue;
@@ -1816,7 +1816,7 @@ mod tests
                     });
                     let cells: Vec<Cell> =
                         store.iter().map(|(_, cell)| cell.clone()).collect();
-                    let cell = cells[pick % cells.len()].clone();
+                    let cell = cells[pick.checked_rem(cells.len()).expect("cells are nonempty")].clone();
                     let (p2, c2) = Pool::Two.vars();
                     arb_subst(cmd_vars(&cell.lhs), &p2, &c2)
                         .prop_map(move |sigma| (joinable, cell.clone(), sigma))
@@ -2019,8 +2019,8 @@ mod tests
             let norm = normalize(&store, &instance, budget);
             prop_assume!(!norm.exhausted);
             prop_assume!(norm.path.len() >= 2);
-            let i = usize::from(i_raw) % norm.path.len().saturating_add(1);
-            let j = usize::from(j_raw) % i.saturating_add(1);
+            let i = usize::from(i_raw).checked_rem(norm.path.len().saturating_add(1)).expect("saturating_add(1) is nonzero");
+            let j = usize::from(j_raw).checked_rem(i.saturating_add(1)).expect("saturating_add(1) is nonzero");
             let (p1, p2) = norm.path.split_at(i);
             let (q1, q2) = p1.split_at(j);
             // Staged replay: q1, then q2, then p2.

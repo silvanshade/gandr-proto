@@ -451,9 +451,8 @@ fn check_payload(
         match machine::step(state) {
             | machine::Outcome::Step(next) => state = next,
             | machine::Outcome::Error { error, .. } => return Some(error),
-            // `Done`, and any future non-error terminal outcome (`Outcome` is
-            // non-exhaustive upstream), mean the payload checks.
-            | _ => return None,
+            // `Done` means the payload checks.
+            | machine::Outcome::Done(_) => return None,
         }
     }
 }

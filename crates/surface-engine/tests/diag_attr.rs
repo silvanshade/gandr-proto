@@ -21,8 +21,8 @@ mod tests
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;
 
-    use crate::TestDecision;
-    use crate::TestText;
+    use crate::common::TestDecision;
+    use crate::common::TestText;
     #[test]
     fn a_bare_marker_missing_its_payload_is_a_diagnostic()
     {

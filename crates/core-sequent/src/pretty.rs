@@ -597,8 +597,6 @@ fn num_lit(num: NumLit) -> String
         | NumLit::I64(value) => format!("{value}i64"),
         | NumLit::F32(bits) => format!("{}f32", f32::from_bits(bits)),
         | NumLit::F64(bits) => format!("{}f64", f64::from_bits(bits)),
-        // A future numeric atom renders opaquely.
-        | _ => String::from("<num>"),
     }
 }
 
@@ -623,8 +621,6 @@ fn side_inj(side: Side) -> RenderToken<'static>
     match side {
         | Side::Fst => "Inl".into(),
         | Side::Snd => "Inr".into(),
-        // A future side selector renders opaquely.
-        | _ => "Inj".into(),
     }
 }
 
@@ -646,8 +642,6 @@ fn side_prj(side: Side) -> RenderToken<'static>
     match side {
         | Side::Fst => "1".into(),
         | Side::Snd => "2".into(),
-        // A future side selector renders opaquely.
-        | _ => "?".into(),
     }
 }
 
@@ -709,8 +703,6 @@ fn native_name(prim: gandr_core_checker::prim::NativePrim) -> RenderToken<'stati
         | NativePrim::PathJoin => "path-join",
         | NativePrim::PathBasename => "path-basename",
         | NativePrim::PathExtension => "path-extension",
-        // A future native renders opaquely.
-        | _ => "native",
     }
     .into()
 }

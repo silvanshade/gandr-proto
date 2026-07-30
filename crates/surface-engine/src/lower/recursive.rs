@@ -592,10 +592,6 @@ impl<'run, 'src, 'tree: 'run> LowerMachine<'run, 'src, 'tree>
                     Self::returned(result)
                 },
             ),
-            | _ => Self::returned(Err(LowerError::Unsupported {
-                kind: ty_node.kind(),
-                byte_range: ty_node.byte_range(),
-            })),
         }
     }
 

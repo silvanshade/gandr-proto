@@ -31,7 +31,7 @@ mod tests
     use gandr_surface_engine::origin::HoleNote;
     use gandr_surface_engine::prelude_ctx;
 
-    use crate::TestText;
+    use crate::common::TestText;
     #[test]
     fn every_expression_former_lowers_to_its_core_computation()
     {

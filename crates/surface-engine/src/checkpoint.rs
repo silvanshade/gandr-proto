@@ -156,7 +156,10 @@ pub enum ItemTyping
     /// An item carrying a hole: typing is declined (the parse-completeness
     /// discipline, `incremental-pipeline.md` §7).
     Holey,
-    /// An item of unknown sort (`Term` is non-exhaustive upstream).
+    /// An item of unknown sort — the forward-compatible shape for a future
+    /// `Term` sort. Never produced today: the sort dispatch is total over
+    /// `Term`'s two sorts, and an added sort is a compile-visible change at
+    /// every match.
     Unknown,
 }
 

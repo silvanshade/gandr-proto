@@ -57,7 +57,7 @@
 //! whose member calls elaborate to performs against them.
 
 #![cfg_attr(
-    test,
+    dylint_lib = "non_topologically_sorted_functions",
     allow(
         unknown_lints,
         non_topologically_sorted_functions,

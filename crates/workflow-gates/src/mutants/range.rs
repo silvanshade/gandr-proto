@@ -162,12 +162,12 @@ pub(crate) fn merge_diff_plan() -> GitDiffPlan
 #[must_use]
 pub(crate) fn push_diff_plan(plan: &PushRangePlan) -> GitDiffPlan
 {
-    match plan {
-        | PushRangePlan::Range { from, to } => diff_plan(
+    match *plan {
+        | PushRangePlan::Range { ref from, ref to } => diff_plan(
             DiffKind::Push(PushRangeMode::Range),
             &format!("{from}...{to}"),
         ),
-        | PushRangePlan::Full { root, to } => diff_plan(
+        | PushRangePlan::Full { ref root, ref to } => diff_plan(
             DiffKind::Push(PushRangeMode::Full),
             &format!("{root}...{to}"),
         ),

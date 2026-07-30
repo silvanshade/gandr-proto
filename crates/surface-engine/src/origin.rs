@@ -668,8 +668,7 @@ pub enum TermRef<'term>
 ///   index) for `term`.
 /// - ensures: returns the borrowed `TermRef` the path addresses.
 /// - provides: the normative `OriginMap` child-index order.
-/// - fails: returns `None` when the path walks off the term, or when `term` is
-///   a future non-exhaustive sort.
+/// - fails: returns `None` when the path walks off the term.
 /// - panics: none.
 #[inline]
 #[must_use]
@@ -684,7 +683,6 @@ where
     let start = match *term {
         | Term::Value(ref value) => TermRef::Value(value),
         | Term::Comp(ref comp) => TermRef::Comp(comp),
-        | _ => return None,
     };
     path.0
         .iter()

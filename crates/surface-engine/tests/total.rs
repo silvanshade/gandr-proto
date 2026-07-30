@@ -51,7 +51,7 @@ mod tests
     use gandr_surface_engine::origin::HoleNote;
     use gandr_surface_engine::prelude_ctx;
 
-    use crate::TestText;
+    use crate::common::TestText;
 
     /// Reads a `current/` fixture by stem.
     fn read_current_fixture<'text>(stem: impl Into<TestText<'text>>) -> String
@@ -128,7 +128,6 @@ mod tests
                 assert_eq!(rec, mach, "checker and machine must agree on {item:?}");
                 mach
             },
-            | _ => panic!("unknown term sort in {item:?}"),
         }
     }
 

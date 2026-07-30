@@ -13,28 +13,7 @@ autotests = false
 
 [[test]]
 name = "engine"
-path = "tests/engine.rs"
-
-[dependencies]
-gandr-core-checker = { path = "../core-checker" }
-gandr-core-sequent = { path = "../core-sequent" }
-gandr-runtime-host = { path = "../runtime-host" }
-gandr-surface-grammar = { path = "../surface-grammar" }
-gandr-surface-parser = { path = "../surface-parser" }
-gandr-surface-syntax = { path = "../surface-syntax" }
-gandr-theory-levitation = { path = "../theory-levitation" }
-gandr-theory-nominal-automata = { path = "../theory-nominal-automata" }
-gandr-theory-orders = { path = "../theory-orders" }
-gandr-theory-recursion = { path = "../theory-recursion" }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
-thiserror = { workspace = true }
-
-[dev-dependencies]
-gandr-core-checker = { path = "../core-checker", features = [
-  "gandr_test_strategies"
-] }
-proptest = { workspace = true }
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -47,3 +26,22 @@ regex = [
 
 [lints]
 workspace = true
+
+[dependencies]
+gandr-core-checker.workspace = true
+gandr-core-sequent.workspace = true
+gandr-runtime-host.workspace = true
+gandr-surface-grammar.workspace = true
+gandr-surface-parser.workspace = true
+gandr-surface-syntax.workspace = true
+gandr-theory-levitation.workspace = true
+gandr-theory-nominal-automata.workspace = true
+gandr-theory-orders.workspace = true
+gandr-theory-recursion.workspace = true
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+thiserror.workspace = true
+
+[dev-dependencies]
+gandr-core-checker = { workspace = true, features = ["gandr_test_strategies"] }
+proptest.workspace = true

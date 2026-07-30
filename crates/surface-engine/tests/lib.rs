@@ -1,0 +1,40 @@
+//! Consolidated integration-test binary for `gandr-surface-engine`.
+
+extern crate alloc;
+extern crate proptest as proptest_crate;
+
+#[cfg(test)]
+mod common;
+
+#[cfg(test)]
+mod acceptance;
+#[cfg(test)]
+mod attributes;
+#[cfg(test)]
+mod desc_elab;
+#[cfg(test)]
+mod diag;
+#[cfg(test)]
+mod diag_attr;
+#[cfg(test)]
+mod diag_frames;
+#[cfg(test)]
+mod edit;
+#[cfg(test)]
+mod edit_extra;
+#[cfg(test)]
+mod goals_extra;
+#[cfg(test)]
+mod incremental;
+#[cfg(test)]
+mod origin_identity;
+#[cfg(test)]
+mod proptest;
+#[cfg(test)]
+mod session;
+#[cfg(test)]
+mod surface;
+#[cfg(test)]
+mod total;
+#[cfg(test)]
+mod types;

@@ -1663,7 +1663,7 @@ where
             crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
         ),
     )?;
-    if let Some(copy_diff) = &plan.copy_diff {
+    if let Some(ref copy_diff) = plan.copy_diff {
         run_checked_status(
             runner,
             copy_diff,

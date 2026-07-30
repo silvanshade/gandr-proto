@@ -159,8 +159,6 @@ pub fn canonical(eval: &Eval) -> CanonOutcome
         | Eval::Blame(blame) => CanonOutcome::Blame(blame),
         | Eval::Stuck(ref reason) => CanonOutcome::Stuck(reason.clone()),
         | Eval::Value(ref comp) => canonical_terminal(comp),
-        // A future `Eval` variant maps opaquely (both machines map it here).
-        | _ => CanonOutcome::OtherComp,
     }
 }
 

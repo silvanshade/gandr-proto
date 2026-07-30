@@ -29,7 +29,7 @@ mod tests
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;
 
-    use crate::TestText;
+    use crate::common::TestText;
     #[test]
     fn clean_doc_and_deprecated_resolve_as_inert()
     {

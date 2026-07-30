@@ -21,8 +21,8 @@ mod tests
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;
 
-    use crate::TestDecision;
-    use crate::TestText;
+    use crate::common::TestDecision;
+    use crate::common::TestText;
     #[test]
     fn each_checker_frame_localizes_its_nested_failure()
     {

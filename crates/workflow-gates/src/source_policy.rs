@@ -532,14 +532,14 @@ fn collect_functions(syntax: &File) -> Vec<FunctionRecord<'_>>
         frame.next = next.saturating_add(1);
         stack.push(frame);
 
-        match item {
-            | Item::Fn(item_fn) => {
+        match *item {
+            | Item::Fn(ref item_fn) => {
                 functions.push(FunctionRecord {
                     name: item_fn.sig.ident.to_string(),
                     attrs: item_fn.attrs.as_slice(),
                 });
             },
-            | Item::Mod(item_mod) => {
+            | Item::Mod(ref item_mod) => {
                 if let Some(content) = item_mod.content.as_ref() {
                     stack.push(ItemFrame {
                         items: content.1.as_slice(),
@@ -635,14 +635,14 @@ fn doc_comment(attribute: &Attribute) -> Option<String>
     if !attribute.path().is_ident("doc") {
         return None;
     }
-    let Meta::NameValue(name_value) = &attribute.meta
+    let Meta::NameValue(ref name_value) = attribute.meta
     else {
         return None;
     };
     let Expr::Lit(ExprLit {
-        lit: Lit::Str(literal),
+        lit: Lit::Str(ref literal),
         ..
-    }) = &name_value.value
+    }) = name_value.value
     else {
         return None;
     };

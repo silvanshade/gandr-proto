@@ -585,7 +585,6 @@ fn apply_frame(
             Some(Piece::Comp(match side {
                 | Side::Fst => Comp::prj1(head),
                 | Side::Snd => Comp::prj2(head),
-                | _ => return None,
             }))
         },
     }
@@ -1183,8 +1182,6 @@ fn subst_comp(
                 base: WalkBase::new(base.x.as_str(), base_body),
             }
         },
-        // A future former the readback never constructs passes through.
-        | _ => comp.clone(),
     }
 }
 

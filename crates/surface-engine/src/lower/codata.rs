@@ -243,10 +243,6 @@ impl Lowerer<'_>
             let result = match self.lower_type_node(ty_node)? {
                 | Ty::Value(value) => CompType::returner(value),
                 | Ty::Comp(comp) => comp,
-                // `Ty` is non-exhaustive upstream; an unknown sort degrades to
-                // the gradual returner (the sort-free fallback of the total
-                // type lowering).
-                | _ => CompType::returner(ValueType::Unknown),
             };
             self.observations.insert(obs_name.clone());
             observations.push(ObservationDecl {
