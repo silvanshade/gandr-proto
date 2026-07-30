@@ -45,10 +45,6 @@ use crate::base::BaseType;
 ///
 /// Children are arena ids; the derived traits are shallow (the module docs).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's S1 value-type vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum ValueType
 {
     /// A rigid base-type atom (`Integer`, `String`, `Numeric`).
@@ -86,10 +82,6 @@ pub enum ValueType
 ///
 /// Children are arena ids; the derived traits are shallow (the module docs).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's S1 computation-type vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum CompType
 {
     /// The returner `F A` of a value type `A`: the type of a computation that

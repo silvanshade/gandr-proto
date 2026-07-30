@@ -18,10 +18,6 @@ use alloc::string::String;
 /// A rigid base-type atom: one of the S1 v0 stock of primitive value types
 /// (kernel-boundary.md §7 "literals over the base types").
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's S1 base-type-atom vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum BaseType
 {
     /// The integer atom — the type of [`IntegerLiteral`]s.
@@ -35,10 +31,6 @@ pub enum BaseType
 /// The sign of a numeric literal. Zero is [`Self::NonNegative`], so the
 /// canonical form of a literal never carries a negative zero.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "a sign is exactly one of two cases by design"
-)]
 pub enum Sign
 {
     /// A negative magnitude (never the zero magnitude).
@@ -311,10 +303,6 @@ impl NumericLiteral
 /// An S1 literal value: one of the three rigid base-type atoms' canonical
 /// payloads.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's S1 literal vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum Literal
 {
     /// An integer literal, typed at [`BaseType::Integer`].

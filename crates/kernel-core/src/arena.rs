@@ -676,14 +676,6 @@ type ReifyMemo = alloc::collections::BTreeMap<AnyId, AnyId>;
 /// - provides: the assembly step of [`TermArena::reify`].
 /// - fails: never.
 /// - panics: none.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the flat assembly enumerates every former across the four families in one match; splitting it would obscure the single copy step"
-)]
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of the borrowed source node against value patterns; every binding is a shared reference by intent"
-)]
 fn reify_assemble(
     origin: &TermArena,
     destination: &mut TermArena,
@@ -753,7 +745,7 @@ fn reify_assemble(
                 | Some(&Value::Variable(index)) => destination.value_variable(index),
                 | Some(&Value::Constant(index)) => destination.value_constant(index),
                 | Some(&Value::Unit) | None => destination.value_unit(),
-                | Some(Value::Literal(literal)) => destination.value_literal(literal.clone()),
+                | Some(&Value::Literal(ref literal)) => destination.value_literal(literal.clone()),
                 | Some(&Value::Pair(first, second)) => {
                     let first = value_of(memo, destination, AnyId::Value(first));
                     let second = value_of(memo, destination, AnyId::Value(second));
@@ -767,7 +759,10 @@ fn reify_assemble(
                     let body = computation_of(memo, destination, AnyId::Computation(body));
                     destination.value_thunk(body)
                 },
-                | Some(Value::Lift { target, body }) => {
+                | Some(&Value::Lift {
+                    ref target,
+                    ref body,
+                }) => {
                     let target = target.clone();
                     let body = value_of(memo, destination, AnyId::Value(*body));
                     destination.value_lift(target, body)
@@ -822,7 +817,7 @@ fn reify_assemble(
             let new = match value_type {
                 | Some(&ValueType::Base(base)) => destination.value_type_base(base),
                 | Some(&ValueType::Unit) | None => destination.value_type_unit(),
-                | Some(ValueType::Universe(level)) => {
+                | Some(&ValueType::Universe(ref level)) => {
                     destination.value_type_universe(level.clone())
                 },
                 | Some(&ValueType::Product(first, second)) => {
@@ -839,7 +834,10 @@ fn reify_assemble(
                     let body = comp_type_of(memo, destination, AnyId::CompType(body));
                     destination.value_type_thunk(body)
                 },
-                | Some(ValueType::Lift { inner, target }) => {
+                | Some(&ValueType::Lift {
+                    ref inner,
+                    ref target,
+                }) => {
                     let target = target.clone();
                     let inner = value_type_of(memo, destination, AnyId::ValueType(*inner));
                     destination.value_type_lift(inner, target)

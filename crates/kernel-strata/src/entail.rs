@@ -233,10 +233,6 @@ impl EntailmentCountermodel
 /// The entailment dichotomy, as data: under an admitted poset a query
 /// either holds with a derivation or is refuted by a countermodel.
 #[derive(Clone, Debug)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the entailment dichotomy is closed by theorem (TCS 913 Corollary 3.4 with Theorem 3.2)"
-)]
 pub enum Entailment
 {
     /// The claim holds; the witness derivation replays.

@@ -453,10 +453,6 @@ pub enum HVar
 /// A value of the model domain `ℕ^∞` (TCS 913 §3): the downward-closed atom
 /// set `{v+k | k ≤ f(v)}` of a variable, represented by its maximum.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "ℕ^∞ is closed by definition (TCS 913 §3)"
-)]
 pub enum ModelValue
 {
     /// A finite maximum.

@@ -300,10 +300,6 @@ impl Interner
 
 /// The immediate child references of an arena node, in order (empty for a leaf
 /// or a dangling id — fail-safe).
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
-)]
 fn node_children(
     arena: &TermArena,
     node: Node,
@@ -314,38 +310,40 @@ fn node_children(
         | Node::Value(id) => {
             if let Some(value) = arena.value(id) {
                 match value {
-                    | Value::Variable(_) | Value::Constant(_) | Value::Unit | Value::Literal(_) => {
-                    },
-                    | Value::Pair(first, second) => {
+                    | &Value::Variable(_)
+                    | &Value::Constant(_)
+                    | &Value::Unit
+                    | &Value::Literal(_) => {},
+                    | &Value::Pair(ref first, ref second) => {
                         children.push(Node::Value(*first));
                         children.push(Node::Value(*second));
                     },
-                    | Value::Injection(_, body) | Value::Lift { body, .. } => {
+                    | &Value::Injection(_, ref body) | &Value::Lift { ref body, .. } => {
                         children.push(Node::Value(*body));
                     },
-                    | Value::Thunk(body) => children.push(Node::Computation(*body)),
+                    | &Value::Thunk(ref body) => children.push(Node::Computation(*body)),
                 }
             }
         },
         | Node::Computation(id) => {
             if let Some(computation) = arena.computation(id) {
                 match computation {
-                    | Computation::Lambda(body) => children.push(Node::Computation(*body)),
-                    | Computation::Application(head, argument) => {
+                    | &Computation::Lambda(ref body) => children.push(Node::Computation(*body)),
+                    | &Computation::Application(ref head, ref argument) => {
                         children.push(Node::Computation(*head));
                         children.push(Node::Value(*argument));
                     },
-                    | Computation::Return(value) | Computation::Force(value) => {
+                    | &Computation::Return(ref value) | &Computation::Force(ref value) => {
                         children.push(Node::Value(*value));
                     },
-                    | Computation::Bind(bound, body) => {
+                    | &Computation::Bind(ref bound, ref body) => {
                         children.push(Node::Computation(*bound));
                         children.push(Node::Computation(*body));
                     },
-                    | Computation::Case {
-                        scrutinee,
-                        on_left,
-                        on_right,
+                    | &Computation::Case {
+                        ref scrutinee,
+                        ref on_left,
+                        ref on_right,
                     } => {
                         children.push(Node::Value(*scrutinee));
                         children.push(Node::Computation(*on_left));
@@ -357,21 +355,25 @@ fn node_children(
         | Node::ValueType(id) => {
             if let Some(value_type) = arena.value_type(id) {
                 match value_type {
-                    | ValueType::Base(_) | ValueType::Unit | ValueType::Universe(_) => {},
-                    | ValueType::Product(first, second) | ValueType::Sum(first, second) => {
+                    | &ValueType::Base(_) | &ValueType::Unit | &ValueType::Universe(_) => {},
+                    | &ValueType::Product(ref first, ref second)
+                    | &ValueType::Sum(ref first, ref second) => {
                         children.push(Node::ValueType(*first));
                         children.push(Node::ValueType(*second));
                     },
-                    | ValueType::Thunk(body) => children.push(Node::CompType(*body)),
-                    | ValueType::Lift { inner, .. } => children.push(Node::ValueType(*inner)),
+                    | &ValueType::Thunk(ref body) => children.push(Node::CompType(*body)),
+                    | &ValueType::Lift { ref inner, .. } => children.push(Node::ValueType(*inner)),
                 }
             }
         },
         | Node::CompType(id) => {
             if let Some(comp_type) = arena.comp_type(id) {
                 match comp_type {
-                    | CompType::Returner(result) => children.push(Node::ValueType(*result)),
-                    | CompType::Arrow { domain, codomain } => {
+                    | &CompType::Returner(ref result) => children.push(Node::ValueType(*result)),
+                    | &CompType::Arrow {
+                        ref domain,
+                        ref codomain,
+                    } => {
                         children.push(Node::ValueType(*domain));
                         children.push(Node::CompType(*codomain));
                     },
@@ -385,10 +387,6 @@ fn node_children(
 /// Encode one subterm-table entry: its node tag, inline payload, then its
 /// children's global indices as uvarints (a dangling id encodes as unit,
 /// fail-safe).
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of the borrowed arena node against value patterns; every binding is a shared reference by intent"
-)]
 fn encode_entry(
     arena: &TermArena,
     node: Node,
@@ -403,14 +401,14 @@ fn encode_entry(
                 out.0.push(base_type_byte(base).0);
             },
             | Some(&ValueType::Unit) | None => out.0.push(NODE_VT_UNIT),
-            | Some(ValueType::Universe(level)) => {
+            | Some(&ValueType::Universe(ref level)) => {
                 out.0.push(NODE_VT_UNIVERSE);
                 encode_level(&mut out, level);
             },
             | Some(&ValueType::Product(..)) => out.0.push(NODE_VT_PRODUCT),
             | Some(&ValueType::Sum(..)) => out.0.push(NODE_VT_SUM),
             | Some(&ValueType::Thunk(_)) => out.0.push(NODE_VT_THUNK),
-            | Some(ValueType::Lift { target, .. }) => {
+            | Some(&ValueType::Lift { ref target, .. }) => {
                 out.0.push(NODE_VT_LIFT);
                 encode_level(&mut out, target);
             },
@@ -429,7 +427,7 @@ fn encode_entry(
                 put_uvarint(&mut out, usize_to_u64(WireUsize(usize::from(index))));
             },
             | Some(&Value::Unit) | None => out.0.push(NODE_V_UNIT),
-            | Some(Value::Literal(literal)) => {
+            | Some(&Value::Literal(ref literal)) => {
                 out.0.push(NODE_V_LITERAL);
                 encode_literal(&mut out, literal);
             },
@@ -439,7 +437,7 @@ fn encode_entry(
                 out.0.push(side_byte(side).0);
             },
             | Some(&Value::Thunk(_)) => out.0.push(NODE_V_THUNK),
-            | Some(Value::Lift { target, .. }) => {
+            | Some(&Value::Lift { ref target, .. }) => {
                 out.0.push(NODE_V_LIFT);
                 encode_level(&mut out, target);
             },

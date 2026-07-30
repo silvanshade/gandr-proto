@@ -286,10 +286,6 @@ pub const NODE_C_CASE: u8 = 0x16;
 /// A declaration's admission mark as it rides in the artifact (E6): a single
 /// checked/unchecked bit, never a trust lattice (kernel-boundary.md §3 K3).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "a single checked/unchecked bit by design (kernel-boundary.md K3)"
-)]
 pub enum AdmissionMark
 {
     /// Admitted through the checked choke point
@@ -823,10 +819,6 @@ impl ExactSizeIterator for Segments<'_>
 /// One of the four R1 reserved declaration kinds — a shape the writer never
 /// emits and the reader rejects distinctly.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the reserved declaration-kind set is fixed by the ratified reservations (R1)"
-)]
 pub enum ReservedKind
 {
     /// A reserved abstract-type declaration kind.
@@ -859,10 +851,6 @@ impl fmt::Display for ReservedKind
 /// A reserved slot or section that must be empty at v0 (R2/R3/R4) but was
 /// found occupied.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the reserved-slot set is fixed by the ratified reservations (R2/R3/R4)"
-)]
 pub enum ReservedSlot
 {
     /// The R4 reserved minted-atom table was non-empty.
@@ -901,10 +889,6 @@ impl fmt::Display for ReservedSlot
 
 /// Where in the closed grammar an unknown tag byte was met.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the tagged grammar positions are a closed set by design"
-)]
 pub enum TagSite
 {
     /// A declaration's admission mark byte.
@@ -950,10 +934,6 @@ impl fmt::Display for TagSite
 /// Which structural invariant a malformed artifact violated (the third leg of
 /// the rejection triple).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the structural-violation vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum MalformedSite
 {
     /// The magic bytes did not match a gandr kernel export.
@@ -1031,10 +1011,6 @@ impl fmt::Display for MalformedSite
 /// §5 E4): a decode failure is a **format** failure, held apart from a typing
 /// failure ([`KernelError`]) so the two never blur.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the reader's rejection vocabulary is closed by design (kernel-boundary.md K1/E4)"
-)]
 pub enum DecodeError
 {
     /// The artifact ended mid-field (the rejection triple's *truncated*).
@@ -1113,10 +1089,6 @@ impl Error for DecodeError
 /// did not re-admit through the choke point ([`KernelError`]); the two failure
 /// planes stay distinct.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "reading fails on exactly the decode plane or the re-admission plane"
-)]
 pub enum ReadError
 {
     /// The bytes did not decode.

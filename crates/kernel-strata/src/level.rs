@@ -279,10 +279,6 @@ impl fmt::Display for LevelVar
 /// operation on levels either succeeds or surfaces one of these — the kernel
 /// never panics on level data.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's level-failure vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum LevelError
 {
     /// An offset or constant stepped past the representable range. Saturating

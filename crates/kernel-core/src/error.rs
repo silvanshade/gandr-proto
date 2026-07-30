@@ -43,10 +43,6 @@ use crate::arena::ValueTypeId;
 
 /// A checking-only term form met where the checker had to synthesize a type.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the check-only S1 term forms are closed by design (kernel-boundary.md K1)"
-)]
 pub enum NonInferableForm
 {
     /// A sum injection: its type is not determined by its payload alone, so it
@@ -60,10 +56,6 @@ pub enum NonInferableForm
 /// The register polarity a checker-machine frame required — the payload of
 /// [`KernelError::CheckerRegisterFault`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the checker machine has exactly two typed register polarities by design"
-)]
 pub enum RegisterFault
 {
     /// A value-consuming frame found a non-value produced register.
@@ -75,10 +67,6 @@ pub enum RegisterFault
 
 /// The value-type shape an eliminator or checking rule required.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the required value-type shapes are closed by design (kernel-boundary.md K1)"
-)]
 pub enum ExpectedValueShape
 {
     /// A product type `A × B` (a pair was checked against it).
@@ -91,10 +79,6 @@ pub enum ExpectedValueShape
 
 /// The computation-type shape an eliminator or checking rule required.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the required computation-type shapes are closed by design (kernel-boundary.md K1)"
-)]
 pub enum ExpectedComputationShape
 {
     /// A function type `A → C` (a lambda was checked, or something applied).
@@ -305,10 +289,6 @@ impl ComputationTypeMismatch
 /// The `gandr_kernel_strata` refutation behind a rejected level-order claim —
 /// re-checkable against the two levels by the crate that produced it.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the two level-order decision paths (free oracle, landmark entailment) are closed by design"
-)]
 pub enum LevelOrderRefutation
 {
     /// The free-fragment oracle refuted the claim (no landmark constraints in
@@ -381,10 +361,6 @@ impl UniverseViolation
 /// total: `Environment::add_decl` either returns a `CheckedId` or exactly one
 /// of these — the checker never panics on a term.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's S1 failure vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum KernelError
 {
     /// A value variable's de Bruijn index escaped the typing context.

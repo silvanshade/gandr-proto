@@ -97,10 +97,6 @@ impl From<ConstantIndex> for usize
 
 /// The side of a sum injection.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "a sum has exactly two injections by design"
-)]
 pub enum Side
 {
     /// The left injection, into the left summand of `A + B`.
@@ -122,10 +118,6 @@ pub enum Side
 ///
 /// [`TermArena`]: crate::TermArena
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's S1 value vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum Value
 {
     /// A bound value variable.
@@ -164,10 +156,6 @@ pub enum Value
 ///
 /// Children are arena ids; the derived traits are shallow (the module docs).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's S1 computation vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum Computation
 {
     /// A lambda `λ. M`, binding one value variable; introduces `A → C`.

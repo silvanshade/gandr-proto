@@ -562,10 +562,6 @@ fn resolve_constant(
 /// - witness: `hardening::tests::a_deep_pair_definition_checks_totally`
 /// - witness: `hardening::tests::a_deep_bind_definition_checks_totally`
 /// - witness: `checker::tests` (the integration corpus)
-#[expect(
-    clippy::too_many_lines,
-    reason = "the flat defunctionalized checker enumerates every synthesis and checking arm in one goal/frame loop; splitting it would obscure the single machine the correspondence table audits"
-)]
 fn run(
     arena: &mut TermArena,
     entries: &[AdmittedDeclaration],

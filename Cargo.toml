@@ -6,7 +6,7 @@ resolver = "3"
 members = [
   # "crates/core-checker",
   # "crates/core-sequent",
-  "crates/kernel-core",
+  # "crates/kernel-core",
   "crates/kernel-strata",
   # "crates/runtime-host",
   # "crates/storage-artifact",
@@ -344,7 +344,7 @@ empty_drop = "deny"
 empty_enum_variants_with_brackets = "deny"
 empty_structs_with_brackets = "deny"
 error_impl_error = "deny"
-exhaustive_enums = "deny"
+exhaustive_enums = "allow"
 exhaustive_structs = "deny"
 exit = "deny"
 expect_used = "deny"

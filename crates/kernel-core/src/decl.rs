@@ -98,10 +98,6 @@ impl LevelSignature
 /// (the [`crate::term`] caveat); consuming code that needs structural agreement
 /// across arenas re-encodes or walks explicitly.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's declaration vocabulary is closed by design (kernel-boundary.md §3)"
-)]
 pub enum DeclarationContent
 {
     /// A typed definition: a declared value-type root and a fully-elaborated

@@ -90,10 +90,6 @@ impl Not for OrderComparison
 
 /// What bounds the left level's constant part within the right level.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the evidence vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum ConstantBound
 {
     /// The right level's own constant part dominates it.

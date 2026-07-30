@@ -59,10 +59,6 @@ use crate::types::ValueType;
 
 /// Whether two types or two terms are convertible (definitionally equal).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "conversion is a two-valued judgment by design"
-)]
 pub enum Convertibility
 {
     /// The two are definitionally equal.
@@ -288,10 +284,6 @@ pub fn convert_comp_type(
 ///   `Distinct`).
 /// - panics: none.
 #[inline]
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of the two borrowed type nodes against value patterns; every binding is a shared reference by intent"
-)]
 fn converge_types(
     arena: &TermArena,
     initial: TypeGoal,
@@ -310,39 +302,42 @@ fn converge_types(
                     return Convertibility::Distinct;
                 };
                 match (left, right) {
-                    | (ValueType::Base(one), ValueType::Base(other)) => {
+                    | (&ValueType::Base(ref one), &ValueType::Base(ref other)) => {
                         if one != other {
                             return Convertibility::Distinct;
                         }
                     },
-                    | (ValueType::Unit, ValueType::Unit) => {},
+                    | (&ValueType::Unit, &ValueType::Unit) => {},
                     | (
-                        ValueType::Product(one_first, one_second),
-                        ValueType::Product(other_first, other_second),
+                        &ValueType::Product(ref one_first, ref one_second),
+                        &ValueType::Product(ref other_first, ref other_second),
                     )
                     | (
-                        ValueType::Sum(one_first, one_second),
-                        ValueType::Sum(other_first, other_second),
+                        &ValueType::Sum(ref one_first, ref one_second),
+                        &ValueType::Sum(ref other_first, ref other_second),
                     ) => {
                         stack.push(TypeGoal::Value(*one_first, *other_first));
                         stack.push(TypeGoal::Value(*one_second, *other_second));
                     },
-                    | (ValueType::Thunk(one_body), ValueType::Thunk(other_body)) => {
+                    | (&ValueType::Thunk(ref one_body), &ValueType::Thunk(ref other_body)) => {
                         stack.push(TypeGoal::Comp(*one_body, *other_body));
                     },
-                    | (ValueType::Universe(one_level), ValueType::Universe(other_level)) => {
+                    | (
+                        &ValueType::Universe(ref one_level),
+                        &ValueType::Universe(ref other_level),
+                    ) => {
                         if one_level != other_level {
                             return Convertibility::Distinct;
                         }
                     },
                     | (
-                        ValueType::Lift {
-                            inner: one_inner,
-                            target: one_target,
+                        &ValueType::Lift {
+                            inner: ref one_inner,
+                            target: ref one_target,
                         },
-                        ValueType::Lift {
-                            inner: other_inner,
-                            target: other_target,
+                        &ValueType::Lift {
+                            inner: ref other_inner,
+                            target: ref other_target,
                         },
                     ) => {
                         if one_target != other_target {
@@ -362,17 +357,17 @@ fn converge_types(
                     return Convertibility::Distinct;
                 };
                 match (left, right) {
-                    | (CompType::Returner(one), CompType::Returner(other)) => {
+                    | (&CompType::Returner(ref one), &CompType::Returner(ref other)) => {
                         stack.push(TypeGoal::Value(*one, *other));
                     },
                     | (
-                        CompType::Arrow {
-                            domain: one_domain,
-                            codomain: one_codomain,
+                        &CompType::Arrow {
+                            domain: ref one_domain,
+                            codomain: ref one_codomain,
                         },
-                        CompType::Arrow {
-                            domain: other_domain,
-                            codomain: other_codomain,
+                        &CompType::Arrow {
+                            domain: ref other_domain,
+                            codomain: ref other_codomain,
                         },
                     ) => {
                         stack.push(TypeGoal::Value(*one_domain, *other_domain));
@@ -398,10 +393,6 @@ fn converge_types(
 /// - fails: never (a dangling id ⇒ `Distinct`).
 /// - panics: none.
 #[inline]
-#[expect(
-    clippy::pattern_type_mismatch,
-    reason = "ergonomic matching of the two borrowed term nodes against value patterns; every binding is a shared reference by intent"
-)]
 fn converge_terms(
     arena: &TermArena,
     initial: TermGoal,
@@ -420,10 +411,10 @@ fn converge_terms(
                     return Convertibility::Distinct;
                 };
                 match (left, right) {
-                    | (Value::Variable(_), Value::Variable(_))
-                    | (Value::Constant(_), Value::Constant(_))
-                    | (Value::Unit, Value::Unit)
-                    | (Value::Literal(_), Value::Literal(_)) => {
+                    | (&Value::Variable(_), &Value::Variable(_))
+                    | (&Value::Constant(_), &Value::Constant(_))
+                    | (&Value::Unit, &Value::Unit)
+                    | (&Value::Literal(_), &Value::Literal(_)) => {
                         // Leaf values convert by direct equality on the inline
                         // payload (leaves have no id children — the derived-
                         // equality caveat does not apply here).
@@ -432,32 +423,32 @@ fn converge_terms(
                         }
                     },
                     | (
-                        Value::Pair(one_first, one_second),
-                        Value::Pair(other_first, other_second),
+                        &Value::Pair(ref one_first, ref one_second),
+                        &Value::Pair(ref other_first, ref other_second),
                     ) => {
                         stack.push(TermGoal::Value(*one_first, *other_first));
                         stack.push(TermGoal::Value(*one_second, *other_second));
                     },
                     | (
-                        Value::Injection(one_side, one_body),
-                        Value::Injection(other_side, other_body),
+                        &Value::Injection(ref one_side, ref one_body),
+                        &Value::Injection(ref other_side, ref other_body),
                     ) => {
                         if one_side != other_side {
                             return Convertibility::Distinct;
                         }
                         stack.push(TermGoal::Value(*one_body, *other_body));
                     },
-                    | (Value::Thunk(one_body), Value::Thunk(other_body)) => {
+                    | (&Value::Thunk(ref one_body), &Value::Thunk(ref other_body)) => {
                         stack.push(TermGoal::Comp(*one_body, *other_body));
                     },
                     | (
-                        Value::Lift {
-                            target: one_target,
-                            body: one_body,
+                        &Value::Lift {
+                            target: ref one_target,
+                            body: ref one_body,
                         },
-                        Value::Lift {
-                            target: other_target,
-                            body: other_body,
+                        &Value::Lift {
+                            target: ref other_target,
+                            body: ref other_body,
                         },
                     ) => {
                         if one_target != other_target {
@@ -477,37 +468,40 @@ fn converge_terms(
                     return Convertibility::Distinct;
                 };
                 match (left, right) {
-                    | (Computation::Lambda(one_body), Computation::Lambda(other_body)) => {
+                    | (
+                        &Computation::Lambda(ref one_body),
+                        &Computation::Lambda(ref other_body),
+                    ) => {
                         stack.push(TermGoal::Comp(*one_body, *other_body));
                     },
                     | (
-                        Computation::Application(one_head, one_arg),
-                        Computation::Application(other_head, other_arg),
+                        &Computation::Application(ref one_head, ref one_arg),
+                        &Computation::Application(ref other_head, ref other_arg),
                     ) => {
                         stack.push(TermGoal::Comp(*one_head, *other_head));
                         stack.push(TermGoal::Value(*one_arg, *other_arg));
                     },
-                    | (Computation::Return(one), Computation::Return(other))
-                    | (Computation::Force(one), Computation::Force(other)) => {
+                    | (&Computation::Return(ref one), &Computation::Return(ref other))
+                    | (&Computation::Force(ref one), &Computation::Force(ref other)) => {
                         stack.push(TermGoal::Value(*one, *other));
                     },
                     | (
-                        Computation::Bind(one_bound, one_body),
-                        Computation::Bind(other_bound, other_body),
+                        &Computation::Bind(ref one_bound, ref one_body),
+                        &Computation::Bind(ref other_bound, ref other_body),
                     ) => {
                         stack.push(TermGoal::Comp(*one_bound, *other_bound));
                         stack.push(TermGoal::Comp(*one_body, *other_body));
                     },
                     | (
-                        Computation::Case {
-                            scrutinee: one_scrutinee,
-                            on_left: one_left,
-                            on_right: one_right,
+                        &Computation::Case {
+                            scrutinee: ref one_scrutinee,
+                            on_left: ref one_left,
+                            on_right: ref one_right,
                         },
-                        Computation::Case {
-                            scrutinee: other_scrutinee,
-                            on_left: other_left,
-                            on_right: other_right,
+                        &Computation::Case {
+                            scrutinee: ref other_scrutinee,
+                            on_left: ref other_left,
+                            on_right: ref other_right,
                         },
                     ) => {
                         stack.push(TermGoal::Value(*one_scrutinee, *other_scrutinee));

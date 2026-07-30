@@ -779,10 +779,6 @@ fn family_at(
 /// Decode one subterm-table entry: enforce the table cap, read its tag, inline
 /// payload, and strictly-earlier polarity-correct child indices, mint it into
 /// the arena, and record its family and children.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the flat entry decoder enumerates every NODE_* former in one match; splitting it would obscure the single validated mint"
-)]
 fn decode_entry(
     reader: &mut ByteReader<'_>,
     table: &mut Table,
