@@ -1434,15 +1434,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &custom_pass.cargo_args,
-        [
-            "--workspace",
-            "--exclude",
-            "gandr-workflow-gates",
-            "--exclude",
-            "gandr-workflow-dylint",
-            "--all-targets",
-            "--features=full",
-        ],
+        ["--workspace", "--all-targets", "--features=full"],
         "project-local Dylint pass package scope changed",
     );
 
@@ -1454,15 +1446,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &upstream_pass.cargo_args,
-        [
-            "--workspace",
-            "--exclude",
-            "gandr-workflow-gates",
-            "--exclude",
-            "gandr-workflow-dylint",
-            "--all-targets",
-            "--features=full",
-        ],
+        ["--workspace", "--all-targets", "--features=full"],
         "ordinary upstream Dylint pass package scope changed",
     );
 
@@ -1477,15 +1461,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &non_local_pass.cargo_args,
-        [
-            "--workspace",
-            "--exclude",
-            "gandr-workflow-gates",
-            "--exclude",
-            "gandr-workflow-dylint",
-            "--all-targets",
-            "--features=full",
-        ],
+        ["--workspace", "--all-targets", "--features=full"],
         "non-local-effect Dylint pass package scope changed",
     );
 
@@ -1496,19 +1472,8 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &crate_wide_pass.cargo_args,
-        [
-            "--workspace",
-            "--exclude",
-            "gandr-workflow-gates",
-            "--exclude",
-            "gandr-workflow-dylint",
-            "--lib",
-            "--bins",
-            "--benches",
-            "--examples",
-            "--features=full",
-        ],
-        "crate-wide-allow Dylint pass must omit test targets",
+        ["--workspace", "--all-targets", "--features=full"],
+        "crate-wide-allow Dylint pass must cover every target kind",
     );
 
     assert_string_sequence(
@@ -1518,15 +1483,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &register_lints_pass.cargo_args,
-        [
-            "--workspace",
-            "--exclude",
-            "gandr-workflow-gates",
-            "--exclude",
-            "gandr-workflow-dylint",
-            "--all-targets",
-            "--features=full",
-        ],
+        ["--workspace", "--all-targets", "--features=full"],
         "register-lints-warn Dylint pass package scope changed",
     );
 
