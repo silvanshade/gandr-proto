@@ -15,13 +15,6 @@ autotests = false
 name = "lib"
 path = "tests/lib.rs"
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 # TCB dependency wall (kernel-boundary.md section 2): a gandr-kernel-* crate
 # depends only on other gandr-kernel-* crates and core/alloc. Dev-dependencies
 # are exempt -- test code is not shipped trust.
@@ -30,3 +23,10 @@ gandr-kernel-strata.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

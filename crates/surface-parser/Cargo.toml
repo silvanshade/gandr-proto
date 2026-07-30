@@ -15,13 +15,6 @@ autotests = false
 name = "parser"
 path = "tests/lib.rs"
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 [dependencies]
 # The checked precedence-bounded grammar: the `Pbg`, its rules and molds, and
 # the `built_in` surface grammar the melder pushes over. It re-exports the
@@ -34,3 +27,10 @@ gandr-surface-syntax.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

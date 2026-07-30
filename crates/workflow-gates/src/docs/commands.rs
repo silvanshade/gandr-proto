@@ -651,7 +651,9 @@ fn readable_rumdl_path<'path>(
 }
 
 /// Return the retained conflict-marker prefix found at the start of `line`.
-fn conflict_marker_line<'semantic, Line>(line: Line) -> impl Into<OptionalConflictMarkerLineText<'static>>
+fn conflict_marker_line<'semantic, Line>(
+    line: Line
+) -> impl Into<OptionalConflictMarkerLineText<'static>>
 where
     Line: Into<LineText<'semantic>>,
 {

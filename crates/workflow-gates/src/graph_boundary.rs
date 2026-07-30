@@ -1200,8 +1200,7 @@ fn collect_use_tree_roots<'semantic, R>(
     inherited_root: R,
     aliases: &AliasContext,
     roots: &mut BTreeSet<String>,
-)
-where
+) where
     R: Into<OptionalInheritedRootText<'semantic>>,
 {
     let mut work = vec![UseTreeWork {
@@ -1273,8 +1272,7 @@ fn emit_roots<'semantic, K, G, P, D, E>(
     path: P,
     declaration: D,
     detail: E,
-)
-where
+) where
     K: Into<KindText<'semantic>>,
     G: Into<PackageText<'semantic>>,
     P: Into<PathText<'semantic>>,
@@ -1447,8 +1445,7 @@ fn outside_source_findings<'semantic, P>(
     source_path: &Path,
     syntax: &syn::File,
     findings: &mut Vec<Finding>,
-)
-where
+) where
     P: Into<PackageText<'semantic>>,
 {
     let package = package.into().0;
@@ -1988,8 +1985,7 @@ impl<'aliases> GraphStackVisitor<'aliases>
         &mut self,
         generics: &syn::Generics,
         visit: V,
-    )
-    where
+    ) where
         V: FnOnce(&mut Self),
     {
         let previous_local_types = self.local_types.clone();

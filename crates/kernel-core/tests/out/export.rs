@@ -978,9 +978,7 @@ mod tests
         let depth = usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros().saturating_sub(2))
             .expect("the depth fits");
         let shift = u32::try_from(depth.saturating_add(1)).expect("the shift fits in u32");
-        let contribution = 1_u64
-            .checked_shl(shift)
-            .expect("the shift is in range"); // = MAX_EXPANDED_TERM_WORK / 2
+        let contribution = 1_u64.checked_shl(shift).expect("the shift is in range"); // = MAX_EXPANDED_TERM_WORK / 2
         let count = usize::try_from(MAX_ARTIFACT_EXPANDED_WORK.div_euclid(contribution))
             .expect("count fits");
         // Just at the cap: accepts (the artifact arm rejects strictly over).

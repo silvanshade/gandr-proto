@@ -1037,9 +1037,7 @@ where
 }
 
 /// Parse a section header when a line is a header.
-fn parse_section_header<'semantic, L>(
-    line: L,
-) -> Result<Option<TomlSection>, TomlParseError>
+fn parse_section_header<'semantic, L>(line: L) -> Result<Option<TomlSection>, TomlParseError>
 where
     L: Into<LineText<'semantic>>,
 {
@@ -1065,9 +1063,7 @@ where
 }
 
 /// Parse one key-value line.
-fn parse_key_value<'semantic, L>(
-    line: L,
-) -> Result<(String, RawTomlValue), TomlParseError>
+fn parse_key_value<'semantic, L>(line: L) -> Result<(String, RawTomlValue), TomlParseError>
 where
     L: Into<LineText<'semantic>>,
 {
@@ -1273,7 +1269,10 @@ where
 }
 
 /// Build the stable floor range diagnostic.
-fn floor_between_error<'semantic, F>(file: F, target_percent: Percent) -> GateError
+fn floor_between_error<'semantic, F>(
+    file: F,
+    target_percent: Percent,
+) -> GateError
 where
     F: Into<FileText<'semantic>>,
 {

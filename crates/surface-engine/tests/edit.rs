@@ -107,11 +107,14 @@ mod tests
                 | EqNode::Value(&Value::Hole(_), &Value::Hole(_))
                 | EqNode::Value(&Value::Unit, &Value::Unit)
                 | EqNode::Comp(&Comp::Hole(_), &Comp::Hole(_)) => {},
-                | EqNode::Value(&Value::Var(ref left), &Value::Var(ref right)) if left == right => {},
+                | EqNode::Value(&Value::Var(ref left), &Value::Var(ref right)) if left == right => {
+                },
                 | EqNode::Value(&Value::Int(left), &Value::Int(right)) if left == right => {},
-                | EqNode::Value(&Value::Str(ref left), &Value::Str(ref right)) if left == right => {},
+                | EqNode::Value(&Value::Str(ref left), &Value::Str(ref right)) if left == right => {
+                },
                 | EqNode::Value(&Value::Num(left), &Value::Num(right)) if left == right => {},
-                | EqNode::Value(&Value::Stk(ref left), &Value::Stk(ref right)) if left == right => {},
+                | EqNode::Value(&Value::Stk(ref left), &Value::Stk(ref right)) if left == right => {
+                },
                 | EqNode::Value(
                     &Value::Pair(ref left_fst, ref left_snd),
                     &Value::Pair(ref right_fst, ref right_snd),

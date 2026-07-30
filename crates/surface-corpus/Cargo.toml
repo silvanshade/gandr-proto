@@ -19,6 +19,13 @@ autotests = false
 name = "corpus"
 path = "tests/lib.rs"
 
+[dependencies]
+gandr-core-checker.workspace = true
+gandr-core-sequent.workspace = true
+gandr-runtime-host.workspace = true
+gandr-surface-engine.workspace = true
+gandr-theory-levitation.workspace = true
+
 [features]
 default = []
 # The fixtures remain frozen and hash-checked, but native FFI execution stays
@@ -32,10 +39,3 @@ regex = [
 
 [lints]
 workspace = true
-
-[dependencies]
-gandr-core-checker.workspace = true
-gandr-core-sequent.workspace = true
-gandr-runtime-host.workspace = true
-gandr-surface-engine.workspace = true
-gandr-theory-levitation.workspace = true

@@ -15,18 +15,6 @@ autotests = false
 name = "engine"
 path = "tests/lib.rs"
 
-[features]
-default = []
-codecs = ["dep:serde", "dep:serde_json"]
-full = ["codecs", "regex"]
-regex = [
-  "gandr-core-checker/gandr_feat_regex",
-  "gandr-core-sequent/gandr_feat_regex",
-]
-
-[lints]
-workspace = true
-
 [dependencies]
 gandr-core-checker.workspace = true
 gandr-core-sequent.workspace = true
@@ -45,3 +33,15 @@ thiserror.workspace = true
 [dev-dependencies]
 gandr-core-checker = { workspace = true, features = ["gandr_test_strategies"] }
 proptest.workspace = true
+
+[features]
+default = []
+codecs = ["dep:serde", "dep:serde_json"]
+full = ["codecs", "regex"]
+regex = [
+  "gandr-core-checker/gandr_feat_regex",
+  "gandr-core-sequent/gandr_feat_regex",
+]
+
+[lints]
+workspace = true

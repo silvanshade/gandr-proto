@@ -15,19 +15,6 @@ autotests = false
 name = "lib"
 path = "tests/lib.rs"
 
-[features]
-default = []
-full = ["gandr_feat_regex"]
-# Regex-backed builtins (`regex.extract`, `string.escape`); pulls in the
-# workspace `regex`. Off by default.
-gandr_feat_regex = ["dep:regex"]
-# Expose `strategies` (the free proptest generators) to other crates; off by
-# default so the normal dependency graph and `cargo build` are unaffected.
-gandr_test_strategies = ["dep:proptest"]
-
-[lints]
-workspace = true
-
 [dependencies]
 # The minimal certified kernel's S1 core (kernel-boundary.md §2). The B2.3
 # bridge lowers checked core CBPV forms into the closed S1 vocabulary; this
@@ -52,3 +39,16 @@ thiserror.workspace = true
 # conformance suite under a bare `cargo test` (feature off), while the optional
 # regular dep above is what an external consumer pulls in via the feature.
 proptest.workspace = true
+
+[features]
+default = []
+full = ["gandr_feat_regex"]
+# Regex-backed builtins (`regex.extract`, `string.escape`); pulls in the
+# workspace `regex`. Off by default.
+gandr_feat_regex = ["dep:regex"]
+# Expose `strategies` (the free proptest generators) to other crates; off by
+# default so the normal dependency graph and `cargo build` are unaffected.
+gandr_test_strategies = ["dep:proptest"]
+
+[lints]
+workspace = true

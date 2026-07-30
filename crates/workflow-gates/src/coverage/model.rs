@@ -172,7 +172,10 @@ impl Percent
     ///   near-boundary ratios kill division, scaling, and floor mutants.
     /// - witness: `coverage::model::tests::percent_floors_down_without_float_math`
     #[inline]
-    pub(super) fn from_counts<C, N>(covered: C, count: N) -> Result<Self, PercentParseError>
+    pub(super) fn from_counts<C, N>(
+        covered: C,
+        count: N,
+    ) -> Result<Self, PercentParseError>
     where
         C: Into<CoveredCount>,
         N: Into<CountCount>,
@@ -318,7 +321,7 @@ impl DecimalLiteral
 
 /// Parse an unsigned decimal digit run.
 fn parse_decimal_digits<'semantic, T>(
-    text: T,
+    text: T
 ) -> Result<impl Into<ParseDecimalDigitsCount>, PercentParseError>
 where
     T: Into<TextText<'semantic>>,
@@ -342,9 +345,7 @@ where
 }
 
 /// Parse the fractional side of a decimal percent token.
-fn parse_fraction_hundredths<'semantic, T>(
-    text: T,
-) -> Result<FractionHundredths, PercentParseError>
+fn parse_fraction_hundredths<'semantic, T>(text: T) -> Result<FractionHundredths, PercentParseError>
 where
     T: Into<TextText<'semantic>>,
 {

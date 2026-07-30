@@ -16,6 +16,14 @@ autotests = false
 name = "lib"
 path = "tests/lib.rs"
 
+[dependencies]
+blake3.workspace = true
+gandr-storage-chunker.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+bao.workspace = true
+
 [features]
 default = ["proofs"]
 # Gates the membership / non-membership / range proof machinery and the native
@@ -26,11 +34,3 @@ proofs = []
 
 [lints]
 workspace = true
-
-[dependencies]
-gandr-storage-chunker.workspace = true
-blake3.workspace = true
-thiserror.workspace = true
-
-[dev-dependencies]
-bao.workspace = true

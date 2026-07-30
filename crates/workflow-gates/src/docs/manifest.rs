@@ -575,7 +575,9 @@ fn manifest_parent(manifest_path: &Path) -> PathBuf
 /// - provides: a parser-side guard against absolute and current-directory
 ///   entries before filesystem reads occur.
 /// - panics: none.
-fn manifest_path_is_corpus_relative<'semantic, Raw>(raw: Raw) -> impl Into<ManifestPathIsCorpusRelativeFlag>
+fn manifest_path_is_corpus_relative<'semantic, Raw>(
+    raw: Raw
+) -> impl Into<ManifestPathIsCorpusRelativeFlag>
 where
     Raw: Into<RawText<'semantic>>,
 {
@@ -1129,8 +1131,7 @@ mod tests
     fn assert_manifest_error_contains<'semantic, Expected>(
         result: Result<ManifestContext, GateError>,
         expected: Expected,
-    )
-    where
+    ) where
         Expected: Into<ExpectedText<'semantic>>,
     {
         let expected = expected.into().0;

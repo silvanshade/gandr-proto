@@ -205,10 +205,7 @@ fn validate_name(
 }
 
 /// Converts one lowered item into the computation the outer file bind will run.
-///
-fn item_comp(
-    item: &LoweredItem,
-) -> Comp
+fn item_comp(item: &LoweredItem) -> Comp
 {
     term_to_comp(&item.term, item.ascription.as_ref())
 }
@@ -249,9 +246,7 @@ fn comp_to_comp(
     match ascription {
         | None => comp,
         | Some(&Ty::Comp(ref comp_ty)) => ascribe_comp(comp, comp_ty.clone()),
-        | Some(&Ty::Value(ref value_ty)) if comp_payload_has_ascription(&comp, value_ty).0 => {
-            comp
-        },
+        | Some(&Ty::Value(ref value_ty)) if comp_payload_has_ascription(&comp, value_ty).0 => comp,
         | Some(&Ty::Value(ref value_ty)) => ascribe_comp_payload(comp, value_ty.clone()),
     }
 }

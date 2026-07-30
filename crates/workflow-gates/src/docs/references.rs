@@ -476,8 +476,7 @@ where
 fn push_unique_text<'semantic, Candidate>(
     values: &mut Vec<String>,
     candidate: Candidate,
-)
-where
+) where
     Candidate: Into<CandidateText<'semantic>>,
 {
     let candidate = candidate.into().0;

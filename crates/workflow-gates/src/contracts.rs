@@ -699,9 +699,7 @@ where
 }
 
 /// Return whether a mise task token is literal and repository-addressable.
-fn is_static_mise_task<'semantic, Task>(
-    task: Task
-) -> impl Into<StaticMiseTaskFlag>
+fn is_static_mise_task<'semantic, Task>(task: Task) -> impl Into<StaticMiseTaskFlag>
 where
     Task: Into<TaskText<'semantic>>,
 {
@@ -740,9 +738,7 @@ where
 
 /// Inspect executable command positions without mistaking arguments, quoted
 /// text, cache paths, or shell-array values for commands.
-fn classify_shell_line<'semantic, Line>(
-    line: Line
-) -> Option<ProhibitedInvocation<'semantic>>
+fn classify_shell_line<'semantic, Line>(line: Line) -> Option<ProhibitedInvocation<'semantic>>
 where
     Line: Into<LineText<'semantic>>,
 {
@@ -1042,9 +1038,7 @@ where
 }
 
 /// Return a dynamic-dispatch finding for an uninspectable shell construct.
-fn dynamic_invocation<'semantic, Segment>(
-    segment: Segment
-) -> ProhibitedInvocation<'semantic>
+fn dynamic_invocation<'semantic, Segment>(segment: Segment) -> ProhibitedInvocation<'semantic>
 where
     Segment: Into<SegmentText<'semantic>>,
 {
@@ -1080,9 +1074,7 @@ fn is_shell_function_definition(words: &[WordText<'_>]) -> impl Into<ShellFuncti
 }
 
 /// Return whether text is a literal shell identifier.
-fn is_shell_identifier<'semantic, Text>(
-    text: Text
-) -> impl Into<ShellIdentifierFlag>
+fn is_shell_identifier<'semantic, Text>(text: Text) -> impl Into<ShellIdentifierFlag>
 where
     Text: Into<TextText<'semantic>>,
 {
@@ -1196,9 +1188,7 @@ where
 }
 
 /// Trim lightweight shell grouping and quoting punctuation from a word.
-fn normalize_shell_word<'semantic, Word>(
-    word: Word
-) -> impl Into<NormalizeShellWordText<'semantic>>
+fn normalize_shell_word<'semantic, Word>(word: Word) -> impl Into<NormalizeShellWordText<'semantic>>
 where
     Word: Into<WordText<'semantic>>,
 {
@@ -1219,9 +1209,7 @@ where
 }
 
 /// Return whether a word is an environment assignment prefix.
-fn is_environment_assignment<'semantic, Word>(
-    word: Word
-) -> impl Into<EnvironmentAssignmentFlag>
+fn is_environment_assignment<'semantic, Word>(word: Word) -> impl Into<EnvironmentAssignmentFlag>
 where
     Word: Into<WordText<'semantic>>,
 {
@@ -1242,9 +1230,7 @@ where
 }
 
 /// Return whether a shell word is control syntax rather than a command.
-fn is_shell_control_word<'semantic, Word>(
-    word: Word
-) -> impl Into<ShellControlWordFlag>
+fn is_shell_control_word<'semantic, Word>(word: Word) -> impl Into<ShellControlWordFlag>
 where
     Word: Into<WordText<'semantic>>,
 {
@@ -1256,9 +1242,7 @@ where
 }
 
 /// Return whether a shell word wraps the next command without changing it.
-fn is_wrapper_command<'semantic, Word>(
-    word: Word
-) -> impl Into<WrapperCommandFlag>
+fn is_wrapper_command<'semantic, Word>(word: Word) -> impl Into<WrapperCommandFlag>
 where
     Word: Into<WordText<'semantic>>,
 {
@@ -1769,9 +1753,7 @@ where
 }
 
 /// Return the text of a top-level ATX markdown heading.
-fn heading_text<'semantic, Line>(
-    line: Line
-) -> impl Into<OptionalHeadingTextText<'semantic>>
+fn heading_text<'semantic, Line>(line: Line) -> impl Into<OptionalHeadingTextText<'semantic>>
 where
     Line: Into<LineText<'semantic>>,
 {
@@ -1783,9 +1765,7 @@ where
 }
 
 /// Return the level and text of an ATX markdown heading.
-fn heading_level_text<'semantic, Line>(
-    line: Line
-) -> Option<ParsedHeading<'semantic>>
+fn heading_level_text<'semantic, Line>(line: Line) -> Option<ParsedHeading<'semantic>>
 where
     Line: Into<LineText<'semantic>>,
 {
@@ -1884,9 +1864,7 @@ where
 }
 
 /// Return the fixed order of a known `# Contract` clause.
-fn contract_clause_order<'semantic, Name>(
-    name: Name
-) -> impl Into<OptionalContractClauseOrderCount>
+fn contract_clause_order<'semantic, Name>(name: Name) -> impl Into<OptionalContractClauseOrderCount>
 where
     Name: Into<NameText<'semantic>>,
 {
@@ -1904,9 +1882,7 @@ where
 }
 
 /// Return whether a doc line is an explicitly indented continuation.
-fn is_indented_continuation<'semantic, Line>(
-    line: Line
-) -> impl Into<IndentedContinuationFlag>
+fn is_indented_continuation<'semantic, Line>(line: Line) -> impl Into<IndentedContinuationFlag>
 where
     Line: Into<LineText<'semantic>>,
 {
@@ -1941,9 +1917,7 @@ where
 }
 
 /// Extract an exact witness bullet target.
-fn exact_witness<'semantic, Line>(
-    line: Line
-) -> impl Into<OptionalExactWitnessText<'semantic>>
+fn exact_witness<'semantic, Line>(line: Line) -> impl Into<OptionalExactWitnessText<'semantic>>
 where
     Line: Into<LineText<'semantic>>,
 {
@@ -1958,9 +1932,7 @@ where
 }
 
 /// Return whether a line is intended as a witness but is not exact syntax.
-fn looks_witness_like<'semantic, Line>(
-    line: Line
-) -> impl Into<LooksWitnessLikeFlag>
+fn looks_witness_like<'semantic, Line>(line: Line) -> impl Into<LooksWitnessLikeFlag>
 where
     Line: Into<LineText<'semantic>>,
 {
@@ -2362,8 +2334,8 @@ enum WitnessTraversalFrame<'value>
 /// - reason: each loop validates one testcase record or existing nested
 ///   testcase record.
 /// - measure: unvisited JSON testcase collection nodes.
-/// - boundedness: `serde_json` stores a finite tree parsed from one nextest JSON
-///   payload.
+/// - boundedness: `serde_json` stores a finite tree parsed from one nextest
+///   JSON payload.
 /// - input recursion: none.
 fn validate_testcase_collection(value: &Value) -> Result<(), GateError>
 {
@@ -2468,8 +2440,7 @@ fn collect_witnesses<'semantic, Package, CrateName, IsTestcaseContext>(
     crate_name: CrateName,
     is_testcase_context: IsTestcaseContext,
     witnesses: &mut BTreeSet<String>,
-)
-where
+) where
     Package: Into<OptionalPackageText<'semantic>>,
     CrateName: Into<OptionalCrateNameText<'semantic>>,
     IsTestcaseContext: Into<IsTestcaseContextFlag>,
@@ -2554,7 +2525,13 @@ fn collect_witness_frames(
                 package,
                 crate_name,
             } => {
-                push_testcase_collection_frames(value, package.as_deref(), crate_name.as_deref(), witnesses, &mut frames);
+                push_testcase_collection_frames(
+                    value,
+                    package.as_deref(),
+                    crate_name.as_deref(),
+                    witnesses,
+                    &mut frames,
+                );
             },
         }
     }
@@ -2683,8 +2660,7 @@ fn insert_aliases<'semantic, Name, Package, CrateName>(
     name: Name,
     package: Package,
     crate_name: CrateName,
-)
-where
+) where
     Name: Into<NameText<'semantic>>,
     Package: Into<OptionalPackageText<'semantic>>,
     CrateName: Into<OptionalCrateNameText<'semantic>>,

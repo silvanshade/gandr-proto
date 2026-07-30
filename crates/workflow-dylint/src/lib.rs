@@ -204,7 +204,8 @@ struct FunctionNode
 {
     /// The function's whole-item span, used as the diagnostic target.
     span: Span,
-    /// The function's stable rustc def-path string, used for deterministic SCC ordering.
+    /// The function's stable rustc def-path string, used for deterministic SCC
+    /// ordering.
     path: String,
     /// The HIR id of the function body expression root.
     body_hir_id: HirId,
@@ -341,7 +342,8 @@ fn has_transparent_repr(
     item: &Item<'_>,
 ) -> bool
 {
-    matches!(item.kind, ItemKind::Struct(..)) && cx.tcx.adt_def(item.owner_id.def_id).repr().transparent()
+    matches!(item.kind, ItemKind::Struct(..))
+        && cx.tcx.adt_def(item.owner_id.def_id).repr().transparent()
 }
 
 /// Return whether `def_id` is a method implementing a non-local trait.
@@ -1211,7 +1213,10 @@ fn semantic_type_args<'tcx>(
 {
     let semantic_ty = normalize_middle_ty(cx, semantic_ty);
     match semantic_ty.kind() {
-        | &rustc_ty::Adt(_, args) => args.iter().filter_map(rustc_ty::GenericArg::as_type).collect(),
+        | &rustc_ty::Adt(_, args) => args
+            .iter()
+            .filter_map(rustc_ty::GenericArg::as_type)
+            .collect(),
         | &rustc_ty::Tuple(types) => types.iter().collect(),
         | _ => Vec::new(),
     }

@@ -20,13 +20,6 @@ path = "tests/lib.rs"
 harness = false
 name = "walk_index"
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 [dependencies]
 # The shared highlight-role vocabulary (`HlRole`/`HlSpan`) the mold highlighter
 # classifies into. The wire codecs stay off (they live behind the non-default
@@ -39,8 +32,15 @@ gandr-surface-syntax.workspace = true
 gandr-theory-graphs.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
 # DEV-ONLY, and only ever dev-only: the parser depends on the grammar, so the
 # reverse edge is the deliberate cycle-break — it exists solely to drive the
 # restored surface-acceptance `contracts` suite (tests/contracts.rs).
 gandr-surface-parser.workspace = true
-criterion.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

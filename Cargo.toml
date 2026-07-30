@@ -48,6 +48,87 @@ publish = false
 # Every workspace member is declared once here; member crates reference these
 # entries with `<name>.workspace = true` instead of crate-local `path =` pins.
 
+[workspace.dependencies.afl]
+version = "=0.18.2"
+default-features = false
+
+# Bao verified-streaming codec (BLAKE3 Merkle tree) — a storage-tier interop
+# comparator exercised only by the prolly-trees contract suite.
+# consumers:
+# - gandr-storage-prolly-trees (dev)
+[workspace.dependencies.bao]
+version = "0.13.1"
+default-features = false
+
+# BLAKE3 hashing for content and manifest digests.
+# consumers:
+# - gandr-core-sequent (dev)
+# - gandr-storage-artifact
+# - gandr-storage-prolly-trees
+# - gandr-workflow-gates
+[workspace.dependencies.blake3]
+version = "1.8.5"
+default-features = false
+features = ["std"]
+
+[workspace.dependencies.cc]
+version = "1.2.62"
+default-features = false
+
+# clippy's lint-authoring utility library (git-pinned to match the workspace
+# nightly's rustc_private API).
+# consumers:
+# - gandr-workflow-dylint
+[workspace.dependencies.clippy_utils]
+git = "https://github.com/rust-lang/rust-clippy"
+rev = "b2ae739f17134c08c1469989c105c752baf24c4f"
+
+[workspace.dependencies.color-eyre]
+version = "0.6.5"
+default-features = false
+
+# Benchmark harness.
+# consumers:
+# - gandr-surface-grammar (dev)
+# - gandr-theory-orders (dev)
+# - gandr-workflow-gates (dev)
+[workspace.dependencies.criterion]
+version = "0.8.2"
+default-features = false
+features = ["cargo_bench_support"]
+
+[workspace.dependencies.crossterm]
+version = "0.29.0"
+default-features = false
+features = ["bracketed-paste"]
+
+# Dylint lint-library authoring runtime.
+# consumers:
+# - gandr-workflow-dylint
+[workspace.dependencies.dylint_linting]
+version = "6.0.1"
+
+# Dylint UI test harness (compiletest `.stderr` fixtures).
+# consumers:
+# - gandr-workflow-dylint (dev)
+[workspace.dependencies.dylint_testing]
+version = "6.0.1"
+
+# Multiline editor widget (`gandr-tui`): the one maintained ratatui editor with
+# an external span-injection API (`set_highlights`), which our highlighting
+# requires. Default features are dropped to keep syntect (its built-in
+# highlighter) and the clipboard stack out of the tree.
+[workspace.dependencies.edtui]
+version = "0.11.3"
+default-features = false
+
+# Fixed-size bit set backing petgraph's graph storage.
+# consumers:
+# - gandr-theory-graphs
+[workspace.dependencies.fixedbitset]
+version = "0.5.7"
+default-features = false
+
 # The gandr toolchain driver (REPL, script runner, subcommand namespace).
 # consumers: none (binary root)
 [workspace.dependencies.gandr]
@@ -218,87 +299,6 @@ path = "crates/workflow-dylint"
 path = "crates/workflow-gates"
 
 # ── external crates (lexicographic) ────────────────────────────────────────
-
-[workspace.dependencies.afl]
-version = "=0.18.2"
-default-features = false
-
-# Bao verified-streaming codec (BLAKE3 Merkle tree) — a storage-tier interop
-# comparator exercised only by the prolly-trees contract suite.
-# consumers:
-# - gandr-storage-prolly-trees (dev)
-[workspace.dependencies.bao]
-version = "0.13.1"
-default-features = false
-
-# BLAKE3 hashing for content and manifest digests.
-# consumers:
-# - gandr-core-sequent (dev)
-# - gandr-storage-artifact
-# - gandr-storage-prolly-trees
-# - gandr-workflow-gates
-[workspace.dependencies.blake3]
-version = "1.8.5"
-default-features = false
-features = ["std"]
-
-[workspace.dependencies.cc]
-version = "1.2.62"
-default-features = false
-
-# clippy's lint-authoring utility library (git-pinned to match the workspace
-# nightly's rustc_private API).
-# consumers:
-# - gandr-workflow-dylint
-[workspace.dependencies.clippy_utils]
-git = "https://github.com/rust-lang/rust-clippy"
-rev = "b2ae739f17134c08c1469989c105c752baf24c4f"
-
-[workspace.dependencies.color-eyre]
-version = "0.6.5"
-default-features = false
-
-# Benchmark harness.
-# consumers:
-# - gandr-surface-grammar (dev)
-# - gandr-theory-orders (dev)
-# - gandr-workflow-gates (dev)
-[workspace.dependencies.criterion]
-version = "0.8.2"
-default-features = false
-features = ["cargo_bench_support"]
-
-[workspace.dependencies.crossterm]
-version = "0.29.0"
-default-features = false
-features = ["bracketed-paste"]
-
-# Dylint lint-library authoring runtime.
-# consumers:
-# - gandr-workflow-dylint
-[workspace.dependencies.dylint_linting]
-version = "6.0.1"
-
-# Dylint UI test harness (compiletest `.stderr` fixtures).
-# consumers:
-# - gandr-workflow-dylint (dev)
-[workspace.dependencies.dylint_testing]
-version = "6.0.1"
-
-# Multiline editor widget (`gandr-tui`): the one maintained ratatui editor with
-# an external span-injection API (`set_highlights`), which our highlighting
-# requires. Default features are dropped to keep syntect (its built-in
-# highlighter) and the clipboard stack out of the tree.
-[workspace.dependencies.edtui]
-version = "0.11.3"
-default-features = false
-
-# Fixed-size bit set backing petgraph's graph storage.
-# consumers:
-# - gandr-theory-graphs
-[workspace.dependencies.fixedbitset]
-version = "0.5.7"
-default-features = false
 
 # Snapshot assertion testing.
 # consumers:

@@ -15,22 +15,14 @@ autotests = false
 name = "sequent"
 path = "tests/lib.rs"
 
-[features]
-default = []
-full = ["gandr_feat_regex"]
-# Passthrough of core-checker's regex-backed builtins so the ported conformance
-# soundness rows (`tests/conformance_soundness.rs`) can exercise `regex.extract`
-# on the L machine under `--features=full`, exactly as the core-checker
-# conformance suite gated them.
-gandr_feat_regex = ["gandr-core-checker/gandr_feat_regex"]
-
-[lints]
-workspace = true
-
 [dependencies]
 gandr-core-checker.workspace = true
 
 [dev-dependencies]
+# BLAKE3 digests the corpus `.sexp` fixtures for the outcome-snapshot sweep's
+# provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
+# provenance convention the pre-lowered corpus fixtures already carry.
+blake3.workspace = true
 # The S1 kernel (kernel-boundary.md §2): the B2.3 corpus partition sweep
 # (`tests/kernel_corpus_partition.rs`) bridges each corpus item through
 # `gandr-core-checker`'s kernel bridge into this kernel's choke point and export.
@@ -53,8 +45,16 @@ gandr-storage-prolly-trees.workspace = true
 # surface-engine consumes core-sequent at runtime, while core-sequent's own
 # library graph remains acyclic.
 gandr-surface-engine.workspace = true
-# BLAKE3 digests the corpus `.sexp` fixtures for the outcome-snapshot sweep's
-# provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
-# provenance convention the pre-lowered corpus fixtures already carry.
-blake3.workspace = true
 proptest.workspace = true
+
+[features]
+default = []
+full = ["gandr_feat_regex"]
+# Passthrough of core-checker's regex-backed builtins so the ported conformance
+# soundness rows (`tests/conformance_soundness.rs`) can exercise `regex.extract`
+# on the L machine under `--features=full`, exactly as the core-checker
+# conformance suite gated them.
+gandr_feat_regex = ["gandr-core-checker/gandr_feat_regex"]
+
+[lints]
+workspace = true

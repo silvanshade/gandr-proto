@@ -694,8 +694,7 @@ fn append_unregistered_oracle_findings<'semantic, Path>(
     path: Path,
     oracles: &[OracleRecord],
     findings: &mut Vec<Finding>,
-)
-where
+) where
     Path: Into<PathText<'semantic>>,
 {
     let path = path.into().0;
@@ -733,8 +732,7 @@ fn append_no_witness_findings<'semantic, Path>(
     path: Path,
     oracles: &[OracleRecord],
     findings: &mut Vec<Finding>,
-)
-where
+) where
     Path: Into<PathText<'semantic>>,
 {
     let path = path.into().0;
@@ -849,8 +847,7 @@ fn append_bad_witness_findings<'semantic, Path>(
     all_functions: &BTreeSet<String>,
     companions: &BTreeSet<String>,
     findings: &mut Vec<Finding>,
-)
-where
+) where
     Path: Into<PathText<'semantic>>,
 {
     let path = path.into().0;

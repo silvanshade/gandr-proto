@@ -988,7 +988,9 @@ mod tests
             {
                 continue;
             }
-            let replace = decisions.0[cursor.checked_rem(decisions.0.len()).expect("decisions are nonempty")];
+            let replace = decisions.0[cursor
+                .checked_rem(decisions.0.len())
+                .expect("decisions are nonempty")];
             cursor = cursor.saturating_add(1);
             if !replace {
                 continue;

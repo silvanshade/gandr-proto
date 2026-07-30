@@ -22,6 +22,8 @@
 #[cfg(test)]
 mod tests
 {
+    use alloc::collections::BTreeMap;
+    use alloc::collections::BTreeSet;
     use std::fs;
     use std::path::PathBuf;
 
@@ -40,8 +42,6 @@ mod tests
     use gandr_kernel_core::read;
     use gandr_kernel_core::write;
 
-    use alloc::collections::BTreeMap;
-    use alloc::collections::BTreeSet;
     use crate::common::CorpusTree;
     use crate::common::corpus_fixtures_b3sum;
     use crate::common::read_tree;

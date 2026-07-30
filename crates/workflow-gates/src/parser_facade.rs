@@ -491,9 +491,7 @@ where
 
 /// Return the first bounded whitespace token, or an empty token when absent.
 #[cfg(feature = "fuzzing")]
-fn first_token_or_empty<'semantic, Text>(
-    text: Text,
-) -> impl Into<FirstTokenOrEmptyText<'semantic>>
+fn first_token_or_empty<'semantic, Text>(text: Text) -> impl Into<FirstTokenOrEmptyText<'semantic>>
 where
     Text: Into<TextText<'semantic>>,
 {

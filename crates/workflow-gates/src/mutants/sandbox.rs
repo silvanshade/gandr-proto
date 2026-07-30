@@ -1072,7 +1072,7 @@ where
 #[inline]
 #[must_use]
 pub(super) fn diff_touches_rust<'semantic, DiffSource>(
-    diff_source: DiffSource,
+    diff_source: DiffSource
 ) -> impl Into<DiffTouchesRustFlag>
 where
     DiffSource: Into<DiffSourceText<'semantic>>,
@@ -1453,9 +1453,7 @@ where
 ///   for formatting from forbidden campaign host passthrough mounts.
 #[inline]
 #[must_use]
-pub(super) fn format_cache_image_plan<'semantic, ScratchName>(
-    scratch_name: ScratchName,
-) -> MsbPlan
+pub(super) fn format_cache_image_plan<'semantic, ScratchName>(scratch_name: ScratchName) -> MsbPlan
 where
     ScratchName: Into<ScratchNameText<'semantic>>,
 {

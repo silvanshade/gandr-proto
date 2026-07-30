@@ -2059,9 +2059,7 @@ mod tests
     }
 
     /// Write one environment variable in a stable test format.
-    fn print_environment_value<'semantic, K>(
-        key: K
-    ) -> Result<(), Box<dyn Error>>
+    fn print_environment_value<'semantic, K>(key: K) -> Result<(), Box<dyn Error>>
     where
         K: Into<KeyText<'semantic>>,
     {

@@ -15,13 +15,6 @@ autotests = false
 name = "vdc"
 path = "tests/lib.rs"
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 [dependencies]
 gandr-theory-computads.workspace = true
 gandr-theory-levitation.workspace = true
@@ -29,3 +22,10 @@ gandr-theory-levitation.workspace = true
 [dev-dependencies]
 gandr-core-sequent.workspace = true
 proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

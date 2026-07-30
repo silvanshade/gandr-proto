@@ -20,14 +20,6 @@ harness = false
 name = "commands"
 path = "benches/commands.rs"
 
-[features]
-default = []
-full = []
-fuzzing = []
-
-[lints]
-workspace = true
-
 [dependencies]
 blake3 = { workspace = true }
 serde = { workspace = true }
@@ -40,3 +32,11 @@ yaml-rust2 = { workspace = true }
 criterion = { workspace = true }
 insta = { workspace = true }
 proptest = { workspace = true }
+
+[features]
+default = []
+full = []
+fuzzing = []
+
+[lints]
+workspace = true

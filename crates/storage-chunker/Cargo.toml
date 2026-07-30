@@ -16,12 +16,12 @@ autotests = false
 name = "lib"
 path = "tests/lib.rs"
 
+[dependencies]
+
+[dev-dependencies]
+
 [features]
 default = []
 
 [lints]
 workspace = true
-
-[dependencies]
-
-[dev-dependencies]

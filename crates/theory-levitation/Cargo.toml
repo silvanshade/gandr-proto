@@ -15,13 +15,6 @@ autotests = false
 name = "levitation"
 path = "tests/lib.rs"
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 [dependencies]
 # The core value-type + grade vocabulary the description leaves decorate: field
 # codes carry a `gandr_core_checker::grade::Grade` (V5), the erased usage
@@ -30,3 +23,10 @@ gandr-core-checker.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

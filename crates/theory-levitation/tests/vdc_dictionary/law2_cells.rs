@@ -2,11 +2,11 @@
 //! (proposal §3 item 2; PASS on the F0 stand-in derivation model).
 //!
 //! The verdict this law records verifies the **F0 stand-in**
-//! ([`crate::vdc_dictionary::harness`] clause cells + [`replay`]) that L2's `Tracelet` must
-//! inherit: grafting is unital and associative up to replay, and symbolic
-//! grafting agrees with replay-level composition where it is defined. Where a
-//! shape is unsupported symbolically, [`graft`] declines and replay-level
-//! composition still carries the composite.
+//! ([`crate::vdc_dictionary::harness`] clause cells + [`replay`]) that L2's
+//! `Tracelet` must inherit: grafting is unital and associative up to replay,
+//! and symbolic grafting agrees with replay-level composition where it is
+//! defined. Where a shape is unsupported symbolically, [`graft`] declines and
+//! replay-level composition still carries the composite.
 
 #[cfg(test)]
 mod law2

@@ -15,9 +15,6 @@ autotests = false
 name = "lib"
 path = "tests/lib.rs"
 
-[lints]
-workspace = true
-
 [dependencies]
 # Embedded CPython hosting the pgf binding (see pyproject.toml; uv-managed).
 pyo3.workspace = true
@@ -28,3 +25,6 @@ thiserror.workspace = true
 # The raw binding side of the wrapper-parity tests (tests/parity.rs drives
 # each wrapper method against the direct Python API call in-process).
 pyo3.workspace = true
+
+[lints]
+workspace = true

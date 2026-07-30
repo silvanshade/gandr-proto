@@ -494,9 +494,7 @@ where
 }
 
 /// Parse cargo-dylint invocations from a mise task run script.
-fn parse_dylint_invocations<'semantic, Script>(
-    script: Script,
-) -> TestResult<Vec<DylintInvocation>>
+fn parse_dylint_invocations<'semantic, Script>(script: Script) -> TestResult<Vec<DylintInvocation>>
 where
     Script: Into<ScriptText<'semantic>>,
 {
@@ -916,8 +914,10 @@ fn process_stdout_stderr_and_status_are_exact() -> TestResult
     let usage_stderr = String::from_utf8_lossy(&usage_output.stderr);
     assert!(
         usage_stderr.contains(
-            gandr_workflow_gates::semantic_value::<cli::UsageTextText<'static>, _>(cli::usage_text())
-                .as_ref()
+            gandr_workflow_gates::semantic_value::<cli::UsageTextText<'static>, _>(
+                cli::usage_text()
+            )
+            .as_ref()
         )
     );
 

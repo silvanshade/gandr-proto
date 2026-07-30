@@ -362,7 +362,7 @@ where
 #[inline]
 #[must_use]
 pub(crate) fn diff_touches_rust<'semantic, DiffText>(
-    diff_text: DiffText,
+    diff_text: DiffText
 ) -> impl Into<DiffTouchesRustFlag>
 where
     DiffText: Into<DiffTextText<'semantic>>,
@@ -695,8 +695,7 @@ mod tests
     fn assert_error_contains<'semantic, Needle>(
         result: Result<GitDiffPlan, GateError>,
         needle: Needle,
-    )
-    where
+    ) where
         Needle: Into<NeedleText<'semantic>>,
     {
         let needle = needle.into().0;

@@ -424,7 +424,8 @@ impl WorkflowIdentityProvider for HostWorkflowIdentity
     ) -> Option<WorkflowInputIdentity>
     {
         if !crate::semantic_value::<CacheableTaskFlag, _>(is_cacheable_task(task)).0
-            || !crate::semantic_value::<OptionalRepositoryIsCleanFlag, _>(repository_is_clean(cwd)).0?
+            || !crate::semantic_value::<OptionalRepositoryIsCleanFlag, _>(repository_is_clean(cwd))
+                .0?
         {
             return None;
         }
@@ -2352,9 +2353,7 @@ mod tests
     }
 
     /// Return whether `name` is a direct mise task token with no shell syntax.
-    fn is_canonical_task_name<'semantic, N>(
-        name: N
-    ) -> impl Into<CanonicalTaskNameFlag>
+    fn is_canonical_task_name<'semantic, N>(name: N) -> impl Into<CanonicalTaskNameFlag>
     where
         N: Into<NameText<'semantic>>,
     {

@@ -259,7 +259,8 @@ pub fn check_iu_pin(
             "submodule status",
             command_failure_detail(
                 "git submodule status",
-                crate::semantic_value::<crate::support::OptionalCodeCode, _>(status_output.code()).0,
+                crate::semantic_value::<crate::support::OptionalCodeCode, _>(status_output.code())
+                    .0,
             ),
         )]);
     }
@@ -272,7 +273,8 @@ pub fn check_iu_pin(
             support::run_output(OsStr::new("git"), &head_args, Some(workspace_root), true)?;
         let head_stdout = head_output.stdout_lossy();
         let head_probe = ProbeOutput {
-            success: crate::semantic_value::<crate::support::SuccessFlag, _>(head_output.success()).0,
+            success: crate::semantic_value::<crate::support::SuccessFlag, _>(head_output.success())
+                .0,
             stdout: head_stdout.as_ref(),
         };
         iu_pin_findings_from_status(&iu_label, &status, Some(head_probe))
@@ -797,7 +799,10 @@ fn path_label(path: &Path) -> String
 }
 
 /// Build a stable command-failure detail from a live-streamed command status.
-fn command_failure_detail<'semantic, Command, Code>(command: Command, code: Code) -> String
+fn command_failure_detail<'semantic, Command, Code>(
+    command: Command,
+    code: Code,
+) -> String
 where
     Command: Into<CommandText<'semantic>>,
     Code: Into<CodeExitCode>,
@@ -1709,8 +1714,7 @@ mod tests
     fn assert_malformed_contains<'semantic, Metadata, Expected>(
         metadata: Metadata,
         expected: Expected,
-    )
-    where
+    ) where
         Metadata: Into<MetadataText<'semantic>>,
         Expected: Into<ExpectedText<'semantic>>,
     {

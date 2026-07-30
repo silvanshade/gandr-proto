@@ -16,13 +16,6 @@ rustc_private = true
 [lib]
 crate-type = ["cdylib"]
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 # rustc_private driver code builds only under the pinned nightly (see the
 # crate-local `.cargo/config.toml`, which the `dylint_testing` UI build reads
 # because cargo runs its builds with the package dir as CWD).
@@ -32,3 +25,10 @@ dylint_linting.workspace = true
 
 [dev-dependencies]
 dylint_testing.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

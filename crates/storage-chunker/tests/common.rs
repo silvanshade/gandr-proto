@@ -162,8 +162,7 @@ pub fn record_spans(records: CanonicalRecords<'_>) -> Vec<ByteSpan>
     let mut start = BytePosition::from(0_u64);
 
     for &record in records {
-        let record_len =
-            u64::try_from(record.len()).expect("fixture record length must fit u64");
+        let record_len = u64::try_from(record.len()).expect("fixture record length must fit u64");
         let end = u64::from(start)
             .checked_add(record_len)
             .map(BytePosition::from)
@@ -178,8 +177,7 @@ pub fn record_spans(records: CanonicalRecords<'_>) -> Vec<ByteSpan>
 /// Converts a record count to the chunker span type.
 pub fn record_count(records: CanonicalRecords<'_>) -> RecordPosition
 {
-    let count =
-        u64::try_from(records.as_ref().len()).expect("fixture record count must fit u64");
+    let count = u64::try_from(records.as_ref().len()).expect("fixture record count must fit u64");
     return RecordPosition::from(count);
 }
 

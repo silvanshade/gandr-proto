@@ -10,11 +10,11 @@ description = "Safe first-order recursion engine for gandr semantic machinery"
 license.workspace = true
 publish.workspace = true
 
+[dependencies]
+
 [features]
 default = []
 full = []
 
 [lints]
 workspace = true
-
-[dependencies]

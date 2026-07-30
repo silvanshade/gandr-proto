@@ -1,12 +1,12 @@
 //! **U3.0a — `CodeIso` certificates and the invertible-mode groupoid** (design
 //! note §4.3; ADR-69).
 //!
-//! A [`CodeIso`](crate::code_iso::harness::CodeIso) is a paired value translator whose
-//! evidence is the replay of its round trips against `generic_eq` over
-//! generated values. This module checks the certificate discipline and the
-//! groupoid structure — identity, inverse, and invertible-mode composition —
-//! all **up to replay-equivalence** (ADR-69 D1), the only identity a stage-0
-//! certificate has.
+//! A [`CodeIso`](crate::code_iso::harness::CodeIso) is a paired value
+//! translator whose evidence is the replay of its round trips against
+//! `generic_eq` over generated values. This module checks the certificate
+//! discipline and the groupoid structure — identity, inverse, and
+//! invertible-mode composition — all **up to replay-equivalence** (ADR-69 D1),
+//! the only identity a stage-0 certificate has.
 
 #[cfg(test)]
 mod u30a

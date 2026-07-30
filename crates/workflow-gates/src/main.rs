@@ -1876,9 +1876,7 @@ where
 }
 
 /// Parse one allowed `fuzz-smoke --target` value.
-fn parse_fuzz_smoke_target<'semantic, Value>(
-    value: Value
-) -> Result<FuzzSmokeTarget, GateError>
+fn parse_fuzz_smoke_target<'semantic, Value>(value: Value) -> Result<FuzzSmokeTarget, GateError>
 where
     Value: Into<ValueText<'semantic>>,
 {
@@ -3142,7 +3140,9 @@ mod tests
                 assert_eq!(
                     "fmt",
                     gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::docs::commands::AsStrText<'_>, _>(mode.as_str())
+                        gandr_workflow_gates::docs::commands::AsStrText<'_>,
+                        _,
+                    >(mode.as_str())
                     .as_ref()
                 );
                 assert_eq!(vec![PathBuf::from("a.md"), PathBuf::from("b.md")], paths);
@@ -3152,7 +3152,9 @@ mod tests
                 assert_eq!(
                     "check",
                     gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::docs::commands::AsStrText<'_>, _>(mode.as_str())
+                        gandr_workflow_gates::docs::commands::AsStrText<'_>,
+                        _,
+                    >(mode.as_str())
                     .as_ref()
                 );
                 assert_eq!(vec![PathBuf::from("README.md")], paths);
@@ -3217,12 +3219,16 @@ mod tests
                 assert_eq!(
                     "feature",
                     gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>, _>(head.as_str())
+                        gandr_workflow_gates::maintenance::AsStrText<'_>,
+                        _,
+                    >(head.as_str())
                     .as_ref()
                 );
                 assert!(explicit_from.as_ref().is_some_and(|value| {
                     gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>, _>(value.as_str())
+                        gandr_workflow_gates::maintenance::AsStrText<'_>,
+                        _,
+                    >(value.as_str())
                     .as_ref()
                         == "main"
                 }));
@@ -3241,7 +3247,9 @@ mod tests
                 assert_eq!(
                     "HEAD",
                     gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>, _>(head.as_str())
+                        gandr_workflow_gates::maintenance::AsStrText<'_>,
+                        _,
+                    >(head.as_str())
                     .as_ref()
                 );
                 assert_eq!(None, explicit_from);
@@ -3255,7 +3263,9 @@ mod tests
                 assert_eq!(
                     "feature",
                     gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>, _>(to.as_str())
+                        gandr_workflow_gates::maintenance::AsStrText<'_>,
+                        _,
+                    >(to.as_str())
                     .as_ref()
                 );
             },
@@ -3267,7 +3277,9 @@ mod tests
                 assert_eq!(
                     "HEAD",
                     gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>, _>(to.as_str())
+                        gandr_workflow_gates::maintenance::AsStrText<'_>,
+                        _,
+                    >(to.as_str())
                     .as_ref()
                 );
             },

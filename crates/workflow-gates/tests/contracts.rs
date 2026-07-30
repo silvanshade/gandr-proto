@@ -786,11 +786,7 @@ pub fn wrong_adequacy_heading() {}
 "#;
 
     let Some(findings) = ok_or_report(
-        analyze_source(
-            Path::new("wrong-headings.rs"),
-            source,
-            &witness_set(["ok"]),
-        ),
+        analyze_source(Path::new("wrong-headings.rs"), source, &witness_set(["ok"])),
         "analyze_source",
     )
     else {

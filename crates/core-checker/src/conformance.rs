@@ -3906,7 +3906,9 @@ where
 
     match mode {
         | TypedValueMode::Infer => choices.push(ValueAction::Annot(depth)),
-        | TypedValueMode::Check if depth > 0 => choices.push(ValueAction::Annot(depth.saturating_sub(1))),
+        | TypedValueMode::Check if depth > 0 => {
+            choices.push(ValueAction::Annot(depth.saturating_sub(1)))
+        },
         | TypedValueMode::Check | TypedValueMode::Rigid => {},
     }
 

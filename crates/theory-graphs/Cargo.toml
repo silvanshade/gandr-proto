@@ -15,16 +15,16 @@ autotests = false
 name = "graph"
 path = "tests/lib.rs"
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 [dependencies]
 fixedbitset.workspace = true
 petgraph.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

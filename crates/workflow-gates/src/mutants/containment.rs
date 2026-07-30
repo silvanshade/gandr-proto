@@ -328,9 +328,9 @@ pub(super) fn require_containment(
 /// - requires: `evidence` is an integration-layer observation, not a claim from
 ///   an untrusted environment variable alone.
 /// - ensures: proof order is stable; Darwin kernels, `ACT=true`, reachable
-///   `macOS` host markers, and absent or invalid sentinels each produce a failed
-///   proof; Git environment markers are copied to ignored metadata and never
-///   influence proof success.
+///   `macOS` host markers, and absent or invalid sentinels each produce a
+///   failed proof; Git environment markers are copied to ignored metadata and
+///   never influence proof success.
 /// - provides: a pure report suitable for diagnostics or fail-closed
 ///   validation.
 /// - panics: none.
@@ -738,8 +738,7 @@ mod tests
     fn assert_failed_proof<'semantic, P>(
         evidence: &ContainmentEvidence,
         proof_name: P,
-    )
-    where
+    ) where
         P: Into<ProofNameText<'semantic>>,
     {
         let proof_name = proof_name.into().0;

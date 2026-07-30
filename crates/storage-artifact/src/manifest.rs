@@ -769,7 +769,10 @@ mod tests
             "a wrong magic rejects"
         );
 
-        let truncated = good.get(.. good.len().wrapping_sub(1)).expect("nonempty").to_vec();
+        let truncated = good
+            .get(.. good.len().wrapping_sub(1))
+            .expect("nonempty")
+            .to_vec();
         assert_eq!(
             ArtifactManifest::decode(truncated.as_slice().into()),
             Err(ManifestError::Truncated),

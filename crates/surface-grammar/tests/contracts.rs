@@ -362,7 +362,8 @@ mod tests
     )
     {
         for pair in names.windows(2) {
-            let &[tighter_name, looser_name] = pair else {
+            let &[tighter_name, looser_name] = pair
+            else {
                 continue;
             };
             let tighter = prec(dag, tighter_name);
@@ -712,7 +713,8 @@ mod tests
             })
             .collect::<BTreeSet<_>>();
         for edge in witness.windows(2) {
-            let &[from, to] = edge else {
+            let &[from, to] = edge
+            else {
                 continue;
             };
             assert!(

@@ -20,16 +20,16 @@ path = "tests/lib.rs"
 harness = false
 name = "order"
 
-[features]
-default = []
-full = []
-
-[lints]
-workspace = true
-
 [dependencies]
 thiserror.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
 proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true
