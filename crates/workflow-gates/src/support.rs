@@ -942,12 +942,12 @@ where
 ///   diagnostics instead of captured stderr.
 #[inline]
 #[must_use]
-pub(crate) fn command_status_detail<P, C>(
+pub(crate) fn command_status_detail<'semantic, P, C>(
     program: P,
     code: C,
 ) -> String
 where
-    P: Into<ProgramText<'_>>,
+    P: Into<ProgramText<'semantic>>,
     C: Into<CodeExitCode>,
 {
     let code = code.into().0;
@@ -1111,12 +1111,12 @@ pub fn read_utf8(path: &Path) -> Result<String, GateError>
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_replaces_file_and_removes_temporary`
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_cleans_temporary_after_rename_failure`
 #[inline]
-pub fn write_atomic<B>(
+pub fn write_atomic<'semantic, B>(
     path: &Path,
     bytes: B,
 ) -> Result<(), GateError>
 where
-    B: Into<BytesBytes<'_>>,
+    B: Into<BytesBytes<'semantic>>,
 {
     let bytes = bytes.into().0;
     let target_directory_path = target_directory(path);
@@ -1436,8 +1436,8 @@ where
     hasher.update(b"\0");
     hasher.update(target_name.as_encoded_bytes());
     hasher.update(b"\0");
-    hasher.update(std::process::id().to_le_bytes());
-    hasher.update(attempt.to_le_bytes());
+    hasher.update(&std::process::id().to_le_bytes());
+    hasher.update(&attempt.to_le_bytes());
     let token = hasher.finalize();
     let token_hex = token.to_hex();
 
@@ -1483,14 +1483,14 @@ fn io_error(
 ///   kill mutants that skip write, sync, drop, rename, or cleanup delegation.
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_replaces_file_and_removes_temporary`
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_cleans_temporary_after_rename_failure`
-fn write_and_publish<B>(
+fn write_and_publish<'semantic, B>(
     mut temporary_file: File,
     temporary_path: &Path,
     target_path: &Path,
     bytes: B,
 ) -> Result<(), GateError>
 where
-    B: Into<BytesBytes<'_>>,
+    B: Into<BytesBytes<'semantic>>,
 {
     let bytes = bytes.into().0;
     temporary_file
@@ -2013,9 +2013,9 @@ mod tests
     }
 
     /// Build test-harness arguments for one ignored child fixture.
-    fn child_test_args<N>(test_name: N) -> Vec<OsString>
+    fn child_test_args<'semantic, N>(test_name: N) -> Vec<OsString>
     where
-        N: Into<TestNameText<'_>>,
+        N: Into<TestNameText<'semantic>>,
     {
         let test_name = test_name.into().0;
         let mut exact_name = String::from("support::tests::");
@@ -2038,12 +2038,12 @@ mod tests
         Set(OsString),
     }
     /// Return an explicit command environment override/removal for a key.
-    fn explicit_command_env<K>(
+    fn explicit_command_env<'semantic, K>(
         command: &Command,
         key: K,
     ) -> Option<CommandEnvEntry>
     where
-        K: Into<KeyText<'_>>,
+        K: Into<KeyText<'semantic>>,
     {
         let key = key.into().0;
         for (name, value) in command.get_envs() {
@@ -2059,11 +2059,11 @@ mod tests
     }
 
     /// Write one environment variable in a stable test format.
-    fn print_environment_value<K>(
+    fn print_environment_value<'semantic, K>(
         key: K
     ) -> Result<(), Box<dyn Error>>
     where
-        K: Into<KeyText<'_>>,
+        K: Into<KeyText<'semantic>>,
     {
         let key = key.into().0;
         let mut stdout = std::io::stdout();
@@ -2116,9 +2116,9 @@ mod tests
     impl TestWorkspace
     {
         /// Create a clean temporary workspace for one test.
-        fn create<N>(name: N) -> Result<Self, GateError>
+        fn create<'semantic, N>(name: N) -> Result<Self, GateError>
         where
-            N: Into<NameText<'_>>,
+            N: Into<NameText<'semantic>>,
         {
             let name = name.into().0;
             let path = std::env::temp_dir().join(format!(

@@ -124,10 +124,6 @@ pub enum Variance
 /// surface attempt to *declare* it is declined (the declined-declaration
 /// golden, addendum §A/§C).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the per-variable metadata schema is exactly {name, variance, linearity}; it is derived and constructed by the well-formedness pass, whose output other crates read"
-)]
 pub struct CellVarMeta
 {
     /// The pattern variable's name.
@@ -166,10 +162,6 @@ impl CellVarMeta
 /// [`CellVarMeta`] per left-hand-side pattern variable (VDC delta);
 /// `provenance` is the surface span the rule was read from.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a stage-0 cell face is exactly its {lhs, rhs, derived var metadata, provenance}; the elaborator constructs it and the well-formedness pass reads it"
-)]
 pub struct CellFace
 {
     /// The rewrite's left-hand side.

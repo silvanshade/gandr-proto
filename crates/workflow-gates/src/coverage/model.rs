@@ -188,7 +188,7 @@ impl Percent
         let quotient = scaled
             .checked_div(u128::from(count))
             .ok_or(PercentParseError::Overflow)?;
-        let hundredths = u32::try_from(quotient).ok_or(PercentParseError::Overflow)?;
+        let hundredths = u32::try_from(quotient).map_err(|_error| PercentParseError::Overflow)?;
         Self::from_hundredths(hundredths).ok_or(PercentParseError::OutOfRange)
     }
 

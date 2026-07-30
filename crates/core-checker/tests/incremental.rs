@@ -261,8 +261,8 @@ mod tests
             );
             match (&resumed.typings[0], &resumed.typings[1]) {
                 | (
-                    ItemTyping::Definition { name: x_name, .. },
-                    ItemTyping::Definition { name: y_name, .. },
+                    &ItemTyping::Definition { name: ref x_name, .. },
+                    &ItemTyping::Definition { name: ref y_name, .. },
                 ) => {
                     assert_eq!("x", x_name);
                     assert_eq!("y", y_name);

@@ -41,12 +41,10 @@ use rustc_hir::TraitItemKind;
 use rustc_hir::TraitRef;
 use rustc_hir::Ty;
 use rustc_hir::TyKind;
-use rustc_hir::attrs::ReprAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::intravisit::walk_expr;
@@ -231,7 +229,7 @@ impl<'tcx> LateLintPass<'tcx> for GandrTypeBoundaries
         item: &'tcx Item<'tcx>,
     )
     {
-        if let ItemKind::Struct(_, _, variant_data) = &item.kind
+        if let ItemKind::Struct(_, _, ref variant_data) = item.kind
             && variant_data.fields().len() == 1_usize
             && !has_transparent_repr(cx, item)
         {
@@ -343,8 +341,7 @@ fn has_transparent_repr(
     item: &Item<'_>,
 ) -> bool
 {
-    let attrs = cx.tcx.hir_attrs(item.hir_id());
-    find_attr!(attrs, Repr { reprs, .. } if reprs.iter().any(|(repr, _)| *repr == ReprAttr::ReprTransparent))
+    matches!(item.kind, ItemKind::Struct(..)) && cx.tcx.adt_def(item.owner_id.def_id).repr().transparent()
 }
 
 /// Return whether `def_id` is a method implementing a non-local trait.
@@ -964,7 +961,7 @@ fn peel_reference_ty(mut ty: rustc_ty::Ty<'_>) -> rustc_ty::Ty<'_>
 {
     loop {
         match ty.kind() {
-            | rustc_ty::Ref(_, inner, _) => ty = *inner,
+            | &rustc_ty::Ref(_, inner, _) => ty = inner,
             | _ => return ty,
         }
     }
@@ -1023,27 +1020,27 @@ fn check_ty<'tcx, Unambig>(
 
     match ty.kind {
         | TyKind::Slice(inner) | TyKind::Array(inner, _) => match semantic_ty.kind() {
-            | rustc_ty::Slice(semantic_inner) | rustc_ty::Array(semantic_inner, _) => {
-                check_ty(cx, inner, *semantic_inner)
+            | &rustc_ty::Slice(semantic_inner) | &rustc_ty::Array(semantic_inner, _) => {
+                check_ty(cx, inner, semantic_inner)
             },
             | _ => emit_ty_primitive(cx, ty),
         },
         | TyKind::Ptr(mut_ty) => match semantic_ty.kind() {
-            | rustc_ty::RawPtr(semantic_inner, _) => check_ty(cx, mut_ty.ty, *semantic_inner),
+            | &rustc_ty::RawPtr(semantic_inner, _) => check_ty(cx, mut_ty.ty, semantic_inner),
             | _ => emit_ty_primitive(cx, ty),
         },
         | TyKind::Ref(_, mut_ty) => match semantic_ty.kind() {
-            | rustc_ty::Ref(_, semantic_inner, _) => check_ty(cx, mut_ty.ty, *semantic_inner),
+            | &rustc_ty::Ref(_, semantic_inner, _) => check_ty(cx, mut_ty.ty, semantic_inner),
             | _ => emit_ty_primitive(cx, ty),
         },
         | TyKind::FnPtr(fn_ptr) => match semantic_ty.kind() {
-            | rustc_ty::FnPtr(sig_tys, header) => {
-                check_fn_decl(cx, fn_ptr.decl, sig_tys.with(*header).skip_binder())
+            | &rustc_ty::FnPtr(sig_tys, header) => {
+                check_fn_decl(cx, fn_ptr.decl, sig_tys.with(header).skip_binder())
             },
             | _ => emit_ty_primitive(cx, ty),
         },
         | TyKind::Tup(types) => match semantic_ty.kind() {
-            | rustc_ty::Tuple(semantic_types) if semantic_types.len() == types.len() => {
+            | &rustc_ty::Tuple(semantic_types) if semantic_types.len() == types.len() => {
                 let mut emitted = false;
                 for (inner, semantic_inner) in types.iter().zip(semantic_types.iter()) {
                     emitted |= check_ty(cx, inner, semantic_inner);
@@ -1128,7 +1125,7 @@ fn future_trait_ref<'tcx>(
 ) -> Option<&'tcx TraitRef<'tcx>>
 {
     if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| match bound {
-        | GenericBound::Trait(poly) => Some(&poly.trait_ref),
+        | &GenericBound::Trait(ref poly) => Some(&poly.trait_ref),
         | _ => None,
     }) && trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait()
     {
@@ -1142,7 +1139,7 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
 {
     if let Some(segment) = trait_ref.path.segments.last()
         && let Some(args) = segment.args
-        && let [constraint] = args.constraints
+        && let [ref constraint] = *args.constraints
         && constraint.ident.name == sym::Output
         && let Some(output) = constraint.ty()
     {
@@ -1197,7 +1194,7 @@ fn check_generic_type_args<'tcx>(
     let mut semantic_type_args = semantic_type_args.iter();
     let mut emitted = false;
     for arg in args.args {
-        if let GenericArg::Type(ty) = arg
+        if let GenericArg::Type(ty) = *arg
             && let Some(semantic_arg) = semantic_type_args.next()
         {
             emitted |= check_ty(cx, ty, *semantic_arg);
@@ -1214,8 +1211,8 @@ fn semantic_type_args<'tcx>(
 {
     let semantic_ty = normalize_middle_ty(cx, semantic_ty);
     match semantic_ty.kind() {
-        | rustc_ty::Adt(_, args) => args.iter().filter_map(rustc_ty::GenericArg::as_type).collect(),
-        | rustc_ty::Tuple(types) => types.iter().collect(),
+        | &rustc_ty::Adt(_, args) => args.iter().filter_map(rustc_ty::GenericArg::as_type).collect(),
+        | &rustc_ty::Tuple(types) => types.iter().collect(),
         | _ => Vec::new(),
     }
 }
@@ -1224,11 +1221,11 @@ fn semantic_type_args<'tcx>(
 fn last_segment_args<'hir>(qpath: &QPath<'hir>) -> Option<&'hir rustc_hir::GenericArgs<'hir>>
 {
     match qpath {
-        | QPath::Resolved(_, path) => {
+        | &QPath::Resolved(_, path) => {
             let segment = path.segments.last()?;
             segment.args
         },
-        | QPath::TypeRelative(_, segment) => segment.args,
+        | &QPath::TypeRelative(_, segment) => segment.args,
     }
 }
 
@@ -1262,29 +1259,29 @@ fn middle_ty_contains_primitive<'tcx>(
 {
     let ty = normalize_middle_ty(cx, ty);
     match ty.kind() {
-        | rustc_ty::Bool
-        | rustc_ty::Char
-        | rustc_ty::Int(_)
-        | rustc_ty::Uint(_)
-        | rustc_ty::Float(_)
-        | rustc_ty::Str => true,
-        | rustc_ty::Array(inner, _)
-        | rustc_ty::Pat(inner, _)
-        | rustc_ty::Slice(inner)
-        | rustc_ty::RawPtr(inner, _)
-        | rustc_ty::Ref(_, inner, _) => middle_ty_contains_primitive(cx, *inner),
-        | rustc_ty::Tuple(types) => types
+        | &rustc_ty::Bool
+        | &rustc_ty::Char
+        | &rustc_ty::Int(_)
+        | &rustc_ty::Uint(_)
+        | &rustc_ty::Float(_)
+        | &rustc_ty::Str => true,
+        | &rustc_ty::Array(inner, _)
+        | &rustc_ty::Pat(inner, _)
+        | &rustc_ty::Slice(inner)
+        | &rustc_ty::RawPtr(inner, _)
+        | &rustc_ty::Ref(_, inner, _) => middle_ty_contains_primitive(cx, inner),
+        | &rustc_ty::Tuple(types) => types
             .iter()
             .any(|inner| middle_ty_contains_primitive(cx, inner)),
-        | rustc_ty::FnPtr(sig_tys, header) => {
-            let sig = sig_tys.with(*header).skip_binder();
+        | &rustc_ty::FnPtr(sig_tys, header) => {
+            let sig = sig_tys.with(header).skip_binder();
             sig.inputs()
                 .iter()
                 .any(|input| middle_ty_contains_primitive(cx, *input))
                 || middle_ty_contains_primitive(cx, sig.output())
         },
-        | rustc_ty::Adt(adt, _) if is_semantic_boundary_adt(*adt) => false,
-        | rustc_ty::Adt(_, args) => args
+        | &rustc_ty::Adt(adt, _) if is_semantic_boundary_adt(adt) => false,
+        | &rustc_ty::Adt(_, args) => args
             .iter()
             .filter_map(rustc_ty::GenericArg::as_type)
             .any(|arg_ty| middle_ty_contains_primitive(cx, arg_ty)),

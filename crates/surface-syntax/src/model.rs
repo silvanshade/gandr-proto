@@ -74,10 +74,6 @@ impl AsRef<str> for SourceSlice<'_>
 /// Compact public arena slot carried by [`NodeId`].
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the arena-slot boundary is a single compact node-slot integer"
-)]
 pub struct NodeSlot(pub u32);
 
 impl From<NodeSlot> for u32
@@ -106,10 +102,6 @@ impl From<NodeIndex> for usize
 /// Number of nodes stored in a CST arena.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the arena-count boundary is a single host-sized node count"
-)]
 pub struct NodeCount(pub usize);
 
 impl NodeCount
@@ -142,10 +134,6 @@ impl NodeCount
 /// Inclusive byte offset in source text.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the text-coordinate boundary is a single inclusive byte offset"
-)]
 pub struct TextOffset(pub u32);
 
 impl From<TextOffset> for u32
@@ -160,10 +148,6 @@ impl From<TextOffset> for u32
 /// Source byte length.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the text-length boundary is a single source byte length"
-)]
 pub struct TextLen(pub u32);
 
 /// Host collection index into source text.
@@ -183,10 +167,6 @@ impl From<SourceIndex> for usize
 /// Emptiness flag for a source byte range.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the range-emptiness boundary is a single boolean flag"
-)]
 pub struct TextRangeEmptiness(pub bool);
 
 impl From<TextRangeEmptiness> for bool
@@ -201,10 +181,6 @@ impl From<TextRangeEmptiness> for bool
 /// Emptiness flag for a CST arena.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the arena-emptiness boundary is a single boolean flag"
-)]
 pub struct CstEmptiness(pub bool);
 
 impl From<CstEmptiness> for bool
@@ -219,19 +195,11 @@ impl From<CstEmptiness> for bool
 /// Fingerprint of the grammar whose mold table produced a CST.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the grammar-fingerprint boundary is a single 64-bit fingerprint"
-)]
 pub struct GrammarFingerprint(pub u64);
 
 /// Stable framed subtree hash.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the stable-hash boundary is a single 64-bit framed subtree hash"
-)]
 pub struct StableHash(pub u64);
 
 impl core::fmt::LowerHex for StableHash
@@ -249,10 +217,6 @@ impl core::fmt::LowerHex for StableHash
 /// Grout sort tag assigned by the producing grammar.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the grout-sort boundary is a single grammar-assigned sort tag"
-)]
 pub struct GroutSort(pub u16);
 
 impl From<GroutSort> for u16

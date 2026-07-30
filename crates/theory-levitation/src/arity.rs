@@ -18,10 +18,6 @@ use crate::code::Name;
 /// stage-0 type surface; a port maps to a value type once the arity feeds the
 /// value decoder.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a stage-0 port is exactly its {name, symbolic sort}; the elaborator constructs bridge arities from op members"
-)]
 pub struct SortRef
 {
     /// The port's name (`q`, `r` in `-> (q: …, r: …)`).
@@ -68,10 +64,6 @@ impl SortRef
 ///   unconstructible (proposal §8's `desc-arity-mismatch` golden).
 /// - ensures: preserves the four sets and three maps exactly.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the bridge diagram is exactly its four finite sets and three maps (V4); the elaborator builds it and the well-formedness pass validates composition"
-)]
 pub struct BridgeArity
 {
     /// `A` — the input ports, named.

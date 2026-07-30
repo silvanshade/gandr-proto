@@ -142,10 +142,6 @@ impl TermRef
 /// with identity entries dropped — so equal renamings are structurally equal
 /// and the tight-category laws hold on the nose.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a tight arrow is exactly its {src, tgt, canonical generator renaming}; the reflection constructs it and the dictionary laws read all three"
-)]
 pub struct SigMorphism
 {
     /// The source signature.
@@ -314,10 +310,6 @@ fn canonical_map(pairs: Vec<(Name, Name)>) -> Box<[(Name, Name)]>
 /// id] = R` and `R[s∘s′ # t∘t′] = R[s # t][s′ # t′]` hold definitionally on the
 /// frames.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a loose arrow is exactly its {name, boundary signatures, generating cells, restriction frames}; the reflection builds it and the dictionary laws read every field"
-)]
 pub struct RelationRef
 {
     /// The relation's name.

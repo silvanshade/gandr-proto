@@ -295,9 +295,9 @@ impl ManifestPath
     ///   the only validation branch.
     /// - witness: `manifest::tests::empty_manifest_nodes_fail_loudly`
     #[inline]
-    pub fn new<Raw>(raw: Raw) -> Result<Self, GateError>
+    pub fn new<'semantic, Raw>(raw: Raw) -> Result<Self, GateError>
     where
-        Raw: Into<RawText<'_>>,
+        Raw: Into<RawText<'semantic>>,
     {
         let raw = raw.into().0;
         if raw.is_empty() {
@@ -512,12 +512,12 @@ pub fn run_manifest_drift(manifest_path: &Path) -> GateResult
 }
 
 /// Parse one YAML manifest document.
-fn manifest_document<Source>(
+fn manifest_document<'semantic, Source>(
     manifest_path: &Path,
     source: Source,
 ) -> Result<Yaml, GateError>
 where
-    Source: Into<SourceText<'_>>,
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     let mut documents = YamlLoader::load_from_str(source).map_err(|error| {
@@ -575,9 +575,9 @@ fn manifest_parent(manifest_path: &Path) -> PathBuf
 /// - provides: a parser-side guard against absolute and current-directory
 ///   entries before filesystem reads occur.
 /// - panics: none.
-fn manifest_path_is_corpus_relative<Raw>(raw: Raw) -> impl Into<ManifestPathIsCorpusRelativeFlag>
+fn manifest_path_is_corpus_relative<'semantic, Raw>(raw: Raw) -> impl Into<ManifestPathIsCorpusRelativeFlag>
 where
-    Raw: Into<RawText<'_>>,
+    Raw: Into<RawText<'semantic>>,
 {
     let raw = raw.into().0;
     let path = Path::new(raw);
@@ -694,12 +694,12 @@ fn parse_node(
 }
 
 /// Return a string-keyed mapping value without allocating a temporary key.
-fn yaml_mapping_value<'yaml, KeyName>(
+fn yaml_mapping_value<'semantic, 'yaml, KeyName>(
     mapping: &'yaml Hash,
     key_name: KeyName,
 ) -> Option<&'yaml Yaml>
 where
-    KeyName: Into<KeyNameText<'_>>,
+    KeyName: Into<KeyNameText<'semantic>>,
 {
     let key_name = key_name.into().0;
     for (key, value) in mapping {
@@ -731,13 +731,13 @@ fn parse_edges(
 }
 
 /// Return a YAML array or a stable manifest-shape error.
-fn yaml_array<'yaml, Detail>(
+fn yaml_array<'semantic, 'yaml, Detail>(
     manifest_path: &Path,
     value: &'yaml Yaml,
     detail: Detail,
 ) -> Result<&'yaml Vec<Yaml>, GateError>
 where
-    Detail: Into<DetailText<'_>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     match value {
@@ -775,13 +775,13 @@ fn parse_edge(
 }
 
 /// Return a YAML mapping or a stable manifest-shape error.
-fn yaml_hash<'yaml, Detail>(
+fn yaml_hash<'semantic, 'yaml, Detail>(
     manifest_path: &Path,
     value: &'yaml Yaml,
     detail: Detail,
 ) -> Result<&'yaml Hash, GateError>
 where
-    Detail: Into<DetailText<'_>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     match value {
@@ -860,9 +860,9 @@ pub fn path_exists(path: &Path) -> Result<impl Into<PathExistsFlag>, GateError>
 }
 
 /// Return a lowercase BLAKE3 hex digest for `bytes`.
-fn blake3_hex<Bytes>(bytes: Bytes) -> String
+fn blake3_hex<'semantic, Bytes>(bytes: Bytes) -> String
 where
-    Bytes: Into<BytesBytes<'_>>,
+    Bytes: Into<BytesBytes<'semantic>>,
 {
     let bytes = bytes.into().0;
     let digest = blake3::hash(bytes);
@@ -918,12 +918,12 @@ fn verification_finding(
 }
 
 /// Walk reverse edges from `root` without recursion.
-fn downstream_edges<Root>(
+fn downstream_edges<'semantic, Root>(
     root: Root,
     edges: &[ReverseEdge],
 ) -> Result<Vec<ReverseEdge>, GateError>
 where
-    Root: Into<RootText<'_>>,
+    Root: Into<RootText<'semantic>>,
 {
     let root = root.into().0;
     let mut reached = vec![String::from(root)];
@@ -953,13 +953,13 @@ where
 }
 
 /// Render one drift/missing detail string.
-fn verification_detail<Actual>(
+fn verification_detail<'semantic, Actual>(
     verification: &VerifyResult,
     actual: Actual,
     downstream: &[ReverseEdge],
 ) -> String
 where
-    Actual: Into<ActualText<'_>>,
+    Actual: Into<ActualText<'semantic>>,
 {
     let actual = actual.into().0;
     let mut detail = format!(
@@ -985,12 +985,12 @@ where
 }
 
 /// Return whether `values` contains `needle`.
-fn contains_text<Needle>(
+fn contains_text<'semantic, Needle>(
     values: &[String],
     needle: Needle,
 ) -> impl Into<TextFlag>
 where
-    Needle: Into<NeedleText<'_>>,
+    Needle: Into<NeedleText<'semantic>>,
 {
     let needle = needle.into().0;
     return values.iter().any(|value| value == needle);
@@ -1126,12 +1126,12 @@ mod tests
     }
 
     /// Assert that a manifest loader failure contains `expected`.
-    fn assert_manifest_error_contains<Expected>(
+    fn assert_manifest_error_contains<'semantic, Expected>(
         result: Result<ManifestContext, GateError>,
         expected: Expected,
     )
     where
-        Expected: Into<ExpectedText<'_>>,
+        Expected: Into<ExpectedText<'semantic>>,
     {
         let expected = expected.into().0;
         let Err(error) = result
@@ -1234,9 +1234,9 @@ mod tests
     }
 
     /// Build a clean fixture directory for `name`.
-    fn fixture<Name>(name: Name) -> Result<Fixture, Box<dyn Error>>
+    fn fixture<'semantic, Name>(name: Name) -> Result<Fixture, Box<dyn Error>>
     where
-        Name: Into<NameText<'_>>,
+        Name: Into<NameText<'semantic>>,
     {
         let name = name.into().0;
         let root = std::env::temp_dir().join(format!(
@@ -1391,12 +1391,12 @@ mod tests
     }
 
     /// Write a manifest with raw node YAML.
-    fn write_manifest<NodesYaml>(
+    fn write_manifest<'semantic, NodesYaml>(
         manifest: &Path,
         nodes_yaml: NodesYaml,
     ) -> Result<(), Box<dyn Error>>
     where
-        NodesYaml: Into<NodesYamlText<'_>>,
+        NodesYaml: Into<NodesYamlText<'semantic>>,
     {
         let nodes_yaml = nodes_yaml.into().0;
         crate::support::HOST_FILESYSTEM.write(
@@ -1472,14 +1472,14 @@ mod tests
     }
 
     /// Write a corpus document and return its BLAKE3 hash.
-    fn write_doc<Rel, Text>(
+    fn write_doc<'semantic, Rel, Text>(
         corpus: &Path,
         rel: Rel,
         text: Text,
     ) -> Result<String, Box<dyn Error>>
     where
-        Rel: Into<RelText<'_>>,
-        Text: Into<TextText<'_>>,
+        Rel: Into<RelText<'semantic>>,
+        Text: Into<TextText<'semantic>>,
     {
         let text = text.into().0;
         let rel = rel.into().0;

@@ -222,10 +222,6 @@ pub enum ValueTypeRef
 /// is not modelled here (a residual — the surface data-block slot admits bare
 /// markers only today).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a stage-0 attribute is exactly its marker name; the payload slot is a documented residual, not a hidden field"
-)]
 #[repr(transparent)]
 pub struct Attr
 {
@@ -252,10 +248,6 @@ impl Attr
 /// Kept in declaration order (small, and order is provenance); membership tests
 /// scan linearly.
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the attribute Σ is exactly its ordered marker list; construction from other crates (the elaborator) is intended"
-)]
 #[repr(transparent)]
 pub struct Attrs
 {
@@ -317,10 +309,6 @@ impl Attrs
 /// atom-abstraction functor over `gandr-nominal` is a later lane. No surface
 /// data-block field produces a binder today, so this rides reserved.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a stage-0 atom sort is exactly its symbolic name; the gandr-nominal instantiation is a documented later lane"
-)]
 #[repr(transparent)]
 pub struct AtomSort
 {

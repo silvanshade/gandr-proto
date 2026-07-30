@@ -69,10 +69,6 @@ pub enum Payload
 /// A **generic value** of a described datatype: a constructor tag (an index
 /// into [`DataDesc::ctors`]) plus its [`Payload`].
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a generic value is exactly its {constructor index, payload}; tests and consumers construct it directly"
-)]
 pub struct DescValue
 {
     /// The constructor index into [`DataDesc::ctors`].

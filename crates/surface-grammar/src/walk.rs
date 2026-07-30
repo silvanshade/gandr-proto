@@ -71,18 +71,10 @@ pub const MAX_WALK_CHAIN_LEN: u32 = 64;
 
 /// Gandr-specific symbol vocabulary for the generic walk index.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the grammar walk-symbol marker is a fixed zero-field vocabulary for the generic walk index"
-)]
 pub struct GrammarWalkSym;
 
 /// A precedence-bounded grammar nonterminal.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a grammar nonterminal is exactly its (sort, prec) PBG form coordinates"
-)]
 pub struct GrammarNonterminal
 {
     /// Surface grammar sort.
@@ -107,10 +99,6 @@ impl GrammarNonterminal
 
 /// Exact tile stance carried by walk boundaries.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a walk tile stance is exactly its (label, mold, sort) coordinates"
-)]
 pub struct GrammarTile
 {
     /// Static tree-sitter label for the tile.
@@ -223,10 +211,6 @@ pub enum Comparison
 /// tiles' forms are compared; gandr's DAG makes it a concrete [`Sort`], which
 /// is what restores the soundness Floyd's unindexed relation lacks.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a comparison row is exactly the ordered mold pair, relation, and mediating sort"
-)]
 pub struct ComparisonRow
 {
     /// The left tile occurrence.

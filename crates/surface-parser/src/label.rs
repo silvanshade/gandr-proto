@@ -502,10 +502,6 @@ impl ScanResult
 ///   the labeler round-trip test.
 /// - witness: `gandr_surface_parser::label::tests::labels_a_definition_losslessly`
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a labeled token is exactly its class, span, and material"
-)]
 pub struct Token
 {
     /// The lexical class of the lexeme.

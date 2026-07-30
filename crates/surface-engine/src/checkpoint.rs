@@ -80,10 +80,6 @@ use crate::session::item_type;
 /// Number of base checkpoints adopted by an incremental resume.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-)]
 pub struct AdoptedCheckpointCount(pub usize);
 
 /// Number of source items in the base (adopted) checkpoint set.

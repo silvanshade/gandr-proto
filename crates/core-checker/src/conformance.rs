@@ -3873,7 +3873,7 @@ where
                 choices.push(ValueAction::ThunkInfer(
                     grade,
                     body.as_ref().clone(),
-                    depth - 1,
+                    depth.saturating_sub(1),
                 ));
             }
         },
@@ -3890,7 +3890,7 @@ where
         },
         | (TypedValueMode::Infer, &ValueType::Unknown) => choices.push(ValueAction::Hole),
         | (TypedValueMode::Check, &ValueType::Unknown) if depth > 0 => {
-            let sub_depth = depth - 1;
+            let sub_depth = depth.saturating_sub(1);
             choices.push(ValueAction::Pair(
                 ValueType::Unknown,
                 ValueType::Unknown,
@@ -3906,7 +3906,7 @@ where
 
     match mode {
         | TypedValueMode::Infer => choices.push(ValueAction::Annot(depth)),
-        | TypedValueMode::Check if depth > 0 => choices.push(ValueAction::Annot(depth - 1)),
+        | TypedValueMode::Check if depth > 0 => choices.push(ValueAction::Annot(depth.saturating_sub(1))),
         | TypedValueMode::Check | TypedValueMode::Rigid => {},
     }
 
@@ -4117,7 +4117,7 @@ where
             choices.push(CompAction::With(lhs.as_ref().clone(), rhs.as_ref().clone()));
         },
         | (TypedCompMode::Check, &CompType::Unknown) if depth > 0 => {
-            let sub_depth = depth - 1;
+            let sub_depth = depth.saturating_sub(1);
             choices.push(CompAction::UnknownLam(sub_depth));
             choices.push(CompAction::UnknownRet(sub_depth));
         },
@@ -4273,7 +4273,7 @@ where
                     (TypedCompMode::RigidInfer, TypedCompMode::RigidCheck)
                 },
             };
-            let sub = depth - 1;
+            let sub = depth.saturating_sub(1);
             push_typed_frame(steps, TypedFrame::CompBind(name), vec![
                 comp_task(infer_mode, CompType::returner(payload), scope, sub),
                 comp_task(cont_mode, ty, inner_scope, sub),
@@ -4299,7 +4299,7 @@ where
             else {
                 TypedValueMode::Check
             };
-            let sub = depth - 1;
+            let sub = depth.saturating_sub(1);
             push_typed_frame(steps, TypedFrame::CompApp, vec![
                 comp_task(
                     infer_mode,
@@ -4329,7 +4329,7 @@ where
             let mut inner_scope = scope.clone();
             inner_scope.push((name.clone(), fst_ty.clone()));
             inner_scope.push((snd_name.clone(), snd_ty.clone()));
-            let sub = depth - 1;
+            let sub = depth.saturating_sub(1);
             let (body_mode, value_mode, frame) = match mode {
                 | TypedCompMode::Infer => (
                     TypedCompMode::Infer,
@@ -4404,7 +4404,7 @@ where
             fst_scope.push((name.clone(), lhs_ty));
             let mut snd_scope = scope.clone();
             snd_scope.push((snd_name.clone(), rhs_ty));
-            let sub = depth - 1;
+            let sub = depth.saturating_sub(1);
             push_typed_frame(
                 steps,
                 TypedFrame::CompCase {
@@ -4445,7 +4445,7 @@ where
             let mut cons_scope = scope.clone();
             cons_scope.push((name.clone(), elem_ty.clone()));
             cons_scope.push((tail_name.clone(), ValueType::list(elem_ty)));
-            let sub = depth - 1;
+            let sub = depth.saturating_sub(1);
             push_typed_frame(
                 steps,
                 TypedFrame::CompListCase {
@@ -4474,7 +4474,7 @@ where
                 value_mode,
                 record_ty,
                 scope,
-                depth - 1,
+                depth.saturating_sub(1),
             )]);
         },
         | CompAction::Prj => {
@@ -4490,7 +4490,7 @@ where
                 TypedCompMode::Infer,
                 with_ty,
                 scope,
-                depth - 1,
+                depth.saturating_sub(1),
             )]);
         },
     }
@@ -5995,7 +5995,7 @@ proptest! {
     {
         let report = machine::run_report(machine::State::new_comp(base_ctx(), comp, dir));
         prop_assert!(!report.trace.is_empty());
-        prop_assert_eq!(usize::try_from(report.steps).ok(), Some(report.trace.len() - 1));
+        prop_assert_eq!(usize::try_from(report.steps).ok(), Some(report.trace.len().saturating_sub(1)));
     }
 
     /// (10) As [`step_counter_tracks_trace_length_comp`], for value runs.
@@ -6004,7 +6004,7 @@ proptest! {
     {
         let report = machine::run_report(machine::State::new_value(base_ctx(), value, dir));
         prop_assert!(!report.trace.is_empty());
-        prop_assert_eq!(usize::try_from(report.steps).ok(), Some(report.trace.len() - 1));
+        prop_assert_eq!(usize::try_from(report.steps).ok(), Some(report.trace.len().saturating_sub(1)));
     }
 
     /// (a7) The machine-internal polarity guards `SHAPE_VALUE` / `SHAPE_COMP`

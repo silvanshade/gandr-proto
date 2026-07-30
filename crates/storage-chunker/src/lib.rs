@@ -1307,10 +1307,6 @@ impl Default for ChunkerParams
 
 /// Half-open byte span in the canonical record byte stream.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "public span fields are part of the shared chunker contract"
-)]
 pub struct ByteSpan
 {
     /// Inclusive start byte position.
@@ -1351,10 +1347,6 @@ impl ByteSpan
 
 /// Half-open record-index span in canonical record order.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "public span fields are part of the shared chunker contract"
-)]
 pub struct RecordSpan
 {
     /// Inclusive start record position.
@@ -1395,10 +1387,6 @@ impl RecordSpan
 
 /// Record-safe chunk span and the reason its boundary was emitted.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "public span fields are part of the shared chunker contract"
-)]
 pub struct ChunkSpan
 {
     /// Byte range covered by the chunk.

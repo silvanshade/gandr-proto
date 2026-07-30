@@ -809,7 +809,6 @@ fn render_assoc(assoc: Option<Assoc>) -> RenderedScalar
         | None => RenderedScalar::from("none"),
         | Some(Assoc::Left) => RenderedScalar::from("left"),
         | Some(Assoc::Right) => RenderedScalar::from("right"),
-        | Some(_) => RenderedScalar::from("future"),
     };
 }
 

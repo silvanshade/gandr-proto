@@ -222,10 +222,6 @@ impl Oblig
 /// - hypothesis: L3 — one instance observes exact class and span preservation.
 /// - witness: `gandr_surface_parser::meld::tests::degrout_flags_one_ambiguous_prec_at_the_smallest_span`
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "an obligation instance is exactly its class and responsible span"
-)]
 pub struct ObligationInstance
 {
     /// The obligation class.

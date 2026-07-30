@@ -172,9 +172,9 @@ impl RumdlMode
     ///   unsupported mode kill all parser branches.
     /// - witness: `commands::tests::clean_markdown_files_preserve_argument_order`
     #[inline]
-    pub fn parse<Value>(value: Value) -> Result<Self, GateError>
+    pub fn parse<'semantic, Value>(value: Value) -> Result<Self, GateError>
     where
-        Value: Into<ValueText<'_>>,
+        Value: Into<ValueText<'semantic>>,
     {
         let value = value.into().0;
         match value {
@@ -417,12 +417,12 @@ fn typst_probe_args() -> Vec<OsString>
 }
 
 /// Return a JSON object field.
-fn json_field<'json, Field>(
+fn json_field<'semantic, 'json, Field>(
     value: &'json Value,
     field: Field,
 ) -> Result<&'json Value, GateError>
 where
-    Field: Into<FieldText<'_>>,
+    Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
     match value {
@@ -436,12 +436,12 @@ where
 }
 
 /// Return a JSON array.
-fn json_array<'json, Detail>(
+fn json_array<'semantic, 'json, Detail>(
     value: &'json Value,
     detail: Detail,
 ) -> Result<&'json Vec<Value>, GateError>
 where
-    Detail: Into<DetailText<'_>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     match value {
@@ -469,12 +469,12 @@ fn page_probe(value: &Value) -> Result<PageProbe, GateError>
 }
 
 /// Return a JSON string.
-fn json_string<'json, Detail>(
+fn json_string<'semantic, 'json, Detail>(
     value: &'json Value,
     detail: Detail,
 ) -> Result<JsonStringText<'json>, GateError>
 where
-    Detail: Into<DetailText<'_>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     match value {
@@ -484,24 +484,24 @@ where
 }
 
 /// Return a JSON integer.
-fn json_i64<Detail>(
+fn json_i64<'semantic, Detail>(
     value: &Value,
     detail: Detail,
 ) -> Result<impl Into<JsonI64Seconds>, GateError>
 where
-    Detail: Into<DetailText<'_>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     value.as_i64().ok_or_else(|| GateError::operational(detail))
 }
 
 /// Return a JSON number as `f64`.
-fn json_f64<Detail>(
+fn json_f64<'semantic, Detail>(
     value: &Value,
     detail: Detail,
 ) -> Result<impl Into<JsonF64Millimeters>, GateError>
 where
-    Detail: Into<DetailText<'_>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     value.as_f64().ok_or_else(|| GateError::operational(detail))
@@ -542,9 +542,9 @@ fn page_balance_probe_failed() -> GateError
 }
 
 /// Parse Typst page-balance JSON into probe rows.
-fn parse_page_probes<Source>(source: Source) -> Result<Vec<PageProbe>, GateError>
+fn parse_page_probes<'semantic, Source>(source: Source) -> Result<Vec<PageProbe>, GateError>
 where
-    Source: Into<SourceText<'_>>,
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     let root: Value = serde_json::from_str(source).map_err(|source| GateError::Json {
@@ -651,9 +651,9 @@ fn readable_rumdl_path<'path>(
 }
 
 /// Return the retained conflict-marker prefix found at the start of `line`.
-fn conflict_marker_line<Line>(line: Line) -> impl Into<OptionalConflictMarkerLineText<'static>>
+fn conflict_marker_line<'semantic, Line>(line: Line) -> impl Into<OptionalConflictMarkerLineText<'static>>
 where
-    Line: Into<LineText<'_>>,
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     CONFLICT_MARKER_PREFIXES
@@ -663,14 +663,14 @@ where
 }
 
 /// Build the operational error for one unresolved conflict-marker line.
-fn conflict_marker_error<LineNumber, Marker>(
+fn conflict_marker_error<'semantic, LineNumber, Marker>(
     path: &Path,
     line_number: LineNumber,
     marker: Marker,
 ) -> GateError
 where
     LineNumber: Into<LineNumberNumber>,
-    Marker: Into<MarkerText<'_>>,
+    Marker: Into<MarkerText<'semantic>>,
 {
     let marker = marker.into().0;
     let line_number = line_number.into().0;
@@ -782,9 +782,9 @@ mod tests
     }
 
     /// Build a clean temporary fixture directory for `name`.
-    fn fixture<Name>(name: Name) -> Result<PathBuf, Box<dyn Error>>
+    fn fixture<'semantic, Name>(name: Name) -> Result<PathBuf, Box<dyn Error>>
     where
-        Name: Into<NameText<'_>>,
+        Name: Into<NameText<'semantic>>,
     {
         let name = name.into().0;
         let root = std::env::temp_dir().join(format!(
@@ -802,11 +802,11 @@ mod tests
     {
         assert_eq!(
             "fmt",
-            crate::semantic_value::<AsStrText<'_>>(RumdlMode::parse("fmt")?.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(RumdlMode::parse("fmt")?.as_str()).0
         );
         assert_eq!(
             "check",
-            crate::semantic_value::<AsStrText<'_>>(RumdlMode::parse("check")?.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(RumdlMode::parse("check")?.as_str()).0
         );
         let unsupported = RumdlMode::parse("lint")
             .err()
@@ -1001,14 +1001,14 @@ mod tests
 
     /// Write an executable shell fixture on Unix hosts.
     #[cfg(unix)]
-    fn executable_script<Name, Source>(
+    fn executable_script<'semantic, Name, Source>(
         root: &Path,
         name: Name,
         source: Source,
     ) -> Result<PathBuf, Box<dyn Error>>
     where
-        Name: Into<NameText<'_>>,
-        Source: Into<SourceText<'_>>,
+        Name: Into<NameText<'semantic>>,
+        Source: Into<SourceText<'semantic>>,
     {
         let source = source.into().0;
         let name = name.into().0;

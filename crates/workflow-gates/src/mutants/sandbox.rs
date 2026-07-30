@@ -520,7 +520,7 @@ impl CampaignExecutionPlan
                 let diff_path = request.diff.ok_or_else(|| {
                     GateError::operational(format!(
                         "mutants-vm: {} campaign requires a diff path",
-                        crate::semantic_value::<AsStrText<'_>>(request.mode.as_str()).0
+                        crate::semantic_value::<AsStrText<'_>, _>(request.mode.as_str()).0
                     ))
                 })?;
                 Ok(copy_diff_plan(request.sandbox_name, diff_path))
@@ -656,9 +656,9 @@ impl CampaignSummary
     {
         format!(
             "{{schema: 1, mode: '{}', succeeded: {}, report: '{}'}}\n",
-            crate::semantic_value::<AsStrText<'_>>(self.mode.as_str()).0,
+            crate::semantic_value::<AsStrText<'_>, _>(self.mode.as_str()).0,
             nuon_bool(self.succeeded).into().0,
-            crate::semantic_value::<AsStrText<'_>>(self.report.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(self.report.as_str()).0
         )
     }
 }
@@ -797,8 +797,8 @@ impl MsbAdapter for SupportMsbAdapter
     {
         let output = support::run_output(OsStr::new(MSB_PROGRAM), args, None, false)?;
         Ok(CommandOutcome {
-            success: crate::semantic_value::<crate::support::SuccessFlag>(output.success()).0,
-            code: crate::semantic_value::<crate::support::OptionalCodeCode>(output.code()).0,
+            success: crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0,
+            code: crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
             stdout: output.stdout_lossy().into_owned(),
         })
     }
@@ -1128,7 +1128,7 @@ where
         if !stop_output.success_status().into().0 {
             failures.push(format!(
                 "failed to stop {}: {}",
-                crate::semantic_value::<AsStrText<'_>>(sandbox_name.as_str()).0,
+                crate::semantic_value::<AsStrText<'_>, _>(sandbox_name.as_str()).0,
                 command_detail(&stop_output)
             ));
         }
@@ -1136,7 +1136,7 @@ where
         if !remove_output.success_status().into().0 {
             failures.push(format!(
                 "failed to remove {}: {}",
-                crate::semantic_value::<AsStrText<'_>>(sandbox_name.as_str()).0,
+                crate::semantic_value::<AsStrText<'_>, _>(sandbox_name.as_str()).0,
                 command_detail(&remove_output)
             ));
         }
@@ -1660,7 +1660,7 @@ where
         &plan.copy_source,
         &format!(
             "mutants-vm: failed to copy source archive into sandbox {}",
-            crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
         ),
     )?;
     if let Some(copy_diff) = &plan.copy_diff {
@@ -1669,7 +1669,7 @@ where
             copy_diff,
             &format!(
                 "mutants-vm: failed to copy diff into sandbox {}",
-                crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
+                crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
             ),
         )?;
     }
@@ -1678,7 +1678,7 @@ where
         &plan.extract,
         &format!(
             "mutants-vm: failed to extract source archive in sandbox {}",
-            crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
         ),
     )?;
 
@@ -1738,7 +1738,7 @@ where
         return Err(command_failure(
             &format!(
                 "mutants-vm: failed to boot sandbox {}",
-                crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
+                crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
             ),
             &boot_output,
         ));
@@ -1754,7 +1754,7 @@ where
                 return Err(command_failure(
                     &format!(
                         "mutants-vm: failed to remove sandbox {}",
-                        crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
+                        crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
                     ),
                     &remove_output,
                 ));
@@ -1769,7 +1769,7 @@ where
                 return Err(command_failure(
                     &format!(
                         "mutants-vm: failed to stop sandbox {}",
-                        crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
+                        crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
                     ),
                     &stop_output,
                 ));
@@ -1817,7 +1817,7 @@ where
                 &plan.copy_report,
                 &format!(
                     "mutants-vm: failed to preserve mutation report from sandbox {}",
-                    crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
+                    crate::semantic_value::<AsStrText<'_>, _>(plan.sandbox_name.as_str()).0
                 ),
             )?;
             Ok(CampaignReportKind::CargoMutants)
@@ -1906,7 +1906,7 @@ where
     let guest_path = guest_path.into().0;
     OsString::from(format!(
         "{}:{guest_path}",
-        crate::semantic_value::<AsStrText<'_>>(name.as_str()).0
+        crate::semantic_value::<AsStrText<'_>, _>(name.as_str()).0
     ))
 }
 
@@ -2270,7 +2270,7 @@ mod tests
 
         for (mode, label, needs_diff, guest_timeout, sandbox_timeout) in cases {
             assert_eq!(
-                crate::semantic_value::<super::AsStrText<'static>>(mode.as_str()).0,
+                crate::semantic_value::<super::AsStrText<'static>, _>(mode.as_str()).0,
                 label,
                 "mode label should be stable"
             );
@@ -2309,7 +2309,7 @@ mod tests
         }
         assert_eq!(
             "gandr-mutants-owned",
-            crate::semantic_value::<super::AsStrText<'_>>(
+            crate::semantic_value::<super::AsStrText<'_>, _>(
                 SandboxName::new("gandr-mutants-owned")
                     .expect("owned name should validate")
                     .as_str()

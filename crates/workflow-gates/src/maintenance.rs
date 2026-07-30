@@ -338,7 +338,7 @@ impl GitRef
     fn from_commit(commit: &CommitId) -> Self
     {
         Self {
-            text: String::from(crate::semantic_value::<AsStrText<'_>>(commit.as_str()).0),
+            text: String::from(crate::semantic_value::<AsStrText<'_>, _>(commit.as_str()).0),
         }
     }
 }
@@ -761,7 +761,7 @@ impl MaintenanceGit for SupportGit<'_>
         let context = context.into().0;
         let peeled = format!(
             "{}^{{commit}}",
-            crate::semantic_value::<AsStrText<'_>>(reference.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(reference.as_str()).0
         );
         let args = Vec::from([
             OsString::from("rev-parse"),
@@ -1486,7 +1486,7 @@ mod tests
         assert_eq!(WATERMARK_SCHEMA, parsed.schema().into().0);
         assert_eq!(
             OID_A,
-            crate::semantic_value::<AsStrText<'_>>(parsed.upper().as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(parsed.upper().as_str()).0
         );
         Ok(())
     }
@@ -1765,9 +1765,9 @@ mod tests
         let output = fixture.path().join("github-output.txt");
         let request = MaintenanceRangeRequest::new(
             &output,
-            GitRef::new(crate::semantic_value::<AsStrText<'_>>(head.as_str()).0)?,
+            GitRef::new(crate::semantic_value::<AsStrText<'_>, _>(head.as_str()).0)?,
             Some(GitRef::new(
-                crate::semantic_value::<AsStrText<'_>>(base.as_str()).0,
+                crate::semantic_value::<AsStrText<'_>, _>(base.as_str()).0,
             )?),
             None,
             Some(fixture.path()),
@@ -1820,7 +1820,7 @@ mod tests
         let output = fixture.path().join("github-output.txt");
         let request = MaintenanceRangeRequest::new(
             &output,
-            GitRef::new(crate::semantic_value::<AsStrText<'_>>(head.as_str()).0)?,
+            GitRef::new(crate::semantic_value::<AsStrText<'_>, _>(head.as_str()).0)?,
             None,
             Some(&watermark),
             Some(fixture.path()),
@@ -1945,7 +1945,7 @@ mod tests
             let name = name.into().0;
             let reference = GitRef::new(name)?;
             self.refs.insert(
-                String::from(crate::semantic_value::<AsStrText<'_>>(reference.as_str()).0),
+                String::from(crate::semantic_value::<AsStrText<'_>, _>(reference.as_str()).0),
                 commit,
             );
             Ok(())
@@ -1959,12 +1959,12 @@ mod tests
         {
             if let Some(commit) = self
                 .refs
-                .get(crate::semantic_value::<AsStrText<'_>>(reference.as_str()).0)
+                .get(crate::semantic_value::<AsStrText<'_>, _>(reference.as_str()).0)
             {
                 return Some(commit.clone());
             }
             let Ok(candidate) =
-                CommitId::new(crate::semantic_value::<AsStrText<'_>>(reference.as_str()).0)
+                CommitId::new(crate::semantic_value::<AsStrText<'_>, _>(reference.as_str()).0)
             else {
                 return None;
             };

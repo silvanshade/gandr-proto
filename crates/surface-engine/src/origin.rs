@@ -76,10 +76,6 @@ impl OriginNodeId
 /// diagnostics and tests. [`OriginMap`] itself is keyed by [`OriginNodeId`].
 #[repr(transparent)]
 #[derive(Clone, Default, Eq, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-)]
 pub struct OriginPath(pub Vec<u32>);
 
 impl From<Vec<u32>> for OriginPath
@@ -144,10 +140,6 @@ impl core::borrow::Borrow<[u32]> for OriginPath
 /// Borrowed compatibility path through a lowered origin tree.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-)]
 pub struct OriginPathRef<'path>(pub &'path [u32]);
 
 impl<'path> From<&'path OriginPath> for OriginPathRef<'path>

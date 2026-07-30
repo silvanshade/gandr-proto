@@ -43,10 +43,6 @@ use crate::subst::match_cmd;
 /// substitution: replay ([`crate::tracelet`]) re-matches and re-contracts, so a
 /// certificate is re-executed rather than trusted (ADR-69).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a rewrite step is exactly {which cell, at which position}; both are needed to replay it and neither is derived"
-)]
 pub struct CellApp
 {
     /// The cell that fired.

@@ -70,10 +70,6 @@ use crate::tracelet::Tracelet;
 /// [`compose_invertible`]).
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a composition obstruction is exactly its variable-flow cycle; it is produced by compose_directed and read by the decline diagnostic"
-)]
 pub struct CompositionObstruction
 {
     /// The closed walk of `(cell, hole)` nodes the seam flow loops through.

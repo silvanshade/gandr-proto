@@ -1392,12 +1392,12 @@ mod tests
         let mut low = 0usize;
         let mut high = usize::MAX;
         while low < high {
-            let midpoint = low + (high - low).div_ceil(2);
+            let midpoint = low.saturating_add(high.saturating_sub(low).div_ceil(2));
             if Layout::array::<Vec<NodeId>>(midpoint).is_ok() {
                 low = midpoint;
             }
             else {
-                high = midpoint - 1;
+                high = midpoint.saturating_sub(1);
             }
         }
         NodeCapacity::from(low)

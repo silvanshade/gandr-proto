@@ -56,10 +56,6 @@ use crate::boundary::PositionStep;
 /// name, so the symbol is its own content key.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a symbol is exactly its interned name; the newtype exists only to keep the constructor/operation namespace distinct from a metavariable name"
-)]
 pub struct Sym(pub Box<str>);
 
 impl Sym
@@ -99,10 +95,6 @@ pub enum Cat
 /// [`Cat`] it ranges over (`proposal-sequent-kernel.md` §7.3, "patterns = node
 /// ids + pattern vars").
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a metavariable is exactly its {name, category}; both are load-bearing (the category disjoins the two substitution maps) and neither is derived"
-)]
 pub struct MetaVar
 {
     /// The metavariable's name.
@@ -326,10 +318,6 @@ impl CmdPat
 /// interesting positions sit near the root, not a restriction encoded here.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a position is exactly its child-index path; the newtype exists to give the path type a name and constructors"
-)]
 pub struct Pos(pub Box<[usize]>);
 
 impl Pos

@@ -36,10 +36,6 @@ use crate::decode::decode;
 /// large elimination), so the context is a genuine bridge from the description
 /// layer into the core type universe.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a signature context is exactly its ordered {variable, decoded type} bindings; the elaborator builds it by decoding the fields the pattern variables fill"
-)]
 #[repr(transparent)]
 pub struct SignatureContext
 {
@@ -117,10 +113,6 @@ impl SignatureContext
 /// untyped `D⋆` term pair, its derived [`crate::CellVarMeta`], and its
 /// provenance), never rewritten.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a typed cell face is exactly its {stage-0 face, decoded signature context}; the elaborator constructs it by decoding the face's pattern-variable field types"
-)]
 pub struct TypedCellFace
 {
     /// The stage-0 face (the untyped `D⋆` term pair, reused whole).

@@ -98,10 +98,6 @@ pub enum StepSym
 /// generative walk front-end consumes these precomputed steps.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a precomputed zipper step is exactly the crossed symbol in W2'"
-)]
 pub struct RCtxStep
 {
     /// The symbol crossed by this step.
@@ -123,10 +119,6 @@ pub struct RCtxStep
 ///   at other contexts, precedences, and sorts.
 /// - witness: `gandr_surface_grammar::contracts::declared_mold_candidate_inventory_is_exact`
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a mold definition is exactly this closed zipper-identity record"
-)]
 pub struct MoldDef
 {
     /// Textual tile form.
@@ -397,7 +389,6 @@ impl MoldTable
         Ok(match dir {
             | Dir::Left => &data.left_steps,
             | Dir::Right => &data.right_steps,
-            | _ => &[],
         })
     }
 

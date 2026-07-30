@@ -38,10 +38,6 @@ use crate::tracelet::confluence_tracelet;
 /// The **completion budget** — the ceilings that make completion terminate with
 /// a defined decline rather than diverge (`proposal-sequent-kernel.md` §7.3.3).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the budget is exactly its three ceilings; a caller sets all three and the engine reads them"
-)]
 pub struct CompletionBudget
 {
     /// The maximum number of critical pairs the loop processes.

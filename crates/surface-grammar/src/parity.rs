@@ -93,10 +93,6 @@ pub enum NamedKindRealization
 
 /// One row of the named-kind parity inventory.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "an inventory row is exactly a kind and its realisation class"
-)]
 pub struct NamedKindEntry
 {
     /// The committed tree-sitter named kind.
@@ -108,10 +104,6 @@ pub struct NamedKindEntry
 /// Borrowed tree-sitter named-kind text.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "constructed literally in the parity classification witnesses"
-)]
 pub struct NamedKind<'kind>(pub &'kind str);
 
 /// Classify how a named kind is realised.

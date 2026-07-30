@@ -28,10 +28,6 @@ macro_rules! static_text_wrapper {
         #[doc = $doc]
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        #[expect(
-            clippy::exhaustive_structs,
-            reason = "the wrapper is constructed literally in constant tables across dependent crates"
-        )]
         pub struct $name(pub &'static str);
 
         impl AsRef<str> for $name
@@ -86,27 +82,15 @@ static_text_wrapper!(SortName, "Stable display name for a closed grammar sort.")
 /// Count of declared mold definitions in a checked grammar.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "constructed literally in the constant inventory tables of dependent crates"
-)]
 pub struct MoldCount(pub usize);
 
 /// Presence flag for a precedence group in a table.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "dependent crates read the flag directly when projecting precedence tables"
-)]
 pub struct PrecPresence(pub bool);
 /// Count of mold candidates declared for one tile label.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "constructed literally in parser menu assertions"
-)]
 pub struct CandidateCount(pub usize);
 
 use crate::check::validate_assumption_3;
@@ -204,10 +188,6 @@ impl Sort
 /// regex-zipper context. The retired `mold: Mold` field is gone.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "surface modules need direct label inspection for constant tables"
-)]
 pub struct Tile
 {
     /// Static surface label emitted by the tree-sitter named rule.
@@ -376,10 +356,6 @@ impl Regex
 
 /// Surface adaptation record retained beside checked rules.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "adaptation records are fixed audit data emitted by surface modules"
-)]
 pub struct Adaptation
 {
     /// Rule identity the adaptation belongs to.
@@ -424,10 +400,6 @@ impl Adaptation
 
 /// One named tree-sitter-provenance grammar rule.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "surface modules build constant rules by naming every field through constructors"
-)]
 pub struct Rule
 {
     /// Stable static rule identity.
@@ -941,10 +913,6 @@ impl Fixity
 /// text to this tile is per-module and OUT of this seam); the
 /// fixity fixes the form shape and precedence band.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "an operator declaration is exactly its spelling and fixity"
-)]
 pub struct OperatorDecl
 {
     /// The operator's tile spelling (its label in the extended grammar).

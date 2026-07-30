@@ -28,7 +28,7 @@ members = [
   # "crates/theory-virtual-doctrines",
   # "crates/workflow-docs",
   "crates/workflow-dylint",
-  # "crates/workflow-gates",
+  "crates/workflow-gates",
   # "crates/workflow-grammatical-framework",
 ]
 # `fuzz/` is an independent AFL++ workspace with its own lockfile and lint
@@ -505,7 +505,7 @@ empty_enum_variants_with_brackets = "deny"
 empty_structs_with_brackets = "deny"
 error_impl_error = "deny"
 exhaustive_enums = "allow"
-exhaustive_structs = "deny"
+exhaustive_structs = "allow"
 exit = "deny"
 expect_used = "deny"
 field_scoped_visibility_modifiers = "deny"

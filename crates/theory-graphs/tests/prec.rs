@@ -577,8 +577,8 @@ mod contracts
             let assocs = vec![None; chain_size];
             let (dag, nodes) = integer_chain(&assocs).expect("chain builds");
             prop_assert_eq!(chain_size, nodes.len());
-            let alpha_index = alpha_draw % chain_size;
-            let omega_index = omega_draw % chain_size;
+            let alpha_index = alpha_draw.checked_rem(chain_size).expect("chain size is nonzero");
+            let omega_index = omega_draw.checked_rem(chain_size).expect("chain size is nonzero");
             prop_assume!(alpha_index != omega_index);
             let alpha_node = nodes.get(alpha_index).copied().expect("alpha index is modulo chain size");
             let omega_node = nodes.get(omega_index).copied().expect("omega index is modulo chain size");
@@ -591,11 +591,11 @@ mod contracts
             let (dag, nodes) = integer_chain(&assocs).expect("chain builds");
             prop_assert_eq!(chain_size, nodes.len());
             let alpha_node = nodes
-                .get(alpha_draw % chain_size)
+                .get(alpha_draw.checked_rem(chain_size).expect("chain size is nonzero"))
                 .copied()
                 .expect("alpha index is modulo chain size");
             let omega_node = nodes
-                .get(omega_draw % chain_size)
+                .get(omega_draw.checked_rem(chain_size).expect("chain size is nonzero"))
                 .copied()
                 .expect("omega index is modulo chain size");
             prop_assert_eq!(dag.comparable(alpha_node, omega_node), dag.comparable(omega_node, alpha_node));
@@ -611,8 +611,8 @@ mod contracts
             let assocs = pattern.into_iter().cycle().take(chain_size).collect::<Vec<_>>();
             let (dag, nodes) = integer_chain(&assocs).expect("chain builds");
             prop_assert_eq!(chain_size, nodes.len());
-            let alpha_index = alpha_draw % chain_size;
-            let omega_index = omega_draw % chain_size;
+            let alpha_index = alpha_draw.checked_rem(chain_size).expect("chain size is nonzero");
+            let omega_index = omega_draw.checked_rem(chain_size).expect("chain size is nonzero");
             let alpha_node = nodes.get(alpha_index).copied().expect("alpha index is modulo chain size");
             let omega_node = nodes.get(omega_index).copied().expect("omega index is modulo chain size");
             if alpha_index == omega_index {
@@ -620,7 +620,6 @@ mod contracts
                     None => prop_assert!(bool::from(dag.eq(alpha_node, alpha_node, None))),
                     Some(Assoc::Left) => prop_assert!(bool::from(dag.gt(alpha_node, alpha_node, Some(Assoc::Left)))),
                     Some(Assoc::Right) => prop_assert!(bool::from(dag.lt(alpha_node, alpha_node, Some(Assoc::Right)))),
-                    Some(_future) => prop_assert!(false, "unexpected future associativity variant"),
                 }
             }
             else {

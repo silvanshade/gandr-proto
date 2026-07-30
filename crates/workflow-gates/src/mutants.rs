@@ -227,8 +227,8 @@ impl MutantsHost for SupportMutantsHost
         let sanitized_git = sanitized_git.into().0;
         let output = support::run_output(OsStr::new(GIT_PROGRAM), args, cwd, sanitized_git)?;
         Ok(HostCommandOutcome::new(
-            crate::semantic_value::<crate::support::SuccessFlag>(output.success()).0,
-            crate::semantic_value::<crate::support::OptionalCodeCode>(output.code()).0,
+            crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0,
+            crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
             output.stdout_lossy().into_owned(),
         ))
     }
@@ -767,7 +767,7 @@ where
     };
     let plan = containment::cargo_mutants_plan(&request)?;
     let status = run_guest_cargo_mutants(&plan)?;
-    if crate::semantic_value::<SuccessFlag>(status.success()).0 {
+    if crate::semantic_value::<SuccessFlag, _>(status.success()).0 {
         return Ok(());
     }
     Err(GateError::operational(
@@ -801,7 +801,7 @@ where
             os("--quiet"),
             OsString::from(format!(
                 "{}^{{commit}}",
-                crate::semantic_value::<range::AsStrText<'_>>(from_token.as_str()).0
+                crate::semantic_value::<range::AsStrText<'_>, _>(from_token.as_str()).0
             )),
         ],
         "scheduled --from ref resolution",
@@ -815,7 +815,7 @@ where
             os("--quiet"),
             OsString::from(format!(
                 "{}^{{commit}}",
-                crate::semantic_value::<range::AsStrText<'_>>(to_token.as_str()).0
+                crate::semantic_value::<range::AsStrText<'_>, _>(to_token.as_str()).0
             )),
         ],
         "scheduled --to ref resolution",
@@ -1227,12 +1227,12 @@ fn containment_evidence() -> Result<containment::ContainmentEvidence, GateError>
 fn kernel_name() -> Result<String, GateError>
 {
     let output = support::run_output(OsStr::new(UNAME_PROGRAM), &[os("-s")], None, false)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag>(output.success()).0 {
+    if !crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0 {
         return Err(GateError::operational(format!(
             "mutants-guest: failed to read kernel name: {}",
             support::command_status_detail(
                 UNAME_PROGRAM,
-                crate::semantic_value::<crate::support::OptionalCodeCode>(output.code()).0
+                crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0
             )
         )));
     }
@@ -1358,12 +1358,12 @@ where
 {
     let context = context.into().0;
     let output = host.run_git_output(args, Some(options.workspace_root.as_path()), true)?;
-    if !crate::semantic_value::<SuccessFlag>(output.success()).0 {
+    if !crate::semantic_value::<SuccessFlag, _>(output.success()).0 {
         return Err(GateError::operational(format!(
             "mutants-vm: git {context} failed: {}",
             support::command_status_detail(
                 GIT_PROGRAM,
-                crate::semantic_value::<OptionalCodeCode>(output.code()).0
+                crate::semantic_value::<OptionalCodeCode, _>(output.code()).0
             )
         )));
     }
@@ -1493,14 +1493,14 @@ where
 {
     let context = context.into().0;
     let status = host.run_git_status(args, cwd, true)?;
-    if crate::semantic_value::<SuccessFlag>(status.success()).0 {
+    if crate::semantic_value::<SuccessFlag, _>(status.success()).0 {
         return Ok(());
     }
     Err(GateError::operational(format!(
         "{context}: {}",
         support::command_status_detail(
             GIT_PROGRAM,
-            crate::semantic_value::<OptionalCodeCode>(status.code()).0
+            crate::semantic_value::<OptionalCodeCode, _>(status.code()).0
         )
     )))
 }
@@ -1519,14 +1519,14 @@ where
 {
     let context = context.into().0;
     let status = host.run_host_status(program, args, cwd)?;
-    if crate::semantic_value::<SuccessFlag>(status.success()).0 {
+    if crate::semantic_value::<SuccessFlag, _>(status.success()).0 {
         return Ok(());
     }
     Err(GateError::operational(format!(
         "{context}: {}",
         support::command_status_detail(
             program.to_string_lossy().as_ref(),
-            crate::semantic_value::<OptionalCodeCode>(status.code()).0
+            crate::semantic_value::<OptionalCodeCode, _>(status.code()).0
         )
     )))
 }
@@ -1557,7 +1557,7 @@ fn temporary_sandbox_name(mode: sandbox::CampaignMode) -> Result<sandbox::Sandbo
     sandbox::SandboxName::new(&format!(
         "{}{}-{}",
         sandbox::SANDBOX_PREFIX,
-        crate::semantic_value::<sandbox::AsStrText<'static>>(mode.as_str()).0,
+        crate::semantic_value::<sandbox::AsStrText<'static>, _>(mode.as_str()).0,
         nonce
     ))
 }

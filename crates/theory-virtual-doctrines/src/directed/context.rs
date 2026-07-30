@@ -97,10 +97,6 @@ impl Variance
 /// The `op` involution ([`OpSig::op`]) lives here, on the *reflected*
 /// signature, never on the frozen [`SignatureRef`] core.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a directed object is exactly a reflected signature paired with the variance slot it stands in; op flips the slot and the directed context reads both fields"
-)]
 pub struct OpSig
 {
     /// The underlying reflected signature (a frozen-core [`SignatureRef`]).

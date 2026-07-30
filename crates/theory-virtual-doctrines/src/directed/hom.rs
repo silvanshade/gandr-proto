@@ -40,10 +40,6 @@ use crate::vdc::TermRef;
 /// covariant slot; unlike the undirected path, the two endpoints are **not**
 /// interchangeable.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a directed hom is exactly its {signature, contravariant source, covariant target}; the directed J reads all three and the reflection constructs it"
-)]
 pub struct DirectedHom
 {
     /// The signature both endpoints inhabit.
@@ -138,10 +134,6 @@ impl MotiveShape
 /// The moving endpoint is supplied by the scrutinee's target; `fixed` is the
 /// other endpoint the motive's produced hom pins.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a directed-J elimination is exactly its {motive shape, fixed endpoint}; the checker reads both and the moving endpoint comes from the scrutinee"
-)]
 pub struct DirectedJ
 {
     /// Which slot the motive puts the moving endpoint in.

@@ -19,10 +19,6 @@ macro_rules! semantic_copy {
         $(#[$meta])*
         #[repr(transparent)]
         #[derive(Clone, Copy, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        #[expect(
-            clippy::exhaustive_structs,
-            reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-        )]
         $vis struct $name(pub $inner);
 
         impl From<$inner> for $name {
@@ -61,10 +57,6 @@ macro_rules! semantic_borrowed_str {
         $(#[$meta])*
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        #[expect(
-            clippy::exhaustive_structs,
-            reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-        )]
         $vis struct $name<'source>(pub &'source str);
 
         impl<'source> From<&'source str> for $name<'source> {
@@ -102,10 +94,6 @@ macro_rules! semantic_borrowed_str {
 /// Optional borrowed lowered definition name used by item alignment.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-)]
 pub struct OptionalDefinitionName<'source>(pub Option<&'source str>);
 
 impl<'source> From<Option<&'source str>> for OptionalDefinitionName<'source>
@@ -521,10 +509,6 @@ semantic_bool!(
 /// Half-open host byte range into source text.
 #[repr(transparent)]
 #[derive(Clone, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-)]
 pub struct SourceRange(pub Range<usize>);
 
 impl core::fmt::Debug for SourceRange
@@ -570,10 +554,6 @@ impl Deref for SourceRange
 /// Owned diagnostic text crossing a fallible test or decoder boundary.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "transparent boundary wrappers are constructed literally across the workspace by design"
-)]
 pub struct DiagnosticText(pub String);
 
 impl From<String> for DiagnosticText

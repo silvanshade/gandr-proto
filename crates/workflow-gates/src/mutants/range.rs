@@ -229,8 +229,8 @@ pub(crate) fn scheduled_diff_plan(input: &ScheduledRangeInput<'_>)
         DiffKind::Scheduled,
         &format!(
             "{}...{}",
-            crate::semantic_value::<AsStrText<'_>>(from_oid.as_str()).0,
-            crate::semantic_value::<AsStrText<'_>>(to_oid.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(from_oid.as_str()).0,
+            crate::semantic_value::<AsStrText<'_>, _>(to_oid.as_str()).0
         ),
     ))
 }
@@ -793,7 +793,7 @@ mod tests
         }
         assert_eq!(
             "week-start_1/main",
-            crate::semantic_value::<AsStrText<'_>>(
+            crate::semantic_value::<AsStrText<'_>, _>(
                 validate_scheduled_ref_token("week-start_1/main", "from")
                     .expect("safe token must validate")
                     .as_str()

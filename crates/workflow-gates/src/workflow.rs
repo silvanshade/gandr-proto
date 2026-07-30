@@ -423,8 +423,8 @@ impl WorkflowIdentityProvider for HostWorkflowIdentity
         cwd: Option<&Path>,
     ) -> Option<WorkflowInputIdentity>
     {
-        if !crate::semantic_value::<CacheableTaskFlag>(is_cacheable_task(task)).0
-            || !crate::semantic_value::<OptionalRepositoryIsCleanFlag>(repository_is_clean(cwd)).0?
+        if !crate::semantic_value::<CacheableTaskFlag, _>(is_cacheable_task(task)).0
+            || !crate::semantic_value::<OptionalRepositoryIsCleanFlag, _>(repository_is_clean(cwd)).0?
         {
             return None;
         }
@@ -478,12 +478,12 @@ impl FileWorkflowCache
 
     /// Return the cache path for one repository token.
     #[must_use]
-    fn path<R>(
+    fn path<'semantic, R>(
         &self,
         repository: R,
     ) -> PathBuf
     where
-        R: Into<RepositoryText<'_>>,
+        R: Into<RepositoryText<'semantic>>,
     {
         let repository = repository.into().0;
         self.root.join(format!("{repository}.json"))
@@ -499,12 +499,12 @@ impl FileWorkflowCache
     ///
     /// # Errors
     /// Returns cache file read failures other than absence.
-    fn read_cache_file<R>(
+    fn read_cache_file<'semantic, R>(
         &self,
         repository: R,
     ) -> Result<WorkflowCacheFile, GateError>
     where
-        R: Into<RepositoryText<'_>>,
+        R: Into<RepositoryText<'semantic>>,
     {
         let repository = repository.into().0;
         let path = self.path(repository);
@@ -1060,9 +1060,9 @@ fn git_text_owned(
 
 /// Return a lowercase BLAKE3 digest for `bytes`.
 #[must_use]
-fn hash_bytes<B>(bytes: B) -> String
+fn hash_bytes<'semantic, B>(bytes: B) -> String
 where
-    B: Into<BytesBytes<'_>>,
+    B: Into<BytesBytes<'semantic>>,
 {
     let bytes = bytes.into().0;
     let digest = blake3::hash(bytes);
@@ -1307,7 +1307,7 @@ fn task_cache_key<Identity>(
 where
     Identity: WorkflowIdentityProvider,
 {
-    if !crate::semantic_value::<CacheableTaskFlag>(is_cacheable_task(task)).0 {
+    if !crate::semantic_value::<CacheableTaskFlag, _>(is_cacheable_task(task)).0 {
         return None;
     }
     let task_identity = identity.task_identity(tier, task, cwd)?;
@@ -2352,11 +2352,11 @@ mod tests
     }
 
     /// Return whether `name` is a direct mise task token with no shell syntax.
-    fn is_canonical_task_name<N>(
+    fn is_canonical_task_name<'semantic, N>(
         name: N
     ) -> impl Into<CanonicalTaskNameFlag>
     where
-        N: Into<NameText<'_>>,
+        N: Into<NameText<'semantic>>,
     {
         let name = name.into().0;
         !name.is_empty()
@@ -2418,9 +2418,9 @@ mod tests
 
     /// Convert a static string into an operating-system argument.
     #[cfg(unix)]
-    fn os<V>(value: V) -> OsString
+    fn os<'semantic, V>(value: V) -> OsString
     where
-        V: Into<ValueText<'_>>,
+        V: Into<ValueText<'semantic>>,
     {
         let value = value.into().0;
         OsString::from(value)

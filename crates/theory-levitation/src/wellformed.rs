@@ -58,10 +58,6 @@ pub enum WfKind
 /// One well-formedness **diagnostic** — an inspectable failure with a message
 /// and (when known) a surface span.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a diagnostic is exactly its {kind, message, optional span}; it is produced by the checks and read by consumers"
-)]
 pub struct WfDiagnostic
 {
     /// The failure classification.

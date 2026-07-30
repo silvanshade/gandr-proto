@@ -27,10 +27,6 @@ use crate::code::Name;
 /// equality includes both, so two descriptions are equal only when they name
 /// the same minted datatype.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the minted identity is exactly {serial, name}; the elaborator mints ids in declaration order"
-)]
 pub struct NominalId
 {
     /// The monotone serial assigned in declaration order within one
@@ -62,10 +58,6 @@ impl NominalId
 /// A **surface span** `[start, end)` in source bytes — provenance for a
 /// description element.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a span is exactly its half-open byte range; the elaborator fills it from the CST node range"
-)]
 pub struct SurfaceSpan
 {
     /// The start byte (inclusive).
@@ -108,10 +100,6 @@ pub enum DeclPolarity
 /// A datatype **parameter** with its grade and attribute decorations
 /// (proposal §3).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a stage-0 parameter is exactly its {name, grade, attributes}; the elaborator builds it from the type-parameter list"
-)]
 pub struct ParamDesc
 {
     /// The parameter's name (`a` in `Maybe(a)`).
@@ -150,10 +138,6 @@ impl ParamDesc
 /// Expr(a)`) as its surface spelling; at stage 0 it is retained for inspection
 /// only.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a stage-0 constructor is exactly its {name, code, reserved GADT result, attributes}; the elaborator builds it from a data member"
-)]
 pub struct CtorDesc
 {
     /// The constructor's name.
@@ -194,10 +178,6 @@ impl CtorDesc
 /// A reserved **operation** member (`op f(…) -> R`) — its name, multi-out
 /// [`BridgeArity`], and attribute Σ (proposal §3–§4.2).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a stage-0 operation is exactly its {name, bridge arity, attributes}; the elaborator builds it from an op member"
-)]
 pub struct OpDesc
 {
     /// The operation's name.
@@ -238,10 +218,6 @@ impl OpDesc
 /// the μ or ν decoder (V6); `attrs` is the datatype's own attribute Σ. There is
 /// **no parallel structure**: `DataDesc` *is* the decl table (proposal §3).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "DataDesc is the decl table: every ADR-54 §5 extension point is a field here by construction, and the elaborator constructs it from a data/codata block"
-)]
 pub struct DataDesc
 {
     /// The minted 0-cell identity (ADR-54 §3.4).

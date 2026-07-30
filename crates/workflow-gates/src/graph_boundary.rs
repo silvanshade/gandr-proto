@@ -207,9 +207,9 @@ where
 }
 
 /// Parse the subset of Cargo metadata needed for graph-boundary analysis.
-fn parse_metadata<J>(metadata_json: J) -> Result<Metadata, GateError>
+fn parse_metadata<'semantic, J>(metadata_json: J) -> Result<Metadata, GateError>
 where
-    J: Into<MetadataJsonText<'_>>,
+    J: Into<MetadataJsonText<'semantic>>,
 {
     let metadata_json = metadata_json.into().0;
     let value: Value = serde_json::from_str(metadata_json).map_err(|error| GateError::Json {
@@ -289,12 +289,12 @@ where
 }
 
 /// Interpret a JSON value as an object.
-fn value_object<'value, C>(
+fn value_object<'semantic, 'value, C>(
     value: &'value Value,
     context: C,
 ) -> Result<&'value Map<String, Value>, GateError>
 where
-    C: Into<ContextText<'_>>,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     value
@@ -344,12 +344,12 @@ fn parse_library_target_path(targets: &[Value]) -> Result<Option<PathBuf>, GateE
 }
 
 /// Interpret a JSON value as an array.
-fn value_array<'value, C>(
+fn value_array<'semantic, 'value, C>(
     value: &'value Value,
     context: C,
 ) -> Result<&'value [Value], GateError>
 where
-    C: Into<ContextText<'_>>,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     value
@@ -359,12 +359,12 @@ where
 }
 
 /// Interpret a JSON value as a string.
-fn value_string<C>(
+fn value_string<'semantic, C>(
     value: &Value,
     context: C,
 ) -> Result<String, GateError>
 where
-    C: Into<ContextText<'_>>,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     value
@@ -465,7 +465,7 @@ fn source_findings(
 
 /// Append public API boundary findings for one parsed `gandr-graph` library
 /// root and its externally visible declared modules.
-fn graph_public_api_findings<P>(
+fn graph_public_api_findings<'semantic, P>(
     workspace_root: &Path,
     package: P,
     source_path: &Path,
@@ -473,7 +473,7 @@ fn graph_public_api_findings<P>(
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
 where
-    P: Into<PackageText<'_>>,
+    P: Into<PackageText<'semantic>>,
 {
     let package = package.into().0;
     let source_dir = source_path.parent().ok_or_else(|| {
@@ -998,13 +998,13 @@ enum UseTreeRenderFrame<'tree>
 /// - measure: unvisited `UseTree` nodes below the current node.
 /// - boundedness: syn stores each `use` declaration as a finite parsed tree.
 /// - input recursion: none.
-fn collect_use_aliases<R>(
+fn collect_use_aliases<'semantic, R>(
     tree: &UseTree,
     inherited_root: R,
     context: &mut AliasContext,
 ) -> impl Into<CollectUseAliasesFlag>
 where
-    R: Into<OptionalInheritedRootText<'_>>,
+    R: Into<OptionalInheritedRootText<'semantic>>,
 {
     let mut changed = false;
     let mut work = vec![UseTreeWork {
@@ -1140,9 +1140,9 @@ fn forbidden_path_roots(
 
 /// Return whether an unresolved single-segment path is a Rust built-in or
 /// prelude type name rather than a glob-import candidate.
-fn is_builtin_type_name<N>(name: N) -> impl Into<BuiltinTypeNameFlag>
+fn is_builtin_type_name<'semantic, N>(name: N) -> impl Into<BuiltinTypeNameFlag>
 where
-    N: Into<NameText<'_>>,
+    N: Into<NameText<'semantic>>,
 {
     let name = name.into().0;
     matches!(
@@ -1174,13 +1174,13 @@ where
 }
 
 /// Collect forbidden roots that appear structurally in a use tree.
-fn forbidden_roots_in_use_tree<R>(
+fn forbidden_roots_in_use_tree<'semantic, R>(
     tree: &UseTree,
     inherited_root: R,
     aliases: &AliasContext,
 ) -> BTreeSet<String>
 where
-    R: Into<OptionalInheritedRootText<'_>>,
+    R: Into<OptionalInheritedRootText<'semantic>>,
 {
     let inherited_root = inherited_root.into().0;
     let mut roots = BTreeSet::new();
@@ -1195,14 +1195,14 @@ where
 /// - measure: unvisited `UseTree` nodes below the current node.
 /// - boundedness: syn stores each `use` declaration as a finite parsed tree.
 /// - input recursion: none.
-fn collect_use_tree_roots<R>(
+fn collect_use_tree_roots<'semantic, R>(
     tree: &UseTree,
     inherited_root: R,
     aliases: &AliasContext,
     roots: &mut BTreeSet<String>,
 )
 where
-    R: Into<OptionalInheritedRootText<'_>>,
+    R: Into<OptionalInheritedRootText<'semantic>>,
 {
     let mut work = vec![UseTreeWork {
         tree,
@@ -1388,9 +1388,9 @@ fn resolved_manifest_path(
 }
 
 /// Return whether a name is one of the graph-stack crates.
-fn is_graph_stack_name<N>(name: N) -> impl Into<GraphStackNameFlag>
+fn is_graph_stack_name<'semantic, N>(name: N) -> impl Into<GraphStackNameFlag>
 where
-    N: Into<NameText<'_>>,
+    N: Into<NameText<'semantic>>,
 {
     let name = name.into().0;
     name == "petgraph" || name == "fixedbitset"
@@ -1441,7 +1441,7 @@ fn rust_source_files(root: &Path) -> Result<Vec<PathBuf>, GateError>
 }
 
 /// Append findings for any graph-stack path anywhere outside `gandr-graph`.
-fn outside_source_findings<P>(
+fn outside_source_findings<'semantic, P>(
     workspace_root: &Path,
     package: P,
     source_path: &Path,
@@ -1449,7 +1449,7 @@ fn outside_source_findings<P>(
     findings: &mut Vec<Finding>,
 )
 where
-    P: Into<PackageText<'_>>,
+    P: Into<PackageText<'semantic>>,
 {
     let package = package.into().0;
     let aliases = module_aliases(&syntax.items, &AliasContext::default());
@@ -1751,12 +1751,12 @@ fn cargo_metadata(workspace_root: &Path) -> Result<String, GateError>
 /// - witness: `graph_boundary::tests::rust_parse_errors_are_operational_errors`
 /// - witness: `graph_boundary::tests::findings_are_deterministically_ordered`
 #[inline]
-pub fn analyze_workspace<J>(
+pub fn analyze_workspace<'semantic, J>(
     workspace_root: &Path,
     metadata_json: J,
 ) -> GateResult
 where
-    J: Into<MetadataJsonText<'_>>,
+    J: Into<MetadataJsonText<'semantic>>,
 {
     let metadata_json = metadata_json.into().0;
     let metadata = parse_metadata(metadata_json)?;
@@ -2063,9 +2063,9 @@ mod tests
     impl TestWorkspace
     {
         /// Create a uniquely named temporary workspace fixture.
-        fn create<N>(name: N) -> Result<Self, GateError>
+        fn create<'semantic, N>(name: N) -> Result<Self, GateError>
         where
-            N: Into<NameText<'_>>,
+            N: Into<NameText<'semantic>>,
         {
             let name = name.into().0;
             let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);

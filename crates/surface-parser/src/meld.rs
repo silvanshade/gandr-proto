@@ -3137,10 +3137,6 @@ impl<'pbg> MeldState<'pbg>
 /// - hypothesis: L1 — a two-field snapshot; witnessed through `admits_at`.
 /// - witness: `gandr_surface_parser::meld::tests::admits_rejects_a_stray_closer`
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the admissibility frontier is exactly the open-frontier mold, the head-operand flag, and the expected operand sort"
-)]
 pub struct Frontier
 {
     /// The nearest open form frontier's mold, if any.

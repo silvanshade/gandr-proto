@@ -772,7 +772,7 @@ fn parse_summary_file(
     }
     let declared = parse_declared_percent(percent_value, filename)?;
     let computed =
-        Percent::from_counts(covered, count).ok_or_else(|| invalid_line_values(filename))?;
+        Percent::from_counts(covered, count).map_err(|_error| invalid_line_values(filename))?;
     if declared != computed {
         return Err(coverage_error(format!(
             "coverage summary line percentage disagrees with counts for {filename}"
@@ -833,7 +833,7 @@ where
         if signed < 0 {
             return Err(invalid_line_values(filename));
         }
-        return u64::try_from(signed).ok_or_else(|| invalid_line_values(filename));
+        return u64::try_from(signed).map_err(|_error| invalid_line_values(filename));
     }
     if let Some(unsigned) = number.as_u64() {
         return Ok(unsigned);

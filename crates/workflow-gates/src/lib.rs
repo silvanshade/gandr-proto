@@ -528,12 +528,12 @@ impl fmt::Write for StableFormatter<'_, '_>
 ///   exact rendered diagnostic and formatter-error observations.
 /// - witness: `gandr_workflow_gates::tests::finding_display_preserves_field_order_and_normalizes_whitespace`
 /// - witness: `gandr_workflow_gates::tests::stable_formatters_propagate_destination_failures`
-fn write_stable_value<Value>(
+fn write_stable_value<'semantic, Value>(
     formatter: &mut fmt::Formatter<'_>,
     value: Value,
 ) -> fmt::Result
 where
-    Value: Into<ValueText<'_>>,
+    Value: Into<ValueText<'semantic>>,
 {
     let value = value.into().0;
     for character in value.chars() {

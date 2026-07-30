@@ -31,10 +31,6 @@ use crate::vdc::Elaborated;
 /// protype isomorphism the groupoid laws operate on
 /// (`proposal-vdc-reflection.md` §5.3).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "an isomorphism witness is exactly its {forward, backward} derivation pair; validity is replay-decided and the groupoid laws construct it"
-)]
 pub struct IsoWitness
 {
     /// The forward derivation `A ⇒ B`.
@@ -196,10 +192,6 @@ fn round_trips_to_identity(
 /// non-certificate witness makes [`ProtypeIso::witness`] `None` (and the iso
 /// invalid).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a protype isomorphism is exactly its {forward, backward} witness proterms (spec section 5.3); validity is replay-decided"
-)]
 pub struct ProtypeIso
 {
     /// The forward witness proterm.

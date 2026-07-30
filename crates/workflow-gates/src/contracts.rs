@@ -210,13 +210,13 @@ pub fn run(
 /// - witness: `contracts::returns_parse_failures_as_operational_errors`
 /// - witness: `contracts::rejects_contract_grammar_drift_modes`
 #[inline]
-pub fn analyze_source<Source>(
+pub fn analyze_source<'semantic, Source>(
     path: &Path,
     source: Source,
     witnesses: &BTreeSet<String>,
 ) -> AnalysisResult
 where
-    Source: Into<SourceText<'_>>,
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     let parsed = syn::parse_file(source).map_err(|error| GateError::RustParse {
@@ -258,11 +258,11 @@ where
 /// - witness: `contracts::rejects_unsupported_nextest_json_shapes_as_operational_errors`
 /// - witness: `contracts::accepts_harness_module_stripped_aliases_from_consolidated_integration_suites`
 #[inline]
-pub fn parse_nextest_witnesses<Source>(
+pub fn parse_nextest_witnesses<'semantic, Source>(
     source: Source
 ) -> Result<BTreeSet<String>, GateError>
 where
-    Source: Into<SourceText<'_>>,
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     match serde_json::from_str::<Value>(source) {
@@ -359,12 +359,12 @@ pub fn run_ci_workflow(workflow_path: &Path) -> GateResult
 /// - witness: `ci_contracts::malformed_workflows_are_operational_errors`
 /// - witness: `ci_contracts::diagnostics_name_job_step_and_action`
 #[inline]
-pub fn analyze_ci_workflow<Source>(
+pub fn analyze_ci_workflow<'semantic, Source>(
     workflow_path: &Path,
     source: Source,
 ) -> GateResult
 where
-    Source: Into<SourceText<'_>>,
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     let document = workflow_document(workflow_path, source)?;
@@ -431,9 +431,9 @@ enum ProhibitedTool
 impl ProhibitedTool
 {
     /// Return a tool family for a command word.
-    fn from_command<CommandWord>(command: CommandWord) -> Option<Self>
+    fn from_command<'semantic, CommandWord>(command: CommandWord) -> Option<Self>
     where
-        CommandWord: Into<CommandText<'_>>,
+        CommandWord: Into<CommandText<'semantic>>,
     {
         let command = command.into().0;
         match command {
@@ -476,12 +476,12 @@ impl ProhibitedTool
 }
 
 /// Parse one YAML document from workflow source.
-fn workflow_document<Source>(
+fn workflow_document<'semantic, Source>(
     workflow_path: &Path,
     source: Source,
 ) -> Result<Yaml, GateError>
 where
-    Source: Into<SourceText<'_>>,
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     let mut documents = YamlLoader::load_from_str(source).map_err(|error| {
@@ -508,13 +508,13 @@ where
 }
 
 /// Return a YAML mapping or a stable workflow-shape error.
-fn yaml_hash<'yaml, Detail>(
+fn yaml_hash<'semantic, 'yaml, Detail>(
     workflow_path: &Path,
     value: &'yaml Yaml,
     detail: Detail,
 ) -> Result<&'yaml Hash, GateError>
 where
-    Detail: Into<DetailText<'_>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     match *value {
@@ -524,12 +524,12 @@ where
 }
 
 /// Return a string-keyed mapping value without allocating a temporary key.
-fn yaml_mapping_value<'yaml, KeyName>(
+fn yaml_mapping_value<'semantic, 'yaml, KeyName>(
     mapping: &'yaml Hash,
     key_name: KeyName,
 ) -> Option<&'yaml Yaml>
 where
-    KeyName: Into<KeyNameText<'_>>,
+    KeyName: Into<KeyNameText<'semantic>>,
 {
     let key_name = key_name.into().0;
     for (key, value) in mapping {
@@ -552,14 +552,14 @@ fn yaml_string(value: &Yaml) -> impl Into<OptionalYamlStringText<'_>>
 }
 
 /// Collect CI run-step findings from a job's steps node.
-fn collect_ci_step_findings<JobId>(
+fn collect_ci_step_findings<'semantic, JobId>(
     workflow_path: &Path,
     job_id: JobId,
     steps_yaml: &Yaml,
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
 where
-    JobId: Into<JobIdText<'_>>,
+    JobId: Into<JobIdText<'semantic>>,
 {
     let job_id = job_id.into().0;
     let Yaml::Array(ref steps) = *steps_yaml
@@ -588,7 +588,7 @@ where
 }
 
 /// Collect one finding when a concrete step has a prohibited run command.
-fn collect_ci_run_step_finding<JobId, StepNumber>(
+fn collect_ci_run_step_finding<'semantic, JobId, StepNumber>(
     workflow_path: &Path,
     job_id: JobId,
     step_number: StepNumber,
@@ -596,7 +596,7 @@ fn collect_ci_run_step_finding<JobId, StepNumber>(
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
 where
-    JobId: Into<JobIdText<'_>>,
+    JobId: Into<JobIdText<'semantic>>,
     StepNumber: Into<StepNumberNumber>,
 {
     let step_number = step_number.into().0;
@@ -699,11 +699,11 @@ where
 }
 
 /// Return whether a mise task token is literal and repository-addressable.
-fn is_static_mise_task<Task>(
+fn is_static_mise_task<'semantic, Task>(
     task: Task
 ) -> impl Into<StaticMiseTaskFlag>
 where
-    Task: Into<TaskText<'_>>,
+    Task: Into<TaskText<'semantic>>,
 {
     let task = task.into().0;
     !task.is_empty()
@@ -877,12 +877,12 @@ where
 }
 
 /// Find the closing parenthesis for a `$(` opener.
-fn matching_substitution_paren<Line, Open>(
+fn matching_substitution_paren<'semantic, Line, Open>(
     line: Line,
     open: Open,
 ) -> impl Into<OptionalMatchingSubstitutionParenCount>
 where
-    Line: Into<LineText<'_>>,
+    Line: Into<LineText<'semantic>>,
     Open: Into<OpenIndex>,
 {
     let open = open.into().0;
@@ -1080,11 +1080,11 @@ fn is_shell_function_definition(words: &[WordText<'_>]) -> impl Into<ShellFuncti
 }
 
 /// Return whether text is a literal shell identifier.
-fn is_shell_identifier<Text>(
+fn is_shell_identifier<'semantic, Text>(
     text: Text
 ) -> impl Into<ShellIdentifierFlag>
 where
-    Text: Into<TextText<'_>>,
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let mut characters = text.chars();
@@ -1154,12 +1154,12 @@ where
 }
 
 /// Return whether a prohibited tool occurrence is a setup-only installer.
-fn tool_invocation_is_setup<Words>(
+fn tool_invocation_is_setup<'semantic, Words>(
     tool: ProhibitedTool,
     words: &mut Words,
 ) -> impl Into<ToolInvocationIsSetupFlag>
 where
-    Words: Iterator<Item = WordText<'_>>,
+    Words: Iterator<Item = WordText<'semantic>>,
 {
     match tool {
         | ProhibitedTool::Cargo => next_tool_subcommand(words)
@@ -1219,11 +1219,11 @@ where
 }
 
 /// Return whether a word is an environment assignment prefix.
-fn is_environment_assignment<Word>(
+fn is_environment_assignment<'semantic, Word>(
     word: Word
 ) -> impl Into<EnvironmentAssignmentFlag>
 where
-    Word: Into<WordText<'_>>,
+    Word: Into<WordText<'semantic>>,
 {
     let word = word.into().0;
     let Some((name, _)) = word.split_once('=')
@@ -1242,11 +1242,11 @@ where
 }
 
 /// Return whether a shell word is control syntax rather than a command.
-fn is_shell_control_word<Word>(
+fn is_shell_control_word<'semantic, Word>(
     word: Word
 ) -> impl Into<ShellControlWordFlag>
 where
-    Word: Into<WordText<'_>>,
+    Word: Into<WordText<'semantic>>,
 {
     let word = word.into().0;
     matches!(
@@ -1256,11 +1256,11 @@ where
 }
 
 /// Return whether a shell word wraps the next command without changing it.
-fn is_wrapper_command<Word>(
+fn is_wrapper_command<'semantic, Word>(
     word: Word
 ) -> impl Into<WrapperCommandFlag>
 where
-    Word: Into<WordText<'_>>,
+    Word: Into<WordText<'semantic>>,
 {
     let word = word.into().0;
     matches!(word, "env" | "exec" | "sudo" | "command" | "time" | "!")
@@ -1747,13 +1747,13 @@ where
 }
 
 /// Return whether a line is the requested top-level heading.
-fn is_heading<Line, Heading>(
+fn is_heading<'semantic, Line, Heading>(
     line: Line,
     heading: Heading,
 ) -> impl Into<HeadingFlag>
 where
-    Line: Into<LineText<'_>>,
-    Heading: Into<HeadingText<'_>>,
+    Line: Into<LineText<'semantic>>,
+    Heading: Into<HeadingText<'semantic>>,
 {
     let heading = heading.into().0;
     let line = line.into().0;
@@ -1761,9 +1761,9 @@ where
 }
 
 /// Return whether a line is any top-level heading.
-fn is_any_heading<Line>(line: Line) -> impl Into<AnyHeadingFlag>
+fn is_any_heading<'semantic, Line>(line: Line) -> impl Into<AnyHeadingFlag>
 where
-    Line: Into<LineText<'_>>,
+    Line: Into<LineText<'semantic>>,
 {
     heading_text(line).into().0.is_some()
 }
@@ -1848,15 +1848,15 @@ fn wrong_level_fixed_heading(group: &DocGroup) -> Option<WrongLevelFixedHeading<
 }
 
 /// Build one stable contract finding for a documentation group.
-fn make_finding<Kind, Detail>(
+fn make_finding<'semantic, Kind, Detail>(
     path: &Path,
     group: &DocGroup,
     kind: Kind,
     detail: Detail,
 ) -> Finding
 where
-    Kind: Into<KindText<'_>>,
-    Detail: Into<DetailText<'_>>,
+    Kind: Into<KindText<'semantic>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     let kind = kind.into().0;
@@ -1884,11 +1884,11 @@ where
 }
 
 /// Return the fixed order of a known `# Contract` clause.
-fn contract_clause_order<Name>(
+fn contract_clause_order<'semantic, Name>(
     name: Name
 ) -> impl Into<OptionalContractClauseOrderCount>
 where
-    Name: Into<NameText<'_>>,
+    Name: Into<NameText<'semantic>>,
 {
     let name = name.into().0;
     match name {
@@ -1904,11 +1904,11 @@ where
 }
 
 /// Return whether a doc line is an explicitly indented continuation.
-fn is_indented_continuation<Line>(
+fn is_indented_continuation<'semantic, Line>(
     line: Line
 ) -> impl Into<IndentedContinuationFlag>
 where
-    Line: Into<LineText<'_>>,
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let content = line.strip_prefix(' ').unwrap_or(line);
@@ -1928,11 +1928,11 @@ where
 }
 
 /// Return whether a hypothesis names an adequacy ladder rung.
-fn names_ladder_rung<Hypothesis>(
+fn names_ladder_rung<'semantic, Hypothesis>(
     hypothesis: Hypothesis
 ) -> impl Into<NamesLadderRungFlag>
 where
-    Hypothesis: Into<HypothesisText<'_>>,
+    Hypothesis: Into<HypothesisText<'semantic>>,
 {
     let hypothesis = hypothesis.into().0;
     return hypothesis
@@ -1958,11 +1958,11 @@ where
 }
 
 /// Return whether a line is intended as a witness but is not exact syntax.
-fn looks_witness_like<Line>(
+fn looks_witness_like<'semantic, Line>(
     line: Line
 ) -> impl Into<LooksWitnessLikeFlag>
 where
-    Line: Into<LineText<'_>>,
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let trimmed = line.trim();
@@ -2720,12 +2720,12 @@ where
 }
 
 /// Read a string field from a JSON object.
-fn string_field<'value, Name>(
+fn string_field<'semantic, 'value, Name>(
     value: &'value Value,
     name: Name,
 ) -> impl Into<OptionalStringFieldText<'value>>
 where
-    Name: Into<NameText<'_>>,
+    Name: Into<NameText<'semantic>>,
 {
     let name = name.into().0;
     return value.get(name).and_then(Value::as_str);
@@ -2740,10 +2740,10 @@ mod tests
 
     type TestResult = Result<(), Box<dyn Error>>;
 
-    fn witnesses<Names, Name>(names: Names) -> BTreeSet<String>
+    fn witnesses<'semantic, Names, Name>(names: Names) -> BTreeSet<String>
     where
         Names: IntoIterator<Item = Name>,
-        Name: Into<NameText<'_>>,
+        Name: Into<NameText<'semantic>>,
     {
         names
             .into_iter()

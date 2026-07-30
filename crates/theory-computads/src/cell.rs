@@ -156,10 +156,6 @@ impl CellVariance
 /// metavariable, variance role, and linearity (whether it occurs exactly once
 /// in the left-hand side).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "the per-variable metadata schema is exactly {var, variance, linear}; it is derived by CellMeta::derive and read by the composition gate"
-)]
 pub struct CellVarMeta
 {
     /// The metavariable this metadata describes — the hole's first occurrence,
@@ -183,10 +179,6 @@ pub struct CellVarMeta
 /// composition lane branch on it. Shaping it here is the
 /// "bolt-on" the addendum §C asks of this lane.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "cell metadata is exactly {per-variable metadata, invertible flag}; it is derived and other engine stages read it"
-)]
 pub struct CellMeta
 {
     /// The per-metavariable metadata, in left-to-right first-occurrence order.
@@ -354,10 +346,6 @@ impl Cell
 /// A dense **cell identifier** — an index into a [`CellStore`].
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "a cell id is exactly its store index; the newtype keeps it from being confused with any other index"
-)]
 pub struct CellId(pub usize);
 
 /// The **cell store** — a content-addressed, insertion-ordered collection of

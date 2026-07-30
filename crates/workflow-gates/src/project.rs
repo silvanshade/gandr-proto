@@ -172,10 +172,10 @@ pub fn check_default_dependency_graph(workspace_root: &Path) -> GateResult
     let host_triple = current_host_triple()?;
     let args = cargo_metadata_args(&host_triple);
     let output = support::run_output(OsStr::new("cargo"), &args, Some(workspace_root), false)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag>(output.success()).0 {
+    if !crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0 {
         return Err(operational(command_failure_detail(
             CARGO_METADATA_SOURCE,
-            crate::semantic_value::<crate::support::OptionalCodeCode>(output.code()).0,
+            crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
         )));
     }
 
@@ -252,14 +252,14 @@ pub fn check_iu_pin(
     let status_args = git_submodule_status_args(iu_path);
     let status_output =
         support::run_output(OsStr::new("git"), &status_args, Some(workspace_root), true)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag>(status_output.success()).0 {
+    if !crate::semantic_value::<crate::support::SuccessFlag, _>(status_output.success()).0 {
         return Ok(vec![iu_finding(
             IU_UNINITIALIZED_KIND,
             &iu_label,
             "submodule status",
             command_failure_detail(
                 "git submodule status",
-                crate::semantic_value::<crate::support::OptionalCodeCode>(status_output.code()).0,
+                crate::semantic_value::<crate::support::OptionalCodeCode, _>(status_output.code()).0,
             ),
         )]);
     }
@@ -272,7 +272,7 @@ pub fn check_iu_pin(
             support::run_output(OsStr::new("git"), &head_args, Some(workspace_root), true)?;
         let head_stdout = head_output.stdout_lossy();
         let head_probe = ProbeOutput {
-            success: crate::semantic_value::<crate::support::SuccessFlag>(head_output.success()).0,
+            success: crate::semantic_value::<crate::support::SuccessFlag, _>(head_output.success()).0,
             stdout: head_stdout.as_ref(),
         };
         iu_pin_findings_from_status(&iu_label, &status, Some(head_probe))
@@ -287,10 +287,10 @@ pub fn check_iu_pin(
     let dirty_args = git_status_porcelain_args(iu_path);
     let dirty_output =
         support::run_output(OsStr::new("git"), &dirty_args, Some(workspace_root), true)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag>(dirty_output.success()).0 {
+    if !crate::semantic_value::<crate::support::SuccessFlag, _>(dirty_output.success()).0 {
         return Err(operational(command_failure_detail(
             "git status inside IU submodule",
-            crate::semantic_value::<crate::support::OptionalCodeCode>(dirty_output.code()).0,
+            crate::semantic_value::<crate::support::OptionalCodeCode, _>(dirty_output.code()).0,
         )));
     }
 
@@ -314,10 +314,10 @@ fn current_host_triple() -> Result<String, GateError>
 {
     let args = [OsString::from("-vV")];
     let output = support::run_output(OsStr::new("rustc"), &args, None, false)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag>(output.success()).0 {
+    if !crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0 {
         return Err(operational(command_failure_detail(
             RUSTC_HOST_SOURCE,
-            crate::semantic_value::<crate::support::OptionalCodeCode>(output.code()).0,
+            crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
         )));
     }
     let stdout = output.stdout_lossy();
