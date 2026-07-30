@@ -225,7 +225,9 @@ fn bench_cli_parsing_typed_plans(criterion: &mut Criterion)
 }
 
 /// Convert a fixture byte/element count into Criterion's throughput width.
-fn throughput_count(count: impl Into<CountCount>) -> impl Into<ThroughputCountCount>
+fn throughput_count<Count>(count: Count) -> impl Into<ThroughputCountCount>
+where
+    Count: Into<CountCount>,
 {
     let count = count.into().0;
     fixture_value(u64::try_from(count))
@@ -474,7 +476,9 @@ fn bench_source_policy_checks(criterion: &mut Criterion)
 }
 
 /// Return a fixture path under this crate's committed benchmark fixtures.
-fn fixture_path<'semantic>(relative: impl Into<RelativeText<'semantic>>) -> PathBuf
+fn fixture_path<'semantic, Relative>(relative: Relative) -> PathBuf
+where
+    Relative: Into<RelativeText<'semantic>>,
 {
     let relative = relative.into().0;
     std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/benches/fixtures"))

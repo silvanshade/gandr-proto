@@ -1,6 +1,6 @@
 //! Sequential, fail-closed mutation campaign support.
 //!
-//! Range selection, snapshot provisioning, containment proof, microVM
+//! Range selection, snapshot provisioning, containment proof, `microVM`
 //! execution, and report publication are separate typed stages so no host
 //! mutation path can bypass the containment boundary.
 
@@ -66,11 +66,14 @@ impl HostCommandOutcome
     /// Build an outcome from its observable fields.
     #[inline]
     #[must_use]
-    fn new(
-        success: impl Into<SuccessFlag>,
-        code: impl Into<CodeExitCode>,
+    fn new<S, C>(
+        success: S,
+        code: C,
         stdout: String,
     ) -> Self
+    where
+        S: Into<SuccessFlag>,
+        C: Into<CodeExitCode>,
     {
         let code = code.into().0;
         let success = success.into().0;
@@ -113,23 +116,27 @@ trait MutantsHost
     ///
     /// # Errors
     /// Returns the support or injected command failure.
-    fn run_git_output(
+    fn run_git_output<G>(
         &mut self,
         args: &[OsString],
         cwd: Option<&Path>,
-        sanitized_git: impl Into<SanitizedGitFlag>,
-    ) -> Result<HostCommandOutcome, GateError>;
+        sanitized_git: G,
+    ) -> Result<HostCommandOutcome, GateError>
+    where
+        G: Into<SanitizedGitFlag>;
 
     /// Run a host Git command and retain only the status.
     ///
     /// # Errors
     /// Returns the support or injected command failure.
-    fn run_git_status(
+    fn run_git_status<G>(
         &mut self,
         args: &[OsString],
         cwd: Option<&Path>,
-        sanitized_git: impl Into<SanitizedGitFlag>,
-    ) -> Result<HostCommandOutcome, GateError>;
+        sanitized_git: G,
+    ) -> Result<HostCommandOutcome, GateError>
+    where
+        G: Into<SanitizedGitFlag>;
 
     /// Run a non-Git host command and retain only the status.
     ///
@@ -182,11 +189,13 @@ trait MutantsHost
     ///
     /// # Errors
     /// Returns support publication failures.
-    fn write_atomic<'semantic>(
+    fn write_atomic<'semantic, B>(
         &mut self,
         path: &Path,
-        bytes: impl Into<BytesBytes<'semantic>>,
-    ) -> Result<(), GateError>;
+        bytes: B,
+    ) -> Result<(), GateError>
+    where
+        B: Into<BytesBytes<'semantic>>;
 
     /// Publish a completed report into the workspace.
     ///
@@ -206,12 +215,14 @@ struct SupportMutantsHost;
 impl MutantsHost for SupportMutantsHost
 {
     #[inline]
-    fn run_git_output(
+    fn run_git_output<G>(
         &mut self,
         args: &[OsString],
         cwd: Option<&Path>,
-        sanitized_git: impl Into<SanitizedGitFlag>,
+        sanitized_git: G,
     ) -> Result<HostCommandOutcome, GateError>
+    where
+        G: Into<SanitizedGitFlag>,
     {
         let sanitized_git = sanitized_git.into().0;
         let output = support::run_output(OsStr::new(GIT_PROGRAM), args, cwd, sanitized_git)?;
@@ -223,12 +234,14 @@ impl MutantsHost for SupportMutantsHost
     }
 
     #[inline]
-    fn run_git_status(
+    fn run_git_status<G>(
         &mut self,
         args: &[OsString],
         cwd: Option<&Path>,
-        sanitized_git: impl Into<SanitizedGitFlag>,
+        sanitized_git: G,
     ) -> Result<HostCommandOutcome, GateError>
+    where
+        G: Into<SanitizedGitFlag>,
     {
         let sanitized_git = sanitized_git.into().0;
         let status = support::run_status(OsStr::new(GIT_PROGRAM), args, cwd, sanitized_git)?;
@@ -294,11 +307,13 @@ impl MutantsHost for SupportMutantsHost
     }
 
     #[inline]
-    fn write_atomic<'semantic>(
+    fn write_atomic<'semantic, B>(
         &mut self,
         path: &Path,
-        bytes: impl Into<BytesBytes<'semantic>>,
+        bytes: B,
     ) -> Result<(), GateError>
+    where
+        B: Into<BytesBytes<'semantic>>,
     {
         let bytes = bytes.into().0;
         support::write_atomic(path, bytes)
@@ -325,7 +340,7 @@ const UNAME_PROGRAM: &str = "uname";
 const SNAPSHOT_ARCHIVE_REF: &str = "HEAD";
 /// Host `msb` scratch-volume name reserved for the mutation cache image.
 const SNAPSHOT_CACHE_SCRATCH: &str = "gandr-mutants-mkfs";
-/// macOS host filesystem roots that must not be reachable inside the guest.
+/// `macOS` host filesystem roots that must not be reachable inside the guest.
 const HOST_MARKERS: [&str; 3] = ["/Users", "/Volumes", "/System"];
 /// Prefix for Git override variables recorded as ignored containment metadata.
 const GIT_ENVIRONMENT_PREFIX: &str = "GIT_";
@@ -423,7 +438,7 @@ impl MutantsOptions
 #[non_exhaustive]
 pub enum MutantsCommand
 {
-    /// Build the reusable microVM snapshot and btrfs cache image.
+    /// Build the reusable `microVM` snapshot and btrfs cache image.
     Snapshot,
     /// Run a changed-code pre-push campaign over a shared push-range plan.
     Push
@@ -441,7 +456,7 @@ pub enum MutantsCommand
         /// Upper endpoint branch/tag/commit-ish token; must resolve to `HEAD`.
         to_ref: String,
     },
-    /// Run a whole-workspace sweep inside one microVM.
+    /// Run a whole-workspace sweep inside one `microVM`.
     Sweep,
     /// Reap stray mutation sandboxes owned by this driver.
     Clean,
@@ -518,10 +533,10 @@ where
     Sink: sandbox::CampaignReportSink,
 {
     match command {
-        | &MutantsCommand::Snapshot => {
+        | MutantsCommand::Snapshot => {
             run_snapshot_with_environment(host, infrastructure, runner, options)
         },
-        | &MutantsCommand::Push { ref range } => {
+        | MutantsCommand::Push { range } => {
             let diff = range::push_diff_plan(range);
             run_diff_campaign_with_environment(
                 host,
@@ -534,7 +549,7 @@ where
                 SNAPSHOT_ARCHIVE_REF,
             )
         },
-        | &MutantsCommand::Merge => {
+        | MutantsCommand::Merge => {
             let diff = range::merge_diff_plan();
             run_diff_campaign_with_environment(
                 host,
@@ -547,9 +562,9 @@ where
                 SNAPSHOT_ARCHIVE_REF,
             )
         },
-        | &MutantsCommand::Scheduled {
-            ref from_ref,
-            ref to_ref,
+        | MutantsCommand::Scheduled {
+            from_ref,
+            to_ref,
         } => {
             let (diff, archive_ref) =
                 resolve_scheduled_diff_with_host(host, options, from_ref, to_ref)?;
@@ -564,13 +579,13 @@ where
                 &archive_ref,
             )
         },
-        | &MutantsCommand::Sweep => {
+        | MutantsCommand::Sweep => {
             run_sweep_with_environment(host, infrastructure, runner, sink, options)
         },
-        | &MutantsCommand::Clean => run_clean_with_environment(infrastructure, runner),
-        | &MutantsCommand::Guest {
-            ref package,
-            ref diff,
+        | MutantsCommand::Clean => run_clean_with_environment(infrastructure, runner),
+        | MutantsCommand::Guest {
+            package,
+            diff,
         } => run_guest(package.as_deref(), diff.as_deref()),
     }
 }
@@ -639,7 +654,7 @@ where
     clippy::too_many_arguments,
     reason = "test seam names each boundary explicitly so host, VM, and report side effects cannot be conflated"
 )]
-fn run_diff_campaign_with_environment<'semantic, Host, Infrastructure, Runner, Sink>(
+fn run_diff_campaign_with_environment<'semantic, Host, Infrastructure, Runner, Sink, A>(
     host: &mut Host,
     infrastructure: &mut Infrastructure,
     runner: &mut Runner,
@@ -647,13 +662,14 @@ fn run_diff_campaign_with_environment<'semantic, Host, Infrastructure, Runner, S
     options: &MutantsOptions,
     mode: sandbox::CampaignMode,
     diff: range::GitDiffPlan,
-    archive_ref: impl Into<ArchiveRefText<'semantic>>,
+    archive_ref: A,
 ) -> Result<(), GateError>
 where
     Host: MutantsHost,
     Infrastructure: sandbox::SandboxInfrastructure,
     Runner: sandbox::MsbAdapter,
     Sink: sandbox::CampaignReportSink,
+    A: Into<ArchiveRefText<'semantic>>,
 {
     let archive_ref = archive_ref.into().0;
     require_campaign_infra(infrastructure, options)?;
@@ -719,10 +735,12 @@ where
 /// - hypothesis: L3 pointwise — containment proof tests and cargo-mutants argv
 ///   tests kill host bypasses, missing diff acceptance, package/workspace
 ///   swaps, and parallel job counts.
-fn run_guest<'semantic>(
-    package: impl Into<OptionalPackageText<'semantic>>,
+fn run_guest<'semantic, P>(
+    package: P,
     diff: Option<&Path>,
 ) -> Result<(), GateError>
+where
+    P: Into<OptionalPackageText<'semantic>>,
 {
     let package = package.into().0;
     let evidence = containment_evidence()?;
@@ -761,14 +779,16 @@ fn run_guest<'semantic>(
 
 /// Resolve a scheduled diff and its archive ref through sanitized Git commands.
 /// Resolve a scheduled diff through an injected host adapter.
-fn resolve_scheduled_diff_with_host<'semantic, Host>(
+fn resolve_scheduled_diff_with_host<'semantic, Host, F, T>(
     host: &mut Host,
     options: &MutantsOptions,
-    from_ref: impl Into<FromRefText<'semantic>>,
-    to_ref: impl Into<ToRefText<'semantic>>,
+    from_ref: F,
+    to_ref: T,
 ) -> Result<(range::GitDiffPlan, String), GateError>
 where
     Host: MutantsHost,
+    F: Into<FromRefText<'semantic>>,
+    T: Into<ToRefText<'semantic>>,
 {
     let to_ref = to_ref.into().0;
     let from_ref = from_ref.into().0;
@@ -899,17 +919,19 @@ where
 
 /// Write the no-Rust report through the same campaign sink used by sandbox
 /// execution.
-fn run_no_rust_campaign<'semantic, Runner, Sink>(
+fn run_no_rust_campaign<'semantic, Runner, Sink, D, L>(
     runner: &mut Runner,
     sink: &mut Sink,
     options: &MutantsOptions,
     mode: sandbox::CampaignMode,
-    diff_source: impl Into<DiffSourceText<'semantic>>,
-    report_label: impl Into<ReportLabelText<'semantic>>,
+    diff_source: D,
+    report_label: L,
 ) -> Result<(), GateError>
 where
     Runner: sandbox::MsbAdapter,
     Sink: sandbox::CampaignReportSink,
+    D: Into<DiffSourceText<'semantic>>,
+    L: Into<ReportLabelText<'semantic>>,
 {
     let report_label = report_label.into().0;
     let diff_source = diff_source.into().0;
@@ -935,13 +957,14 @@ where
 }
 
 /// Write a tracked-file source archive for the guest.
-fn write_source_archive<'semantic, Host>(
+fn write_source_archive<'semantic, Host, A>(
     host: &mut Host,
     options: &MutantsOptions,
-    archive_ref: impl Into<ArchiveRefText<'semantic>>,
+    archive_ref: A,
 ) -> Result<(), GateError>
 where
     Host: MutantsHost,
+    A: Into<ArchiveRefText<'semantic>>,
 {
     let archive_ref = archive_ref.into().0;
     ensure_parent_dir(host, &options.source_archive)?;
@@ -1294,11 +1317,13 @@ fn ensure_guest_git_repo() -> Result<(), GateError>
 
 /// Run sanitized Git and return trimmed stdout.
 #[cfg(test)]
-fn git_output_trimmed<'semantic>(
+fn git_output_trimmed<'semantic, C>(
     options: &MutantsOptions,
     args: &[OsString],
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<String, GateError>
+where
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let mut host = SupportMutantsHost;
@@ -1306,14 +1331,15 @@ fn git_output_trimmed<'semantic>(
 }
 
 /// Run sanitized Git through an injected host and return trimmed stdout.
-fn git_output_trimmed_with_host<'semantic, Host>(
+fn git_output_trimmed_with_host<'semantic, Host, C>(
     host: &mut Host,
     options: &MutantsOptions,
     args: &[OsString],
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<String, GateError>
 where
     Host: MutantsHost,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     Ok(git_output_with_host(host, options, args, context)?
@@ -1322,14 +1348,15 @@ where
 }
 
 /// Run sanitized Git through an injected host and return complete stdout text.
-fn git_output_with_host<'semantic, Host>(
+fn git_output_with_host<'semantic, Host, C>(
     host: &mut Host,
     options: &MutantsOptions,
     args: &[OsString],
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<String, GateError>
 where
     Host: MutantsHost,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let output = host.run_git_output(args, Some(options.workspace_root.as_path()), true)?;
@@ -1388,13 +1415,14 @@ where
 }
 
 /// Run an msb plan and require bounded captured-stdout success.
-fn run_msb_checked_output<'semantic, Runner>(
+fn run_msb_checked_output<'semantic, Runner, C>(
     runner: &mut Runner,
     plan: &sandbox::MsbPlan,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<sandbox::CommandOutcome, GateError>
 where
     Runner: sandbox::MsbAdapter,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let output = runner.run_output(plan.args())?;
@@ -1408,13 +1436,14 @@ where
 }
 
 /// Run an msb plan and require inherited-stream status success.
-fn run_msb_checked_status<'semantic, Runner>(
+fn run_msb_checked_status<'semantic, Runner, C>(
     runner: &mut Runner,
     plan: &sandbox::MsbPlan,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<(), GateError>
 where
     Runner: sandbox::MsbAdapter,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let output = runner.run_status(plan.args())?;
@@ -1438,11 +1467,13 @@ fn run_guest_cargo_mutants(
 
 /// Run a sanitized Git status command through the support adapter and require
 /// success.
-fn run_git_status_checked<'semantic>(
+fn run_git_status_checked<'semantic, C>(
     args: &[OsString],
     cwd: Option<&Path>,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<(), GateError>
+where
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let args = support::stateless_git_args(args);
@@ -1452,14 +1483,15 @@ fn run_git_status_checked<'semantic>(
 
 /// Run a sanitized Git status command through an injected host and require
 /// success.
-fn run_git_status_checked_with_host<'semantic, Host>(
+fn run_git_status_checked_with_host<'semantic, Host, C>(
     host: &mut Host,
     args: &[OsString],
     cwd: Option<&Path>,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<(), GateError>
 where
     Host: MutantsHost,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let status = host.run_git_status(args, cwd, true)?;
@@ -1476,15 +1508,16 @@ where
 }
 
 /// Run a non-Git host command through an injected host and require success.
-fn run_host_status_checked_with_host<'semantic, Host>(
+fn run_host_status_checked_with_host<'semantic, Host, C>(
     host: &mut Host,
     program: &OsStr,
     args: &[OsString],
     cwd: Option<&Path>,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<(), GateError>
 where
     Host: MutantsHost,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let status = host.run_host_status(program, args, cwd)?;
@@ -1501,9 +1534,9 @@ where
 }
 
 /// Extract the raw image path from `msb volume inspect` output.
-fn volume_backing_path<'semantic>(
-    stdout: impl Into<StdoutText<'semantic>>
-) -> Result<PathBuf, GateError>
+fn volume_backing_path<'semantic, S>(stdout: S) -> Result<PathBuf, GateError>
+where
+    S: Into<StdoutText<'semantic>>,
 {
     let stdout = stdout.into().0;
     for line in stdout.lines() {
@@ -1632,14 +1665,16 @@ fn msb_output_detail(output: &sandbox::CommandOutcome) -> String
 /// Render a `Result` as compact failure detail for cleanup precedence messages.
 fn result_detail(result: &Result<(), GateError>) -> String
 {
-    match *result {
+    match result {
         | Ok(()) => String::new(),
-        | Err(ref error) => error.to_string(),
+        | Err(error) => error.to_string(),
     }
 }
 
 /// Convert a UTF-8 literal to an operating-system argument.
-fn os<'semantic>(value: impl Into<ValueText<'semantic>>) -> OsString
+fn os<'semantic, V>(value: V) -> OsString
+where
+    V: Into<ValueText<'semantic>>,
 {
     let value = value.into().0;
     OsString::from(value)
@@ -1739,12 +1774,14 @@ mod tests
 
     impl MutantsHost for FakeHost
     {
-        fn run_git_output(
+        fn run_git_output<G>(
             &mut self,
             args: &[OsString],
             _cwd: Option<&Path>,
-            sanitized_git: impl Into<SanitizedGitFlag>,
+            sanitized_git: G,
         ) -> Result<HostCommandOutcome, GateError>
+        where
+            G: Into<SanitizedGitFlag>,
         {
             let _sanitized_git = sanitized_git.into().0;
             self.git_output_calls.push(args.to_vec());
@@ -1756,12 +1793,14 @@ mod tests
             })
         }
 
-        fn run_git_status(
+        fn run_git_status<G>(
             &mut self,
             args: &[OsString],
             _cwd: Option<&Path>,
-            sanitized_git: impl Into<SanitizedGitFlag>,
+            sanitized_git: G,
         ) -> Result<HostCommandOutcome, GateError>
+        where
+            G: Into<SanitizedGitFlag>,
         {
             let _sanitized_git = sanitized_git.into().0;
             self.git_status_calls.push(args.to_vec());
@@ -1825,11 +1864,13 @@ mod tests
             crate::support::HOST_FILESYSTEM.remove_file(path)
         }
 
-        fn write_atomic<'semantic>(
+        fn write_atomic<'semantic, B>(
             &mut self,
             path: &Path,
-            bytes: impl Into<BytesBytes<'semantic>>,
+            bytes: B,
         ) -> Result<(), GateError>
+        where
+            B: Into<BytesBytes<'semantic>>,
         {
             let bytes = bytes.into().0;
             support::write_atomic(path, bytes)
@@ -2179,7 +2220,9 @@ mod tests
     }
 
     /// Build a successful host command outcome with retained stdout.
-    fn host_stdout<'semantic>(stdout: impl Into<StdoutText<'semantic>>) -> HostCommandOutcome
+    fn host_stdout<'semantic, S>(stdout: S) -> HostCommandOutcome
+    where
+        S: Into<StdoutText<'semantic>>,
     {
         let stdout = stdout.into().0;
         HostCommandOutcome::new(true, Some(0_i32), String::from(stdout))
@@ -2580,7 +2623,9 @@ mod tests
     }
 
     /// Build a successful msb output outcome.
-    fn msb_stdout<'semantic>(stdout: impl Into<StdoutText<'semantic>>) -> sandbox::CommandOutcome
+    fn msb_stdout<'semantic, S>(stdout: S) -> sandbox::CommandOutcome
+    where
+        S: Into<StdoutText<'semantic>>,
     {
         let stdout = stdout.into().0;
         sandbox::CommandOutcome::success_with_stdout(stdout)
@@ -2593,9 +2638,9 @@ mod tests
     }
 
     /// Run one ignored child fixture with Git override variables injected.
-    fn run_child_with_git_overrides<'semantic>(
-        test_name: impl Into<TestNameText<'semantic>>
-    ) -> TestResult
+    fn run_child_with_git_overrides<'semantic, N>(test_name: N) -> TestResult
+    where
+        N: Into<TestNameText<'semantic>>,
     {
         let test_name = test_name.into().0;
         let mut command = child_command_with_git_overrides(test_name)?;
@@ -2614,9 +2659,9 @@ mod tests
 
     /// Build a child test command whose environment would redirect unsanitized
     /// Git.
-    fn child_command_with_git_overrides<'semantic>(
-        test_name: impl Into<TestNameText<'semantic>>
-    ) -> Result<Command, GateError>
+    fn child_command_with_git_overrides<'semantic, N>(test_name: N) -> Result<Command, GateError>
+    where
+        N: Into<TestNameText<'semantic>>,
     {
         let test_name = test_name.into().0;
         let child = crate::support::HOST_FILESYSTEM.current_exe()?;
@@ -2629,7 +2674,9 @@ mod tests
     }
 
     /// Build libtest arguments that run one ignored child fixture exactly.
-    fn child_test_args<'semantic>(test_name: impl Into<TestNameText<'semantic>>) -> Vec<OsString>
+    fn child_test_args<'semantic, N>(test_name: N) -> Vec<OsString>
+    where
+        N: Into<TestNameText<'semantic>>,
     {
         let test_name = test_name.into().0;
         let mut exact_name = String::from("mutants::tests::");
@@ -2666,7 +2713,9 @@ mod tests
     impl TestWorkspace
     {
         /// Create a clean temporary workspace for one test.
-        fn create<'semantic>(name: impl Into<NameText<'semantic>>) -> TestResult<Self>
+        fn create<'semantic, N>(name: N) -> TestResult<Self>
+        where
+            N: Into<NameText<'semantic>>,
         {
             let name = name.into().0;
             let nonce = test_nonce()?;

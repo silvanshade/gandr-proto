@@ -40,7 +40,7 @@ const PROOF_NON_DARWIN_KERNEL: &str = "non-darwin-kernel";
 /// Proof name for the `ACT=true` refusal check.
 const PROOF_NOT_UNDER_ACT: &str = "not-under-act";
 
-/// Proof name for the macOS host-root reachability check.
+/// Proof name for the `macOS` host-root reachability check.
 const PROOF_NO_HOST_FILESYSTEM: &str = "no-host-filesystem";
 
 /// Proof name for the guest sentinel check.
@@ -75,7 +75,9 @@ impl CargoMutantsJobs
     ///   missing-work, and parallel execution surfaces.
     /// - witness: `mutants::containment::tests::cargo_mutants_jobs_default_to_one_and_reject_parallelism`
     #[inline]
-    pub(super) fn from_requested(requested: impl Into<RequestedCount>) -> Result<Self, GateError>
+    pub(super) fn from_requested<R>(requested: R) -> Result<Self, GateError>
+    where
+        R: Into<RequestedCount>,
     {
         let requested = requested.into().0;
         if requested == DEFAULT_MUTANTS_JOBS {
@@ -144,9 +146,9 @@ impl CargoMutantsScope
     ///   empty string, and padded package names distinguish every scope branch.
     /// - witness: `mutants::containment::tests::cargo_mutants_package_and_workspace_argv_are_exact`
     #[inline]
-    pub(super) fn package<'semantic>(
-        name: impl Into<NameText<'semantic>>
-    ) -> Result<Self, GateError>
+    pub(super) fn package<'semantic, N>(name: N) -> Result<Self, GateError>
+    where
+        N: Into<NameText<'semantic>>,
     {
         let name = name.into().0;
         let trimmed = name.trim();
@@ -331,7 +333,7 @@ pub(super) fn require_containment(
 /// - requires: `evidence` is an integration-layer observation, not a claim from
 ///   an untrusted environment variable alone.
 /// - ensures: proof order is stable; Darwin kernels, `ACT=true`, reachable
-///   macOS host markers, and absent or invalid sentinels each produce a failed
+///   `macOS` host markers, and absent or invalid sentinels each produce a failed
 ///   proof; Git environment markers are copied to ignored metadata and never
 ///   influence proof success.
 /// - provides: a pure report suitable for diagnostics or fail-closed
@@ -364,9 +366,9 @@ pub(super) fn containment_report(evidence: &ContainmentEvidence) -> ContainmentR
 
 /// Build the non-Darwin kernel proof.
 #[inline]
-fn non_darwin_kernel_proof<'semantic>(
-    kernel_name: impl Into<KernelNameText<'semantic>>
-) -> ContainmentProof
+fn non_darwin_kernel_proof<'semantic, K>(kernel_name: K) -> ContainmentProof
+where
+    K: Into<KernelNameText<'semantic>>,
 {
     let kernel_name = kernel_name.into().0;
     let ok = !kernel_name.trim().is_empty() && kernel_name != "Darwin";
@@ -389,9 +391,9 @@ fn non_darwin_kernel_proof<'semantic>(
 
 /// Build the `ACT=true` refusal proof.
 #[inline]
-fn not_under_act_proof<'semantic>(
-    act_value: impl Into<OptionalActValueText<'semantic>>
-) -> ContainmentProof
+fn not_under_act_proof<'semantic, A>(act_value: A) -> ContainmentProof
+where
+    A: Into<OptionalActValueText<'semantic>>,
 {
     let act_value = act_value.into().0;
     let ok = act_value != Some("true");
@@ -431,11 +433,11 @@ fn no_host_filesystem_proof(markers: &[PathBuf]) -> ContainmentProof
 #[inline]
 fn guest_sentinel_proof(sentinel: &GuestSentinel) -> ContainmentProof
 {
-    let ok = matches!(*sentinel, GuestSentinel::Valid);
-    let detail = match *sentinel {
+    let ok = matches!(sentinel, GuestSentinel::Valid);
+    let detail = match sentinel {
         | GuestSentinel::Valid => format!("{SENTINEL_PATH} contains {SENTINEL_TOKEN}"),
         | GuestSentinel::Absent => format!("{SENTINEL_PATH} is absent or unreadable"),
-        | GuestSentinel::Invalid { ref observed } => {
+        | GuestSentinel::Invalid { observed } => {
             format!("{SENTINEL_PATH} contains `{observed}`, not required token `{SENTINEL_TOKEN}`")
         },
     };
@@ -487,7 +489,7 @@ pub(super) struct ContainmentEvidence
     pub kernel_name: String,
     /// Value of `ACT`, when set.
     pub act_value: Option<String>,
-    /// macOS host roots reachable from the guest, if any.
+    /// `macOS` host roots reachable from the guest, if any.
     pub reachable_host_markers: Vec<PathBuf>,
     /// Guest sentinel state.
     pub sentinel: GuestSentinel,
@@ -676,7 +678,7 @@ mod tests
         assert_failed_proof(&evidence, PROOF_NOT_UNDER_ACT);
     }
 
-    /// Reachable macOS host roots fail the filesystem isolation proof.
+    /// Reachable `macOS` host roots fail the filesystem isolation proof.
     #[test]
     fn reachable_host_markers_are_rejected()
     {
@@ -742,10 +744,12 @@ mod tests
     }
 
     /// Assert that validation fails and names one failed proof.
-    fn assert_failed_proof<'semantic>(
+    fn assert_failed_proof<'semantic, P>(
         evidence: &ContainmentEvidence,
-        proof_name: impl Into<ProofNameText<'semantic>>,
+        proof_name: P,
     )
+    where
+        P: Into<ProofNameText<'semantic>>,
     {
         let proof_name = proof_name.into().0;
         let report = containment_report(evidence);

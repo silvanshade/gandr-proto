@@ -1411,9 +1411,9 @@ pub(super) fn volume_list_plan() -> MsbPlan
 ///   mount or use the wrong scratch size/name.
 #[inline]
 #[must_use]
-pub(super) fn volume_create_plan<'semantic>(
-    scratch_name: impl Into<ScratchNameText<'semantic>>
-) -> MsbPlan
+pub(super) fn volume_create_plan<'semantic, ScratchName>(scratch_name: ScratchName) -> MsbPlan
+where
+    ScratchName: Into<ScratchNameText<'semantic>>,
 {
     let scratch_name = scratch_name.into().0;
     MsbPlan::new(vec![
@@ -1442,9 +1442,9 @@ pub(super) fn volume_create_plan<'semantic>(
 ///   a backing image path before host-side reflink copy.
 #[inline]
 #[must_use]
-pub(super) fn volume_inspect_plan<'semantic>(
-    scratch_name: impl Into<ScratchNameText<'semantic>>
-) -> MsbPlan
+pub(super) fn volume_inspect_plan<'semantic, ScratchName>(scratch_name: ScratchName) -> MsbPlan
+where
+    ScratchName: Into<ScratchNameText<'semantic>>,
 {
     let scratch_name = scratch_name.into().0;
     MsbPlan::new(vec![os("volume"), os("inspect"), os(scratch_name)])
@@ -1465,9 +1465,11 @@ pub(super) fn volume_inspect_plan<'semantic>(
 ///   for formatting from forbidden campaign host passthrough mounts.
 #[inline]
 #[must_use]
-pub(super) fn format_cache_image_plan<'semantic>(
-    scratch_name: impl Into<ScratchNameText<'semantic>>
+pub(super) fn format_cache_image_plan<'semantic, ScratchName>(
+    scratch_name: ScratchName,
 ) -> MsbPlan
+where
+    ScratchName: Into<ScratchNameText<'semantic>>,
 {
     let scratch_name = scratch_name.into().0;
     let mount = format!("{scratch_name}:/cache:kind=disk,size={CACHE_SIZE}");
@@ -1673,7 +1675,7 @@ where
             crate::semantic_value::<AsStrText<'_>>(plan.sandbox_name.as_str()).0
         ),
     )?;
-    if let Some(ref copy_diff) = plan.copy_diff {
+    if let Some(copy_diff) = &plan.copy_diff {
         run_checked_status(
             runner,
             copy_diff,
@@ -1792,13 +1794,14 @@ where
 }
 
 /// Run a status-only command and require success.
-fn run_checked_status<'semantic, Runner>(
+fn run_checked_status<'semantic, Runner, Context>(
     runner: &mut Runner,
     plan: &MsbPlan,
-    context: impl Into<ContextText<'semantic>>,
+    context: Context,
 ) -> Result<(), GateError>
 where
     Runner: MsbAdapter,
+    Context: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let output = runner.run_status(plan.args())?;
@@ -1843,10 +1846,13 @@ where
 }
 
 /// Return whether a path-like value has `extension` as its file extension.
-fn path_has_extension<'semantic>(
-    value: impl Into<ValueText<'semantic>>,
-    extension: impl Into<ExtensionText<'semantic>>,
+fn path_has_extension<'semantic, Value, Extension>(
+    value: Value,
+    extension: Extension,
 ) -> impl Into<PathHasExtensionFlag>
+where
+    Value: Into<ValueText<'semantic>>,
+    Extension: Into<ExtensionText<'semantic>>,
 {
     let extension = extension.into().0;
     let value = value.into().0;
@@ -1893,17 +1899,21 @@ fn cache_mount_argument(cache_image: &Path) -> OsString
 }
 
 /// Convert a UTF-8 literal to an operating-system argument.
-fn os<'semantic>(value: impl Into<ValueText<'semantic>>) -> OsString
+fn os<'semantic, Value>(value: Value) -> OsString
+where
+    Value: Into<ValueText<'semantic>>,
 {
     let value = value.into().0;
     OsString::from(value)
 }
 
 /// Build a guest target argument of the form `name:/path`.
-fn guest_target<'semantic>(
+fn guest_target<'semantic, GuestPath>(
     name: &SandboxName,
-    guest_path: impl Into<GuestPathText<'semantic>>,
+    guest_path: GuestPath,
 ) -> OsString
+where
+    GuestPath: Into<GuestPathText<'semantic>>,
 {
     let guest_path = guest_path.into().0;
     OsString::from(format!(
@@ -1913,7 +1923,9 @@ fn guest_target<'semantic>(
 }
 
 /// Render a boolean as NUON text.
-fn nuon_bool(value: impl Into<ValueFlag>) -> impl Into<NuonBoolText<'static>>
+fn nuon_bool<Value>(value: Value) -> impl Into<NuonBoolText<'static>>
+where
+    Value: Into<ValueFlag>,
 {
     let value = value.into().0;
     if value {
@@ -1923,10 +1935,12 @@ fn nuon_bool(value: impl Into<ValueFlag>) -> impl Into<NuonBoolText<'static>>
 }
 
 /// Build an operational command failure.
-fn command_failure<'semantic>(
-    context: impl Into<ContextText<'semantic>>,
+fn command_failure<'semantic, Context>(
+    context: Context,
     output: &CommandOutcome,
 ) -> GateError
+where
+    Context: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     GateError::operational(format!("{context}: {}", command_detail(output)))
@@ -1954,8 +1968,9 @@ pub(super) fn remove_plan(name: &SandboxName) -> MsbPlan
 }
 
 /// Return prefixed sandbox names from `msb list` output.
-fn stale_sandbox_names<'semantic>(list_stdout: impl Into<ListStdoutText<'semantic>>)
--> Vec<String>
+fn stale_sandbox_names<'semantic, ListStdout>(list_stdout: ListStdout) -> Vec<String>
+where
+    ListStdout: Into<ListStdoutText<'semantic>>,
 {
     let list_stdout = list_stdout.into().0;
     let mut names = Vec::new();
@@ -1982,10 +1997,13 @@ pub(super) fn stop_plan(name: &SandboxName) -> MsbPlan
 }
 
 /// Return whether a volume listing contains `scratch_name` as its first column.
-fn volume_listing_contains<'semantic>(
-    list_stdout: impl Into<ListStdoutText<'semantic>>,
-    scratch_name: impl Into<ScratchNameText<'semantic>>,
+fn volume_listing_contains<'semantic, ListStdout, ScratchName>(
+    list_stdout: ListStdout,
+    scratch_name: ScratchName,
 ) -> impl Into<VolumeListingContainsFlag>
+where
+    ListStdout: Into<ListStdoutText<'semantic>>,
+    ScratchName: Into<ScratchNameText<'semantic>>,
 {
     let scratch_name = scratch_name.into().0;
     let list_stdout = list_stdout.into().0;
@@ -2002,9 +2020,9 @@ fn volume_listing_contains<'semantic>(
 /// Build the cache scratch volume removal plan.
 #[inline]
 #[must_use]
-pub(super) fn volume_remove_plan<'semantic>(
-    scratch_name: impl Into<ScratchNameText<'semantic>>
-) -> MsbPlan
+pub(super) fn volume_remove_plan<'semantic, ScratchName>(scratch_name: ScratchName) -> MsbPlan
+where
+    ScratchName: Into<ScratchNameText<'semantic>>,
 {
     let scratch_name = scratch_name.into().0;
     MsbPlan::new(vec![
@@ -2018,6 +2036,8 @@ pub(super) fn volume_remove_plan<'semantic>(
 #[cfg(test)]
 mod tests
 {
+    //! Behavioral tests for host-side sandbox campaign planning and execution.
+
     use alloc::collections::VecDeque;
     use alloc::string::String;
     use alloc::vec;
@@ -2162,11 +2182,15 @@ mod tests
     impl FakeInfrastructure
     {
         /// Build a fake probe from component booleans.
-        fn new(
-            msb_available: impl Into<super::MsbAvailableFlag>,
-            snapshot_exists: impl Into<super::SnapshotExistsFlag>,
-            cache_image_exists: impl Into<super::CacheImageExistsFlag>,
+        fn new<MsbAvailable, SnapshotExists, CacheImageExists>(
+            msb_available: MsbAvailable,
+            snapshot_exists: SnapshotExists,
+            cache_image_exists: CacheImageExists,
         ) -> Self
+        where
+            MsbAvailable: Into<super::MsbAvailableFlag>,
+            SnapshotExists: Into<super::SnapshotExistsFlag>,
+            CacheImageExists: Into<super::CacheImageExistsFlag>,
         {
             let snapshot_exists = snapshot_exists.into().0;
             let cache_image_exists = cache_image_exists.into().0;
@@ -2630,20 +2654,24 @@ mod tests
     }
 
     /// Return whether `args` contains `needle`.
-    fn contains_arg<'semantic>(
+    fn contains_arg<'semantic, Needle>(
         args: &[OsString],
-        needle: impl Into<super::NeedleText<'semantic>>,
+        needle: Needle,
     ) -> impl Into<ArgFlag>
+    where
+        Needle: Into<super::NeedleText<'semantic>>,
     {
         let needle = needle.into().0;
         args.iter().any(|argument| argument == OsStr::new(needle))
     }
 
     /// Return the value immediately after `flag` in `args`.
-    fn arg_after<'semantic, 'arguments>(
+    fn arg_after<'semantic, 'arguments, Flag>(
         args: &'arguments [OsString],
-        flag: impl Into<super::FlagText<'semantic>>,
+        flag: Flag,
     ) -> Option<&'arguments OsStr>
+    where
+        Flag: Into<super::FlagText<'semantic>>,
     {
         let flag = flag.into().0;
         let mut arguments = args.iter();

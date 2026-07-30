@@ -2014,7 +2014,9 @@ mod tests
     }
 
     /// Build test-harness arguments for one ignored child fixture.
-    fn child_test_args<'semantic>(test_name: impl Into<TestNameText<'semantic>>) -> Vec<OsString>
+    fn child_test_args<N>(test_name: N) -> Vec<OsString>
+    where
+        N: Into<TestNameText<'_>>,
     {
         let test_name = test_name.into().0;
         let mut exact_name = String::from("support::tests::");
@@ -2037,10 +2039,12 @@ mod tests
         Set(OsString),
     }
     /// Return an explicit command environment override/removal for a key.
-    fn explicit_command_env<'semantic>(
+    fn explicit_command_env<K>(
         command: &Command,
-        key: impl Into<KeyText<'semantic>>,
+        key: K,
     ) -> Option<CommandEnvEntry>
+    where
+        K: Into<KeyText<'_>>,
     {
         let key = key.into().0;
         for (name, value) in command.get_envs() {
@@ -2056,9 +2060,11 @@ mod tests
     }
 
     /// Write one environment variable in a stable test format.
-    fn print_environment_value<'semantic>(
-        key: impl Into<KeyText<'semantic>>
+    fn print_environment_value<K>(
+        key: K
     ) -> Result<(), Box<dyn Error>>
+    where
+        K: Into<KeyText<'_>>,
     {
         let key = key.into().0;
         let mut stdout = std::io::stdout();
@@ -2111,7 +2117,9 @@ mod tests
     impl TestWorkspace
     {
         /// Create a clean temporary workspace for one test.
-        fn create<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<Self, GateError>
+        fn create<N>(name: N) -> Result<Self, GateError>
+        where
+            N: Into<NameText<'_>>,
         {
             let name = name.into().0;
             let path = std::env::temp_dir().join(format!(

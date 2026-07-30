@@ -414,7 +414,7 @@ impl petgraph::visit::GraphBase for Private {
         let result = run(&fixture.root, Some(&fixture.metadata_path));
 
         assert!(
-            matches!(&result, Err(GateError::Operational { .. })),
+            matches!(result, Err(GateError::Operational { .. })),
             "ambiguous public module source should fail closed, got {result:?}"
         );
         Ok(())
@@ -694,7 +694,7 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
         let result = run(&fixture.root, Some(&fixture.metadata_path));
 
         assert!(
-            matches!(&result, Err(GateError::RustParse { .. })),
+            matches!(result, Err(GateError::RustParse { .. })),
             "invalid Rust source should be a RustParse error, got {result:?}"
         );
         let Err(GateError::RustParse { path, .. }) = result
@@ -859,7 +859,9 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
     }
 
     /// Escape a string for the limited fixture JSON renderer.
-    fn json_escape<'semantic>(value: impl Into<ValueText<'semantic>>) -> String
+    fn json_escape<'semantic, Value>(value: Value) -> String
+    where
+        Value: Into<ValueText<'semantic>>,
     {
         let value = value.into().0;
         value.replace('\\', "\\\\").replace('"', "\\\"")

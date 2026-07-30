@@ -13,8 +13,11 @@
 
 extern crate alloc;
 
+#[cfg(test)]
 mod contracts;
 
+#[cfg(test)]
 mod pbg;
 
+#[cfg(test)]
 mod walk;

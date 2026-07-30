@@ -512,7 +512,9 @@ fn yaml_job_runs_mise_task(
 }
 
 /// Analyze workflow source at the stable logical path.
-fn analyze<'semantic>(source: impl Into<SourceText<'semantic>>) -> TestResult<Vec<Finding>>
+fn analyze<'semantic, Source>(source: Source) -> TestResult<Vec<Finding>>
+where
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     Ok(analyze_ci_workflow(Path::new(WORKFLOW_PATH), source)?)

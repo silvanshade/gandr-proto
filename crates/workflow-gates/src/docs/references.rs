@@ -180,8 +180,9 @@ fn collect_edge_anchor_findings(
 }
 
 /// Return an ADR number when a fragment is exactly `adr-N`.
-fn anchored_adr_fragment<'semantic>(fragment: impl Into<FragmentText<'semantic>>)
--> Option<String>
+fn anchored_adr_fragment<Fragment>(fragment: Fragment) -> Option<String>
+where
+    Fragment: Into<FragmentText<'_>>,
 {
     let fragment = fragment.into().0;
     let suffix = fragment.strip_prefix("adr-")?;
@@ -193,11 +194,14 @@ fn anchored_adr_fragment<'semantic>(fragment: impl Into<FragmentText<'semantic>>
 }
 
 /// Return whether `documents` contains `slug` for `target_rel`.
-fn target_has_slug<'semantic>(
+fn target_has_slug<TargetRel, Slug>(
     documents: &[DocumentInfo],
-    target_rel: impl Into<TargetRelText<'semantic>>,
-    slug: impl Into<SlugText<'semantic>>,
+    target_rel: TargetRel,
+    slug: Slug,
 ) -> impl Into<TargetHasSlugFlag>
+where
+    TargetRel: Into<TargetRelText<'_>>,
+    Slug: Into<SlugText<'_>>,
 {
     let slug = slug.into().0;
     let target_rel = target_rel.into().0;
@@ -309,15 +313,19 @@ fn adr_number_from_path(path: &Path) -> Option<String>
 }
 
 /// Parse a numbered Markdown heading section from `line`.
-fn section_heading<'semantic>(line: impl Into<LineText<'semantic>>) -> Option<String>
+fn section_heading<Line>(line: Line) -> Option<String>
+where
+    Line: Into<LineText<'_>>,
 {
     let line = line.into().0;
     let text = heading_text(line, 2_usize, 6_usize).into().0?;
     return leading_section_number(text);
 }
 
-/// Parse a GitHub-style heading slug from `line`.
-fn heading_slug<'semantic>(line: impl Into<LineText<'semantic>>) -> Option<String>
+/// Parse a `GitHub`-style heading slug from `line`.
+fn heading_slug<Line>(line: Line) -> Option<String>
+where
+    Line: Into<LineText<'_>>,
 {
     let line = line.into().0;
     let text = heading_text(line, 1_usize, 6_usize).into().0?;
@@ -336,11 +344,15 @@ fn heading_slug<'semantic>(line: impl Into<LineText<'semantic>>) -> Option<Strin
 }
 
 /// Return heading text after `#` markers when marker count is in range.
-fn heading_text<'semantic>(
-    line: impl Into<LineText<'semantic>>,
-    min_hashes: impl Into<MinHashesCount>,
-    max_hashes: impl Into<MaxHashesCount>,
+fn heading_text<'semantic, Line, MinHashes, MaxHashes>(
+    line: Line,
+    min_hashes: MinHashes,
+    max_hashes: MaxHashes,
 ) -> impl Into<OptionalHeadingTextText<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
+    MinHashes: Into<MinHashesCount>,
+    MaxHashes: Into<MaxHashesCount>,
 {
     let min_hashes = min_hashes.into().0;
     let max_hashes = max_hashes.into().0;
@@ -363,7 +375,9 @@ fn heading_text<'semantic>(
 }
 
 /// Collapse whitespace runs to single hyphens for a slug body.
-fn collapse_slug_whitespace<'semantic>(text: impl Into<TextText<'semantic>>) -> String
+fn collapse_slug_whitespace<Text>(text: Text) -> String
+where
+    Text: Into<TextText<'_>>,
 {
     let text = text.into().0;
     let mut slug = String::new();
@@ -384,7 +398,9 @@ fn collapse_slug_whitespace<'semantic>(text: impl Into<TextText<'semantic>>) -> 
 }
 
 /// Return all in-body `ADR-N` references on `line`.
-fn adr_references<'semantic>(line: impl Into<LineText<'semantic>>) -> Vec<String>
+fn adr_references<Line>(line: Line) -> Vec<String>
+where
+    Line: Into<LineText<'_>>,
 {
     let line = line.into().0;
     let mut references = Vec::new();
@@ -410,7 +426,9 @@ fn ref_finding(failure: RefFailure) -> Finding
 }
 
 /// Return leading ASCII digits from `text`.
-fn leading_ascii_digits<'semantic>(text: impl Into<TextText<'semantic>>) -> String
+fn leading_ascii_digits<Text>(text: Text) -> String
+where
+    Text: Into<TextText<'_>>,
 {
     let text = text.into().0;
     let mut digits = String::new();
@@ -424,7 +442,9 @@ fn leading_ascii_digits<'semantic>(text: impl Into<TextText<'semantic>>) -> Stri
 }
 
 /// Return a leading section number matching the regex prefix `N(.M)*`.
-fn leading_section_number<'semantic>(text: impl Into<TextText<'semantic>>) -> Option<String>
+fn leading_section_number<Text>(text: Text) -> Option<String>
+where
+    Text: Into<TextText<'_>>,
 {
     let text = text.into().0;
     let mut number = String::new();
@@ -453,10 +473,12 @@ fn leading_section_number<'semantic>(text: impl Into<TextText<'semantic>>) -> Op
 }
 
 /// Push `candidate` when it is not already present.
-fn push_unique_text<'semantic>(
+fn push_unique_text<Candidate>(
     values: &mut Vec<String>,
-    candidate: impl Into<CandidateText<'semantic>>,
+    candidate: Candidate,
 )
+where
+    Candidate: Into<CandidateText<'_>>,
 {
     let candidate = candidate.into().0;
     if !contains_text(values, candidate).into().0 {
@@ -465,17 +487,21 @@ fn push_unique_text<'semantic>(
 }
 
 /// Return whether `values` contains `needle`.
-fn contains_text<'semantic>(
+fn contains_text<Needle>(
     values: &[String],
-    needle: impl Into<NeedleText<'semantic>>,
+    needle: Needle,
 ) -> impl Into<TextFlag>
+where
+    Needle: Into<NeedleText<'_>>,
 {
     let needle = needle.into().0;
     return values.iter().any(|value| value == needle);
 }
 
 /// Return all in-body `§N(.M)` references on `line`.
-fn section_references<'semantic>(line: impl Into<LineText<'semantic>>) -> Vec<String>
+fn section_references<Line>(line: Line) -> Vec<String>
+where
+    Line: Into<LineText<'_>>,
 {
     let line = line.into().0;
     let mut references = Vec::new();
@@ -488,7 +514,9 @@ fn section_references<'semantic>(line: impl Into<LineText<'semantic>>) -> Vec<St
 }
 
 /// Return the final path component or the input path text when absent.
-fn basename_or_path<'semantic>(path: impl Into<PathText<'semantic>>) -> String
+fn basename_or_path<PathStr>(path: PathStr) -> String
+where
+    PathStr: Into<PathText<'_>>,
 {
     let path = path.into().0;
     let path_buf = PathBuf::from(path);
@@ -509,7 +537,7 @@ struct DocumentInfo
     lines: Vec<String>,
     /// Numbered section definitions found in this file.
     sections: Vec<String>,
-    /// GitHub-style heading slugs found in this file.
+    /// `GitHub`-style heading slugs found in this file.
     slugs: Vec<String>,
 }
 
@@ -557,10 +585,12 @@ mod tests
     }
 
     /// Write a manifest with raw node YAML.
-    fn write_manifest<'semantic>(
+    fn write_manifest<NodesYaml>(
         manifest: &Path,
-        nodes_yaml: impl Into<NodesYamlText<'semantic>>,
+        nodes_yaml: NodesYaml,
     ) -> Result<(), Box<dyn Error>>
+    where
+        NodesYaml: Into<NodesYamlText<'_>>,
     {
         let nodes_yaml = nodes_yaml.into().0;
         crate::support::HOST_FILESYSTEM.write(
@@ -637,11 +667,14 @@ mod tests
     }
 
     /// Write a corpus document and return its BLAKE3 hash.
-    fn write_doc<'semantic>(
+    fn write_doc<Rel, Text>(
         corpus: &Path,
-        rel: impl Into<RelText<'semantic>>,
-        text: impl Into<TextText<'semantic>>,
+        rel: Rel,
+        text: Text,
     ) -> Result<String, Box<dyn Error>>
+    where
+        Rel: Into<RelText<'_>>,
+        Text: Into<TextText<'_>>,
     {
         let text = text.into().0;
         let rel = rel.into().0;
@@ -733,7 +766,9 @@ mod tests
     }
 
     /// Build a clean fixture directory for `name`.
-    fn fixture<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<Fixture, Box<dyn Error>>
+    fn fixture<Name>(name: Name) -> Result<Fixture, Box<dyn Error>>
+    where
+        Name: Into<NameText<'_>>,
     {
         let name = name.into().0;
         let root = std::env::temp_dir().join(format!(

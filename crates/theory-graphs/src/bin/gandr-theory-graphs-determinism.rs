@@ -39,7 +39,7 @@ extern crate alloc;
 
 use core::error::Error;
 use core::fmt::Display;
-use std::io::Write;
+use std::io::Write as _;
 
 use gandr_theory_graphs::AllSimplePaths;
 use gandr_theory_graphs::Assoc;

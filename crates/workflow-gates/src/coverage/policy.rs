@@ -21,15 +21,6 @@
 //! - witness: `coverage::policy::tests::ratchet_report_caps_and_renders_stably`
 //! - witness: `coverage::policy::tests::base_ref_policy_distinguishes_zero_head_root_and_missing_blob`
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::panic,
-        reason = "coverage policy tests use direct fixture constructors and failure assertions"
-    )
-)]
-
 extern crate alloc;
 
 use alloc::collections::BTreeMap;
@@ -274,11 +265,14 @@ fn load_measured(
 
 /// Parse measured coverage from already loaded JSON text.
 #[inline]
-fn parse_measured_text<'semantic>(
-    source_name: impl Into<SourceNameText<'semantic>>,
-    text: impl Into<TextText<'semantic>>,
+fn parse_measured_text<'semantic, S, T>(
+    source_name: S,
+    text: T,
     repo_root: &Path,
 ) -> Result<BTreeMap<ProductionFile, MeasuredCoverage>, GateError>
+where
+    S: Into<SourceNameText<'semantic>>,
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let source_name = source_name.into().0;
@@ -354,10 +348,12 @@ fn parse_measured_text<'semantic>(
 /// - witness: `coverage::policy::tests::floor_policy_shape_is_strict`
 /// - witness: `coverage::policy::tests::new_file_exemptions_are_strict`
 #[inline]
-fn load_floors(
+fn load_floors<H>(
     floors_path: &Path,
-    historical: impl Into<HistoricalFlag>,
+    historical: H,
 ) -> Result<CoverageFloors, GateError>
+where
+    H: Into<HistoricalFlag>,
 {
     let historical = historical.into().0;
     let source_name = slash_path(floors_path);
@@ -371,11 +367,15 @@ fn load_floors(
 
 /// Parse a floor policy from already loaded TOML text.
 #[inline]
-fn parse_floors_text<'semantic>(
-    source_name: impl Into<SourceNameText<'semantic>>,
-    text: impl Into<TextText<'semantic>>,
-    historical: impl Into<HistoricalFlag>,
+fn parse_floors_text<'semantic, S, T, H>(
+    source_name: S,
+    text: T,
+    historical: H,
 ) -> Result<CoverageFloors, GateError>
+where
+    S: Into<SourceNameText<'semantic>>,
+    T: Into<TextText<'semantic>>,
+    H: Into<HistoricalFlag>,
 {
     let text = text.into().0;
     let historical = historical.into().0;
@@ -441,10 +441,13 @@ fn parse_floors_text<'semantic>(
 /// - witness: `fuzz/fuzz_targets/gates.rs`
 #[cfg(feature = "fuzzing")]
 #[inline]
-pub(super) fn parse_floors_text_for_fuzzing<'semantic>(
-    source_name: impl Into<SourceNameText<'semantic>>,
-    text: impl Into<TextText<'semantic>>,
+pub(super) fn parse_floors_text_for_fuzzing<'semantic, S, T>(
+    source_name: S,
+    text: T,
 ) -> Result<CoverageFloors, GateError>
+where
+    S: Into<SourceNameText<'semantic>>,
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let source_name = source_name.into().0;
@@ -495,7 +498,9 @@ fn previous_floors(
     else {
         return Ok(None);
     };
-    if !base_tree_contains_floors(repo_root, &commit).map(|value| value.into().0)? {
+    let base_has_floors =
+        base_tree_contains_floors(repo_root, &commit).map(|value| value.into().0)?;
+    if !base_has_floors {
         return Ok(None);
     }
     let text = read_base_floors(repo_root, &commit, &requested)?;
@@ -767,7 +772,7 @@ fn parse_summary_file(
     }
     let declared = parse_declared_percent(percent_value, filename)?;
     let computed =
-        Percent::from_counts(covered, count).map_err(|_error| invalid_line_values(filename))?;
+        Percent::from_counts(covered, count).ok_or_else(|| invalid_line_values(filename))?;
     if declared != computed {
         return Err(coverage_error(format!(
             "coverage summary line percentage disagrees with counts for {filename}"
@@ -786,11 +791,14 @@ fn parse_summary_file(
 }
 
 /// Return a required metric value or the missing-metrics diagnostic.
-fn required_metric<'semantic, 'json>(
+fn required_metric<'semantic, 'json, K, F>(
     lines: &'json Map<String, Value>,
-    key: impl Into<KeyText<'semantic>>,
-    filename: impl Into<FilenameText<'semantic>>,
+    key: K,
+    filename: F,
 ) -> Result<&'json Value, GateError>
+where
+    K: Into<KeyText<'semantic>>,
+    F: Into<FilenameText<'semantic>>,
 {
     let filename = filename.into().0;
     let key = key.into().0;
@@ -809,10 +817,12 @@ fn required_metric<'semantic, 'json>(
 }
 
 /// Parse a nonnegative integer line metric.
-fn parse_line_count<'semantic>(
+fn parse_line_count<'semantic, F>(
     value: &Value,
-    filename: impl Into<FilenameText<'semantic>>,
+    filename: F,
 ) -> Result<impl Into<ParseLineCountCount>, GateError>
+where
+    F: Into<FilenameText<'semantic>>,
 {
     let filename = filename.into().0;
     let Some(number) = value.as_number()
@@ -823,7 +833,7 @@ fn parse_line_count<'semantic>(
         if signed < 0 {
             return Err(invalid_line_values(filename));
         }
-        return u64::try_from(signed).map_err(|_error| invalid_line_values(filename));
+        return u64::try_from(signed).ok_or_else(|| invalid_line_values(filename));
     }
     if let Some(unsigned) = number.as_u64() {
         return Ok(unsigned);
@@ -832,10 +842,12 @@ fn parse_line_count<'semantic>(
 }
 
 /// Parse an llvm-cov declared line percent at policy precision.
-fn parse_declared_percent<'semantic>(
+fn parse_declared_percent<'semantic, F>(
     value: &Value,
-    filename: impl Into<FilenameText<'semantic>>,
+    filename: F,
 ) -> Result<Percent, GateError>
+where
+    F: Into<FilenameText<'semantic>>,
 {
     let filename = filename.into().0;
     let Some(number) = value.as_number()
@@ -856,7 +868,9 @@ fn parse_declared_percent<'semantic>(
 }
 
 /// Build the invalid line-metric type diagnostic.
-fn invalid_line_types<'semantic>(filename: impl Into<FilenameText<'semantic>>) -> GateError
+fn invalid_line_types<'semantic, F>(filename: F) -> GateError
+where
+    F: Into<FilenameText<'semantic>>,
 {
     let filename = filename.into().0;
     coverage_error(format!(
@@ -865,7 +879,9 @@ fn invalid_line_types<'semantic>(filename: impl Into<FilenameText<'semantic>>) -
 }
 
 /// Build the invalid line-metric value diagnostic.
-fn invalid_line_values<'semantic>(filename: impl Into<FilenameText<'semantic>>) -> GateError
+fn invalid_line_values<'semantic, F>(filename: F) -> GateError
+where
+    F: Into<FilenameText<'semantic>>,
 {
     let filename = filename.into().0;
     coverage_error(format!(
@@ -932,9 +948,9 @@ enum TomlSection
 }
 
 /// Parse the restricted floor-policy TOML subset.
-fn parse_raw_floors_toml<'semantic>(
-    text: impl Into<TextText<'semantic>>
-) -> Result<RawFloorsToml, TomlParseError>
+fn parse_raw_floors_toml<'semantic, T>(text: T) -> Result<RawFloorsToml, TomlParseError>
+where
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let mut raw = RawFloorsToml::default();
@@ -984,9 +1000,9 @@ fn parse_raw_floors_toml<'semantic>(
 }
 
 /// Remove a TOML comment while preserving quoted `#` characters.
-fn strip_toml_comment<'semantic>(
-    line: impl Into<LineText<'semantic>>
-) -> Result<String, TomlParseError>
+fn strip_toml_comment<'semantic, L>(line: L) -> Result<String, TomlParseError>
+where
+    L: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let mut output = String::new();
@@ -1021,9 +1037,11 @@ fn strip_toml_comment<'semantic>(
 }
 
 /// Parse a section header when a line is a header.
-fn parse_section_header<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn parse_section_header<'semantic, L>(
+    line: L,
 ) -> Result<Option<TomlSection>, TomlParseError>
+where
+    L: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     if !line.starts_with('[') {
@@ -1047,9 +1065,11 @@ fn parse_section_header<'semantic>(
 }
 
 /// Parse one key-value line.
-fn parse_key_value<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn parse_key_value<'semantic, L>(
+    line: L,
 ) -> Result<(String, RawTomlValue), TomlParseError>
+where
+    L: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let Some((key_text, value_text)) = line.split_once('=')
@@ -1062,8 +1082,9 @@ fn parse_key_value<'semantic>(
 }
 
 /// Parse a TOML key in the retained subset.
-fn parse_toml_key<'semantic>(text: impl Into<TextText<'semantic>>)
--> Result<String, TomlParseError>
+fn parse_toml_key<'semantic, T>(text: T) -> Result<String, TomlParseError>
+where
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     if text.starts_with('"') {
@@ -1076,9 +1097,9 @@ fn parse_toml_key<'semantic>(text: impl Into<TextText<'semantic>>)
 }
 
 /// Parse a TOML value in the retained subset.
-fn parse_toml_value<'semantic>(
-    text: impl Into<TextText<'semantic>>
-) -> Result<RawTomlValue, TomlParseError>
+fn parse_toml_value<'semantic, T>(text: T) -> Result<RawTomlValue, TomlParseError>
+where
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     if text.is_empty() {
@@ -1091,9 +1112,9 @@ fn parse_toml_value<'semantic>(
 }
 
 /// Parse a TOML basic string with the escapes emitted by the renderer.
-fn parse_basic_string<'semantic>(
-    text: impl Into<TextText<'semantic>>
-) -> Result<String, TomlParseError>
+fn parse_basic_string<'semantic, T>(text: T) -> Result<String, TomlParseError>
+where
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let mut chars = text.chars();
@@ -1156,11 +1177,14 @@ impl fmt::Display for TomlParseError
 }
 
 /// Parse and validate the policy target percent.
-fn parse_target_percent<'semantic>(
-    source_name: impl Into<SourceNameText<'semantic>>,
+fn parse_target_percent<'semantic, S, H>(
+    source_name: S,
     raw: Option<&RawTomlValue>,
-    historical: impl Into<HistoricalFlag>,
+    historical: H,
 ) -> Result<Percent, GateError>
+where
+    S: Into<SourceNameText<'semantic>>,
+    H: Into<HistoricalFlag>,
 {
     let historical = historical.into().0;
     let source_name = source_name.into().0;
@@ -1206,11 +1230,13 @@ fn parse_target_percent<'semantic>(
 }
 
 /// Parse and validate one file floor percent.
-fn parse_floor_percent<'semantic>(
-    file: impl Into<FileText<'semantic>>,
+fn parse_floor_percent<'semantic, F>(
+    file: F,
     raw: &RawTomlValue,
     target_percent: Percent,
 ) -> Result<Percent, GateError>
+where
+    F: Into<FileText<'semantic>>,
 {
     let file = file.into().0;
     let RawTomlValue::Number(ref text) = *raw
@@ -1247,10 +1273,9 @@ fn parse_floor_percent<'semantic>(
 }
 
 /// Build the stable floor range diagnostic.
-fn floor_between_error<'semantic>(
-    file: impl Into<FileText<'semantic>>,
-    target_percent: Percent,
-) -> GateError
+fn floor_between_error<'semantic, F>(file: F, target_percent: Percent) -> GateError
+where
+    F: Into<FileText<'semantic>>,
 {
     let file = file.into().0;
     coverage_error(format!(
@@ -1318,7 +1343,9 @@ fn requested_base_ref(base_ref: Option<&OsStr>) -> String
 }
 
 /// Return whether a ref token is all zeroes.
-fn is_all_zero<'semantic>(text: impl Into<TextText<'semantic>>) -> impl Into<AllZeroFlag>
+fn is_all_zero<'semantic, T>(text: T) -> impl Into<AllZeroFlag>
+where
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let mut saw_zero = false;
@@ -1332,10 +1359,12 @@ fn is_all_zero<'semantic>(text: impl Into<TextText<'semantic>>) -> impl Into<All
 }
 
 /// Resolve a base ref to a commit hash, with the root-commit `HEAD^` exception.
-fn resolve_base_commit<'semantic>(
+fn resolve_base_commit<'semantic, R>(
     repo_root: &Path,
-    requested: impl Into<RequestedText<'semantic>>,
+    requested: R,
 ) -> Result<Option<String>, GateError>
+where
+    R: Into<RequestedText<'semantic>>,
 {
     let requested = requested.into().0;
     let commit_spec = format!("{requested}^{{commit}}");
@@ -1346,8 +1375,11 @@ fn resolve_base_commit<'semantic>(
     ];
     let result = support::run_output(OsStr::new("git"), &args, Some(repo_root), true)?;
     if !result.success().into().0 {
-        if requested == "HEAD^" && head_is_root_commit(repo_root).map(|value| value.into().0)? {
-            return Ok(None);
+        if requested == "HEAD^" {
+            let root_commit = head_is_root_commit(repo_root).map(|value| value.into().0)?;
+            if root_commit {
+                return Ok(None);
+            }
         }
         return Err(coverage_error(format!(
             "cannot resolve coverage base ref '{requested}'"
@@ -1385,10 +1417,12 @@ fn head_is_root_commit(repo_root: &Path) -> Result<impl Into<HeadIsRootCommitFla
 }
 
 /// Return whether the base tree contains the floors path.
-fn base_tree_contains_floors<'semantic>(
+fn base_tree_contains_floors<'semantic, C>(
     repo_root: &Path,
-    commit: impl Into<CommitText<'semantic>>,
+    commit: C,
 ) -> Result<impl Into<BaseTreeContainsFloorsFlag>, GateError>
+where
+    C: Into<CommitText<'semantic>>,
 {
     let commit = commit.into().0;
     let args = vec![
@@ -1414,11 +1448,14 @@ fn base_tree_contains_floors<'semantic>(
 }
 
 /// Read the base floor-policy blob from Git.
-fn read_base_floors<'semantic>(
+fn read_base_floors<'semantic, C, R>(
     repo_root: &Path,
-    commit: impl Into<CommitText<'semantic>>,
-    requested: impl Into<RequestedText<'semantic>>,
+    commit: C,
+    requested: R,
 ) -> Result<String, GateError>
+where
+    C: Into<CommitText<'semantic>>,
+    R: Into<RequestedText<'semantic>>,
 {
     let requested = requested.into().0;
     let commit = commit.into().0;
@@ -2476,7 +2513,9 @@ target_percent = 80.00
     impl FixtureDir
     {
         /// Create a unique fixture directory under the system temp root.
-        fn new<'semantic>(label: impl Into<LabelText<'semantic>>) -> Self
+        fn new<'semantic, L>(label: L) -> Self
+        where
+            L: Into<LabelText<'semantic>>,
         {
             let label = label.into().0;
             let unique = SystemTime::now()
@@ -2515,7 +2554,9 @@ target_percent = 80.00
     #[derive(Clone, Copy)]
     struct FloorRow<'text>
     {
+        /// Fixture file path.
         file: &'text str,
+        /// Rendered floor percent.
         floor: &'text str,
     }
 
@@ -2534,7 +2575,9 @@ target_percent = 80.00
     #[derive(Clone, Copy)]
     struct ExemptionRow<'text>
     {
+        /// Fixture file path.
         file: &'text str,
+        /// Exemption reason.
         reason: &'text str,
     }
 
@@ -2562,6 +2605,7 @@ target_percent = 80.00
     #[derive(Clone, Copy)]
     struct RenderedCoverageEntry<'text>
     {
+        /// Rendered JSON entry text.
         text: &'text str,
     }
 
@@ -2588,6 +2632,7 @@ target_percent = 80.00
     #[derive(Clone, Copy)]
     struct GitArgText<'text>
     {
+        /// Argument text.
         text: &'text str,
     }
 
@@ -2611,8 +2656,11 @@ target_percent = 80.00
     #[derive(Clone, Copy)]
     struct MeasurementRow<'text>
     {
+        /// Fixture file path.
         file: &'text str,
+        /// Covered line count.
         covered: u64,
+        /// Total line count.
         count: u64,
     }
 
@@ -2632,9 +2680,13 @@ target_percent = 80.00
     #[derive(Clone, Copy)]
     struct CoverageJsonRow<'text>
     {
+        /// Fixture file path.
         file: &'text str,
+        /// Covered line count.
         covered: u64,
+        /// Total line count.
         count: u64,
+        /// Rendered percent literal.
         percent: &'text str,
     }
 
@@ -2652,10 +2704,11 @@ target_percent = 80.00
     }
 
     /// Write a fixture file, creating parent directories as needed.
-    fn write_text<'semantic>(
+    fn write_text<'semantic, T>(
         path: &Path,
-        text: impl Into<super::TextText<'semantic>>,
-    )
+        text: T,
+    ) where
+        T: Into<super::TextText<'semantic>>,
     {
         let text = text.into().0;
         if let Some(parent) = path.parent() {
@@ -2683,12 +2736,13 @@ target_percent = 80.00
     }
 
     /// Build a floor TOML fixture with an explicit target.
-    fn floors_toml_with_target<'semantic, Rows, Row, Exemptions, Exemption>(
-        target: impl Into<super::TargetText<'semantic>>,
+    fn floors_toml_with_target<'semantic, Target, Rows, Row, Exemptions, Exemption>(
+        target: Target,
         rows: Rows,
         exemptions: Exemptions,
     ) -> String
     where
+        Target: Into<super::TargetText<'semantic>>,
         Rows: IntoIterator<Item = Row>,
         Row: Into<FloorRow<'semantic>>,
         Exemptions: IntoIterator<Item = Exemption>,
@@ -2756,10 +2810,11 @@ target_percent = 80.00
     }
 
     /// Commit all current fixture repository changes.
-    fn commit_all<'semantic>(
+    fn commit_all<'semantic, M>(
         repo: &Path,
-        message: impl Into<super::MessageText<'semantic>>,
-    )
+        message: M,
+    ) where
+        M: Into<super::MessageText<'semantic>>,
     {
         let message = message.into().0;
         run_git(repo, ["add", "."]);
@@ -2804,12 +2859,13 @@ target_percent = 80.00
     }
 
     /// Build a floor map fixture with an explicit target.
-    fn floors_with_target<'semantic, Rows, Row, Exemptions, Exemption>(
-        target: impl Into<super::TargetText<'semantic>>,
+    fn floors_with_target<'semantic, Target, Rows, Row, Exemptions, Exemption>(
+        target: Target,
         rows: Rows,
         exemptions: Exemptions,
     ) -> CoverageFloors
     where
+        Target: Into<super::TargetText<'semantic>>,
         Rows: IntoIterator<Item = Row>,
         Row: Into<FloorRow<'semantic>>,
         Exemptions: IntoIterator<Item = Exemption>,
@@ -2877,10 +2933,11 @@ target_percent = 80.00
     }
 
     /// Assert an error display contains a stable fragment.
-    fn assert_error_contains<'semantic, T>(
+    fn assert_error_contains<'semantic, T, E>(
         result: Result<T, GateError>,
-        expected: impl Into<super::ExpectedText<'semantic>>,
-    )
+        expected: E,
+    ) where
+        E: Into<super::ExpectedText<'semantic>>,
     {
         let expected = expected.into().0;
         match result {

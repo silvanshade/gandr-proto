@@ -100,7 +100,9 @@ impl Percent
     /// Build a percentage from integer hundredths.
     #[inline]
     #[must_use]
-    fn from_hundredths(hundredths: impl Into<HundredthsCount>) -> Option<Self>
+    fn from_hundredths<H>(hundredths: H) -> Option<Self>
+    where
+        H: Into<HundredthsCount>,
     {
         let hundredths = hundredths.into().0;
         if hundredths <= MAX_PERCENT_HUNDREDTHS {
@@ -137,9 +139,9 @@ impl Percent
     ///   nonfinite, and bound-crossing literals distinguish all categories.
     /// - witness: `coverage::model::tests::percent_parser_rejects_hidden_precision`
     #[inline]
-    pub(super) fn parse_exact<'semantic>(
-        literal: impl Into<LiteralText<'semantic>>
-    ) -> Result<Self, PercentParseError>
+    pub(super) fn parse_exact<'semantic, L>(literal: L) -> Result<Self, PercentParseError>
+    where
+        L: Into<LiteralText<'semantic>>,
     {
         let literal = literal.into().0;
         let decimal = DecimalLiteral::parse(literal)?;
@@ -170,10 +172,10 @@ impl Percent
     ///   near-boundary ratios kill division, scaling, and floor mutants.
     /// - witness: `coverage::model::tests::percent_floors_down_without_float_math`
     #[inline]
-    pub(super) fn from_counts(
-        covered: impl Into<CoveredCount>,
-        count: impl Into<CountCount>,
-    ) -> Result<Self, PercentParseError>
+    pub(super) fn from_counts<C, N>(covered: C, count: N) -> Result<Self, PercentParseError>
+    where
+        C: Into<CoveredCount>,
+        N: Into<CountCount>,
     {
         let count = count.into().0;
         let covered = covered.into().0;
@@ -186,7 +188,7 @@ impl Percent
         let quotient = scaled
             .checked_div(u128::from(count))
             .ok_or(PercentParseError::Overflow)?;
-        let hundredths = u32::try_from(quotient).map_err(|_error| PercentParseError::Overflow)?;
+        let hundredths = u32::try_from(quotient).ok_or(PercentParseError::Overflow)?;
         Self::from_hundredths(hundredths).ok_or(PercentParseError::OutOfRange)
     }
 
@@ -212,9 +214,9 @@ impl Percent
     /// - witness: `coverage::policy::tests::line_percentage_accepts_matching_full_precision`
     /// - witness: `coverage::policy::tests::line_percentage_must_match_counts_exactly`
     #[inline]
-    pub(super) fn parse_declared<'semantic>(
-        literal: impl Into<LiteralText<'semantic>>
-    ) -> Result<Self, PercentParseError>
+    pub(super) fn parse_declared<'semantic, L>(literal: L) -> Result<Self, PercentParseError>
+    where
+        L: Into<LiteralText<'semantic>>,
     {
         let literal = literal.into().0;
         let decimal = DecimalLiteral::parse(literal)?;
@@ -266,9 +268,9 @@ struct DecimalLiteral
 impl DecimalLiteral
 {
     /// Parse a finite decimal token into floor-down hundredths.
-    fn parse<'semantic>(
-        literal: impl Into<LiteralText<'semantic>>
-    ) -> Result<Self, PercentParseError>
+    fn parse<'semantic, L>(literal: L) -> Result<Self, PercentParseError>
+    where
+        L: Into<LiteralText<'semantic>>,
     {
         let literal = literal.into().0;
         let trimmed = literal.trim();
@@ -315,9 +317,11 @@ impl DecimalLiteral
 }
 
 /// Parse an unsigned decimal digit run.
-fn parse_decimal_digits<'semantic>(
-    text: impl Into<TextText<'semantic>>
+fn parse_decimal_digits<'semantic, T>(
+    text: T,
 ) -> Result<impl Into<ParseDecimalDigitsCount>, PercentParseError>
+where
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     if text.is_empty() {
@@ -338,9 +342,11 @@ fn parse_decimal_digits<'semantic>(
 }
 
 /// Parse the fractional side of a decimal percent token.
-fn parse_fraction_hundredths<'semantic>(
-    text: impl Into<TextText<'semantic>>
+fn parse_fraction_hundredths<'semantic, T>(
+    text: T,
 ) -> Result<FractionHundredths, PercentParseError>
+where
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     if text.is_empty() {
@@ -381,9 +387,9 @@ fn parse_fraction_hundredths<'semantic>(
 }
 
 /// Return whether a token spells a TOML nonfinite float.
-fn is_nonfinite_literal<'semantic>(
-    token: impl Into<TokenText<'semantic>>
-) -> impl Into<NonfiniteLiteralFlag>
+fn is_nonfinite_literal<'semantic, T>(token: T) -> impl Into<NonfiniteLiteralFlag>
+where
+    T: Into<TokenText<'semantic>>,
 {
     let token = token.into().0;
     let lowered = token.to_ascii_lowercase();
@@ -404,9 +410,9 @@ pub(super) fn slash_path(path: &Path) -> String
 /// Return whether a slash path is in the production Rust source domain.
 #[inline]
 #[must_use]
-fn is_production_file<'semantic>(
-    file: impl Into<FileText<'semantic>>
-) -> impl Into<ProductionFileFlag>
+fn is_production_file<'semantic, F>(file: F) -> impl Into<ProductionFileFlag>
+where
+    F: Into<FileText<'semantic>>,
 {
     let file = file.into().0;
     file.starts_with("crates/")
@@ -418,9 +424,9 @@ fn is_production_file<'semantic>(
 }
 
 /// Return whether a file sits under crate-root tests, benches, or examples.
-fn is_crate_root_fixture<'semantic>(
-    file: impl Into<FileText<'semantic>>
-) -> impl Into<CrateRootFixtureFlag>
+fn is_crate_root_fixture<'semantic, F>(file: F) -> impl Into<CrateRootFixtureFlag>
+where
+    F: Into<FileText<'semantic>>,
 {
     let file = file.into().0;
     let mut segments = file.split('/');
@@ -434,9 +440,9 @@ fn is_crate_root_fixture<'semantic>(
 }
 
 /// Return whether a floor key contains a forbidden path segment.
-fn has_forbidden_floor_segment<'semantic>(
-    file: impl Into<FileText<'semantic>>
-) -> impl Into<ForbiddenFloorSegmentFlag>
+fn has_forbidden_floor_segment<'semantic, F>(file: F) -> impl Into<ForbiddenFloorSegmentFlag>
+where
+    F: Into<FileText<'semantic>>,
 {
     let file = file.into().0;
     for segment in file.split('/') {
@@ -448,9 +454,9 @@ fn has_forbidden_floor_segment<'semantic>(
 }
 
 /// Normalize a relative summary filename.
-fn normalize_relative_summary<'semantic>(
-    raw: impl Into<RawText<'semantic>>
-) -> Result<String, GateError>
+fn normalize_relative_summary<'semantic, R>(raw: R) -> Result<String, GateError>
+where
+    R: Into<RawText<'semantic>>,
 {
     let raw = raw.into().0;
     let mut segments = Vec::new();
@@ -469,10 +475,12 @@ fn normalize_relative_summary<'semantic>(
 }
 
 /// Normalize an absolute summary filename and strip the repository root.
-fn normalize_absolute_summary<'semantic>(
+fn normalize_absolute_summary<'semantic, R>(
     repo_root: &Path,
-    raw: impl Into<RawText<'semantic>>,
+    raw: R,
 ) -> Result<String, GateError>
+where
+    R: Into<RawText<'semantic>>,
 {
     let raw = raw.into().0;
     let root = expanded_slash_path(repo_root)?;
@@ -502,9 +510,9 @@ fn expanded_slash_path(path: &Path) -> Result<String, GateError>
 }
 
 /// Lexically normalize an absolute slash path.
-fn normalize_absolute_slash<'semantic>(
-    raw: impl Into<RawText<'semantic>>
-) -> Result<String, GateError>
+fn normalize_absolute_slash<'semantic, R>(raw: R) -> Result<String, GateError>
+where
+    R: Into<RawText<'semantic>>,
 {
     let raw = raw.into().0;
     if !raw.starts_with('/') {
@@ -562,9 +570,9 @@ where
 }
 
 /// Lexically normalize an already slash-separated absolute path.
-fn normalize_slash_segments<'semantic>(
-    raw: impl Into<RawText<'semantic>>
-) -> Result<String, GateError>
+fn normalize_slash_segments<'semantic, R>(raw: R) -> Result<String, GateError>
+where
+    R: Into<RawText<'semantic>>,
 {
     let raw = raw.into().0;
     let mut segments = Vec::new();
@@ -636,9 +644,9 @@ impl ProductionFile
     ///   segment, fixture, and non-Rust keys distinguish each predicate.
     /// - witness: `coverage::model::tests::floor_key_validation_rejects_noncanonical_paths`
     #[inline]
-    pub(super) fn from_floor_key<'semantic>(
-        file: impl Into<FileText<'semantic>>
-    ) -> Result<Self, GateError>
+    pub(super) fn from_floor_key<'semantic, F>(file: F) -> Result<Self, GateError>
+    where
+        F: Into<FileText<'semantic>>,
     {
         let file = file.into().0;
         let normalized = file.replace('\\', "/");
@@ -678,10 +686,12 @@ impl ProductionFile
     /// - witness: `coverage::policy::tests::absolute_summary_paths_normalize_to_repo_relative`
     /// - witness: `coverage::policy::tests::production_path_boundaries_fail_closed`
     #[inline]
-    pub(super) fn from_summary_filename<'semantic>(
+    pub(super) fn from_summary_filename<'semantic, F>(
         repo_root: &Path,
-        filename: impl Into<FilenameText<'semantic>>,
+        filename: F,
     ) -> Result<Option<Self>, GateError>
+    where
+        F: Into<FilenameText<'semantic>>,
     {
         let filename = filename.into().0;
         let raw = filename.replace('\\', "/");
@@ -1012,7 +1022,7 @@ mod tests
         #[test]
         fn count_percent_matches_floor_formula(covered in 0_u64..=10_000, extra in 0_u64..=10_000)
         {
-            let count = covered + extra;
+            let count = covered.saturating_add(extra);
             let percent = Percent::from_counts(covered, count).map_err(|error| {
                 TestCaseError::fail(format!("percent construction failed: {error:?}"))
             })?;
@@ -1020,7 +1030,7 @@ mod tests
                 0
             }
             else {
-                (covered * 10_000) / count
+                covered.saturating_mul(10_000).checked_div(count).unwrap_or(0)
             };
 
             prop_assert_eq!(percent.to_string(), percent_text(expected));
@@ -1036,8 +1046,8 @@ mod tests
         {
             let literal = format!(
                 "{}.{:02}{}",
-                hundredths / 100,
-                hundredths % 100,
+                hundredths.checked_div(100).unwrap_or(0),
+                hundredths.checked_rem(100).unwrap_or(0),
                 "0".repeat(trailing_zeroes),
             );
             let percent = Percent::parse_exact(&literal).map_err(|error| {
@@ -1050,10 +1060,14 @@ mod tests
 
     /// Render a hundredths value with the policy's stable two-decimal
     /// precision.
-    fn percent_text(hundredths: impl Into<PercentTextHundredths>) -> String
+    fn percent_text<H>(hundredths: H) -> String
+    where
+        H: Into<PercentTextHundredths>,
     {
         let hundredths = hundredths.into().0;
-        format!("{}.{:02}", hundredths / 100, hundredths % 100)
+        let whole = hundredths.checked_div(100).unwrap_or(0);
+        let fraction = hundredths.checked_rem(100).unwrap_or(0);
+        format!("{whole}.{fraction:02}")
     }
 
     /// Floor keys must already be canonical production Rust files.
@@ -1240,11 +1254,12 @@ mod tests
 
     /// Assert that a typed model constructor fails with a stable diagnostic
     /// fragment.
-    fn assert_error_contains<'semantic, T>(
+    fn assert_error_contains<'semantic, T, E>(
         result: Result<T, crate::GateError>,
-        expected: impl Into<super::ExpectedText<'semantic>>,
+        expected: E,
     ) where
         T: core::fmt::Debug,
+        E: Into<super::ExpectedText<'semantic>>,
     {
         let expected = expected.into().0;
         let error = result.unwrap_err();

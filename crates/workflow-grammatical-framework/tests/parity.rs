@@ -25,6 +25,7 @@ use gandr_workflow_grammatical_framework::rt::PgfModule;
 use pyo3::Bound;
 use pyo3::PyAny;
 use pyo3::Python;
+use pyo3::types::PyAnyMethods as _;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
 use pyo3::types::PyModule;

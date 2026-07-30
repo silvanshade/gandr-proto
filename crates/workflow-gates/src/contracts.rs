@@ -57,10 +57,10 @@ crate::semantic_optional_str!(pub struct OptionalCrateNameText);
 crate::semantic_copy!(pub struct IsTestcaseContextFlag(bool));
 crate::semantic_str!(pub struct NameText);
 
-impl<'item, 'text> From<&'item &'text str> for NameText<'text>
+impl<'text> From<&'_ &'text str> for NameText<'text>
 {
     #[inline]
-    fn from(value: &'item &'text str) -> Self
+    fn from(value: &'_ &'text str) -> Self
     {
         Self(*value)
     }
@@ -210,11 +210,13 @@ pub fn run(
 /// - witness: `contracts::returns_parse_failures_as_operational_errors`
 /// - witness: `contracts::rejects_contract_grammar_drift_modes`
 #[inline]
-pub fn analyze_source<'semantic>(
+pub fn analyze_source<Source>(
     path: &Path,
-    source: impl Into<SourceText<'semantic>>,
+    source: Source,
     witnesses: &BTreeSet<String>,
 ) -> AnalysisResult
+where
+    Source: Into<SourceText<'_>>,
 {
     let source = source.into().0;
     let parsed = syn::parse_file(source).map_err(|error| GateError::RustParse {
@@ -256,9 +258,11 @@ pub fn analyze_source<'semantic>(
 /// - witness: `contracts::rejects_unsupported_nextest_json_shapes_as_operational_errors`
 /// - witness: `contracts::accepts_harness_module_stripped_aliases_from_consolidated_integration_suites`
 #[inline]
-pub fn parse_nextest_witnesses<'semantic>(
-    source: impl Into<SourceText<'semantic>>
+pub fn parse_nextest_witnesses<Source>(
+    source: Source
 ) -> Result<BTreeSet<String>, GateError>
+where
+    Source: Into<SourceText<'_>>,
 {
     let source = source.into().0;
     match serde_json::from_str::<Value>(source) {
@@ -355,10 +359,12 @@ pub fn run_ci_workflow(workflow_path: &Path) -> GateResult
 /// - witness: `ci_contracts::malformed_workflows_are_operational_errors`
 /// - witness: `ci_contracts::diagnostics_name_job_step_and_action`
 #[inline]
-pub fn analyze_ci_workflow<'semantic>(
+pub fn analyze_ci_workflow<Source>(
     workflow_path: &Path,
-    source: impl Into<SourceText<'semantic>>,
+    source: Source,
 ) -> GateResult
+where
+    Source: Into<SourceText<'_>>,
 {
     let source = source.into().0;
     let document = workflow_document(workflow_path, source)?;
@@ -425,7 +431,9 @@ enum ProhibitedTool
 impl ProhibitedTool
 {
     /// Return a tool family for a command word.
-    fn from_command<'semantic>(command: impl Into<CommandText<'semantic>>) -> Option<Self>
+    fn from_command<CommandWord>(command: CommandWord) -> Option<Self>
+    where
+        CommandWord: Into<CommandText<'_>>,
     {
         let command = command.into().0;
         match command {
@@ -468,10 +476,12 @@ impl ProhibitedTool
 }
 
 /// Parse one YAML document from workflow source.
-fn workflow_document<'semantic>(
+fn workflow_document<Source>(
     workflow_path: &Path,
-    source: impl Into<SourceText<'semantic>>,
+    source: Source,
 ) -> Result<Yaml, GateError>
+where
+    Source: Into<SourceText<'_>>,
 {
     let source = source.into().0;
     let mut documents = YamlLoader::load_from_str(source).map_err(|error| {
@@ -498,11 +508,13 @@ fn workflow_document<'semantic>(
 }
 
 /// Return a YAML mapping or a stable workflow-shape error.
-fn yaml_hash<'semantic, 'yaml>(
+fn yaml_hash<'yaml, Detail>(
     workflow_path: &Path,
     value: &'yaml Yaml,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: Detail,
 ) -> Result<&'yaml Hash, GateError>
+where
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
     match *value {
@@ -512,10 +524,12 @@ fn yaml_hash<'semantic, 'yaml>(
 }
 
 /// Return a string-keyed mapping value without allocating a temporary key.
-fn yaml_mapping_value<'semantic, 'yaml>(
+fn yaml_mapping_value<'yaml, KeyName>(
     mapping: &'yaml Hash,
-    key_name: impl Into<KeyNameText<'semantic>>,
+    key_name: KeyName,
 ) -> Option<&'yaml Yaml>
+where
+    KeyName: Into<KeyNameText<'_>>,
 {
     let key_name = key_name.into().0;
     for (key, value) in mapping {
@@ -538,12 +552,14 @@ fn yaml_string(value: &Yaml) -> impl Into<OptionalYamlStringText<'_>>
 }
 
 /// Collect CI run-step findings from a job's steps node.
-fn collect_ci_step_findings<'semantic>(
+fn collect_ci_step_findings<JobId>(
     workflow_path: &Path,
-    job_id: impl Into<JobIdText<'semantic>>,
+    job_id: JobId,
     steps_yaml: &Yaml,
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
+where
+    JobId: Into<JobIdText<'_>>,
 {
     let job_id = job_id.into().0;
     let Yaml::Array(ref steps) = *steps_yaml
@@ -572,13 +588,16 @@ fn collect_ci_step_findings<'semantic>(
 }
 
 /// Collect one finding when a concrete step has a prohibited run command.
-fn collect_ci_run_step_finding<'semantic>(
+fn collect_ci_run_step_finding<JobId, StepNumber>(
     workflow_path: &Path,
-    job_id: impl Into<JobIdText<'semantic>>,
-    step_number: impl Into<StepNumberNumber>,
+    job_id: JobId,
+    step_number: StepNumber,
     step: &Hash,
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
+where
+    JobId: Into<JobIdText<'_>>,
+    StepNumber: Into<StepNumberNumber>,
 {
     let step_number = step_number.into().0;
     let job_id = job_id.into().0;
@@ -623,13 +642,17 @@ fn collect_ci_run_step_finding<'semantic>(
 }
 
 /// Build a stable finding for a prohibited real-work run step.
-fn ci_run_step_finding<'semantic>(
+fn ci_run_step_finding<'semantic, JobId, StepNumber, StepName>(
     workflow_path: &Path,
-    job_id: impl Into<JobIdText<'semantic>>,
-    step_number: impl Into<StepNumberNumber>,
-    step_name: impl Into<StepNameText<'semantic>>,
+    job_id: JobId,
+    step_number: StepNumber,
+    step_name: StepName,
     invocation: &ProhibitedInvocation<'semantic>,
 ) -> Finding
+where
+    JobId: Into<JobIdText<'semantic>>,
+    StepNumber: Into<StepNumberNumber>,
+    StepName: Into<StepNameText<'semantic>>,
 {
     let step_number = step_number.into().0;
     let step_name = step_name.into().0;
@@ -649,9 +672,11 @@ fn ci_run_step_finding<'semantic>(
 }
 
 /// Return the exact task from a one-line `mise run <task>` script.
-fn canonical_mise_task<'semantic>(
-    script: impl Into<ScriptText<'semantic>>
+fn canonical_mise_task<'semantic, Script>(
+    script: Script
 ) -> impl Into<OptionalCanonicalMiseTaskText<'semantic>>
+where
+    Script: Into<ScriptText<'semantic>>,
 {
     let script = script.into().0;
     let mut lines = script
@@ -674,9 +699,11 @@ fn canonical_mise_task<'semantic>(
 }
 
 /// Return whether a mise task token is literal and repository-addressable.
-fn is_static_mise_task<'semantic>(
-    task: impl Into<TaskText<'semantic>>
+fn is_static_mise_task<Task>(
+    task: Task
 ) -> impl Into<StaticMiseTaskFlag>
+where
+    Task: Into<TaskText<'_>>,
 {
     let task = task.into().0;
     !task.is_empty()
@@ -686,9 +713,11 @@ fn is_static_mise_task<'semantic>(
 }
 
 /// Return the first prohibited command in a non-canonical shell script.
-fn prohibited_invocation<'semantic>(
-    script: impl Into<ScriptText<'semantic>>
+fn prohibited_invocation<'semantic, Script>(
+    script: Script
 ) -> Option<ProhibitedInvocation<'semantic>>
+where
+    Script: Into<ScriptText<'semantic>>,
 {
     let script = script.into().0;
     if script.contains("${{ matrix.") {
@@ -711,9 +740,11 @@ fn prohibited_invocation<'semantic>(
 
 /// Inspect executable command positions without mistaking arguments, quoted
 /// text, cache paths, or shell-array values for commands.
-fn classify_shell_line<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn classify_shell_line<'semantic, Line>(
+    line: Line
 ) -> Option<ProhibitedInvocation<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     if let Some(invocation) = classify_command_substitutions(line) {
@@ -771,9 +802,11 @@ fn classify_shell_line<'semantic>(
 
 /// Inspect command substitutions, which are executable even when embedded in
 /// an otherwise harmless command argument.
-fn classify_command_substitutions<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn classify_command_substitutions<'semantic, Line>(
+    line: Line
 ) -> Option<ProhibitedInvocation<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let bytes = line.as_bytes();
@@ -844,10 +877,13 @@ fn classify_command_substitutions<'semantic>(
 }
 
 /// Find the closing parenthesis for a `$(` opener.
-fn matching_substitution_paren<'semantic>(
-    line: impl Into<LineText<'semantic>>,
-    open: impl Into<OpenIndex>,
+fn matching_substitution_paren<Line, Open>(
+    line: Line,
+    open: Open,
 ) -> impl Into<OptionalMatchingSubstitutionParenCount>
+where
+    Line: Into<LineText<'_>>,
+    Open: Into<OpenIndex>,
 {
     let open = open.into().0;
     let line = line.into().0;
@@ -887,9 +923,11 @@ fn matching_substitution_paren<'semantic>(
 }
 
 /// Classify the executable command at the front of one shell segment.
-fn classify_command_segment<'semantic>(
-    segment: impl Into<SegmentText<'semantic>>
+fn classify_command_segment<'semantic, Segment>(
+    segment: Segment
 ) -> Option<ProhibitedInvocation<'semantic>>
+where
+    Segment: Into<SegmentText<'semantic>>,
 {
     let segment = segment.into().0;
     let words = shell_words(segment);
@@ -967,11 +1005,14 @@ fn classify_command_segment<'semantic>(
 ///
 /// Every `rustup run` shape returns a finding unless the wrapped command is a
 /// recognized setup-only invocation; non-`run` rustup setup commands pass.
-fn classify_rustup_invocation<'script>(
-    segment: impl Into<SegmentText<'script>>,
+fn classify_rustup_invocation<'script, Segment, RustupIndex>(
+    segment: Segment,
     words: &[WordText<'script>],
-    rustup_index: impl Into<RustupIndexIndex>,
+    rustup_index: RustupIndex,
 ) -> Option<ProhibitedInvocation<'script>>
+where
+    Segment: Into<SegmentText<'script>>,
+    RustupIndex: Into<RustupIndexIndex>,
 {
     let rustup_index = rustup_index.into().0;
     let segment = segment.into().0;
@@ -1001,9 +1042,11 @@ fn classify_rustup_invocation<'script>(
 }
 
 /// Return a dynamic-dispatch finding for an uninspectable shell construct.
-fn dynamic_invocation<'semantic>(
-    segment: impl Into<SegmentText<'semantic>>
+fn dynamic_invocation<'semantic, Segment>(
+    segment: Segment
 ) -> ProhibitedInvocation<'semantic>
+where
+    Segment: Into<SegmentText<'semantic>>,
 {
     let segment = segment.into().0;
     ProhibitedInvocation {
@@ -1037,9 +1080,11 @@ fn is_shell_function_definition(words: &[WordText<'_>]) -> impl Into<ShellFuncti
 }
 
 /// Return whether text is a literal shell identifier.
-fn is_shell_identifier<'semantic>(
-    text: impl Into<TextText<'semantic>>
+fn is_shell_identifier<Text>(
+    text: Text
 ) -> impl Into<ShellIdentifierFlag>
+where
+    Text: Into<TextText<'_>>,
 {
     let text = text.into().0;
     let mut characters = text.chars();
@@ -1052,7 +1097,9 @@ fn is_shell_identifier<'semantic>(
 }
 
 /// Split one shell segment into words while preserving borrowed slices.
-fn shell_words<'semantic>(segment: impl Into<SegmentText<'semantic>>) -> Vec<WordText<'semantic>>
+fn shell_words<'semantic, Segment>(segment: Segment) -> Vec<WordText<'semantic>>
+where
+    Segment: Into<SegmentText<'semantic>>,
 {
     let segment = segment.into().0;
     let bytes = segment.as_bytes();
@@ -1107,12 +1154,12 @@ fn shell_words<'semantic>(segment: impl Into<SegmentText<'semantic>>) -> Vec<Wor
 }
 
 /// Return whether a prohibited tool occurrence is a setup-only installer.
-fn tool_invocation_is_setup<'word, Words>(
+fn tool_invocation_is_setup<Words>(
     tool: ProhibitedTool,
     words: &mut Words,
 ) -> impl Into<ToolInvocationIsSetupFlag>
 where
-    Words: Iterator<Item = WordText<'word>>,
+    Words: Iterator<Item = WordText<'_>>,
 {
     match tool {
         | ProhibitedTool::Cargo => next_tool_subcommand(words)
@@ -1149,17 +1196,20 @@ where
 }
 
 /// Trim lightweight shell grouping and quoting punctuation from a word.
-fn normalize_shell_word<'semantic>(
-    word: impl Into<WordText<'semantic>>
+fn normalize_shell_word<'semantic, Word>(
+    word: Word
 ) -> impl Into<NormalizeShellWordText<'semantic>>
+where
+    Word: Into<WordText<'semantic>>,
 {
     let word = word.into().0;
     word.trim_matches(|character| shell_word_boundary(character).into().0)
 }
 
 /// Return whether a character is shell word boundary punctuation.
-fn shell_word_boundary(character: impl Into<CharacterCharacter>)
--> impl Into<ShellWordBoundaryFlag>
+fn shell_word_boundary<Character>(character: Character) -> impl Into<ShellWordBoundaryFlag>
+where
+    Character: Into<CharacterCharacter>,
 {
     let character = character.into().0;
     matches!(
@@ -1169,9 +1219,11 @@ fn shell_word_boundary(character: impl Into<CharacterCharacter>)
 }
 
 /// Return whether a word is an environment assignment prefix.
-fn is_environment_assignment<'semantic>(
-    word: impl Into<WordText<'semantic>>
+fn is_environment_assignment<Word>(
+    word: Word
 ) -> impl Into<EnvironmentAssignmentFlag>
+where
+    Word: Into<WordText<'_>>,
 {
     let word = word.into().0;
     let Some((name, _)) = word.split_once('=')
@@ -1190,9 +1242,11 @@ fn is_environment_assignment<'semantic>(
 }
 
 /// Return whether a shell word is control syntax rather than a command.
-fn is_shell_control_word<'semantic>(
-    word: impl Into<WordText<'semantic>>
+fn is_shell_control_word<Word>(
+    word: Word
 ) -> impl Into<ShellControlWordFlag>
+where
+    Word: Into<WordText<'_>>,
 {
     let word = word.into().0;
     matches!(
@@ -1202,9 +1256,11 @@ fn is_shell_control_word<'semantic>(
 }
 
 /// Return whether a shell word wraps the next command without changing it.
-fn is_wrapper_command<'semantic>(
-    word: impl Into<WordText<'semantic>>
+fn is_wrapper_command<Word>(
+    word: Word
 ) -> impl Into<WrapperCommandFlag>
+where
+    Word: Into<WordText<'_>>,
 {
     let word = word.into().0;
     matches!(word, "env" | "exec" | "sudo" | "command" | "time" | "!")
@@ -1456,12 +1512,15 @@ fn finding_for_group(
 }
 
 /// Validate fixed `# Contract` clause grammar.
-fn validate_contract_section(
+fn validate_contract_section<ContractPosition, ContractEnd>(
     path: &Path,
     group: &DocGroup,
-    contract_position: impl Into<ContractPositionIndex>,
-    contract_end: impl Into<ContractEndCount>,
+    contract_position: ContractPosition,
+    contract_end: ContractEnd,
 ) -> Option<Finding>
+where
+    ContractPosition: Into<ContractPositionIndex>,
+    ContractEnd: Into<ContractEndCount>,
 {
     let contract_end = contract_end.into().0;
     let contract_position = contract_position.into().0;
@@ -1553,12 +1612,15 @@ fn validate_contract_section(
 }
 
 /// Validate fixed `# Adequacy` hypothesis and witness grammar.
-fn validate_adequacy_section<'doc>(
+fn validate_adequacy_section<'doc, AdequacyPosition, AdequacyEnd>(
     path: &Path,
     group: &'doc DocGroup,
-    adequacy_position: impl Into<AdequacyPositionIndex>,
-    adequacy_end: impl Into<AdequacyEndCount>,
+    adequacy_position: AdequacyPosition,
+    adequacy_end: AdequacyEnd,
 ) -> Result<Vec<ExactWitnessText<'doc>>, Finding>
+where
+    AdequacyPosition: Into<AdequacyPositionIndex>,
+    AdequacyEnd: Into<AdequacyEndCount>,
 {
     let adequacy_end = adequacy_end.into().0;
     let adequacy_position = adequacy_position.into().0;
@@ -1667,10 +1729,12 @@ fn validate_adequacy_section<'doc>(
 }
 
 /// Determine the exclusive end of a markdown section.
-fn section_end(
+fn section_end<HeadingPosition>(
     group: &DocGroup,
-    heading_position: impl Into<HeadingPositionIndex>,
+    heading_position: HeadingPosition,
 ) -> impl Into<SectionEndIndex>
+where
+    HeadingPosition: Into<HeadingPositionIndex>,
 {
     let heading_position = heading_position.into().0;
     return group
@@ -1683,10 +1747,13 @@ fn section_end(
 }
 
 /// Return whether a line is the requested top-level heading.
-fn is_heading<'semantic, 'heading>(
-    line: impl Into<LineText<'semantic>>,
-    heading: impl Into<HeadingText<'heading>>,
+fn is_heading<Line, Heading>(
+    line: Line,
+    heading: Heading,
 ) -> impl Into<HeadingFlag>
+where
+    Line: Into<LineText<'_>>,
+    Heading: Into<HeadingText<'_>>,
 {
     let heading = heading.into().0;
     let line = line.into().0;
@@ -1694,15 +1761,19 @@ fn is_heading<'semantic, 'heading>(
 }
 
 /// Return whether a line is any top-level heading.
-fn is_any_heading<'semantic>(line: impl Into<LineText<'semantic>>) -> impl Into<AnyHeadingFlag>
+fn is_any_heading<Line>(line: Line) -> impl Into<AnyHeadingFlag>
+where
+    Line: Into<LineText<'_>>,
 {
     heading_text(line).into().0.is_some()
 }
 
 /// Return the text of a top-level ATX markdown heading.
-fn heading_text<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn heading_text<'semantic, Line>(
+    line: Line
 ) -> impl Into<OptionalHeadingTextText<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let heading = heading_level_text(line)?;
     if heading.level.0 == 1 {
@@ -1712,9 +1783,11 @@ fn heading_text<'semantic>(
 }
 
 /// Return the level and text of an ATX markdown heading.
-fn heading_level_text<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn heading_level_text<'semantic, Line>(
+    line: Line
 ) -> Option<ParsedHeading<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let trimmed = line.trim();
@@ -1775,12 +1848,15 @@ fn wrong_level_fixed_heading(group: &DocGroup) -> Option<WrongLevelFixedHeading<
 }
 
 /// Build one stable contract finding for a documentation group.
-fn make_finding<'semantic>(
+fn make_finding<Kind, Detail>(
     path: &Path,
     group: &DocGroup,
-    kind: impl Into<KindText<'semantic>>,
-    detail: impl Into<DetailText<'semantic>>,
+    kind: Kind,
+    detail: Detail,
 ) -> Finding
+where
+    Kind: Into<KindText<'_>>,
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
     let kind = kind.into().0;
@@ -1794,9 +1870,11 @@ fn make_finding<'semantic>(
 }
 
 /// Extract a `# Contract` bullet clause name.
-fn contract_clause_name<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn contract_clause_name<'semantic, Line>(
+    line: Line
 ) -> impl Into<OptionalContractClauseNameText<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let trimmed = line.trim();
@@ -1806,9 +1884,11 @@ fn contract_clause_name<'semantic>(
 }
 
 /// Return the fixed order of a known `# Contract` clause.
-fn contract_clause_order<'semantic>(
-    name: impl Into<NameText<'semantic>>
+fn contract_clause_order<Name>(
+    name: Name
 ) -> impl Into<OptionalContractClauseOrderCount>
+where
+    Name: Into<NameText<'_>>,
 {
     let name = name.into().0;
     match name {
@@ -1824,9 +1904,11 @@ fn contract_clause_order<'semantic>(
 }
 
 /// Return whether a doc line is an explicitly indented continuation.
-fn is_indented_continuation<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn is_indented_continuation<Line>(
+    line: Line
 ) -> impl Into<IndentedContinuationFlag>
+where
+    Line: Into<LineText<'_>>,
 {
     let line = line.into().0;
     let content = line.strip_prefix(' ').unwrap_or(line);
@@ -1834,9 +1916,11 @@ fn is_indented_continuation<'semantic>(
 }
 
 /// Extract an exact adequacy hypothesis bullet.
-fn exact_hypothesis<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn exact_hypothesis<'semantic, Line>(
+    line: Line
 ) -> impl Into<OptionalExactHypothesisText<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let trimmed = line.trim();
@@ -1844,9 +1928,11 @@ fn exact_hypothesis<'semantic>(
 }
 
 /// Return whether a hypothesis names an adequacy ladder rung.
-fn names_ladder_rung<'semantic>(
-    hypothesis: impl Into<HypothesisText<'semantic>>
+fn names_ladder_rung<Hypothesis>(
+    hypothesis: Hypothesis
 ) -> impl Into<NamesLadderRungFlag>
+where
+    Hypothesis: Into<HypothesisText<'_>>,
 {
     let hypothesis = hypothesis.into().0;
     return hypothesis
@@ -1855,9 +1941,11 @@ fn names_ladder_rung<'semantic>(
 }
 
 /// Extract an exact witness bullet target.
-fn exact_witness<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn exact_witness<'semantic, Line>(
+    line: Line
 ) -> impl Into<OptionalExactWitnessText<'semantic>>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     let trimmed = line.trim();
@@ -1870,9 +1958,11 @@ fn exact_witness<'semantic>(
 }
 
 /// Return whether a line is intended as a witness but is not exact syntax.
-fn looks_witness_like<'semantic>(
-    line: impl Into<LineText<'semantic>>
+fn looks_witness_like<Line>(
+    line: Line
 ) -> impl Into<LooksWitnessLikeFlag>
+where
+    Line: Into<LineText<'_>>,
 {
     let line = line.into().0;
     let trimmed = line.trim();
@@ -2300,11 +2390,13 @@ fn validate_testcase_collection(value: &Value) -> Result<(), GateError>
 }
 
 /// Validate one testcase entry frame and push its children.
-fn validate_testcase_entry_frame<'value>(
+fn validate_testcase_entry_frame<'value, RequiresName>(
     value: &'value Value,
-    requires_name: impl Into<RequiresNameFlag>,
+    requires_name: RequiresName,
     frames: &mut Vec<TestcaseValidationFrame<'value>>,
 ) -> Result<(), GateError>
+where
+    RequiresName: Into<RequiresNameFlag>,
 {
     let requires_name = requires_name.into();
     match *value {
@@ -2361,13 +2453,17 @@ fn witnesses_from_value(value: &Value) -> BTreeSet<String>
 
 /// Walk nextest JSON with an explicit worklist while carrying package and crate
 /// context.
-fn collect_witnesses<'semantic>(
+fn collect_witnesses<'semantic, Package, CrateName, IsTestcaseContext>(
     value: &Value,
-    package: impl Into<OptionalPackageText<'semantic>>,
-    crate_name: impl Into<OptionalCrateNameText<'semantic>>,
-    is_testcase_context: impl Into<IsTestcaseContextFlag>,
+    package: Package,
+    crate_name: CrateName,
+    is_testcase_context: IsTestcaseContext,
     witnesses: &mut BTreeSet<String>,
 )
+where
+    Package: Into<OptionalPackageText<'semantic>>,
+    CrateName: Into<OptionalCrateNameText<'semantic>>,
+    IsTestcaseContext: Into<IsTestcaseContextFlag>,
 {
     collect_witness_frames(
         WitnessTraversalFrame::Value {
@@ -2449,7 +2545,7 @@ fn collect_witness_frames(
                 package,
                 crate_name,
             } => {
-                push_testcase_collection_frames(value, package, crate_name, witnesses, &mut frames);
+                push_testcase_collection_frames(value, &package, &crate_name, witnesses, &mut frames);
             },
         }
     }
@@ -2458,8 +2554,8 @@ fn collect_witness_frames(
 /// Push testcase collection children onto the witness worklist.
 fn push_testcase_collection_frames<'value>(
     value: &'value Value,
-    package: Option<String>,
-    crate_name: Option<String>,
+    package: &Option<String>,
+    crate_name: &Option<String>,
     witnesses: &mut BTreeSet<String>,
     frames: &mut Vec<WitnessTraversalFrame<'value>>,
 )
@@ -2499,10 +2595,12 @@ fn unsupported_nextest_schema() -> GateError
 }
 
 /// Return a JSON object's test name when it resembles a test case record.
-fn test_name(
+fn test_name<IsTestcaseContext>(
     value: &Value,
-    is_testcase_context: impl Into<IsTestcaseContextFlag>,
+    is_testcase_context: IsTestcaseContext,
 ) -> impl Into<OptionalTestNameText<'_>>
+where
+    IsTestcaseContext: Into<IsTestcaseContextFlag>,
 {
     let is_testcase_context = is_testcase_context.into().0;
     let name = supported_test_record_name(value).into().0?;
@@ -2571,12 +2669,16 @@ fn crate_context(value: &Value) -> impl Into<OptionalCrateContextText<'_>>
 ///   absence assertions for the module-stripped alias.
 /// - witness: `contracts::accepts_exact_raw_package_and_crate_aliases_from_nextest_shapes`
 /// - witness: `contracts::accepts_harness_module_stripped_aliases_from_consolidated_integration_suites`
-fn insert_aliases<'semantic>(
+fn insert_aliases<'semantic, Name, Package, CrateName>(
     witnesses: &mut BTreeSet<String>,
-    name: impl Into<NameText<'semantic>>,
-    package: impl Into<OptionalPackageText<'semantic>>,
-    crate_name: impl Into<OptionalCrateNameText<'semantic>>,
+    name: Name,
+    package: Package,
+    crate_name: CrateName,
 )
+where
+    Name: Into<NameText<'semantic>>,
+    Package: Into<OptionalPackageText<'semantic>>,
+    CrateName: Into<OptionalCrateNameText<'semantic>>,
 {
     let package = package.into().0;
     let crate_name = crate_name.into().0;
@@ -2618,10 +2720,12 @@ fn insert_aliases<'semantic>(
 }
 
 /// Read a string field from a JSON object.
-fn string_field<'semantic, 'value>(
+fn string_field<'value, Name>(
     value: &'value Value,
-    name: impl Into<NameText<'semantic>>,
+    name: Name,
 ) -> impl Into<OptionalStringFieldText<'value>>
+where
+    Name: Into<NameText<'_>>,
 {
     let name = name.into().0;
     return value.get(name).and_then(Value::as_str);
@@ -2636,10 +2740,10 @@ mod tests
 
     type TestResult = Result<(), Box<dyn Error>>;
 
-    fn witnesses<'semantic, Names, Name>(names: Names) -> BTreeSet<String>
+    fn witnesses<Names, Name>(names: Names) -> BTreeSet<String>
     where
         Names: IntoIterator<Item = Name>,
-        Name: Into<NameText<'semantic>>,
+        Name: Into<NameText<'_>>,
     {
         names
             .into_iter()

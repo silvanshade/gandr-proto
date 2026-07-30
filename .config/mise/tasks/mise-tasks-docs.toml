@@ -52,27 +52,34 @@ cargo run --quiet -p gandr-workflow-gates -- docs-reference
 # cargo run --quiet -p gandr-workflow-gates -- page-balance
 # """
 
-["docs:check"]
-description = "Validate the .gfd specification corpus through the GF pipeline (gandr-5n6): lexicon freshness (the duplicate detector), term/cite/ref/provenance resolution at the mandatory checkExpr lane"
-depends = ["docs:gfd:grammar"]
-run = """
-uv sync --project crates/workflow-grammatical-framework
-cargo run --quiet -p gandr-workflow-docs --locked -- check-all
-"""
-
-["docs:check-classes"]
-description = "Parse=validate the prose document classes (gandr-712) with the doc tool: research records (docs/research), workflow docs (docs/workflow), per-crate status (crates/*/docs) — banner presence, status presence, label define-once, label/cite resolution, class schema. XML only; .md tail is skipped"
-run = """
-cargo run --quiet -p gandr-workflow-docs --features=full -- check-docs
-"""
-
-["docs:build"]
-description = "Build the no-JavaScript static HTML spec corpus from .gfd through the GF pipeline into target/docs-spec (typst math/diagram leaves compiled to SVG; gandr-5n6)"
-depends = ["docs:gfd:grammar"]
-run = """
-uv sync --project crates/workflow-grammatical-framework
-cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
-"""
+# Parked (2026-07-30, owner directive): the GF-native documentation pipeline is
+# disabled wholesale — gandr-workflow-grammatical-framework (and its uv/pyo3
+# python environment) is slated for removal in the next arc, and
+# gandr-workflow-docs is disabled with it (it hard-depends on the GF runtime).
+# The doc-generation tasks below (docs:check, docs:check-classes, docs:build,
+# docs:gfd:toolchain, docs:gfd:grammar, docs:gfd:corpus) return when the
+# pipeline is revisited; the crate sources stay in-tree for that revisit.
+# ["docs:check"]
+# description = "Validate the .gfd specification corpus through the GF pipeline (gandr-5n6): lexicon freshness (the duplicate detector), term/cite/ref/provenance resolution at the mandatory checkExpr lane"
+# depends = ["docs:gfd:grammar"]
+# run = """
+# uv sync --project crates/workflow-grammatical-framework
+# cargo run --quiet -p gandr-workflow-docs --locked -- check-all
+# """
+#
+# ["docs:check-classes"]
+# description = "Parse=validate the prose document classes (gandr-712) with the doc tool: research records (docs/research), workflow docs (docs/workflow), per-crate status (crates/*/docs) — banner presence, status presence, label define-once, label/cite resolution, class schema. XML only; .md tail is skipped"
+# run = """
+# cargo run --quiet -p gandr-workflow-docs --features=full -- check-docs
+# """
+#
+# ["docs:build"]
+# description = "Build the no-JavaScript static HTML spec corpus from .gfd through the GF pipeline into target/docs-spec (typst math/diagram leaves compiled to SVG; gandr-5n6)"
+# depends = ["docs:gfd:grammar"]
+# run = """
+# uv sync --project crates/workflow-grammatical-framework
+# cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
+# """
 
 ["docs:refs-yml"]
 description = "Regenerate the derived docs/spec/refs.yml Hayagriva bibliography from the register (docs/research/bibliography-v2.md; gandr-fcw.10): extract register rows then build+oxfmt-normalize. refs.yml is derived — never hand-edit it; edit the register and re-derive"
@@ -83,24 +90,25 @@ REG_PATH=docs/research/bibliography-v2.md OUT_PATH="$tmp/rows.nuon" nu ./scripts
 ROWS_PATH="$tmp/rows.nuon" OUT_PATH=docs/spec/refs.yml nu ./scripts/refs-yml/build-refs.nu
 """
 
-["docs:gfd:toolchain"]
-description = "Provision the GF toolchain (gf compiler + libpgf from the official 3.12 release) into target/gf-toolchain (idempotent; gandr-wrs)"
-run = "cargo run -p gandr-workflow-docs --locked -- toolchain"
-
-["docs:gfd:grammar"]
-description = "Compile the corpus GF grammar to target/gf/GandrDocsLex.pgf (gandr-5n6)"
-depends = ["docs:gfd:toolchain"]
-run = "cargo run -p gandr-workflow-docs --locked -- grammar"
-
-["docs:gfd:corpus"]
-description = "Run the corpus arc: uv sync (pgf env), lexicon freshness, checkExpr over the corpus, render all pages + the index to target/docs-spec, workflow-docs tests (gandr-5n6)"
-depends = ["docs:gfd:grammar"]
-run = """
-uv sync --project crates/workflow-grammatical-framework
-cargo run --quiet -p gandr-workflow-docs --locked -- check-all
-cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
-cargo nextest run -p gandr-workflow-docs
-"""
+# Parked with the GF-native pipeline (see the note above docs:check).
+# ["docs:gfd:toolchain"]
+# description = "Provision the GF toolchain (gf compiler + libpgf from the official 3.12 release) into target/gf-toolchain (idempotent; gandr-wrs)"
+# run = "cargo run -p gandr-workflow-docs --locked -- toolchain"
+#
+# ["docs:gfd:grammar"]
+# description = "Compile the corpus GF grammar to target/gf/GandrDocsLex.pgf (gandr-5n6)"
+# depends = ["docs:gfd:toolchain"]
+# run = "cargo run -p gandr-workflow-docs --locked -- grammar"
+#
+# ["docs:gfd:corpus"]
+# description = "Run the corpus arc: uv sync (pgf env), lexicon freshness, checkExpr over the corpus, render all pages + the index to target/docs-spec, workflow-docs tests (gandr-5n6)"
+# depends = ["docs:gfd:grammar"]
+# run = """
+# uv sync --project crates/workflow-grammatical-framework
+# cargo run --quiet -p gandr-workflow-docs --locked -- check-all
+# cargo run --quiet -p gandr-workflow-docs --locked -- build-all --out target/docs-spec
+# cargo nextest run -p gandr-workflow-docs
+# """
 
 # Parked with the manual family (docs/manual/** aspirational; see docs:manual).
 # ["docs:spike"]

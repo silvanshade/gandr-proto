@@ -180,11 +180,14 @@ pub fn run(
 /// - witness: `graph_boundary::tests::public_self_trait_impl_is_public_api`
 /// - witness: `graph_boundary::tests::rust_parse_errors_are_operational_errors`
 #[inline]
-pub fn analyze_source<'semantic>(
+pub fn analyze_source<'semantic, P, S>(
     path: &Path,
-    package: impl Into<PackageText<'semantic>>,
-    source: impl Into<SourceText<'semantic>>,
+    package: P,
+    source: S,
 ) -> GateResult
+where
+    P: Into<PackageText<'semantic>>,
+    S: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     let package = package.into().0;
@@ -204,9 +207,9 @@ pub fn analyze_source<'semantic>(
 }
 
 /// Parse the subset of Cargo metadata needed for graph-boundary analysis.
-fn parse_metadata<'semantic>(
-    metadata_json: impl Into<MetadataJsonText<'semantic>>
-) -> Result<Metadata, GateError>
+fn parse_metadata<J>(metadata_json: J) -> Result<Metadata, GateError>
+where
+    J: Into<MetadataJsonText<'_>>,
 {
     let metadata_json = metadata_json.into().0;
     let value: Value = serde_json::from_str(metadata_json).map_err(|error| GateError::Json {
@@ -268,11 +271,14 @@ fn parse_metadata_dependency(dependency_value: &Value) -> Result<MetadataDepende
 }
 
 /// Read a required array field from a JSON object.
-fn get_array_field<'semantic, 'value>(
+fn get_array_field<'semantic, 'value, F, C>(
     object: &'value Map<String, Value>,
-    field: impl Into<FieldText<'semantic>>,
-    context: impl Into<ContextText<'semantic>>,
+    field: F,
+    context: C,
 ) -> Result<&'value [Value], GateError>
+where
+    F: Into<FieldText<'semantic>>,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let field = field.into().0;
@@ -283,10 +289,12 @@ fn get_array_field<'semantic, 'value>(
 }
 
 /// Interpret a JSON value as an object.
-fn value_object<'semantic, 'value>(
+fn value_object<'value, C>(
     value: &'value Value,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<&'value Map<String, Value>, GateError>
+where
+    C: Into<ContextText<'_>>,
 {
     let context = context.into().0;
     value
@@ -295,11 +303,14 @@ fn value_object<'semantic, 'value>(
 }
 
 /// Read a required string field from a JSON object.
-fn get_string_field<'semantic>(
+fn get_string_field<'semantic, F, C>(
     object: &Map<String, Value>,
-    field: impl Into<FieldText<'semantic>>,
-    context: impl Into<ContextText<'semantic>>,
+    field: F,
+    context: C,
 ) -> Result<String, GateError>
+where
+    F: Into<FieldText<'semantic>>,
+    C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let field = field.into().0;
@@ -333,10 +344,12 @@ fn parse_library_target_path(targets: &[Value]) -> Result<Option<PathBuf>, GateE
 }
 
 /// Interpret a JSON value as an array.
-fn value_array<'semantic, 'value>(
+fn value_array<'value, C>(
     value: &'value Value,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<&'value [Value], GateError>
+where
+    C: Into<ContextText<'_>>,
 {
     let context = context.into().0;
     value
@@ -346,10 +359,12 @@ fn value_array<'semantic, 'value>(
 }
 
 /// Interpret a JSON value as a string.
-fn value_string<'semantic>(
+fn value_string<C>(
     value: &Value,
-    context: impl Into<ContextText<'semantic>>,
+    context: C,
 ) -> Result<String, GateError>
+where
+    C: Into<ContextText<'_>>,
 {
     let context = context.into().0;
     value
@@ -450,13 +465,15 @@ fn source_findings(
 
 /// Append public API boundary findings for one parsed `gandr-graph` library
 /// root and its externally visible declared modules.
-fn graph_public_api_findings<'semantic>(
+fn graph_public_api_findings<P>(
     workspace_root: &Path,
-    package: impl Into<PackageText<'semantic>>,
+    package: P,
     source_path: &Path,
     syntax: &syn::File,
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
+where
+    P: Into<PackageText<'_>>,
 {
     let package = package.into().0;
     let source_dir = source_path.parent().ok_or_else(|| {
@@ -533,10 +550,10 @@ fn inspect_module_items(
 
 /// Inspect one source file's inline module tree and enqueue out-of-line
 /// modules.
-fn inspect_module_item_tree<'context, 'items>(
+fn inspect_module_item_tree<'context>(
     workspace_root: &'context Path,
     package: PackageText<'context>,
-    initial: ModuleInspectionWork<'items>,
+    initial: ModuleInspectionWork<'_>,
     findings: &mut Vec<Finding>,
     external_modules: &mut Vec<ExternalModuleWork<'context>>,
 ) -> Result<(), GateError>
@@ -556,8 +573,8 @@ fn inspect_module_item_tree<'context, 'items>(
         };
 
         for item in step.items {
-            match *item {
-                | Item::Mod(ref module) => {
+            match item {
+                | Item::Mod(module) => {
                     let module_public = is_visible_api(&module.vis).into().0;
                     if let Some(child_items) = module.content.as_ref().map(|content| &content.1) {
                         if module_public {
@@ -583,7 +600,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         });
                     }
                 },
-                | Item::Use(ref item_use) if is_visible_api(&item_use.vis).into().0 => {
+                | Item::Use(item_use) if is_visible_api(&item_use.vis).into().0 => {
                     let roots = forbidden_roots_in_use_tree(&item_use.tree, None, &aliases);
                     emit_roots(
                         &roots,
@@ -595,7 +612,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::ExternCrate(ref item_extern) if is_visible_api(&item_extern.vis).into().0 =>
+                | Item::ExternCrate(item_extern) if is_visible_api(&item_extern.vis).into().0 =>
                 {
                     let mut roots = BTreeSet::new();
                     if is_graph_stack_name(&item_extern.ident.to_string()).into().0 {
@@ -611,7 +628,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Fn(ref item_fn) if is_visible_api(&item_fn.vis).into().0 => {
+                | Item::Fn(item_fn) if is_visible_api(&item_fn.vis).into().0 => {
                     let roots = roots_in_signature(&item_fn.sig, &aliases);
                     emit_roots(
                         &roots,
@@ -623,7 +640,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
+                | Item::Type(item_type) if is_visible_api(&item_type.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_type.generics, |visitor| {
                         visitor.visit_generics(&item_type.generics);
@@ -639,7 +656,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Const(ref item_const) if is_visible_api(&item_const.vis).into().0 => {
+                | Item::Const(item_const) if is_visible_api(&item_const.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_const.generics, |visitor| {
                         visitor.visit_generics(&item_const.generics);
@@ -655,7 +672,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Static(ref item_static) if is_visible_api(&item_static.vis).into().0 => {
+                | Item::Static(item_static) if is_visible_api(&item_static.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.visit_type(&item_static.ty);
                     emit_roots(
@@ -668,7 +685,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 => {
+                | Item::Struct(item_struct) if is_visible_api(&item_struct.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_struct.generics, |visitor| {
                         visitor.visit_generics(&item_struct.generics);
@@ -684,7 +701,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
+                | Item::Union(item_union) if is_visible_api(&item_union.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_union.generics, |visitor| {
                         visitor.visit_generics(&item_union.generics);
@@ -702,7 +719,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
+                | Item::Enum(item_enum) if is_visible_api(&item_enum.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_enum.generics, |visitor| {
                         visitor.visit_generics(&item_enum.generics);
@@ -720,7 +737,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
+                | Item::Trait(item_trait) if is_visible_api(&item_trait.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_trait.generics, |visitor| {
                         visitor.visit_generics(&item_trait.generics);
@@ -741,7 +758,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::TraitAlias(ref item_trait_alias)
+                | Item::TraitAlias(item_trait_alias)
                     if is_visible_api(&item_trait_alias.vis).into().0 =>
                 {
                     let mut visitor = GraphStackVisitor::new(&aliases);
@@ -761,13 +778,13 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::ForeignMod(ref item_foreign) => {
+                | Item::ForeignMod(item_foreign) => {
                     inspect_foreign_items(item_foreign, &aliases, &current, findings);
                 },
-                | Item::Impl(ref item_impl) => {
+                | Item::Impl(item_impl) => {
                     inspect_impl_item(item_impl, &aliases, &public_types, &current, findings);
                 },
-                | Item::Macro(ref item_macro)
+                | Item::Macro(item_macro)
                     if item_macro
                         .attrs
                         .iter()
@@ -781,7 +798,7 @@ fn inspect_module_item_tree<'context, 'items>(
                         PUBLIC_API_DETAIL,
                     ));
                 },
-                | Item::Verbatim(ref tokens) => {
+                | Item::Verbatim(tokens) => {
                     if tokens.to_string().contains("pub") {
                         findings.push(finding(
                             "public-graph-boundary",
@@ -806,15 +823,15 @@ fn inspect_trait_item(
     visitor: &mut GraphStackVisitor<'_>,
 )
 {
-    match *trait_item {
-        | TraitItem::Const(ref item_const) => {
+    match trait_item {
+        | TraitItem::Const(item_const) => {
             visitor.with_type_generics(&item_const.generics, |visitor| {
                 visitor.visit_generics(&item_const.generics);
                 visitor.visit_type(&item_const.ty);
             });
         },
-        | TraitItem::Fn(ref item_fn) => visitor.visit_signature(&item_fn.sig),
-        | TraitItem::Type(ref item_type) => {
+        | TraitItem::Fn(item_fn) => visitor.visit_signature(&item_fn.sig),
+        | TraitItem::Type(item_type) => {
             visitor.with_type_generics(&item_type.generics, |visitor| {
                 visitor.visit_generics(&item_type.generics);
                 for bound in &item_type.bounds {
@@ -825,8 +842,8 @@ fn inspect_trait_item(
                 }
             });
         },
-        | TraitItem::Macro(ref item_macro) => visitor.visit_trait_item_macro(item_macro),
-        | TraitItem::Verbatim(ref _tokens) => {},
+        | TraitItem::Macro(item_macro) => visitor.visit_trait_item_macro(item_macro),
+        | TraitItem::Verbatim(_tokens) => {},
         | _ => {},
     }
 }
@@ -879,13 +896,13 @@ fn module_aliases(
     while changed {
         changed = false;
         for item in items {
-            match *item {
-                | Item::Use(ref item_use) => {
+            match item {
+                | Item::Use(item_use) => {
                     changed |= collect_use_aliases(&item_use.tree, None, &mut context)
                         .into()
                         .0;
                 },
-                | Item::ExternCrate(ref item_extern) => {
+                | Item::ExternCrate(item_extern) => {
                     let root = item_extern.ident.to_string();
                     if is_graph_stack_name(&root).into().0 {
                         let local = item_extern
@@ -895,7 +912,7 @@ fn module_aliases(
                         changed |= context.named.insert(local, root).is_none();
                     }
                 },
-                | Item::Type(ref item_type) => {
+                | Item::Type(item_type) => {
                     let mut visitor = GraphStackVisitor::new(&context);
                     visitor.visit_type(&item_type.ty);
                     if let Some(root) = visitor.roots.iter().next() {
@@ -917,20 +934,20 @@ fn public_type_names(items: &[Item]) -> BTreeSet<String>
 {
     items
         .iter()
-        .filter_map(|item| match *item {
-            | Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 => {
+        .filter_map(|item| match item {
+            | Item::Struct(item_struct) if is_visible_api(&item_struct.vis).into().0 => {
                 Some(item_struct.ident.to_string())
             },
-            | Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
+            | Item::Enum(item_enum) if is_visible_api(&item_enum.vis).into().0 => {
                 Some(item_enum.ident.to_string())
             },
-            | Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
+            | Item::Union(item_union) if is_visible_api(&item_union.vis).into().0 => {
                 Some(item_union.ident.to_string())
             },
-            | Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
+            | Item::Type(item_type) if is_visible_api(&item_type.vis).into().0 => {
                 Some(item_type.ident.to_string())
             },
-            | Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
+            | Item::Trait(item_trait) if is_visible_api(&item_trait.vis).into().0 => {
                 Some(item_trait.ident.to_string())
             },
             | _ => None,
@@ -943,12 +960,12 @@ fn declared_type_names(items: &[Item]) -> BTreeSet<String>
 {
     items
         .iter()
-        .filter_map(|item| match *item {
-            | Item::Struct(ref item_struct) => Some(item_struct.ident.to_string()),
-            | Item::Enum(ref item_enum) => Some(item_enum.ident.to_string()),
-            | Item::Union(ref item_union) => Some(item_union.ident.to_string()),
-            | Item::Type(ref item_type) => Some(item_type.ident.to_string()),
-            | Item::Trait(ref item_trait) => Some(item_trait.ident.to_string()),
+        .filter_map(|item| match item {
+            | Item::Struct(item_struct) => Some(item_struct.ident.to_string()),
+            | Item::Enum(item_enum) => Some(item_enum.ident.to_string()),
+            | Item::Union(item_union) => Some(item_union.ident.to_string()),
+            | Item::Type(item_type) => Some(item_type.ident.to_string()),
+            | Item::Trait(item_trait) => Some(item_trait.ident.to_string()),
             | _ => None,
         })
         .collect()
@@ -981,11 +998,13 @@ enum UseTreeRenderFrame<'tree>
 /// - measure: unvisited `UseTree` nodes below the current node.
 /// - boundedness: syn stores each `use` declaration as a finite parsed tree.
 /// - input recursion: none.
-fn collect_use_aliases<'semantic>(
+fn collect_use_aliases<R>(
     tree: &UseTree,
-    inherited_root: impl Into<OptionalInheritedRootText<'semantic>>,
+    inherited_root: R,
     context: &mut AliasContext,
 ) -> impl Into<CollectUseAliasesFlag>
+where
+    R: Into<OptionalInheritedRootText<'_>>,
 {
     let mut changed = false;
     let mut work = vec![UseTreeWork {
@@ -993,8 +1012,8 @@ fn collect_use_aliases<'semantic>(
         inherited_root: inherited_root.into().0.map(str::to_owned),
     }];
     while let Some(step) = work.pop() {
-        match *step.tree {
-            | UseTree::Path(ref path) => {
+        match step.tree {
+            | UseTree::Path(path) => {
                 let ident_text = path.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1005,7 +1024,7 @@ fn collect_use_aliases<'semantic>(
                     inherited_root: Some(root),
                 });
             },
-            | UseTree::Name(ref name) => {
+            | UseTree::Name(name) => {
                 let local = name.ident.to_string();
                 if let Some(root) = step
                     .inherited_root
@@ -1017,7 +1036,7 @@ fn collect_use_aliases<'semantic>(
                     changed |= context.local_types.insert(local);
                 }
             },
-            | UseTree::Rename(ref rename) => {
+            | UseTree::Rename(rename) => {
                 let ident_text = rename.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1041,7 +1060,7 @@ fn collect_use_aliases<'semantic>(
                     changed |= context.forbidden_glob_roots.insert(root);
                 }
             },
-            | UseTree::Group(ref group) => {
+            | UseTree::Group(group) => {
                 for item in group.items.iter().rev() {
                     work.push(UseTreeWork {
                         tree: item,
@@ -1071,8 +1090,8 @@ fn self_type_is_public(
     local_types: &BTreeSet<String>,
 ) -> impl Into<SelfTypeIsPublicFlag>
 {
-    match *self_ty {
-        | syn::Type::Path(ref type_path) => {
+    match self_ty {
+        | syn::Type::Path(type_path) => {
             type_path
                 .path
                 .segments
@@ -1121,9 +1140,9 @@ fn forbidden_path_roots(
 
 /// Return whether an unresolved single-segment path is a Rust built-in or
 /// prelude type name rather than a glob-import candidate.
-fn is_builtin_type_name<'semantic>(
-    name: impl Into<NameText<'semantic>>
-) -> impl Into<BuiltinTypeNameFlag>
+fn is_builtin_type_name<N>(name: N) -> impl Into<BuiltinTypeNameFlag>
+where
+    N: Into<NameText<'_>>,
 {
     let name = name.into().0;
     matches!(
@@ -1155,11 +1174,13 @@ fn is_builtin_type_name<'semantic>(
 }
 
 /// Collect forbidden roots that appear structurally in a use tree.
-fn forbidden_roots_in_use_tree<'semantic>(
+fn forbidden_roots_in_use_tree<R>(
     tree: &UseTree,
-    inherited_root: impl Into<OptionalInheritedRootText<'semantic>>,
+    inherited_root: R,
     aliases: &AliasContext,
 ) -> BTreeSet<String>
+where
+    R: Into<OptionalInheritedRootText<'_>>,
 {
     let inherited_root = inherited_root.into().0;
     let mut roots = BTreeSet::new();
@@ -1174,20 +1195,22 @@ fn forbidden_roots_in_use_tree<'semantic>(
 /// - measure: unvisited `UseTree` nodes below the current node.
 /// - boundedness: syn stores each `use` declaration as a finite parsed tree.
 /// - input recursion: none.
-fn collect_use_tree_roots<'semantic>(
+fn collect_use_tree_roots<R>(
     tree: &UseTree,
-    inherited_root: impl Into<OptionalInheritedRootText<'semantic>>,
+    inherited_root: R,
     aliases: &AliasContext,
     roots: &mut BTreeSet<String>,
 )
+where
+    R: Into<OptionalInheritedRootText<'_>>,
 {
     let mut work = vec![UseTreeWork {
         tree,
         inherited_root: inherited_root.into().0.map(str::to_owned),
     }];
     while let Some(step) = work.pop() {
-        match *step.tree {
-            | UseTree::Path(ref path) => {
+        match step.tree {
+            | UseTree::Path(path) => {
                 let ident_text = path.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1201,7 +1224,7 @@ fn collect_use_tree_roots<'semantic>(
                     inherited_root: Some(root),
                 });
             },
-            | UseTree::Name(ref name) => {
+            | UseTree::Name(name) => {
                 let ident_text = name.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1211,7 +1234,7 @@ fn collect_use_tree_roots<'semantic>(
                     roots.insert(root);
                 }
             },
-            | UseTree::Rename(ref rename) => {
+            | UseTree::Rename(rename) => {
                 let ident_text = rename.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1229,7 +1252,7 @@ fn collect_use_tree_roots<'semantic>(
                     roots.insert(root);
                 }
             },
-            | UseTree::Group(ref group) => {
+            | UseTree::Group(group) => {
                 for item in group.items.iter().rev() {
                     work.push(UseTreeWork {
                         tree: item,
@@ -1242,15 +1265,21 @@ fn collect_use_tree_roots<'semantic>(
 }
 
 /// Append one finding for each forbidden root in a declaration.
-fn emit_roots<'semantic>(
+fn emit_roots<'semantic, K, G, P, D, E>(
     roots: &BTreeSet<String>,
     findings: &mut Vec<Finding>,
-    kind: impl Into<KindText<'semantic>>,
-    package: impl Into<PackageText<'semantic>>,
-    path: impl Into<PathText<'semantic>>,
-    declaration: impl Into<String>,
-    detail: impl Into<DetailText<'semantic>>,
+    kind: K,
+    package: G,
+    path: P,
+    declaration: D,
+    detail: E,
 )
+where
+    K: Into<KindText<'semantic>>,
+    G: Into<PackageText<'semantic>>,
+    P: Into<PathText<'semantic>>,
+    D: Into<String>,
+    E: Into<DetailText<'semantic>>,
 {
     let package = package.into().0;
     let path = path.into().0;
@@ -1281,22 +1310,22 @@ fn use_tree_declaration(tree: &UseTree) -> String
     let mut frames = vec![UseTreeRenderFrame::Tree(tree)];
     while let Some(frame) = frames.pop() {
         match frame {
-            | UseTreeRenderFrame::Tree(tree) => match *tree {
-                | UseTree::Path(ref path) => {
+            | UseTreeRenderFrame::Tree(tree) => match tree {
+                | UseTree::Path(path) => {
                     frames.push(UseTreeRenderFrame::Tree(&path.tree));
                     frames.push(UseTreeRenderFrame::StaticText("::"));
                     frames.push(UseTreeRenderFrame::OwnedText(path.ident.to_string()));
                 },
-                | UseTree::Name(ref name) => {
+                | UseTree::Name(name) => {
                     frames.push(UseTreeRenderFrame::OwnedText(name.ident.to_string()));
                 },
-                | UseTree::Rename(ref rename) => {
+                | UseTree::Rename(rename) => {
                     frames.push(UseTreeRenderFrame::OwnedText(rename.rename.to_string()));
                     frames.push(UseTreeRenderFrame::StaticText(" as "));
                     frames.push(UseTreeRenderFrame::OwnedText(rename.ident.to_string()));
                 },
                 | UseTree::Glob(_) => frames.push(UseTreeRenderFrame::StaticText("*")),
-                | UseTree::Group(ref group) => {
+                | UseTree::Group(group) => {
                     frames.push(UseTreeRenderFrame::StaticText("}"));
                     for (index, item) in group.items.iter().rev().enumerate() {
                         if index > 0 {
@@ -1359,9 +1388,9 @@ fn resolved_manifest_path(
 }
 
 /// Return whether a name is one of the graph-stack crates.
-fn is_graph_stack_name<'semantic>(
-    name: impl Into<NameText<'semantic>>
-) -> impl Into<GraphStackNameFlag>
+fn is_graph_stack_name<N>(name: N) -> impl Into<GraphStackNameFlag>
+where
+    N: Into<NameText<'_>>,
 {
     let name = name.into().0;
     name == "petgraph" || name == "fixedbitset"
@@ -1412,13 +1441,15 @@ fn rust_source_files(root: &Path) -> Result<Vec<PathBuf>, GateError>
 }
 
 /// Append findings for any graph-stack path anywhere outside `gandr-graph`.
-fn outside_source_findings<'semantic>(
+fn outside_source_findings<P>(
     workspace_root: &Path,
-    package: impl Into<PackageText<'semantic>>,
+    package: P,
     source_path: &Path,
     syntax: &syn::File,
     findings: &mut Vec<Finding>,
 )
+where
+    P: Into<PackageText<'_>>,
 {
     let package = package.into().0;
     let aliases = module_aliases(&syntax.items, &AliasContext::default());
@@ -1475,13 +1506,17 @@ fn resolve_module_source(
 }
 
 /// Build one stable diagnostic finding.
-fn finding<'semantic>(
-    kind: impl Into<KindText<'semantic>>,
-    package: impl Into<PackageText<'semantic>>,
+fn finding<'semantic, K, G, E>(
+    kind: K,
+    package: G,
     path: String,
     declaration: String,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: E,
 ) -> Finding
+where
+    K: Into<KindText<'semantic>>,
+    G: Into<PackageText<'semantic>>,
+    E: Into<DetailText<'semantic>>,
 {
     let package = package.into().0;
     let detail = detail.into().0;
@@ -1595,18 +1630,18 @@ fn inspect_impl_item(
         let mut visitor = GraphStackVisitor::new(aliases);
         visitor.local_types.extend(impl_type_names);
         for impl_item in &item_impl.items {
-            match *impl_item {
-                | ImplItem::Const(ref item_const)
+            match impl_item {
+                | ImplItem::Const(item_const)
                     if item_impl.trait_.is_some() || is_visible_api(&item_const.vis).into().0 =>
                 {
                     visitor.visit_type(&item_const.ty);
                 },
-                | ImplItem::Fn(ref method)
+                | ImplItem::Fn(method)
                     if item_impl.trait_.is_some() || is_visible_api(&method.vis).into().0 =>
                 {
                     visitor.visit_signature(&method.sig);
                 },
-                | ImplItem::Type(ref item_type)
+                | ImplItem::Type(item_type)
                     if item_impl.trait_.is_some() || is_visible_api(&item_type.vis).into().0 =>
                 {
                     visitor.with_type_generics(&item_type.generics, |visitor| {
@@ -1614,8 +1649,8 @@ fn inspect_impl_item(
                         visitor.visit_type(&item_type.ty);
                     });
                 },
-                | ImplItem::Macro(ref item_macro) => visitor.visit_impl_item_macro(item_macro),
-                | ImplItem::Verbatim(ref _tokens) => {},
+                | ImplItem::Macro(item_macro) => visitor.visit_impl_item_macro(item_macro),
+                | ImplItem::Verbatim(_tokens) => {},
                 | _ => {},
             }
         }
@@ -1716,10 +1751,12 @@ fn cargo_metadata(workspace_root: &Path) -> Result<String, GateError>
 /// - witness: `graph_boundary::tests::rust_parse_errors_are_operational_errors`
 /// - witness: `graph_boundary::tests::findings_are_deterministically_ordered`
 #[inline]
-pub fn analyze_workspace<'semantic>(
+pub fn analyze_workspace<J>(
     workspace_root: &Path,
-    metadata_json: impl Into<MetadataJsonText<'semantic>>,
+    metadata_json: J,
 ) -> GateResult
+where
+    J: Into<MetadataJsonText<'_>>,
 {
     let metadata_json = metadata_json.into().0;
     let metadata = parse_metadata(metadata_json)?;
@@ -1760,8 +1797,8 @@ fn inspect_foreign_items(
 )
 {
     for item in &item_foreign.items {
-        match *item {
-            | syn::ForeignItem::Fn(ref item_fn) if is_visible_api(&item_fn.vis).into().0 => {
+        match item {
+            | syn::ForeignItem::Fn(item_fn) if is_visible_api(&item_fn.vis).into().0 => {
                 let roots = roots_in_signature(&item_fn.sig, aliases);
                 emit_roots(
                     &roots,
@@ -1773,7 +1810,7 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Static(ref item_static)
+            | syn::ForeignItem::Static(item_static)
                 if is_visible_api(&item_static.vis).into().0 =>
             {
                 let mut visitor = GraphStackVisitor::new(aliases);
@@ -1788,7 +1825,7 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
+            | syn::ForeignItem::Type(item_type) if is_visible_api(&item_type.vis).into().0 => {
                 emit_roots(
                     &BTreeSet::new(),
                     findings,
@@ -1799,7 +1836,7 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Macro(ref item_macro) => {
+            | syn::ForeignItem::Macro(item_macro) => {
                 let mut visitor = GraphStackVisitor::new(aliases);
                 visitor.visit_foreign_item_macro(item_macro);
                 emit_roots(
@@ -1812,19 +1849,19 @@ fn inspect_foreign_items(
                     PUBLIC_API_DETAIL,
                 );
             },
-            | syn::ForeignItem::Verbatim(ref _tokens) => {},
+            | syn::ForeignItem::Verbatim(_tokens) => {},
             | _ => {},
         }
     }
 }
 
 /// Build a stable operational error.
-fn operational(detail: impl Into<String>) -> GateError
+fn operational<D>(detail: D) -> GateError
+where
+    D: Into<String>,
 {
     let detail = detail.into();
-    GateError::Operational {
-        detail: detail.into(),
-    }
+    GateError::Operational { detail }
 }
 
 /// Minimal Cargo metadata shape used by the boundary gate.
@@ -1947,11 +1984,13 @@ impl<'aliases> GraphStackVisitor<'aliases>
     }
 
     /// Visit a syntax surface with type generic binders in lexical scope.
-    fn with_type_generics(
+    fn with_type_generics<V>(
         &mut self,
         generics: &syn::Generics,
-        visit: impl FnOnce(&mut Self),
+        visit: V,
     )
+    where
+        V: FnOnce(&mut Self),
     {
         let previous_local_types = self.local_types.clone();
         self.local_types.extend(type_generic_names(generics));
@@ -1999,25 +2038,34 @@ impl<'ast> Visit<'ast> for GraphStackVisitor<'_>
 #[cfg(test)]
 mod tests
 {
+    //! Unit witnesses for graph-boundary analysis.
+
     use core::error::Error;
     use core::sync::atomic::AtomicUsize;
     use core::sync::atomic::Ordering;
 
     use super::*;
 
+    /// Test result alias for fallible unit witnesses.
     type TestResult = Result<(), Box<dyn Error>>;
 
+    /// Monotonic suffix source for unique temporary workspace roots.
     static NEXT_TEMP_ROOT: AtomicUsize = AtomicUsize::new(0);
 
+    /// Temporary workspace fixture removed on drop.
     #[repr(transparent)]
     struct TestWorkspace
     {
+        /// Root path of the temporary workspace fixture.
         path: PathBuf,
     }
 
     impl TestWorkspace
     {
-        fn create<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<Self, GateError>
+        /// Create a uniquely named temporary workspace fixture.
+        fn create<N>(name: N) -> Result<Self, GateError>
+        where
+            N: Into<NameText<'_>>,
         {
             let name = name.into().0;
             let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
@@ -2030,6 +2078,7 @@ mod tests
             Ok(Self { path })
         }
 
+        /// Return the fixture workspace root path.
         fn path(&self) -> &Path
         {
             &self.path
@@ -2038,12 +2087,14 @@ mod tests
 
     impl Drop for TestWorkspace
     {
+        /// Remove the temporary workspace tree.
         fn drop(&mut self)
         {
             let _cleanup_result = remove_dir_if_exists(&self.path);
         }
     }
 
+    /// Metadata parsing edge cases surface as typed gate errors.
     #[test]
     fn metadata_parsing_edges_are_typed() -> TestResult
     {
@@ -2098,6 +2149,7 @@ mod tests
         Ok(())
     }
 
+    /// Source analysis covers public API and private use edges.
     #[test]
     fn analyze_source_modes_cover_public_and_private_edges() -> TestResult
     {
@@ -2186,6 +2238,7 @@ impl<T: fixedbitset::FixedBitSet> PublicSelf where T: petgraph::visit::IntoNodeR
         Ok(())
     }
 
+    /// Module resolution and source walking report deterministic errors.
     #[test]
     fn module_resolution_and_walk_errors_are_deterministic() -> TestResult
     {
@@ -2255,6 +2308,7 @@ impl<T: fixedbitset::FixedBitSet> PublicSelf where T: petgraph::visit::IntoNodeR
         Ok(())
     }
 
+    /// Alias, glob, and built-in name resolution stay explicit.
     #[test]
     fn alias_and_builtin_resolution_edges_are_explicit() -> TestResult
     {
@@ -2298,11 +2352,13 @@ pub struct LocalGraph;
         Ok(())
     }
 
+    /// Remove a directory tree when it exists.
     fn remove_dir_if_exists(path: &Path) -> Result<(), GateError>
     {
         crate::support::HOST_FILESYSTEM.remove_dir_if_exists(path)
     }
 
+    /// Link a directory, or create it where symlinks are unavailable.
     fn symlink_directory(
         source: &Path,
         destination: &Path,

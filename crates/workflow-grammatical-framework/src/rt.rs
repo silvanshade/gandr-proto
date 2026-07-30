@@ -24,6 +24,8 @@ use pyo3::PyErr;
 use pyo3::Python;
 use pyo3::exceptions::PyException;
 use pyo3::exceptions::PyTypeError;
+use pyo3::types::PyAnyMethods as _;
+use pyo3::types::PyDictMethods as _;
 use pyo3::types::PyList;
 use pyo3::types::PyModule;
 use pyo3::types::PyTuple;

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 
 /// Convert a value into an explicitly selected semantic boundary type.
 #[inline]
+#[must_use]
 pub fn semantic_value<T, Value>(value: Value) -> T
 where
     Value: Into<T>,
@@ -265,6 +266,7 @@ impl Finding
 {
     /// Build a stable finding from analyzer-provided fields.
     #[inline]
+    #[must_use]
     pub fn new<Kind, Package, Path, Declaration, Detail>(
         kind: Kind,
         package: Package,
@@ -376,6 +378,7 @@ impl GateError
 {
     /// Build a usage error with a stable detail string.
     #[inline]
+    #[must_use]
     pub fn usage<Detail>(detail: Detail) -> Self
     where
         Detail: Into<String>,
@@ -387,6 +390,7 @@ impl GateError
 
     /// Build an operational error with a stable detail string.
     #[inline]
+    #[must_use]
     pub fn operational<Detail>(detail: Detail) -> Self
     where
         Detail: Into<String>,

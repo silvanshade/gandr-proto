@@ -30,6 +30,7 @@ use gandr_workflow_gates::contracts::run;
 /// Per-process suffix keeping concurrently-created fixtures disjoint.
 static NEXT_TEMP_ROOT: AtomicU64 = AtomicU64::new(0);
 
+/// Crate-level, block-level, and item-level doc comments are all analyzed.
 #[test]
 fn accepts_line_inner_and_block_docs()
 {
@@ -75,6 +76,7 @@ pub fn line_docs() {}
     assert!(findings.is_empty(), "all syn doc styles should be accepted");
 }
 
+/// Wrapped bullets, `# Errors`, and unsafe invariants are accepted grammar.
 #[test]
 fn accepts_wrapped_bullets_errors_and_unsafe_invariants()
 {
@@ -116,6 +118,8 @@ pub unsafe fn unsafe_capable() -> Result<(), ()> { Ok(()) }
     );
 }
 
+/// Fields, variants, methods, trait items, foreign items, and nested modules
+/// each carry independently checked contract docs.
 #[test]
 fn checks_nested_items_methods_fields_variants_traits_and_foreign_items()
 {
@@ -211,6 +215,8 @@ pub mod nested {
     );
 }
 
+/// Nextest object, array, record, and JSON-lines shapes all yield the exact
+/// raw, package-name, and binary-name witness aliases.
 #[test]
 fn accepts_exact_raw_package_and_crate_aliases_from_nextest_shapes()
 {
@@ -366,6 +372,8 @@ fn accepts_exact_raw_package_and_crate_aliases_from_nextest_shapes()
     );
 }
 
+/// Consolidated integration harness modules are stripped from crate-qualified
+/// witness aliases without duplicating the crate name.
 #[test]
 fn accepts_harness_module_stripped_aliases_from_consolidated_integration_suites()
 {
@@ -399,6 +407,8 @@ fn accepts_harness_module_stripped_aliases_from_consolidated_integration_suites(
     );
 }
 
+/// Unsupported nextest JSON shapes are operational errors, never silently
+/// empty witness sets.
 #[test]
 fn rejects_unsupported_nextest_json_shapes_as_operational_errors()
 {
@@ -527,6 +537,7 @@ fn rejects_unsupported_nextest_json_shapes_as_operational_errors()
     );
 }
 
+/// Every contract grammar drift mode is classified deterministically.
 #[test]
 fn rejects_contract_grammar_drift_modes()
 {
@@ -739,6 +750,7 @@ pub fn aq_missing_adequacy() {}
     );
 }
 
+/// Fixed sections require exactly one ATX `#` heading level.
 #[test]
 fn rejects_wrong_level_fixed_section_headings()
 {
@@ -818,6 +830,7 @@ pub fn wrong_adequacy_heading() {}
     );
 }
 
+/// Unparseable Rust sources surface as operational parse errors.
 #[test]
 fn returns_parse_failures_as_operational_errors()
 {
@@ -829,6 +842,7 @@ fn returns_parse_failures_as_operational_errors()
     );
 }
 
+/// File-backed analysis reports findings in deterministic path order.
 #[test]
 fn run_reports_findings_in_deterministic_path_order()
 {
@@ -892,12 +906,15 @@ fn run_reports_findings_in_deterministic_path_order()
     };
 }
 
-fn ok_or_report<'semantic, T, E>(
+/// Run `result` to its value, or report `context` with the error and yield
+/// `None` so the caller aborts the witness early.
+fn ok_or_report<'semantic, T, E, Context>(
     result: Result<T, E>,
-    context: impl Into<ContextText<'semantic>>,
+    context: Context,
 ) -> Option<T>
 where
     E: fmt::Display,
+    Context: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     result
@@ -905,6 +922,7 @@ where
         .ok()
 }
 
+/// Collect witness strings into the analyzer's sorted set shape.
 fn witness_set<'semantic, Values, Value>(values: Values) -> BTreeSet<String>
 where
     Values: IntoIterator<Item = Value>,
@@ -917,6 +935,8 @@ where
     witnesses
 }
 
+/// Root symlink scopes fail closed and child symlinks are skipped without
+/// cycling or escaping the scope.
 #[cfg(unix)]
 #[test]
 fn run_rejects_root_symlink_scope_and_skips_child_symlinks()
@@ -1030,6 +1050,7 @@ fn run_rejects_root_symlink_scope_and_skips_child_symlinks()
     };
 }
 
+/// Parallel tests never share a temporary fixture root.
 #[test]
 fn temp_roots_are_unique_within_one_process()
 {
@@ -1041,6 +1062,7 @@ fn temp_roots_are_unique_within_one_process()
     let _second_cleanup = gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_all(second);
 }
 
+/// Return a fresh per-process temporary fixture root, cleaned of leftovers.
 fn unique_temp_root() -> PathBuf
 {
     let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
@@ -1064,7 +1086,10 @@ fn unique_temp_root() -> PathBuf
     path
 }
 
-fn contract_source<'semantic>(witness: impl Into<WitnessText<'semantic>>) -> String
+/// Render one contract source fixture naming `witness`.
+fn contract_source<'semantic, Witness>(witness: Witness) -> String
+where
+    Witness: Into<WitnessText<'semantic>>,
 {
     let witness = witness.into().0;
     format!(
@@ -1072,6 +1097,7 @@ fn contract_source<'semantic>(witness: impl Into<WitnessText<'semantic>>) -> Str
     )
 }
 
+/// Extract the operational detail from a failed gate run.
 fn operational_detail(error: Option<GateError>) -> Option<String>
 {
     match error {

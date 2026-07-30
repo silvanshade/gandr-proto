@@ -120,24 +120,18 @@ options = [
 ]
 includes = ["*.md"]
 
-# Canonical XML formatting for the documentation corpus, owned by the doc tool
-# (gandr-fcw.8): `gandr-workflow-docs fmt` re-emits each XML file in canonical
-# form (sorted attributes, two-space indentation, idempotent). The formatter is
-# class-agnostic (it formats any well-formed XML), so the same wiring covers the
-# component corpus (docs/spec, GF-native since gandr-5n6) and the prose
-# document classes (gandr-712): research records (docs/research), workflow
-# docs (docs/workflow), and the per-crate lean-tier status (crates/*/docs).
-# The globs are the class roots; .md and .xml coexist during the migration
-# tail, and the globs never match the tree-sitter/grammar XML elsewhere in
-# the tree.
-[formatter."docs-xml"]
-command = "cargo"
-options = ["run", "--quiet", "-p", "gandr-workflow-docs", "--", "fmt"]
-includes = [
-  "docs/research/*.xml",
-  "docs/workflow/*.xml",
-  "crates/*/docs/*.xml",
-]
+# Parked (2026-07-30, owner directive): the docs-xml formatter runs through
+# gandr-workflow-docs, which is disabled with the GF-native documentation
+# pipeline pending a complete revisit. The formatter wiring is kept verbatim
+# for the revisit; the XML class corpora stay unformatted until then.
+# [formatter."docs-xml"]
+# command = "cargo"
+# options = ["run", "--quiet", "-p", "gandr-workflow-docs", "--", "fmt"]
+# includes = [
+#   "docs/research/*.xml",
+#   "docs/workflow/*.xml",
+#   "crates/*/docs/*.xml",
+# ]
 
 [formatter.rustfmt]
 command = "rustfmt"

@@ -514,7 +514,7 @@ fn finish_rejects_unknown_parented_and_orphan_roots() -> TestResult
     let builder = CstBuilder::new(SourceText::from(""), GRAMMAR_FP);
     assert_build_error(
         builder.finish(NodeId::from_raw(NodeSlot(0))),
-        BuildError::UnknownRoot {
+        &BuildError::UnknownRoot {
             root: NodeId::from_raw(NodeSlot(0)),
         },
     );
@@ -529,7 +529,7 @@ fn finish_rejects_unknown_parented_and_orphan_roots() -> TestResult
         parent_range,
         [child],
     )?;
-    assert_build_error(builder.finish(child), BuildError::RootHasParent {
+    assert_build_error(builder.finish(child), &BuildError::RootHasParent {
         root: child,
         parent,
     });
@@ -537,7 +537,7 @@ fn finish_rejects_unknown_parented_and_orphan_roots() -> TestResult
     let mut builder = CstBuilder::new(SourceText::from("xy"), GRAMMAR_FP);
     let root = space(&mut builder, TextOffset(0), TextOffset(1))?;
     let orphan = space(&mut builder, TextOffset(1), TextOffset(2))?;
-    assert_build_error(builder.finish(root), BuildError::OrphanNode {
+    assert_build_error(builder.finish(root), &BuildError::OrphanNode {
         node: orphan,
     });
 
@@ -716,12 +716,12 @@ mod fixture_support
     }
     pub(super) fn assert_build_error<T>(
         result: Result<T, BuildError>,
-        expected: BuildError,
+        expected: &BuildError,
     )
     {
         match result {
             | Ok(_value) => panic!("builder unexpectedly succeeded"),
-            | Err(error) => assert_eq!(error, expected),
+            | Err(error) => assert_eq!(&error, expected),
         }
     }
 

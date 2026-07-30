@@ -6,14 +6,6 @@
 //! reports unregistered Markdown files in sorted order, and computes stale
 //! downstream context with an iterative reverse-edge walk.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::panic,
-        reason = "manifest tests use explicit fixture-failure assertions"
-    )
-)]
-
 extern crate alloc;
 
 use alloc::collections::BTreeSet;
@@ -305,7 +297,9 @@ impl ManifestPath
     ///   the only validation branch.
     /// - witness: `manifest::tests::empty_manifest_nodes_fail_loudly`
     #[inline]
-    pub fn new<'semantic>(raw: impl Into<RawText<'semantic>>) -> Result<Self, GateError>
+    pub fn new<Raw>(raw: Raw) -> Result<Self, GateError>
+    where
+        Raw: Into<RawText<'_>>,
     {
         let raw = raw.into().0;
         if raw.is_empty() {
@@ -522,10 +516,12 @@ pub fn run_manifest_drift(manifest_path: &Path) -> GateResult
 }
 
 /// Parse one YAML manifest document.
-fn manifest_document<'semantic>(
+fn manifest_document<Source>(
     manifest_path: &Path,
-    source: impl Into<SourceText<'semantic>>,
+    source: Source,
 ) -> Result<Yaml, GateError>
+where
+    Source: Into<SourceText<'_>>,
 {
     let source = source.into().0;
     let mut documents = YamlLoader::load_from_str(source).map_err(|error| {
@@ -552,8 +548,8 @@ fn manifest_document<'semantic>(
 /// Return a YAML string slice.
 fn yaml_string(value: &Yaml) -> impl Into<OptionalYamlStringText<'_>>
 {
-    match *value {
-        | Yaml::String(ref text) => Some(text.as_str()),
+    match value {
+        | Yaml::String(text) => Some(text.as_str()),
         | _ => None,
     }
 }
@@ -583,9 +579,9 @@ fn manifest_parent(manifest_path: &Path) -> PathBuf
 /// - provides: a parser-side guard against absolute and current-directory
 ///   entries before filesystem reads occur.
 /// - panics: none.
-fn manifest_path_is_corpus_relative<'semantic>(
-    raw: impl Into<RawText<'semantic>>
-) -> impl Into<ManifestPathIsCorpusRelativeFlag>
+fn manifest_path_is_corpus_relative<Raw>(raw: Raw) -> impl Into<ManifestPathIsCorpusRelativeFlag>
+where
+    Raw: Into<RawText<'_>>,
 {
     let raw = raw.into().0;
     let path = Path::new(raw);
@@ -702,14 +698,16 @@ fn parse_node(
 }
 
 /// Return a string-keyed mapping value without allocating a temporary key.
-fn yaml_mapping_value<'semantic, 'yaml>(
+fn yaml_mapping_value<'yaml, KeyName>(
     mapping: &'yaml Hash,
-    key_name: impl Into<KeyNameText<'semantic>>,
+    key_name: KeyName,
 ) -> Option<&'yaml Yaml>
+where
+    KeyName: Into<KeyNameText<'_>>,
 {
     let key_name = key_name.into().0;
     for (key, value) in mapping {
-        if let Yaml::String(ref candidate) = *key
+        if let Yaml::String(candidate) = key
             && candidate == key_name
         {
             return Some(value);
@@ -737,15 +735,17 @@ fn parse_edges(
 }
 
 /// Return a YAML array or a stable manifest-shape error.
-fn yaml_array<'semantic, 'yaml>(
+fn yaml_array<'yaml, Detail>(
     manifest_path: &Path,
     value: &'yaml Yaml,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: Detail,
 ) -> Result<&'yaml Vec<Yaml>, GateError>
+where
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
-    match *value {
-        | Yaml::Array(ref values) => Ok(values),
+    match value {
+        | Yaml::Array(values) => Ok(values),
         | _ => Err(GateError::operational(format!(
             "manifest shape error: {}: {detail}",
             manifest_path.display()
@@ -779,15 +779,17 @@ fn parse_edge(
 }
 
 /// Return a YAML mapping or a stable manifest-shape error.
-fn yaml_hash<'semantic, 'yaml>(
+fn yaml_hash<'yaml, Detail>(
     manifest_path: &Path,
     value: &'yaml Yaml,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: Detail,
 ) -> Result<&'yaml Hash, GateError>
+where
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
-    match *value {
-        | Yaml::Hash(ref mapping) => Ok(mapping),
+    match value {
+        | Yaml::Hash(mapping) => Ok(mapping),
         | _ => Err(GateError::operational(format!(
             "manifest shape error: {}: {detail}",
             manifest_path.display()
@@ -862,7 +864,9 @@ pub fn path_exists(path: &Path) -> Result<impl Into<PathExistsFlag>, GateError>
 }
 
 /// Return a lowercase BLAKE3 hex digest for `bytes`.
-fn blake3_hex<'semantic>(bytes: impl Into<BytesBytes<'semantic>>) -> String
+fn blake3_hex<Bytes>(bytes: Bytes) -> String
+where
+    Bytes: Into<BytesBytes<'_>>,
 {
     let bytes = bytes.into().0;
     let digest = blake3::hash(bytes);
@@ -918,10 +922,12 @@ fn verification_finding(
 }
 
 /// Walk reverse edges from `root` without recursion.
-fn downstream_edges<'semantic>(
-    root: impl Into<RootText<'semantic>>,
+fn downstream_edges<Root>(
+    root: Root,
     edges: &[ReverseEdge],
 ) -> Result<Vec<ReverseEdge>, GateError>
+where
+    Root: Into<RootText<'_>>,
 {
     let root = root.into().0;
     let mut reached = vec![String::from(root)];
@@ -951,11 +957,13 @@ fn downstream_edges<'semantic>(
 }
 
 /// Render one drift/missing detail string.
-fn verification_detail<'semantic>(
+fn verification_detail<Actual>(
     verification: &VerifyResult,
-    actual: impl Into<ActualText<'semantic>>,
+    actual: Actual,
     downstream: &[ReverseEdge],
 ) -> String
+where
+    Actual: Into<ActualText<'_>>,
 {
     let actual = actual.into().0;
     let mut detail = format!(
@@ -981,10 +989,12 @@ fn verification_detail<'semantic>(
 }
 
 /// Return whether `values` contains `needle`.
-fn contains_text<'semantic>(
+fn contains_text<Needle>(
     values: &[String],
-    needle: impl Into<NeedleText<'semantic>>,
+    needle: Needle,
 ) -> impl Into<TextFlag>
+where
+    Needle: Into<NeedleText<'_>>,
 {
     let needle = needle.into().0;
     return values.iter().any(|value| value == needle);
@@ -1120,10 +1130,12 @@ mod tests
     }
 
     /// Assert that a manifest loader failure contains `expected`.
-    fn assert_manifest_error_contains<'semantic>(
+    fn assert_manifest_error_contains<Expected>(
         result: Result<ManifestContext, GateError>,
-        expected: impl Into<ExpectedText<'semantic>>,
+        expected: Expected,
     )
+    where
+        Expected: Into<ExpectedText<'_>>,
     {
         let expected = expected.into().0;
         let Err(error) = result
@@ -1226,7 +1238,9 @@ mod tests
     }
 
     /// Build a clean fixture directory for `name`.
-    fn fixture<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<Fixture, Box<dyn Error>>
+    fn fixture<Name>(name: Name) -> Result<Fixture, Box<dyn Error>>
+    where
+        Name: Into<NameText<'_>>,
     {
         let name = name.into().0;
         let root = std::env::temp_dir().join(format!(
@@ -1381,10 +1395,12 @@ mod tests
     }
 
     /// Write a manifest with raw node YAML.
-    fn write_manifest<'semantic>(
+    fn write_manifest<NodesYaml>(
         manifest: &Path,
-        nodes_yaml: impl Into<NodesYamlText<'semantic>>,
+        nodes_yaml: NodesYaml,
     ) -> Result<(), Box<dyn Error>>
+    where
+        NodesYaml: Into<NodesYamlText<'_>>,
     {
         let nodes_yaml = nodes_yaml.into().0;
         crate::support::HOST_FILESYSTEM.write(
@@ -1460,11 +1476,14 @@ mod tests
     }
 
     /// Write a corpus document and return its BLAKE3 hash.
-    fn write_doc<'semantic>(
+    fn write_doc<Rel, Text>(
         corpus: &Path,
-        rel: impl Into<RelText<'semantic>>,
-        text: impl Into<TextText<'semantic>>,
+        rel: Rel,
+        text: Text,
     ) -> Result<String, Box<dyn Error>>
+    where
+        Rel: Into<RelText<'_>>,
+        Text: Into<TextText<'_>>,
     {
         let text = text.into().0;
         let rel = rel.into().0;

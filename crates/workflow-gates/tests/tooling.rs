@@ -324,10 +324,12 @@ where
 }
 
 /// Read a string from a TOML table.
-fn toml_table_string<'semantic, 'table>(
+fn toml_table_string<'semantic, 'table, Key>(
     table: &'table toml::Table,
-    key: impl Into<KeyText<'semantic>>,
+    key: Key,
 ) -> TestResult<TableStringText<'table>>
+where
+    Key: Into<KeyText<'semantic>>,
 {
     let key = key.into().0;
     let Some(value) = table.get(key)
@@ -346,10 +348,12 @@ fn toml_table_string<'semantic, 'table>(
 }
 
 /// Read a string array from a TOML table.
-fn toml_table_string_array<'semantic>(
+fn toml_table_string_array<'semantic, Key>(
     table: &toml::Table,
-    key: impl Into<KeyText<'semantic>>,
+    key: Key,
 ) -> TestResult<Vec<String>>
+where
+    Key: Into<KeyText<'semantic>>,
 {
     let key = key.into().0;
     let Some(value) = table.get(key)
@@ -413,13 +417,14 @@ fn dylint_metadata_libraries(manifest: &toml::Value) -> TestResult<Vec<&toml::Ta
 }
 
 /// Compare an owned string sequence to an expected static inventory.
-fn assert_string_sequence<'semantic, Expected, ExpectedItem>(
+fn assert_string_sequence<'semantic, Expected, ExpectedItem, Context>(
     actual: &[String],
     expected: Expected,
-    context: impl Into<ContextText<'semantic>>,
+    context: Context,
 ) where
     Expected: IntoIterator<Item = ExpectedItem>,
     ExpectedItem: Into<ExpectedText<'semantic>>,
+    Context: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let actual_text = actual.iter().map(String::as_str).collect::<Vec<_>>();
@@ -489,9 +494,11 @@ where
 }
 
 /// Parse cargo-dylint invocations from a mise task run script.
-fn parse_dylint_invocations<'semantic>(
-    script: impl Into<ScriptText<'semantic>>
+fn parse_dylint_invocations<'semantic, Script>(
+    script: Script,
 ) -> TestResult<Vec<DylintInvocation>>
+where
+    Script: Into<ScriptText<'semantic>>,
 {
     let script = script.into().0;
     let mut invocations = Vec::new();
@@ -551,8 +558,9 @@ fn expected_upstream_dylint_args() -> Vec<String>
 }
 
 /// Parse every cargo invocation from a mise task run script.
-fn parse_cargo_invocations<'semantic>(script: impl Into<ScriptText<'semantic>>)
--> Vec<Vec<String>>
+fn parse_cargo_invocations<'semantic, Script>(script: Script) -> Vec<Vec<String>>
+where
+    Script: Into<ScriptText<'semantic>>,
 {
     let script = script.into().0;
     logical_shell_commands(script)
@@ -562,18 +570,18 @@ fn parse_cargo_invocations<'semantic>(script: impl Into<ScriptText<'semantic>>)
                 .split_whitespace()
                 .map(ToOwned::to_owned)
                 .collect::<Vec<_>>();
-            if tokens.first().is_some_and(|program| program == "cargo") {
-                Some(tokens)
-            }
-            else {
-                None
-            }
+            tokens
+                .first()
+                .is_some_and(|program| program == "cargo")
+                .then_some(tokens)
         })
         .collect()
 }
 
 /// Join shell continuation lines into logical commands.
-fn logical_shell_commands<'semantic>(script: impl Into<ScriptText<'semantic>>) -> Vec<String>
+fn logical_shell_commands<'semantic, Script>(script: Script) -> Vec<String>
+where
+    Script: Into<ScriptText<'semantic>>,
 {
     let script = script.into().0;
     let mut commands = Vec::new();
@@ -615,10 +623,13 @@ struct DylintInvocation
 }
 
 /// Extract the Rust mutants argv configured for a mise task without running it.
-fn configured_mutants_task_args<'semantic>(
-    mise: impl Into<MiseText<'semantic>>,
-    task: impl Into<TaskText<'semantic>>,
+fn configured_mutants_task_args<'semantic, Mise, Task>(
+    mise: Mise,
+    task: Task,
 ) -> TestResult<Vec<OsString>>
+where
+    Mise: Into<MiseText<'semantic>>,
+    Task: Into<TaskText<'semantic>>,
 {
     let task = task.into().0;
     let mise = mise.into().0;
@@ -662,10 +673,12 @@ fn configured_mutants_task_args<'semantic>(
 }
 
 /// Assert that a command parse produced the exact usage detail.
-fn assert_usage<'semantic, T>(
+fn assert_usage<'semantic, T, Expected>(
     result: Result<T, GateError>,
-    expected: impl Into<ExpectedText<'semantic>>,
+    expected: Expected,
 ) -> TestResult
+where
+    Expected: Into<ExpectedText<'semantic>>,
 {
     let expected = expected.into().0;
     match result {
@@ -1775,11 +1788,13 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
 
 /// Assert that default mutants options point at cwd, expanded cache, and temp
 /// paths.
-fn assert_default_mutants_options<'semantic>(
+fn assert_default_mutants_options<'semantic, Mode>(
     options: &gandr_workflow_gates::mutants::MutantsOptions,
     current_dir: &Path,
-    mode: impl Into<ModeText<'semantic>>,
+    mode: Mode,
 ) -> TestResult
+where
+    Mode: Into<ModeText<'semantic>>,
 {
     let mode = mode.into().0;
     assert_eq!(options.workspace_root, current_dir);
@@ -1796,11 +1811,14 @@ fn assert_default_mutants_options<'semantic>(
 
 /// Assert one generated mutants temporary path names the expected mode and
 /// role.
-fn assert_mutants_temp_path<'semantic>(
+fn assert_mutants_temp_path<'semantic, Mode, Suffix>(
     path: &Path,
-    mode: impl Into<ModeText<'semantic>>,
-    suffix: impl Into<SuffixText<'semantic>>,
+    mode: Mode,
+    suffix: Suffix,
 ) -> TestResult
+where
+    Mode: Into<ModeText<'semantic>>,
+    Suffix: Into<SuffixText<'semantic>>,
 {
     let suffix = suffix.into().0;
     let mode = mode.into().0;
@@ -1833,7 +1851,9 @@ struct DocsFixture
 impl DocsFixture
 {
     /// Create an empty documentation fixture.
-    fn create<'semantic>(name: impl Into<NameText<'semantic>>) -> TestResult<Self>
+    fn create<'semantic, Name>(name: Name) -> TestResult<Self>
+    where
+        Name: Into<NameText<'semantic>>,
     {
         let name = name.into().0;
         let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
@@ -1856,11 +1876,14 @@ impl DocsFixture
     }
 
     /// Write a corpus document and return its BLAKE3 digest.
-    fn write_doc<'semantic>(
+    fn write_doc<'semantic, Relative, Text>(
         &self,
-        relative: impl Into<RelativeText<'semantic>>,
-        text: impl Into<TextText<'semantic>>,
+        relative: Relative,
+        text: Text,
     ) -> TestResult<String>
+    where
+        Relative: Into<RelativeText<'semantic>>,
+        Text: Into<TextText<'semantic>>,
     {
         let text = text.into().0;
         let relative = relative.into().0;
@@ -1877,10 +1900,12 @@ impl DocsFixture
     }
 
     /// Write a manifest with raw node YAML.
-    fn write_manifest<'semantic>(
+    fn write_manifest<'semantic, NodesYaml>(
         &self,
-        nodes_yaml: impl Into<NodesYamlText<'semantic>>,
+        nodes_yaml: NodesYaml,
     ) -> TestResult
+    where
+        NodesYaml: Into<NodesYamlText<'semantic>>,
     {
         let nodes_yaml = nodes_yaml.into().0;
         gandr_workflow_gates::support::HOST_FILESYSTEM.write(
@@ -1907,7 +1932,9 @@ impl Drop for DocsFixture
 }
 
 /// Return a lowercase BLAKE3 hex digest for `bytes`.
-fn blake3_hex<'semantic>(bytes: impl Into<BytesBytes<'semantic>>) -> String
+fn blake3_hex<'semantic, Bytes>(bytes: Bytes) -> String
+where
+    Bytes: Into<BytesBytes<'semantic>>,
 {
     let bytes = bytes.into().0;
     format!("{}", blake3::hash(bytes).to_hex())
