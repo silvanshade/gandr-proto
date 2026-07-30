@@ -41,9 +41,8 @@
 //! reaches [`NativePrim::apply`] as a **manifest** [`Value::List`] whose length
 //! is therefore known — they **unroll** over that list into a closed CBPV term
 //! (`force`, `bind`, `case`, application, and `ret`), which the CEK machine
-//! then runs. The enum stays `#[non_exhaustive]`: this is an ADDITION at the
-//! frozen `native` node's slot (ADR-42; `core-ir-contract.md` §0), not an
-//! IR-shape change.
+//! then runs. New primitives are ADDITIONS at the frozen `native` node's slot
+//! (ADR-42; `core-ir-contract.md` §0), not an IR-shape change.
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;

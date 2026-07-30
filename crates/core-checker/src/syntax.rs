@@ -1064,8 +1064,7 @@ impl Value
 
     /// Reads an underlying string literal, seeing through annotations — a
     /// host-seam payload decoder for [`Self::Str`] (ADR-35 D4), letting a host
-    /// callback inspect a payload without matching the `#[non_exhaustive]`
-    /// [`Value`].
+    /// callback inspect a payload without matching on [`Value`].
     ///
     /// # Contract
     /// - ensures: `Some(StringText)` iff the annotation-stripped value is a

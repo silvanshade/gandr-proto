@@ -138,11 +138,11 @@ impl HostOp
 {
     /// Assembles a host-interceptable operation over the public surface.
     ///
-    /// [`HostOp`] is `#[non_exhaustive]`, so this constructor is how a machine
-    /// *outside* this crate — the L machine realization in `gandr_core_sequent`
-    /// — builds the offer it hands to a [`HostHandler`]. This is what keeps the
-    /// seam a single shared boundary across machines rather than two parallel
-    /// vocabularies (the retired CEK oracle packaged the same triple).
+    /// [`HostOp`]'s public constructor: how a machine *outside* this crate —
+    /// the L machine realization in `gandr_core_sequent` — builds the offer it
+    /// hands to a [`HostHandler`]. This is what keeps the seam a single shared
+    /// boundary across machines rather than two parallel vocabularies (the
+    /// retired CEK oracle packaged the same triple).
     ///
     /// # Contract
     /// - ensures: a [`HostOp`] carrying `sig`, the owned operation name of

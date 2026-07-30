@@ -87,9 +87,10 @@ use crate::types::ValueType;
 /// Each variant names the exact offending form (K1: the S1 vocabulary has no
 /// constructor for it, so the bridge rejects at construction rather than
 /// panicking). [`Self::exclusion_class`] groups the variants into the coarse
-/// classes the corpus partition tags. The enum is `#[non_exhaustive]` because
-/// S1's standing-subset growth (kernel-boundary.md §7) will retire rejections
-/// as formers are admitted.
+/// classes the corpus partition tags. S1's standing-subset growth
+/// (kernel-boundary.md §7) will retire rejections as formers are admitted;
+/// matches are total by policy, so a retired variant is a compile-visible
+/// change at every match site.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum BridgeRejection
 {
@@ -228,7 +229,7 @@ impl BridgeRejection
     /// - ensures: a stable, kebab-case class tag; every variant maps to exactly
     ///   one class, and the classes partition the rejection vocabulary.
     /// - provides: the manifest's per-item rationale tag across the crate
-    ///   boundary (so the corpus harness need not match `#[non_exhaustive]`
+    ///   boundary (so the corpus harness need not match on the enum's
     ///   variants).
     /// - fails: never.
     /// - panics: none.

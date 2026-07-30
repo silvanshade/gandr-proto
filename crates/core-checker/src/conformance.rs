@@ -5098,9 +5098,8 @@ fn coherence_subtype_from(root: CoherenceGoal<'_>) -> CoherenceDecision
                     },
                     // Reflexive same-constructor arms above keep the
                     // `core::ptr::eq` short-circuit a PURE optimization for the
-                    // coherence relation too; any future `#[non_exhaustive]`
-                    // variant must add one (see the
-                    // `crate::subtype::value_subtype` note it mirrors).
+                    // coherence relation too; a future variant must add one
+                    // (see the `crate::subtype::value_subtype` note it mirrors).
                     | _ => return false.into(),
                 }
             },
@@ -5145,8 +5144,8 @@ fn coherence_subtype_from(root: CoherenceGoal<'_>) -> CoherenceDecision
                         pending.push(CoherenceGoal::Comp(lo_snd, hi_snd));
                     },
                     // Reflexive same-constructor arms keep the `core::ptr::eq`
-                    // short-circuit a PURE optimization; a future
-                    // `#[non_exhaustive]` variant must add one (see
+                    // short-circuit a PURE optimization; a future variant must
+                    // add one (see
                     // `coherence_value_subtype` and `crate::subtype::comp_subtype`).
                     | _ => return false.into(),
                 }
