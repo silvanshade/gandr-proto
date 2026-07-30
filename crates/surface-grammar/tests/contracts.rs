@@ -362,11 +362,11 @@ mod tests
     )
     {
         for pair in names.windows(2) {
-            let [tighter_name, looser_name] = pair else {
+            let &[tighter_name, looser_name] = pair else {
                 continue;
             };
-            let tighter = prec(dag, *tighter_name);
-            let looser = prec(dag, *looser_name);
+            let tighter = prec(dag, tighter_name);
+            let looser = prec(dag, looser_name);
             assert!(
                 bool::from(dag.gt(tighter, looser, None)),
                 "{} must bind tighter than {}",
@@ -712,11 +712,11 @@ mod tests
             })
             .collect::<BTreeSet<_>>();
         for edge in witness.windows(2) {
-            let [from, to] = edge else {
+            let &[from, to] = edge else {
                 continue;
             };
             assert!(
-                named_edges.contains(&(*from, *to)),
+                named_edges.contains(&(from, to)),
                 "closed named witness edge {edge:?} must be present in the cyclic spec"
             );
         }
