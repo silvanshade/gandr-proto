@@ -10,21 +10,15 @@ description = "Self-contained order-maintenance structure (a total order with O(
 license.workspace = true
 publish.workspace = true
 autotests = false
+autobenches = false
 
 [[test]]
 name = "oracle"
-path = "tests/oracle.rs"
+path = "tests/lib.rs"
 
 [[bench]]
 harness = false
 name = "order"
-
-[dependencies]
-thiserror = { workspace = true }
-
-[dev-dependencies]
-criterion = { workspace = true }
-proptest = { workspace = true }
 
 [features]
 default = []
@@ -32,3 +26,10 @@ full = []
 
 [lints]
 workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+proptest.workspace = true

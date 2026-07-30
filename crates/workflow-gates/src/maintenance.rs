@@ -125,7 +125,9 @@ impl CommitId
     ///   one too-long ID, and one non-hex ID kill the validation branches.
     /// - witness: `maintenance::tests::invalid_oid_and_timestamp_are_rejected`
     #[inline]
-    pub fn new<'semantic>(text: impl Into<TextText<'semantic>>) -> Result<Self, GateError>
+    pub fn new<'semantic, Text>(text: Text) -> Result<Self, GateError>
+    where
+        Text: Into<TextText<'semantic>>,
     {
         let text = text.into().0;
         Self::new_with_detail(text, || format!("invalid commit object ID `{text}`"))
@@ -158,11 +160,12 @@ impl CommitId
     /// - hypothesis: L3 only — the public validation witnesses exercise this
     ///   helper through both generic and contextual parse paths.
     /// - witness: `maintenance::tests::invalid_oid_and_timestamp_are_rejected`
-    fn new_with_detail<'semantic, Detail>(
-        text: impl Into<TextText<'semantic>>,
+    fn new_with_detail<'semantic, Text, Detail>(
+        text: Text,
         detail: Detail,
     ) -> Result<Self, GateError>
     where
+        Text: Into<TextText<'semantic>>,
         Detail: FnOnce() -> String,
     {
         let text = text.into().0;
@@ -238,7 +241,9 @@ impl GitRef
     ///   syntactic guard independently.
     /// - witness: `maintenance::tests::precedence_prefers_explicit_then_watermark_then_auto`
     #[inline]
-    pub fn new<'semantic>(text: impl Into<TextText<'semantic>>) -> Result<Self, GateError>
+    pub fn new<'semantic, Text>(text: Text) -> Result<Self, GateError>
+    where
+        Text: Into<TextText<'semantic>>,
     {
         let text = text.into().0;
         if text.is_empty() {
@@ -313,9 +318,9 @@ impl GitRef
     /// - hypothesis: L3 only — `None`, whitespace, valid, and invalid explicit
     ///   fixtures distinguish absent-vs-present precedence.
     /// - witness: `maintenance::tests::precedence_prefers_explicit_then_watermark_then_auto`
-    fn trimmed_optional<'semantic>(
-        text: impl Into<OptionalTextText<'semantic>>
-    ) -> Result<Option<Self>, GateError>
+    fn trimmed_optional<'semantic, Text>(text: Text) -> Result<Option<Self>, GateError>
+    where
+        Text: Into<OptionalTextText<'semantic>>,
     {
         let text = text.into().0;
         let Some(value) = text
@@ -382,7 +387,9 @@ impl CommitTimestamp
     /// Build a timestamp from already parsed seconds.
     #[must_use]
     #[inline]
-    pub fn new(seconds: impl Into<SecondsSeconds>) -> Self
+    pub fn new<Seconds>(seconds: Seconds) -> Self
+    where
+        Seconds: Into<SecondsSeconds>,
     {
         let seconds = seconds.into().0;
         Self { seconds }
@@ -406,10 +413,12 @@ impl CommitTimestamp
     ///   exact parse success/failure split.
     /// - witness: `maintenance::tests::invalid_oid_and_timestamp_are_rejected`
     #[inline]
-    pub fn parse_git_output<'semantic>(
+    pub fn parse_git_output<'semantic, Text>(
         commit: &CommitId,
-        text: impl Into<TextText<'semantic>>,
+        text: Text,
     ) -> Result<Self, GateError>
+    where
+        Text: Into<TextText<'semantic>>,
     {
         let text = text.into().0;
         let trimmed = text.trim();
@@ -689,11 +698,13 @@ impl<'request> MaintenanceAdvanceRequest<'request>
 trait MaintenanceGit
 {
     /// Resolve a revision token to a commit object ID.
-    fn resolve_commit<'semantic>(
+    fn resolve_commit<'semantic, Context>(
         &mut self,
         reference: &GitRef,
-        context: impl Into<ContextText<'semantic>>,
-    ) -> Result<CommitId, GateError>;
+        context: Context,
+    ) -> Result<CommitId, GateError>
+    where
+        Context: Into<ContextText<'semantic>>;
 
     /// Read a commit's committer timestamp.
     fn committer_timestamp(
@@ -726,11 +737,13 @@ trait WatermarkSink
     ) -> Result<(), GateError>;
 
     /// Atomically write the full watermark byte payload to `path`.
-    fn write_atomic<'semantic>(
+    fn write_atomic<'semantic, Bytes>(
         &mut self,
         path: &Path,
-        bytes: impl Into<BytesBytes<'semantic>>,
-    ) -> Result<(), GateError>;
+        bytes: Bytes,
+    ) -> Result<(), GateError>
+    where
+        Bytes: Into<BytesBytes<'semantic>>;
 }
 
 /// Production Git adapter backed by sanitized support calls.
@@ -743,11 +756,13 @@ struct SupportGit<'cwd>
 
 impl MaintenanceGit for SupportGit<'_>
 {
-    fn resolve_commit<'semantic>(
+    fn resolve_commit<'semantic, Context>(
         &mut self,
         reference: &GitRef,
-        context: impl Into<ContextText<'semantic>>,
+        context: Context,
     ) -> Result<CommitId, GateError>
+    where
+        Context: Into<ContextText<'semantic>>,
     {
         let context = context.into().0;
         let peeled = format!(
@@ -865,11 +880,13 @@ impl WatermarkSink for SupportWatermarkSink
             })
     }
 
-    fn write_atomic<'semantic>(
+    fn write_atomic<'semantic, Bytes>(
         &mut self,
         path: &Path,
-        bytes: impl Into<BytesBytes<'semantic>>,
+        bytes: Bytes,
     ) -> Result<(), GateError>
+    where
+        Bytes: Into<BytesBytes<'semantic>>,
     {
         let bytes = bytes.into().0;
         support::write_atomic(path, bytes).map_err(|error| {
@@ -998,10 +1015,12 @@ fn planned_source_from_request(
 ///   explicit+watermark, and neither-source fixtures kill precedence mutants.
 /// - witness: `maintenance::tests::precedence_prefers_explicit_then_watermark_then_auto`
 #[inline]
-pub fn plan_base_source<'semantic>(
-    explicit_from: impl Into<OptionalExplicitFromText<'semantic>>,
+pub fn plan_base_source<'semantic, ExplicitFrom>(
+    explicit_from: ExplicitFrom,
     watermark: Option<&Path>,
 ) -> Result<PlannedBaseSource, GateError>
+where
+    ExplicitFrom: Into<OptionalExplicitFromText<'semantic>>,
 {
     let explicit_from = explicit_from.into().0;
     if let Some(explicit) = GitRef::trimmed_optional(explicit_from)? {
@@ -1126,14 +1145,15 @@ pub fn append_github_output(
 }
 
 /// Resolve a head commit and optionally require it to equal current `HEAD`.
-fn resolve_head_commit<'semantic, Git>(
+fn resolve_head_commit<'semantic, Git, Label>(
     git: &mut Git,
     reference: &GitRef,
     expectation: HeadExpectation,
-    label: impl Into<LabelText<'semantic>>,
+    label: Label,
 ) -> Result<CommitId, GateError>
 where
     Git: MaintenanceGit,
+    Label: Into<LabelText<'semantic>>,
 {
     let label = label.into().0;
     let resolved = git.resolve_commit(
@@ -1154,14 +1174,15 @@ where
 }
 
 /// Validate an ancestry edge.
-fn validate_ancestor<'semantic, Git>(
+fn validate_ancestor<'semantic, Git, Label>(
     git: &mut Git,
     base: &CommitId,
     head: &CommitId,
-    label: impl Into<LabelText<'semantic>>,
+    label: Label,
 ) -> Result<(), GateError>
 where
     Git: MaintenanceGit,
+    Label: Into<LabelText<'semantic>>,
 {
     let label = label.into().0;
     if git.is_ancestor(base, head).map(|value| value.into().0)? {
@@ -1228,11 +1249,13 @@ fn load_watermark(path: &Path) -> Result<Watermark, GateError>
 
 /// Resolve a Git command's bounded captured stdout or convert status failure to
 /// a maintenance error.
-fn git_output<'semantic>(
+fn git_output<'semantic, Context>(
     cwd: Option<&Path>,
     args: &[OsString],
-    context: impl Into<ContextText<'semantic>>,
+    context: Context,
 ) -> Result<String, GateError>
+where
+    Context: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     let output = support::run_output(OsStr::new(GIT_PROGRAM), args, cwd, true)
@@ -1267,10 +1290,13 @@ fn git_output<'semantic>(
 ///   fixtures observe both the absence branch and parser delegation.
 /// - witness: `maintenance::tests::missing_and_invalid_watermarks_fail_closed`
 #[inline]
-pub fn parse_optional_watermark_text<'semantic>(
-    source_name: impl Into<SourceNameText<'semantic>>,
-    text: impl Into<OptionalTextText<'semantic>>,
+pub fn parse_optional_watermark_text<'semantic, SourceName, Text>(
+    source_name: SourceName,
+    text: Text,
 ) -> Result<Watermark, GateError>
+where
+    SourceName: Into<SourceNameText<'semantic>>,
+    Text: Into<OptionalTextText<'semantic>>,
 {
     let text = text.into().0;
     let source_name = source_name.into().0;
@@ -1325,7 +1351,9 @@ pub fn watermark_json_bytes(upper: &CommitId) -> WatermarkJsonBytes
 }
 
 /// Build the standard malformed-watermark error.
-fn watermark_malformed<'semantic>(source_name: impl Into<SourceNameText<'semantic>>) -> GateError
+fn watermark_malformed<'semantic, SourceName>(source_name: SourceName) -> GateError
+where
+    SourceName: Into<SourceNameText<'semantic>>,
 {
     let source_name = source_name.into().0;
     maintenance_error(format!(
@@ -1363,10 +1391,13 @@ where
 ///   invalid-upper, and valid fixtures distinguish the parser decisions.
 /// - witness: `maintenance::tests::missing_and_invalid_watermarks_fail_closed`
 #[inline]
-pub fn parse_watermark_text<'semantic>(
-    source_name: impl Into<SourceNameText<'semantic>>,
-    text: impl Into<TextText<'semantic>>,
+pub fn parse_watermark_text<'semantic, SourceName, Text>(
+    source_name: SourceName,
+    text: Text,
 ) -> Result<Watermark, GateError>
+where
+    SourceName: Into<SourceNameText<'semantic>>,
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let source_name = source_name.into().0;
@@ -1865,7 +1896,9 @@ mod tests
     }
 
     /// Build a validated commit fixture.
-    fn commit<'semantic>(text: impl Into<TextText<'semantic>>) -> Result<CommitId, GateError>
+    fn commit<'semantic, Text>(text: Text) -> Result<CommitId, GateError>
+    where
+        Text: Into<TextText<'semantic>>,
     {
         let text = text.into().0;
         CommitId::new(text)
@@ -1907,11 +1940,13 @@ mod tests
         }
 
         /// Add a named ref fixture.
-        fn add_ref<'semantic>(
+        fn add_ref<'semantic, Name>(
             &mut self,
-            name: impl Into<NameText<'semantic>>,
+            name: Name,
             commit: CommitId,
         ) -> Result<(), GateError>
+        where
+            Name: Into<NameText<'semantic>>,
         {
             let name = name.into().0;
             let reference = GitRef::new(name)?;
@@ -1948,11 +1983,13 @@ mod tests
 
     impl MaintenanceGit for FakeGit
     {
-        fn resolve_commit<'semantic>(
+        fn resolve_commit<'semantic, Context>(
             &mut self,
             reference: &GitRef,
-            context: impl Into<ContextText<'semantic>>,
+            context: Context,
         ) -> Result<CommitId, GateError>
+        where
+            Context: Into<ContextText<'semantic>>,
         {
             let context = context.into().0;
             self.fixture_resolve(reference)
@@ -2057,11 +2094,13 @@ mod tests
             Ok(())
         }
 
-        fn write_atomic<'semantic>(
+        fn write_atomic<'semantic, Bytes>(
             &mut self,
             path: &Path,
-            bytes: impl Into<BytesBytes<'semantic>>,
+            bytes: Bytes,
         ) -> Result<(), GateError>
+        where
+            Bytes: Into<BytesBytes<'semantic>>,
         {
             let bytes = bytes.into().0;
             self.writes.push((path.to_path_buf(), Vec::from(bytes)));
@@ -2080,7 +2119,9 @@ mod tests
     impl MaintenanceFixture
     {
         /// Create an empty fixture directory.
-        fn new<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<Self, GateError>
+        fn new<'semantic, Name>(name: Name) -> Result<Self, GateError>
+        where
+            Name: Into<NameText<'semantic>>,
         {
             let name = name.into().0;
             let root = env::temp_dir().join(format!(
@@ -2118,12 +2159,16 @@ mod tests
     }
 
     /// Commit one fixture file and return its object ID.
-    fn commit_fixture_file<'semantic>(
+    fn commit_fixture_file<'semantic, Name, Text, Timestamp>(
         repo: &Path,
-        name: impl Into<NameText<'semantic>>,
-        text: impl Into<TextText<'semantic>>,
-        timestamp: impl Into<TimestampSeconds>,
+        name: Name,
+        text: Text,
+        timestamp: Timestamp,
     ) -> Result<CommitId, GateError>
+    where
+        Name: Into<NameText<'semantic>>,
+        Text: Into<TextText<'semantic>>,
+        Timestamp: Into<TimestampSeconds>,
     {
         let text = text.into().0;
         let timestamp = timestamp.into().0;

@@ -10,22 +10,16 @@
 #[cfg(test)]
 mod tests
 {
-    use std::path::PathBuf;
-
     use gandr_workflow_docs::corpus;
 
-    /// The workspace root, two levels above this crate's manifest directory.
-    fn workspace_root() -> PathBuf
-    {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-    }
+    use crate::common::repo_root;
 
     /// Every prose document under the class roots parses and validates without
     /// a diagnostic, and at least the dogfood research record is present.
     #[test]
     fn prose_document_corpus_is_clean()
     {
-        let root = workspace_root();
+        let root = repo_root();
         let refs = root.join("docs/spec/refs.yml");
         let outcome = corpus::check_docs(&root, &refs);
         assert!(

@@ -13,20 +13,7 @@ autotests = false
 
 [[test]]
 name = "parser"
-path = "tests/parser.rs"
-
-[dependencies]
-# The checked precedence-bounded grammar: the `Pbg`, its rules and molds, and
-# the `built_in` surface grammar the melder pushes over. It re-exports the
-# precedence-DAG types (`Prec`/`PrecDag`/`PrecSpec`), so the parser needs no
-# direct `gandr-theory-graphs` edge.
-gandr-surface-grammar = { path = "../surface-grammar" }
-# The flat-arena CST (`Cst`/`CstBuilder`) the committed melder replays into,
-# plus the interned mold/source/offset vocabulary.
-gandr-surface-syntax = { path = "../surface-syntax" }
-
-[dev-dependencies]
-proptest = { workspace = true }
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -34,3 +21,16 @@ full = []
 
 [lints]
 workspace = true
+
+[dependencies]
+# The checked precedence-bounded grammar: the `Pbg`, its rules and molds, and
+# the `built_in` surface grammar the melder pushes over. It re-exports the
+# precedence-DAG types (`Prec`/`PrecDag`/`PrecSpec`), so the parser needs no
+# direct `gandr-theory-graphs` edge.
+gandr-surface-grammar.workspace = true
+# The flat-arena CST (`Cst`/`CstBuilder`) the committed melder replays into,
+# plus the interned mold/source/offset vocabulary.
+gandr-surface-syntax.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

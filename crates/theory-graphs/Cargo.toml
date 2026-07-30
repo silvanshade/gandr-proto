@@ -13,14 +13,7 @@ autotests = false
 
 [[test]]
 name = "graph"
-path = "tests/graph.rs"
-
-[dependencies]
-fixedbitset = { workspace = true }
-petgraph = { workspace = true }
-
-[dev-dependencies]
-proptest = { workspace = true }
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -28,3 +21,10 @@ full = []
 
 [lints]
 workspace = true
+
+[dependencies]
+fixedbitset.workspace = true
+petgraph.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

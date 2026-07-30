@@ -93,7 +93,9 @@ pub(super) fn render_floors(
 /// - witness: `coverage::render::tests::toml_key_escapes_quotes_and_backslashes`
 #[inline]
 #[must_use]
-fn toml_key<'semantic>(value: impl Into<ValueText<'semantic>>) -> String
+fn toml_key<'semantic, V>(value: V) -> String
+where
+    V: Into<ValueText<'semantic>>,
 {
     let value = value.into().0;
     let mut escaped = String::new();

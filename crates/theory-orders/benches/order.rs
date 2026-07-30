@@ -10,14 +10,13 @@
     )
 )]
 // `harness = false` makes this a separate compilation target where `cfg(test)`
-// is false, so the crate-level `#![cfg_attr(test, allow(...))]` test override
-// cannot reach it; relax the partial-function lints at file scope so the
-// benchmark bodies stay readable. `expect` (not `allow`) is required because
-// `allow_attributes` is denied.
+// is false, so the clippy.toml in-tests overrides cannot reach it; relax
+// `expect_used` here at file scope. `expect` (not `allow`) is required because
+// `allow_attributes` is denied; clippy fulfils the expectation on the
+// `.expect()` sites below.
 #![expect(
     clippy::expect_used,
-    clippy::unwrap_used,
-    reason = "benchmark bodies assume setup succeeds and unwrap the handles (docs/workflow/rust.md)"
+    reason = "benchmark bodies assume setup succeeds (docs/workflow/rust.md)"
 )]
 
 use core::hint::black_box;
@@ -47,7 +46,9 @@ fn built(count: BenchElementCount) -> OrderMaintenance<BenchElementValue>
     let mut order: OrderMaintenance<BenchElementValue> =
         OrderMaintenance::new().expect("structure id allocation succeeds during benchmarks");
     for raw_value in 0 .. count.0 {
-        order.push_back(BenchElementValue(raw_value)).unwrap();
+        order
+            .push_back(BenchElementValue(raw_value))
+            .expect("push_back succeeds at full universe");
     }
     order
 }
@@ -62,8 +63,8 @@ fn order_benches(criterion: &mut Criterion)
 
     criterion.bench_function("cmp_endpoints", |bencher| {
         let order = built(ELEMENT_COUNT);
-        let first = order.first().unwrap();
-        let last = order.last().unwrap();
+        let first = order.first().expect("the built order is non-empty");
+        let last = order.last().expect("the built order is non-empty");
         bencher.iter(|| black_box(order.cmp(black_box(first), black_box(last))));
     });
 
@@ -72,8 +73,12 @@ fn order_benches(criterion: &mut Criterion)
             || {
                 let mut order: OrderMaintenance<BenchElementValue> = OrderMaintenance::new()
                     .expect("structure id allocation succeeds during benchmarks");
-                let anchor = order.push_back(BenchElementValue(0)).unwrap();
-                order.push_back(BenchElementValue(1)).unwrap();
+                let anchor = order
+                    .push_back(BenchElementValue(0))
+                    .expect("push_back succeeds at full universe");
+                order
+                    .push_back(BenchElementValue(1))
+                    .expect("push_back succeeds at full universe");
                 (order, anchor)
             },
             |(mut order, anchor)| {
@@ -81,7 +86,7 @@ fn order_benches(criterion: &mut Criterion)
                     black_box(
                         order
                             .insert_after(anchor, BenchElementValue(raw_value))
-                            .unwrap(),
+                            .expect("insert_after succeeds under relabel"),
                     );
                 }
                 black_box(order)

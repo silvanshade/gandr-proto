@@ -84,10 +84,6 @@ impl From<RCtxId> for u32
 
 /// One symbol the zipper crosses when stepping out of a context.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "a crossed regex symbol is exactly a recursive sort or a terminal tile"
-)]
 pub enum StepSym
 {
     /// A recursive sort symbol faces the context on this side.

@@ -25,10 +25,6 @@ use alloc::vec::Vec;
 ///   [`run`];
 /// - provides: an exhaustively typed alternative to native-stack recursion;
 /// - panics: none.
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the transition protocol is closed by design: Descend and Return are the complete vocabulary, and downstream machines construct both variants directly"
-)]
 pub enum Step<Request, Frame, Output>
 {
     /// Evaluate one child and resume its parent through `frame`.

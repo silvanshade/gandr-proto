@@ -3206,10 +3206,6 @@ pub struct Mark
 
 /// One expected item in a completion to `⊢`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the completion vocabulary is exactly an expected tile, a sort hole, or a grout shape"
-)]
 pub enum Expected
 {
     /// An expected literal tile, named by its label.
@@ -3273,10 +3269,6 @@ impl Completion
 
 /// A failure while committing the melder to a batch [`Cst`].
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "commit failures are exactly an arena-construction error or an internal corruption guard"
-)]
 pub enum MeldError
 {
     /// The flat arena could not be assembled.
@@ -3324,10 +3316,6 @@ impl From<BuildError> for MeldError
 
 /// A failure while decoding a serialized [`Checkpoint`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "checkpoint decode failures are exactly truncation, an unknown tag, or malformed content"
-)]
 pub enum CheckpointError
 {
     /// The byte stream ended before a field was fully read.

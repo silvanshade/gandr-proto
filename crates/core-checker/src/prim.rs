@@ -1,3 +1,7 @@
+#![expect(
+    clippy::allow_attributes,
+    reason = "non_topologically_sorted_functions only exists under cargo-dylint, so an `expect` on it would be unfulfilled under the plain clippy wall; the suppression must remain an `allow`"
+)]
 #![allow(
     unknown_lints,
     non_topologically_sorted_functions,

@@ -1,5 +1,9 @@
+//! Project-local Dylint rules enforcing gandr's Rust type boundaries:
+//! `#[repr(transparent)]` on single-field wrappers, semantic-wrapper
+//! (non-primitive) function and method signatures, and `# Termination`
+//! documentation on recursive functions.
+
 #![feature(rustc_private)]
-#![warn(unused_extern_crates)]
 
 extern crate rustc_hir;
 extern crate rustc_lint;
@@ -12,6 +16,7 @@ use std::collections::HashSet;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::diagnostics::span_lint_hir;
 use clippy_utils::trait_ref_of_method;
+use rustc_hir::Attribute;
 use rustc_hir::Body;
 use rustc_hir::Expr;
 use rustc_hir::ExprKind;
@@ -166,6 +171,11 @@ impl_lint_pass!(GandrTypeBoundaries => [
 ]);
 
 /// Register gandr's project-local Dylint passes.
+#[expect(
+    clippy::no_mangle_with_rust_abi,
+    reason = "dylint's driver loads `register_lints` by exact symbol name and passes rustc-internal \
+              types (`Session`, `LintStore`), so a C ABI is impossible by design"
+)]
 #[unsafe(no_mangle)]
 pub fn register_lints(
     sess: &Session,
@@ -185,26 +195,39 @@ pub fn register_lints(
 #[derive(Default)]
 struct GandrTypeBoundaries
 {
+    /// Crate-local function metadata by definition id, filled by `check_fn`.
     functions: HashMap<LocalDefId, FunctionNode>,
+    /// Crate-local callsites by caller definition id, filled by `check_fn`.
     edges: HashMap<LocalDefId, Vec<CallEdge>>,
 }
 
 /// Crate-local function metadata needed for crate-post recursion diagnostics.
 struct FunctionNode
 {
+    /// The function's whole-item span, used as the diagnostic target.
     span: Span,
+    /// The function's stable rustc def-path string, used for deterministic SCC ordering.
     path: String,
+    /// The HIR id of the function body expression root.
     body_hir_id: HirId,
+    /// HIR ids of the function's parameter pattern bindings.
     input_bindings: Vec<HirId>,
 }
 
 /// One crate-local callsite, preserving the callee and argument HIR roots.
 struct CallEdge
 {
+    /// The callee's crate-local definition id.
     callee: LocalDefId,
+    /// HIR ids of the argument expressions, receiver first for method calls.
     args: Vec<HirId>,
 }
 
+#[expect(
+    clippy::renamed_function_params,
+    reason = "rustc declares the `LateLintPass` methods with single-letter parameter names (`a`, `b`, \
+              `c`, `d`, `e`); the implementation keeps descriptive names"
+)]
 impl<'tcx> LateLintPass<'tcx> for GandrTypeBoundaries
 {
     fn check_item(
@@ -359,10 +382,17 @@ fn local_call_edges<'tcx>(
 /// HIR visitor that records direct local function/method callsites.
 struct LocalCallCollector<'cx, 'tcx>
 {
+    /// The late lint context used for path and method resolution.
     cx: &'cx LateContext<'tcx>,
+    /// The callsites recorded so far, in visit order.
     calls: Vec<CallEdge>,
 }
 
+#[expect(
+    clippy::renamed_function_params,
+    reason = "rustc declares the `Visitor` methods with single-letter parameter names (`ex`, `l`, \
+              `p`); the implementation keeps descriptive names"
+)]
 impl<'tcx> Visitor<'tcx> for LocalCallCollector<'_, 'tcx>
 {
     fn visit_expr(
@@ -432,12 +462,7 @@ fn recursive_sccs(
                         && reaches(*other, def_id, edges, functions))
             })
             .collect();
-        scc.sort_by(|left, right| {
-            functions
-                .get(left)
-                .map(|node| node.path.as_str())
-                .cmp(&functions.get(right).map(|node| node.path.as_str()))
-        });
+        scc.sort_by_key(|def_id| functions.get(def_id).map(|node| node.path.as_str()));
         for member in &scc {
             claimed.insert(*member);
         }
@@ -450,12 +475,7 @@ fn recursive_sccs(
 fn sorted_function_ids(functions: &HashMap<LocalDefId, FunctionNode>) -> Vec<LocalDefId>
 {
     let mut ids: Vec<_> = functions.keys().copied().collect();
-    ids.sort_by(|left, right| {
-        functions
-            .get(left)
-            .map(|node| node.path.as_str())
-            .cmp(&functions.get(right).map(|node| node.path.as_str()))
-    });
+    ids.sort_by_key(|def_id| functions.get(def_id).map(|node| node.path.as_str()));
     ids
 }
 
@@ -512,7 +532,9 @@ fn termination_doc_is_valid(
     else {
         return false;
     };
-    let mut section_lines = lines[start.saturating_add(1) ..]
+    let mut section_lines = lines
+        .get(start.saturating_add(1) ..)
+        .unwrap_or_default()
         .iter()
         .filter(|line| !line.is_empty());
     let Some(reason) = section_lines.next()
@@ -548,7 +570,7 @@ fn rustdoc_lines(
     cx.tcx
         .hir_attrs(hir_id)
         .iter()
-        .filter_map(|attr| attr.doc_str())
+        .filter_map(Attribute::doc_str)
         .flat_map(|doc| {
             doc.as_str()
                 .lines()
@@ -649,13 +671,21 @@ fn input_derived_bindings<'tcx>(
 }
 
 /// HIR visitor that grows the input-provenance set to a fixed point.
-struct ProvenancePropagation<'a, 'cx, 'tcx>
+struct ProvenancePropagation<'derived, 'cx, 'tcx>
 {
+    /// The late lint context used for local resolution.
     cx: &'cx LateContext<'tcx>,
-    derived: &'a mut HashSet<HirId>,
+    /// The input-provenance set being grown to a fixed point.
+    derived: &'derived mut HashSet<HirId>,
+    /// Whether the current pass added any binding to `derived`.
     changed: bool,
 }
 
+#[expect(
+    clippy::renamed_function_params,
+    reason = "rustc declares the `Visitor` methods with single-letter parameter names (`ex`, `l`, \
+              `p`); the implementation keeps descriptive names"
+)]
 impl<'tcx> Visitor<'tcx> for ProvenancePropagation<'_, '_, 'tcx>
 {
     fn visit_local(
@@ -743,11 +773,17 @@ fn collect_pattern_bindings(
 }
 
 /// Pattern visitor that records local bindings.
-struct PatternBindingCollector<'a>
+struct PatternBindingCollector<'bindings>
 {
-    bindings: &'a mut Vec<HirId>,
+    /// The binding HIR ids recorded so far, in visit order.
+    bindings: &'bindings mut Vec<HirId>,
 }
 
+#[expect(
+    clippy::renamed_function_params,
+    reason = "rustc declares the `Visitor` methods with single-letter parameter names (`ex`, `l`, \
+              `p`); the implementation keeps descriptive names"
+)]
 impl<'tcx> Visitor<'tcx> for PatternBindingCollector<'_>
 {
     fn visit_pat(
@@ -781,13 +817,21 @@ fn expr_contains_derived_binding<'tcx>(
 }
 
 /// Expression visitor that finds references to already-derived locals.
-struct DerivedBindingFinder<'a, 'cx, 'tcx>
+struct DerivedBindingFinder<'derived, 'cx, 'tcx>
 {
+    /// The late lint context used for local resolution.
     cx: &'cx LateContext<'tcx>,
-    derived: &'a HashSet<HirId>,
+    /// The current input-provenance set.
+    derived: &'derived HashSet<HirId>,
+    /// Whether a reference to a derived local has been found.
     found: bool,
 }
 
+#[expect(
+    clippy::renamed_function_params,
+    reason = "rustc declares the `Visitor` methods with single-letter parameter names (`ex`, `l`, \
+              `p`); the implementation keeps descriptive names"
+)]
 impl<'tcx> Visitor<'tcx> for DerivedBindingFinder<'_, '_, 'tcx>
 {
     fn visit_expr(
@@ -831,10 +875,17 @@ fn mark_local_references<'tcx>(
 /// Expression visitor that records every referenced local binding.
 struct LocalReferenceCollector<'cx, 'tcx>
 {
+    /// The late lint context used for local resolution.
     cx: &'cx LateContext<'tcx>,
+    /// The referenced local binding HIR ids recorded so far, in visit order.
     locals: Vec<HirId>,
 }
 
+#[expect(
+    clippy::renamed_function_params,
+    reason = "rustc declares the `Visitor` methods with single-letter parameter names (`ex`, `l`, \
+              `p`); the implementation keeps descriptive names"
+)]
 impl<'tcx> Visitor<'tcx> for LocalReferenceCollector<'_, 'tcx>
 {
     fn visit_expr(
@@ -901,7 +952,7 @@ fn allows_model_checker_input_recursion(
         .instantiate_identity()
         .skip_norm_wip()
         .skip_binder();
-    let Some(receiver_ty) = fn_sig.inputs().iter().next().copied()
+    let Some(receiver_ty) = fn_sig.inputs().first().copied()
     else {
         return false;
     };
@@ -997,7 +1048,7 @@ fn check_ty<'tcx, Unambig>(
             | _ => emit_ty_primitive(cx, ty),
         },
         | TyKind::Tup(types) => match semantic_ty.kind() {
-            | rustc_ty::Tuple(semantic_types) if semantic_types.iter().count() == types.len() => {
+            | rustc_ty::Tuple(semantic_types) if semantic_types.len() == types.len() => {
                 let mut emitted = false;
                 for (inner, semantic_inner) in types.iter().zip(semantic_types.iter()) {
                     emitted |= check_ty(cx, inner, semantic_inner);
@@ -1081,13 +1132,9 @@ fn future_trait_ref<'tcx>(
     opaque: &'tcx OpaqueTy<'tcx>,
 ) -> Option<&'tcx TraitRef<'tcx>>
 {
-    if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
-        if let GenericBound::Trait(poly) = bound {
-            Some(&poly.trait_ref)
-        }
-        else {
-            None
-        }
+    if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| match bound {
+        | GenericBound::Trait(poly) => Some(&poly.trait_ref),
+        | _ => None,
     }) && trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait()
     {
         return Some(trait_ref);
@@ -1172,7 +1219,7 @@ fn semantic_type_args<'tcx>(
 {
     let semantic_ty = normalize_middle_ty(cx, semantic_ty);
     match semantic_ty.kind() {
-        | rustc_ty::Adt(_, args) => args.iter().filter_map(|arg| arg.as_type()).collect(),
+        | rustc_ty::Adt(_, args) => args.iter().filter_map(rustc_ty::GenericArg::as_type).collect(),
         | rustc_ty::Tuple(types) => types.iter().collect(),
         | _ => Vec::new(),
     }
@@ -1241,7 +1288,7 @@ fn middle_ty_contains_primitive<'tcx>(
         | rustc_ty::Adt(adt, _) if is_semantic_boundary_adt(*adt) => false,
         | rustc_ty::Adt(_, args) => args
             .iter()
-            .filter_map(|arg| arg.as_type())
+            .filter_map(rustc_ty::GenericArg::as_type)
             .any(|arg_ty| middle_ty_contains_primitive(cx, arg_ty)),
         | _ => false,
     }
@@ -1283,20 +1330,31 @@ fn emit_primitive(
     );
 }
 
-#[test]
-fn ui()
+#[cfg(test)]
+mod tests
 {
-    dylint_testing::ui_test(env!("CARGO_PKG_NAME"), "ui");
-}
+    use super::is_model_checker_rec_path;
 
-#[test]
-fn ui_model_checker_rec_path_scope()
-{
-    assert!(is_model_checker_rec_path(
-        "gandr_core_checker::checker::Rec"
-    ));
-    assert!(!is_model_checker_rec_path("gandr_core_checker::mark::Rec"));
-    assert!(!is_model_checker_rec_path(
-        "termination::gandr_core_checker::checker::Rec"
-    ));
+    #[test]
+    fn ui()
+    {
+        dylint_testing::ui_test(env!("CARGO_PKG_NAME"), "ui");
+    }
+
+    #[test]
+    fn ui_model_checker_rec_path_scope()
+    {
+        assert!(
+            is_model_checker_rec_path("gandr_core_checker::checker::Rec"),
+            "the exact checker receiver path is accepted"
+        );
+        assert!(
+            !is_model_checker_rec_path("gandr_core_checker::mark::Rec"),
+            "a same-named type in another module is rejected"
+        );
+        assert!(
+            !is_model_checker_rec_path("termination::gandr_core_checker::checker::Rec"),
+            "a prefixed lookalike path is rejected"
+        );
+    }
 }

@@ -1,7 +1,4 @@
 #[cfg(test)]
-mod support;
-
-#[cfg(test)]
 mod tests
 {
     use gandr_storage_chunker::AlgorithmVersion;
@@ -26,12 +23,12 @@ mod tests
     use gandr_storage_prolly_trees::hash_encoded_node;
     use gandr_storage_prolly_trees::inspect_encoded_node;
 
-    use crate::support::ByteOffset;
-    use crate::support::FixtureBytes;
-    use crate::support::FixtureBytesMut;
-    use crate::support::FixtureLong;
-    use crate::support::OwnedFixtureBytes;
-    use crate::support::TestContext;
+    use crate::common::ByteOffset;
+    use crate::common::FixtureBytes;
+    use crate::common::FixtureBytesMut;
+    use crate::common::FixtureLong;
+    use crate::common::OwnedFixtureBytes;
+    use crate::common::TestContext;
 
     const NODE_MAGIC: &[u8] = b"prolly-bao:node:v1";
     const NODE_VERSION_LEN: usize = 2_usize;

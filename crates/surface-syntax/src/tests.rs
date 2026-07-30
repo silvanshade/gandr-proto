@@ -1,4 +1,4 @@
-use std::error::Error;
+use core::error::Error;
 use std::io;
 use std::process::Command;
 
@@ -86,8 +86,8 @@ fn node_count_slots_accept_representable_max_without_allocation() -> TestResult
 
     assert_eq!(slots.len(), max_count);
     assert_eq!(Some(NodeSlot(0)), slots.next());
-    assert_eq!(Some(NodeSlot(u32::MAX - 1)), slots.next_back());
-    assert_eq!(slots.len(), max_count - 2);
+    assert_eq!(Some(NodeSlot(u32::MAX.wrapping_sub(1))), slots.next_back());
+    assert_eq!(slots.len(), max_count.wrapping_sub(2));
     Ok(())
 }
 
@@ -95,7 +95,7 @@ fn node_count_slots_accept_representable_max_without_allocation() -> TestResult
 fn node_count_slots_reject_first_overflow_before_iteration() -> TestResult
 {
     let max_count = usize::try_from(u32::MAX)?;
-    let first_overflow = max_count + 1;
+    let first_overflow = max_count.saturating_add(1);
     let error = match NodeCount(first_overflow).slots() {
         | Ok(_slots) => panic!("overflowing node count unexpectedly produced slots"),
         | Err(error) => error,
@@ -230,8 +230,14 @@ fn space_token_changes_leave_root_hash_unchanged() -> TestResult
         fixed.cst.root(),
         reindented.cst.root()
     )]);
-    assert!(difference.unmatched_old().is_empty());
-    assert!(difference.unmatched_new().is_empty());
+    assert!(
+        difference.unmatched_old().is_empty(),
+        "a whitespace-only edit must leave no unmatched old root"
+    );
+    assert!(
+        difference.unmatched_new().is_empty(),
+        "a whitespace-only edit must leave no unmatched new root"
+    );
     Ok(())
 }
 
@@ -411,7 +417,7 @@ fn malformed_builder_ordering_and_parentage_return_typed_errors() -> TestResult
         Material::Space,
         MoldPayload::Space,
         token_kind_range,
-        std::iter::empty::<NodeId>(),
+        core::iter::empty::<NodeId>(),
     );
     let token_kind_error = match token_kind_result {
         | Ok(_node) => panic!("builder unexpectedly accepted a token interior"),
@@ -426,7 +432,7 @@ fn malformed_builder_ordering_and_parentage_return_typed_errors() -> TestResult
         Material::Tile,
         MoldPayload::Tile(kw_let()),
         tile_interior_range,
-        std::iter::empty::<NodeId>(),
+        core::iter::empty::<NodeId>(),
     ) {
         | Ok(_node) => panic!("builder unexpectedly accepted tile material for an interior"),
         | Err(error) => error,
@@ -541,7 +547,10 @@ fn finish_rejects_unknown_parented_and_orphan_roots() -> TestResult
 #[test]
 fn node_data_remains_compact()
 {
-    assert!(std::mem::size_of::<NodeData>() <= 40);
+    assert!(
+        core::mem::size_of::<NodeData>() <= 40,
+        "the arena node layout must stay within the 40-byte compactness bound"
+    );
 }
 
 mod fixture_support

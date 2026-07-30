@@ -4,16 +4,11 @@
 
 use core::error::Error;
 use std::path::Path;
-use std::path::PathBuf;
+
+use crate::common::repo_root;
 
 /// Shared result type for the lexicon witnesses.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
-
-/// The repo root (the crate manifest dir's grandparent).
-fn repo_root() -> PathBuf
-{
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
 
 #[cfg(test)]
 mod tests

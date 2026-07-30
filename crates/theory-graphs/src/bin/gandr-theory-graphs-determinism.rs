@@ -35,16 +35,11 @@
 //! - witness: `gandr_theory_graphs::determinism::gandr_theory_graphs::subprocess_exact_maximum_perturbation_is_accepted`
 //! - witness: `gandr_theory_graphs::determinism::gandr_theory_graphs::subprocess_oversized_perturbation_fails_gracefully`
 
-#![allow(
-    clippy::print_stderr,
-    clippy::print_stdout,
-    reason = "standard io allowed for binaries"
-)]
-
 extern crate alloc;
 
 use core::error::Error;
 use core::fmt::Display;
+use std::io::Write;
 
 use gandr_theory_graphs::AllSimplePaths;
 use gandr_theory_graphs::Assoc;
@@ -316,8 +311,11 @@ impl EdgeSource for OwnedAdj
 fn main() -> Result<(), Box<dyn Error>>
 {
     let output_rows = rows()?;
-    let stdout = output_rows.join("\n");
-    println!("{stdout}");
+    let rendered = output_rows.join("\n");
+    let mut stdout = std::io::stdout().lock();
+    if let Err(error) = writeln!(stdout, "{rendered}") {
+        return Err(Box::new(error));
+    }
     return Ok(());
 }
 

@@ -16,19 +16,19 @@ rustc_private = true
 [lib]
 crate-type = ["cdylib"]
 
-# rustc_private driver code builds only under the pinned nightly (see the
-# crate-local `.cargo/config.toml`, which the `dylint_testing` UI build reads
-# because cargo runs its builds with the package dir as CWD). The workspace
-# lint wall is not yet applied to this crate: it predates the wall and is
-# checked with plain `-D warnings`, matching the posture it had as a
-# standalone workspace (tracked by gandr-3yh).
-[dependencies]
-clippy_utils = { workspace = true }
-dylint_linting = { workspace = true }
-
-[dev-dependencies]
-dylint_testing = { workspace = true }
-
 [features]
 default = []
 full = []
+
+[lints]
+workspace = true
+
+# rustc_private driver code builds only under the pinned nightly (see the
+# crate-local `.cargo/config.toml`, which the `dylint_testing` UI build reads
+# because cargo runs its builds with the package dir as CWD).
+[dependencies]
+clippy_utils.workspace = true
+dylint_linting.workspace = true
+
+[dev-dependencies]
+dylint_testing.workspace = true

@@ -10,13 +10,18 @@ description = "Deterministic record-safe chunk boundary detection with a fixed-o
 readme.workspace = true
 license.workspace = true
 publish.workspace = true
+autotests = false
 
-[dependencies]
-
-[dev-dependencies]
+[[test]]
+name = "lib"
+path = "tests/lib.rs"
 
 [features]
 default = []
 
 [lints]
 workspace = true
+
+[dependencies]
+
+[dev-dependencies]

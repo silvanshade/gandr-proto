@@ -1,7 +1,4 @@
 #[cfg(test)]
-mod support;
-
-#[cfg(test)]
 mod tests
 {
     use gandr_storage_chunker::AlgorithmVersion;
@@ -22,9 +19,9 @@ mod tests
     use gandr_storage_prolly_trees::WitnessTranscript;
     use gandr_storage_prolly_trees::verify_snapshot_bytes;
 
-    use crate::support::FixtureBytes;
-    use crate::support::FixtureBytesMut;
-    use crate::support::OwnedFixtureBytes;
+    use crate::common::FixtureBytes;
+    use crate::common::FixtureBytesMut;
+    use crate::common::OwnedFixtureBytes;
 
     const SNAPSHOT_MAGIC: &[u8] = b"prolly-bao:snapshot:v1";
     const WITNESS_MAGIC: &[u8] = b"prolly-bao:witness:v1";

@@ -4,20 +4,7 @@
 //! is compiled exactly once through this target while preserving the historical
 //! module paths used by contract witnesses.
 
-// Crate-local lint-wall overrides, parked for triage (gandr-0ze): see the
-// matching block in `src/lib.rs`. Remove entries as their sites are
-// remediated.
-#![allow(
-    clippy::as_conversions,
-    clippy::derive_partial_eq_without_eq,
-    clippy::explicit_auto_deref,
-    clippy::field_scoped_visibility_modifiers,
-    clippy::if_then_some_else_none,
-    clippy::indexing_slicing,
-    clippy::needless_borrows_for_generic_args,
-    clippy::pattern_type_mismatch,
-    reason = "ported crate predates the current lint wall; parked for triage (gandr-0ze)"
-)]
+extern crate alloc;
 
 /// Contract-documentation gate integration witnesses.
 #[cfg(test)]

@@ -1,5 +1,3 @@
-#![allow(dead_code, reason = "tests")]
-
 //! Shared integration-test support.
 //!
 //! Arena-independent **spec** trees describing S1 terms/types, an **iterative**
@@ -10,15 +8,6 @@
 //! arena. Tests describe structure with the owned spec trees below, then
 //! materialize them into whichever arena they need (a bare [`TermArena`] for
 //! conversion, or a declaration's content via [`stage_def`]/[`stage_axiom`]).
-
-#![allow(
-    clippy::allow_attributes,
-    clippy::arithmetic_side_effects,
-    clippy::expect_used,
-    clippy::missing_panics_doc,
-    unused_imports,
-    reason = "tests"
-)]
 
 use gandr_kernel_core::BaseType;
 use gandr_kernel_core::CompTypeId;
@@ -567,7 +556,6 @@ use gandr_kernel_core::NumericLiteral;
 use gandr_kernel_core::Sign;
 use gandr_kernel_core::StringLiteral;
 use gandr_kernel_strata::LevelConstant;
-use gandr_kernel_strata::LevelError;
 use gandr_kernel_strata::LevelVar;
 use gandr_kernel_strata::LevelVarIndex;
 use proptest::prelude::*;
@@ -580,10 +568,8 @@ pub fn arb_level() -> impl Strategy<Value = Level>
         (0_u64 .. 5).prop_map(|value| Level::constant(LevelConstant::from(value))),
         (0_u32 .. 3, 0_u64 .. 4).prop_map(|(index, offset)| {
             let mut level = Level::var(LevelVar::new(LevelVarIndex::from(index)));
-            let mut remaining = offset;
-            while remaining > 0 {
+            for _step in 0 .. offset {
                 level = level.succ().expect("small level offsets never overflow");
-                remaining -= 1;
             }
             level
         }),
@@ -642,9 +628,9 @@ fn alloc_format(value: MagnitudeSample) -> String
     }
     let mut buffer = Vec::new();
     while remaining > 0 {
-        let digit = u8::try_from(remaining % 10).unwrap_or(0);
-        buffer.push(b'0' + digit);
-        remaining /= 10;
+        let digit = u8::try_from(remaining.rem_euclid(10)).unwrap_or(0);
+        buffer.push(b'0'.saturating_add(digit));
+        remaining = remaining.div_euclid(10);
     }
     buffer.reverse();
     for byte in buffer {

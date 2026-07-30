@@ -48,10 +48,6 @@ use gandr_surface_syntax::SourceSlice;
 ///   labeler tests.
 /// - witness: `gandr_surface_parser::label::tests::labels_a_definition_losslessly`
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the labeler output vocabulary is a closed lexical-class set mirroring gandr's tree-sitter lexemes"
-)]
 pub enum Lexeme
 {
     /// A lowercase-led word: an `identifier`, a `type_variable`, or a keyword.

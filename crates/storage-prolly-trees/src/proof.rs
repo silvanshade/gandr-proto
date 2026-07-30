@@ -1803,10 +1803,6 @@ impl WitnessTranscript
 /// root plus selected leaf, non-membership root plus selected leaf and optional
 /// required successor leaf, or range root plus contiguous selected leaves.
 /// Multi-level compact selection is not promised by this type.
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "ProofNode is the explicit public proof node vocabulary"
-)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct ProofNode
@@ -1950,10 +1946,6 @@ impl OwnedKeyRange
 }
 
 /// Store-independent proof that a key maps to a specific value.
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "MembershipProof is the explicit public proof vocabulary"
-)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 #[cfg(feature = "proofs")]
@@ -2123,10 +2115,6 @@ impl NonMembershipEvidence
 }
 
 /// Store-independent proof that a key is absent from a root.
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "NonMembershipProof is the explicit public proof vocabulary"
-)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 #[cfg(feature = "proofs")]
@@ -2247,10 +2235,6 @@ impl NonMembershipProof
 }
 
 /// Store-independent proof for a complete ordered key range.
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "RangeProof is the explicit public proof vocabulary"
-)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 #[cfg(feature = "proofs")]

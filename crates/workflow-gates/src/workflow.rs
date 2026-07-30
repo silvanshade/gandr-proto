@@ -478,10 +478,12 @@ impl FileWorkflowCache
 
     /// Return the cache path for one repository token.
     #[must_use]
-    fn path<'semantic>(
+    fn path<R>(
         &self,
-        repository: impl Into<RepositoryText<'semantic>>,
+        repository: R,
     ) -> PathBuf
+    where
+        R: Into<RepositoryText<'_>>,
     {
         let repository = repository.into().0;
         self.root.join(format!("{repository}.json"))
@@ -497,14 +499,16 @@ impl FileWorkflowCache
     ///
     /// # Errors
     /// Returns cache file read failures other than absence.
-    fn read_cache_file<'semantic>(
+    fn read_cache_file<R>(
         &self,
-        repository: impl Into<RepositoryText<'semantic>>,
+        repository: R,
     ) -> Result<WorkflowCacheFile, GateError>
+    where
+        R: Into<RepositoryText<'_>>,
     {
         let repository = repository.into().0;
         let path = self.path(repository);
-        let bytes = match crate::support::HOST_FILESYSTEM.read(&path) {
+        let bytes = match crate::support::HOST_FILESYSTEM.read(path) {
             | Ok(bytes) => bytes,
             | Err(GateError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound =>
             {
@@ -1056,7 +1060,9 @@ fn git_text_owned(
 
 /// Return a lowercase BLAKE3 digest for `bytes`.
 #[must_use]
-fn hash_bytes<'semantic>(bytes: impl Into<BytesBytes<'semantic>>) -> String
+fn hash_bytes<B>(bytes: B) -> String
+where
+    B: Into<BytesBytes<'_>>,
 {
     let bytes = bytes.into().0;
     let digest = blake3::hash(bytes);
@@ -1255,7 +1261,7 @@ where
     let mut completed_tasks = 0_usize;
     for task in plan.tasks() {
         let before_key = task_cache_key(identity, plan.tier(), *task, cwd);
-        if let Some(ref key) = before_key
+        if let Some(key) = before_key.as_ref()
             && matches!(cache.lookup(key).map(|value| value.into().0), Ok(true))
         {
             completed_tasks =
@@ -1265,7 +1271,7 @@ where
 
         match runner.run_task(*task, cwd)? {
             | TaskExit::Success => {
-                if let Some(ref key) = before_key {
+                if let Some(key) = before_key.as_ref() {
                     let after_key = task_cache_key(identity, plan.tier(), *task, cwd);
                     if after_key.as_ref() == Some(key) {
                         drop(cache.record_success(key));
@@ -1341,9 +1347,11 @@ fn is_cacheable_task(task: Task) -> impl Into<CacheableTaskFlag>
 ///
 /// # Errors
 /// Returns an operational error if the counter overflows.
-fn increment_completed_tasks(
-    completed_tasks: impl Into<CompletedTasksCount>
+fn increment_completed_tasks<C>(
+    completed_tasks: C
 ) -> Result<impl Into<IncrementCompletedTasksCount>, GateError>
+where
+    C: Into<CompletedTasksCount>,
 {
     let completed_tasks = completed_tasks.into().0;
     completed_tasks
@@ -1617,10 +1625,13 @@ impl TaskExit
     /// Build a failed task status for tests.
     #[inline]
     #[must_use]
-    fn failed(
-        status: impl Into<String>,
-        stdout: impl Into<String>,
+    fn failed<S, O>(
+        status: S,
+        stdout: O,
     ) -> Self
+    where
+        S: Into<String>,
+        O: Into<String>,
     {
         let status = status.into();
         let stdout = stdout.into();
@@ -1671,6 +1682,7 @@ impl TaskFailure
     }
 }
 
+/// Unit and fixture witnesses for workflow plans, caching, and locking.
 #[cfg(test)]
 mod tests
 {
@@ -2115,7 +2127,7 @@ mod tests
             schema: WORKFLOW_CACHE_SCHEMA.saturating_add(1),
             entries: Vec::new(),
         };
-        crate::support::HOST_FILESYSTEM.write(&path, serde_json::to_vec(&stale_file)?)?;
+        crate::support::HOST_FILESYSTEM.write(path, serde_json::to_vec(&stale_file)?)?;
 
         assert!(!cache.lookup(&key).map(|value| value.into().0)?);
         Ok(())
@@ -2172,7 +2184,7 @@ mod tests
         );
         assert_eq!(
             Some("feature"),
-            git_text(Some(&fixture.repo), &["rev-parse", "--abbrev-ref", "HEAD"]).as_deref(),
+            git_text(Some(&fixture.repo), ["rev-parse", "--abbrev-ref", "HEAD"]).as_deref(),
         );
         assert_eq!(
             Some("feature"),
@@ -2183,7 +2195,7 @@ mod tests
             ],)
             .as_deref(),
         );
-        assert!(git_text(Some(&fixture.repo), &["definitely-not-a-git-command"]).is_none());
+        assert!(git_text(Some(&fixture.repo), ["definitely-not-a-git-command"]).is_none());
 
         let submodules = submodule_identity(Some(&fixture.repo))
             .ok_or_else(|| GateError::operational("missing submodule identity"))?;
@@ -2344,9 +2356,11 @@ mod tests
     }
 
     /// Return whether `name` is a direct mise task token with no shell syntax.
-    fn is_canonical_task_name<'semantic>(
-        name: impl Into<NameText<'semantic>>
+    fn is_canonical_task_name<N>(
+        name: N
     ) -> impl Into<CanonicalTaskNameFlag>
+    where
+        N: Into<NameText<'_>>,
     {
         let name = name.into().0;
         !name.is_empty()
@@ -2408,7 +2422,9 @@ mod tests
 
     /// Convert a static string into an operating-system argument.
     #[cfg(unix)]
-    fn os<'semantic>(value: impl Into<ValueText<'semantic>>) -> OsString
+    fn os<V>(value: V) -> OsString
+    where
+        V: Into<ValueText<'_>>,
     {
         let value = value.into().0;
         OsString::from(value)
@@ -2550,7 +2566,7 @@ mod tests
         ));
 
         let mut fetch_remote_case = base.clone();
-        if let Some(ref mut push) = fetch_remote_case.push {
+        if let Some(push) = fetch_remote_case.push.as_mut() {
             push.fetch_remote = String::from("fetch-other");
         }
         cases.push((
@@ -2559,7 +2575,7 @@ mod tests
         ));
 
         let mut push_remote_case = base.clone();
-        if let Some(ref mut push) = push_remote_case.push {
+        if let Some(push) = push_remote_case.push.as_mut() {
             push.push_remote = String::from("push-other");
         }
         cases.push((
@@ -2568,7 +2584,7 @@ mod tests
         ));
 
         let mut branch_case = base.clone();
-        if let Some(ref mut push) = branch_case.push {
+        if let Some(push) = branch_case.push.as_mut() {
             push.branch = String::from("main");
         }
         cases.push((
@@ -2577,7 +2593,7 @@ mod tests
         ));
 
         let mut upstream_ref_case = base.clone();
-        if let Some(ref mut push) = upstream_ref_case.push {
+        if let Some(push) = upstream_ref_case.push.as_mut() {
             push.upstream_ref = String::from("refs/remotes/origin/next");
         }
         cases.push((
@@ -2586,7 +2602,7 @@ mod tests
         ));
 
         let mut upstream_commit_case = base.clone();
-        if let Some(ref mut push) = upstream_commit_case.push {
+        if let Some(push) = upstream_commit_case.push.as_mut() {
             push.upstream_commit = String::from("upstream-other");
         }
         cases.push((
@@ -2595,7 +2611,7 @@ mod tests
         ));
 
         let mut merge_base_case = base.clone();
-        if let Some(ref mut push) = merge_base_case.push {
+        if let Some(push) = merge_base_case.push.as_mut() {
             push.merge_base = String::from("base-other");
         }
         cases.push((
@@ -2741,7 +2757,7 @@ mod tests
             let mise = bin.join("mise");
             let log = root.join("mise.log");
 
-            crate::support::HOST_FILESYSTEM.create_dir_all(&bin)?;
+            crate::support::HOST_FILESYSTEM.create_dir_all(bin)?;
             git_status(None, &[
                 os("init"),
                 os("--bare"),
@@ -2820,7 +2836,9 @@ mod tests
     impl<'row> WorkflowInvocation<'row>
     {
         /// Parse one `task|branch|remote` fixture row.
-        fn parse(row: impl Into<RowText<'row>>) -> TestResult<Self>
+        fn parse<R>(row: R) -> TestResult<Self>
+        where
+            R: Into<RowText<'row>>,
         {
             let row = row.into().0;
             let mut fields = row.splitn(3, '|');

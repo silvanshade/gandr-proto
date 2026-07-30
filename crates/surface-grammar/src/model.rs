@@ -119,10 +119,6 @@ use crate::mold::RCtxStep;
 
 /// Closed precedence-bounded grammar sort.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the PBG contract fixes these five grammar sorts exactly"
-)]
 pub enum Sort
 {
     /// Top-level item grammar sort.
@@ -243,10 +239,6 @@ impl Tile
 
 /// Symbol leaf in a regular grammar expression.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "PBG regex leaves are exactly recursive sort calls or terminal tiles"
-)]
 pub enum Sym
 {
     /// Recursive use of another grammar sort.
@@ -276,10 +268,6 @@ impl Sym
 
 /// Regular expression over grammar symbols.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the checker summarizes every regex combinator in this closed algebra"
-)]
 pub enum Regex
 {
     /// Empty language and empty sequence sentinel.
@@ -688,10 +676,6 @@ impl PrecTable
 
 /// Typed failure while constructing a checked PBG.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "PBG build diagnostics are a closed contract for sibling modules"
-)]
 pub enum PbgError
 {
     /// Compact mold sort tag was not one of the closed PBG sorts.
@@ -908,10 +892,6 @@ impl PbgError
 /// precedence bands are a per-module operator-fixity wiring concern, not this
 /// seam.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the MVP operator-extension fixity set is exactly these four shapes"
-)]
 pub enum Fixity
 {
     /// A left-associative infix operator `E op E` (at `expression.add`).

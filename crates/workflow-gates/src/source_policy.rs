@@ -266,10 +266,12 @@ pub fn run_soundness_oracles(path: &Path) -> GateResult
 /// - witness: `source_policy::tests::soundness_cfg_and_ignore_attributes_do_not_hide_test_marker`
 /// - witness: `source_policy::tests::soundness_tag_precedence_makes_witness_tag_free`
 #[inline]
-pub fn analyze_soundness_source<'semantic>(
+pub fn analyze_soundness_source<'semantic, Source>(
     path: &Path,
-    source: impl Into<SourceText<'semantic>>,
+    source: Source,
 ) -> GateResult
+where
+    Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
     let parsed = syn::parse_file(source).map_err(|error| GateError::RustParse {
@@ -408,10 +410,13 @@ fn resolve_root(
 /// - hypothesis: L3 pointwise — ordinary present, absent, and substring-only
 ///   sources distinguish exact token matching from the old regex heuristic.
 /// - witness: `source_policy::tests::options_truth_table_property`
-fn agda_options_contains_flag<'semantic>(
-    source: impl Into<SourceText<'semantic>>,
-    flag: impl Into<FlagText<'semantic>>,
+fn agda_options_contains_flag<'semantic, Source, Flag>(
+    source: Source,
+    flag: Flag,
 ) -> impl Into<AgdaOptionsContainsFlagFlag>
+where
+    Source: Into<SourceText<'semantic>>,
+    Flag: Into<FlagText<'semantic>>,
 {
     let flag = flag.into().0;
     let source = source.into().0;
@@ -423,10 +428,13 @@ fn agda_options_contains_flag<'semantic>(
 }
 
 /// Build a vacuity finding for one policy/root pair.
-fn options_vacuity_finding<'semantic>(
-    root: impl Into<RootText<'semantic>>,
-    flag: impl Into<FlagText<'semantic>>,
+fn options_vacuity_finding<'semantic, Root, Flag>(
+    root: Root,
+    flag: Flag,
 ) -> Finding
+where
+    Root: Into<RootText<'semantic>>,
+    Flag: Into<FlagText<'semantic>>,
 {
     let flag = flag.into().0;
     let root = root.into().0;
@@ -475,10 +483,13 @@ fn options_module_satisfies_policy(
 }
 
 /// Build a missing-flag finding for one policy/module pair.
-fn options_missing_finding<'semantic>(
-    path: impl Into<PathText<'semantic>>,
-    flag: impl Into<FlagText<'semantic>>,
+fn options_missing_finding<'semantic, Path, Flag>(
+    path: Path,
+    flag: Flag,
 ) -> Finding
+where
+    Path: Into<PathText<'semantic>>,
+    Flag: Into<FlagText<'semantic>>,
 {
     let flag = flag.into().0;
     let path = path.into().0;
@@ -524,14 +535,14 @@ fn collect_functions(syntax: &File) -> Vec<FunctionRecord<'_>>
         frame.next = next.saturating_add(1);
         stack.push(frame);
 
-        match *item {
-            | Item::Fn(ref item_fn) => {
+        match item {
+            | Item::Fn(item_fn) => {
                 functions.push(FunctionRecord {
                     name: item_fn.sig.ident.to_string(),
                     attrs: item_fn.attrs.as_slice(),
                 });
             },
-            | Item::Mod(ref item_mod) => {
+            | Item::Mod(item_mod) => {
                 if let Some(content) = item_mod.content.as_ref() {
                     stack.push(ItemFrame {
                         items: content.1.as_slice(),
@@ -627,14 +638,14 @@ fn doc_comment(attribute: &Attribute) -> Option<String>
     if !attribute.path().is_ident("doc") {
         return None;
     }
-    let Meta::NameValue(ref name_value) = attribute.meta
+    let Meta::NameValue(name_value) = &attribute.meta
     else {
         return None;
     };
     let Expr::Lit(ExprLit {
-        lit: Lit::Str(ref literal),
+        lit: Lit::Str(literal),
         ..
-    }) = name_value.value
+    }) = &name_value.value
     else {
         return None;
     };
@@ -655,7 +666,9 @@ fn doc_comment(attribute: &Attribute) -> Option<String>
 ///   separated by missing-witness and tag-precedence fixtures.
 /// - witness: `source_policy::tests::soundness_missing_witnesses_are_reported_deterministically`
 /// - witness: `source_policy::tests::soundness_tag_precedence_makes_witness_tag_free`
-fn parse_witness_names<'semantic>(payload: impl Into<PayloadText<'semantic>>) -> Vec<String>
+fn parse_witness_names<'semantic, Payload>(payload: Payload) -> Vec<String>
+where
+    Payload: Into<PayloadText<'semantic>>,
 {
     let payload = payload.into().0;
     return payload
@@ -680,11 +693,13 @@ fn parse_witness_names<'semantic>(payload: impl Into<PayloadText<'semantic>>) ->
 /// - hypothesis: L3 pointwise — exact-tag and substring-tag fixtures
 ///   distinguish unregistered oracles from tagged ones.
 /// - witness: `source_policy::tests::soundness_tags_must_be_exact_doc_items`
-fn append_unregistered_oracle_findings<'semantic>(
-    path: impl Into<PathText<'semantic>>,
+fn append_unregistered_oracle_findings<'semantic, Path>(
+    path: Path,
     oracles: &[OracleRecord],
     findings: &mut Vec<Finding>,
 )
+where
+    Path: Into<PathText<'semantic>>,
 {
     let path = path.into().0;
     for oracle in oracles
@@ -717,11 +732,13 @@ fn append_unregistered_oracle_findings<'semantic>(
 /// - hypothesis: L3 pointwise — a witness tag with empty payload is separated
 ///   from companion classification by the both-tags fixture.
 /// - witness: `source_policy::tests::soundness_tag_precedence_makes_witness_tag_free`
-fn append_no_witness_findings<'semantic>(
-    path: impl Into<PathText<'semantic>>,
+fn append_no_witness_findings<'semantic, Path>(
+    path: Path,
     oracles: &[OracleRecord],
     findings: &mut Vec<Finding>,
 )
+where
+    Path: Into<PathText<'semantic>>,
 {
     let path = path.into().0;
     for oracle in oracles
@@ -741,12 +758,16 @@ fn append_no_witness_findings<'semantic>(
 }
 
 /// Build a soundness finding for an oracle function.
-fn soundness_finding<'semantic>(
-    kind: impl Into<KindText<'semantic>>,
-    path: impl Into<PathText<'semantic>>,
-    oracle: impl Into<OracleText<'semantic>>,
+fn soundness_finding<'semantic, Kind, Path, Oracle>(
+    kind: Kind,
+    path: Path,
+    oracle: Oracle,
     detail: String,
 ) -> Finding
+where
+    Kind: Into<KindText<'semantic>>,
+    Path: Into<PathText<'semantic>>,
+    Oracle: Into<OracleText<'semantic>>,
 {
     let path = path.into().0;
     let oracle = oracle.into().0;
@@ -755,13 +776,18 @@ fn soundness_finding<'semantic>(
 }
 
 /// Build a soundness finding for one witness edge.
-fn soundness_witness_finding<'semantic>(
-    kind: impl Into<KindText<'semantic>>,
-    path: impl Into<PathText<'semantic>>,
-    oracle: impl Into<OracleText<'semantic>>,
-    witness: impl Into<WitnessText<'semantic>>,
+fn soundness_witness_finding<'semantic, Kind, Path, Oracle, Witness>(
+    kind: Kind,
+    path: Path,
+    oracle: Oracle,
+    witness: Witness,
     detail: String,
 ) -> Finding
+where
+    Kind: Into<KindText<'semantic>>,
+    Path: Into<PathText<'semantic>>,
+    Oracle: Into<OracleText<'semantic>>,
+    Witness: Into<WitnessText<'semantic>>,
 {
     let path = path.into().0;
     let oracle = oracle.into().0;
@@ -784,10 +810,13 @@ fn soundness_witness_finding<'semantic>(
 ///   nonmatching helpers cover the policy-level projection that only
 ///   `coherence` tests are analyzed.
 /// - witness: `source_policy::tests::soundness_cfg_and_ignore_attributes_do_not_hide_test_marker`
-fn contains_ascii_case_insensitive<'semantic>(
-    haystack: impl Into<HaystackText<'semantic>>,
-    needle: impl Into<NeedleText<'semantic>>,
+fn contains_ascii_case_insensitive<'semantic, Haystack, Needle>(
+    haystack: Haystack,
+    needle: Needle,
 ) -> impl Into<AsciiCaseInsensitiveFlag>
+where
+    Haystack: Into<HaystackText<'semantic>>,
+    Needle: Into<NeedleText<'semantic>>,
 {
     let needle = needle.into().0;
     let haystack = haystack.into().0;
@@ -817,13 +846,15 @@ fn contains_ascii_case_insensitive<'semantic>(
 /// - hypothesis: L3 pointwise — absent witness and present-but-uncompanion
 ///   witness names are separated by exact finding kinds and order.
 /// - witness: `source_policy::tests::soundness_missing_witnesses_are_reported_deterministically`
-fn append_bad_witness_findings<'semantic>(
-    path: impl Into<PathText<'semantic>>,
+fn append_bad_witness_findings<'semantic, Path>(
+    path: Path,
     oracles: &[OracleRecord],
     all_functions: &BTreeSet<String>,
     companions: &BTreeSet<String>,
     findings: &mut Vec<Finding>,
 )
+where
+    Path: Into<PathText<'semantic>>,
 {
     let path = path.into().0;
     for oracle in oracles
@@ -860,10 +891,13 @@ fn append_bad_witness_findings<'semantic>(
 }
 
 /// Return whether two equal-length byte slices match under ASCII case folding.
-fn ascii_bytes_eq_ignore_case<'semantic>(
-    left: impl Into<LeftBytes<'semantic>>,
-    right: impl Into<RightBytes<'semantic>>,
+fn ascii_bytes_eq_ignore_case<'semantic, Left, Right>(
+    left: Left,
+    right: Right,
 ) -> impl Into<AsciiBytesEqIgnoreCaseFlag>
+where
+    Left: Into<LeftBytes<'semantic>>,
+    Right: Into<RightBytes<'semantic>>,
 {
     let right = right.into().0;
     let left = left.into().0;
@@ -946,10 +980,12 @@ fn display_path(path: &Path) -> String
 /// - witness: `source_policy::tests::soundness_tag_precedence_makes_witness_tag_free`
 #[inline]
 #[must_use]
-pub fn analyze_soundness_file<'semantic>(
-    path: impl Into<PathText<'semantic>>,
+pub fn analyze_soundness_file<'semantic, Path>(
+    path: Path,
     syntax: &File,
 ) -> Vec<Finding>
+where
+    Path: Into<PathText<'semantic>>,
 {
     let path = path.into().0;
     let functions = collect_functions(syntax);
@@ -1187,7 +1223,9 @@ mod tests
     }
 
     /// Build one borrowed OPTIONS module fixture.
-    fn options_module(source: impl Into<OptionalSourceText<'static>>) -> OptionsModule<'static>
+    fn options_module<Source>(source: Source) -> OptionsModule<'static>
+    where
+        Source: Into<OptionalSourceText<'static>>,
     {
         let source = source.into().0;
         return OptionsModule {
@@ -1225,8 +1263,9 @@ mod tests
     }
 
     /// Analyze one Rust source fixture through the parser-backed API.
-    fn analyze_soundness_fixture<'semantic>(source: impl Into<SourceText<'semantic>>)
-    -> GateResult
+    fn analyze_soundness_fixture<'semantic, Source>(source: Source) -> GateResult
+    where
+        Source: Into<SourceText<'semantic>>,
     {
         let source = source.into().0;
         return analyze_soundness_source(

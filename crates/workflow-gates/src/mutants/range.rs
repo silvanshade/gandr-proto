@@ -76,10 +76,13 @@ impl CommitId
     ///   separated by exact malformed-scheduled-ref fixtures.
     /// - witness: `mutants::range::tests::scheduled_range_rejects_invalid_oid_and_topology`
     #[inline]
-    pub(crate) fn parse<'semantic>(
-        value: impl Into<ValueText<'semantic>>,
-        label: impl Into<LabelText<'semantic>>,
+    pub(crate) fn parse<'semantic, Value, Label>(
+        value: Value,
+        label: Label,
     ) -> Result<Self, GateError>
+    where
+        Value: Into<ValueText<'semantic>>,
+        Label: Into<LabelText<'semantic>>,
     {
         let label = label.into().0;
         let value = value.into().0;
@@ -161,12 +164,12 @@ pub(crate) fn merge_diff_plan() -> GitDiffPlan
 #[must_use]
 pub(crate) fn push_diff_plan(plan: &PushRangePlan) -> GitDiffPlan
 {
-    match *plan {
-        | PushRangePlan::Range { ref from, ref to } => diff_plan(
+    match plan {
+        | PushRangePlan::Range { from, to } => diff_plan(
             DiffKind::Push(PushRangeMode::Range),
             &format!("{from}...{to}"),
         ),
-        | PushRangePlan::Full { ref root, ref to } => diff_plan(
+        | PushRangePlan::Full { root, to } => diff_plan(
             DiffKind::Push(PushRangeMode::Full),
             &format!("{root}...{to}"),
         ),
@@ -257,10 +260,13 @@ pub(crate) fn scheduled_diff_plan(input: &ScheduledRangeInput<'_>)
 /// - witness: `mutants::range::tests::scheduled_ref_tokens_reject_malformed_inputs`
 /// - witness: `mutants::range::tests::scheduled_ref_token_ascii_whitelist_is_exact`
 #[inline]
-pub(crate) fn validate_scheduled_ref_token<'semantic>(
-    token: impl Into<TokenText<'semantic>>,
-    label: impl Into<LabelText<'semantic>>,
+pub(crate) fn validate_scheduled_ref_token<'semantic, Token, Label>(
+    token: Token,
+    label: Label,
 ) -> Result<RefToken, GateError>
+where
+    Token: Into<TokenText<'semantic>>,
+    Label: Into<LabelText<'semantic>>,
 {
     let label = label.into().0;
     let token = token.into().0;
@@ -324,10 +330,12 @@ pub(crate) fn validate_scheduled_ref_token<'semantic>(
 /// - witness: `mutants::range::tests::rust_diff_detection_matches_target_lines_only`
 #[inline]
 #[must_use]
-pub(crate) fn plan_in_diff_campaign<'semantic>(
+pub(crate) fn plan_in_diff_campaign<'semantic, DiffText>(
     diff: GitDiffPlan,
-    diff_text: impl Into<DiffTextText<'semantic>>,
+    diff_text: DiffText,
 ) -> RangeCampaignPlan
+where
+    DiffText: Into<DiffTextText<'semantic>>,
 {
     let diff_text = diff_text.into().0;
     if diff_touches_rust(diff_text).into().0 {
@@ -355,9 +363,11 @@ pub(crate) fn plan_in_diff_campaign<'semantic>(
 /// - witness: `mutants::range::tests::rust_diff_detection_matches_target_lines_only`
 #[inline]
 #[must_use]
-pub(crate) fn diff_touches_rust<'semantic>(
-    diff_text: impl Into<DiffTextText<'semantic>>
+pub(crate) fn diff_touches_rust<'semantic, DiffText>(
+    diff_text: DiffText,
 ) -> impl Into<DiffTouchesRustFlag>
+where
+    DiffText: Into<DiffTextText<'semantic>>,
 {
     let diff_text = diff_text.into().0;
     diff_text
@@ -367,9 +377,9 @@ pub(crate) fn diff_touches_rust<'semantic>(
 
 /// Return whether one unified diff line names a Rust target file.
 #[inline]
-fn diff_target_is_rust<'semantic>(
-    line: impl Into<LineText<'semantic>>
-) -> impl Into<DiffTargetIsRustFlag>
+fn diff_target_is_rust<'semantic, Line>(line: Line) -> impl Into<DiffTargetIsRustFlag>
+where
+    Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
     line.strip_prefix("+++ ")
@@ -378,10 +388,13 @@ fn diff_target_is_rust<'semantic>(
 
 /// Return whether a path-like token has the requested extension.
 #[inline]
-fn has_path_extension<'semantic>(
-    value: impl Into<ValueText<'semantic>>,
-    extension: impl Into<ExtensionText<'semantic>>,
+fn has_path_extension<'semantic, Value, Extension>(
+    value: Value,
+    extension: Extension,
 ) -> impl Into<PathExtensionFlag>
+where
+    Value: Into<ValueText<'semantic>>,
+    Extension: Into<ExtensionText<'semantic>>,
 {
     let extension = extension.into().0;
     let value = value.into().0;
@@ -392,10 +405,12 @@ fn has_path_extension<'semantic>(
 
 /// Render a `git diff` plan for one diff spec.
 #[inline]
-fn diff_plan<'semantic>(
+fn diff_plan<'semantic, Spec>(
     kind: DiffKind,
-    spec: impl Into<SpecText<'semantic>>,
+    spec: Spec,
 ) -> GitDiffPlan
+where
+    Spec: Into<SpecText<'semantic>>,
 {
     let spec = spec.into().0;
     GitDiffPlan {
@@ -406,10 +421,13 @@ fn diff_plan<'semantic>(
 
 /// Require a nonempty push endpoint.
 #[inline]
-fn require_nonempty<'semantic>(
-    value: impl Into<ValueText<'semantic>>,
-    detail: impl Into<DetailText<'semantic>>,
+fn require_nonempty<'semantic, Value, Detail>(
+    value: Value,
+    detail: Detail,
 ) -> Result<(), GateError>
+where
+    Value: Into<ValueText<'semantic>>,
+    Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     let value = value.into().0;
@@ -423,7 +441,9 @@ fn require_nonempty<'semantic>(
 
 /// Return whether a character is accepted after the first ref-token character.
 #[inline]
-fn is_ref_body_char(ch: impl Into<ChCharacter>) -> impl Into<RefBodyCharFlag>
+fn is_ref_body_char<Ch>(ch: Ch) -> impl Into<RefBodyCharFlag>
+where
+    Ch: Into<ChCharacter>,
 {
     let ch = ch.into().0;
     ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '/' | '-')
@@ -431,7 +451,9 @@ fn is_ref_body_char(ch: impl Into<ChCharacter>) -> impl Into<RefBodyCharFlag>
 
 /// Return whether a character is a lowercase hexadecimal digit.
 #[inline]
-fn is_lower_hex_digit(ch: impl Into<ChCharacter>) -> impl Into<LowerHexDigitFlag>
+fn is_lower_hex_digit<Ch>(ch: Ch) -> impl Into<LowerHexDigitFlag>
+where
+    Ch: Into<ChCharacter>,
 {
     let ch = ch.into().0;
     ch.is_ascii_digit() || matches!(ch, 'a' | 'b' | 'c' | 'd' | 'e' | 'f')
@@ -535,10 +557,13 @@ impl PushRangePlan
     ///   are separated by exact push-mode witnesses.
     /// - witness: `mutants::range::tests::push_range_modes_render_exact_three_dot_specs`
     #[inline]
-    pub fn range<'semantic>(
-        from: impl Into<FromText<'semantic>>,
-        to: impl Into<ToText<'semantic>>,
+    pub fn range<'semantic, Lower, Upper>(
+        from: Lower,
+        to: Upper,
     ) -> Result<Self, GateError>
+    where
+        Lower: Into<FromText<'semantic>>,
+        Upper: Into<ToText<'semantic>>,
     {
         let to = to.into().0;
         let from = from.into().0;
@@ -572,10 +597,13 @@ impl PushRangePlan
     ///   separated by exact push-mode witnesses.
     /// - witness: `mutants::range::tests::push_range_modes_render_exact_three_dot_specs`
     #[inline]
-    pub fn full<'semantic>(
-        root: impl Into<RootText<'semantic>>,
-        to: impl Into<ToText<'semantic>>,
+    pub fn full<'semantic, Root, Upper>(
+        root: Root,
+        to: Upper,
     ) -> Result<Self, GateError>
+    where
+        Root: Into<RootText<'semantic>>,
+        Upper: Into<ToText<'semantic>>,
     {
         let to = to.into().0;
         let root = root.into().0;
@@ -605,7 +633,9 @@ impl PushRangePlan
     ///   diff rendering are separated by exact push-mode witnesses.
     /// - witness: `mutants::range::tests::push_range_modes_render_exact_three_dot_specs`
     #[inline]
-    pub fn last<'semantic>(to: impl Into<ToText<'semantic>>) -> Result<Self, GateError>
+    pub fn last<'semantic, Upper>(to: Upper) -> Result<Self, GateError>
+    where
+        Upper: Into<ToText<'semantic>>,
     {
         let to = to.into().0;
         require_nonempty(to, "mutants-vm: push last mode requires an upper endpoint")?;
@@ -670,10 +700,12 @@ mod tests
     use super::*;
 
     /// Assert that an error display contains a stable fragment.
-    fn assert_error_contains<'semantic>(
+    fn assert_error_contains<'semantic, Needle>(
         result: Result<GitDiffPlan, GateError>,
-        needle: impl Into<NeedleText<'semantic>>,
+        needle: Needle,
     )
+    where
+        Needle: Into<NeedleText<'semantic>>,
     {
         let needle = needle.into().0;
         let error = result.expect_err("fixture must fail");
@@ -861,7 +893,9 @@ mod tests
     }
 
     /// Build a valid forty-character lowercase hexadecimal oid fixture.
-    fn oid(ch: impl Into<ChCharacter>) -> String
+    fn oid<Ch>(ch: Ch) -> String
+    where
+        Ch: Into<ChCharacter>,
     {
         let ch = ch.into().0;
         core::iter::repeat_n(ch, GIT_OID_HEX_CHARS).collect()

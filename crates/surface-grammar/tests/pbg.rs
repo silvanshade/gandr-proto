@@ -430,7 +430,7 @@ mod contracts
         );
         assert_eq!(
             extended.mold_count().0,
-            base_molds.0 + 1,
+            base_molds.0.saturating_add(1),
             "the infix operator adds exactly its one tile occurrence"
         );
 
@@ -476,7 +476,7 @@ mod contracts
                 );
             }
         }
-        assert_eq!(extended.mold_count().0, base_max.0 + 2);
+        assert_eq!(extended.mold_count().0, base_max.0.saturating_add(2));
         Ok(())
     }
 

@@ -66,10 +66,13 @@ pub use policy::ratchet_report;
 /// - witness: `gandr_workflow_gates::fuzzing::exercise_fuzz_input`
 #[cfg(feature = "fuzzing")]
 #[inline]
-pub(crate) fn parse_floors_text_for_fuzzing<'semantic>(
-    source_name: impl Into<SourceNameText<'semantic>>,
-    text: impl Into<TextText<'semantic>>,
+pub(crate) fn parse_floors_text_for_fuzzing<'semantic, S, T>(
+    source_name: S,
+    text: T,
 ) -> Result<CoverageFloors, crate::GateError>
+where
+    S: Into<SourceNameText<'semantic>>,
+    T: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let source_name = source_name.into().0;

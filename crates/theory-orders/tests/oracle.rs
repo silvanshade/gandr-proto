@@ -82,19 +82,24 @@ mod tests
                     if model.is_empty() {
                         continue;
                     }
-                    let index = raw_index % model.len();
+                    let index = raw_index
+                        .checked_rem(model.len())
+                        .expect("the model is non-empty");
                     let anchor = *handles.get(index).expect("index is in range");
                     let pos = order
                         .insert_after(anchor, value)
                         .expect("insert_after succeeds");
-                    model.insert(index + 1, value);
-                    handles.insert(index + 1, pos);
+                    let after = index.checked_add(1).expect("index + 1 fits");
+                    model.insert(after, value);
+                    handles.insert(after, pos);
                 },
                 | Op::InsertBefore(raw_index, value) => {
                     if model.is_empty() {
                         continue;
                     }
-                    let index = raw_index % model.len();
+                    let index = raw_index
+                        .checked_rem(model.len())
+                        .expect("the model is non-empty");
                     let anchor = *handles.get(index).expect("index is in range");
                     let pos = order
                         .insert_before(anchor, value)
@@ -106,7 +111,9 @@ mod tests
                     if model.is_empty() {
                         continue;
                     }
-                    let index = raw_index % model.len();
+                    let index = raw_index
+                        .checked_rem(model.len())
+                        .expect("the model is non-empty");
                     let target = *handles.get(index).expect("index is in range");
                     let expected = *model.get(index).expect("index is in range");
                     assert_eq!(
@@ -160,8 +167,11 @@ mod tests
                 .insert_after(anchor, OracleValue(value))
                 .expect("insert_after succeeds under relabel");
         }
-        let mut expected: Vec<OracleValue> =
-            Vec::with_capacity(usize::try_from(count).expect("fits") + 2);
+        let capacity = usize::try_from(count)
+            .expect("count fits in usize")
+            .checked_add(2)
+            .expect("count + 2 fits in usize");
+        let mut expected: Vec<OracleValue> = Vec::with_capacity(capacity);
         expected.push(OracleValue(0));
         expected.extend((1 ..= count).rev().map(OracleValue));
         expected.push(OracleValue(u64::MAX));

@@ -369,14 +369,15 @@ where
 }
 
 /// Restore the previous report when the final staged-to-current rename fails.
-fn rollback_final_rename<FileSystem>(
+fn rollback_final_rename<FileSystem, MovedPrevious>(
     filesystem: &mut FileSystem,
     paths: &ReportPaths,
-    moved_previous: impl Into<MovedPreviousFlag>,
+    moved_previous: MovedPrevious,
     final_error: &GateError,
 ) -> Result<(), GateError>
 where
     FileSystem: ReportFileSystem,
+    MovedPrevious: Into<MovedPreviousFlag>,
 {
     let moved_previous = moved_previous.into().0;
     if !moved_previous {
@@ -442,7 +443,7 @@ fn copy_report_dir(
                 )));
             }
             else {
-                crate::support::HOST_FILESYSTEM.copy(&entry_source, &entry_destination)?;
+                crate::support::HOST_FILESYSTEM.copy(entry_source, entry_destination)?;
             }
         }
     }
@@ -452,6 +453,8 @@ fn copy_report_dir(
 #[cfg(test)]
 mod tests
 {
+    //! Behavioral tests for failure-atomic report publication.
+
     use alloc::format;
     use alloc::string::String;
     use core::error::Error;
@@ -983,7 +986,9 @@ mod tests
     }
 
     /// Return a unique temporary test directory path.
-    fn unique_root<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<PathBuf, GateError>
+    fn unique_root<'semantic, Name>(name: Name) -> Result<PathBuf, GateError>
+    where
+        Name: Into<NameText<'semantic>>,
     {
         let name = name.into().0;
         let timestamp = SystemTime::now()
@@ -1030,10 +1035,12 @@ mod tests
     }
 
     /// Write a marker file into a report directory.
-    fn write_marker<'semantic>(
+    fn write_marker<'semantic, Value>(
         report_dir: &Path,
-        value: impl Into<super::ValueText<'semantic>>,
+        value: Value,
     ) -> Result<(), GateError>
+    where
+        Value: Into<super::ValueText<'semantic>>,
     {
         let value = value.into().0;
         crate::support::HOST_FILESYSTEM.create_dir_all(report_dir)?;

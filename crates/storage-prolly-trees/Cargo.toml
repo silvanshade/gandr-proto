@@ -10,14 +10,11 @@ description = "Ordered-record Merkle search tree with membership/non-membership/
 readme.workspace = true
 license.workspace = true
 publish.workspace = true
+autotests = false
 
-[dependencies]
-blake3 = { workspace = true }
-gandr-storage-chunker = { path = "../storage-chunker" }
-thiserror = { workspace = true }
-
-[dev-dependencies]
-bao = { workspace = true }
+[[test]]
+name = "lib"
+path = "tests/lib.rs"
 
 [features]
 default = ["proofs"]
@@ -29,3 +26,11 @@ proofs = []
 
 [lints]
 workspace = true
+
+[dependencies]
+gandr-storage-chunker.workspace = true
+blake3.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+bao.workspace = true

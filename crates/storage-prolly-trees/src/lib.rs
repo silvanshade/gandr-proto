@@ -70,17 +70,8 @@
 //!   multi-writer merge semantics, and standalone repository extraction remain
 //!   outside this skeleton.
 
-#![expect(
-    clippy::pub_use,
-    reason = "crate root intentionally exposes a flat public API for this small core crate"
-)]
-
 extern crate alloc;
 
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "ProllyBaoError keeps crate-specific error identity in the public API"
-)]
 pub mod error;
 pub mod proof;
 pub mod store;

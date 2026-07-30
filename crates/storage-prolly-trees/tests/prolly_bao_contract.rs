@@ -1,7 +1,4 @@
 #[cfg(test)]
-mod support;
-
-#[cfg(test)]
 mod tests
 {
     use gandr_storage_chunker::AlgorithmVersion;
@@ -45,16 +42,16 @@ mod tests
     use gandr_storage_prolly_trees::verify_snapshot_bytes;
     use gandr_storage_prolly_trees::verify_stored_node;
 
-    use crate::support::ByteLength;
-    use crate::support::ByteOffset;
-    use crate::support::FixtureBytes;
-    use crate::support::FixtureBytesMut;
-    use crate::support::FixtureLong;
-    use crate::support::FixtureSlice;
-    use crate::support::FixtureWord;
-    use crate::support::OwnedFixtureBytes;
-    use crate::support::ProofNodeIndex;
-    use crate::support::TestContext;
+    use crate::common::ByteLength;
+    use crate::common::ByteOffset;
+    use crate::common::FixtureBytes;
+    use crate::common::FixtureBytesMut;
+    use crate::common::FixtureLong;
+    use crate::common::FixtureSlice;
+    use crate::common::FixtureWord;
+    use crate::common::OwnedFixtureBytes;
+    use crate::common::ProofNodeIndex;
+    use crate::common::TestContext;
 
     const SNAPSHOT_MAGIC: &[u8] = b"prolly-bao:snapshot:v1";
     const WITNESS_MAGIC: &[u8] = b"prolly-bao:witness:v1";

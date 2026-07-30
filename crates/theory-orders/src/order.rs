@@ -29,7 +29,7 @@ impl StructureIdCounter
     #[inline]
     fn nearly_exhausted() -> Self
     {
-        return Self(AtomicU64::new(u64::MAX - 1));
+        return Self(AtomicU64::new(u64::MAX.wrapping_sub(1)));
     }
 
     /// Mints the next distinct [`StructureId`] from this counter.
@@ -1369,7 +1369,7 @@ mod tests
                 }
                 previous_label = Some(occupied.label);
                 last_seen = Some(index);
-                count += 1;
+                count = count.saturating_add(1);
                 cursor = occupied.next;
             }
             assert_eq!(count, usize::from(order.len), "forward length matches len");
@@ -1381,7 +1381,7 @@ mod tests
             while let Some(index) = back_cursor {
                 let occupied = order.occupied(index).expect("listed slot is occupied");
                 first_seen = Some(index);
-                back_count += 1;
+                back_count = back_count.saturating_add(1);
                 back_cursor = occupied.prev;
             }
             assert_eq!(

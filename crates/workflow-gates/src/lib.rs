@@ -4,33 +4,6 @@
 //! the domain-specific `syn` traversal for contracts, CI workflow contracts,
 //! and graph-boundary checks.
 
-// Crate-local lint-wall overrides, parked for triage (gandr-0ze): this crate
-// predates the current wall and was lint-exempt in wyrd; every code below
-// fired under the workspace wall at port time (2026-07-19, nightly clippy
-// 1.99). Kept as one dedicated block so triage can find it: remove entries as
-// their sites are remediated — the macro-heavy codes collapse into a few
-// macro-definition fixes.
-#![allow(
-    clippy::as_conversions,
-    clippy::create_dir,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::elidable_lifetime_names,
-    clippy::explicit_auto_deref,
-    clippy::field_scoped_visibility_modifiers,
-    clippy::if_then_some_else_none,
-    clippy::impl_trait_in_params,
-    clippy::indexing_slicing,
-    clippy::missing_docs_in_private_items,
-    clippy::missing_inline_in_public_items,
-    clippy::needless_borrows_for_generic_args,
-    clippy::needless_pass_by_value,
-    clippy::pattern_type_mismatch,
-    clippy::std_instead_of_alloc,
-    clippy::useless_conversion,
-    reason = "ported crate predates the current lint wall; parked for triage (gandr-0ze)"
-)]
-
 extern crate alloc;
 
 use alloc::string::String;
@@ -40,7 +13,9 @@ use std::path::PathBuf;
 
 /// Convert a value into an explicitly selected semantic boundary type.
 #[inline]
-pub fn semantic_value<T>(value: impl Into<T>) -> T
+pub fn semantic_value<T, Value>(value: Value) -> T
+where
+    Value: Into<T>,
 {
     value.into()
 }
@@ -51,7 +26,8 @@ macro_rules! semantic_str {
     ($vis:vis struct $name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        $vis struct $name<'text>(pub(crate) &'text str);
+        #[non_exhaustive]
+        $vis struct $name<'text>(pub &'text str);
 
         impl<'text> From<&'text str> for $name<'text> {
             #[inline]
@@ -60,9 +36,9 @@ macro_rules! semantic_str {
             }
         }
 
-        impl<'text> From<&'text std::string::String> for $name<'text> {
+        impl<'text> From<&'text alloc::string::String> for $name<'text> {
             #[inline]
-            fn from(value: &'text std::string::String) -> Self {
+            fn from(value: &'text alloc::string::String) -> Self {
                 Self(value.as_str())
             }
         }
@@ -99,7 +75,8 @@ macro_rules! semantic_optional_str {
     ($vis:vis struct $name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        $vis struct $name<'text>(pub(crate) Option<&'text str>);
+        #[non_exhaustive]
+        $vis struct $name<'text>(pub Option<&'text str>);
 
         impl<'text> From<Option<&'text str>> for $name<'text> {
             #[inline]
@@ -124,7 +101,8 @@ macro_rules! semantic_bytes {
     ($vis:vis struct $name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        $vis struct $name<'bytes>(pub(crate) &'bytes [u8]);
+        #[non_exhaustive]
+        $vis struct $name<'bytes>(pub &'bytes [u8]);
 
         impl<'bytes> From<&'bytes [u8]> for $name<'bytes> {
             #[inline]
@@ -140,9 +118,9 @@ macro_rules! semantic_bytes {
             }
         }
 
-        impl<'bytes> From<&'bytes std::vec::Vec<u8>> for $name<'bytes> {
+        impl<'bytes> From<&'bytes alloc::vec::Vec<u8>> for $name<'bytes> {
             #[inline]
-            fn from(value: &'bytes std::vec::Vec<u8>) -> Self {
+            fn from(value: &'bytes alloc::vec::Vec<u8>) -> Self {
                 Self(value.as_slice())
             }
         }
@@ -162,8 +140,9 @@ macro_rules! semantic_bytes {
 macro_rules! semantic_optional_copy {
     ($vis:vis struct $name:ident($inner:ty)) => {
         #[repr(transparent)]
-        #[derive(Clone, Copy, Debug, PartialEq)]
-        $vis struct $name(pub(crate) Option<$inner>);
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        #[non_exhaustive]
+        $vis struct $name(pub Option<$inner>);
 
         impl From<Option<$inner>> for $name {
             #[inline]
@@ -186,8 +165,9 @@ macro_rules! semantic_optional_copy {
 macro_rules! semantic_copy {
     ($vis:vis struct $name:ident($inner:ty)) => {
         #[repr(transparent)]
-        #[derive(Clone, Copy, Debug, PartialEq)]
-        $vis struct $name(pub(crate) $inner);
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        #[non_exhaustive]
+        $vis struct $name(pub $inner);
 
         impl From<$inner> for $name {
             #[inline]
@@ -551,10 +531,12 @@ impl fmt::Write for StableFormatter<'_, '_>
 ///   exact rendered diagnostic and formatter-error observations.
 /// - witness: `gandr_workflow_gates::tests::finding_display_preserves_field_order_and_normalizes_whitespace`
 /// - witness: `gandr_workflow_gates::tests::stable_formatters_propagate_destination_failures`
-fn write_stable_value<'semantic>(
+fn write_stable_value<Value>(
     formatter: &mut fmt::Formatter<'_>,
-    value: impl Into<ValueText<'semantic>>,
+    value: Value,
 ) -> fmt::Result
+where
+    Value: Into<ValueText<'_>>,
 {
     let value = value.into().0;
     for character in value.chars() {

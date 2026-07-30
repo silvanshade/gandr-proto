@@ -187,10 +187,11 @@ impl<'text> From<&'text str> for ListTag<'text>
     }
 }
 
-/// The display texts the linearized-prose lane resolves references through:
-/// term constants to their rendered text, anchor constants to their target
-/// titles — both extracted from the compiled grammar by the runtime (never
-/// parsed from the generated modules; the bindings-first doctrine).
+/// The display texts the linearized-prose lane resolves references through.
+///
+/// Term constants map to their rendered text, anchor constants to their
+/// target titles — both extracted from the compiled grammar by the runtime
+/// (never parsed from the generated modules; the bindings-first doctrine).
 #[derive(Clone, Debug, Default)]
 #[non_exhaustive]
 pub struct LexiconViews

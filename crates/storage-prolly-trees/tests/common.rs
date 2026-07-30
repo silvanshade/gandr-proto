@@ -1,8 +1,3 @@
-#![allow(
-    dead_code,
-    reason = "shared integration-test carriers are compiled separately by each test target"
-)]
-
 use core::ops::Deref;
 use core::ops::DerefMut;
 

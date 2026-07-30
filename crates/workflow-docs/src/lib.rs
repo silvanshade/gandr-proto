@@ -3,8 +3,6 @@
 // in `gandr-workflow-grammatical-framework`; never re-implement what the
 // runtime provides (the retired `.gfd` reader is the cautionary example).
 
-#![expect(clippy::too_long_first_doc_paragraph, reason = "bugged")]
-
 //! `GF`-native documentation pipeline.
 //!
 //! The spec corpus is authored as `GF` abstract-syntax trees(`.gfd`, read by

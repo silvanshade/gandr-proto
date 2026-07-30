@@ -4,19 +4,7 @@
 //! Domain modules own validation and side effects; this layer maps the retained
 //! command inventory onto typed domain entry points and process exit semantics.
 
-// Crate-local lint-wall overrides, parked for triage (gandr-0ze): see the
-// matching block in `src/lib.rs`. Remove entries as their sites are
-// remediated.
-#![allow(
-    clippy::derive_partial_eq_without_eq,
-    clippy::field_scoped_visibility_modifiers,
-    reason = "ported crate predates the current lint wall; parked for triage (gandr-0ze)"
-)]
-#![allow(
-    clippy::print_stderr,
-    clippy::print_stdout,
-    reason = "standard io allowed for binaries"
-)]
+extern crate alloc;
 
 use std::env;
 use std::ffi::OsStr;
@@ -141,7 +129,8 @@ pub fn main() -> ExitCode
     match run() {
         | Ok(outcome) => outcome.into_exit_code(),
         | Err(error) => {
-            eprintln!("{error}");
+            let mut stderr = std::io::stderr();
+            drop(writeln!(stderr, "{error}"));
             ExitCode::from(EXIT_OPERATIONAL)
         },
     }
@@ -331,11 +320,13 @@ fn exit_code_from_status(status: ExitStatus) -> ExitCode
 /// Print page-balance informational notes.
 fn print_page_balance_report(report: &PageBalanceReport)
 {
+    let mut stdout = std::io::stdout().lock();
     for probe in &report.late_probes {
-        println!(
+        drop(writeln!(
+            stdout,
             "NOTE page-balance probe -- `{}` opens on page {} at {:.2}mm",
             probe.kind, probe.page, probe.y_mm
-        );
+        ));
     }
 }
 
@@ -639,12 +630,13 @@ where
 }
 
 /// Parse a command that accepts exactly one required `--workspace-root PATH`.
-fn parse_required_workspace_root<'semantic, Arguments>(
+fn parse_required_workspace_root<'semantic, Arguments, CommandName>(
     arguments: Arguments,
-    command_name: impl Into<CommandNameText<'semantic>>,
+    command_name: CommandName,
 ) -> Result<PathBuf, GateError>
 where
     Arguments: IntoIterator<Item = OsString>,
+    CommandName: Into<CommandNameText<'semantic>>,
 {
     let command_name = command_name.into().0;
     let mut workspace_root = None;
@@ -947,12 +939,15 @@ fn default_mutants_temporary_paths(
 }
 
 /// Build one default temporary path candidate set.
-fn mutants_temporary_paths_candidate(
+fn mutants_temporary_paths_candidate<Nonce, Attempt>(
     workspace_root: &Path,
     mode: MutantsHostMode,
-    nonce: impl Into<NonceNonce>,
-    attempt: impl Into<AttemptCount>,
+    nonce: Nonce,
+    attempt: Attempt,
 ) -> MutantsTemporaryPaths
+where
+    Nonce: Into<NonceNonce>,
+    Attempt: Into<AttemptCount>,
 {
     let attempt = attempt.into().0;
     let nonce = nonce.into().0;
@@ -1246,11 +1241,11 @@ fn ensure_agda_stdlib(plan: &AgdaDependencyPlan) -> Result<(), GateError>
     }
 
     let vendor = agda_vendor_dir(plan);
-    gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&vendor)?;
+    gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(vendor)?;
 
     let stdlib = agda_stdlib_dir(plan);
     if gandr_workflow_gates::support::HOST_FILESYSTEM
-        .try_exists(&stdlib)
+        .try_exists(stdlib)
         .map(bool::from)?
     {
         run_agda_git_command("fetch", &agda_fetch_command_plan(plan))?;
@@ -1295,11 +1290,11 @@ fn write_agda_libraries_file(plan: &AgdaDependencyPlan) -> Result<(), GateError>
 {
     let stdlib_lib = agda_stdlib_lib_path(plan);
     let canonical_stdlib_lib =
-        gandr_workflow_gates::support::HOST_FILESYSTEM.canonicalize(&stdlib_lib)?;
+        gandr_workflow_gates::support::HOST_FILESYSTEM.canonicalize(stdlib_lib)?;
     let mut line = canonical_stdlib_lib.to_string_lossy().into_owned();
     line.push('\n');
     let libraries = agda_libraries_file(plan);
-    gandr_workflow_gates::support::HOST_FILESYSTEM.write(&libraries, line)
+    gandr_workflow_gates::support::HOST_FILESYSTEM.write(libraries, line)
 }
 
 /// Emit the stable Agda dependency success line.
@@ -1396,10 +1391,12 @@ pub(crate) fn agda_fetch_command_plan(plan: &AgdaDependencyPlan) -> AgdaDependen
 ///   removed by the runner.
 /// - witness: `tooling::agda_deps_plan_uses_sanitized_git_commands_without_execution`
 /// - witness: `gandr_workflow_gates::support::tests::git_environment_sanitizer_removes_only_git_keys`
-fn run_agda_git_command<'semantic>(
-    action: impl Into<ActionText<'semantic>>,
+fn run_agda_git_command<'semantic, Action>(
+    action: Action,
     plan: &AgdaDependencyGitCommandPlan,
 ) -> Result<(), GateError>
+where
+    Action: Into<ActionText<'semantic>>,
 {
     let action = action.into().0;
     let status = gandr_workflow_gates::support::run_status(
@@ -1664,7 +1661,9 @@ fn stdio_from_mode(mode: ExternalStream) -> Stdio
 }
 
 /// Build a stable fuzz-smoke operational error.
-fn fuzz_error(detail: impl Into<String>) -> GateError
+fn fuzz_error<Detail>(detail: Detail) -> GateError
+where
+    Detail: Into<String>,
 {
     let detail = detail.into();
     GateError::operational(detail)
@@ -1740,12 +1739,13 @@ pub fn fuzz_replay_command_plan(target: FuzzSmokeTarget) -> FuzzExternalCommandP
 /// # Adequacy
 /// - hypothesis: L3 only — present-value, following-option, and end-of-iterator
 ///   branches are exercised by parser tests.
-fn take_option_value<'semantic, Arguments>(
-    option_name: impl Into<OptionNameText<'semantic>>,
+fn take_option_value<'semantic, Arguments, OptionName>(
+    option_name: OptionName,
     arguments: &mut core::iter::Peekable<Arguments>,
 ) -> Result<OsString, GateError>
 where
     Arguments: Iterator<Item = OsString>,
+    OptionName: Into<OptionNameText<'semantic>>,
 {
     let option_name = option_name.into().0;
     if arguments
@@ -1760,10 +1760,12 @@ where
 }
 
 /// Convert an OS string into UTF-8 for domains that require textual tokens.
-fn os_string_into_utf8<'semantic>(
-    label: impl Into<LabelText<'semantic>>,
+fn os_string_into_utf8<'semantic, Label>(
+    label: Label,
     value: OsString,
 ) -> Result<String, GateError>
+where
+    Label: Into<LabelText<'semantic>>,
 {
     let label = label.into().0;
     value.into_string().map_err(|invalid| {
@@ -1848,11 +1850,13 @@ fn is_option_token(value: &OsStr) -> impl Into<OptionTokenFlag>
 }
 
 /// Set an optional singleton or return its duplicate-flag usage error.
-fn set_once<'semantic, T>(
+fn set_once<'semantic, T, OptionName>(
     slot: &mut Option<T>,
-    option_name: impl Into<OptionNameText<'semantic>>,
+    option_name: OptionName,
     value: T,
 ) -> Result<(), GateError>
+where
+    OptionName: Into<OptionNameText<'semantic>>,
 {
     let option_name = option_name.into().0;
     if slot.is_some() {
@@ -1863,12 +1867,13 @@ fn set_once<'semantic, T>(
 }
 
 /// Take an option value that must be valid UTF-8.
-fn take_utf8_option_value<'semantic, Arguments>(
-    option_name: impl Into<OptionNameText<'semantic>>,
+fn take_utf8_option_value<'semantic, Arguments, OptionName>(
+    option_name: OptionName,
     arguments: &mut core::iter::Peekable<Arguments>,
 ) -> Result<String, GateError>
 where
     Arguments: Iterator<Item = OsString>,
+    OptionName: Into<OptionNameText<'semantic>>,
 {
     let option_name = option_name.into().0;
     let value = take_option_value(option_name, arguments)?;
@@ -1876,9 +1881,11 @@ where
 }
 
 /// Parse one allowed `fuzz-smoke --target` value.
-fn parse_fuzz_smoke_target<'semantic>(
-    value: impl Into<ValueText<'semantic>>
+fn parse_fuzz_smoke_target<'semantic, Value>(
+    value: Value
 ) -> Result<FuzzSmokeTarget, GateError>
+where
+    Value: Into<ValueText<'semantic>>,
 {
     let value = value.into().0;
     match value {
@@ -1894,10 +1901,12 @@ fn parse_fuzz_smoke_target<'semantic>(
 }
 
 /// Reject a mode-incompatible option that was supplied.
-fn reject_present<T>(
+fn reject_present<T, Detail>(
     value: Option<&T>,
-    detail: impl Into<DetailText<'static>>,
+    detail: Detail,
 ) -> Result<(), GateError>
+where
+    Detail: Into<DetailText<'static>>,
 {
     let detail = detail.into().0;
     if value.is_some() {
@@ -1916,10 +1925,12 @@ fn unknown_argument(argument: &OsStr) -> GateError
 }
 
 /// Extract a required parser value or return a stable usage error.
-fn required_value<T>(
+fn required_value<T, Detail>(
     value: Option<T>,
-    detail: impl Into<String>,
+    detail: Detail,
 ) -> Result<T, GateError>
+where
+    Detail: Into<String>,
 {
     let detail = detail.into();
     value.ok_or_else(|| GateError::usage(detail))
@@ -2491,8 +2502,9 @@ impl GateOutcome
         match self {
             | Self::Clean => ExitCode::from(EXIT_CLEAN),
             | Self::Findings(findings) => {
+                let mut stderr = std::io::stderr();
                 for finding in findings {
-                    eprintln!("{finding}");
+                    drop(writeln!(stderr, "{finding}"));
                 }
                 ExitCode::from(EXIT_FINDINGS)
             },
@@ -2737,11 +2749,14 @@ mod tests
 
     /// Assert one generated mutants temporary path names the expected mode and
     /// role.
-    fn assert_mutants_temp_path<'semantic>(
+    fn assert_mutants_temp_path<'semantic, Mode, Suffix>(
         path: &Path,
-        mode: impl Into<ModeText<'semantic>>,
-        suffix: impl Into<SuffixText<'semantic>>,
+        mode: Mode,
+        suffix: Suffix,
     ) -> TestResult
+    where
+        Mode: Into<ModeText<'semantic>>,
+        Suffix: Into<SuffixText<'semantic>>,
     {
         let suffix = suffix.into().0;
         let mode = mode.into().0;
@@ -3405,10 +3420,12 @@ mod tests
 
     /// Assert that generated mutants defaults point at cwd, cache, and owned
     /// temp paths.
-    fn assert_default_mutants_options<'semantic>(
+    fn assert_default_mutants_options<'semantic, Mode>(
         options: &MutantsOptions,
-        mode: impl Into<ModeText<'semantic>>,
+        mode: Mode,
     ) -> TestResult
+    where
+        Mode: Into<ModeText<'semantic>>,
     {
         let mode = mode.into().0;
         assert_eq!(
@@ -3738,10 +3755,12 @@ mod tests
     }
 
     /// Assert that a parser result fails with the exact usage detail.
-    fn assert_usage<'semantic, T>(
+    fn assert_usage<'semantic, T, Expected>(
         result: Result<T, GateError>,
-        expected: impl Into<ExpectedText<'semantic>>,
+        expected: Expected,
     ) -> TestResult
+    where
+        Expected: Into<ExpectedText<'semantic>>,
     {
         let expected = expected.into().0;
         match result {
@@ -3939,7 +3958,7 @@ mod tests
             format!(
                 "{}\n",
                 gandr_workflow_gates::support::HOST_FILESYSTEM
-                    .canonicalize(&stdlib_lib)?
+                    .canonicalize(stdlib_lib)?
                     .to_string_lossy()
             )
         );
@@ -4035,7 +4054,9 @@ mod tests
     }
 
     /// Return a stable boxed error for an unexpected command variant.
-    fn unexpected<'semantic>(label: impl Into<LabelText<'semantic>>) -> Box<dyn Error>
+    fn unexpected<'semantic, Label>(label: Label) -> Box<dyn Error>
+    where
+        Label: Into<LabelText<'semantic>>,
     {
         let label = label.into().0;
         Box::new(std::io::Error::other(format!(
@@ -4063,7 +4084,9 @@ mod tests
     impl TempRoot
     {
         /// Create one unique temporary root for a test.
-        fn create<'semantic>(name: impl Into<NameText<'semantic>>) -> TestResult<Self>
+        fn create<'semantic, Name>(name: Name) -> TestResult<Self>
+        where
+            Name: Into<NameText<'semantic>>,
         {
             let name = name.into().0;
             let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);

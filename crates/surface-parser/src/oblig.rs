@@ -123,10 +123,6 @@ impl From<DeltaEmptyStatus> for bool
 /// - witness: `gandr_surface_parser::oblig::tests::severity_ladder_is_low_to_high`
 /// - witness: `gandr_surface_parser::oblig::tests::ambiguous_prec_is_maximally_severe`
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the obligation taxonomy is a closed severity ladder ported from tylr Oblig.re plus gandr's AmbiguousPrec"
-)]
 pub enum Oblig
 {
     /// Convex grout: no term where one was expected.

@@ -206,11 +206,7 @@ impl WalkSym for GrammarWalkSym
 
 /// One derivable operator-precedence comparison (paper Fig. 15).
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the operator-precedence relation is exactly these three faces"
-)]
-pub enum Comparison
+pub enum Relation
 {
     /// `t_L ⋖ t_R`: the left tile yields; the right tile's form nests to the
     /// right.

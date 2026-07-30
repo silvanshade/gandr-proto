@@ -13,7 +13,7 @@ autotests = false
 
 [[test]]
 name = "diff"
-path = "tests/diff.rs"
+path = "tests/lib.rs"
 
 [features]
 default = []

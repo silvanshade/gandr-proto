@@ -22,9 +22,12 @@ use gandr_workflow_grammatical_framework::rt::PgfConcrete;
 use gandr_workflow_grammatical_framework::rt::PgfExpr;
 use gandr_workflow_grammatical_framework::rt::PgfGrammar;
 use gandr_workflow_grammatical_framework::rt::PgfModule;
-use pyo3::prelude::*;
+use pyo3::Bound;
+use pyo3::PyAny;
+use pyo3::Python;
 use pyo3::types::PyDict;
 use pyo3::types::PyList;
+use pyo3::types::PyModule;
 use pyo3::types::PyTuple;
 
 /// Shared result type for the parity witnesses.
@@ -85,10 +88,12 @@ enum Node<N>
 ///   children's conversions.
 /// - boundedness: the source expression is a finite tree.
 /// - input recursion: none.
-fn fold_tree<N>(
+fn fold_tree<N, U>(
     root: N,
-    mut unpack: impl FnMut(N) -> TestResult<Node<N>>,
+    mut unpack: U,
 ) -> TestResult<Tree>
+where
+    U: FnMut(N) -> TestResult<Node<N>>,
 {
     /// One work-stack frame.
     enum Frame<N>
@@ -170,6 +175,8 @@ fn raw_tree(expr: Bound<'_, PyAny>) -> TestResult<Tree>
     })
 }
 
+/// The parity witnesses: each test drives the wrapper and the raw binding
+/// against the same interpreter and compares the reduced results.
 #[cfg(test)]
 mod tests
 {

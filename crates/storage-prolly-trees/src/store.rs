@@ -69,10 +69,6 @@ use crate::types::StoredNodeRef;
 /// - fails: `insert`/`load` surface typed [`ProllyBaoError`] variants (see each
 ///   method's `# Errors`).
 /// - panics: none.
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "public API intentionally uses BlockStore storage-boundary terminology"
-)]
 pub trait BlockStore
 {
     /// Inserts encoded node bytes under their claimed [`NodeHash`].
@@ -102,10 +98,6 @@ pub trait BlockStore
 
 /// Deterministic in-memory [`BlockStore`] for local callers and tests.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "public API intentionally names the in-memory BlockStore implementation"
-)]
 #[non_exhaustive]
 #[repr(transparent)]
 pub struct InMemoryBlockStore
@@ -340,10 +332,6 @@ impl NodeSegmentEntry
 ///   because `NodeHash` is `BLAKE3(encoded node bytes)`, independent of segment
 ///   placement.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::module_name_repetitions,
-    reason = "public API intentionally names the packed-segment BlockStore implementation"
-)]
 #[non_exhaustive]
 pub struct PackedSegmentStore
 {

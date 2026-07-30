@@ -196,10 +196,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host cannot read valid UTF-8.
     #[inline]
-    pub fn read_to_string(
+    pub fn read_to_string<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<String, GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         fs::read_to_string(path).map_err(|source| io_error(path, source))
@@ -216,10 +218,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects the read.
     #[inline]
-    pub fn read(
+    pub fn read<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<FileBytes, GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         fs::read(path)
@@ -238,10 +242,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host cannot canonicalize `path`.
     #[inline]
-    pub fn canonicalize(
+    pub fn canonicalize<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<PathBuf, GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         path.canonicalize().map_err(|source| io_error(path, source))
@@ -258,10 +264,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host cannot inspect `path`.
     #[inline]
-    pub fn metadata(
+    pub fn metadata<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<std::fs::Metadata, GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         fs::metadata(path).map_err(|source| io_error(path, source))
@@ -278,10 +286,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host cannot probe `path`.
     #[inline]
-    pub fn try_exists(
+    pub fn try_exists<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<PathExistsFlag, GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         path.try_exists()
@@ -300,10 +310,13 @@ impl HostFileSystem
     ///
     /// # Errors
     /// Returns [`GateError::Io`] when the host cannot enumerate the directory.
-    pub fn read_dir_paths(
+    #[inline]
+    pub fn read_dir_paths<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<Vec<PathBuf>, GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         let entries = fs::read_dir(path).map_err(|source| io_error(path, source))?;
@@ -327,10 +340,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects file creation.
     #[inline]
-    pub fn create_file(
+    pub fn create_file<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<File, GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         File::create(path).map_err(|source| io_error(path, source))
@@ -350,10 +365,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects directory creation.
     #[inline]
-    pub fn create_dir_all(
+    pub fn create_dir_all<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         fs::create_dir_all(path).map_err(|source| io_error(path, source))
@@ -371,13 +388,17 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects directory creation.
     #[inline]
-    pub fn create_dir(
+    pub fn create_dir<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::create_dir(path).map_err(|source| io_error(path, source))
+        fs::DirBuilder::new()
+            .create(path)
+            .map_err(|source| io_error(path, source))
     }
 
     /// Replace a file with the supplied byte representation.
@@ -392,12 +413,13 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects the write.
     #[inline]
-    pub fn write<Contents>(
+    pub fn write<P, Contents>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
         contents: Contents,
     ) -> Result<(), GateError>
     where
+        P: AsRef<Path>,
         Contents: AsRef<[u8]>,
     {
         let path = path.as_ref();
@@ -415,10 +437,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects directory removal.
     #[inline]
-    pub fn remove_dir_all(
+    pub fn remove_dir_all<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         fs::remove_dir_all(path).map_err(|source| io_error(path, source))
@@ -438,10 +462,12 @@ impl HostFileSystem
     /// Returns [`GateError::Io`] when directory removal fails for a reason
     /// other than `NotFound`.
     #[inline]
-    pub fn remove_dir_if_exists(
+    pub fn remove_dir_if_exists<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         match fs::remove_dir_all(path) {
@@ -462,10 +488,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects file removal.
     #[inline]
-    pub fn remove_file(
+    pub fn remove_file<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         fs::remove_file(path).map_err(|source| io_error(path, source))
@@ -485,10 +513,12 @@ impl HostFileSystem
     /// Returns [`GateError::Io`] when file removal fails for a reason other
     /// than `NotFound`.
     #[inline]
-    pub fn remove_file_if_exists(
+    pub fn remove_file_if_exists<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         match fs::remove_file(path) {
@@ -511,11 +541,14 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects the rename.
     #[inline]
-    pub fn rename(
+    pub fn rename<S, D>(
         &self,
-        source: impl AsRef<Path>,
-        destination: impl AsRef<Path>,
+        source: S,
+        destination: D,
     ) -> Result<(), GateError>
+    where
+        S: AsRef<Path>,
+        D: AsRef<Path>,
     {
         let source = source.as_ref();
         let destination = destination.as_ref();
@@ -534,11 +567,14 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects the copy.
     #[inline]
-    pub fn copy(
+    pub fn copy<S, D>(
         &self,
-        source: impl AsRef<Path>,
-        destination: impl AsRef<Path>,
+        source: S,
+        destination: D,
     ) -> Result<CopiedByteCount, GateError>
+    where
+        S: AsRef<Path>,
+        D: AsRef<Path>,
     {
         let source = source.as_ref();
         let destination = destination.as_ref();
@@ -558,11 +594,13 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects the permission update.
     #[inline]
-    pub fn set_permissions(
+    pub fn set_permissions<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
         permissions: std::fs::Permissions,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         fs::set_permissions(path, permissions).map_err(|source| io_error(path, source))
@@ -581,11 +619,14 @@ impl HostFileSystem
     /// Returns [`GateError::Io`] when the host rejects link creation.
     #[cfg(unix)]
     #[inline]
-    pub fn symlink(
+    pub fn symlink<S, D>(
         &self,
-        source: impl AsRef<Path>,
-        destination: impl AsRef<Path>,
+        source: S,
+        destination: D,
     ) -> Result<(), GateError>
+    where
+        S: AsRef<Path>,
+        D: AsRef<Path>,
     {
         let source = source.as_ref();
         let destination = destination.as_ref();
@@ -607,10 +648,12 @@ impl HostFileSystem
     /// # Errors
     /// Returns [`GateError::Io`] when the host rejects the directory update.
     #[inline]
-    pub fn set_isolated_process_current_dir(
+    pub fn set_isolated_process_current_dir<P>(
         &self,
-        path: impl AsRef<Path>,
+        path: P,
     ) -> Result<(), GateError>
+    where
+        P: AsRef<Path>,
     {
         let path = path.as_ref();
         std::env::set_current_dir(path).map_err(|source| io_error(path, source))
@@ -735,12 +778,14 @@ impl CommandOutput
 /// - witness: `gandr_workflow_gates::support::tests::run_output_drains_then_errors_when_stdout_exceeds_limit`
 /// - witness: `gandr_workflow_gates::support::tests::git_environment_sanitizer_removes_only_git_keys`
 #[inline]
-pub fn run_output(
+pub fn run_output<G>(
     program: &OsStr,
     args: &[OsString],
     cwd: Option<&Path>,
-    sanitized_git: impl Into<SanitizedGitFlag>,
+    sanitized_git: G,
 ) -> Result<CommandOutput, GateError>
+where
+    G: Into<SanitizedGitFlag>,
 {
     let sanitized_git = sanitized_git.into().0;
     run_output_with_capture_limit(
@@ -768,12 +813,14 @@ pub fn run_output(
 /// # Errors
 /// Returns process, stream, or capture-limit errors from the shared runner.
 #[inline]
-pub fn run_output_streamed(
+pub fn run_output_streamed<G>(
     program: &OsStr,
     args: &[OsString],
     cwd: Option<&Path>,
-    sanitized_git: impl Into<SanitizedGitFlag>,
+    sanitized_git: G,
 ) -> Result<CommandOutput, GateError>
+where
+    G: Into<SanitizedGitFlag>,
 {
     let sanitized_git = sanitized_git.into().0;
     run_output_with_capture_limit(
@@ -810,14 +857,18 @@ pub fn run_output_streamed(
 /// - hypothesis: L3 only — the injected-cap child fixture forces the overflow
 ///   branch while proving the child is drained before the error is returned.
 /// - witness: `gandr_workflow_gates::support::tests::run_output_drains_then_errors_when_stdout_exceeds_limit`
-fn run_output_with_capture_limit(
+fn run_output_with_capture_limit<G, S, L>(
     program: &OsStr,
     args: &[OsString],
     cwd: Option<&Path>,
-    sanitized_git: impl Into<SanitizedGitFlag>,
-    stream_stdout: impl Into<StreamStdoutFlag>,
-    capture_limit: impl Into<CaptureLimitCount>,
+    sanitized_git: G,
+    stream_stdout: S,
+    capture_limit: L,
 ) -> Result<CommandOutput, GateError>
+where
+    G: Into<SanitizedGitFlag>,
+    S: Into<StreamStdoutFlag>,
+    L: Into<CaptureLimitCount>,
 {
     let stream_stdout = stream_stdout.into().0;
     let capture_limit = capture_limit.into().0;
@@ -829,7 +880,7 @@ fn run_output_with_capture_limit(
     let mut child = command
         .spawn()
         .map_err(|source| io_error(&command_path(program), source))?;
-    let Some(stdout) = child.stdout.take()
+    let Some(mut stdout) = child.stdout.take()
     else {
         let _wait_result = child.wait();
         return Err(GateError::operational(format!(
@@ -838,7 +889,7 @@ fn run_output_with_capture_limit(
         )));
     };
 
-    let stream_result = drain_child_stdout(stdout, program, capture_limit, stream_stdout);
+    let stream_result = drain_child_stdout(&mut stdout, program, capture_limit, stream_stdout);
     let status = child
         .wait()
         .map_err(|source| io_error(&command_path(program), source))?;
@@ -857,11 +908,14 @@ fn run_output_with_capture_limit(
 }
 
 /// Build the typed stdout retention-limit error.
-fn stdout_capture_limit_error(
+fn stdout_capture_limit_error<L, C>(
     program: &OsStr,
-    capture_limit: impl Into<CaptureLimitCount>,
-    code: impl Into<CodeExitCode>,
+    capture_limit: L,
+    code: C,
 ) -> GateError
+where
+    L: Into<CaptureLimitCount>,
+    C: Into<CodeExitCode>,
 {
     let code = code.into().0;
     let capture_limit = capture_limit.into().0;
@@ -889,10 +943,13 @@ fn stdout_capture_limit_error(
 ///   diagnostics instead of captured stderr.
 #[inline]
 #[must_use]
-pub(crate) fn command_status_detail<'semantic>(
-    program: impl Into<ProgramText<'semantic>>,
-    code: impl Into<CodeExitCode>,
+pub(crate) fn command_status_detail<P, C>(
+    program: P,
+    code: C,
 ) -> String
+where
+    P: Into<ProgramText<'_>>,
+    C: Into<CodeExitCode>,
 {
     let code = code.into().0;
     let program = program.into().0;
@@ -926,12 +983,14 @@ pub(crate) fn command_status_detail<'semantic>(
 ///   status or drop argv propagation.
 /// - witness: `gandr_workflow_gates::support::tests::run_status_reports_child_success`
 #[inline]
-pub fn run_status(
+pub fn run_status<G>(
     program: &OsStr,
     args: &[OsString],
     cwd: Option<&Path>,
-    sanitized_git: impl Into<SanitizedGitFlag>,
+    sanitized_git: G,
 ) -> Result<ExitStatus, GateError>
+where
+    G: Into<SanitizedGitFlag>,
 {
     let sanitized_git = sanitized_git.into().0;
     let mut command = build_command(program, args, cwd, sanitized_git);
@@ -1053,10 +1112,12 @@ pub fn read_utf8(path: &Path) -> Result<String, GateError>
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_replaces_file_and_removes_temporary`
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_cleans_temporary_after_rename_failure`
 #[inline]
-pub fn write_atomic<'semantic>(
+pub fn write_atomic<B>(
     path: &Path,
-    bytes: impl Into<BytesBytes<'semantic>>,
+    bytes: B,
 ) -> Result<(), GateError>
+where
+    B: Into<BytesBytes<'_>>,
 {
     let bytes = bytes.into().0;
     let target_directory_path = target_directory(path);
@@ -1104,12 +1165,14 @@ pub fn write_atomic<'semantic>(
 ///   fixture kill mutants that drop argv, cwd, or Git environment removal.
 /// - witness: `gandr_workflow_gates::support::tests::run_output_streams_stdout_and_retains_parse_bytes`
 /// - witness: `gandr_workflow_gates::support::tests::git_environment_sanitizer_removes_only_git_keys`
-fn build_command(
+fn build_command<G>(
     program: &OsStr,
     args: &[OsString],
     cwd: Option<&Path>,
-    sanitized_git: impl Into<SanitizedGitFlag>,
+    sanitized_git: G,
 ) -> Command
+where
+    G: Into<SanitizedGitFlag>,
 {
     let sanitized_git = sanitized_git.into().0;
     let mut command = Command::new(program);
@@ -1149,12 +1212,15 @@ fn build_command(
 /// - witness: `gandr_workflow_gates::support::tests::run_output_retains_machine_stdout`
 /// - witness: `gandr_workflow_gates::support::tests::run_output_streamed_retains_failure_context`
 /// - witness: `gandr_workflow_gates::support::tests::run_output_drains_then_errors_when_stdout_exceeds_limit`
-fn drain_child_stdout(
-    mut stdout: ChildStdout,
+fn drain_child_stdout<L, S>(
+    stdout: &mut ChildStdout,
     program: &OsStr,
-    capture_limit: impl Into<CaptureLimitCount>,
-    stream_stdout: impl Into<StreamStdoutFlag>,
+    capture_limit: L,
+    stream_stdout: S,
 ) -> Result<StreamedStdout, GateError>
+where
+    L: Into<CaptureLimitCount>,
+    S: Into<StreamStdoutFlag>,
 {
     let stream_stdout = stream_stdout.into().0;
     let capture_limit = capture_limit.into().0;
@@ -1357,11 +1423,13 @@ fn target_file_name(path: &Path) -> Result<&OsStr, GateError>
 /// - hypothesis: L3 only — atomic-write witnesses observe that staging does not
 ///   collide with or leak beside the target.
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_replaces_file_and_removes_temporary`
-fn temporary_file_path(
+fn temporary_file_path<A>(
     directory: &Path,
     target_name: &OsStr,
-    attempt: impl Into<AttemptCount>,
+    attempt: A,
 ) -> PathBuf
+where
+    A: Into<AttemptCount>,
 {
     let attempt = attempt.into().0;
     let mut hasher = blake3::Hasher::new();
@@ -1369,8 +1437,8 @@ fn temporary_file_path(
     hasher.update(b"\0");
     hasher.update(target_name.as_encoded_bytes());
     hasher.update(b"\0");
-    hasher.update(&std::process::id().to_le_bytes());
-    hasher.update(&attempt.to_le_bytes());
+    hasher.update(std::process::id().to_le_bytes());
+    hasher.update(attempt.to_le_bytes());
     let token = hasher.finalize();
     let token_hex = token.to_hex();
 
@@ -1416,12 +1484,14 @@ fn io_error(
 ///   kill mutants that skip write, sync, drop, rename, or cleanup delegation.
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_replaces_file_and_removes_temporary`
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_cleans_temporary_after_rename_failure`
-fn write_and_publish<'semantic>(
+fn write_and_publish<B>(
     mut temporary_file: File,
     temporary_path: &Path,
     target_path: &Path,
-    bytes: impl Into<BytesBytes<'semantic>>,
+    bytes: B,
 ) -> Result<(), GateError>
+where
+    B: Into<BytesBytes<'_>>,
 {
     let bytes = bytes.into().0;
     temporary_file

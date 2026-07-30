@@ -107,7 +107,7 @@ crate::semantic_optional_str!(pub struct OptionalStringFieldText);
 crate::semantic_copy!(pub struct HeadingLevelCount(usize));
 
 /// Parsed markdown heading level and text.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct ParsedHeading<'heading>
 {
     /// ATX heading level.

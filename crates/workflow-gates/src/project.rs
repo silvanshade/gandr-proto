@@ -335,9 +335,9 @@ fn current_host_triple() -> Result<String, GateError>
 ///
 /// # Errors
 /// Returns [`GateError::Operational`] when no usable host triple is present.
-fn parse_rustc_host_triple<'semantic>(
-    stdout: impl Into<StdoutText<'semantic>>
-) -> Result<String, GateError>
+fn parse_rustc_host_triple<'semantic, Stdout>(stdout: Stdout) -> Result<String, GateError>
+where
+    Stdout: Into<StdoutText<'semantic>>,
 {
     let stdout = stdout.into().0;
     for line in stdout.lines() {
@@ -375,9 +375,11 @@ fn parse_rustc_host_triple<'semantic>(
 /// - witness: `project::tests::malformed_metadata_is_reported_as_json_error`
 /// - witness: `project::tests::forbidden_transitive_package_is_reported`
 /// - witness: `project::tests::non_host_only_forbidden_dependency_is_ignored`
-fn forbidden_default_graph_packages<'semantic>(
-    metadata_json: impl Into<MetadataJsonText<'semantic>>
+fn forbidden_default_graph_packages<'semantic, Metadata>(
+    metadata_json: Metadata
 ) -> Result<Vec<String>, GateError>
+where
+    Metadata: Into<MetadataJsonText<'semantic>>,
 {
     let metadata_json = metadata_json.into().0;
     let value = serde_json::from_str::<Value>(metadata_json).map_err(|source| GateError::Json {
@@ -504,9 +506,9 @@ fn dep_kind_reaches_default_graph(
     else {
         return Err(malformed_metadata("dep_kinds[] missing `kind`"));
     };
-    match *kind {
+    match kind {
         | Value::Null => Ok(DepKindReachesDefaultGraphFlag(true)),
-        | Value::String(ref name) if name == "normal" || name == "build" => {
+        | Value::String(name) if name == "normal" || name == "build" => {
             Ok(DepKindReachesDefaultGraphFlag(true))
         },
         | Value::String(_) => Ok(DepKindReachesDefaultGraphFlag(false)),
@@ -591,7 +593,9 @@ fn default_graph_findings(hits: &[String]) -> Vec<Finding>
 }
 
 /// Extract the recorded SHA from the remainder of a submodule status line.
-fn leading_status_sha(characters: impl IntoIterator<Item = char>) -> Option<String>
+fn leading_status_sha<Characters>(characters: Characters) -> Option<String>
+where
+    Characters: IntoIterator<Item = char>,
 {
     let mut sha = String::new();
     let mut started = false;
@@ -604,7 +608,7 @@ fn leading_status_sha(characters: impl IntoIterator<Item = char>) -> Option<Stri
             break;
         }
     }
-    if sha.is_empty() { None } else { Some(sha) }
+    (!sha.is_empty()).then_some(sha)
 }
 
 /// Return IU pin findings for already-captured status and optional HEAD probes.
@@ -630,11 +634,14 @@ fn leading_status_sha(characters: impl IntoIterator<Item = char>) -> Option<Stri
 /// - witness: `project::tests::conflicted_submodule_reports_u_status`
 /// - witness: `project::tests::clean_submodule_status_reports_no_pin_finding`
 #[cfg(test)]
-pub(crate) fn iu_pin_status_findings<'semantic>(
-    iu_path: impl Into<IuPathText<'semantic>>,
-    status_stdout: impl Into<StatusStdoutText<'semantic>>,
+pub(crate) fn iu_pin_status_findings<'semantic, IuPath, StatusStdout>(
+    iu_path: IuPath,
+    status_stdout: StatusStdout,
     head_probe: Option<ProbeOutput<'_>>,
 ) -> Vec<Finding>
+where
+    IuPath: Into<IuPathText<'semantic>>,
+    StatusStdout: Into<StatusStdoutText<'semantic>>,
 {
     let status_stdout = status_stdout.into().0;
     let iu_path = iu_path.into().0;
@@ -662,9 +669,9 @@ pub(crate) fn iu_pin_status_findings<'semantic>(
 /// - witness: `project::tests::drifted_submodule_reports_plus_status`
 /// - witness: `project::tests::conflicted_submodule_reports_u_status`
 /// - witness: `project::tests::clean_submodule_status_reports_no_pin_finding`
-pub(crate) fn parse_iu_submodule_status<'semantic>(
-    stdout: impl Into<StdoutText<'semantic>>
-) -> IuSubmoduleStatus
+pub(crate) fn parse_iu_submodule_status<'semantic, Stdout>(stdout: Stdout) -> IuSubmoduleStatus
+where
+    Stdout: Into<StdoutText<'semantic>>,
 {
     let stdout = stdout.into().0;
     if stdout.trim().is_empty() {
@@ -704,11 +711,13 @@ pub(crate) fn parse_iu_submodule_status<'semantic>(
 }
 
 /// Return IU pin findings for a parsed status record.
-fn iu_pin_findings_from_status<'semantic>(
-    iu_path: impl Into<IuPathText<'semantic>>,
+fn iu_pin_findings_from_status<'semantic, IuPath>(
+    iu_path: IuPath,
     status: &IuSubmoduleStatus,
     head_probe: Option<ProbeOutput<'_>>,
 ) -> Vec<Finding>
+where
+    IuPath: Into<IuPathText<'semantic>>,
 {
     let iu_path = iu_path.into().0;
     match status.class {
@@ -762,12 +771,17 @@ fn content_at_recorded_pin(
 }
 
 /// Build one stable IU finding.
-fn iu_finding<'semantic>(
-    kind: impl Into<KindText<'semantic>>,
-    iu_path: impl Into<IuPathText<'semantic>>,
-    declaration: impl Into<DeclarationText<'semantic>>,
-    detail: impl Into<String>,
+fn iu_finding<'semantic, Kind, IuPath, Declaration, Detail>(
+    kind: Kind,
+    iu_path: IuPath,
+    declaration: Declaration,
+    detail: Detail,
 ) -> Finding
+where
+    Kind: Into<KindText<'semantic>>,
+    IuPath: Into<IuPathText<'semantic>>,
+    Declaration: Into<DeclarationText<'semantic>>,
+    Detail: Into<String>,
 {
     let iu_path = iu_path.into().0;
     let declaration = declaration.into().0;
@@ -783,10 +797,10 @@ fn path_label(path: &Path) -> String
 }
 
 /// Build a stable command-failure detail from a live-streamed command status.
-fn command_failure_detail<'semantic>(
-    command: impl Into<CommandText<'semantic>>,
-    code: impl Into<CodeExitCode>,
-) -> String
+fn command_failure_detail<'semantic, Command, Code>(command: Command, code: Code) -> String
+where
+    Command: Into<CommandText<'semantic>>,
+    Code: Into<CodeExitCode>,
 {
     let code = code.into().0;
     let command = command.into().0;
@@ -820,9 +834,11 @@ fn command_failure_detail<'semantic>(
 /// - witness: `project::tests::metadata_missing_package_name_is_malformed`
 /// - witness: `project::tests::forbidden_transitive_package_is_reported`
 /// - witness: `project::tests::non_host_only_forbidden_dependency_is_ignored`
-pub(crate) fn validate_default_dependency_graph_metadata<'semantic>(
-    metadata_json: impl Into<MetadataJsonText<'semantic>>
+pub(crate) fn validate_default_dependency_graph_metadata<'semantic, Metadata>(
+    metadata_json: Metadata
 ) -> GateResult
+where
+    Metadata: Into<MetadataJsonText<'semantic>>,
 {
     let metadata_json = metadata_json.into().0;
     let hits = forbidden_default_graph_packages(metadata_json)?;
@@ -830,10 +846,12 @@ pub(crate) fn validate_default_dependency_graph_metadata<'semantic>(
 }
 
 /// Return `value` as a JSON object or a malformed-metadata error.
-fn json_object<'semantic, 'value>(
+fn json_object<'semantic, 'value, Context>(
     value: &'value Value,
-    context: impl Into<ContextText<'semantic>>,
+    context: Context,
 ) -> Result<&'value Map<String, Value>, GateError>
+where
+    Context: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
     value
@@ -842,10 +860,12 @@ fn json_object<'semantic, 'value>(
 }
 
 /// Return one object field as a JSON array.
-fn json_array_field<'semantic, 'value>(
+fn json_array_field<'semantic, 'value, Field>(
     object: &'value Map<String, Value>,
-    field: impl Into<FieldText<'semantic>>,
+    field: Field,
 ) -> Result<&'value [Value], GateError>
+where
+    Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
     object
@@ -856,10 +876,12 @@ fn json_array_field<'semantic, 'value>(
 }
 
 /// Return one object field as a JSON object.
-fn json_object_field<'semantic, 'value>(
+fn json_object_field<'semantic, 'value, Field>(
     object: &'value Map<String, Value>,
-    field: impl Into<FieldText<'semantic>>,
+    field: Field,
 ) -> Result<&'value Map<String, Value>, GateError>
+where
+    Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
     object
@@ -869,14 +891,18 @@ fn json_object_field<'semantic, 'value>(
 }
 
 /// Build a stable malformed-metadata operational error.
-fn malformed_metadata(detail: impl Into<String>) -> GateError
+fn malformed_metadata<Detail>(detail: Detail) -> GateError
+where
+    Detail: Into<String>,
 {
     let detail: String = detail.into();
     operational(format!("malformed cargo metadata: {detail}"))
 }
 
 /// Build a stable operational error.
-fn operational(detail: impl Into<String>) -> GateError
+fn operational<Detail>(detail: Detail) -> GateError
+where
+    Detail: Into<String>,
 {
     let detail: String = detail.into();
     GateError::Operational { detail }
@@ -897,10 +923,13 @@ fn operational(detail: impl Into<String>) -> GateError
 ///   only semantic boundary for the retained clean-tree check.
 /// - witness: `project::tests::clean_submodule_status_reports_no_pin_finding`
 /// - witness: `project::tests::dirty_submodule_reports_read_only_violation`
-pub(crate) fn iu_clean_findings<'semantic>(
-    iu_path: impl Into<IuPathText<'semantic>>,
-    porcelain_stdout: impl Into<PorcelainStdoutText<'semantic>>,
+pub(crate) fn iu_clean_findings<'semantic, IuPath, PorcelainStdout>(
+    iu_path: IuPath,
+    porcelain_stdout: PorcelainStdout,
 ) -> Vec<Finding>
+where
+    IuPath: Into<IuPathText<'semantic>>,
+    PorcelainStdout: Into<PorcelainStdoutText<'semantic>>,
 {
     let porcelain_stdout = porcelain_stdout.into().0;
     let iu_path = iu_path.into().0;
@@ -918,10 +947,12 @@ pub(crate) fn iu_clean_findings<'semantic>(
 }
 
 /// Return one object field as a JSON string slice.
-fn json_string_field<'semantic, 'value>(
+fn json_string_field<'semantic, 'value, Field>(
     object: &'value Map<String, Value>,
-    field: impl Into<FieldText<'semantic>>,
+    field: Field,
 ) -> Result<JsonFieldText<'value>, GateError>
+where
+    Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
     object
@@ -946,9 +977,9 @@ fn dep_reaches_default_graph(
 }
 
 /// Build the fixed Cargo metadata argument vector for a host target.
-fn cargo_metadata_args<'semantic>(
-    host_triple: impl Into<HostTripleText<'semantic>>
-) -> [OsString; 5]
+fn cargo_metadata_args<'semantic, HostTriple>(host_triple: HostTriple) -> [OsString; 5]
+where
+    HostTriple: Into<HostTripleText<'semantic>>,
 {
     let host_triple = host_triple.into().0;
     [
@@ -1675,10 +1706,13 @@ mod tests
     }
 
     /// Assert that metadata is rejected with a diagnostic fragment.
-    fn assert_malformed_contains<'semantic>(
-        metadata: impl Into<MetadataText<'semantic>>,
-        expected: impl Into<ExpectedText<'semantic>>,
+    fn assert_malformed_contains<'semantic, Metadata, Expected>(
+        metadata: Metadata,
+        expected: Expected,
     )
+    where
+        Metadata: Into<MetadataText<'semantic>>,
+        Expected: Into<ExpectedText<'semantic>>,
     {
         let expected = expected.into().0;
         let metadata = metadata.into().0;
@@ -1699,7 +1733,9 @@ mod tests
     impl ProjectFixture
     {
         /// Create an empty fixture directory.
-        fn new<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<Self, GateError>
+        fn new<'semantic, Name>(name: Name) -> Result<Self, GateError>
+        where
+            Name: Into<NameText<'semantic>>,
         {
             let name = name.into().0;
             let root = env::temp_dir().join(format!(
@@ -1764,10 +1800,12 @@ mod tests
     }
 
     /// Commit staged fixture changes with deterministic identity.
-    fn git_commit<'semantic>(
+    fn git_commit<'semantic, Message>(
         cwd: &Path,
-        message: impl Into<MessageText<'semantic>>,
+        message: Message,
     ) -> Result<String, GateError>
+    where
+        Message: Into<MessageText<'semantic>>,
     {
         let message = message.into().0;
         let mut command = support::stateless_git_command();

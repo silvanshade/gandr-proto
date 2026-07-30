@@ -483,7 +483,7 @@ fn corpus_files_cold_parse_within_p99_latency_budget() -> Result<(), Box<dyn Err
         .saturating_mul(P99_NUMERATOR)
         .div_ceil(PERCENTILE_DENOMINATOR)
         .saturating_sub(1)
-        .min(per_file_nanos.len() - 1);
+        .min(per_file_nanos.len().saturating_sub(1));
     let p99 = &per_file_nanos[rank];
     let max = per_file_nanos.last().expect("non-empty corpus");
     assert!(
@@ -523,7 +523,7 @@ fn expected_agrees_with_committed_finalize() -> Result<(), Box<dyn Error>>
             .iter()
             .filter(|t| !matches!(t.material, Material::Space))
             .count();
-        for upto in 0 ..= tokens.len().min(token_count + 8) {
+        for upto in 0 ..= tokens.len().min(token_count.saturating_add(8)) {
             let state = push_prefix(
                 pbg,
                 SourceSlice::from(src.as_str()),

@@ -10,6 +10,14 @@ description = "Leaf wire-protocol types for the typing-machine inspection render
 license.workspace = true
 publish.workspace = true
 
+[features]
+default = []
+codecs = ["dep:serde"]
+full = ["codecs"]
+
+[lints]
+workspace = true
+
 [dependencies]
 # The only dependency: `serde` for the optional wire image. Default-off codecs
 # keep render-remote as plain in-process data unless a bus, LSP adapter, or test
@@ -19,11 +27,3 @@ serde = { workspace = true, optional = true }
 [dev-dependencies]
 # JSON round-trip coverage for the wire schema (gated on the `codecs` feature).
 serde_json = { workspace = true }
-
-[features]
-default = []
-codecs = ["dep:serde"]
-full = ["codecs"]
-
-[lints]
-workspace = true

@@ -124,7 +124,9 @@ impl CliCommandName
     ///   witnesses kill misspelled, missing, or extra command mappings.
     /// - witness: `parser_facade::tests::cli_command_tokens_cover_the_retained_inventory`
     #[inline]
-    pub fn parse<'semantic>(value: impl Into<ValueText<'semantic>>) -> Result<Self, GateError>
+    pub fn parse<'semantic, Value>(value: Value) -> Result<Self, GateError>
+    where
+        Value: Into<ValueText<'semantic>>,
     {
         let value = value.into().0;
         match value {
@@ -207,7 +209,9 @@ const MAX_FUZZ_TOKEN_SCAN: usize = 16;
 /// - witness: `parser_facade::tests::representative_valid_records_reach_each_parser_domain`
 #[cfg(feature = "fuzzing")]
 #[inline]
-pub fn exercise_fuzz_input<'semantic>(data: impl Into<DataBytes<'semantic>>)
+pub fn exercise_fuzz_input<'semantic, Data>(data: Data)
+where
+    Data: Into<DataBytes<'semantic>>,
 {
     let data = data.into().0;
     let _report = exercise_fuzz_bytes(data);
@@ -307,7 +311,9 @@ impl FuzzExerciseReport
 
 /// Exercise parsers after enforcing byte and UTF-8 bounds.
 #[cfg(feature = "fuzzing")]
-fn exercise_fuzz_bytes<'semantic>(data: impl Into<DataBytes<'semantic>>) -> FuzzExerciseReport
+fn exercise_fuzz_bytes<'semantic, Data>(data: Data) -> FuzzExerciseReport
+where
+    Data: Into<DataBytes<'semantic>>,
 {
     let data = data.into().0;
     if data.len() > MAX_FUZZ_INPUT_BYTES {
@@ -322,7 +328,9 @@ fn exercise_fuzz_bytes<'semantic>(data: impl Into<DataBytes<'semantic>>) -> Fuzz
 
 /// Exercise every parser domain on bounded UTF-8 text.
 #[cfg(feature = "fuzzing")]
-fn exercise_fuzz_text<'semantic>(text: impl Into<TextText<'semantic>>) -> FuzzExerciseReport
+fn exercise_fuzz_text<'semantic, Text>(text: Text) -> FuzzExerciseReport
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     FuzzExerciseReport {
@@ -341,7 +349,9 @@ fn exercise_fuzz_text<'semantic>(text: impl Into<TextText<'semantic>>) -> FuzzEx
 
 /// Exercise top-level command-token parsing over bounded whitespace tokens.
 #[cfg(feature = "fuzzing")]
-fn exercise_cli_text<'semantic>(text: impl Into<TextText<'semantic>>) -> ParserDomainStatus
+fn exercise_cli_text<'semantic, Text>(text: Text) -> ParserDomainStatus
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let mut saw_token = false;
@@ -359,7 +369,9 @@ fn exercise_cli_text<'semantic>(text: impl Into<TextText<'semantic>>) -> ParserD
 
 /// Exercise documentation command parsing over the first bounded token.
 #[cfg(feature = "fuzzing")]
-fn exercise_docs_text<'semantic>(text: impl Into<TextText<'semantic>>) -> ParserDomainStatus
+fn exercise_docs_text<'semantic, Text>(text: Text) -> ParserDomainStatus
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let token = first_token_or_empty(text).into().0;
@@ -368,9 +380,9 @@ fn exercise_docs_text<'semantic>(text: impl Into<TextText<'semantic>>) -> Parser
 
 /// Exercise pure Agda OPTIONS policy analysis over one synthetic module.
 #[cfg(feature = "fuzzing")]
-fn exercise_source_options_text<'semantic>(
-    text: impl Into<TextText<'semantic>>
-) -> ParserDomainStatus
+fn exercise_source_options_text<'semantic, Text>(text: Text) -> ParserDomainStatus
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let roots = vec![crate::source_policy::OptionsRoot {
@@ -389,9 +401,9 @@ fn exercise_source_options_text<'semantic>(
 
 /// Exercise Rust source parsing and soundness-oracle validation.
 #[cfg(feature = "fuzzing")]
-fn exercise_source_soundness_text<'semantic>(
-    text: impl Into<TextText<'semantic>>
-) -> ParserDomainStatus
+fn exercise_source_soundness_text<'semantic, Text>(text: Text) -> ParserDomainStatus
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     result_to_status(crate::source_policy::analyze_soundness_source(
@@ -402,7 +414,9 @@ fn exercise_source_soundness_text<'semantic>(
 
 /// Exercise coverage floor-policy parsing and validation.
 #[cfg(feature = "fuzzing")]
-fn exercise_coverage_text<'semantic>(text: impl Into<TextText<'semantic>>) -> ParserDomainStatus
+fn exercise_coverage_text<'semantic, Text>(text: Text) -> ParserDomainStatus
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     result_to_status(crate::coverage::parse_floors_text_for_fuzzing(
@@ -413,7 +427,9 @@ fn exercise_coverage_text<'semantic>(text: impl Into<TextText<'semantic>>) -> Pa
 
 /// Exercise mutation range and ref-token parser seams.
 #[cfg(feature = "fuzzing")]
-fn exercise_mutation_text<'semantic>(text: impl Into<TextText<'semantic>>) -> ParserDomainStatus
+fn exercise_mutation_text<'semantic, Text>(text: Text) -> ParserDomainStatus
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let first = first_token_or_empty(text).into().0;
@@ -435,8 +451,9 @@ fn exercise_mutation_text<'semantic>(text: impl Into<TextText<'semantic>>) -> Pa
 
 /// Exercise maintenance ref, timestamp, base-source, and watermark parsers.
 #[cfg(feature = "fuzzing")]
-fn exercise_maintenance_text<'semantic>(text: impl Into<TextText<'semantic>>)
--> ParserDomainStatus
+fn exercise_maintenance_text<'semantic, Text>(text: Text) -> ParserDomainStatus
+where
+    Text: Into<TextText<'semantic>>,
 {
     let text = text.into().0;
     let first = first_token_or_empty(text).into().0;
@@ -454,10 +471,13 @@ fn exercise_maintenance_text<'semantic>(text: impl Into<TextText<'semantic>>)
 
 /// Exercise maintenance timestamp parsing when a candidate commit is valid.
 #[cfg(feature = "fuzzing")]
-fn exercise_maintenance_timestamp<'semantic>(
-    commit_text: impl Into<CommitTextText<'semantic>>,
-    timestamp_text: impl Into<TimestampTextText<'semantic>>,
+fn exercise_maintenance_timestamp<'semantic, Commit, Timestamp>(
+    commit_text: Commit,
+    timestamp_text: Timestamp,
 ) -> ParserDomainStatus
+where
+    Commit: Into<CommitTextText<'semantic>>,
+    Timestamp: Into<TimestampTextText<'semantic>>,
 {
     let timestamp_text = timestamp_text.into().0;
     let commit_text = commit_text.into().0;
@@ -472,19 +492,24 @@ fn exercise_maintenance_timestamp<'semantic>(
 
 /// Return the first bounded whitespace token, or an empty token when absent.
 #[cfg(feature = "fuzzing")]
-fn first_token_or_empty<'semantic>(
-    text: impl Into<TextText<'semantic>>
+fn first_token_or_empty<'semantic, Text>(
+    text: Text,
 ) -> impl Into<FirstTokenOrEmptyText<'semantic>>
+where
+    Text: Into<TextText<'semantic>>,
 {
     token_at(text, 0).into().0.unwrap_or("")
 }
 
 /// Return the `index`th token within the bounded token scan window.
 #[cfg(feature = "fuzzing")]
-fn token_at<'semantic>(
-    text: impl Into<TextText<'semantic>>,
-    index: impl Into<IndexIndex>,
+fn token_at<'semantic, Text, Index>(
+    text: Text,
+    index: Index,
 ) -> impl Into<OptionalTokenAtText<'semantic>>
+where
+    Text: Into<TextText<'semantic>>,
+    Index: Into<IndexIndex>,
 {
     let index = index.into().0;
     let text = text.into().0;

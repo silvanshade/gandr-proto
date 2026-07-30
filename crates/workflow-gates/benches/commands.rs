@@ -8,15 +8,8 @@
         reason = "Criterion harness is stubbed out under Miri, so bench-only items are unused"
     )
 )]
-// Crate-local lint-wall overrides, parked for triage (gandr-0ze): see the
-// matching block in `src/lib.rs`. Remove entries as their sites are
-// remediated.
-#![allow(
-    clippy::derive_partial_eq_without_eq,
-    clippy::explicit_auto_deref,
-    clippy::field_scoped_visibility_modifiers,
-    reason = "ported crate predates the current lint wall; parked for triage (gandr-0ze)"
-)]
+
+extern crate alloc;
 
 use core::hint::black_box;
 use std::ffi::OsString;
@@ -34,8 +27,8 @@ use gandr_workflow_gates::docs;
 use gandr_workflow_gates::maintenance;
 use gandr_workflow_gates::mutants;
 use gandr_workflow_gates::source_policy;
-gandr_workflow_gates::semantic_copy!(pub(crate) struct CountCount(usize));
-gandr_workflow_gates::semantic_str!(pub(crate) struct RelativeText);
+gandr_workflow_gates::semantic_copy!(pub struct CountCount(usize));
+gandr_workflow_gates::semantic_str!(pub struct RelativeText);
 
 impl<'item, 'text> From<&'item &'text str> for RelativeText<'text>
 {

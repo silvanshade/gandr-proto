@@ -117,7 +117,7 @@ mod tests
         let mut remaining = value.0;
         loop {
             let low = (remaining & 0x7f).to_le_bytes()[0];
-            remaining >>= 7_u32;
+            remaining = remaining.wrapping_shr(7);
             if remaining == 0 {
                 out.push(low);
                 break;
@@ -859,8 +859,8 @@ mod tests
             MAX_EXPANDED_TERM_WORK.is_power_of_two(),
             "the boundary golden assumes a power-of-two expanded-work cap"
         );
-        let depth =
-            usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 1).expect("the depth fits");
+        let depth = usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros().saturating_sub(1))
+            .expect("the depth fits");
         let under = write(&diamond_environment(FixtureDepth(depth)));
         assert!(
             decode(under.as_ref().into()).is_ok(),
@@ -920,7 +920,7 @@ mod tests
             "a table at exactly MAX_TABLE_ENTRIES decodes"
         );
         assert_eq!(
-            decode(build(cap + 1).as_ref().into()).unwrap_err(),
+            decode(build(cap.saturating_add(1)).as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::TableSize,
             },
@@ -975,9 +975,12 @@ mod tests
                 && MAX_EXPANDED_TERM_WORK.is_power_of_two(),
             "the boundary golden assumes power-of-two work caps"
         );
-        let depth =
-            usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 2).expect("the depth fits");
-        let contribution = 1_u64 << (depth + 1); // = MAX_EXPANDED_TERM_WORK / 2
+        let depth = usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros().saturating_sub(2))
+            .expect("the depth fits");
+        let shift = u32::try_from(depth.saturating_add(1)).expect("the shift fits in u32");
+        let contribution = 1_u64
+            .checked_shl(shift)
+            .expect("the shift is in range"); // = MAX_EXPANDED_TERM_WORK / 2
         let count = usize::try_from(MAX_ARTIFACT_EXPANDED_WORK.div_euclid(contribution))
             .expect("count fits");
         // Just at the cap: accepts (the artifact arm rejects strictly over).
@@ -991,7 +994,7 @@ mod tests
         );
         // One more declaration pushes the total over.
         let over = write(&shared_diamond_environment(
-            FixtureCount(count + 1),
+            FixtureCount(count.saturating_add(1)),
             FixtureDepth(depth),
         ));
         assert_eq!(
@@ -1011,8 +1014,8 @@ mod tests
         // expanded work is astronomical. The reader rejects it on the DECODE
         // plane by the artifact-total budget BEFORE any replay reaches the
         // checker (the gandr-4p3 differential).
-        let depth =
-            usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros() - 1).expect("the depth fits");
+        let depth = usize::try_from(MAX_EXPANDED_TERM_WORK.trailing_zeros().saturating_sub(1))
+            .expect("the depth fits");
         let bytes = write(&shared_diamond_environment(
             FixtureCount(512),
             FixtureDepth(depth),

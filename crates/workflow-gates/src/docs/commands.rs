@@ -26,8 +26,32 @@ use crate::support;
 
 crate::semantic_str!(pub struct FieldText);
 crate::semantic_str!(pub struct DetailText);
-crate::semantic_copy!(pub struct BottomMmMillimeters(f64));
-crate::semantic_copy!(pub struct BandMmMillimeters(f64));
+/// Define a named transparent copy boundary for a scalar domain that cannot
+/// derive [`Eq`].
+macro_rules! semantic_partial_copy {
+    ($vis:vis struct $name:ident($inner:ty)) => {
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        #[non_exhaustive]
+        $vis struct $name(pub $inner);
+
+        impl From<$inner> for $name {
+            #[inline]
+            fn from(value: $inner) -> Self {
+                Self(value)
+            }
+        }
+
+        impl From<$name> for $inner {
+            #[inline]
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
+    };
+}
+semantic_partial_copy!(pub struct BottomMmMillimeters(f64));
+semantic_partial_copy!(pub struct BandMmMillimeters(f64));
 crate::semantic_copy!(pub struct LineNumberNumber(usize));
 crate::semantic_str!(pub struct MarkerText);
 crate::semantic_str!(pub struct NameText);
@@ -38,7 +62,7 @@ crate::semantic_copy!(pub struct LateProbesFlag(bool));
 crate::semantic_str!(pub struct AsStrText);
 crate::semantic_copy!(pub struct JsonI64Seconds(i64));
 crate::semantic_str!(pub struct JsonStringText);
-crate::semantic_copy!(pub struct JsonF64Millimeters(f64));
+semantic_partial_copy!(pub struct JsonF64Millimeters(f64));
 crate::semantic_optional_str!(pub struct OptionalConflictMarkerLineText);
 
 /// Manual text-block bottom edge in millimeters.
@@ -152,7 +176,9 @@ impl RumdlMode
     ///   unsupported mode kill all parser branches.
     /// - witness: `commands::tests::clean_markdown_files_preserve_argument_order`
     #[inline]
-    pub fn parse<'semantic>(value: impl Into<ValueText<'semantic>>) -> Result<Self, GateError>
+    pub fn parse<Value>(value: Value) -> Result<Self, GateError>
+    where
+        Value: Into<ValueText<'_>>,
     {
         let value = value.into().0;
         match value {
@@ -397,14 +423,16 @@ fn typst_probe_args() -> Vec<OsString>
 }
 
 /// Return a JSON object field.
-fn json_field<'semantic, 'json>(
+fn json_field<'json, Field>(
     value: &'json Value,
-    field: impl Into<FieldText<'semantic>>,
+    field: Field,
 ) -> Result<&'json Value, GateError>
+where
+    Field: Into<FieldText<'_>>,
 {
     let field = field.into().0;
-    match *value {
-        | Value::Object(ref object) => object
+    match value {
+        | Value::Object(object) => object
             .get(field)
             .ok_or_else(|| GateError::operational(format!("page-balance probe missing `{field}`"))),
         | _ => Err(GateError::operational(
@@ -414,14 +442,16 @@ fn json_field<'semantic, 'json>(
 }
 
 /// Return a JSON array.
-fn json_array<'semantic, 'json>(
+fn json_array<'json, Detail>(
     value: &'json Value,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: Detail,
 ) -> Result<&'json Vec<Value>, GateError>
+where
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
-    match *value {
-        | Value::Array(ref rows) => Ok(rows),
+    match value {
+        | Value::Array(rows) => Ok(rows),
         | _ => Err(GateError::operational(detail)),
     }
 }
@@ -445,44 +475,53 @@ fn page_probe(value: &Value) -> Result<PageProbe, GateError>
 }
 
 /// Return a JSON string.
-fn json_string<'semantic, 'json>(
+fn json_string<'json, Detail>(
     value: &'json Value,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: Detail,
 ) -> Result<JsonStringText<'json>, GateError>
+where
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
-    match *value {
-        | Value::String(ref text) => Ok(JsonStringText(text)),
+    match value {
+        | Value::String(text) => Ok(JsonStringText(text)),
         | _ => Err(GateError::operational(detail)),
     }
 }
 
 /// Return a JSON integer.
-fn json_i64<'semantic>(
+fn json_i64<Detail>(
     value: &Value,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: Detail,
 ) -> Result<impl Into<JsonI64Seconds>, GateError>
+where
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
     value.as_i64().ok_or_else(|| GateError::operational(detail))
 }
 
 /// Return a JSON number as `f64`.
-fn json_f64<'semantic>(
+fn json_f64<Detail>(
     value: &Value,
-    detail: impl Into<DetailText<'semantic>>,
+    detail: Detail,
 ) -> Result<impl Into<JsonF64Millimeters>, GateError>
+where
+    Detail: Into<DetailText<'_>>,
 {
     let detail = detail.into().0;
     value.as_f64().ok_or_else(|| GateError::operational(detail))
 }
 
 /// Filter probes that open inside the strict bottom band.
-fn late_page_probes(
+fn late_page_probes<BottomMm, BandMm>(
     probes: &[PageProbe],
-    bottom_mm: impl Into<BottomMmMillimeters>,
-    band_mm: impl Into<BandMmMillimeters>,
+    bottom_mm: BottomMm,
+    band_mm: BandMm,
 ) -> Vec<PageProbe>
+where
+    BottomMm: Into<BottomMmMillimeters>,
+    BandMm: Into<BandMmMillimeters>,
 {
     let band_mm = band_mm.into().0;
     let bottom_mm = bottom_mm.into().0;
@@ -509,9 +548,9 @@ fn page_balance_probe_failed() -> GateError
 }
 
 /// Parse Typst page-balance JSON into probe rows.
-fn parse_page_probes<'semantic>(
-    source: impl Into<SourceText<'semantic>>
-) -> Result<Vec<PageProbe>, GateError>
+fn parse_page_probes<Source>(source: Source) -> Result<Vec<PageProbe>, GateError>
+where
+    Source: Into<SourceText<'_>>,
 {
     let source = source.into().0;
     let root: Value = serde_json::from_str(source).map_err(|source| GateError::Json {
@@ -618,9 +657,9 @@ fn readable_rumdl_path<'path>(
 }
 
 /// Return the retained conflict-marker prefix found at the start of `line`.
-fn conflict_marker_line<'semantic>(
-    line: impl Into<LineText<'semantic>>
-) -> impl Into<OptionalConflictMarkerLineText<'static>>
+fn conflict_marker_line<Line>(line: Line) -> impl Into<OptionalConflictMarkerLineText<'static>>
+where
+    Line: Into<LineText<'_>>,
 {
     let line = line.into().0;
     CONFLICT_MARKER_PREFIXES
@@ -630,11 +669,14 @@ fn conflict_marker_line<'semantic>(
 }
 
 /// Build the operational error for one unresolved conflict-marker line.
-fn conflict_marker_error<'semantic>(
+fn conflict_marker_error<LineNumber, Marker>(
     path: &Path,
-    line_number: impl Into<LineNumberNumber>,
-    marker: impl Into<MarkerText<'semantic>>,
+    line_number: LineNumber,
+    marker: Marker,
 ) -> GateError
+where
+    LineNumber: Into<LineNumberNumber>,
+    Marker: Into<MarkerText<'_>>,
 {
     let marker = marker.into().0;
     let line_number = line_number.into().0;
@@ -746,7 +788,9 @@ mod tests
     }
 
     /// Build a clean temporary fixture directory for `name`.
-    fn fixture<'semantic>(name: impl Into<NameText<'semantic>>) -> Result<PathBuf, Box<dyn Error>>
+    fn fixture<Name>(name: Name) -> Result<PathBuf, Box<dyn Error>>
+    where
+        Name: Into<NameText<'_>>,
     {
         let name = name.into().0;
         let root = std::env::temp_dir().join(format!(
@@ -963,11 +1007,14 @@ mod tests
 
     /// Write an executable shell fixture on Unix hosts.
     #[cfg(unix)]
-    fn executable_script<'semantic>(
+    fn executable_script<Name, Source>(
         root: &Path,
-        name: impl Into<NameText<'semantic>>,
-        source: impl Into<SourceText<'semantic>>,
+        name: Name,
+        source: Source,
     ) -> Result<PathBuf, Box<dyn Error>>
+    where
+        Name: Into<NameText<'_>>,
+        Source: Into<SourceText<'_>>,
     {
         let source = source.into().0;
         let name = name.into().0;

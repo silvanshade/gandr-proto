@@ -219,8 +219,9 @@ impl SandboxName
     /// Returns an operational error when `value` does not use the owned prefix,
     /// is missing its unique suffix, or contains a path separator.
     #[inline]
-    pub(super) fn new<'semantic>(value: impl Into<ValueText<'semantic>>)
-    -> Result<Self, GateError>
+    pub(super) fn new<'semantic, Value>(value: Value) -> Result<Self, GateError>
+    where
+        Value: Into<ValueText<'semantic>>,
     {
         let value = value.into().0;
         if !value.starts_with(SANDBOX_PREFIX) {
@@ -623,11 +624,13 @@ impl CampaignSummary
     /// Build a campaign summary.
     #[inline]
     #[must_use]
-    pub(super) fn new(
+    pub(super) fn new<Succeeded>(
         mode: CampaignMode,
-        succeeded: impl Into<SucceededFlag>,
+        succeeded: Succeeded,
         report: CampaignReportKind,
     ) -> Self
+    where
+        Succeeded: Into<SucceededFlag>,
     {
         let succeeded = succeeded.into().0;
         Self {
@@ -715,7 +718,9 @@ impl CommandOutcome
     #[cfg(test)]
     #[inline]
     #[must_use]
-    pub(crate) fn failure(code: impl Into<OptionalExitCode>) -> Self
+    pub(crate) fn failure<Code>(code: Code) -> Self
+    where
+        Code: Into<OptionalExitCode>,
     {
         let code = code.into().0;
         Self {
@@ -1027,16 +1032,17 @@ where
 /// - witness: `mutants::sandbox::tests::non_rust_diff_skips_vm_and_writes_report`
 /// - witness: `mutants::sandbox::tests::teardown_error_takes_precedence_over_payload_error`
 #[inline]
-pub(super) fn execute_campaign_request<'semantic, Runner, Sink>(
+pub(super) fn execute_campaign_request<'semantic, Runner, Sink, DiffSource>(
     runner: &mut Runner,
     sink: &mut Sink,
     config: &SandboxConfig,
     request: &CampaignRequest<'_>,
-    diff_source: impl Into<DiffSourceText<'semantic>>,
+    diff_source: DiffSource,
 ) -> Result<CampaignSummary, GateError>
 where
     Runner: MsbAdapter,
     Sink: CampaignReportSink,
+    DiffSource: Into<DiffSourceText<'semantic>>,
 {
     let diff_source = diff_source.into().0;
     if should_skip_vm(request.mode(), diff_source).into().0 {
@@ -1049,10 +1055,12 @@ where
 /// Return whether a campaign should skip the VM because no Rust changed.
 #[inline]
 #[must_use]
-pub(super) fn should_skip_vm<'semantic>(
+pub(super) fn should_skip_vm<'semantic, DiffSource>(
     mode: CampaignMode,
-    diff_source: impl Into<DiffSourceText<'semantic>>,
+    diff_source: DiffSource,
 ) -> impl Into<ShouldSkipVmFlag>
+where
+    DiffSource: Into<DiffSourceText<'semantic>>,
 {
     let diff_source = diff_source.into().0;
     if !mode.needs_diff().into().0 {
@@ -1075,9 +1083,11 @@ pub(super) fn should_skip_vm<'semantic>(
 /// - witness: `mutants::sandbox::tests::non_rust_diff_skips_vm_and_writes_report`
 #[inline]
 #[must_use]
-pub(super) fn diff_touches_rust<'semantic>(
-    diff_source: impl Into<DiffSourceText<'semantic>>
+pub(super) fn diff_touches_rust<'semantic, DiffSource>(
+    diff_source: DiffSource,
 ) -> impl Into<DiffTouchesRustFlag>
+where
+    DiffSource: Into<DiffSourceText<'semantic>>,
 {
     let diff_source = diff_source.into().0;
     for line in diff_source.lines() {
@@ -1171,12 +1181,13 @@ where
 ///   silently continue after a failed scratch-volume removal.
 /// - witness: `mutants::sandbox::tests::cache_cleanup_failure_is_hard_error`
 #[inline]
-pub(super) fn remove_cache_scratch<'semantic, Runner>(
+pub(super) fn remove_cache_scratch<'semantic, Runner, ScratchName>(
     runner: &mut Runner,
-    scratch_name: impl Into<ScratchNameText<'semantic>>,
+    scratch_name: ScratchName,
 ) -> Result<impl Into<RemoveCacheScratchFlag>, GateError>
 where
     Runner: MsbAdapter,
+    ScratchName: Into<ScratchNameText<'semantic>>,
 {
     let scratch_name = scratch_name.into().0;
     let list_output = runner.run_output(volume_list_plan().args())?;

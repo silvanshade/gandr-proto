@@ -41,10 +41,6 @@ const FRAME_INTERIOR: u8 = b'I';
 
 /// Errors surfaced by checked CST construction and read-side arena validation.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "BuildError enumerates the closed, contract-fixed set of arena-construction and validation failures"
-)]
 pub enum BuildError
 {
     /// A text range ended before it started or exceeded the source length.

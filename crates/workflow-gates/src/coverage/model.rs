@@ -52,7 +52,7 @@ crate::semantic_copy!(pub struct ForbiddenFloorSegmentFlag(bool));
 crate::semantic_str!(pub struct AsStrText);
 
 /// Parsed fractional percent hundredths and hidden precision state.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct FractionHundredths
 {
     /// First two fractional digits normalized to hundredths.

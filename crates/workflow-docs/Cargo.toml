@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "The gandr documentation tool: the GF-native spec pipeline (.gfd corpora as GF abstract-syntax trees, checkExpr validation, HTML by linearization), the prose document classes, canonical XML formatting, and the shared bibliography/typst machinery"
 license.workspace = true
 publish.workspace = true
+autotests = false
 
 [lib]
 name = "gandr_workflow_docs"
@@ -18,12 +19,24 @@ path = "src/lib.rs"
 name = "gandr-workflow-docs"
 path = "src/main.rs"
 
+[[test]]
+name = "lib"
+path = "tests/lib.rs"
+
+[features]
+default = []
+# House aggregating feature (`full` stays empty by the house scheme).
+full = []
+
+[lints]
+workspace = true
+
 [dependencies]
-# Content-addressed cache keys for compiled math/diagram SVG leaves.
-blake3 = { workspace = true }
 # The GF/PGF interop: the GfRuntime trait (internalization seam) and the B'
 # .gfd s-expression surface.
-gandr-workflow-grammatical-framework = { path = "../workflow-grammatical-framework" }
+gandr-workflow-grammatical-framework.workspace = true
+# Content-addressed cache keys for compiled math/diagram SVG leaves.
+blake3 = { workspace = true }
 # Scoped code-payload escaping in the render post-pass.
 regex = { workspace = true }
 # Read-only XML DOM for the document-class parse=validate pass and the
@@ -35,11 +48,3 @@ thiserror = { workspace = true }
 unicode-segmentation = { workspace = true }
 # Hayagriva `refs.yml` key set, read for cite-key resolution during validation.
 yaml-rust2 = { workspace = true }
-
-[features]
-default = []
-# House aggregating feature (`full` stays empty by the house scheme).
-full = []
-
-[lints]
-workspace = true

@@ -845,10 +845,6 @@ fn resolve_name(
 /// - provides: the engine [`lower_value`]/[`lower_comp`] wrap.
 /// - fails: the first [`BridgeRejection`] a form or a free name surfaces.
 /// - panics: none.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the flat term-lowering machine enumerates every value and computation former in one goal/frame loop; splitting it would obscure the single worklist the module doc describes"
-)]
 fn lower_term<'core>(
     context: &BridgeContext,
     arena: &mut TermArena,

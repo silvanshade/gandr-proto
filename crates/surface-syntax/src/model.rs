@@ -520,10 +520,6 @@ impl TextRange
 
 /// Compact syntax tag for a node.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the syntax contract fixes this closed four-way node-kind vocabulary"
-)]
 pub enum NodeKind
 {
     /// Layout cell.
@@ -538,10 +534,6 @@ pub enum NodeKind
 
 /// Material significance class for hashing and diffing.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the syntax contract fixes this closed three-way material vocabulary"
-)]
 pub enum Material
 {
     /// Insignificant layout; does not contribute to parent significant hashes.
@@ -614,10 +606,6 @@ impl TryFrom<usize> for MoldId
 /// The four grout shapes belong to grout material, ending the historical
 /// conflation of grout tip shape with tile mold identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the syntax contract fixes grout's four tip shapes exactly"
-)]
 pub enum GroutShape
 {
     /// Convex on both sides.
@@ -667,10 +655,6 @@ impl GroutShape
 ///   the builder's payload gate.
 /// - witness: `tests::malformed_ranges_and_material_boundaries_return_typed_errors`
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the syntax contract fixes this closed three-way mold-payload vocabulary"
-)]
 pub enum MoldPayload
 {
     /// Layout space: no mold identity.

@@ -20,14 +20,10 @@ use gandr_workflow_grammatical_framework::rt::GfRuntime as _;
 use gandr_workflow_grammatical_framework::rt::LanguageName;
 use gandr_workflow_grammatical_framework::rt::PyPgf;
 
+use crate::common::repo_root;
+
 /// Shared result type for the corpus witnesses.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
-
-/// The repo root (the crate manifest dir's grandparent).
-fn repo_root() -> PathBuf
-{
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
 
 /// The committed component-vocabulary corpus file.
 fn gfd_path() -> PathBuf

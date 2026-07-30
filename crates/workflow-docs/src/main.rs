@@ -3,7 +3,7 @@
 //! and rendering, the prose-document-class gate, and canonical `XML`
 //! formatting.
 
-#![allow(
+#![expect(
     clippy::print_stderr,
     clippy::print_stdout,
     reason = "standard io allowed for binaries"
