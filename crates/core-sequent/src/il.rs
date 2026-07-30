@@ -68,7 +68,6 @@ pub type CoName = String;
 /// demand flows). L0 does not run the machine, so the tag is recorded (from the
 /// producer's polarity) and checked for consistency, not yet acted on.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Polarity
 {
     /// A positive cut `⟨p |+ c⟩`: the meeting type is a value type; μ fires
@@ -82,7 +81,6 @@ pub enum Polarity
 /// A positive scalar leaf — the `lit` production of §2.1, plus the opaque
 /// unit / hole axioms the frozen core treats as literal-like values.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Lit
 {
     /// The unit value `()`.
@@ -108,7 +106,6 @@ pub enum Lit
 /// records carry their label vector so a projecting consumer can name the
 /// field.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CtorTag
 {
     /// An eager pair `Pair(a; b)` (the `Value::Pair` intro).
@@ -176,7 +173,6 @@ impl CtorTag
 /// every well-formed destructor the focusing translation builds carries exactly
 /// one consumer child.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum DtorTag
 {
     /// Function application `ap(v; α)` — the arrow destructor (§3, the `App`
@@ -221,7 +217,6 @@ impl DtorTag
 /// (`proposal-sequent-kernel.md` §2.1, §7.4 — natives are opaque at the cut
 /// seam).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum PrimOp
 {
     /// A Rust-backed builtin (`Comp::Native`), dispatched in the core's `prim`
@@ -237,7 +232,6 @@ pub enum PrimOp
 /// One copattern arm `D(x̄; ᾱ) ⇒ s` of a [`ProducerNode::Cocase`] (negative
 /// intro).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct CoArm
 {
     /// The destructor this arm answers.
@@ -254,7 +248,6 @@ pub struct CoArm
 /// One pattern-match arm `K(x̄; ᾱ) ⇒ s` of a [`ConsumerNode::Case`] (positive
 /// elim).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Arm
 {
     /// The constructor this arm matches.
@@ -271,7 +264,6 @@ pub struct Arm
 /// §6): `op(p; k) ⇒ s`, binding the payload as a producer variable and the
 /// resumption as a covalue-carrying value variable.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct HandlerOp
 {
     /// The handled operation's name.
@@ -289,7 +281,6 @@ pub struct HandlerOp
 /// decision K4): a case analysis on operation constructors with a distinguished
 /// return clause.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct HandlerConsumer
 {
     /// The handled signature (effect) name `E`.
@@ -307,7 +298,6 @@ pub struct HandlerConsumer
 
 /// A producer `p` (`proposal-sequent-kernel.md` §2.1 / §2.2).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ProducerNode
 {
     /// A variable `x`.
@@ -384,7 +374,6 @@ pub enum ProducerNode
 
 /// A consumer `c` (`proposal-sequent-kernel.md` §2.1 / §2.2).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ConsumerNode
 {
     /// A covariable `α`.
@@ -419,7 +408,6 @@ pub enum ConsumerNode
 
 /// A command `s` (`proposal-sequent-kernel.md` §2.1 / §2.2) — a machine state.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CommandNode
 {
     /// A cut `⟨p |ε c⟩` carrying its polarity orientation `ε`.
@@ -463,7 +451,6 @@ pub enum CommandNode
 /// (`proposal-sequent-kernel.md` §2.2): one typed [`NodeArena`] per category,
 /// the same flat carrier the frozen core's `FlatArena` uses.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct CommandArena
 {
     /// The producer nodes.

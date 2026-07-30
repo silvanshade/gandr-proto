@@ -9,7 +9,6 @@ use core::str::FromStr;
 /// The five values are the single document class of decision `gandr-fcw.8`
 /// (component-owned status); a missing status fails validation.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum Status
 {
     /// Implemented and matches the specification.
@@ -83,13 +82,11 @@ impl FromStr for Status
 
 /// Rejection returned when a lifecycle-status spelling is not canonical.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct UnknownStatus;
 
 /// A cite-key reference resolved against the references file.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct CiteKey(String);
 
 impl AsRef<str> for CiteKey

@@ -84,7 +84,6 @@ const COMPANION_TAG: &str = "SOUNDNESS-ORACLE-COMPANION";
 
 /// One Agda OPTIONS policy row with per-flag exemptions.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct OptionsPolicy<'policy>
 {
     /// Mandated Agda flag, for example `--safe`.
@@ -95,7 +94,6 @@ pub struct OptionsPolicy<'policy>
 
 /// One Agda module discovered under a governed root.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct OptionsModule<'source>
 {
     /// Path relative to the governed root's parent, matching exemption entries.
@@ -106,7 +104,6 @@ pub struct OptionsModule<'source>
 
 /// One governed Agda root and the modules discovered below it.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct OptionsRoot<'source>
 {
     /// Root label used in vacuity findings.

@@ -53,10 +53,6 @@ use crate::desc::DeclPolarity;
 /// case does not appear here (it is excluded from the fragment, not declined at
 /// runtime — proposal §3); what remains are the three genuinely-deferred cases.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the stage-1 decode-decline vocabulary is exactly {atom-abstraction, applied named type, codata-ν, uninhabited}; each names a decided later lane (ADR-81), so a new decline reason is a deliberate schema edit"
-)]
 pub enum DecodeError
 {
     /// A `bind ⟨a⟩T` atom-abstraction field (V5, [`Code::Bind`]): interpreting

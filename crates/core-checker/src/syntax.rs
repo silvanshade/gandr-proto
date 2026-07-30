@@ -170,7 +170,6 @@ impl<Kind> NodeId<Kind>
 /// children by typed [`NodeId`]s. It deliberately exposes only checked lookup;
 /// callers never index the backing vector directly.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub struct NodeArena<Node>
 {
@@ -271,7 +270,6 @@ pub type CompTypeArena = NodeArena<CompTypeNode>;
 /// and effect rows stay owned scalar data so readback remains independent of
 /// legacy `Rc` structure.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ValueTypeNode
 {
     Atom(String),
@@ -323,7 +321,6 @@ pub enum ValueTypeNode
 
 /// A computation type node in the flat ADR-50 carrier.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CompTypeNode
 {
     F(ValueTypeNodeId, EffectRow),
@@ -338,7 +335,6 @@ pub enum CompTypeNode
 /// intentionally parallel to [`Value`] while existing public builders continue
 /// to return the legacy structural surface during migration.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ValueNode
 {
     Var(String),
@@ -372,7 +368,6 @@ pub enum ValueNode
 
 /// A handler operation clause in the flat computation carrier.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct OpClauseNode
 {
     /// Operation name handled by this clause.
@@ -388,7 +383,6 @@ pub struct OpClauseNode
 /// The flat mirror of [`WalkMotive`] in the ADR-50 carrier: the identity
 /// eliminator's motive `(x y q). C`, with the body a computation-type-arena id.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct WalkMotiveNode
 {
     /// The left-endpoint binder `x`.
@@ -404,7 +398,6 @@ pub struct WalkMotiveNode
 /// The flat mirror of [`WalkBase`] in the ADR-50 carrier: the identity
 /// eliminator's diagonal base `(x). c`, with the body a computation-arena id.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct WalkBaseNode
 {
     /// The diagonal binder `x`.
@@ -418,7 +411,6 @@ pub struct WalkBaseNode
 /// The product / dependent-pair eliminator's motive `(z). M`, with the body a
 /// computation-type-arena id (the [`WalkMotiveNode`] precedent; ADR-82 D1).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct SplitMotiveNode
 {
     /// The scrutinee binder `z`.
@@ -432,7 +424,6 @@ pub struct SplitMotiveNode
 /// All term children are typed ids. Binder names, annotations, signatures, and
 /// primitive tags remain attributes on the node.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CompNode
 {
     Abs(String, Option<ValueTypeNodeId>, CompNodeId),
@@ -516,7 +507,6 @@ pub enum CompNode
 
 /// A reified-stack node in the flat ADR-50 carrier.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum StackNode
 {
     Empty,
@@ -538,7 +528,6 @@ pub type HoleId = u32;
 /// Selects a component of a binary form: an injection tag (`inj1`/`inj2`) or
 /// a projection index (`prj1`/`prj2`).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Side
 {
     /// The first component (`inj1` / `prj1`).
@@ -564,7 +553,6 @@ pub enum Side
 /// [`NumLit::value_type`] (the single point of truth, keeping checker / machine
 /// / mark lock-step).
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum NumLit
 {
     /// A `u32` literal.
@@ -650,7 +638,6 @@ impl core::fmt::Debug for NumLit
 
 /// A value `v`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Value
 {
     /// A variable `x`.
@@ -1157,7 +1144,6 @@ impl Value
 /// [`crate::types::ValueType::Stk`] value `Stk(F^ε B_op, F^ε C)`); `body` is
 /// the clause's computation `t`, checked against the handler's answer `F^ε C`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct OpClause
 {
     /// The handled operation's name (an operation of the handler's signature).
@@ -1212,7 +1198,6 @@ impl OpClause
 /// transport can eliminate into arbitrary computations. Motive instantiation is
 /// the value-into-type substitution of [`crate::identity`].
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct WalkMotive
 {
     /// The left-endpoint binder `x`.
@@ -1234,7 +1219,6 @@ pub struct WalkMotive
 /// motive's diagonal instance. The β-rule reduces `walk(here(v), C, (x). c)` to
 /// `c[v/x]`, substituting `v` for exactly this binder.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct WalkBase
 {
     /// The diagonal binder `x`.
@@ -1310,7 +1294,6 @@ impl WalkBase
 /// **infers** (rule `SplitMotive`⇑); the motive-less form is check-only (rule
 /// Split⇓, [`Comp::split`]).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct SplitMotive
 {
     /// The scrutinee binder `z`.
@@ -1341,7 +1324,6 @@ impl SplitMotive
 
 /// A computation `t`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Comp
 {
     /// An abstraction `λx. t` (unannotated) or `λx:A. t` (annotated binder).
@@ -2097,7 +2079,6 @@ impl Comp
 /// the rest of the AST, so a stack clones cheaply into the typing machine's
 /// frames.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Stack
 {
     /// The empty stack `ε : B ⇒ B` — the identity evaluation context.
@@ -2195,7 +2176,6 @@ impl Stack
 /// fresh canonical carrier nodes for every legacy node it traverses; it never
 /// aliases an `Rc` pointer as an arena id.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct FlatArena
 {
     /// Canonical value nodes.
@@ -2212,7 +2192,6 @@ pub struct FlatArena
 
 /// A checked flat-arena bridge failure.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ArenaBridgeError
 {
     /// The target arena has exhausted the `u32` id space.
@@ -5420,7 +5399,6 @@ impl FlatArena
 
 /// A term of either sort, as carried by errors.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Term
 {
     /// A value term.

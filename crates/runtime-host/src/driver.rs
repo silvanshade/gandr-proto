@@ -49,7 +49,6 @@ use crate::handler::ShellHandler;
 
 /// The result of a shell run.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ShellOutcome
 {
     /// The program reached a core terminal outcome — a returned value

@@ -67,7 +67,6 @@ use crate::boundary::MatchDecision;
 /// member's parameters in declaration order and fixes both the arity check and
 /// the payload shape (see [`HostMember::params`]).
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct HostMember
 {
     /// The surface member name — also the
@@ -85,7 +84,6 @@ pub struct HostMember
 /// A host module — a reserved source-level namespace (`fs`, `env`, `proc`)
 /// whose member calls elaborate to performs against a host [`EffectSig`].
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct HostModule
 {
     /// The surface module name (`fs` in `fs.read`).

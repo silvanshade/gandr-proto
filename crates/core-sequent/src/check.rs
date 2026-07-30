@@ -56,7 +56,6 @@ const DEPTH_LIMIT: u32 = 0x0004_0000;
 
 /// The free variables and covariables of a (sub)command.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Frees
 {
     /// The free term variables.
@@ -87,7 +86,6 @@ impl Frees
 
 /// A well-formedness violation.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CheckError
 {
     /// A producer id did not resolve in the arena.

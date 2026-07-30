@@ -268,7 +268,6 @@ impl core::ops::Not for IntervalContainment
 /// element that reuses the freed slot — operations on a stale handle report
 /// failure (`None` / [`OrderError::UnknownPosition`]) instead.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct Pos
 {
     /// The identity of the [`OrderMaintenance`] this handle belongs to; a
@@ -283,7 +282,6 @@ pub struct Pos
 
 /// A failure of an [`OrderMaintenance`] operation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
-#[non_exhaustive]
 pub enum OrderError
 {
     /// An insertion was requested relative to a handle that does not refer to
@@ -341,7 +339,6 @@ struct Free
 /// See the crate-root documentation for the algorithm and complexity. The
 /// structure owns its elements; iteration ([`Self::iter`]) and navigation
 /// ([`Self::next`] / [`Self::prev`]) visit them in order.
-#[non_exhaustive]
 pub struct OrderMaintenance<T>
 {
     /// The element arena, indexed by [`Pos::index`].

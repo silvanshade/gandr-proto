@@ -232,7 +232,6 @@ impl From<SimulationMatch> for bool
 ///   witnesses observe exact block membership and ordering through this type.
 /// - witness: `gandr_theory_graphs::partition_refine::contracts::partition_refinement_contract`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Partition
 {
     /// Dense node bound used by checked query methods.
@@ -351,7 +350,6 @@ impl Partition
 ///   candidate order exactly.
 /// - witness: `gandr_theory_graphs::partition_refine::contracts::partition_refinement_contract`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct SimulationRow
 {
     /// Subject state whose simulators are listed in `candidates`.
@@ -386,7 +384,6 @@ pub struct SimulationRow
 ///   naive relation-elimination oracle.
 /// - witness: `gandr_theory_graphs::partition_refine::contracts::partition_refinement_contract`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Simulation
 {
     /// Dense node bound used by checked query methods.

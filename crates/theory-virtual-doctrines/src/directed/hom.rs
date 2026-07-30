@@ -101,7 +101,6 @@ impl DirectedHom
 /// covariant is admissible — a contravariant use is the symmetry shape the
 /// polarity side condition refuses.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum MotiveShape
 {
     /// `C(x) = hom(fixed ⇝ x)` — the moving endpoint stays in the covariant
@@ -186,7 +185,6 @@ impl DirectedJ
 /// Why a directed-J elimination is ill-formed (`proposal-vdc-reflection.md` §7,
 /// Ł2).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum JError
 {
     /// The motive places the moving endpoint in the contravariant source slot

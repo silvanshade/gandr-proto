@@ -28,7 +28,6 @@ use crate::error::ShellError;
 /// The mode is the consumption context carried in the `Exec` payload: a
 /// consumed result captures, a discarded REPL command line inherits.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum SpawnMode
 {
     /// Capture the child's stdout/stderr into the typed reply (the contract for
@@ -49,7 +48,6 @@ pub enum SpawnMode
 /// interpolation), so a value with shell metacharacters is an inert argument,
 /// not an injection vector.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Command
 {
     /// The program to run (resolved against `PATH` by the OS).

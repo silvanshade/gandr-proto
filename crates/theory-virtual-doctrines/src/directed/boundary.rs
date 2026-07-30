@@ -37,7 +37,6 @@ use crate::boundary::CutDeclination;
 
 /// The outcome of a [`directed_cut`] (`proposal-vdc-reflection.md` §7, Ł4).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CutOutcome
 {
     /// Admitted **unconditionally** — every participating cell is invertible,

@@ -480,7 +480,6 @@ impl CommitTimestamp
 
 /// Head validation policy for range and advancement entry points.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum HeadExpectation
 {
     /// The supplied head may be any commit-ish revision.
@@ -491,7 +490,6 @@ pub enum HeadExpectation
 
 /// Planned source for the lower bound before any Git resolution occurs.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum PlannedBaseSource
 {
     /// Operator-supplied bootstrap or catch-up lower bound.
@@ -516,7 +514,6 @@ enum BaseSource
 
 /// User-visible source category for a selected maintenance base.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum MaintenanceBaseKind
 {
     /// Base selected from an explicit `from` ref.
@@ -577,7 +574,6 @@ impl Watermark
 
 /// Successful maintenance range selection.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct MaintenanceRangeSelection
 {
     /// Lower-bound commit selected for the next range.
@@ -589,7 +585,6 @@ pub struct MaintenanceRangeSelection
 }
 
 /// Request for resolving and publishing a maintenance range.
-#[non_exhaustive]
 pub struct MaintenanceRangeRequest<'request>
 {
     /// GitHub Actions output file that receives `base=<oid>`.
@@ -646,7 +641,6 @@ impl<'request> MaintenanceRangeRequest<'request>
 }
 
 /// Request for atomically advancing the success watermark.
-#[non_exhaustive]
 pub struct MaintenanceAdvanceRequest<'request>
 {
     /// Watermark path to replace atomically.

@@ -35,7 +35,6 @@ use crate::vdc::RelationRef;
 /// (`proposal-vdc-reflection.md` §6.1, "reduction search / normalization
 /// trace").
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct RewritePath
 {
     /// The endpoint reached (a normal form when `complete`).
@@ -49,7 +48,6 @@ pub struct RewritePath
 /// A **seam composite** — one overlap-indexed member of the ⊙ family
 /// (`proposal-vdc-reflection.md` §6.1).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct SeamComposite
 {
     /// The left generating cell.
@@ -63,7 +61,6 @@ pub struct SeamComposite
 /// A **right/left extension candidate** — a seam a completing consumer resolves
 /// (`proposal-vdc-reflection.md` §6.1, the Kan-shaped query).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ExtensionCandidate
 {
     /// The left generating cell of the critical pair.
@@ -78,7 +75,6 @@ pub struct ExtensionCandidate
 /// (`proposal-vdc-reflection.md` §6.1, the tabulator's two-sided
 /// category-of-elements).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct InstanceRow
 {
     /// The generating cell this instance comes from.
@@ -93,7 +89,6 @@ pub struct InstanceRow
 /// projections (`proposal-vdc-reflection.md` §6.1, the tabulator `{|R|}`).
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct InstanceTable
 {
     /// The instance rows, one per resolvable generating cell.
@@ -104,7 +99,6 @@ pub struct InstanceTable
 /// (`proposal-vdc-reflection.md` §6.1).
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
 pub struct Query<'store>
 {
     /// The cell store the queries read.

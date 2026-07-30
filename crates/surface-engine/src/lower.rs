@@ -170,7 +170,6 @@ pub type LowerResult<T> = Result<T, LowerError>;
 /// `gandr-core-checker` error convention. Lowering never panics — every input
 /// is either [`Lowered`] or exactly one of these.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-#[non_exhaustive]
 pub enum LowerError
 {
     /// The tree-sitter parser rejected the gandr grammar (version skew).
@@ -461,7 +460,6 @@ impl From<ArenaBridgeError> for LowerError
 /// The lowering mode: A2.1 fail-fast or A2.2 total (see the module doc's
 /// conversion table).
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Strictness
 {
     /// A2.1 behavior: syntax errors and out-of-fragment constructs are
@@ -475,7 +473,6 @@ pub enum Strictness
 
 /// One lowered top-level item.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct LoweredItem
 {
     /// The defined name (`def` items); [`None`] for expression items.
@@ -498,7 +495,6 @@ pub struct LoweredItem
 /// payload is lowered here to its value fragment so the attribute pass can
 /// type it with the ordinary checker without re-walking the CST.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct RawAttr
 {
     /// The index of the item this attribute annotates (into
@@ -520,7 +516,6 @@ pub struct RawAttr
 /// the value fragment at all (proposal-attributes.md §3.3 — a payload is data,
 /// never an `F`-computation).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct RawPayload
 {
     /// The lowered payload value (a placeholder [`Value::Unit`] when
@@ -537,7 +532,6 @@ pub struct RawPayload
 
 /// The result of lowering a source file: items plus the origin side table.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Lowered
 {
     /// The lowered items, in source order.

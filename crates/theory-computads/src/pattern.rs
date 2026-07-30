@@ -87,10 +87,6 @@ impl AsRef<str> for Sym
 /// The **category** a metavariable ranges over — the producer/consumer split of
 /// the sequent grammar (`proposal-sequent-kernel.md` §2.1).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the producer/consumer split is the closed two-sided vocabulary of the command IL; a metavariable ranges over producers or over consumers, nothing else"
-)]
 pub enum Cat
 {
     /// A producer metavariable `x` — ranges over [`ProdPat`].
@@ -147,7 +143,6 @@ impl MetaVar
 /// A **producer pattern** `p` (`proposal-sequent-kernel.md` §2.1, positive
 /// intro) — the value-side of a cut, over the fusion-visible fragment.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum ProdPat
 {
     /// A producer metavariable `x`.
@@ -197,7 +192,6 @@ impl ProdPat
 /// A **consumer pattern** `c` (`proposal-sequent-kernel.md` §2.1, negative elim
 /// and the §7.1 fusion frames) — the covalue-side of a cut.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum ConsPat
 {
     /// A consumer / covariable metavariable `α`.
@@ -285,7 +279,6 @@ impl ConsPat
 /// grammar open for a later `Case`/`Cocase` extension without a breaking
 /// change.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum CmdPat
 {
     /// A cut `⟨p |ε c⟩` carrying its polarity orientation `ε` (K2).
@@ -401,7 +394,6 @@ impl AsRef<[usize]> for Pos
 /// [`Node::with_children`] so a splice can never graft a consumer where a
 /// producer belongs.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Node
 {
     /// A producer subtree.

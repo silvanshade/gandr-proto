@@ -107,7 +107,6 @@ use crate::il::ProducerNode;
 /// arena exhaustion, which cannot arise for any realistic term (it needs more
 /// than `u32::MAX` nodes of one family).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum FocusError
 {
     /// A node arena exhausted its `u32` id space during translation.
@@ -141,7 +140,6 @@ impl core::error::Error for FocusError
 /// create no command and so record no origin — the returned command is the
 /// sub-computation's.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum FocusOrigin
 {
     /// `ret v` — a cut of the value against its continuation.
@@ -197,7 +195,6 @@ pub enum FocusOrigin
 
 /// A completed focusing: the arena, the root command, and the provenance table.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Focused
 {
     /// The arena holding every translated node.
@@ -1890,7 +1887,6 @@ pub fn focus_comp(comp: &Comp) -> Result<Focused, FocusError>
 /// this table, mirroring the retired CEK oracle's `Force(Var …)` prelude
 /// lookup.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct PreludeFocused
 {
     /// The focused program (arena, root, provenance).

@@ -27,7 +27,6 @@ macro_rules! semantic_str {
     ($vis:vis struct $name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        #[non_exhaustive]
         $vis struct $name<'text>(pub &'text str);
 
         impl<'text> From<&'text str> for $name<'text> {
@@ -76,7 +75,6 @@ macro_rules! semantic_optional_str {
     ($vis:vis struct $name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        #[non_exhaustive]
         $vis struct $name<'text>(pub Option<&'text str>);
 
         impl<'text> From<Option<&'text str>> for $name<'text> {
@@ -102,7 +100,6 @@ macro_rules! semantic_bytes {
     ($vis:vis struct $name:ident) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        #[non_exhaustive]
         $vis struct $name<'bytes>(pub &'bytes [u8]);
 
         impl<'bytes> From<&'bytes [u8]> for $name<'bytes> {
@@ -142,7 +139,6 @@ macro_rules! semantic_optional_copy {
     ($vis:vis struct $name:ident($inner:ty)) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-        #[non_exhaustive]
         $vis struct $name(pub Option<$inner>);
 
         impl From<Option<$inner>> for $name {
@@ -167,7 +163,6 @@ macro_rules! semantic_copy {
     ($vis:vis struct $name:ident($inner:ty)) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-        #[non_exhaustive]
         $vis struct $name(pub $inner);
 
         impl From<$inner> for $name {
@@ -245,7 +240,6 @@ pub type GateResult = Result<Vec<Finding>, GateError>;
 ///   whitespace byte and an exact rendered string observation.
 /// - witness: `gandr_workflow_gates::tests::finding_display_preserves_field_order_and_normalizes_whitespace`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Finding
 {
     /// Stable finding kind, such as `missing-contract` or `forbidden-boundary`.
@@ -333,7 +327,6 @@ impl fmt::Display for Finding
 ///   observing display and [`core::error::Error::source`].
 /// - witness: `gandr_workflow_gates::tests::gate_error_display_and_sources_are_exact`
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum GateError
 {
     /// Command-line usage failed validation.

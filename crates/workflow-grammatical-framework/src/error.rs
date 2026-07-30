@@ -2,7 +2,6 @@
 
 /// Errors from the `GF` runtime-interop and the `.gfd` reader lanes.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum GfError
 {
     /// Filesystem failure with the path context included by the caller.

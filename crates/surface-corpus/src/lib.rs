@@ -199,7 +199,6 @@ impl core::fmt::Display for HarnessLabel
 
 /// How an example asks to be run (the `mode:` directive).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Mode
 {
     /// Submit the file's items, in order, to a fresh REPL session
@@ -226,7 +225,6 @@ pub enum Mode
 
 /// One expectation declared by an example (an `expect*` directive).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Expect
 {
     /// `expect: clean` — no diagnostics, no goals, and every item succeeded
@@ -340,7 +338,6 @@ pub enum Expect
 
 /// A corpus crate feature an example requires before it can run.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum RequiredFeature
 {
     /// The source-facing `regex.extract` builtin, enabled by the `regex`
@@ -354,7 +351,6 @@ pub enum RequiredFeature
 /// A parsed example: its run mode, feature requirements, and declared
 /// expectations.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Case
 {
     /// How to run the example.

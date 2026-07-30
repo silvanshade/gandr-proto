@@ -152,7 +152,6 @@ pub mod text
 /// the wrong *constructor* (e.g. applying a non-arrow) has no complete
 /// "expected" type to report, only an expected shape.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-#[non_exhaustive]
 pub enum TypeError
 {
     /// Subsumption failed: the term's type is not a subtype of the expected

@@ -193,7 +193,6 @@ impl<'text> From<&'text str> for ListTag<'text>
 /// target titles — both extracted from the compiled grammar by the runtime
 /// (never parsed from the generated modules; the bindings-first doctrine).
 #[derive(Clone, Debug, Default)]
-#[non_exhaustive]
 pub struct LexiconViews
 {
     /// Term constant name to rendered text (`{ text = … }`).
@@ -261,7 +260,6 @@ impl LexiconViews
 /// A distribution of word counts (sentence or paragraph lengths): the
 /// rhythm signal of Lane B.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct Dist
 {
     /// The sample count.
@@ -343,7 +341,6 @@ fn median_of(sorted: WordCountSamples<'_>) -> Median
 
 /// One section's shape (Lane A): counts only, in reading order.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct SectionReport
 {
     /// The section title.
@@ -366,7 +363,6 @@ pub struct SectionReport
 
 /// The document-level pacing report (Lanes A and B).
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct Report
 {
     /// Every section in reading order (nested sections flattened, depth

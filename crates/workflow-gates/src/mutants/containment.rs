@@ -48,7 +48,6 @@ const PROOF_GUEST_SENTINEL: &str = "guest-sentinel";
 
 /// A sequential cargo-mutants job count.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub(super) struct CargoMutantsJobs
 {
@@ -112,7 +111,6 @@ impl Default for CargoMutantsJobs
 
 /// The cargo-mutants package selection scope.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) enum CargoMutantsScope
 {
     /// Run against every workspace package.
@@ -166,7 +164,6 @@ impl CargoMutantsScope
 
 /// Caller-proven diff path state for `--in-diff` campaigns.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) enum DiffPath<'path>
 {
     /// No diff restriction; render a full workspace/package campaign.
@@ -179,7 +176,6 @@ pub(super) enum DiffPath<'path>
 
 /// Pure request for a cargo-mutants invocation plan.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct CargoMutantsRequest<'path>
 {
     /// Scope to mutate.
@@ -192,7 +188,6 @@ pub(super) struct CargoMutantsRequest<'path>
 
 /// Explicit command plan for `cargo mutants`.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct CargoMutantsPlan
 {
     /// Program to execute at the integration boundary.
@@ -465,7 +460,6 @@ fn format_path_list(paths: &[PathBuf]) -> String
 
 /// Observed guest sentinel state.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) enum GuestSentinel
 {
     /// Sentinel file exists and contains the exact token.
@@ -482,7 +476,6 @@ pub(super) enum GuestSentinel
 
 /// Integration-provided facts used to prove guest containment.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct ContainmentEvidence
 {
     /// Kernel name reported by the guest probe.
@@ -500,7 +493,6 @@ pub(super) struct ContainmentEvidence
 
 /// One named containment proof and its diagnostic detail.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct ContainmentProof
 {
     /// Stable proof name.
@@ -513,7 +505,6 @@ pub(super) struct ContainmentProof
 
 /// Full containment validation report.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct ContainmentReport<'markers>
 {
     /// All required proofs in deterministic order.

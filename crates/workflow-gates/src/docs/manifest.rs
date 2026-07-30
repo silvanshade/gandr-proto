@@ -105,7 +105,6 @@ pub const REQUIRED_HASH_ALGORITHM: &str = "blake3";
 /// - witness: `manifest::tests::clean_manifest_has_no_drift_findings`
 /// - witness: `manifest::tests::empty_manifest_nodes_fail_loudly`
 #[derive(Clone)]
-#[non_exhaustive]
 pub struct ManifestContext
 {
     /// Path of the manifest that was loaded.
@@ -270,7 +269,6 @@ impl ManifestContext
 ///   only validation branch before downstream path joins occur.
 /// - witness: `manifest::tests::empty_manifest_nodes_fail_loudly`
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub struct ManifestPath
 {
@@ -356,7 +354,6 @@ impl ManifestPath
 /// - witness: `manifest::tests::clean_manifest_has_no_drift_findings`
 /// - witness: `manifest::tests::drift_missing_and_unregistered_docs_are_reported`
 #[derive(Clone)]
-#[non_exhaustive]
 pub struct ManifestNode
 {
     /// Manifest-relative path of this documentation node.
@@ -407,7 +404,6 @@ impl ManifestNode
 ///   records distinguish all loader branches.
 /// - witness: `references::tests::dangling_edge_adr_and_section_refs_are_reported`
 #[derive(Clone, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ManifestEdge
 {
     /// Nonempty manifest relation label.

@@ -40,7 +40,6 @@ use crate::boundary::SyntaxKind;
 /// diagnostics and golden snapshots.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct OriginNodeId
 {
     /// Raw deterministic preorder ordinal local to this origin map.
@@ -204,7 +203,6 @@ impl core::ops::Deref for OriginPathRef<'_>
 /// the proposal §5.2 requirement that elaborations be recorded so they can be
 /// un-sugared on demand.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ElabKind
 {
     /// `def f(x: A) -> B { t }` ⇒ ascription `U_ω (A → B)`, term
@@ -304,7 +302,6 @@ pub enum ElabKind
 /// and where" — together with the expected type from the goals report, this
 /// is the v0 seed of the A2.4 agent stream.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum HoleNote
 {
     /// An `ERROR` or `MISSING` CST region (the melder-CST switch, `melder-CST
@@ -402,7 +399,6 @@ pub enum HoleNote
 
 /// What one lowered term node originated from.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct OriginEntry
 {
     /// The originating CST node's stable identity in the melder arena
@@ -653,7 +649,6 @@ impl OriginNode
 
 /// A borrowed term node of either sort, as produced by [`resolve`].
 #[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
 pub enum TermRef<'term>
 {
     /// A value node.

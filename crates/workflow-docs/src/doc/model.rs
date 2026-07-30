@@ -27,7 +27,6 @@ use crate::model::Status;
 /// The class selects the banner obligation and the admitted block set; the
 /// substrate below the root is shared.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum DocClass
 {
     /// A `docs/research/` design study or staging record (`<research-record>`).
@@ -88,12 +87,10 @@ impl FromStr for DocClass
 
 /// Rejection returned when a root element does not name a document class.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct UnknownDocClass;
 
 /// A prose document: the class-tagged root element of one file.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocRecord
 {
     /// The document class fixed by the root element.
@@ -120,7 +117,6 @@ pub struct DocRecord
 /// optional `read-when` orientation line (required for workflow docs) plus a
 /// sequence of free-prose notes (status phrase, scope, provenance).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Banner
 {
     /// The `read-when` orientation line, when present.
@@ -161,7 +157,6 @@ impl From<BannerEmpty> for bool
 /// omits the component vocabulary's math-bearing blocks (judgements, grammar,
 /// rule, diagram) by design — prose documents carry no typeset leaves.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum DocBlock
 {
     /// A titled, optionally identified and dated grouping of nested blocks.
@@ -212,7 +207,6 @@ impl DocBlock
 
 /// A titled grouping of nested blocks.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocSection
 {
     /// Optional corpus-unique identifier.
@@ -227,7 +221,6 @@ pub struct DocSection
 
 /// A flat ordered or unordered list.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocList
 {
     /// Whether the list is a numbered (ordered) sequence.
@@ -241,7 +234,6 @@ pub struct DocList
 /// The optional `lead` models the rule-statement convention of the workflow
 /// docs (a bold lead-in naming the rule, then its prose body).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocItem
 {
     /// Optional bold lead-in naming the item (the rule-statement head).
@@ -252,7 +244,6 @@ pub struct DocItem
 
 /// A header-plus-body table.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocTable
 {
     /// Table caption metadata.
@@ -266,7 +257,6 @@ pub struct DocTable
 /// A single table body row.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocRow(Vec<DocCell>);
 
 impl AsRef<[DocCell]> for DocRow
@@ -290,7 +280,6 @@ impl From<Vec<DocCell>> for DocRow
 /// A single table cell of inline content.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocCell(Vec<DocInline>);
 
 impl AsRef<[DocInline]> for DocCell
@@ -313,7 +302,6 @@ impl From<Vec<DocInline>> for DocCell
 
 /// A verbatim code listing.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocCode
 {
     /// Source language label.
@@ -324,7 +312,6 @@ pub struct DocCode
 
 /// An inline element within prose, a list item, a table cell, or a banner line.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum DocInline
 {
     /// Literal text.
@@ -344,7 +331,6 @@ pub enum DocInline
 /// Labels are the research-record recommendation/hazard/question anchors (`R1`,
 /// `HZ-1`, `O1`): a keyed anchor coined once and referenced elsewhere by key.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Label
 {
     /// Label key, unique within the document.
@@ -356,7 +342,6 @@ pub struct Label
 /// A reference to a coined label defined elsewhere in the same document.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct LabelRef(String);
 
 impl AsRef<str> for LabelRef

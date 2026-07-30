@@ -34,7 +34,6 @@ use crate::syntax::Value;
 /// comparison — the "third identity discipline" ADR-50 Decision B names, keyed
 /// on the minted 0-cell.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct DataId
 {
     /// The monotone serial assigned in declaration order within one
@@ -87,7 +86,6 @@ impl DataId
 
 /// A value (positive) type `A`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum ValueType
 {
     /// A rigid base type or type variable `X` (e.g. `Int`, `A`).
@@ -566,7 +564,6 @@ impl ValueType
 /// pure-returner spelling byte-for-byte (ADR-33 D1); see the `Debug` impl
 /// below.
 #[derive(Clone, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum CompType
 {
     /// The effect-graded returner `F^ε A`: a computation that produces an `A`,
@@ -680,7 +677,6 @@ impl core::fmt::Debug for CompType
 /// A type of either polarity, as carried by `Return` control states and
 /// errors.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Ty
 {
     /// A value type.

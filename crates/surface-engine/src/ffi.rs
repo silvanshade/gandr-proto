@@ -40,7 +40,6 @@ use crate::boundary::ForeignOperation;
 /// call. Sub-word integers, `bool`/`c_char`, and struct-by-value are growth
 /// items (§4.1 / §4.3), not represented here.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum CType
 {
     /// `uint32_t` — the `u32` numeric atom (identity map, §4.1).
@@ -99,7 +98,6 @@ impl CType
 
 /// One foreign-function parameter: its surface name and its C boundary type.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ForeignParam
 {
     /// The parameter name (the record label the argument crosses under).
@@ -112,7 +110,6 @@ pub struct ForeignParam
 /// §2). In the MVP the operation name is also the resolved C symbol name
 /// (§5.1).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ForeignFn
 {
     /// The operation / C symbol name.
@@ -151,7 +148,6 @@ impl ForeignFn
 /// (proposal-ffi.md §2), binding its members as the FFI contract module
 /// members under the namespace named by its `library` string.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ForeignModule
 {
     /// The module namespace (`m` in `m.cos`), taken from the `library` string;

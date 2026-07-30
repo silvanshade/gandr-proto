@@ -91,7 +91,6 @@ use crate::types::ValueType;
 /// S1's standing-subset growth (kernel-boundary.md §7) will retire rejections
 /// as formers are admitted.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-#[non_exhaustive]
 pub enum BridgeRejection
 {
     /// A value variable named no enclosing binder and no admitted declaration.

@@ -318,7 +318,6 @@ impl core::fmt::Display for ArtifactIdentity
 /// - fails: [`ManifestError`] on a malformed or unsupported-version buffer.
 /// - panics: none.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ArtifactManifest
 {
     /// The manifest layout version (the outer plane).

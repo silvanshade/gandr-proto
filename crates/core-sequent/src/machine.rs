@@ -151,7 +151,6 @@ pub type Continuation = Rc<[LFrame]>;
 /// `𝔭` (`proposal-sequent-kernel.md` §4.1), the L-machine image of
 /// `eval::RtValue`.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum LValue
 {
     /// A free / neutral name (an unbound producer variable — a prelude binding
@@ -231,7 +230,6 @@ impl LValue
 /// A reified continuation frame `LFrame` — the L-machine image of `eval::Cont`,
 /// drawn from a consumer IL node (`proposal-sequent-kernel.md` §4.1).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum LFrame
 {
     /// An argument frame `ap(𝕍; ·)` — apply the codata object in focus to the

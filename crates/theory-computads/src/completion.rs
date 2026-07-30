@@ -75,10 +75,6 @@ impl CompletionBudget
 /// Why completion declined (`proposal-sequent-kernel.md` §7.3.3, decline-and-
 /// report).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "completion declines on exactly one of the two ceilings; this closed pair is the whole decline vocabulary"
-)]
 pub enum DeclineReason
 {
     /// The step ceiling ([`CompletionBudget::max_steps`]) was reached.
@@ -91,7 +87,6 @@ pub enum DeclineReason
 /// defined decline carrying what was left (`proposal-sequent-kernel.md`
 /// §7.3.3).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CompletionOutcome
 {
     /// Completion ran the whole worklist within budget.

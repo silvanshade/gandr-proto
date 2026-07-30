@@ -140,7 +140,6 @@ pub const WIRE_SCHEMA_VERSION: WireSchemaVersion = WireSchemaVersion(1);
 /// constructors, which maintain that invariant.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct RenderFrame
 {
     /// The wire schema version ([`WIRE_SCHEMA_VERSION`]); checked before
@@ -442,7 +441,6 @@ impl RenderFrame
     serde(tag = "kind", content = "data", rename_all = "snake_case")
 )]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum FrameBody
 {
     /// server→client on attach: the tracked document set and the server's
@@ -482,7 +480,6 @@ pub enum FrameBody
 /// A tracked document's identity: its URI and current version.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DocId
 {
     /// The LSP document URI.
@@ -592,7 +589,6 @@ impl From<SessionBadges> for bool
 /// sessions).
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ServerCaps
 {
     /// The wire schema version the server speaks ([`WIRE_SCHEMA_VERSION`]).
@@ -655,7 +651,6 @@ impl ServerCaps
 /// reserved slot populates.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ReportView
 {
     /// Syntax-highlight spans over the document.
@@ -677,7 +672,6 @@ pub struct ReportView
 /// values).
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct MachineView
 {
     /// The derivation forest roots (`typing-machine.md` §7), context-deltas not
@@ -701,7 +695,6 @@ pub struct MachineView
 /// (in the bus server) the pipeline projection builder.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DerivationNode
 {
     /// The node id (the machine `step_id`), the delta key.
@@ -760,7 +753,6 @@ impl From<NodeStep> for u64
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-#[non_exhaustive]
 pub struct NodeId
 {
     /// The step counter value.
@@ -786,7 +778,6 @@ impl NodeId
 /// [`DerivationNode::ctx_delta`]).
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct CtxBinding
 {
     /// The bound name.
@@ -820,7 +811,6 @@ impl CtxBinding
     serde(tag = "kind", content = "data", rename_all = "snake_case")
 )]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum DirView
 {
     /// Inference position (`Infer`): the type is synthesized.
@@ -838,7 +828,6 @@ pub enum DirView
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "codecs", serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum LayerView
 {
     /// A value (`Val`): values *are*.
@@ -855,7 +844,6 @@ pub enum LayerView
     serde(tag = "kind", content = "data", rename_all = "snake_case")
 )]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ControlView
 {
     /// `Descend`: about to type a sub-expression.
@@ -885,7 +873,6 @@ pub enum ControlView
 /// pipeline `ContextFrame` shape the failure chain already uses.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct FrameSummary
 {
     /// The frame constructor name (`"KAppFn"`, `"KBind"`, …), for stable
@@ -924,7 +911,6 @@ impl FrameSummary
 /// endpoint's session type across a session-frame boundary.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ProtocolBadge
 {
     /// The endpoint (channel), rendered.
@@ -1065,7 +1051,6 @@ impl From<SolverTrailDepth> for u32
 /// bus-only.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct MachineSummary
 {
     /// The monotone step counter (`typing-machine.md` §3.2 `steps`).
@@ -1090,7 +1075,6 @@ pub struct MachineSummary
     serde(tag = "kind", content = "data", rename_all = "snake_case")
 )]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum NodeDelta
 {
     /// Replace the subtree rooted at `id` with `node`.

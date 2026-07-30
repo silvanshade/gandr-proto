@@ -364,7 +364,6 @@ const GIT_ENVIRONMENT_PREFIX: &str = "GIT_";
 /// - witness: `mutants::sandbox::tests::sandbox_boot_plan_has_no_forbidden_host_mounts`
 /// - witness: `mutants::report::tests::successful_publication_replaces_current_report`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct MutantsOptions
 {
     /// Repository root used as the working directory for Git and report
@@ -435,7 +434,6 @@ impl MutantsOptions
 /// - witness: `mutants::containment::tests::cargo_mutants_package_and_workspace_argv_are_exact`
 /// - witness: `mutants::sandbox::tests::timeout_caps_and_sequential_jobs_are_planned`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum MutantsCommand
 {
     /// Build the reusable `microVM` snapshot and btrfs cache image.

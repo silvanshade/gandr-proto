@@ -36,7 +36,6 @@ pub fn format_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, DocError>
 
 /// Outcome of a `check-docs` run over the prose document classes.
 #[derive(Clone, Debug, Default)]
-#[non_exhaustive]
 pub struct DocCheckReport
 {
     /// Number of prose documents parsed into the model.

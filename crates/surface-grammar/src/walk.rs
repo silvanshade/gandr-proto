@@ -206,7 +206,7 @@ impl WalkSym for GrammarWalkSym
 
 /// One derivable operator-precedence comparison (paper Fig. 15).
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum Relation
+pub enum Comparison
 {
     /// `t_L ⋖ t_R`: the left tile yields; the right tile's form nests to the
     /// right.

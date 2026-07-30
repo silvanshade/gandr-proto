@@ -34,7 +34,6 @@ const DISCARD_BINDER: &str = "_";
 
 /// A structured program-linking failure.
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
-#[non_exhaustive]
 pub enum LinkError
 {
     /// The item stream has no unnamed final run target.

@@ -21,7 +21,6 @@ use crate::syntax::Comp;
 /// A **defined** runtime halt (ADR-34 D4): a typed outcome that is *not* an
 /// undefined stuck.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Blame
 {
     /// A gradual hole reached an elimination, so it has no value to produce
@@ -42,7 +41,6 @@ pub enum Blame
 /// The operational soundness oracle pins that a closed well-typed `F A`
 /// computation never reaches one (ADR-34 D4).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum StuckReason
 {
     /// A non-function terminal met an argument frame, or a function met a
@@ -107,7 +105,6 @@ pub enum StuckReason
 /// it (ADR-9 differential). The L machine (in `gandr-core-sequent`) is the live
 /// producer; the retired CEK oracle produced the same [`Eval`].
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Eval
 {
     /// A terminal computation — a value-producing whnf (`ret v`, `λx. t`, or a

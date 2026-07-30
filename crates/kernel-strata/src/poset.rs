@@ -99,10 +99,6 @@ impl From<ConsistencyValue> for u128
 
 /// The declared relation of a [`LandmarkConstraint`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the constraint vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum ConstraintRelation
 {
     /// `left ≤ right`.
@@ -117,10 +113,6 @@ pub enum ConstraintRelation
 /// returns its negative evidence, or surfaces one of these — the kernel
 /// never panics on poset data.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the kernel's poset-failure vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum PosetError
 {
     /// A declared constraint side mentions a constant (nonzero canonical
@@ -451,10 +443,6 @@ impl LoopWitness
 /// Rejection vocabulary of the slice-2 evidence validators: exactly why a
 /// piece of poset or entailment evidence fails to check.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the rejection vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum PosetEvidenceError
 {
     /// A loop witness with an empty member set.
@@ -596,10 +584,6 @@ impl Error for PosetEvidenceError
 /// admits (with its consistency certificate inside the poset) or loops
 /// (with the pumping witness). Exactly one case holds.
 #[derive(Clone, Debug)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the admission dichotomy is closed by theorem (TCS 913 Corollary 3.5)"
-)]
 pub enum AdmissionOutcome
 {
     /// The constraints admit; the poset carries its consistency witness.

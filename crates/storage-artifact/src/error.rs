@@ -13,7 +13,6 @@ use thiserror::Error;
 
 /// Why building or reading an artifact through the outer layer failed.
 #[derive(Debug, Error)]
-#[non_exhaustive]
 pub enum ArtifactError
 {
     /// The prolly-tree layer (chunker boundary detection, tree construction, or
@@ -51,7 +50,6 @@ pub enum ArtifactError
 /// Why decoding a canonical artifact manifest failed — the outer layer's closed
 /// rejection vocabulary (E4/E5 applied at the manifest boundary).
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
-#[non_exhaustive]
 pub enum ManifestError
 {
     /// The manifest magic did not match a gandr artifact manifest.

@@ -49,7 +49,6 @@ use crate::types::ValueType;
 /// the operation `name`, the `payload` it is performed with (`A`), and the
 /// `reply` it resumes with (`B`).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct EffectOp
 {
     /// The operation's name (e.g. `get`, `put`).
@@ -112,7 +111,6 @@ impl EffectOp
 /// order so structural equality of two equal signatures holds regardless of how
 /// they were assembled.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct EffectSig
 {
     /// The signature's name (the effect's name, e.g. `State`).

@@ -729,7 +729,6 @@ impl fmt::Display for ProductionFile
 }
 
 /// One measured production file from an llvm-cov summary.
-#[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MeasuredCoverage
 {
@@ -744,7 +743,6 @@ pub struct MeasuredCoverage
 }
 
 /// Parsed per-file floor policy.
-#[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CoverageFloors
 {
@@ -757,7 +755,6 @@ pub struct CoverageFloors
 }
 
 /// Report returned by the ratchet API.
-#[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RatchetReport
 {

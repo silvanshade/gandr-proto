@@ -173,7 +173,6 @@ impl core::ops::Deref for ReassembledArtifact
 /// One declaration record: its admission index as a fixed-width big-endian key
 /// and its declaration-segment bytes as the value.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ArtifactRecord
 {
     /// The admission index, big-endian (so byte order matches numeric order).
@@ -247,7 +246,6 @@ impl ArtifactRecord
 ///   [`Self::from_records`].
 /// - panics: none.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ArtifactRecordSet
 {
     /// The inner kernel export format version the records were cut from.

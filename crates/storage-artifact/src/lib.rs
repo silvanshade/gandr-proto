@@ -83,7 +83,6 @@ pub use crate::record::RecordBytes;
 /// A built artifact: the prolly-tree root, its stored root node hash, and the
 /// canonical manifest and identity minted over them.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct BuiltArtifact
 {
     /// The prolly-tree root manifest (chunker params, record count, root hash).

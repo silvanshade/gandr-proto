@@ -293,7 +293,6 @@ impl From<PrecValidity> for bool
 /// Dense precedence group identifier.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct Prec(PrecIndex);
 
 impl Prec
@@ -353,7 +352,6 @@ impl Prec
 
 /// Parser associativity declared by one precedence group.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Assoc
 {
     /// Left-associative operators admit reflexive greater-than comparisons.
@@ -364,7 +362,6 @@ pub enum Assoc
 
 /// Virtual precedence bound or concrete precedence value.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Bound<T>
 {
     /// Strictly below every valid concrete precedence.
@@ -377,7 +374,6 @@ pub enum Bound<T>
 
 /// A typed validation failure while constructing a precedence specification.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum PrecSpecError
 {
     /// Dense `u16` identifiers are exhausted.
@@ -657,7 +653,6 @@ impl PrecSpec
 /// Deterministic closed precedence cycle witness.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct PrecCycle
 {
     /// Closed walk of precedence ids; first and last entries are equal.

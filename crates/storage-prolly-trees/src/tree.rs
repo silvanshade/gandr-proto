@@ -44,7 +44,6 @@ use crate::types::TreeRoot;
 
 /// Public tree handle backed by an in-memory [`PortableProofTree`].
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub struct ProllyTree
 {
@@ -246,7 +245,6 @@ impl ProllyTree
 /// lookup, range, or proof-producing methods until store-backed traversal can
 /// be implemented without duplicating the proof module's private decoder.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct OpenedProllyTree
 {
     /// Root manifest supplied by the caller.

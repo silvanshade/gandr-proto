@@ -19,7 +19,6 @@ use thiserror::Error;
 
 /// A fatal host-side failure that aborts a shell run.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-#[non_exhaustive]
 pub enum ShellError
 {
     /// A process behind `Exec::exec` could not be spawned (e.g. the program is

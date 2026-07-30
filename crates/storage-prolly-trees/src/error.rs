@@ -6,7 +6,6 @@ use crate::types::NodeHash;
 
 /// Result error type for Prolly-Bao operations.
 #[derive(Debug, Error)]
-#[non_exhaustive]
 pub enum ProllyBaoError
 {
     /// Input records were not in strict key order.

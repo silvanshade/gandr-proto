@@ -1361,7 +1361,6 @@ where
 
 /// A local workflow tier selected by the driver.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Tier
 {
     /// The checks expected before a worktree branch merges.
@@ -1424,7 +1423,6 @@ impl Tier
 
 /// A fixed workflow plan made of canonical `mise` task boundaries.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Plan
 {
     /// Tier that owns the task sequence.
@@ -1454,7 +1452,6 @@ impl Plan
 
 /// One canonical `mise run <name>` workflow boundary.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub struct Task
 {
@@ -1483,7 +1480,6 @@ impl Task
 
 /// Summary of a completed workflow execution.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Report
 {
     /// Tier that completed.

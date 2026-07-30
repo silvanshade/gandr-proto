@@ -82,7 +82,6 @@ use crate::types::ValueType;
 /// [`residual_type`](Self::residual_type) after a partial application, and how
 /// it [`apply`](Self::apply)s once saturated.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum NativePrim
 {
     /// The identity combinator `I` — `Integer → F Integer`; `apply [v] = ret

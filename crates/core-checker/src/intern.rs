@@ -71,7 +71,6 @@ use crate::types::Ty;
 /// A canonical, interned identity for a type — O(1) equality for the
 /// unchanged-type optimization (Porter's per-node dual-type cache).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub struct TypeId(u32);
 
@@ -94,7 +93,6 @@ impl TypeId
 /// Deterministic (a fixed FNV content hash, no randomized hashing), so interned
 /// ids are golden-stable within a run.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct TypeInterner
 {
     /// Buckets of interned ids keyed by content hash; collisions (rare) are

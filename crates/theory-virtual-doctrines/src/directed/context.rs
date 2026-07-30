@@ -41,10 +41,6 @@ use crate::vdc::SignatureRef;
 /// dinaturality shape Ł2's directedness protects); [`Variance::of_cell`] maps
 /// it to `None`.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "covariant/contravariant is the closed two-way polarity vocabulary of directed type theory (LLV §7 Ł1); the mixed engine case is not a directed variance and maps to None via Variance::of_cell, so this pair ships whole and op is its involution"
-)]
 pub enum Variance
 {
     /// **Covariant** — the variable ranges over `I` (a producer / target slot).
@@ -180,7 +176,6 @@ impl OpSig
 /// ([`crate::directed::hom`]) and the variance check below can consult it.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DirectedContext
 {
     /// The variance-sorted object variables, in binding order.
@@ -190,7 +185,6 @@ pub struct DirectedContext
 /// Why an engine cell's variance disagrees with a directed context
 /// (`proposal-vdc-reflection.md` §7, Ł1; §4.2).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum VarianceError
 {
     /// A cell hole naming a declared object variable is sorted at the opposite

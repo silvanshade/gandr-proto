@@ -117,7 +117,6 @@ struct ItemMatch
 /// item identically and carry the same type — the equality the differential
 /// gate asserts.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ItemTyping
 {
     /// A `def name = …` item that typed successfully.
@@ -157,7 +156,6 @@ pub enum ItemTyping
 /// the lowered term be unchanged, tested by structural equality against the
 /// edited item.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ItemCheckpoint
 {
     /// The defined name (`def` items); [`None`] for expression items.
@@ -176,7 +174,6 @@ pub struct ItemCheckpoint
 /// the snapshot [`resume`] validates an edit against.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Checkpoints
 {
     /// The per-item checkpoints, in source order.
@@ -189,7 +186,6 @@ pub struct Checkpoints
 /// [`checkpoint_program`]) and, per item, whether its base checkpoint was
 /// adopted (reused) rather than re-typed.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Resume
 {
     /// The typing of each edited item, in source order.

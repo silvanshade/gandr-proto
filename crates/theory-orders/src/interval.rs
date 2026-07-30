@@ -17,7 +17,6 @@ use crate::order::Pos;
 /// with `lo` no later than `hi` in the order; containment is tested via
 /// [`crate::order::OrderMaintenance::interval_contains`].
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct Interval
 {
     /// The interval's lower (pre-order) endpoint.

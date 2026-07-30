@@ -32,7 +32,6 @@ macro_rules! semantic_partial_copy {
     ($vis:vis struct $name:ident($inner:ty)) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, PartialEq)]
-        #[non_exhaustive]
         $vis struct $name(pub $inner);
 
         impl From<$inner> for $name {
@@ -91,7 +90,6 @@ pub const PAGE_BALANCE_VACUOUS_FAILURE: &str =
 ///   fixtures distinguish every consumed field.
 /// - witness: `commands::tests::strict_page_band_boundary_excludes_exact_threshold`
 #[derive(Clone)]
-#[non_exhaustive]
 pub struct PageProbe
 {
     /// Display-block kind emitted by the Typst probe hook.
@@ -115,7 +113,6 @@ pub struct PageProbe
 ///   probes, and late probes all produce distinct observable reports.
 /// - witness: `commands::tests::strict_page_band_boundary_excludes_exact_threshold`
 #[derive(Clone)]
-#[non_exhaustive]
 pub struct PageBalanceReport
 {
     /// Number of decoded display-block probes.
@@ -148,7 +145,6 @@ impl PageBalanceReport
 ///   distinguish parsing and exact argument rendering.
 /// - witness: `commands::tests::clean_markdown_files_preserve_argument_order`
 #[derive(Clone, Copy, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum RumdlMode
 {
     /// `rumdl fmt`.
@@ -215,7 +211,6 @@ impl RumdlMode
 /// - witness: `commands::tests::conflict_markers_block_rumdl_planning`
 /// - witness: `commands::tests::clean_markdown_files_preserve_argument_order`
 #[derive(Clone, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct RumdlCommandPlan
 {
     /// Program used for the delegated rumdl invocation.
@@ -238,7 +233,6 @@ pub struct RumdlCommandPlan
 ///   the CLI layer.
 /// - witness: `commands::tests::conflict_markers_block_rumdl_planning`
 /// - witness: `commands::tests::clean_markdown_files_preserve_argument_order`
-#[non_exhaustive]
 pub enum RumdlOutcome
 {
     /// Conflict-marker validation succeeded and rumdl was invoked.

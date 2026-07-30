@@ -562,7 +562,6 @@ impl DecodedDeclaration
 /// `expanded_size` vector, never a second descent — so exposing them costs
 /// nothing beyond the check already paid.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DecodeMetrics
 {
     /// The number of subterm-table entries (bounded by [`MAX_TABLE_ENTRIES`]).

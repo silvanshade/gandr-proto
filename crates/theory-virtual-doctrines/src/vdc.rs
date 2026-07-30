@@ -64,7 +64,6 @@ use crate::boundary::VdcCellEquality;
 /// product interface ([`SignatureRef::Product`]); the empty product
 /// (`Product([])`) is the terminal signature, the unit object.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum SignatureRef
 {
     /// A single described datatype, named by its minted [`NominalId`].
@@ -376,7 +375,6 @@ impl RelationRef
 /// Elaboration folds the tree to an engine certificate (or the trivial
 /// transformation) and replay decides equality.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Derivation
 {
     /// The **identity cell** on a relation — the trivial transformation, no
@@ -410,7 +408,6 @@ pub enum Derivation
 /// single engine tracelet. Replay-equivalence of two elaborations
 /// ([`elaborations_replay_equivalent`]) is the identity criterion.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Elaborated
 {
     /// The identity transformation — no engine steps.
@@ -625,7 +622,6 @@ fn elaborations_replay_equivalent(
 /// instance resolves signatures against.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DescTable
 {
     /// The descriptions, in insertion order.
@@ -848,7 +844,6 @@ pub trait Vdc
 /// [`SigMorphism`]s; loose arrows are [`RelationRef`]s whose generating cells
 /// live in `cells`; cells are [`Derivation`]s replayed against `cells`.
 #[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
 pub struct CellStoreVdc<'store>
 {
     /// The signature namespace (`gandr-theory-levitation` descriptions).

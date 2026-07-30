@@ -717,7 +717,6 @@ impl AsRef<[u8]> for CanonicalRecord<'_>
 /// Local algorithm profile identifier committed into chunker parameters.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-#[non_exhaustive]
 pub struct AlgorithmVersion
 {
     /// Raw committed algorithm version.
@@ -759,7 +758,6 @@ impl From<AlgorithmVersion> for u16
 /// Versioned Gear table identifier committed into chunker parameters.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-#[non_exhaustive]
 pub struct GearTableVersion
 {
     /// Raw committed Gear table version.
@@ -800,7 +798,6 @@ impl From<GearTableVersion> for u16
 
 /// Seed policy for deterministic boundary detection.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct SeedPolicy
 {
     /// Raw seed kind plus support marker.
@@ -889,7 +886,6 @@ impl SeedPolicyKind
 /// Input normalization policy committed into chunker parameters.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-#[non_exhaustive]
 pub struct NormalizationPolicy
 {
     /// Raw committed normalization policy.
@@ -931,7 +927,6 @@ impl From<NormalizationPolicy> for u8
 /// Rule that maps candidate boundaries to record-safe chunk boundaries.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-#[non_exhaustive]
 pub struct RecordBoundaryRule
 {
     /// Raw committed record-boundary rule.
@@ -972,7 +967,6 @@ impl From<RecordBoundaryRule> for u8
 
 /// Validated byte and record limits for record-safe chunking.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ChunkLimits
 {
     /// Minimum bytes before hash-predicate cuts are allowed.
@@ -1130,7 +1124,6 @@ impl Default for ChunkLimits
 
 /// Validated chunker parameters and their stable commitment bytes.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ChunkerParams
 {
     /// Committed algorithm profile.
@@ -1461,7 +1454,6 @@ impl ChunkSpan
 
 /// Reason a record-safe chunk boundary was emitted.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum BoundaryReason
 {
     /// The Gear hash predicate fired after a complete record.
@@ -1476,7 +1468,6 @@ pub enum BoundaryReason
 
 /// Invalid parameter condition detected during construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum InvalidParameterReason
 {
     /// At least one byte limit was zero.
@@ -1495,7 +1486,6 @@ pub enum InvalidParameterReason
 
 /// Arithmetic operation that overflowed while validating or scanning input.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum ArithmeticOperation
 {
     /// A byte offset or canonical byte-stream length overflowed [`u64`].
@@ -1512,7 +1502,6 @@ pub enum ArithmeticOperation
 
 /// Error returned by parameter validation or record-safe boundary detection.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ChunkerError
 {
     /// Parameter limits are zero or inverted.

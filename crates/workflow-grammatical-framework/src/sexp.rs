@@ -13,7 +13,6 @@
 
 /// A `GF` expression under construction.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Sexp
 {
     /// A self-delimiting token: a constant or a quoted string literal.

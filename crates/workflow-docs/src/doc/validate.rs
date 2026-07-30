@@ -69,7 +69,6 @@ use crate::doc::model::DocRecord;
 /// A validated (or to-be-validated) prose-document corpus: the parsed records
 /// plus the resolvable cite-key set from the references file.
 #[derive(Clone, Debug, Default)]
-#[non_exhaustive]
 pub struct DocCorpus
 {
     /// Parsed documents, in discovery order.

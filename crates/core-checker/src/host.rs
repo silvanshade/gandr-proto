@@ -39,7 +39,6 @@ use crate::types::ValueType;
 /// leaving the machine to take its ordinary step (which blames
 /// [`crate::outcome::Blame::PerformNoHandler`] on an unclaimed `perform`).
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub enum HostReply
 {
     /// Resume the intercepted operation with this reply value — the machine
@@ -125,7 +124,6 @@ where
 /// `&Value` to borrow, so the seam hands the host a self-contained operation
 /// over the public [`Value`] API rather than a borrow into machine internals.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct HostOp
 {
     /// The effect signature `E` the operation belongs to.

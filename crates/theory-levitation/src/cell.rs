@@ -17,10 +17,6 @@ use crate::desc::SurfaceSpan;
 /// variables `V` (proposal §4.1): a variable, a constructor application, or a
 /// (reserved) operation application.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the free structure over a first-order signature is exactly variables, constructor applications, and operation applications; this closed shape is the V3 encoding ADR-67 fixes"
-)]
 pub enum FreeTerm
 {
     /// A pattern **variable** `x`.
@@ -110,10 +106,6 @@ impl FreeTerm
 /// variant ships now so the sequent-era refinement (rules in `codata` blocks
 /// departing from the constant) is an update, not a migration.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the producer/consumer polarity split is the closed two-way variance vocabulary of the reflected judgment layer (ADR-68/69); it ships whole so stage 1 refines rather than migrates"
-)]
 pub enum Variance
 {
     /// A producer-side (introduction) position — the stage-0 constant.

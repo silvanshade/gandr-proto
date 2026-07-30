@@ -40,7 +40,6 @@ use crate::pattern::transform_node;
 /// A **substitution** — a binding of producer metavariables to producer
 /// patterns and consumer metavariables to consumer patterns.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Subst
 {
     /// Producer-metavariable bindings.

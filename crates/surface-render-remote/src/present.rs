@@ -201,7 +201,6 @@ impl core::error::Error for PosOfByteError
 /// and a bus client project the same role vocabulary.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum HlRole
 {
     /// Language keywords.
@@ -255,7 +254,6 @@ pub enum HlRole
 /// A syntax-highlight span: a byte range of the source classified by role.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct HlSpan
 {
     /// The classified byte range.
@@ -286,7 +284,6 @@ impl HlSpan
 /// A Hazel-style mark span: a byte range decorated by the total marker.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct MarkSpan
 {
     /// The marked byte range.
@@ -325,7 +322,6 @@ impl MarkSpan
 /// derivation.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DiagCard
 {
     /// The primary message.
@@ -371,7 +367,6 @@ impl DiagCard
 /// One goal card: a hole with its expected type and local context.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct GoalCard
 {
     /// The display label (`?0` or `?name`).
@@ -418,7 +413,6 @@ impl GoalCard
 /// The type information under the cursor.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct CursorTy
 {
     /// The synthesized type at the enclosing term, rendered.
@@ -452,7 +446,6 @@ impl CursorTy
 /// One completion candidate.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Candidate
 {
     /// The insertable name.
@@ -484,7 +477,6 @@ impl Candidate
 /// pure checking pass over the current buffer.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct PreviewFrame
 {
     /// The input generation this frame was computed for (stale frames are
@@ -513,7 +505,6 @@ pub struct PreviewFrame
 /// time so theme switches restyle history).
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum OutKind
 {
     /// An echoed source line.
@@ -538,7 +529,6 @@ pub enum OutKind
 /// rendered results.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct TranscriptBlock
 {
     /// The submitted source (echoed with highlighting).
@@ -577,7 +567,6 @@ impl TranscriptBlock
 /// counts characters (the editor-widget convention), not bytes.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Pos
 {
     /// The zero-based row.

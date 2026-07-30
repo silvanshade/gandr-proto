@@ -46,7 +46,6 @@ pub(crate) const NO_RUST_CHANGES_REPORT: &str = "no-rust-changes";
 
 /// A validated lowercase Git commit id.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub(crate) struct CommitId
 {
@@ -109,7 +108,6 @@ impl CommitId
 
 /// A scheduled-campaign ref token that is safe to pass to Git resolution.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub(crate) struct RefToken
 {
@@ -461,7 +459,6 @@ where
 
 /// Already-resolved facts needed to validate a scheduled mutation range.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(crate) struct ScheduledRangeInput<'input>
 {
     /// User-supplied lower ref token.
@@ -480,7 +477,6 @@ pub(crate) struct ScheduledRangeInput<'input>
 
 /// The kind of host-side diff plan being rendered.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(crate) enum DiffKind
 {
     /// Merge campaigns diff the branch against `main` with three-dot semantics.
@@ -494,7 +490,6 @@ pub(crate) enum DiffKind
 
 /// The three push-range modes shared with other push gates.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(crate) enum PushRangeMode
 {
     /// The pushed lower and upper endpoints share history.
@@ -508,7 +503,6 @@ pub(crate) enum PushRangeMode
 
 /// A validated push-range plan from the shared push resolver.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum PushRangePlan
 {
     /// Diff the pushed range as `from...to`.
@@ -647,7 +641,6 @@ impl PushRangePlan
 
 /// A pure `git diff` argument plan.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(crate) struct GitDiffPlan
 {
     /// The source of the diff semantics.
@@ -669,7 +662,6 @@ impl GitDiffPlan
 
 /// A host-side decision after inspecting a unified diff.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(crate) enum RangeCampaignPlan
 {
     /// Run cargo-mutants in `--in-diff` mode using the rendered Git diff.

@@ -46,7 +46,6 @@ where
 
 /// A failure preparing a source program for [`run_source`].
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum RunError
 {
     /// The source failed to lower to core CBPV.

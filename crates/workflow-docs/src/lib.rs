@@ -104,7 +104,6 @@ impl fmt::Display for DiagnosticCode
 /// - ensures: [`fmt::Display`] renders `location: code: message` on one line.
 /// - provides: a comparable, sortable violation row for the reporter.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct Diagnostic
 {
     /// Stable diagnostic kind, such as `duplicate-id` or `unresolved-cite`.
@@ -157,7 +156,6 @@ impl fmt::Display for Diagnostic
 /// operational failures such as filesystem, `XML`, `YAML`, or typst-tool
 /// problems.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum DocError
 {
     /// A filesystem operation failed for a path.

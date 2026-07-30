@@ -68,7 +68,6 @@ struct PetgraphEdge;
 
 /// A typed boundary failure for dense graph algorithms.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum GraphValidationError
 {
     /// `node_count` could not fit in the host address space.
@@ -126,7 +125,6 @@ impl Error for GraphValidationError
 
 /// A typed topological failure carrying concrete cycle evidence when available.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CycleError
 {
     /// The graph boundary was invalid before cycle-specific work could run.
@@ -286,7 +284,6 @@ enum DfsColor
 
 /// A concrete closed cycle witness.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct CycleWitness
 {
     /// Closed node walk; first and last entries are equal.
@@ -298,7 +295,6 @@ pub struct CycleWitness
 /// Canonical strongly-connected component rows.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct StronglyConnectedComponents
 {
     /// Components sorted by their first node; nodes inside each component are
@@ -308,7 +304,6 @@ pub struct StronglyConnectedComponents
 
 /// Reachability row for one source node.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ReachabilityRow
 {
     /// Source node for this row.
@@ -321,7 +316,6 @@ pub struct ReachabilityRow
 /// Canonical transitive reachability rows.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Reachability
 {
     /// One row per source node in ascending source order.
@@ -330,7 +324,6 @@ pub struct Reachability
 
 /// Canonical DAG closure and reduction result.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct TransitiveReductionClosure
 {
     /// Transitive closure rows for the DAG.
@@ -341,7 +334,6 @@ pub struct TransitiveReductionClosure
 
 /// Dominator row for one node relative to a start node.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DominatorRow
 {
     /// Node described by this row.
@@ -354,7 +346,6 @@ pub struct DominatorRow
 
 /// Immediate-dominator result rows.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ImmediateDominators
 {
     /// Start node used for the computation.
@@ -365,7 +356,6 @@ pub struct ImmediateDominators
 
 /// Shortest unweighted distance row.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ShortestPathRow
 {
     /// Reachable target node.
@@ -376,7 +366,6 @@ pub struct ShortestPathRow
 
 /// Shortest unweighted path lengths from one start node.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ShortestPathLengths
 {
     /// Start node used for the computation.
@@ -387,7 +376,6 @@ pub struct ShortestPathLengths
 
 /// All bounded simple paths between two nodes.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct AllSimplePaths
 {
     /// Start node.
@@ -402,7 +390,6 @@ pub struct AllSimplePaths
 
 /// Condensed graph over strongly-connected components.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Condensation
 {
     /// SCC rows, sorted canonically.

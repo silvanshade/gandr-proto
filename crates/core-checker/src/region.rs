@@ -43,7 +43,6 @@ use crate::types::Ty;
 /// item, so an item's identity is its name, its ascription, and its lowered
 /// term — the content key the unchanged-region test compares.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Item
 {
     /// The defined name (`def` items); [`None`] for an expression item.
@@ -83,7 +82,6 @@ impl Item
 /// changed-region detector and checkpoint engine read about a revision.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Program
 {
     /// The lowered items, in source order.

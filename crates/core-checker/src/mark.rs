@@ -139,7 +139,6 @@ use crate::types::ValueType;
 /// this key preserves deterministic snapshots without depending on structural
 /// path shape.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum MarkNodeId
 {
     /// A value node in the canonical value arena.
@@ -160,7 +159,6 @@ pub enum MarkNodeId
 /// / [`Mark::Thunkability`] / [`Mark::EffectRowMismatch`] kinds name the
 /// specialized cases.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct Boundary
 {
     /// The analyzed (checked-against) type `T2`.
@@ -190,7 +188,6 @@ impl Boundary
 /// ([`Mark::is_error`]); the empty hole is a *complete-but-incomplete* node
 /// (the program is well-typed, the hole is simply unfilled).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Mark
 {
     /// An empty hole `?u` — the Hazel empty-hole mark, reconciling the
@@ -282,7 +279,6 @@ impl Mark
 /// representation slot for the incremental layer — the marker leaves it
 /// `false` (its producer is the edit / order-maintenance layer, deferred).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct NodeFacts
 {
     /// The analyzed (checked-against) type, when the node was typed in checking
@@ -319,7 +315,6 @@ impl NodeFacts
 /// A complete marking of a term: every node's [`NodeFacts`], keyed by
 /// stable [`MarkNodeId`], plus the root's synthesized type.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Marking
 {
     /// Per-node facts, keyed by stable arena identity (deterministic `BTreeMap`

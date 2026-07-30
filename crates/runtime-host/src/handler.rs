@@ -82,7 +82,6 @@ impl From<Result<Value, ShellError>> for HostAction
 /// driver, single-threaded, and re-created per [`crate::run_program`] call.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default)]
-#[non_exhaustive]
 pub struct ShellHandler
 {
     /// A monotonic suffix source keeping repeated `Fs::tempdir` directory

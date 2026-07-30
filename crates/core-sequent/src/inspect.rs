@@ -21,7 +21,6 @@ use crate::pretty;
 
 /// The node population of a focused term's arena.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Stats
 {
     /// The number of producer nodes.

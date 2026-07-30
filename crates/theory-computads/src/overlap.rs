@@ -47,10 +47,6 @@ use crate::subst::unify_cmd;
 
 /// The kind of overlap (`proposal-sequent-kernel.md` §7.2–§7.3.2).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "an overlap is either a Knuth–Bendix critical pair (confluence) or a sequential composition (fusion); this closed pair is the whole enumeration"
-)]
 pub enum OverlapKind
 {
     /// The two left-hand sides unify — a confluence critical pair (§7.3.3).
@@ -63,7 +59,6 @@ pub enum OverlapKind
 /// One **overlap** between two cells at a seam (`proposal-sequent-kernel.md`
 /// §7.3, the `Overlap` struct).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Overlap
 {
     /// The left cell.

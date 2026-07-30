@@ -223,11 +223,6 @@ struct CallEdge
     args: Vec<HirId>,
 }
 
-#[expect(
-    clippy::renamed_function_params,
-    reason = "rustc declares the `LateLintPass` methods with single-letter parameter names (`a`, `b`, \
-              `c`, `d`, `e`); the implementation keeps descriptive names"
-)]
 impl<'tcx> LateLintPass<'tcx> for GandrTypeBoundaries
 {
     fn check_item(
@@ -608,8 +603,8 @@ fn input_recursion_is_valid(
 }
 
 /// Return whether any call edge inside `scc` passes caller-input-derived data.
-fn scc_has_input_derived_recursive_call<'tcx>(
-    cx: &LateContext<'tcx>,
+fn scc_has_input_derived_recursive_call(
+    cx: &LateContext<'_>,
     scc: &[LocalDefId],
     functions: &HashMap<LocalDefId, FunctionNode>,
     edges: &HashMap<LocalDefId, Vec<CallEdge>>,
@@ -646,8 +641,8 @@ fn scc_has_input_derived_recursive_call<'tcx>(
 
 /// Return the final flow-insensitive set of locals derived from function
 /// inputs.
-fn input_derived_bindings<'tcx>(
-    cx: &LateContext<'tcx>,
+fn input_derived_bindings(
+    cx: &LateContext<'_>,
     node: &FunctionNode,
 ) -> HashSet<HirId>
 {
@@ -965,7 +960,7 @@ fn allows_model_checker_input_recursion(
 }
 
 /// Peel reference layers from a receiver type before checking the receiver ADT.
-fn peel_reference_ty<'tcx>(mut ty: rustc_ty::Ty<'tcx>) -> rustc_ty::Ty<'tcx>
+fn peel_reference_ty(mut ty: rustc_ty::Ty<'_>) -> rustc_ty::Ty<'_>
 {
     loop {
         match ty.kind() {
@@ -1229,7 +1224,10 @@ fn semantic_type_args<'tcx>(
 fn last_segment_args<'hir>(qpath: &QPath<'hir>) -> Option<&'hir rustc_hir::GenericArgs<'hir>>
 {
     match qpath {
-        | QPath::Resolved(_, path) => path.segments.last().and_then(|segment| segment.args),
+        | QPath::Resolved(_, path) => {
+            let segment = path.segments.last()?;
+            segment.args
+        },
         | QPath::TypeRelative(_, segment) => segment.args,
     }
 }

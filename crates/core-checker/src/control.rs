@@ -20,7 +20,6 @@ use crate::types::ValueType;
 /// Carrying the expected type inside `Check` is what removes the original
 /// design's `KSubtype` pseudo-frames (`typing-machine.md` §3.1).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Dir<T>
 {
     /// Inference mode `⇑`.
@@ -113,7 +112,6 @@ impl Dir<CompType>
 /// The control register of the typing machine, and equally the trace-event
 /// vocabulary of the recursive checker.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Control
 {
     /// About to type a value sub-term.

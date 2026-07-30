@@ -120,7 +120,6 @@ const MSB_LIST_HEADER_LINES: usize = 0x1;
 ///   in-diff campaigns from sweep campaigns and reject a forwarded worker flag.
 /// - witness: `mutants::sandbox::tests::timeout_caps_and_sequential_jobs_are_planned`
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) enum CampaignMode
 {
     /// Pre-push changed-line mutation campaign.
@@ -203,7 +202,6 @@ impl CampaignMode
 ///   non-prefixed sandboxes or accept path-shaped names.
 /// - witness: `mutants::sandbox::tests::prefix_cleanup_only_reaps_owned_sandboxes`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub(super) struct SandboxName
 {
@@ -276,7 +274,6 @@ impl SandboxName
 ///   device mount from host passthrough flags.
 /// - witness: `mutants::sandbox::tests::sandbox_boot_plan_has_no_forbidden_host_mounts`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct SandboxConfig
 {
     /// Snapshot name used to boot mutation sandboxes.
@@ -340,7 +337,6 @@ impl SandboxConfig
 /// - witness: `mutants::sandbox::tests::sandbox_boot_plan_has_no_forbidden_host_mounts`
 /// - witness: `mutants::sandbox::tests::timeout_caps_and_sequential_jobs_are_planned`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub(super) struct MsbPlan
 {
@@ -401,7 +397,6 @@ impl MsbPlan
 /// - witness: `mutants::sandbox::tests::teardown_error_takes_precedence_over_payload_error`
 /// - witness: `mutants::sandbox::tests::non_rust_diff_skips_vm_and_writes_report`
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct CampaignRequest<'request>
 {
     /// Campaign mode.
@@ -475,7 +470,6 @@ impl<'request> CampaignRequest<'request>
 /// - witness: `mutants::sandbox::tests::sandbox_boot_plan_has_no_forbidden_host_mounts`
 /// - witness: `mutants::sandbox::tests::timeout_caps_and_sequential_jobs_are_planned`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct CampaignExecutionPlan
 {
     /// Campaign mode.
@@ -569,7 +563,6 @@ impl CampaignExecutionPlan
 
 /// Report kind preserved from a campaign.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) enum CampaignReportKind
 {
     /// A cargo-mutants `mutants.out` directory was copied out of the guest.
@@ -608,7 +601,6 @@ impl CampaignReportKind
 ///   retained report kind and success flag.
 /// - witness: `mutants::sandbox::tests::non_rust_diff_skips_vm_and_writes_report`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct CampaignSummary
 {
     /// Campaign mode.
@@ -673,7 +665,6 @@ impl CampaignSummary
 
 /// Command outcome normalized for `msb` adapters.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct CommandOutcome
 {
     /// Whether the command exited successfully.
@@ -794,7 +785,6 @@ pub(super) trait MsbAdapter
 
 /// Support-backed `msb` adapter used by production entry points.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct SupportMsbAdapter;
 
 impl MsbAdapter for SupportMsbAdapter
@@ -855,7 +845,6 @@ pub(super) trait CampaignReportSink
 
 /// Support-backed report sink used by production entry points.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct SupportCampaignReportSink;
 
 impl CampaignReportSink for SupportCampaignReportSink
@@ -914,7 +903,6 @@ pub(super) trait SandboxInfrastructure
 
 /// Support-backed infrastructure probe.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct SupportSandboxInfrastructure;
 
 impl SandboxInfrastructure for SupportSandboxInfrastructure

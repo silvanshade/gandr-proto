@@ -57,7 +57,6 @@ use crate::syntax::Value;
 /// every changed binding types identically against the new context, so its
 /// cached result is still valid.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Footprint
 {
     /// The free variable names the term read — the dependency edges into the

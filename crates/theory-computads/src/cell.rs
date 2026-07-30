@@ -45,10 +45,6 @@ use crate::pattern::collect_cmd_metavars;
 /// a **negative** cut (call-by-name); see `proposal-sequent-kernel.md` §5,
 /// §7.4.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the data/codata split is the closed two-way η vocabulary of the polarized calculus; each η law is one or the other and the pair is fixed by K2"
-)]
 pub enum EtaKind
 {
     /// Data η — a positive-intro extensionality law; valid only at a positive
@@ -80,10 +76,6 @@ impl EtaKind
 
 /// How a cell's orientation was fixed (`proposal-sequent-kernel.md` §7.3).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "an orientation is fixed either by the cut polarity (K2) or by the completion reduction order (§7.3.3); this closed pair is the whole vocabulary"
-)]
 pub enum Orientation
 {
     /// The orientation is fixed by the cut polarity (K2, the μ/μ̃ pair oriented
@@ -97,7 +89,6 @@ pub enum Orientation
 /// Where a cell came from (`proposal-sequent-kernel.md` §7.3, the `provenance`
 /// field: "surface `rule`, μ/μ̃, derived-by-completion, …").
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum CellProvenance
 {
     /// Elaborated from a surface `rule lhs ~> rhs` (a
@@ -129,10 +120,6 @@ pub enum CellProvenance
 /// polarities; [`CellVariance::from_cat`] classifies a single occurrence, and
 /// `derive` promotes the pair to `Mixed`.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "producer/consumer/mixed is the closed variance vocabulary of the reflected judgment layer (ADR-68/69); it ships whole so the composition lane refines rather than migrates"
-)]
 pub enum CellVariance
 {
     /// A producer-side (introduction) position.
@@ -285,7 +272,6 @@ impl CellMeta
 /// An **oriented 2-cell** over the command IL (`proposal-sequent-kernel.md`
 /// §7.3, the `Cell` struct).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct Cell
 {
     /// The left-hand side (the redex pattern).
@@ -378,7 +364,6 @@ pub struct CellId(pub usize);
 /// cells (`proposal-sequent-kernel.md` §7.3.1).
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct CellStore
 {
     /// The cells, in insertion order; the index is the [`CellId`].

@@ -46,7 +46,6 @@ use crate::vdc::TermRef;
 /// two sides are the `FVDblTT` source/target contexts a protype is framed
 /// between.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Context
 {
     /// The domain-side (`Γ`) object variables.
@@ -118,7 +117,6 @@ impl Context
 /// Each variant is a distinct, testable rejection — the exact-variant oracle
 /// the per-rule property tests assert against (ADR-71).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum CheckError
 {
     /// A proterm variable is not bound in the hypothesis chain `Φ`.
@@ -170,7 +168,6 @@ pub enum CheckError
 /// The **checker** — an environment of embedded derivations and the cell store
 /// they replay against (`proposal-vdc-reflection.md` §5.2).
 #[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
 pub struct Checker<'env>
 {
     /// The embedded engine derivations, indexed by [`DerivationId`].

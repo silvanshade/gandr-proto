@@ -67,7 +67,6 @@ use crate::boundary::DifferentialAgreement;
 /// outcome maps onto (as the retired CEK oracle's did; see the module docs for
 /// the granularity).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CanonOutcome
 {
     /// A returned value `ret v`.
@@ -94,7 +93,6 @@ pub enum CanonOutcome
 /// A canonicalized value — first-order structure exact, higher-order parts
 /// opaque (see the module docs).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CanonValue
 {
     /// The unit value.

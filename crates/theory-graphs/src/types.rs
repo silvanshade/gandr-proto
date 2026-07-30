@@ -223,7 +223,6 @@ impl From<NodePosition> for usize
 
 /// Dense directed edge identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct EdgeId
 {
     /// Source endpoint.
@@ -295,7 +294,6 @@ impl Display for ComponentIndex
 
 /// Directed edge between condensation components.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct ComponentEdge
 {
     /// Source component.

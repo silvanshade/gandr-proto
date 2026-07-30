@@ -126,7 +126,6 @@ pub const SCHEMA_VERSION: u32 = 2;
 /// A byte span `[start, end)` in the source.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct Span
 {
     /// The inclusive start byte offset.
@@ -160,7 +159,6 @@ impl From<SourceRange> for Span
 /// stream.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct Binding
 {
     /// The bound name.
@@ -177,7 +175,6 @@ pub struct Binding
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "codecs", serde(rename_all = "lowercase"))]
-#[non_exhaustive]
 pub enum Severity
 {
     /// A fatal typing error.
@@ -198,7 +195,6 @@ pub enum Severity
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "codecs", serde(tag = "kind", content = "data"))]
-#[non_exhaustive]
 pub enum DiagnosticDetail
 {
     /// Subsumption failed: the term's type is not consistent with the
@@ -260,7 +256,6 @@ pub enum DiagnosticDetail
 /// ([`DiagnosticDetail::Attribute`]; proposal-attributes.md §3.2).
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub enum AttributeProblem
 {
     /// The name resolves to no registry entry, with a did-you-mean over the
@@ -292,7 +287,6 @@ pub enum AttributeProblem
 /// the frame the failure occurred under.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct ContextFrame
 {
     /// The machine frame's name (e.g. `AppFn`), for stable machine parsing.
@@ -311,7 +305,6 @@ pub struct ContextFrame
 /// [`FailureState`] and the [`OriginMap`](crate::origin).
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct Diagnostic
 {
     /// The kind-specific payload (`kind` + `data`).
@@ -355,7 +348,6 @@ pub struct Diagnostic
 /// [`Goal`]).
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct GoalReport
 {
     /// The hole's identifier (unique within one [`Lowered`]).
@@ -400,7 +392,6 @@ pub struct GoalReport
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "codecs", serde(tag = "kind", content = "data"))]
-#[non_exhaustive]
 pub enum MarkDetail
 {
     /// An empty hole `?u` — a complete-but-incomplete node, **not** an error
@@ -490,7 +481,6 @@ pub enum MarkDetail
 /// would be a dead `false` until then.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct MarkReport
 {
     /// The kind-specific payload (`kind` + `data`).
@@ -535,7 +525,6 @@ pub struct MarkReport
 /// the renderer firewall).
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct AttrReport
 {
     /// The annotated item's stable id (its index in `Lowered::items`; see the
@@ -559,14 +548,12 @@ pub struct AttrReport
 /// to the same JSON `[]` reserved slot as the former `Vec<serde_json::Value>`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub enum ObligationReport {}
 
 /// The versioned agent-stream envelope: diagnostics, goals, marks, and
 /// attributes for one lowered file, with a reserved slot for obligations.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
-#[non_exhaustive]
 pub struct Report
 {
     /// The schema version ([`SCHEMA_VERSION`]).

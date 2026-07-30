@@ -98,7 +98,6 @@ pub trait BlockStore
 
 /// Deterministic in-memory [`BlockStore`] for local callers and tests.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[repr(transparent)]
 pub struct InMemoryBlockStore
 {
@@ -268,7 +267,6 @@ impl PackedSegmentBytes
 
 /// Byte range metadata for a node inside a [`PackedSegmentStore`] segment.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct NodeSegmentEntry
 {
     /// Byte offset where the encoded node starts inside the packed segment.
@@ -332,7 +330,6 @@ impl NodeSegmentEntry
 ///   because `NodeHash` is `BLAKE3(encoded node bytes)`, independent of segment
 ///   placement.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct PackedSegmentStore
 {
     /// Append-only byte segment containing encoded nodes.

@@ -41,7 +41,6 @@ const PREVIOUS_REPORT_DIR: &str = "mutants.out.previous";
 /// - witness: `mutants::report::tests::successful_publication_replaces_current_report`
 /// - witness: `mutants::report::tests::simulated_final_rename_failure_restores_prior_report`
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct ReportPaths
 {
     /// Destination report directory.
@@ -134,7 +133,6 @@ pub(super) trait ReportFileSystem
 
 /// Host filesystem adapter for report publication.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub(super) struct StdReportFileSystem;
 
 impl ReportFileSystem for StdReportFileSystem

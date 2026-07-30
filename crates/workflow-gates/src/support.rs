@@ -140,7 +140,6 @@ crate::semantic_optional_copy!(pub struct OptionalCodeCode(i32));
 ///   boundary while preventing callers from propagating context-free I/O
 ///   errors.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct HostFileSystem;
 
 /// Shared stateless host-filesystem adapter.

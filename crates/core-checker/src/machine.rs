@@ -97,7 +97,6 @@ use crate::types::ValueType;
 
 /// A typing-stack frame: one pending obligation of the suspended derivation.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Frame
 {
     /// An abstraction's body is pending; yields `A → B` and unbinds.
@@ -739,7 +738,6 @@ impl FailureState
 
 /// The result of one machine step (`typing-machine.md` §4).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Outcome
 {
     /// The derivation is complete: control was `Return` on an empty stack.

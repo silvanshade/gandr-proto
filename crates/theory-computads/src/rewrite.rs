@@ -57,7 +57,6 @@ pub struct CellApp
 
 /// The result of a single successful rewrite — the step and the rewritten term.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Rewrite
 {
     /// The step that fired.
@@ -69,7 +68,6 @@ pub struct Rewrite
 /// The outcome of [`normalize`] — the normal form, the path taken, and whether
 /// the budget was exhausted before a normal form was reached.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Normalization
 {
     /// The term reached (a normal form when `!exhausted`).

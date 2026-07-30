@@ -22,7 +22,6 @@ use crate::lexicon::Lexicon;
 
 /// The category a domain entry declares.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum DomainCat
 {
     /// Common noun (the default for terms and general words).
@@ -57,7 +56,6 @@ impl AsRef<str> for DomainCat
 
 /// One domain-lexicon entry: a `GF` fun and its English linearization.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct DomainEntry
 {
     /// The fun name (namespaced: `term_…`, `gen_…`, `on_…`).

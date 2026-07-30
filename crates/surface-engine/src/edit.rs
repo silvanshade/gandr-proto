@@ -118,7 +118,6 @@ use crate::origin::OriginPath;
 /// list-case `head`, [`Self::Snd`] = the `inj2` arm / second component /
 /// list-case `tail`).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum BinderSlot
 {
     /// The sole binder of an `Abs` or `Bind`.
@@ -132,7 +131,6 @@ pub enum BinderSlot
 
 /// Which type position a [`Action::SetAnnotation`] retypes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum AnnSlot
 {
     /// The ascription of a `Value::Annot` (always present).
@@ -144,7 +142,6 @@ pub enum AnnSlot
 
 /// A replacement subtree of either sort, carried by the coarse actions.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Subtree
 {
     /// A value subtree (installed at a value-position path).
@@ -172,7 +169,6 @@ pub enum Subtree
 /// agent stream) wants: a hole *filled*, a term *erased to a hole*, or a
 /// constructor *replaced*.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Action
 {
     /// A new top-level item, positioned by its **new**-list index.
@@ -324,7 +320,6 @@ impl Action
 /// them).
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct EditScript
 {
     /// The actions, in the order the diff emitted them (item-list edits, then
@@ -2536,7 +2531,6 @@ fn contains(
 /// retained so the descriptor names the replacement's new extent for callers
 /// that pair the edit with a re-parse.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct SourceEdit
 {
     /// The byte offset where the edit begins (shared by old and new source).

@@ -48,7 +48,6 @@ use crate::rewrite::rewrite_at;
 /// A **3-cell certificate** — a peak and two replayable paths joining at a
 /// common term (`proposal-sequent-kernel.md` §7.3).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Tracelet
 {
     /// The overlap the tracelet certifies.

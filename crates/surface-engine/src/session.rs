@@ -96,7 +96,6 @@ use crate::prelude_env;
 /// the non-success items so a consumer can iterate items and the report in
 /// lock-step.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ItemOutcome
 {
     /// A `def name = …` item that typed successfully.
@@ -143,7 +142,6 @@ pub enum ItemOutcome
 /// Pairs the A2.4 [`diag::Report`] (diagnostics and hole goals, rendered by the
 /// front-end) with one [`ItemOutcome`] per lowered item, in source order.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Submission
 {
     /// The diagnostics-and-goals report for the submitted source, typed against
@@ -157,7 +155,6 @@ pub struct Submission
 /// A REPL session: the accumulating typing context and definition prelude that
 /// carry definitions across lines (see the module doc).
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct Session
 {
     /// The typing context: the prelude operators plus every value-typed

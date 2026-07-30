@@ -93,7 +93,6 @@ impl Deref for GoalItemFlags
 /// One hole's goal: where it is, what was elided, and — where derivable —
 /// what type is expected there and under which local context.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Goal
 {
     /// The hole's identifier (unique within one [`Lowered`]).

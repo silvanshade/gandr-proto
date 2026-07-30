@@ -400,7 +400,6 @@ impl AsRef<[u8; NODE_HASH_LEN]> for NodeHash
 
 /// Prolly-Bao tree shape represented by a root.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum TreeKind
 {
     /// Ordered-record Merkle search tree.
@@ -409,7 +408,6 @@ pub enum TreeKind
 
 /// Encoding version for canonical node, root, and proof material.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum EncodingVersion
 {
     /// First Prolly-Bao encoding version.
@@ -435,7 +433,6 @@ impl From<EncodingVersion> for u16
 
 /// Cryptographic hash algorithm committed by a tree root.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum HashAlgorithm
 {
     /// BLAKE3 with full 32-byte output, exposed only through [`NodeHash`].
@@ -450,7 +447,6 @@ impl HashAlgorithm
 
 /// Separator-key convention committed by a tree root.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum SeparatorConvention
 {
     /// Internal-node separators carry the first key reachable in each child.
@@ -465,7 +461,6 @@ impl SeparatorConvention
 
 /// Consensus-sensitive parameters committed by a root and by proofs.
 #[derive(Clone)]
-#[non_exhaustive]
 pub struct TreeParams
 {
     /// Tree shape marker.
@@ -625,7 +620,6 @@ impl Eq for TreeParams
 
 /// Content-addressed root of a Prolly-Bao tree.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct TreeRoot
 {
     /// Opaque BLAKE3 hash for the root node or empty-root manifest.
@@ -682,7 +676,6 @@ impl TreeRoot
 
 /// Borrowed canonical key-value record.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct RecordRef<'record>
 {
     /// Canonical record key bytes.
@@ -729,7 +722,6 @@ impl<'record> RecordRef<'record>
 
 /// Owned canonical key-value record.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub struct Record
 {
     /// Canonical record key bytes.
@@ -793,7 +785,6 @@ impl<'record> From<RecordRef<'record>> for Record
 
 /// Borrowed key bound for ordered-record range traversal.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum KeyBound<'key>
 {
     /// No bound on this side of the range.
@@ -840,7 +831,6 @@ impl<'key> KeyBound<'key>
 
 /// Borrowed key range for ordered-record traversal.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct KeyRangeRef<'key>
 {
     /// Lower range bound.
@@ -904,7 +894,6 @@ impl<'key> KeyRangeRef<'key>
 
 /// Borrowed encoded node bytes loaded from or offered to a block store.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct StoredNodeRef<'node>
 {
     /// Expected opaque hash for the encoded node bytes.
@@ -945,7 +934,6 @@ impl<'node> StoredNodeRef<'node>
 
 /// Kind of ordered-record proof represented by an envelope.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum ProofKind
 {
     /// Proof for a present key.
@@ -958,7 +946,6 @@ pub enum ProofKind
 
 /// Proof metadata that commits root identity, encoding, and chunker parameters.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ProofEnvelope
 {
     /// Root against which the proof is interpreted.

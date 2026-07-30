@@ -41,10 +41,6 @@ pub const RESERVED_DERIVED_MARKERS: [&str; 3] = ["variance", "linear", "linearit
 /// The classification of a well-formedness failure (for programmatic matching
 /// by consumers and goldens).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the stage-0 well-formedness failure vocabulary is this closed set; a new check adds a variant deliberately"
-)]
 pub enum WfKind
 {
     /// A cell face mentions a constructor / operation not in this datatype's

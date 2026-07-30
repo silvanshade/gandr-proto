@@ -55,7 +55,6 @@ const RETURN_CONT: &str = "$ret";
 /// Why a face could not be elaborated into a command cell
 /// (`proposal-sequent-kernel.md` §7.4, the declined shapes).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum ElaborateError
 {
     /// The rule's left-hand side is not an operation application (a `rule`

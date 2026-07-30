@@ -32,10 +32,6 @@ use crate::desc::DeclPolarity;
 
 /// Which side of an inline sum ([`Code::Sum`]) a value injects into.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "an inline sum is binary, so its injection tag is exactly left or right"
-)]
 pub enum Side
 {
     /// The left summand `A` of `A + B`.
@@ -52,10 +48,6 @@ pub enum Side
 /// [`Payload::Leaf`] for a [`Code::Field`] (the primitive's opaque bytes), and
 /// [`Payload::Abs`] for a [`Code::Bind`].
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the payload shapes are in bijection with the code formers {1, var, ×, σ, field, bind}; a new shape is a new code former (a fragment revision)"
-)]
 pub enum Payload
 {
     /// The unit payload (for [`Code::Unit`]).

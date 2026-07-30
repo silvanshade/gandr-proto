@@ -228,10 +228,6 @@ impl LeqRefutation
 /// Rejection vocabulary of the evidence validators: exactly why a piece of
 /// evidence fails to check against its levels.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the rejection vocabulary is closed by design (kernel-boundary.md K1)"
-)]
 pub enum EvidenceError
 {
     /// A left atom has no bound in the witness.

@@ -19,7 +19,6 @@ use gandr_theory_nominal_automata::Unifiability;
 /// unitary most-general unifiers (Urban–Pitts–Gabbay, *Nominal Unification*,
 /// TCS 323, 2004); see ADR-41.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[non_exhaustive]
 pub enum GandrSort
 {
     /// **Atom-role.** A machine continuation-environment key (rendered

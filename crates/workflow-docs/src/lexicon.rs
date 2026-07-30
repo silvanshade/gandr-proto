@@ -163,7 +163,6 @@ impl<'text> From<&'text str> for GfStringText<'text>
 /// The collected lexicon: three namespaces of constant records, each keyed by
 /// `GF` constant name for deterministic (sorted) emission.
 #[derive(Clone, Debug, Default)]
-#[non_exhaustive]
 pub struct Lexicon
 {
     /// Term records: constant → (key, display text).

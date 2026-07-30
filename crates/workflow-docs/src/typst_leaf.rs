@@ -37,7 +37,6 @@ const DIAGRAM_HEADER: &str = r#"#set page(width: auto, height: auto, margin: 4pt
 
 /// Outcome of compiling one leaf.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum Leaf
 {
     /// Compilation succeeded; the payload is inline `SVG` markup.

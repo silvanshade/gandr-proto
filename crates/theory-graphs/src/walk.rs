@@ -48,7 +48,6 @@ use crate::fingerprint::Fnv64;
 
 /// A direction for source-machine walks.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum Dir
 {
     /// Left-facing source relation.
@@ -59,7 +58,6 @@ pub enum Dir
 
 /// An exact walk boundary.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum End<T>
 {
     /// The distinguished root boundary.
@@ -320,7 +318,6 @@ impl<N: Ord> PartialOrd for Swing<N>
 
 /// One alternating walk step used by checked construction.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum WalkStep<N, T>
 {
     /// A swing segment.
@@ -667,7 +664,6 @@ impl<N: Ord, T: Ord> PartialOrd for Walk<N, T>
 
 /// A swing-machine transition action.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum SwingAdvance<N, T>
 {
     /// Preserve the current swing.
@@ -892,7 +888,6 @@ impl<S: WalkSym> WalkSpec<S>
 
 /// Diagnostic verdict comparing legacy sort-only and production swing keys.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum SeenKeyVerdict
 {
     /// Legacy sort-only closure reaches the same canonical direct rows.
@@ -903,7 +898,6 @@ pub enum SeenKeyVerdict
 
 /// Typed walk-index construction failure.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum WalkBuildError
 {
     /// A swing was constructed with no nonterminals.

@@ -102,10 +102,6 @@ impl fmt::Display for Name
 /// a primitive field is an opaque leaf the value decoder reads by its core
 /// type.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the stage-0 primitive-type vocabulary is the closed set of core value primitives ADR-67 describes; a new primitive is a deliberate schema edit"
-)]
 pub enum PrimTy
 {
     /// The unbounded integer type `Integer`.
@@ -201,10 +197,6 @@ impl PrimTy
 /// being described is **not** a `ValueTypeRef` at all: it is [`Code::Var`]
 /// (proposal §3, "a self-reference is an ordinary type application").
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the stage-0 first-order type-reference shapes (parameter, primitive, applied) are the closed vocabulary ADR-67's fragment admits; higher-order references are excluded, not deferred"
-)]
 pub enum ValueTypeRef
 {
     /// A datatype **type parameter**, by name (`a` in `Maybe(a)`).
@@ -367,10 +359,6 @@ impl AtomSort
 /// - witness: `code::tests::decidable_equality_distinguishes_every_variant`,
 ///   `intern::tests::interning_is_by_decidable_code_equality`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the stage-0 first-order fragment {1, var, ×, σ} + V5 leaf decorations is the closed code grammar ADR-67 fixes; higher-order codes are excluded from the fragment, so a new variant is a fragment revision (a deliberate schema change), not an addition"
-)]
 pub enum Code
 {
     /// `1` — the unit code (a field-less / nullary payload).

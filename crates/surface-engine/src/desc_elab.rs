@@ -75,7 +75,6 @@ use crate::synnode::SynTree;
 /// higher-order field, or a well-formedness failure surfaced by
 /// [`gandr_theory_levitation::check_desc`]).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct ElabDiagnostic
 {
     /// A human-readable description of the decline.
@@ -101,7 +100,6 @@ impl ElabDiagnostic
 /// The result of elaborating a source's datatype declarations: the built
 /// descriptions and every diagnostic, in declaration order.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct DescElab
 {
     /// The elaborated descriptions, one per `data` / `codata` declaration.

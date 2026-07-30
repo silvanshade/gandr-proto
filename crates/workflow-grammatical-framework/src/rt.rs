@@ -304,7 +304,6 @@ impl AsRef<str> for MorphoAnalysis
 
 /// One parse result: the runtime's probability rank and the parsed tree.
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct ScoredTree
 {
     /// The parse's probability score (higher is better-ranked).
@@ -374,7 +373,6 @@ impl core::ops::Deref for TabularLinearization
 /// The faithful deconstruction of one `pgf.Expr` (the binding's `unpack`):
 /// either a string literal or a constructor application.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum ExprUnpack
 {
     /// A string literal.

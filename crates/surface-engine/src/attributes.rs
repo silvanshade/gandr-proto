@@ -56,7 +56,6 @@ use crate::lower::Lowered;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "codecs", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "codecs", serde(rename_all = "lowercase"))]
-#[non_exhaustive]
 pub enum AttrTier
 {
     /// Inert metadata that never enters the content-address (the default and
@@ -70,7 +69,6 @@ pub enum AttrTier
 
 /// An attribute schema's **arity** (proposal-attributes.md §3.2).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum AttrArity
 {
     /// At most one occurrence per entity; a repeat is a
@@ -88,7 +86,6 @@ pub enum AttrArity
 /// the [`REGISTRY`] is a plain `const` — [`ValueType`] carries `Rc`/`String`
 /// and is not itself const-constructible.
 #[derive(Clone, Copy)]
-#[non_exhaustive]
 pub struct AttrSchema
 {
     /// The attribute name the marker writes (`doc`, `deprecated`, …).
@@ -338,7 +335,6 @@ where
 /// (proposal-attributes.md §4.1) and the source of one `Report.attributes` row
 /// (§5).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ResolvedAttr
 {
     /// The annotated item's stable id (its index in [`Lowered::items`]; see the
@@ -357,7 +353,6 @@ pub struct ResolvedAttr
 /// One malformed attribute, for the diagnostics surface (proposal-attributes.md
 /// §3.2). [`crate::diag`] maps each into a source-ranged `Diagnostic`.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum AttrFinding
 {
     /// The name resolves to no registry entry, with a did-you-mean over the
@@ -414,7 +409,6 @@ pub enum AttrFinding
 /// The attribute pass's output: the resolved side table plus the findings for
 /// the diagnostics surface.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct AttrPass
 {
     /// The resolved attributes, in source order (the inert side table and the

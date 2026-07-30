@@ -27,7 +27,6 @@ use crate::typst_leaf::Leaf;
 
 /// The post-pass context: the bibliography for references enrichment and the
 /// cache directory for compiled math/diagram leaves.
-#[non_exhaustive]
 pub struct PostContext<'shared>
 {
     /// The corpus bibliography (`refs.yml`), used to enrich the references
@@ -258,7 +257,6 @@ where
 }
 
 /// One component-listing row for the corpus index page.
-#[non_exhaustive]
 pub struct IndexEntry
 {
     /// The component id (its page filename stem).
@@ -315,7 +313,6 @@ pub fn render_index(entries: &[IndexEntry]) -> String
 /// One table-of-contents row: a section's `HTML` id, its title, and its
 /// nesting depth (1 for top-level sections).
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct TocEntry
 {
     /// The section's anchor id (the link target).

@@ -1983,7 +1983,6 @@ pub fn usage_text() -> impl Into<UsageTextText<'static>>
 /// # Adequacy
 /// - hypothesis: L3 only — integration tests pattern-match representative
 ///   variants and exact domain plan values.
-#[non_exhaustive]
 pub enum Command
 {
     /// Contract documentation adequacy gate.
@@ -2133,7 +2132,6 @@ pub enum Command
 /// - hypothesis: L3 only — supported and unsupported mode strings are observed
 ///   by parser integration tests.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CoverageCommand
 {
     /// Validate coverage floors without modifying them.
@@ -2257,7 +2255,6 @@ impl AgdaDependencyGitCommandPlan
 /// - hypothesis: L3 only — target parser tests cover every allowed spelling and
 ///   one rejected spelling.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum FuzzSmokeTarget
 {
     /// Lowering harness.
@@ -2362,7 +2359,6 @@ impl FuzzSmokePlan
 /// - hypothesis: L2 — tooling tests assert build stdout/stderr inheritance and
 ///   replay stdin piping with inherited diagnostics.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum ExternalStream
 {
     /// Stream is inherited live by the child process.
@@ -2470,7 +2466,6 @@ impl FuzzExternalCommandPlan
 /// # Adequacy
 /// - hypothesis: L3 only — empty/nonempty findings, rumdl status, and
 ///   page-balance note paths are separately represented.
-#[non_exhaustive]
 pub enum GateOutcome
 {
     /// No semantic findings were emitted.

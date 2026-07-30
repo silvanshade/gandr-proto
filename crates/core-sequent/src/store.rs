@@ -44,7 +44,6 @@ use crate::machine::LValue;
 /// the region-shaped API is complete for the placement refinement,
 /// which is the only thing that will ever return it.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Region
 {
     /// The persistent heap region (duplicable / hashconsable values and the
@@ -111,7 +110,6 @@ impl From<CellId> for usize
 /// The state of a call-by-need [`Cell`] — the L-machine image of
 /// `eval::ThunkMemo` (`proposal-sequent-kernel.md` §4.2; ADR-50 call-by-need).
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub enum MemoState
 {
     /// Not yet forced.
@@ -219,7 +217,6 @@ impl core::fmt::Debug for Cell
 /// no value cell lands here); the type is present so the region-shaped API and
 /// the shrink rule are complete for the placement refinement.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Frame
 {
     /// An equation-administration marker (a returning-through-a-covalue
@@ -229,7 +226,6 @@ pub enum Frame
 
 /// The two-region store (`proposal-sequent-kernel.md` §4.2).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Store
 {
     /// The heap region: the nominal call-by-need cell arena. Append-only —

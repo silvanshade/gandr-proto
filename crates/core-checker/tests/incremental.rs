@@ -27,8 +27,6 @@
     )
 )]
 
-extern crate alloc;
-
 /// The differential gate for `gandr_core_checker::checkpoint`.
 #[cfg(test)]
 mod tests

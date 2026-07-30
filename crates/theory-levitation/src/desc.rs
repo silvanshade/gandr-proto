@@ -97,10 +97,6 @@ impl SurfaceSpan
 /// **one** code grammar; the ν decoder is a later lane, so only
 /// the tag ships now.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[expect(
-    clippy::exhaustive_enums,
-    reason = "the μ/ν polarity split is the closed two-way vocabulary V6 fixes; a datatype is data or codata"
-)]
 pub enum DeclPolarity
 {
     /// `data` — μ-decoded into the positive value universe.

@@ -67,7 +67,6 @@ crate::semantic_optional_str!(pub struct OptionalTokenAtText);
 /// - witness: `parser_facade::tests::cli_command_tokens_cover_the_retained_inventory`
 /// - witness: `tooling::top_level_command_inventory_is_exact`
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub enum CliCommandName
 {
     /// Contract-documentation adequacy gate.

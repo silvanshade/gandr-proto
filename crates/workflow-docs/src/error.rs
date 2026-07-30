@@ -2,7 +2,6 @@
 
 /// Errors from the migration, runtime-interop, and rendering lanes.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum GfDocsError
 {
     /// Filesystem failure with the path context included by the caller.

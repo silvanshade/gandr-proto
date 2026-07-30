@@ -292,7 +292,6 @@ impl From<&'static str> for ProofShapeContext
 
 /// Logical occupancy reported by encoded-node inspection.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum NodeOccupancy
 {
     /// The encoded node represents no logical entries.
@@ -674,7 +673,6 @@ impl DerefMut for WireBuffer
 
 /// Summary node kind parsed from canonical encoded Prolly-Bao node bytes.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum EncodedNodeKind
 {
     /// Leaf node carrying ordered records.
@@ -688,7 +686,6 @@ pub enum EncodedNodeKind
 /// `current`: this reports review-oriented node-layout metadata without
 /// changing node bytes or the `BLAKE3(encoded_node_bytes)` identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub struct EncodedNodeLayout
 {
     /// Parsed node kind.
@@ -791,7 +788,6 @@ impl EncodedNodeLayout
 /// transcripts under an agreed [`TreeRoot`]. They are not Bao byte-stream proof
 /// kinds.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub enum WitnessKind
 {
@@ -882,7 +878,6 @@ enum WitnessBody
 /// witness query-response material and proof nodes. The digest fields are not
 /// Bao hashes and do not claim Bao wire-format compatibility.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub struct WitnessEndSummary
 {
@@ -1070,7 +1065,6 @@ impl WitnessEndSummary
 /// verification under an agreed [`TreeRoot`] and [`TreeParams`]. It is not a
 /// Bao byte-stream proof and does not claim Bao wire-format compatibility.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub struct WitnessTranscript
 {
@@ -1804,7 +1798,6 @@ impl WitnessTranscript
 /// required successor leaf, or range root plus contiguous selected leaves.
 /// Multi-level compact selection is not promised by this type.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct ProofNode
 {
     /// Claimed BLAKE3 identity for `bytes`.
@@ -1850,7 +1843,6 @@ impl ProofNode
 
 /// Owned key bound stored inside range proofs.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub enum OwnedKeyBound
 {
@@ -1892,7 +1884,6 @@ impl OwnedKeyBound
 
 /// Owned key range stored inside range proofs.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub struct OwnedKeyRange
 {
@@ -1947,7 +1938,6 @@ impl OwnedKeyRange
 
 /// Store-independent proof that a key maps to a specific value.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub struct MembershipProof
 {
@@ -2070,7 +2060,6 @@ impl MembershipProof
 
 /// Authenticated predecessor/successor evidence for an absent key.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub struct NonMembershipEvidence
 {
@@ -2116,7 +2105,6 @@ impl NonMembershipEvidence
 
 /// Store-independent proof that a key is absent from a root.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub struct NonMembershipProof
 {
@@ -2236,7 +2224,6 @@ impl NonMembershipProof
 
 /// Store-independent proof for a complete ordered key range.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 #[cfg(feature = "proofs")]
 pub struct RangeProof
 {
@@ -2367,7 +2354,6 @@ impl RangeProof
 
 /// Proof-oriented deterministic tree used by the first portable proof slice.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct PortableProofTree
 {
     /// Content-addressed root manifest.
@@ -3269,7 +3255,6 @@ struct DecodedChild
 
 /// Malformed-input error family carried by a byte cursor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
 enum DecodeDomain
 {
     /// Canonical encoded node bytes.

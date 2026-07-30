@@ -45,7 +45,6 @@ use crate::model::Status;
 /// Outcome of parsing one file: an optional model and any structural
 /// diagnostics.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub struct DocParsed
 {
     /// Parsed document, absent when a structural diagnostic prevented it.

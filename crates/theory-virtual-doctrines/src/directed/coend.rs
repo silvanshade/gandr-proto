@@ -43,7 +43,6 @@ use crate::vdc::TermRef;
 /// signatures) rides the Agda face.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Diagram
 {
     /// The `(object, F(object))` entries, one per carrier object, in order.
@@ -108,7 +107,6 @@ impl Diagram
 /// product.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct End
 {
     /// The product components `F(x, x)`, one per carrier object.
@@ -143,7 +141,6 @@ impl End
 /// full coproduct.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct Coend
 {
     /// The coproduct summands `F(x, x)`, one per carrier object.
@@ -178,7 +175,6 @@ impl Coend
 /// carrier is finite and enumerated.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-#[non_exhaustive]
 pub struct BiDiagram
 {
     /// The `((x, y), F(x, y))` entries, one per index pair.

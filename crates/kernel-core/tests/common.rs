@@ -24,7 +24,6 @@ use gandr_kernel_strata::Level;
 
 /// A description of a value type, independent of any arena.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub enum ValueTypeSpec
 {
     Base(BaseType),
@@ -38,7 +37,6 @@ pub enum ValueTypeSpec
 
 /// A description of a computation type.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub enum CompTypeSpec
 {
     Returner(Box<ValueTypeSpec>),
@@ -47,7 +45,6 @@ pub enum CompTypeSpec
 
 /// A description of a value term.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub enum ValueSpec
 {
     Variable(u32),
@@ -62,7 +59,6 @@ pub enum ValueSpec
 
 /// A description of a computation term.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub enum ComputationSpec
 {
     Lambda(Box<Self>),

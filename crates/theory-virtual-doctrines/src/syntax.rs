@@ -99,7 +99,6 @@ impl From<DerivationId> for crate::boundary::DerivationIndex
 /// extensions, the tabulator object-former hook, products, and the terminal
 /// unit.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Protype
 {
     /// The **path** protype `s ⤳ t` (the unit): a finite rewrite sequence
@@ -172,7 +171,6 @@ pub enum Protype
 /// the introduction/elimination forms of the constructor menu, checked
 /// bidirectionally over two-sided contexts ([`crate::check`]).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[non_exhaustive]
 pub enum Proterm
 {
     /// A hypothesis **variable** from the chain `Φ`.
