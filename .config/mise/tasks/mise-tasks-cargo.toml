@@ -101,8 +101,9 @@ cargo dylint \
   --all-targets \
   --features=full
 
-# `crate_wide_allow` deliberately omits test targets: the standard
-# `cfg_attr(test, allow(...))` lint-wall relaxation is the one approved case.
+# `crate_wide_allow` covers every target kind, tests included: no
+# crate-level allow is approved anywhere. The sanctioned test relaxation is
+# clippy.toml configuration (allow-*-in-tests), which attributes cannot express.
 cargo dylint \
   --lib crate_wide_allow \
   --no-deps \
@@ -110,10 +111,7 @@ cargo dylint \
   --workspace \
   --exclude gandr-workflow-gates \
   --exclude gandr-workflow-dylint \
-  --lib \
-  --bins \
-  --benches \
-  --examples \
+  --all-targets \
   --features=full
 
 # `register_lints_warn` is warning-level by design and stays isolated so it

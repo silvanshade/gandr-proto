@@ -44,11 +44,186 @@ readme = "README.md"
 license = "Apache-2.0 OR Apache-2.0 WITH LLVM-exception"
 publish = false
 
+# ── project-local crates (lexicographic) ───────────────────────────────────
+# Every workspace member is declared once here; member crates reference these
+# entries with `<name>.workspace = true` instead of crate-local `path =` pins.
+
+# The gandr toolchain driver (REPL, script runner, subcommand namespace).
+# consumers: none (binary root)
+[workspace.dependencies.gandr]
+path = "crates/surface-driver"
+
+# Core CBPV bidirectional checker and defunctionalized typing machine.
+# consumers:
+# - gandr-core-sequent
+# - gandr-runtime-host
+# - gandr-surface-corpus
+# - gandr-surface-engine
+# - gandr-theory-levitation
+[workspace.dependencies.gandr-core-checker]
+path = "crates/core-checker"
+
+# The polarized System-L command IL, the static focusing translation, and the L machine.
+# consumers:
+# - gandr-runtime-host
+# - gandr-surface-corpus
+# - gandr-surface-engine
+# - gandr-theory-computads
+# - gandr-theory-virtual-doctrines (dev)
+[workspace.dependencies.gandr-core-sequent]
+path = "crates/core-sequent"
+
+# The minimal certified kernel's S1 core (term/type language, environment, conversion).
+# consumers:
+# - gandr-core-checker
+# - gandr-core-sequent (dev)
+# - gandr-storage-artifact
 [workspace.dependencies.gandr-kernel-core]
 path = "crates/kernel-core"
 
+# The minimal certified kernel's level oracle (universe levels and landmark posets).
+# consumers:
+# - gandr-core-sequent (dev)
+# - gandr-kernel-core
 [workspace.dependencies.gandr-kernel-strata]
 path = "crates/kernel-strata"
+
+# Headless host-effect runtime (Exec/Fs/Proc/Env handlers) driven by the L machine.
+# consumers:
+# - gandr-surface-corpus
+# - gandr-surface-engine
+[workspace.dependencies.gandr-runtime-host]
+path = "crates/runtime-host"
+
+# Outer-layer CAS wiring: v1 export artifacts with canonical BLAKE3 manifest identity.
+# consumers:
+# - gandr-core-sequent (dev)
+[workspace.dependencies.gandr-storage-artifact]
+path = "crates/storage-artifact"
+
+# Deterministic record-safe chunk boundary detection (no_std, zero runtime deps).
+# consumers:
+# - gandr-storage-artifact
+# - gandr-storage-prolly-trees
+[workspace.dependencies.gandr-storage-chunker]
+path = "crates/storage-chunker"
+
+# Ordered-record Merkle search tree with membership/non-membership/range proofs.
+# consumers:
+# - gandr-core-sequent (dev)
+# - gandr-storage-artifact
+[workspace.dependencies.gandr-storage-prolly-trees]
+path = "crates/storage-prolly-trees"
+
+# Executable example corpus: literate model examples, pathological cases, harness.
+# consumers: none (corpus harness root)
+[workspace.dependencies.gandr-surface-corpus]
+path = "crates/surface-corpus"
+
+# Surface lowering engine: CST-to-core lowering, origin tracking, sessions.
+# consumers:
+# - gandr-core-sequent (dev)
+# - gandr-surface-corpus
+[workspace.dependencies.gandr-surface-engine]
+path = "crates/surface-engine"
+
+# Checked precedence-bounded grammar core over gandr precedence DAGs.
+# consumers:
+# - gandr-surface-engine
+# - gandr-surface-parser
+[workspace.dependencies.gandr-surface-grammar]
+path = "crates/surface-grammar"
+
+# Resumable push-machine melder and obligation taxonomy over the checked PBG.
+# consumers:
+# - gandr-surface-engine
+# - gandr-surface-grammar (dev)
+[workspace.dependencies.gandr-surface-parser]
+path = "crates/surface-parser"
+
+# Leaf wire-protocol types for the typing-machine inspection render bus.
+# consumers:
+# - gandr-surface-grammar
+[workspace.dependencies.gandr-surface-render-remote]
+path = "crates/surface-render-remote"
+
+# Flat arena concrete syntax tree and incremental syntax diffing.
+# consumers:
+# - gandr-surface-engine
+# - gandr-surface-grammar
+# - gandr-surface-parser
+[workspace.dependencies.gandr-surface-syntax]
+path = "crates/surface-syntax"
+
+# Fusion by Squier completion over the command IL (tracelet 3-cell certificates).
+# consumers:
+# - gandr-theory-virtual-doctrines
+[workspace.dependencies.gandr-theory-computads]
+path = "crates/theory-computads"
+
+# Deterministic dense-u32 graph algorithms.
+# consumers:
+# - gandr-surface-grammar
+# - gandr-theory-computads
+[workspace.dependencies.gandr-theory-graphs]
+path = "crates/theory-graphs"
+
+# Levitation stage 0: datatypes as descriptions (code universe, generic programs).
+# consumers:
+# - gandr-surface-corpus
+# - gandr-surface-engine
+# - gandr-theory-computads
+# - gandr-theory-virtual-doctrines
+[workspace.dependencies.gandr-theory-levitation]
+path = "crates/theory-levitation"
+
+# Generic nominal atom substrate (sort-tagged atoms and gensym allocators).
+# consumers:
+# - gandr-core-checker
+# - gandr-surface-engine
+[workspace.dependencies.gandr-theory-nominal-automata]
+path = "crates/theory-nominal-automata"
+
+# Self-contained order-maintenance structure (O(1) comparison) for incremental pipelines.
+# consumers:
+# - gandr-core-checker
+# - gandr-surface-engine
+[workspace.dependencies.gandr-theory-orders]
+path = "crates/theory-orders"
+
+# Safe first-order recursion engine for gandr semantic machinery.
+# consumers:
+# - gandr-surface-engine
+[workspace.dependencies.gandr-theory-recursion]
+path = "crates/theory-recursion"
+
+# The VDC reflection face: reflected judgment layer over the cell store.
+# consumers: none (top of the theory stack)
+[workspace.dependencies.gandr-theory-virtual-doctrines]
+path = "crates/theory-virtual-doctrines"
+
+# The gandr documentation tool (GF-native spec pipeline, prose document classes).
+# consumers: none (workflow binary root)
+[workspace.dependencies.gandr-workflow-docs]
+path = "crates/workflow-docs"
+
+# Project-local Dylint rules for gandr Rust type boundaries.
+# consumers: none (loaded by cargo-dylint as a lint library)
+[workspace.dependencies.gandr-workflow-dylint]
+path = "crates/workflow-dylint"
+
+# Workflow gates for the gandr project.
+# consumers: none (workflow binary root)
+[workspace.dependencies.gandr-workflow-gates]
+path = "crates/workflow-gates"
+
+# GF/PGF interop for the documentation pipeline (GfRuntime seam, .gfd surface).
+# consumers:
+# - gandr-workflow-docs
+[workspace.dependencies.gandr-workflow-grammatical-framework]
+path = "crates/workflow-grammatical-framework"
+
+# ── external crates (lexicographic) ────────────────────────────────────────
 
 [workspace.dependencies.afl]
 version = "=0.18.2"

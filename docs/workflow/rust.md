@@ -48,21 +48,20 @@
   The Agda metatheory is the specification oracle, not an implementation blueprint — the Rust is its _iterative shadow_; a divergence in shape is expected, only a divergence in result is a bug (the differentials compare answers, not call graphs).
 * **Arithmetic is checked, never bare.** `saturating_*` for monotone counters/depths, `checked_*` where overflow must surface (the grade semiring clamps finite overflow to `ω`), `wrapping_*` only for hashing.
   `arithmetic_side_effects` is denied workspace-wide.
-* **Test/bench code may relax the wall; production never does.** The standard test-allow set (`arithmetic_side_effects`, `expect_used`, `indexing_slicing`, `panic`, `unwrap_used`, plus what clippy requires) via a single crate-level `#![cfg_attr(test, allow(...), reason = "..."))]`.
-  The relaxation is the FIRST thing added when a crate or a test target is created (owner directive, 2026-07-23): the lib root carries it from day one, and each `tests/*.rs` integration file carries it at its own root — crate-level attributes do not cross compilation roots, so the lib's block never reaches integration targets.
-  A crate that gains its first `#[cfg(test)]` module or `tests/` file later adds the relaxation in the same change, before writing the tests.
+* **Test code lives under the same wall; the only sanctioned test relaxation is `clippy.toml` configuration.** The repo `clippy.toml` enables clippy's native `allow-*-in-tests` options (`dbg`, `expect`, `indexing-slicing`, `panic`, `print`, `unwrap`), which relax exactly those lints inside test code (`#[cfg(test)]` modules and `tests/` targets) without any source attribute.
+  Attribute-based test relaxations — a crate-level `#![cfg_attr(test, allow(...))]` or a per-file `#![allow(...)]` test wall — are prohibited (owner directive, 2026-07-30, superseding the 2026-07-23 crate-level relaxation rule): they leak across items, creep in scope, and bury drift.
+  Every lint without a clippy.toml in-tests option — notably `arithmetic_side_effects` — binds tests exactly as production: restructure the test or use checked/saturating arithmetic rather than suppressing.
 * **Panic policy.** Production paths return typed errors.
   A panic is acceptable only as a `debug_assert!` of an internal invariant or in test/bench code.
   Every reachable panic is either routed through a structured error variant or documented in the item's `# Contract`.
 * **Do not silence a diagnostic to pass a gate.** Narrow relaxations are `#[expect(lint, reason = "...")]`, scoped tightly (`allow_attributes` is denied).
-  Blanket test relaxation uses the crate-level `cfg_attr` form above (`allow`, not `expect` — the lint does not fire through `cfg_attr`, and a multi-lint `expect` raises `unfulfilled_lint_expectations`).
-  A `harness = false` bench takes a file-level `#![expect(...)]`.
+  Test-code relaxation is `clippy.toml` configuration, never attributes; benches are not test code for these options, so a `harness = false` bench takes a file-level `#![expect(...)]`.
   Fix the source or file a bead — never bury drift in a `// TODO` (`todo` is lint-denied).
 * **Diagnostics through aifix** ([scripting.md](scripting.md)); `mise run cargo:clippy` and `mise run cargo:dylint` are pass/fail gates, not diagnostic-enumeration interfaces.
 * **Project-local Dylint rules.** `mise run cargo:dylint` loads the immutable Trail of Bits v6.0.1 source pin plus `gandr-workflow-dylint`.
   The upstream inventory is exhaustive outside `Experimental` and `Testing`: eight `General` lints, all nine lints exported by `Supplementary`, and twelve `Restriction` lints.
   Five isolated driver invocations cover project-local rules, ordinary upstream rules, `non_local_effect_before_unhandled_error`, `crate_wide_allow`, and warning-level `register_lints_warn`; `DYLINT_RUSTFLAGS="-D warnings"` makes every late-registered warning fatal.
-  `crate_wide_allow` deliberately omits test targets: the standard crate-level `cfg_attr(test, allow(...))` wall relaxation above is the one exception.
+  `crate_wide_allow` covers every target kind, tests included: no crate-level `allow` is approved anywhere — the sanctioned test relaxation lives in `clippy.toml` configuration, which source attributes cannot express.
   `gandr-workflow-dylint` requires `#[repr(transparent)]` on every single-field struct and rejects project-defined function or method signatures that expose types from the [official primitive index](https://doc.rust-lang.org/std/primitive/index.html).
   Primitive detection follows aliases and non-nominal structural/generic containers; a semantically named transparent wrapper is the boundary, with explicit utility traits.
   The sole signature exception is a method implementing a trait defined in an external crate.
