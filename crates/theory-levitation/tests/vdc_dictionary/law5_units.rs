@@ -26,28 +26,28 @@ mod law5
     use gandr_theory_levitation::FreeTerm;
     use gandr_theory_levitation::Name;
 
-    use super::fixtures::gen_x;
-    use super::fixtures::loose_of;
-    use super::fixtures::nat;
-    use super::fixtures::nat_desc;
-    use super::fixtures::nat_sig;
-    use super::fixtures::succ;
-    use super::fixtures::unary_relation;
-    use super::fixtures::var;
-    use super::fixtures::zero;
-    use super::harness::BaseInstance;
-    use super::harness::Cell;
-    use super::harness::CellClause;
-    use super::harness::CellKind;
-    use super::harness::LooseArrow;
-    use super::harness::LooseInstance;
-    use super::harness::SaturatedInstance;
-    use super::harness::SigMorphism;
-    use super::harness::apply_path;
-    use super::harness::cells_equal;
-    use super::harness::enumerate_paths;
-    use super::harness::replay;
-    use super::harness::replay_path_ind_saturated;
+    use crate::vdc_dictionary::fixtures::gen_x;
+    use crate::vdc_dictionary::fixtures::loose_of;
+    use crate::vdc_dictionary::fixtures::nat;
+    use crate::vdc_dictionary::fixtures::nat_desc;
+    use crate::vdc_dictionary::fixtures::nat_sig;
+    use crate::vdc_dictionary::fixtures::succ;
+    use crate::vdc_dictionary::fixtures::unary_relation;
+    use crate::vdc_dictionary::fixtures::var;
+    use crate::vdc_dictionary::fixtures::zero;
+    use crate::vdc_dictionary::harness::BaseInstance;
+    use crate::vdc_dictionary::harness::Cell;
+    use crate::vdc_dictionary::harness::CellClause;
+    use crate::vdc_dictionary::harness::CellKind;
+    use crate::vdc_dictionary::harness::LooseArrow;
+    use crate::vdc_dictionary::harness::LooseInstance;
+    use crate::vdc_dictionary::harness::SaturatedInstance;
+    use crate::vdc_dictionary::harness::SigMorphism;
+    use crate::vdc_dictionary::harness::apply_path;
+    use crate::vdc_dictionary::harness::cells_equal;
+    use crate::vdc_dictionary::harness::enumerate_paths;
+    use crate::vdc_dictionary::harness::replay;
+    use crate::vdc_dictionary::harness::replay_path_ind_saturated;
 
     #[test]
     fn saturation_makes_the_non_refl_value_defined_and_beta_compatible()

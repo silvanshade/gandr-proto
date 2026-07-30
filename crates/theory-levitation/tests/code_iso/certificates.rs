@@ -15,9 +15,9 @@ mod u30a
     use gandr_theory_levitation::generic_eq;
     use proptest::prelude::*;
 
-    use super::fixtures;
-    use super::harness::CodeIso;
-    use super::harness::replay_equivalent;
+    use crate::code_iso::fixtures;
+    use crate::code_iso::harness::CodeIso;
+    use crate::code_iso::harness::replay_equivalent;
 
     // ---- certificate hygiene: monomorphic, well-formed, round-tripping ----
 

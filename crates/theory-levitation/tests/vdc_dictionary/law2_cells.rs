@@ -13,21 +13,21 @@ mod law2
 {
     use alloc::rc::Rc;
 
-    use super::fixtures::gen_x;
-    use super::fixtures::ident_cell;
-    use super::fixtures::loose_of;
-    use super::fixtures::nat;
-    use super::fixtures::relabel_cell;
-    use super::fixtures::single_input_corpus;
-    use super::fixtures::succ;
-    use super::fixtures::unary_relation;
-    use super::fixtures::var;
-    use super::harness::Cell;
-    use super::harness::CellKind;
-    use super::harness::cells_equal;
-    use super::harness::graft;
-    use super::harness::replay;
-    use super::harness::replay_compose;
+    use crate::vdc_dictionary::fixtures::gen_x;
+    use crate::vdc_dictionary::fixtures::ident_cell;
+    use crate::vdc_dictionary::fixtures::loose_of;
+    use crate::vdc_dictionary::fixtures::nat;
+    use crate::vdc_dictionary::fixtures::relabel_cell;
+    use crate::vdc_dictionary::fixtures::single_input_corpus;
+    use crate::vdc_dictionary::fixtures::succ;
+    use crate::vdc_dictionary::fixtures::unary_relation;
+    use crate::vdc_dictionary::fixtures::var;
+    use crate::vdc_dictionary::harness::Cell;
+    use crate::vdc_dictionary::harness::CellKind;
+    use crate::vdc_dictionary::harness::cells_equal;
+    use crate::vdc_dictionary::harness::graft;
+    use crate::vdc_dictionary::harness::replay;
+    use crate::vdc_dictionary::harness::replay_compose;
 
     #[test]
     fn grafting_is_unital_up_to_replay()

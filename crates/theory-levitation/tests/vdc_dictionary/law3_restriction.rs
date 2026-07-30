@@ -23,36 +23,36 @@ mod law3
     use gandr_theory_levitation::wellformed::WfKind;
     use proptest::prelude::*;
 
-    use super::fixtures::face;
-    use super::fixtures::nat;
-    use super::fixtures::nat_from_names;
-    use super::fixtures::nat_names;
-    use super::fixtures::nat_obj;
-    use super::fixtures::nat_sig;
-    use super::fixtures::real_nat_names;
-    use super::fixtures::renaming;
-    use super::fixtures::sample_faces;
-    use super::fixtures::succ;
-    use super::fixtures::unary_relation;
-    use super::fixtures::var;
-    use super::fixtures::zero;
-    use super::harness::BaseInstance;
-    use super::harness::BaseLoose;
-    use super::harness::Cell;
-    use super::harness::CellClause;
-    use super::harness::CellKind;
-    use super::harness::FormalRestriction;
-    use super::harness::LooseArrow;
-    use super::harness::Relation;
-    use super::harness::SigMorphism;
-    use super::harness::apply_face;
-    use super::harness::compose;
-    use super::harness::factor_globular;
-    use super::harness::left_endpoint;
-    use super::harness::match_pattern;
-    use super::harness::restrict;
-    use super::harness::right_endpoint;
-    use super::harness::subst_term;
+    use crate::vdc_dictionary::fixtures::face;
+    use crate::vdc_dictionary::fixtures::nat;
+    use crate::vdc_dictionary::fixtures::nat_from_names;
+    use crate::vdc_dictionary::fixtures::nat_names;
+    use crate::vdc_dictionary::fixtures::nat_obj;
+    use crate::vdc_dictionary::fixtures::nat_sig;
+    use crate::vdc_dictionary::fixtures::real_nat_names;
+    use crate::vdc_dictionary::fixtures::renaming;
+    use crate::vdc_dictionary::fixtures::sample_faces;
+    use crate::vdc_dictionary::fixtures::succ;
+    use crate::vdc_dictionary::fixtures::unary_relation;
+    use crate::vdc_dictionary::fixtures::var;
+    use crate::vdc_dictionary::fixtures::zero;
+    use crate::vdc_dictionary::harness::BaseInstance;
+    use crate::vdc_dictionary::harness::BaseLoose;
+    use crate::vdc_dictionary::harness::Cell;
+    use crate::vdc_dictionary::harness::CellClause;
+    use crate::vdc_dictionary::harness::CellKind;
+    use crate::vdc_dictionary::harness::FormalRestriction;
+    use crate::vdc_dictionary::harness::LooseArrow;
+    use crate::vdc_dictionary::harness::Relation;
+    use crate::vdc_dictionary::harness::SigMorphism;
+    use crate::vdc_dictionary::harness::apply_face;
+    use crate::vdc_dictionary::harness::compose;
+    use crate::vdc_dictionary::harness::factor_globular;
+    use crate::vdc_dictionary::harness::left_endpoint;
+    use crate::vdc_dictionary::harness::match_pattern;
+    use crate::vdc_dictionary::harness::restrict;
+    use crate::vdc_dictionary::harness::right_endpoint;
+    use crate::vdc_dictionary::harness::subst_term;
 
     /// A tag strategy over a small alphabet.
     fn tag() -> impl Strategy<Value = &'static str>
@@ -182,7 +182,7 @@ mod law3
     /// face.
     fn relation_over(
         name: NameRef<'_>,
-        mid: &super::fixtures::NatNames,
+        mid: &crate::vdc_dictionary::fixtures::NatNames,
     ) -> Rc<Relation>
     {
         let zero = FreeTerm::ctor(mid.zero.clone(), Vec::new());

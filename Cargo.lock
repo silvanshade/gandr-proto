@@ -612,6 +612,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandr-storage-artifact"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "gandr-kernel-core",
+ "gandr-storage-chunker",
+ "gandr-storage-prolly-trees",
+ "proptest",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "gandr-storage-chunker"
 version = "0.0.0"
 

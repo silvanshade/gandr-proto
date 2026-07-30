@@ -46,9 +46,9 @@ mod u30d
     use gandr_theory_levitation::ValueTypeRef;
     use gandr_theory_levitation::generic_eq;
 
-    use super::fixtures;
-    use super::harness::replay_disagreement;
-    use super::harness::replay_equivalent;
+    use crate::code_iso::fixtures;
+    use crate::code_iso::harness::replay_disagreement;
+    use crate::code_iso::harness::replay_equivalent;
 
     #[test]
     fn leaf_shift_is_a_replay_distinct_auto_iso_member()

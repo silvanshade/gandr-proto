@@ -38,10 +38,10 @@ mod u30c
     use gandr_theory_levitation::ReplayClassCount;
     use gandr_theory_levitation::generic_eq;
 
-    use super::fixtures;
-    use super::harness::CodeIso;
-    use super::harness::replay_disagreement;
-    use super::harness::replay_equivalent;
+    use crate::code_iso::fixtures;
+    use crate::code_iso::harness::CodeIso;
+    use crate::code_iso::harness::replay_disagreement;
+    use crate::code_iso::harness::replay_equivalent;
 
     #[test]
     fn code_iso_bool_bool_has_at_least_two_replay_inequivalent_members()

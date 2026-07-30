@@ -13,25 +13,25 @@ mod law4
 
     use gandr_theory_levitation::DescriptorFactorIndex;
 
-    use super::fixtures::gen_x;
-    use super::fixtures::loose_of;
-    use super::fixtures::nat;
-    use super::fixtures::nat_sig;
-    use super::fixtures::relabel_cell;
-    use super::fixtures::single_input_corpus;
-    use super::fixtures::succ;
-    use super::fixtures::unary_relation;
-    use super::fixtures::var;
-    use super::harness::Cell;
-    use super::harness::CellKind;
-    use super::harness::LooseArrow;
-    use super::harness::LooseInstance;
-    use super::harness::SigMorphism;
-    use super::harness::cells_equal;
-    use super::harness::loose_instance_eq;
-    use super::harness::replay;
-    use super::harness::replay_compose;
-    use super::harness::restrict;
+    use crate::vdc_dictionary::fixtures::gen_x;
+    use crate::vdc_dictionary::fixtures::loose_of;
+    use crate::vdc_dictionary::fixtures::nat;
+    use crate::vdc_dictionary::fixtures::nat_sig;
+    use crate::vdc_dictionary::fixtures::relabel_cell;
+    use crate::vdc_dictionary::fixtures::single_input_corpus;
+    use crate::vdc_dictionary::fixtures::succ;
+    use crate::vdc_dictionary::fixtures::unary_relation;
+    use crate::vdc_dictionary::fixtures::var;
+    use crate::vdc_dictionary::harness::Cell;
+    use crate::vdc_dictionary::harness::CellKind;
+    use crate::vdc_dictionary::harness::LooseArrow;
+    use crate::vdc_dictionary::harness::LooseInstance;
+    use crate::vdc_dictionary::harness::SigMorphism;
+    use crate::vdc_dictionary::harness::cells_equal;
+    use crate::vdc_dictionary::harness::loose_instance_eq;
+    use crate::vdc_dictionary::harness::replay;
+    use crate::vdc_dictionary::harness::replay_compose;
+    use crate::vdc_dictionary::harness::restrict;
 
     #[test]
     fn pairing_is_unique_up_to_replay_on_pair_shaped_cells()

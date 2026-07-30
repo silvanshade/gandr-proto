@@ -29,8 +29,8 @@ mod u30b
     use gandr_theory_levitation::serialize_value;
     use proptest::prelude::*;
 
-    use super::fixtures;
-    use super::harness::CodeIso;
+    use crate::code_iso::fixtures;
+    use crate::code_iso::harness::CodeIso;
 
     #[test]
     fn generic_eq_agrees_across_every_iso()
