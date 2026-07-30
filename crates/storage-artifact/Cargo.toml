@@ -18,6 +18,7 @@ path = "tests/lib.rs"
 
 [features]
 default = []
+full = []
 
 [lints]
 workspace = true

@@ -2,8 +2,8 @@
 //! [`Value`] host-seam API (ADR-35 D4).
 //!
 //! The host sees only [`Value`] through the seam's `as_str` / `as_int` /
-//! `as_list` / `as_record` decoders (never the `#[non_exhaustive]` variants),
-//! and builds replies only through [`Value`]'s constructors. Every decode is
+//! `as_list` / `as_record` decoders (never matching on the variants
+//! directly), and builds replies only through [`Value`]'s constructors. Every decode is
 //! total: a shape mismatch is a [`ShellError::Payload`], never a panic.
 
 use alloc::string::String;

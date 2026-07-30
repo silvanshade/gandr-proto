@@ -265,7 +265,7 @@ impl SigMorphism
             .iter()
             .enumerate()
             .map(|(index, desc)| FactorRoute {
-                src_factor: (index % width.max(1)).into(),
+                src_factor: index.checked_rem(width.max(1)).expect("max(1) is nonzero").into(),
                 map: identity_map(desc),
             })
             .collect();

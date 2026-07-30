@@ -21,7 +21,7 @@ members = [
   "crates/surface-syntax",
   # "crates/theory-computads",
   "crates/theory-graphs",
-  # "crates/theory-levitation",
+  "crates/theory-levitation",
   "crates/theory-nominal-automata",
   "crates/theory-orders",
   "crates/theory-recursion",

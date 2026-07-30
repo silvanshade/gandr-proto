@@ -13,15 +13,7 @@ autotests = false
 
 [[test]]
 name = "polygraph"
-path = "tests/polygraph.rs"
-
-[dependencies]
-gandr-core-sequent = { path = "../core-sequent" }
-gandr-theory-graphs = { path = "../theory-graphs" }
-gandr-theory-levitation = { path = "../theory-levitation" }
-
-[dev-dependencies]
-proptest = { workspace = true }
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -29,3 +21,11 @@ full = []
 
 [lints]
 workspace = true
+
+[dependencies]
+gandr-core-sequent.workspace = true
+gandr-theory-graphs.workspace = true
+gandr-theory-levitation.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

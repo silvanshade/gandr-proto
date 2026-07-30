@@ -10,14 +10,14 @@ description = "Headless host-effect runtime for gandr: native Exec/Fs/Proc/Env h
 license.workspace = true
 publish.workspace = true
 
-[dependencies]
-gandr-core-checker = { path = "../core-checker" }
-gandr-core-sequent = { path = "../core-sequent" }
-thiserror = { workspace = true }
-
 [features]
 default = []
 full = []
 
 [lints]
 workspace = true
+
+[dependencies]
+gandr-core-checker.workspace = true
+gandr-core-sequent.workspace = true
+thiserror = { workspace = true }

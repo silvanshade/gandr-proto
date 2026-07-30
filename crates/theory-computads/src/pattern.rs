@@ -267,9 +267,9 @@ impl ConsPat
 ///
 /// The `prim`/`jump` commands of §2.1 are deliberately absent: a `prim` is the
 /// opaque host seam (§7.4, "natives are opaque"), and a `jump` is outside the
-/// cell-visible fragment. The single-variant `#[non_exhaustive]` enum keeps the
-/// grammar open for a later `Case`/`Cocase` extension without a breaking
-/// change.
+/// cell-visible fragment. Matches over this enum are total by policy: a later
+/// `Case`/`Cocase` extension is a compile-visible change at every match site,
+/// which is the intended review tripwire.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum CmdPat
 {
