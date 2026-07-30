@@ -1,6 +1,6 @@
 //! The **S1-eligible corpus partition** (gandr-wvd.2, B2.3 deliverable 3).
 //!
-//! The live source corpus ([`crate::corpus_sources`]) is lowered through the
+//! The live source corpus ([`crate::common`]) is lowered through the
 //! elaborator, so its items are exactly the checked core CBPV terms the B2.3
 //! kernel bridge ([`gandr_core_checker::kernel_bridge`]) lowers FROM.
 //! This sweep classifies the corpus **per item** (never per file — the
@@ -22,8 +22,6 @@
 #[cfg(test)]
 mod tests
 {
-    extern crate alloc;
-
     use std::fs;
     use std::path::PathBuf;
 
@@ -42,11 +40,11 @@ mod tests
     use gandr_kernel_core::read;
     use gandr_kernel_core::write;
 
-    use self::alloc::collections::BTreeMap;
-    use self::alloc::collections::BTreeSet;
-    use crate::corpus_sources::CorpusTree;
-    use crate::corpus_sources::corpus_fixtures_b3sum;
-    use crate::corpus_sources::read_tree;
+    use alloc::collections::BTreeMap;
+    use alloc::collections::BTreeSet;
+    use crate::common::CorpusTree;
+    use crate::common::corpus_fixtures_b3sum;
+    use crate::common::read_tree;
 
     /// The environment variable that switches the sweep from verify to bless.
     const BLESS_ENV: &str = "GANDR_BLESS_KERNEL_PARTITION";

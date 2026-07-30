@@ -1,4 +1,4 @@
-#:schema tombi://www.schemastore.org/cargo.json
+#:schema https://www.schemastore.org/cargo.json
 #:tombi toml-version = "v1.0.0"
 
 [package]
@@ -17,14 +17,7 @@ autotests = false
 
 [[test]]
 name = "corpus"
-path = "tests/corpus.rs"
-
-[dependencies]
-gandr-core-checker = { path = "../core-checker" }
-gandr-core-sequent = { path = "../core-sequent" }
-gandr-runtime-host = { path = "../runtime-host" }
-gandr-surface-engine = { path = "../surface-engine" }
-gandr-theory-levitation = { path = "../theory-levitation" }
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -39,3 +32,10 @@ regex = [
 
 [lints]
 workspace = true
+
+[dependencies]
+gandr-core-checker.workspace = true
+gandr-core-sequent.workspace = true
+gandr-runtime-host.workspace = true
+gandr-surface-engine.workspace = true
+gandr-theory-levitation.workspace = true

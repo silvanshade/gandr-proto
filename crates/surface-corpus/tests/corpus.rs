@@ -3,16 +3,6 @@
 //! meets its expectations; model examples must additionally open with a
 //! literate comment header (the learn-by-example discipline).
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the walker readable (docs/workflow/rust.md)"
-    )
-)]
-
 /// Corpus walker tests.
 #[cfg(test)]
 mod tests

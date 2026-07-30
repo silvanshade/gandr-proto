@@ -7,13 +7,6 @@
 //! byte/provenance anchors for the three invariant manifests, but never supply
 //! executable terms. F4 staging O6 keeps the FFI-capability and regex fixtures'
 //! semantic anchors frozen until those optional features land.
-#![cfg_attr(
-    test,
-    allow(
-        clippy::panic,
-        reason = "checked-in corpus fixtures are trusted test data; malformed data must fail loudly"
-    )
-)]
 
 use std::fs;
 use std::path::Path;

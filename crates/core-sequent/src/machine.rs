@@ -735,10 +735,6 @@ impl LMachine
                             | HostReply::Unhandled => {
                                 return Eval::Blame(Blame::PerformNoHandler);
                             },
-                            // `HostReply` is `#[non_exhaustive]`: a reply variant
-                            // this machine does not yet realize declines to a
-                            // defined stuck, never a panic.
-                            | _ => return Eval::Stuck(StuckReason::UnsupportedByReference),
                         }
                     },
                     | Flow::Final(eval) => return eval,

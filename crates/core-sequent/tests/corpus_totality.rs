@@ -9,19 +9,8 @@
 //! and every minted covariable is bound.
 //!
 //! The items are lowered live from the ported source corpus
-//! ([`crate::corpus_sources`]). The surface tree remains excluded on purpose:
+//! ([`crate::common`]). The surface tree remains excluded on purpose:
 //! it is firewalled from execution and never lowers.
-
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the gate walker readable \
-                  (docs/workflow/rust.md)"
-    )
-)]
 
 /// The phase-L0 totality gate.
 #[cfg(test)]
@@ -32,8 +21,8 @@ mod tests
     use gandr_core_sequent::focus_term;
     use gandr_core_sequent::wellformed;
 
-    use crate::corpus_sources::CorpusTree;
-    use crate::corpus_sources::read_tree;
+    use crate::common::CorpusTree;
+    use crate::common::read_tree;
 
     /// `𝓕` is total on the model corpus tree.
     #[test]

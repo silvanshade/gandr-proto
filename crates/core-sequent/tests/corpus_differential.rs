@@ -55,20 +55,9 @@
 //! is now L-vs-snapshot only.
 //!
 //! The items are lowered live from the ported source corpus
-//! ([`crate::corpus_sources`]); the checked-in `.sexp` files remain only as
+//! ([`crate::common`]); the checked-in `.sexp` files remain only as
 //! immutable byte/provenance anchors for the outcome records and kernel
 //! manifests.
-
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the corpus snapshot sweep readable \
-                  (docs/workflow/rust.md)"
-    )
-)]
 
 #[cfg(test)]
 mod tests
@@ -85,9 +74,9 @@ mod tests
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
 
-    use crate::corpus_sources::CorpusTree;
-    use crate::corpus_sources::Fixture;
-    use crate::corpus_sources::read_tree;
+    use crate::common::CorpusTree;
+    use crate::common::Fixture;
+    use crate::common::read_tree;
 
     /// The environment variable that switches [`bless_corpus_outcomes`] from a
     /// no-op into the snapshot regenerator.

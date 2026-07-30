@@ -12,17 +12,6 @@
 //! hand-built cases that reach every remaining former — the effect / handler /
 //! resumption / reified-stack surface the random generator does not build.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the property and coverage tests \
-                  readable (docs/workflow/rust.md)"
-    )
-)]
-
 /// Property and coverage tests.
 #[cfg(test)]
 mod tests

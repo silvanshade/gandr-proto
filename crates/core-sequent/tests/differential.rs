@@ -52,17 +52,6 @@
 //! higher-order **host payloads**, and the **exact structural readback** of
 //! thunk / function / lazy-pair / partial-native terminals against the oracle.
 
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::panic,
-        clippy::unwrap_used,
-        reason = "the standard test-allow set keeps the differential harness readable \
-                  (docs/workflow/rust.md)"
-    )
-)]
-
 #[cfg(test)]
 mod tests
 {
