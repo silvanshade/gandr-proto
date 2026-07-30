@@ -15,15 +15,15 @@ mod law1
     use gandr_theory_levitation::Name;
     use proptest::prelude::*;
 
-    use crate::fixtures::nat_names;
-    use crate::fixtures::nat_obj;
-    use crate::fixtures::renaming;
-    use crate::fixtures::sample_faces;
-    use crate::harness::FactorRoute;
-    use crate::harness::SigMorphism;
-    use crate::harness::apply_term;
-    use crate::harness::check_morphism;
-    use crate::harness::compose;
+    use super::fixtures::nat_names;
+    use super::fixtures::nat_obj;
+    use super::fixtures::renaming;
+    use super::fixtures::sample_faces;
+    use super::harness::FactorRoute;
+    use super::harness::SigMorphism;
+    use super::harness::apply_term;
+    use super::harness::check_morphism;
+    use super::harness::compose;
 
     /// A tag strategy over a small alphabet (distinct-name generation is
     /// role-prefixed in `nat_names`, so tags may repeat harmlessly).

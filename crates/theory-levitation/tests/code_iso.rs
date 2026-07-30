@@ -61,8 +61,6 @@
 //! *protypes*, whose instance set at `(Boolean, Boolean)` is provably not a
 //! singleton here.
 
-extern crate alloc;
-
 mod certificates;
 mod fixtures;
 mod harness;

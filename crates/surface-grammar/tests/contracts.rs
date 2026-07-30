@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod contracts
+mod tests
 {
     use alloc::collections::BTreeSet;
     use core::error::Error;
@@ -362,19 +362,22 @@ mod contracts
     )
     {
         for pair in names.windows(2) {
-            let tighter = prec(dag, pair[0]);
-            let looser = prec(dag, pair[1]);
+            let [tighter_name, looser_name] = pair else {
+                continue;
+            };
+            let tighter = prec(dag, *tighter_name);
+            let looser = prec(dag, *looser_name);
             assert!(
                 bool::from(dag.gt(tighter, looser, None)),
                 "{} must bind tighter than {}",
-                pair[0],
-                pair[1]
+                tighter_name,
+                looser_name
             );
             assert!(
                 bool::from(dag.lt(looser, tighter, None)),
                 "{} must bind looser than {}",
-                pair[1],
-                pair[0]
+                looser_name,
+                tighter_name
             );
         }
     }
@@ -675,11 +678,11 @@ mod contracts
         let named = cycle
             .witness
             .iter()
-            .map(|prec| match *prec {
+            .map(|prec_id| match *prec_id {
                 | prec if prec == a => PrecName("cycle.a"),
                 | prec if prec == b => PrecName("cycle.b"),
                 | prec if prec == c => PrecName("cycle.c"),
-                | _ => panic!("unexpected precedence id in cycle witness: {prec:?}"),
+                | _ => panic!("unexpected precedence id in cycle witness: {prec_id:?}"),
             })
             .collect::<Vec<_>>();
         let error = PbgError::precedence_cycle(named.clone());
@@ -709,8 +712,11 @@ mod contracts
             })
             .collect::<BTreeSet<_>>();
         for edge in witness.windows(2) {
+            let [from, to] = edge else {
+                continue;
+            };
             assert!(
-                named_edges.contains(&(edge[0], edge[1])),
+                named_edges.contains(&(*from, *to)),
                 "closed named witness edge {edge:?} must be present in the cyclic spec"
             );
         }

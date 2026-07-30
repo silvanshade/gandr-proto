@@ -26,8 +26,8 @@ use gandr_theory_levitation::Side;
 use gandr_theory_levitation::ValueTypeRef;
 use gandr_theory_levitation::builtin::bool_desc;
 
-use crate::harness::CodeIso;
-use crate::harness::Translate;
+use super::harness::CodeIso;
+use super::harness::Translate;
 
 /// The **rotation** auto-iso on [`rgb`]: `R → G → B → R`. Non-involutive (its
 /// inverse is the reverse rotation), so `rotate ⨟ rotate ⨟ rotate` is the

@@ -172,7 +172,7 @@ mod contracts
     }
 
     #[test]
-    fn unique_tiles_contract() -> Result<(), Box<dyn Error>>
+    fn unique_tiles_contract()
     {
         // Genuine redundancy: an alternation of identical branches interns two
         // occurrences of the same tile to one rctx within one rule.
@@ -211,7 +211,6 @@ mod contracts
             ]),
         )];
         assert_eq!(Ok(()), validate_unique_tiles(&cloned));
-        Ok(())
     }
 
     #[test]
@@ -272,7 +271,7 @@ mod contracts
     }
 
     #[test]
-    fn assumption_3_contract() -> Result<(), Box<dyn Error>>
+    fn assumption_3_contract()
     {
         // A form of Expression begins with Type and a form of Type ends with
         // Expression: distinct sorts r != s with s in FIRST(G(r, p)) and
@@ -315,7 +314,6 @@ mod contracts
             ),
         ];
         assert_eq!(Ok(()), validate_assumption_3(&ok));
-        Ok(())
     }
 
     #[test]

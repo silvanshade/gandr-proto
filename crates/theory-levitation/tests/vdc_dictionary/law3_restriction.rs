@@ -23,36 +23,36 @@ mod law3
     use gandr_theory_levitation::wellformed::WfKind;
     use proptest::prelude::*;
 
-    use crate::fixtures::face;
-    use crate::fixtures::nat;
-    use crate::fixtures::nat_from_names;
-    use crate::fixtures::nat_names;
-    use crate::fixtures::nat_obj;
-    use crate::fixtures::nat_sig;
-    use crate::fixtures::real_nat_names;
-    use crate::fixtures::renaming;
-    use crate::fixtures::sample_faces;
-    use crate::fixtures::succ;
-    use crate::fixtures::unary_relation;
-    use crate::fixtures::var;
-    use crate::fixtures::zero;
-    use crate::harness::BaseInstance;
-    use crate::harness::BaseLoose;
-    use crate::harness::Cell;
-    use crate::harness::CellClause;
-    use crate::harness::CellKind;
-    use crate::harness::FormalRestriction;
-    use crate::harness::LooseArrow;
-    use crate::harness::Relation;
-    use crate::harness::SigMorphism;
-    use crate::harness::apply_face;
-    use crate::harness::compose;
-    use crate::harness::factor_globular;
-    use crate::harness::left_endpoint;
-    use crate::harness::match_pattern;
-    use crate::harness::restrict;
-    use crate::harness::right_endpoint;
-    use crate::harness::subst_term;
+    use super::fixtures::face;
+    use super::fixtures::nat;
+    use super::fixtures::nat_from_names;
+    use super::fixtures::nat_names;
+    use super::fixtures::nat_obj;
+    use super::fixtures::nat_sig;
+    use super::fixtures::real_nat_names;
+    use super::fixtures::renaming;
+    use super::fixtures::sample_faces;
+    use super::fixtures::succ;
+    use super::fixtures::unary_relation;
+    use super::fixtures::var;
+    use super::fixtures::zero;
+    use super::harness::BaseInstance;
+    use super::harness::BaseLoose;
+    use super::harness::Cell;
+    use super::harness::CellClause;
+    use super::harness::CellKind;
+    use super::harness::FormalRestriction;
+    use super::harness::LooseArrow;
+    use super::harness::Relation;
+    use super::harness::SigMorphism;
+    use super::harness::apply_face;
+    use super::harness::compose;
+    use super::harness::factor_globular;
+    use super::harness::left_endpoint;
+    use super::harness::match_pattern;
+    use super::harness::restrict;
+    use super::harness::right_endpoint;
+    use super::harness::subst_term;
 
     /// A tag strategy over a small alphabet.
     fn tag() -> impl Strategy<Value = &'static str>
@@ -182,7 +182,7 @@ mod law3
     /// face.
     fn relation_over(
         name: NameRef<'_>,
-        mid: &crate::fixtures::NatNames,
+        mid: &super::fixtures::NatNames,
     ) -> Rc<Relation>
     {
         let zero = FreeTerm::ctor(mid.zero.clone(), Vec::new());

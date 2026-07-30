@@ -39,11 +39,6 @@
 //! claim* (the history-independence differential), pinned as a property of the
 //! outer layer here rather than left implicit.
 
-#![expect(
-    clippy::pub_use,
-    reason = "the crate root intentionally re-exports a flat public API for this small outer-layer crate"
-)]
-
 extern crate alloc;
 
 pub mod error;

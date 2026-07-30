@@ -747,7 +747,7 @@ mod tests
         // The manifest version word immediately follows the magic.
         let version_offset = MANIFEST_MAGIC.len();
         bytes[version_offset] = 0x00;
-        bytes[version_offset + 1] = 0x02;
+        bytes[version_offset.wrapping_add(1)] = 0x02;
         assert_eq!(
             ArtifactManifest::decode(bytes.as_ref().into()),
             Err(ManifestError::UnsupportedManifestVersion { found: 2 }),
@@ -769,7 +769,7 @@ mod tests
             "a wrong magic rejects"
         );
 
-        let truncated = good.get(.. good.len() - 1).expect("nonempty").to_vec();
+        let truncated = good.get(.. good.len().wrapping_sub(1)).expect("nonempty").to_vec();
         assert_eq!(
             ArtifactManifest::decode(truncated.as_slice().into()),
             Err(ManifestError::Truncated),
@@ -791,9 +791,9 @@ mod tests
     {
         let mut bytes = golden_manifest().encode();
         // The commitment length word follows magic + two version words.
-        let length_offset = MANIFEST_MAGIC.len() + 4;
+        let length_offset = MANIFEST_MAGIC.len().wrapping_add(4);
         bytes[length_offset] = 0x00;
-        bytes[length_offset + 1] = 0x54; // 84, not 85
+        bytes[length_offset.wrapping_add(1)] = 0x54; // 84, not 85
         match ArtifactManifest::decode(bytes.as_ref().into()) {
             | Err(ManifestError::CommitmentLength { found, expected }) => {
                 assert_eq!(found, 84);

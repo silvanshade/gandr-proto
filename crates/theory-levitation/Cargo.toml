@@ -9,15 +9,11 @@ rust-version.workspace = true
 description = "Levitation stage 0 -- datatypes as descriptions: a tagged first-order code universe {1, var, x, sigma} with decidable equality, 2-cell faces as free-monad term pairs, bridge-diagram multi-out arities, and generic programs (equality, serialization, interning) driven by the description (ADR-67; proposal-levitation.md)"
 license.workspace = true
 publish.workspace = true
+autotests = false
 
-[dependencies]
-# The core value-type + grade vocabulary the description leaves decorate: field
-# codes carry a `gandr_core_checker::grade::Grade` (V5), the erased usage
-# annotation the grade decoder reads into the semiring.
-gandr-core-checker = { path = "../core-checker" }
-
-[dev-dependencies]
-proptest = { workspace = true }
+[[test]]
+name = "levitation"
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -25,3 +21,12 @@ full = []
 
 [lints]
 workspace = true
+
+[dependencies]
+# The core value-type + grade vocabulary the description leaves decorate: field
+# codes carry a `gandr_core_checker::grade::Grade` (V5), the erased usage
+# annotation the grade decoder reads into the semiring.
+gandr-core-checker.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

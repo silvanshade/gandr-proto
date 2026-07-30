@@ -254,16 +254,16 @@ mod contracts
 
         // Sorted by label, ascending.
         let mut previous: Option<TileLabel> = None;
-        for (label, _count) in &counts {
+        for &(label, _count) in &counts {
             if let Some(prev) = previous {
-                assert!(prev < *label, "candidate inventory must be sorted by label");
+                assert!(prev < label, "candidate inventory must be sorted by label");
             }
-            previous = Some(*label);
+            previous = Some(label);
         }
 
         let observed: Vec<(&str, usize)> = counts
             .iter()
-            .map(|(label, count)| (label.as_ref(), count.0))
+            .map(|&(label, count)| (label.0, count.0))
             .collect();
         let expected: Vec<(&str, usize)> = DECLARED_CANDIDATE_INVENTORY.to_vec();
         assert_eq!(
@@ -289,7 +289,7 @@ mod contracts
             let count = index
                 .molds(&TileLabel(def.label))
                 .iter()
-                .filter(|&(_, projected)| *projected == mold_id)
+                .filter(|&&(_, projected)| projected == mold_id)
                 .count();
             assert_eq!(
                 1, count,

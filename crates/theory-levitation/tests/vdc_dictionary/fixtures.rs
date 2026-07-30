@@ -28,16 +28,16 @@ use gandr_theory_levitation::SortRef;
 use gandr_theory_levitation::SurfaceSpan;
 use gandr_theory_levitation::wellformed::derive_cell_var_meta;
 
-use crate::harness::BaseInstance;
-use crate::harness::Cell;
-use crate::harness::CellClause;
-use crate::harness::CellKind;
-use crate::harness::FactorRoute;
-use crate::harness::LooseArrow;
-use crate::harness::LooseInstance;
-use crate::harness::Relation;
-use crate::harness::SigMorphism;
-use crate::harness::SigObj;
+use super::harness::BaseInstance;
+use super::harness::Cell;
+use super::harness::CellClause;
+use super::harness::CellKind;
+use super::harness::FactorRoute;
+use super::harness::LooseArrow;
+use super::harness::LooseInstance;
+use super::harness::Relation;
+use super::harness::SigMorphism;
+use super::harness::SigObj;
 
 // ----------------------------------------------------------------------
 // Ground Nat terms and small term constructors

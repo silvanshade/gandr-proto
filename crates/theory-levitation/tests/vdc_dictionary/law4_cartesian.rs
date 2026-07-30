@@ -13,25 +13,25 @@ mod law4
 
     use gandr_theory_levitation::DescriptorFactorIndex;
 
-    use crate::fixtures::gen_x;
-    use crate::fixtures::loose_of;
-    use crate::fixtures::nat;
-    use crate::fixtures::nat_sig;
-    use crate::fixtures::relabel_cell;
-    use crate::fixtures::single_input_corpus;
-    use crate::fixtures::succ;
-    use crate::fixtures::unary_relation;
-    use crate::fixtures::var;
-    use crate::harness::Cell;
-    use crate::harness::CellKind;
-    use crate::harness::LooseArrow;
-    use crate::harness::LooseInstance;
-    use crate::harness::SigMorphism;
-    use crate::harness::cells_equal;
-    use crate::harness::loose_instance_eq;
-    use crate::harness::replay;
-    use crate::harness::replay_compose;
-    use crate::harness::restrict;
+    use super::fixtures::gen_x;
+    use super::fixtures::loose_of;
+    use super::fixtures::nat;
+    use super::fixtures::nat_sig;
+    use super::fixtures::relabel_cell;
+    use super::fixtures::single_input_corpus;
+    use super::fixtures::succ;
+    use super::fixtures::unary_relation;
+    use super::fixtures::var;
+    use super::harness::Cell;
+    use super::harness::CellKind;
+    use super::harness::LooseArrow;
+    use super::harness::LooseInstance;
+    use super::harness::SigMorphism;
+    use super::harness::cells_equal;
+    use super::harness::loose_instance_eq;
+    use super::harness::replay;
+    use super::harness::replay_compose;
+    use super::harness::restrict;
 
     #[test]
     fn pairing_is_unique_up_to_replay_on_pair_shaped_cells()

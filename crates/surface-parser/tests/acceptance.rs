@@ -796,7 +796,7 @@ fn melder_closes_multi_hole_forms() -> Result<(), Box<dyn Error>>
 // ---- expected() agrees with commit(finalize) --------------
 
 #[test]
-fn expected_completion_names_the_next_tile_or_hole() -> Result<(), Box<dyn Error>>
+fn expected_completion_names_the_next_tile_or_hole()
 {
     let pbg = built();
     // An open bracket expects its closer; an unsaturated infix expects a
@@ -820,7 +820,6 @@ fn expected_completion_names_the_next_tile_or_hole() -> Result<(), Box<dyn Error
         bool::from(complete.expected().is_complete()),
         "a bare atom is complete"
     );
-    Ok(())
 }
 /// The shared built-in grammar.
 fn built() -> &'static Pbg
@@ -941,11 +940,11 @@ fn descendant_tiles(
     out
 }
 /// Molded-tile prefixes of `src` (each non-space token, in order).
-fn push_prefix<'p>(
-    pbg: &'p Pbg,
+fn push_prefix<'pbg>(
+    pbg: &'pbg Pbg,
     src: SourceSlice<'_>,
     upto: TokenPrefixLen,
-) -> MeldState<'p>
+) -> MeldState<'pbg>
 {
     let source = src;
     let source_text = SourceText::from(AsRef::<str>::as_ref(&source));

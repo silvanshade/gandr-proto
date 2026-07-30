@@ -69,8 +69,6 @@
 //! the tuple. Law 3(a) carries the **real-structure content**: the face action
 //! is split on the landed [`gandr_theory_levitation::CellFace`] type itself.
 
-extern crate alloc;
-
 mod fixtures;
 mod harness;
 mod law1_tight;

@@ -26,28 +26,28 @@ mod law5
     use gandr_theory_levitation::FreeTerm;
     use gandr_theory_levitation::Name;
 
-    use crate::fixtures::gen_x;
-    use crate::fixtures::loose_of;
-    use crate::fixtures::nat;
-    use crate::fixtures::nat_desc;
-    use crate::fixtures::nat_sig;
-    use crate::fixtures::succ;
-    use crate::fixtures::unary_relation;
-    use crate::fixtures::var;
-    use crate::fixtures::zero;
-    use crate::harness::BaseInstance;
-    use crate::harness::Cell;
-    use crate::harness::CellClause;
-    use crate::harness::CellKind;
-    use crate::harness::LooseArrow;
-    use crate::harness::LooseInstance;
-    use crate::harness::SaturatedInstance;
-    use crate::harness::SigMorphism;
-    use crate::harness::apply_path;
-    use crate::harness::cells_equal;
-    use crate::harness::enumerate_paths;
-    use crate::harness::replay;
-    use crate::harness::replay_path_ind_saturated;
+    use super::fixtures::gen_x;
+    use super::fixtures::loose_of;
+    use super::fixtures::nat;
+    use super::fixtures::nat_desc;
+    use super::fixtures::nat_sig;
+    use super::fixtures::succ;
+    use super::fixtures::unary_relation;
+    use super::fixtures::var;
+    use super::fixtures::zero;
+    use super::harness::BaseInstance;
+    use super::harness::Cell;
+    use super::harness::CellClause;
+    use super::harness::CellKind;
+    use super::harness::LooseArrow;
+    use super::harness::LooseInstance;
+    use super::harness::SaturatedInstance;
+    use super::harness::SigMorphism;
+    use super::harness::apply_path;
+    use super::harness::cells_equal;
+    use super::harness::enumerate_paths;
+    use super::harness::replay;
+    use super::harness::replay_path_ind_saturated;
 
     #[test]
     fn saturation_makes_the_non_refl_value_defined_and_beta_compatible()
@@ -158,7 +158,7 @@ mod law5
                 vec![
                     gen_x(nat(k.into())),
                     refl(nat(k.into())),
-                    gen_x(nat((k + 1).into())),
+                    gen_x(nat(k.saturating_add(1).into())),
                 ]
             })
             .collect();
