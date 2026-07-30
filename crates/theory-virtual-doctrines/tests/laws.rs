@@ -284,7 +284,7 @@ mod tests
         );
         let path = query.path(&start, RewriteStepBudget::from(16_usize));
         // PathInd: base on refl (0 steps) plus one per reduction — the trace length.
-        let steps = Query::induct(&path, 0_usize, |acc, _step| acc + 1);
+        let steps = Query::induct(&path, 0_usize, |acc, _step| acc.saturating_add(1));
         assert_eq!(1, steps, "the induction counts the single reduction");
         assert_eq!(1, path.steps.len(), "the trace has one step");
     }

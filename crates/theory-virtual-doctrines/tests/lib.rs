@@ -2,6 +2,9 @@
 
 extern crate alloc;
 
+#[cfg(test)]
 mod crdc;
+#[cfg(test)]
 mod directed;
+#[cfg(test)]
 mod laws;

@@ -13,39 +13,7 @@ autotests = false
 
 [[test]]
 name = "sequent"
-path = "tests/sequent.rs"
-
-[dependencies]
-gandr-core-checker = { path = "../core-checker" }
-
-[dev-dependencies]
-# BLAKE3 digests the corpus `.sexp` fixtures for the outcome-snapshot sweep's
-# provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
-# provenance convention the pre-lowered corpus fixtures already carry.
-blake3 = { workspace = true }
-# The S1 kernel (kernel-boundary.md §2): the B2.3 corpus partition sweep
-# (`tests/kernel_corpus_partition.rs`) bridges each corpus item through
-# `gandr-core-checker`'s kernel bridge into this kernel's choke point and export.
-# A test-only edge — the section-2 TCB wall constrains kernel-core's own
-# dependencies, never its consumers.
-gandr-kernel-core = { path = "../kernel-core" }
-# The strata level oracle: the B2.3 export exit-gate harness
-# (`tests/kernel_export_gate.rs`) reconstructs the kernel-native C5 goldens
-# (universe/lift), whose `Level` payloads are strata-typed. A test-only edge,
-# parallel to the kernel-core edge above (both crates sit below this one).
-gandr-kernel-strata = { path = "../kernel-strata" }
-# The outer content-addressed layer: the exit-gate harness records each item's
-# `ArtifactIdentity` (massive-term design §6 — the b3sum-provenance successor)
-# as artifact-level provenance, and `storage-prolly-trees` supplies the
-# `BlockStore`/`TreeParams` the identity build needs. Test-only edges; both
-# storage crates consume kernel-core, never the reverse (acyclic).
-gandr-storage-artifact = { path = "../storage-artifact" }
-gandr-storage-prolly-trees = { path = "../storage-prolly-trees" }
-# Live total lowering for the F4 corpus sweeps. This is a test-only back-edge:
-# surface-engine consumes core-sequent at runtime, while core-sequent's own
-# library graph remains acyclic.
-gandr-surface-engine = { path = "../surface-engine" }
-proptest = { workspace = true }
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -58,3 +26,35 @@ gandr_feat_regex = ["gandr-core-checker/gandr_feat_regex"]
 
 [lints]
 workspace = true
+
+[dependencies]
+gandr-core-checker.workspace = true
+
+[dev-dependencies]
+# The S1 kernel (kernel-boundary.md §2): the B2.3 corpus partition sweep
+# (`tests/kernel_corpus_partition.rs`) bridges each corpus item through
+# `gandr-core-checker`'s kernel bridge into this kernel's choke point and export.
+# A test-only edge — the section-2 TCB wall constrains kernel-core's own
+# dependencies, never its consumers.
+gandr-kernel-core.workspace = true
+# The strata level oracle: the B2.3 export exit-gate harness
+# (`tests/kernel_export_gate.rs`) reconstructs the kernel-native C5 goldens
+# (universe/lift), whose `Level` payloads are strata-typed. A test-only edge,
+# parallel to the kernel-core edge above (both crates sit below this one).
+gandr-kernel-strata.workspace = true
+# The outer content-addressed layer: the exit-gate harness records each item's
+# `ArtifactIdentity` (massive-term design §6 — the b3sum-provenance successor)
+# as artifact-level provenance, and `storage-prolly-trees` supplies the
+# `BlockStore`/`TreeParams` the identity build needs. Test-only edges; both
+# storage crates consume kernel-core, never the reverse (acyclic).
+gandr-storage-artifact.workspace = true
+gandr-storage-prolly-trees.workspace = true
+# Live total lowering for the F4 corpus sweeps. This is a test-only back-edge:
+# surface-engine consumes core-sequent at runtime, while core-sequent's own
+# library graph remains acyclic.
+gandr-surface-engine.workspace = true
+# BLAKE3 digests the corpus `.sexp` fixtures for the outcome-snapshot sweep's
+# provenance guard (`tests/corpus_differential.rs`), matching the `b3sum`
+# provenance convention the pre-lowered corpus fixtures already carry.
+blake3.workspace = true
+proptest.workspace = true

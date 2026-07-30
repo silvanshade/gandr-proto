@@ -13,15 +13,7 @@ autotests = false
 
 [[test]]
 name = "vdc"
-path = "tests/vdc.rs"
-
-[dependencies]
-gandr-theory-computads = { path = "../theory-computads" }
-gandr-theory-levitation = { path = "../theory-levitation" }
-
-[dev-dependencies]
-gandr-core-sequent = { path = "../core-sequent" }
-proptest = { workspace = true }
+path = "tests/lib.rs"
 
 [features]
 default = []
@@ -29,3 +21,11 @@ full = []
 
 [lints]
 workspace = true
+
+[dependencies]
+gandr-theory-computads.workspace = true
+gandr-theory-levitation.workspace = true
+
+[dev-dependencies]
+gandr-core-sequent.workspace = true
+proptest.workspace = true
