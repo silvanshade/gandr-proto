@@ -78,3 +78,8 @@ The tractability classification (convergent-fragment versus certificate-carried)
 
 The honest price, stated with its datum: the only published formalization of the symmetric-rig coherence adjacent to the groupoid statement leaves its multiplicative layer unpaid — 118 admit sites under an unsolved-metas allowance [@choudhury-karwowski-sabry-2022-symmetries] — and the directed statement adds strictly more (the one-way classes interact with distribution), so the directed convergence pass exceeds the literature on two axes at once, and no formalized rewriting twin exists for either.
 This is why the convergence pass is a named obligation with a re-quoted price rather than a consultable proof shape.
+
+## Adjacent statements of the family
+
+The fenced statement above is one instance of the family's directed form.
+Two further instances are designed under the same obligations discipline: the session-stratum reserve (an identity at a universe of protocols, flagged before either stratum hardens) and **`ua_topo`** — identity of presented spaces as per-stratum fullness of a space-code edit vocabulary, with locale-isomorphism and homeomorphism as distinct certified notions and the simple-homotopy warning (complete, or complete up to a located obstruction) as its honesty bound; its precedent stack and design consequences are in [[exact-reals#ua_topo — the statement shape and its precedent stack|the exact-reals document]].

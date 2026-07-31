@@ -1280,3 +1280,231 @@ ullrich-de-moura-2020-beyond-notations:
     type: proceedings
     title: Automated Reasoning (IJCAR 2020)
   note: Lean 4 hygiene; cited by the doc-tool prose-class record
+
+# ── The sequent-machine literature (closures, machines, copatterns) ───────────
+
+sullivan-2023-reflections:
+  type: thesis
+  title: "Reflections of Closures"
+  author: ["Sullivan, Zachary J."]
+  date: 2023
+  organization: University of Oregon
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use (U. Oregon Scholars' Bank, report PHD-202311-Sullivan)
+
+sullivan-downen-ariola-2023-little-pieces:
+  type: article
+  title: Closure Conversion in Little Pieces
+  author: ["Sullivan, Zachary J.", "Downen, Paul", "Ariola, Zena M."]
+  date: 2023
+  parent:
+    type: proceedings
+    title: International Symposium on Principles and Practice of Declarative Programming (PPDP 2023)
+  serial-number:
+    doi: "10.1145/3610612.3610622"
+
+binder-2024-grokking:
+  type: article
+  title: Grokking the Sequent Calculus (Functional Pearl)
+  author: ["Binder, David", "Tzschentke, Marco", "Müller, Marius", "Ostermann, Klaus"]
+  date: 2024
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages 8 (ICFP 2024)
+  serial-number:
+    doi: "10.1145/3674639"
+
+caspar-munch-maccagnoni-2026-s4:
+  type: article
+  title: S4 Modal Sequent Calculus as Intermediate Logic and Intermediate Language
+  author: ["Caspar, Jean", "Munch-Maccagnoni, Guillaume"]
+  date: 2026
+  serial-number:
+    arxiv: "2601.08071"
+
+downen-2025-controlling-copatterns:
+  type: article
+  title: "Controlling Copatterns: There and Back Again (Extended Version)"
+  author: ["Downen, Paul"]
+  date: 2025
+  serial-number:
+    arxiv: "2508.12427"
+
+cockx-abel-2018-copatterns:
+  type: article
+  title: Elaborating Dependent (Co)Pattern Matching
+  author: ["Cockx, Jesper", "Abel, Andreas"]
+  date: 2018
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages 2 (ICFP 2018), 75:1–75:30
+  serial-number:
+    doi: "10.1145/3236770"
+
+liesnikov-binder-suberkrub-2025-polarity:
+  type: article
+  title: "Filling the Gaps of Polarity: Implementing Dependent Data and Codata Types with Implicit Arguments"
+  author: ["Liesnikov, Bohdan", "Binder, David", "Süberkrüb, Tim"]
+  date: 2025
+  serial-number:
+    arxiv: "2511.15819"
+
+keizer-basold-perez-2020-session-coalgebras:
+  type: article
+  title: "Session Coalgebras: A Coalgebraic View on Session Types and Communication Protocols"
+  author: ["Keizer, Alex C.", "Basold, Henning", "Pérez, Jorge A."]
+  date: 2020
+  serial-number:
+    arxiv: "2011.05712"
+
+dagand-2013-cosmology:
+  type: thesis
+  title: "A Cosmology of Datatypes: Re-usability and Type Preservation"
+  author: ["Dagand, Pierre-Évariste"]
+  date: 2013
+  organization: University of Strathclyde
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use
+
+caccamo-2003-formal-calculus:
+  type: thesis
+  title: A Formal Calculus for Categories
+  author: ["Cáccamo, Mario"]
+  date: 2003
+  organization: BRICS, University of Aarhus (DS-03-7)
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use
+
+fiore-saville-2019-cartesian-closed:
+  type: article
+  title: A Type Theory for Cartesian Closed Bicategories
+  author: ["Fiore, Marcelo", "Saville, Philip"]
+  date: 2019
+  serial-number:
+    arxiv: "1904.06538"
+
+new-licata-2022-vett:
+  type: article
+  title: A Formal Logic for Formal Category Theory (Extended Version)
+  author: ["New, Max S.", "Licata, Daniel R."]
+  date: 2022
+  serial-number:
+    arxiv: "2210.08663"
+
+# ── The exact-reals / synthetic-topology line ────────────────────────────────
+
+taylor-2010-lamcra:
+  type: article
+  title: A Lambda Calculus for Real Analysis
+  author: ["Taylor, Paul"]
+  date: 2010
+  parent:
+    type: periodical
+    title: Journal of Logic and Analysis 2(5)
+  serial-number:
+    doi: "10.4115/jla.2010.2.5"
+
+bauer-2008-dedekind-reals:
+  type: article
+  title: Efficient Computation with Dedekind Reals
+  author: ["Bauer, Andrej"]
+  date: 2008
+  parent:
+    type: proceedings
+    title: Fifth International Conference on Computability and Complexity in Analysis (CCA 2008), extended abstract, i–vi
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use
+
+bauer-taylor-2009-dedekind-asd:
+  type: article
+  title: The Dedekind Reals in Abstract Stone Duality
+  author: ["Bauer, Andrej", "Taylor, Paul"]
+  date: 2009
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science 19(4), 757–838
+  serial-number:
+    doi: "10.1017/S0960129509007695"
+
+escardo-2004-synthetic-topology:
+  type: article
+  title: "Synthetic Topology: of Data Types and Classical Spaces"
+  author: ["Escardó, Martín"]
+  date: 2004
+  parent:
+    type: periodical
+    title: Electronic Notes in Theoretical Computer Science 87, 21–156
+  serial-number:
+    doi: "10.1016/j.entcs.2004.09.017"
+
+hancock-hyvernat-2006-interfaces:
+  type: article
+  title: Programming Interfaces and Basic Topology
+  author: ["Hancock, Peter", "Hyvernat, Pierre"]
+  date: 2006
+  parent:
+    type: periodical
+    title: Annals of Pure and Applied Logic 137(1–3), 189–239
+  serial-number:
+    doi: "10.1016/j.apal.2005.05.022"
+
+tosun-2020-formal-topology:
+  type: thesis
+  title: Formal Topology in Univalent Foundations
+  author: ["Tosun, Ayberk"]
+  date: 2020
+  organization: Chalmers University of Technology
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use
+
+hyland-1991-first-steps:
+  type: article
+  title: First Steps in Synthetic Domain Theory
+  author: ["Hyland, J. Martin E."]
+  date: 1991
+  parent:
+    type: book
+    title: Category Theory (Como, 1990), Lecture Notes in Mathematics 1488, 131–156
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use
+
+taylor-2002-sober-spaces:
+  type: article
+  title: Sober Spaces and Continuations
+  author: ["Taylor, Paul"]
+  date: 2002
+  parent:
+    type: periodical
+    title: Theory and Applications of Categories 10
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use (venue per two independent sources; the paper itself is unread here)
+
+bauer-marshall:
+  type: software
+  title: "Marshall: a programming language for exact real arithmetic"
+  author: ["Bauer, Andrej"]
+  url: https://github.com/andrejbauer/marshall
+  note: not in library.bib; synthesized 2026-07-31 — the executable design fossil of the exact-reals line; cited as an artifact, not as a theorem source
+
+# ── The implementation-model systems (performance architecture) ───────────────
+
+idris2:
+  type: software
+  title: "Idris 2: a dependently typed programming language"
+  organization: Idris community
+  url: https://github.com/idris-lang/Idris2
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit fd405085b (2026-06-22) per [[impl-models-deep-read]]
+
+lean4:
+  type: software
+  title: "Lean 4: theorem prover and programming language"
+  organization: Lean FRO
+  url: https://github.com/leanprover/lean4
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit d1f105109b (2026-07-06) per [[impl-models-deep-read]]
+
+agda:
+  type: software
+  title: "Agda: a dependently typed programming language and proof assistant"
+  organization: Agda developers
+  url: https://github.com/agda/agda
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit 6e4d6e9543 (2026-07-01) per [[impl-models-deep-read]]
+
+smalltt:
+  type: software
+  title: "smalltt: a small elaborator for dependent type theory"
+  author: ["Kovács, András"]
+  url: https://github.com/AndrasKovacs/smalltt
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit ea99b0f (2026-02-02) per [[impl-models-deep-read]]

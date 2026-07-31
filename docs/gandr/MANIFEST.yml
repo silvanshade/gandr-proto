@@ -19,12 +19,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 36150270e55a3049c000d88c8d0f5429c0fda04511d9b7dc41f8d874fcc49734
+    b3: a341f7394488aa58172915777c1ac98f3372deb08f00147f7cfc2e764db6dcc8
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 507de0d69d0dc6cb0971fd1ebb0abf9ee5c496961990884aeb974aa26d811431
+    b3: 23b8b6ef3842fd97dba731fe90ff3db9198dcbb4a812cd759bb3e813ffa73d65
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -34,12 +34,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 3300e008fa9444d0f49fd40fbd000e20e4c07c97ba241d585d5f139f357bf601
+    b3: 8a29221ec85da82aac827c41a6c6fedeba532ba966d95aa349a4dc567ce97bf1
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 1cb1d54d3332fd14aa59269e97c625c9f26f7be8a4d8664773d9c50e9904791e
+    b3: 7047870b25dc4ad5fefe77ffc7081256931bebe5f7da5e938988952fa41f0f74
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -59,7 +59,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/directed-univalence.md
     role: subdocument
-    b3: ded2497001b921c6a7015aff2c8a365940fd2dc3f02c1515ccabebcbdd61b1cd
+    b3: 607b6de6a9b64f2cc0c57959b71ff359be8740889fa30080df8a649d213fddd2
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/layout-and-coherence.md
@@ -72,9 +72,19 @@ nodes:
     b3: 840abae752a93f957376262ce11b34f6ac88d963d8e29c8ba1a2b6b184cb50b1
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/metatheory/exact-reals.md
+    role: subdocument
+    b3: 65af60be6e9b2df579c1290093316422b915e753cd70da3bc7e25fb6cbbf2806
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: 623c2db2b5f22f95ca1baa9d29651898f94f01e1e384b3d5f209fa4021ff0e5a
+    b3: 1ba679200136e058f52ebc10c2167b74f45b91eec7e1a565f9bbc26a88fce14f
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/performance-architecture.md
+    role: subdocument
+    b3: a14ca6c90704066bd52dacca65d527c11cd9b746848c52422042e2501b1cc96a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md

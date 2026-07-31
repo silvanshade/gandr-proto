@@ -96,13 +96,13 @@ Rigidity is a property of the **representation**, never of the objects: the grap
 
 ## The operational substrate — the polarized sequent kernel
 
-The kernel is a polarized System-L command IL: producers, consumers, and commands $angle.l p bar.v_ε c angle.r$ as first-class arena-resident data, with the frozen call-by-push-value core [@levy-cbpv] as the source calculus and a static focusing translation between them.
+The kernel is a polarized System-L command IL [@binder-2024-grokking]: producers, consumers, and commands $angle.l p bar.v_ε c angle.r$ as first-class arena-resident data, with the frozen call-by-push-value core [@levy-cbpv] as the source calculus and a static focusing translation between them.
 Four of its properties carry the rest of this document.
 
 * **Redexes are at the cut, so overlaps are shallow.** A rewrite cell's left-hand side is a cut between a constructor pattern and an operation frame; no rule searches a term tree.
   Critical-pair enumeration is tractable where tree rewriting needs full traversal, which is why the compositional-rewriting suite of [[#The doctrine layer]] can be run at all.
 * **Consumers are first-class, so the seam is visible.** Under continuation-passing the same overlap hides behind a lambda; visibility is what makes fusion a derived 2-cell with a certificate rather than a pass.
-* **Strategy is a per-cut polarity orientation.** Positive cuts fire the producer-side binder first, negative cuts the consumer-side one; evaluation strategy is an orientation choice on cells, not a global language property.
+* **Strategy is a per-cut polarity orientation.** Positive cuts fire the producer-side binder first, negative cuts the consumer-side one; evaluation strategy is an orientation choice on cells, not a global language property, and the two-region store discipline the machine adopts is the heap/frame split of the modal-sequent line [@caspar-munch-maccagnoni-2026-s4] with its modality reinterpreted as residency, never imported as a type former.
 * **Multi-conclusion contexts have a home.** The linear consumer zone is where a multi-conclusion reading lives, and it is the declared growth point for the multi-output term face.
 
 **Fusion is Squier completion on cut seams** [@squier-1987-word-problems].
@@ -110,8 +110,20 @@ Surface rewrite members elaborate to oriented command cells; overlaps at cuts ar
 Two limits are permanent: natives are opaque, and non-linear overlaps fan out into families rather than a single fused rule — the second is a theorem of the virtual reading ([[#The doctrine layer]]), not a shortfall.
 The Squier citation is good at dimension one, where the completion loop lives [@squier-1987-word-problems] [@squier-otto-kobayashi-1994-finiteness]; **finite derivation type fails above dimension one** (an explicit finite convergent 3-polygraph with finite critical branchings lacks it [@ara-burroni-guiraud-malbos-metayer-mimram-2025-polygraphs]), so the higher-cells lane must not assume the completion story lifts.
 
-**Closure conversion is an in-IL rewrite** at the shift boundary, and its design content is larger than the slogan: capture is **partial** (the intro rule types the body under the ambient context plus the captured part, which is what makes conversion decomposable into little pieces); environment sharing and lambda-lifting are _derived_ 2-cells, not new machinery; grades refine capture (a grade-zero variable need not be captured at all); and adequacy makes the compile-versus-evaluate differential a **theorem on the closure-conversion-normal fragment** — with closure _entry_ left unfactored, so lowering supplies the match-then-jump.
-Its named proof debt is that confluence of environment capture is modulo environment reordering, so the Agda face needs a permutation quotient — a `Rigid` instance, and it should be built as one; the ordering corollary is that hash-consing happens **after** reaching closure-conversion normal form, so environments are canonical.
+**Closure conversion is an in-IL rewrite** at the shift boundary, from the abstract-closures account of Sullivan's thesis [@sullivan-2023-reflections] (its published précis is [@sullivan-downen-ariola-2023-little-pieces]).
+The device: environments are first-class syntax — a delayed substitution $sigma ::= epsilon | sigma, V \/ x$ — and an abstract closure $\{sigma, "force" arrow.r M\} : U_r B$ attaches one to the only introduction site that needs it.
+Because gandr's λ is a computation and never bound, **closures live at the `U`/`force` shift alone**; there is no λ-site closure to manage.
+The load-bearing piece is that capture is **partial**: the introduction rule types the body under the ambient context _plus_ the captured part, which is what makes conversion decomposable into little pieces — one free variable at a time, by the oriented cell $\{sigma, "force" arrow.r M\} arrow.r_("CC") \{sigma, x \/ x, "force" arrow.r M\}$ for $x$ free in $M$ outside $sigma$'s domain.
+Closure β is then an interaction rule on the cut, $angle.l \{sigma, "force" arrow.r M\} bar.v_ε "force" dot K angle.r arrow.r angle.l M[sigma] bar.v_ε K angle.r$ — closure conversion joins the same completion framework as fusion.
+Environment sharing and lambda-lifting are _derived_ 2-cells, not new machinery; and grades refine capture in a way the source lacks — a grade-zero variable need not be captured at all.
+
+The correctness story is three theorems of the source: **backward simulation** (every machine step decodes to a derivable IL equality — machine execution _is_ equational rewriting), **soundness** (typed equality of the IL by Kripke logical relations over heaps, so conversion is correct by construction), and **adequacy** — the payoff: for closure-conversion-normal programs, a machine that `Build`s (capturing) and a machine that `Build^cl`s (looks up only the variables the closure names, emits a fixed code sequence, never captures dynamically) _provably agree_.
+Adequacy is what makes the compile-versus-evaluate differential a **theorem on the closure-conversion-normal fragment** — with closure _entry_ left unfactored, so lowering supplies the match-then-jump, and closure-conversion normal form is the gate under which the backend may emit a flat environment struct plus code pointer.
+
+Three caveats travel with the account.
+The source machine is a stack machine, not a sequent machine: the laws transfer unchanged at the polarity level (the value/computation split, closures-only-at-the-shift, environments-as-explicit-substitutions, the conversion orientation), but the machine-level form is re-derived against the L machine, where call-by-need memoization becomes consumer-side sharing (a μ̃-bound shared consumer).
+Recursion and effects are absent from the source: its future-work note — fixpoints living at the thunk type as recursive closures — endorses gandr's graded-thunk `fix` without proving anything about it, and the soundness proof is not stable under effect handlers by inspection, so **closure-conversion correctness under effects is owed proof, not literature** (the intersection of the two literatures is empty).
+And the named proof debt: confluence of environment capture is **modulo environment reordering**, so the Agda face needs a permutation quotient — a `Rigid` instance, and it should be built as one; the ordering corollary is that hash-consing happens **after** reaching closure-conversion normal form, so environments are canonical.
 Consumer-side closures (co-closures) are undeveloped in the source line and are owed by the codata and first-class-consumer directions.
 
 **Four kernel boundaries that are invariants, not preferences.**
@@ -597,6 +609,12 @@ The dimension-2 rule layer remains an equivalence at this stratum: the directed 
 Two permanent negative witnesses guard the pair: a K-derivation must fail elaboration, and a symmetry-derivation for `Flow` must fail elaboration.
 The directed word problem's honest price: the rule layer's residue grows from the symmetric group to the full transformation monoid, for which no register row and no formalized rewriting twin exists — and that price was quoted against the tree presentation, so it is re-quoted against the arena before it is spent ([[metatheory/roadmap]]).
 
+## Exact reals and synthetic topology
+
+A lateral track, firewalled from the minimal-kernel path: exact real computation as a **reified Abstract Stone Duality subsystem outside the frozen kernel** [@taylor-2010-lamcra] [@bauer-2008-dedekind-reals] — Sierpiński-valued semidecisions rather than booleans, lower and upper reals paired as certified Dedekind cuts, open formulae with bounded quantification over overt and compact domains, and a resumable refinement machine whose certificates an independent checker replays.
+Its contact with this track is threefold: the **equipment reading** (the modal-law checklist of the exact-real fragment decomposes without remainder as the cartesian-equipment conditions of the doctrine layer, and identity of points is polarity-split exactly where spaces stop being discrete); the **temporal reading** (observation is semidecision, real equality is not semidecidable while apartness is, and backend equivalence is an observational — never geometric — certificate relation, with the cubical interval route declined-not-refuted); and **`ua_topo`**, the third instance of the univalence statement family — every certified locale-isomorphism the image of a space-code path — designed from the start as a fullness theorem over a polygraph presentation of space codes, with interaction structures [@hancock-hyvernat-2006-interfaces] at the object level, a univalent formal-topology SIP [@tosun-2020-formal-topology] as the completed rendering, and the Tietze/polygraphic tradition at the identification level.
+The full design, the staged plan with its gates, the decision register, and every open obligation dispositioned are in [[metatheory/exact-reals]].
+
 ## The doctrine layer
 
 ### Three roles, kept apart
@@ -795,5 +813,6 @@ The five headline directions, for orientation: extend to the directed case (it i
 * [[metatheory/directed-univalence]] — the directed statement in full: candidate comparison, alphabets, grades, guards, the kernel formers, the equipment inventory.
 * [[metatheory/layout-and-coherence]] — the layout calculus per former, the coherence modules, the arena generalization detail.
 * [[metatheory/ambient-and-primitives]] — the cubical contact in full (the J ledger, the verified evaluator register, the price ledger), the internalization currency table, the technology-cluster survey.
+* [[metatheory/exact-reals]] — the exact-reals and synthetic-topology line: the semantic contract, the reified architecture, the staged plan, the equipment and temporal readings, and `ua_topo`.
 * [[metatheory/guards]] — the do-not-reopen ledger: declined halves with reversal conditions, dissolved forks, withdrawn claims, name-collision warnings, and the code concordance to the retired records.
 * [[metatheory/citation-hazards]] — locator defects, version drift, unverified reports, and per-source publication status.

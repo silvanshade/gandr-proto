@@ -19,6 +19,20 @@ The dovetail between the Rust fast paths and what the Agda side must prove: iden
 The tractability witness (`VTractableAt`-shaped: a record per tractability reason, with the normal-form/shift-equivalence decision as its first inhabitant) **does not exist yet** and is where the `cells_equal` fast path's soundness certificate is born; the fast path is **TCB-adjacent** — a guard plus the witness, never documentation — and the off-TCB framing applies to the enumerator only.
 The tractability axis (convergent-fragment versus certificate-carried) must stay separable from the invertible/directed mode axis; they coincide in today's two-band design and will not once a convergent directed fragment exists.
 
+## The performance-architecture phase residuals
+
+Carried from the design basis in [[performance-architecture]], each landing with the phase that owns it:
+
+* **Term-face gluing** (origin-`NodeId` caching on values) and **unfolding-face gluing with the hints table** — one normalizer design, landed together; the quote/unfold shared table is the deliverable.
+* **Smart unfolding on case progress** — after the case-tree representation is final.
+* **Blocker-carrying values** — designed before the solver consumes them.
+* **Transactional staging overlay on the arena** — the incremental lane's checkpoint mechanism.
+* **The intrusive cached word** (hash + flags + range + depth) — with the arena's node-layout change, not a side-table retrofit.
+* **jit≡eval fallback interop** — the backend phase's driver shape.
+* **Frozen-meta boundaries per definition** — the incremental lane's staged-elaboration discipline.
+* **Transparency defaults policy** — owed by the performance-architecture phase; heights from the definition DAG are mechanical, defaults are not.
+* **The explicit thunk-cell budget** — a standing cost note; no host laziness exists to ride.
+
 ## Phase residuals worth pinning
 
 * **Kernel-replay** (the certificates phase): an independent reader-side framing walk against the format specification, never shared code; the annotation plane (variance/directedness) must be parseable by both checkers, which is why its slot is reserved early.
