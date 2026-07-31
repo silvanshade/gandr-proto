@@ -383,6 +383,7 @@ behr-kock-2021-tracelet-hopf:
   date: 2022
   serial-number:
     doi: "10.4204/EPTCS.372.23"
+    arxiv: "2105.06186"
   parent:
     type: periodical
     title: Electronic Proceedings in Theoretical Computer Science
@@ -978,7 +979,7 @@ weber-2007-familial:
   title: Familial 2-Functors and Parametric Right Adjoints
   author: ["Weber, Mark"]
   date: 2007
-  note: not in library.bib; verify locator before citation-bearing use
+  note: not in library.bib; locator verified at TAC 18(22), Thm 4.10, p. 690
   parent:
     type: periodical
     title: Theory and Applications of Categories
@@ -1054,3 +1055,216 @@ shapiro-spivak-2025-duoidal:
   date: 2025
   serial-number:
     arxiv: "2210.01962"
+
+squier-1987-word-problems:
+  type: article
+  title: Word Problems and a Homological Finiteness Condition for Monoids
+  author: ["Squier, Craig C."]
+  date: 1987
+  serial-number:
+    doi: "10.1016/0022-4049(87)90129-0"
+  parent:
+    type: periodical
+    title: Journal of Pure and Applied Algebra
+    volume: 49
+    issue: 1-2
+    page-range: 201-217
+
+squier-otto-kobayashi-1994-finiteness:
+  type: article
+  title: A Finiteness Condition for Rewriting Systems
+  author: ["Squier, Craig C.", "Otto, Friedrich", "Kobayashi, Yuji"]
+  date: 1994
+  serial-number:
+    doi: "10.1016/0304-3975(94)90175-9"
+  parent:
+    type: periodical
+    title: Theoretical Computer Science
+    volume: 131
+    issue: 2
+    page-range: 271-294
+
+batanin-kock-weber-2018-regular-patterns:
+  type: article
+  title: Regular Patterns, Substitudes, Feynman Categories and Operads
+  author: ["Batanin, Michael", "Kock, Joachim", "Weber, Mark"]
+  date: 2018
+  serial-number:
+    arxiv: "1510.08934"
+
+berger-moerdijk-2011-reedy:
+  type: article
+  title: On an Extension of the Notion of Reedy Category
+  author: ["Berger, Clemens", "Moerdijk, Ieke"]
+  date: 2011
+  serial-number:
+    doi: "10.1007/s00209-010-0770-x"
+    arxiv: "0809.3341"
+  parent:
+    type: periodical
+    title: Mathematische Zeitschrift
+    volume: 269
+    issue: 3-4
+    page-range: 977-1004
+
+cruttwell-shulman-2009-generalized-multicategories:
+  type: article
+  title: A Unified Framework for Generalized Multicategories
+  author: ["Cruttwell, G. S. H.", "Shulman, Michael A."]
+  date: 2009
+  serial-number:
+    arxiv: "0907.2460"
+
+feller-garner-kock-proulx-weber-2019-unital:
+  type: article
+  title: Every 2-Segal Space Is Unital
+  author: ["Feller, Matthew", "Garner, Richard", "Kock, Joachim", "Proulx, May U.", "Weber, Mark"]
+  date: 2019
+  serial-number:
+    arxiv: "1905.09580"
+
+gratzer-2022-inductive-recursive:
+  type: article
+  title: An Inductive-Recursive Universe Generic for Small Families
+  author: ["Gratzer, Daniel"]
+  date: 2022
+  serial-number:
+    arxiv: "2202.05529"
+
+joyal-kock-2009-feynman-graphs:
+  type: article
+  title: Feynman Graphs, and Nerve Theorem for Compact Symmetric Multicategories (Extended Abstract)
+  author: ["Joyal, André", "Kock, Joachim"]
+  date: 2009
+  serial-number:
+    arxiv: "0908.2675"
+
+leinster-2003-higher-operads:
+  type: book
+  title: Higher Operads, Higher Categories
+  author: ["Leinster, Tom"]
+  date: 2003
+  serial-number:
+    arxiv: "math/0305049"
+
+joram-veltri-2023-finite-bags:
+  type: article
+  title: Constructive Final Semantics of Finite Bags
+  author: ["Joram, Philipp", "Veltri, Niccolò"]
+  date: 2023
+  parent:
+    type: proceedings
+    title: 14th International Conference on Interactive Theorem Proving (ITP 2023)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    volume: 268
+    page-range: "20:1-20:19"
+
+oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered:
+  type: article
+  title: Layered and Object-Based Game Semantics
+  author: ["Oliveira Vale, Arthur", "Melliès, Paul-André", "Shao, Zhong", "Koenig, Jérémie", "Stefanesco, Léo"]
+  date: 2022
+  serial-number:
+    doi: "10.1145/3498703"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 6
+    issue: POPL
+    page-range: "42:1-42:32"
+
+rossberg-2018-1ml:
+  type: article
+  title: 1ML – Core and Modules United
+  author: ["Rossberg, Andreas"]
+  date: 2018
+  parent:
+    type: periodical
+    title: Journal of Functional Programming
+
+moon-blinn-porter-omar-2025-tylr:
+  type: article
+  title: Syntactic Completions with Material Obligations
+  author: ["Moon, David", "Blinn, Andrew", "Porter, Thomas J.", "Omar, Cyrus"]
+  date: 2025
+  serial-number:
+    doi: "10.1145/3763182"
+    arxiv: "2508.16848"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 9
+    issue: OOPSLA2
+    page-range: 3669-3695
+
+abbott-altenkirch-ghani-2005-containers:
+  type: article
+  title: Categories of Containers
+  author: ["Abbott, Michael", "Altenkirch, Thorsten", "Ghani, Neil"]
+  date: 2005
+  serial-number:
+    doi: "10.1016/j.tcs.2005.06.002"
+  parent:
+    type: periodical
+    title: Theoretical Computer Science
+    volume: 342
+
+ahman-chapman-uustalu-2016-directed-containers:
+  type: article
+  title: When is a Container a Comonad?
+  author: ["Ahman, Danel", "Chapman, James", "Uustalu, Tarmo"]
+  date: 2016
+  serial-number:
+    doi: "10.4204/EPTCS.207.5"
+    arxiv: "1604.01187"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 207
+    page-range: 89-98
+
+choudhury-karwowski-sabry-2022-symmetries:
+  type: article
+  title: "Symmetries in Reversible Programming: From Symmetric Rig Groupoids to Reversible Programming Languages"
+  author: ["Choudhury, Vikraman", "Karwowski, Jacek", "Sabry, Amr"]
+  date: 2022
+  serial-number:
+    doi: "10.1145/3498667"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 6
+    issue: POPL
+
+johnson-yau-2024-bimonoidal:
+  type: book
+  title: Bimonoidal Categories, Eₙ-Monoidal Categories, and Algebraic K-theory
+  author: ["Johnson, Niles", "Yau, Donald"]
+  date: 2024
+  publisher: American Mathematical Society
+  serial-number:
+    arxiv: "2107.10526"
+  parent:
+    type: book
+    title: Mathematical Surveys and Monographs
+
+bergner-rezk-2013-comparison:
+  type: article
+  title: Comparison of model structures on (∞,n)-categories
+  author: ["Bergner, Julia E.", "Rezk, Charles"]
+  date: 2013
+  note: not in library.bib; verify locator before citation-bearing use
+
+schonlank-nuyts-devriese-facett:
+  type: article
+  title: "Towards FaceTT: a generalization of intensional type systems with Glue"
+  author: ["Schönlank", "Nuyts, Andreas", "Devriese, Dominique"]
+  note: not in library.bib; verify locator before citation-bearing use (extended abstract)
+
+yorgey-2014-species:
+  type: thesis
+  title: Combinatorial Species and Labelled Structures
+  author: ["Yorgey, Brent A."]
+  date: 2014
+  organization: University of Pennsylvania
+  note: not in library.bib; the retired register lists it held — verify before citation-bearing use

@@ -21,6 +21,7 @@ Items here are about how the tree is mechanized and organized; gandr-specific ma
 * **The `trans`-ladder conversion**: existing `trans` nests convert to reasoning chains when their module is next touched; the modules under the cell shape are the named backlog.
 * **Header hygiene at session close**: the done-rule's durable-face sweep (module headers → the workflow file → the spec tracks → contributor notes → the tracker) — the spec-track face of that sweep now lands in `docs/gandr/spec/` rather than the retired consolidated proposal.
 * **Vacuity audits**: each parameterized module instantiated at a witness; each predicate exhibited with a refuter; recheck when new predicates land.
+  The decidable-equality side of the definition-site mark discipline currently has no landed mark — the shape decidability module is the first candidate; land the mark when the module is next touched.
 
 ## Watch items
 

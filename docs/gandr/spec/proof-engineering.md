@@ -40,7 +40,7 @@ This is one instance of the sort discipline that the known failure modes of high
 | neither                               | **unobserved** (object equality; record identity)           |
 
 Forcing a certificate into a code is what uniqueness-of-identity-proofs and premature truncation are; leaving no code column is what makes an instance unwritable.
-The design vocabulary for the tower is the explicit-coherence one — diagrams over an index category with all higher coherence laws carried explicitly — and the tower owes an equivalence statement against the Reedy-fibrant form of the same data ([[proof-engineering/roadmap]]); coinduction under guardedness is the currency that takes this to ω without a primitive, priced against the interval, modality, and finite-level alternatives in the metatheory's ambient-primitive policy.
+The design vocabulary for the tower is the explicit-coherence one — diagrams over an index category with all higher coherence laws carried explicitly [@kraus-sattler-2017-space-valued] — and the tower owes an equivalence statement against the Reedy-fibrant form of the same data ([[proof-engineering/roadmap]]); coinduction under guardedness is the currency that takes this to ω without a primitive, priced against the interval, modality, and finite-level alternatives in the metatheory's ambient-primitive policy.
 
 ## The representation discipline
 
@@ -68,6 +68,7 @@ Among characterizations that fit, prefer the one whose coherence is most decidab
 The machinery inventory is open and demand-driven — build a structure against the consumer that demanded it, never speculatively.
 
 **Weak by default; the marks go on strictness and decidability.** Everything reads as weak unless marked; every strict definition and every consumer of decidable cell equality carries a definition-site mark, because that is where collapse and the K-floor live and what a trust audit must find.
+The strict marks exist in the tree; the decidable-equality side currently has no landed mark — the shape decidability module is the first candidate, owed as hygiene ([[proof-engineering/roadmap]]).
 Names follow the highest-ranked source that owns them; a name is a claim, adopted where the correspondence is proved and marked candidate where conjectured.
 
 **Package layout is by what a thing is**: generic type theory (`Prelude`), the mathematics gandr stands on (`Foundations`), gandr's own theory (`Metatheory`); within a package, split by role (base / properties / structure / examples), with headers migrating with their content.
@@ -78,9 +79,9 @@ Migrate, never duplicate: two definitions of one thing are definitionally equal,
 The four-tier policy of the metatheory track, read as mechanization practice:
 
 1. **don't generate** — a cheap decision means the witness is never built;
-2. **dissolve** — one theorem over a semantic class closed under the syntax settles a whole family at once, at a cost independent of dimension; the worked instance is the arena's rigid-coherence theorem, and the same trade appears in a neighbouring mechanization as intrinsic surface embedding — choose a representation in which the structural hierarchy has no content;
+2. **dissolve** — one theorem over a semantic class closed under the syntax settles a whole family at once, at a cost independent of dimension; the worked instance is the arena's rigid-coherence theorem, and the same trade appears in a neighbouring mechanization as intrinsic surface embedding — choose a representation in which the structural hierarchy has no content [@altenmuller-2026-string-diagrams];
 3. **decide** — a normal form for the residue, polynomial in the word;
-4. **generate** — off the trusted base only, verified by replay rather than elaboration; the measured blowup elsewhere is roughly an order of magnitude per dimension _in the typechecker_, which is the wall storage-layer sharing does not touch.
+4. **generate** — off the trusted base only, verified by replay rather than elaboration; the measured blowup elsewhere is roughly an order of magnitude per dimension _in the typechecker_, which is the wall storage-layer sharing does not touch [@benjamin-markakis-offord-sarti-vicary-2025-naturality].
 
 Supporting disciplines:
 
@@ -93,7 +94,7 @@ Supporting disciplines:
 
 ## Lessons with no other home
 
-Four hard-won rules that belong to no single module header:
+Hard-won rules that belong to no single module header (the last two reach this corpus through the pre-reboot consolidation record and are pending re-derivation at import grade):
 
 * **The lemma-list diagnostic** (the cheapest early-warning signal, checkable by reading a file's lemma list): _how many of my lemmas exist only to refute a case the encoding permits?_ A nonzero answer is the familial-first STOP firing early.
 * **Check the direction you did not prove.** When writing "is" or "are exactly", check the converse; if it fails, say so and say why — a false converse is usually more informative than the theorem.
@@ -105,7 +106,7 @@ Four hard-won rules that belong to no single module header:
 
 ## The toolchain probe matrix
 
-Thirteen typechecked probes pin what the flag regime admits; none should be re-run to rediscover:
+Thirteen typechecked probes (six rows below) pin what the flag regime admits — recorded from the pre-reboot probe suite, whose artifacts live outside this tree; none should be re-run to rediscover:
 
 | probe                                                                       | result                                                                                                                                                                                             |
 | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

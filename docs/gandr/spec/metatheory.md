@@ -105,9 +105,10 @@ Four of its properties carry the rest of this document.
 * **Strategy is a per-cut polarity orientation.** Positive cuts fire the producer-side binder first, negative cuts the consumer-side one; evaluation strategy is an orientation choice on cells, not a global language property.
 * **Multi-conclusion contexts have a home.** The linear consumer zone is where a multi-conclusion reading lives, and it is the declared growth point for the multi-output term face.
 
-**Fusion is Squier completion on cut seams.** Surface rewrite members elaborate to oriented command cells; overlaps at cuts are bona-fide critical pairs; a budgeted completion loop synthesizes derived cells whose certificates are the pair of joining paths, differential-tested against the two-step composite and **replayed rather than trusted**.
+**Fusion is Squier completion on cut seams** [@squier-1987-word-problems].
+Surface rewrite members elaborate to oriented command cells; overlaps at cuts are bona-fide critical pairs; a budgeted completion loop synthesizes derived cells whose certificates are the pair of joining paths, differential-tested against the two-step composite and **replayed rather than trusted**.
 Two limits are permanent: natives are opaque, and non-linear overlaps fan out into families rather than a single fused rule — the second is a theorem of the virtual reading ([[#The doctrine layer]]), not a shortfall.
-The Squier citation is good at dimension one, where the completion loop lives; **finite derivation type fails above dimension one** (an explicit finite convergent 3-polygraph with finite critical branchings lacks it [@ara-burroni-guiraud-malbos-metayer-mimram-2025-polygraphs]), so the higher-cells lane must not assume the completion story lifts.
+The Squier citation is good at dimension one, where the completion loop lives [@squier-1987-word-problems] [@squier-otto-kobayashi-1994-finiteness]; **finite derivation type fails above dimension one** (an explicit finite convergent 3-polygraph with finite critical branchings lacks it [@ara-burroni-guiraud-malbos-metayer-mimram-2025-polygraphs]), so the higher-cells lane must not assume the completion story lifts.
 
 **Closure conversion is an in-IL rewrite** at the shift boundary, and its design content is larger than the slogan: capture is **partial** (the intro rule types the body under the ambient context plus the captured part, which is what makes conversion decomposable into little pieces); environment sharing and lambda-lifting are _derived_ 2-cells, not new machinery; grades refine capture (a grade-zero variable need not be captured at all); and adequacy makes the compile-versus-evaluate differential a **theorem on the closure-conversion-normal fragment** — with closure _entry_ left unfactored, so lowering supplies the match-then-jump.
 Its named proof debt is that confluence of environment capture is modulo environment reordering, so the Agda face needs a permutation quotient — a `Rigid` instance, and it should be built as one; the ordering corollary is that hash-consing happens **after** reaching closure-conversion normal form, so environments are canonical.
@@ -133,7 +134,7 @@ Three consequences: multi-output interfaces are unrepresentable today, not merel
 The **multi-output (destination-passing) term face is a ratified design direction** with nothing constructed; the sequent layer already carries the type shape (a consumer list on cut-adjacent constructs) while every construction site emits zero or one element.
 
 **The localization move.** One pattern recurs: where a global gluing property fails, localize the choice and restrict the global operation.
-Evaluation strategy (confluence fails; orient per cut), certificate composition (dinaturals do not compose; unconditional on the invertible fragment, acyclicity-gated on the directed band), loose composites (need not exist; virtual, as multi-sum-indexed families), and interchange (not an equation; a witness whose invertibility is the dial) are four instances of it.
+Evaluation strategy (confluence fails; orient per cut), certificate composition (dinaturals do not compose; unconditional on the invertible fragment, acyclicity-gated on the directed band [@laretto-loregian-veltri-2026-directed]), loose composites (need not exist; virtual, as multi-sum-indexed families), and interchange (not an equation; a witness whose invertibility is the dial) are four instances of it.
 
 ## Cellular data — descriptions, cells, and computads
 
@@ -149,7 +150,7 @@ The aggregation colimit is a _specification_; the destination-passing writeback 
 Multi-output arities are an index change on the description universe: generalizing the recursive-occurrence code to a multiset of output sorts is exactly a container, so the multi-output term face forces the **indexed** description universe, and the signature universe should be based on containers precisely because sorts are arities.
 Read one level up, the bridge diagram _is the graphical-species profile_ of a generator, which is the identification [[#Stratified univalence]] runs on.
 
-**Cells at every dimension.** The surface names sorts (0-cells), constructors and operations (1-cells), named directed rewrites (2-cells), declared coherences between rewrite composites (3-cells), with dimension ≥ 4 reserved parse-and-decline.
+**Cells at every dimension.** The surface names sorts (0-cells), constructors and operations (1-cells), named directed rewrites (2-cells), declared coherences between rewrite composites (3-cells), with dimension ≥ 4 reserved parse-and-decline: `sort <S>(indices)?`, `cons <C>(fields)? (: T)?`, `oper <f>(params) -> R`, `rule <name>: lhs ~> rhs`, `meta <name>: ρ ~>> ρ′`, and `cell …` reserved.
 Names are mandatory at dimensions 2 and 3; the cell stays content-addressed and names never influence deduplication or replay.
 The boundary language is four constructions — rule instantiation, identity rewrite, sequential composition, congruence in one argument position — deliberately the largest fragment whose engine reading and path reading agree; two simultaneous rewrite arguments are declined because that denotes horizontal composition, adjudicated by [[#Interchange, by layer]].
 Boundaries are globular telescopes, so mis-glued boundaries fail once, at the declaration table.
@@ -182,6 +183,9 @@ That is verbatim the **downward** condition on Brauer diagrams, and three conseq
 
 If a cup is ever added, all three go at once; do not add one to make an operation total.
 Downward hom-sets are finite for all profiles with **no graph-shape hypothesis** — so hom-finiteness, previously attributed to simple connectivity, is free at this rung, and the old finiteness-motivated restriction ladder is retired.
+Two read-backs keep the rung honest.
+What is special about the substrate is that the wiring category is **free** — the free compact closed category on a palette — not that it is operadic (every permutative category has an underlying operad; that construction distinguishes nothing).
+And the passage from gandr's duals-free directed interfaces to the compact-closed Brauer world is the Int construction [@joyal-street-verity-1996-traced]: gandr needs no duals, Int supplies them, and the inclusion is an equivalence.
 
 ### The carrier, as landed
 
@@ -227,6 +231,7 @@ The translation lemma between the carrier's presentation and the graphical-speci
 
 The doctrine complex ([[#The doctrine layer]]) and the term algebra are one generalized-multicategory construction instantiated at two **arity kits**, and everything above the base sphere is shared globular code: multi-ary at the base, globular above.
 Multi-arity is needed at exactly one dimension — the cell shape; rules and coherence fillers above it have parallel _pairs_ as boundaries, which is what a globular coboundary already is.
+The obvious first move — reuse the existing virtual-double-category complex verbatim and encode circuit-shaped cells as data in it — fails for two independent reasons, worth keeping written down: its cell target is a _single_ loose generator where a circuit-shaped cell has an output _string_; and its source is a linear path chained end-to-end, where a circuit-shaped source is a _graph_ that fans out.
 
 The corrected statement of what a kit is (the retired record's "two arity monads" diagram was imprecise exactly where the many-out content lives):
 
@@ -241,12 +246,16 @@ The corrected statement of what a kit is (the retired record's "two arity monads
 The old licence — "both arities are cartesian because the symmetric group acts freely" — is **dead at the circuit rung and replaced by two facts**:
 
 * **for the nerve**: $T^times$ **has arities** at `Set` (the graphs inside graphical species), which is the hypothesis the abstract nerve theorem consumes [@berger-mellies-weber-2012-arities]; cartesianness is not on that chain;
-* **for the carrier**: Burroni–Leinster-style generalized-multicategory theory wants a cartesian arity, and gandr buys it by working over the **ordered representation**, where the monad is cartesian; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
+* **for the carrier**: Burroni–Leinster-style generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr buys it by working over the **ordered representation**, where the monad is cartesian; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
 
 So the whole price of "one construction, two arity bases" at the circuit rung is one obligation: `Rigid.canon-sound` for shapes.
 The construction's own atomicity does not generalize — the linear kit's multiplication is one structural recursion with one inductive graph, while grafting is a composite of nine operations each of whose graphs threads the next — and this asymmetry is why the arity-interface _record_ is still unwritten: two of its fields have no inhabitant in the circuit kit.
 A **universe-style presentation** of the arity layer (codes, an interpretation, an arity former with an interpretation equivalence, a representation map from equivalences to code identifications) is the evaluated candidate for that record: it relocates the nine-relation obligation into a code former plus coherence laws, dissolves the unit-law asymmetry, and merges `Rigid` into the arity structure as the representation map.
 The published parameterization varies the _symmetry_ axis and fixes the arity-shape former at a dependent sum (one-output tree grafting), so extending it to circuit algebras means **replacing the former, not instantiating the parameter** — and the deciding question, whether the graph former's coherence laws stay finite, is a half-day hand computation scheduled in [[metatheory/roadmap]] together with its control experiment at the linear kit.
+The setoid translation the candidate rests on is mechanical and recorded: `hSet` becomes carried cells one dimension up (the lawless-setoid discipline), `ua` becomes `Ua` with its `Ua²` coherence (which stops being a tidy correction and becomes a **prerequisite** — the representation map's path-level laws are exactly what `Ua²` states), truncated finiteness becomes decided finiteness, and the one genuinely different piece is the free construction, where the literature's HIT is replaced by the inductive-family-over-a-lawless-setoid answer of [[#The ambient-primitive policy]].
+Filed beside it as a direction, not a decision: **internalizing** the arity universe — operations as data the way descriptions are data, the rule algebra as an internal object, and `ua` at the operation layer.
+That is the one concrete payoff a composite doctrine-and-term monad was ever contemplated for (univalence for certificates, not only for codes), reached here without one; the applications are metaprogramming over rewrite systems, signature-to-optimizer, and transport of a program along an equivalence of operations.
+Its four named risks: the graph former's coherence laws may not stay finite (the deciding spike); an object-language universe is a trusted-surface question with a plausible but unchecked Tarski exemption; the representation map makes the `Ua²` obligation load-bearing; and the free construction's non-HIT substitute is recorded but unexercised at this scale.
 
 Two senses of "arity" are in play in the literature and must be kept apart at every citation: a **monad with arities** (a property relative to a dense subcategory, consumed by the nerve theorem) and an **arity monad** (the shape of a cell's source, consumed by the carrier, wanting cartesianness).
 A strongly cartesian monad has canonical arities, so the second implies the first — but at gandr's rung and base the implication is unavailable in the needed direction, and the two senses come apart: sense one is available at `Set` and carries the nerve; sense two fails at `Set` and is bought back by ordering.
@@ -281,13 +290,14 @@ The rigidify-then-transfer move itself is a published theorem (Koszulity transfe
 
 ## Representation — decidability, the arena, and the layout calculus
 
-**Decidable equality comes from edge-determination, not from discreteness.** A shape homomorphism is determined by its action on the finite edge set; with actions carried as tabulated data, pointwise agreement implies propositional equality by ordinary induction, hom-sets are finite, and morphism equality is decidable.
+**Decidable equality comes from edge-determination, not from discreteness.** A shape homomorphism is determined by its action on the finite edge set — the published corollary is about graphical maps [@hackney-robertson-yau-2015-properads], and this tree proves the analogue for its own homomorphisms rather than importing it; with actions carried as tabulated data, pointwise agreement implies propositional equality by ordinary induction, hom-sets are finite, and morphism equality is decidable.
 The determination lemma needs a no-isolated-vertices hypothesis whose necessity is exhibited (the arity-zero corolla is a legitimate cell shape and an isolated vertex at once); equality of _shapes_ is decided outright, with the residual h-level condition closed by uniqueness of identity proofs on the **colours alone**, supplied constructively by their decidable equality; decidable equality at _isomorphism_ remains genuinely open pending an enumeration.
 This replaces the essential-discreteness argument entirely, needs no planarity, and is what makes per-degree naturality checking finite in [[#Stratified univalence]].
 A binding constraint on this layer from the reserved sized/irrelevant-index direction: **content-address on the erased skeleton** — if content-addressing does not erase irrelevant indices, two propositionally equal nodes get distinct identities, hash-consing loses sharing, and conversion diverges from node identity; erasure before addressing is mandatory, not optional, and it binds the canonicalization layer _before_ any size discipline lands.
 
 **The flat arena is a published object.** $"size" 𝟙 = 1$, $"size"(c ⊗ d) = "size" c · "size" d$, $"size"(c ⊕ d) = "size" c + "size" d$, values indexed by $"Fin"("size" c)$, offsets $⊗"ix" b i j = b·i + j$ and $⊕"ix"^r a j = a + j$: the cardinality homomorphism, implementing the bridge diagram's three-step evaluation ($Σ_t ∘ Π_π ∘ Δ_s$) with the indexing made arithmetic.
 The arena _is_ the bipermutative category whose objects are the natural numbers and whose morphisms are the symmetric groups, with the row-major index formula verbatim [@yau-johnson-2015-props]; its strictification theory fixes exactly how far strictification reaches — both associators, all unitors, one unit-side symmetry, and one distributor become identities; the two symmetries and the **left** distributor survive (the right distributor is already the identity on offsets).
+The code universe's reversible-language reading is likewise prior art: the reversible language for the rig structure comes with a published minimization of its relation set and two corrections to its definitions [@carette-sabry-2016-semirings].
 The arena fixes a canonical layout that truncation-based treatments deliberately forget: gandr gains computable offsets and pays the visibility of the choice — ordering-as-section one layer down.
 The precise proposition locator for the bipermutative identity is **unverified** (its adversarial check died mid-run); do not cite it outside the repository — [[metatheory/citation-hazards]].
 
@@ -307,6 +317,7 @@ Computed from the offset formulas: three of the four one-way generator classes (
 The decision of record: **characterize as the clone, build as the factorization system** — `Rigid` splits as `RigidMono ∩ RigidEpi`, the split _explains_ the existing record rather than displacing it, factorization systems are already the development's idiom at five layers, and building the split _is_ building the simplex category's epi–mono normal form, so the decision procedure arrives with the construction.
 The warrant is **soundness**, not completeness: one-way generators fall outside the rigid class definitionally (they change the extent), so without the enlarged class every one-way coherence obligation returns as a per-generator grind — which is precisely what the dissolution theorem exists to prevent.
 The published decomposition of the target ladder (planar / symmetric / clone as three monads on `Cat` related by distributive laws) is [@curien-2012-operads-clones]; scope the build by the directed rule layer's actual cell list, not as an open-ended redesign, and decline the clone-as-morphism-class rebuild with that reason.
+A filed probe rides with the ordered-representation half: whether the weaker-than-cartesian hypotheses of the unified generalized-multicategory framework [@cruttwell-shulman-2009-generalized-multicategories] apply to $T^times$ at `Set` — if they do, the ordered-representation purchase shrinks, and canonicalization is owed only for decidable isomorphism of shapes.
 Prior prices for the directed coherence pass were quoted against the tree presentation the arena has since replaced, and are **pending re-quote** — [[metatheory/roadmap]].
 
 **The layout firewall.**
@@ -324,7 +335,7 @@ Per-former routes (sums and products in the base stratum; nested codes by struct
 
 The failure mode this architecture exists to avoid has been observed in the wild: a published, well-engineered coherence-term generator reports type-checker memory exceeding workstation capacity, with artifacts growing roughly seven- to twelve-fold per dimension, and ships pre-computed artifacts because regeneration is amortizable while **elaboration is the wall** [@benjamin-markakis-offord-sarti-vicary-2025-naturality].
 The trigger is architectural and single: _materialize a coherence witness, then have a kernel check it_. gandr's exposure is therefore one named condition — a coherence witness becoming an Agda term in the gate root — and the composition law of the wiring calculus is the live instance of it: the four-layer exchange coherence's cut half is **closed** (proved, no hypothesis, no parameter), and the wire half is the ladder in progress ([[metatheory/roadmap]]).
-A second measured instance from the opposite direction: the one published mechanization of polygraphs in a proof assistant reports that higher inductive types that do not compute "are not well-suited to intricate uses", could not prove functoriality of the free construction in the cubical setting, and implements zero rewriting or coherence content — the wall again, reached via HITs rather than term generation.
+A second measured instance from the opposite direction: the one published mechanization of polygraphs in a proof assistant reports that higher inductive types that do not compute "are not well-suited to intricate uses", could not prove functoriality of the free construction in the cubical setting, and implements zero rewriting or coherence content — the wall again, reached via HITs rather than term generation (the work is not yet named here; the locator is owed, and rides with the pending sweep that reported the datum — [[metatheory/citation-hazards]]).
 
 **The four-tier policy** (an ordering, not a menu):
 
@@ -350,16 +361,19 @@ The pasting side's completeness warrant is a fully faithful nerve with a Segal-c
 
 Read the warrant precisely: arities deliver _both halves_ — full faithfulness and the Segal characterization — so gandr's citation is this pair, **not** the source's headline theorem, which is stated for the harder _unital_ rung (where the monad does not have arities and the proof passes through a monad decomposition).
 Two cautions travel with the warrant.
-A Segal characterization is **not** a completeness condition — the ∞-analytic-monads line needs a further localization at fully-faithful-and-essentially-surjective maps beyond its Segal equivalence, so "Segal-characterized image" must never be silently read as "complete"; and for wheeled properads and their neighbours the published pattern is that the graph category must be _enlarged_ before the nerve is fully faithful, with the sources' own warning that neither case is a straightforward application of existing theory.
+A Segal characterization is **not** a completeness condition — the ∞-analytic-monads line needs a further localization at fully-faithful-and-essentially-surjective maps beyond its Segal equivalence [@gepner-haugseng-kock-2022-analytic], so "Segal-characterized image" must never be silently read as "complete"; and for wheeled properads and their neighbours the published pattern is that the graph category must be _enlarged_ before the nerve is fully faithful, with the sources' own warning that neither case is a straightforward application of existing theory.
 Independent corroboration that cartesianness is not on the chain: the relative-monad nerve theorem's only hypothesis is **density** of the root [@arkor-mcdermott-2024-nerve], with an explicit non-density counterexample showing the hypothesis cannot simply be dropped.
 The Segal condition is **strict** — a limit over the graph's elements, a bijection, not a weak equivalence.
-Monad decomposition is load-bearing here but _inside the term dimension_: the circuit monad decomposes as the merger monad over the contraction monad with a free distributive law, and decomposition is the general mechanism that creates arity candidates where a monolithic monad lacks them.
+Monad decomposition is load-bearing here but _inside the term dimension_: the circuit monad decomposes as the merger monad over the contraction monad by a free distributive law (Lemma 7.4 of [@raynor-2026-nerve]), and decomposition is the general mechanism that creates arity candidates where a monolithic monad lacks them.
 
 What this retires: the old restriction chain (properadic nerve restricted along the dioperad inclusion), its residual admissibility risk, and its open questions — gandr's route needs no restriction along a subcategory inclusion at all.
+The chain's last unchecked step (whether the old framework's Segal-object category is literally the monograph's strict properadic one, with the pushout-of-corolla-representables computation unverified) is retired with it, not carried.
 What it leaves owed, both scheduled:
 
 * **the oriented-slice transfer**: the arities statement is made for $T^times$ on $"GS"$ and not restated for gandr's oriented $O T^times$ on $"OGS" = "GS"\/"Di"$; the transfer along the slice is routine (the slice equivalence is used in the source's own proofs) but unwritten — a paragraph, not a programme;
 * **the presentation of $Θ_(T^times, "Gr")$**: the theorem needs only the category's existence; the _mechanization_ (degree, the degree-raising and degree-lowering subcategories, factorization, decidable morphism equality, the per-degree Segal check) needs its morphisms concretely, which the source does only for the unital case.
+
+A caution that travels with the re-basing: the connected and disconnected presentations are genuinely different theories (the generating map between them is not quadratic), so properad-level results must not be expected to transfer by restriction — the rung change is a re-warrant, not a restriction.
 
 Publication status travels with each claim: the nerve-theorem paper is a **preprint**; the functorial-combinatorics and distributive-law papers are published [@raynor-2025-functorial] [@raynor-2021-graphical]; and the held arXiv version of the distributive-law paper renumbers against the published version — the locator table is in [[metatheory/citation-hazards]].
 
@@ -400,12 +414,14 @@ El    : Sig → Θ.Obj → Set ; El S G = Terms S .₀ G   -- values at a shape
 ```
 
 Equality of species is far smaller data than equality of algebras; the base category is tiny and decidable; and it matches what a description is — a description describes _data_, not structures with composition.
+The free object is named precisely: `Terms` is the **free Segal object**, monadic at `Set` — not an envelope, which is a different construction with a different source and target.
+An explicit formula for it exists (a necklace-style formula, with a multi-simplicial generalization [@barkan-steinebrunner-2023-segalification]); it is stated at simplicial level throughout, so treat it as a template to strictify, relevant only if `Terms` must ever be _evaluated_ rather than merely characterized.
 The bridge-diagram profile of a generator is exactly the species profile, so the description layer and the pasting layer meet without translation.
 This identification is the first thing to test (its falsifier: a description needing dependency or indexing the base category cannot express); everything below assumes it.
 
 ### The site, the strata, and the fuel are one object
 
-$Θ$ is a **generalized Reedy category** — generalized precisely because its objects have nontrivial automorphisms:
+$Θ$ is a **generalized Reedy category** [@berger-moerdijk-2011-reedy] — generalized precisely because its objects have nontrivial automorphisms:
 
 ```agda
 deg    : Θ.Obj → ℕ                                  -- Reedy degree
@@ -416,7 +432,7 @@ factor : (f : G ⟶ H) → Σ[ K ] (Θ⁻ G K × Θ⁺ K H)     -- unique UP TO 
 Stratum $n$ is the shapes of degree at most $n$; the universe at stratum $n$ is the codes whose terms are supported there; **fuel is the degree** — a natural number decreasing along degree-lowering maps, so induction on it terminates structurally.
 "Unique up to iso, not up to unique iso" is where the automorphism groups sit, and it is exactly what `Rigid` discharges: canonicalization turns the factorization into an actual function.
 Reedy theory hands over the staged construction — a presheaf is built degree by degree through latching and matching objects with automorphism-equivariance at each stage; the per-degree new data is exactly the delooped automorphism groups [@haine-ramzi-steinebrunner-2025-reedy], with the classical bigluing results as the 1-categorical citation per that paper's own direction.
-**Staged certification is Reedy induction.**
+**Staged certification is Reedy induction.** One structural caution for the mechanization: the graphical category is **not** closed under finite colimits — graph substitution is not "take a pushout", and only graph-of-graphs diagrams are guaranteed colimits — so the presentation work of [[metatheory/roadmap]] must not assume general colimits of shapes.
 
 ### Equivalence as finite, checkable data
 
@@ -458,6 +474,9 @@ Cost is first-class and computable: transport at degree $n$ costs a statically-k
 The base stratum is "finitely supported in Reedy degree"; recursive codes leave it because their terms are not supported in any finite degree.
 At the colimit universe the check no longer terminates, the certificate becomes coinductive, transport becomes corecursive and needs _productivity_ — the job of continuous normalization, whose repetition constructor is fuel made syntactic [@aehlig-joachimski-2005-continuous].
 Boundary, restated so nobody imports it downward: **productivity is not decidability**; the corecursive layer belongs to certificates and codata, never to the kernel's conversion check.
+
+The module layout, when this side is built: `Gandr.UA.Site` (the site, degree, the two subcategories, factorization — re-exporting the shape decidability), `Gandr.UA.Reedy` (latching/matching, equivariant staging, degree induction), `Gandr.UA.Sig` (descriptions as graphical species; `Terms`), `Gandr.UA.Segal` (the condition and its per-degree certification), `Gandr.UA.Equiv` (certificates and `check n`), `Gandr.UA.Descent` (the nerve citation and `ua_n`), `Gandr.UA.Transport` (transport-at, fuelled transport, cost accounting), `Gandr.UA.Colimit` (the colimit universe, coinductive certificates, continuous normalization, fenced).
+Dependencies run strictly downward; `Descent` is the only module that cites an external theorem, and `Colimit` is the only one that is not decidable.
 
 ### Univalence beyond the code universe — transfer, structures, repair
 
@@ -513,6 +532,9 @@ unanswerable:
 | **the doctrine complex** | the free telescope over a signature at a chosen arity — spheres, positions, cells, coherences                                                                                      | syntax                                                         |
 | **the equipment**        | a split cartesian _fibrational_ virtual double category with chosen constructors: restriction, tabulator/comprehension, hom protype, extension fillers [@nasu-2024-internal-logic] | semantics — the thing a category-with-families projects out of |
 
+Where the parameterized complex sits in the literature, stated so the novelty claim is made once: a polygraph/computad is the free-algebra-with-generators construction for a monad, built dimension by dimension, and the dimension-generic half of that is CaTT — finite computads are precisely its contexts [@finster-mimram-2017-catt]; the arity-generic half is `T`-multicategory theory, at dimension one in the sources.
+The crossing — `T`-polygraphs, uniformly in `T` — has no counterpart in the consulted corpus; the nearest categorical vocabulary for the presented mode distinguishes **coinserters** (freely adjoining a cell at a boundary) from **coequifiers** (imposing an equation between cells) [@lucatelli-nunes-2026-freely], and in that vocabulary gandr's complex is coinserters all the way up, with no coequifiers — its structural operations are derived, never adjoined.
+
 The category-with-families comes from the **equipment**, never from the complex: `Ty Γ` is one-sided (covariant) profunctors, context extension is the tabulator, `Id` is the hom protype, `J` is profunctor Yoneda, `Π` is extension along the display map's conjoint, and substitution is literal precomposition — split by construction, so the two axes a classical construction conflates (substitution coherence and fibre coherence) never meet.
 **No change of arity base, in any order, produces a category-with-families**: a generalized-multicategory construction supplies the shape of cells, never a tabulator.
 The constructors _can_ be freely adjoined — the free bifibration supplies exactly the missing pushforwards with a clean proof theory [@clarke-scherer-zeilberger-2026-bifibration] — but 2-cell equality in such free constructions is undecidable unless the base is factorization-preordered, so freely adjoining fibrational structure is an owner STOP whose entry condition is that check.
@@ -520,7 +542,7 @@ Companions and conjoints, by contrast, are free (the zigzag construction manufac
 
 The CwF is a CwF **of the positive fragment**: types depend on values, never on computations; the negative fragment is an adjoint module over it, with the shifts a tight adjunction.
 Three checkable consequences: no per-type `Id` at negative types except through the shift; type dependency confined to the value zone (a type may be indexed by producers, never by consumers or commands, unless routed through a shift); transport is directed, with unrestricted composition only on the invertible fragment.
-One standing kill signal rides with this: the shifts are invertible exactly when every value is thunkable and every computation linear — if any construction forces the shifts invertible, gandr's effects have been strictified by accident, and the construction is wrong rather than the theory.
+One standing kill signal rides with this: the shifts are invertible exactly when every value is thunkable and every computation linear [@munch-maccagnoni-duploids] — if any construction forces the shifts invertible, gandr's effects have been strictified by accident, and the construction is wrong rather than the theory.
 
 ### The join
 
@@ -534,6 +556,7 @@ The compositional-rewriting double-category axioms [@behr-harmer-krivine-2023-fu
 Verdicts: multi-sums hold degenerate-singleton (first-order syntactic unification makes the family at most one per ordered pair per kind); pullbacks in the tight and cell layers hold strictly; horizontal decomposition holds strictly; the source is a strong multi-opfibration in discrete form; the target is a residual multi-opfibration in per-instance form, exercised exactly by redex-creating instantiations; positive globular decompositions and cellular Conduché hold strictly on the free path algebra; **the cylindrical decomposition property is open** — a distinct obligation, not a corollary, and it is what the convolution face needs beyond exponentiability.
 The payoff: the universal concurrency and associativity theorems hold on that fragment by the universal proofs, with the differentials retained as adequacy witnesses.
 The measured cellular-Conduché row is a **definitional match** with the discrete Conduché condition (lifting of factorizations, uniquely) [@guetta-2020-conduche], which is both an exponentiability condition and one of directed type theory's fibrancy notions — so gandr has already measured a directed-fibrancy condition on its own cell store; whether it is the exponentiability the convolution face waits on is a scheduled one-day check.
+How to hold the framework: its fibrational reformulation was reverse-engineered from a naturality observation rather than posited as a doctrine, so testing it empirically per system is the intended use — and the indexed side (what the Grothendieck construction of these multi-opfibrations yields) is explicitly unexplored by its authors, a research door for the fibration-shaped reflection face.
 The trigger to revisit globularity-above-the-base is precise and cheap to watch: a non-linear pattern producing a genuine (non-singleton) multi-sum family — many-out one dimension up.
 
 ### The convolution face
@@ -547,13 +570,14 @@ The rule algebra and its representation on states unify through the Yoneda embed
 
 > Exchanging two independent things is never an equation unless you are willing to lose information; every well-behaved treatment replaces the equation by a witness whose invertibility is the design dial.
 
-The strength is a _stratification_, and collapsing its levels is a recorded error:
+The strength is a _stratification_, and collapsing its levels is a recorded error.
+The literature carries interchange at four different strengths, and the strength is the design decision: an **invertible** 2-cell (a Gray commutation — the two interleavings stay distinct, deadlock correctly unresolvable); a **strict equation** (the rejected alternative there — it manufactures a synchronized diagonal move letting two mutually blocked strategies proceed, "excess of synchronization … a defect (not as a feature!)") [@mellies-2021-template-games]; a **non-invertible lax coercion** (concurrent separation logic, where the Hoare inequality is _derived_, not postulated) [@mellies-stefanesco-2020-csl]; and **equations in a coherent congruence** (the layered games, where interleaving and true concurrency coincide) [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered].
 
-| level                                                    | interchange is                                                           | why                                                                                                                                                                                                            |
-| -------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the ambient duoidal category of interfaces               | **lax** — the laxator, by definition of duoidal                          | the physical tensor is an inclusion of admissible orderings; no normalization upgrade can invert it                                                                                                            |
-| the shape layer — `Shape` as a **duoid** in that ambient | **an equation**, and proving it is the scheduled next-unit target        | shapes are defined operations with proved equations, not presented structure                                                                                                                                   |
-| certificate composition                                  | **structurally lax**; imposing it strictly is _wrong_, not merely coarse | the deadlock counterexample: a strict interchange manufactures a synchronized diagonal move letting two mutually blocked strategies proceed [@mellies-2021-template-games]; duoidal coherence fails in general |
+| level                                                    | interchange is                                                           | why                                                                                                               |
+| -------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| the ambient duoidal category of interfaces               | **lax** — the laxator, by definition of duoidal                          | the physical tensor is an inclusion of admissible orderings; no normalization upgrade can invert it               |
+| the shape layer — `Shape` as a **duoid** in that ambient | **an equation**, and proving it is the scheduled next-unit target        | shapes are defined operations with proved equations, not presented structure                                      |
+| certificate composition                                  | **structurally lax**; imposing it strictly is _wrong_, not merely coarse | the deadlock counterexample above; duoidal coherence fails in general (the certificate arc's produoidal analysis) |
 
 **What the ambient _is_ — a proved identification off the carrier's own typing, not an analogy.** The shape carrier is an object of the presheaf category over interface pairs, $["List Ob" × "List Ob", "Set"]$, and its two operations are the two tensors: grafting is the substitution tensor $◁$ (its composite over a shared middle interface — the implicit middle profile _is_ the coend variable), and the merger is Day convolution $⊗$ along concatenation — the carried `Append` witness _is_ the convolution's indexing profunctor.
 The currying is literal: nothing is re-presented to see it.
@@ -575,14 +599,17 @@ A second, independent hole theory exists for the _higher-order_ direction — di
 ### Doctrine odds and ends that are load-bearing
 
 * **Cartesian double theories.** The 2-dimensional fragment of a shape block is a presentation of a cartesian double theory with product-preserving lax-functor models; test the cartesian law against the _framed_ pairing–projection bijection, expect iso-strong and never strict; a bare virtual double category is not cartesian in that sense, and until the reflection face's cartesian-fibrational notion is reconciled with the double-theory notions, every verdict names which notion it tested.
-* **The recurring étale condition.** Homotopy quotients that add arrows, discrete-opfibration conditions making dependent sums compute coproducts, and exponentiability of polynomials in the virtual setting [@fujii-lack-2025-familial] are one invariant seen three times; name it and enforce it wherever a decomposition, sum, or product is formed.
 * **Variance.** The comonoid-style settings pay an opposite-category operator with polarity machinery through every judgment; gandr's internal language deliberately excludes it, and the variance layer is a priced future axis, not a current structure ([[metatheory/ambient-and-primitives]]).
-* **Aggregation is not functorial** while data migration is; every quantity accumulated over a derivation (fuel, cost, counters) lives in the non-functorial regime, where symmetry re-enters through the cost model rather than the type theory.
+* **Aggregation is not functorial; data migration is** — the source's own words, and its title is the programme, not a property: _Functorial Aggregation_ models aggregation _inside_ the functorial data-migration ecosystem (disjoint unions of conjunctive queries as parametric right adjoints), while observing that inserting a row gives no map between the aggregated results [@spivak-garner-fairbanks-2021-aggregation].
+  Aggregation needs a commutative monoid on the target — multisets, the free one, are the canonical target — and every quantity accumulated over a derivation (fuel, cost, counters) lives in that non-functorial regime, where symmetry re-enters through the cost model rather than the type theory.
+* **The recurring étale condition.** Homotopy quotients that add arrows keep symmetries carried and positions decidable [@kock-2012-data-types]; discrete-opfibration conditions make dependent sums compute coproducts; exponentiability of polynomials in the virtual setting [@fujii-lack-2025-familial] — one invariant seen three times; name it and enforce it wherever a decomposition, sum, or product is formed.
+* **Virtual-honesty formulations worth keeping.** Bicategories are virtual bicategories with all composites (via cocartesian 2-cells), so the virtual reading and the relative-monad machinery share one formulation of "composite".
+  And the game-semantics layer stack does **not** map onto gandr's universe stratification, nor onto module or abstract-type sealing — sealing is generative.
 
 ## The certificate algebra
 
 **Certificate identity is replay-equivalence** — the replayed-not-trusted discipline promoted to the definition of when two tracelets are the same transformation; composition ships as two operations (unconditional on the invertible fragment; acyclicity-gated on the directed band, declining with the cycle as diagnostic).
-The measured finer alternative is declined knowingly, not unknowingly: the asynchronous-games treatment quotients reschedulings by "same induced bijection on step indices" (the same device as the residual line's ancestor function on redex indices — one construction in both programmes), and gandr's identity is strictly coarser on two axes, forgetting the induced permutation and never comparing the two paths; the same programme makes a deliberate at-most-one-2-cell ("locally posetal") choice for one of its own bicategories, so the coarse discipline has a named precedent as a design choice — not a theorem.
+The measured finer alternative is declined knowingly, not unknowingly: the asynchronous-games treatment quotients reschedulings by "same induced bijection on step indices" [@mellies-2021-template-games] (the same device as the residual line's ancestor function on redex indices — one construction in both programmes), and gandr's identity is strictly coarser on two axes, forgetting the induced permutation and never comparing the two paths; the same programme makes a deliberate at-most-one-2-cell ("locally posetal") choice for one of its own bicategories, so the coarse discipline has a named precedent as a design choice — not a theorem.
 
 **The normal form.** The certificate normal form is closure under abstraction isomorphism (content addressing — already the store's identity), trivial-unit insertion and removal (empty-path elimination — the path calculus's unit laws; the empty path is not an edge, so unit insertion has no tile of its own), and **shift equivalence**: two adjacent cell applications at disjoint positions with trivial overlap commute.
 The contract, at full strength and correctly scoped:
@@ -592,6 +619,9 @@ The contract, at full strength and correctly scoped:
 * the converse is **constructibly false** in gandr's own codebase: replay-equivalence is pure proof-irrelevance beyond replayability, so two confluence certificates joining by different routes are replay-equal with different primitive multisets.
 
 > The normal form is a performance fast path, never a decidability result; replay-equivalence is already decidable by boundary equality plus two replays, and the normal form answers its _cost_ question.
+
+What the fast path buys beyond comparison: compression to a primitive multiset plus a minimal schedule, and **coherence-cell elimination** — the 3-cell relating the two orders of two independent steps becomes _definitional_ under shift equivalence, discharging a whole class of interchange obligations by normalization instead of carrying them.
+That is also the principled semantics for the declined horizontal-composition sugar of [[#Cells at every dimension]]: accept exactly on disjoint positions, where the two sequential readings are shift-equal.
 
 **Certificate verdicts are three-valued.** A declined round-trip or composition check leaves a certificate **stuck, not refuted**: the store must distinguish _holds_, _refuted_, and _declined-within-budget_, or it silently conflates "not yet composable within budget" with "not univalent" — the verdict discipline that budget-gated checking forces.
 
@@ -607,6 +637,12 @@ The full Hopf structure (formal sums, the coproduct as all splittings, the antip
 The tile relation of a two-dimensional transition system is freely chosen, so gandr's overlapping rules and completion loop are admissible by construction, and no orthogonality hypothesis was ever in the way; the current tile relation is _empty_, so instantiating the axiom interface non-vacuously is what buys the standardization theorems by citation.
 A gandr tracelet is structurally a permutation _tile_ whose two legs are trek-shaped multi-step paths, with replay-equivalence in the seat of "same induced residual relation"; interaction nets are decisively the wrong shape (three defining constraints, all violated).
 **Do not substitute the planar string-diagram quotient for the symmetric one** [@delpeuch-vicary-2022-normalization]: the relations are incomparable in both directions and no carrier translation exists; what transfers is the adjacency-as-height-order match and the rule _content address at the component level, geometry within a component_.
+One comfort from that line, marked as an inference rather than a source statement: what fails there for disconnected diagrams is _termination of the rewriting strategy_, not finiteness of the class, and since every gandr cell has a non-empty left-hand side, its generically disconnected certificates would be **boundary-connected** — landing in the tractable regime rather than the divergent one.
+Verify before relying on it.
+
+**Two axes, bridged not merged.** Two independent axes run through this layer and the ones above it, and conflating them is a recorded error: the **symmetry** axis (coefficients: sets to groupoids, for data with automorphisms — codes and descriptions) and the **determinism** axis (exactness: Segal to 2-Segal, for composition that destroys information — tracelets and certificates).
+Every Segal space is a decomposition space and the converse fails, with the sharpest counterexample being the rewriting one, where a 2-simplex cannot be reconstructed from its two short edges because composition is non-deterministic [@galvez-kock-tonks-2018-decomposition]; 2-Segal is not "multi-valued composition" — it is composition unique relative to a richer boundary.
+Two cautions the source line uses without establishing — local finiteness and completeness — are carried as flags, not assumed: local finiteness is automatic for a _free_ operad's decomposition space but not in general [@galvez-kock-tonks-2018-restriction-species], and gandr's rules are not a free operad.
 
 **The certificate layer is a decomposition space.** The tracelet algebra _is_ a 2-Segal object, and the doctrine layer above it is a double-categorical object with pullback axioms; the published equivalence between 2-Segal spaces and augmented stable double Segal spaces is the missing edge between the two layers, with the source's own redundant-data model (a 2-simplex as a 2-tracelet together with its chosen composite) being that input in S-construction vocabulary [@behr-kock-2021-tracelet-hopf].
 The identification is to be _named and cited, not proved_ — verify that the measured strict pullbacks are the stability condition, establish or refuse a set-level shadow, and record the edge; scheduled in [[metatheory/roadmap]].
@@ -616,17 +652,19 @@ The identification is to be _named and cited, not proved_ — verify that the me
 > Prefer representations in which the address map has bounded sensitivity under local edits.
 
 A local edit must perturb a logarithmic number of content addresses; fan-node sharing gives no such bound.
-That Lipschitz-style condition on the _addressing scheme_ is the honest salvage of the retired "perturbation is local" principle; it is load-bearing for content-addressed chunking specifically, while ordering, the arena, and the fuel stance are justified independently. gandr declines the optimal-reduction objective while learning its layout lesson (the best-known implementation's fiftyfold win came from a memory-layout change): linear runs, computable offsets, chunked storage.
+That Lipschitz-style condition on the _addressing scheme_ is the honest salvage of the retired "perturbation is local" principle; it is load-bearing for content-addressed chunking specifically, while ordering, the arena, and the fuel stance are justified independently. gandr declines the optimal-reduction objective while learning its layout lesson: the best-known implementation's fiftyfold win came from a memory-layout change with no algorithmic change, and the frequently cited optimality result is called a **thesis** by its own authors — its theorem-level content is an invariance result, a semantic equivalence, and optimality in a cost model that counts parallel-beta steps as unit steps, with bookkeeping, garbage collection, and useless work all excluded by the authors' own statement.
+Linear runs, computable offsets, chunked storage.
 
 **The acceleration band** exploits three aligned order-independence properties — shift equivalence (logical), signature-tensor associativity (algebraic), history-independent chunking (representational) — for four workload classes: batched signature scans (advisory), overlap screening (advisory, sound-direction only), chunk-parallel replay and rehash (exact, differentialed), rule-algebra numerics (analysis band).
-Signatures are computed on the canonical schedule, where they are well defined on equivalence classes; the antisymmetric block is the numerical shadow of the Lie bracket, so a nonzero value for a recorded-independent pair is an arithmetic alarm before any replay diverges.
+Signatures are computed on the canonical schedule, where they are well defined on equivalence classes; the corresponding invariance theorem — signatures are invariant under exactly the tree-like excursions, so backtracking that cancels is invisible — is the analytic twin of the unit quotient.
+The antisymmetric block is the numerical shadow of the Lie bracket, so a nonzero value for a recorded-independent pair is an arithmetic alarm before any replay diverges.
 
 > **The accelerator firewall (binding).** Accelerator results are either advisory or exact-and-differentialed; none is ever soundness-bearing; the kernel never links this band; numeric nondeterminism must be unobservable; adoption is measurement-first.
 
 ## The ambient-primitive policy
 
 Identity here is a construction in time over an unfinished substrate — the temporal rendering, against the completed (K/truncation) and spatial (interval/cubes) renderings; the substrate is codata with weak final coalgebras, no η, label-intensional identity never observed.
-The without-K discipline is binding independent of everything else: no K eliminator, no deletion in unification, no type-constructor injectivity, no definitional proof irrelevance for identity, no interval or gluing primitive, no collapsing identity proofs because their codes are content-addressed equal; per-type set-ness by Hedberg over decidable equality and grade-discipline runtime erasure stay available and are not exceptions.
+The without-K discipline is binding independent of everything else [@cockx-devriese-piessens-2014-without-k]: no K eliminator, no deletion in unification, no type-constructor injectivity, no definitional proof irrelevance for identity, no interval or gluing primitive, no collapsing identity proofs because their codes are content-addressed equal; per-type set-ness by Hedberg over decidable equality and grade-discipline runtime erasure stay available and are not exceptions.
 The adequacy witness is negative and binding: a corpus program deriving K must fail elaboration.
 
 **The admissibility criterion for a primitive is trusted surface.** Not spatiality (geometry is fine), and not merely computability: a primitive is admissible outside the kernel and expensive inside it, whether or not it computes.
@@ -665,7 +703,7 @@ Parametricity-as-coherence-management now has five independent arrivals (cohesio
 8. **The coherence-debt arity law fails its scheduled test** — the interchange needs two cuts to commute, the ladder is not finite, and the four-tier policy's tier-2 coverage shrinks (the two other falsifiers of the law are in [[metatheory/roadmap]]).
 9. **The monomial-to-monomial condition fails** for the construction-term normal form — canonicalization soundness loses its published route and needs another.
 
-The retired falsifiers (real cells not simply connected; the term face needs PROP-style composition; rectification-admissibility) are dissolved by the full-rung substrate and its nerve warrant; they are tombstoned in [[metatheory/guards]] so they are not re-derived.
+The retired falsifiers (real cells not simply connected; the term face needs PROP-style composition; rectification-admissibility; gandr's composition is not the Segal composition — subsumed by the presentation obligation of the graphical category) are dissolved by the full-rung substrate and its nerve warrant; they are tombstoned in [[metatheory/guards]] so they are not re-derived.
 
 ## Roadmap
 

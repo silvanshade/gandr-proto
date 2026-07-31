@@ -12,3 +12,73 @@ nodes:
     b3: e784ec7d72740d947178e895aef4f44365fe5951623297085edc6e8fd8fc5295
     edges:
       - { rel: registered-under, to: README.md }
+  - path: spec/overview.md
+    role: track
+    b3: 98559fdcdb9a3a1e5f9b6eba0d579c0540fe6ca59307cdfe86c16a2e3582f87e
+    edges:
+      - { rel: registered-under, to: spec/README.md }
+  - path: spec/metatheory.md
+    role: track
+    b3: b8bac1324f6e6b26955d60ae759b75d4dffe9295d9c37cbdf0da210efe6ca73e
+    edges:
+      - { rel: registered-under, to: spec/README.md }
+  - path: spec/implementation.md
+    role: track
+    b3: 93333a0710e8e8001887b9eb11e499c5cb5093475fc4888b9f36f9c5fac9d788
+    edges:
+      - { rel: registered-under, to: spec/README.md }
+  - path: spec/proof-engineering.md
+    role: track
+    b3: 016c86bf5fedf792cc397e3065d3953b474912bfafd4cfe3cbb3d980b127bc61
+    edges:
+      - { rel: registered-under, to: spec/README.md }
+  - path: spec/bibliography.yml
+    role: bibliography
+    b3: bc82f07b73c3ad2ee23b71660befacd24495f24949ed73b703fb1fdd570524e3
+    edges:
+      - { rel: registered-under, to: spec/README.md }
+  - path: spec/metatheory/roadmap.md
+    role: subdocument
+    b3: 5e891249beaff64742744bf6237931b648dce6f15ecb131969dfcf82a5a7b35d
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/metatheory/guards.md
+    role: subdocument
+    b3: 1644e82df82cef15e52b1fa732c83111c07d1e2d49f3f3e018d12c2d2bf3c220
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/metatheory/citation-hazards.md
+    role: subdocument
+    b3: 1aaedb7841bbfe200c17d0c350c9e68465541769cac5d56b08d7e8434b95e691
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/metatheory/carrier.md
+    role: subdocument
+    b3: 2f4d68565522fe61de4a2288da5af6e198a40099e91881726dcc77053c3ae57f
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/metatheory/directed-univalence.md
+    role: subdocument
+    b3: ded2497001b921c6a7015aff2c8a365940fd2dc3f02c1515ccabebcbdd61b1cd
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/metatheory/layout-and-coherence.md
+    role: subdocument
+    b3: 1bc1a3083a5603f135b92fbceebc5c837d768c7b9a098b68671d6eac95a1bb1e
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/metatheory/ambient-and-primitives.md
+    role: subdocument
+    b3: 8343b54042e4fdac585ac8852581476c75097a7eb4657586deb88ebfdcc50f0e
+    edges:
+      - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/implementation/roadmap.md
+    role: subdocument
+    b3: ba204728646b4404a97caa6f780670f681ea5746af47d456f9aab3c3311ca7b9
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/proof-engineering/roadmap.md
+    role: subdocument
+    b3: bc60638ab494f75663244f5592afcc270a922b5e3ec88de003f81b86d22252bb
+    edges:
+      - { rel: registered-under, to: spec/proof-engineering.md }

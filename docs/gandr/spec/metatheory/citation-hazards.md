@@ -22,15 +22,22 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
 * The nerve preprint's Rmk 8.17 first display appears to index the wrong monad's colimit (connected graphs where all graphs are meant); the conclusion is independently stated in its Rmk 5.18 and does not depend on it — a tension with an obvious resolution, not an error claim.
 * Uniqueness of primitive factorization must be cited to the uniqueness lemma, not the existence proposition of the same paper.
 * The arities/nerve paper's propositions are cited by a properads paper at numbers that resolve only against the first preprint version — version drift [@berger-mellies-weber-2012-arities].
+* The analytic-monads paper's Prop 3.2.10 says "filtered colimits" where its own Def 3.1.1 says "sifted" — filtered is strictly weaker than analytic; quote the definition, not the parenthetical [@gepner-haugseng-kock-2022-analytic].
+* Every theorem of the data-types-with-symmetries paper is attributed there to the then-in-preparation analytic-monads paper: cite [@gepner-haugseng-kock-2022-analytic] for the mathematics, [@kock-2012-data-types] for the framing.
 
 ## Unverified items, marked
 
 1. **The bipermutative locator and its rigidity package** [@yau-johnson-2015-props]: reported by a scout whose adversarial verifier died mid-run; two of its three sibling reports came back overstated.
    Partial repair: the two Σ-freeness results it depended on are independently cited and relied on by [@chu-hackney-2021-rectification], so the package survives; only the proposition number wants confirmation.
    Do not cite outside the repository until re-checked.
+   **A verified repair path exists and is unexercised**: the same mathematical object (gandr's arena is literally the category `Σ′`) is located in the _other_ Johnson–Yau book — the bimonoidal monograph [@johnson-yau-2024-bimonoidal] — with exact locators (Def I.2.4.18; tight with both structures permutative, Prop I.2.4.23; right bipermutative, Ex I.2.5.8; and the nine-versus-three reduced-Laplaza split: exactly three axioms carry content).
+   **Author-pair trap**: that book is Niles Johnson with Donald Yau; the PROPs monograph is Mark W. Johnson with Donald Yau — different first authors, same second; the two are one citation-slip apart.
+   Re-check against the bimonoidal locators first, then clear this item.
 2. **Two works by one author pair share an initial-matching key**: the source of the Σ-freeness lemmas cited in the rectification paper is _not_ the bipermutative monograph; resolve before citing either as the other.
 3. The Kaufmann–Ward and Bar-Natan–Dancso attributions in the naming note are recall-grade; verify before a citation-bearing surface.
 4. The Hasegawa–Thielecke attribution of the shifts-invertible-iff-thunkable-and-linear characterization is recall-grade.
+5. **The polygraph-mechanization datum has no locator yet**: the "one published mechanization of polygraphs in a proof assistant" cited in the coherence-economy section (HITs that do not compute are "not well-suited to intricate uses"; functoriality of the free construction unproved in the cubical setting; zero rewriting or coherence content) reaches this corpus through a scout report, not a held artifact.
+   Name the work and give it an entry before the claim is quoted further; the pending sweep that reported the datum is the place to resolve it.
 
 ## Further per-source traps
 
@@ -49,7 +56,8 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
 * The **transformation-monoid / finite-set-category presentation** (the directed word problem's classical presentations) has no bibliography row and no formalized rewriting twin; the row must exist before the directed convergence pass can cite it.
   Candidate payers: the structural-focalization and skew-monoidal-sequent lines referenced by [@clarke-scherer-zeilberger-2026-bifibration].
 * The Johnstone source for the unique-diagonal-filler condition, and the Dawson–Paré–Pronk free-adjoint line, are needed only if the tractability predicate or the zigzag construction becomes citation-bearing.
-* Four bibliography entries were synthesized rather than copied from the research library and carry in-file verification notes: the semirings/rig-groupoids paper, the pretype-theory report, the Cubical Agda paper, and the familial-2-functors paper.
+* Four bibliography entries were synthesized rather than copied from the research library: the semirings/rig-groupoids paper, the pretype-theory report, the Cubical Agda paper, and the familial-2-functors paper.
+  One has since been locator-verified (the familial entry, at TAC 18(22), Thm 4.10, p. 690); the other three still carry in-file verification notes.
 
 ## Verified-at-source registers carried forward
 
