@@ -39,7 +39,7 @@ The original edge datum named **half-edges** while every consumer read it as edg
 The repair, under the generality ruling:
 
 * an **edge listing** (`Wire`/`edges`), one entry per pair the wiring makes, on the same footing as the vertex listing; `ends`/`route` give a wire two ends of one type; `Attach` is incidence without a direction claim;
-* a **palette**: the colour involution `dual` with its involutivity law and the orientation `pole` with `pole-dual` — the involutive colour set together with the orientation morphism $θ : (C, ω) → \{↑, ↓\}$ that _is_ gandr's CBPV polarity;
+* a **palette**: the colour involution `dual` with its involutivity law and the orientation `pole` with `pole-dual` — the involutive colour set together with the orientation morphism $θ : (C, ω) → {↑, ↓}$ that _is_ gandr's CBPV polarity;
 * **`cut-oriented`**: a legitimate cut (joining $c$ to $ω c$) has ends of opposite poles, hence runs one way — the involution is load-bearing for the incidence, not only a legitimacy predicate; caps stay colour-unconstrained in the constructor (the published choice), so legitimacy remains a predicate;
 * **`mono-unoriented : ¬ Palette ⊤`**: one self-dual colour admits no orientation — the free compact closed category on one self-dual object appearing as an empty type, and the theorem that orientation is genuinely extra structure;
 * `forth-not-back`: a wire runs at most one way, which is what makes a directed walk mean anything.
