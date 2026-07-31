@@ -25,7 +25,7 @@ For governance docs already on `main`, reviewers stay read-only and the orchestr
 
 Documentation is the one artifact class with **no natural adversary for omission**: a dropped function fails to compile and a dropped case fails a test, but a dropped paragraph fails nothing — `docs:check` validates structure (IDs, terms, cites), so a component that silently sheds half its source's implementation-grade content passes every gate.
 Omission is invisible in the artifact itself; it is only visible in a diff against the sources.
-Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `docs/spec/` or `docs/research/` gets a two-axis adversarial review**, not just substantial ones:
+Accordingly (owner decision `gandr-fid.0`, 2026-07-21), **every change to `docs/gandr/spec/` or `docs/research/` gets a two-axis adversarial review**, not just substantial ones:
 
 1. **Correctness axis** — the standard lenses above: are the claims that appear accurate, cited, current?
 2. **Fidelity axis** — the reviewer receives the change's **declared source set** (the wyrd files, research sweep, ledger entries, or session decisions it draws from) and adversarially hunts for what was dropped, compressed, or de-linked, stanced as "prove that load-bearing detail was lost."
@@ -40,6 +40,26 @@ Preconditions and boundaries:
 * Reboot-era operating notes stating "no adversarial reviewers" (the PLAN-assembly posture) **do not apply to documentation authoring**; this section supersedes them for that class (`gandr-fid.0`).
 * The merge discipline for re-absorption: reboot truth wins on status and naming; the source wins on payload the reboot copy dropped.
 
+## Absorption and reboot passes
+
+Migrations and reboots are the highest-volume absorption work there is, and the 2026-07-31 spec-reboot review measured their characteristic failures: one open question settled by assertion, a red gate never run, works cited with no entries, entries never cited, and a long tail of silently dropped detail.
+The rules below are what a migration owes beyond the per-document procedure of [specs.md](specs.md).
+
+* **The disposition ledger.** Every open item in a source — an open question, spike, obligation, falsifier, pending read — gets exactly one disposition, recorded where a reader meets it: **carried**; **declined with a reversal condition**; **parked with a reason**; or **retired with a tombstone saying why**.
+  An item that vanishes without a disposition is a defect; omission is invisible in the artifact and only visible against the source.
+* **A refutation needs the same sign-off in a migration as anywhere else.** A settlement claim for something the source left open ("its consumers no longer spend it") is a refutation; it binds only with owner sign-off, and until then it is recorded as declined with its reversal condition.
+  The test is the standing one: is the reason a fact about the machinery, or a fact about us?
+* **Registration is part of authoring.** An unregistered corpus document is a fatal drift-gate finding, so "whether to register" is not a decision the author may leave open.
+  When authoring directly on `main`, run the docs gates before committing — the pre-commit hook does not watch documentation paths.
+* **References are payload.** Every literature claim carries a key at first mention; every key resolves; the bibliography holds no entry the corpus never cites and no cited work lacks an entry.
+  An unnamed work ("a published mechanization", "the leading implementation") is named, or the claim is marked locator-pending at the claim.
+* **As-built claims are verified against the tree at write time**, with the module or symbol named.
+  "Verified against the crate" without the verification is a finding, and counts are stated with their counting convention.
+* **Record, per source, which part was read.** A held, cited source can still have its headline theorem unconsumed; the failure has recurred.
+* **Persist the working reports.** Scout and inventory reports a fold rests on are preserved with the migration log; a disposition table without its reports is not auditable, and the next sweep must not have to re-derive them.
+* **State the pass structure up front.** If a first pass will be re-swept, the log says so where it reports the first pass's folds; "folded" and "swept" must never be ambiguous.
+* **Clarification is a separate pass, and it lands.** Fidelity asks whether anything is dropped, mis-stated, or unsupported; clarification re-reads for confusion — claims true but reading as their opposite, terms before definition, cryptic compressions, misleading attributions — and fixes in place.
+
 ## Interpreting findings — challenged, not refuted
 
 Adversarial findings are **inputs, not verdicts**, and two kinds bind differently:
@@ -52,7 +72,7 @@ The adversary is never the final say.
 Even a literature impossibility proof gets its applicability checked (does its hypothesis hold for _our_ object?) before binding.
 When reporting, present challenges as things to engineer around, bracketed — never leading with the adversarial conclusion as settled.
 
-**Every adversary pass writes a human-inspectable report artifact** — reasoning, citations, severity, each finding's binding-vs-challenged disposition — under `adversary/` in the sibling `wyrd-notes` repository; the deliverable cites it briefly, never inlines it.
+**Every adversary pass writes a human-inspectable report artifact** — reasoning, citations, severity, each finding's binding-vs-challenged disposition — under `adversary/` in the project's sibling notes repository; the deliverable cites it briefly, never inlines it.
 The point is auditability: a later reader sees _why_ a branch was challenged.
 
 ## Declining is a claim too — the counterfactual test

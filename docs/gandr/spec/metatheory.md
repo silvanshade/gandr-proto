@@ -173,7 +173,7 @@ Confirming the exact non-unitality condition against its source is cheap and sti
 
 ### The rung, identified
 
-gandr's cell substrate is the **nonunital (downward) circuit-algebra rung**: the monad is $O T^times$ on oriented graphical species $"OGS" = "GS"\/"Di"$, described in the source as _directed graphs with labelled input and output ports and port-preserving morphisms_, and its algebras are the **nonunital wheeled props** [@raynor-2026-nerve] [@raynor-2025-functorial].
+gandr's cell substrate is the **nonunital (downward) circuit-algebra rung**: the monad is $O T^times$ on oriented graphical species $"OGS" = "GS"\/"Di"$ — the slice of the graphical-species category over the orientation object — described in the source as _directed graphs with labelled input and output ports and port-preserving morphisms_, and its algebras are the **nonunital wheeled props** [@raynor-2026-nerve] [@raynor-2025-functorial].
 The identification is structural, not aspirational: the carrier's wiring datum `Match` pairs every source with a partner — a sink (a flow-through wire) or another source (the cap, which is gandr's cut) — and no constructor pairs two sinks.
 That is verbatim the **downward** condition on Brauer diagrams, and three consequences stand or fall together, each proved in the carrier rather than cited:
 
@@ -183,7 +183,7 @@ That is verbatim the **downward** condition on Brauer diagrams, and three conseq
 
 If a cup is ever added, all three go at once; do not add one to make an operation total.
 Downward hom-sets are finite for all profiles with **no graph-shape hypothesis** — so hom-finiteness, previously attributed to simple connectivity, is free at this rung, and the old finiteness-motivated restriction ladder is retired.
-Two read-backs keep the rung honest.
+Two cautions keep the rung honest.
 What is special about the substrate is that the wiring category is **free** — the free compact closed category on a palette — not that it is operadic (every permutative category has an underlying operad; that construction distinguishes nothing).
 And the passage from gandr's duals-free directed interfaces to the compact-closed Brauer world is the Int construction [@joyal-street-verity-1996-traced]: gandr needs no duals, Int supplies them, and the inclusion is an equivalence.
 
@@ -269,8 +269,8 @@ Nothing gandr needs rides on Σ-freeness of the rung: the nerve runs on arities,
 
 > **Ordering is a section.** Symmetric objects, symmetric algebra, ordered representation: the stored form is a canonical linearization chosen for storage — a section of the quotient, never a planarization of the theory.
 
-**The identification-sorting test** (proved in the carrier, one operation at a time): an identification that comes from the _presentation_ — which of two ports is named first — is already quotiented by the canonical wiring and is free, by `refl`; an identification that comes from a genuine _graph automorphism_ — the swap of two parallel components — cannot be expressed by an ordered representation and lands on `canon-sound`.
-The cut's port symmetry is the first kind (paid three times, in three currencies, none of them canonicalization's); the merger swap is the second kind — it is **false on the nose** for the ordered carrier, as it must be, because the vertex order is representation content, and the identification of isomorphism _classes_ in the source is exactly what `Rigid.canon` owes.
+**The identification-sorting test** (proved in the carrier, per operation): an identification that comes from the _presentation_ — which of two ports is named first — is already quotiented by the canonical wiring and is free, by `refl`; an identification that comes from a genuine _graph automorphism_ — the swap of two parallel components — cannot be expressed by an ordered representation and lands on `canon-sound`.
+The cut's port symmetry is the first kind, absorbed three times — at the wiring, at the edge listing, at the incidence — in three different currencies, none of them canonicalization's; the merger swap is the second kind — it is **false on the nose** for the ordered carrier, as it must be, because the vertex order is representation content, and the identification of isomorphism _classes_ in the source is exactly what `Rigid.canon` owes.
 Apply this test to every identification the literature offers.
 
 > **The parallel direction stays symmetric.** Within-cell order (ports, positions, arguments) is free — the as-built grammar has no symmetry to give up.
@@ -301,7 +301,7 @@ The code universe's reversible-language reading is likewise prior art: the rever
 The arena fixes a canonical layout that truncation-based treatments deliberately forget: gandr gains computable offsets and pays the visibility of the choice — ordering-as-section one layer down.
 The precise proposition locator for the bipermutative identity is **unverified** (its adversarial check died mid-run); do not cite it outside the repository — [[metatheory/citation-hazards]].
 
-**The coherence verdict.** Is the structural coherence family a tree-shaped edit calculus must impose mathematical or presentational?
+**The coherence verdict.** Must the structural coherence family of a tree-shaped edit calculus be imposed as mathematics, or is it presentational?
 Presentational, in two halves, and the proof is landed:
 
 * _the hierarchy dissolves as one theorem, not a family_: a rigid arena map — extent-preserving (`ext`) and offset-fixed (`fixed`) — composes and whiskers to rigid maps, and any two rigid words with a common source agree at value grade.
@@ -312,7 +312,7 @@ Presentational, in two halves, and the proof is landed:
 The **completeness half is declined, with a reversal condition** — see [[metatheory/guards#the declined completeness half]]. gandr consumes only soundness (congruent words realize equally, cheap _because of_ the dissolution theorem); the engine's normal-form test is a decidable under-approximation of replay-equivalence, and a normal-form-equal, replay-divergent pair is a kill signal, not a soundness hole to close by theorem.
 The residue after dissolution is the symmetric-group word problem in the groupoid alphabet and the full transformation-monoid word problem in the directed one; neither is owed, because both are the completeness half.
 
-**The arena's directed generalization is warranted, priced, and shaped.** The arena's morphism class is bijections _by construction_ (its published identity has morphisms only at equal extent), so admitting the directed alphabet's one-way generators is a request to enlarge the morphism class, and the design question is _which rung of the classical ladder the arena sits on_: offset-fixed (trivial word problem, the dissolution theorem) ⊂ monotone (the simplex category — simplicial identities, classical and convergent, epi–mono factorization as the normal form) ⊂ symmetric (Coxeter) ⊂ all functions (the transformation monoid).
+**The arena's directed generalization is warranted, priced, and shaped.** The problem first: the arena's morphism class is bijections _by construction_ (its published identity has morphisms only at equal extent), so admitting the directed alphabet's one-way generators is a request to enlarge the morphism class, and the design question is _which rung of the classical ladder the arena sits on_: offset-fixed (trivial word problem, the dissolution theorem) ⊂ monotone (the simplex category — simplicial identities, classical and convergent, epi–mono factorization as the normal form) ⊂ symmetric (Coxeter) ⊂ all functions (the transformation monoid).
 Computed from the offset formulas: three of the four one-way generator classes (projections, diagonals, injections) land in the monotone rung; the codiagonal alone forces the transformation monoid — co-cartesian structure on ordered sets is not order-preserving.
 The decision of record: **characterize as the clone, build as the factorization system** — `Rigid` splits as `RigidMono ∩ RigidEpi`, the split _explains_ the existing record rather than displacing it, factorization systems are already the development's idiom at five layers, and building the split _is_ building the simplex category's epi–mono normal form, so the decision procedure arrives with the construction.
 The warrant is **soundness**, not completeness: one-way generators fall outside the rigid class definitionally (they change the extent), so without the enlarged class every one-way coherence obligation returns as a per-generator grind — which is precisely what the dissolution theorem exists to prevent.
@@ -357,7 +357,7 @@ This is the architecture's central wager, presented as a bet with a named test, 
 
 The pasting side's completeness warrant is a fully faithful nerve with a Segal-characterized essential image, **at gandr's own rung**, obtained by instantiating the abstract nerve theorem rather than by restriction:
 
-> The nonunital circuit-algebra monad $T^times$ **has arities** $"Gr" ⊂ "GS"$ at `Set` [@raynor-2026-nerve], and a monad with arities has a dense graphical category $Θ_(T^times, "Gr")$ (the bo-ff factorization of $"Gr" ↪ "GS" → "GS"^(T^times)$) whose induced nerve is **fully faithful with essential image exactly the Segal presheaves** [@berger-mellies-weber-2012-arities].
+> The nonunital circuit-algebra monad $T^times$ **has arities** $"Gr" ⊂ "GS"$ at `Set` [@raynor-2026-nerve], and a monad with arities has a dense graphical category $Θ_(T^times, "Gr")$ (the bo-ff factorization — bijective-on-objects, then fully faithful — of $"Gr" ↪ "GS" → "GS"^(T^times)$) whose induced nerve is **fully faithful with essential image exactly the Segal presheaves** [@berger-mellies-weber-2012-arities].
 
 Read the warrant precisely: arities deliver _both halves_ — full faithfulness and the Segal characterization — so gandr's citation is this pair, **not** the source's headline theorem, which is stated for the harder _unital_ rung (where the monad does not have arities and the proof passes through a monad decomposition).
 Two cautions travel with the warrant.
@@ -485,7 +485,7 @@ Three separate things are wanted; only the first is the nerve's.
 1. **The code universe is univalent** — the construction above.
 2. **The ambient diagram model satisfies univalence and function extensionality**, so the other formers behave.
    The transfer theorem exists for _inverse_ diagram categories [@shulman-2015-inverse-diagrams]: univalence, funext, and the universe tower all transfer to Reedy-fibrant diagrams, with admissibility cheap for a finite-graph site.
-   The gate is that the theorem's mechanism needs Reedy and injective structures to coincide, which holds when the index is **elegant** in the Bergner–Rezk sense — and $Θ$ is _generalized_ Reedy, so the theorem does not apply on the nose.
+   The gate is that the theorem's mechanism needs Reedy and injective structures to coincide, which holds when the index is **elegant** in the Bergner–Rezk sense [@bergner-rezk-2013-comparison] — and $Θ$ is _generalized_ Reedy, so the theorem does not apply on the nose.
    _Is the graphical category elegant?_ is the single sharpest open item on this side; if elegance fails for $Θ$ but holds for its rigidified form, `Rigid` is load-bearing for univalence transfer as well — the fourth appearance of one decision.
 3. **Every structure layered on top satisfies its own univalence principle** — the general machine is the Univalence Principle [@ahrens-north-shulman-tsementzis-2021-univalence-principle]: structures as Reedy-fibrant diagrams over inverse-category signatures, indiscernibility via a joker element, univalence as indiscernibility-coincides-with-identification, generalizing Rezk completeness.
    Two structural caveats: it is written in two-level type theory (a strict layer gandr does not currently carry), and its signatures are inverse where gandr's graphical signature is not — the chapters on higher and enhanced categories are where the automorphism question would recur.

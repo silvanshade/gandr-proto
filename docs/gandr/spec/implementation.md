@@ -75,7 +75,7 @@ The axiom audit (`print-axioms`) reports the transitive axioms and unchecked adm
 
 **`core-checker` is the bidirectional typing machine, realized twice and gated on agreement.** Judgements infer or check values and computations, with introduction forms checking, elimination forms inferring their principal premise, and one inlined subsumption rule mediating; the mode split is carried by a direction type whose check mode carries the expected type.
 Stack typing is internalized as a value type; the context has a linear zone (frozen shape, vacuous at v0); grades form a preordered semiring; effects are sealed rows on the returner type.
-Subtyping is consistent subtyping in the gradual-typing sense once the unknown type participates: reflexive, deliberately **not** transitive, with reflexivity and transitivity admissible rather than rules.
+Subtyping is consistent subtyping in the gradual-typing sense once the unknown type participates: reflexive by rule, deliberately **not** transitive by rule — transitivity is admissible (provable from the others), not a rule of the calculus.
 The recursive checker and the defunctionalized machine are property-tested for step-for-step agreement on a control log; a third, total _marking_ realization is oracle-bound to the recursive one.
 The differential proves the two agree, not that either is correct — a shared soundness bug leaves them agreeing on the wrong answer — which is why the suite is supplemented by directed coherence oracles relating the two _modes_, a declared-companion gate on every biased oracle, and a standing adversarial pass before substantial checker changes.
 

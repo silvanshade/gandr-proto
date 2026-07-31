@@ -30,6 +30,8 @@ The boundary between metatheory and proof engineering requires judgement: conten
   Where a named decision is load-bearing it has a heading in the owning track document.
 * **Status.** The specs describe the current state and accepted directions.
   Historical narrative is out of scope except where a superseded claim must stay visibly superseded to prevent relitigation; those live in each track's `guards` or `hazards` sub-documents.
+* **Dispositions.** Every open item imported from a source — an open question, spike, obligation, falsifier, pending read — carries exactly one disposition where a reader meets it: carried; declined with a reversal condition (in `guards`); parked with a reason (in `roadmap`); or retired with a tombstone (in `guards`).
+  Nothing open vanishes silently; a settlement claim for something a source left open is a refutation and follows `docs/workflow/review.md`.
 
 ## Roadmaps
 

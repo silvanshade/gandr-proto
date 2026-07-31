@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: e784ec7d72740d947178e895aef4f44365fe5951623297085edc6e8fd8fc5295
+    b3: 9cfd5f55b8b1ba9116c0c33f0bf940ddd65888cb9a22cecb284cd6e3132ed927
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -19,17 +19,17 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: b8bac1324f6e6b26955d60ae759b75d4dffe9295d9c37cbdf0da210efe6ca73e
+    b3: 06c4a6a84746401c255ba46bbda6aba5a7d413311516c46f525c5cce9ed38cc5
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 93333a0710e8e8001887b9eb11e499c5cb5093475fc4888b9f36f9c5fac9d788
+    b3: d7289321e1ac8899028aa4c06da74c4139ea6a7fc0f525e58dc35620ea887ebf
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
     role: track
-    b3: 016c86bf5fedf792cc397e3065d3953b474912bfafd4cfe3cbb3d980b127bc61
+    b3: 9a13526f1e6a7f9a45400086ca0bc442065a1c1c35a1fb1c72fdd1be995437c4
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 5e891249beaff64742744bf6237931b648dce6f15ecb131969dfcf82a5a7b35d
+    b3: eaacfc8d55554bf5cd63750d9d2bc053c98c82f3749a44b1026be8ecd809c2b1
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -54,7 +54,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/carrier.md
     role: subdocument
-    b3: 2f4d68565522fe61de4a2288da5af6e198a40099e91881726dcc77053c3ae57f
+    b3: 211c3e559b5b859565129b6c30f46ce96d9594c99564349257b3187e5f91c6b6
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/directed-univalence.md
@@ -69,7 +69,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/ambient-and-primitives.md
     role: subdocument
-    b3: 8343b54042e4fdac585ac8852581476c75097a7eb4657586deb88ebfdcc50f0e
+    b3: 840abae752a93f957376262ce11b34f6ac88d963d8e29c8ba1a2b6b184cb50b1
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/roadmap.md
@@ -79,6 +79,6 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md
     role: subdocument
-    b3: bc60638ab494f75663244f5592afcc270a922b5e3ec88de003f81b86d22252bb
+    b3: 25c429bf959eca5af9c6bdeee8a7c95bc596ea9a980eec0af4a2ded44e4e76fa
     edges:
       - { rel: registered-under, to: spec/proof-engineering.md }

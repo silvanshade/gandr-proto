@@ -72,7 +72,7 @@ This is the identification-sorting test holding in practice: presentation symmet
 ## The local calculus of the listing algebra
 
 The wiring layer's lookups are **views**, each inverse to a construction, with both round trips proved: removal (looking a source out of a wiring) is isomorphic to a wiring over the shrunk interface, and unhitting (looking a sink out) to a wiring into the shrunk interface.
-The reusable instrument: a lookup is a recursion and nothing reaches past it, while a rebuild is a construction and computes — so questions about a matching are answered by _rebuilding_ rather than by re-inducting.
+The reusable instrument: a lookup is a recursion — opaque to later lemmas, which cannot reach past it — while a rebuild is a construction and computes, so questions about a matching are answered by _rebuilding_ rather than by re-inducting.
 The composition law over this calculus is half-closed: the **cut half is proved** (the four-layer exchange coherence `insert-swap-coh⁴` and the cut composition lemma in all five clauses, no hypothesis, no parameter), and the **wire half is the live ladder** — see [[roadmap]] for its exact steps and the standing no-further-coherence prediction.
 
 ## Gate witnesses
