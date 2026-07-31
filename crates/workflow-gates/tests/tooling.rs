@@ -119,7 +119,9 @@ const EXPECTED_DYLINT_UI_TEST_COMMAND: &[&str] = &[
 ];
 
 /// Exact Clippy command for every lint-eligible workspace target, driver
-/// included (the Dylint driver is an in-workspace crate).
+/// included (the Dylint driver is an in-workspace crate). The trailing
+/// `-A clippy::std_instead_of_core` is the lane-scoped residual of the
+/// nightly-2026-05-28 rollback (docs/workflow/rust.md "Toolchain upgrades").
 const EXPECTED_CLIPPY_WORKSPACE_COMMAND: &[&str] = &[
     "cargo",
     "clippy",
@@ -129,6 +131,8 @@ const EXPECTED_CLIPPY_WORKSPACE_COMMAND: &[&str] = &[
     "--",
     "-D",
     "warnings",
+    "-A",
+    "clippy::std_instead_of_core",
 ];
 
 /// Cargo invocation the merge-wall rustdoc gate must run over the workspace.
@@ -1372,8 +1376,8 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_eq!(
         toml_table_string(local_dylint_env, "DYLINT_RUSTFLAGS")?.0,
-        "-D warnings",
-        "strict project-local Dylint must deny every warning"
+        "-D warnings -A clippy::std_instead_of_core",
+        "strict project-local Dylint must deny every warning (the std_instead_of_core allowance is the documented nightly-2026-05-28 rollback residual)"
     );
     let cargo_dylint_local_script = toml_table_string(cargo_dylint_local, "run")?;
     let local_invocations = parse_dylint_invocations(cargo_dylint_local_script)?;
