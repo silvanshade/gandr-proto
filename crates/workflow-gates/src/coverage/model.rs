@@ -1062,9 +1062,11 @@ mod tests
     where
         H: Into<PercentTextHundredths>,
     {
+        /// Hundredths in one whole percent point of the two-decimal rendering.
+        const HUNDREDTHS_PER_POINT: u64 = 100;
         let hundredths = hundredths.into().0;
-        let whole = hundredths.checked_div(100).unwrap_or(0);
-        let fraction = hundredths.checked_rem(100).unwrap_or(0);
+        let whole = hundredths.checked_div(HUNDREDTHS_PER_POINT).unwrap_or(0);
+        let fraction = hundredths.checked_rem(HUNDREDTHS_PER_POINT).unwrap_or(0);
         format!("{whole}.{fraction:02}")
     }
 

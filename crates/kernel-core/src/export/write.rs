@@ -1,4 +1,5 @@
-//! The deterministic export writer (kernel-boundary.md §5, E1/E2/E4/E5/E6):
+//! The deterministic export writer (kernel-boundary.md §5, obligations E1, E2,
+//! E4, E5, E6):
 //! serialize an [`Environment`] to canonical v1 bytes.
 //!
 //! # v1: the maximal-sharing subterm table (massive-term design §4.2–4.5)
@@ -631,8 +632,8 @@ fn encode_literal(
         | Literal::Integer(ref integer) => {
             out.0.push(LITERAL_INTEGER);
             out.0.push(sign_byte(integer.sign()).0);
-            let magnitude = integer.magnitude().to_digits();
-            encode_text(out, ArtifactText(&magnitude));
+            let magnitude_digits = integer.magnitude().to_digits();
+            encode_text(out, ArtifactText(&magnitude_digits));
         },
         | Literal::Text(ref text) => {
             out.0.push(LITERAL_TEXT);
@@ -656,9 +657,9 @@ fn encode_text(
     text: ArtifactText<'_>,
 )
 {
-    let bytes = text.0.as_bytes();
-    put_uvarint(out, usize_to_u64(WireUsize(bytes.len())));
-    out.0.extend_from_slice(bytes);
+    let text_bytes = text.0.as_bytes();
+    put_uvarint(out, usize_to_u64(WireUsize(text_bytes.len())));
+    out.0.extend_from_slice(text_bytes);
 }
 
 /// The wire byte for a base-type atom.

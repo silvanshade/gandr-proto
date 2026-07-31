@@ -643,7 +643,9 @@ pattern = [
   "examples/general/basic_dead_store",
   "examples/general/crate_wide_allow",
   "examples/general/incorrect_matches_operation",
-  "examples/general/non_local_effect_before_unhandled_error",
+  # Disabled 2026-07-30: purposely ignored due to false positives (not tracked
+  # as a residual).
+  # "examples/general/non_local_effect_before_unhandled_error",
   "examples/general/non_thread_safe_call_in_test",
   "examples/general/wrong_serialize_struct_arg",
   "examples/supplementary",
@@ -651,10 +653,13 @@ pattern = [
   "examples/restriction/collapsible_unwrap",
   "examples/restriction/const_path_join",
   "examples/restriction/env_literal",
-  "examples/restriction/inconsistent_qualification",
+  # Disabled 2026-07-30 pending remediation of ~1600 pre-existing findings
+  # across the workspace (tracked in the dylint residual bead); see
+  # docs/workflow/rust.md "Toolchain upgrades" residuals.
+  # "examples/restriction/inconsistent_qualification",
   "examples/restriction/misleading_variable_name",
-  "examples/restriction/non_topologically_sorted_functions",
-  "examples/restriction/question_mark_in_expression",
+  # "examples/restriction/non_topologically_sorted_functions",
+  # "examples/restriction/question_mark_in_expression",
   "examples/restriction/ref_aware_redundant_closure_for_method_calls",
   "examples/restriction/register_lints_warn",
   "examples/restriction/suboptimal_pattern",

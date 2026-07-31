@@ -1062,24 +1062,24 @@ fn temp_roots_are_unique_within_one_process()
 fn unique_temp_root() -> PathBuf
 {
     let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
-    let path = std::env::temp_dir().join(format!(
+    let temp_root = std::env::temp_dir().join(format!(
         "gandr-workflow-gates-contracts-{}-{suffix}",
         std::process::id()
     ));
-    let cleanup = gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_if_exists(&path);
+    let cleanup = gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_if_exists(&temp_root);
     assert!(
         cleanup.is_ok(),
         "failed to clean temporary contract root {}: {cleanup:?}",
-        path.display()
+        temp_root.display()
     );
     let Some(()) = ok_or_report(
-        gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&path),
+        gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&temp_root),
         "create temp root",
     )
     else {
-        return path;
+        return temp_root;
     };
-    path
+    temp_root
 }
 
 /// Render one contract source fixture naming `witness`.

@@ -1484,15 +1484,15 @@ mod tests
     {
         let text = text.into().0;
         let rel = rel.into().0;
-        let path = corpus.join(rel);
-        let Some(parent) = path.parent()
+        let doc_path = corpus.join(rel);
+        let Some(parent) = doc_path.parent()
         else {
             return Err(Box::new(std::io::Error::other(
                 "fixture path has no parent",
             )));
         };
         crate::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        crate::support::HOST_FILESYSTEM.write(&path, text)?;
+        crate::support::HOST_FILESYSTEM.write(&doc_path, text)?;
         Ok(blake3_hex(text.as_bytes()))
     }
 }

@@ -414,11 +414,11 @@ impl BlockStore for PackedSegmentStore
         hash: NodeHash,
     ) -> Result<StoredNodeRef<'_>, ProllyBaoError>
     {
-        let entry = self
+        let node_entry = self
             .index
             .get(&hash)
             .ok_or(ProllyBaoError::UnknownNodeHash { hash })?;
-        let bytes = packed_entry_bytes(&self.segment, *entry)?;
+        let bytes = packed_entry_bytes(&self.segment, *node_entry)?;
         let node = StoredNodeRef::new(hash, bytes);
 
         verify_stored_node(node)?;

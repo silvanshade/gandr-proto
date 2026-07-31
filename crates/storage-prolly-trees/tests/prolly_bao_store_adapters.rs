@@ -163,9 +163,11 @@ mod tests
     #[test]
     fn packed_store_rejects_missing_hash()
     {
+        /// Fill byte for a hash that is absent from the packed store.
+        const MISSING_HASH_FILL: u8 = 0xa5;
         let tree = build_tree();
         let store = packed_store_from_tree(&tree);
-        let missing_hash = NodeHash::from([0xa5_u8; NODE_HASH_LEN]);
+        let missing_hash = NodeHash::from([MISSING_HASH_FILL; NODE_HASH_LEN]);
         let missing_error = store
             .load(missing_hash)
             .expect_err("missing packed node hash should be rejected");

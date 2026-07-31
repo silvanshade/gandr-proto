@@ -2437,7 +2437,9 @@ mod tests
         if let Some(directory) = cwd {
             command.current_dir(directory);
         }
-        let status = command.status()?;
+        let status = command.status().map_err(|error| {
+            format!("git fixture command {args:?} failed to run: {error}")
+        })?;
         if status.success() {
             return Ok(());
         }

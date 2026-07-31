@@ -48,11 +48,13 @@ mod tests
     #[test]
     fn identical_records_and_params_emit_deterministic_boundaries()
     {
+        /// Maximum byte cap for the deterministic chunking fixture.
+        const MAX_BYTES: u64 = 48;
         let records: [&[u8]; 6] = [b"alpha", b"beta", b"gamma", b"delta", b"epsilon", b"zeta"];
         let chunker_params = params(limits(
             ByteCount::from(4_u64),
             ByteCount::from(16_u64),
-            ByteCount::from(48_u64),
+            ByteCount::from(MAX_BYTES),
             RecordCount::from(1_u32),
             RecordCount::from(4_u32),
             RecordCount::from(16_u32),
@@ -86,6 +88,10 @@ mod tests
     #[test]
     fn equivalent_ordered_streams_emit_equivalent_spans()
     {
+        /// Target byte limit for the equivalent-streams fixture.
+        const TARGET_BYTES: u64 = 24;
+        /// Maximum byte cap for the equivalent-streams fixture.
+        const MAX_BYTES: u64 = 40;
         let records: [&[u8]; 7] = [
             b"k:a\0v:1",
             b"k:b\0v:2",
@@ -97,8 +103,8 @@ mod tests
         ];
         let chunker_params = params(limits(
             ByteCount::from(8_u64),
-            ByteCount::from(24_u64),
-            ByteCount::from(40_u64),
+            ByteCount::from(TARGET_BYTES),
+            ByteCount::from(MAX_BYTES),
             RecordCount::from(1_u32),
             RecordCount::from(3_u32),
             RecordCount::from(8_u32),
@@ -135,6 +141,8 @@ mod tests
     #[test]
     fn parameter_commitment_changes_when_params_change()
     {
+        /// Target byte limit that differs from the base params.
+        const CHANGED_TARGET_BYTES: u64 = 24;
         let base = params(limits(
             ByteCount::from(4_u64),
             ByteCount::from(16_u64),
@@ -145,7 +153,7 @@ mod tests
         ));
         let changed_target = params(limits(
             ByteCount::from(4_u64),
-            ByteCount::from(24_u64),
+            ByteCount::from(CHANGED_TARGET_BYTES),
             ByteCount::from(64_u64),
             RecordCount::from(1_u32),
             RecordCount::from(4_u32),
@@ -161,8 +169,8 @@ mod tests
         ));
 
         assert_eq!(
-            base.commitment_bytes().as_ref().len(),
             PARAMETER_COMMITMENT_LEN,
+            base.commitment_bytes().as_ref().len(),
             "parameter commitment length must be the public fixed length"
         );
         assert_ne!(
@@ -181,18 +189,20 @@ mod tests
     #[test]
     fn public_salt_is_deterministic_and_explicitly_committed()
     {
-        let salt = [
+        /// Ascending salt bytes committed explicitly by the public-salt policy.
+        const PUBLIC_SALT: [u8; 32] = [
             1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8, 9_u8, 10_u8, 11_u8, 12_u8, 13_u8,
             14_u8, 15_u8, 16_u8, 17_u8, 18_u8, 19_u8, 20_u8, 21_u8, 22_u8, 23_u8, 24_u8, 25_u8,
             26_u8, 27_u8, 28_u8, 29_u8, 30_u8, 31_u8, 32_u8,
         ];
-        let different_salt = [
+        /// Reversed salt bytes that must alter the parameter commitment.
+        const REVERSED_SALT: [u8; 32] = [
             32_u8, 31_u8, 30_u8, 29_u8, 28_u8, 27_u8, 26_u8, 25_u8, 24_u8, 23_u8, 22_u8, 21_u8,
             20_u8, 19_u8, 18_u8, 17_u8, 16_u8, 15_u8, 14_u8, 13_u8, 12_u8, 11_u8, 10_u8, 9_u8,
             8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8, 2_u8, 1_u8,
         ];
         let salted = params_with_seed(
-            SeedPolicy::public_salt(SeedSalt::from(salt)),
+            SeedPolicy::public_salt(SeedSalt::from(PUBLIC_SALT)),
             limits(
                 ByteCount::from(4_u64),
                 ByteCount::from(16_u64),
@@ -203,7 +213,7 @@ mod tests
             ),
         );
         let salted_again = params_with_seed(
-            SeedPolicy::public_salt(SeedSalt::from(salt)),
+            SeedPolicy::public_salt(SeedSalt::from(PUBLIC_SALT)),
             limits(
                 ByteCount::from(4_u64),
                 ByteCount::from(16_u64),
@@ -214,7 +224,7 @@ mod tests
             ),
         );
         let differently_salted = params_with_seed(
-            SeedPolicy::public_salt(SeedSalt::from(different_salt)),
+            SeedPolicy::public_salt(SeedSalt::from(REVERSED_SALT)),
             limits(
                 ByteCount::from(4_u64),
                 ByteCount::from(16_u64),
@@ -239,9 +249,9 @@ mod tests
             salted
                 .commitment_bytes()
                 .as_ref()
-                .windows(salt.len())
+                .windows(PUBLIC_SALT.len())
                 .any(|window| {
-                    return window == salt.as_ref();
+                    return window == PUBLIC_SALT.as_ref();
                 }),
             "public salt bytes must appear explicitly in the commitment"
         );
@@ -452,8 +462,8 @@ mod tests
             .expect("below-min non-empty input must emit one final chunk");
 
         assert_eq!(
-            chunks.len(),
             1_usize,
+            chunks.len(),
             "below-min input must emit exactly one final remainder chunk"
         );
         assert_chunk_reason(
@@ -479,7 +489,9 @@ mod tests
     #[test]
     fn minimum_limits_suppress_early_hash_predicate_boundaries()
     {
-        let records: [&[u8]; 24] = [&[0xAB_u8]; 24];
+        /// Fill byte for every record in the minimum-limits fixture.
+        const RECORD_FILL: u8 = 0xAB;
+        let records: [&[u8]; 24] = [&[RECORD_FILL]; 24];
         let chunker_params = params(limits(
             ByteCount::from(8_u64),
             ByteCount::from(8_u64),
@@ -610,8 +622,9 @@ mod tests
     #[test]
     fn oversized_single_record_returns_precise_error()
     {
-        let oversized = [0x11_u8; 9];
-        let records: [&[u8]; 1] = [&oversized];
+        /// Oversized record bytes exceeding the eight-byte record cap.
+        const OVERSIZED_RECORD: [u8; 9] = [0x11_u8; 9];
+        let records: [&[u8]; 1] = [&OVERSIZED_RECORD];
         let chunker_params = params(limits(
             ByteCount::from(1_u64),
             ByteCount::from(8_u64),
@@ -639,9 +652,11 @@ mod tests
     #[test]
     fn impossible_min_record_chunk_returns_chunk_cap_error()
     {
-        let first = [0x21_u8; 5];
-        let second = [0x22_u8; 5];
-        let records: [&[u8]; 2] = [&first, &second];
+        /// First five-byte record in the impossible-minimum fixture.
+        const FIRST_RECORD: [u8; 5] = [0x21_u8; 5];
+        /// Second five-byte record in the impossible-minimum fixture.
+        const SECOND_RECORD: [u8; 5] = [0x22_u8; 5];
+        let records: [&[u8]; 2] = [&FIRST_RECORD, &SECOND_RECORD];
         let chunker_params = params(limits(
             ByteCount::from(1_u64),
             ByteCount::from(8_u64),
@@ -700,12 +715,14 @@ mod tests
     #[test]
     fn low_entropy_repeated_byte_streams_are_deterministic_and_bounded()
     {
+        /// Maximum byte cap shared by the limits and the within-caps assertion.
+        const MAX_BYTES: u64 = 48;
         let repeated_record = [0_u8; 8];
         let records: [&[u8]; 20] = [&repeated_record; 20];
         let chunker_params = params(limits(
             ByteCount::from(16_u64),
             ByteCount::from(32_u64),
-            ByteCount::from(48_u64),
+            ByteCount::from(MAX_BYTES),
             RecordCount::from(1_u32),
             RecordCount::from(4_u32),
             RecordCount::from(16_u32),
@@ -735,7 +752,7 @@ mod tests
         );
         assert_chunks_within_caps(
             &first,
-            ByteCount::from(48_u64),
+            ByteCount::from(MAX_BYTES),
             FixtureRecordDistance::from(16_u64),
             ("repeated-byte stream").into(),
         );
@@ -745,6 +762,10 @@ mod tests
     #[test]
     fn many_tiny_records_and_near_cap_records_stay_aligned_and_bounded()
     {
+        /// Record exactly at the eight-byte near-cap limit.
+        const MAX_SIZED_RECORD: [u8; 8] = [0x42_u8; 8];
+        /// Record one byte below the near-cap limit.
+        const NEAR_MAX_RECORD: [u8; 7] = [0x24_u8; 7];
         let tiny_records: [&[u8]; 64] = [&[0x7F_u8]; 64];
         let tiny_params = params(limits(
             ByteCount::from(1_u64),
@@ -790,9 +811,12 @@ mod tests
             ("many tiny records").into(),
         );
 
-        let max_sized = [0x42_u8; 8];
-        let near_max = [0x24_u8; 7];
-        let near_cap_records: [&[u8]; 4] = [&max_sized, &near_max, &max_sized, &near_max];
+        let near_cap_records: [&[u8]; 4] = [
+            &MAX_SIZED_RECORD,
+            &NEAR_MAX_RECORD,
+            &MAX_SIZED_RECORD,
+            &NEAR_MAX_RECORD,
+        ];
         let near_cap_params = params(limits(
             ByteCount::from(1_u64),
             ByteCount::from(8_u64),

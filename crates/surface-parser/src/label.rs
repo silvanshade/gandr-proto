@@ -4,8 +4,8 @@
 //! (`labeler ∘ molder ∘ fold(push) ∘ commit`). It is a total scan over `&[u8]`
 //! — no `logos`, no `phf`, no proc-macro — that classifies each maximal lexeme
 //! into a [`Lexeme`] class and records its exact byte span. The classes mirror
-//! gandr's tree-sitter lexical surface
-//! (`packages/tree-sitter-gandr/grammar.js`):
+//! gandr's tree-sitter lexical surface (the committed tree-sitter
+//! `grammar.js`):
 //!
 //! * trivia — whitespace, newlines, `//` line comments, nested `/* */` block
 //!   comments, and `#!/…` shebangs (the tree-sitter `extras`) — classify as

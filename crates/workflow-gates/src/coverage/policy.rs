@@ -2521,14 +2521,14 @@ target_percent = 80.00
                 .duration_since(UNIX_EPOCH)
                 .expect("system clock should be after Unix epoch")
                 .as_nanos();
-            let path = std::env::temp_dir().join(format!(
+            let temp_root = std::env::temp_dir().join(format!(
                 "gandr-workflow-gates-{label}-{}-{unique}",
                 std::process::id(),
             ));
             crate::support::HOST_FILESYSTEM
-                .create_dir_all(&path)
+                .create_dir_all(&temp_root)
                 .expect("fixture directory should be creatable");
-            Self { path }
+            Self { path: temp_root }
         }
 
         /// Borrow the fixture root path.

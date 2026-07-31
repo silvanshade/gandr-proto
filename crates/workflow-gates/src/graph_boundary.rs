@@ -576,12 +576,12 @@ fn inspect_module_item_tree<'context>(
             match *item {
                 | Item::Mod(ref module) => {
                     let module_public = is_visible_api(&module.vis).into().0;
-                    if let Some(child_items) = module.content.as_ref().map(|content| &content.1) {
+                    if let Some(content) = module.content.as_ref() {
                         if module_public {
                             work.push(ModuleInspectionWork {
                                 module_dir: step.module_dir.join(module.ident.to_string()),
                                 path: step.path.clone(),
-                                items: child_items,
+                                items: &content.1,
                                 inherited_aliases: aliases.clone(),
                             });
                         }
@@ -837,8 +837,8 @@ fn inspect_trait_item(
                 for bound in &item_type.bounds {
                     visitor.visit_type_param_bound(bound);
                 }
-                if let Some(default_type) = item_type.default.as_ref().map(|default| &default.1) {
-                    visitor.visit_type(default_type);
+                if let Some(type_default) = item_type.default.as_ref() {
+                    visitor.visit_type(&type_default.1);
                 }
             });
         },
@@ -905,10 +905,10 @@ fn module_aliases(
                 | Item::ExternCrate(ref item_extern) => {
                     let root = item_extern.ident.to_string();
                     if is_graph_stack_name(&root).into().0 {
-                        let local = item_extern
-                            .rename
-                            .as_ref()
-                            .map_or_else(|| root.clone(), |rename| rename.1.to_string());
+                        let local = match item_extern.rename.as_ref() {
+                            | Some(rename) => rename.1.to_string(),
+                            | None => root.clone(),
+                        };
                         changed |= context.named.insert(local, root).is_none();
                     }
                 },
@@ -1609,8 +1609,8 @@ fn inspect_impl_item(
     header_visitor.with_type_generics(&item_impl.generics, |visitor| {
         visitor.visit_generics(&item_impl.generics);
         visitor.visit_type(&item_impl.self_ty);
-        if let Some(trait_path) = item_impl.trait_.as_ref().map(|trait_item| &trait_item.1) {
-            visitor.visit_path(trait_path);
+        if let Some(trait_ref) = item_impl.trait_.as_ref() {
+            visitor.visit_path(&trait_ref.1);
         }
         if let Some(where_clause) = item_impl.generics.where_clause.as_ref() {
             visitor.visit_where_clause(where_clause);
@@ -2065,13 +2065,13 @@ mod tests
         {
             let name = name.into().0;
             let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
-            let path = std::env::temp_dir().join(format!(
+            let temp_root = std::env::temp_dir().join(format!(
                 "gandr-workflow-gates-graph-boundary-{name}-{}-{suffix}",
                 std::process::id()
             ));
-            crate::support::HOST_FILESYSTEM.remove_dir_if_exists(&path)?;
-            crate::support::HOST_FILESYSTEM.create_dir_all(&path)?;
-            Ok(Self { path })
+            crate::support::HOST_FILESYSTEM.remove_dir_if_exists(&temp_root)?;
+            crate::support::HOST_FILESYSTEM.create_dir_all(&temp_root)?;
+            Ok(Self { path: temp_root })
         }
 
         /// Return the fixture workspace root path.

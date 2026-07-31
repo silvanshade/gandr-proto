@@ -1014,13 +1014,13 @@ mod tests
     {
         let source = source.into().0;
         let name = name.into().0;
-        let path = root.join(name);
-        crate::support::HOST_FILESYSTEM.write(&path, source)?;
+        let script_path = root.join(name);
+        crate::support::HOST_FILESYSTEM.write(&script_path, source)?;
         let mut permissions = crate::support::HOST_FILESYSTEM
-            .metadata(&path)?
+            .metadata(&script_path)?
             .permissions();
         std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, EXECUTABLE_MODE);
-        crate::support::HOST_FILESYSTEM.set_permissions(&path, permissions)?;
-        Ok(path)
+        crate::support::HOST_FILESYSTEM.set_permissions(&script_path, permissions)?;
+        Ok(script_path)
     }
 }

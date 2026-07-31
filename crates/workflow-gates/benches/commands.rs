@@ -209,7 +209,7 @@ fn bench_cli_parsing_typed_plans(criterion: &mut Criterion)
             || {
                 CLI_COMMANDS
                     .iter()
-                    .map(|command| os_args(*command))
+                    .map(|&command| os_args(command))
                     .collect::<Vec<_>>()
             },
             |commands| {
@@ -481,7 +481,12 @@ where
     Relative: Into<RelativeText<'semantic>>,
 {
     let relative = relative.into().0;
-    std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/benches/fixtures"))
+    let manifest_dir = match std::env::var("CARGO_MANIFEST_DIR") {
+        | Ok(value) => value,
+        | Err(_) => std::process::abort(),
+    };
+    std::path::PathBuf::from(manifest_dir)
+        .join("benches/fixtures")
         .join(relative)
 }
 

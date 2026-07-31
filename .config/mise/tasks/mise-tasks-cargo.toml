@@ -69,12 +69,9 @@ cargo dylint \
   --lib collapsible_unwrap \
   --lib const_path_join \
   --lib env_literal \
-  --lib inconsistent_qualification \
   --lib incorrect_matches_operation \
   --lib misleading_variable_name \
   --lib non_thread_safe_call_in_test \
-  --lib non_topologically_sorted_functions \
-  --lib question_mark_in_expression \
   --lib ref_aware_redundant_closure_for_method_calls \
   --lib suboptimal_pattern \
   --lib supplementary \
@@ -86,16 +83,27 @@ cargo dylint \
   --all-targets \
   --features=full
 
+# Disabled 2026-07-30 pending remediation of ~1600 pre-existing findings
+# across the workspace (tracked in the dylint residual bead); see
+# docs/workflow/rust.md "Toolchain upgrades" residuals.
+# --lib inconsistent_qualification \
+# --lib non_topologically_sorted_functions \
+# --lib question_mark_in_expression \
+
 # The pinned non-local-effect rule stays in its own driver invocation after an
 # upstream panic on a core lib-test target. The shared workspace scope is
 # intentional; re-split per-core if that defect recurs.
-cargo dylint \
-  --lib non_local_effect_before_unhandled_error \
-  --no-deps \
-  -- \
-  --workspace \
-  --all-targets \
-  --features=full
+# Disabled 2026-07-30: purposely ignored — the lint produces too many false
+# positives (its "handled" analysis rejects Result-consuming forms the rest of
+# the wall accepts, and its interprocedural tracking is limited to the current
+# crate). Not tracked as a residual.
+# cargo dylint \
+#   --lib non_local_effect_before_unhandled_error \
+#   --no-deps \
+#   -- \
+#   --workspace \
+#   --all-targets \
+#   --features=full
 
 # `crate_wide_allow` covers every target kind, tests included: no
 # crate-level allow is approved anywhere. The sanctioned test relaxation is

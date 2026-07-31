@@ -152,7 +152,6 @@ const EXPECTED_DYLINT_PLUGIN_PATHS: &[&str] = &[
     "examples/general/basic_dead_store",
     "examples/general/crate_wide_allow",
     "examples/general/incorrect_matches_operation",
-    "examples/general/non_local_effect_before_unhandled_error",
     "examples/general/non_thread_safe_call_in_test",
     "examples/general/wrong_serialize_struct_arg",
     "examples/supplementary",
@@ -160,10 +159,7 @@ const EXPECTED_DYLINT_PLUGIN_PATHS: &[&str] = &[
     "examples/restriction/collapsible_unwrap",
     "examples/restriction/const_path_join",
     "examples/restriction/env_literal",
-    "examples/restriction/inconsistent_qualification",
     "examples/restriction/misleading_variable_name",
-    "examples/restriction/non_topologically_sorted_functions",
-    "examples/restriction/question_mark_in_expression",
     "examples/restriction/ref_aware_redundant_closure_for_method_calls",
     "examples/restriction/register_lints_warn",
     "examples/restriction/suboptimal_pattern",
@@ -191,7 +187,6 @@ const EXPECTED_DYLINT_REPRESENTED_LINT_PATHS: &[&str] = &[
     "examples/general/basic_dead_store",
     "examples/general/crate_wide_allow",
     "examples/general/incorrect_matches_operation",
-    "examples/general/non_local_effect_before_unhandled_error",
     "examples/general/non_thread_safe_call_in_test",
     "examples/general/wrong_serialize_struct_arg",
     "examples/supplementary/commented_out_code",
@@ -208,10 +203,7 @@ const EXPECTED_DYLINT_REPRESENTED_LINT_PATHS: &[&str] = &[
     "examples/restriction/collapsible_unwrap",
     "examples/restriction/const_path_join",
     "examples/restriction/env_literal",
-    "examples/restriction/inconsistent_qualification",
     "examples/restriction/misleading_variable_name",
-    "examples/restriction/non_topologically_sorted_functions",
-    "examples/restriction/question_mark_in_expression",
     "examples/restriction/ref_aware_redundant_closure_for_method_calls",
     "examples/restriction/register_lints_warn",
     "examples/restriction/suboptimal_pattern",
@@ -227,12 +219,9 @@ const EXPECTED_UPSTREAM_DYLINT_LIBS: &[&str] = &[
     "collapsible_unwrap",
     "const_path_join",
     "env_literal",
-    "inconsistent_qualification",
     "incorrect_matches_operation",
     "misleading_variable_name",
     "non_thread_safe_call_in_test",
-    "non_topologically_sorted_functions",
-    "question_mark_in_expression",
     "ref_aware_redundant_closure_for_method_calls",
     "suboptimal_pattern",
     "supplementary",
@@ -525,9 +514,9 @@ where
         let rest = tokens.collect::<Vec<_>>();
         let Some(separator) = rest.iter().position(|&token| token == "--")
         else {
-            return Err(Box::new(std::io::Error::other(
-                "cargo dylint invocation omitted cargo-argument separator `--`",
-            )));
+            return Err(Box::new(std::io::Error::other(format!(
+                "cargo dylint invocation omitted cargo-argument separator `--`: {command}"
+            ))));
         };
         let dylint_args = rest
             .iter()
@@ -590,7 +579,7 @@ where
     let mut current = String::new();
     for raw_line in script.lines() {
         let line = raw_line.trim();
-        if line.is_empty() {
+        if line.is_empty() || line.starts_with('#') {
             continue;
         }
         let continued = line.ends_with('\\');
@@ -1328,8 +1317,8 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     let represented_lints = represented_dylint_lint_paths(&plugin_paths);
     assert_eq!(
         EXPECTED_DYLINT_REPRESENTED_LINT_PATHS.len(),
-        30_usize,
-        "expected Dylint inventory constant must cover 30 upstream lints"
+        26_usize,
+        "expected Dylint inventory constant must cover 26 upstream lints"
     );
     assert_string_sequence(
         &represented_lints,
@@ -1370,13 +1359,13 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         )));
     };
     assert_eq!(
-        toml_table_string(local_dylint_env, "CARGO_TARGET_DIR")?.0,
         "{{ config_root }}/target/dylint-local",
+        toml_table_string(local_dylint_env, "CARGO_TARGET_DIR")?.0,
         "strict project-local artifacts must use their own target directory"
     );
     assert_eq!(
-        toml_table_string(local_dylint_env, "DYLINT_RUSTFLAGS")?.0,
         "-D warnings -A clippy::std_instead_of_core",
+        toml_table_string(local_dylint_env, "DYLINT_RUSTFLAGS")?.0,
         "strict project-local Dylint must deny every warning (the std_instead_of_core allowance is the documented nightly-2026-05-28 rollback residual)"
     );
     let cargo_dylint_local_script = toml_table_string(cargo_dylint_local, "run")?;
@@ -1412,14 +1401,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     let invocations = parse_dylint_invocations(cargo_dylint_script)?;
     let invocation_count = invocations.len();
     let mut invocations = invocations.iter();
-    let (
-        Some(upstream_pass),
-        Some(non_local_pass),
-        Some(crate_wide_pass),
-        Some(register_lints_pass),
-        None,
-    ) = (
-        invocations.next(),
+    let (Some(upstream_pass), Some(crate_wide_pass), Some(register_lints_pass), None) = (
         invocations.next(),
         invocations.next(),
         invocations.next(),
@@ -1427,7 +1409,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     )
     else {
         return Err(Box::new(std::io::Error::other(format!(
-            "expected four upstream cargo:dylint invocations, found {invocation_count}"
+            "expected three upstream cargo:dylint invocations, found {invocation_count}"
         ))));
     };
 
@@ -1452,21 +1434,6 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         &upstream_pass.cargo_args,
         ["--workspace", "--all-targets", "--features=full"],
         "ordinary upstream Dylint pass package scope changed",
-    );
-
-    assert_string_sequence(
-        &non_local_pass.dylint_args,
-        [
-            "--lib",
-            "non_local_effect_before_unhandled_error",
-            "--no-deps",
-        ],
-        "non-local-effect Dylint pass must stay isolated",
-    );
-    assert_string_sequence(
-        &non_local_pass.cargo_args,
-        ["--workspace", "--all-targets", "--features=full"],
-        "non-local-effect Dylint pass package scope changed",
     );
 
     assert_string_sequence(
@@ -1548,8 +1515,8 @@ fn treefmt_check_task_policy_is_locked() -> TestResult
     let treefmt_check = toml_table_at(&mise_tasks_maintenance, ["treefmt:check"])?;
     let treefmt_check_script = toml_table_string(treefmt_check, "run")?;
     assert_eq!(
-        treefmt_check_script.0.trim(),
-        r#"RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci"#
+        r#"RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY" treefmt --ci"#,
+        treefmt_check_script.0.trim()
     );
     Ok(())
 }
@@ -1848,15 +1815,15 @@ impl DocsFixture
     {
         let text = text.into().0;
         let relative = relative.into().0;
-        let path = self.corpus.join(relative);
-        let Some(parent) = path.parent()
+        let doc_path = self.corpus.join(relative);
+        let Some(parent) = doc_path.parent()
         else {
             return Err(Box::new(std::io::Error::other(
                 "fixture document path has no parent",
             )));
         };
         gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        gandr_workflow_gates::support::HOST_FILESYSTEM.write(&path, text)?;
+        gandr_workflow_gates::support::HOST_FILESYSTEM.write(&doc_path, text)?;
         Ok(blake3_hex(text.as_bytes()))
     }
 

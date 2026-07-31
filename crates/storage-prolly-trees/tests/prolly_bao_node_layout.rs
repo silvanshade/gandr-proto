@@ -98,8 +98,8 @@ mod tests
         let layout = inspect_proof_node(node);
 
         assert_eq!(
-            layout.kind(),
             EncodedNodeKind::Leaf,
+            layout.kind(),
             "empty tree root should inspect as a leaf node"
         );
         assert_eq!(

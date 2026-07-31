@@ -22,7 +22,7 @@
 //! registries are disjoint.
 //!
 //! **Projection re-scope (W5′).** `grammar.js` remains the
-//! tree-sitter source; `packages/tree-sitter-gandr/src/grammar.json` is NOT
+//! tree-sitter source; the committed `grammar.json` is NOT
 //! projected from the PBG. The PBG is an abstract structural model: tiles are
 //! bare labels with no lexical regexes (some are placeholders no labeler token
 //! carries), rules have no tree-sitter field concept (the generated
@@ -53,12 +53,12 @@
 //!   spans and tree-sitter's non-trivia leaf-token spans coincide, after
 //!   mapping each labeler lexeme class through the manifest's
 //!   `e1_declared_table`, modulo trivia. Catches all lexical drift. (Witness:
-//!   `crates/surface-grammar/tests/token_stream_parity.rs`; the fuzz target
+//!   the token-stream parity integration test; the fuzz target
 //!   `fuzz/fuzz_targets/parity.rs`.)
 //! * **E2 — highlight span.** [`fn@crate::highlight`] and
 //!   `gandr_surface_tree_sitter::highlight` produce an identical `Vec<HlSpan>`.
 //!   Catches all drift observable to the artifact's only remaining consumer.
-//!   (Witness: `crates/surface-grammar/tests/highlight_parity.rs`.)
+//!   (Witness: the highlight-span parity integration test.)
 //!
 //! **Why NOT lowering (CST-core) equivalence — rejected.** Comparing the
 //! lowered cores would force a parser-generic lowerer: a trait plus dynamic

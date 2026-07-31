@@ -308,7 +308,7 @@ mod tests
     fn empty_context_admits()
     {
         let context = empty_context(0_u32.into());
-        assert_eq!(u32::from(context.params()), 0, "no prenex parameters");
+        assert_eq!(0, u32::from(context.params()), "no prenex parameters");
     }
 
     #[test]

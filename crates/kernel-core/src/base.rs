@@ -400,7 +400,7 @@ mod tests
         let negative = IntegerLiteral::new(Sign::Negative, Magnitude::zero());
         let positive = IntegerLiteral::new(Sign::NonNegative, Magnitude::zero());
         assert_eq!(negative, positive, "a negative zero canonicalizes away");
-        assert_eq!(negative.sign(), Sign::NonNegative, "zero is non-negative");
+        assert_eq!(Sign::NonNegative, negative.sign(), "zero is non-negative");
     }
 
     #[test]
@@ -425,8 +425,8 @@ mod tests
         let negative =
             NumericLiteral::new(Sign::Negative, Magnitude::zero(), FractionDigits::none());
         assert_eq!(
-            negative.sign(),
             Sign::NonNegative,
+            negative.sign(),
             "numeric zero is non-negative"
         );
     }
@@ -442,8 +442,8 @@ mod tests
             Magnitude::zero(),
             FractionDigits::none(),
         ));
-        assert_eq!(integer.base_type(), BaseType::Integer, "integer atom");
-        assert_eq!(text.base_type(), BaseType::String, "string atom");
-        assert_eq!(numeric.base_type(), BaseType::Numeric, "numeric atom");
+        assert_eq!(BaseType::Integer, integer.base_type(), "integer atom");
+        assert_eq!(BaseType::String, text.base_type(), "string atom");
+        assert_eq!(BaseType::Numeric, numeric.base_type(), "numeric atom");
     }
 }

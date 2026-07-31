@@ -1263,7 +1263,7 @@ impl WitnessTranscript
     #[inline]
     pub fn decode(bytes: WitnessBytes<'_>) -> Result<Self, ProllyBaoError>
     {
-        let mut cursor = WitnessCursor::witness((bytes.as_ref()).into());
+        let mut cursor = WitnessCursor::witness(bytes);
         let magic = cursor.take(
             (WITNESS_MAGIC.len()).into(),
             ("witness magic is truncated").into(),
@@ -2959,7 +2959,7 @@ pub fn verify_snapshot_bytes(
     expected_params: &TreeParams,
 ) -> Result<PortableProofTree, ProllyBaoError>
 {
-    let mut cursor = SnapshotCursor::snapshot((bytes.as_ref()).into());
+    let mut cursor = SnapshotCursor::snapshot(bytes);
     let magic = cursor.take(
         (SNAPSHOT_MAGIC.len()).into(),
         ("snapshot magic is truncated").into(),
@@ -3080,7 +3080,7 @@ pub fn hash_encoded_node(bytes: EncodedNode<'_>) -> NodeHash
 pub fn inspect_encoded_node(bytes: EncodedNode<'_>) -> Result<EncodedNodeLayout, ProllyBaoError>
 {
     let encoded_len = EncodedLength::from(bytes.as_ref().len());
-    let mut cursor = Cursor::node((bytes.as_ref()).into());
+    let mut cursor = Cursor::node(bytes);
     let kind = read_node_header(&mut cursor)?;
     let layout = match u8::from(kind) {
         | NODE_KIND_LEAF => {

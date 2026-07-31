@@ -576,9 +576,9 @@ fn recursive_sccs(
     let recursive: HashSet<_> = ids
         .iter()
         .copied()
-        .filter(|def_id| {
+        .filter(|&def_id| {
             let mut visited = HashSet::new();
-            reaches_target(*def_id, *def_id, edges, functions, &mut visited).0
+            reaches_target(def_id, def_id, edges, functions, &mut visited).0
         })
         .collect();
 
@@ -590,10 +590,10 @@ fn recursive_sccs(
         }
         let mut scc: Vec<_> = sorted_function_ids(functions)
             .into_iter()
-            .filter(|other| {
-                *other == def_id
-                    || (reaches(def_id, *other, edges, functions).0
-                        && reaches(*other, def_id, edges, functions).0)
+            .filter(|&other| {
+                other == def_id
+                    || (reaches(def_id, other, edges, functions).0
+                        && reaches(other, def_id, edges, functions).0)
             })
             .collect();
         scc.sort_by_key(|def_id| functions.get(def_id).map(|node| node.path.as_str()));

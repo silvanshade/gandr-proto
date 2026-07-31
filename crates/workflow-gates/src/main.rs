@@ -320,10 +320,10 @@ fn exit_code_from_status(status: ExitStatus) -> ExitCode
 /// Print page-balance informational notes.
 fn print_page_balance_report(report: &PageBalanceReport)
 {
-    let mut stdout = std::io::stdout().lock();
+    let mut stdout_lock = std::io::stdout().lock();
     for probe in &report.late_probes {
         drop(writeln!(
-            stdout,
+            stdout_lock,
             "NOTE page-balance probe -- `{}` opens on page {} at {:.2}mm",
             probe.kind, probe.page, probe.y_mm
         ));
@@ -1310,10 +1310,10 @@ fn write_agda_libraries_file(plan: &AgdaDependencyPlan) -> Result<(), GateError>
 ///   --workspace-root <temp>`
 fn write_agda_ready_stdout() -> Result<(), GateError>
 {
-    let mut stdout = std::io::stdout().lock();
-    stdout
+    let mut stdout_lock = std::io::stdout().lock();
+    stdout_lock
         .write_all(AGDA_DEPS_READY_STDOUT.as_bytes())
-        .and_then(|()| stdout.flush())
+        .and_then(|()| stdout_lock.flush())
         .map_err(|source| GateError::Io {
             path: PathBuf::from("stdout"),
             source,
@@ -4085,13 +4085,13 @@ mod tests
         {
             let name = name.into().0;
             let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
-            let path = env::temp_dir().join(format!(
+            let temp_root = env::temp_dir().join(format!(
                 "gandr-workflow-gates-main-{name}-{}-{suffix}",
                 std::process::id()
             ));
-            drop(gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_all(&path));
-            gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&path)?;
-            Ok(Self { path })
+            drop(gandr_workflow_gates::support::HOST_FILESYSTEM.remove_dir_all(&temp_root));
+            gandr_workflow_gates::support::HOST_FILESYSTEM.create_dir_all(&temp_root)?;
+            Ok(Self { path: temp_root })
         }
 
         /// Borrow the root path.

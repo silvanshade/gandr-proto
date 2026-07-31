@@ -747,13 +747,13 @@ where
         return Some(invocation);
     }
 
-    let bytes = line.as_bytes();
+    let line_bytes = line.as_bytes();
     let mut quote = None;
     let mut escaped = false;
     let mut segment_start = 0;
     let mut index = 0;
-    while index < bytes.len() {
-        let byte = *bytes.get(index)?;
+    while index < line_bytes.len() {
+        let byte = *line_bytes.get(index)?;
         if escaped {
             escaped = false;
             index = index.saturating_add(1);
@@ -781,9 +781,9 @@ where
             {
                 return Some(invocation);
             }
-            while bytes
+            while line_bytes
                 .get(index)
-                .is_some_and(|separator| matches!(*separator, b';' | b'|' | b'&'))
+                .is_some_and(|&separator| matches!(separator, b';' | b'|' | b'&'))
             {
                 index = index.saturating_add(1);
             }
@@ -805,12 +805,12 @@ where
     Line: Into<LineText<'semantic>>,
 {
     let line = line.into().0;
-    let bytes = line.as_bytes();
+    let line_bytes = line.as_bytes();
     let mut quote = None;
     let mut escaped = false;
     let mut index = 0;
-    while index < bytes.len() {
-        let byte = *bytes.get(index)?;
+    while index < line_bytes.len() {
+        let byte = *line_bytes.get(index)?;
         if escaped {
             escaped = false;
             index = index.saturating_add(1);
@@ -831,7 +831,7 @@ where
             index = index.saturating_add(1);
             continue;
         }
-        if quote != Some(b'\'') && byte == b'$' && bytes.get(index.saturating_add(1)) == Some(&b'(')
+        if quote != Some(b'\'') && byte == b'$' && line_bytes.get(index.saturating_add(1)) == Some(&b'(')
         {
             let open = index.saturating_add(1);
             if let Some(close) = matching_substitution_paren(line, open).into().0 {
@@ -883,13 +883,13 @@ where
 {
     let open = open.into().0;
     let line = line.into().0;
-    let bytes = line.as_bytes();
+    let line_bytes = line.as_bytes();
     let mut depth = 1_usize;
     let mut quote = None;
     let mut escaped = false;
     let mut index = open.saturating_add(1);
-    while index < bytes.len() {
-        let byte = *bytes.get(index)?;
+    while index < line_bytes.len() {
+        let byte = *line_bytes.get(index)?;
         if escaped {
             escaped = false;
         }
@@ -1094,14 +1094,14 @@ where
     Segment: Into<SegmentText<'semantic>>,
 {
     let segment = segment.into().0;
-    let bytes = segment.as_bytes();
+    let segment_bytes = segment.as_bytes();
     let mut words = Vec::new();
     let mut quote = None;
     let mut escaped = false;
     let mut word_start = None;
     let mut index = 0;
-    while index < bytes.len() {
-        let Some(byte) = bytes.get(index).copied()
+    while index < segment_bytes.len() {
+        let Some(byte) = segment_bytes.get(index).copied()
         else {
             break;
         };
@@ -1462,7 +1462,7 @@ fn finding_for_group(
     }
 
     let contract_end = first_errors_position
-        .filter(|position| *position > contract_position && *position < adequacy_position)
+        .filter(|&position| position > contract_position && position < adequacy_position)
         .unwrap_or(adequacy_position);
     if let Some(finding) = validate_contract_section(path, group, contract_position, contract_end) {
         return Some(finding);

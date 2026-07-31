@@ -88,6 +88,10 @@ A bump is its own reviewed change: bump the pin, materialize, run the full merge
   **Revisit on the next major toolchain bump:** if the newer clippy agrees with the manifest wall on those paths — or the sites are rewritten to a form both toolchains accept — remove the lane flag.
   The residual exists because the pin is held at `nightly-2026-05-28` by the upstream Dylint examples (their `clippy_utils` pin tracks that nightly); it unblocks when Dylint upstream moves past the window.
 
+### Writing tests
+
+Standing patterns for test code collect here as they are established (owner direction, 2026-07-30; no entries yet).
+
 ### Dylint adoption and residual ledger
 
 The 2026-07-17 restoration re-enabled the Rust workspace and removed phased package allowlists from the canonical lint tasks, while retaining two explicit Dylint exclusions:

@@ -42,7 +42,7 @@
 //! # The S1 surface
 //!
 //! The pure polarized core (kernel-boundary.md §7 S1): literals over the rigid
-//! base atoms ([`BaseType`]), unit/pair/sum values, thunks, functions,
+//! base atoms ([`BaseType`]), unit, pair, and sum values, thunks, functions,
 //! `let`/`force`/`case` computations, explicit universe lifts, and the universe
 //! rule `U_l : U_m` iff `l < m` over the [`gandr_kernel_strata`] level algebra.
 //! Excluded at S1 and deliberately unrepresentable: effects and handlers, the
