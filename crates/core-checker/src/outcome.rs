@@ -13,7 +13,7 @@
 //! machines run under.
 //!
 //! This module is the outcome vocabulary's durable home for the same reason
-//! [`crate::host`] is the host seam's: the boundary is
+//! [`crate::effect::host`] is the host seam's: the boundary is
 //! representation-independent and survives the machine that realizes it.
 
 use crate::syntax::Comp;

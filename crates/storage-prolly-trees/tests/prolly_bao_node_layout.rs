@@ -11,6 +11,8 @@ mod tests
     use gandr_storage_prolly_trees::EncodedLength;
     use gandr_storage_prolly_trees::EncodedNodeKind;
     use gandr_storage_prolly_trees::EncodedNodeLayout;
+    use gandr_storage_prolly_trees::EncodingVersion;
+    use gandr_storage_prolly_trees::HashAlgorithm;
     use gandr_storage_prolly_trees::NODE_HASH_LEN;
     use gandr_storage_prolly_trees::NodeChildCount;
     use gandr_storage_prolly_trees::NodeOccupancy;
@@ -18,6 +20,8 @@ mod tests
     use gandr_storage_prolly_trees::ProllyBaoError;
     use gandr_storage_prolly_trees::ProofNode;
     use gandr_storage_prolly_trees::RecordRef;
+    use gandr_storage_prolly_trees::SeparatorConvention;
+    use gandr_storage_prolly_trees::TreeKind;
     use gandr_storage_prolly_trees::TreeParams;
     use gandr_storage_prolly_trees::TreeRecordCount;
     use gandr_storage_prolly_trees::hash_encoded_node;
@@ -69,10 +73,10 @@ mod tests
         .expect("one-record leaf chunker params should be valid");
 
         return TreeParams::new(
-            gandr_storage_prolly_trees::TreeKind::MerkleSearch,
-            gandr_storage_prolly_trees::EncodingVersion::CURRENT,
-            gandr_storage_prolly_trees::HashAlgorithm::CURRENT,
-            gandr_storage_prolly_trees::SeparatorConvention::CURRENT,
+            TreeKind::MerkleSearch,
+            EncodingVersion::CURRENT,
+            HashAlgorithm::CURRENT,
+            SeparatorConvention::CURRENT,
             chunker_params,
         );
     }

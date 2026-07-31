@@ -6,31 +6,19 @@
 
 extern crate alloc;
 
-use std::env;
 use std::ffi::OsStr;
 use std::ffi::OsString;
-use std::fs;
 use std::io::Write as _;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command as ProcessCommand;
-use std::process::ExitCode;
-use std::process::ExitStatus;
-use std::process::Stdio;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 use gandr_workflow_gates::Finding;
 use gandr_workflow_gates::GateError;
-use gandr_workflow_gates::docs::commands::PageBalanceReport;
-use gandr_workflow_gates::docs::commands::RumdlOutcome;
-use gandr_workflow_gates::maintenance::GitRef;
-use gandr_workflow_gates::maintenance::HeadExpectation;
-use gandr_workflow_gates::maintenance::MaintenanceAdvanceRequest;
-use gandr_workflow_gates::maintenance::MaintenanceRangeRequest;
-use gandr_workflow_gates::mutants::MutantsCommand;
-use gandr_workflow_gates::mutants::MutantsOptions;
-use gandr_workflow_gates::mutants::range::PushRangePlan;
+use gandr_workflow_gates::docs;
+use gandr_workflow_gates::maintenance;
+use gandr_workflow_gates::mutants;
 
 gandr_workflow_gates::semantic_str!(pub struct CommandNameText);
 gandr_workflow_gates::semantic_copy!(pub struct NonceNonce(u128));
@@ -124,14 +112,14 @@ const AGDA_DEPS_READY_STDOUT: &str = "agda deps ready: stdlib v2.4\n";
 /// - witness: `tooling::top_level_command_inventory_is_exact`
 #[inline]
 #[must_use]
-pub fn main() -> ExitCode
+pub fn main() -> std::process::ExitCode
 {
     match run() {
         | Ok(outcome) => outcome.into_exit_code(),
         | Err(error) => {
             let mut stderr = std::io::stderr();
             drop(writeln!(stderr, "{error}"));
-            ExitCode::from(EXIT_OPERATIONAL)
+            std::process::ExitCode::from(EXIT_OPERATIONAL)
         },
     }
 }
@@ -155,7 +143,7 @@ pub fn main() -> ExitCode
 #[inline]
 pub fn run() -> Result<GateOutcome, GateError>
 {
-    run_with_args(env::args_os())
+    run_with_args(std::env::args_os())
 }
 
 /// Parse the selected command from `arguments`, execute it, and classify
@@ -207,25 +195,19 @@ where
             Ok(GateOutcome::from_findings(findings))
         },
         | Command::DocsManifest { manifest_path } => {
-            let findings =
-                gandr_workflow_gates::docs::manifest::run_manifest_drift(&manifest_path)?;
+            let findings = docs::manifest::run_manifest_drift(&manifest_path)?;
             Ok(GateOutcome::from_findings(findings))
         },
         | Command::DocsReference { manifest_path } => {
-            let findings =
-                gandr_workflow_gates::docs::references::run_reference_integrity(&manifest_path)?;
+            let findings = docs::references::run_reference_integrity(&manifest_path)?;
             Ok(GateOutcome::from_findings(findings))
         },
         | Command::PageBalance { cwd } => {
-            let report = gandr_workflow_gates::docs::commands::run_page_balance(cwd.as_deref())?;
+            let report = docs::commands::run_page_balance(cwd.as_deref())?;
             Ok(GateOutcome::PageBalance(report))
         },
         | Command::Rumdl { mode, paths, cwd } => {
-            let outcome = gandr_workflow_gates::docs::commands::run_guarded_rumdl(
-                mode,
-                &paths,
-                cwd.as_deref(),
-            )?;
+            let outcome = docs::commands::run_guarded_rumdl(mode, &paths, cwd.as_deref())?;
             Ok(rumdl_outcome(&outcome))
         },
         | Command::OptionsPolicy { workspace_root } => {
@@ -276,25 +258,29 @@ where
             explicit_from,
             watermark,
         } => {
-            let request = MaintenanceRangeRequest::new(
+            let request = maintenance::MaintenanceRangeRequest::new(
                 &github_output,
                 head,
                 explicit_from,
                 watermark.as_deref(),
                 None,
-                HeadExpectation::CurrentHead,
+                maintenance::HeadExpectation::CurrentHead,
             );
-            gandr_workflow_gates::maintenance::resolve_and_append_github_output(&request)?;
+            maintenance::resolve_and_append_github_output(&request)?;
             Ok(GateOutcome::Clean)
         },
         | Command::MaintenanceAdvance { watermark, to } => {
-            let request =
-                MaintenanceAdvanceRequest::new(&watermark, to, None, HeadExpectation::CurrentHead);
-            gandr_workflow_gates::maintenance::advance_watermark(&request)?;
+            let request = maintenance::MaintenanceAdvanceRequest::new(
+                &watermark,
+                to,
+                None,
+                maintenance::HeadExpectation::CurrentHead,
+            );
+            maintenance::advance_watermark(&request)?;
             Ok(GateOutcome::Clean)
         },
         | Command::Mutants { command, options } => {
-            gandr_workflow_gates::mutants::run(&command, &options)?;
+            mutants::run(&command, &options)?;
             Ok(GateOutcome::Clean)
         },
         | Command::Workflow { tier, cwd } => {
@@ -309,16 +295,16 @@ where
 }
 
 /// Convert an external process status into a portable process exit code.
-fn exit_code_from_status(status: ExitStatus) -> ExitCode
+fn exit_code_from_status(status: std::process::ExitStatus) -> std::process::ExitCode
 {
     match status.code().and_then(|code| u8::try_from(code).ok()) {
-        | Some(code) => ExitCode::from(code),
-        | None => ExitCode::from(EXIT_OPERATIONAL),
+        | Some(code) => std::process::ExitCode::from(code),
+        | None => std::process::ExitCode::from(EXIT_OPERATIONAL),
     }
 }
 
 /// Print page-balance informational notes.
-fn print_page_balance_report(report: &PageBalanceReport)
+fn print_page_balance_report(report: &docs::commands::PageBalanceReport)
 {
     let mut stdout_lock = std::io::stdout().lock();
     for probe in &report.late_probes {
@@ -395,10 +381,12 @@ where
 /// # Adequacy
 /// - hypothesis: L3 only — rumdl statuses are witnessed through the domain
 ///   wrapper tests and CLI status conversion tests.
-fn rumdl_outcome(outcome: &RumdlOutcome) -> GateOutcome
+fn rumdl_outcome(outcome: &docs::commands::RumdlOutcome) -> GateOutcome
 {
     match *outcome {
-        | RumdlOutcome::RumdlStatus { status } => GateOutcome::ExternalStatus(status),
+        | docs::commands::RumdlOutcome::RumdlStatus { status } => {
+            GateOutcome::ExternalStatus(status)
+        },
     }
 }
 
@@ -555,7 +543,7 @@ where
         .next()
         .ok_or_else(|| GateError::usage("rumdl requires fmt or check"))?;
     let mode = os_string_into_utf8("rumdl mode", mode)?;
-    let mode = gandr_workflow_gates::docs::commands::RumdlMode::parse(&mode)?;
+    let mode = docs::commands::RumdlMode::parse(&mode)?;
     let mut cwd = None;
     let mut paths = Vec::new();
     let mut arguments = arguments.peekable();
@@ -765,7 +753,7 @@ where
         }
         else if argument == OsStr::new("--to") {
             let value = take_utf8_option_value("--to", &mut arguments)?;
-            let to_ref = GitRef::new(&value)?;
+            let to_ref = maintenance::GitRef::new(&value)?;
             set_once(&mut to, "--to", to_ref)?;
         }
         else {
@@ -778,7 +766,7 @@ where
     )?;
     let to = match to {
         | Some(to) => to,
-        | None => GitRef::head()?,
+        | None => maintenance::GitRef::head()?,
     };
     Ok(Command::MaintenanceAdvance { watermark, to })
 }
@@ -800,12 +788,12 @@ where
         }
         else if argument == OsStr::new("--head") {
             let value = take_utf8_option_value("--head", &mut arguments)?;
-            let head_ref = GitRef::new(&value)?;
+            let head_ref = maintenance::GitRef::new(&value)?;
             set_once(&mut head, "--head", head_ref)?;
         }
         else if argument == OsStr::new("--from") {
             let value = take_utf8_option_value("--from", &mut arguments)?;
-            let from_ref = GitRef::new(value.trim())?;
+            let from_ref = maintenance::GitRef::new(value.trim())?;
             set_once(&mut explicit_from, "--from", from_ref)?;
         }
         else if argument == OsStr::new("--watermark") {
@@ -822,7 +810,7 @@ where
     )?;
     let head = match head {
         | Some(head) => head,
-        | None => GitRef::head()?,
+        | None => maintenance::GitRef::head()?,
     };
     Ok(Command::MaintenanceRange {
         github_output,
@@ -884,7 +872,7 @@ where
         }
     }
     Ok(Command::Mutants {
-        command: MutantsCommand::Guest { package, diff },
+        command: mutants::MutantsCommand::Guest { package, diff },
         options: common.into_guest_options(),
     })
 }
@@ -898,7 +886,7 @@ fn current_workspace_root() -> Result<PathBuf, GateError>
 /// Expand the default mutants cache image under the current home directory.
 fn default_mutants_cache_image() -> Result<PathBuf, GateError>
 {
-    let Some(home) = env::var_os("HOME")
+    let Some(home) = std::env::var_os("HOME")
     else {
         return Err(GateError::operational(format!(
             "mutants host modes require HOME to expand {MUTANTS_DEFAULT_CACHE_IMAGE}"
@@ -966,7 +954,7 @@ where
         mode.as_str().as_ref(),
         token_hex.as_str()
     );
-    let temp_dir = env::temp_dir();
+    let temp_dir = std::env::temp_dir();
     MutantsTemporaryPaths {
         source_archive: temp_dir.join(format!("{base_name}-source.tar")),
         diff_file: temp_dir.join(format!("{base_name}-diff.patch")),
@@ -1586,7 +1574,7 @@ pub fn fuzz_binary_path(target: FuzzSmokeTarget) -> PathBuf
 fn fuzz_seed_files(target: FuzzSmokeTarget) -> Result<Vec<PathBuf>, GateError>
 {
     let corpus = fuzz_corpus_dir(target);
-    let entries = fs::read_dir(&corpus).map_err(|source| GateError::Io {
+    let entries = std::fs::read_dir(&corpus).map_err(|source| GateError::Io {
         path: corpus.clone(),
         source,
     })?;
@@ -1619,7 +1607,9 @@ pub fn fuzz_corpus_dir(target: FuzzSmokeTarget) -> PathBuf
 }
 
 /// Run a status-only command with inherited stdout and stderr.
-fn run_streaming_status(plan: &FuzzExternalCommandPlan) -> Result<ExitStatus, GateError>
+fn run_streaming_status(
+    plan: &FuzzExternalCommandPlan
+) -> Result<std::process::ExitStatus, GateError>
 {
     let mut command = configured_process_command(plan);
     command.status().map_err(|source| GateError::Io {
@@ -1640,9 +1630,9 @@ fn spawn_streaming_process(plan: &FuzzExternalCommandPlan)
 }
 
 /// Build a process command with the exact stream policy from `plan`.
-fn configured_process_command(plan: &FuzzExternalCommandPlan) -> ProcessCommand
+fn configured_process_command(plan: &FuzzExternalCommandPlan) -> std::process::Command
 {
-    let mut command = ProcessCommand::new(plan.program());
+    let mut command = std::process::Command::new(plan.program());
     command.args(plan.args());
     command.stdin(stdio_from_mode(plan.stdin()));
     command.stdout(stdio_from_mode(plan.stdout()));
@@ -1651,11 +1641,11 @@ fn configured_process_command(plan: &FuzzExternalCommandPlan) -> ProcessCommand
 }
 
 /// Convert a pure stream policy to `std::process::Stdio`.
-fn stdio_from_mode(mode: ExternalStream) -> Stdio
+fn stdio_from_mode(mode: ExternalStream) -> std::process::Stdio
 {
     match mode {
-        | ExternalStream::Inherit => Stdio::inherit(),
-        | ExternalStream::Piped => Stdio::piped(),
+        | ExternalStream::Inherit => std::process::Stdio::inherit(),
+        | ExternalStream::Piped => std::process::Stdio::piped(),
     }
 }
 
@@ -1808,17 +1798,17 @@ where
     }
     let options = common.into_host_options(mode)?;
     let command = match mode {
-        | MutantsHostMode::Snapshot => MutantsCommand::Snapshot,
-        | MutantsHostMode::Push => MutantsCommand::Push {
+        | MutantsHostMode::Snapshot => mutants::MutantsCommand::Snapshot,
+        | MutantsHostMode::Push => mutants::MutantsCommand::Push {
             range: push.into_range_plan()?,
         },
-        | MutantsHostMode::Merge => MutantsCommand::Merge,
+        | MutantsHostMode::Merge => mutants::MutantsCommand::Merge,
         | MutantsHostMode::Scheduled => {
             let (from_ref, to_ref) = scheduled.into_required_refs()?;
-            MutantsCommand::Scheduled { from_ref, to_ref }
+            mutants::MutantsCommand::Scheduled { from_ref, to_ref }
         },
-        | MutantsHostMode::Sweep => MutantsCommand::Sweep,
-        | MutantsHostMode::Clean => MutantsCommand::Clean,
+        | MutantsHostMode::Sweep => mutants::MutantsCommand::Sweep,
+        | MutantsHostMode::Clean => mutants::MutantsCommand::Clean,
     };
     Ok(Command::Mutants { command, options })
 }
@@ -1946,7 +1936,7 @@ fn display_path(path: &Path) -> String
 }
 
 /// Render an exit status in stable operational diagnostics.
-fn status_detail(status: ExitStatus) -> String
+fn status_detail(status: std::process::ExitStatus) -> String
 {
     match status.code() {
         | Some(code) => format!("exit status {code}"),
@@ -1957,7 +1947,7 @@ fn status_detail(status: ExitStatus) -> String
 /// Return the default documentation manifest path from the docs domain.
 fn default_manifest_path() -> PathBuf
 {
-    PathBuf::from(gandr_workflow_gates::docs::manifest::DEFAULT_MANIFEST_PATH)
+    PathBuf::from(docs::manifest::DEFAULT_MANIFEST_PATH)
 }
 
 /// Return the short stable usage string for a missing command.
@@ -2026,7 +2016,7 @@ pub enum Command
     Rumdl
     {
         /// Typed rumdl subcommand.
-        mode: gandr_workflow_gates::docs::commands::RumdlMode,
+        mode: docs::commands::RumdlMode,
         /// Markdown paths forwarded to the guard and rumdl.
         paths: Vec<PathBuf>,
         /// Optional command working directory.
@@ -2080,9 +2070,9 @@ pub enum Command
         /// GitHub Actions output file that receives `base=<oid>`.
         github_output: PathBuf,
         /// Upper revision for the next range.
-        head: GitRef,
+        head: maintenance::GitRef,
         /// Optional explicit lower-bound ref.
-        explicit_from: Option<GitRef>,
+        explicit_from: Option<maintenance::GitRef>,
         /// Optional runner-local watermark path.
         watermark: Option<PathBuf>,
     },
@@ -2092,15 +2082,15 @@ pub enum Command
         /// Watermark path to replace with JSON state.
         watermark: PathBuf,
         /// Upper revision whose resolved commit becomes the next base.
-        to: GitRef,
+        to: maintenance::GitRef,
     },
     /// Mutation campaign facade command.
     Mutants
     {
         /// Typed mutation mode and mode-specific options.
-        command: MutantsCommand,
+        command: mutants::MutantsCommand,
         /// Common mutation campaign paths.
-        options: MutantsOptions,
+        options: mutants::MutantsOptions,
     },
     /// Local workflow tier execution command.
     Workflow
@@ -2470,9 +2460,9 @@ pub enum GateOutcome
     /// Stable semantic findings to print before exiting with code `1`.
     Findings(Vec<Finding>),
     /// External command status to forward.
-    ExternalStatus(ExitStatus),
+    ExternalStatus(std::process::ExitStatus),
     /// Page-balance report with optional informational notes.
-    PageBalance(PageBalanceReport),
+    PageBalance(docs::commands::PageBalanceReport),
 }
 
 impl GateOutcome
@@ -2489,21 +2479,21 @@ impl GateOutcome
     }
 
     /// Print any outcome payload and return the required process exit code.
-    fn into_exit_code(self) -> ExitCode
+    fn into_exit_code(self) -> std::process::ExitCode
     {
         match self {
-            | Self::Clean => ExitCode::from(EXIT_CLEAN),
+            | Self::Clean => std::process::ExitCode::from(EXIT_CLEAN),
             | Self::Findings(findings) => {
                 let mut stderr = std::io::stderr();
                 for finding in findings {
                     drop(writeln!(stderr, "{finding}"));
                 }
-                ExitCode::from(EXIT_FINDINGS)
+                std::process::ExitCode::from(EXIT_FINDINGS)
             },
             | Self::ExternalStatus(status) => exit_code_from_status(status),
             | Self::PageBalance(report) => {
                 print_page_balance_report(&report);
-                ExitCode::from(EXIT_CLEAN)
+                std::process::ExitCode::from(EXIT_CLEAN)
             },
         }
     }
@@ -2576,7 +2566,7 @@ impl MutantsCommonOptions
     fn into_host_options(
         self,
         mode: MutantsHostMode,
-    ) -> Result<MutantsOptions, GateError>
+    ) -> Result<mutants::MutantsOptions, GateError>
     {
         if mode == MutantsHostMode::Clean {
             return Ok(self.into_ignored_options());
@@ -2592,7 +2582,7 @@ impl MutantsCommonOptions
         };
         let temporary_paths = default_mutants_temporary_paths(&workspace_root, mode)?;
 
-        Ok(MutantsOptions::new(
+        Ok(mutants::MutantsOptions::new(
             workspace_root,
             cache_image,
             self.source_archive
@@ -2605,15 +2595,15 @@ impl MutantsCommonOptions
 
     /// Convert optional guest fields into a facade value that guest mode
     /// ignores.
-    fn into_guest_options(self) -> MutantsOptions
+    fn into_guest_options(self) -> mutants::MutantsOptions
     {
         self.into_ignored_options()
     }
 
     /// Convert fields for modes whose implementation ignores host paths.
-    fn into_ignored_options(self) -> MutantsOptions
+    fn into_ignored_options(self) -> mutants::MutantsOptions
     {
-        MutantsOptions::new(
+        mutants::MutantsOptions::new(
             self.workspace_root.unwrap_or_default(),
             self.cache_image.unwrap_or_default(),
             self.source_archive.unwrap_or_default(),
@@ -2652,14 +2642,14 @@ struct MutantsPushOptions
 impl MutantsPushOptions
 {
     /// Convert parsed push options into the public push range plan.
-    fn into_range_plan(self) -> Result<PushRangePlan, GateError>
+    fn into_range_plan(self) -> Result<mutants::range::PushRangePlan, GateError>
     {
         if self.range_mode.is_none()
             && self.from.is_none()
             && self.root.is_none()
             && self.to.is_none()
         {
-            return PushRangePlan::last(MUTANTS_DEFAULT_PUSH_TO_REF);
+            return mutants::range::PushRangePlan::last(MUTANTS_DEFAULT_PUSH_TO_REF);
         }
 
         let range_mode = required_value(
@@ -2675,7 +2665,7 @@ impl MutantsPushOptions
                 )?;
                 let from =
                     required_value(self.from, "mutants push range mode requires --from REF")?;
-                PushRangePlan::range(&from, &to)
+                mutants::range::PushRangePlan::range(&from, &to)
             },
             | MutantsPushRangeMode::Full => {
                 reject_present(
@@ -2683,7 +2673,7 @@ impl MutantsPushOptions
                     "mutants push --range-mode full rejects --from",
                 )?;
                 let root = required_value(self.root, "mutants push full mode requires --root REF")?;
-                PushRangePlan::full(&root, &to)
+                mutants::range::PushRangePlan::full(&root, &to)
             },
             | MutantsPushRangeMode::Last => {
                 reject_present(
@@ -2694,7 +2684,7 @@ impl MutantsPushOptions
                     self.root.as_ref(),
                     "mutants push --range-mode last rejects --root",
                 )?;
-                PushRangePlan::last(&to)
+                mutants::range::PushRangePlan::last(&to)
             },
         }
     }
@@ -2728,6 +2718,8 @@ mod tests
     use core::error::Error;
     use core::sync::atomic::AtomicU64;
     use core::sync::atomic::Ordering;
+
+    use gandr_workflow_gates::semantic_value;
 
     use super::*;
 
@@ -3143,11 +3135,7 @@ mod tests
             | (ExpectedCommand::RumdlFmt, Command::Rumdl { mode, paths, cwd }) => {
                 assert_eq!(
                     "fmt",
-                    gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::docs::commands::AsStrText<'_>,
-                        _,
-                    >(mode.as_str())
-                    .as_ref()
+                    semantic_value::<docs::commands::AsStrText<'_>, _>(mode.as_str()).as_ref()
                 );
                 assert_eq!(vec![PathBuf::from("a.md"), PathBuf::from("b.md")], paths);
                 assert_eq!(None, cwd);
@@ -3155,11 +3143,7 @@ mod tests
             | (ExpectedCommand::RumdlCheck, Command::Rumdl { mode, paths, cwd }) => {
                 assert_eq!(
                     "check",
-                    gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::docs::commands::AsStrText<'_>,
-                        _,
-                    >(mode.as_str())
-                    .as_ref()
+                    semantic_value::<docs::commands::AsStrText<'_>, _>(mode.as_str()).as_ref()
                 );
                 assert_eq!(vec![PathBuf::from("README.md")], paths);
                 assert_eq!(Some(PathBuf::from("docs")), cwd);
@@ -3222,18 +3206,10 @@ mod tests
                 assert_eq!(github_output, PathBuf::from("out.env"));
                 assert_eq!(
                     "feature",
-                    gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>,
-                        _,
-                    >(head.as_str())
-                    .as_ref()
+                    semantic_value::<maintenance::AsStrText<'_>, _>(head.as_str()).as_ref()
                 );
                 assert!(explicit_from.as_ref().is_some_and(|value| {
-                    gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>,
-                        _,
-                    >(value.as_str())
-                    .as_ref()
+                    semantic_value::<maintenance::AsStrText<'_>, _>(value.as_str()).as_ref()
                         == "main"
                 }));
                 assert_eq!(Some(PathBuf::from("watermark.json")), watermark);
@@ -3250,11 +3226,7 @@ mod tests
                 assert_eq!(github_output, PathBuf::from("out.env"));
                 assert_eq!(
                     "HEAD",
-                    gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>,
-                        _,
-                    >(head.as_str())
-                    .as_ref()
+                    semantic_value::<maintenance::AsStrText<'_>, _>(head.as_str()).as_ref()
                 );
                 assert_eq!(None, explicit_from);
                 assert_eq!(None, watermark);
@@ -3266,11 +3238,7 @@ mod tests
                 assert_eq!(watermark, PathBuf::from("watermark.json"));
                 assert_eq!(
                     "feature",
-                    gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>,
-                        _,
-                    >(to.as_str())
-                    .as_ref()
+                    semantic_value::<maintenance::AsStrText<'_>, _>(to.as_str()).as_ref()
                 );
             },
             | (
@@ -3280,17 +3248,13 @@ mod tests
                 assert_eq!(watermark, PathBuf::from("watermark.json"));
                 assert_eq!(
                     "HEAD",
-                    gandr_workflow_gates::semantic_value::<
-                        gandr_workflow_gates::maintenance::AsStrText<'_>,
-                        _,
-                    >(to.as_str())
-                    .as_ref()
+                    semantic_value::<maintenance::AsStrText<'_>, _>(to.as_str()).as_ref()
                 );
             },
             | (
                 ExpectedCommand::MutantsSnapshot,
                 Command::Mutants {
-                    command: MutantsCommand::Snapshot,
+                    command: mutants::MutantsCommand::Snapshot,
                     options,
                 },
             ) => {
@@ -3299,7 +3263,7 @@ mod tests
             | (
                 ExpectedCommand::MutantsMergeExplicit,
                 Command::Mutants {
-                    command: MutantsCommand::Merge,
+                    command: mutants::MutantsCommand::Merge,
                     options,
                 },
             ) => {
@@ -3313,8 +3277,8 @@ mod tests
                 ExpectedCommand::MutantsPushDefault,
                 Command::Mutants {
                     command:
-                        MutantsCommand::Push {
-                            range: PushRangePlan::Last { to },
+                        mutants::MutantsCommand::Push {
+                            range: mutants::range::PushRangePlan::Last { to },
                         },
                     options,
                 },
@@ -3326,8 +3290,8 @@ mod tests
                 ExpectedCommand::MutantsPushRange,
                 Command::Mutants {
                     command:
-                        MutantsCommand::Push {
-                            range: PushRangePlan::Range { from, to },
+                        mutants::MutantsCommand::Push {
+                            range: mutants::range::PushRangePlan::Range { from, to },
                         },
                     options,
                 },
@@ -3340,8 +3304,8 @@ mod tests
                 ExpectedCommand::MutantsPushFull,
                 Command::Mutants {
                     command:
-                        MutantsCommand::Push {
-                            range: PushRangePlan::Full { root, to },
+                        mutants::MutantsCommand::Push {
+                            range: mutants::range::PushRangePlan::Full { root, to },
                         },
                     options,
                 },
@@ -3353,7 +3317,7 @@ mod tests
             | (
                 ExpectedCommand::MutantsScheduled,
                 Command::Mutants {
-                    command: MutantsCommand::Scheduled { from_ref, to_ref },
+                    command: mutants::MutantsCommand::Scheduled { from_ref, to_ref },
                     options,
                 },
             ) => {
@@ -3364,7 +3328,7 @@ mod tests
             | (
                 ExpectedCommand::MutantsGuest,
                 Command::Mutants {
-                    command: MutantsCommand::Guest { package, diff },
+                    command: mutants::MutantsCommand::Guest { package, diff },
                     options,
                 },
             ) => {
@@ -3375,7 +3339,7 @@ mod tests
             | (
                 ExpectedCommand::MutantsClean,
                 Command::Mutants {
-                    command: MutantsCommand::Clean,
+                    command: mutants::MutantsCommand::Clean,
                     options,
                 },
             ) => {
@@ -3388,7 +3352,7 @@ mod tests
             | (
                 ExpectedCommand::MutantsSweep,
                 Command::Mutants {
-                    command: MutantsCommand::Sweep,
+                    command: mutants::MutantsCommand::Sweep,
                     options,
                 },
             ) => {
@@ -3420,7 +3384,7 @@ mod tests
     /// Assert that generated mutants defaults point at cwd, cache, and owned
     /// temp paths.
     fn assert_default_mutants_options<'semantic, Mode>(
-        options: &MutantsOptions,
+        options: &mutants::MutantsOptions,
         mode: Mode,
     ) -> TestResult
     where
@@ -3429,9 +3393,11 @@ mod tests
         let mode = mode.into().0;
         let current_dir = gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?;
         assert_eq!(options.workspace_root, current_dir);
-        assert!(options.cache_image.ends_with(std::path::PathBuf::from(
-            ".microsandbox/gandr-mutants-cache.btrfs"
-        )));
+        assert!(
+            options
+                .cache_image
+                .ends_with(PathBuf::from(".microsandbox/gandr-mutants-cache.btrfs"))
+        );
         assert_mutants_temp_path(&options.source_archive, mode, "source.tar")?;
         assert_mutants_temp_path(&options.diff_file, mode, "diff.patch")?;
         assert_mutants_temp_path(&options.working_report, mode, "report")?;
@@ -3985,11 +3951,16 @@ mod tests
         #[cfg(unix)]
         {
             let exited =
-                <ExitStatus as std::os::unix::process::ExitStatusExt>::from_raw(7_i32 << 8);
+                <std::process::ExitStatus as std::os::unix::process::ExitStatusExt>::from_raw(
+                    7_i32 << 8,
+                );
             assert_eq!("exit status 7", status_detail(exited));
             let _exit_code = exit_code_from_status(exited);
 
-            let signaled = <ExitStatus as std::os::unix::process::ExitStatusExt>::from_raw(9_i32);
+            let signaled =
+                <std::process::ExitStatus as std::os::unix::process::ExitStatusExt>::from_raw(
+                    9_i32,
+                );
             assert_eq!("termination without exit code", status_detail(signaled));
             let _signal_code = exit_code_from_status(signaled);
         }
@@ -4045,7 +4016,9 @@ mod tests
         #[cfg(unix)]
         {
             let _external_code = GateOutcome::ExternalStatus(
-                <ExitStatus as std::os::unix::process::ExitStatusExt>::from_raw(3_i32 << 8),
+                <std::process::ExitStatus as std::os::unix::process::ExitStatusExt>::from_raw(
+                    3_i32 << 8,
+                ),
             )
             .into_exit_code();
         }
@@ -4089,7 +4062,7 @@ mod tests
         {
             let name = name.into().0;
             let suffix = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
-            let temp_root = env::temp_dir().join(format!(
+            let temp_root = std::env::temp_dir().join(format!(
                 "gandr-workflow-gates-main-{name}-{}-{suffix}",
                 std::process::id()
             ));

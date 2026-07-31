@@ -17,9 +17,6 @@ use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::ExitStatus;
-
-use serde_json::Value;
 
 use crate::GateError;
 use crate::support;
@@ -239,7 +236,7 @@ pub enum RumdlOutcome
     RumdlStatus
     {
         /// Exit status returned by rumdl.
-        status: ExitStatus,
+        status: std::process::ExitStatus,
     },
 }
 
@@ -418,15 +415,15 @@ fn typst_probe_args() -> Vec<OsString>
 
 /// Return a JSON object field.
 fn json_field<'semantic, 'json, Field>(
-    value: &'json Value,
+    value: &'json serde_json::Value,
     field: Field,
-) -> Result<&'json Value, GateError>
+) -> Result<&'json serde_json::Value, GateError>
 where
     Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
     match *value {
-        | Value::Object(ref object) => object
+        | serde_json::Value::Object(ref object) => object
             .get(field)
             .ok_or_else(|| GateError::operational(format!("page-balance probe missing `{field}`"))),
         | _ => Err(GateError::operational(
@@ -437,21 +434,21 @@ where
 
 /// Return a JSON array.
 fn json_array<'semantic, 'json, Detail>(
-    value: &'json Value,
+    value: &'json serde_json::Value,
     detail: Detail,
-) -> Result<&'json Vec<Value>, GateError>
+) -> Result<&'json Vec<serde_json::Value>, GateError>
 where
     Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     match *value {
-        | Value::Array(ref rows) => Ok(rows),
+        | serde_json::Value::Array(ref rows) => Ok(rows),
         | _ => Err(GateError::operational(detail)),
     }
 }
 
 /// Parse one page-balance probe row.
-fn page_probe(value: &Value) -> Result<PageProbe, GateError>
+fn page_probe(value: &serde_json::Value) -> Result<PageProbe, GateError>
 {
     let kind = json_field(value, "kind")
         .and_then(|field| json_string(field, "page-balance probe `kind` must be a string"))?;
@@ -470,7 +467,7 @@ fn page_probe(value: &Value) -> Result<PageProbe, GateError>
 
 /// Return a JSON string.
 fn json_string<'semantic, 'json, Detail>(
-    value: &'json Value,
+    value: &'json serde_json::Value,
     detail: Detail,
 ) -> Result<JsonStringText<'json>, GateError>
 where
@@ -478,14 +475,14 @@ where
 {
     let detail = detail.into().0;
     match *value {
-        | Value::String(ref text) => Ok(JsonStringText(text)),
+        | serde_json::Value::String(ref text) => Ok(JsonStringText(text)),
         | _ => Err(GateError::operational(detail)),
     }
 }
 
 /// Return a JSON integer.
 fn json_i64<'semantic, Detail>(
-    value: &Value,
+    value: &serde_json::Value,
     detail: Detail,
 ) -> Result<impl Into<JsonI64Seconds>, GateError>
 where
@@ -497,7 +494,7 @@ where
 
 /// Return a JSON number as `f64`.
 fn json_f64<'semantic, Detail>(
-    value: &Value,
+    value: &serde_json::Value,
     detail: Detail,
 ) -> Result<impl Into<JsonF64Millimeters>, GateError>
 where
@@ -547,10 +544,11 @@ where
     Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
-    let root: Value = serde_json::from_str(source).map_err(|source| GateError::Json {
-        source_name: String::from("page-balance typst eval"),
-        source,
-    })?;
+    let root: serde_json::Value =
+        serde_json::from_str(source).map_err(|source| GateError::Json {
+            source_name: String::from("page-balance typst eval"),
+            source,
+        })?;
     let value = json_field(&root, "value")?;
     let rows = json_array(value, "page-balance probe `value` must be an array")?;
     let mut probes = Vec::new();
@@ -732,8 +730,7 @@ mod tests
     {
         let root = fixture("conflict")?;
         let dirty = PathBuf::from("dirty.md");
-        crate::support::HOST_FILESYSTEM
-            .write(root.join(&dirty), "# Dirty\n<<<<<<< HEAD\nbody\n")?;
+        support::HOST_FILESYSTEM.write(root.join(&dirty), "# Dirty\n<<<<<<< HEAD\nbody\n")?;
         let paths = vec![dirty];
 
         let error = rumdl_command_plan(RumdlMode::Fmt, &paths, Some(&root))
@@ -766,8 +763,8 @@ mod tests
         let root = fixture("clean-order")?;
         let first = PathBuf::from("b.md");
         let second = PathBuf::from("a.md");
-        crate::support::HOST_FILESYSTEM.write(root.join(&first), "# B\n")?;
-        crate::support::HOST_FILESYSTEM.write(root.join(&second), "# A\n")?;
+        support::HOST_FILESYSTEM.write(root.join(&first), "# B\n")?;
+        support::HOST_FILESYSTEM.write(root.join(&second), "# A\n")?;
         let paths = vec![first.clone(), second.clone()];
 
         let mode = RumdlMode::parse("check")?;
@@ -795,8 +792,8 @@ mod tests
             "gandr-workflow-gates-docs-commands-{}-{name}",
             std::process::id()
         ));
-        crate::support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         Ok(root)
     }
 
@@ -991,7 +988,7 @@ mod tests
     {
         let root = fixture("rumdl-program")?;
         let clean = PathBuf::from("clean.md");
-        crate::support::HOST_FILESYSTEM.write(root.join(&clean), "# Clean\n")?;
+        support::HOST_FILESYSTEM.write(root.join(&clean), "# Clean\n")?;
         let rumdl = executable_script(&root, "rumdl-status", "#!/bin/sh\nexit 7\n")?;
         let paths = vec![clean];
 
@@ -1019,11 +1016,11 @@ mod tests
         let source = source.into().0;
         let name = name.into().0;
         let script_path = root.join(name);
-        crate::support::HOST_FILESYSTEM.write(&script_path, source)?;
-        let metadata = crate::support::HOST_FILESYSTEM.metadata(&script_path)?;
+        support::HOST_FILESYSTEM.write(&script_path, source)?;
+        let metadata = support::HOST_FILESYSTEM.metadata(&script_path)?;
         let mut permissions = metadata.permissions();
         std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, EXECUTABLE_MODE);
-        crate::support::HOST_FILESYSTEM.set_permissions(&script_path, permissions)?;
+        support::HOST_FILESYSTEM.set_permissions(&script_path, permissions)?;
         Ok(script_path)
     }
 }

@@ -964,11 +964,15 @@ impl fmt::Display for CoverageFailure
 #[cfg(test)]
 mod tests
 {
+    use core::fmt;
+    use std::path::Path;
+
     use proptest::prelude::*;
 
     use super::Percent;
     use super::PercentParseError;
     use super::ProductionFile;
+    use crate::GateError;
     crate::semantic_copy!(pub struct PercentTextHundredths(u64));
 
     /// Percent floors down and displays with stable precision.
@@ -1172,12 +1176,10 @@ mod tests
     #[test]
     fn summary_paths_normalize_canonically_and_filter_nonproduction()
     {
-        let relative = ProductionFile::from_summary_filename(
-            std::path::Path::new("."),
-            "./crates/demo/src\\lib.rs",
-        )
-        .unwrap()
-        .unwrap();
+        let relative =
+            ProductionFile::from_summary_filename(Path::new("."), "./crates/demo/src\\lib.rs")
+                .unwrap()
+                .unwrap();
         assert_eq!("crates/demo/src/lib.rs", relative.as_str().into().0);
 
         let absolute_text = crate::support::HOST_FILESYSTEM
@@ -1186,44 +1188,34 @@ mod tests
             .join("crates/demo/src/lib.rs")
             .to_string_lossy()
             .into_owned();
-        let absolute =
-            ProductionFile::from_summary_filename(std::path::Path::new("."), &absolute_text)
-                .unwrap()
-                .unwrap();
+        let absolute = ProductionFile::from_summary_filename(Path::new("."), &absolute_text)
+            .unwrap()
+            .unwrap();
         assert_eq!("crates/demo/src/lib.rs", absolute.as_str().into().0);
 
         assert!(
-            ProductionFile::from_summary_filename(
-                std::path::Path::new("."),
-                "crates/demo/tests/helper.rs",
-            )
-            .unwrap()
-            .is_none(),
+            ProductionFile::from_summary_filename(Path::new("."), "crates/demo/tests/helper.rs",)
+                .unwrap()
+                .is_none(),
             "crate-root tests should be filtered out of production coverage",
         );
         assert!(
-            ProductionFile::from_summary_filename(std::path::Path::new("."), "Cargo.toml")
+            ProductionFile::from_summary_filename(Path::new("."), "Cargo.toml")
                 .unwrap()
                 .is_none(),
             "non-Rust paths should be filtered out of production coverage",
         );
         assert_error_contains(
-            ProductionFile::from_summary_filename(
-                std::path::Path::new("."),
-                "../crates/demo/src/lib.rs",
-            ),
+            ProductionFile::from_summary_filename(Path::new("."), "../crates/demo/src/lib.rs"),
+            "coverage filename escapes repository root",
+        );
+        assert_error_contains(
+            ProductionFile::from_summary_filename(Path::new("/"), "/../crates/demo/src/lib.rs"),
             "coverage filename escapes repository root",
         );
         assert_error_contains(
             ProductionFile::from_summary_filename(
-                std::path::Path::new("/"),
-                "/../crates/demo/src/lib.rs",
-            ),
-            "coverage filename escapes repository root",
-        );
-        assert_error_contains(
-            ProductionFile::from_summary_filename(
-                std::path::Path::new("../../../../../../../../../../../../.."),
+                Path::new("../../../../../../../../../../../../.."),
                 "/tmp/outside.rs",
             ),
             "coverage filename escapes repository root",
@@ -1244,8 +1236,7 @@ mod tests
             super::normalize_absolute_slash("relative/path.rs"),
             "coverage filename is outside repository root",
         );
-        let normalized =
-            super::normalize_components(std::path::Path::new("/tmp/./coverage/")).unwrap();
+        let normalized = super::normalize_components(Path::new("/tmp/./coverage/")).unwrap();
         assert!(
             normalized.ends_with("/tmp/coverage"),
             "component normalization should remove current-dir and trailing separators",
@@ -1255,10 +1246,10 @@ mod tests
     /// Assert that a typed model constructor fails with a stable diagnostic
     /// fragment.
     fn assert_error_contains<'semantic, T, E>(
-        result: Result<T, crate::GateError>,
+        result: Result<T, GateError>,
         expected: E,
     ) where
-        T: core::fmt::Debug,
+        T: fmt::Debug,
         E: Into<super::ExpectedText<'semantic>>,
     {
         let expected = expected.into().0;

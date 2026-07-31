@@ -7,6 +7,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::GateError;
+use crate::support;
 
 crate::semantic_copy!(pub struct MovedPreviousFlag(bool));
 crate::semantic_copy!(pub struct FinalFailedFlag(bool));
@@ -143,7 +144,7 @@ impl ReportFileSystem for StdReportFileSystem
         path: &Path,
     ) -> impl Into<ExistsFlag>
     {
-        match crate::support::HOST_FILESYSTEM.try_exists(path) {
+        match support::HOST_FILESYSTEM.try_exists(path) {
             | Ok(exists) => return bool::from(exists),
             | Err(_source) => return false,
         }
@@ -166,7 +167,7 @@ impl ReportFileSystem for StdReportFileSystem
         destination: &Path,
     ) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.rename(source, destination)
+        support::HOST_FILESYSTEM.rename(source, destination)
     }
 
     #[inline]
@@ -175,7 +176,7 @@ impl ReportFileSystem for StdReportFileSystem
         path: &Path,
     ) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.remove_dir_all(path)
+        support::HOST_FILESYSTEM.remove_dir_all(path)
     }
 }
 
@@ -409,7 +410,7 @@ fn copy_report_dir(
     destination: &Path,
 ) -> Result<(), GateError>
 {
-    crate::support::HOST_FILESYSTEM.create_dir_all(destination)?;
+    support::HOST_FILESYSTEM.create_dir_all(destination)?;
 
     let mut pending = Vec::new();
     pending.push((source.to_path_buf(), destination.to_path_buf()));
@@ -431,7 +432,7 @@ fn copy_report_dir(
             })?;
             let file_type = metadata.file_type();
             if file_type.is_dir() {
-                crate::support::HOST_FILESYSTEM.create_dir_all(&entry_destination)?;
+                support::HOST_FILESYSTEM.create_dir_all(&entry_destination)?;
                 pending.push((entry_source, entry_destination));
             }
             else if file_type.is_symlink() {
@@ -441,7 +442,7 @@ fn copy_report_dir(
                 )));
             }
             else {
-                crate::support::HOST_FILESYSTEM.copy(entry_source, entry_destination)?;
+                support::HOST_FILESYSTEM.copy(entry_source, entry_destination)?;
             }
         }
     }
@@ -469,6 +470,7 @@ mod tests
     use super::StdReportFileSystem;
     use super::publish_report_with_filesystem;
     use crate::GateError;
+    use crate::support;
 
     /// Result type used by publication unit tests.
     type TestResult = Result<(), Box<dyn Error>>;
@@ -696,7 +698,7 @@ mod tests
     /// Read a marker file from a report directory.
     fn read_marker(report_dir: &Path) -> Result<String, GateError>
     {
-        crate::support::HOST_FILESYSTEM.read_to_string(report_dir.join("marker"))
+        support::HOST_FILESYSTEM.read_to_string(report_dir.join("marker"))
     }
 
     /// Successful publication moves the staged report into `mutants.out`.
@@ -705,7 +707,7 @@ mod tests
     {
         let root = unique_root("success")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(paths.current(), "old report")?;
@@ -737,7 +739,7 @@ mod tests
         if !path_exists(root).map(|value| value.into().0)? {
             return Ok(());
         }
-        crate::support::HOST_FILESYSTEM.remove_dir_all(root)
+        support::HOST_FILESYSTEM.remove_dir_all(root)
     }
 
     /// A failed final rename restores the prior report and leaves the new
@@ -747,7 +749,7 @@ mod tests
     {
         let root = unique_root("rollback")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(paths.current(), "old report")?;
@@ -783,9 +785,7 @@ mod tests
     /// Return whether a path exists.
     fn path_exists(path: &Path) -> Result<impl Into<PathExistsFlag>, GateError>
     {
-        crate::support::HOST_FILESYSTEM
-            .try_exists(path)
-            .map(bool::from)
+        support::HOST_FILESYSTEM.try_exists(path).map(bool::from)
     }
 
     /// An orphan previous report is restored before normal publication starts.
@@ -794,7 +794,7 @@ mod tests
     {
         let root = unique_root("orphan-previous")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(paths.previous(), "old report")?;
@@ -822,7 +822,7 @@ mod tests
     {
         let root = unique_root("staged-reject")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(paths.current(), "old report")?;
@@ -852,7 +852,7 @@ mod tests
     {
         let root = unique_root("ambiguous-previous")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(paths.current(), "old report")?;
@@ -884,7 +884,7 @@ mod tests
     {
         let root = unique_root("nested-copy")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(&incoming.join("nested"), "nested report")?;
@@ -907,7 +907,7 @@ mod tests
     {
         let root = unique_root("cleanup-failure")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(paths.current(), "old report")?;
@@ -936,7 +936,7 @@ mod tests
     {
         let root = unique_root("rollback-failure")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(paths.current(), "old report")?;
@@ -966,10 +966,10 @@ mod tests
     {
         let root = unique_root("symlink-reject")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let incoming = root.join("incoming-report");
-        crate::support::HOST_FILESYSTEM.create_dir_all(&incoming)?;
-        crate::support::HOST_FILESYSTEM.symlink("target", incoming.join("link"))?;
+        support::HOST_FILESYSTEM.create_dir_all(&incoming)?;
+        support::HOST_FILESYSTEM.symlink("target", incoming.join("link"))?;
 
         let mut filesystem = StdReportFileSystem;
         let failure = publish_report_with_filesystem(&mut filesystem, &incoming, &root)
@@ -1006,7 +1006,7 @@ mod tests
     {
         let root = unique_root("final-no-current")?;
         cleanup_root(&root)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+        support::HOST_FILESYSTEM.create_dir_all(&root)?;
         let paths = ReportPaths::new(&root);
         let incoming = root.join("incoming-report");
         write_marker(&incoming, "new report")?;
@@ -1041,7 +1041,7 @@ mod tests
         Value: Into<super::ValueText<'semantic>>,
     {
         let value = value.into().0;
-        crate::support::HOST_FILESYSTEM.create_dir_all(report_dir)?;
-        crate::support::HOST_FILESYSTEM.write(report_dir.join("marker"), value)
+        support::HOST_FILESYSTEM.create_dir_all(report_dir)?;
+        support::HOST_FILESYSTEM.write(report_dir.join("marker"), value)
     }
 }

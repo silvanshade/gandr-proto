@@ -22,9 +22,6 @@ use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::Path;
 
-use serde_json::Map;
-use serde_json::Value;
-
 use crate::Finding;
 use crate::GateError;
 use crate::GateResult;
@@ -172,10 +169,10 @@ pub fn check_default_dependency_graph(workspace_root: &Path) -> GateResult
     let host_triple = current_host_triple()?;
     let args = cargo_metadata_args(&host_triple);
     let output = support::run_output(OsStr::new("cargo"), &args, Some(workspace_root), false)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0 {
+    if !crate::semantic_value::<support::SuccessFlag, _>(output.success()).0 {
         return Err(operational(command_failure_detail(
             CARGO_METADATA_SOURCE,
-            crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
+            crate::semantic_value::<support::OptionalCodeCode, _>(output.code()).0,
         )));
     }
 
@@ -252,15 +249,14 @@ pub fn check_iu_pin(
     let status_args = git_submodule_status_args(iu_path);
     let status_output =
         support::run_output(OsStr::new("git"), &status_args, Some(workspace_root), true)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag, _>(status_output.success()).0 {
+    if !crate::semantic_value::<support::SuccessFlag, _>(status_output.success()).0 {
         return Ok(vec![iu_finding(
             IU_UNINITIALIZED_KIND,
             &iu_label,
             "submodule status",
             command_failure_detail(
                 "git submodule status",
-                crate::semantic_value::<crate::support::OptionalCodeCode, _>(status_output.code())
-                    .0,
+                crate::semantic_value::<support::OptionalCodeCode, _>(status_output.code()).0,
             ),
         )]);
     }
@@ -273,8 +269,7 @@ pub fn check_iu_pin(
             support::run_output(OsStr::new("git"), &head_args, Some(workspace_root), true)?;
         let head_stdout = head_output.stdout_lossy();
         let head_probe = ProbeOutput {
-            success: crate::semantic_value::<crate::support::SuccessFlag, _>(head_output.success())
-                .0,
+            success: crate::semantic_value::<support::SuccessFlag, _>(head_output.success()).0,
             stdout: head_stdout.as_ref(),
         };
         iu_pin_findings_from_status(&iu_label, &status, Some(head_probe))
@@ -289,10 +284,10 @@ pub fn check_iu_pin(
     let dirty_args = git_status_porcelain_args(iu_path);
     let dirty_output =
         support::run_output(OsStr::new("git"), &dirty_args, Some(workspace_root), true)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag, _>(dirty_output.success()).0 {
+    if !crate::semantic_value::<support::SuccessFlag, _>(dirty_output.success()).0 {
         return Err(operational(command_failure_detail(
             "git status inside IU submodule",
-            crate::semantic_value::<crate::support::OptionalCodeCode, _>(dirty_output.code()).0,
+            crate::semantic_value::<support::OptionalCodeCode, _>(dirty_output.code()).0,
         )));
     }
 
@@ -316,10 +311,10 @@ fn current_host_triple() -> Result<String, GateError>
 {
     let args = [OsString::from("-vV")];
     let output = support::run_output(OsStr::new("rustc"), &args, None, false)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0 {
+    if !crate::semantic_value::<support::SuccessFlag, _>(output.success()).0 {
         return Err(operational(command_failure_detail(
             RUSTC_HOST_SOURCE,
-            crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
+            crate::semantic_value::<support::OptionalCodeCode, _>(output.code()).0,
         )));
     }
     let stdout = output.stdout_lossy();
@@ -384,9 +379,11 @@ where
     Metadata: Into<MetadataJsonText<'semantic>>,
 {
     let metadata_json = metadata_json.into().0;
-    let value = serde_json::from_str::<Value>(metadata_json).map_err(|source| GateError::Json {
-        source_name: String::from(CARGO_METADATA_SOURCE),
-        source,
+    let value = serde_json::from_str::<serde_json::Value>(metadata_json).map_err(|source| {
+        GateError::Json {
+            source_name: String::from(CARGO_METADATA_SOURCE),
+            source,
+        }
     })?;
     let graph = metadata_graph(&value)?;
     let reachable_names = reachable_default_package_names(&graph)?;
@@ -419,7 +416,7 @@ where
 ///   represented by the malformed-metadata branch; the missing-name fixture
 ///   kills the field-shape decision used by all required fields.
 /// - witness: `project::tests::metadata_missing_package_name_is_malformed`
-fn metadata_graph(value: &Value) -> Result<MetadataGraph<'_>, GateError>
+fn metadata_graph(value: &serde_json::Value) -> Result<MetadataGraph<'_>, GateError>
 {
     let object = json_object(value, "top-level metadata value")?;
     let package_items = json_array_field(object, "packages")?;
@@ -500,7 +497,7 @@ fn metadata_graph(value: &Value) -> Result<MetadataGraph<'_>, GateError>
 ///   and `\"build\"` edges, killing the retained inclusion boundary.
 /// - witness: `project::tests::forbidden_transitive_package_is_reported`
 fn dep_kind_reaches_default_graph(
-    dep_kind: &Value
+    dep_kind: &serde_json::Value
 ) -> Result<DepKindReachesDefaultGraphFlag, GateError>
 {
     let object = json_object(dep_kind, "resolve.nodes[].deps[].dep_kinds[]")?;
@@ -509,11 +506,11 @@ fn dep_kind_reaches_default_graph(
         return Err(malformed_metadata("dep_kinds[] missing `kind`"));
     };
     match *kind {
-        | Value::Null => Ok(DepKindReachesDefaultGraphFlag(true)),
-        | Value::String(ref name) if name == "normal" || name == "build" => {
+        | serde_json::Value::Null => Ok(DepKindReachesDefaultGraphFlag(true)),
+        | serde_json::Value::String(ref name) if name == "normal" || name == "build" => {
             Ok(DepKindReachesDefaultGraphFlag(true))
         },
-        | Value::String(_) => Ok(DepKindReachesDefaultGraphFlag(false)),
+        | serde_json::Value::String(_) => Ok(DepKindReachesDefaultGraphFlag(false)),
         | _ => Err(malformed_metadata(
             "dep_kinds[].kind must be null or a string",
         )),
@@ -852,9 +849,9 @@ where
 
 /// Return `value` as a JSON object or a malformed-metadata error.
 fn json_object<'semantic, 'value, Context>(
-    value: &'value Value,
+    value: &'value serde_json::Value,
     context: Context,
-) -> Result<&'value Map<String, Value>, GateError>
+) -> Result<&'value serde_json::Map<String, serde_json::Value>, GateError>
 where
     Context: Into<ContextText<'semantic>>,
 {
@@ -866,32 +863,32 @@ where
 
 /// Return one object field as a JSON array.
 fn json_array_field<'semantic, 'value, Field>(
-    object: &'value Map<String, Value>,
+    object: &'value serde_json::Map<String, serde_json::Value>,
     field: Field,
-) -> Result<&'value [Value], GateError>
+) -> Result<&'value [serde_json::Value], GateError>
 where
     Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
     object
         .get(field)
-        .and_then(Value::as_array)
+        .and_then(serde_json::Value::as_array)
         .map(Vec::as_slice)
         .ok_or_else(|| malformed_metadata(format!("missing array field `{field}`")))
 }
 
 /// Return one object field as a JSON object.
 fn json_object_field<'semantic, 'value, Field>(
-    object: &'value Map<String, Value>,
+    object: &'value serde_json::Map<String, serde_json::Value>,
     field: Field,
-) -> Result<&'value Map<String, Value>, GateError>
+) -> Result<&'value serde_json::Map<String, serde_json::Value>, GateError>
 where
     Field: Into<FieldText<'semantic>>,
 {
     let field = field.into().0;
     object
         .get(field)
-        .and_then(Value::as_object)
+        .and_then(serde_json::Value::as_object)
         .ok_or_else(|| malformed_metadata(format!("missing object field `{field}`")))
 }
 
@@ -953,7 +950,7 @@ where
 
 /// Return one object field as a JSON string slice.
 fn json_string_field<'semantic, 'value, Field>(
-    object: &'value Map<String, Value>,
+    object: &'value serde_json::Map<String, serde_json::Value>,
     field: Field,
 ) -> Result<JsonFieldText<'value>, GateError>
 where
@@ -962,14 +959,14 @@ where
     let field = field.into().0;
     object
         .get(field)
-        .and_then(Value::as_str)
+        .and_then(serde_json::Value::as_str)
         .map(JsonFieldText)
         .ok_or_else(|| malformed_metadata(format!("missing string field `{field}`")))
 }
 
 /// Return whether any dependency kind reaches the default normal/build graph.
 fn dep_reaches_default_graph(
-    dep_kind_items: &[Value]
+    dep_kind_items: &[serde_json::Value]
 ) -> Result<DepReachesDefaultGraphFlag, GateError>
 {
     let mut reaches = false;
@@ -1550,15 +1547,15 @@ mod tests
         let fixture = ProjectFixture::new("iu-pin-clean-dirty")?;
         let upstream = fixture.path().join("upstream");
         let repo = fixture.path().join("repo");
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(&upstream)
             .map_err(|error| GateError::operational(error.to_string()))?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(&repo)
             .map_err(|error| GateError::operational(error.to_string()))?;
 
         git(&upstream, ["init"])?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .write(upstream.join("README.md"), "clean\n")
             .map_err(|error| GateError::operational(error.to_string()))?;
         git(&upstream, ["add", "README.md"])?;
@@ -1580,7 +1577,7 @@ mod tests
         let pin_findings = check_iu_pin(&repo, iu_path)?;
         assert!(pin_findings.is_empty());
 
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .write(repo.join(iu_path).join("README.md"), "dirty\n")
             .map_err(|error| GateError::operational(error.to_string()))?;
         let findings = check_iu_pin(&repo, iu_path)?;
@@ -1618,10 +1615,10 @@ mod tests
         let fixture = ProjectFixture::new("iu-pin-symlink")?;
         let repo = fixture.path().join("repo");
         let outside = fixture.path().join("outside");
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(&repo)
             .map_err(|error| GateError::operational(error.to_string()))?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(&outside)
             .map_err(|error| GateError::operational(error.to_string()))?;
         git(&repo, ["init"])?;
@@ -1631,10 +1628,10 @@ mod tests
         let parent = link
             .parent()
             .ok_or_else(|| GateError::operational("default IU path has no parent"))?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(parent)
             .map_err(|error| GateError::operational(error.to_string()))?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .symlink(&outside, &link)
             .map_err(|error| GateError::operational(error.to_string()))?;
 
@@ -1749,8 +1746,8 @@ mod tests
                 "gandr-workflow-gates-project-{}-{name}",
                 std::process::id()
             ));
-            crate::support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
-            crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+            support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
+            support::HOST_FILESYSTEM.create_dir_all(&root)?;
             Ok(Self { root })
         }
 
@@ -1765,7 +1762,7 @@ mod tests
     {
         fn drop(&mut self)
         {
-            drop(crate::support::HOST_FILESYSTEM.remove_dir_all(&self.root));
+            drop(support::HOST_FILESYSTEM.remove_dir_all(&self.root));
         }
     }
 

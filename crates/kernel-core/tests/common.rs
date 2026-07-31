@@ -12,8 +12,11 @@
 use gandr_kernel_core::BaseType;
 use gandr_kernel_core::CompTypeId;
 use gandr_kernel_core::ComputationId;
+use gandr_kernel_core::ConstantIndex;
+use gandr_kernel_core::DeBruijnIndex;
 use gandr_kernel_core::Declaration;
 use gandr_kernel_core::Environment;
+use gandr_kernel_core::FractionDigits;
 use gandr_kernel_core::LevelSignature;
 use gandr_kernel_core::Literal;
 use gandr_kernel_core::Side;
@@ -370,12 +373,12 @@ fn materialize_term<'spec>(
     'expand: loop {
         let mut produced: TermOut = match goal {
             | TermGoal::Value(spec) => match spec {
-                | &ValueSpec::Variable(ref index) => TermOut::Value(
-                    arena.value_variable(gandr_kernel_core::DeBruijnIndex::from(*index)),
-                ),
-                | &ValueSpec::Constant(ref index) => TermOut::Value(
-                    arena.value_constant(gandr_kernel_core::ConstantIndex::from(*index)),
-                ),
+                | &ValueSpec::Variable(ref index) => {
+                    TermOut::Value(arena.value_variable(DeBruijnIndex::from(*index)))
+                },
+                | &ValueSpec::Constant(ref index) => {
+                    TermOut::Value(arena.value_constant(ConstantIndex::from(*index)))
+                },
                 | &ValueSpec::Unit => TermOut::Value(arena.value_unit()),
                 | &ValueSpec::Literal(ref literal) => {
                     TermOut::Value(arena.value_literal(literal.clone()))
@@ -616,7 +619,7 @@ pub fn arb_literal() -> impl Strategy<Value = Literal>
                 sign,
                 Magnitude::from_decimal_text(alloc_format(MagnitudeSample(magnitude)))
                     .expect("decimal text is a canonical magnitude"),
-                gandr_kernel_core::FractionDigits::none(),
+                FractionDigits::none(),
             ))
         }),
     ]

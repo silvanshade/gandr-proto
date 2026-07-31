@@ -69,6 +69,7 @@ cargo dylint \
   --lib collapsible_unwrap \
   --lib const_path_join \
   --lib env_literal \
+  --lib inconsistent_qualification \
   --lib incorrect_matches_operation \
   --lib non_thread_safe_call_in_test \
   --lib question_mark_in_expression \
@@ -82,11 +83,6 @@ cargo dylint \
   --workspace \
   --all-targets \
   --features=full
-
-# Disabled 2026-07-30 pending remediation of ~1600 pre-existing findings
-# across the workspace (tracked in the dylint residual bead); see
-# docs/workflow/rust.md "Toolchain upgrades" residuals.
-# --lib inconsistent_qualification \
 
 # Disabled 2026-07-31: purposely ignored — the lint demands a single caller-before-callee function order, which conflicts with the deliberate top-down layout (public drivers before step helpers) and is unsatisfiable for shared test fixture helpers called in per-test orders. Not tracked as a residual; the inert cfg_attr allow sites remain from when the lint was active.
 # cargo dylint \

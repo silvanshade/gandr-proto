@@ -580,14 +580,14 @@ mod tests
     {
         let usage = GateError::usage("bad\nargument");
         assert_eq!("usage error: bad argument", usage.to_string());
-        assert!(core::error::Error::source(&usage).is_none());
+        assert!(Error::source(&usage).is_none());
 
         let io = GateError::Io {
             path: PathBuf::from("src\tlib.rs"),
             source: std::io::Error::other("disk\nfull"),
         };
         assert_eq!("io error: path=src lib.rs detail=disk full", io.to_string(),);
-        assert!(core::error::Error::source(&io).is_some());
+        assert!(Error::source(&io).is_some());
 
         let Err(rust_parse_source) = syn::parse_file("fn {")
         else {
@@ -605,7 +605,7 @@ mod tests
                 .starts_with("rust parse error: path=bad source.rs detail="),
             "rust parse display should carry the stable prefix and normalized path",
         );
-        assert!(core::error::Error::source(&rust_parse).is_some());
+        assert!(Error::source(&rust_parse).is_some());
 
         let Err(json_source) = serde_json::from_str::<serde_json::Value>("{")
         else {
@@ -622,11 +622,11 @@ mod tests
                 .starts_with("json error: source=fixture json detail="),
             "json display should carry the stable prefix and normalized source name",
         );
-        assert!(core::error::Error::source(&json).is_some());
+        assert!(Error::source(&json).is_some());
 
         let operational = GateError::operational("missing\ttool");
         assert_eq!("operational error: missing tool", operational.to_string());
-        assert!(core::error::Error::source(&operational).is_none());
+        assert!(Error::source(&operational).is_none());
         Ok(())
     }
 

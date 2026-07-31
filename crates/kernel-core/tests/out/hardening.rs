@@ -16,6 +16,7 @@ mod tests
 {
     use std::thread;
 
+    use gandr_kernel_core::CompTypeId;
     use gandr_kernel_core::ComputationId;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::KernelError;
@@ -111,7 +112,7 @@ mod tests
     fn deep_comp_type(
         arena: &mut TermArena,
         depth: FixtureDepth,
-    ) -> gandr_kernel_core::CompTypeId
+    ) -> CompTypeId
     {
         let unit = arena.value_type_unit();
         let mut comp_type = arena.comp_type_returner(unit);

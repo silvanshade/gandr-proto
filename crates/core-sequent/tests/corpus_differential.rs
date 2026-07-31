@@ -63,6 +63,7 @@
 mod tests
 {
     use std::fs;
+    use std::path::Path;
     use std::path::PathBuf;
 
     use gandr_core_checker::outcome::Eval;
@@ -234,14 +235,14 @@ mod tests
     }
 
     /// The sibling `.outcome` snapshot path for a `.sexp` fixture.
-    fn outcome_path(sexp: &std::path::Path) -> PathBuf
+    fn outcome_path(sexp: &Path) -> PathBuf
     {
         sexp.with_extension("outcome")
     }
 
     /// The lowercase BLAKE3 digest of a `.sexp` fixture's bytes, the snapshot's
     /// provenance anchor.
-    fn sexp_digest(sexp: &std::path::Path) -> String
+    fn sexp_digest(sexp: &Path) -> String
     {
         let bytes = fs::read(sexp)
             .unwrap_or_else(|error| panic!("cannot read `{}`: {error}", sexp.display()));

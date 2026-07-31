@@ -60,9 +60,9 @@ mod tests
     use gandr_core_checker::boundary::NameRef;
     use gandr_core_checker::boundary::OperationName;
     use gandr_core_checker::effect::EffectSig;
+    use gandr_core_checker::effect::host::HostHandler;
+    use gandr_core_checker::effect::host::HostReply;
     use gandr_core_checker::grade::Grade;
-    use gandr_core_checker::host::HostHandler;
-    use gandr_core_checker::host::HostReply;
     use gandr_core_checker::outcome::Blame;
     use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::prim::NativePrim;
@@ -73,6 +73,7 @@ mod tests
     use gandr_core_checker::syntax::WalkMotive;
     use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::DataId;
+    use gandr_core_checker::types::ValueType;
     use gandr_core_sequent::differential::agree;
     use gandr_core_sequent::differential::canonical;
     use gandr_core_sequent::machine;
@@ -150,9 +151,7 @@ mod tests
             );
             choices.push(
                 arb_value(scope, below)
-                    .prop_map(|value| {
-                        Value::annot(value, gandr_core_checker::types::ValueType::integer())
-                    })
+                    .prop_map(|value| Value::annot(value, ValueType::integer()))
                     .boxed(),
             );
         }
@@ -390,7 +389,7 @@ mod tests
     /// The single effect signature the generated effect programs perform and
     /// handle over (the operation types are inert to `run_comp`, which routes
     /// by operation name — ADR-33 D3).
-    fn eff_sig() -> gandr_core_checker::effect::EffectSig
+    fn eff_sig() -> EffectSig
     {
         use gandr_core_checker::effect::EffectOp;
         use gandr_core_checker::effect::EffectSig;
@@ -705,12 +704,7 @@ mod tests
     /// identity β-rule ignores it, so its shape is inert to both machines.
     fn walk_motive() -> WalkMotive
     {
-        WalkMotive::new(
-            "x",
-            "y",
-            "q",
-            CompType::returner(gandr_core_checker::types::ValueType::integer()),
-        )
+        WalkMotive::new("x", "y", "q", CompType::returner(ValueType::integer()))
     }
 
     /// Hand-built declared-data cases (ADR-80) pinning the case-over-tag
@@ -2308,7 +2302,7 @@ mod tests
     fn sig(
         name: EffectSignatureName<'_>,
         op: OperationName<'_>,
-    ) -> gandr_core_checker::effect::EffectSig
+    ) -> EffectSig
     {
         use gandr_core_checker::effect::EffectOp;
         use gandr_core_checker::effect::EffectSig;

@@ -52,16 +52,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command;
 
-use serde_json::Map;
-use serde_json::Value;
-use syn::Fields;
-use syn::ImplItem;
-use syn::Item;
-use syn::TraitItem;
-use syn::UseTree;
-use syn::Visibility;
 use syn::visit::Visit;
 
 use crate::Finding;
@@ -212,10 +203,11 @@ where
     J: Into<MetadataJsonText<'semantic>>,
 {
     let metadata_json = metadata_json.into().0;
-    let value: Value = serde_json::from_str(metadata_json).map_err(|error| GateError::Json {
-        source_name: String::from("cargo metadata"),
-        source: error,
-    })?;
+    let value: serde_json::Value =
+        serde_json::from_str(metadata_json).map_err(|error| GateError::Json {
+            source_name: String::from("cargo metadata"),
+            source: error,
+        })?;
     let metadata_object = value_object(&value, "metadata root")?;
 
     let packages = get_array_field(metadata_object, "packages", "metadata root")?;
@@ -236,7 +228,7 @@ where
 }
 
 /// Parse one package object from Cargo metadata.
-fn parse_metadata_package(package_value: &Value) -> Result<MetadataPackage, GateError>
+fn parse_metadata_package(package_value: &serde_json::Value) -> Result<MetadataPackage, GateError>
 {
     let object = value_object(package_value, "package")?;
     let id = get_string_field(object, "id", "package")?;
@@ -271,7 +263,9 @@ fn parse_metadata_package(package_value: &Value) -> Result<MetadataPackage, Gate
 }
 
 /// Parse one dependency object from Cargo metadata.
-fn parse_metadata_dependency(dependency_value: &Value) -> Result<MetadataDependency, GateError>
+fn parse_metadata_dependency(
+    dependency_value: &serde_json::Value
+) -> Result<MetadataDependency, GateError>
 {
     let object = value_object(dependency_value, "dependency")?;
     Ok(MetadataDependency {
@@ -281,10 +275,10 @@ fn parse_metadata_dependency(dependency_value: &Value) -> Result<MetadataDepende
 
 /// Read a required array field from a JSON object.
 fn get_array_field<'semantic, 'value, F, C>(
-    object: &'value Map<String, Value>,
+    object: &'value serde_json::Map<String, serde_json::Value>,
     field: F,
     context: C,
-) -> Result<&'value [Value], GateError>
+) -> Result<&'value [serde_json::Value], GateError>
 where
     F: Into<FieldText<'semantic>>,
     C: Into<ContextText<'semantic>>,
@@ -299,9 +293,9 @@ where
 
 /// Interpret a JSON value as an object.
 fn value_object<'semantic, 'value, C>(
-    value: &'value Value,
+    value: &'value serde_json::Value,
     context: C,
-) -> Result<&'value Map<String, Value>, GateError>
+) -> Result<&'value serde_json::Map<String, serde_json::Value>, GateError>
 where
     C: Into<ContextText<'semantic>>,
 {
@@ -313,7 +307,7 @@ where
 
 /// Read a required string field from a JSON object.
 fn get_string_field<'semantic, F, C>(
-    object: &Map<String, Value>,
+    object: &serde_json::Map<String, serde_json::Value>,
     field: F,
     context: C,
 ) -> Result<String, GateError>
@@ -330,7 +324,7 @@ where
 }
 
 /// Parse the library target source path from Cargo metadata targets.
-fn parse_library_target_path(targets: &[Value]) -> Result<Option<PathBuf>, GateError>
+fn parse_library_target_path(targets: &[serde_json::Value]) -> Result<Option<PathBuf>, GateError>
 {
     for target in targets {
         let object = value_object(target, "package target")?;
@@ -350,9 +344,9 @@ fn parse_library_target_path(targets: &[Value]) -> Result<Option<PathBuf>, GateE
 
 /// Interpret a JSON value as an array.
 fn value_array<'semantic, 'value, C>(
-    value: &'value Value,
+    value: &'value serde_json::Value,
     context: C,
-) -> Result<&'value [Value], GateError>
+) -> Result<&'value [serde_json::Value], GateError>
 where
     C: Into<ContextText<'semantic>>,
 {
@@ -365,7 +359,7 @@ where
 
 /// Interpret a JSON value as a string.
 fn value_string<'semantic, C>(
-    value: &Value,
+    value: &serde_json::Value,
     context: C,
 ) -> Result<String, GateError>
 where
@@ -579,7 +573,7 @@ fn inspect_module_item_tree<'context>(
 
         for item in step.items {
             match *item {
-                | Item::Mod(ref module) => {
+                | syn::Item::Mod(ref module) => {
                     let module_public = is_visible_api(&module.vis).into().0;
                     if let Some(content) = module.content.as_ref() {
                         if module_public {
@@ -605,7 +599,7 @@ fn inspect_module_item_tree<'context>(
                         });
                     }
                 },
-                | Item::Use(ref item_use) if is_visible_api(&item_use.vis).into().0 => {
+                | syn::Item::Use(ref item_use) if is_visible_api(&item_use.vis).into().0 => {
                     let roots = forbidden_roots_in_use_tree(&item_use.tree, None, &aliases);
                     emit_roots(
                         &roots,
@@ -617,7 +611,8 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::ExternCrate(ref item_extern) if is_visible_api(&item_extern.vis).into().0 =>
+                | syn::Item::ExternCrate(ref item_extern)
+                    if is_visible_api(&item_extern.vis).into().0 =>
                 {
                     let mut roots = BTreeSet::new();
                     if is_graph_stack_name(&item_extern.ident.to_string()).into().0 {
@@ -633,7 +628,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Fn(ref item_fn) if is_visible_api(&item_fn.vis).into().0 => {
+                | syn::Item::Fn(ref item_fn) if is_visible_api(&item_fn.vis).into().0 => {
                     let roots = roots_in_signature(&item_fn.sig, &aliases);
                     emit_roots(
                         &roots,
@@ -645,7 +640,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
+                | syn::Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_type.generics, |visitor| {
                         visitor.visit_generics(&item_type.generics);
@@ -661,7 +656,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Const(ref item_const) if is_visible_api(&item_const.vis).into().0 => {
+                | syn::Item::Const(ref item_const) if is_visible_api(&item_const.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_const.generics, |visitor| {
                         visitor.visit_generics(&item_const.generics);
@@ -677,7 +672,8 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Static(ref item_static) if is_visible_api(&item_static.vis).into().0 => {
+                | syn::Item::Static(ref item_static) if is_visible_api(&item_static.vis).into().0 =>
+                {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.visit_type(&item_static.ty);
                     emit_roots(
@@ -690,7 +686,8 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 => {
+                | syn::Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 =>
+                {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_struct.generics, |visitor| {
                         visitor.visit_generics(&item_struct.generics);
@@ -706,7 +703,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
+                | syn::Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_union.generics, |visitor| {
                         visitor.visit_generics(&item_union.generics);
@@ -724,7 +721,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
+                | syn::Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_enum.generics, |visitor| {
                         visitor.visit_generics(&item_enum.generics);
@@ -742,7 +739,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
+                | syn::Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
                     let mut visitor = GraphStackVisitor::new(&aliases);
                     visitor.with_type_generics(&item_trait.generics, |visitor| {
                         visitor.visit_generics(&item_trait.generics);
@@ -763,7 +760,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::TraitAlias(ref item_trait_alias)
+                | syn::Item::TraitAlias(ref item_trait_alias)
                     if is_visible_api(&item_trait_alias.vis).into().0 =>
                 {
                     let mut visitor = GraphStackVisitor::new(&aliases);
@@ -783,13 +780,13 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     );
                 },
-                | Item::ForeignMod(ref item_foreign) => {
+                | syn::Item::ForeignMod(ref item_foreign) => {
                     inspect_foreign_items(item_foreign, &aliases, &current, findings);
                 },
-                | Item::Impl(ref item_impl) => {
+                | syn::Item::Impl(ref item_impl) => {
                     inspect_impl_item(item_impl, &aliases, &public_types, &current, findings);
                 },
-                | Item::Macro(ref item_macro)
+                | syn::Item::Macro(ref item_macro)
                     if item_macro
                         .attrs
                         .iter()
@@ -803,7 +800,7 @@ fn inspect_module_item_tree<'context>(
                         PUBLIC_API_DETAIL,
                     ));
                 },
-                | Item::Verbatim(ref tokens) => {
+                | syn::Item::Verbatim(ref tokens) => {
                     if tokens.to_string().contains("pub") {
                         findings.push(finding(
                             "public-graph-boundary",
@@ -824,19 +821,19 @@ fn inspect_module_item_tree<'context>(
 
 /// Visit public trait associated signatures and bounds.
 fn inspect_trait_item(
-    trait_item: &TraitItem,
+    trait_item: &syn::TraitItem,
     visitor: &mut GraphStackVisitor<'_>,
 )
 {
     match *trait_item {
-        | TraitItem::Const(ref item_const) => {
+        | syn::TraitItem::Const(ref item_const) => {
             visitor.with_type_generics(&item_const.generics, |visitor| {
                 visitor.visit_generics(&item_const.generics);
                 visitor.visit_type(&item_const.ty);
             });
         },
-        | TraitItem::Fn(ref item_fn) => visitor.visit_signature(&item_fn.sig),
-        | TraitItem::Type(ref item_type) => {
+        | syn::TraitItem::Fn(ref item_fn) => visitor.visit_signature(&item_fn.sig),
+        | syn::TraitItem::Type(ref item_type) => {
             visitor.with_type_generics(&item_type.generics, |visitor| {
                 visitor.visit_generics(&item_type.generics);
                 for bound in &item_type.bounds {
@@ -847,15 +844,15 @@ fn inspect_trait_item(
                 }
             });
         },
-        | TraitItem::Macro(ref item_macro) => visitor.visit_trait_item_macro(item_macro),
-        | TraitItem::Verbatim(ref _tokens) => {},
+        | syn::TraitItem::Macro(ref item_macro) => visitor.visit_trait_item_macro(item_macro),
+        | syn::TraitItem::Verbatim(ref _tokens) => {},
         | _ => {},
     }
 }
 
 /// Visit public struct fields that are externally nameable.
 fn inspect_public_fields(
-    fields: &Fields,
+    fields: &syn::Fields,
     visitor: &mut GraphStackVisitor<'_>,
 )
 {
@@ -868,7 +865,7 @@ fn inspect_public_fields(
 
 /// Visit enum or union fields that are public with the containing item.
 fn inspect_all_variant_fields(
-    fields: &Fields,
+    fields: &syn::Fields,
     visitor: &mut GraphStackVisitor<'_>,
 )
 {
@@ -890,7 +887,7 @@ fn roots_in_signature(
 
 /// Collect graph-stack aliases that are in scope for one module.
 fn module_aliases(
-    items: &[Item],
+    items: &[syn::Item],
     inherited_aliases: &AliasContext,
 ) -> AliasContext
 {
@@ -902,12 +899,12 @@ fn module_aliases(
         changed = false;
         for item in items {
             match *item {
-                | Item::Use(ref item_use) => {
+                | syn::Item::Use(ref item_use) => {
                     changed |= collect_use_aliases(&item_use.tree, None, &mut context)
                         .into()
                         .0;
                 },
-                | Item::ExternCrate(ref item_extern) => {
+                | syn::Item::ExternCrate(ref item_extern) => {
                     let root = item_extern.ident.to_string();
                     if is_graph_stack_name(&root).into().0 {
                         let local = match item_extern.rename.as_ref() {
@@ -917,7 +914,7 @@ fn module_aliases(
                         changed |= context.named.insert(local, root).is_none();
                     }
                 },
-                | Item::Type(ref item_type) => {
+                | syn::Item::Type(ref item_type) => {
                     let mut visitor = GraphStackVisitor::new(&context);
                     visitor.visit_type(&item_type.ty);
                     if let Some(root) = visitor.roots.iter().next() {
@@ -935,24 +932,24 @@ fn module_aliases(
 }
 
 /// Collect public type names declared in one module.
-fn public_type_names(items: &[Item]) -> BTreeSet<String>
+fn public_type_names(items: &[syn::Item]) -> BTreeSet<String>
 {
     items
         .iter()
         .filter_map(|item| match *item {
-            | Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 => {
+            | syn::Item::Struct(ref item_struct) if is_visible_api(&item_struct.vis).into().0 => {
                 Some(item_struct.ident.to_string())
             },
-            | Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
+            | syn::Item::Enum(ref item_enum) if is_visible_api(&item_enum.vis).into().0 => {
                 Some(item_enum.ident.to_string())
             },
-            | Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
+            | syn::Item::Union(ref item_union) if is_visible_api(&item_union.vis).into().0 => {
                 Some(item_union.ident.to_string())
             },
-            | Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
+            | syn::Item::Type(ref item_type) if is_visible_api(&item_type.vis).into().0 => {
                 Some(item_type.ident.to_string())
             },
-            | Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
+            | syn::Item::Trait(ref item_trait) if is_visible_api(&item_trait.vis).into().0 => {
                 Some(item_trait.ident.to_string())
             },
             | _ => None,
@@ -961,16 +958,16 @@ fn public_type_names(items: &[Item]) -> BTreeSet<String>
 }
 
 /// Collect all local type-bearing names declared in one module.
-fn declared_type_names(items: &[Item]) -> BTreeSet<String>
+fn declared_type_names(items: &[syn::Item]) -> BTreeSet<String>
 {
     items
         .iter()
         .filter_map(|item| match *item {
-            | Item::Struct(ref item_struct) => Some(item_struct.ident.to_string()),
-            | Item::Enum(ref item_enum) => Some(item_enum.ident.to_string()),
-            | Item::Union(ref item_union) => Some(item_union.ident.to_string()),
-            | Item::Type(ref item_type) => Some(item_type.ident.to_string()),
-            | Item::Trait(ref item_trait) => Some(item_trait.ident.to_string()),
+            | syn::Item::Struct(ref item_struct) => Some(item_struct.ident.to_string()),
+            | syn::Item::Enum(ref item_enum) => Some(item_enum.ident.to_string()),
+            | syn::Item::Union(ref item_union) => Some(item_union.ident.to_string()),
+            | syn::Item::Type(ref item_type) => Some(item_type.ident.to_string()),
+            | syn::Item::Trait(ref item_trait) => Some(item_trait.ident.to_string()),
             | _ => None,
         })
         .collect()
@@ -980,7 +977,7 @@ fn declared_type_names(items: &[Item]) -> BTreeSet<String>
 struct UseTreeWork<'tree>
 {
     /// Current parsed use-tree node.
-    tree: &'tree UseTree,
+    tree: &'tree syn::UseTree,
     /// Resolved inherited root, if any.
     inherited_root: Option<String>,
 }
@@ -989,7 +986,7 @@ struct UseTreeWork<'tree>
 enum UseTreeRenderFrame<'tree>
 {
     /// Render this parsed use-tree node.
-    Tree(&'tree UseTree),
+    Tree(&'tree syn::UseTree),
     /// Append a static separator or delimiter.
     StaticText(&'static str),
     /// Append owned identifier text.
@@ -1000,11 +997,11 @@ enum UseTreeRenderFrame<'tree>
 ///
 /// # Termination
 /// - reason: each descent processes one child node of a parsed `use` tree.
-/// - measure: unvisited `UseTree` nodes below the current node.
+/// - measure: unvisited `syn::UseTree` nodes below the current node.
 /// - boundedness: syn stores each `use` declaration as a finite parsed tree.
 /// - input recursion: none.
 fn collect_use_aliases<'semantic, R>(
-    tree: &UseTree,
+    tree: &syn::UseTree,
     inherited_root: R,
     context: &mut AliasContext,
 ) -> impl Into<CollectUseAliasesFlag>
@@ -1018,7 +1015,7 @@ where
     }];
     while let Some(step) = work.pop() {
         match *step.tree {
-            | UseTree::Path(ref path) => {
+            | syn::UseTree::Path(ref path) => {
                 let ident_text = path.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1029,7 +1026,7 @@ where
                     inherited_root: Some(root),
                 });
             },
-            | UseTree::Name(ref name) => {
+            | syn::UseTree::Name(ref name) => {
                 let local = name.ident.to_string();
                 if let Some(root) = step
                     .inherited_root
@@ -1041,7 +1038,7 @@ where
                     changed |= context.local_types.insert(local);
                 }
             },
-            | UseTree::Rename(ref rename) => {
+            | syn::UseTree::Rename(ref rename) => {
                 let ident_text = rename.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1057,7 +1054,7 @@ where
                     changed |= context.local_types.insert(rename.rename.to_string());
                 }
             },
-            | UseTree::Glob(_) => {
+            | syn::UseTree::Glob(_) => {
                 if let Some(root) = step
                     .inherited_root
                     .filter(|root| is_graph_stack_name(root.as_str()).into().0)
@@ -1065,7 +1062,7 @@ where
                     changed |= context.forbidden_glob_roots.insert(root);
                 }
             },
-            | UseTree::Group(ref group) => {
+            | syn::UseTree::Group(ref group) => {
                 for item in group.items.iter().rev() {
                     work.push(UseTreeWork {
                         tree: item,
@@ -1180,7 +1177,7 @@ where
 
 /// Collect forbidden roots that appear structurally in a use tree.
 fn forbidden_roots_in_use_tree<'semantic, R>(
-    tree: &UseTree,
+    tree: &syn::UseTree,
     inherited_root: R,
     aliases: &AliasContext,
 ) -> BTreeSet<String>
@@ -1197,11 +1194,11 @@ where
 ///
 /// # Termination
 /// - reason: each descent processes one child node of a parsed `use` tree.
-/// - measure: unvisited `UseTree` nodes below the current node.
+/// - measure: unvisited `syn::UseTree` nodes below the current node.
 /// - boundedness: syn stores each `use` declaration as a finite parsed tree.
 /// - input recursion: none.
 fn collect_use_tree_roots<'semantic, R>(
-    tree: &UseTree,
+    tree: &syn::UseTree,
     inherited_root: R,
     aliases: &AliasContext,
     roots: &mut BTreeSet<String>,
@@ -1214,7 +1211,7 @@ fn collect_use_tree_roots<'semantic, R>(
     }];
     while let Some(step) = work.pop() {
         match *step.tree {
-            | UseTree::Path(ref path) => {
+            | syn::UseTree::Path(ref path) => {
                 let ident_text = path.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1228,7 +1225,7 @@ fn collect_use_tree_roots<'semantic, R>(
                     inherited_root: Some(root),
                 });
             },
-            | UseTree::Name(ref name) => {
+            | syn::UseTree::Name(ref name) => {
                 let ident_text = name.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1238,7 +1235,7 @@ fn collect_use_tree_roots<'semantic, R>(
                     roots.insert(root);
                 }
             },
-            | UseTree::Rename(ref rename) => {
+            | syn::UseTree::Rename(ref rename) => {
                 let ident_text = rename.ident.to_string();
                 let root = step
                     .inherited_root
@@ -1248,7 +1245,7 @@ fn collect_use_tree_roots<'semantic, R>(
                     roots.insert(root);
                 }
             },
-            | UseTree::Glob(_) => {
+            | syn::UseTree::Glob(_) => {
                 if let Some(root) = step
                     .inherited_root
                     .filter(|root| is_graph_stack_name(root.as_str()).into().0)
@@ -1256,7 +1253,7 @@ fn collect_use_tree_roots<'semantic, R>(
                     roots.insert(root);
                 }
             },
-            | UseTree::Group(ref group) => {
+            | syn::UseTree::Group(ref group) => {
                 for item in group.items.iter().rev() {
                     work.push(UseTreeWork {
                         tree: item,
@@ -1304,31 +1301,31 @@ fn emit_roots<'semantic, K, G, P, D, E>(
 ///
 /// # Termination
 /// - reason: each descent renders one child node of a parsed `use` tree.
-/// - measure: unrendered `UseTree` nodes below the current node.
+/// - measure: unrendered `syn::UseTree` nodes below the current node.
 /// - boundedness: syn stores each `use` declaration as a finite parsed tree.
 /// - input recursion: none.
-fn use_tree_declaration(tree: &UseTree) -> String
+fn use_tree_declaration(tree: &syn::UseTree) -> String
 {
     let mut output = String::new();
     let mut frames = vec![UseTreeRenderFrame::Tree(tree)];
     while let Some(frame) = frames.pop() {
         match frame {
             | UseTreeRenderFrame::Tree(tree) => match *tree {
-                | UseTree::Path(ref path) => {
+                | syn::UseTree::Path(ref path) => {
                     frames.push(UseTreeRenderFrame::Tree(&path.tree));
                     frames.push(UseTreeRenderFrame::StaticText("::"));
                     frames.push(UseTreeRenderFrame::OwnedText(path.ident.to_string()));
                 },
-                | UseTree::Name(ref name) => {
+                | syn::UseTree::Name(ref name) => {
                     frames.push(UseTreeRenderFrame::OwnedText(name.ident.to_string()));
                 },
-                | UseTree::Rename(ref rename) => {
+                | syn::UseTree::Rename(ref rename) => {
                     frames.push(UseTreeRenderFrame::OwnedText(rename.rename.to_string()));
                     frames.push(UseTreeRenderFrame::StaticText(" as "));
                     frames.push(UseTreeRenderFrame::OwnedText(rename.ident.to_string()));
                 },
-                | UseTree::Glob(_) => frames.push(UseTreeRenderFrame::StaticText("*")),
-                | UseTree::Group(ref group) => {
+                | syn::UseTree::Glob(_) => frames.push(UseTreeRenderFrame::StaticText("*")),
+                | syn::UseTree::Group(ref group) => {
                     frames.push(UseTreeRenderFrame::StaticText("}"));
                     for (index, item) in group.items.iter().rev().enumerate() {
                         if index > 0 {
@@ -1361,9 +1358,9 @@ fn finding_cmp(
 }
 
 /// Treat only unrestricted `pub` visibility as API-visible.
-fn is_visible_api(visibility: &Visibility) -> impl Into<VisibleApiFlag>
+fn is_visible_api(visibility: &syn::Visibility) -> impl Into<VisibleApiFlag>
 {
-    matches!(visibility, Visibility::Public(_))
+    matches!(visibility, syn::Visibility::Public(_))
 }
 
 /// Parse one Rust source file with typed gate errors.
@@ -1633,17 +1630,17 @@ fn inspect_impl_item(
         visitor.local_types.extend(impl_type_names);
         for impl_item in &item_impl.items {
             match *impl_item {
-                | ImplItem::Const(ref item_const)
+                | syn::ImplItem::Const(ref item_const)
                     if item_impl.trait_.is_some() || is_visible_api(&item_const.vis).into().0 =>
                 {
                     visitor.visit_type(&item_const.ty);
                 },
-                | ImplItem::Fn(ref method)
+                | syn::ImplItem::Fn(ref method)
                     if item_impl.trait_.is_some() || is_visible_api(&method.vis).into().0 =>
                 {
                     visitor.visit_signature(&method.sig);
                 },
-                | ImplItem::Type(ref item_type)
+                | syn::ImplItem::Type(ref item_type)
                     if item_impl.trait_.is_some() || is_visible_api(&item_type.vis).into().0 =>
                 {
                     visitor.with_type_generics(&item_type.generics, |visitor| {
@@ -1651,8 +1648,8 @@ fn inspect_impl_item(
                         visitor.visit_type(&item_type.ty);
                     });
                 },
-                | ImplItem::Macro(ref item_macro) => visitor.visit_impl_item_macro(item_macro),
-                | ImplItem::Verbatim(ref _tokens) => {},
+                | syn::ImplItem::Macro(ref item_macro) => visitor.visit_impl_item_macro(item_macro),
+                | syn::ImplItem::Verbatim(ref _tokens) => {},
                 | _ => {},
             }
         }
@@ -1678,7 +1675,7 @@ fn read_text(path: &Path) -> Result<String, GateError>
 /// Run Cargo metadata for the workspace root.
 fn cargo_metadata(workspace_root: &Path) -> Result<String, GateError>
 {
-    let output = Command::new("cargo")
+    let output = std::process::Command::new("cargo")
         .arg("metadata")
         .arg("--format-version")
         .arg("1")
@@ -1910,7 +1907,7 @@ struct ModuleInspection<'inspection>
     /// Stable diagnostic path for this source file.
     path: String,
     /// Module items to inspect.
-    items: &'inspection [Item],
+    items: &'inspection [syn::Item],
     /// Whether the containing module is externally visible.
     parent_public: bool,
     /// Alias and glob roots inherited by this module.
@@ -1925,7 +1922,7 @@ struct ModuleInspectionWork<'items>
     /// Stable diagnostic path for this source file.
     path: String,
     /// Module items to inspect.
-    items: &'items [Item],
+    items: &'items [syn::Item],
     /// Alias and glob roots inherited by this module.
     inherited_aliases: AliasContext,
 }
@@ -2027,7 +2024,7 @@ impl<'ast> Visit<'ast> for GraphStackVisitor<'_>
     /// Record forbidden roots found in a Rust use tree.
     fn visit_use_tree(
         &mut self,
-        i: &'ast UseTree,
+        i: &'ast syn::UseTree,
     )
     {
         self.roots

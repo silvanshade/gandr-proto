@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use gandr_core_checker::boundary::EffectSignatureName;
 use gandr_core_checker::boundary::FieldName;
 use gandr_core_checker::boundary::OperationName;
-use gandr_core_checker::host as sig;
+use gandr_core_checker::effect;
 use gandr_core_checker::syntax::Value;
 
 use crate::boundary::FileKind;
@@ -131,9 +131,9 @@ where
     let fields = payload
         .as_record()
         .ok_or_else(|| payload_error(sig, op, "expected a record {program, args, mode}"))?;
-    let program = record_str(fields, sig, op, sig::FIELD_PROGRAM.into())?;
+    let program = record_str(fields, sig, op, effect::host::FIELD_PROGRAM.into())?;
     let args_value = fields
-        .get(sig::FIELD_ARGS)
+        .get(effect::host::FIELD_ARGS)
         .ok_or_else(|| payload_error(sig, op, "missing field `args`"))?;
     let raw_args = args_value
         .as_list()
@@ -147,11 +147,11 @@ where
     }
     // The `mode` field is optional (a bare `{program, args}` perform stays
     // captured); when present it must be a known mode string.
-    let mode = match fields.get(sig::FIELD_MODE) {
+    let mode = match fields.get(effect::host::FIELD_MODE) {
         | None => SpawnMode::Captured,
         | Some(value) => match value.as_str() {
-            | Some(mode) if mode.as_ref() == sig::MODE_CAPTURED => SpawnMode::Captured,
-            | Some(mode) if mode.as_ref() == sig::MODE_INHERIT => SpawnMode::Inherit,
+            | Some(mode) if mode.as_ref() == effect::host::MODE_CAPTURED => SpawnMode::Captured,
+            | Some(mode) if mode.as_ref() == effect::host::MODE_INHERIT => SpawnMode::Inherit,
             | _ => {
                 return Err(payload_error(
                     sig,
@@ -188,8 +188,8 @@ where
     let fields = payload
         .as_record()
         .ok_or_else(|| payload_error(sig, op, "expected a record {path, contents}"))?;
-    let path = record_str(fields, sig, op, sig::FIELD_PATH.into())?;
-    let contents = record_str(fields, sig, op, sig::FIELD_CONTENTS.into())?;
+    let path = record_str(fields, sig, op, effect::host::FIELD_PATH.into())?;
+    let contents = record_str(fields, sig, op, effect::host::FIELD_CONTENTS.into())?;
     Ok((path, contents))
 }
 
@@ -209,7 +209,7 @@ fn record_str(
         .ok_or_else(|| payload_error(sig, op, "missing or non-string field"))
 }
 
-/// Builds a [`ShellError::Payload`] for `sig::op`.
+/// Builds a [`ShellError::Payload`] for `effect::host::op`.
 #[inline]
 fn payload_error<'detail, D>(
     sig: EffectSignatureName<'_>,
@@ -244,10 +244,16 @@ where
     let stderr = stderr.into();
     let exit_code = exit_code.into();
     Value::record([
-        (sig::FIELD_STDOUT.to_owned(), Value::string(stdout.as_ref())),
-        (sig::FIELD_STDERR.to_owned(), Value::string(stderr.as_ref())),
         (
-            sig::FIELD_EXIT_CODE.to_owned(),
+            effect::host::FIELD_STDOUT.to_owned(),
+            Value::string(stdout.as_ref()),
+        ),
+        (
+            effect::host::FIELD_STDERR.to_owned(),
+            Value::string(stderr.as_ref()),
+        ),
+        (
+            effect::host::FIELD_EXIT_CODE.to_owned(),
             Value::int(i64::from(exit_code)),
         ),
     ])
@@ -267,8 +273,14 @@ where
     let kind = kind.into();
     let size = size.into();
     Value::record([
-        (sig::FIELD_KIND.to_owned(), Value::string(kind.as_ref())),
-        (sig::FIELD_SIZE.to_owned(), Value::int(i64::from(size))),
+        (
+            effect::host::FIELD_KIND.to_owned(),
+            Value::string(kind.as_ref()),
+        ),
+        (
+            effect::host::FIELD_SIZE.to_owned(),
+            Value::int(i64::from(size)),
+        ),
     ])
 }
 

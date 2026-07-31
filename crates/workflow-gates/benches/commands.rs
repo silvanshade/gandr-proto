@@ -485,7 +485,7 @@ where
     else {
         std::process::abort()
     };
-    std::path::PathBuf::from(manifest_dir)
+    PathBuf::from(manifest_dir)
         .join("benches/fixtures")
         .join(relative)
 }

@@ -14,6 +14,7 @@ use alloc::vec::Vec;
 use gandr_kernel_core::ConstantIndex;
 use gandr_kernel_core::Environment;
 use gandr_kernel_core::LevelSignature;
+use gandr_kernel_core::TermArena;
 use gandr_kernel_core::read;
 use gandr_kernel_core::write;
 
@@ -58,7 +59,7 @@ fn assert_round_trips(environment: &Environment)
 #[test]
 fn pair_of_literals_lowers()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let value = Value::pair(Value::int(1), Value::string("hi"));
     assert!(
         lower_value(&closed(), &mut arena, &value).is_ok(),
@@ -69,7 +70,7 @@ fn pair_of_literals_lowers()
 #[test]
 fn returning_a_literal_lowers()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let comp = Comp::Ret(Rc::new(Value::int(7)));
     assert!(
         lower_comp(&closed(), &mut arena, &comp).is_ok(),
@@ -80,7 +81,7 @@ fn returning_a_literal_lowers()
 #[test]
 fn returner_type_lowers()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let comp_type = CompType::returner(ValueType::integer());
     assert!(
         lower_comp_type(&mut arena, &comp_type).is_ok(),
@@ -91,7 +92,7 @@ fn returner_type_lowers()
 #[test]
 fn product_type_lowers()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let value_type = ValueType::prod(ValueType::integer(), ValueType::string());
     assert!(
         lower_value_type(&mut arena, &value_type).is_ok(),
@@ -107,7 +108,7 @@ fn annotation_is_erased()
     // `(1 : Integer)` lowers (the ascription is peeled, operationally
     // transparent), and an annotation does not shield an out-of-S1 interior:
     // `(?hole : Integer)` still rejects on the hole.
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let annotated = Value::annot(Value::int(1), ValueType::integer());
     assert!(
         lower_value(&closed(), &mut arena, &annotated).is_ok(),
@@ -126,7 +127,7 @@ fn drop_erases_to_return_unit()
 {
     // `drop (thunk (ret unit))` lowers (the thunk body is validated, the drop
     // itself erases to `return ()`).
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let thunk = Value::thunk(crate::grade::Grade::OMEGA, Comp::Ret(Rc::new(Value::Unit)));
     let dropped = Comp::Drop(Rc::new(thunk));
     assert!(
@@ -138,7 +139,7 @@ fn drop_erases_to_return_unit()
 #[test]
 fn dup_erases_to_return_pair()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let thunk = Value::thunk(crate::grade::Grade::OMEGA, Comp::Ret(Rc::new(Value::Unit)));
     let duplicated = Comp::Dup(Rc::new(thunk));
     assert!(
@@ -153,7 +154,7 @@ fn dup_erases_to_return_pair()
 fn a_bound_variable_resolves_to_a_de_bruijn_index()
 {
     // `λx. ret x` — the body's `x` resolves to de Bruijn index 0.
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let lambda = Comp::Abs(
         "x".to_owned(),
         None,
@@ -168,7 +169,7 @@ fn a_bound_variable_resolves_to_a_de_bruijn_index()
 #[test]
 fn a_free_name_is_unbound()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let free = Value::var("greeting");
     assert_eq!(
         Err(BridgeRejection::UnboundName(String::from("greeting"))),
@@ -181,7 +182,7 @@ fn a_free_name_is_unbound()
 fn a_free_name_resolves_to_a_constant_when_mapped()
 {
     // With `first ↦ admission 0`, a free `first` lowers to a constant reference.
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let context = BridgeContext::new().with_constant("first", ConstantIndex::from(0_usize));
     let reference = Value::var("first");
     assert!(
@@ -259,7 +260,7 @@ fn a_constant_reference_across_declarations_admits()
 #[test]
 fn hole_unknown_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     assert_eq!(
         Err(BridgeRejection::ValueHole),
         lower_value(&closed(), &mut arena, &Value::Hole(0)),
@@ -285,7 +286,7 @@ fn hole_unknown_class_rejects_exactly()
 #[test]
 fn effects_control_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let reset = Comp::Reset(Rc::new(Comp::Ret(Rc::new(Value::Unit))));
     assert_eq!(
         Err(BridgeRejection::Reset),
@@ -307,7 +308,7 @@ fn effects_control_class_rejects_exactly()
 #[test]
 fn native_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let native = Comp::Native {
         prim: NativePrim::RecordUpdate,
         args: Vec::new(),
@@ -322,7 +323,7 @@ fn native_class_rejects_exactly()
 #[test]
 fn declared_data_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let ctor = Value::Ctor {
         id: DataId::new(0_u64, "Maybe"),
         tag: 0,
@@ -338,7 +339,7 @@ fn declared_data_class_rejects_exactly()
 #[test]
 fn structural_stock_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     assert_eq!(
         Err(BridgeRejection::ListValue),
         lower_value(&closed(), &mut arena, &Value::List(Vec::new())),
@@ -354,7 +355,7 @@ fn structural_stock_class_rejects_exactly()
 #[test]
 fn sigma_split_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let sigma = ValueType::sigma(ValueType::Unit, "x", ValueType::Unit);
     assert_eq!(
         Err(BridgeRejection::SigmaType),
@@ -366,7 +367,7 @@ fn sigma_split_class_rejects_exactly()
 #[test]
 fn identity_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     let here = Value::here(Value::Unit);
     assert_eq!(
         Err(BridgeRejection::HereProof),
@@ -378,7 +379,7 @@ fn identity_class_rejects_exactly()
 #[test]
 fn universe_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     assert_eq!(
         Err(BridgeRejection::UniverseType),
         lower_value_type(&mut arena, &ValueType::Universe),
@@ -389,7 +390,7 @@ fn universe_class_rejects_exactly()
 #[test]
 fn machine_numeric_class_rejects_exactly()
 {
-    let mut arena = gandr_kernel_core::TermArena::new();
+    let mut arena = TermArena::new();
     assert_eq!(
         Err(BridgeRejection::MachineNumericLiteral),
         lower_value(&closed(), &mut arena, &Value::u32(1_u32)),

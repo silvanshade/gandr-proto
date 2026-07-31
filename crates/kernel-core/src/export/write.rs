@@ -32,7 +32,10 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
+use gandr_kernel_strata::ConstraintRelation;
 use gandr_kernel_strata::Level;
+use gandr_kernel_strata::LevelOffset;
+use gandr_kernel_strata::LevelVar;
 
 use super::ADMISSION_CHECKED;
 use super::ADMISSION_UNCHECKED;
@@ -595,8 +598,8 @@ fn encode_level_signature(
     put_uvarint(out, usize_to_u64(WireUsize(constraints.len())));
     for constraint in constraints {
         out.0.push(match constraint.relation() {
-            | gandr_kernel_strata::ConstraintRelation::Leq => RELATION_LEQ,
-            | gandr_kernel_strata::ConstraintRelation::Eq => RELATION_EQ,
+            | ConstraintRelation::Leq => RELATION_LEQ,
+            | ConstraintRelation::Eq => RELATION_EQ,
         });
         encode_level(out, constraint.left());
         encode_level(out, constraint.right());
@@ -611,10 +614,7 @@ fn encode_level(
 )
 {
     put_uvarint(out, WireU64(u64::from(level.constant_part())));
-    let atoms: Vec<(
-        gandr_kernel_strata::LevelVar,
-        gandr_kernel_strata::LevelOffset,
-    )> = level.atoms().collect();
+    let atoms: Vec<(LevelVar, LevelOffset)> = level.atoms().collect();
     put_uvarint(out, usize_to_u64(WireUsize(atoms.len())));
     for (variable, offset) in atoms {
         put_uvarint(out, WireU64(u64::from(u32::from(variable.index()))));

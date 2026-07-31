@@ -797,8 +797,8 @@ impl MsbAdapter for SupportMsbAdapter
     {
         let output = support::run_output(OsStr::new(MSB_PROGRAM), args, None, false)?;
         Ok(CommandOutcome {
-            success: crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0,
-            code: crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
+            success: crate::semantic_value::<support::SuccessFlag, _>(output.success()).0,
+            code: crate::semantic_value::<support::OptionalCodeCode, _>(output.code()).0,
             stdout: output.stdout_lossy().into_owned(),
         })
     }
@@ -855,7 +855,7 @@ impl CampaignReportSink for SupportCampaignReportSink
         report_dir: &Path,
     ) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.create_dir_all(report_dir)
+        support::HOST_FILESYSTEM.create_dir_all(report_dir)
     }
 
     #[inline]
@@ -865,7 +865,7 @@ impl CampaignReportSink for SupportCampaignReportSink
         summary: &CampaignSummary,
     ) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.create_dir_all(report_dir)?;
+        support::HOST_FILESYSTEM.create_dir_all(report_dir)?;
         support::write_atomic(
             &report_dir.join("campaign.nuon"),
             summary.to_nuon().as_bytes(),
@@ -938,7 +938,7 @@ impl SandboxInfrastructure for SupportSandboxInfrastructure
         config: &SandboxConfig,
     ) -> Result<impl Into<CacheImageExistsFlag>, GateError>
     {
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .try_exists(config.cache_image())
             .map(bool::from)
     }

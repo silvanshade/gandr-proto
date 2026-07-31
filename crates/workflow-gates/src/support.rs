@@ -15,17 +15,10 @@ use alloc::vec::Vec;
 use core::fmt;
 use std::ffi::OsStr;
 use std::ffi::OsString;
-use std::fs;
-use std::fs::File;
-use std::fs::OpenOptions;
 use std::io::Read as _;
 use std::io::Write as _;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::ChildStdout;
-use std::process::Command;
-use std::process::ExitStatus;
-use std::process::Stdio;
 
 use crate::GateError;
 
@@ -203,7 +196,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::read_to_string(path).map_err(|source| io_error(path, source))
+        std::fs::read_to_string(path).map_err(|source| io_error(path, source))
     }
 
     /// Read one file as bytes.
@@ -225,7 +218,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::read(path)
+        std::fs::read(path)
             .map(FileBytes::from)
             .map_err(|source| io_error(path, source))
     }
@@ -271,7 +264,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::metadata(path).map_err(|source| io_error(path, source))
+        std::fs::metadata(path).map_err(|source| io_error(path, source))
     }
 
     /// Return whether one path exists.
@@ -318,7 +311,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        let entries = fs::read_dir(path).map_err(|source| io_error(path, source))?;
+        let entries = std::fs::read_dir(path).map_err(|source| io_error(path, source))?;
         let mut paths = Vec::new();
         for entry in entries {
             let entry = entry.map_err(|source| io_error(path, source))?;
@@ -342,12 +335,12 @@ impl HostFileSystem
     pub fn create_file<P>(
         &self,
         path: P,
-    ) -> Result<File, GateError>
+    ) -> Result<std::fs::File, GateError>
     where
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        File::create(path).map_err(|source| io_error(path, source))
+        std::fs::File::create(path).map_err(|source| io_error(path, source))
     }
 }
 
@@ -372,7 +365,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::create_dir_all(path).map_err(|source| io_error(path, source))
+        std::fs::create_dir_all(path).map_err(|source| io_error(path, source))
     }
 
     /// Create exactly one directory.
@@ -395,7 +388,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::DirBuilder::new()
+        std::fs::DirBuilder::new()
             .create(path)
             .map_err(|source| io_error(path, source))
     }
@@ -422,7 +415,7 @@ impl HostFileSystem
         Contents: AsRef<[u8]>,
     {
         let path = path.as_ref();
-        fs::write(path, contents).map_err(|source| io_error(path, source))
+        std::fs::write(path, contents).map_err(|source| io_error(path, source))
     }
 
     /// Remove a directory tree.
@@ -444,7 +437,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::remove_dir_all(path).map_err(|source| io_error(path, source))
+        std::fs::remove_dir_all(path).map_err(|source| io_error(path, source))
     }
 
     /// Remove a directory tree when present.
@@ -469,7 +462,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        match fs::remove_dir_all(path) {
+        match std::fs::remove_dir_all(path) {
             | Ok(()) => Ok(()),
             | Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(()),
             | Err(source) => Err(io_error(path, source)),
@@ -495,7 +488,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::remove_file(path).map_err(|source| io_error(path, source))
+        std::fs::remove_file(path).map_err(|source| io_error(path, source))
     }
 
     /// Remove one file when present.
@@ -520,7 +513,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        match fs::remove_file(path) {
+        match std::fs::remove_file(path) {
             | Ok(()) => Ok(()),
             | Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(()),
             | Err(source) => Err(io_error(path, source)),
@@ -551,7 +544,7 @@ impl HostFileSystem
     {
         let source = source.as_ref();
         let destination = destination.as_ref();
-        fs::rename(source, destination).map_err(|error| io_error(destination, error))
+        std::fs::rename(source, destination).map_err(|error| io_error(destination, error))
     }
 
     /// Copy one regular file.
@@ -577,7 +570,7 @@ impl HostFileSystem
     {
         let source = source.as_ref();
         let destination = destination.as_ref();
-        fs::copy(source, destination)
+        std::fs::copy(source, destination)
             .map(CopiedByteCount::from)
             .map_err(|error| io_error(source, error))
     }
@@ -602,7 +595,7 @@ impl HostFileSystem
         P: AsRef<Path>,
     {
         let path = path.as_ref();
-        fs::set_permissions(path, permissions).map_err(|source| io_error(path, source))
+        std::fs::set_permissions(path, permissions).map_err(|source| io_error(path, source))
     }
 
     /// Create one symbolic link on Unix.
@@ -700,7 +693,7 @@ const RUN_OUTPUT_STDOUT_CHUNK_BYTES: usize = 16 * 1024;
 pub struct CommandOutput
 {
     /// Process termination status.
-    status: ExitStatus,
+    status: std::process::ExitStatus,
     /// Bounded captured standard output bytes retained for semantic parsers.
     stdout: Vec<u8>,
 }
@@ -749,8 +742,9 @@ impl CommandOutput
 /// it.
 ///
 /// # Contract
-/// - requires: `program` names an executable accepted by [`Command::new`], and
-///   every entry in `args` is passed as one argv item.
+/// - requires: `program` names an executable accepted by
+///   [`std::process::Command::new`], and every entry in `args` is passed as one
+///   argv item.
 /// - extension: returns the child's status and at most
 ///   [`RUN_OUTPUT_STDOUT_CAPTURE_LIMIT_BYTES`] stdout bytes for semantic
 ///   parsing; stderr is inherited by the child and is never retained.
@@ -873,8 +867,8 @@ where
     let capture_limit = capture_limit.into().0;
     let sanitized_git = sanitized_git.into().0;
     let mut command = build_command(program, args, cwd, sanitized_git);
-    command.stdout(Stdio::piped());
-    command.stderr(Stdio::inherit());
+    command.stdout(std::process::Stdio::piped());
+    command.stderr(std::process::Stdio::inherit());
 
     let mut child = command
         .spawn()
@@ -929,7 +923,7 @@ where
 ///
 /// # Contract
 /// - requires: `program` is the diagnostic command label and `code` comes from
-///   [`ExitStatus::code`].
+///   [`std::process::ExitStatus::code`].
 /// - extension: returns stable process detail suitable for command-failure
 ///   diagnostics after stderr has streamed live to the parent.
 /// - ensures: normal exits include the numeric status and signal-like exits
@@ -961,8 +955,9 @@ where
 /// Run a command and return only its exit status.
 ///
 /// # Contract
-/// - requires: `program` names an executable accepted by [`Command::new`], and
-///   every entry in `args` is passed as one argv item.
+/// - requires: `program` names an executable accepted by
+///   [`std::process::Command::new`], and every entry in `args` is passed as one
+///   argv item.
 /// - extension: returns the status without treating non-zero status as an
 ///   error; stdout and stderr are inherited by the child and never retained.
 /// - provides: the shared process-status primitive for gate domains.
@@ -971,11 +966,11 @@ where
 /// - panics: none.
 /// - intension: applies Git environment sanitization before spawning when
 ///   `sanitized_git` is `true`, and otherwise preserves ambient environment
-///   through [`Command::status`].
+///   through [`std::process::Command::status`].
 ///
 /// # Errors
 /// Returns [`GateError::Io`] when process execution fails before an
-/// [`ExitStatus`] is available.
+/// [`std::process::ExitStatus`] is available.
 ///
 /// # Adequacy
 /// - hypothesis: L3 only — child-test fixtures kill mutants that invert success
@@ -987,7 +982,7 @@ pub fn run_status<G>(
     args: &[OsString],
     cwd: Option<&Path>,
     sanitized_git: G,
-) -> Result<ExitStatus, GateError>
+) -> Result<std::process::ExitStatus, GateError>
 where
     G: Into<SanitizedGitFlag>,
 {
@@ -1035,7 +1030,8 @@ pub fn walk_files(
     let mut files = Vec::new();
 
     while let Some(directory) = pending.pop() {
-        let entries = fs::read_dir(&directory).map_err(|source| io_error(&directory, source))?;
+        let entries =
+            std::fs::read_dir(&directory).map_err(|source| io_error(&directory, source))?;
         let mut entries = entries
             .map(|entry| {
                 entry
@@ -1083,7 +1079,7 @@ pub fn walk_files(
 #[inline]
 pub fn read_utf8(path: &Path) -> Result<String, GateError>
 {
-    fs::read_to_string(path).map_err(|source| io_error(path, source))
+    std::fs::read_to_string(path).map_err(|source| io_error(path, source))
 }
 
 /// Atomically write bytes to a path through a unique sibling temporary file.
@@ -1125,7 +1121,7 @@ where
 
     for attempt in 0_u16 .. TEMPORARY_FILE_ATTEMPTS {
         let temporary_path = temporary_file_path(target_directory_path, target_name, attempt);
-        let temporary_file = match OpenOptions::new()
+        let temporary_file = match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&temporary_path)
@@ -1170,12 +1166,12 @@ fn build_command<G>(
     args: &[OsString],
     cwd: Option<&Path>,
     sanitized_git: G,
-) -> Command
+) -> std::process::Command
 where
     G: Into<SanitizedGitFlag>,
 {
     let sanitized_git = sanitized_git.into().0;
-    let mut command = Command::new(program);
+    let mut command = std::process::Command::new(program);
     command.args(args);
     if let Some(directory) = cwd {
         command.current_dir(directory);
@@ -1213,7 +1209,7 @@ where
 /// - witness: `gandr_workflow_gates::support::tests::run_output_streamed_retains_failure_context`
 /// - witness: `gandr_workflow_gates::support::tests::run_output_drains_then_errors_when_stdout_exceeds_limit`
 fn drain_child_stdout<L, S>(
-    stdout: &mut ChildStdout,
+    stdout: &mut std::process::ChildStdout,
     program: &OsStr,
     capture_limit: L,
     stream_stdout: S,
@@ -1299,7 +1295,7 @@ where
 ///   plus preserved config/non-Git variables kills mutants that remove too few
 ///   or too many names.
 /// - witness: `gandr_workflow_gates::support::tests::git_environment_sanitizer_removes_only_git_keys`
-pub(crate) fn sanitize_git_environment(command: &mut Command)
+pub(crate) fn sanitize_git_environment(command: &mut std::process::Command)
 {
     for key in GIT_ENVIRONMENT_KEYS {
         command.env_remove(key);
@@ -1321,9 +1317,9 @@ pub(crate) fn sanitize_git_environment(command: &mut Command)
 ///   configuration.
 /// - witness: `gandr_workflow_gates::support::tests::stateless_git_command_overrides_ambient_identity_and_signing`
 #[cfg(test)]
-pub(crate) fn stateless_git_command() -> Command
+pub(crate) fn stateless_git_command() -> std::process::Command
 {
-    let mut command = Command::new("git");
+    let mut command = std::process::Command::new("git");
     command
         .args(STATELESS_GIT_CONFIG_ARGUMENTS)
         .env("GIT_CONFIG_NOSYSTEM", "1")
@@ -1366,7 +1362,7 @@ pub(crate) fn stateless_git_args(command_args: &[OsString]) -> Vec<OsString>
 /// - witness: `gandr_workflow_gates::support::tests::walk_files_sorts_and_skips_symlinked_directories`
 fn symlink_metadata(path: &Path) -> Result<std::fs::Metadata, GateError>
 {
-    fs::symlink_metadata(path).map_err(|source| io_error(path, source))
+    std::fs::symlink_metadata(path).map_err(|source| io_error(path, source))
 }
 
 /// Render a process program as a path payload for spawn errors.
@@ -1485,7 +1481,7 @@ fn io_error(
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_replaces_file_and_removes_temporary`
 /// - witness: `gandr_workflow_gates::support::tests::write_atomic_cleans_temporary_after_rename_failure`
 fn write_and_publish<'semantic, B>(
-    mut temporary_file: File,
+    mut temporary_file: std::fs::File,
     temporary_path: &Path,
     target_path: &Path,
     bytes: B,
@@ -1550,7 +1546,6 @@ mod tests
     use std::ffi::OsString;
     use std::path::Path;
     use std::path::PathBuf;
-    use std::process::Command;
 
     use super::*;
 
@@ -1649,7 +1644,7 @@ mod tests
     #[test]
     fn git_environment_sanitizer_removes_only_git_keys()
     {
-        let mut command = Command::new("git");
+        let mut command = std::process::Command::new("git");
         for key in GIT_ENVIRONMENT_KEYS {
             command.env(key, format!("{key}.fixture"));
         }
@@ -2055,7 +2050,7 @@ mod tests
     }
     /// Return an explicit command environment override/removal for a key.
     fn explicit_command_env<'semantic, K>(
-        command: &Command,
+        command: &std::process::Command,
         key: K,
     ) -> Option<CommandEnvEntry>
     where

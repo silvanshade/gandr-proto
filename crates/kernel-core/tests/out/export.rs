@@ -20,6 +20,7 @@ mod tests
 {
     use gandr_kernel_core::AdmissionMark;
     use gandr_kernel_core::BaseType;
+    use gandr_kernel_core::DeBruijnIndex;
     use gandr_kernel_core::DecodeError;
     use gandr_kernel_core::Environment;
     use gandr_kernel_core::IntegerLiteral;
@@ -42,6 +43,7 @@ mod tests
     use gandr_kernel_strata::LandmarkConstraint;
     use gandr_kernel_strata::Level;
     use gandr_kernel_strata::LevelConstant;
+    use gandr_kernel_strata::LevelOffset;
     use gandr_kernel_strata::LevelVar;
     use gandr_kernel_strata::LevelVarIndex;
     use proptest::prelude::*;
@@ -154,7 +156,7 @@ mod tests
     /// `variable + offset` built through the strata smart constructors.
     fn var_plus(
         index: LevelVarIndex,
-        offset: gandr_kernel_strata::LevelOffset,
+        offset: LevelOffset,
     ) -> Level
     {
         let mut level = Level::var(LevelVar::new(index));
@@ -479,12 +481,12 @@ mod tests
             let mut environment = Environment::new();
             let mut builder = environment.stage();
             let arena = builder.arena();
-            let left = arena.value_variable(gandr_kernel_core::DeBruijnIndex::from(0_u32));
+            let left = arena.value_variable(DeBruijnIndex::from(0_u32));
             let right = if same {
                 left
             }
             else {
-                arena.value_variable(gandr_kernel_core::DeBruijnIndex::from(1_u32))
+                arena.value_variable(DeBruijnIndex::from(1_u32))
             };
             let body = arena.value_pair(left, right);
             let declared = arena.value_type_unit();

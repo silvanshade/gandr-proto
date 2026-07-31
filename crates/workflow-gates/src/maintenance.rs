@@ -15,8 +15,6 @@ use std::io::Write as _;
 use std::path::Path;
 use std::path::PathBuf;
 
-use serde_json::Value;
-
 use crate::GateError;
 use crate::support;
 
@@ -865,7 +863,7 @@ impl WatermarkSink for SupportWatermarkSink
         if parent.as_os_str().is_empty() {
             return Ok(());
         }
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(parent)
             .map_err(|source| {
                 maintenance_error(format!(
@@ -1221,7 +1219,7 @@ where
 fn load_watermark(path: &Path) -> Result<Watermark, GateError>
 {
     let source_name = path.display().to_string();
-    let exists = crate::support::HOST_FILESYSTEM
+    let exists = support::HOST_FILESYSTEM
         .try_exists(path)
         .map(bool::from)
         .map_err(|source| {
@@ -1396,7 +1394,7 @@ where
 {
     let text = text.into().0;
     let source_name = source_name.into().0;
-    let value = serde_json::from_str::<Value>(text).map_err(|error| {
+    let value = serde_json::from_str::<serde_json::Value>(text).map_err(|error| {
         maintenance_error(format!(
             "weekly success watermark `{source_name}` is malformed: {error}",
         ))
@@ -1405,11 +1403,11 @@ where
     else {
         return Err(watermark_malformed(source_name));
     };
-    let schema = object.get("schema").and_then(Value::as_u64);
+    let schema = object.get("schema").and_then(serde_json::Value::as_u64);
     if schema != Some(WATERMARK_SCHEMA) {
         return Err(watermark_malformed(source_name));
     }
-    let Some(upper_text) = object.get("upper").and_then(Value::as_str)
+    let Some(upper_text) = object.get("upper").and_then(serde_json::Value::as_str)
     else {
         return Err(watermark_malformed(source_name));
     };
@@ -1742,14 +1740,14 @@ mod tests
     {
         let fixture = MaintenanceFixture::new("append-output")?;
         let output = fixture.path().join("github-output.txt");
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .write(&output, "previous=1\n")
             .map_err(|error| GateError::operational(error.to_string()))?;
         let base = commit(OID_A)?;
 
         append_github_output(&output, &base)?;
 
-        let text = crate::support::HOST_FILESYSTEM
+        let text = support::HOST_FILESYSTEM
             .read_to_string(&output)
             .map_err(|error| GateError::operational(error.to_string()))?;
         assert_eq!(text, format!("previous=1\nbase={base}\n"));
@@ -1784,7 +1782,7 @@ mod tests
         assert_eq!(selection.base, base);
         assert_eq!(selection.head, head);
         assert_eq!(MaintenanceBaseKind::Explicit, selection.source);
-        let text = crate::support::HOST_FILESYSTEM
+        let text = support::HOST_FILESYSTEM
             .read_to_string(&output)
             .map_err(|error| GateError::operational(error.to_string()))?;
         assert_eq!(text, format!("base={}\n", selection.base));
@@ -1817,10 +1815,10 @@ mod tests
         let parent = watermark
             .parent()
             .ok_or_else(|| GateError::operational("watermark fixture path has no parent"))?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(parent)
             .map_err(|error| GateError::operational(error.to_string()))?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .write(&watermark, watermark_json_bytes(&base).bytes().0)
             .map_err(|error| GateError::operational(error.to_string()))?;
         let output = fixture.path().join("github-output.txt");
@@ -1889,7 +1887,7 @@ mod tests
         let advanced = advance_watermark(&request)?;
 
         assert_eq!(advanced, head);
-        let bytes = crate::support::HOST_FILESYSTEM
+        let bytes = support::HOST_FILESYSTEM
             .read(&watermark)
             .map_err(|error| GateError::operational(error.to_string()))?;
         assert_eq!(
@@ -2132,8 +2130,8 @@ mod tests
                 "gandr-workflow-gates-maintenance-{}-{name}",
                 std::process::id()
             ));
-            crate::support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
-            crate::support::HOST_FILESYSTEM.create_dir_all(&root)?;
+            support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
+            support::HOST_FILESYSTEM.create_dir_all(&root)?;
             Ok(Self { root })
         }
 
@@ -2148,14 +2146,14 @@ mod tests
     {
         fn drop(&mut self)
         {
-            drop(crate::support::HOST_FILESYSTEM.remove_dir_all(&self.root));
+            drop(support::HOST_FILESYSTEM.remove_dir_all(&self.root));
         }
     }
 
     /// Initialize a Git repository fixture.
     fn init_git_repo(path: &Path) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .create_dir_all(path)
             .map_err(|error| GateError::operational(error.to_string()))?;
         let _stdout = fixture_git(path, ["init"])?;
@@ -2177,7 +2175,7 @@ mod tests
         let text = text.into().0;
         let timestamp = timestamp.into().0;
         let name = name.into().0;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .write(repo.join(name), text)
             .map_err(|error| GateError::operational(error.to_string()))?;
         let _stdout = fixture_git(repo, ["add", name])?;

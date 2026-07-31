@@ -12,18 +12,18 @@
 //! a lowered program and a host handler to it and reads back an
 //! [`Eval`](gandr_core_checker::outcome::Eval). The seam it binds is the
 //! representation-independent host-effect boundary in
-//! [`gandr_core_checker::host`] — the `(signature name, operation name,
+//! [`gandr_core_checker::effect::host`] — the `(signature name, operation name,
 //! payload)` projection both the L machine and the retiring CEK oracle present
 //! identically, which is what let this runtime port from the CEK binding to the
 //! L driver without changing observable outcomes (asserted by the driver's
 //! differential tests).
 //!
 //! Two runtime faces, both consuming the canonical signature API in
-//! [`gandr_core_checker::host`]:
-//! - [`ShellHandler`] — the [`gandr_core_checker::host::HostHandler`]-shaped
-//!   dispatcher ([`ShellHandler::dispatch`]) that carries each intercepted
-//!   operation out to a real syscall over `std::process` / `std::fs` /
-//!   `std::env`.
+//! [`gandr_core_checker::effect::host`]:
+//! - [`ShellHandler`] — the
+//!   [`gandr_core_checker::effect::host::HostHandler`]-shaped dispatcher
+//!   ([`ShellHandler::dispatch`]) that carries each intercepted operation out
+//!   to a real syscall over `std::process` / `std::fs` / `std::env`.
 //! - [`run_program`] — the driver that flows a program through the host-effect
 //!   seam to a [`ShellOutcome`], with `Proc::exit` and fatal syscalls
 //!   truncating the run. [`run_program_with_prelude`] drives the same seam with
@@ -44,18 +44,21 @@
 //! [`Comp`](gandr_core_checker::syntax::Comp) programs through [`run_program`].
 //!
 //! ```
-//! use gandr_core_checker::host as sig;
+//! use gandr_core_checker::effect;
 //! use gandr_core_checker::syntax::Comp;
 //! use gandr_core_checker::syntax::Value;
 //! use gandr_runtime_host::run_program;
 //!
 //! // perform Exec::exec {program: "true", args: []} >>= r. ret r
 //! let command = Value::record([
-//!     (sig::FIELD_PROGRAM.to_owned(), Value::string("true")),
-//!     (sig::FIELD_ARGS.to_owned(), Value::list(Vec::new())),
+//!     (
+//!         effect::host::FIELD_PROGRAM.to_owned(),
+//!         Value::string("true"),
+//!     ),
+//!     (effect::host::FIELD_ARGS.to_owned(), Value::list(Vec::new())),
 //! ]);
 //! let program = Comp::bind(
-//!     Comp::perform(sig::exec(), sig::EXEC_RUN, command),
+//!     Comp::perform(effect::host::exec(), effect::host::EXEC_RUN, command),
 //!     "r",
 //!     Comp::ret(Value::var("r")),
 //! );
@@ -63,7 +66,7 @@
 //! let exit_code = outcome
 //!     .returned()
 //!     .and_then(Value::as_record)
-//!     .and_then(|fields| fields.get(sig::FIELD_EXIT_CODE))
+//!     .and_then(|fields| fields.get(effect::host::FIELD_EXIT_CODE))
 //!     .and_then(|value| value.as_int())
 //!     .map(i64::from);
 //! assert_eq!(exit_code, Some(0));

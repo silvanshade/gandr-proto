@@ -25,12 +25,15 @@ use rustc_hir::FnRetTy;
 use rustc_hir::ForeignItem;
 use rustc_hir::ForeignItemKind;
 use rustc_hir::GenericArg;
+use rustc_hir::GenericArgs;
 use rustc_hir::GenericBound;
 use rustc_hir::HirId;
 use rustc_hir::Item;
 use rustc_hir::ItemKind;
+use rustc_hir::LetStmt;
 use rustc_hir::Node;
 use rustc_hir::OpaqueTy;
+use rustc_hir::OwnerId;
 use rustc_hir::Pat;
 use rustc_hir::PatKind;
 use rustc_hir::PrimTy;
@@ -492,7 +495,7 @@ fn implements_non_local_trait(
 ) -> NonLocalTraitImpl
 {
     NonLocalTraitImpl(
-        trait_ref_of_method(cx, rustc_hir::OwnerId { def_id }).is_some_and(|trait_ref| {
+        trait_ref_of_method(cx, OwnerId { def_id }).is_some_and(|trait_ref| {
             trait_ref
                 .trait_def_id()
                 .is_some_and(|trait_def_id| !trait_def_id.is_local())
@@ -846,7 +849,7 @@ impl<'tcx> Visitor<'tcx> for ProvenancePropagation<'_, '_, 'tcx>
 {
     fn visit_local(
         &mut self,
-        local: &'tcx rustc_hir::LetStmt<'tcx>,
+        local: &'tcx LetStmt<'tcx>,
     )
     {
         if let Some(init) = local.init
@@ -1402,7 +1405,7 @@ fn semantic_type_args<'tcx>(
 }
 
 /// Return the last path segment's generic arguments, if any.
-fn last_segment_args<'hir>(qpath: &QPath<'hir>) -> Option<&'hir rustc_hir::GenericArgs<'hir>>
+fn last_segment_args<'hir>(qpath: &QPath<'hir>) -> Option<&'hir GenericArgs<'hir>>
 {
     match *qpath {
         | QPath::Resolved(_, path) => {

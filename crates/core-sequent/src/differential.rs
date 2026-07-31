@@ -383,6 +383,7 @@ mod tests
     use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::syntax::Comp;
     use gandr_core_checker::syntax::Value;
+    use gandr_core_checker::types::ValueType;
 
     use super::*;
 
@@ -441,10 +442,7 @@ mod tests
         // comparison — the readback normalizes it away on both sides.
         let thunk_annotated = Eval::Value(Comp::ret(Value::thunk(
             Grade::ONE,
-            Comp::ret(Value::annot(
-                Value::int(1),
-                gandr_core_checker::types::ValueType::integer(),
-            )),
+            Comp::ret(Value::annot(Value::int(1), ValueType::integer())),
         )));
         assert!(
             bool::from(agree(&thunk_a, &thunk_annotated)),

@@ -654,10 +654,7 @@ pattern = [
   "examples/restriction/collapsible_unwrap",
   "examples/restriction/const_path_join",
   "examples/restriction/env_literal",
-  # Disabled 2026-07-30 pending remediation of ~1600 pre-existing findings
-  # across the workspace (tracked in the dylint residual bead); see
-  # docs/workflow/rust.md "Toolchain upgrades" residuals.
-  # "examples/restriction/inconsistent_qualification",
+  "examples/restriction/inconsistent_qualification",
   # Disabled 2026-07-31: purposely ignored — the lint's name/usage matching is too coarse to be useful (not tracked as a residual).
   # "examples/restriction/misleading_variable_name",
   # Disabled 2026-07-31: purposely ignored — the lint's caller-before-callee order conflicts with deliberate top-down layouts and is unsatisfiable for shared test fixture helpers (not tracked as a residual).

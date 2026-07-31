@@ -593,7 +593,7 @@ mod tests
         NodesYaml: Into<NodesYamlText<'semantic>>,
     {
         let nodes_yaml = nodes_yaml.into().0;
-        crate::support::HOST_FILESYSTEM.write(
+        support::HOST_FILESYSTEM.write(
             manifest,
             format!("version: 1\nhash: {REQUIRED_HASH_ALGORITHM}\nnodes:\n{nodes_yaml}"),
         )?;
@@ -647,7 +647,7 @@ mod tests
     fn adr_filename_numbers_resolve_references() -> TestResult
     {
         let fixture = fixture("adr")?;
-        crate::support::HOST_FILESYSTEM.write(fixture.adr.join("0007-record.md"), "# ADR-7\n")?;
+        support::HOST_FILESYSTEM.write(fixture.adr.join("0007-record.md"), "# ADR-7\n")?;
         let source = "# Root\n\nSee ADR-7.\n## 1 Section\nSee §1.\n";
         let root_hash = write_doc(&fixture.corpus, "root.md", source)?;
         write_manifest(
@@ -685,8 +685,8 @@ mod tests
                 "fixture path has no parent",
             )));
         };
-        crate::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        crate::support::HOST_FILESYSTEM.write(&doc_path, text)?;
+        support::HOST_FILESYSTEM.create_dir_all(parent)?;
+        support::HOST_FILESYSTEM.write(&doc_path, text)?;
         Ok(format!("{}", blake3::hash(text.as_bytes()).to_hex()))
     }
 
@@ -731,15 +731,14 @@ mod tests
     fn missing_docs_and_adr_edge_fragments_are_reported_in_order() -> TestResult
     {
         let fixture = fixture("missing-and-adr-fragment")?;
-        crate::support::HOST_FILESYSTEM.remove_dir_all(&fixture.adr)?;
+        support::HOST_FILESYSTEM.remove_dir_all(&fixture.adr)?;
         let numbers = adr_numbers(&fixture.corpus)?;
         assert!(
             numbers.is_empty(),
             "absent ADR directories should be treated as an empty registry"
         );
-        crate::support::HOST_FILESYSTEM.create_dir_all(fixture.adr.join("nested"))?;
-        crate::support::HOST_FILESYSTEM
-            .write(fixture.adr.join("nested/0041-record.md"), "# Ignored\n")?;
+        support::HOST_FILESYSTEM.create_dir_all(fixture.adr.join("nested"))?;
+        support::HOST_FILESYSTEM.write(fixture.adr.join("nested/0041-record.md"), "# Ignored\n")?;
         let source = "# Root\n\nSee ADR-41 and §2.3.\n## 2 Existing\n";
         let root_hash = write_doc(&fixture.corpus, "root.md", source)?;
         write_manifest(
@@ -776,11 +775,11 @@ mod tests
             "gandr-workflow-gates-docs-refs-{}-{name}",
             std::process::id()
         ));
-        crate::support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
+        support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
         let corpus = root.join("docs/gandr");
         let adr = root.join("docs/adr");
-        crate::support::HOST_FILESYSTEM.create_dir_all(&corpus)?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(&adr)?;
+        support::HOST_FILESYSTEM.create_dir_all(&corpus)?;
+        support::HOST_FILESYSTEM.create_dir_all(&adr)?;
         let manifest = corpus.join("MANIFEST.yml");
         Ok(Fixture {
             root,

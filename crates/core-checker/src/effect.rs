@@ -29,6 +29,8 @@
 //! [`EffectSig::name`]; the build maintains the invariant that one name denotes
 //! one signature, so a row keyed by name is well defined.
 
+pub mod host;
+
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;

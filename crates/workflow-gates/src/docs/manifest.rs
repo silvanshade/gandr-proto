@@ -859,9 +859,7 @@ fn verify_node(
 #[inline]
 pub fn path_exists(path: &Path) -> Result<impl Into<PathExistsFlag>, GateError>
 {
-    crate::support::HOST_FILESYSTEM
-        .try_exists(path)
-        .map(bool::from)
+    support::HOST_FILESYSTEM.try_exists(path).map(bool::from)
 }
 
 /// Return a lowercase BLAKE3 hex digest for `bytes`.
@@ -1222,7 +1220,7 @@ mod tests
     fn empty_manifest_nodes_fail_loudly() -> TestResult
     {
         let fixture = fixture("empty")?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .write(&fixture.manifest, "version: 1\nhash: blake3\nnodes: []\n")?;
 
         let error = ManifestContext::load(&fixture.manifest)
@@ -1248,9 +1246,9 @@ mod tests
             "gandr-workflow-gates-docs-manifest-{}-{name}",
             std::process::id()
         ));
-        crate::support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
+        support::HOST_FILESYSTEM.remove_dir_if_exists(&root)?;
         let corpus = root.join("docs/gandr");
-        crate::support::HOST_FILESYSTEM.create_dir_all(&corpus)?;
+        support::HOST_FILESYSTEM.create_dir_all(&corpus)?;
         let manifest = corpus.join("MANIFEST.yml");
         Ok(Fixture {
             root,
@@ -1270,7 +1268,7 @@ mod tests
         );
 
         let wrong_hash = fixture("wrong-hash")?;
-        crate::support::HOST_FILESYSTEM.write(
+        support::HOST_FILESYSTEM.write(
             &wrong_hash.manifest,
             "version: 1\nhash: sha256\nnodes:\n  - path: intro.md\n    b3: abc\n",
         )?;
@@ -1296,21 +1294,21 @@ mod tests
     fn manifest_loader_rejects_malformed_duplicate_missing_and_traversal_entries() -> TestResult
     {
         let unparseable = fixture("unparseable")?;
-        crate::support::HOST_FILESYSTEM.write(&unparseable.manifest, "version: [")?;
+        support::HOST_FILESYSTEM.write(&unparseable.manifest, "version: [")?;
         assert_manifest_error_contains(
             ManifestContext::load(&unparseable.manifest),
             "manifest present but unparseable",
         );
 
         let no_documents = fixture("no-documents")?;
-        crate::support::HOST_FILESYSTEM.write(&no_documents.manifest, "")?;
+        support::HOST_FILESYSTEM.write(&no_documents.manifest, "")?;
         assert_manifest_error_contains(
             ManifestContext::load(&no_documents.manifest),
             "must contain exactly one document, found 0",
         );
 
         let many_documents = fixture("many-documents")?;
-        crate::support::HOST_FILESYSTEM.write(
+        support::HOST_FILESYSTEM.write(
             &many_documents.manifest,
             "hash: blake3\nnodes: []\n---\nhash: blake3\n",
         )?;
@@ -1320,7 +1318,7 @@ mod tests
         );
 
         let non_list = fixture("non-list")?;
-        crate::support::HOST_FILESYSTEM.write(
+        support::HOST_FILESYSTEM.write(
             &non_list.manifest,
             "version: 1\nhash: blake3\nnodes: nope\n",
         )?;
@@ -1404,7 +1402,7 @@ mod tests
         NodesYaml: Into<NodesYamlText<'semantic>>,
     {
         let nodes_yaml = nodes_yaml.into().0;
-        crate::support::HOST_FILESYSTEM.write(
+        support::HOST_FILESYSTEM.write(
             manifest,
             format!("version: 1\nhash: blake3\nnodes:\n{nodes_yaml}"),
         )?;
@@ -1417,7 +1415,7 @@ mod tests
     {
         let fixture = fixture("order")?;
         let missing_hash = write_doc(&fixture.corpus, "seed.md", "# Seed\n")?;
-        crate::support::HOST_FILESYSTEM.remove_file(fixture.corpus.join("seed.md"))?;
+        support::HOST_FILESYSTEM.remove_file(fixture.corpus.join("seed.md"))?;
         let _z_hash = write_doc(&fixture.corpus, "z.md", "# Z\n")?;
         let _a_hash = write_doc(&fixture.corpus, "a.md", "# A\n")?;
         let _orphan_b = write_doc(&fixture.corpus, "b-orphan.md", "# B\n")?;
@@ -1460,9 +1458,9 @@ mod tests
     fn manifest_loader_rejects_symlinked_node_components() -> TestResult
     {
         let fixture = fixture("symlink")?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(fixture.corpus.join("real"))?;
+        support::HOST_FILESYSTEM.create_dir_all(fixture.corpus.join("real"))?;
         let hash = write_doc(&fixture.corpus, "real/doc.md", "# Real\n")?;
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .symlink(fixture.corpus.join("real"), fixture.corpus.join("link"))?;
         write_manifest(
             &fixture.manifest,
@@ -1495,8 +1493,8 @@ mod tests
                 "fixture path has no parent",
             )));
         };
-        crate::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        crate::support::HOST_FILESYSTEM.write(&doc_path, text)?;
+        support::HOST_FILESYSTEM.create_dir_all(parent)?;
+        support::HOST_FILESYSTEM.write(&doc_path, text)?;
         Ok(blake3_hex(text.as_bytes()))
     }
 }

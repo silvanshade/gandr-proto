@@ -17,11 +17,10 @@ use core::sync::atomic::Ordering;
 use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command as ProcessCommand;
 
 use gandr_workflow_gates::GateError;
-use gandr_workflow_gates::mutants::MutantsCommand;
-use gandr_workflow_gates::mutants::range::PushRangePlan;
+use gandr_workflow_gates::mutants;
+use gandr_workflow_gates::semantic_value;
 
 /// Shared integration-test result type.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -159,6 +158,7 @@ const EXPECTED_DYLINT_PLUGIN_PATHS: &[&str] = &[
     "examples/restriction/collapsible_unwrap",
     "examples/restriction/const_path_join",
     "examples/restriction/env_literal",
+    "examples/restriction/inconsistent_qualification",
     "examples/restriction/question_mark_in_expression",
     "examples/restriction/ref_aware_redundant_closure_for_method_calls",
     "examples/restriction/register_lints_warn",
@@ -203,6 +203,7 @@ const EXPECTED_DYLINT_REPRESENTED_LINT_PATHS: &[&str] = &[
     "examples/restriction/collapsible_unwrap",
     "examples/restriction/const_path_join",
     "examples/restriction/env_literal",
+    "examples/restriction/inconsistent_qualification",
     "examples/restriction/question_mark_in_expression",
     "examples/restriction/ref_aware_redundant_closure_for_method_calls",
     "examples/restriction/register_lints_warn",
@@ -219,6 +220,7 @@ const EXPECTED_UPSTREAM_DYLINT_LIBS: &[&str] = &[
     "collapsible_unwrap",
     "const_path_join",
     "env_literal",
+    "inconsistent_qualification",
     "incorrect_matches_operation",
     "non_thread_safe_call_in_test",
     "question_mark_in_expression",
@@ -862,7 +864,7 @@ fn process_stdout_stderr_and_status_are_exact() -> TestResult
         )));
     };
     let binary = Path::new(binary);
-    let output = |command: &mut ProcessCommand| {
+    let output = |command: &mut std::process::Command| {
         command.output().map_err(|source| GateError::Io {
             path: binary.to_path_buf(),
             source,
@@ -878,7 +880,7 @@ fn process_stdout_stderr_and_status_are_exact() -> TestResult
         "  - path: root.md\n    b3: {clean_hash}\n    edges:\n      - rel: self\n        to: root.md#root\n"
     ))?;
     let clean_output = output(
-        ProcessCommand::new(binary)
+        std::process::Command::new(binary)
             .arg("docs-manifest")
             .arg("--manifest")
             .arg(clean_fixture.manifest_string()),
@@ -895,7 +897,7 @@ fn process_stdout_stderr_and_status_are_exact() -> TestResult
         "  - path: root.md\n    b3: {wrong_hash}\n    edges: []\n"
     ))?;
     let finding_output = output(
-        ProcessCommand::new(binary)
+        std::process::Command::new(binary)
             .arg("docs-manifest")
             .arg("--manifest")
             .arg(finding_fixture.manifest_string()),
@@ -906,27 +908,23 @@ fn process_stdout_stderr_and_status_are_exact() -> TestResult
     assert!(finding_stderr.contains("kind="));
     assert!(finding_stderr.contains("path=root.md"));
 
-    let usage_output = output(&mut ProcessCommand::new(binary))?;
+    let usage_output = output(&mut std::process::Command::new(binary))?;
     assert_eq!(Some(2_i32), usage_output.status.code());
     assert!(usage_output.stdout.is_empty());
     let usage_stderr = String::from_utf8_lossy(&usage_output.stderr);
     assert!(
-        usage_stderr.contains(
-            gandr_workflow_gates::semantic_value::<cli::UsageTextText<'static>, _>(
-                cli::usage_text()
-            )
-            .as_ref()
-        )
+        usage_stderr
+            .contains(semantic_value::<cli::UsageTextText<'static>, _>(cli::usage_text()).as_ref())
     );
 
-    let unknown_output = output(ProcessCommand::new(binary).arg("unknown"))?;
+    let unknown_output = output(std::process::Command::new(binary).arg("unknown"))?;
     assert_eq!(Some(2_i32), unknown_output.status.code());
     assert!(unknown_output.stdout.is_empty());
     let unknown_stderr = String::from_utf8_lossy(&unknown_output.stderr);
     assert!(unknown_stderr.contains("unknown command `unknown`"));
 
     let missing_value_output = output(
-        ProcessCommand::new(binary)
+        std::process::Command::new(binary)
             .arg("docs-manifest")
             .arg("--manifest")
             .arg("--other"),
@@ -1077,7 +1075,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
     let snapshot = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "snapshot"]))?;
     match snapshot {
         | cli::Command::Mutants {
-            command: MutantsCommand::Snapshot,
+            command: mutants::MutantsCommand::Snapshot,
             options,
         } => assert_default_mutants_options(&options, &current_dir, "snapshot")?,
         | _ => {
@@ -1091,8 +1089,8 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
     match push {
         | cli::Command::Mutants {
             command:
-                MutantsCommand::Push {
-                    range: PushRangePlan::Last { to },
+                mutants::MutantsCommand::Push {
+                    range: mutants::range::PushRangePlan::Last { to },
                 },
             options,
         } => {
@@ -1109,7 +1107,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
     let merge = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "merge"]))?;
     match merge {
         | cli::Command::Mutants {
-            command: MutantsCommand::Merge,
+            command: mutants::MutantsCommand::Merge,
             options,
         } => assert_default_mutants_options(&options, &current_dir, "merge")?,
         | _ => {
@@ -1130,7 +1128,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
     ]))?;
     match scheduled {
         | cli::Command::Mutants {
-            command: MutantsCommand::Scheduled { from_ref, to_ref },
+            command: mutants::MutantsCommand::Scheduled { from_ref, to_ref },
             options,
         } => {
             assert_eq!("main", from_ref);
@@ -1147,7 +1145,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
     let clean = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "clean"]))?;
     match clean {
         | cli::Command::Mutants {
-            command: MutantsCommand::Clean,
+            command: mutants::MutantsCommand::Clean,
             options,
         } => {
             assert!(options.workspace_root.as_os_str().is_empty());
@@ -1166,7 +1164,7 @@ fn configured_mutants_modes_parse_without_internal_paths() -> TestResult
     let sweep = cli::parse_command(os_args(["gandr-workflow-gates", "mutants", "sweep"]))?;
     match sweep {
         | cli::Command::Mutants {
-            command: MutantsCommand::Sweep,
+            command: mutants::MutantsCommand::Sweep,
             options,
         } => assert_default_mutants_options(&options, &current_dir, "sweep")?,
         | _ => {
@@ -1240,26 +1238,26 @@ fn configured_mise_mutants_tasks_parse_without_internal_path_flags() -> TestResu
             ))));
         };
         match (mode, command) {
-            | ("snapshot", MutantsCommand::Snapshot)
-            | ("merge", MutantsCommand::Merge)
-            | ("sweep", MutantsCommand::Sweep) => {
+            | ("snapshot", mutants::MutantsCommand::Snapshot)
+            | ("merge", mutants::MutantsCommand::Merge)
+            | ("sweep", mutants::MutantsCommand::Sweep) => {
                 assert_default_mutants_options(&options, &current_dir, mode)?;
             },
             | (
                 "push",
-                MutantsCommand::Push {
-                    range: PushRangePlan::Last { to },
+                mutants::MutantsCommand::Push {
+                    range: mutants::range::PushRangePlan::Last { to },
                 },
             ) => {
                 assert_eq!("HEAD", to);
                 assert_default_mutants_options(&options, &current_dir, mode)?;
             },
-            | ("scheduled", MutantsCommand::Scheduled { from_ref, to_ref }) => {
+            | ("scheduled", mutants::MutantsCommand::Scheduled { from_ref, to_ref }) => {
                 assert!(from_ref.contains("usage_from"));
                 assert!(to_ref.contains("usage_to"));
                 assert_default_mutants_options(&options, &current_dir, mode)?;
             },
-            | ("clean", MutantsCommand::Clean) => {
+            | ("clean", mutants::MutantsCommand::Clean) => {
                 assert!(options.workspace_root.as_os_str().is_empty());
                 assert!(options.cache_image.as_os_str().is_empty());
                 assert!(options.source_archive.as_os_str().is_empty());
@@ -1314,8 +1312,8 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     let represented_lints = represented_dylint_lint_paths(&plugin_paths);
     assert_eq!(
         EXPECTED_DYLINT_REPRESENTED_LINT_PATHS.len(),
-        26_usize,
-        "expected Dylint inventory constant must cover 26 upstream lints"
+        27_usize,
+        "expected Dylint inventory constant must cover 27 upstream lints"
     );
     assert_string_sequence(
         &represented_lints,
@@ -1713,7 +1711,7 @@ fn fuzz_smoke_plan_inventory_is_exact() -> TestResult
 /// Assert that default mutants options point at cwd, expanded cache, and temp
 /// paths.
 fn assert_default_mutants_options<'semantic, Mode>(
-    options: &gandr_workflow_gates::mutants::MutantsOptions,
+    options: &mutants::MutantsOptions,
     current_dir: &Path,
     mode: Mode,
 ) -> TestResult

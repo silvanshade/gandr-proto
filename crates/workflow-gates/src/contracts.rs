@@ -12,22 +12,11 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use std::ffi::OsStr;
-use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-use serde_json::Value;
-use syn::Attribute;
-use syn::Expr;
-use syn::ExprLit;
-use syn::File;
-use syn::Lit;
-use syn::Meta;
-use syn::visit::Visit;
-use yaml_rust2::yaml::Hash;
-use yaml_rust2::yaml::Yaml;
-use yaml_rust2::yaml::YamlLoader;
+use yaml_rust2::yaml;
 
 use crate::Finding;
 use crate::GateError;
@@ -266,7 +255,7 @@ where
     Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
-    match serde_json::from_str::<Value>(source) {
+    match serde_json::from_str::<serde_json::Value>(source) {
         | Ok(value) => return witnesses_from_supported_json(&value),
         | Err(error) => {
             let mut witnesses = BTreeSet::new();
@@ -277,12 +266,13 @@ where
                     continue;
                 }
                 saw_line = true;
-                let value = serde_json::from_str::<Value>(trimmed).map_err(|json_error| {
-                    GateError::Json {
-                        source_name: String::from("nextest list"),
-                        source: json_error,
-                    }
-                })?;
+                let value =
+                    serde_json::from_str::<serde_json::Value>(trimmed).map_err(|json_error| {
+                        GateError::Json {
+                            source_name: String::from("nextest list"),
+                            source: json_error,
+                        }
+                    })?;
                 let line_witnesses = witnesses_from_per_test_record(&value).ok_or_else(|| {
                     GateError::operational(format!(
                         "unsupported nextest JSON-lines record at line {}: expected per-test record with test name and package/crate context",
@@ -381,7 +371,7 @@ where
 
     let mut findings = Vec::new();
     for (job_key, job_yaml) in jobs {
-        let Yaml::String(ref job_id) = *job_key
+        let yaml::Yaml::String(ref job_id) = *job_key
         else {
             return Err(malformed_workflow(workflow_path, "job ids must be strings"));
         };
@@ -480,12 +470,12 @@ impl ProhibitedTool
 fn workflow_document<'semantic, Source>(
     workflow_path: &Path,
     source: Source,
-) -> Result<Yaml, GateError>
+) -> Result<yaml::Yaml, GateError>
 where
     Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
-    let mut documents = YamlLoader::load_from_str(source).map_err(|error| {
+    let mut documents = yaml::YamlLoader::load_from_str(source).map_err(|error| {
         GateError::operational(format!(
             "workflow YAML parse error: path={} detail={error}",
             workflow_path.display()
@@ -511,30 +501,30 @@ where
 /// Return a YAML mapping or a stable workflow-shape error.
 fn yaml_hash<'semantic, 'yaml, Detail>(
     workflow_path: &Path,
-    value: &'yaml Yaml,
+    value: &'yaml yaml::Yaml,
     detail: Detail,
-) -> Result<&'yaml Hash, GateError>
+) -> Result<&'yaml yaml::Hash, GateError>
 where
     Detail: Into<DetailText<'semantic>>,
 {
     let detail = detail.into().0;
     match *value {
-        | Yaml::Hash(ref mapping) => Ok(mapping),
+        | yaml::Yaml::Hash(ref mapping) => Ok(mapping),
         | _ => Err(malformed_workflow(workflow_path, detail)),
     }
 }
 
 /// Return a string-keyed mapping value without allocating a temporary key.
 fn yaml_mapping_value<'semantic, 'yaml, KeyName>(
-    mapping: &'yaml Hash,
+    mapping: &'yaml yaml::Hash,
     key_name: KeyName,
-) -> Option<&'yaml Yaml>
+) -> Option<&'yaml yaml::Yaml>
 where
     KeyName: Into<KeyNameText<'semantic>>,
 {
     let key_name = key_name.into().0;
     for (key, value) in mapping {
-        if let Yaml::String(ref candidate) = *key
+        if let yaml::Yaml::String(ref candidate) = *key
             && candidate == key_name
         {
             return Some(value);
@@ -544,10 +534,10 @@ where
 }
 
 /// Return a YAML string slice.
-fn yaml_string(value: &Yaml) -> impl Into<OptionalYamlStringText<'_>>
+fn yaml_string(value: &yaml::Yaml) -> impl Into<OptionalYamlStringText<'_>>
 {
     match *value {
-        | Yaml::String(ref text) => Some(text.as_str()),
+        | yaml::Yaml::String(ref text) => Some(text.as_str()),
         | _ => None,
     }
 }
@@ -556,14 +546,14 @@ fn yaml_string(value: &Yaml) -> impl Into<OptionalYamlStringText<'_>>
 fn collect_ci_step_findings<'semantic, JobId>(
     workflow_path: &Path,
     job_id: JobId,
-    steps_yaml: &Yaml,
+    steps_yaml: &yaml::Yaml,
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
 where
     JobId: Into<JobIdText<'semantic>>,
 {
     let job_id = job_id.into().0;
-    let Yaml::Array(ref steps) = *steps_yaml
+    let yaml::Yaml::Array(ref steps) = *steps_yaml
     else {
         return Err(malformed_workflow(
             workflow_path,
@@ -573,8 +563,8 @@ where
     for (step_index, step_yaml) in steps.iter().enumerate() {
         let step_number = step_index.saturating_add(1);
         match *step_yaml {
-            | Yaml::Alias(_) => {},
-            | Yaml::Hash(ref step) => {
+            | yaml::Yaml::Alias(_) => {},
+            | yaml::Yaml::Hash(ref step) => {
                 collect_ci_run_step_finding(workflow_path, job_id, step_number, step, findings)?;
             },
             | _ => {
@@ -593,7 +583,7 @@ fn collect_ci_run_step_finding<'semantic, JobId, StepNumber>(
     workflow_path: &Path,
     job_id: JobId,
     step_number: StepNumber,
-    step: &Hash,
+    step: &yaml::Hash,
     findings: &mut Vec<Finding>,
 ) -> Result<(), GateError>
 where
@@ -617,7 +607,7 @@ where
         }
         return Ok(());
     };
-    let Yaml::String(ref script) = *run_yaml
+    let yaml::Yaml::String(ref script) = *run_yaml
     else {
         return Err(malformed_workflow(
             workflow_path,
@@ -1315,7 +1305,7 @@ fn rust_sources(scope: &Path) -> Result<Vec<PathBuf>, GateError>
     let mut pending = vec![(scope.to_path_buf(), true)];
     let mut sources = Vec::new();
     while let Some((path, is_root)) = pending.pop() {
-        let metadata = fs::symlink_metadata(&path).map_err(|error| GateError::Io {
+        let metadata = std::fs::symlink_metadata(&path).map_err(|error| GateError::Io {
             path: path.clone(),
             source: error,
         })?;
@@ -1330,7 +1320,7 @@ fn rust_sources(scope: &Path) -> Result<Vec<PathBuf>, GateError>
             continue;
         }
         if metadata.is_dir() {
-            let entries = fs::read_dir(&path).map_err(|error| GateError::Io {
+            let entries = std::fs::read_dir(&path).map_err(|error| GateError::Io {
                 path: path.clone(),
                 source: error,
             })?;
@@ -1358,12 +1348,12 @@ fn rust_sources(scope: &Path) -> Result<Vec<PathBuf>, GateError>
 /// Analyze a parsed file for adequacy findings.
 fn analyze_parsed_file(
     path: &Path,
-    parsed: &File,
+    parsed: &syn::File,
     witnesses: &BTreeSet<String>,
 ) -> Vec<Finding>
 {
     let mut collector = DocCollector::default();
-    collector.visit_file(parsed);
+    syn::visit::Visit::visit_file(&mut collector, parsed);
     let mut findings = Vec::new();
     for group in collector.groups {
         if let Some(finding) = finding_for_group(path, &group, witnesses) {
@@ -1946,16 +1936,16 @@ where
 }
 
 /// Extract doc strings from syn attributes.
-fn doc_lines(attrs: &[Attribute]) -> Vec<String>
+fn doc_lines(attrs: &[syn::Attribute]) -> Vec<String>
 {
     let mut docs = Vec::new();
     for attr in attrs {
         if !attr.path().is_ident("doc") {
             continue;
         }
-        if let Meta::NameValue(ref name_value) = attr.meta
-            && let Expr::Lit(ExprLit {
-                lit: Lit::Str(ref lit),
+        if let syn::Meta::NameValue(ref name_value) = attr.meta
+            && let syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Str(ref lit),
                 ..
             }) = name_value.value
         {
@@ -1992,7 +1982,7 @@ impl DocCollector
     fn push(
         &mut self,
         declaration: String,
-        attrs: &[Attribute],
+        attrs: &[syn::Attribute],
     )
     {
         let docs = doc_lines(attrs);
@@ -2003,11 +1993,11 @@ impl DocCollector
     }
 }
 
-impl<'ast> Visit<'ast> for DocCollector
+impl<'ast> syn::visit::Visit<'ast> for DocCollector
 {
     fn visit_file(
         &mut self,
-        i: &'ast File,
+        i: &'ast syn::File,
     )
     {
         self.push(String::from("crate"), &i.attrs);
@@ -2070,7 +2060,7 @@ impl<'ast> Visit<'ast> for DocCollector
 }
 
 /// Return attributes for an item.
-fn item_attrs(item: &syn::Item) -> &[Attribute]
+fn item_attrs(item: &syn::Item) -> &[syn::Attribute]
 {
     match *item {
         | syn::Item::Const(ref i) => &i.attrs,
@@ -2093,7 +2083,7 @@ fn item_attrs(item: &syn::Item) -> &[Attribute]
 }
 
 /// Return attributes for an impl item.
-fn impl_item_attrs(item: &syn::ImplItem) -> &[Attribute]
+fn impl_item_attrs(item: &syn::ImplItem) -> &[syn::Attribute]
 {
     match *item {
         | syn::ImplItem::Const(ref i) => &i.attrs,
@@ -2105,7 +2095,7 @@ fn impl_item_attrs(item: &syn::ImplItem) -> &[Attribute]
 }
 
 /// Return attributes for a trait item.
-fn trait_item_attrs(item: &syn::TraitItem) -> &[Attribute]
+fn trait_item_attrs(item: &syn::TraitItem) -> &[syn::Attribute]
 {
     match *item {
         | syn::TraitItem::Const(ref i) => &i.attrs,
@@ -2117,7 +2107,7 @@ fn trait_item_attrs(item: &syn::TraitItem) -> &[Attribute]
 }
 
 /// Return attributes for a foreign item.
-fn foreign_item_attrs(item: &syn::ForeignItem) -> &[Attribute]
+fn foreign_item_attrs(item: &syn::ForeignItem) -> &[syn::Attribute]
 {
     match *item {
         | syn::ForeignItem::Fn(ref i) => &i.attrs,
@@ -2209,7 +2199,7 @@ fn field_declaration(field: &syn::Field) -> String
 }
 
 /// Extract nextest witnesses from any supported JSON shape.
-fn witnesses_from_supported_json(value: &Value) -> Result<BTreeSet<String>, GateError>
+fn witnesses_from_supported_json(value: &serde_json::Value) -> Result<BTreeSet<String>, GateError>
 {
     if let Some(rust_suites) = rust_suites_value(value)? {
         return Ok(witnesses_from_value(rust_suites));
@@ -2221,9 +2211,9 @@ fn witnesses_from_supported_json(value: &Value) -> Result<BTreeSet<String>, Gate
 }
 
 /// Return a supported aggregate `rust-suites` payload after schema validation.
-fn rust_suites_value(value: &Value) -> Result<Option<&Value>, GateError>
+fn rust_suites_value(value: &serde_json::Value) -> Result<Option<&serde_json::Value>, GateError>
 {
-    let Value::Object(ref object) = *value
+    let serde_json::Value::Object(ref object) = *value
     else {
         return Ok(None);
     };
@@ -2236,16 +2226,16 @@ fn rust_suites_value(value: &Value) -> Result<Option<&Value>, GateError>
 }
 
 /// Validate the top-level nextest aggregate suite collection.
-fn validate_rust_suites(value: &Value) -> Result<(), GateError>
+fn validate_rust_suites(value: &serde_json::Value) -> Result<(), GateError>
 {
     match *value {
-        | Value::Object(ref suites) => {
+        | serde_json::Value::Object(ref suites) => {
             for suite in suites.values() {
                 validate_suite_record(suite)?;
             }
             return Ok(());
         },
-        | Value::Array(ref suites) => {
+        | serde_json::Value::Array(ref suites) => {
             for suite in suites {
                 validate_suite_record(suite)?;
             }
@@ -2256,9 +2246,9 @@ fn validate_rust_suites(value: &Value) -> Result<(), GateError>
 }
 
 /// Validate one nextest suite record before witness extraction.
-fn validate_suite_record(value: &Value) -> Result<(), GateError>
+fn validate_suite_record(value: &serde_json::Value) -> Result<(), GateError>
 {
-    let Value::Object(ref suite) = *value
+    let serde_json::Value::Object(ref suite) = *value
     else {
         return Err(unsupported_nextest_schema());
     };
@@ -2281,7 +2271,9 @@ fn validate_suite_record(value: &Value) -> Result<(), GateError>
 }
 
 /// Return a supported zero-test suite status field.
-fn supported_suite_status(value: &Value) -> impl Into<OptionalSupportedSuiteStatusText<'_>>
+fn supported_suite_status(
+    value: &serde_json::Value
+) -> impl Into<OptionalSupportedSuiteStatusText<'_>>
 {
     let status = string_field(value, "status").into().0?;
     if status.is_empty() {
@@ -2294,12 +2286,12 @@ fn supported_suite_status(value: &Value) -> impl Into<OptionalSupportedSuiteStat
 enum TestcaseValidationFrame<'value>
 {
     /// Validate an array or map testcase collection.
-    Collection(&'value Value),
+    Collection(&'value serde_json::Value),
     /// Validate one testcase entry.
     Entry
     {
         /// The testcase record under validation.
-        value: &'value Value,
+        value: &'value serde_json::Value,
         /// Whether the record must carry a testcase name.
         requires_name: RequiresNameFlag,
     },
@@ -2312,7 +2304,7 @@ enum WitnessTraversalFrame<'value>
     Value
     {
         /// The JSON value under traversal.
-        value: &'value Value,
+        value: &'value serde_json::Value,
         /// Nearest enclosing package name, if any.
         package: Option<String>,
         /// Nearest enclosing crate name, if any.
@@ -2324,7 +2316,7 @@ enum WitnessTraversalFrame<'value>
     Collection
     {
         /// The testcase collection under traversal.
-        value: &'value Value,
+        value: &'value serde_json::Value,
         /// Nearest enclosing package name, if any.
         package: Option<String>,
         /// Nearest enclosing crate name, if any.
@@ -2341,13 +2333,13 @@ enum WitnessTraversalFrame<'value>
 /// - boundedness: `serde_json` stores a finite tree parsed from one nextest
 ///   JSON payload.
 /// - input recursion: none.
-fn validate_testcase_collection(value: &Value) -> Result<(), GateError>
+fn validate_testcase_collection(value: &serde_json::Value) -> Result<(), GateError>
 {
     let mut frames = vec![TestcaseValidationFrame::Collection(value)];
     while let Some(frame) = frames.pop() {
         match frame {
             | TestcaseValidationFrame::Collection(value) => match *value {
-                | Value::Array(ref items) => {
+                | serde_json::Value::Array(ref items) => {
                     for item in items.iter().rev() {
                         frames.push(TestcaseValidationFrame::Entry {
                             value: item,
@@ -2355,7 +2347,7 @@ fn validate_testcase_collection(value: &Value) -> Result<(), GateError>
                         });
                     }
                 },
-                | Value::Object(ref object) => {
+                | serde_json::Value::Object(ref object) => {
                     for item in object.values().rev() {
                         frames.push(TestcaseValidationFrame::Entry {
                             value: item,
@@ -2376,7 +2368,7 @@ fn validate_testcase_collection(value: &Value) -> Result<(), GateError>
 
 /// Validate one testcase entry frame and push its children.
 fn validate_testcase_entry_frame<'value, RequiresName>(
-    value: &'value Value,
+    value: &'value serde_json::Value,
     requires_name: RequiresName,
     frames: &mut Vec<TestcaseValidationFrame<'value>>,
 ) -> Result<(), GateError>
@@ -2385,7 +2377,7 @@ where
 {
     let requires_name = requires_name.into();
     match *value {
-        | Value::Array(ref items) => {
+        | serde_json::Value::Array(ref items) => {
             for item in items.iter().rev() {
                 frames.push(TestcaseValidationFrame::Entry {
                     value: item,
@@ -2394,7 +2386,7 @@ where
             }
             Ok(())
         },
-        | Value::Object(ref object) => {
+        | serde_json::Value::Object(ref object) => {
             let mut has_nested_collection = false;
             for (key, item) in object.iter().rev() {
                 if key == "testcases" || key == "tests" {
@@ -2415,7 +2407,7 @@ where
 }
 
 /// Extract aliases from one supported per-test JSON record.
-fn witnesses_from_per_test_record(value: &Value) -> Option<BTreeSet<String>>
+fn witnesses_from_per_test_record(value: &serde_json::Value) -> Option<BTreeSet<String>>
 {
     let name = supported_test_record_name(value).into().0?;
     let package = package_context(value).into().0;
@@ -2429,7 +2421,7 @@ fn witnesses_from_per_test_record(value: &Value) -> Option<BTreeSet<String>>
 }
 
 /// Extract nextest witnesses from any supported aggregate payload.
-fn witnesses_from_value(value: &Value) -> BTreeSet<String>
+fn witnesses_from_value(value: &serde_json::Value) -> BTreeSet<String>
 {
     let mut witnesses = BTreeSet::new();
     collect_witnesses(value, None, None, false, &mut witnesses);
@@ -2439,7 +2431,7 @@ fn witnesses_from_value(value: &Value) -> BTreeSet<String>
 /// Walk nextest JSON with an explicit worklist while carrying package and crate
 /// context.
 fn collect_witnesses<'semantic, Package, CrateName, IsTestcaseContext>(
-    value: &Value,
+    value: &serde_json::Value,
     package: Package,
     crate_name: CrateName,
     is_testcase_context: IsTestcaseContext,
@@ -2475,7 +2467,7 @@ fn collect_witness_frames(
                 crate_name,
                 is_testcase_context,
             } => match *value {
-                | Value::Array(ref items) => {
+                | serde_json::Value::Array(ref items) => {
                     for item in items.iter().rev() {
                         frames.push(WitnessTraversalFrame::Value {
                             value: item,
@@ -2485,7 +2477,7 @@ fn collect_witness_frames(
                         });
                     }
                 },
-                | Value::Object(ref object) => {
+                | serde_json::Value::Object(ref object) => {
                     let next_package = package_context(value)
                         .into()
                         .0
@@ -2543,7 +2535,7 @@ fn collect_witness_frames(
 
 /// Push testcase collection children onto the witness worklist.
 fn push_testcase_collection_frames<'value, 'semantic, Package, CrateName>(
-    value: &'value Value,
+    value: &'value serde_json::Value,
     package: Package,
     crate_name: CrateName,
     witnesses: &mut BTreeSet<String>,
@@ -2555,7 +2547,7 @@ fn push_testcase_collection_frames<'value, 'semantic, Package, CrateName>(
     let package = package.into().0;
     let crate_name = crate_name.into().0;
     match *value {
-        | Value::Array(ref items) => {
+        | serde_json::Value::Array(ref items) => {
             for item in items.iter().rev() {
                 frames.push(WitnessTraversalFrame::Value {
                     value: item,
@@ -2565,7 +2557,7 @@ fn push_testcase_collection_frames<'value, 'semantic, Package, CrateName>(
                 });
             }
         },
-        | Value::Object(ref object) => {
+        | serde_json::Value::Object(ref object) => {
             for (name, item) in object.iter().rev() {
                 insert_aliases(witnesses, name, package, crate_name);
                 frames.push(WitnessTraversalFrame::Value {
@@ -2590,7 +2582,7 @@ fn unsupported_nextest_schema() -> GateError
 
 /// Return a JSON object's test name when it resembles a test case record.
 fn test_name<IsTestcaseContext>(
-    value: &Value,
+    value: &serde_json::Value,
     is_testcase_context: IsTestcaseContext,
 ) -> impl Into<OptionalTestNameText<'_>>
 where
@@ -2611,7 +2603,9 @@ where
 }
 
 /// Return a supported test-name field from a JSON object.
-fn supported_test_record_name(value: &Value) -> impl Into<OptionalSupportedTestRecordNameText<'_>>
+fn supported_test_record_name(
+    value: &serde_json::Value
+) -> impl Into<OptionalSupportedTestRecordNameText<'_>>
 {
     return string_field(value, "test_name")
         .into()
@@ -2620,7 +2614,7 @@ fn supported_test_record_name(value: &Value) -> impl Into<OptionalSupportedTestR
 }
 
 /// Return recognized package context from a JSON object.
-fn package_context(value: &Value) -> impl Into<OptionalPackageContextText<'_>>
+fn package_context(value: &serde_json::Value) -> impl Into<OptionalPackageContextText<'_>>
 {
     return string_field(value, "package")
         .into()
@@ -2630,7 +2624,7 @@ fn package_context(value: &Value) -> impl Into<OptionalPackageContextText<'_>>
 }
 
 /// Return recognized crate context from a JSON object.
-fn crate_context(value: &Value) -> impl Into<OptionalCrateContextText<'_>>
+fn crate_context(value: &serde_json::Value) -> impl Into<OptionalCrateContextText<'_>>
 {
     return string_field(value, "crate")
         .into()
@@ -2714,14 +2708,14 @@ fn insert_aliases<'semantic, Name, Package, CrateName>(
 
 /// Read a string field from a JSON object.
 fn string_field<'semantic, 'value, Name>(
-    value: &'value Value,
+    value: &'value serde_json::Value,
     name: Name,
 ) -> impl Into<OptionalStringFieldText<'value>>
 where
     Name: Into<NameText<'semantic>>,
 {
     let name = name.into().0;
-    return value.get(name).and_then(Value::as_str);
+    return value.get(name).and_then(serde_json::Value::as_str);
 }
 
 #[cfg(test)]

@@ -81,7 +81,7 @@
 
 use core::fmt::Write as _;
 
-use gandr_core_checker::host::FIELD_STDOUT;
+use gandr_core_checker::effect::host::FIELD_STDOUT;
 use gandr_core_checker::outcome::Blame;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::outcome::StuckReason;

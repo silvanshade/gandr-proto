@@ -9,14 +9,10 @@ extern crate alloc;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
-use std::env;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
 
 mod containment;
 pub mod range;
@@ -227,8 +223,8 @@ impl MutantsHost for SupportMutantsHost
         let sanitized_git = sanitized_git.into().0;
         let output = support::run_output(OsStr::new(GIT_PROGRAM), args, cwd, sanitized_git)?;
         Ok(HostCommandOutcome::new(
-            crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0,
-            crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0,
+            crate::semantic_value::<support::SuccessFlag, _>(output.success()).0,
+            crate::semantic_value::<support::OptionalCodeCode, _>(output.code()).0,
             output.stdout_lossy().into_owned(),
         ))
     }
@@ -274,9 +270,7 @@ impl MutantsHost for SupportMutantsHost
         path: &Path,
     ) -> Result<impl Into<PathExistsFlag>, GateError>
     {
-        crate::support::HOST_FILESYSTEM
-            .try_exists(path)
-            .map(bool::from)
+        support::HOST_FILESYSTEM.try_exists(path).map(bool::from)
     }
 
     #[inline]
@@ -285,7 +279,7 @@ impl MutantsHost for SupportMutantsHost
         path: &Path,
     ) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.create_dir_all(path)
+        support::HOST_FILESYSTEM.create_dir_all(path)
     }
 
     #[inline]
@@ -294,7 +288,7 @@ impl MutantsHost for SupportMutantsHost
         path: &Path,
     ) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.remove_dir_all(path)
+        support::HOST_FILESYSTEM.remove_dir_all(path)
     }
 
     #[inline]
@@ -303,7 +297,7 @@ impl MutantsHost for SupportMutantsHost
         path: &Path,
     ) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.remove_file(path)
+        support::HOST_FILESYSTEM.remove_file(path)
     }
 
     #[inline]
@@ -750,11 +744,7 @@ where
         | None => containment::CargoMutantsScope::Workspace,
     };
     let diff_state = match diff {
-        | Some(path)
-            if crate::support::HOST_FILESYSTEM
-                .try_exists(path)
-                .map(bool::from)? =>
-        {
+        | Some(path) if support::HOST_FILESYSTEM.try_exists(path).map(bool::from)? => {
             containment::DiffPath::Present(path)
         },
         | Some(path) => containment::DiffPath::Missing(path),
@@ -1216,7 +1206,7 @@ fn containment_evidence() -> Result<containment::ContainmentEvidence, GateError>
 {
     Ok(containment::ContainmentEvidence {
         kernel_name: kernel_name()?,
-        act_value: env::var(ACT_ENVIRONMENT_VARIABLE).ok(),
+        act_value: std::env::var(ACT_ENVIRONMENT_VARIABLE).ok(),
         reachable_host_markers: reachable_host_markers()?,
         sentinel: guest_sentinel(),
         git_environment_markers: git_environment_markers(),
@@ -1227,12 +1217,12 @@ fn containment_evidence() -> Result<containment::ContainmentEvidence, GateError>
 fn kernel_name() -> Result<String, GateError>
 {
     let output = support::run_output(OsStr::new(UNAME_PROGRAM), &[os("-s")], None, false)?;
-    if !crate::semantic_value::<crate::support::SuccessFlag, _>(output.success()).0 {
+    if !crate::semantic_value::<support::SuccessFlag, _>(output.success()).0 {
         return Err(GateError::operational(format!(
             "mutants-guest: failed to read kernel name: {}",
             support::command_status_detail(
                 UNAME_PROGRAM,
-                crate::semantic_value::<crate::support::OptionalCodeCode, _>(output.code()).0
+                crate::semantic_value::<support::OptionalCodeCode, _>(output.code()).0
             )
         )));
     }
@@ -1245,10 +1235,7 @@ fn reachable_host_markers() -> Result<Vec<PathBuf>, GateError>
     let mut markers = Vec::new();
     for marker in HOST_MARKERS {
         let path = Path::new(marker);
-        if crate::support::HOST_FILESYSTEM
-            .try_exists(path)
-            .map(bool::from)?
-        {
+        if support::HOST_FILESYSTEM.try_exists(path).map(bool::from)? {
             markers.push(path.to_path_buf());
         }
     }
@@ -1258,7 +1245,7 @@ fn reachable_host_markers() -> Result<Vec<PathBuf>, GateError>
 /// Return the guest sentinel state without accepting read failures as proof.
 fn guest_sentinel() -> containment::GuestSentinel
 {
-    match crate::support::HOST_FILESYSTEM.read_to_string(containment::SENTINEL_PATH) {
+    match support::HOST_FILESYSTEM.read_to_string(containment::SENTINEL_PATH) {
         | Ok(token) if token.trim() == containment::SENTINEL_TOKEN => {
             containment::GuestSentinel::Valid
         },
@@ -1274,7 +1261,7 @@ fn guest_sentinel() -> containment::GuestSentinel
 fn git_environment_markers() -> Vec<String>
 {
     let mut markers = Vec::new();
-    for (key, value) in env::vars() {
+    for (key, value) in std::env::vars() {
         if key.starts_with(GIT_ENVIRONMENT_PREFIX) {
             markers.push(format!("{key}={value}"));
         }
@@ -1285,7 +1272,7 @@ fn git_environment_markers() -> Vec<String>
 /// Create a minimal Git repository for cargo-mutants archive execution.
 fn ensure_guest_git_repo() -> Result<(), GateError>
 {
-    if crate::support::HOST_FILESYSTEM
+    if support::HOST_FILESYSTEM
         .try_exists(".git")
         .map(bool::from)?
     {
@@ -1457,7 +1444,7 @@ where
 /// repo.
 fn run_guest_cargo_mutants(
     plan: &containment::CargoMutantsPlan
-) -> Result<process::ExitStatus, GateError>
+) -> Result<std::process::ExitStatus, GateError>
 {
     support::run_status(plan.program.as_os_str(), plan.args(), None, true)
 }
@@ -1616,7 +1603,7 @@ where
 fn temporary_tar_path() -> Result<PathBuf, GateError>
 {
     let nonce = nonce_text()?;
-    Ok(env::temp_dir().join(format!("gandr-mutants-src.{nonce}.tar")))
+    Ok(std::env::temp_dir().join(format!("gandr-mutants-src.{nonce}.tar")))
 }
 
 /// Remove one optional temporary file.
@@ -1636,12 +1623,12 @@ where
 /// Return a filesystem-safe process/time nonce.
 fn nonce_text() -> Result<String, GateError>
 {
-    let elapsed = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
         .map_err(|source| {
             GateError::operational(format!("mutants-vm: system clock error: {source}"))
         })?;
-    Ok(format!("{}-{}", process::id(), elapsed.as_nanos()))
+    Ok(format!("{}-{}", std::process::id(), elapsed.as_nanos()))
 }
 
 /// Return an operational campaign failure after report publication.
@@ -1716,14 +1703,10 @@ mod tests
     use alloc::vec;
     use alloc::vec::Vec;
     use core::error::Error;
-    use std::env;
     use std::ffi::OsStr;
     use std::ffi::OsString;
     use std::path::Path;
     use std::path::PathBuf;
-    use std::process::Command;
-    use std::time::SystemTime;
-    use std::time::UNIX_EPOCH;
 
     use super::*;
 
@@ -1832,9 +1815,7 @@ mod tests
             path: &Path,
         ) -> Result<impl Into<PathExistsFlag>, GateError>
         {
-            crate::support::HOST_FILESYSTEM
-                .try_exists(path)
-                .map(bool::from)
+            support::HOST_FILESYSTEM.try_exists(path).map(bool::from)
         }
 
         fn create_dir_all(
@@ -1842,7 +1823,7 @@ mod tests
             path: &Path,
         ) -> Result<(), GateError>
         {
-            crate::support::HOST_FILESYSTEM.create_dir_all(path)
+            support::HOST_FILESYSTEM.create_dir_all(path)
         }
 
         fn remove_dir_all(
@@ -1850,7 +1831,7 @@ mod tests
             path: &Path,
         ) -> Result<(), GateError>
         {
-            crate::support::HOST_FILESYSTEM.remove_dir_all(path)
+            support::HOST_FILESYSTEM.remove_dir_all(path)
         }
 
         fn remove_file(
@@ -1858,7 +1839,7 @@ mod tests
             path: &Path,
         ) -> Result<(), GateError>
         {
-            crate::support::HOST_FILESYSTEM.remove_file(path)
+            support::HOST_FILESYSTEM.remove_file(path)
         }
 
         fn write_atomic<'semantic, B>(
@@ -2154,13 +2135,13 @@ mod tests
                 "published campaign summary should classify the no-Rust fast path"
             );
             assert!(
-                !crate::support::HOST_FILESYSTEM
+                !support::HOST_FILESYSTEM
                     .try_exists(&options.diff_file)
                     .map(bool::from)?,
                 "successful no-Rust campaign should clean the temporary diff"
             );
             assert!(
-                !crate::support::HOST_FILESYSTEM
+                !support::HOST_FILESYSTEM
                     .try_exists(&options.working_report)
                     .map(bool::from)?,
                 "successful no-Rust campaign should clean the staging report"
@@ -2275,7 +2256,7 @@ mod tests
             "sweep should publish a no-mutants-selected summary when the guest report is absent"
         );
         assert!(
-            !crate::support::HOST_FILESYSTEM
+            !support::HOST_FILESYSTEM
                 .try_exists(&options.working_report)
                 .map(bool::from)?,
             "successful sweep should remove the temporary report"
@@ -2286,7 +2267,7 @@ mod tests
     /// Read the published campaign summary text.
     fn published_campaign(options: &MutantsOptions) -> Result<String, GateError>
     {
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .read_to_string(options.workspace_root.join("mutants.out/campaign.nuon"))
     }
 
@@ -2332,7 +2313,7 @@ mod tests
             "failed contained campaign should publish the failed summary"
         );
         assert!(
-            !crate::support::HOST_FILESYSTEM
+            !support::HOST_FILESYSTEM
                 .try_exists(&options.working_report)
                 .map(bool::from)?,
             "failed contained campaign should still clean staging after publication"
@@ -2383,7 +2364,7 @@ mod tests
     {
         let fixture = TestWorkspace::create("existing-cache")?;
         let cache_image = fixture.path().join("cache.img");
-        crate::support::HOST_FILESYSTEM.write(&cache_image, b"cache image")?;
+        support::HOST_FILESYSTEM.write(&cache_image, b"cache image")?;
         let mut host = FakeHost::default();
         let mut runner = FakeMsbAdapter::new(vec![msb_stdout("NAME KIND\n")], Vec::new());
 
@@ -2417,7 +2398,7 @@ mod tests
             "publication should fail before touching mutants.out without campaign.nuon"
         );
         assert!(
-            !crate::support::HOST_FILESYSTEM
+            !support::HOST_FILESYSTEM
                 .try_exists(fixture.path().join("mutants.out"))
                 .map(bool::from)?,
             "missing summary should not create a published report"
@@ -2556,7 +2537,7 @@ mod tests
         );
         write_source_archive(&mut host, &options, SNAPSHOT_ARCHIVE_REF)?;
         assert!(
-            crate::support::HOST_FILESYSTEM
+            support::HOST_FILESYSTEM
                 .try_exists(&options.source_archive)
                 .map(bool::from)?,
             "sanitized archive helper should write the requested archive path"
@@ -2570,18 +2551,17 @@ mod tests
     fn child_guest_git_repo_setup_ignores_injected_overrides() -> TestResult
     {
         let fixture = TestWorkspace::create("guest-git-sanitize")?;
-        crate::support::HOST_FILESYSTEM
-            .write(fixture.path().join("lib.rs"), b"pub fn marker() {}\n")?;
-        let original_dir = crate::support::HOST_FILESYSTEM.current_dir()?;
-        crate::support::HOST_FILESYSTEM.set_isolated_process_current_dir(fixture.path())?;
+        support::HOST_FILESYSTEM.write(fixture.path().join("lib.rs"), b"pub fn marker() {}\n")?;
+        let original_dir = support::HOST_FILESYSTEM.current_dir()?;
+        support::HOST_FILESYSTEM.set_isolated_process_current_dir(fixture.path())?;
         let repo_result = ensure_guest_git_repo();
         let restore_result =
-            crate::support::HOST_FILESYSTEM.set_isolated_process_current_dir(&original_dir);
+            support::HOST_FILESYSTEM.set_isolated_process_current_dir(&original_dir);
         restore_result?;
         repo_result?;
 
         assert!(
-            crate::support::HOST_FILESYSTEM
+            support::HOST_FILESYSTEM
                 .try_exists(fixture.path().join(".git"))
                 .map(bool::from)?,
             "guest repo setup should create a local .git directory despite injected overrides"
@@ -2592,13 +2572,13 @@ mod tests
     /// Create a one-commit Git repository through the sanitized local helper.
     fn create_committed_repo(root: &Path) -> TestResult
     {
-        crate::support::HOST_FILESYSTEM.create_dir_all(root)?;
+        support::HOST_FILESYSTEM.create_dir_all(root)?;
         run_git_status_checked(
             &[os("init"), os("--quiet"), os("--initial-branch=main")],
             Some(root),
             "test git init failed",
         )?;
-        crate::support::HOST_FILESYSTEM.write(root.join("lib.rs"), b"pub fn marker() {}\n")?;
+        support::HOST_FILESYSTEM.write(root.join("lib.rs"), b"pub fn marker() {}\n")?;
         run_git_status_checked(&[os("add"), os("--all")], Some(root), "test git add failed")?;
         run_git_status_checked(
             &[os("commit"), os("--quiet"), os("-m"), os("initial")],
@@ -2661,13 +2641,15 @@ mod tests
 
     /// Build a child test command whose environment would redirect unsanitized
     /// Git.
-    fn child_command_with_git_overrides<'semantic, N>(test_name: N) -> Result<Command, GateError>
+    fn child_command_with_git_overrides<'semantic, N>(
+        test_name: N
+    ) -> Result<std::process::Command, GateError>
     where
         N: Into<TestNameText<'semantic>>,
     {
         let test_name = test_name.into().0;
-        let child = crate::support::HOST_FILESYSTEM.current_exe()?;
-        let mut command = Command::new(child);
+        let child = support::HOST_FILESYSTEM.current_exe()?;
+        let mut command = std::process::Command::new(child);
         command.args(child_test_args(test_name));
         command.env("GIT_INDEX_FILE", "/tmp/gandr-mutants-poison/index");
         command.env("GIT_DIR", "/tmp/gandr-mutants-poison/git-dir");
@@ -2694,14 +2676,14 @@ mod tests
     /// Remove a directory when it exists.
     fn remove_dir_if_exists(path: &Path) -> Result<(), GateError>
     {
-        crate::support::HOST_FILESYSTEM.remove_dir_if_exists(path)
+        support::HOST_FILESYSTEM.remove_dir_if_exists(path)
     }
 
     /// Return a filesystem-safe nonce for test fixture names.
     fn test_nonce() -> Result<String, std::time::SystemTimeError>
     {
-        let elapsed = SystemTime::now().duration_since(UNIX_EPOCH)?;
-        Ok(format!("{}-{}", process::id(), elapsed.as_nanos()))
+        let elapsed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
+        Ok(format!("{}-{}", std::process::id(), elapsed.as_nanos()))
     }
 
     /// Temporary directory removed when a test finishes.
@@ -2721,9 +2703,10 @@ mod tests
         {
             let name = name.into().0;
             let nonce = test_nonce()?;
-            let path = env::temp_dir().join(format!("gandr-workflow-gates-mutants-{name}-{nonce}"));
+            let path =
+                std::env::temp_dir().join(format!("gandr-workflow-gates-mutants-{name}-{nonce}"));
             remove_dir_if_exists(&path)?;
-            crate::support::HOST_FILESYSTEM.create_dir_all(&path)?;
+            support::HOST_FILESYSTEM.create_dir_all(&path)?;
             Ok(Self { path })
         }
 
@@ -2738,7 +2721,7 @@ mod tests
     {
         fn drop(&mut self)
         {
-            match crate::support::HOST_FILESYSTEM.remove_dir_all(&self.path) {
+            match support::HOST_FILESYSTEM.remove_dir_all(&self.path) {
                 | Ok(()) | Err(_) => {},
             }
         }

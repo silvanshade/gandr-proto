@@ -126,7 +126,7 @@ fn accepts_mise_tasks_and_setup_allowances() -> TestResult
 #[ignore = "no .github/workflows/ci.yml in the reboot repo yet (gandr-kk7)"]
 fn clippy_and_dylint_jobs_are_independent() -> TestResult
 {
-    let workspace = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+    let workspace = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
     let workflow_path = workspace.join(WORKFLOW_PATH);
     let source = gandr_workflow_gates::support::HOST_FILESYSTEM.read_to_string(&workflow_path)?;
     let documents = YamlLoader::load_from_str(&source)?;

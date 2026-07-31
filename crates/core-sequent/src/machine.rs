@@ -78,14 +78,14 @@
 //! operation no source-level handler claims — where [`LMachine::run`] blames
 //! [`Blame::PerformNoHandler`] — is instead offered to an ambient host by
 //! [`LMachine::run_with_host`] over the public [`Value`] / signature surface
-//! ([`gandr_core_checker::host`]), the *identical* seam the CEK presents. On a
-//! resume the reply flows into the perform's continuation (deep); a decline is
-//! the same `PerformNoHandler` blame. The seam is realized at the driver — the
-//! L machine's configuration is the run loop's locals, not a reified state — so
-//! the offered signature carries its name only and the payload is read back
-//! over the public surface through the un-focusing readback `𝓕⁻¹`
-//! ([`crate::unfocus`], §7a) — exact on the first-order fragment AND on
-//! higher-order payloads (a thunk closure closes under its captured
+//! ([`gandr_core_checker::effect::host`]), the *identical* seam the CEK
+//! presents. On a resume the reply flows into the perform's continuation
+//! (deep); a decline is the same `PerformNoHandler` blame. The seam is realized
+//! at the driver — the L machine's configuration is the run loop's locals, not
+//! a reified state — so the offered signature carries its name only and the
+//! payload is read back over the public surface through the un-focusing
+//! readback `𝓕⁻¹` ([`crate::unfocus`], §7a) — exact on the first-order fragment
+//! AND on higher-order payloads (a thunk closure closes under its captured
 //! environment).
 
 use alloc::collections::BTreeMap;
@@ -99,10 +99,10 @@ use gandr_core_checker::boundary::FieldName;
 use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::boundary::OperationName;
 use gandr_core_checker::effect::EffectSig;
+use gandr_core_checker::effect::host::HostHandler;
+use gandr_core_checker::effect::host::HostOp;
+use gandr_core_checker::effect::host::HostReply;
 use gandr_core_checker::grade::Grade;
-use gandr_core_checker::host::HostHandler;
-use gandr_core_checker::host::HostOp;
-use gandr_core_checker::host::HostReply;
 use gandr_core_checker::outcome::Blame;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::outcome::STEP_BUDGET;

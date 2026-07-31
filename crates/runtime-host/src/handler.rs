@@ -2,10 +2,10 @@
 //! handler claims (`Exec` / `Fs` / `Env` / `Proc`) against real syscalls.
 //!
 //! [`ShellHandler::dispatch`] is the whole surface: it takes an intercepted
-//! [`HostOp`] (the host seam's owned view of a `perform`, ADR-35 D4) and
-//! returns a [`HostAction`] telling the driver ([`crate::driver`]) to resume
-//! the run with a reply, halt with an exit code, abort with a fatal error, or
-//! decline (leaving the machine to blame an unclaimed `perform`).
+//! [`effect::host::HostOp`] (the host seam's owned view of a `perform`, ADR-35
+//! D4) and returns a [`HostAction`] telling the driver ([`crate::driver`]) to
+//! resume the run with a reply, halt with an exit code, abort with a fatal
+//! error, or decline (leaving the machine to blame an unclaimed `perform`).
 //!
 //! Dispatch keys on [`gandr_core_checker::effect::EffectSig::name`] first, then
 //! the operation name — so an operation named `read` in some *other* signature
@@ -27,8 +27,7 @@ use std::process::Stdio;
 use std::process::id as process_id;
 
 use gandr_core_checker::boundary::OperationName;
-use gandr_core_checker::host as sig;
-use gandr_core_checker::host::HostOp;
+use gandr_core_checker::effect;
 use gandr_core_checker::syntax::Value;
 
 use crate::boundary::FilePath;
@@ -46,9 +45,9 @@ use crate::error::ShellError;
 const MAX_TEMPDIR_ATTEMPTS: u64 = 1024;
 
 /// The driver's instruction after an intercepted operation — the internal,
-/// richer cousin of [`gandr_core_checker::host::HostReply`] (which cannot
-/// express a run-truncating `exit` or a fatal abort; the [`crate::driver`]
-/// captures those two out of band).
+/// richer cousin of [`gandr_core_checker::effect::host::HostReply`] (which
+/// cannot express a run-truncating `exit` or a fatal abort; the
+/// [`crate::driver`] captures those two out of band).
 #[derive(Clone, Debug)]
 pub(crate) enum HostAction
 {
@@ -103,24 +102,24 @@ impl ShellHandler
     #[inline]
     pub(crate) fn dispatch(
         &mut self,
-        op: &HostOp,
+        op: &effect::host::HostOp,
     ) -> HostAction
     {
         match op.sig.name().as_ref() {
-            | sig::EXEC => Self::dispatch_exec(op),
-            | sig::FS => self.dispatch_fs(op),
-            | sig::ENV => Self::dispatch_env(op),
-            | sig::PROC => Self::dispatch_proc(op),
+            | effect::host::EXEC => Self::dispatch_exec(op),
+            | effect::host::FS => self.dispatch_fs(op),
+            | effect::host::ENV => Self::dispatch_env(op),
+            | effect::host::PROC => Self::dispatch_proc(op),
             | _ => HostAction::Decline,
         }
     }
 
     /// Routes an `Exec` operation.
     #[inline]
-    fn dispatch_exec(op: &HostOp) -> HostAction
+    fn dispatch_exec(op: &effect::host::HostOp) -> HostAction
     {
         match op.op.as_str() {
-            | sig::EXEC_RUN => Self::exec(&op.payload).into(),
+            | effect::host::EXEC_RUN => Self::exec(&op.payload).into(),
             | _ => HostAction::Decline,
         }
     }
@@ -129,41 +128,43 @@ impl ShellHandler
     #[inline]
     fn dispatch_fs(
         &mut self,
-        op: &HostOp,
+        op: &effect::host::HostOp,
     ) -> HostAction
     {
         match op.op.as_str() {
-            | sig::FS_READ => Self::fs_read(&op.payload).into(),
-            | sig::FS_WRITE => Self::fs_write(&op.payload).into(),
-            | sig::FS_GLOB => Self::fs_glob(&op.payload).into(),
-            | sig::FS_STAT => Self::fs_stat(&op.payload).into(),
-            | sig::FS_MKDIR => Self::fs_mkdir(&op.payload).into(),
-            | sig::FS_TEMPDIR => self.fs_tempdir().into(),
-            | sig::FS_CWD => Self::fs_cwd().into(),
-            | sig::FS_LS_FILES => Self::fs_ls_files(&op.payload).into(),
+            | effect::host::FS_READ => Self::fs_read(&op.payload).into(),
+            | effect::host::FS_WRITE => Self::fs_write(&op.payload).into(),
+            | effect::host::FS_GLOB => Self::fs_glob(&op.payload).into(),
+            | effect::host::FS_STAT => Self::fs_stat(&op.payload).into(),
+            | effect::host::FS_MKDIR => Self::fs_mkdir(&op.payload).into(),
+            | effect::host::FS_TEMPDIR => self.fs_tempdir().into(),
+            | effect::host::FS_CWD => Self::fs_cwd().into(),
+            | effect::host::FS_LS_FILES => Self::fs_ls_files(&op.payload).into(),
             | _ => HostAction::Decline,
         }
     }
 
     /// Routes an `Env` operation (read-only).
     #[inline]
-    fn dispatch_env(op: &HostOp) -> HostAction
+    fn dispatch_env(op: &effect::host::HostOp) -> HostAction
     {
         match op.op.as_str() {
-            | sig::ENV_GET => Self::env_get(&op.payload).into(),
-            | sig::ENV_PATH => HostAction::Resume(Self::env_path()),
+            | effect::host::ENV_GET => Self::env_get(&op.payload).into(),
+            | effect::host::ENV_PATH => HostAction::Resume(Self::env_path()),
             | _ => HostAction::Decline,
         }
     }
 
     /// Routes a `Proc` operation.
     #[inline]
-    fn dispatch_proc(op: &HostOp) -> HostAction
+    fn dispatch_proc(op: &effect::host::HostOp) -> HostAction
     {
         match op.op.as_str() {
-            | sig::PROC_EXIT => match codec::decode_int(sig::PROC, sig::PROC_EXIT, &op.payload) {
-                | Ok(code) => HostAction::Exit(i64::from(code)),
-                | Err(error) => HostAction::Fail(error),
+            | effect::host::PROC_EXIT => {
+                match codec::decode_int(effect::host::PROC, effect::host::PROC_EXIT, &op.payload) {
+                    | Ok(code) => HostAction::Exit(i64::from(code)),
+                    | Err(error) => HostAction::Fail(error),
+                }
             },
             | _ => HostAction::Decline,
         }
@@ -178,7 +179,7 @@ impl ShellHandler
     /// reply (`exit_code`), not an error; only a spawn failure is fatal.
     fn exec(payload: &Value) -> Result<Value, ShellError>
     {
-        let command = codec::decode_command(sig::EXEC, sig::EXEC_RUN, payload)?;
+        let command = codec::decode_command(effect::host::EXEC, effect::host::EXEC_RUN, payload)?;
         match command.mode {
             | SpawnMode::Captured => Self::exec_captured(&command),
             | SpawnMode::Inherit => Self::exec_inherit(&command),
@@ -237,9 +238,9 @@ impl ShellHandler
     /// file is fatal (the reply type is `String`).
     fn fs_read(payload: &Value) -> Result<Value, ShellError>
     {
-        let path = codec::decode_str(sig::FS, sig::FS_READ, payload)?;
-        let contents =
-            fs::read_to_string(&path).map_err(|error| fs_error(sig::FS_READ, &path, &error))?;
+        let path = codec::decode_str(effect::host::FS, effect::host::FS_READ, payload)?;
+        let contents = fs::read_to_string(&path)
+            .map_err(|error| fs_error(effect::host::FS_READ, &path, &error))?;
         Ok(Value::string(&contents))
     }
 
@@ -247,8 +248,10 @@ impl ShellHandler
     /// A missing parent directory is fatal (`mkdir` first).
     fn fs_write(payload: &Value) -> Result<Value, ShellError>
     {
-        let (path, contents) = codec::decode_write(sig::FS, sig::FS_WRITE, payload)?;
-        fs::write(&path, &contents).map_err(|error| fs_error(sig::FS_WRITE, &path, &error))?;
+        let (path, contents) =
+            codec::decode_write(effect::host::FS, effect::host::FS_WRITE, payload)?;
+        fs::write(&path, &contents)
+            .map_err(|error| fs_error(effect::host::FS_WRITE, &path, &error))?;
         Ok(Value::Unit)
     }
 
@@ -257,7 +260,7 @@ impl ShellHandler
     /// Unreadable directories are skipped, never fatal.
     fn fs_glob(payload: &Value) -> Result<Value, ShellError>
     {
-        let pattern = codec::decode_str(sig::FS, sig::FS_GLOB, payload)?;
+        let pattern = codec::decode_str(effect::host::FS, effect::host::FS_GLOB, payload)?;
         let mut matches = glob_paths(&pattern);
         matches.sort();
         // Consecutive `**` segments can reach one path by more than one split,
@@ -284,7 +287,7 @@ impl ShellHandler
     )]
     fn fs_stat(payload: &Value) -> Result<Value, ShellError>
     {
-        let path = codec::decode_str(sig::FS, sig::FS_STAT, payload)?;
+        let path = codec::decode_str(effect::host::FS, effect::host::FS_STAT, payload)?;
         match fs::symlink_metadata(&path) {
             | Ok(metadata) => {
                 let file_type = metadata.file_type();
@@ -315,7 +318,7 @@ impl ShellHandler
             {
                 Ok(codec::encode_stat("missing", 0_i64))
             },
-            | Err(error) => Err(fs_error(sig::FS_STAT, &path, &error)),
+            | Err(error) => Err(fs_error(effect::host::FS_STAT, &path, &error)),
         }
     }
 
@@ -323,8 +326,9 @@ impl ShellHandler
     /// `unit` (idempotent, like `mkdir -p`).
     fn fs_mkdir(payload: &Value) -> Result<Value, ShellError>
     {
-        let path = codec::decode_str(sig::FS, sig::FS_MKDIR, payload)?;
-        fs::create_dir_all(&path).map_err(|error| fs_error(sig::FS_MKDIR, &path, &error))?;
+        let path = codec::decode_str(effect::host::FS, effect::host::FS_MKDIR, payload)?;
+        fs::create_dir_all(&path)
+            .map_err(|error| fs_error(effect::host::FS_MKDIR, &path, &error))?;
         Ok(Value::Unit)
     }
 
@@ -373,12 +377,16 @@ impl ShellHandler
                 | Err(ref error) if error.kind() == std::io::ErrorKind::AlreadyExists => {},
                 | Err(error) => {
                     let rendered = candidate.to_string_lossy();
-                    return Err(fs_error(sig::FS_TEMPDIR, rendered.as_ref(), &error));
+                    return Err(fs_error(
+                        effect::host::FS_TEMPDIR,
+                        rendered.as_ref(),
+                        &error,
+                    ));
                 },
             }
         }
         Err(ShellError::Fs {
-            op: sig::FS_TEMPDIR.to_owned(),
+            op: effect::host::FS_TEMPDIR.to_owned(),
             path: base.to_string_lossy().into_owned(),
             detail: "exhausted unique-name attempts".to_owned(),
         })
@@ -395,7 +403,7 @@ impl ShellHandler
     /// newline would over-split a line-based parse.
     fn fs_ls_files(payload: &Value) -> Result<Value, ShellError>
     {
-        let dir = codec::decode_str(sig::FS, sig::FS_LS_FILES, payload)?;
+        let dir = codec::decode_str(effect::host::FS, effect::host::FS_LS_FILES, payload)?;
         let output = ProcCommand::new("git")
             .arg("-c")
             .arg("core.quotePath=false")
@@ -405,10 +413,10 @@ impl ShellHandler
             .current_dir(&dir)
             .stdin(Stdio::null())
             .output()
-            .map_err(|error| fs_error(sig::FS_LS_FILES, &dir, &error))?;
+            .map_err(|error| fs_error(effect::host::FS_LS_FILES, &dir, &error))?;
         if !output.status.success() {
             return Err(ShellError::Fs {
-                op: sig::FS_LS_FILES.to_owned(),
+                op: effect::host::FS_LS_FILES.to_owned(),
                 path: dir,
                 detail: format!(
                     "git ls-files failed ({}): {}",
@@ -434,7 +442,8 @@ impl ShellHandler
     /// (assumes a valid-UTF-8 cwd; the `Value::Str` model).
     fn fs_cwd() -> Result<Value, ShellError>
     {
-        let dir = env::current_dir().map_err(|error| fs_error(sig::FS_CWD, ".", &error))?;
+        let dir =
+            env::current_dir().map_err(|error| fs_error(effect::host::FS_CWD, ".", &error))?;
         let rendered = dir.to_string_lossy();
         Ok(Value::string(rendered.as_ref()))
     }
@@ -443,7 +452,7 @@ impl ShellHandler
     /// is unset (or not valid Unicode).
     fn env_get(payload: &Value) -> Result<Value, ShellError>
     {
-        let name = codec::decode_str(sig::ENV, sig::ENV_GET, payload)?;
+        let name = codec::decode_str(effect::host::ENV, effect::host::ENV_GET, payload)?;
         let value = env::var(&name).unwrap_or_default();
         Ok(Value::string(&value))
     }
@@ -736,7 +745,7 @@ fn glob_segment(cursor: GlobCursor<'_>) -> GlobMatch
 )]
 mod tests
 {
-    use gandr_core_checker::host as sig;
+    use gandr_core_checker::effect;
     use gandr_core_checker::syntax::Value;
 
     use super::ShellHandler;
@@ -872,9 +881,12 @@ mod tests
         let path = path.into();
         let contents = contents.into();
         let payload = Value::record([
-            (sig::FIELD_PATH.to_owned(), Value::string(path.as_ref())),
             (
-                sig::FIELD_CONTENTS.to_owned(),
+                effect::host::FIELD_PATH.to_owned(),
+                Value::string(path.as_ref()),
+            ),
+            (
+                effect::host::FIELD_CONTENTS.to_owned(),
                 Value::string(contents.as_ref()),
             ),
         ]);

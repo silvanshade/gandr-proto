@@ -18,14 +18,6 @@ use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 
-use syn::Attribute;
-use syn::Expr;
-use syn::ExprLit;
-use syn::File;
-use syn::Item;
-use syn::Lit;
-use syn::Meta;
-
 use crate::Finding;
 use crate::GateError;
 use crate::GateResult;
@@ -515,7 +507,7 @@ where
 /// - hypothesis: L3 pointwise — inline-module traversal and sibling ordering
 ///   are killed by oracle fixtures that depend on deterministic finding order.
 /// - witness: `source_policy::tests::soundness_missing_witnesses_are_reported_deterministically`
-fn collect_functions(syntax: &File) -> Vec<FunctionRecord<'_>>
+fn collect_functions(syntax: &syn::File) -> Vec<FunctionRecord<'_>>
 {
     let mut functions = Vec::new();
     let mut stack = vec![ItemFrame {
@@ -534,13 +526,13 @@ fn collect_functions(syntax: &File) -> Vec<FunctionRecord<'_>>
         stack.push(frame);
 
         match *item {
-            | Item::Fn(ref item_fn) => {
+            | syn::Item::Fn(ref item_fn) => {
                 functions.push(FunctionRecord {
                     name: item_fn.sig.ident.to_string(),
                     attrs: item_fn.attrs.as_slice(),
                 });
             },
-            | Item::Mod(ref item_mod) => {
+            | syn::Item::Mod(ref item_mod) => {
                 if let Some(content) = item_mod.content.as_ref() {
                     stack.push(ItemFrame {
                         items: content.1.as_slice(),
@@ -556,7 +548,7 @@ fn collect_functions(syntax: &File) -> Vec<FunctionRecord<'_>>
 }
 
 /// Return whether a function has a direct `#[test]` attribute.
-fn has_test_attribute(attrs: &[Attribute]) -> impl Into<TestAttributeFlag>
+fn has_test_attribute(attrs: &[syn::Attribute]) -> impl Into<TestAttributeFlag>
 {
     return attrs
         .iter()
@@ -579,7 +571,7 @@ fn has_test_attribute(attrs: &[Attribute]) -> impl Into<TestAttributeFlag>
 ///   and both-tags cases separate exact recognition from substring heuristics.
 /// - witness: `source_policy::tests::soundness_tags_must_be_exact_doc_items`
 /// - witness: `source_policy::tests::soundness_tag_precedence_makes_witness_tag_free`
-fn oracle_tags(attrs: &[Attribute]) -> OracleTags
+fn oracle_tags(attrs: &[syn::Attribute]) -> OracleTags
 {
     let mut witness_payload = None;
     let mut has_companion = false;
@@ -631,17 +623,17 @@ fn oracle_tags(attrs: &[Attribute]) -> OracleTags
 /// - hypothesis: L3 pointwise — recognized doc comments and ordinary non-doc
 ///   attributes are distinguished by the soundness tag fixtures.
 /// - witness: `source_policy::tests::soundness_tags_must_be_exact_doc_items`
-fn doc_comment(attribute: &Attribute) -> Option<String>
+fn doc_comment(attribute: &syn::Attribute) -> Option<String>
 {
     if !attribute.path().is_ident("doc") {
         return None;
     }
-    let Meta::NameValue(ref name_value) = attribute.meta
+    let syn::Meta::NameValue(ref name_value) = attribute.meta
     else {
         return None;
     };
-    let Expr::Lit(ExprLit {
-        lit: Lit::Str(ref literal),
+    let syn::Expr::Lit(syn::ExprLit {
+        lit: syn::Lit::Str(ref literal),
         ..
     }) = name_value.value
     else {
@@ -977,7 +969,7 @@ fn display_path(path: &Path) -> String
 #[must_use]
 pub fn analyze_soundness_file<'semantic, Path>(
     path: Path,
-    syntax: &File,
+    syntax: &syn::File,
 ) -> Vec<Finding>
 where
     Path: Into<PathText<'semantic>>,
@@ -1022,14 +1014,14 @@ struct FunctionRecord<'syntax>
     /// Function name as written in the Rust identifier.
     name: String,
     /// Function attributes, including parsed doc comments.
-    attrs: &'syntax [Attribute],
+    attrs: &'syntax [syn::Attribute],
 }
 
 /// Explicit traversal frame for source-order `syn::Item` walking.
 struct ItemFrame<'syntax>
 {
     /// Items in the current inline module frame.
-    items: &'syntax [Item],
+    items: &'syntax [syn::Item],
     /// Next item index to inspect.
     next: usize,
 }

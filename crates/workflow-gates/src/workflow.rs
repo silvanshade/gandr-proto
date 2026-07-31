@@ -16,13 +16,8 @@
 
 use std::ffi::OsStr;
 use std::ffi::OsString;
-use std::fs;
-use std::fs::File;
-use std::fs::OpenOptions;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command;
-use std::process::Stdio;
 
 use crate::GateError;
 use crate::support;
@@ -513,7 +508,7 @@ impl FileWorkflowCache
     {
         let repository = repository.into().0;
         let path = self.path(repository);
-        let bytes = match crate::support::HOST_FILESYSTEM.read(path) {
+        let bytes = match support::HOST_FILESYSTEM.read(path) {
             | Ok(bytes) => bytes,
             | Err(GateError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound =>
             {
@@ -565,8 +560,8 @@ impl WorkflowCacheBackend for FileWorkflowCache
                 path.display()
             )));
         };
-        crate::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        crate::support::write_atomic(&path, &bytes)
+        support::HOST_FILESYSTEM.create_dir_all(parent)?;
+        support::write_atomic(&path, &bytes)
     }
 }
 
@@ -628,8 +623,8 @@ impl WorkflowLockBackend for FileWorkflowLock
                 path.display()
             )));
         };
-        crate::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        let file = OpenOptions::new()
+        support::HOST_FILESYSTEM.create_dir_all(parent)?;
+        let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
@@ -649,7 +644,7 @@ impl WorkflowLockBackend for FileWorkflowLock
 struct FileWorkflowLockGuard
 {
     /// Locked file descriptor.
-    file: File,
+    file: std::fs::File,
 }
 
 impl Drop for FileWorkflowLockGuard
@@ -758,7 +753,7 @@ fn repository_lock_key(cwd: Option<&Path>) -> Option<RepositoryLockKey>
         "--git-common-dir",
     ])?;
     let common_path = PathBuf::from(common_dir);
-    let canonical = fs::canonicalize(common_path).ok()?;
+    let canonical = std::fs::canonicalize(common_path).ok()?;
     Some(RepositoryLockKey {
         token: hash_bytes(canonical.as_os_str().as_encoded_bytes()),
     })
@@ -938,14 +933,14 @@ fn command_output(
     cwd: Option<&Path>,
 ) -> Option<CommandOutputBytes>
 {
-    let mut command = Command::new(program);
+    let mut command = std::process::Command::new(program);
     command.args(args);
     if let Some(directory) = cwd {
         command.current_dir(directory);
     }
     support::sanitize_git_environment(&mut command);
-    command.stdout(Stdio::piped());
-    command.stderr(Stdio::null());
+    command.stdout(std::process::Stdio::piped());
+    command.stderr(std::process::Stdio::null());
     let output = command.output().ok()?;
     if !output.status.success() {
         return None;
@@ -1573,7 +1568,7 @@ impl TaskRunner for SupportRunner
     /// - panics: none.
     ///
     /// # Errors
-    /// Returns [`GateError`] from [`crate::support::run_output_streamed`].
+    /// Returns [`GateError`] from [`support::run_output_streamed`].
     ///
     /// # Adequacy
     /// - hypothesis: L2 boundary — command spawning is intentionally not
@@ -1588,8 +1583,7 @@ impl TaskRunner for SupportRunner
     ) -> Result<TaskExit, GateError>
     {
         let args = [OsString::from("run"), OsString::from(task.name().as_ref())];
-        let output =
-            crate::support::run_output_streamed(OsStr::new(MISE_PROGRAM), &args, cwd, true)?;
+        let output = support::run_output_streamed(OsStr::new(MISE_PROGRAM), &args, cwd, true)?;
         if output.success().into().0 {
             return Ok(TaskExit::Success);
         }
@@ -1690,8 +1684,6 @@ mod tests
     #[cfg(unix)]
     use std::ffi::OsString;
     #[cfg(unix)]
-    use std::io;
-    #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt as _;
     #[cfg(unix)]
     use std::path::Path;
@@ -1741,6 +1733,7 @@ mod tests
     use super::update_command_identity;
     use super::upstream_revision;
     use super::workflow_policy_identity;
+    use crate::support;
 
     /// Test result used by workflow unit tests.
     type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -2058,8 +2051,8 @@ mod tests
         let parent = path
             .parent()
             .ok_or_else(|| GateError::operational("cache path missing parent"))?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(parent)?;
-        crate::support::HOST_FILESYSTEM.write(&path, b"not json")?;
+        support::HOST_FILESYSTEM.create_dir_all(parent)?;
+        support::HOST_FILESYSTEM.write(&path, b"not json")?;
 
         assert!(!cache.lookup(&key).map(|value| value.into().0)?);
         cache.record_success(&key)?;
@@ -2071,7 +2064,7 @@ mod tests
             cache.record_success(&next)?;
         }
 
-        let bytes = crate::support::HOST_FILESYSTEM.read(&path)?;
+        let bytes = support::HOST_FILESYSTEM.read(&path)?;
         let cache_file = serde_json::from_slice::<WorkflowCacheFile>(bytes.as_bytes().into())?;
         assert_eq!(WORKFLOW_CACHE_ENTRY_LIMIT, cache_file.entries.len());
         let newest_task = format!("task:{}", WORKFLOW_CACHE_ENTRY_LIMIT + 2);
@@ -2114,13 +2107,13 @@ mod tests
         let parent = path
             .parent()
             .ok_or_else(|| GateError::operational("cache path missing parent"))?;
-        crate::support::HOST_FILESYSTEM.create_dir_all(parent)?;
+        support::HOST_FILESYSTEM.create_dir_all(parent)?;
         let stale_file = WorkflowCacheFile {
             schema: WORKFLOW_CACHE_SCHEMA.saturating_add(1),
             entries: Vec::new(),
         };
         let stale_bytes = serde_json::to_vec(&stale_file)?;
-        crate::support::HOST_FILESYSTEM.write(path, stale_bytes)?;
+        support::HOST_FILESYSTEM.write(path, stale_bytes)?;
 
         assert!(!cache.lookup(&key).map(|value| value.into().0)?);
         Ok(())
@@ -2152,7 +2145,7 @@ mod tests
 
         assert_eq!(&["first", "second"][..], entries);
         assert!(lock.path(&key).exists());
-        drop(crate::support::HOST_FILESYSTEM.remove_dir_all(fixture_root));
+        drop(support::HOST_FILESYSTEM.remove_dir_all(fixture_root));
         Ok(())
     }
 
@@ -2226,12 +2219,12 @@ mod tests
         assert_eq!(endpoint.merge_base, merge_base,);
 
         let dirty_path = fixture.repo.join("dirty.txt");
-        crate::support::HOST_FILESYSTEM.write(&dirty_path, "dirty\n")?;
+        support::HOST_FILESYSTEM.write(&dirty_path, "dirty\n")?;
         assert_eq!(
             Some(false),
             repository_is_clean(Some(&fixture.repo)).into().0
         );
-        crate::support::HOST_FILESYSTEM.remove_file(dirty_path)?;
+        support::HOST_FILESYSTEM.remove_file(dirty_path)?;
         git_status(Some(&fixture.repo), &[
             os("checkout"),
             os("--detach"),
@@ -2269,14 +2262,16 @@ mod tests
 
         let error = io_error(
             Path::new("workflow-cache"),
-            io::Error::new(io::ErrorKind::PermissionDenied, "denied"),
+            std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
         );
         let GateError::Io { path, source } = error
         else {
-            return Err(Box::new(io::Error::other("expected workflow I/O error")));
+            return Err(Box::new(std::io::Error::other(
+                "expected workflow I/O error",
+            )));
         };
         assert_eq!(path, PathBuf::from("workflow-cache"));
-        assert_eq!(io::ErrorKind::PermissionDenied, source.kind());
+        assert_eq!(std::io::ErrorKind::PermissionDenied, source.kind());
         Ok(())
     }
 
@@ -2320,7 +2315,7 @@ mod tests
         assert_eq!(Tier::Push, push_report.tier);
         assert_eq!(push_report.completed_tasks, Tier::Push.plan().tasks().len());
 
-        let log = crate::support::HOST_FILESYSTEM.read_to_string(&fixture.log)?;
+        let log = support::HOST_FILESYSTEM.read_to_string(&fixture.log)?;
         let rows = log.lines().collect::<Vec<_>>();
         let mut expected_tasks = task_names(Tier::Merge.plan());
         expected_tasks.extend(task_names(Tier::Push.plan()));
@@ -2380,11 +2375,11 @@ mod tests
             "#!/bin/sh\nset -eu\nif [ \"$#\" -ne 2 ] || [ \"$1\" != run ]; then\n  echo \"unexpected mise argv: $*\" >&2\n  exit 64\nfi\nremote=\"$(git remote get-url origin)\"\nbranch=\"$(git rev-parse --abbrev-ref HEAD)\"\nprintf '%s|%s|%s\\n' \"$2\" \"$branch\" \"$remote\" >> {}\n",
             shell_quote(log)
         );
-        crate::support::HOST_FILESYSTEM.write(target, script)?;
-        let metadata = crate::support::HOST_FILESYSTEM.metadata(target)?;
+        support::HOST_FILESYSTEM.write(target, script)?;
+        let metadata = support::HOST_FILESYSTEM.metadata(target)?;
         let mut permissions = metadata.permissions();
         permissions.set_mode(EXECUTABLE_MODE);
-        crate::support::HOST_FILESYSTEM.set_permissions(target, permissions)?;
+        support::HOST_FILESYSTEM.set_permissions(target, permissions)?;
         Ok(())
     }
 
@@ -2423,7 +2418,7 @@ mod tests
         args: &[OsString],
     ) -> TestResult
     {
-        let mut command = crate::support::stateless_git_command();
+        let mut command = support::stateless_git_command();
         command.args(args);
         if let Some(directory) = cwd {
             command.current_dir(directory);
@@ -2434,7 +2429,7 @@ mod tests
         if status.success() {
             return Ok(());
         }
-        Err(Box::new(io::Error::other(format!(
+        Err(Box::new(std::io::Error::other(format!(
             "git fixture command failed with status {:?}",
             status.code()
         ))))
@@ -2646,7 +2641,7 @@ mod tests
     /// Return sorted direct entries under a cache directory.
     fn cache_directory_entries(path: &Path) -> Result<Vec<PathBuf>, GateError>
     {
-        let mut entries = crate::support::HOST_FILESYSTEM.read_dir_paths(path)?;
+        let mut entries = support::HOST_FILESYSTEM.read_dir_paths(path)?;
         entries.sort();
         Ok(entries)
     }
@@ -2704,7 +2699,7 @@ mod tests
         ) -> Result<TaskExit, GateError>
         {
             let args = [OsString::from("run"), OsString::from(task.name().as_ref())];
-            let output = crate::support::run_output_streamed(self.program, &args, cwd, true)?;
+            let output = support::run_output_streamed(self.program, &args, cwd, true)?;
             if output.success().into().0 {
                 return Ok(TaskExit::Success);
             }
@@ -2745,7 +2740,7 @@ mod tests
             let mise = bin.join("mise");
             let log = root.join("mise.log");
 
-            crate::support::HOST_FILESYSTEM.create_dir_all(bin)?;
+            support::HOST_FILESYSTEM.create_dir_all(bin)?;
             git_status(None, &[
                 os("init"),
                 os("--bare"),
@@ -2757,7 +2752,7 @@ mod tests
                 repo.as_os_str().to_os_string(),
             ])?;
             git_status(Some(&repo), &[os("checkout"), os("-b"), os("main")])?;
-            crate::support::HOST_FILESYSTEM.write(repo.join("README.md"), "workflow fixture\n")?;
+            support::HOST_FILESYSTEM.write(repo.join("README.md"), "workflow fixture\n")?;
             git_status(Some(&repo), &[os("add"), os("README.md")])?;
             git_status(Some(&repo), &[
                 os("commit"),
@@ -2772,7 +2767,7 @@ mod tests
                 os("main"),
             ])?;
             git_status(Some(&repo), &[os("checkout"), os("-b"), os("feature")])?;
-            crate::support::HOST_FILESYSTEM.write(repo.join("feature.txt"), "feature fixture\n")?;
+            support::HOST_FILESYSTEM.write(repo.join("feature.txt"), "feature fixture\n")?;
             git_status(Some(&repo), &[os("add"), os("feature.txt")])?;
             git_status(Some(&repo), &[
                 os("commit"),
@@ -2804,7 +2799,7 @@ mod tests
         /// Remove the temporary local-remote fixture best-effort.
         fn drop(&mut self)
         {
-            drop(crate::support::HOST_FILESYSTEM.remove_dir_all(&self.root));
+            drop(support::HOST_FILESYSTEM.remove_dir_all(&self.root));
         }
     }
 
@@ -3093,7 +3088,7 @@ mod tests
         fn run_task(
             &self,
             task: Task,
-            _cwd: Option<&std::path::Path>,
+            _cwd: Option<&Path>,
         ) -> Result<TaskExit, GateError>
         {
             self.calls

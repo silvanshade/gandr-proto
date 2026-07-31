@@ -29,13 +29,7 @@ use alloc::format;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
-use std::env;
-use std::ffi::OsStr;
-use std::ffi::OsString;
 use std::path::Path;
-
-use serde_json::Map;
-use serde_json::Value;
 
 use super::model::CoverageFailure;
 use super::model::CoverageFloors;
@@ -276,7 +270,7 @@ where
 {
     let text = text.into().0;
     let source_name = source_name.into().0;
-    let document: Value = serde_json::from_str(text).map_err(|error| {
+    let document: serde_json::Value = serde_json::from_str(text).map_err(|error| {
         coverage_error(format!(
             "failed to read coverage summary JSON {source_name}: {error}"
         ))
@@ -483,7 +477,7 @@ where
 fn previous_floors(
     floors_path: &Path,
     repo_root: &Path,
-    base_ref: Option<&OsStr>,
+    base_ref: Option<&std::ffi::OsStr>,
 ) -> Result<Option<CoverageFloors>, GateError>
 {
     let requested_floors = slash_path(floors_path);
@@ -695,14 +689,18 @@ fn increment_counter(counter: &mut RatchetCounterCount) -> Result<(), GateError>
 }
 
 /// Validate the llvm-cov exporter identity fields.
-fn validate_summary_identity(root: &Map<String, Value>) -> Result<(), GateError>
+fn validate_summary_identity(
+    root: &serde_json::Map<String, serde_json::Value>
+) -> Result<(), GateError>
 {
-    let cargo = root.get("cargo_llvm_cov").and_then(Value::as_object);
+    let cargo = root
+        .get("cargo_llvm_cov")
+        .and_then(serde_json::Value::as_object);
     let cargo_version = cargo
         .and_then(|object| object.get("version"))
-        .and_then(Value::as_str);
-    if root.get("type").and_then(Value::as_str) != Some("llvm.coverage.json.export")
-        || root.get("version").and_then(Value::as_str) != Some("3.1.0")
+        .and_then(serde_json::Value::as_str);
+    if root.get("type").and_then(serde_json::Value::as_str) != Some("llvm.coverage.json.export")
+        || root.get("version").and_then(serde_json::Value::as_str) != Some("3.1.0")
         || cargo_version != Some("0.8.7")
     {
         return Err(coverage_error(
@@ -713,17 +711,22 @@ fn validate_summary_identity(root: &Map<String, Value>) -> Result<(), GateError>
 }
 
 /// Return the summary `data[0].files` array with exact shape checks.
-fn summary_files(root: &Map<String, Value>) -> Result<&Vec<Value>, GateError>
+fn summary_files(
+    root: &serde_json::Map<String, serde_json::Value>
+) -> Result<&Vec<serde_json::Value>, GateError>
 {
-    let data = root.get("data").and_then(Value::as_array).ok_or_else(|| {
-        coverage_error("coverage summary JSON must contain exactly one data object")
-    })?;
+    let data = root
+        .get("data")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| {
+            coverage_error("coverage summary JSON must contain exactly one data object")
+        })?;
     if data.len() != 1 {
         return Err(coverage_error(
             "coverage summary JSON must contain exactly one data object",
         ));
     }
-    let Some(data_record) = data.first().and_then(Value::as_object)
+    let Some(data_record) = data.first().and_then(serde_json::Value::as_object)
     else {
         return Err(coverage_error(
             "coverage summary JSON data[0] must be a record",
@@ -731,13 +734,13 @@ fn summary_files(root: &Map<String, Value>) -> Result<&Vec<Value>, GateError>
     };
     data_record
         .get("files")
-        .and_then(Value::as_array)
+        .and_then(serde_json::Value::as_array)
         .ok_or_else(|| coverage_error("coverage summary JSON is missing data[0].files"))
 }
 
 /// Parse one JSON file entry and return `None` for non-production files.
 fn parse_summary_file(
-    value: &Value,
+    value: &serde_json::Value,
     repo_root: &Path,
 ) -> Result<Option<MeasuredCoverage>, GateError>
 {
@@ -749,15 +752,15 @@ fn parse_summary_file(
     };
     let filename = record
         .get("filename")
-        .and_then(Value::as_str)
+        .and_then(serde_json::Value::as_str)
         .ok_or_else(|| {
             coverage_error("coverage summary file entry is missing filename or summary.lines")
         })?;
     let lines = record
         .get("summary")
-        .and_then(Value::as_object)
+        .and_then(serde_json::Value::as_object)
         .and_then(|summary| summary.get("lines"))
-        .and_then(Value::as_object)
+        .and_then(serde_json::Value::as_object)
         .ok_or_else(|| {
             coverage_error("coverage summary file entry is missing filename or summary.lines")
         })?;
@@ -792,10 +795,10 @@ fn parse_summary_file(
 
 /// Return a required metric value or the missing-metrics diagnostic.
 fn required_metric<'semantic, 'json, K, F>(
-    lines: &'json Map<String, Value>,
+    lines: &'json serde_json::Map<String, serde_json::Value>,
     key: K,
     filename: F,
-) -> Result<&'json Value, GateError>
+) -> Result<&'json serde_json::Value, GateError>
 where
     K: Into<KeyText<'semantic>>,
     F: Into<FilenameText<'semantic>>,
@@ -818,7 +821,7 @@ where
 
 /// Parse a nonnegative integer line metric.
 fn parse_line_count<'semantic, F>(
-    value: &Value,
+    value: &serde_json::Value,
     filename: F,
 ) -> Result<impl Into<ParseLineCountCount>, GateError>
 where
@@ -843,7 +846,7 @@ where
 
 /// Parse an llvm-cov declared line percent at policy precision.
 fn parse_declared_percent<'semantic, F>(
-    value: &Value,
+    value: &serde_json::Value,
     filename: F,
 ) -> Result<Percent, GateError>
 where
@@ -890,12 +893,12 @@ where
 }
 
 /// Return a stable JSON kind name for diagnostics.
-fn json_kind(value: &Value) -> impl Into<JsonKindText<'static>>
+fn json_kind(value: &serde_json::Value) -> impl Into<JsonKindText<'static>>
 {
     match *value {
-        | Value::Null => "nothing",
-        | Value::Bool(_) => "bool",
-        | Value::Number(ref number) => {
+        | serde_json::Value::Null => "nothing",
+        | serde_json::Value::Bool(_) => "bool",
+        | serde_json::Value::Number(ref number) => {
             if number.is_f64() {
                 "float"
             }
@@ -903,9 +906,9 @@ fn json_kind(value: &Value) -> impl Into<JsonKindText<'static>>
                 "int"
             }
         },
-        | Value::String(_) => "string",
-        | Value::Array(_) => "table",
-        | Value::Object(_) => "record",
+        | serde_json::Value::String(_) => "string",
+        | serde_json::Value::Array(_) => "table",
+        | serde_json::Value::Object(_) => "record",
     }
 }
 
@@ -1325,11 +1328,11 @@ fn validate_exemptions(
 }
 
 /// Select the requested base ref from an explicit override or environment.
-fn requested_base_ref(base_ref: Option<&OsStr>) -> String
+fn requested_base_ref(base_ref: Option<&std::ffi::OsStr>) -> String
 {
     let raw = match base_ref {
         | Some(value) => value.to_string_lossy().into_owned(),
-        | None => match env::var_os("COVERAGE_BASE_REF") {
+        | None => match std::env::var_os("COVERAGE_BASE_REF") {
             | Some(value) => value.to_string_lossy().into_owned(),
             | None => String::new(),
         },
@@ -1368,11 +1371,11 @@ where
     let requested = requested.into().0;
     let commit_spec = format!("{requested}^{{commit}}");
     let args = vec![
-        OsString::from("rev-parse"),
-        OsString::from("--verify"),
-        OsString::from(commit_spec),
+        std::ffi::OsString::from("rev-parse"),
+        std::ffi::OsString::from("--verify"),
+        std::ffi::OsString::from(commit_spec),
     ];
-    let result = support::run_output(OsStr::new("git"), &args, Some(repo_root), true)?;
+    let result = support::run_output(std::ffi::OsStr::new("git"), &args, Some(repo_root), true)?;
     if !result.success().into().0 {
         if requested == "HEAD^" {
             let root_commit = head_is_root_commit(repo_root).map(|value| value.into().0)?;
@@ -1398,11 +1401,11 @@ where
 fn head_is_root_commit(repo_root: &Path) -> Result<impl Into<HeadIsRootCommitFlag>, GateError>
 {
     let args = vec![
-        OsString::from("cat-file"),
-        OsString::from("-p"),
-        OsString::from("HEAD"),
+        std::ffi::OsString::from("cat-file"),
+        std::ffi::OsString::from("-p"),
+        std::ffi::OsString::from("HEAD"),
     ];
-    let result = support::run_output(OsStr::new("git"), &args, Some(repo_root), true)?;
+    let result = support::run_output(std::ffi::OsStr::new("git"), &args, Some(repo_root), true)?;
     if !result.success().into().0 {
         return Ok(false);
     }
@@ -1425,13 +1428,13 @@ where
 {
     let commit = commit.into().0;
     let args = vec![
-        OsString::from("ls-tree"),
-        OsString::from("--name-only"),
-        OsString::from(commit),
-        OsString::from("--"),
-        OsString::from(DEFAULT_FLOORS),
+        std::ffi::OsString::from("ls-tree"),
+        std::ffi::OsString::from("--name-only"),
+        std::ffi::OsString::from(commit),
+        std::ffi::OsString::from("--"),
+        std::ffi::OsString::from(DEFAULT_FLOORS),
     ];
-    let result = support::run_output(OsStr::new("git"), &args, Some(repo_root), true)?;
+    let result = support::run_output(std::ffi::OsStr::new("git"), &args, Some(repo_root), true)?;
     if !result.success().into().0 {
         return Err(coverage_error(format!(
             "cannot inspect coverage floors in base ref '{commit}'"
@@ -1459,8 +1462,11 @@ where
     let requested = requested.into().0;
     let commit = commit.into().0;
     let object = format!("{commit}:{DEFAULT_FLOORS}");
-    let args = vec![OsString::from("show"), OsString::from(object)];
-    let result = support::run_output(OsStr::new("git"), &args, Some(repo_root), true)?;
+    let args = vec![
+        std::ffi::OsString::from("show"),
+        std::ffi::OsString::from(object),
+    ];
+    let result = support::run_output(std::ffi::OsStr::new("git"), &args, Some(repo_root), true)?;
     if !result.success().into().0 {
         return Err(coverage_error(format!(
             "cannot read coverage floors from base ref '{requested}'"
@@ -1477,7 +1483,6 @@ mod tests
     use alloc::collections::BTreeMap;
     use alloc::string::String;
     use alloc::vec::Vec;
-    use std::ffi::OsStr;
     use std::fs;
     use std::path::Path;
     use std::path::PathBuf;
@@ -1500,6 +1505,7 @@ mod tests
     use crate::coverage::model::MeasuredCoverage;
     use crate::coverage::model::Percent;
     use crate::coverage::model::ProductionFile;
+    use crate::support;
 
     /// Canonical fixture file A.
     const FILE_A: &str = "crates/demo/src/lib.rs";
@@ -1940,12 +1946,14 @@ target_percent = 80.00
         );
         assert_eq!(
             "HEAD^",
-            requested_base_ref(Some(OsStr::new("0000000000000000000000000000000000000000"))),
+            requested_base_ref(Some(std::ffi::OsStr::new(
+                "0000000000000000000000000000000000000000"
+            ))),
             "all-zero base ref should default to HEAD^",
         );
         assert_eq!(
             "main",
-            requested_base_ref(Some(OsStr::new("main"))),
+            requested_base_ref(Some(std::ffi::OsStr::new("main"))),
             "explicit base ref should be retained",
         );
     }
@@ -2441,9 +2449,12 @@ target_percent = 80.00
 
         write_text(&repo.join("README.md"), "root\n");
         commit_all(repo, "root without floors");
-        let root_base =
-            previous_floors(Path::new(super::DEFAULT_FLOORS), repo, Some(OsStr::new("")))
-                .expect("root HEAD^ should resolve to no base policy");
+        let root_base = previous_floors(
+            Path::new(super::DEFAULT_FLOORS),
+            repo,
+            Some(std::ffi::OsStr::new("")),
+        )
+        .expect("root HEAD^ should resolve to no base policy");
         assert!(
             root_base.is_none(),
             "root commit should have no base policy"
@@ -2457,7 +2468,7 @@ target_percent = 80.00
         let missing_blob = previous_floors(
             Path::new(super::DEFAULT_FLOORS),
             repo,
-            Some(OsStr::new("HEAD^")),
+            Some(std::ffi::OsStr::new("HEAD^")),
         )
         .expect("parent without floors should be a non-error");
         assert!(
@@ -2473,7 +2484,7 @@ target_percent = 80.00
         let base = previous_floors(
             Path::new(super::DEFAULT_FLOORS),
             repo,
-            Some(OsStr::new("HEAD^")),
+            Some(std::ffi::OsStr::new("HEAD^")),
         )
         .expect("parent floors should load")
         .expect("parent policy should exist");
@@ -2495,7 +2506,7 @@ target_percent = 80.00
             previous_floors(
                 Path::new(super::DEFAULT_FLOORS),
                 repo,
-                Some(OsStr::new("definitely-missing-ref")),
+                Some(std::ffi::OsStr::new("definitely-missing-ref")),
             ),
             "cannot resolve coverage base ref 'definitely-missing-ref'",
         );
@@ -2525,7 +2536,7 @@ target_percent = 80.00
                 "gandr-workflow-gates-{label}-{}-{unique}",
                 std::process::id(),
             ));
-            crate::support::HOST_FILESYSTEM
+            support::HOST_FILESYSTEM
                 .create_dir_all(&temp_root)
                 .expect("fixture directory should be creatable");
             Self { path: temp_root }
@@ -2542,7 +2553,7 @@ target_percent = 80.00
     {
         fn drop(&mut self)
         {
-            let _ignore_cleanup_error = crate::support::HOST_FILESYSTEM.remove_dir_all(&self.path);
+            let _ignore_cleanup_error = support::HOST_FILESYSTEM.remove_dir_all(&self.path);
         }
     }
 
@@ -2711,11 +2722,11 @@ target_percent = 80.00
     {
         let text = text.into().0;
         if let Some(parent) = path.parent() {
-            crate::support::HOST_FILESYSTEM
+            support::HOST_FILESYSTEM
                 .create_dir_all(parent)
                 .expect("fixture parent should be creatable");
         }
-        crate::support::HOST_FILESYSTEM
+        support::HOST_FILESYSTEM
             .write(path, text)
             .expect("fixture file should be writable");
     }
@@ -2802,7 +2813,7 @@ target_percent = 80.00
             .into_iter()
             .map(|arg| std::ffi::OsString::from(arg.into().text))
             .collect::<Vec<_>>();
-        let mut command = crate::support::stateless_git_command();
+        let mut command = support::stateless_git_command();
         command.args(&args).current_dir(repo);
         let status = command.status().expect("git should be runnable");
         assert!(status.success(), "git {args:?} should succeed");

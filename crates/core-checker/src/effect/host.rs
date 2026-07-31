@@ -20,9 +20,10 @@
 //! module is the seam's durable home precisely because the boundary outlives
 //! any one machine.
 //!
-//! It is its own module: [`crate::boundary`] is the newtype vocabulary,
-//! [`crate::effect`] is the effect-row algebra, and this module owns the
-//! representation-independent host seam plus its canonical signatures.
+//! It lives under [`crate::effect`]: [`crate::boundary`] is the newtype
+//! vocabulary, the parent module is the effect-row algebra, and this submodule
+//! owns the representation-independent host seam plus its canonical
+//! signatures.
 
 use alloc::string::String;
 use alloc::vec;

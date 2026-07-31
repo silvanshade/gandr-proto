@@ -1047,15 +1047,19 @@ mod tests
     use super::run;
     use super::type_level;
     use crate::arena::CompTypeId;
+    use crate::arena::ComputationId;
     use crate::arena::TermArena;
     use crate::arena::ValueId;
     use crate::arena::ValueTypeId;
     use crate::env::AdmittedDeclaration;
     use crate::error::KernelError;
+    use crate::error::RegisterFault;
     use crate::levels::LevelContext;
     use crate::levels::LevelParamCount;
     use crate::term::DeBruijnIndex;
     use crate::term::Side;
+    use crate::types::CompType;
+    use crate::types::ValueType;
 
     /// No prior declarations.
     fn no_entries() -> Vec<AdmittedDeclaration>
@@ -1090,7 +1094,7 @@ mod tests
         entries: &[AdmittedDeclaration],
         levels: &LevelContext,
         context: Vec<ValueTypeId>,
-        computation: crate::arena::ComputationId,
+        computation: ComputationId,
     ) -> Result<CompTypeId, KernelError>
     {
         match run(
@@ -1116,7 +1120,7 @@ mod tests
         let synthesized =
             synth_value(&mut arena, &entries, &levels, alloc::vec![unit], variable).unwrap();
         assert_eq!(
-            Some(&crate::types::ValueType::Unit),
+            Some(&ValueType::Unit),
             arena.value_type(synthesized),
             "variable 0 has the head type"
         );
@@ -1218,10 +1222,7 @@ mod tests
         )
         .unwrap();
         assert!(
-            matches!(
-                arena.comp_type(synthesized),
-                Some(&crate::types::CompType::Returner(_))
-            ),
+            matches!(arena.comp_type(synthesized), Some(&CompType::Returner(_))),
             "applying the forced thunk yields the codomain F Unit"
         );
     }
@@ -1390,7 +1391,7 @@ mod tests
             matches!(
                 super::produced_value_type(super::Produced::Checked),
                 Err(KernelError::CheckerRegisterFault(
-                    crate::error::RegisterFault::ExpectedValueType
+                    RegisterFault::ExpectedValueType
                 ))
             ),
             "a non-value register is a surfaced fault, not a fabricated type"
@@ -1399,7 +1400,7 @@ mod tests
             matches!(
                 super::produced_comp_type(super::Produced::ValueType(unit)),
                 Err(KernelError::CheckerRegisterFault(
-                    crate::error::RegisterFault::ExpectedCompType
+                    RegisterFault::ExpectedCompType
                 ))
             ),
             "a non-computation register is a surfaced fault, not a fabricated type"

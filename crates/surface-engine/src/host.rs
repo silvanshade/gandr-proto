@@ -1,9 +1,9 @@
 //! The source-level module surface over the canonical host signatures
 //! (the effects-control-shell design record §3/§5).
 //!
-//! [`gandr_core_checker::host`] owns the canonical `Exec` / `Fs` / `Proc` /
-//! `Env` signatures alongside the representation-independent host seam.
-//! This module explicitly re-exports that signature API and adds only the
+//! [`gandr_core_checker::effect::host`] owns the canonical `Exec` / `Fs` /
+//! `Proc` / `Env` signatures alongside the representation-independent host
+//! seam. This module explicitly re-exports that signature API and adds only the
 //! source-facing [`HostModule`] / [`HostMember`] metadata the lowerer needs.
 //! Keeping signatures with the seam avoids table duplication and any
 //! signature-driven surface-engine ↔ runtime-host coupling; the engine's only
@@ -21,38 +21,38 @@
 //! the ambient handler for these signatures.
 
 use gandr_core_checker::effect::EffectSig;
-pub use gandr_core_checker::host::ENV;
-pub use gandr_core_checker::host::ENV_GET;
-pub use gandr_core_checker::host::ENV_PATH;
-pub use gandr_core_checker::host::EXEC;
-pub use gandr_core_checker::host::EXEC_RUN;
-pub use gandr_core_checker::host::FIELD_ARGS;
-pub use gandr_core_checker::host::FIELD_CONTENTS;
-pub use gandr_core_checker::host::FIELD_EXIT_CODE;
-pub use gandr_core_checker::host::FIELD_KIND;
-pub use gandr_core_checker::host::FIELD_MODE;
-pub use gandr_core_checker::host::FIELD_PATH;
-pub use gandr_core_checker::host::FIELD_PROGRAM;
-pub use gandr_core_checker::host::FIELD_SIZE;
-pub use gandr_core_checker::host::FIELD_STDERR;
-pub use gandr_core_checker::host::FIELD_STDOUT;
-pub use gandr_core_checker::host::FS;
-pub use gandr_core_checker::host::FS_CWD;
-pub use gandr_core_checker::host::FS_GLOB;
-pub use gandr_core_checker::host::FS_LS_FILES;
-pub use gandr_core_checker::host::FS_MKDIR;
-pub use gandr_core_checker::host::FS_READ;
-pub use gandr_core_checker::host::FS_STAT;
-pub use gandr_core_checker::host::FS_TEMPDIR;
-pub use gandr_core_checker::host::FS_WRITE;
-pub use gandr_core_checker::host::MODE_CAPTURED;
-pub use gandr_core_checker::host::MODE_INHERIT;
-pub use gandr_core_checker::host::PROC;
-pub use gandr_core_checker::host::PROC_EXIT;
-pub use gandr_core_checker::host::env;
-pub use gandr_core_checker::host::exec;
-pub use gandr_core_checker::host::fs;
-pub use gandr_core_checker::host::proc;
+pub use gandr_core_checker::effect::host::ENV;
+pub use gandr_core_checker::effect::host::ENV_GET;
+pub use gandr_core_checker::effect::host::ENV_PATH;
+pub use gandr_core_checker::effect::host::EXEC;
+pub use gandr_core_checker::effect::host::EXEC_RUN;
+pub use gandr_core_checker::effect::host::FIELD_ARGS;
+pub use gandr_core_checker::effect::host::FIELD_CONTENTS;
+pub use gandr_core_checker::effect::host::FIELD_EXIT_CODE;
+pub use gandr_core_checker::effect::host::FIELD_KIND;
+pub use gandr_core_checker::effect::host::FIELD_MODE;
+pub use gandr_core_checker::effect::host::FIELD_PATH;
+pub use gandr_core_checker::effect::host::FIELD_PROGRAM;
+pub use gandr_core_checker::effect::host::FIELD_SIZE;
+pub use gandr_core_checker::effect::host::FIELD_STDERR;
+pub use gandr_core_checker::effect::host::FIELD_STDOUT;
+pub use gandr_core_checker::effect::host::FS;
+pub use gandr_core_checker::effect::host::FS_CWD;
+pub use gandr_core_checker::effect::host::FS_GLOB;
+pub use gandr_core_checker::effect::host::FS_LS_FILES;
+pub use gandr_core_checker::effect::host::FS_MKDIR;
+pub use gandr_core_checker::effect::host::FS_READ;
+pub use gandr_core_checker::effect::host::FS_STAT;
+pub use gandr_core_checker::effect::host::FS_TEMPDIR;
+pub use gandr_core_checker::effect::host::FS_WRITE;
+pub use gandr_core_checker::effect::host::MODE_CAPTURED;
+pub use gandr_core_checker::effect::host::MODE_INHERIT;
+pub use gandr_core_checker::effect::host::PROC;
+pub use gandr_core_checker::effect::host::PROC_EXIT;
+pub use gandr_core_checker::effect::host::env;
+pub use gandr_core_checker::effect::host::exec;
+pub use gandr_core_checker::effect::host::fs;
+pub use gandr_core_checker::effect::host::proc;
 
 use crate::boundary::HostModuleName;
 use crate::boundary::HostOperation;

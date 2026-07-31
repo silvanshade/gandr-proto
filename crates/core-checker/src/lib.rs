@@ -60,7 +60,6 @@ pub mod effect;
 pub mod error;
 pub mod footprint;
 pub mod grade;
-pub mod host;
 pub mod identity;
 pub mod intern;
 pub mod kernel_bridge;

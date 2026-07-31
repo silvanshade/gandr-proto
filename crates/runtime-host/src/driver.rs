@@ -6,23 +6,24 @@
 //! [`gandr_core_sequent::machine::run_comp_with_host`] and reads back an
 //! [`Eval`]. That entry offers every host-interceptable `perform` to the
 //! handler over the ADR-35 D4 host-effect seam
-//! ([`gandr_core_checker::host`]) — the same `(signature name, operation name,
-//! payload)` projection the retired CEK oracle presented — and enforces the
-//! same [`gandr_core_checker::outcome::StuckReason::StepLimit`] guard, so a
-//! non-terminating program halts rather than hangs.
+//! ([`gandr_core_checker::effect::host`]) — the same `(signature name,
+//! operation name, payload)` projection the retired CEK oracle presented — and
+//! enforces the same [`gandr_core_checker::outcome::StuckReason::StepLimit`]
+//! guard, so a non-terminating program halts rather than hangs.
 //!
 //! # The seam adaptation
 //!
-//! The seam speaks only `Resume` / `Unhandled` ([`HostReply`]). The shell needs
-//! two richer outcomes the seam cannot express: a run-truncating `Proc::exit`
-//! and a fatal syscall abort. The driver-level entry runs to a terminal with no
-//! stepwise loop to early-return through (unlike the CEK's owned step loop), so
-//! [`ShellDriver`] captures those two as an *early outcome*: on `Proc::exit` or
-//! a fatal `HostAction::Fail` it records the outcome and declines
-//! ([`HostReply::Unhandled`]), which the machine turns into a terminal
-//! `PerformNoHandler` blame, and [`run_program`] surfaces the recorded early
-//! outcome in place of that blamed [`Eval`]. A resumed operation flows straight
-//! through as [`HostReply::Resume`].
+//! The seam speaks only `Resume` / `Unhandled` ([`effect::host::HostReply`]).
+//! The shell needs two richer outcomes the seam cannot express: a
+//! run-truncating `Proc::exit` and a fatal syscall abort. The driver-level
+//! entry runs to a terminal with no stepwise loop to early-return through
+//! (unlike the CEK's owned step loop), so [`ShellDriver`] captures those two as
+//! an *early outcome*: on `Proc::exit` or a fatal `HostAction::Fail` it records
+//! the outcome and declines ([`effect::host::HostReply::Unhandled`]), which the
+//! machine turns into a terminal `PerformNoHandler` blame, and [`run_program`]
+//! surfaces the recorded early outcome in place of that blamed [`Eval`]. A
+//! resumed operation flows straight through as
+//! [`effect::host::HostReply::Resume`].
 //!
 //! # The source entry
 //!
@@ -33,10 +34,7 @@
 //! only the hand-built [`Comp`] entries land on the L-machine seam here.
 
 use gandr_core_checker::boundary::OperationName;
-use gandr_core_checker::effect::EffectSig;
-use gandr_core_checker::host::HostHandler;
-use gandr_core_checker::host::HostOp;
-use gandr_core_checker::host::HostReply;
+use gandr_core_checker::effect;
 use gandr_core_checker::outcome::Eval;
 use gandr_core_checker::syntax::Comp;
 use gandr_core_checker::syntax::Value;
@@ -134,10 +132,10 @@ pub fn run_program(comp: &Comp) -> ShellOutcome
 /// then surfaces any recorded early outcome in place of the terminal [`Eval`].
 ///
 /// Factoring the seam adaptation here keeps the driver's [`HostAction`] →
-/// [`HostReply`] mapping and its `Proc::exit` / fatal-abort capture in one
-/// place. (Through the L1 migration a second `run` closure drove the retiring
-/// CEK host path, so the two were held to the same observable [`ShellOutcome`];
-/// that differential leg retired with the CEK at B1 stage F.)
+/// [`effect::host::HostReply`] mapping and its `Proc::exit` / fatal-abort
+/// capture in one place. (Through the L1 migration a second `run` closure drove
+/// the retiring CEK host path, so the two were held to the same observable
+/// [`ShellOutcome`]; that differential leg retired with the CEK at B1 stage F.)
 #[inline]
 fn run_with_driver<R>(run: R) -> ShellOutcome
 where
@@ -155,9 +153,9 @@ where
     }
 }
 
-/// A shell outcome the seam's [`HostReply`] cannot express, captured by
-/// [`ShellDriver`] to be surfaced by [`run_with_driver`] after the run
-/// terminates.
+/// A shell outcome the seam's [`effect::host::HostReply`] cannot express,
+/// captured by [`ShellDriver`] to be surfaced by [`run_with_driver`] after the
+/// run terminates.
 #[derive(Clone, Debug)]
 enum ShellEarly
 {
@@ -168,11 +166,12 @@ enum ShellEarly
 }
 
 /// Adapts the pure [`ShellHandler`] dispatcher to the L machine's
-/// [`HostHandler`] seam.
+/// [`effect::host::HostHandler`] seam.
 ///
 /// The seam offers each operation as `(signature, operation, payload)` and
-/// accepts only [`HostReply::Resume`] or [`HostReply::Unhandled`]. This adapter
-/// re-packages the offer as a [`HostOp`] for the dispatcher, maps a resume
+/// accepts only [`effect::host::HostReply::Resume`] or
+/// [`effect::host::HostReply::Unhandled`]. This adapter re-packages the offer
+/// as a [`effect::host::HostOp`] for the dispatcher, maps a resume
 /// straight through, and captures the shell's two out-of-band outcomes — a
 /// run-truncating `Proc::exit` and a fatal abort — as a [`ShellEarly`], then
 /// declines so the machine terminates. Once an early outcome is recorded the
@@ -186,35 +185,35 @@ struct ShellDriver
     early: Option<ShellEarly>,
 }
 
-impl HostHandler for ShellDriver
+impl effect::host::HostHandler for ShellDriver
 {
     #[inline]
     fn handle<'source, O>(
         &mut self,
-        sig: &EffectSig,
+        sig: &effect::EffectSig,
         op: O,
         payload: &Value,
-    ) -> HostReply
+    ) -> effect::host::HostReply
     where
         O: Into<OperationName<'source>>,
     {
         // The L seam offers a name-only signature (`𝓕` erases the operation
         // list); `ShellHandler::dispatch` keys on the signature *name* and the
         // operation name only, so the erased ops list is immaterial.
-        let host_op = HostOp::new(sig.clone(), op.into(), payload.clone());
+        let host_op = effect::host::HostOp::new(sig.clone(), op.into(), payload.clone());
         match self.handler.dispatch(&host_op) {
-            | HostAction::Resume(reply) => HostReply::Resume(reply),
+            | HostAction::Resume(reply) => effect::host::HostReply::Resume(reply),
             | HostAction::Exit(code) => {
                 self.early = Some(ShellEarly::Exit(code));
-                HostReply::Unhandled
+                effect::host::HostReply::Unhandled
             },
             | HostAction::Fail(error) => {
                 self.early = Some(ShellEarly::Fail(error));
-                HostReply::Unhandled
+                effect::host::HostReply::Unhandled
             },
             // Not a shell operation: decline, and the machine blames the
             // unclaimed `perform` exactly as an un-hosted run would.
-            | HostAction::Decline => HostReply::Unhandled,
+            | HostAction::Decline => effect::host::HostReply::Unhandled,
         }
     }
 }
@@ -223,10 +222,8 @@ impl HostHandler for ShellDriver
 mod tests
 {
     use gandr_core_checker::boundary::OperationName;
-    use gandr_core_checker::effect::EffectOp;
-    use gandr_core_checker::effect::EffectSig;
+    use gandr_core_checker::effect;
     use gandr_core_checker::grade::Grade;
-    use gandr_core_checker::host as sig;
     use gandr_core_checker::outcome::Blame;
     use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::outcome::StuckReason;
@@ -254,9 +251,9 @@ mod tests
     fn exec_captured_mode_captures_stdout()
     {
         let outcome = run_op(
-            sig::exec(),
-            sig::EXEC_RUN,
-            command_mode("echo", &["hi".into()], sig::MODE_CAPTURED),
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
+            command_mode("echo", &["hi".into()], effect::host::MODE_CAPTURED),
         );
         assert_eq!(Some("hi\n"), reply_stdout(&outcome).as_deref());
         assert_eq!(Some(ProcessExitCode::from(0)), reply_exit_code(&outcome));
@@ -269,9 +266,9 @@ mod tests
     fn exec_inherit_mode_does_not_capture_stdout()
     {
         let outcome = run_op(
-            sig::exec(),
-            sig::EXEC_RUN,
-            command_mode("echo", &["hi".into()], sig::MODE_INHERIT),
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
+            command_mode("echo", &["hi".into()], effect::host::MODE_INHERIT),
         );
         assert_eq!(
             Some(""),
@@ -287,7 +284,11 @@ mod tests
     #[test]
     fn exec_missing_mode_defaults_to_captured()
     {
-        let outcome = run_op(sig::exec(), sig::EXEC_RUN, command("echo", &["hi".into()]));
+        let outcome = run_op(
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
+            command("echo", &["hi".into()]),
+        );
         assert_eq!(Some("hi\n"), reply_stdout(&outcome).as_deref());
     }
 
@@ -297,8 +298,8 @@ mod tests
     fn exec_unknown_mode_is_a_host_failure()
     {
         let outcome = run_op(
-            sig::exec(),
-            sig::EXEC_RUN,
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
             command_mode("echo", &["hi".into()], "bogus"),
         );
         assert!(
@@ -313,13 +314,17 @@ mod tests
     #[test]
     fn exec_true_exits_zero()
     {
-        let outcome = run_op(sig::exec(), sig::EXEC_RUN, command("true", &[]));
+        let outcome = run_op(
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
+            command("true", &[]),
+        );
         let reply = outcome.returned().expect("exec replies with a record");
         let fields = reply.as_record().expect("the reply is a record");
         assert_eq!(
             Some(0),
             fields
-                .get(sig::FIELD_EXIT_CODE)
+                .get(effect::host::FIELD_EXIT_CODE)
                 .and_then(|value| value.as_int())
                 .map(i64::from)
         );
@@ -329,8 +334,8 @@ mod tests
     fn exec_echo_captures_stdout()
     {
         let outcome = run_op(
-            sig::exec(),
-            sig::EXEC_RUN,
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
             command("echo", &["hello".into()]),
         );
         let reply = outcome.returned().expect("exec replies with a record");
@@ -338,14 +343,14 @@ mod tests
         assert_eq!(
             Some("hello\n"),
             fields
-                .get(sig::FIELD_STDOUT)
+                .get(effect::host::FIELD_STDOUT)
                 .and_then(|value| value.as_str())
                 .map(<&str>::from)
         );
         assert_eq!(
             Some(0),
             fields
-                .get(sig::FIELD_EXIT_CODE)
+                .get(effect::host::FIELD_EXIT_CODE)
                 .and_then(|value| value.as_int())
                 .map(i64::from)
         );
@@ -354,11 +359,15 @@ mod tests
     #[test]
     fn exec_nonzero_exit_is_a_normal_reply_not_an_error()
     {
-        let outcome = run_op(sig::exec(), sig::EXEC_RUN, command("false", &[]));
+        let outcome = run_op(
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
+            command("false", &[]),
+        );
         let code = outcome
             .returned()
             .and_then(Value::as_record)
-            .and_then(|fields| fields.get(sig::FIELD_EXIT_CODE))
+            .and_then(|fields| fields.get(effect::host::FIELD_EXIT_CODE))
             .and_then(|value| value.as_int())
             .map(i64::from)
             .expect("a process that runs and exits has an exit code reply");
@@ -369,8 +378,8 @@ mod tests
     fn exec_unspawnable_program_aborts_the_run()
     {
         let outcome = run_op(
-            sig::exec(),
-            sig::EXEC_RUN,
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
             command("gandr-runtime-host-no-such-binary-zzq", &[]),
         );
         assert!(
@@ -385,17 +394,29 @@ mod tests
         let dir = scratch_dir();
         let file = format!("{dir}/note.txt");
 
-        let write = run_op(sig::fs(), sig::FS_WRITE, write_payload(&file, "hi there"));
+        let write = run_op(
+            effect::host::fs(),
+            effect::host::FS_WRITE,
+            write_payload(&file, "hi there"),
+        );
         assert_eq!(Some(&Value::Unit), write.returned(), "write replies unit");
 
-        let read = run_op(sig::fs(), sig::FS_READ, Value::string(&file));
+        let read = run_op(
+            effect::host::fs(),
+            effect::host::FS_READ,
+            Value::string(&file),
+        );
         assert_eq!(
             Some("hi there"),
             read.returned().and_then(Value::as_str).map(<&str>::from),
             "read returns exactly what write wrote"
         );
 
-        let stat = run_op(sig::fs(), sig::FS_STAT, Value::string(&file));
+        let stat = run_op(
+            effect::host::fs(),
+            effect::host::FS_STAT,
+            Value::string(&file),
+        );
         let fields = stat
             .returned()
             .and_then(Value::as_record)
@@ -403,14 +424,14 @@ mod tests
         assert_eq!(
             Some("file"),
             fields
-                .get(sig::FIELD_KIND)
+                .get(effect::host::FIELD_KIND)
                 .and_then(|value| value.as_str())
                 .map(<&str>::from)
         );
         assert_eq!(
             Some(8),
             fields
-                .get(sig::FIELD_SIZE)
+                .get(effect::host::FIELD_SIZE)
                 .and_then(|value| value.as_int())
                 .map(i64::from),
             "`hi there` is 8 bytes"
@@ -422,15 +443,23 @@ mod tests
     {
         let dir = scratch_dir();
         let nested = format!("{dir}/x/y/z");
-        let mkdir = run_op(sig::fs(), sig::FS_MKDIR, Value::string(&nested));
+        let mkdir = run_op(
+            effect::host::fs(),
+            effect::host::FS_MKDIR,
+            Value::string(&nested),
+        );
         assert_eq!(Some(&Value::Unit), mkdir.returned());
 
-        let stat = run_op(sig::fs(), sig::FS_STAT, Value::string(&nested));
+        let stat = run_op(
+            effect::host::fs(),
+            effect::host::FS_STAT,
+            Value::string(&nested),
+        );
         assert_eq!(
             Some("dir"),
             stat.returned()
                 .and_then(Value::as_record)
-                .and_then(|fields| fields.get(sig::FIELD_KIND))
+                .and_then(|fields| fields.get(effect::host::FIELD_KIND))
                 .and_then(|value| value.as_str())
                 .map(<&str>::from)
         );
@@ -440,8 +469,8 @@ mod tests
     fn fs_stat_of_a_missing_path_is_missing_not_an_error()
     {
         let outcome = run_op(
-            sig::fs(),
-            sig::FS_STAT,
+            effect::host::fs(),
+            effect::host::FS_STAT,
             Value::string("/gandr-runtime-host/definitely/not/here"),
         );
         assert_eq!(
@@ -449,7 +478,7 @@ mod tests
             outcome
                 .returned()
                 .and_then(Value::as_record)
-                .and_then(|fields| fields.get(sig::FIELD_KIND))
+                .and_then(|fields| fields.get(effect::host::FIELD_KIND))
                 .and_then(|value| value.as_str())
                 .map(<&str>::from)
         );
@@ -459,7 +488,11 @@ mod tests
     fn fs_ls_files_lists_the_tracked_repo_root()
     {
         let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
-        let outcome = run_op(sig::fs(), sig::FS_LS_FILES, Value::string(root));
+        let outcome = run_op(
+            effect::host::fs(),
+            effect::host::FS_LS_FILES,
+            Value::string(root),
+        );
         let files = outcome
             .returned()
             .and_then(Value::as_list)
@@ -477,7 +510,7 @@ mod tests
     {
         // perform Proc::exit 3 >>= u. ret 99 — the `ret 99` must never run.
         let program = Comp::bind(
-            Comp::perform(sig::proc(), sig::PROC_EXIT, Value::int(3)),
+            Comp::perform(effect::host::proc(), effect::host::PROC_EXIT, Value::int(3)),
             "u",
             Comp::ret(Value::int(UNREACHED_AFTER_EXIT_CODE)),
         );
@@ -491,7 +524,7 @@ mod tests
     #[test]
     fn a_non_shell_perform_is_declined_and_blames()
     {
-        let other = EffectSig::new("Other".into(), vec![EffectOp::new(
+        let other = effect::EffectSig::new("Other".into(), vec![effect::EffectOp::new(
             "beep".into(),
             ValueType::Unit,
             ValueType::Unit,
@@ -509,7 +542,7 @@ mod tests
     #[test]
     fn env_path_and_get_read_the_process_environment()
     {
-        let path = run_op(sig::env(), sig::ENV_PATH, Value::Unit);
+        let path = run_op(effect::host::env(), effect::host::ENV_PATH, Value::Unit);
         let entries = path
             .returned()
             .and_then(Value::as_list)
@@ -519,7 +552,11 @@ mod tests
             "PATH has entries in a test environment"
         );
 
-        let value = run_op(sig::env(), sig::ENV_GET, Value::string("PATH"));
+        let value = run_op(
+            effect::host::env(),
+            effect::host::ENV_GET,
+            Value::string("PATH"),
+        );
         assert!(
             value
                 .returned()
@@ -554,7 +591,7 @@ mod tests
     fn a_malformed_exec_payload_is_a_host_failure()
     {
         // Not a record at all.
-        let non_record = run_op(sig::exec(), sig::EXEC_RUN, Value::int(5));
+        let non_record = run_op(effect::host::exec(), effect::host::EXEC_RUN, Value::int(5));
         assert!(
             matches!(
                 non_record,
@@ -565,10 +602,16 @@ mod tests
 
         // A record whose `args` element is not a string.
         let bad_args = Value::record([
-            (sig::FIELD_PROGRAM.to_owned(), Value::string("echo")),
-            (sig::FIELD_ARGS.to_owned(), Value::list(vec![Value::int(1)])),
+            (
+                effect::host::FIELD_PROGRAM.to_owned(),
+                Value::string("echo"),
+            ),
+            (
+                effect::host::FIELD_ARGS.to_owned(),
+                Value::list(vec![Value::int(1)]),
+            ),
         ]);
-        let bad_element = run_op(sig::exec(), sig::EXEC_RUN, bad_args);
+        let bad_element = run_op(effect::host::exec(), effect::host::EXEC_RUN, bad_args);
         assert!(
             matches!(
                 bad_element,
@@ -582,8 +625,8 @@ mod tests
     fn fs_read_of_a_missing_file_is_a_host_failure()
     {
         let outcome = run_op(
-            sig::fs(),
-            sig::FS_READ,
+            effect::host::fs(),
+            effect::host::FS_READ,
             Value::string("/gandr-runtime-host/definitely/not/here.txt"),
         );
         assert!(
@@ -598,12 +641,12 @@ mod tests
         // A foreign signature whose op name (`read`) collides with `Fs::read`:
         // dispatch keys on the signature name first, so this is DECLINED, not
         // misrouted, and the machine blames `PerformNoHandler`.
-        let foreign = EffectSig::new("Other".into(), vec![EffectOp::new(
-            sig::FS_READ.into(),
+        let foreign = effect::EffectSig::new("Other".into(), vec![effect::EffectOp::new(
+            effect::host::FS_READ.into(),
             ValueType::string(),
             ValueType::string(),
         )]);
-        let outcome = run_op(foreign, sig::FS_READ, Value::string("x"));
+        let outcome = run_op(foreign, effect::host::FS_READ, Value::string("x"));
         assert!(
             matches!(
                 outcome,
@@ -617,7 +660,7 @@ mod tests
     #[test]
     fn fs_cwd_returns_a_directory()
     {
-        let outcome = run_op(sig::fs(), sig::FS_CWD, Value::Unit);
+        let outcome = run_op(effect::host::fs(), effect::host::FS_CWD, Value::Unit);
         let cwd = outcome
             .returned()
             .and_then(Value::as_str)
@@ -625,12 +668,16 @@ mod tests
             .expect("cwd replies with a path string")
             .to_owned();
         assert!(!cwd.is_empty(), "cwd is a non-empty path");
-        let stat = run_op(sig::fs(), sig::FS_STAT, Value::string(&cwd));
+        let stat = run_op(
+            effect::host::fs(),
+            effect::host::FS_STAT,
+            Value::string(&cwd),
+        );
         assert_eq!(
             Some("dir"),
             stat.returned()
                 .and_then(Value::as_record)
-                .and_then(|fields| fields.get(sig::FIELD_KIND))
+                .and_then(|fields| fields.get(effect::host::FIELD_KIND))
                 .and_then(|value| value.as_str())
                 .map(<&str>::from),
             "the reported cwd stats as a directory"
@@ -641,8 +688,8 @@ mod tests
     fn env_get_of_an_unset_variable_is_empty()
     {
         let outcome = run_op(
-            sig::env(),
-            sig::ENV_GET,
+            effect::host::env(),
+            effect::host::ENV_GET,
             Value::string("GANDR_RUNTIME_HOST_DEFINITELY_UNSET_VARIABLE_ZZQ"),
         );
         assert_eq!(
@@ -657,10 +704,10 @@ mod tests
     {
         // perform tempdir () >>= a. perform tempdir () >>= b. ret {a, b}
         let program = Comp::bind(
-            Comp::perform(sig::fs(), sig::FS_TEMPDIR, Value::Unit),
+            Comp::perform(effect::host::fs(), effect::host::FS_TEMPDIR, Value::Unit),
             "a",
             Comp::bind(
-                Comp::perform(sig::fs(), sig::FS_TEMPDIR, Value::Unit),
+                Comp::perform(effect::host::fs(), effect::host::FS_TEMPDIR, Value::Unit),
                 "b",
                 Comp::ret(Value::record([
                     ("a".to_owned(), Value::var("a")),
@@ -690,7 +737,11 @@ mod tests
     {
         let base = scratch_dir();
         let subdir = format!("{base}/sub");
-        let mkdir = run_op(sig::fs(), sig::FS_MKDIR, Value::string(&subdir));
+        let mkdir = run_op(
+            effect::host::fs(),
+            effect::host::FS_MKDIR,
+            Value::string(&subdir),
+        );
         assert_eq!(
             Some(&Value::Unit),
             mkdir.returned(),
@@ -700,7 +751,11 @@ mod tests
             (format!("{base}/top.txt"), ""),
             (format!("{base}/sub/deep.txt"), ""),
         ] {
-            let write = run_op(sig::fs(), sig::FS_WRITE, write_payload(&path, contents));
+            let write = run_op(
+                effect::host::fs(),
+                effect::host::FS_WRITE,
+                write_payload(&path, contents),
+            );
             assert_eq!(
                 Some(&Value::Unit),
                 write.returned(),
@@ -712,7 +767,11 @@ mod tests
         // Two consecutive `**` reach `sub/deep.txt` by more than one split; the
         // reply must still list it once (sorted).
         let pattern = format!("{shown}/**/**/*.txt");
-        let outcome = run_op(sig::fs(), sig::FS_GLOB, Value::string(&pattern));
+        let outcome = run_op(
+            effect::host::fs(),
+            effect::host::FS_GLOB,
+            Value::string(&pattern),
+        );
         let matches = outcome
             .returned()
             .and_then(Value::as_list)
@@ -733,7 +792,12 @@ mod tests
     {
         // Each shell signature is claimed, but an operation name it does not
         // define is DECLINED — the machine then blames the unclaimed perform.
-        for signature in [sig::exec(), sig::fs(), sig::env(), sig::proc()] {
+        for signature in [
+            effect::host::exec(),
+            effect::host::fs(),
+            effect::host::env(),
+            effect::host::proc(),
+        ] {
             let outcome = run_op(signature, "no_such_op", Value::Unit);
             assert!(
                 matches!(
@@ -748,7 +812,11 @@ mod tests
     #[test]
     fn proc_exit_with_a_non_integer_payload_is_a_host_failure()
     {
-        let outcome = run_op(sig::proc(), sig::PROC_EXIT, Value::string("three"));
+        let outcome = run_op(
+            effect::host::proc(),
+            effect::host::PROC_EXIT,
+            Value::string("three"),
+        );
         assert!(
             matches!(
                 outcome,
@@ -764,7 +832,11 @@ mod tests
         // A fresh tempdir under the OS temp root is not inside a git work tree,
         // so `git ls-files` exits non-zero and the host aborts the run.
         let dir = scratch_dir();
-        let outcome = run_op(sig::fs(), sig::FS_LS_FILES, Value::string(&dir));
+        let outcome = run_op(
+            effect::host::fs(),
+            effect::host::FS_LS_FILES,
+            Value::string(&dir),
+        );
         assert!(
             matches!(outcome, ShellOutcome::HostFailed(ShellError::Fs { .. })),
             "git ls-files in a non-repository directory fails fatally: {outcome:?}"
@@ -778,15 +850,19 @@ mod tests
         let dir = scratch_dir();
         let target = format!("{dir}/target.txt");
         let link = format!("{dir}/link");
-        let write = run_op(sig::fs(), sig::FS_WRITE, write_payload(&target, "x"));
+        let write = run_op(
+            effect::host::fs(),
+            effect::host::FS_WRITE,
+            write_payload(&target, "x"),
+        );
         assert_eq!(
             Some(&Value::Unit),
             write.returned(),
             "symlink target is written through Fs::write"
         );
         let symlink = run_op(
-            sig::exec(),
-            sig::EXEC_RUN,
+            effect::host::exec(),
+            effect::host::EXEC_RUN,
             command("ln", &["-s".into(), (&target).into(), (&link).into()]),
         );
         assert_eq!(
@@ -794,19 +870,23 @@ mod tests
             symlink
                 .returned()
                 .and_then(Value::as_record)
-                .and_then(|fields| fields.get(sig::FIELD_EXIT_CODE))
+                .and_then(|fields| fields.get(effect::host::FIELD_EXIT_CODE))
                 .and_then(|value| value.as_int())
                 .map(i64::from),
             "`ln -s` creates the symlink fixture"
         );
 
-        let outcome = run_op(sig::fs(), sig::FS_STAT, Value::string(&link));
+        let outcome = run_op(
+            effect::host::fs(),
+            effect::host::FS_STAT,
+            Value::string(&link),
+        );
         assert_eq!(
             Some("symlink"),
             outcome
                 .returned()
                 .and_then(Value::as_record)
-                .and_then(|fields| fields.get(sig::FIELD_KIND))
+                .and_then(|fields| fields.get(effect::host::FIELD_KIND))
                 .and_then(|value| value.as_str())
                 .map(<&str>::from),
             "symlink_metadata classifies the link itself, not its regular-file target"
@@ -834,7 +914,7 @@ mod tests
     /// Creates a scratch directory via the `Fs::tempdir` operation itself.
     fn scratch_dir() -> String
     {
-        let outcome = run_op(sig::fs(), sig::FS_TEMPDIR, Value::Unit);
+        let outcome = run_op(effect::host::fs(), effect::host::FS_TEMPDIR, Value::Unit);
         outcome
             .returned()
             .and_then(Value::as_str)
@@ -843,10 +923,10 @@ mod tests
             .to_owned()
     }
 
-    /// Runs `perform sig::op payload >>= reply. ret reply`, so the outcome's
-    /// [`ShellOutcome::returned`] is the operation's reply value.
+    /// Runs `perform effect::host::op payload >>= reply. ret reply`, so the
+    /// outcome's [`ShellOutcome::returned`] is the operation's reply value.
     fn run_op<'op>(
-        signature: EffectSig,
+        signature: effect::EffectSig,
         op: impl Into<OperationName<'op>>,
         payload: Value,
     ) -> ShellOutcome
@@ -869,11 +949,11 @@ mod tests
         let program = program.into();
         Value::record([
             (
-                sig::FIELD_PROGRAM.to_owned(),
+                effect::host::FIELD_PROGRAM.to_owned(),
                 Value::string(program.as_ref()),
             ),
             (
-                sig::FIELD_ARGS.to_owned(),
+                effect::host::FIELD_ARGS.to_owned(),
                 Value::list(args.iter().map(|arg| Value::string(arg.as_ref())).collect()),
             ),
         ])
@@ -891,14 +971,17 @@ mod tests
         let mode = mode.into();
         Value::record([
             (
-                sig::FIELD_PROGRAM.to_owned(),
+                effect::host::FIELD_PROGRAM.to_owned(),
                 Value::string(program.as_ref()),
             ),
             (
-                sig::FIELD_ARGS.to_owned(),
+                effect::host::FIELD_ARGS.to_owned(),
                 Value::list(args.iter().map(|arg| Value::string(arg.as_ref())).collect()),
             ),
-            (sig::FIELD_MODE.to_owned(), Value::string(mode.as_ref())),
+            (
+                effect::host::FIELD_MODE.to_owned(),
+                Value::string(mode.as_ref()),
+            ),
         ])
     }
 
@@ -907,7 +990,7 @@ mod tests
     {
         let returned = outcome.returned()?;
         let fields = returned.as_record()?;
-        let stdout = fields.get(sig::FIELD_STDOUT)?;
+        let stdout = fields.get(effect::host::FIELD_STDOUT)?;
         stdout.as_str().map(|text| text.as_ref().to_owned())
     }
 
@@ -916,7 +999,7 @@ mod tests
     {
         let returned = outcome.returned()?;
         let fields = returned.as_record()?;
-        let exit_code = fields.get(sig::FIELD_EXIT_CODE)?;
+        let exit_code = fields.get(effect::host::FIELD_EXIT_CODE)?;
         exit_code.as_int().map(i64::from).map(ProcessExitCode::from)
     }
 
@@ -929,9 +1012,12 @@ mod tests
         let path = path.into();
         let contents = contents.into();
         Value::record([
-            (sig::FIELD_PATH.to_owned(), Value::string(path.as_ref())),
             (
-                sig::FIELD_CONTENTS.to_owned(),
+                effect::host::FIELD_PATH.to_owned(),
+                Value::string(path.as_ref()),
+            ),
+            (
+                effect::host::FIELD_CONTENTS.to_owned(),
                 Value::string(contents.as_ref()),
             ),
         ])
@@ -950,9 +1036,7 @@ mod tests
 #[cfg(test)]
 mod l_host_outcomes
 {
-    use gandr_core_checker::effect::EffectOp;
-    use gandr_core_checker::effect::EffectSig;
-    use gandr_core_checker::host as sig;
+    use gandr_core_checker::effect;
     use gandr_core_checker::outcome::Blame;
     use gandr_core_checker::outcome::Eval;
     use gandr_core_checker::syntax::Comp;
@@ -970,8 +1054,8 @@ mod l_host_outcomes
         // unlike `tempdir` or `exec`).
         let program = Comp::bind(
             Comp::perform(
-                sig::env(),
-                sig::ENV_GET,
+                effect::host::env(),
+                effect::host::ENV_GET,
                 Value::string("GANDR_RUNTIME_HOST_DIFFERENTIAL_UNSET_ZZQ"),
             ),
             "reply",
@@ -990,7 +1074,7 @@ mod l_host_outcomes
     {
         // A foreign signature the shell host does not claim: declined, blaming
         // `PerformNoHandler`.
-        let other = EffectSig::new("Other".into(), vec![EffectOp::new(
+        let other = effect::EffectSig::new("Other".into(), vec![effect::EffectOp::new(
             "beep".into(),
             ValueType::Unit,
             ValueType::Unit,
