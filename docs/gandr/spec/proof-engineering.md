@@ -100,6 +100,8 @@ Four hard-won rules that belong to no single module header:
 * **The h-level charge moves, it does not vanish**: demanded function-side it lands on the unit laws, graph-side on functionality; what removes it from both is the heterogeneous structural comparison, which can ignore the witness layer propositional equality has to identify.
   The companion rule: before paying for a discipline across a whole tower, build the operation and **measure** what the discipline buys — the measurement is a theorem, not an estimate — and when an interface is about to be extracted, _attempt the extraction against every instance before building any instance's obligations_; the attempt is a review technique that has found defects reading did not.
 * **The `Tower` device**: the moment a coherence's intermediate object is existential (determined by neither endpoint), carry the intermediates as **fields of a record, not indices** — stated with indices the coherence is heterogeneous and needs a transport before it can even be written; packaged, the two routes compare by an ordinary equation and the whole coherence is one congruence.
+* **The statement, not the proof, is often the blocker**: a wall that resists for sessions can fall the day its statement is re-quantified — audit the statement's alphabet before escalating the proof effort.
+* **Compare-sites are existence-grade** almost everywhere: nearly every place two constructions are compared demands only that _some_ mediating cell exists, and per-type J is the one consumer demanding a chosen one — so filler _existence_ machinery (a generator, a completion) suffices at every site but that one.
 
 ## The toolchain probe matrix
 

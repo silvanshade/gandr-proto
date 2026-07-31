@@ -39,6 +39,17 @@ The tractability axis (convergent-fragment versus certificate-carried) must stay
 * **Certificate verdicts are three-valued** (holds / refuted / declined-within-budget) wherever budget-gated checks feed the store — decline is stuck, never refuted.
 * **Handler clauses fall through to the live ambient consumer**, with the continuation edge explicit in IL checking.
 
+## The elaborator half of universe stratification
+
+The kernel half (the loop-checking oracle and landmark posets) is built and deliberately excludes inference; the **elaborator half has no home yet** and is pinned here: run the loop-checking as the complete solver on the elaborator side; generalize each definition's residual level variables prenex-ly; offer displacement as the zero-solving default reuse mode.
+The stuck max-plus-equation user experience (entailment and benign loops, never most general unifiers) is an unsolved surface gandr owns.
+
+## The corpus witness inventory
+
+The corpus's binding-guard coverage is one witness (the K-derivation program, wired to a named checker error).
+The spec's other binding guards have **no pathological witnesses yet** and each needs one on the K-derivation precedent: the filler ban; declined horizontal composition; the acyclicity gate's decline; fan-out-family honesty; the shift-equivalent-divergent-replay kill signal; the symmetry-derivation refusal for the directed former; and the constant-map and constant-literal degeneracy guards (at whichever phase first carries a directed certificate stock).
+Features land with their corpus examples — this inventory is that policy applied to the guards.
+
 ## Stale-documentation repairs owed
 
 Found by inventory against the live tree; each is a one-line-to-small fix in its owning artifact:
@@ -47,4 +58,8 @@ Found by inventory against the live tree; each is a one-line-to-small fix in its
 * `ARCHITECTURE.md` counts twenty-two members, omits four crates from its domain table, counts a parked crate, and stops its tier ladder one tier short;
 * `AGENTS.md` and `docs/workflow/specs.md` route specification work to a validated-corpus entry point that does not exist while the `.gfd` pipeline is parked; the routing should name this markdown corpus (this reboot updated the Agda workflow's done-rule already);
 * `PLAN.html`'s current-state section and its kernel-core row predate the build-out and should be read through the tracker;
-* whether the spec tracks register in `docs/gandr/MANIFEST.yml` (and so come under the manifest-drift gate) is a deliberate decision to take, not an accident to inherit.
+* whether the spec tracks register in `docs/gandr/MANIFEST.yml` (and so come under the manifest-drift gate) is a deliberate decision to take, not an accident to inherit;
+* `docs/workflow/corpus.md` names a crate, a skill path, and a gate command that do not exist;
+* the pre-reboot spec corpus carries hundreds of dangling citations and references to a retired decision-record directory — a reason its content is absorbed here rather than linked;
+* five pre-reboot documents have no successors in either corpus and are the named absorption backlog: the type-system, effects/control/shell, kernel-boundary, typing-machine, and incremental-pipeline records (the kernel-boundary content is substantially carried by the implementation track already; verify and retire);
+* the directed identity former's surface notation and the rename that produced its current name are carried only by a research study that disclaims decision-record status — ratify or relocate before the identity-layer phase.

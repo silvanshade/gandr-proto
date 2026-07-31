@@ -44,6 +44,11 @@ Do not accept it any earlier or any wider.
 
 The arena's directed generalization is **built as a factorization system and characterized as the clone**; rebuilding the arena with clone-shaped morphisms is declined because it changes what a morphism _is_ (every existing lemma re-examined) where the split is an extension (nothing that typechecks today changes).
 
+### The Prop bracket
+
+**No proposition sort, by conservative default.** The reversal trigger is a demonstrated need for definitional proof identification; the re-entry is a strict-propositions-plus-sort-polymorphism design pass with the CBPV-polarity and levitation interplay worked out — not an incremental addition.
+Until then, per-type set-ness by Hedberg and the grade discipline's runtime erasure carry the use cases.
+
 ### Nominal decoration
 
 Decorating flags by names is formally possible and declined: sharing should become a **wire**; a name decoration would entrench the nominal encoding at exactly the point the design says should become structural.

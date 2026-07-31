@@ -8,7 +8,8 @@ The complete design of the layout-side directed univalence statement summarized 
 * Symmetrization is free doubling, not substrate: groupoid paths are words over an involutive alphabet with cancellation imposed one dimension up as oriented rules — rules over a directed substrate, not a symmetric substrate.
 * Even the groupoid certificate grade is one-sided: replay-equivalence compares only the forward translator.
 * The saturation alphabet is variance-typed with no inverses anywhere; the eliminator's discharge is a covariant Yoneda extension consuming no symmetry.
-* The directed eliminators are precedented in the landed profunctor layer (directed path induction whose groupoid instance specializes to symmetric J; Π as right extension along a conjoint, with no inverses anywhere).
+* The directed eliminators are precedented in the landed profunctor layer (directed path induction whose groupoid instance specializes to symmetric J; Π as right extension along a conjoint, with no inverses anywhere in that module).
+  One qualification survives adversarial reading: Π-*substitution* does consume inverses at named groupoid sites — one new site per fibre depth — so the blanket "the directed development uses no inverses" must be scoped to the eliminators, not the whole Π story.
 
 The exact primitive-to-derived relation: the groupoid path protype is the **free involutive doubling of the evidence-invertible restriction of the directed protype, with cancellation adjoined as dimension-2 rules** — a localization of a restriction.
 Groupoid-as-quotient fails (the groupoid protype has more letters and more rules); directed-by-forgetting fails (the one-way classes and their rule layer are strictly new material).
