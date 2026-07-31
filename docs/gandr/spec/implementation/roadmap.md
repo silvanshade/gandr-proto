@@ -57,13 +57,13 @@ Features land with their corpus examples — this inventory is that policy appli
 
 Found by inventory against the live tree; each is a one-line-to-small fix in its owning artifact:
 
-* `ARCHITECTURE.md` counts twenty-two members, omits four crates from its domain table, counts a parked crate, stops its tier ladder one tier short, and still routes specification work to the parked `.gfd` corpus (its routing-table row and its invariant 5);
-* `docs/workflow/specs.md` routes specification work to the parked pipeline as though live (its gates name the disabled `docs:check`/`docs:build` tasks); `docs/WORKFLOW.md:31` repeats the retired `gandr-corpus`/`gandr-pro` names; and `docs/workflow/corpus.md` additionally points at `docs/KNOWLEDGE.md`, which does not exist;
-* `AGENTS.md`'s routing was repaired with the implementation track; the remaining stale routing surfaces are the two above;
+* `ARCHITECTURE.md` counts twenty-two members, omits four crates from its domain table, counts a parked crate, and stops its tier ladder one tier short (its specification-routing row and its invariant 5 were repaired when the machine-validated component corpus was removed);
+* `docs/WORKFLOW.md:31` repeats the retired `gandr-corpus`/`gandr-pro` names, and `docs/workflow/corpus.md` additionally points at `docs/KNOWLEDGE.md`, which does not exist;
+* `AGENTS.md`'s routing was repaired with the implementation track, and `docs/workflow/specs.md`'s with the component-corpus removal; the remaining stale routing surfaces are the two above;
 * `PLAN.html`'s current-state section and its kernel-core row predate the build-out and should be read through the tracker;
 * the spec tracks are registered in `docs/gandr/MANIFEST.yml` as of this revision — the manifest-drift gate covers them (a deliberate registration, since an unregistered corpus document is a fatal gate finding, not a neutral state);
 * `docs/workflow/corpus.md` names a crate, a skill path, and a gate command that do not exist;
-* dangling links into this corpus's own prefix survive in tracked files: `docs/gandr/spec/kernel-boundary.md` (both kernel crates' manifests and status files), `docs/gandr/spec/core-ir-contract.md` (the checker crate's ADR file), `docs/gandr/spec/proposal-inspection-protocol.md` (the render-remote status file), and three `.gfd`-era design documents (the workflow gfd file and `docs/workflow/specs.md`);
+* dangling links into this corpus's own prefix survive in tracked files: `docs/gandr/spec/kernel-boundary.md` (both kernel crates' manifests and status files), `docs/gandr/spec/core-ir-contract.md` (the checker crate's ADR file), and `docs/gandr/spec/proposal-inspection-protocol.md` (the render-remote status file);
 * the pre-reboot spec corpus carried hundreds of dangling citations and references to a retired decision-record directory — a reason its content is absorbed here rather than linked;
 * five pre-reboot documents have no successors in either corpus and are the named absorption backlog: the type-system, effects/control/shell, kernel-boundary, typing-machine, and incremental-pipeline records (the kernel-boundary content is substantially carried by the implementation track already; verify and retire);
 * the directed identity former's surface notation and the rename that produced its current name are carried only by a research study that disclaims decision-record status — ratify or relocate before the identity-layer phase.

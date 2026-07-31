@@ -1,52 +1,27 @@
-// Bindings-first doctrine (docs/workflow/gfd.md §"The bindings-first
-// doctrine"): every `GF`-touching lane in this crate rides the runtime bindings
-// in `gandr-workflow-grammatical-framework`; never re-implement what the
-// runtime provides (the retired `.gfd` reader is the cautionary example).
-
-//! `GF`-native documentation pipeline.
+//! The gandr documentation tool: the prose document classes.
 //!
-//! The spec corpus is authored as `GF` abstract-syntax trees(`.gfd`, read by
-//! the runtime's expression reader), validated at the mandatory `checkExpr`
-//! lane, and rendered by linearization; the `GF`/PGF runtime is reached
-//! through the `GfRuntime` trait in `gandr-workflow-grammatical-framework` so
-//! the `PyO3` backend can be swapped for a C FFI or pure-Rust backend without
-//! touching the pipeline. The prose document classes ([`doc`]) and the shared
-//! documentation machinery — the Hayagriva bibliography ([`bibliography`]),
-//! the typst leaf compiler ([`typst_leaf`]), canonical `XML` formatting
-//! ([`mod@format`]), and the references renderer ([`references`]) — live here
-//! the one documentation tool.
+//! Documents in the three authored classes ([`doc`]) are `XML`, and parsing
+//! _is_ validation — banner presence, status presence, label define-once,
+//! label and citation resolution, and the per-class schema are all enforced by
+//! the one pass. The shared machinery — the Hayagriva bibliography
+//! ([`bibliography`]) and canonical `XML` formatting ([`mod@format`]) — lives
+//! here with it.
 
 extern crate alloc;
 
 use core::fmt;
 use std::path::PathBuf;
 
-/// The domain application grammar (the gandr-739 lane's generator).
-pub mod appgrammar;
-/// Typed Hayagriva bibliography shared by validation and rendering.
+/// Typed Hayagriva bibliography read for citation resolution.
 pub mod bibliography;
 /// Corpus discovery and the document-class `check`/`fmt` orchestration.
 pub mod corpus;
-/// The prose document classes, a minimal family alongside the `GF` corpus.
+/// The prose document classes.
 pub mod doc;
-/// The crate error vocabulary for the `GF` lanes.
-pub mod error;
 /// Canonical `XML` formatting (idempotent), used as the doc-tool formatter.
 pub mod format;
-/// Lexicon generation (the corpus-wide `GF` term/cite/anchor modules).
-pub mod lexicon;
-/// Prose-pacing metrics over the document trees (the gandr-aaq arc).
-pub mod metrics;
 /// Shared vocabulary types.
 pub mod model;
-/// The render pipeline: read, validate, post-pass, page.
-pub mod pipeline;
-/// The per-component references renderer.
-pub mod references;
-/// Math and diagram leaf compilation to `SVG`.
-pub mod typst_leaf;
-
-pub use error::GfDocsError;
 
 /// Stable machine-readable diagnostic category.
 #[repr(transparent)]
@@ -153,8 +128,7 @@ impl fmt::Display for Diagnostic
 ///
 /// Semantic specification violations are not errors; they are returned as
 /// [`Diagnostic`] values by a successful run. This type carries only
-/// operational failures such as filesystem, `XML`, `YAML`, or typst-tool
-/// problems.
+/// operational failures such as filesystem, `XML`, or `YAML` problems.
 #[derive(Debug)]
 pub enum DocError
 {
@@ -182,12 +156,6 @@ pub enum DocError
         /// Stable detail describing the malformation.
         detail: String,
     },
-    /// The typst leaf-compilation tool failed or was unavailable.
-    Typst
-    {
-        /// Stable detail describing the failure.
-        detail: String,
-    },
     /// Command-line usage was invalid.
     Usage
     {
@@ -198,18 +166,6 @@ pub enum DocError
 
 impl DocError
 {
-    /// Build a typst-tool error with a stable detail string.
-    #[inline]
-    #[must_use]
-    pub fn typst<Detail>(detail: Detail) -> Self
-    where
-        Detail: Into<String>,
-    {
-        Self::Typst {
-            detail: detail.into(),
-        }
-    }
-
     /// Build a usage error with a stable detail string.
     #[inline]
     #[must_use]
@@ -244,7 +200,6 @@ impl fmt::Display for DocError
                 ref path,
                 ref detail,
             } => write!(f, "yaml error: path={} detail={detail}", path.display()),
-            | Self::Typst { ref detail } => write!(f, "typst error: {detail}"),
             | Self::Usage { ref detail } => write!(f, "usage error: {detail}"),
         }
     }
@@ -257,9 +212,7 @@ impl core::error::Error for DocError
     {
         match *self {
             | Self::Io { ref source, .. } => Some(source),
-            | Self::Xml { .. } | Self::Yaml { .. } | Self::Typst { .. } | Self::Usage { .. } => {
-                None
-            },
+            | Self::Xml { .. } | Self::Yaml { .. } | Self::Usage { .. } => None,
         }
     }
 }

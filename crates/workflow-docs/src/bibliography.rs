@@ -1,6 +1,5 @@
-//! Typed access to the Hayagriva bibliography used by validation and rendering.
+//! Typed access to the Hayagriva bibliography read for citation resolution.
 
-use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use std::path::Path;
@@ -9,142 +8,31 @@ use yaml_rust2::Yaml;
 use yaml_rust2::YamlLoader;
 
 use crate::DocError;
-use crate::model::CiteKey;
 
-/// The parsed citation register, keyed by the stable corpus cite key.
+/// The parsed citation register: the stable keys a `cite` may resolve to.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default)]
 pub struct Bibliography
 {
-    /// Typed reference records under their stable cite keys.
-    entries: BTreeMap<String, Reference>,
+    /// Stable cite keys, one per well-formed register record.
+    keys: BTreeSet<String>,
 }
 
 impl Bibliography
 {
-    /// Look up one cited reference.
-    #[inline]
-    #[must_use]
-    pub(crate) fn get(
-        &self,
-        cite: &CiteKey,
-    ) -> Option<&Reference>
-    {
-        self.entries.get(cite.as_ref())
-    }
-
-    /// Copy the stable keys for document-class validation and lexicon
-    /// generation (gandr-5n6).
+    /// Copy the stable keys for document-class validation.
     #[inline]
     #[must_use]
     pub fn key_set(&self) -> BTreeSet<String>
     {
-        self.entries.keys().cloned().collect()
+        self.keys.clone()
     }
 
     /// Parse an in-memory bibliography fixture.
     #[cfg(test)]
     pub(crate) fn parse_source(source: BibliographySource<'_>) -> Result<Self, DocError>
     {
-        parse(Path::new("mem:refs.yml"), source)
-    }
-}
-
-/// Bibliographic fields rendered for one cited work.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct Reference
-{
-    /// Author display text, when the register supplies it.
-    author: Option<String>,
-    /// Work title.
-    title: String,
-    /// Proceedings, institution, publisher, or genre display text.
-    venue: Option<String>,
-    /// Publication year or date display text.
-    date: Option<String>,
-    /// Preferred resolvable locator, when the register supplies one.
-    locator: Option<ReferenceLocator>,
-}
-
-impl Reference
-{
-    /// Author display text, when present.
-    #[inline]
-    #[must_use]
-    pub(crate) const fn author(&self) -> Option<&String>
-    {
-        self.author.as_ref()
-    }
-
-    /// Work title.
-    #[inline]
-    #[must_use]
-    pub(crate) const fn title(&self) -> &String
-    {
-        &self.title
-    }
-
-    /// Venue display text, when present.
-    #[inline]
-    #[must_use]
-    pub(crate) const fn venue(&self) -> Option<&String>
-    {
-        self.venue.as_ref()
-    }
-
-    /// Publication date display text, when present.
-    #[inline]
-    #[must_use]
-    pub(crate) const fn date(&self) -> Option<&String>
-    {
-        self.date.as_ref()
-    }
-
-    /// Preferred resolvable locator, when present.
-    #[inline]
-    #[must_use]
-    pub(crate) const fn locator(&self) -> Option<&ReferenceLocator>
-    {
-        self.locator.as_ref()
-    }
-}
-
-/// Preferred outbound locator for a bibliographic entry.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum ReferenceLocator
-{
-    /// Digital Object Identifier.
-    Doi(String),
-    /// arXiv identifier.
-    Arxiv(String),
-    /// Stable source URL.
-    Url(String),
-}
-
-impl ReferenceLocator
-{
-    /// Render the locator as an absolute hyperlink target.
-    #[inline]
-    #[must_use]
-    pub(crate) fn href(&self) -> String
-    {
-        match *self {
-            | Self::Doi(ref value) => format!("https://doi.org/{value}"),
-            | Self::Arxiv(ref value) => format!("https://arxiv.org/abs/{value}"),
-            | Self::Url(ref value) => value.clone(),
-        }
-    }
-
-    /// Render the locator's concise reader-facing label.
-    #[inline]
-    #[must_use]
-    pub(crate) fn label(&self) -> String
-    {
-        match *self {
-            | Self::Doi(ref value) => format!("doi:{value}"),
-            | Self::Arxiv(ref value) => format!("arXiv:{value}"),
-            | Self::Url(_) => String::from("source"),
-        }
+        parse(Path::new("mem:bibliography.yml"), source)
     }
 }
 
@@ -162,51 +50,23 @@ impl<'source> From<&'source str> for BibliographySource<'source>
     }
 }
 
-/// Fields consumed from each Hayagriva record.
-#[derive(Clone, Copy)]
-enum BibliographyField
-{
-    /// Work title.
-    Title,
-    /// Author display text.
-    Author,
-    /// Publication date.
-    Date,
-    /// Parent Hayagriva record.
-    Parent,
-    /// Institution responsible for the work.
-    Organization,
-    /// Book publisher.
-    Publisher,
-    /// Work genre, used as a final venue fallback.
-    Genre,
-    /// DOI or arXiv identifier map.
-    SerialNumber,
-    /// Digital Object Identifier.
-    Doi,
-    /// arXiv identifier.
-    Arxiv,
-    /// Stable source URL.
-    Url,
-}
-
 /// Load and type the Hayagriva bibliography.
 ///
 /// # Contract
 /// - requires: `path` names a Hayagriva YAML mapping whose string keys identify
 ///   reference records and whose records carry string titles.
-/// - ensures: each string-keyed record is available under the same stable key;
-///   locator precedence is DOI, then arXiv, then URL.
-/// - provides: one typed bibliography shared by validation and HTML rendering.
+/// - ensures: each string-keyed record contributes its key to the register.
+/// - provides: the resolvable key set the document-class validator cites
+///   against.
 /// - fails: returns [`DocError::Io`] for unreadable input and
 ///   [`DocError::Yaml`] for malformed YAML or a string-keyed record without a
 ///   string title.
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 pointwise — records distinguishing DOI, arXiv, URL, missing
-///   optional metadata, and a missing title distinguish every parse decision.
-/// - witness: `bibliography::tests::reference_metadata_and_locator_precedence_are_typed`
+/// - hypothesis: L3 pointwise — records with and without a title distinguish
+///   every parse decision.
+/// - witness: `bibliography::tests::well_formed_records_contribute_their_keys`
 /// - witness: `bibliography::tests::missing_title_is_rejected`
 ///
 /// # Errors
@@ -223,7 +83,7 @@ pub fn load(path: &Path) -> Result<Bibliography, DocError>
     Ok(bibliography)
 }
 
-/// Parse already-read bibliography source into typed reference records.
+/// Parse already-read bibliography source into the stable key set.
 fn parse(
     path: &Path,
     source: BibliographySource<'_>,
@@ -233,7 +93,7 @@ fn parse(
         path: path.to_path_buf(),
         detail: error.to_string(),
     })?;
-    let mut entries = BTreeMap::new();
+    let mut keys = BTreeSet::new();
     for document in &documents {
         let Some(mapping) = document.as_hash()
         else {
@@ -244,84 +104,25 @@ fn parse(
             else {
                 continue;
             };
-            let key = key.to_owned();
-            let reference = parse_reference(path, &key, record)?;
-            let _previous = entries.insert(key, reference);
+            if title(record).is_none() {
+                return Err(DocError::Yaml {
+                    path: path.to_path_buf(),
+                    detail: format!("reference '{key}' is missing a string title"),
+                });
+            }
+            let _fresh = keys.insert(key.to_owned());
         }
     }
-    Ok(Bibliography { entries })
+    Ok(Bibliography { keys })
 }
 
-/// Type one Hayagriva record and select its display metadata.
-fn parse_reference(
-    path: &Path,
-    key: &String,
-    record: &Yaml,
-) -> Result<Reference, DocError>
+/// Copy a record's title when it is a string or integer scalar.
+fn title(record: &Yaml) -> Option<String>
 {
-    let title = text_field(record, BibliographyField::Title).ok_or_else(|| DocError::Yaml {
-        path: path.to_path_buf(),
-        detail: format!("reference '{key}' is missing a string title"),
-    })?;
-    let author = text_field(record, BibliographyField::Author);
-    let date = text_field(record, BibliographyField::Date);
-    let parent = field(record, BibliographyField::Parent);
-    let venue = parent
-        .and_then(|value| text_field(value, BibliographyField::Title))
-        .or_else(|| text_field(record, BibliographyField::Organization))
-        .or_else(|| text_field(record, BibliographyField::Publisher))
-        .or_else(|| text_field(record, BibliographyField::Genre));
-    let serial_number = field(record, BibliographyField::SerialNumber);
-    let locator = serial_number
-        .and_then(|value| text_field(value, BibliographyField::Doi))
-        .map(ReferenceLocator::Doi)
-        .or_else(|| {
-            serial_number
-                .and_then(|value| text_field(value, BibliographyField::Arxiv))
-                .map(ReferenceLocator::Arxiv)
-        })
-        .or_else(|| text_field(record, BibliographyField::Url).map(ReferenceLocator::Url));
-    Ok(Reference {
-        author,
-        title,
-        venue,
-        date,
-        locator,
-    })
-}
-
-/// Read one named field from a YAML mapping.
-fn field(
-    node: &Yaml,
-    requested: BibliographyField,
-) -> Option<&Yaml>
-{
-    let name = match requested {
-        | BibliographyField::Title => "title",
-        | BibliographyField::Author => "author",
-        | BibliographyField::Date => "date",
-        | BibliographyField::Parent => "parent",
-        | BibliographyField::Organization => "organization",
-        | BibliographyField::Publisher => "publisher",
-        | BibliographyField::Genre => "genre",
-        | BibliographyField::SerialNumber => "serial-number",
-        | BibliographyField::Doi => "doi",
-        | BibliographyField::Arxiv => "arxiv",
-        | BibliographyField::Url => "url",
-    };
-    let mapping = node.as_hash()?;
-    mapping
+    let mapping = record.as_hash()?;
+    let value = mapping
         .iter()
-        .find_map(|(key, value)| (key.as_str() == Some(name)).then_some(value))
-}
-
-/// Copy a string or integer YAML scalar into display text.
-fn text_field(
-    node: &Yaml,
-    requested: BibliographyField,
-) -> Option<String>
-{
-    let value = field(node, requested)?;
+        .find_map(|(key, value)| (key.as_str() == Some("title")).then_some(value))?;
     match *value {
         | Yaml::String(ref text) => Some(text.clone()),
         | Yaml::Integer(number) => Some(number.to_string()),
@@ -332,17 +133,13 @@ fn text_field(
 #[cfg(test)]
 mod tests
 {
-    use alloc::string::String;
-
     use super::Bibliography;
-    use super::Reference;
-    use super::ReferenceLocator;
     use crate::DocError;
-    use crate::model::CiteKey;
 
-    /// Reference metadata and DOI/arXiv/URL priority are typed exactly.
+    /// Every well-formed record contributes its stable key, whatever metadata
+    /// it carries beyond the title.
     #[test]
-    fn reference_metadata_and_locator_precedence_are_typed() -> Result<(), DocError>
+    fn well_formed_records_contribute_their_keys() -> Result<(), DocError>
     {
         let bibliography = Bibliography::parse_source(
             r#"D:
@@ -355,59 +152,16 @@ mod tests
     title: Venue
   serial-number:
     doi: 10.1000/example
-    arxiv: "2401.00001"
-  url: https://example.test/fallback
-A:
-  type: article
-  title: Archive
-  serial-number:
-    arxiv: "2402.00002"
-U:
-  type: thesis
-  title: Repository Copy
-  organization: Example University
-  url: https://example.test/thesis
 M:
   type: misc
   title: Metadata Minimum
 "#
             .into(),
         )?;
-        let doi = bibliography.get(&CiteKey::from("D".to_owned()));
-        assert_eq!(
-            doi.and_then(Reference::author).map(String::as_str),
-            Some("Ada & Bob"),
-        );
-        assert_eq!(
-            doi.and_then(Reference::venue).map(String::as_str),
-            Some("Venue"),
-        );
-        assert_eq!(
-            doi.and_then(Reference::date).map(String::as_str),
-            Some("2024"),
-        );
-        assert!(matches!(
-            doi.and_then(Reference::locator),
-            Some(ReferenceLocator::Doi(value)) if value == "10.1000/example"
-        ));
-
-        let arxiv = bibliography.get(&CiteKey::from("A".to_owned()));
-        assert!(matches!(
-            arxiv.and_then(Reference::locator),
-            Some(ReferenceLocator::Arxiv(value)) if value == "2402.00002"
-        ));
-
-        let url = bibliography.get(&CiteKey::from("U".to_owned()));
-        assert!(matches!(
-            url.and_then(Reference::locator),
-            Some(ReferenceLocator::Url(value)) if value == "https://example.test/thesis"
-        ));
-
-        let minimum = bibliography.get(&CiteKey::from("M".to_owned()));
-        assert!(minimum.and_then(Reference::author).is_none());
-        assert!(minimum.and_then(Reference::venue).is_none());
-        assert!(minimum.and_then(Reference::date).is_none());
-        assert!(minimum.and_then(Reference::locator).is_none());
+        let keys = bibliography.key_set();
+        assert!(keys.contains("D"));
+        assert!(keys.contains("M"));
+        assert_eq!(keys.len(), 2);
         Ok(())
     }
 

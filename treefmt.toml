@@ -121,9 +121,9 @@ options = [
 includes = ["*.md"]
 
 # Parked (2026-07-30, owner directive): the docs-xml formatter runs through
-# gandr-workflow-docs, which is disabled with the GF-native documentation
-# pipeline pending a complete revisit. The formatter wiring is kept verbatim
-# for the revisit; the XML class corpora stay unformatted until then.
+# gandr-workflow-docs, which is commented out of the workspace pending a
+# complete revisit of the doc tool. The formatter wiring is kept verbatim for
+# the revisit; the XML class corpora stay unformatted until then.
 # [formatter."docs-xml"]
 # command = "cargo"
 # options = ["run", "--quiet", "-p", "gandr-workflow-docs", "--", "fmt"]
@@ -178,10 +178,9 @@ includes = ["*"]
 # (editor/CLI) run — which reads that config, not treefmt's — is safe too.
 # Consumer-local LIVE-hazard fix; permanent fix = core H8 fragment.
 # docs/research/*.md: literature-register prose is dense with author names and
-# citation keys (identifiers, not prose) — the refs.yml failure mode.
-# docs/spec/refs.yml: the gandr central citation register (hayagriva, derived
-# from docs/research/bibliography-v2.md) — author names and citation ids are
-# identifiers; the realized refs.yml failure mode. Mirrored in typos.toml.
+# citation keys (identifiers, not prose) — the bibliography failure mode.
+# docs/gandr/spec/bibliography.yml: the live corpus hayagriva bibliography —
+# citation keys and author names are identifiers; mirrored in typos.toml.
 # PLAN.html: generated export carrying bibliography author names and register/
 # tracker ids (Tye, FoPSS, gandr-8ot, …) — the same class; mirrored in
 # typos.toml extend-exclude.
@@ -190,6 +189,6 @@ excludes = [
   "*.agda",
   "*.agda-lib",
   "docs/research/*.md",
-  "docs/spec/refs.yml",
+  "docs/gandr/spec/bibliography.yml",
   "PLAN.html"
 ]

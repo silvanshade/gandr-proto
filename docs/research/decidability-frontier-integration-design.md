@@ -4,6 +4,9 @@
 > The owner ratified _pursuit_ of the study's program (2026-07-20, after independent prior investigations); this document fixes _how_ each recommendation lands against the machinery that actually exists.
 > Grounded in a four-surface integration analysis (2026-07-20) over the live reboot tree, the iu library, and the register; each section names the artifacts it was read from.
 > Calls the owner should confirm are marked **RATIFY**; everything else is executable as written.
+> **Superseded machinery (2026-07-31).** The machine-validated component corpus, its block schema, and its derived citation register were removed with the grammatical-framework pipeline: §1.1's schema reading and §6's re-derivation mechanics are historical.
+> The landing homes are now the Markdown corpus under `docs/gandr/spec/` and its bibliography `docs/gandr/spec/bibliography.yml`; a citation-bearing registration is a `bibliography-v2.md` row plus a matching bibliography entry, with no generator step.
+> Every other correction and recommendation here is unaffected.
 
 ## 1. Corrections to the study, against the live machinery
 

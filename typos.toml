@@ -16,11 +16,10 @@
 # *.typ: greenfield typst manual sources (Track C) quote Agda/math identifiers
 # verbatim, so they get the same protection.
 #
-# docs/manual/refs.yml, docs/spec/refs.yml: bibliography citation keys and
-# author names are identifiers, not prose; typos has already "corrected" the key
-# aks-2015 → ask-2015 (the exact H8 failure mode, 2026-07-03, internal-univalence).
-# docs/spec/refs.yml is the gandr central citation register (hayagriva, derived
-# from docs/research/bibliography-v2.md) — the same identifier false-positive class.
+# docs/manual/refs.yml, docs/gandr/spec/bibliography.yml: bibliography citation
+# keys and author names are identifiers, not prose; typos has already
+# "corrected" the key aks-2015 → ask-2015 (the exact H8 failure mode,
+# 2026-07-03, internal-univalence).
 #
 # vendor trees (metatheory/vendor/** = vendored agda-stdlib; vendor/** kept for
 # any future root-level vendoring) are read-only upstream: a standalone typos
@@ -29,8 +28,8 @@
 #
 # PLAN.html: generated export of the approved wayfinder plan (gandr-fcw.14),
 # carrying bibliography author names and register/tracker ids (Tye, FoPSS,
-# gandr-8ot, …) — the refs.yml class of identifier false positives. Mirrors the
-# treefmt [formatter.typos]/[formatter.sizelint]/[formatter.oxfmt] excludes.
+# gandr-8ot, …) — the bibliography class of identifier false positives. Mirrors
+# the treefmt [formatter.typos]/[formatter.sizelint]/[formatter.oxfmt] excludes.
 extend-exclude = [
   "PLAN.html",
   "secrets/",
@@ -41,16 +40,11 @@ extend-exclude = [
   "*.agda-lib",
   "*.typ",
   "docs/manual/refs.yml",
-  # docs/spec/refs.yml: hayagriva bibliography for the spec corpus (gandr-fcw.8),
-  # same class as docs/manual/refs.yml — citation keys and author names are
-  # identifiers, not prose. The spec *.xml component files stay covered; only
-  # this bibliography YAML is scoped out. (The XML currently passes typos; the
-  # exclude is here for the refs.yml failure mode as the register grows.)
-  "docs/spec/refs.yml",
-  # scripts/refs-yml/data.nu embeds the register's citation rows verbatim (the
-  # refs.yml generator's data stage) — same identifier-not-prose class; typos
-  # has already auto-"corrected" author names in it (Tye, ISSE) when covered.
-  "scripts/refs-yml/data.nu",
+  # docs/gandr/spec/bibliography.yml: the hayagriva bibliography of the live
+  # spec corpus, same class as docs/manual/refs.yml — citation keys and author
+  # names are identifiers, not prose. The corpus prose stays covered; only this
+  # bibliography YAML is scoped out.
+  "docs/gandr/spec/bibliography.yml",
   "docs/research/*.md",
   "vendor/**",
   "metatheory/vendor/**",

@@ -1,7 +1,8 @@
 <research-record id="doc-tool-class-growth" status="built" title="Growing the doc-tool prose document classes">
   <banner>
     <note>Status: built and ratified (gandr-712). The three prose classes, their shared substrate, the treefmt/check-docs wiring, and the XML-first policy are implemented; the four formerly held owner-veto choices below are final.</note>
-    <note>Scope: the doc tool (gandr-workflow-docs, gandr-fcw.8) now covers the three authored-document classes around docs/spec. Existing .md files remain an opportunistic migration or folding tail; ecosystem-named Markdown entrypoints stay thin routing adapters rather than precedent for new authored Markdown.</note>
+    <note>Scope: the doc tool (gandr-workflow-docs, gandr-fcw.8) covers the three authored-document classes around the design corpus. Existing .md files remain an opportunistic migration or folding tail; ecosystem-named Markdown entrypoints stay thin routing adapters rather than precedent for new authored Markdown.</note>
+    <note>Superseded detail: the component spec corpus this record was written beside — the grammatical-framework .gfd vocabulary and its derived citation register — has since been removed, and the live design corpus is the Markdown one under docs/gandr/spec. The three prose classes, their substrate, and the decisions below are unaffected; the register-key citations now resolve against docs/gandr/spec/bibliography.yml.</note>
     <note>Dogfood: this record is itself the first instance of the research-record class, authored as XML and validated by the tool it designs (check-docs). The bootstrap is the acceptance test.</note>
   </banner>
   <section id="dtcg-summary" title="What this lane grows">
@@ -127,8 +128,7 @@
         <cell>inline</cell>
         <cell>a register-key citation</cell>
         <cell>
-          the key must resolve in
-          <inline-code>refs.yml</inline-code>
+          the key must resolve in the corpus bibliography
         </cell>
       </row>
     </table>
@@ -138,7 +138,7 @@
       ): a proposal under review authors as
       <inline-code>design-pass</inline-code>
       , its human status phrase carried in the banner. The class design borrows the Lean reference-manual patterns the component corpus already adopted — titled boxes, stable anchors, status attributes, checked-shape examples
-      <cite key="P-2"/>
+      <cite key="ullrich-de-moura-2020-beyond-notations"/>
       .
     </prose>
     <code language="xml">&lt;research-record id="..." title="..." status="design-pass"&gt;
@@ -243,7 +243,7 @@
       ,
       <ref key="D1"/>
       ) with intra-document resolution, and a register-key citation (
-      <cite key="P-2"/>
+      <cite key="ullrich-de-moura-2020-beyond-notations"/>
       ). The class vocabulary was sufficient; no fallback to Markdown was needed, and the bootstrap validates clean under
       <inline-code>check-docs</inline-code>
       .
@@ -272,9 +272,7 @@
         <cell>
           one (
           <inline-code>bibliography-v2.md</inline-code>
-          ) is the derived-register source parsed by
-          <inline-code>scripts/refs-yml</inline-code>
-          and stays Markdown; a few are surveys the docs policy keeps out of the tracked tree — leaves ~19 migration candidates
+          ) is the literature register and stays Markdown; a few are surveys the docs policy keeps out of the tracked tree — leaves ~19 migration candidates
         </cell>
       </row>
       <row>

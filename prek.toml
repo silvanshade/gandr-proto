@@ -60,11 +60,7 @@ id = "docs-manifest-drift"
 name = "docs manifest drift check"
 language = "system"
 entry = "mise run docs:manifest-drift"
-files.glob = [
-  # "docs/adr/**",
-  # "docs/spec/**",
-  "crates/workflow-gates/src/docs/**"
-]
+files.glob = ["docs/gandr/**", "crates/workflow-gates/src/docs/**"]
 pass_filenames = false
 stages = ["pre-commit"]
 
@@ -73,11 +69,7 @@ id = "docs-reference-integrity"
 name = "docs reference integrity check"
 language = "system"
 entry = "mise run docs:reference-integrity"
-files.glob = [
-  # "docs/adr/**",
-  # "docs/spec/**",
-  "crates/workflow-gates/src/docs/**"
-]
+files.glob = ["docs/gandr/**", "crates/workflow-gates/src/docs/**"]
 pass_filenames = false
 stages = ["pre-commit"]
 

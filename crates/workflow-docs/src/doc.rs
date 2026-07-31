@@ -1,8 +1,8 @@
 //! The prose document classes: research records, workflow docs, and the
 //! per-crate lean-tier status narrative.
 //!
-//! These classes grow the doc tool beyond the spec corpus to the surrounding
-//! Markdown tail (`gandr-712`). They share one minimal block/inline substrate
+//! The three classes cover the authored-document tail around the design
+//! corpus (`gandr-712`). They share one minimal block/inline substrate
 //! ([`model`]) parsed by a single parse-equals-validate pass
 //! ([`crate::doc::parse`]) and checked against a small per-class schema
 //! ([`crate::doc::validate`]).

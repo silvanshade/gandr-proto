@@ -20,7 +20,7 @@ mod tests
     fn prose_document_corpus_is_clean()
     {
         let root = repo_root();
-        let refs = root.join("docs/spec/refs.yml");
+        let refs = root.join("docs/gandr/spec/bibliography.yml");
         let outcome = corpus::check_docs(&root, &refs);
         assert!(
             outcome.is_ok(),

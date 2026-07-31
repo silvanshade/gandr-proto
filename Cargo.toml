@@ -29,7 +29,6 @@ members = [
   # "crates/workflow-docs",
   "crates/workflow-dylint",
   "crates/workflow-gates",
-  # "crates/workflow-grammatical-framework",
 ]
 # `fuzz/` is an independent AFL++ workspace with its own lockfile and lint
 # posture (it also path-deps crates that have not been ported yet); keep it
@@ -283,7 +282,7 @@ path = "crates/theory-recursion"
 [workspace.dependencies.gandr-theory-virtual-doctrines]
 path = "crates/theory-virtual-doctrines"
 
-# The gandr documentation tool (GF-native spec pipeline, prose document classes).
+# The gandr documentation tool (the prose document classes).
 # consumers: none (workflow binary root)
 [workspace.dependencies.gandr-workflow-docs]
 path = "crates/workflow-docs"
@@ -393,7 +392,7 @@ version = "1.12.4"
 default-features = false
 features = ["std", "unicode-perl"]
 
-# Read-only XML DOM for the spec doc tool's parse=validate pass. Pure Rust
+# Read-only XML DOM for the doc tool's parse=validate pass. Pure Rust
 # (roxmltree -> xmlparser only; no regex family, no tree-sitter), so it stays
 # clear of the forbidden-default-graph gate (crates/workflow-gates/src/project.rs).
 # consumers:
@@ -465,13 +464,6 @@ version = "0.3.0"
 default-features = false
 features = ["vt100"]
 
-# UAX #29 text segmentation (grapheme/word/sentence boundaries).
-# consumers:
-# - gandr-workflow-docs (parked with the crate: sentence boundaries for the prose-pacing metrics lane)
-[workspace.dependencies.unicode-segmentation]
-version = "1.12"
-default-features = false
-
 # Terminal (vt100) parser owned app-side by the PTY job pane: consumes child
 # bytes into an addressable screen + scrollback that tui-term renders.
 [workspace.dependencies.vt100]
@@ -481,7 +473,7 @@ default-features = false
 # YAML codec (pure-Rust YAML 1.2).
 # consumers:
 # - gandr-workflow-gates
-# - gandr-workflow-docs (parked with the crate: reads the hayagriva refs.yml key set for cite resolution)
+# - gandr-workflow-docs (parked with the crate: reads the hayagriva bibliography key set for cite resolution)
 [workspace.dependencies.yaml-rust2]
 version = "0.11.0"
 default-features = false

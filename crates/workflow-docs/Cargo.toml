@@ -6,7 +6,7 @@ name = "gandr-workflow-docs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The gandr documentation tool: the GF-native spec pipeline (.gfd corpora as GF abstract-syntax trees, checkExpr validation, HTML by linearization), the prose document classes, canonical XML formatting, and the shared bibliography/typst machinery"
+description = "The gandr documentation tool: the prose document classes (parse-is-validate over XML), canonical XML formatting, and the shared bibliography machinery"
 license.workspace = true
 publish.workspace = true
 autotests = false
@@ -24,21 +24,11 @@ name = "lib"
 path = "tests/lib.rs"
 
 [dependencies]
-# Content-addressed cache keys for compiled math/diagram SVG leaves.
-blake3 = { workspace = true }
-# The GF/PGF interop: the GfRuntime trait (internalization seam) and the B'
-# .gfd s-expression surface.
-gandr-workflow-grammatical-framework.workspace = true
-# Scoped code-payload escaping in the render post-pass.
-regex = { workspace = true }
 # Read-only XML DOM for the document-class parse=validate pass and the
 # canonical formatter.
 roxmltree = { workspace = true }
-# Typed error derive for the crate error vocabulary.
-thiserror = { workspace = true }
-# UAX #29 sentence boundaries for the prose-pacing metrics lane.
-unicode-segmentation = { workspace = true }
-# Hayagriva `refs.yml` key set, read for cite-key resolution during validation.
+# Hayagriva bibliography key set, read for cite-key resolution during
+# validation.
 yaml-rust2 = { workspace = true }
 
 [features]

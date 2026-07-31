@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: d7289321e1ac8899028aa4c06da74c4139ea6a7fc0f525e58dc35620ea887ebf
+    b3: 507de0d69d0dc6cb0971fd1ebb0abf9ee5c496961990884aeb974aa26d811431
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -34,7 +34,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: bc82f07b73c3ad2ee23b71660befacd24495f24949ed73b703fb1fdd570524e3
+    b3: 3300e008fa9444d0f49fd40fbd000e20e4c07c97ba241d585d5f139f357bf601
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -74,7 +74,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: ba204728646b4404a97caa6f780670f681ea5746af47d456f9aab3c3311ca7b9
+    b3: 623c2db2b5f22f95ca1baa9d29651898f94f01e1e384b3d5f209fa4021ff0e5a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md

@@ -5,7 +5,7 @@ Read this before any structural change.
 It routes into the authoritative docs instead of restating them; where two docs disagree, the linked authority wins.
 
 * How work moves (posture, gates, tracker, worktrees): [AGENTS.md](AGENTS.md) and the workflow routing layer [docs/WORKFLOW.md](docs/WORKFLOW.md).
-* What the design is: the validated specification corpus [docs/spec/](docs/spec/README.md), under the authority of the `docs/gandr/` design corpus.
+* What the design is: the specification corpus [docs/gandr/spec/](docs/gandr/spec/README.md), the authority within the `docs/gandr/` design corpus.
 * Why it was decided: the approved [PLAN.html](PLAN.html) and the beads tracker (the per-file `docs/adr/` log is deferred, [docs/workflow/docs.md](docs/workflow/docs.md)).
 
 ## The system in one paragraph
@@ -22,9 +22,8 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `crates/`                                | the Rust workspace (22 members; domains and layering below)                                                      |
 | `crates/*/docs/`                         | per-crate lean doc tier (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present — off the corpus main-path |
 | `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
-| `docs/spec/`                             | the specification corpus: validated XML components, `refs.yml` (derived Hayagriva bibliography)                  |
 | `docs/research/`                         | landed research and design studies, incl. the wyrd→reboot [crate port map](docs/research/crate-port-map.md)      |
-| `docs/gandr/`                            | the design corpus root (reboot stub: index + BLAKE3 `MANIFEST.yml`)                                              |
+| `docs/gandr/`                            | the design corpus root: index, BLAKE3 `MANIFEST.yml`, and the `spec/` tracks with their Hayagriva bibliography   |
 | `metatheory/`                            | the Agda metatheory, built port-as-source under `Gandr.*` over a vendored agda-stdlib — no submodule, no facade  |
 | `fuzz/`                                  | independent AFL++ fuzz workspace — own lockfile and lint posture, excluded from the main workspace               |
 | `scripts/`                               | legacy Nushell helpers, retired for new work ([docs/workflow/scripting.md](docs/workflow/scripting.md))          |
@@ -48,7 +47,7 @@ Roles are one-line condensations of each crate's `Cargo.toml` description, which
 | `storage-*`  | storage-chunker, storage-prolly-trees, storage-artifact                                                                                | untrusted content-addressed persistence: chunking, Merkle search tree, CAS export              |
 | `runtime-*`  | runtime-host                                                                                                                           | headless host-effect runtime (Exec/Fs/Proc/Env) driven by the L machine                        |
 | `surface-*`  | surface-syntax, surface-render-remote, surface-grammar, surface-driver                                                                 | user-facing syntax and tools: CST + diffing, inspection wire protocol, grammar, driver (stub)  |
-| `workflow-*` | workflow-gates, workflow-dylint, workflow-docs                                                                                         | project tooling: the gate battery, project-local Dylint lints, the spec doc tool               |
+| `workflow-*` | workflow-gates, workflow-dylint, workflow-docs                                                                                         | project tooling: the gate battery, project-local Dylint lints, the prose doc-class tool        |
 
 ## Package layering
 
@@ -92,8 +91,8 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
    Sources: [Cargo.toml](Cargo.toml), [docs/workflow/rust.md](docs/workflow/rust.md).
 4. **Project-local Dylint contracts gate merges.** The recursion/termination contract (and its documented relaxations) runs on the merge wall between Clippy and the test suite.
    Sources: [docs/workflow/ci.md](docs/workflow/ci.md), [crates/workflow-dylint/](crates/workflow-dylint/).
-5. **The specification corpus parses as validation.** Define-once, term/cite/provenance resolution, and status presence are enforced by the doc tool; `docs/spec/refs.yml` is a derived artifact — edit the register and re-derive, never hand-edit.
-   Source: [docs/spec/README.md](docs/spec/README.md).
+5. **The specification corpus is cited, not free-form.** Every external work is cited by a key that resolves in `docs/gandr/spec/bibliography.yml`, and the bibliography holds no entry the corpus never cites.
+   Source: [docs/gandr/spec/README.md](docs/gandr/spec/README.md), [docs/workflow/specs.md](docs/workflow/specs.md).
 6. **The design corpus is hash-registered.** Editing a doc registered in `docs/gandr/MANIFEST.yml` updates its BLAKE3 sum in the same commit (`docs:manifest-drift` gate).
    Source: [docs/gandr/README.md](docs/gandr/README.md).
 7. **Fidelity beats formatters.** A formatter or linter is relaxed or scoped, never satisfied at the cost of artifact fidelity.
@@ -105,7 +104,7 @@ Each invariant names its enforcement surface; the gates live in [docs/workflow/c
 
 | Question                     | Authoritative source                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| What is the language design? | [docs/spec/](docs/spec/README.md) (component corpus) under `docs/gandr/` authority                            |
+| What is the language design? | [docs/gandr/spec/](docs/gandr/spec/README.md) — the four track documents                                      |
 | Why was it decided?          | [PLAN.html](PLAN.html) + the beads tracker, until `docs/adr/` is re-introduced                                |
 | What is a crate's status?    | `crates/<crate>/docs/` (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present, else its `Cargo.toml`   |
 | How do I work on X?          | [docs/WORKFLOW.md](docs/WORKFLOW.md) → the matching `docs/workflow/` sub-file                                 |

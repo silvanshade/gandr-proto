@@ -90,8 +90,8 @@ The `no-machine-local-paths` hook and commitlint are lexical backstops; classifi
 
 ## Specification, corpus, and research
 
-* `docs/gandr/spec/README.md` is the specification entry point; the four track documents under it are the design record.
-  The validated `.gfd` corpus and its `gandr-workflow-docs` pipeline are parked (crates commented out of the workspace); `docs/spec/refs.yml` is derived and must be regenerated, never edited by hand, when that pipeline returns.
+* `docs/gandr/spec/README.md` is the specification entry point; the four track documents under it are the design record, and `docs/gandr/spec/bibliography.yml` is the register they cite.
+  The prose document-class tool `gandr-workflow-docs` is parked (crate commented out of the workspace), so the tracked `.xml` documents carry no active gate.
   Follow [`docs/workflow/docs.md`](docs/workflow/docs.md).
 * Every surfaced language feature lands its complete executable corpus treatment in the same change.
   Syntax-only work lands a parse-gated `surface/` witness; internal-only work lands named exercised fixtures and an explicit promotion blocker.

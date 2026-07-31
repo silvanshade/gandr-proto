@@ -3,7 +3,7 @@
 This track owns the Rust system: the crate map, the kernel IL and typing machine, the rewriting, completion, and tracelet engines, the content-addressed storage stack, the surface pipeline, the runtime, and the gates.
 `PLAN.html` is the phase-roadmap authority; this document is the standing description of what is built and how it is shaped, with the phase table summarized for orientation.
 Detailed remaining work is in [[implementation/roadmap]].
-A second, older specification surface — the grammatical-framework `.gfd` corpus under `crates/workflow-docs/corpus/` with its validation pipeline — is **parked** (its two crates are commented out of the workspace and its tasks are disabled); this markdown corpus is the live one.
+This markdown corpus is the only specification surface: the older machine-validated component corpus and its pipeline were removed, and `crates/workflow-docs` remains only as the parked prose document-class tool for the tracked `.xml` documents.
 
 ## The build-out at a glance
 
@@ -39,7 +39,7 @@ Lanes: the substrate burst (closed), incrementality (in progress; standing gate:
 
 ## The crate map
 
-Twenty-four workspace members (twenty-six directories; the two `.gfd` doc crates are parked), edition 2024, uniform feature scheme, in dependency tiers:
+Twenty-four workspace members (twenty-five directories; the doc-class tool `workflow-docs` is parked), edition 2024, uniform feature scheme, in dependency tiers:
 
 | tier     | crates                                                                                                                                                         |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -138,7 +138,7 @@ source text → lexer (hand-rolled byte DFA) → molder (obligation-minimizing d
   → the typing machine + the L machine → outcome
 ```
 
-The grammar is a checked **precedence-bounded grammar** over named precedence DAGs — hand-written constructor code, no codegen, in the tylr lineage [@moon-blinn-porter-omar-2025-tylr] (not BNF, PEG, tree-sitter, or GF); a mold is a zipper into the grammar interned to a compact id.
+The grammar is a checked **precedence-bounded grammar** over named precedence DAGs — hand-written constructor code, no codegen, in the tylr lineage [@moon-blinn-porter-omar-2025-tylr] (not BNF, PEG, or tree-sitter); a mold is a zipper into the grammar interned to a compact id.
 The melder's push is total; every molded tile drives shift, reduce, or degrout (incomparable precedences complete-and-reduce with grout at bottom, guaranteeing termination); the stack is one slope of terraces, the emission log is append-only so rollback is truncation and checkpoints are cheap; **error recovery is the obligation taxonomy, not panic-and-resync**, with obligations declared in severity order so the derived ordering is the truth, and lexical ambiguity resolved by obligation minimum rather than in the lexer.
 The CST's node kinds are deliberately form-name-free; declaration forms live in grammar rules at the item sort and in node-kind constants the lowerer dispatches on — there is no typed top-level declaration enum.
 Vocabulary decisions of record: the universe keyword is `Type`, never `Set`; a small closed set of globally reserved keywords with fixity classes contextual; type operators are right-associative (an unparenthesized flat chain is a user-visible error); value binds are `val p = v;` and computation-result binds `run p <- c;` (`let` retired; the answer-type annotation lane `run p : F T <- c` is pending); imports are `import "URI" as name` (plain string, file scheme now, others zero-grammar-change later); the shell fragment's braced parameters are deliberately distinct from string interpolation, with subshell brackets and file-descriptor redirections in the shell context and host-escape reserved; the bare binary on a terminal is the minimal shell-REPL and the programming environment is explicit.

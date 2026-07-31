@@ -27,8 +27,7 @@ The legacy helpers, each reached through its named `mise` task or `prek` hook, n
 * `scripts/check-conflict-markers.nu` — the `docs:conflict-markers` gate and its pre-commit hook;
 * `scripts/check-machine-local-paths.nu` — the `no-machine-local-paths` pre-commit hook (publishable-history backstop);
 * `scripts/commitlint-range.nu` and `scripts/check-signed-commits.nu` — the pre-push range checks;
-* `scripts/lib/git.nu`, `scripts/lib/push-range.nu` — shared helpers;
-* `scripts/refs-yml/*.nu` — the `docs/spec/refs.yml` generator ([docs.md](docs.md)).
+* `scripts/lib/git.nu`, `scripts/lib/push-range.nu` — shared helpers.
 
 The vendored agentic-dev core is a separate ownership domain that is **not yet vendored in the reboot**: `.agents/core` does not exist, so its shared-core calls (`core:check`, `core-init`, the Worktrunk ADR guard) are parked and re-grow with the core.
 Until then, the checks that would delegate to the core run as the legacy helpers above.

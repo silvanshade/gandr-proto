@@ -238,7 +238,7 @@ Because regeneration reproduces the **same lowered terms** for the **same source
 
 * **`14-agda-deps-walkthrough`** re-sync: the walkthrough is an older module-free version of the real `scripts/agda-deps.gandr` (§12 C4).
   The driver un-stub re-enables `mise agda:deps` (`cargo run -p gandr -- scripts/agda-deps.gandr`), so the walkthrough and the live script reconverge at the port.
-* **C2/C3/C4 graduation** (`b3-module-system-design.md` §12): with the pipeline + a reboot module-spec home in place, the C2 M1-lite note, the C3 corrected "partial" verdict, and the C4 in-tree note fixes land against **reboot-native** homes (a spec node under `docs/spec/` or `docs/gandr/` hydration) — the targets that were absent at B3.0 and forced the confirm-and-record.
+* **C2/C3/C4 graduation** (`b3-module-system-design.md` §12): with the pipeline + a reboot module-spec home in place, the C2 M1-lite note, the C3 corrected "partial" verdict, and the C4 in-tree note fixes land against **reboot-native** homes (a node in the `docs/gandr/spec/` corpus) — the targets that were absent at B3.0 and forced the confirm-and-record.
 
 ---
 
@@ -347,7 +347,7 @@ Separated from the recommendations above; each a genuine fork.
 * **O6 — `22-ffi` / `28-regex` byte-exactness.** Keep the two feature-coupled fixtures frozen-and-verified until FFI/regex land (recommended), or pull `gandr-ffi`+`regex` into F4 for full regeneration.
 * **O7 — formatting crates (§7e, H6).** Confirm `gandr-doc`/`gandr-fmt`/`gandr-pretty` stay out of the cut (recommended — they are a graduation of inline facets into components, no code exists to port), and are not silently dropped from the design record.
 * **O8 — driver faces at the port.** Land only the script-runner face (`gandr <file>`, needed for `agda:deps` + the corpus harness; recommended), deferring the reedline REPL + `tui`/`lsp`/`mcp`/`fmt`/`build` faces.
-* **O9 — C2/C3/C4 spec home.** With no `core-ir-contract.md`/`modules.md` in the reboot, choose where the C2 M1-lite note, the C3 "partial" verdict, and the C4 corrections land — a new `docs/spec/*.xml` modules node, or a `docs/gandr/` hydration — so the B3.0 escalation (`gandr-wvd.3.2`) finally discharges at the pipeline rung.
+* **O9 — C2/C3/C4 spec home.** With no `core-ir-contract.md`/`modules.md` in the reboot, choose where the C2 M1-lite note, the C3 "partial" verdict, and the C4 corrections land in the `docs/gandr/spec/` corpus, so the B3.0 escalation (`gandr-wvd.3.2`) finally discharges at the pipeline rung.
 
 ---
 

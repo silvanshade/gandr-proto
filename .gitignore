@@ -60,8 +60,4 @@ fuzz/coverage/
 # macOS cruft
 .DS_Store
 
-# GF/PGF interop environment (uv-managed) and GF build intermediates
-.venv/
-*.gfo
-
 .obsidian

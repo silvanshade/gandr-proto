@@ -10,6 +10,11 @@
 2. Natural prose and conversational tone are an aspiration beyond that.
    When the two axes conflict, the first wins, always.
 
+## The absorption bar
+
+Absorbing a source document — a pre-reboot spec, a research sweep, a session decision record — is **superset-transfer, never summarization** (owner decision `gandr-fid.0`): the source is the floor, not the ceiling.
+The acceptance test: **an implementing agent must be able to build the component from the corpus document alone, without opening the source tree.** Every load-bearing artifact lives in a payload block, and every payload block gets an introducing prose paragraph.
+
 ## The register is timeless
 
 Corpus prose is written for the technical manual the corpus becomes: it says what the design **is and does**, forward-looking, never how the design was reached.

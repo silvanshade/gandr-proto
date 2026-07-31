@@ -1268,3 +1268,15 @@ yorgey-2014-species:
   date: 2014
   organization: University of Pennsylvania
   note: not in library.bib; the retired register lists it held — verify before citation-bearing use
+
+ullrich-de-moura-2020-beyond-notations:
+  type: article
+  title: "Beyond Notations: Hygienic Macro Expansion for Theorem Proving Languages"
+  author: ["Ullrich, Sebastian", "de Moura, Leonardo"]
+  date: 2020
+  serial-number:
+    doi: "10.1007/978-3-030-51054-1_10"
+  parent:
+    type: proceedings
+    title: Automated Reasoning (IJCAR 2020)
+  note: Lean 4 hygiene; cited by the doc-tool prose-class record
