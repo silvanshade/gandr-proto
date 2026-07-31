@@ -7,21 +7,6 @@ nodes:
     b3: 63ae1999487dee2f72c5151e82e266408b7f81ab115d3ada2761a28176b2f17c
     edges:
       - { rel: orients, to: . }
-  - path: spec/proposal-docs-gf-pipeline.md
-    role: proposal
-    b3: 516f5723017f4783f8f9aeaa4b7689849eab9070dffb201ffa672071aa78f399
-    edges:
-      - { rel: registered-under, to: README.md }
-  - path: spec/internalizing-gf.md
-    role: note
-    b3: 8fe20dd5889b25b1344af97f0910828bc7eff4c3ec7030b2f7471a66ae0caddd
-    edges:
-      - { rel: extends, to: spec/proposal-docs-gf-pipeline.md }
-  - path: spec/proposal-docs-design-language.md
-    role: proposal
-    b3: 3bfc532a57fce5bd57adbb5ab989583d2f72ae240d0c68e41c11310e650d5284
-    edges:
-      - { rel: registered-under, to: README.md }
   - path: spec/proposal-metatheory-consolidated.md
     role: proposal
     b3: 218c45dfcd78a11f5bdabf87ca5b232162b681002e2fea46b2df587304cdf5de
