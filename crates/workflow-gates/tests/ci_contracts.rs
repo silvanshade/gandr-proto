@@ -20,6 +20,10 @@ use yaml_rust2::yaml::YamlLoader;
 /// Shared result type for CI workflow integration witnesses.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 gandr_workflow_gates::semantic_str!(pub(crate) struct SourceText);
+gandr_workflow_gates::semantic_str!(pub(crate) struct YamlKeyText);
+gandr_workflow_gates::semantic_str!(pub(crate) struct YamlContextText);
+gandr_workflow_gates::semantic_str!(pub(crate) struct MiseTaskText);
+gandr_workflow_gates::semantic_copy!(pub(crate) struct RunsMiseTaskFlag(bool));
 
 /// Stable logical workflow path used in pure analyzer tests.
 const WORKFLOW_PATH: &str = ".github/workflows/ci.yml";
@@ -149,7 +153,7 @@ fn clippy_and_dylint_jobs_are_independent() -> TestResult
             "CI lint job `{job_id}` must have no `needs` dependency"
         );
         assert!(
-            yaml_job_runs_mise_task(job, task)?,
+            yaml_job_runs_mise_task(job, task)?.0,
             "CI lint job `{job_id}` must run `mise run {task}`"
         );
     }
@@ -440,12 +444,17 @@ fn run_ci_workflow_reports_missing_workflow_path() -> TestResult
 }
 
 /// Return a required string-keyed YAML mapping value.
-fn required_yaml_value<'yaml>(
+fn required_yaml_value<'yaml, 'text, Key, Context>(
     mapping: &'yaml Hash,
-    key: &str,
-    context: &str,
+    key: Key,
+    context: Context,
 ) -> TestResult<&'yaml Yaml>
+where
+    Key: Into<YamlKeyText<'text>>,
+    Context: Into<YamlContextText<'text>>,
 {
+    let key = key.into().0;
+    let context = context.into().0;
     yaml_mapping_value(mapping, key).ok_or_else(|| {
         Box::<dyn Error>::from(std::io::Error::other(format!(
             "{context} must contain `{key}`"
@@ -454,11 +463,14 @@ fn required_yaml_value<'yaml>(
 }
 
 /// Return a required YAML mapping.
-fn required_yaml_mapping<'yaml>(
+fn required_yaml_mapping<'yaml, 'text, Context>(
     value: &'yaml Yaml,
-    context: &str,
+    context: Context,
 ) -> TestResult<&'yaml Hash>
+where
+    Context: Into<YamlContextText<'text>>,
 {
+    let context = context.into().0;
     match *value {
         | Yaml::Hash(ref mapping) => Ok(mapping),
         | _ => Err(Box::new(std::io::Error::other(format!(
@@ -468,11 +480,14 @@ fn required_yaml_mapping<'yaml>(
 }
 
 /// Return a string-keyed YAML mapping value without a temporary key.
-fn yaml_mapping_value<'yaml>(
+fn yaml_mapping_value<'yaml, 'text, Key>(
     mapping: &'yaml Hash,
-    key: &str,
+    key: Key,
 ) -> Option<&'yaml Yaml>
+where
+    Key: Into<YamlKeyText<'text>>,
 {
+    let key = key.into().0;
     for (candidate, value) in mapping {
         if let Yaml::String(ref candidate) = *candidate
             && candidate == key
@@ -484,11 +499,14 @@ fn yaml_mapping_value<'yaml>(
 }
 
 /// Return whether a workflow job has an exact `mise run TASK` step.
-fn yaml_job_runs_mise_task(
+fn yaml_job_runs_mise_task<'text, Task>(
     job: &Hash,
-    task: &str,
-) -> TestResult<bool>
+    task: Task,
+) -> TestResult<RunsMiseTaskFlag>
+where
+    Task: Into<MiseTaskText<'text>>,
 {
+    let task = task.into().0;
     let steps = required_yaml_value(job, "steps", "CI lint job")?;
     let Yaml::Array(ref steps) = *steps
     else {
@@ -506,10 +524,10 @@ fn yaml_job_runs_mise_task(
             && let Yaml::String(ref run) = *yaml
             && run.trim() == expected
         {
-            return Ok(true);
+            return Ok(RunsMiseTaskFlag(true));
         }
     }
-    Ok(false)
+    Ok(RunsMiseTaskFlag(false))
 }
 
 /// Analyze workflow source at the stable logical path.

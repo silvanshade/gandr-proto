@@ -2538,14 +2538,19 @@ fn collect_witness_frames(
 }
 
 /// Push testcase collection children onto the witness worklist.
-fn push_testcase_collection_frames<'value>(
+fn push_testcase_collection_frames<'value, 'semantic, Package, CrateName>(
     value: &'value Value,
-    package: Option<&str>,
-    crate_name: Option<&str>,
+    package: Package,
+    crate_name: CrateName,
     witnesses: &mut BTreeSet<String>,
     frames: &mut Vec<WitnessTraversalFrame<'value>>,
 )
+where
+    Package: Into<OptionalPackageText<'semantic>>,
+    CrateName: Into<OptionalCrateNameText<'semantic>>,
 {
+    let package = package.into().0;
+    let crate_name = crate_name.into().0;
     match *value {
         | Value::Array(ref items) => {
             for item in items.iter().rev() {

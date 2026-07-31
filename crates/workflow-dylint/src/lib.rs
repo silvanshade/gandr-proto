@@ -41,10 +41,12 @@ use rustc_hir::TraitItemKind;
 use rustc_hir::TraitRef;
 use rustc_hir::Ty;
 use rustc_hir::TyKind;
+use rustc_hir::attrs::ReprAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::find_attr;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::intravisit::walk_expr;
@@ -189,6 +191,141 @@ pub fn register_lints(
     lint_store.register_late_lint_pass(Box::new(|_| Box::<GandrTypeBoundaries>::default()));
 }
 
+/// Define a transparent copyable semantic wrapper with bidirectional `From`
+/// conversions (the workspace's `DataMention(bool)` pattern).
+macro_rules! semantic_copy {
+    ($(#[$meta:meta])* struct $name:ident($inner:ty);) => {
+        $(#[$meta])*
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+        struct $name($inner);
+
+        impl From<$inner> for $name {
+            #[inline]
+            fn from(value: $inner) -> Self {
+                Self(value)
+            }
+        }
+
+        impl From<$name> for $inner {
+            #[inline]
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
+    };
+}
+
+/// Define a transparent borrowed-text semantic wrapper with `From`
+/// conversions (the workspace's `semantic_borrowed_str` pattern).
+macro_rules! semantic_borrowed_str {
+    ($(#[$meta:meta])* struct $name:ident;) => {
+        $(#[$meta])*
+        #[repr(transparent)]
+        #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+        struct $name<'text>(&'text str);
+
+        impl<'text> From<&'text str> for $name<'text> {
+            #[inline]
+            fn from(value: &'text str) -> Self {
+                Self(value)
+            }
+        }
+
+        impl<'text> From<&'text String> for $name<'text> {
+            #[inline]
+            fn from(value: &'text String) -> Self {
+                Self(value.as_str())
+            }
+        }
+
+        impl<'text> From<$name<'text>> for &'text str {
+            #[inline]
+            fn from(value: $name<'text>) -> Self {
+                value.0
+            }
+        }
+    };
+}
+
+semantic_copy!(
+    /// Whether a single-field struct already declares `#[repr(transparent)]`.
+    struct TransparentReprDeclared(bool);
+);
+semantic_copy!(
+    /// Whether a function is a method implementing a non-local trait.
+    struct NonLocalTraitImpl(bool);
+);
+semantic_copy!(
+    /// Whether one crate-local function can reach another through local calls.
+    struct Reachable(bool);
+);
+semantic_copy!(
+    /// Whether a recursive function carries a valid `# Termination` block.
+    struct ValidTerminationDoc(bool);
+);
+semantic_copy!(
+    /// Whether a required `# Termination` bullet has a non-empty value.
+    struct BulletHasValue(bool);
+);
+semantic_copy!(
+    /// Whether the `- input recursion:` bullet satisfies gandr's policy.
+    struct ValidInputRecursion(bool);
+);
+semantic_copy!(
+    /// Whether a recursive SCC passes caller-input-derived data on some edge.
+    struct HasInputDerivedRecursiveCall(bool);
+);
+semantic_copy!(
+    /// Whether an expression references an input-derived local.
+    struct ContainsDerivedBinding(bool);
+);
+semantic_copy!(
+    /// Whether a provenance pass added a binding to the input-derived set.
+    struct ProvenanceChanged(bool);
+);
+semantic_copy!(
+    /// Whether a function is the model checker's allowed input recursion.
+    struct ModelCheckerInputRecursion(bool);
+);
+semantic_copy!(
+    /// Whether a def path is the allowed checker recursion receiver path.
+    struct ModelCheckerRecPath(bool);
+);
+semantic_copy!(
+    /// Whether a signature traversal emitted a primitive diagnostic.
+    struct PrimitiveDiagnosticEmitted(bool);
+);
+semantic_copy!(
+    /// Whether a primitive is one of gandr's banned signature primitives.
+    struct DisallowedPrimitive(bool);
+);
+semantic_copy!(
+    /// Whether an ADT is a semantic wrapper boundary for type-boundary linting.
+    struct SemanticBoundaryAdt(bool);
+);
+semantic_copy!(
+    /// Whether a semantic type contains a disallowed primitive before a
+    /// nominal gandr boundary.
+    struct ContainsPrimitive(bool);
+);
+semantic_copy!(
+    /// Number of primitive-signature diagnostics a traversal has emitted.
+    struct DiagnosticCount(usize);
+);
+semantic_borrowed_str!(
+    /// A trimmed rustdoc line of a `# Termination` section.
+    struct TerminationLine;
+);
+semantic_borrowed_str!(
+    /// The literal prefix of a required `# Termination` bullet.
+    struct BulletPrefix;
+);
+semantic_borrowed_str!(
+    /// A rustc def path rendered as absolute text.
+    struct DefPathText;
+);
+
 /// Late lint pass implementing gandr's semantic Rust boundary rules.
 #[derive(Default)]
 struct GandrTypeBoundaries
@@ -204,8 +341,7 @@ struct FunctionNode
 {
     /// The function's whole-item span, used as the diagnostic target.
     span: Span,
-    /// The function's stable rustc def-path string, used for deterministic SCC
-    /// ordering.
+    /// The function's stable rustc def-path string, used for deterministic SCC ordering.
     path: String,
     /// The HIR id of the function body expression root.
     body_hir_id: HirId,
@@ -232,7 +368,7 @@ impl<'tcx> LateLintPass<'tcx> for GandrTypeBoundaries
     {
         if let ItemKind::Struct(_, _, ref variant_data) = item.kind
             && variant_data.fields().len() == 1_usize
-            && !has_transparent_repr(cx, item)
+            && !has_transparent_repr(cx, item).0
         {
             span_lint(
                 cx,
@@ -257,7 +393,7 @@ impl<'tcx> LateLintPass<'tcx> for GandrTypeBoundaries
             return;
         }
 
-        if !implements_non_local_trait(cx, def_id) {
+        if !implements_non_local_trait(cx, def_id).0 {
             let semantic_sig = cx
                 .tcx
                 .fn_sig(def_id)
@@ -321,7 +457,7 @@ impl<'tcx> LateLintPass<'tcx> for GandrTypeBoundaries
                 else {
                     continue;
                 };
-                if termination_doc_is_valid(cx, def_id, &scc, &self.functions, &self.edges) {
+                if termination_doc_is_valid(cx, def_id, &scc, &self.functions, &self.edges).0 {
                     continue;
                 }
                 span_lint_hir(
@@ -340,23 +476,27 @@ impl<'tcx> LateLintPass<'tcx> for GandrTypeBoundaries
 fn has_transparent_repr(
     cx: &LateContext<'_>,
     item: &Item<'_>,
-) -> bool
+) -> TransparentReprDeclared
 {
-    matches!(item.kind, ItemKind::Struct(..))
-        && cx.tcx.adt_def(item.owner_id.def_id).repr().transparent()
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
+    TransparentReprDeclared(
+        find_attr!(attrs, Repr { reprs, .. } if reprs.iter().any(|&(repr, _)| repr == ReprAttr::ReprTransparent)),
+    )
 }
 
 /// Return whether `def_id` is a method implementing a non-local trait.
 fn implements_non_local_trait(
     cx: &LateContext<'_>,
     def_id: LocalDefId,
-) -> bool
+) -> NonLocalTraitImpl
 {
-    trait_ref_of_method(cx, rustc_hir::OwnerId { def_id }).is_some_and(|trait_ref| {
-        trait_ref
-            .trait_def_id()
-            .is_some_and(|trait_def_id| !trait_def_id.is_local())
-    })
+    NonLocalTraitImpl(trait_ref_of_method(cx, rustc_hir::OwnerId { def_id }).is_some_and(
+        |trait_ref| {
+            trait_ref
+                .trait_def_id()
+                .is_some_and(|trait_def_id| !trait_def_id.is_local())
+        },
+    ))
 }
 
 /// Collect crate-local free-function and method callsites under `expr`.
@@ -438,7 +578,7 @@ fn recursive_sccs(
         .copied()
         .filter(|def_id| {
             let mut visited = HashSet::new();
-            reaches_target(*def_id, *def_id, edges, functions, &mut visited)
+            reaches_target(*def_id, *def_id, edges, functions, &mut visited).0
         })
         .collect();
 
@@ -452,8 +592,8 @@ fn recursive_sccs(
             .into_iter()
             .filter(|other| {
                 *other == def_id
-                    || (reaches(def_id, *other, edges, functions)
-                        && reaches(*other, def_id, edges, functions))
+                    || (reaches(def_id, *other, edges, functions).0
+                        && reaches(*other, def_id, edges, functions).0)
             })
             .collect();
         scc.sort_by_key(|def_id| functions.get(def_id).map(|node| node.path.as_str()));
@@ -479,37 +619,48 @@ fn reaches(
     target: LocalDefId,
     edges: &HashMap<LocalDefId, Vec<CallEdge>>,
     functions: &HashMap<LocalDefId, FunctionNode>,
-) -> bool
+) -> Reachable
 {
     let mut visited = HashSet::new();
     reaches_target(start, target, edges, functions, &mut visited)
 }
 
-/// DFS step for [`reaches`].
+/// Depth-first search for [`reaches`], driven by an explicit stack so the
+/// traversal never recurses over caller input.
 fn reaches_target(
-    current: LocalDefId,
+    start: LocalDefId,
     target: LocalDefId,
     edges: &HashMap<LocalDefId, Vec<CallEdge>>,
     functions: &HashMap<LocalDefId, FunctionNode>,
     visited: &mut HashSet<LocalDefId>,
-) -> bool
+) -> Reachable
 {
-    let Some(callees) = edges.get(&current)
-    else {
-        return false;
-    };
-    for edge in callees {
-        if edge.callee == target {
-            return true;
-        }
-        if functions.contains_key(&edge.callee)
-            && visited.insert(edge.callee)
-            && reaches_target(edge.callee, target, edges, functions, visited)
-        {
-            return true;
+    let mut pending: Vec<LocalDefId> = Vec::new();
+    if let Some(callees) = edges.get(&start) {
+        for edge in callees {
+            if edge.callee == target {
+                return Reachable(true);
+            }
+            if functions.contains_key(&edge.callee) && visited.insert(edge.callee) {
+                pending.push(edge.callee);
+            }
         }
     }
-    false
+    while let Some(current) = pending.pop() {
+        let Some(callees) = edges.get(&current)
+        else {
+            continue;
+        };
+        for edge in callees {
+            if edge.callee == target {
+                return Reachable(true);
+            }
+            if functions.contains_key(&edge.callee) && visited.insert(edge.callee) {
+                pending.push(edge.callee);
+            }
+        }
+    }
+    Reachable(false)
 }
 
 /// Return whether a recursive function has the required termination doc block.
@@ -519,12 +670,12 @@ fn termination_doc_is_valid(
     scc: &[LocalDefId],
     functions: &HashMap<LocalDefId, FunctionNode>,
     edges: &HashMap<LocalDefId, Vec<CallEdge>>,
-) -> bool
+) -> ValidTerminationDoc
 {
     let lines = rustdoc_lines(cx, def_id);
     let Some(start) = lines.iter().position(|line| line == "# Termination")
     else {
-        return false;
+        return ValidTerminationDoc(false);
     };
     let mut section_lines = lines
         .get(start.saturating_add(1) ..)
@@ -533,25 +684,28 @@ fn termination_doc_is_valid(
         .filter(|line| !line.is_empty());
     let Some(reason) = section_lines.next()
     else {
-        return false;
+        return ValidTerminationDoc(false);
     };
     let Some(measure) = section_lines.next()
     else {
-        return false;
+        return ValidTerminationDoc(false);
     };
     let Some(boundedness) = section_lines.next()
     else {
-        return false;
+        return ValidTerminationDoc(false);
     };
     let Some(input_recursion) = section_lines.next()
     else {
-        return false;
+        return ValidTerminationDoc(false);
     };
 
-    required_bullet_has_value(reason, "- reason:")
-        && required_bullet_has_value(measure, "- measure:")
-        && required_bullet_has_value(boundedness, "- boundedness:")
-        && input_recursion_is_valid(cx, def_id, input_recursion, scc, functions, edges)
+    ValidTerminationDoc(
+        required_bullet_has_value(reason.into(), "- reason:".into()).0
+            && required_bullet_has_value(measure.into(), "- measure:".into()).0
+            && required_bullet_has_value(boundedness.into(), "- boundedness:".into()).0
+            && input_recursion_is_valid(cx, def_id, input_recursion.into(), scc, functions, edges)
+                .0,
+    )
 }
 
 /// Return rustdoc lines attached to `def_id`, trimmed for structural matching.
@@ -576,29 +730,37 @@ fn rustdoc_lines(
 
 /// Return whether `line` is a required bullet with a non-empty value.
 fn required_bullet_has_value(
-    line: &str,
-    prefix: &str,
-) -> bool
+    line: TerminationLine<'_>,
+    prefix: BulletPrefix<'_>,
+) -> BulletHasValue
 {
-    line.strip_prefix(prefix)
-        .is_some_and(|value| !value.trim().is_empty())
+    BulletHasValue(
+        line
+            .0
+            .strip_prefix(prefix.0)
+            .is_some_and(|value| !value.trim().is_empty()),
+    )
 }
 
 /// Return whether the `- input recursion:` bullet satisfies gandr's policy.
 fn input_recursion_is_valid(
     cx: &LateContext<'_>,
     def_id: LocalDefId,
-    line: &str,
+    line: TerminationLine<'_>,
     scc: &[LocalDefId],
     functions: &HashMap<LocalDefId, FunctionNode>,
     edges: &HashMap<LocalDefId, Vec<CallEdge>>,
-) -> bool
+) -> ValidInputRecursion
 {
-    if line == "- input recursion: none." {
-        return !scc_has_input_derived_recursive_call(cx, scc, functions, edges);
+    if line.0 == "- input recursion: none." {
+        return ValidInputRecursion(
+            !scc_has_input_derived_recursive_call(cx, scc, functions, edges).0,
+        );
     }
-    allows_model_checker_input_recursion(cx, def_id)
-        && required_bullet_has_value(line, "- input recursion:")
+    ValidInputRecursion(
+        allows_model_checker_input_recursion(cx, def_id).0
+            && required_bullet_has_value(line, "- input recursion:".into()).0,
+    )
 }
 
 /// Return whether any call edge inside `scc` passes caller-input-derived data.
@@ -607,7 +769,7 @@ fn scc_has_input_derived_recursive_call(
     scc: &[LocalDefId],
     functions: &HashMap<LocalDefId, FunctionNode>,
     edges: &HashMap<LocalDefId, Vec<CallEdge>>,
-) -> bool
+) -> HasInputDerivedRecursiveCall
 {
     let members: HashSet<_> = scc.iter().copied().collect();
     for caller in scc {
@@ -627,15 +789,15 @@ fn scc_has_input_derived_recursive_call(
             for arg in &edge.args {
                 let Some(expr) = expr_for_hir_id(cx, *arg)
                 else {
-                    return true;
+                    return HasInputDerivedRecursiveCall(true);
                 };
-                if expr_contains_derived_binding(cx, &derived, expr) {
-                    return true;
+                if expr_contains_derived_binding(cx, &derived, expr).0 {
+                    return HasInputDerivedRecursiveCall(true);
                 }
             }
         }
     }
-    false
+    HasInputDerivedRecursiveCall(false)
 }
 
 /// Return the final flow-insensitive set of locals derived from function
@@ -688,9 +850,9 @@ impl<'tcx> Visitor<'tcx> for ProvenancePropagation<'_, '_, 'tcx>
     )
     {
         if let Some(init) = local.init
-            && expr_contains_derived_binding(self.cx, self.derived, init)
+            && expr_contains_derived_binding(self.cx, self.derived, init).0
         {
-            self.changed |= mark_pattern_bindings(local.pat, self.derived);
+            self.changed |= mark_pattern_bindings(local.pat, self.derived).0;
         }
         walk_local(self, local);
     }
@@ -702,27 +864,27 @@ impl<'tcx> Visitor<'tcx> for ProvenancePropagation<'_, '_, 'tcx>
     {
         match expr.kind {
             | ExprKind::Let(let_expr) => {
-                if expr_contains_derived_binding(self.cx, self.derived, let_expr.init) {
-                    self.changed |= mark_pattern_bindings(let_expr.pat, self.derived);
+                if expr_contains_derived_binding(self.cx, self.derived, let_expr.init).0 {
+                    self.changed |= mark_pattern_bindings(let_expr.pat, self.derived).0;
                 }
             },
             | ExprKind::Match(scrutinee, arms, _) => {
-                if expr_contains_derived_binding(self.cx, self.derived, scrutinee) {
+                if expr_contains_derived_binding(self.cx, self.derived, scrutinee).0 {
                     for arm in arms {
-                        self.changed |= mark_pattern_bindings(arm.pat, self.derived);
+                        self.changed |= mark_pattern_bindings(arm.pat, self.derived).0;
                     }
                 }
             },
             | ExprKind::Assign(target, value, _) => {
-                if expr_contains_derived_binding(self.cx, self.derived, value) {
-                    self.changed |= mark_local_references(target, self.cx, self.derived);
+                if expr_contains_derived_binding(self.cx, self.derived, value).0 {
+                    self.changed |= mark_local_references(target, self.cx, self.derived).0;
                 }
             },
             | ExprKind::AssignOp(_, target, value) => {
-                if expr_contains_derived_binding(self.cx, self.derived, target)
-                    || expr_contains_derived_binding(self.cx, self.derived, value)
+                if expr_contains_derived_binding(self.cx, self.derived, target).0
+                    || expr_contains_derived_binding(self.cx, self.derived, value).0
                 {
-                    self.changed |= mark_local_references(target, self.cx, self.derived);
+                    self.changed |= mark_local_references(target, self.cx, self.derived).0;
                 }
             },
             | _ => {},
@@ -745,7 +907,7 @@ fn parameter_binding_ids(body: &Body<'_>) -> Vec<HirId>
 fn mark_pattern_bindings(
     pat: &Pat<'_>,
     derived: &mut HashSet<HirId>,
-) -> bool
+) -> ProvenanceChanged
 {
     let mut bindings = Vec::new();
     collect_pattern_bindings(pat, &mut bindings);
@@ -753,7 +915,7 @@ fn mark_pattern_bindings(
     for binding in bindings {
         changed |= derived.insert(binding);
     }
-    changed
+    ProvenanceChanged(changed)
 }
 
 /// Collect every binding introduced by `pat`.
@@ -767,6 +929,7 @@ fn collect_pattern_bindings(
 }
 
 /// Pattern visitor that records local bindings.
+#[repr(transparent)]
 struct PatternBindingCollector<'bindings>
 {
     /// The binding HIR ids recorded so far, in visit order.
@@ -799,7 +962,7 @@ fn expr_contains_derived_binding<'tcx>(
     cx: &LateContext<'tcx>,
     derived: &HashSet<HirId>,
     expr: &'tcx Expr<'tcx>,
-) -> bool
+) -> ContainsDerivedBinding
 {
     let mut visitor = DerivedBindingFinder {
         cx,
@@ -807,7 +970,7 @@ fn expr_contains_derived_binding<'tcx>(
         found: false,
     };
     visitor.visit_expr(expr);
-    visitor.found
+    ContainsDerivedBinding(visitor.found)
 }
 
 /// Expression visitor that finds references to already-derived locals.
@@ -852,7 +1015,7 @@ fn mark_local_references<'tcx>(
     expr: &'tcx Expr<'tcx>,
     cx: &LateContext<'tcx>,
     derived: &mut HashSet<HirId>,
-) -> bool
+) -> ProvenanceChanged
 {
     let mut collector = LocalReferenceCollector {
         cx,
@@ -863,7 +1026,7 @@ fn mark_local_references<'tcx>(
     for local in collector.locals {
         changed |= derived.insert(local);
     }
-    changed
+    ProvenanceChanged(changed)
 }
 
 /// Expression visitor that records every referenced local binding.
@@ -916,8 +1079,9 @@ fn expr_for_hir_id<'tcx>(
 ///
 /// - requires: `def_id` names a local function definition visited by the late
 ///   lint pass.
-/// - ensures: returns `true` exactly when the item is an inherent method whose
-///   fully peeled receiver `ADT` is `gandr_core_checker::checker::Rec`.
+/// - ensures: returns an affirmative [`ModelCheckerInputRecursion`] exactly
+///   when the item is an inherent method whose fully peeled receiver `ADT` is
+///   `gandr_core_checker::checker::Rec`.
 /// - provides: the sole model-checker exception to the input-recursion policy.
 /// - panics: none under rustc's late-lint function-definition invariants.
 ///
@@ -930,14 +1094,14 @@ fn expr_for_hir_id<'tcx>(
 fn allows_model_checker_input_recursion(
     cx: &LateContext<'_>,
     def_id: LocalDefId,
-) -> bool
+) -> ModelCheckerInputRecursion
 {
     if cx.tcx.inherent_impl_of_assoc(def_id.to_def_id()).is_none() {
-        return false;
+        return ModelCheckerInputRecursion(false);
     }
     let assoc_item = cx.tcx.associated_item(def_id.to_def_id());
     if !assoc_item.is_method() {
-        return false;
+        return ModelCheckerInputRecursion(false);
     }
 
     let fn_sig = cx
@@ -948,22 +1112,24 @@ fn allows_model_checker_input_recursion(
         .skip_binder();
     let Some(receiver_ty) = fn_sig.inputs().first().copied()
     else {
-        return false;
+        return ModelCheckerInputRecursion(false);
     };
     let receiver_ty = peel_reference_ty(normalize_middle_ty(cx, receiver_ty));
     let Some(adt_def) = receiver_ty.ty_adt_def()
     else {
-        return false;
+        return ModelCheckerInputRecursion(false);
     };
-    is_model_checker_rec_path(&absolute_def_path(cx, adt_def.did()))
+    ModelCheckerInputRecursion(
+        is_model_checker_rec_path(DefPathText::from(&absolute_def_path(cx, adt_def.did()))).0,
+    )
 }
 
 /// Peel reference layers from a receiver type before checking the receiver ADT.
 fn peel_reference_ty(mut ty: rustc_ty::Ty<'_>) -> rustc_ty::Ty<'_>
 {
     loop {
-        match ty.kind() {
-            | &rustc_ty::Ref(_, inner, _) => ty = inner,
+        match *ty.kind() {
+            | rustc_ty::Ref(_, inner, _) => ty = inner,
             | _ => return ty,
         }
     }
@@ -985,139 +1151,213 @@ fn absolute_def_path(
 }
 
 /// Return whether `path` is the one allowed checker recursion receiver path.
-fn is_model_checker_rec_path(path: &str) -> bool
+fn is_model_checker_rec_path(path: DefPathText<'_>) -> ModelCheckerRecPath
 {
-    path == "gandr_core_checker::checker::Rec"
+    ModelCheckerRecPath(path.0 == "gandr_core_checker::checker::Rec")
 }
 
-/// Check every input and explicit output type in one function declaration.
+/// One work item of the order-preserving primitive-signature traversal.
+enum PrimitiveWork<'tcx>
+{
+    /// A HIR type paired with its substituted semantic type.
+    SemanticTy(&'tcx Ty<'tcx>, rustc_ty::Ty<'tcx>),
+    /// A HIR function declaration paired with its semantic signature.
+    SemanticFnDecl(&'tcx FnDecl<'tcx>, rustc_ty::FnSig<'tcx>),
+    /// A HIR type checked syntactically because semantic normalization hid
+    /// the declared type, as async function signatures do.
+    HirTy(&'tcx Ty<'tcx>),
+    /// A HIR-only function pointer declaration.
+    HirFnDecl(&'tcx FnDecl<'tcx>),
+    /// An opaque async return type whose declared `Future::Output` is checked.
+    Opaque(&'tcx OpaqueTy<'tcx>),
+    /// Emit at a path node when no generic-argument descendant emitted.
+    PathFallback(&'tcx Ty<'tcx>, DiagnosticCount),
+}
+
+/// Check every input and explicit output type in one function declaration,
+/// descending through structural type constructors with an explicit worklist
+/// (never input recursion) and emitting the primitive signature diagnostic at
+/// each offending HIR span in declaration order.
 fn check_fn_decl<'tcx>(
     cx: &LateContext<'tcx>,
-    fn_decl: &FnDecl<'tcx>,
+    fn_decl: &'tcx FnDecl<'tcx>,
     fn_sig: rustc_ty::FnSig<'tcx>,
-) -> bool
+) -> PrimitiveDiagnosticEmitted
 {
-    let mut emitted = false;
-    for (input, semantic_ty) in fn_decl.inputs.iter().zip(fn_sig.inputs()) {
-        emitted |= check_ty(cx, input, *semantic_ty);
-    }
-    if let FnRetTy::Return(output) = fn_decl.output {
-        emitted |= check_ty(cx, output, fn_sig.output());
-    }
-    emitted
-}
-
-/// Check a HIR type, descending through structural type constructors while
-/// asking rustc's semantic type for alias-expanded primitive reachability.
-fn check_ty<'tcx, Unambig>(
-    cx: &LateContext<'tcx>,
-    ty: &'tcx Ty<'tcx, Unambig>,
-    semantic_ty: rustc_ty::Ty<'tcx>,
-) -> bool
-{
-    let semantic_ty = normalize_middle_ty(cx, semantic_ty);
-    if !middle_ty_contains_primitive(cx, semantic_ty) {
-        return check_hir_ty_for_primitive(cx, ty);
-    }
-
-    match ty.kind {
-        | TyKind::Slice(inner) | TyKind::Array(inner, _) => match semantic_ty.kind() {
-            | &rustc_ty::Slice(semantic_inner) | &rustc_ty::Array(semantic_inner, _) => {
-                check_ty(cx, inner, semantic_inner)
-            },
-            | _ => emit_ty_primitive(cx, ty),
-        },
-        | TyKind::Ptr(mut_ty) => match semantic_ty.kind() {
-            | &rustc_ty::RawPtr(semantic_inner, _) => check_ty(cx, mut_ty.ty, semantic_inner),
-            | _ => emit_ty_primitive(cx, ty),
-        },
-        | TyKind::Ref(_, mut_ty) => match semantic_ty.kind() {
-            | &rustc_ty::Ref(_, semantic_inner, _) => check_ty(cx, mut_ty.ty, semantic_inner),
-            | _ => emit_ty_primitive(cx, ty),
-        },
-        | TyKind::FnPtr(fn_ptr) => match semantic_ty.kind() {
-            | &rustc_ty::FnPtr(sig_tys, header) => {
-                check_fn_decl(cx, fn_ptr.decl, sig_tys.with(header).skip_binder())
-            },
-            | _ => emit_ty_primitive(cx, ty),
-        },
-        | TyKind::Tup(types) => match semantic_ty.kind() {
-            | &rustc_ty::Tuple(semantic_types) if semantic_types.len() == types.len() => {
-                let mut emitted = false;
-                for (inner, semantic_inner) in types.iter().zip(semantic_types.iter()) {
-                    emitted |= check_ty(cx, inner, semantic_inner);
+    let mut work = vec![PrimitiveWork::SemanticFnDecl(fn_decl, fn_sig)];
+    let mut diagnostics = DiagnosticCount(0_usize);
+    while let Some(item) = work.pop() {
+        match item {
+            | PrimitiveWork::SemanticTy(ty, semantic_ty) => {
+                let semantic_ty = normalize_middle_ty(cx, semantic_ty);
+                if !middle_ty_contains_primitive(cx, semantic_ty).0 {
+                    work.push(PrimitiveWork::HirTy(ty));
+                    continue;
                 }
-                emitted
+                match ty.kind {
+                    | TyKind::Slice(inner) | TyKind::Array(inner, _) => {
+                        match *semantic_ty.kind() {
+                            | rustc_ty::Slice(semantic_inner)
+                            | rustc_ty::Array(semantic_inner, _) => {
+                                work.push(PrimitiveWork::SemanticTy(inner, semantic_inner));
+                            },
+                            | _ => {
+                                emit_primitive(cx, ty.span);
+                                diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                            },
+                        }
+                    },
+                    | TyKind::Ptr(mut_ty) => match *semantic_ty.kind() {
+                        | rustc_ty::RawPtr(semantic_inner, _) => {
+                            work.push(PrimitiveWork::SemanticTy(mut_ty.ty, semantic_inner));
+                        },
+                        | _ => {
+                            emit_primitive(cx, ty.span);
+                            diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                        },
+                    },
+                    | TyKind::Ref(_, mut_ty) => match *semantic_ty.kind() {
+                        | rustc_ty::Ref(_, semantic_inner, _) => {
+                            work.push(PrimitiveWork::SemanticTy(mut_ty.ty, semantic_inner));
+                        },
+                        | _ => {
+                            emit_primitive(cx, ty.span);
+                            diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                        },
+                    },
+                    | TyKind::FnPtr(fn_ptr) => match *semantic_ty.kind() {
+                        | rustc_ty::FnPtr(sig_tys, header) => {
+                            work.push(PrimitiveWork::SemanticFnDecl(
+                                fn_ptr.decl,
+                                sig_tys.with(header).skip_binder(),
+                            ));
+                        },
+                        | _ => {
+                            emit_primitive(cx, ty.span);
+                            diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                        },
+                    },
+                    | TyKind::Tup(types) => match *semantic_ty.kind() {
+                        | rustc_ty::Tuple(semantic_types)
+                            if semantic_types.len() == types.len() =>
+                        {
+                            for (inner, semantic_inner) in
+                                types.iter().zip(semantic_types.iter()).rev()
+                            {
+                                work.push(PrimitiveWork::SemanticTy(inner, semantic_inner));
+                            }
+                        },
+                        | _ => {
+                            emit_primitive(cx, ty.span);
+                            diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                        },
+                    },
+                    | TyKind::Path(ref qpath) => {
+                        work.push(PrimitiveWork::PathFallback(ty, diagnostics));
+                        if let Some(generic_args) = last_segment_args(qpath) {
+                            let semantic_args = semantic_type_args(cx, semantic_ty);
+                            let mut pairs: Vec<_> = generic_args
+                                .args
+                                .iter()
+                                .filter_map(|arg| match arg {
+                                    | &GenericArg::Type(generic_ty) => {
+                                        Some(generic_ty.as_unambig_ty())
+                                    },
+                                    | _ => None,
+                                })
+                                .zip(semantic_args)
+                                .collect();
+                            while let Some((hir_ty, semantic_arg)) = pairs.pop() {
+                                work.push(PrimitiveWork::SemanticTy(hir_ty, semantic_arg));
+                            }
+                        }
+                    },
+                    | TyKind::Pat(inner, _) | TyKind::FieldOf(inner, _) => {
+                        work.push(PrimitiveWork::SemanticTy(inner, semantic_ty));
+                    },
+                    | TyKind::OpaqueDef(opaque) => {
+                        work.push(PrimitiveWork::Opaque(opaque));
+                    },
+                    | TyKind::InferDelegation(_)
+                    | TyKind::UnsafeBinder(_)
+                    | TyKind::Never
+                    | TyKind::TraitAscription(_)
+                    | TyKind::TraitObject(..)
+                    | TyKind::Err(_)
+                    | TyKind::Infer(()) => {},
+                }
             },
-            | _ => emit_ty_primitive(cx, ty),
-        },
-        | TyKind::Path(ref qpath) => check_path_ty(cx, ty, qpath, semantic_ty),
-        | TyKind::Pat(inner, _) | TyKind::FieldOf(inner, _) => check_ty(cx, inner, semantic_ty),
-        | TyKind::OpaqueDef(opaque) => check_opaque_ty_for_primitive(cx, opaque),
-        | TyKind::InferDelegation(_)
-        | TyKind::UnsafeBinder(_)
-        | TyKind::Never
-        | TyKind::TraitAscription(_)
-        | TyKind::TraitObject(..)
-        | TyKind::Err(_)
-        | TyKind::Infer(_) => false,
-    }
-}
-
-/// Check HIR syntax for direct primitive reachability when semantic type
-/// normalization hides the declared type, as async function signatures do.
-fn check_hir_ty_for_primitive<'tcx, Unambig>(
-    cx: &LateContext<'tcx>,
-    ty: &'tcx Ty<'tcx, Unambig>,
-) -> bool
-{
-    match ty.kind {
-        | TyKind::Slice(inner) | TyKind::Array(inner, _) => check_hir_ty_for_primitive(cx, inner),
-        | TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => check_hir_ty_for_primitive(cx, mut_ty.ty),
-        | TyKind::FnPtr(fn_ptr) => check_hir_fn_decl_for_primitive(cx, fn_ptr.decl),
-        | TyKind::Tup(types) => {
-            let mut emitted = false;
-            for inner in types {
-                emitted |= check_hir_ty_for_primitive(cx, inner);
-            }
-            emitted
-        },
-        | TyKind::Path(ref qpath) => match cx.qpath_res(qpath, ty.hir_id) {
-            | Res::PrimTy(primitive) if is_disallowed_primitive(primitive) => {
-                emit_ty_primitive(cx, ty)
+            | PrimitiveWork::SemanticFnDecl(decl, sig) => {
+                if let FnRetTy::Return(output) = decl.output {
+                    work.push(PrimitiveWork::SemanticTy(output, sig.output()));
+                }
+                for (input, semantic_input) in decl.inputs.iter().zip(sig.inputs()).rev() {
+                    work.push(PrimitiveWork::SemanticTy(input, *semantic_input));
+                }
             },
-            | _ => false,
-        },
-        | TyKind::Pat(inner, _) | TyKind::FieldOf(inner, _) => {
-            check_hir_ty_for_primitive(cx, inner)
-        },
-        | TyKind::OpaqueDef(opaque) => check_opaque_ty_for_primitive(cx, opaque),
-        | TyKind::InferDelegation(_)
-        | TyKind::UnsafeBinder(_)
-        | TyKind::Never
-        | TyKind::TraitAscription(_)
-        | TyKind::TraitObject(..)
-        | TyKind::Err(_)
-        | TyKind::Infer(_) => false,
+            | PrimitiveWork::HirTy(ty) => {
+                match ty.kind {
+                    | TyKind::Slice(inner)
+                    | TyKind::Array(inner, _)
+                    | TyKind::Pat(inner, _)
+                    | TyKind::FieldOf(inner, _) => {
+                        work.push(PrimitiveWork::HirTy(inner));
+                    },
+                    | TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => {
+                        work.push(PrimitiveWork::HirTy(mut_ty.ty));
+                    },
+                    | TyKind::FnPtr(fn_ptr) => {
+                        work.push(PrimitiveWork::HirFnDecl(fn_ptr.decl));
+                    },
+                    | TyKind::Tup(types) => {
+                        for inner in types.iter().rev() {
+                            work.push(PrimitiveWork::HirTy(inner));
+                        }
+                    },
+                    | TyKind::Path(ref qpath) => {
+                        if let Res::PrimTy(primitive) = cx.qpath_res(qpath, ty.hir_id)
+                            && is_disallowed_primitive(primitive).0
+                        {
+                            emit_primitive(cx, ty.span);
+                            diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                        }
+                    },
+                    | TyKind::OpaqueDef(opaque) => {
+                        work.push(PrimitiveWork::Opaque(opaque));
+                    },
+                    | TyKind::InferDelegation(_)
+                    | TyKind::UnsafeBinder(_)
+                    | TyKind::Never
+                    | TyKind::TraitAscription(_)
+                    | TyKind::TraitObject(..)
+                    | TyKind::Err(_)
+                    | TyKind::Infer(()) => {},
+                }
+            },
+            | PrimitiveWork::HirFnDecl(decl) => {
+                if let FnRetTy::Return(output) = decl.output {
+                    work.push(PrimitiveWork::HirTy(output));
+                }
+                for input in decl.inputs.iter().rev() {
+                    work.push(PrimitiveWork::HirTy(input));
+                }
+            },
+            | PrimitiveWork::Opaque(opaque) => {
+                if let Some(trait_ref) = future_trait_ref(cx, opaque)
+                    && let Some(output) = future_output_ty(trait_ref)
+                {
+                    work.push(PrimitiveWork::HirTy(output));
+                }
+            },
+            | PrimitiveWork::PathFallback(ty, snapshot) => {
+                if diagnostics == snapshot {
+                    emit_primitive(cx, ty.span);
+                    diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                }
+            },
+        }
     }
-}
-
-/// Check the explicit `Output` type hidden inside an async function's opaque
-/// future return type.
-fn check_opaque_ty_for_primitive<'tcx>(
-    cx: &LateContext<'tcx>,
-    opaque: &'tcx OpaqueTy<'tcx>,
-) -> bool
-{
-    let Some(trait_ref) = future_trait_ref(cx, opaque)
-    else {
-        return false;
-    };
-    let Some(output) = future_output_ty(trait_ref)
-    else {
-        return false;
-    };
-    check_hir_ty_for_primitive(cx, output)
+    PrimitiveDiagnosticEmitted(diagnostics.0 > 0_usize)
 }
 
 /// Return the `Future` bound on an opaque async return type, when present.
@@ -1141,68 +1381,14 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
 {
     if let Some(segment) = trait_ref.path.segments.last()
         && let Some(args) = segment.args
-        && let [ref constraint] = *args.constraints
+        && args.constraints.len() == 1_usize
+        && let Some(constraint) = args.constraints.first()
         && constraint.ident.name == sym::Output
         && let Some(output) = constraint.ty()
     {
         return Some(output);
     }
     None
-}
-
-/// Check a HIR-only function pointer signature for primitive exposure.
-fn check_hir_fn_decl_for_primitive<'tcx>(
-    cx: &LateContext<'tcx>,
-    fn_decl: &FnDecl<'tcx>,
-) -> bool
-{
-    let mut emitted = false;
-    for input in fn_decl.inputs {
-        emitted |= check_hir_ty_for_primitive(cx, input);
-    }
-    if let FnRetTy::Return(output) = fn_decl.output {
-        emitted |= check_hir_ty_for_primitive(cx, output);
-    }
-    emitted
-}
-
-/// Check a path type using its fully substituted semantic type, while retaining
-/// the most precise available HIR span for diagnostics.
-fn check_path_ty<'tcx, Unambig>(
-    cx: &LateContext<'tcx>,
-    ty: &'tcx Ty<'tcx, Unambig>,
-    qpath: &QPath<'tcx>,
-    semantic_ty: rustc_ty::Ty<'tcx>,
-) -> bool
-{
-    if check_generic_type_args(cx, qpath, semantic_ty) {
-        return true;
-    }
-    emit_ty_primitive(cx, ty)
-}
-
-/// Check type arguments on a path and return whether a diagnostic was emitted.
-fn check_generic_type_args<'tcx>(
-    cx: &LateContext<'tcx>,
-    qpath: &QPath<'tcx>,
-    semantic_ty: rustc_ty::Ty<'tcx>,
-) -> bool
-{
-    let Some(args) = last_segment_args(qpath)
-    else {
-        return false;
-    };
-    let semantic_type_args = semantic_type_args(cx, semantic_ty);
-    let mut semantic_type_args = semantic_type_args.iter();
-    let mut emitted = false;
-    for arg in args.args {
-        if let GenericArg::Type(ty) = *arg
-            && let Some(semantic_arg) = semantic_type_args.next()
-        {
-            emitted |= check_ty(cx, ty, *semantic_arg);
-        }
-    }
-    emitted
 }
 
 /// Return substituted semantic type arguments represented by a path type.
@@ -1212,12 +1398,9 @@ fn semantic_type_args<'tcx>(
 ) -> Vec<rustc_ty::Ty<'tcx>>
 {
     let semantic_ty = normalize_middle_ty(cx, semantic_ty);
-    match semantic_ty.kind() {
-        | &rustc_ty::Adt(_, args) => args
-            .iter()
-            .filter_map(rustc_ty::GenericArg::as_type)
-            .collect(),
-        | &rustc_ty::Tuple(types) => types.iter().collect(),
+    match *semantic_ty.kind() {
+        | rustc_ty::Adt(_, args) => args.iter().filter_map(rustc_ty::GenericArg::as_type).collect(),
+        | rustc_ty::Tuple(types) => types.iter().collect(),
         | _ => Vec::new(),
     }
 }
@@ -1225,19 +1408,19 @@ fn semantic_type_args<'tcx>(
 /// Return the last path segment's generic arguments, if any.
 fn last_segment_args<'hir>(qpath: &QPath<'hir>) -> Option<&'hir rustc_hir::GenericArgs<'hir>>
 {
-    match qpath {
-        | &QPath::Resolved(_, path) => {
+    match *qpath {
+        | QPath::Resolved(_, path) => {
             let segment = path.segments.last()?;
             segment.args
         },
-        | &QPath::TypeRelative(_, segment) => segment.args,
+        | QPath::TypeRelative(_, segment) => segment.args,
     }
 }
 
 /// Return whether `primitive` is one of gandr's banned signature primitives.
-fn is_disallowed_primitive(primitive: PrimTy) -> bool
+fn is_disallowed_primitive(primitive: PrimTy) -> DisallowedPrimitive
 {
-    matches!(
+    DisallowedPrimitive(matches!(
         primitive,
         PrimTy::Bool
             | PrimTy::Char
@@ -1245,53 +1428,52 @@ fn is_disallowed_primitive(primitive: PrimTy) -> bool
             | PrimTy::Uint(_)
             | PrimTy::Float(_)
             | PrimTy::Str
-    )
+    ))
 }
 
 /// Return whether an ADT is a semantic wrapper boundary for type-boundary
 /// linting.
-fn is_semantic_boundary_adt(adt: rustc_ty::AdtDef<'_>) -> bool
+fn is_semantic_boundary_adt(adt: rustc_ty::AdtDef<'_>) -> SemanticBoundaryAdt
 {
-    adt.did().is_local() && adt.repr().transparent()
+    SemanticBoundaryAdt(adt.did().is_local() && adt.repr().transparent())
 }
 
 /// Return whether a substituted semantic type contains a disallowed primitive
-/// before a nominal gandr boundary.
+/// before a nominal gandr boundary, using an explicit worklist.
 fn middle_ty_contains_primitive<'tcx>(
     cx: &LateContext<'tcx>,
     ty: rustc_ty::Ty<'tcx>,
-) -> bool
+) -> ContainsPrimitive
 {
-    let ty = normalize_middle_ty(cx, ty);
-    match ty.kind() {
-        | &rustc_ty::Bool
-        | &rustc_ty::Char
-        | &rustc_ty::Int(_)
-        | &rustc_ty::Uint(_)
-        | &rustc_ty::Float(_)
-        | &rustc_ty::Str => true,
-        | &rustc_ty::Array(inner, _)
-        | &rustc_ty::Pat(inner, _)
-        | &rustc_ty::Slice(inner)
-        | &rustc_ty::RawPtr(inner, _)
-        | &rustc_ty::Ref(_, inner, _) => middle_ty_contains_primitive(cx, inner),
-        | &rustc_ty::Tuple(types) => types
-            .iter()
-            .any(|inner| middle_ty_contains_primitive(cx, inner)),
-        | &rustc_ty::FnPtr(sig_tys, header) => {
-            let sig = sig_tys.with(header).skip_binder();
-            sig.inputs()
-                .iter()
-                .any(|input| middle_ty_contains_primitive(cx, *input))
-                || middle_ty_contains_primitive(cx, sig.output())
-        },
-        | &rustc_ty::Adt(adt, _) if is_semantic_boundary_adt(adt) => false,
-        | &rustc_ty::Adt(_, args) => args
-            .iter()
-            .filter_map(rustc_ty::GenericArg::as_type)
-            .any(|arg_ty| middle_ty_contains_primitive(cx, arg_ty)),
-        | _ => false,
+    let mut pending = vec![ty];
+    while let Some(ty) = pending.pop() {
+        let ty = normalize_middle_ty(cx, ty);
+        match *ty.kind() {
+            | rustc_ty::Bool
+            | rustc_ty::Char
+            | rustc_ty::Int(_)
+            | rustc_ty::Uint(_)
+            | rustc_ty::Float(_)
+            | rustc_ty::Str => return ContainsPrimitive(true),
+            | rustc_ty::Array(inner, _)
+            | rustc_ty::Pat(inner, _)
+            | rustc_ty::Slice(inner)
+            | rustc_ty::RawPtr(inner, _)
+            | rustc_ty::Ref(_, inner, _) => pending.push(inner),
+            | rustc_ty::Tuple(types) => pending.extend(types.iter()),
+            | rustc_ty::FnPtr(sig_tys, header) => {
+                let sig = sig_tys.with(header).skip_binder();
+                pending.push(sig.output());
+                pending.extend(sig.inputs().iter().rev());
+            },
+            | rustc_ty::Adt(adt, _) if is_semantic_boundary_adt(adt).0 => {},
+            | rustc_ty::Adt(_, args) => {
+                pending.extend(args.iter().filter_map(rustc_ty::GenericArg::as_type));
+            },
+            | _ => {},
+        }
     }
+    ContainsPrimitive(false)
 }
 
 /// Normalize aliases/projections where rustc can do so in this typing context.
@@ -1303,17 +1485,6 @@ fn normalize_middle_ty<'tcx>(
     cx.tcx
         .try_normalize_erasing_regions(cx.typing_env(), rustc_ty::Unnormalized::new_wip(ty))
         .unwrap_or(ty)
-}
-
-/// Emit the primitive signature diagnostic at a HIR type span and return
-/// `true`.
-fn emit_ty_primitive<Unambig>(
-    cx: &LateContext<'_>,
-    ty: &Ty<'_, Unambig>,
-) -> bool
-{
-    emit_primitive(cx, ty.span);
-    true
 }
 
 /// Emit the primitive signature diagnostic at `span`.
@@ -1345,15 +1516,15 @@ mod tests
     fn ui_model_checker_rec_path_scope()
     {
         assert!(
-            is_model_checker_rec_path("gandr_core_checker::checker::Rec"),
+            is_model_checker_rec_path("gandr_core_checker::checker::Rec".into()).0,
             "the exact checker receiver path is accepted"
         );
         assert!(
-            !is_model_checker_rec_path("gandr_core_checker::mark::Rec"),
+            !is_model_checker_rec_path("gandr_core_checker::mark::Rec".into()).0,
             "a same-named type in another module is rejected"
         );
         assert!(
-            !is_model_checker_rec_path("termination::gandr_core_checker::checker::Rec"),
+            !is_model_checker_rec_path("termination::gandr_core_checker::checker::Rec".into()).0,
             "a prefixed lookalike path is rejected"
         );
     }
