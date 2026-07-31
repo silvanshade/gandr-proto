@@ -638,7 +638,7 @@ Gate-green alone is half a milestone.
 
 1. **Module headers** — the design record for the structure they own; new content, retracted claims, and located walls all live here first.
 2. **This file** — a rule that recurred, a gate change, a dependency or commit-shape change.
-3. **`docs/gandr/spec/proposal-metatheory-consolidated.md`** — the prose design record: §2.4's substrate table, the section owning the changed layer, and §15's build-order status lines.
+3. **The spec tracks under `docs/gandr/spec/`** — the prose design record: `metatheory.md` and its sub-documents for substrate or design movement, `proof-engineering.md` for discipline movement, and the owning track's `roadmap.md` for build-order status.
    Say explicitly when no decision or commitment moved.
 4. **The arc's own work list and decision log**, wherever the project's contributor notes keep them — next steps, status, and the lessons whose authoritative home is nonetheless item 2 or 3.
 5. **The tracker** — progress as a comment on the owning item, then push.
