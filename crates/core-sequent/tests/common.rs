@@ -1,7 +1,7 @@
 //! Live source-corpus loader for the sequent/kernel integration gates.
 //!
 //! The front end is available again at rung F4, so the semantic sweeps consume
-//! `surface-corpus/examples/{model,pathological}` through
+//! the surface-corpus model and pathological examples through
 //! [`gandr_surface_engine::lower::lower_source_total`] instead of decoding the
 //! B1 pre-lowered s-expression captures. The checked-in `.sexp` files remain as
 //! byte/provenance anchors for the three invariant manifests, but never supply
@@ -166,11 +166,17 @@ fn gandr_files(dir: &Path) -> Vec<PathBuf>
 /// Root of the ported executable source corpus.
 fn surface_corpus_root() -> PathBuf
 {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../surface-corpus/examples")
+    PathBuf::from(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../surface-corpus/examples"
+    ))
 }
 
 /// Root of the immutable B1 `.sexp`/`.outcome` anchors.
 fn fixture_root() -> PathBuf
 {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/corpus")
+    PathBuf::from(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/corpus"
+    ))
 }

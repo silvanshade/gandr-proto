@@ -481,9 +481,9 @@ where
     Relative: Into<RelativeText<'semantic>>,
 {
     let relative = relative.into().0;
-    let manifest_dir = match std::env::var("CARGO_MANIFEST_DIR") {
-        | Ok(value) => value,
-        | Err(_) => std::process::abort(),
+    let Some(manifest_dir) = std::env::var_os("CARGO_MANIFEST_DIR")
+    else {
+        std::process::abort()
     };
     std::path::PathBuf::from(manifest_dir)
         .join("benches/fixtures")

@@ -173,7 +173,8 @@ pub fn run(
     };
     let mut sources = Vec::new();
     for scope in scopes {
-        sources.append(&mut rust_sources(scope)?);
+        let mut scoped = rust_sources(scope)?;
+        sources.append(&mut scoped);
     }
     sources.sort();
     sources.dedup();
@@ -831,7 +832,9 @@ where
             index = index.saturating_add(1);
             continue;
         }
-        if quote != Some(b'\'') && byte == b'$' && line_bytes.get(index.saturating_add(1)) == Some(&b'(')
+        if quote != Some(b'\'')
+            && byte == b'$'
+            && line_bytes.get(index.saturating_add(1)) == Some(&b'(')
         {
             let open = index.saturating_add(1);
             if let Some(close) = matching_substitution_paren(line, open).into().0 {
@@ -1512,11 +1515,12 @@ where
     let mut max_order = 0usize;
     let mut saw_panics = false;
     let mut saw_intension = false;
+    let docs_start = contract_position.checked_add(1)?;
     for line in group
         .docs
         .iter()
         .enumerate()
-        .skip(contract_position.checked_add(1)?)
+        .skip(docs_start)
         .take_while(|&(position, _)| position < contract_end)
         .map(|(_, line)| line)
     {
@@ -2544,8 +2548,7 @@ fn push_testcase_collection_frames<'value, 'semantic, Package, CrateName>(
     crate_name: CrateName,
     witnesses: &mut BTreeSet<String>,
     frames: &mut Vec<WitnessTraversalFrame<'value>>,
-)
-where
+) where
     Package: Into<OptionalPackageText<'semantic>>,
     CrateName: Into<OptionalCrateNameText<'semantic>>,
 {
@@ -3018,7 +3021,8 @@ fn stale_witness() {}
     }
   ]
 }"#;
-        assert!(parse_nextest_witnesses(testcase_map)?.contains("map_case"));
+        let parsed = parse_nextest_witnesses(testcase_map)?;
+        assert!(parsed.contains("map_case"));
 
         assert!(matches!(
             parse_nextest_witnesses(" \n "),

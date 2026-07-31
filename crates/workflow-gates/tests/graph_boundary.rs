@@ -731,8 +731,10 @@ pub trait GraphAlias = petgraph::visit::GraphBase;
             },
         ])?;
 
-        let first = finding_lines(&run_ok(&fixture)?);
-        let second = finding_lines(&run_ok(&fixture)?);
+        let first_output = run_ok(&fixture)?;
+        let second_output = run_ok(&fixture)?;
+        let first = finding_lines(&first_output);
+        let second = finding_lines(&second_output);
         let mut sorted = first.clone();
         sorted.sort();
 

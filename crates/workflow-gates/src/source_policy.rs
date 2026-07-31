@@ -184,7 +184,8 @@ pub fn run_options_policy_with(
 {
     let mut loaded_roots = Vec::new();
     for root in roots {
-        loaded_roots.push(load_options_root(workspace_root, root)?);
+        let loaded = load_options_root(workspace_root, root)?;
+        loaded_roots.push(loaded);
     }
     return Ok(analyze_options_policy(&loaded_roots, policies));
 }

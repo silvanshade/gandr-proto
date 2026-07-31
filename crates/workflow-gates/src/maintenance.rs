@@ -331,7 +331,8 @@ impl GitRef
         if trimmed.is_empty() {
             return Ok(None);
         }
-        Ok(Some(Self::new(trimmed)?))
+        let parsed = Self::new(trimmed)?;
+        Ok(Some(parsed))
     }
 
     /// Build a ref token from an already validated commit ID.
@@ -1507,13 +1508,8 @@ mod tests
         assert!(
             CommitTimestamp::parse_git_output(&commit, "999999999999999999999999999999").is_err()
         );
-        assert_eq!(
-            42,
-            CommitTimestamp::parse_git_output(&commit, "42\n")?
-                .seconds()
-                .into()
-                .0,
-        );
+        let timestamp = CommitTimestamp::parse_git_output(&commit, "42\n")?;
+        assert_eq!(42, timestamp.seconds().into().0,);
         assert!(CommitTimestamp::new(i64::MIN).exclusive_before().is_err());
         Ok(())
     }
@@ -1537,16 +1533,18 @@ mod tests
         git.add_ref("HEAD", head)?;
         git.add_ref("unrelated", unrelated.clone())?;
 
+        let head_ref = GitRef::new("HEAD")?;
+        let unrelated_ref = GitRef::new("unrelated")?;
         let err = resolve_range_with_git(
             &mut git,
-            &GitRef::new("HEAD")?,
+            &head_ref,
             HeadExpectation::AnyCommit,
-            BaseSource::Explicit(GitRef::new("unrelated")?),
+            BaseSource::Explicit(unrelated_ref),
         );
         assert!(err.is_err());
         let watermark_err = resolve_range_with_git(
             &mut git,
-            &GitRef::new("HEAD")?,
+            &head_ref,
             HeadExpectation::AnyCommit,
             BaseSource::Watermark(unrelated),
         );
@@ -1590,9 +1588,10 @@ mod tests
         );
         git.add_ref("HEAD", head.clone())?;
 
+        let head_ref = GitRef::new("HEAD")?;
         let selection = resolve_range_with_git(
             &mut git,
-            &GitRef::new("HEAD")?,
+            &head_ref,
             HeadExpectation::AnyCommit,
             BaseSource::Automatic,
         )?;
@@ -1623,9 +1622,10 @@ mod tests
         );
         git.add_ref("HEAD", head)?;
 
+        let head_ref = GitRef::new("HEAD")?;
         let err = resolve_range_with_git(
             &mut git,
-            &GitRef::new("HEAD")?,
+            &head_ref,
             HeadExpectation::AnyCommit,
             BaseSource::Automatic,
         );
@@ -1679,11 +1679,12 @@ mod tests
         git.add_ref("stale", stale)?;
         let mut sink = FakeSink::default();
 
+        let stale_ref = GitRef::new("stale")?;
         let result = advance_watermark_with_git_and_sink(
             &mut git,
             &mut sink,
             Path::new("state/watermark.json"),
-            &GitRef::new("stale")?,
+            &stale_ref,
             HeadExpectation::CurrentHead,
         );
         assert!(result.is_err());
@@ -1707,11 +1708,12 @@ mod tests
         let mut sink = FakeSink::default();
         let path = Path::new("state/watermark.json");
 
+        let head_ref = GitRef::new("HEAD")?;
         let advanced = advance_watermark_with_git_and_sink(
             &mut git,
             &mut sink,
             path,
-            &GitRef::new("HEAD")?,
+            &head_ref,
             HeadExpectation::CurrentHead,
         )?;
 
@@ -1725,10 +1727,11 @@ mod tests
         let (written_path, bytes) = (&entry.0, &entry.1);
         assert_eq!(written_path.as_path(), path);
         assert_eq!(bytes.as_slice(), watermark_json_bytes(&advanced).bytes().0);
+        let written_text = core::str::from_utf8(bytes)
+            .map_err(|error| GateError::operational(error.to_string()))?;
         assert_eq!(
             "{\"schema\":1,\"upper\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}\n",
-            core::str::from_utf8(bytes)
-                .map_err(|error| GateError::operational(error.to_string()))?,
+            written_text,
         );
         Ok(())
     }
@@ -1763,12 +1766,14 @@ mod tests
         let base = commit_fixture_file(fixture.path(), "base.txt", "base\n", 1_000_000_000)?;
         let head = commit_fixture_file(fixture.path(), "head.txt", "head\n", 1_000_000_100)?;
         let output = fixture.path().join("github-output.txt");
+        let head_text = crate::semantic_value::<AsStrText<'_>, _>(head.as_str()).0;
+        let base_text = crate::semantic_value::<AsStrText<'_>, _>(base.as_str()).0;
+        let head_ref = GitRef::new(head_text)?;
+        let base_ref = GitRef::new(base_text)?;
         let request = MaintenanceRangeRequest::new(
             &output,
-            GitRef::new(crate::semantic_value::<AsStrText<'_>, _>(head.as_str()).0)?,
-            Some(GitRef::new(
-                crate::semantic_value::<AsStrText<'_>, _>(base.as_str()).0,
-            )?),
+            head_ref,
+            Some(base_ref),
             None,
             Some(fixture.path()),
             HeadExpectation::AnyCommit,
@@ -1797,9 +1802,10 @@ mod tests
         let head = commit_fixture_file(fixture.path(), "head.txt", "head\n", 1_000_000_100)?;
         let missing = fixture.path().join("state/missing.json");
         let missing_output = fixture.path().join("missing-output.txt");
+        let missing_head_ref = GitRef::new("HEAD")?;
         let missing_request = MaintenanceRangeRequest::new(
             &missing_output,
-            GitRef::new("HEAD")?,
+            missing_head_ref,
             None,
             Some(&missing),
             Some(fixture.path()),
@@ -1818,9 +1824,11 @@ mod tests
             .write(&watermark, watermark_json_bytes(&base).bytes().0)
             .map_err(|error| GateError::operational(error.to_string()))?;
         let output = fixture.path().join("github-output.txt");
+        let head_text = crate::semantic_value::<AsStrText<'_>, _>(head.as_str()).0;
+        let head_ref = GitRef::new(head_text)?;
         let request = MaintenanceRangeRequest::new(
             &output,
-            GitRef::new(crate::semantic_value::<AsStrText<'_>, _>(head.as_str()).0)?,
+            head_ref,
             None,
             Some(&watermark),
             Some(fixture.path()),
@@ -1844,9 +1852,10 @@ mod tests
         let old = commit_fixture_file(fixture.path(), "old.txt", "old\n", 1_000_000_000)?;
         let head = commit_fixture_file(fixture.path(), "head.txt", "head\n", 1_000_700_000)?;
         let output = fixture.path().join("github-output.txt");
+        let head_ref = GitRef::new("HEAD")?;
         let request = MaintenanceRangeRequest::new(
             &output,
-            GitRef::new("HEAD")?,
+            head_ref,
             None,
             None,
             Some(fixture.path()),
@@ -1869,9 +1878,10 @@ mod tests
         init_git_repo(fixture.path())?;
         let head = commit_fixture_file(fixture.path(), "head.txt", "head\n", 1_000_000_000)?;
         let watermark = fixture.path().join("state/nested/watermark.json");
+        let head_ref = GitRef::new("HEAD")?;
         let request = MaintenanceAdvanceRequest::new(
             &watermark,
-            GitRef::new("HEAD")?,
+            head_ref,
             Some(fixture.path()),
             HeadExpectation::CurrentHead,
         );

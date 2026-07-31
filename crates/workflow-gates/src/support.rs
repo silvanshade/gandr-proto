@@ -1026,7 +1026,8 @@ pub fn walk_files(
     extension: &OsStr,
 ) -> Result<Vec<PathBuf>, GateError>
 {
-    if symlink_metadata(root)?.file_type().is_symlink() {
+    let root_metadata = symlink_metadata(root)?;
+    if root_metadata.file_type().is_symlink() {
         return Ok(Vec::new());
     }
 
@@ -1034,8 +1035,8 @@ pub fn walk_files(
     let mut files = Vec::new();
 
     while let Some(directory) = pending.pop() {
-        let mut entries = fs::read_dir(&directory)
-            .map_err(|source| io_error(&directory, source))?
+        let entries = fs::read_dir(&directory).map_err(|source| io_error(&directory, source))?;
+        let mut entries = entries
             .map(|entry| {
                 entry
                     .map(|directory_entry| directory_entry.path())
@@ -1692,7 +1693,9 @@ mod tests
         init.args(["init", "--quiet"])
             .current_dir(&repo)
             .env("GIT_CONFIG_GLOBAL", &hostile_config);
-        let init = init.output()?;
+        let init = init
+            .output()
+            .map_err(|source| format!("git init spawn failed: {source}"))?;
         assert!(
             init.status.success(),
             "git init failed: {}",
@@ -1704,7 +1707,9 @@ mod tests
         add.args(["add", "README.md"])
             .current_dir(&repo)
             .env("GIT_CONFIG_GLOBAL", &hostile_config);
-        let add = add.output()?;
+        let add = add
+            .output()
+            .map_err(|source| format!("git add spawn failed: {source}"))?;
         assert!(
             add.status.success(),
             "git add failed: {}",
@@ -1716,7 +1721,9 @@ mod tests
             .args(["commit", "--quiet", "-m", "fixture"])
             .current_dir(&repo)
             .env("GIT_CONFIG_GLOBAL", &hostile_config);
-        let commit = commit.output()?;
+        let commit = commit
+            .output()
+            .map_err(|source| format!("git commit spawn failed: {source}"))?;
         assert!(
             commit.status.success(),
             "git commit failed: {}",
@@ -1727,7 +1734,9 @@ mod tests
         show.args(["show", "--no-patch", "--format=%an%x00%ae%x00%G?", "HEAD"])
             .current_dir(&repo)
             .env("GIT_CONFIG_GLOBAL", &hostile_config);
-        let show = show.output()?;
+        let show = show
+            .output()
+            .map_err(|source| format!("git show spawn failed: {source}"))?;
         assert!(
             show.status.success(),
             "git show failed: {}",
@@ -1738,7 +1747,9 @@ mod tests
             show.stdout.as_slice()
         );
 
-        let local_config = std::fs::read_to_string(repo.join(".git/config"))?;
+        let config_path = repo.join(".git/config");
+        let local_config = std::fs::read_to_string(&config_path)
+            .map_err(|source| format!("reading {} failed: {source}", config_path.display()))?;
         assert!(!local_config.contains("[user]"));
         assert!(!local_config.contains("gpgsign"));
         Ok(())
@@ -1783,7 +1794,8 @@ mod tests
         let path = fixture.path().join("input.txt");
         HOST_FILESYSTEM.write(&path, b"line one\nline two")?;
 
-        assert_eq!("line one\nline two", read_utf8(&path)?);
+        let text = read_utf8(&path)?;
+        assert_eq!("line one\nline two", text);
         assert!(read_utf8(&fixture.path().join("missing.txt")).is_err());
         Ok(())
     }
@@ -1798,8 +1810,10 @@ mod tests
         write_atomic(&path, b"first")?;
         write_atomic(&path, b"second")?;
 
-        assert_eq!("second", read_utf8(&path)?);
-        assert_eq!(1, directory_entries(fixture.path())?.len());
+        let text = read_utf8(&path)?;
+        assert_eq!("second", text);
+        let entries = directory_entries(fixture.path())?;
+        assert_eq!(1, entries.len());
         Ok(())
     }
 
@@ -1814,7 +1828,8 @@ mod tests
         let result = write_atomic(&directory_target, b"not a directory");
 
         assert!(result.is_err());
-        assert_eq!(1, directory_entries(fixture.path())?.len());
+        let entries = directory_entries(fixture.path())?;
+        assert_eq!(1, entries.len());
         Ok(())
     }
 
@@ -1935,8 +1950,9 @@ mod tests
         HOST_FILESYSTEM.create_dir_all(&real)?;
         HOST_FILESYSTEM.write(real.join("hidden.rs"), b"hidden")?;
         symlink_directory(&real, &linked)?;
+        let walked = walk_files(&linked, OsStr::new("rs"))?;
         assert!(
-            walk_files(&linked, OsStr::new("rs"))?.is_empty(),
+            walked.is_empty(),
             "root symlink scopes should not be traversed"
         );
         Ok(())

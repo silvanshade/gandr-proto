@@ -267,7 +267,8 @@ pub fn decode(bytes: ArtifactImage<'_>) -> Result<DecodedArtifact, DecodeError>
     reader.expect_magic()?;
     reader.expect_version()?;
     reader.expect_empty_minted_atom_table()?;
-    let count = reader.read_uvarint()?.0;
+    let count = reader.read_uvarint()?;
+    let count = count.0;
     let mut table = Table::new();
     let mut metas: Vec<DeclMeta> = Vec::new();
     let mut remaining = count;
@@ -588,8 +589,10 @@ impl<'bytes> ByteReader<'bytes>
     #[inline]
     fn expect_version(&mut self) -> Result<(), DecodeError>
     {
-        let high = self.next_byte()?.0;
-        let low = self.next_byte()?.0;
+        let high = self.next_byte()?;
+        let high = high.0;
+        let low = self.next_byte()?;
+        let low = low.0;
         let found = u16::from_be_bytes([high, low]);
         if found == FORMAT_VERSION_V1 {
             Ok(())
@@ -634,7 +637,8 @@ impl<'bytes> ByteReader<'bytes>
         let mut shift: u32 = 0;
         let mut count: u32 = 0;
         loop {
-            let byte = self.next_byte()?.0;
+            let byte = self.next_byte()?;
+            let byte = byte.0;
             count = count.checked_add(1).ok_or(overlong)?;
             if count > 10 {
                 return Err(overlong);
@@ -705,7 +709,8 @@ fn decode_declaration(
     reject_reserved_kind(kind)?;
     decode_empty_name(reader)?;
     let levels = decode_level_signature(reader)?;
-    let entry_count = reader.read_uvarint()?.0;
+    let entry_count = reader.read_uvarint()?;
+    let entry_count = entry_count.0;
     let mut remaining = entry_count;
     while remaining > 0_u64 {
         decode_entry(reader, table)?;
@@ -742,7 +747,8 @@ fn decode_root(
     required: Family,
 ) -> Result<GlobalIndex, DecodeError>
 {
-    let index = GlobalIndex(reader.read_u32()?.0);
+    let index = reader.read_u32()?;
+    let index = GlobalIndex(index.0);
     let family = family_at(table, index)?;
     if family == required {
         Ok(index)
@@ -790,7 +796,8 @@ fn decode_entry(
         });
     }
     let this_global = table.len_index();
-    let tag = reader.next_byte()?.0;
+    let tag = reader.next_byte()?;
+    let tag = tag.0;
     let mut child_globals: Vec<GlobalIndex> = Vec::new();
     let (node, family) = match tag {
         | NODE_VT_BASE => {
@@ -842,12 +849,14 @@ fn decode_entry(
             (DecodedNode::CompType(id), Family::CompType)
         },
         | NODE_V_VARIABLE => {
-            let index = reader.read_u32()?.0;
+            let index = reader.read_u32()?;
+            let index = index.0;
             let id = table.arena.value_variable(DeBruijnIndex::from(index));
             (DecodedNode::Value(id), Family::Value)
         },
         | NODE_V_CONSTANT => {
-            let index = reader.read_usize()?.0;
+            let index = reader.read_usize()?;
+            let index = index.0;
             let id = table.arena.value_constant(ConstantIndex::from(index));
             (DecodedNode::Value(id), Family::Value)
         },
@@ -938,7 +947,8 @@ fn read_child_node(
     child_globals: &mut Vec<GlobalIndex>,
 ) -> Result<DecodedNode, DecodeError>
 {
-    let index = GlobalIndex(reader.read_u32()?.0);
+    let index = reader.read_u32()?;
+    let index = GlobalIndex(index.0);
     if index >= this_global {
         return Err(DecodeError::Malformed {
             site: MalformedSite::ChildOrder,
@@ -1046,7 +1056,8 @@ fn read_computation(
 #[inline]
 fn decode_admission(reader: &mut ByteReader<'_>) -> Result<AdmissionMark, DecodeError>
 {
-    match reader.next_byte()?.0 {
+    let byte = reader.next_byte()?;
+    match byte.0 {
         | ADMISSION_CHECKED => Ok(AdmissionMark::Checked),
         | ADMISSION_UNCHECKED => Ok(AdmissionMark::UncheckedBypass),
         | other => Err(DecodeError::UnknownTag {
@@ -1074,7 +1085,8 @@ fn reject_reserved_kind(kind: WireByte) -> Result<(), DecodeError>
 #[inline]
 fn decode_empty_name(reader: &mut ByteReader<'_>) -> Result<(), DecodeError>
 {
-    if reader.read_uvarint()?.0 == 0_u64 {
+    let count = reader.read_uvarint()?;
+    if count.0 == 0_u64 {
         Ok(())
     }
     else {
@@ -1095,7 +1107,8 @@ fn decode_empty_def_slots(reader: &mut ByteReader<'_>) -> Result<(), DecodeError
         ReservedSlot::DirectednessVariance,
     ];
     for slot in slots {
-        if reader.read_uvarint()?.0 != 0_u64 {
+        let count = reader.read_uvarint()?;
+        if count.0 != 0_u64 {
             return Err(DecodeError::ReservedSlotOccupied { slot });
         }
     }
@@ -1106,8 +1119,10 @@ fn decode_empty_def_slots(reader: &mut ByteReader<'_>) -> Result<(), DecodeError
 /// each rebuilt through the strata smart constructor.
 fn decode_level_signature(reader: &mut ByteReader<'_>) -> Result<LevelSignature, DecodeError>
 {
-    let params = reader.read_u32()?.0;
-    let count = reader.read_uvarint()?.0;
+    let params = reader.read_u32()?;
+    let params = params.0;
+    let count = reader.read_uvarint()?;
+    let count = count.0;
     let mut constraints: Vec<LandmarkConstraint> = Vec::new();
     let mut remaining = count;
     while remaining > 0_u64 {
@@ -1134,7 +1149,8 @@ fn decode_level_signature(reader: &mut ByteReader<'_>) -> Result<LevelSignature,
 #[inline]
 fn decode_relation(reader: &mut ByteReader<'_>) -> Result<ConstraintRelation, DecodeError>
 {
-    match reader.next_byte()?.0 {
+    let byte = reader.next_byte()?;
+    match byte.0 {
         | RELATION_LEQ => Ok(ConstraintRelation::Leq),
         | RELATION_EQ => Ok(ConstraintRelation::Eq),
         | other => Err(DecodeError::UnknownTag {
@@ -1159,8 +1175,10 @@ fn decode_relation(reader: &mut ByteReader<'_>) -> Result<ConstraintRelation, De
 /// - panics: none.
 fn decode_level(reader: &mut ByteReader<'_>) -> Result<Level, DecodeError>
 {
-    let constant = reader.read_uvarint()?.0;
-    let atom_count = reader.read_uvarint()?.0;
+    let constant = reader.read_uvarint()?;
+    let constant = constant.0;
+    let atom_count = reader.read_uvarint()?;
+    let atom_count = atom_count.0;
     let mut level = Level::constant(LevelConstant::from(constant));
     let mut remaining = atom_count;
     while remaining > 0_u64 {
@@ -1201,7 +1219,8 @@ fn build_variable_atom(
 #[inline]
 fn decode_base_type(reader: &mut ByteReader<'_>) -> Result<BaseType, DecodeError>
 {
-    match reader.next_byte()?.0 {
+    let byte = reader.next_byte()?;
+    match byte.0 {
         | BASE_INTEGER => Ok(BaseType::Integer),
         | BASE_STRING => Ok(BaseType::String),
         | BASE_NUMERIC => Ok(BaseType::Numeric),
@@ -1216,7 +1235,8 @@ fn decode_base_type(reader: &mut ByteReader<'_>) -> Result<BaseType, DecodeError
 #[inline]
 fn decode_side(reader: &mut ByteReader<'_>) -> Result<Side, DecodeError>
 {
-    match reader.next_byte()?.0 {
+    let byte = reader.next_byte()?;
+    match byte.0 {
         | SIDE_LEFT => Ok(Side::Left),
         | SIDE_RIGHT => Ok(Side::Right),
         | other => Err(DecodeError::UnknownTag {
@@ -1229,7 +1249,8 @@ fn decode_side(reader: &mut ByteReader<'_>) -> Result<Side, DecodeError>
 /// Decode a literal, rebuilt through the base-type smart constructors.
 fn decode_literal(reader: &mut ByteReader<'_>) -> Result<Literal, DecodeError>
 {
-    match reader.next_byte()?.0 {
+    let byte = reader.next_byte()?;
+    match byte.0 {
         | LITERAL_INTEGER => {
             let sign = decode_sign(reader)?;
             let magnitude = decode_magnitude(reader)?;
@@ -1260,7 +1281,8 @@ fn decode_literal(reader: &mut ByteReader<'_>) -> Result<Literal, DecodeError>
 #[inline]
 fn decode_sign(reader: &mut ByteReader<'_>) -> Result<Sign, DecodeError>
 {
-    match reader.next_byte()?.0 {
+    let byte = reader.next_byte()?;
+    match byte.0 {
         | SIGN_NON_NEGATIVE => Ok(Sign::NonNegative),
         | SIGN_NEGATIVE => Ok(Sign::Negative),
         | other => Err(DecodeError::UnknownTag {

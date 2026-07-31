@@ -138,22 +138,22 @@ fn clippy_and_dylint_jobs_are_independent() -> TestResult
         ))));
     };
     let root = required_yaml_mapping(document, "CI workflow root")?;
-    let jobs = required_yaml_mapping(
-        required_yaml_value(root, "jobs", "CI workflow root")?,
-        "CI jobs",
-    )?;
+    let jobs = required_yaml_value(root, "jobs", "CI workflow root")?;
+    let jobs = required_yaml_mapping(jobs, "CI jobs")?;
 
     for (job_id, task) in [
         ("cargo-clippy-crates", "cargo:clippy"),
         ("cargo-dylint-crates", "cargo:dylint"),
     ] {
-        let job = required_yaml_mapping(required_yaml_value(jobs, job_id, "CI jobs")?, job_id)?;
+        let job = required_yaml_value(jobs, job_id, "CI jobs")?;
+        let job = required_yaml_mapping(job, job_id)?;
         assert!(
             yaml_mapping_value(job, "needs").is_none(),
             "CI lint job `{job_id}` must have no `needs` dependency"
         );
+        let runs_task = yaml_job_runs_mise_task(job, task)?;
         assert!(
-            yaml_job_runs_mise_task(job, task)?.0,
+            runs_task.0,
             "CI lint job `{job_id}` must run `mise run {task}`"
         );
     }
@@ -536,7 +536,8 @@ where
     Source: Into<SourceText<'semantic>>,
 {
     let source = source.into().0;
-    Ok(analyze_ci_workflow(Path::new(WORKFLOW_PATH), source)?)
+    let findings = analyze_ci_workflow(Path::new(WORKFLOW_PATH), source)?;
+    Ok(findings)
 }
 
 /// Extract an operational detail from an analyzer result.

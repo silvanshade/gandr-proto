@@ -7,8 +7,8 @@
 //! the `RGL` Lang lexicon does not know, classified by a documented
 //! suffix/`POS` heuristic with an override map), and proper names. Curated
 //! vocabulary is the point: the parse search space stays small (the libpgf
-//! C-stack crash is the 65k-lemma configuration's, per
-//! `docs/gandr/spec/internalizing-gf.md`'s observation log), domain terms
+//! C-stack crash is the 65k-lemma configuration's, per the internalizing-GF
+//! observation log), domain terms
 //! are first-class lexemes, and the same modules are the vocabulary
 //! substrate the compiler-feedback grammar (gandr-2a5) reuses.
 //!

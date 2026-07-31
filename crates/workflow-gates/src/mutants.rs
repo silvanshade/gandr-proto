@@ -1340,9 +1340,8 @@ where
     C: Into<ContextText<'semantic>>,
 {
     let context = context.into().0;
-    Ok(git_output_with_host(host, options, args, context)?
-        .trim()
-        .to_owned())
+    let output = git_output_with_host(host, options, args, context)?;
+    Ok(output.trim().to_owned())
 }
 
 /// Run sanitized Git through an injected host and return complete stdout text.
@@ -2058,14 +2057,19 @@ mod tests
             host.git_status_calls.len(),
             "snapshot should archive tracked source exactly once for cache warming"
         );
-        assert!(
-            host.host_status_calls.iter().any(|call| {
-                call.0 == MISE_PROGRAM
-                    && render_call(&call.1)
-                        .contains("coreutils cp --reflink=auto /tmp/msb-cache.raw")
-            }),
-            "snapshot cache image should be preserved through the host coreutils copy plan"
-        );
+        #[expect(clippy::needless_borrowed_reference, reason = "false positive")]
+        {
+            assert!(
+                host.host_status_calls
+                    .iter()
+                    .any(|&(ref call_0, ref call_1)| {
+                        call_0 == MISE_PROGRAM
+                            && render_call(call_1)
+                                .contains("coreutils cp --reflink=auto /tmp/msb-cache.raw")
+                    }),
+                "snapshot cache image should be preserved through the host coreutils copy plan"
+            );
+        };
         let calls = runner.rendered_calls();
         assert!(
             calls

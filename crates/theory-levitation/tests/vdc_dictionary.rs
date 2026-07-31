@@ -1,7 +1,7 @@
 //! # The F0 VDC dictionary suite — verdict
 //!
 //! A property-test suite checking the virtual-double-category laws
-//! (`docs/gandr/spec/proposal-vdc-reflection.md` §3; ADR-68 D2) on the **real
+//! (`proposal-vdc-reflection.md` §3; ADR-68 D2) on the **real
 //! stage-0 structures** of `gandr-theory-levitation`, with a per-law verdict
 //! recorded here.
 //!

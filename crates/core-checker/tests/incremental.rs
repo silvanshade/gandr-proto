@@ -98,10 +98,10 @@ mod tests
     {
         let term = match stmt.body {
             | Body::Int(literal) => Term::Value(Value::int(literal)),
-            | Body::Str(ref literal) => Term::Value(Value::string(literal.as_str())),
-            | Body::Ref(ref name) => Term::Value(Value::var(name.as_str())),
+            | Body::Str(ref literal) => Term::Value(Value::string(literal)),
+            | Body::Ref(ref name) => Term::Value(Value::var(name)),
             | Body::CheckInteger(ref name) => Term::Value(Value::Annot(
-                Rc::new(Value::var(name.as_str())),
+                Rc::new(Value::var(name)),
                 Rc::new(ValueType::integer()),
             )),
         };

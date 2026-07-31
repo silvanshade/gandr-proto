@@ -268,8 +268,8 @@ mod tests
             "the empty environment round-trips to byte-identical output"
         );
         assert_eq!(
-            decode(bytes.as_ref().into()).unwrap().declarations().len(),
             0,
+            decode(bytes.as_ref().into()).unwrap().declarations().len(),
             "the empty artifact decodes to no declarations"
         );
     }
@@ -287,14 +287,14 @@ mod tests
         );
         let artifact = decode(bytes.as_ref().into()).unwrap();
         assert_eq!(
-            artifact.declarations().len(),
             9,
+            artifact.declarations().len(),
             "every declaration survives"
         );
         for decoded_declaration in artifact.declarations() {
             assert_eq!(
-                decoded_declaration.mark(),
                 AdmissionMark::Checked,
+                decoded_declaration.mark(),
                 "every rich declaration was checked-admitted"
             );
         }
@@ -311,8 +311,8 @@ mod tests
             "write_segmented's bytes are byte-identical to write (B2.3 outer layer)"
         );
         assert_eq!(
-            usize::from(segmented.segment_count()),
             9,
+            usize::from(segmented.segment_count()),
             "one declaration segment per admitted declaration"
         );
     }
@@ -339,8 +339,8 @@ mod tests
         let environment = Environment::new();
         let segmented = write_segmented(&environment);
         assert_eq!(
-            usize::from(segmented.segment_count()),
             0,
+            usize::from(segmented.segment_count()),
             "the empty environment has no declaration segments"
         );
         assert_eq!(
@@ -349,8 +349,8 @@ mod tests
             "the empty artifact is exactly its header"
         );
         assert_eq!(
-            segmented.segments().count(),
             0,
+            segmented.segments().count(),
             "iterating the empty artifact's segments yields nothing"
         );
     }
@@ -408,8 +408,8 @@ mod tests
 
         let artifact = decode(bytes.as_ref().into()).unwrap();
         assert_eq!(
-            artifact.declarations()[0].mark(),
             AdmissionMark::UncheckedBypass,
+            artifact.declarations()[0].mark(),
             "the bypass mark survives serialization"
         );
 
@@ -510,8 +510,8 @@ mod tests
         put_uvarint(&mut bytes, WireValue(0));
         put_uvarint(&mut bytes, WireValue(0));
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::UnsupportedVersion { found: 0 },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a v0 artifact is a named refusal, not a guess (E5)"
         );
     }
@@ -524,8 +524,8 @@ mod tests
         bytes[4] = 0;
         bytes[5] = 2; // version 2
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::UnsupportedVersion { found: 2 },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "an unimplemented future version is refused"
         );
     }
@@ -546,8 +546,8 @@ mod tests
             bytes.push(WIRE_ADMISSION_CHECKED);
             bytes.push(kind_byte);
             assert_eq!(
-                decode(bytes.as_slice().into()).unwrap_err(),
                 DecodeError::ReservedDeclarationKind { kind },
+                decode(bytes.as_slice().into()).unwrap_err(),
                 "reserved declaration kind {kind_byte} is rejected distinctly"
             );
         }
@@ -559,10 +559,10 @@ mod tests
         let mut bytes = v1_header(WireValue(0));
         bytes[6] = 1; // the R4 minted-atom table count
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::ReservedSlotOccupied {
                 slot: ReservedSlot::MintedAtomTable,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a non-empty reserved minted-atom table is rejected (R4)"
         );
     }
@@ -575,10 +575,10 @@ mod tests
         bytes.push(WIRE_KIND_AXIOM);
         put_uvarint(&mut bytes, WireValue(1)); // one name segment -> reserved at v1
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::ReservedSlotOccupied {
                 slot: ReservedSlot::StructuredName,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a non-empty structured name is rejected at v1 (R2)"
         );
     }
@@ -595,10 +595,10 @@ mod tests
         put_uvarint(&mut bytes, WireValue(1)); // root_body
         put_uvarint(&mut bytes, WireValue(1)); // first Def annotation slot -> non-empty
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::ReservedSlotOccupied {
                 slot: ReservedSlot::ErasureAnnotation,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a non-empty per-Def annotation slot is rejected at v1 (R3)"
         );
     }
@@ -623,10 +623,10 @@ mod tests
         put_uvarint(&mut bytes, WireValue(3)); // offset 3
         put_uvarint(&mut bytes, WireValue(0)); // root_declared
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a non-canonical level encoding is rejected (E4)"
         );
     }
@@ -650,10 +650,10 @@ mod tests
             put_uvarint(&mut bytes, WireValue(v)); // R3 slots
         });
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a non-canonical literal encoding is rejected (E4)"
         );
     }
@@ -670,17 +670,17 @@ mod tests
         bytes.push(0); // Integer literal
         bytes.push(0); // sign
         put_uvarint(&mut bytes, WireValue(2));
-        bytes.extend_from_slice(b"1a"); // non-digit
+        bytes.extend_from_slice(b"1a"); // letters are not digits
         put_uvarint(&mut bytes, WireValue(0));
         put_uvarint(&mut bytes, WireValue(1));
         core::iter::repeat_n(0u64, 4usize).for_each(|v| {
             put_uvarint(&mut bytes, WireValue(v));
         });
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::LiteralPayload,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a non-digit magnitude is rejected by the smart constructor"
         );
     }
@@ -707,10 +707,10 @@ mod tests
             put_uvarint(&mut bytes, WireValue(v));
         });
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a non-maximally-shared (duplicate-entry) table is rejected (§4.6)"
         );
     }
@@ -737,10 +737,10 @@ mod tests
             put_uvarint(&mut bytes, WireValue(v));
         });
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a mis-ordered (non-post-order) table is rejected (§4.6)"
         );
     }
@@ -762,10 +762,10 @@ mod tests
             put_uvarint(&mut bytes, WireValue(v));
         });
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::NonCanonical,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a dead (unreferenced) entry is rejected (§4.6)"
         );
     }
@@ -788,10 +788,10 @@ mod tests
             put_uvarint(&mut bytes, WireValue(v));
         });
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ChildOrder,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "a self/forward child reference is rejected (acyclicity)"
         );
     }
@@ -823,7 +823,10 @@ mod tests
         // size (2^29); the reader rejects it by the expanded-work budget BEFORE
         // replay. The differential: `read` fails on the DECODE plane
         // (ReadError::Decode), never reaching the choke point / checker.
-        let environment = diamond_environment(FixtureDepth(28));
+        /// The diamond depth whose expanded size exceeds the expanded-work
+        /// budget.
+        const DIAMOND_DEPTH: FixtureDepth = FixtureDepth(28);
+        let environment = diamond_environment(DIAMOND_DEPTH);
         let bytes = write(&environment);
         assert!(
             bytes.len() < 512,
@@ -831,10 +834,10 @@ mod tests
             bytes.len()
         );
         assert_eq!(
-            decode(bytes.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ExpandedWork,
             },
+            decode(bytes.as_ref().into()).unwrap_err(),
             "the repeated-diamond DAG is rejected by the expanded-work budget"
         );
         match read(bytes.as_ref().into()) {
@@ -875,17 +878,17 @@ mod tests
                 node = arena.value_pair(node, node);
             }
             let extra = arena.value_unit();
-            let body = arena.value_pair(node, extra); // expanded = (cap - 1) + 1 + 1 = cap + 1
+            let body = arena.value_pair(node, extra); // expanded size lands one over the cap
             let declared = arena.value_type_unit();
             let declaration = builder.def(LevelSignature::monomorphic(), declared, body);
             over_env.add_decl_unchecked(declaration);
         };
         let over = write(&over_env);
         assert_eq!(
-            decode(over.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ExpandedWork,
             },
+            decode(over.as_ref().into()).unwrap_err(),
             "expanded size just over the cap is rejected"
         );
     }
@@ -920,10 +923,10 @@ mod tests
             "a table at exactly MAX_TABLE_ENTRIES decodes"
         );
         assert_eq!(
-            decode(build(cap.saturating_add(1)).as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::TableSize,
             },
+            decode(build(cap.saturating_add(1)).as_ref().into()).unwrap_err(),
             "a table one entry over the cap is rejected"
         );
     }
@@ -996,10 +999,10 @@ mod tests
             FixtureDepth(depth),
         ));
         assert_eq!(
-            decode(over.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ArtifactExpandedWork,
             },
+            decode(over.as_ref().into()).unwrap_err(),
             "artifact-total work over the cap is rejected"
         );
     }
@@ -1024,10 +1027,10 @@ mod tests
             bytes.len()
         );
         assert_eq!(
-            decode(bytes.as_ref().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::ArtifactExpandedWork,
             },
+            decode(bytes.as_ref().into()).unwrap_err(),
             "the many-segment amplification is rejected by the artifact-total budget"
         );
         match read(bytes.as_ref().into()) {
@@ -1050,10 +1053,10 @@ mod tests
         let mut bytes = v1_header(WireValue(0));
         bytes.splice(6 .. 7, [0x80, 0x00]);
         assert_eq!(
-            decode(bytes.as_slice().into()).unwrap_err(),
             DecodeError::Malformed {
                 site: MalformedSite::Varint,
             },
+            decode(bytes.as_slice().into()).unwrap_err(),
             "an overlong (non-minimal) varint is rejected"
         );
     }

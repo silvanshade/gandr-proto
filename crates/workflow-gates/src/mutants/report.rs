@@ -714,9 +714,9 @@ mod tests
         let mut filesystem = StdReportFileSystem;
         publish_report_with_filesystem(&mut filesystem, &incoming, &root)?;
 
+        let current_marker = read_marker(paths.current())?;
         assert_eq!(
-            "new report",
-            read_marker(paths.current())?,
+            "new report", current_marker,
             "current report should contain the staged report after publication"
         );
         assert!(
@@ -762,14 +762,14 @@ mod tests
                 .contains("prior report restored and new report remains"),
             "rollback diagnostic should say that the prior report was restored"
         );
+        let current_marker = read_marker(paths.current())?;
         assert_eq!(
-            "old report",
-            read_marker(paths.current())?,
+            "old report", current_marker,
             "current report should be restored after final rename failure"
         );
+        let staging_marker = read_marker(paths.staging())?;
         assert_eq!(
-            "new report",
-            read_marker(paths.staging())?,
+            "new report", staging_marker,
             "new report should remain staged for later inspection"
         );
         assert!(
@@ -803,9 +803,9 @@ mod tests
         let mut filesystem = StdReportFileSystem;
         publish_report_with_filesystem(&mut filesystem, &incoming, &root)?;
 
+        let current_marker = read_marker(paths.current())?;
         assert_eq!(
-            "new report",
-            read_marker(paths.current())?,
+            "new report", current_marker,
             "publication should replace the restored previous report with the incoming report"
         );
         assert!(
@@ -837,9 +837,9 @@ mod tests
             failure.to_string().contains("interrupted staged report"),
             "stale staging diagnostic should name the interrupted report"
         );
+        let current_marker = read_marker(paths.current())?;
         assert_eq!(
-            "old report",
-            read_marker(paths.current())?,
+            "old report", current_marker,
             "current report should be left untouched when staging is stale"
         );
         cleanup_root(&root)?;
@@ -869,9 +869,9 @@ mod tests
                 .contains("prior report rollback remains"),
             "ambiguous rollback diagnostic should preserve the prior-report location"
         );
+        let current_marker = read_marker(paths.current())?;
         assert_eq!(
-            "old report",
-            read_marker(paths.current())?,
+            "old report", current_marker,
             "current report should remain untouched"
         );
         cleanup_root(&root)?;
@@ -892,9 +892,9 @@ mod tests
         let mut filesystem = StdReportFileSystem;
         publish_report_with_filesystem(&mut filesystem, &incoming, &root)?;
 
+        let nested_marker = read_marker(&paths.current().join("nested"))?;
         assert_eq!(
-            "nested report",
-            read_marker(&paths.current().join("nested"))?,
+            "nested report", nested_marker,
             "nested report entries should be copied into the published report"
         );
         cleanup_root(&root)?;
@@ -921,9 +921,9 @@ mod tests
             failure.to_string().contains("prior backup cleanup failed"),
             "cleanup failure should keep the publication-success diagnostic"
         );
+        let current_marker = read_marker(paths.current())?;
         assert_eq!(
-            "new report",
-            read_marker(paths.current())?,
+            "new report", current_marker,
             "new report should still be current when only cleanup failed"
         );
         cleanup_root(&root)?;
@@ -950,9 +950,9 @@ mod tests
             failure.to_string().contains("rollback also failed"),
             "diagnostic should preserve both finalization and rollback failures"
         );
+        let previous_marker = read_marker(paths.previous())?;
         assert_eq!(
-            "old report",
-            read_marker(paths.previous())?,
+            "old report", previous_marker,
             "prior report should remain in previous when rollback fails"
         );
         cleanup_root(&root)?;
@@ -1019,9 +1019,9 @@ mod tests
             failure.to_string().contains("final report rename failed"),
             "failure should preserve the final rename diagnostic"
         );
+        let staging_marker = read_marker(paths.staging())?;
         assert_eq!(
-            "new report",
-            read_marker(paths.staging())?,
+            "new report", staging_marker,
             "new report should remain staged when no previous report can be restored"
         );
         assert!(

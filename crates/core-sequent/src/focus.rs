@@ -743,7 +743,9 @@ impl Focuser
                         // by position (ADR-80). An empty `arms` is the absurd
                         // match. The scrutinee focuses first, then each arm body
                         // in order (pushed in reverse so they pop source-order).
-                        let binders: Vec<&String> = arms.iter().map(|arm| &arm.0).collect();
+                        #[expect(clippy::needless_borrowed_reference, reason = "false positive")]
+                        let binders: Vec<&String> =
+                            arms.iter().map(|&(ref binder, _)| binder).collect();
                         work.push(FocusTask::BuildDataCase { binders });
                         for arm in arms.iter().rev() {
                             work.push(FocusTask::Comp {

@@ -254,6 +254,15 @@ mod tests
     #[derive(Clone, Copy)]
     struct NatSuccCount(u8);
 
+    /// Proptest node budget for the pattern strategies.
+    const PATTERN_NODE_BUDGET: u32 = 48;
+    /// Proptest expected branch size for the pattern strategies.
+    const PATTERN_BRANCH_SIZE: u32 = 3;
+    /// Coin weight biasing generalization decisions toward sharing.
+    const GENERALIZATION_COIN_WEIGHT: f64 = 0.25;
+    /// Decision count drawn per generalization pair.
+    const DECISION_COUNT: usize = 96;
+
     /// Factor `cospan` through the enumerated `family` (axiom (i)): find the
     /// overlaps of the ordered pair `(left, right)` of the given `kind` whose
     /// seam instance mediates the cospan, checking the leg factorizations.
@@ -606,6 +615,14 @@ mod tests
 
     /// A producer-pattern leaf over the pool (metavariable-biased, so
     /// non-linear left-hand sides arise).
+    #[cfg_attr(
+        dylint_lib = "supplementary",
+        allow(
+            unknown_lints,
+            unnecessary_conversion_for_trait,
+            reason = "select stores the candidates in a 'static strategy, so the slice must be owned at the call; the pinned supplementary copy's to_vec removal advice fails borrowck (current clippy does not fire here)"
+        )
+    )]
     fn prod_leaf(vars: &[MetaVar]) -> BoxedStrategy<ProdPat>
     {
         if vars.is_empty() {
@@ -634,7 +651,7 @@ mod tests
     ) -> BoxedStrategy<ProdPat>
     {
         prod_leaf(vars)
-            .prop_recursive(depth.0, 48, 3, |inner| {
+            .prop_recursive(depth.0, PATTERN_NODE_BUDGET, PATTERN_BRANCH_SIZE, |inner| {
                 prop_oneof![
                     inner.clone().prop_map(|p| ProdPat::ctor("Succ", [p])),
                     (inner.clone(), inner)
@@ -646,6 +663,14 @@ mod tests
 
     /// Consumer patterns over the pool, depth-capped (`★`, metavariables, the
     /// `add`/`f` operation frames, and the `Succ`/`Cons` return-side frames).
+    #[cfg_attr(
+        dylint_lib = "supplementary",
+        allow(
+            unknown_lints,
+            unnecessary_conversion_for_trait,
+            reason = "select stores the candidates in a 'static strategy, so the slice must be owned at the call; the pinned supplementary copy's to_vec removal advice fails borrowck (current clippy does not fire here)"
+        )
+    )]
     fn arb_conspat(
         pvars: &[MetaVar],
         cvars: &[MetaVar],
@@ -664,16 +689,21 @@ mod tests
             .boxed()
         };
         let arg_vars = pvars.to_vec();
-        leaf.prop_recursive(depth.0, 48, 3, move |inner| {
-            let arg = arb_prodpat(&arg_vars, Depth(2));
-            prop_oneof![
-                inner.clone().prop_map(|ret| ConsPat::frame("Succ", ret)),
-                inner.clone().prop_map(|ret| ConsPat::frame("Cons", ret)),
-                (inner, arg.clone()).prop_map(|(ret, a)| ConsPat::op("add", [a], ret)),
-                arg.prop_map(|a| ConsPat::op("add", [a], ConsPat::Top)),
-                Just(ConsPat::op("f", [], ConsPat::Top)),
-            ]
-        })
+        leaf.prop_recursive(
+            depth.0,
+            PATTERN_NODE_BUDGET,
+            PATTERN_BRANCH_SIZE,
+            move |inner| {
+                let arg = arb_prodpat(&arg_vars, Depth(2));
+                prop_oneof![
+                    inner.clone().prop_map(|ret| ConsPat::frame("Succ", ret)),
+                    inner.clone().prop_map(|ret| ConsPat::frame("Cons", ret)),
+                    (inner, arg.clone()).prop_map(|(ret, a)| ConsPat::op("add", [a], ret)),
+                    arg.prop_map(|a| ConsPat::op("add", [a], ConsPat::Top)),
+                    Just(ConsPat::op("f", [], ConsPat::Top)),
+                ]
+            },
+        )
         .boxed()
     }
 
@@ -854,7 +884,10 @@ mod tests
     /// succeed.
     fn unifiable_faces() -> BoxedStrategy<(CmdPat, CmdPat)>
     {
-        let decisions = proptest::collection::vec(prop::bool::weighted(0.25), 96);
+        let decisions = proptest::collection::vec(
+            prop::bool::weighted(GENERALIZATION_COIN_WEIGHT),
+            DECISION_COUNT,
+        );
         arb_pool_over(Pool::Default)
             .prop_flat_map(move |(pvars, cvars)| {
                 (
@@ -1496,7 +1529,10 @@ mod tests
                     .into_iter()
                     .filter(|mv| dedup.insert(mv.clone()))
                     .collect();
-                let decisions = proptest::collection::vec(prop::bool::weighted(0.25), 96);
+                let decisions = proptest::collection::vec(
+                    prop::bool::weighted(GENERALIZATION_COIN_WEIGHT),
+                    DECISION_COUNT,
+                );
                 (arb_ground_subst(vars), decisions.clone(), decisions).prop_map(
                     move |(tau, d1, d2)| {
                         // The common instance cell d = τ_a(a), and b a
@@ -1885,8 +1921,8 @@ mod tests
         let (normal, residue) = residue_of(&store, &lifted[0], &instance, budget)
             .expect("the Peano fragment converges");
         assert_eq!(
-            residue.post.len(),
             3,
+            residue.post.len(),
             "the residue records three owed steps (add-S, add-Z, frame)"
         );
         assert_eq!(

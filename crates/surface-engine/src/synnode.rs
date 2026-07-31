@@ -3894,16 +3894,18 @@ mod tests
     fn recognizes_instantiation_residents() -> Result<(), String>
     {
         let marked = tree("def c = f[<, >](a);")?;
-        let call = field(item0(&marked)?, "value")?;
+        let root_item = item0(&marked)?;
+        let call = field(root_item, "value")?;
         let instantiation = field(call, "function")?;
         assert_eq!(
             node_kinds::INSTANTIATION_EXPRESSION,
             instantiation.kind(),
             "the bracketed postfix is an instantiation expression"
         );
+        let target = field(instantiation, "target")?;
         assert_eq!(
             "f",
-            field(instantiation, "target")?.text().as_ref(),
+            target.text().as_ref(),
             "the instantiation preserves its target"
         );
         let residents = instantiation.children_by_field_name(node_kinds::FIELD_INSTANTIATION);

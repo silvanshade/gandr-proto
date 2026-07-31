@@ -65,7 +65,7 @@
 //! | `value_type_level` Lift          | `Value(inner)`                        | `LiftCheck`                           |
 //! | `comp_type_level` Returner       | `Value(result)` (passes through)      | —                                     |
 //! | `comp_type_level` Arrow          | `Value(domain)`                       | `MaxSecondComp`, `MaxWith`            |
-//! | `synth_value` Var/Const/Unit/Lit | leaf → lookup / resolve               | —                                     |
+//! | `synth_value` Var / Const / Unit / Lit | leaf → lookup / resolve               | —                                     |
 //! | `synth_value` Pair               | `SynthValue(first)`                   | `SynthPairFirst`, `SynthPairSecond`   |
 //! | `synth_value` Thunk              | `SynthComp(body)`                     | `SynthThunk`                          |
 //! | `synth_value` Lift              | `SynthValue(body)`                    | `SynthLift`                           |
@@ -78,7 +78,7 @@
 //! | `synth_comp` Force               | `SynthValue(value)`                   | `SynthForce`                          |
 //! | `synth_comp` Return             | `SynthValue(value)`                   | `SynthReturn`                         |
 //! | `synth_comp` Bind               | `SynthComp(bound)`                    | `SynthBind`, `ScopeExit`              |
-//! | `synth_comp` Case               | `SynthValue(scrutinee)`               | `SynthCaseScrutinee/AfterLeft/AfterRight`, `ScopeExit` |
+//! | `synth_comp` Case               | `SynthValue(scrutinee)`               | `SynthCaseScrutinee / AfterLeft / AfterRight`, `ScopeExit` |
 //! | `synth_comp` Lambda             | leaf → `NotInferable`                 | —                                     |
 //! | `check_comp` Lambda             | `CheckComp(body, cod)`                | `ScopeExit`                           |
 //! | `check_comp` Return             | `CheckValue(value, result)`           | —                                     |
@@ -498,7 +498,8 @@ fn lookup(
 ) -> Option<ValueTypeId>
 {
     let steps = usize::try_from(u32::from(index)).ok()?;
-    let position = context.len().checked_sub(1)?.checked_sub(steps)?;
+    let last = context.len().checked_sub(1)?;
+    let position = last.checked_sub(steps)?;
     context.get(position).copied()
 }
 
@@ -1115,8 +1116,8 @@ mod tests
         let synthesized =
             synth_value(&mut arena, &entries, &levels, alloc::vec![unit], variable).unwrap();
         assert_eq!(
-            arena.value_type(synthesized),
             Some(&crate::types::ValueType::Unit),
+            arena.value_type(synthesized),
             "variable 0 has the head type"
         );
     }

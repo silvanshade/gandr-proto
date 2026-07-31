@@ -1000,29 +1000,36 @@ impl WitnessEndSummary
             });
         }
 
-        let version = WitnessVersion(u16::from(cursor.read_u16()?));
-        let kind = WitnessKind::from_tag(u8::from(cursor.read_u8()?).into())?;
-        let root_hash =
-            NodeHash::from(cursor.take_array::<NODE_HASH_LEN>(
-                ("witness end summary root hash is truncated").into(),
-            )?);
-        let root_record_count = TreeRecordCount::from(u64::from(cursor.read_u64()?));
-        let chunker_parameter_digest = NodeHash::from(cursor.take_array::<NODE_HASH_LEN>(
+        let version = cursor.read_u16()?;
+        let version = WitnessVersion(u16::from(version));
+        let kind = cursor.read_u8()?;
+        let kind = WitnessKind::from_tag(u8::from(kind).into())?;
+        let root_hash = cursor
+            .take_array::<NODE_HASH_LEN>(("witness end summary root hash is truncated").into())?;
+        let root_hash = NodeHash::from(root_hash);
+        let root_record_count = cursor.read_u64()?;
+        let root_record_count = TreeRecordCount::from(u64::from(root_record_count));
+        let chunker_parameter_digest = cursor.take_array::<NODE_HASH_LEN>(
             ("witness end summary chunker parameter digest is truncated").into(),
-        )?);
-        let root_node_hash = NodeHash::from(cursor.take_array::<NODE_HASH_LEN>(
+        )?;
+        let chunker_parameter_digest = NodeHash::from(chunker_parameter_digest);
+        let root_node_hash = cursor.take_array::<NODE_HASH_LEN>(
             ("witness end summary root node hash is truncated").into(),
-        )?);
-        let body_digest = NodeHash::from(cursor.take_array::<NODE_HASH_LEN>(
-            ("witness end summary body digest is truncated").into(),
-        )?);
-        let proof_node_count = ProofNodeCount::from(u64::from(cursor.read_u64()?));
-        let proof_nodes_digest = NodeHash::from(cursor.take_array::<NODE_HASH_LEN>(
+        )?;
+        let root_node_hash = NodeHash::from(root_node_hash);
+        let body_digest = cursor
+            .take_array::<NODE_HASH_LEN>(("witness end summary body digest is truncated").into())?;
+        let body_digest = NodeHash::from(body_digest);
+        let proof_node_count = cursor.read_u64()?;
+        let proof_node_count = ProofNodeCount::from(u64::from(proof_node_count));
+        let proof_nodes_digest = cursor.take_array::<NODE_HASH_LEN>(
             ("witness end summary proof nodes digest is truncated").into(),
-        )?);
-        let binding_digest = NodeHash::from(cursor.take_array::<NODE_HASH_LEN>(
+        )?;
+        let proof_nodes_digest = NodeHash::from(proof_nodes_digest);
+        let binding_digest = cursor.take_array::<NODE_HASH_LEN>(
             ("witness end summary binding digest is truncated").into(),
-        )?);
+        )?;
+        let binding_digest = NodeHash::from(binding_digest);
 
         return Ok(Self {
             version,
@@ -1275,7 +1282,8 @@ impl WitnessTranscript
             });
         }
 
-        let version = WitnessVersion::from(u16::from(cursor.read_u16()?));
+        let version = cursor.read_u16()?;
+        let version = WitnessVersion::from(u16::from(version));
 
         if version != Self::VERSION {
             return Err(ProllyBaoError::UnsupportedWitnessVersion {
@@ -1283,19 +1291,22 @@ impl WitnessTranscript
             });
         }
 
-        let kind = WitnessKind::from_tag(u8::from(cursor.read_u8()?).into())?;
-        let root_hash = NodeHash::from(
-            cursor.take_array::<NODE_HASH_LEN>(("witness root hash is truncated").into())?,
-        );
-        let root_record_count = TreeRecordCount::from(u64::from(cursor.read_u64()?));
+        let kind = cursor.read_u8()?;
+        let kind = WitnessKind::from_tag(u8::from(kind).into())?;
+        let root_hash =
+            cursor.take_array::<NODE_HASH_LEN>(("witness root hash is truncated").into())?;
+        let root_hash = NodeHash::from(root_hash);
+        let root_record_count = cursor.read_u64()?;
+        let root_record_count = TreeRecordCount::from(u64::from(root_record_count));
+        let chunker_parameter_bytes = decode_witness_bytes(
+            &mut cursor,
+            ("witness chunker parameter bytes are truncated").into(),
+        )?;
         let chunker_parameter_bytes =
-            OwnedChunkerParameterBytes::from(Box::<[u8]>::from(decode_witness_bytes(
-                &mut cursor,
-                ("witness chunker parameter bytes are truncated").into(),
-            )?));
-        let root_node_hash = NodeHash::from(
-            cursor.take_array::<NODE_HASH_LEN>(("witness root node hash is truncated").into())?,
-        );
+            OwnedChunkerParameterBytes::from(Box::<[u8]>::from(chunker_parameter_bytes));
+        let root_node_hash =
+            cursor.take_array::<NODE_HASH_LEN>(("witness root node hash is truncated").into())?;
+        let root_node_hash = NodeHash::from(root_node_hash);
         let body = decode_witness_body(&mut cursor, kind)?;
         let nodes = decode_witness_nodes(&mut cursor)?;
         let end_summary = WitnessEndSummary::decode(&mut cursor)?;
@@ -1351,7 +1362,8 @@ impl WitnessTranscript
         out: &mut WitnessBuffer,
     ) -> Result<(), ProllyBaoError>
     {
-        out.0.reserve(usize::from(self.encoded_len()?));
+        let encoded_len = self.encoded_len()?;
+        out.0.reserve(usize::from(encoded_len));
         self.encode_unreserved(&mut out.0)?;
 
         return Ok(());
@@ -1369,7 +1381,8 @@ impl WitnessTranscript
     #[inline]
     pub fn to_bytes(&self) -> Result<OwnedWitnessBytes, ProllyBaoError>
     {
-        let capacity = usize::from(self.encoded_len()?);
+        let encoded_len = self.encoded_len()?;
+        let capacity = usize::from(encoded_len);
         let mut bytes = WireBuffer::from(Vec::<u8>::with_capacity(capacity));
         self.encode_unreserved(&mut bytes)?;
 
@@ -1618,9 +1631,11 @@ impl WitnessTranscript
             8_usize,
             ("witness encoded length overflow").into(),
         )?;
+        let chunker_parameter_bytes_len =
+            len_prefixed_bytes_encoded_len(self.chunker_parameter_bytes.as_ref().into())?;
         checked_add_to_len(
             &mut len,
-            len_prefixed_bytes_encoded_len(self.chunker_parameter_bytes.as_ref().into())?,
+            chunker_parameter_bytes_len,
             ("witness encoded length overflow").into(),
         )?;
         checked_add_to_len(
@@ -1628,9 +1643,10 @@ impl WitnessTranscript
             NODE_HASH_LEN,
             ("witness encoded length overflow").into(),
         )?;
+        let body_len = witness_body_encoded_len(&self.body)?;
         checked_add_to_len(
             &mut len,
-            witness_body_encoded_len(&self.body)?,
+            body_len,
             ("witness encoded length overflow").into(),
         )?;
         checked_add_to_len(
@@ -1645,9 +1661,10 @@ impl WitnessTranscript
                 NODE_HASH_LEN,
                 ("witness encoded length overflow").into(),
             )?;
+            let node_bytes_len = len_prefixed_bytes_encoded_len(node.bytes().as_ref().into())?;
             checked_add_to_len(
                 &mut len,
-                len_prefixed_bytes_encoded_len(node.bytes().as_ref().into())?,
+                node_bytes_len,
                 ("witness encoded length overflow").into(),
             )?;
         }
@@ -1674,13 +1691,11 @@ impl WitnessTranscript
         push_len_prefixed_bytes(out, self.chunker_parameter_bytes.as_ref().into())?;
         out.extend_from_slice(self.root_node_hash.as_ref());
         encode_witness_body(&self.body, out)?;
-        push_u64(
-            out,
-            WireLong::from(checked_numeric_conversion::<_, u64>(
-                self.nodes.len(),
-                ("witness node count does not fit u64").into(),
-            )?),
-        );
+        let node_count = checked_numeric_conversion::<_, u64>(
+            self.nodes.len(),
+            ("witness node count does not fit u64").into(),
+        )?;
+        push_u64(out, WireLong::from(node_count));
 
         for node in self.nodes.as_ref() {
             out.extend_from_slice(node.hash().as_ref());
@@ -2323,7 +2338,8 @@ impl RangeProof
         expected_params: &TreeParams,
     ) -> Result<Box<[Record]>, ProllyBaoError>
     {
-        return self.verify_for_range(expected_root, expected_params, self.range.as_range_ref()?);
+        let range = self.range.as_range_ref()?;
+        return self.verify_for_range(expected_root, expected_params, range);
     }
 
     /// Verifies this proof for an explicit borrowed range.
@@ -2397,7 +2413,8 @@ impl PortableProofTree
         let mut leaves = Vec::<LeafBuild>::new();
 
         if records.is_empty() {
-            leaves.push(build_leaf(records)?);
+            let leaf = build_leaf(records)?;
+            leaves.push(leaf);
         }
         else {
             for span in chunk_spans {
@@ -2415,33 +2432,34 @@ impl PortableProofTree
                         .ok_or(ProllyBaoError::InvalidProofShape {
                             context: "chunk span is outside input records",
                         })?;
-                leaves.push(build_leaf(chunk_records)?);
+                let leaf = build_leaf(chunk_records)?;
+                leaves.push(leaf);
             }
         }
 
         if leaves.is_empty() {
-            leaves.push(build_leaf(records)?);
+            let leaf = build_leaf(records)?;
+            leaves.push(leaf);
         }
 
         let root_build = build_root_node(leaves.as_slice())?;
-        let record_count = TreeRecordCount::from(checked_numeric_conversion::<_, u64>(
+        let record_count = checked_numeric_conversion::<_, u64>(
             records.len(),
             ("record count does not fit u64").into(),
-        )?);
+        )?;
+        let record_count = TreeRecordCount::from(record_count);
         let root_hash = hash_root_manifest(&params, record_count, root_build.hash)?;
         let root = TreeRoot::new(root_hash, params, record_count);
 
         let nodes = collect_nodes(root_build, leaves.as_slice());
         let leaf_hashes = collect_leaf_hashes(leaves.as_slice());
 
+        let root_node = nodes.first().ok_or(ProllyBaoError::InvalidProofShape {
+            context: "tree has no root node",
+        })?;
         return Ok(Self {
             root,
-            root_node_hash: nodes
-                .first()
-                .ok_or(ProllyBaoError::InvalidProofShape {
-                    context: "tree has no root node",
-                })?
-                .hash(),
+            root_node_hash: root_node.hash(),
             nodes,
             leaf_hashes,
             records: owned_records,
@@ -2513,7 +2531,8 @@ impl PortableProofTree
         out: &mut SnapshotBuffer,
     ) -> Result<(), ProllyBaoError>
     {
-        out.0.reserve(usize::from(self.snapshot_encoded_len()?));
+        let snapshot_len = self.snapshot_encoded_len()?;
+        out.0.reserve(usize::from(snapshot_len));
         self.encode_snapshot_bytes_unreserved(&mut out.0)?;
 
         return Ok(());
@@ -2533,7 +2552,8 @@ impl PortableProofTree
     #[inline]
     pub fn to_snapshot_bytes(&self) -> Result<OwnedSnapshotBytes, ProllyBaoError>
     {
-        let capacity = usize::from(self.snapshot_encoded_len()?);
+        let snapshot_len = self.snapshot_encoded_len()?;
+        let capacity = usize::from(snapshot_len);
         let mut bytes = WireBuffer::from(Vec::<u8>::with_capacity(capacity));
         self.encode_snapshot_bytes_unreserved(&mut bytes)?;
 
@@ -2560,15 +2580,16 @@ impl PortableProofTree
             8_usize,
             ("snapshot encoded length overflow").into(),
         )?;
+        let commitment_len = snapshot_len_prefixed_bytes_encoded_len(
+            self.root
+                .params()
+                .chunker_parameter_commitment()
+                .as_ref()
+                .into(),
+        )?;
         checked_add_to_len(
             &mut len,
-            snapshot_len_prefixed_bytes_encoded_len(
-                self.root
-                    .params()
-                    .chunker_parameter_commitment()
-                    .as_ref()
-                    .into(),
-            )?,
+            commitment_len,
             ("snapshot encoded length overflow").into(),
         )?;
         checked_add_to_len(
@@ -2583,9 +2604,10 @@ impl PortableProofTree
         )?;
 
         for record in self.records.as_ref() {
+            let record_len = snapshot_record_encoded_len(record)?;
             checked_add_to_len(
                 &mut len,
-                snapshot_record_encoded_len(record)?,
+                record_len,
                 ("snapshot encoded length overflow").into(),
             )?;
         }
@@ -2627,10 +2649,11 @@ impl PortableProofTree
     /// Returns the exact record count represented by stored snapshot records.
     fn snapshot_record_count(&self) -> Result<TreeRecordCount, ProllyBaoError>
     {
-        let record_count = TreeRecordCount::from(checked_numeric_conversion::<_, u64>(
+        let record_count = checked_numeric_conversion::<_, u64>(
             self.records.len(),
             ("snapshot record count does not fit u64").into(),
-        )?);
+        )?;
+        let record_count = TreeRecordCount::from(record_count);
 
         if record_count != self.root.record_count() {
             return Err(ProllyBaoError::InvalidProofShape {
@@ -2847,8 +2870,9 @@ impl PortableProofTree
                 nodes.push(root.proof_node.clone());
                 nodes.push(selected_node.clone());
 
-                if compact_non_membership_needs_next_records(selected_records, key)?
-                    == SuccessorLeafRequirement::Required
+                let successor_requirement =
+                    compact_non_membership_needs_next_records(selected_records, key)?;
+                if successor_requirement == SuccessorLeafRequirement::Required
                     && let Some(next_child) = selected_position
                         .checked_add(1_usize)
                         .and_then(|next_index| internal.children.get(next_index))
@@ -2971,24 +2995,27 @@ pub fn verify_snapshot_bytes(
         });
     }
 
-    let version = u16::from(cursor.read_u16()?);
+    let version = cursor.read_u16()?;
+    let version = u16::from(version);
 
     if version != SNAPSHOT_VERSION {
         return Err(ProllyBaoError::UnsupportedSnapshotVersion { version });
     }
 
-    let root_hash = NodeHash::from(
-        cursor.take_array::<NODE_HASH_LEN>(("snapshot root hash is truncated").into())?,
-    );
-    let root_record_count = TreeRecordCount::from(u64::from(cursor.read_u64()?));
+    let root_hash =
+        cursor.take_array::<NODE_HASH_LEN>(("snapshot root hash is truncated").into())?;
+    let root_hash = NodeHash::from(root_hash);
+    let root_record_count = cursor.read_u64()?;
+    let root_record_count = TreeRecordCount::from(u64::from(root_record_count));
     let chunker_parameter_bytes = decode_snapshot_bytes(
         &mut cursor,
         ("snapshot chunker parameter bytes are truncated").into(),
     )?;
-    let root_node_hash = NodeHash::from(
-        cursor.take_array::<NODE_HASH_LEN>(("snapshot root node hash is truncated").into())?,
-    );
-    let record_count = TreeRecordCount::from(u64::from(cursor.read_u64()?));
+    let root_node_hash =
+        cursor.take_array::<NODE_HASH_LEN>(("snapshot root node hash is truncated").into())?;
+    let root_node_hash = NodeHash::from(root_node_hash);
+    let record_count = cursor.read_u64()?;
+    let record_count = TreeRecordCount::from(u64::from(record_count));
 
     if record_count != root_record_count {
         return Err(ProllyBaoError::MalformedSnapshotBytes {
@@ -3014,10 +3041,11 @@ pub fn verify_snapshot_bytes(
 
     validate_sorted_records(records.as_slice())?;
 
-    let parsed_record_count = TreeRecordCount::from(checked_numeric_conversion::<_, u64>(
+    let parsed_record_count = checked_numeric_conversion::<_, u64>(
         records.len(),
         ("snapshot parsed record count does not fit u64").into(),
-    )?);
+    )?;
+    let parsed_record_count = TreeRecordCount::from(parsed_record_count);
 
     if parsed_record_count != record_count {
         return Err(ProllyBaoError::MalformedSnapshotBytes {
@@ -3676,13 +3704,12 @@ fn verify_compact_non_membership_internal(
         });
     }
 
-    let selected_index = usize::from(
-        select_child_index_for_key(internal.children.as_ref(), key).ok_or(
-            ProllyBaoError::InvalidProofShape {
-                context: "non-membership key has no selected child",
-            },
-        )?,
-    );
+    let selected_child_index = select_child_index_for_key(internal.children.as_ref(), key).ok_or(
+        ProllyBaoError::InvalidProofShape {
+            context: "non-membership key has no selected child",
+        },
+    )?;
+    let selected_index = usize::from(selected_child_index);
     let selected_child =
         internal
             .children
@@ -4003,13 +4030,11 @@ fn verify_non_membership_witness_node_order(
                 });
             }
 
-            let selected_index = usize::from(
-                select_child_index_for_key(internal.children.as_ref(), key).ok_or(
-                    ProllyBaoError::InvalidProofShape {
-                        context: "non-membership witness key has no selected child",
-                    },
-                )?,
-            );
+            let selected_child_index = select_child_index_for_key(internal.children.as_ref(), key)
+                .ok_or(ProllyBaoError::InvalidProofShape {
+                    context: "non-membership witness key has no selected child",
+                })?;
+            let selected_index = usize::from(selected_child_index);
             let selected_child =
                 internal
                     .children
@@ -4029,13 +4054,13 @@ fn verify_non_membership_witness_node_order(
                 });
             }
 
-            let selected_leaf = match decoded
-                .get(1_usize)
-                .ok_or(ProllyBaoError::InvalidProofShape {
-                    context: "non-membership witness decoded selected child is absent",
-                })?
-                .kind
-            {
+            let selected_decoded =
+                decoded
+                    .get(1_usize)
+                    .ok_or(ProllyBaoError::InvalidProofShape {
+                        context: "non-membership witness decoded selected child is absent",
+                    })?;
+            let selected_leaf = match selected_decoded.kind {
                 | DecodedNodeKind::Leaf(ref leaf) => leaf,
                 | DecodedNodeKind::Internal(_) => {
                     return Err(ProllyBaoError::InvalidProofShape {
@@ -4341,10 +4366,11 @@ fn compute_witness_end_summary(
     let chunker_parameter_digest =
         hash_witness_chunker_parameters(material.chunker_parameter_bytes)?;
     let body_digest = hash_witness_body(material.body)?;
-    let proof_node_count = ProofNodeCount::from(checked_numeric_conversion::<_, u64>(
+    let proof_node_count = checked_numeric_conversion::<_, u64>(
         material.nodes.len(),
         ("witness node count does not fit u64").into(),
-    )?);
+    )?;
+    let proof_node_count = ProofNodeCount::from(proof_node_count);
     let proof_nodes_digest = hash_witness_nodes(proof_node_count, material.nodes)?;
     let parts = WitnessSummaryParts {
         version: material.version,
@@ -4434,13 +4460,11 @@ fn hash_witness_body(body: &WitnessBody) -> Result<NodeHash, ProllyBaoError>
             hasher.update([WITNESS_KIND_RANGE].as_ref());
             update_witness_bound_digest(&mut hasher, range.start())?;
             update_witness_bound_digest(&mut hasher, range.end())?;
-            update_u64_digest(
-                &mut hasher,
-                WireLong::from(checked_numeric_conversion::<_, u64>(
-                    records.len(),
-                    ("witness record count does not fit u64").into(),
-                )?),
-            );
+            let record_count = checked_numeric_conversion::<_, u64>(
+                records.len(),
+                ("witness record count does not fit u64").into(),
+            )?;
+            update_u64_digest(&mut hasher, WireLong::from(record_count));
 
             for record in records.as_ref() {
                 update_witness_record_digest(&mut hasher, record)?;
@@ -4559,13 +4583,11 @@ fn update_len_prefixed_bytes_digest(
     bytes: WirePayload<'_>,
 ) -> Result<(), ProllyBaoError>
 {
-    update_u64_digest(
-        hasher,
-        WireLong::from(checked_numeric_conversion::<_, u64>(
-            bytes.as_ref().len(),
-            ("witness byte length does not fit u64").into(),
-        )?),
-    );
+    let byte_len = checked_numeric_conversion::<_, u64>(
+        bytes.as_ref().len(),
+        ("witness byte length does not fit u64").into(),
+    )?;
+    update_u64_digest(hasher, WireLong::from(byte_len));
     hasher.update(bytes.as_ref());
 
     return Ok(());
@@ -4635,7 +4657,8 @@ fn decode_witness_body(
             let end = decode_witness_bound(cursor)?;
             let range = OwnedKeyRange { start, end };
             range.as_range_ref()?;
-            let count = u64::from(cursor.read_u64()?);
+            let count = cursor.read_u64()?;
+            let count = u64::from(count);
             let capacity = cursor.item_capacity(
                 (count).into(),
                 (16_usize).into(),
@@ -4644,7 +4667,8 @@ fn decode_witness_body(
             let mut records = Vec::<Record>::with_capacity(usize::from(capacity));
 
             for _ in 0_u64 .. count {
-                records.push(decode_witness_record(cursor)?);
+                let record = decode_witness_record(cursor)?;
+                records.push(record);
             }
 
             return Ok(WitnessBody::Range {
@@ -4660,7 +4684,8 @@ fn decode_witness_body(
 fn decode_witness_nodes(cursor: &mut WitnessCursor<'_>)
 -> Result<Box<[ProofNode]>, ProllyBaoError>
 {
-    let count = u64::from(cursor.read_u64()?);
+    let count = cursor.read_u64()?;
+    let count = u64::from(count);
     let capacity = cursor.item_capacity(
         (count).into(),
         (NODE_HASH_LEN + 8_usize).into(),
@@ -4669,9 +4694,9 @@ fn decode_witness_nodes(cursor: &mut WitnessCursor<'_>)
     let mut nodes = Vec::<ProofNode>::with_capacity(usize::from(capacity));
 
     for _ in 0_u64 .. count {
-        let hash = NodeHash::from(
-            cursor.take_array::<NODE_HASH_LEN>(("witness proof node hash is truncated").into())?,
-        );
+        let hash =
+            cursor.take_array::<NODE_HASH_LEN>(("witness proof node hash is truncated").into())?;
+        let hash = NodeHash::from(hash);
         let bytes =
             decode_witness_bytes(cursor, ("witness proof node bytes are truncated").into())?;
         nodes.push(ProofNode::new(hash, Box::<[u8]>::from(bytes)));
@@ -4686,9 +4711,13 @@ fn decode_optional_witness_record(
     cursor: &mut WitnessCursor<'_>
 ) -> Result<Option<Record>, ProllyBaoError>
 {
-    match u8::from(cursor.read_u8()?) {
+    let tag = cursor.read_u8()?;
+    match u8::from(tag) {
         | WITNESS_OPTION_NONE => return Ok(None),
-        | WITNESS_OPTION_RECORD => return Ok(Some(decode_witness_record(cursor)?)),
+        | WITNESS_OPTION_RECORD => {
+            let record = decode_witness_record(cursor)?;
+            return Ok(Some(record));
+        },
         | _ => {
             return Err(ProllyBaoError::MalformedWitnessBytes {
                 context: "unknown witness optional-record tag",
@@ -4714,7 +4743,8 @@ fn decode_witness_record(cursor: &mut WitnessCursor<'_>) -> Result<Record, Proll
 #[cfg(feature = "proofs")]
 fn decode_witness_bound(cursor: &mut WitnessCursor<'_>) -> Result<OwnedKeyBound, ProllyBaoError>
 {
-    match u8::from(cursor.read_u8()?) {
+    let tag = cursor.read_u8()?;
+    match u8::from(tag) {
         | WITNESS_BOUND_UNBOUNDED => return Ok(OwnedKeyBound::Unbounded),
         | WITNESS_BOUND_INCLUDED => {
             let key =
@@ -4747,10 +4777,8 @@ fn decode_witness_bytes(
     context: DecodeContext,
 ) -> Result<OwnedWirePayload, ProllyBaoError>
 {
-    let len = usize_from_witness_u64(
-        cursor.read_u64()?,
-        "witness byte length does not fit usize".into(),
-    )?;
+    let len = cursor.read_u64()?;
+    let len = usize_from_witness_u64(len, "witness byte length does not fit usize".into())?;
     let bytes = cursor.take(len, context)?;
 
     return Ok(OwnedWirePayload::from(Box::<[u8]>::from(bytes)));
@@ -4782,13 +4810,11 @@ fn encode_witness_body(
         } => {
             encode_witness_bound(range.start(), out)?;
             encode_witness_bound(range.end(), out)?;
-            push_u64(
-                out,
-                WireLong::from(checked_numeric_conversion::<_, u64>(
-                    records.len(),
-                    ("witness record count does not fit u64").into(),
-                )?),
-            );
+            let record_count = checked_numeric_conversion::<_, u64>(
+                records.len(),
+                ("witness record count does not fit u64").into(),
+            )?;
+            push_u64(out, WireLong::from(record_count));
 
             for record in records.as_ref() {
                 encode_witness_record(record, out)?;
@@ -4859,13 +4885,11 @@ fn push_len_prefixed_bytes(
     bytes: WirePayload<'_>,
 ) -> Result<(), ProllyBaoError>
 {
-    push_u64(
-        out,
-        WireLong::from(checked_numeric_conversion::<_, u64>(
-            bytes.as_ref().len(),
-            ("witness byte length does not fit u64").into(),
-        )?),
-    );
+    let byte_len = checked_numeric_conversion::<_, u64>(
+        bytes.as_ref().len(),
+        ("witness byte length does not fit u64").into(),
+    )?;
+    push_u64(out, WireLong::from(byte_len));
     out.extend_from_slice(bytes.as_ref());
 
     return Ok(());
@@ -4879,14 +4903,16 @@ fn witness_body_encoded_len(body: &WitnessBody) -> Result<EncodedLength, ProllyB
 
     match *body {
         | WitnessBody::Membership { ref key, ref value } => {
+            let key_len = len_prefixed_bytes_encoded_len(key.as_ref().into())?;
             checked_add_to_len(
                 &mut len,
-                len_prefixed_bytes_encoded_len(key.as_ref().into())?,
+                key_len,
                 ("witness encoded length overflow").into(),
             )?;
+            let value_len = len_prefixed_bytes_encoded_len(value.as_ref().into())?;
             checked_add_to_len(
                 &mut len,
-                len_prefixed_bytes_encoded_len(value.as_ref().into())?,
+                value_len,
                 ("witness encoded length overflow").into(),
             )?;
         },
@@ -4894,19 +4920,22 @@ fn witness_body_encoded_len(body: &WitnessBody) -> Result<EncodedLength, ProllyB
             ref key,
             ref evidence,
         } => {
+            let key_len = len_prefixed_bytes_encoded_len(key.as_ref().into())?;
             checked_add_to_len(
                 &mut len,
-                len_prefixed_bytes_encoded_len(key.as_ref().into())?,
+                key_len,
                 ("witness encoded length overflow").into(),
             )?;
+            let predecessor_len = optional_record_encoded_len(evidence.predecessor())?;
             checked_add_to_len(
                 &mut len,
-                optional_record_encoded_len(evidence.predecessor())?,
+                predecessor_len,
                 ("witness encoded length overflow").into(),
             )?;
+            let successor_len = optional_record_encoded_len(evidence.successor())?;
             checked_add_to_len(
                 &mut len,
-                optional_record_encoded_len(evidence.successor())?,
+                successor_len,
                 ("witness encoded length overflow").into(),
             )?;
         },
@@ -4914,14 +4943,16 @@ fn witness_body_encoded_len(body: &WitnessBody) -> Result<EncodedLength, ProllyB
             ref range,
             ref records,
         } => {
+            let start_len = bound_encoded_len(range.start())?;
             checked_add_to_len(
                 &mut len,
-                bound_encoded_len(range.start())?,
+                start_len,
                 ("witness encoded length overflow").into(),
             )?;
+            let end_len = bound_encoded_len(range.end())?;
             checked_add_to_len(
                 &mut len,
-                bound_encoded_len(range.end())?,
+                end_len,
                 ("witness encoded length overflow").into(),
             )?;
             checked_add_to_len(
@@ -4931,9 +4962,10 @@ fn witness_body_encoded_len(body: &WitnessBody) -> Result<EncodedLength, ProllyB
             )?;
 
             for record in records.as_ref() {
+                let record_len = record_encoded_len(record)?;
                 checked_add_to_len(
                     &mut len,
-                    record_encoded_len(record)?,
+                    record_len,
                     ("witness encoded length overflow").into(),
                 )?;
             }
@@ -4950,9 +4982,10 @@ fn optional_record_encoded_len(record: Option<&Record>) -> Result<EncodedLength,
     let mut len = EncodedLength::from(1_usize);
 
     if let Some(record) = record {
+        let record_len = record_encoded_len(record)?;
         checked_add_to_len(
             &mut len,
-            record_encoded_len(record)?,
+            record_len,
             ("witness encoded length overflow").into(),
         )?;
     }
@@ -4965,9 +4998,10 @@ fn optional_record_encoded_len(record: Option<&Record>) -> Result<EncodedLength,
 fn record_encoded_len(record: &Record) -> Result<EncodedLength, ProllyBaoError>
 {
     let mut len = len_prefixed_bytes_encoded_len(record.key().as_ref().into())?;
+    let value_len = len_prefixed_bytes_encoded_len(record.value().as_ref().into())?;
     checked_add_to_len(
         &mut len,
-        len_prefixed_bytes_encoded_len(record.value().as_ref().into())?,
+        value_len,
         ("witness encoded length overflow").into(),
     )?;
 
@@ -4983,9 +5017,10 @@ fn bound_encoded_len(bound: &OwnedKeyBound) -> Result<EncodedLength, ProllyBaoEr
     match *bound {
         | OwnedKeyBound::Unbounded => {},
         | OwnedKeyBound::Included(ref key) | OwnedKeyBound::Excluded(ref key) => {
+            let key_len = len_prefixed_bytes_encoded_len(key.as_ref().into())?;
             checked_add_to_len(
                 &mut len,
-                len_prefixed_bytes_encoded_len(key.as_ref().into())?,
+                key_len,
                 ("witness encoded length overflow").into(),
             )?;
         },
@@ -5094,7 +5129,8 @@ fn decode_snapshot_records<'bytes>(
     let mut records = Vec::<RecordRef<'bytes>>::with_capacity(usize::from(capacity));
 
     for _ in 0_u64 .. u64::from(record_count) {
-        records.push(decode_snapshot_record(cursor)?);
+        let record = decode_snapshot_record(cursor)?;
+        records.push(record);
     }
 
     return Ok(records);
@@ -5105,14 +5141,10 @@ fn decode_snapshot_record<'bytes>(
     cursor: &mut SnapshotCursor<'bytes>
 ) -> Result<RecordRef<'bytes>, ProllyBaoError>
 {
-    let key = <&'bytes [u8]>::from(decode_snapshot_bytes(
-        cursor,
-        ("snapshot key bytes are truncated").into(),
-    )?);
-    let value = <&'bytes [u8]>::from(decode_snapshot_bytes(
-        cursor,
-        ("snapshot value bytes are truncated").into(),
-    )?);
+    let key = decode_snapshot_bytes(cursor, ("snapshot key bytes are truncated").into())?;
+    let key = <&'bytes [u8]>::from(key);
+    let value = decode_snapshot_bytes(cursor, ("snapshot value bytes are truncated").into())?;
+    let value = <&'bytes [u8]>::from(value);
 
     return Ok(RecordRef::new(
         RecordKey::from(key),
@@ -5126,7 +5158,8 @@ fn decode_snapshot_bytes<'bytes>(
     context: DecodeContext,
 ) -> Result<WirePayload<'bytes>, ProllyBaoError>
 {
-    let len = usize_from_snapshot_u64(cursor.read_u64()?, context)?;
+    let len = cursor.read_u64()?;
+    let len = usize_from_snapshot_u64(len, context)?;
 
     return cursor
         .take(len, context)
@@ -5139,13 +5172,11 @@ fn push_snapshot_len_prefixed_bytes(
     bytes: WirePayload<'_>,
 ) -> Result<(), ProllyBaoError>
 {
-    push_u64(
-        out,
-        WireLong::from(checked_numeric_conversion::<_, u64>(
-            bytes.as_ref().len(),
-            ("snapshot byte length does not fit u64").into(),
-        )?),
-    );
+    let byte_len = checked_numeric_conversion::<_, u64>(
+        bytes.as_ref().len(),
+        ("snapshot byte length does not fit u64").into(),
+    )?;
+    push_u64(out, WireLong::from(byte_len));
     out.extend_from_slice(bytes.as_ref());
 
     return Ok(());
@@ -5155,9 +5186,10 @@ fn push_snapshot_len_prefixed_bytes(
 fn snapshot_record_encoded_len(record: &Record) -> Result<EncodedLength, ProllyBaoError>
 {
     let mut len = snapshot_len_prefixed_bytes_encoded_len(record.key().as_ref().into())?;
+    let value_len = snapshot_len_prefixed_bytes_encoded_len(record.value().as_ref().into())?;
     checked_add_to_len(
         &mut len,
-        snapshot_len_prefixed_bytes_encoded_len(record.value().as_ref().into())?,
+        value_len,
         ("snapshot encoded length overflow").into(),
     )?;
 
@@ -5245,7 +5277,8 @@ fn canonical_record_bytes(
     let mut canonical = Vec::<OwnedRecordEncoding>::with_capacity(records.len());
 
     for record in records {
-        canonical.push(encode_record_for_chunker(*record)?);
+        let encoding = encode_record_for_chunker(*record)?;
+        canonical.push(encoding);
     }
 
     return Ok(canonical.into_boxed_slice());
@@ -5276,13 +5309,14 @@ fn encode_record_for_chunker(record: RecordRef<'_>) -> Result<OwnedRecordEncodin
         value.as_ref().len(),
         ("record value length does not fit u64").into(),
     )?;
+    let key_frame_len = checked_add_value!(
+        16_usize,
+        key.as_ref().len(),
+        ("record encoding length overflow").into(),
+    )?;
     let capacity = checked_add_value!(
         RECORD_MAGIC.len(),
-        checked_add_value!(
-            16_usize,
-            key.as_ref().len(),
-            ("record encoding length overflow").into(),
-        )?,
+        key_frame_len,
         ("record encoding length overflow").into()
     )?;
     let capacity = checked_add_value!(
@@ -5311,10 +5345,11 @@ fn build_leaf(records: &[RecordRef<'_>]) -> Result<LeafBuild, ProllyBaoError>
         ))),
         | None => None,
     };
-    let record_count = TreeRecordCount::from(checked_numeric_conversion::<_, u64>(
+    let record_count = checked_numeric_conversion::<_, u64>(
         records.len(),
         ("leaf record count does not fit u64").into(),
-    )?);
+    )?;
+    let record_count = TreeRecordCount::from(record_count);
 
     return Ok(LeafBuild {
         hash,
@@ -5377,10 +5412,11 @@ fn collect_leaf_hashes(leaves: &[LeafBuild]) -> Box<[NodeHash]>
 /// Encodes a leaf node.
 fn encode_leaf_node(records: &[RecordRef<'_>]) -> Result<OwnedEncodedNode, ProllyBaoError>
 {
-    let record_count = TreeRecordCount::from(checked_numeric_conversion::<_, u64>(
+    let record_count = checked_numeric_conversion::<_, u64>(
         records.len(),
         ("leaf record count does not fit u64").into(),
-    )?);
+    )?;
+    let record_count = TreeRecordCount::from(record_count);
     let mut bytes = WireBuffer::default();
     push_node_header(&mut bytes, WireTag::from(NODE_KIND_LEAF));
     push_u64(&mut bytes, WireLong::from(u64::from(record_count)));
@@ -5408,20 +5444,22 @@ fn encode_leaf_node(records: &[RecordRef<'_>]) -> Result<OwnedEncodedNode, Proll
 /// Encodes an internal root node.
 fn encode_internal_node(leaves: &[LeafBuild]) -> Result<OwnedEncodedNode, ProllyBaoError>
 {
-    let child_count = NodeChildCount::from(checked_numeric_conversion::<_, u64>(
+    let child_count = checked_numeric_conversion::<_, u64>(
         leaves.len(),
         ("internal child count does not fit u64").into(),
-    )?);
+    )?;
+    let child_count = NodeChildCount::from(child_count);
     let mut total_records = TreeRecordCount::from(0_u64);
     let mut bytes = WireBuffer::default();
     push_node_header(&mut bytes, WireTag::from(NODE_KIND_INTERNAL));
 
     for leaf in leaves {
-        total_records = TreeRecordCount::from(checked_add_value!(
+        let accumulated = checked_add_value!(
             u64::from(total_records),
             u64::from(leaf.record_count),
             ("internal record count overflow").into()
-        )?);
+        )?;
+        total_records = TreeRecordCount::from(accumulated);
     }
 
     push_u64(&mut bytes, WireLong::from(u64::from(total_records)));
@@ -5486,7 +5524,8 @@ fn decode_proof_nodes(nodes: &[ProofNode]) -> Result<Vec<DecodedNode>, ProllyBao
             });
         }
 
-        decoded.push(decode_encoded_node(node.clone())?);
+        let decoded_node = decode_encoded_node(node.clone())?;
+        decoded.push(decoded_node);
     }
 
     return Ok(decoded);
@@ -5506,7 +5545,8 @@ fn read_node_header(cursor: &mut Cursor<'_>) -> Result<WireTag, ProllyBaoError>
         });
     }
 
-    let version = u16::from(cursor.read_u16()?);
+    let version = cursor.read_u16()?;
+    let version = u16::from(version);
 
     if version != u16::from(EncodingVersion::CURRENT) {
         return Err(ProllyBaoError::UnsupportedEncodingVersion { version });
@@ -5522,8 +5562,14 @@ fn decode_encoded_node(node: ProofNode) -> Result<DecodedNode, ProllyBaoError>
     let mut cursor = Cursor::node((node_bytes).into());
     let kind = read_node_header(&mut cursor)?;
     let decoded_kind = match u8::from(kind) {
-        | NODE_KIND_LEAF => DecodedNodeKind::Leaf(decode_leaf_payload(&mut cursor)?),
-        | NODE_KIND_INTERNAL => DecodedNodeKind::Internal(decode_internal_payload(&mut cursor)?),
+        | NODE_KIND_LEAF => {
+            let leaf = decode_leaf_payload(&mut cursor)?;
+            DecodedNodeKind::Leaf(leaf)
+        },
+        | NODE_KIND_INTERNAL => {
+            let internal = decode_internal_payload(&mut cursor)?;
+            DecodedNodeKind::Internal(internal)
+        },
         | _ => {
             return Err(ProllyBaoError::MalformedNodeBytes {
                 context: "unknown node kind",
@@ -5546,21 +5592,25 @@ fn decode_encoded_node(node: ProofNode) -> Result<DecodedNode, ProllyBaoError>
 /// Inspects a leaf payload without materializing owned records.
 fn inspect_leaf_payload(cursor: &mut Cursor<'_>) -> Result<TreeRecordCount, ProllyBaoError>
 {
-    let count = u64::from(cursor.read_u64()?);
+    let count = cursor.read_u64()?;
+    let count = u64::from(count);
     let mut previous_key: Option<&[u8]> = None;
     let mut previous_index = 0_u64;
     let mut current_index = 0_u64;
 
     for _ in 0_u64 .. count {
+        let key_len = cursor.read_u64()?;
         let key_len = checked_numeric_conversion::<_, usize>(
-            u64::from(cursor.read_u64()?),
+            u64::from(key_len),
             ("leaf key length does not fit usize").into(),
         )?;
+        let value_len = cursor.read_u64()?;
         let value_len = checked_numeric_conversion::<_, usize>(
-            u64::from(cursor.read_u64()?),
+            u64::from(value_len),
             ("leaf value length does not fit usize").into(),
         )?;
-        let key = <&[u8]>::from(cursor.take((key_len).into(), ("leaf key is truncated").into())?);
+        let key = cursor.take((key_len).into(), ("leaf key is truncated").into())?;
+        let key = <&[u8]>::from(key);
         cursor.take((value_len).into(), ("leaf value is truncated").into())?;
 
         if let Some(previous) = previous_key {
@@ -5592,8 +5642,10 @@ fn inspect_leaf_payload(cursor: &mut Cursor<'_>) -> Result<TreeRecordCount, Prol
 /// Inspects an internal payload without materializing owned child references.
 fn inspect_internal_payload(cursor: &mut Cursor<'_>) -> Result<NodeChildCount, ProllyBaoError>
 {
-    let record_count = u64::from(cursor.read_u64()?);
-    let child_count = u64::from(cursor.read_u64()?);
+    let record_count = cursor.read_u64()?;
+    let record_count = u64::from(record_count);
+    let child_count = cursor.read_u64()?;
+    let child_count = u64::from(child_count);
 
     if child_count == 0_u64 {
         return Err(ProllyBaoError::MalformedNodeBytes {
@@ -5605,19 +5657,22 @@ fn inspect_internal_payload(cursor: &mut Cursor<'_>) -> Result<NodeChildCount, P
     let mut previous_first_key: Option<&[u8]> = None;
 
     for _ in 0_u64 .. child_count {
+        let first_key_len = cursor.read_u64()?;
         let first_key_len = checked_numeric_conversion::<_, usize>(
-            u64::from(cursor.read_u64()?),
+            u64::from(first_key_len),
             ("internal separator length does not fit usize").into(),
         )?;
-        let first_key = <&[u8]>::from(cursor.take(
+        let first_key = cursor.take(
             (first_key_len).into(),
             ("internal separator key is truncated").into(),
-        )?);
+        )?;
+        let first_key = <&[u8]>::from(first_key);
         cursor.take(
             (NODE_HASH_LEN).into(),
             ("internal child hash is truncated").into(),
         )?;
-        let child_record_count = u64::from(cursor.read_u64()?);
+        let child_record_count = cursor.read_u64()?;
+        let child_record_count = u64::from(child_record_count);
 
         if child_record_count == 0_u64 {
             return Err(ProllyBaoError::MalformedNodeBytes {
@@ -5653,7 +5708,8 @@ fn inspect_internal_payload(cursor: &mut Cursor<'_>) -> Result<NodeChildCount, P
 /// Decodes a leaf payload.
 fn decode_leaf_payload(cursor: &mut Cursor<'_>) -> Result<DecodedLeaf, ProllyBaoError>
 {
-    let count = u64::from(cursor.read_u64()?);
+    let count = cursor.read_u64()?;
+    let count = u64::from(count);
     let capacity =
         checked_numeric_conversion(count, ("leaf record count does not fit usize").into())?;
     let mut records = Vec::<Record>::with_capacity(capacity);
@@ -5662,20 +5718,20 @@ fn decode_leaf_payload(cursor: &mut Cursor<'_>) -> Result<DecodedLeaf, ProllyBao
     let mut current_index = 0_u64;
 
     for _ in 0_u64 .. count {
+        let key_len = cursor.read_u64()?;
         let key_len = checked_numeric_conversion::<_, usize>(
-            u64::from(cursor.read_u64()?),
+            u64::from(key_len),
             ("leaf key length does not fit usize").into(),
         )?;
+        let value_len = cursor.read_u64()?;
         let value_len = checked_numeric_conversion::<_, usize>(
-            u64::from(cursor.read_u64()?),
+            u64::from(value_len),
             ("leaf value length does not fit usize").into(),
         )?;
-        let key = OwnedRecordKey::from(Box::<[u8]>::from(
-            cursor.take((key_len).into(), ("leaf key is truncated").into())?,
-        ));
-        let value = OwnedRecordValue::from(Box::<[u8]>::from(
-            cursor.take((value_len).into(), ("leaf value is truncated").into())?,
-        ));
+        let key = cursor.take((key_len).into(), ("leaf key is truncated").into())?;
+        let key = OwnedRecordKey::from(Box::<[u8]>::from(key));
+        let value = cursor.take((value_len).into(), ("leaf value is truncated").into())?;
+        let value = OwnedRecordValue::from(Box::<[u8]>::from(value));
 
         if let Some(previous) = previous_key.as_ref() {
             match previous.as_ref().cmp(key.as_ref()) {
@@ -5709,8 +5765,10 @@ fn decode_leaf_payload(cursor: &mut Cursor<'_>) -> Result<DecodedLeaf, ProllyBao
 /// Decodes an internal payload.
 fn decode_internal_payload(cursor: &mut Cursor<'_>) -> Result<DecodedInternal, ProllyBaoError>
 {
-    let record_count = u64::from(cursor.read_u64()?);
-    let child_count = u64::from(cursor.read_u64()?);
+    let record_count = cursor.read_u64()?;
+    let record_count = u64::from(record_count);
+    let child_count = cursor.read_u64()?;
+    let child_count = u64::from(child_count);
 
     if child_count == 0_u64 {
         return Err(ProllyBaoError::MalformedNodeBytes {
@@ -5726,18 +5784,21 @@ fn decode_internal_payload(cursor: &mut Cursor<'_>) -> Result<DecodedInternal, P
     let mut previous_first_key: Option<OwnedRecordKey> = None;
 
     for _ in 0_u64 .. child_count {
+        let first_key_len = cursor.read_u64()?;
         let first_key_len = checked_numeric_conversion::<_, usize>(
-            u64::from(cursor.read_u64()?),
+            u64::from(first_key_len),
             ("internal separator length does not fit usize").into(),
         )?;
-        let first_key = OwnedRecordKey::from(Box::<[u8]>::from(cursor.take(
+        let first_key = cursor.take(
             (first_key_len).into(),
             ("internal separator key is truncated").into(),
-        )?));
-        let child_hash = NodeHash::from(
-            cursor.take_array::<NODE_HASH_LEN>(("internal child hash is truncated").into())?,
-        );
-        let child_record_count = u64::from(cursor.read_u64()?);
+        )?;
+        let first_key = OwnedRecordKey::from(Box::<[u8]>::from(first_key));
+        let child_hash =
+            cursor.take_array::<NODE_HASH_LEN>(("internal child hash is truncated").into())?;
+        let child_hash = NodeHash::from(child_hash);
+        let child_record_count = cursor.read_u64()?;
+        let child_record_count = u64::from(child_record_count);
 
         if child_record_count == 0_u64 {
             return Err(ProllyBaoError::MalformedNodeBytes {

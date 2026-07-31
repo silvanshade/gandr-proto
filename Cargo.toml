@@ -503,6 +503,7 @@ missing_const_for_fn = "allow"
 useless_let_if_seq = "allow"
 
 # pedantic
+similar_names = "allow"
 too_many_lines = "allow"
 uninlined_format_args = "allow"
 
@@ -657,9 +658,11 @@ pattern = [
   # across the workspace (tracked in the dylint residual bead); see
   # docs/workflow/rust.md "Toolchain upgrades" residuals.
   # "examples/restriction/inconsistent_qualification",
-  "examples/restriction/misleading_variable_name",
+  # Disabled 2026-07-31: purposely ignored — the lint's name/usage matching is too coarse to be useful (not tracked as a residual).
+  # "examples/restriction/misleading_variable_name",
+  # Disabled 2026-07-31: purposely ignored — the lint's caller-before-callee order conflicts with deliberate top-down layouts and is unsatisfiable for shared test fixture helpers (not tracked as a residual).
   # "examples/restriction/non_topologically_sorted_functions",
-  # "examples/restriction/question_mark_in_expression",
+  "examples/restriction/question_mark_in_expression",
   "examples/restriction/ref_aware_redundant_closure_for_method_calls",
   "examples/restriction/register_lints_warn",
   "examples/restriction/suboptimal_pattern",

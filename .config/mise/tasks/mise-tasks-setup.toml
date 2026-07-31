@@ -3,6 +3,7 @@
 
 ["toolchain:materialize"]
 description = "Materialize the Dylint driver's ignored rust-toolchain file from mise's nightly pin"
+quiet = true
 run = """
 printf '%s\n' "$RUSTUP_TOOLCHAIN_NIGHTLY" > crates/workflow-dylint/rust-toolchain
 """

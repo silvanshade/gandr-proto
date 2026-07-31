@@ -115,8 +115,8 @@ fn annotation_is_erased()
     );
     let shielding = Value::annot(Value::Hole(0), ValueType::integer());
     assert_eq!(
-        lower_value(&closed(), &mut arena, &shielding),
         Err(BridgeRejection::ValueHole),
+        lower_value(&closed(), &mut arena, &shielding),
         "erasing the ascription still lowers its interior, so an inner hole rejects"
     );
 }
@@ -171,8 +171,8 @@ fn a_free_name_is_unbound()
     let mut arena = gandr_kernel_core::TermArena::new();
     let free = Value::var("greeting");
     assert_eq!(
-        lower_value(&closed(), &mut arena, &free),
         Err(BridgeRejection::UnboundName(String::from("greeting"))),
+        lower_value(&closed(), &mut arena, &free),
         "a free name with no binder and no constant mapping is unbound"
     );
 }
@@ -261,23 +261,23 @@ fn hole_unknown_class_rejects_exactly()
 {
     let mut arena = gandr_kernel_core::TermArena::new();
     assert_eq!(
-        lower_value(&closed(), &mut arena, &Value::Hole(0)),
         Err(BridgeRejection::ValueHole),
+        lower_value(&closed(), &mut arena, &Value::Hole(0)),
         "a value hole rejects with the exact ValueHole variant"
     );
     assert_eq!(
-        lower_comp(&closed(), &mut arena, &Comp::Hole(0)),
         Err(BridgeRejection::ComputationHole),
+        lower_comp(&closed(), &mut arena, &Comp::Hole(0)),
         "a computation hole rejects with the exact ComputationHole variant"
     );
     assert_eq!(
-        lower_value_type(&mut arena, &ValueType::Unknown),
         Err(BridgeRejection::UnknownValueType),
+        lower_value_type(&mut arena, &ValueType::Unknown),
         "the unknown value type rejects exactly"
     );
     assert_eq!(
-        lower_comp_type(&mut arena, &CompType::Unknown),
         Err(BridgeRejection::UnknownComputationType),
+        lower_comp_type(&mut arena, &CompType::Unknown),
         "the unknown computation type rejects exactly"
     );
 }
@@ -288,8 +288,8 @@ fn effects_control_class_rejects_exactly()
     let mut arena = gandr_kernel_core::TermArena::new();
     let reset = Comp::Reset(Rc::new(Comp::Ret(Rc::new(Value::Unit))));
     assert_eq!(
-        lower_comp(&closed(), &mut arena, &reset),
         Err(BridgeRejection::Reset),
+        lower_comp(&closed(), &mut arena, &reset),
         "a control `reset` rejects with the exact Reset variant"
     );
     let perform = Comp::Perform(
@@ -298,8 +298,8 @@ fn effects_control_class_rejects_exactly()
         Rc::new(Value::Unit),
     );
     assert_eq!(
-        lower_comp(&closed(), &mut arena, &perform),
         Err(BridgeRejection::Perform),
+        lower_comp(&closed(), &mut arena, &perform),
         "an effect `perform` rejects with the exact Perform variant"
     );
 }
@@ -313,8 +313,8 @@ fn native_class_rejects_exactly()
         args: Vec::new(),
     };
     assert_eq!(
-        lower_comp(&closed(), &mut arena, &native),
         Err(BridgeRejection::Native),
+        lower_comp(&closed(), &mut arena, &native),
         "a native primitive rejects with the exact Native variant"
     );
 }
@@ -329,8 +329,8 @@ fn declared_data_class_rejects_exactly()
         payload: Rc::new(Value::Unit),
     };
     assert_eq!(
-        lower_value(&closed(), &mut arena, &ctor),
         Err(BridgeRejection::DataConstructor),
+        lower_value(&closed(), &mut arena, &ctor),
         "a declared-data constructor rejects with the exact DataConstructor variant"
     );
 }
@@ -340,13 +340,13 @@ fn structural_stock_class_rejects_exactly()
 {
     let mut arena = gandr_kernel_core::TermArena::new();
     assert_eq!(
-        lower_value(&closed(), &mut arena, &Value::List(Vec::new())),
         Err(BridgeRejection::ListValue),
+        lower_value(&closed(), &mut arena, &Value::List(Vec::new())),
         "a list value rejects with the exact ListValue variant"
     );
     assert_eq!(
-        lower_value(&closed(), &mut arena, &Value::Record(BTreeMap::new())),
         Err(BridgeRejection::RecordValue),
+        lower_value(&closed(), &mut arena, &Value::Record(BTreeMap::new())),
         "a record value rejects with the exact RecordValue variant"
     );
 }
@@ -357,8 +357,8 @@ fn sigma_split_class_rejects_exactly()
     let mut arena = gandr_kernel_core::TermArena::new();
     let sigma = ValueType::sigma(ValueType::Unit, "x", ValueType::Unit);
     assert_eq!(
-        lower_value_type(&mut arena, &sigma),
         Err(BridgeRejection::SigmaType),
+        lower_value_type(&mut arena, &sigma),
         "a dependent-pair type rejects with the exact SigmaType variant"
     );
 }
@@ -369,8 +369,8 @@ fn identity_class_rejects_exactly()
     let mut arena = gandr_kernel_core::TermArena::new();
     let here = Value::here(Value::Unit);
     assert_eq!(
-        lower_value(&closed(), &mut arena, &here),
         Err(BridgeRejection::HereProof),
+        lower_value(&closed(), &mut arena, &here),
         "a reflexivity proof rejects with the exact HereProof variant"
     );
 }
@@ -380,8 +380,8 @@ fn universe_class_rejects_exactly()
 {
     let mut arena = gandr_kernel_core::TermArena::new();
     assert_eq!(
-        lower_value_type(&mut arena, &ValueType::Universe),
         Err(BridgeRejection::UniverseType),
+        lower_value_type(&mut arena, &ValueType::Universe),
         "the un-levelled code universe rejects with the exact UniverseType variant"
     );
 }
@@ -391,13 +391,13 @@ fn machine_numeric_class_rejects_exactly()
 {
     let mut arena = gandr_kernel_core::TermArena::new();
     assert_eq!(
-        lower_value(&closed(), &mut arena, &Value::u32(1_u32)),
         Err(BridgeRejection::MachineNumericLiteral),
+        lower_value(&closed(), &mut arena, &Value::u32(1_u32)),
         "a machine-numeric literal rejects with the exact MachineNumericLiteral variant"
     );
     assert_eq!(
-        lower_value_type(&mut arena, &ValueType::atom("u64")),
         Err(BridgeRejection::UnsupportedBaseAtom(String::from("u64"))),
+        lower_value_type(&mut arena, &ValueType::atom("u64")),
         "a machine-numeric atom rejects with the exact UnsupportedBaseAtom variant"
     );
 }

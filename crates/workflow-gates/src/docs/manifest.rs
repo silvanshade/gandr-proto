@@ -494,7 +494,8 @@ pub fn run_manifest_drift(manifest_path: &Path) -> GateResult
 
     for verification in &verified_nodes {
         if verification.status != VerifyStatus::Ok {
-            findings.push(verification_finding(verification, &reverse_edges)?);
+            let finding = verification_finding(verification, &reverse_edges)?;
+            findings.push(finding);
         }
     }
 
@@ -727,7 +728,8 @@ fn parse_edges(
     )?;
     let mut edges = Vec::new();
     for edge_yaml in values {
-        edges.push(parse_edge(manifest_path, edge_yaml)?);
+        let edge = parse_edge(manifest_path, edge_yaml)?;
+        edges.push(edge);
     }
     return Ok(edges);
 }
@@ -800,7 +802,8 @@ fn verify_nodes(context: &ManifestContext) -> Result<Vec<VerifyResult>, GateErro
 {
     let mut verified_nodes = Vec::new();
     for node in context.nodes() {
-        verified_nodes.push(verify_node(context, node)?);
+        let verified = verify_node(context, node)?;
+        verified_nodes.push(verified);
     }
     return Ok(verified_nodes);
 }
@@ -1186,7 +1189,8 @@ mod tests
             ),
         )?;
 
-        let findings = sorted_findings(run_manifest_drift(&fixture.manifest)?);
+        let drift_findings = run_manifest_drift(&fixture.manifest)?;
+        let findings = sorted_findings(drift_findings);
         let drift = findings.iter().any(|finding| {
             finding.kind == "docs-manifest-drift"
                 && finding.path == "changed.md"

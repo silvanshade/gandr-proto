@@ -1,5 +1,5 @@
-//! Prose-pacing metrics over the document trees (proposal
-//! `docs/gandr/spec/proposal-docs-gf-pipeline.md` §3.5, the gandr-aaq arc).
+//! Prose-pacing metrics over the document trees (the docs-GF pipeline
+//! proposal §3.5, the gandr-aaq arc).
 //!
 //! Two lanes, both exact about what they measure:
 //!

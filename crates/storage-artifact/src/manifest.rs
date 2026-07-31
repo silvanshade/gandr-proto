@@ -448,14 +448,17 @@ impl ArtifactManifest
     {
         let mut cursor = ManifestCursor::new(bytes);
         cursor.expect_magic()?;
-        let manifest_version = cursor.read_u16()?.0;
+        let manifest_version = cursor.read_u16()?;
+        let manifest_version = manifest_version.0;
         if manifest_version != MANIFEST_FORMAT_VERSION_V1 {
             return Err(ManifestError::UnsupportedManifestVersion {
                 found: manifest_version,
             });
         }
-        let inner_format_version = InnerFormatVersion(cursor.read_u16()?.0);
-        let commitment_len = cursor.read_u16()?.0;
+        let inner_format_version = cursor.read_u16()?;
+        let inner_format_version = InnerFormatVersion(inner_format_version.0);
+        let commitment_len = cursor.read_u16()?;
+        let commitment_len = commitment_len.0;
         if usize::from(commitment_len) != CHUNKER_COMMITMENT_LEN {
             return Err(ManifestError::CommitmentLength {
                 found: u64::from(commitment_len),
@@ -463,7 +466,8 @@ impl ArtifactManifest
             });
         }
         let chunker_commitment = cursor.read_commitment()?;
-        let record_count = ArtifactRecordCount(cursor.read_u64()?.0);
+        let record_count = cursor.read_u64()?;
+        let record_count = ArtifactRecordCount(record_count.0);
         let root_node_hash = cursor.read_node_hash()?;
         if cursor.state() == CursorState::Trailing {
             return Err(ManifestError::TrailingBytes);
@@ -604,6 +608,12 @@ mod tests
     use super::NodeHash;
     use crate::error::ManifestError;
 
+    /// The big-endian wire form of the 85-byte commitment length.
+    const COMMITMENT_LEN_WIRE: [u8; 2] = {
+        let wide = CHUNKER_COMMITMENT_LEN.to_be_bytes();
+        [wide[6], wide[7]]
+    };
+
     /// A fixed manifest whose canonical bytes are hand-verifiable.
     fn golden_manifest() -> ArtifactManifest
     {
@@ -630,7 +640,7 @@ mod tests
         expected.extend_from_slice(MANIFEST_MAGIC);
         expected.extend_from_slice(&[0x00, 0x01]); // manifest version 1
         expected.extend_from_slice(&[0x00, 0x01]); // inner format version 1
-        expected.extend_from_slice(&[0x00, 0x55]); // commitment length 85
+        expected.extend_from_slice(&COMMITMENT_LEN_WIRE); // commitment length 85
         expected.extend_from_slice(&[0_u8; CHUNKER_COMMITMENT_LEN]);
         expected.extend_from_slice(&[0_u8; 8]); // record count 0
         expected.extend_from_slice(&[0_u8; ARTIFACT_IDENTITY_LEN]); // root node hash
@@ -641,8 +651,8 @@ mod tests
             "the canonical manifest layout is pinned"
         );
         assert_eq!(
-            encoded.len(),
             157,
+            encoded.len(),
             "the fixed manifest is exactly 157 bytes"
         );
     }
@@ -749,8 +759,8 @@ mod tests
         bytes[version_offset] = 0x00;
         bytes[version_offset.wrapping_add(1)] = 0x02;
         assert_eq!(
-            ArtifactManifest::decode(bytes.as_ref().into()),
             Err(ManifestError::UnsupportedManifestVersion { found: 2 }),
+            ArtifactManifest::decode(bytes.as_ref().into()),
             "an unknown manifest version is a named refusal"
         );
     }
@@ -764,8 +774,8 @@ mod tests
         let mut bad_magic = good.clone();
         bad_magic[0] = b'X';
         assert_eq!(
-            ArtifactManifest::decode(bad_magic.as_ref().into()),
             Err(ManifestError::BadMagic),
+            ArtifactManifest::decode(bad_magic.as_ref().into()),
             "a wrong magic rejects"
         );
 
@@ -774,16 +784,16 @@ mod tests
             .expect("nonempty")
             .to_vec();
         assert_eq!(
-            ArtifactManifest::decode(truncated.as_slice().into()),
             Err(ManifestError::Truncated),
+            ArtifactManifest::decode(truncated.as_slice().into()),
             "a truncated buffer rejects"
         );
 
         let mut trailing = good.as_ref().to_vec();
         trailing.push(0x00);
         assert_eq!(
-            ArtifactManifest::decode(trailing.as_slice().into()),
             Err(ManifestError::TrailingBytes),
+            ArtifactManifest::decode(trailing.as_slice().into()),
             "a trailing byte rejects"
         );
     }
@@ -795,12 +805,12 @@ mod tests
         let mut bytes = golden_manifest().encode();
         // The commitment length word follows magic + two version words.
         let length_offset = MANIFEST_MAGIC.len().wrapping_add(4);
-        bytes[length_offset] = 0x00;
-        bytes[length_offset.wrapping_add(1)] = 0x54; // 84, not 85
+        bytes[length_offset] = COMMITMENT_LEN_WIRE[0];
+        bytes[length_offset.wrapping_add(1)] = COMMITMENT_LEN_WIRE[1].wrapping_sub(1); // 84, not 85
         match ArtifactManifest::decode(bytes.as_ref().into()) {
             | Err(ManifestError::CommitmentLength { found, expected }) => {
-                assert_eq!(found, 84);
-                assert_eq!(expected, CHUNKER_COMMITMENT_LEN);
+                assert_eq!(84, found);
+                assert_eq!(CHUNKER_COMMITMENT_LEN, expected);
             },
             | other => panic!("expected a commitment-length refusal, got {other:?}"),
         }

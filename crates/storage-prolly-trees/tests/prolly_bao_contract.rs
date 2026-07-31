@@ -210,8 +210,8 @@ mod tests
             "lookup should return the value bound to an existing key"
         );
         assert_eq!(
-            tree.lookup(b"g".as_slice().into()),
             None,
+            tree.lookup(b"g".as_slice().into()),
             "lookup should return no value for an absent key"
         );
 
@@ -325,7 +325,7 @@ mod tests
             .expect("existing key should produce a compact membership proof");
         let compact_node_count = compact_membership.nodes().len();
         assert_eq!(
-            compact_node_count, 2_usize,
+            2_usize, compact_node_count,
             "membership proof should carry root plus the selected leaf",
         );
         compact_membership
@@ -370,7 +370,7 @@ mod tests
             proof.root_node_hash(),
             proof.key(),
             proof.value(),
-            vec![proof_node(proof.nodes(), 0)].into_boxed_slice(),
+            [proof_node(proof.nodes(), 0)],
         );
         let omitted_selected_error = omitted_selected
             .verify(&root, &params, (b"d").into(), (b"delta").into())
@@ -385,7 +385,7 @@ mod tests
             proof.root_node_hash(),
             proof.key(),
             proof.value(),
-            vec![proof_node(proof.nodes(), 1), proof_node(proof.nodes(), 0)].into_boxed_slice(),
+            [proof_node(proof.nodes(), 1), proof_node(proof.nodes(), 0)],
         );
         let root_not_first_witness = WitnessTranscript::from_membership_proof(root_not_first)
             .expect("misordered compact proof should still encode as witness material");
@@ -407,16 +407,16 @@ mod tests
             .prove_non_membership((b"dd").into())
             .expect("absent middle key should produce a compact non-membership proof");
         assert_eq!(
-            compact_absent.nodes().len(),
             3_usize,
+            compact_absent.nodes().len(),
             "middle-key non-membership proof should carry root, selected leaf, and successor leaf",
         );
 
         let compact_witness = WitnessTranscript::from_non_membership_proof(compact_absent)
             .expect("compact non-membership proof should form a witness transcript");
         assert_eq!(
-            compact_witness.nodes().len(),
             3_usize,
+            compact_witness.nodes().len(),
             "middle-key non-membership witness should carry the compact node set",
         );
 
@@ -424,8 +424,8 @@ mod tests
             .prove_non_membership((b"zz").into())
             .expect("absent trailing key should produce a compact non-membership proof");
         assert_eq!(
-            trailing_absent.nodes().len(),
             2_usize,
+            trailing_absent.nodes().len(),
             "trailing non-membership proof should carry only root and selected leaf",
         );
         trailing_absent
@@ -435,8 +435,8 @@ mod tests
         let trailing_witness = WitnessTranscript::from_non_membership_proof(trailing_absent)
             .expect("trailing compact non-membership proof should form a witness transcript");
         assert_eq!(
-            trailing_witness.nodes().len(),
             2_usize,
+            trailing_witness.nodes().len(),
             "trailing non-membership witness should carry only root and selected leaf",
         );
         let decoded_trailing_witness = round_trip_witness(&trailing_witness);
@@ -455,15 +455,15 @@ mod tests
             .prove_range(broad_range)
             .expect("broad range should produce a compact range proof");
         assert_eq!(
-            broad_proof.nodes().len(),
             3_usize,
+            broad_proof.nodes().len(),
             "broad range proof should carry root plus the contiguous selected leaves",
         );
         let broad_witness = WitnessTranscript::from_range_proof(broad_proof)
             .expect("broad compact range proof should form a witness transcript");
         assert_eq!(
-            broad_witness.nodes().len(),
             3_usize,
+            broad_witness.nodes().len(),
             "broad range witness should carry the compact node set",
         );
 
@@ -473,15 +473,15 @@ mod tests
             .prove_range(narrow_range)
             .expect("narrow range should produce a compact range proof");
         assert_eq!(
-            narrow_proof.nodes().len(),
             2_usize,
+            narrow_proof.nodes().len(),
             "narrow range proof should carry only root and the selected leaf",
         );
         let narrow_witness = WitnessTranscript::from_range_proof(narrow_proof)
             .expect("narrow compact range proof should form a witness transcript");
         assert_eq!(
-            narrow_witness.nodes().len(),
             2_usize,
+            narrow_witness.nodes().len(),
             "narrow range witness should carry only root and the selected leaf",
         );
     }
@@ -501,7 +501,7 @@ mod tests
             proof.root_node_hash(),
             proof.key(),
             proof.evidence().clone(),
-            vec![proof_node(proof.nodes(), 0), proof_node(proof.nodes(), 2)],
+            [proof_node(proof.nodes(), 0), proof_node(proof.nodes(), 2)],
         );
         let omitted_selected_error = omitted_selected
             .verify(&root, &params, (b"dd").into())
@@ -516,7 +516,7 @@ mod tests
             proof.root_node_hash(),
             proof.key(),
             proof.evidence().clone(),
-            vec![proof_node(proof.nodes(), 0), proof_node(proof.nodes(), 1)],
+            [proof_node(proof.nodes(), 0), proof_node(proof.nodes(), 1)],
         );
         let omitted_successor_error = omitted_successor
             .verify(&root, &params, (b"dd").into())
@@ -534,7 +534,7 @@ mod tests
             trailing.root_node_hash(),
             trailing.key(),
             trailing.evidence().clone(),
-            vec![
+            [
                 proof_node(trailing.nodes(), 0),
                 proof_node(trailing.nodes(), 1),
                 proof_node(proof.nodes(), 1),
@@ -553,7 +553,7 @@ mod tests
             proof.root_node_hash(),
             proof.key(),
             proof.evidence().clone(),
-            vec![
+            [
                 proof_node(proof.nodes(), 0),
                 proof_node(proof.nodes(), 2),
                 proof_node(proof.nodes(), 1),
@@ -572,7 +572,7 @@ mod tests
             proof.root_node_hash(),
             proof.key(),
             proof.evidence().clone(),
-            vec![
+            [
                 proof_node(proof.nodes(), 1),
                 proof_node(proof.nodes(), 0),
                 proof_node(proof.nodes(), 2),
@@ -606,8 +606,8 @@ mod tests
             proof.envelope().clone(),
             proof.root_node_hash(),
             proof.range().clone(),
-            proof.records().to_vec(),
-            vec![proof_node(proof.nodes(), 0), proof_node(proof.nodes(), 1)],
+            proof.records(),
+            [proof_node(proof.nodes(), 0), proof_node(proof.nodes(), 1)],
         );
         let omitted_child_error = omitted_child
             .verify_for_range(&root, &params, range)
@@ -621,8 +621,8 @@ mod tests
             proof.envelope().clone(),
             proof.root_node_hash(),
             proof.range().clone(),
-            proof.records().to_vec(),
-            vec![
+            proof.records(),
+            [
                 proof_node(proof.nodes(), 0),
                 proof_node(proof.nodes(), 2),
                 proof_node(proof.nodes(), 1),
@@ -642,8 +642,8 @@ mod tests
             proof.envelope().clone(),
             proof.root_node_hash(),
             OwnedKeyRange::from_ref(wider_range),
-            proof.records().to_vec(),
-            proof.nodes().to_vec(),
+            proof.records(),
+            proof.nodes(),
         );
         let wrong_bounds_error = wrong_bounds
             .verify_for_range(&root, &params, wider_range)
@@ -662,7 +662,7 @@ mod tests
             proof.root_node_hash(),
             proof.range().clone(),
             incomplete_records,
-            proof.nodes().to_vec(),
+            proof.nodes(),
         );
         let incomplete_error = incomplete
             .verify_for_range(&root, &params, range)
@@ -682,7 +682,7 @@ mod tests
             proof.root_node_hash(),
             proof.range().clone(),
             unsorted_records,
-            proof.nodes().to_vec(),
+            proof.nodes(),
         );
         let unsorted_error = unsorted
             .verify_for_range(&root, &params, range)
@@ -964,7 +964,7 @@ mod tests
             tree.root_node_hash(),
             non_membership.key(),
             malformed_evidence,
-            non_membership.nodes().to_vec(),
+            non_membership.nodes(),
         );
         let malformed_evidence_witness =
             WitnessTranscript::from_non_membership_proof(malformed_non_membership)
@@ -989,8 +989,8 @@ mod tests
             range_proof.envelope().clone(),
             tree.root_node_hash(),
             OwnedKeyRange::from_ref(wider_range),
-            range_proof.records().to_vec(),
-            range_proof.nodes().to_vec(),
+            range_proof.records(),
+            range_proof.nodes(),
         );
         let malformed_bounds_witness = WitnessTranscript::from_range_proof(malformed_bounds)
             .expect("malformed bounds proof should form a witness transcript");
@@ -1027,7 +1027,7 @@ mod tests
             tree.root_node_hash(),
             range_proof.range().clone(),
             duplicate_records,
-            range_proof.nodes().to_vec(),
+            range_proof.nodes(),
         );
         let duplicate_witness = WitnessTranscript::from_range_proof(duplicate_proof)
             .expect("duplicate record proof should form a witness transcript");
@@ -1050,7 +1050,7 @@ mod tests
             tree.root_node_hash(),
             range_proof.range().clone(),
             reordered_records,
-            range_proof.nodes().to_vec(),
+            range_proof.nodes(),
         );
         let reordered_witness = WitnessTranscript::from_range_proof(reordered_proof)
             .expect("reordered record proof should form a witness transcript");
@@ -1080,17 +1080,17 @@ mod tests
         let mut unsupported_version = Vec::<u8>::from(valid_bytes.as_ref());
         let version_offset = WITNESS_MAGIC.len();
         assert_eq!(
+            WITNESS_MAGIC,
             unsupported_version
                 .get(.. version_offset)
                 .expect("witness bytes should include magic"),
-            WITNESS_MAGIC,
             "witness bytes should start with the transcript magic"
         );
         assert_eq!(
+            &[0_u8, 1_u8],
             unsupported_version
                 .get(version_offset .. version_offset + 2_usize)
                 .expect("witness bytes should include a version field"),
-            &[0_u8, 1_u8],
             "current witness version should be encoded immediately after magic"
         );
         unsupported_version
@@ -1140,11 +1140,11 @@ mod tests
             .expect("witness bytes should include an end summary");
 
         assert_eq!(
+            WITNESS_END_SUMMARY_MAGIC,
             valid_bytes
                 .as_ref()
                 .get(summary_start .. summary_start + WITNESS_END_SUMMARY_MAGIC.len())
                 .expect("witness end summary should include magic"),
-            WITNESS_END_SUMMARY_MAGIC,
             "witness bytes should carry the terminal end-summary magic"
         );
 
@@ -1301,13 +1301,13 @@ mod tests
             .expect("locally changed records should build");
 
         assert_eq!(
-            base.leaf_hashes().len(),
             3_usize,
+            base.leaf_hashes().len(),
             "compact fixture should force three deterministic leaves"
         );
         assert_eq!(
-            changed.leaf_hashes().len(),
             3_usize,
+            changed.leaf_hashes().len(),
             "changed compact fixture should preserve leaf count"
         );
         assert_eq!(
@@ -1505,10 +1505,10 @@ mod tests
             .checked_add(2_usize)
             .expect("snapshot version offset should not overflow");
         assert_eq!(
+            &[0_u8, 1_u8],
             unsupported_version
                 .get(version_offset .. version_end)
                 .expect("snapshot bytes should include a version field"),
-            &[0_u8, 1_u8],
             "current snapshot version should be encoded immediately after magic"
         );
         unsupported_version
@@ -1637,7 +1637,7 @@ mod tests
             ("native witness transcript bytes should not be accepted as snapshot encoding").into(),
         );
 
-        let (bao_encoded, _bao_hash) = bao::encode::encode(bytes.as_ref());
+        let (bao_encoded, _bao_hash) = bao::encode::encode(&bytes);
         let bao_encoding_error = expect_snapshot_verify_failure(
             (bao_encoded.as_slice()).into(),
             tree.root(),
@@ -1676,7 +1676,7 @@ mod tests
     {
         let snapshot_bytes = snapshot_bytes.as_ref();
         let (bao_encoded, bao_hash) = bao::encode::encode(snapshot_bytes);
-        let decoded = bao::decode::decode(bao_encoded.as_slice(), &bao_hash)
+        let decoded = bao::decode::decode(&bao_encoded, &bao_hash)
             .expect("Bao verifier should decode bytes encoded from the snapshot");
 
         assert_eq!(
@@ -1874,8 +1874,8 @@ mod tests
     )
     {
         assert_eq!(
-            summary.version(),
             WitnessTranscript::VERSION,
+            summary.version(),
             "witness end summary should bind the witness transcript version"
         );
         assert_eq!(
@@ -2110,7 +2110,7 @@ mod tests
             proof.root_node_hash(),
             proof.key(),
             proof.value(),
-            nodes.into_boxed_slice(),
+            nodes,
         );
     }
 }

@@ -1401,7 +1401,8 @@ mod tests
                 }}
             }}"#
         );
-        assert!(validate_default_dependency_graph_metadata(&dev_only)?.is_empty());
+        let dev_findings = validate_default_dependency_graph_metadata(&dev_only)?;
+        assert!(dev_findings.is_empty());
 
         let root_without_resolve_node = format!(
             r#"{{
@@ -1410,7 +1411,8 @@ mod tests
                 "resolve": {{"nodes": []}}
             }}"#
         );
-        assert!(validate_default_dependency_graph_metadata(&root_without_resolve_node)?.is_empty());
+        let root_findings = validate_default_dependency_graph_metadata(&root_without_resolve_node)?;
+        assert!(root_findings.is_empty());
         Ok(())
     }
 
@@ -1575,7 +1577,8 @@ mod tests
         git_commit(&repo, "record submodule")?;
 
         let iu_path = Path::new("deps/iu");
-        assert!(check_iu_pin(&repo, iu_path)?.is_empty());
+        let pin_findings = check_iu_pin(&repo, iu_path)?;
+        assert!(pin_findings.is_empty());
 
         crate::support::HOST_FILESYSTEM
             .write(repo.join(iu_path).join("README.md"), "dirty\n")

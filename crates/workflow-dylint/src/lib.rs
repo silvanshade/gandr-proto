@@ -341,7 +341,8 @@ struct FunctionNode
 {
     /// The function's whole-item span, used as the diagnostic target.
     span: Span,
-    /// The function's stable rustc def-path string, used for deterministic SCC ordering.
+    /// The function's stable rustc def-path string, used for deterministic SCC
+    /// ordering.
     path: String,
     /// The HIR id of the function body expression root.
     body_hir_id: HirId,
@@ -490,13 +491,13 @@ fn implements_non_local_trait(
     def_id: LocalDefId,
 ) -> NonLocalTraitImpl
 {
-    NonLocalTraitImpl(trait_ref_of_method(cx, rustc_hir::OwnerId { def_id }).is_some_and(
-        |trait_ref| {
+    NonLocalTraitImpl(
+        trait_ref_of_method(cx, rustc_hir::OwnerId { def_id }).is_some_and(|trait_ref| {
             trait_ref
                 .trait_def_id()
                 .is_some_and(|trait_def_id| !trait_def_id.is_local())
-        },
-    ))
+        }),
+    )
 }
 
 /// Collect crate-local free-function and method callsites under `expr`.
@@ -735,8 +736,7 @@ fn required_bullet_has_value(
 ) -> BulletHasValue
 {
     BulletHasValue(
-        line
-            .0
+        line.0
             .strip_prefix(prefix.0)
             .is_some_and(|value| !value.trim().is_empty()),
     )
@@ -1195,17 +1195,14 @@ fn check_fn_decl<'tcx>(
                     continue;
                 }
                 match ty.kind {
-                    | TyKind::Slice(inner) | TyKind::Array(inner, _) => {
-                        match *semantic_ty.kind() {
-                            | rustc_ty::Slice(semantic_inner)
-                            | rustc_ty::Array(semantic_inner, _) => {
-                                work.push(PrimitiveWork::SemanticTy(inner, semantic_inner));
-                            },
-                            | _ => {
-                                emit_primitive(cx, ty.span);
-                                diagnostics.0 = diagnostics.0.saturating_add(1_usize);
-                            },
-                        }
+                    | TyKind::Slice(inner) | TyKind::Array(inner, _) => match *semantic_ty.kind() {
+                        | rustc_ty::Slice(semantic_inner) | rustc_ty::Array(semantic_inner, _) => {
+                            work.push(PrimitiveWork::SemanticTy(inner, semantic_inner));
+                        },
+                        | _ => {
+                            emit_primitive(cx, ty.span);
+                            diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                        },
                     },
                     | TyKind::Ptr(mut_ty) => match *semantic_ty.kind() {
                         | rustc_ty::RawPtr(semantic_inner, _) => {
@@ -1238,9 +1235,7 @@ fn check_fn_decl<'tcx>(
                         },
                     },
                     | TyKind::Tup(types) => match *semantic_ty.kind() {
-                        | rustc_ty::Tuple(semantic_types)
-                            if semantic_types.len() == types.len() =>
-                        {
+                        | rustc_ty::Tuple(semantic_types) if semantic_types.len() == types.len() => {
                             for (inner, semantic_inner) in
                                 types.iter().zip(semantic_types.iter()).rev()
                             {
@@ -1295,44 +1290,42 @@ fn check_fn_decl<'tcx>(
                     work.push(PrimitiveWork::SemanticTy(input, *semantic_input));
                 }
             },
-            | PrimitiveWork::HirTy(ty) => {
-                match ty.kind {
-                    | TyKind::Slice(inner)
-                    | TyKind::Array(inner, _)
-                    | TyKind::Pat(inner, _)
-                    | TyKind::FieldOf(inner, _) => {
+            | PrimitiveWork::HirTy(ty) => match ty.kind {
+                | TyKind::Slice(inner)
+                | TyKind::Array(inner, _)
+                | TyKind::Pat(inner, _)
+                | TyKind::FieldOf(inner, _) => {
+                    work.push(PrimitiveWork::HirTy(inner));
+                },
+                | TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => {
+                    work.push(PrimitiveWork::HirTy(mut_ty.ty));
+                },
+                | TyKind::FnPtr(fn_ptr) => {
+                    work.push(PrimitiveWork::HirFnDecl(fn_ptr.decl));
+                },
+                | TyKind::Tup(types) => {
+                    for inner in types.iter().rev() {
                         work.push(PrimitiveWork::HirTy(inner));
-                    },
-                    | TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => {
-                        work.push(PrimitiveWork::HirTy(mut_ty.ty));
-                    },
-                    | TyKind::FnPtr(fn_ptr) => {
-                        work.push(PrimitiveWork::HirFnDecl(fn_ptr.decl));
-                    },
-                    | TyKind::Tup(types) => {
-                        for inner in types.iter().rev() {
-                            work.push(PrimitiveWork::HirTy(inner));
-                        }
-                    },
-                    | TyKind::Path(ref qpath) => {
-                        if let Res::PrimTy(primitive) = cx.qpath_res(qpath, ty.hir_id)
-                            && is_disallowed_primitive(primitive).0
-                        {
-                            emit_primitive(cx, ty.span);
-                            diagnostics.0 = diagnostics.0.saturating_add(1_usize);
-                        }
-                    },
-                    | TyKind::OpaqueDef(opaque) => {
-                        work.push(PrimitiveWork::Opaque(opaque));
-                    },
-                    | TyKind::InferDelegation(_)
-                    | TyKind::UnsafeBinder(_)
-                    | TyKind::Never
-                    | TyKind::TraitAscription(_)
-                    | TyKind::TraitObject(..)
-                    | TyKind::Err(_)
-                    | TyKind::Infer(()) => {},
-                }
+                    }
+                },
+                | TyKind::Path(ref qpath) => {
+                    if let Res::PrimTy(primitive) = cx.qpath_res(qpath, ty.hir_id)
+                        && is_disallowed_primitive(primitive).0
+                    {
+                        emit_primitive(cx, ty.span);
+                        diagnostics.0 = diagnostics.0.saturating_add(1_usize);
+                    }
+                },
+                | TyKind::OpaqueDef(opaque) => {
+                    work.push(PrimitiveWork::Opaque(opaque));
+                },
+                | TyKind::InferDelegation(_)
+                | TyKind::UnsafeBinder(_)
+                | TyKind::Never
+                | TyKind::TraitAscription(_)
+                | TyKind::TraitObject(..)
+                | TyKind::Err(_)
+                | TyKind::Infer(()) => {},
             },
             | PrimitiveWork::HirFnDecl(decl) => {
                 if let FnRetTy::Return(output) = decl.output {
@@ -1399,7 +1392,10 @@ fn semantic_type_args<'tcx>(
 {
     let semantic_ty = normalize_middle_ty(cx, semantic_ty);
     match *semantic_ty.kind() {
-        | rustc_ty::Adt(_, args) => args.iter().filter_map(rustc_ty::GenericArg::as_type).collect(),
+        | rustc_ty::Adt(_, args) => args
+            .iter()
+            .filter_map(rustc_ty::GenericArg::as_type)
+            .collect(),
         | rustc_ty::Tuple(types) => types.iter().collect(),
         | _ => Vec::new(),
     }

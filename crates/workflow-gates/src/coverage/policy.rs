@@ -1051,8 +1051,8 @@ where
     let section = line
         .strip_prefix('[')
         .and_then(|text| text.strip_suffix(']'))
-        .ok_or(TomlParseError::InvalidSyntax)?
-        .trim();
+        .ok_or(TomlParseError::InvalidSyntax)?;
+    let section = section.trim();
     let parsed = match section {
         | "files" => TomlSection::Files,
         | "new_file_exemptions" => TomlSection::Exemptions,

@@ -22,6 +22,15 @@ use gandr_kernel_core::ValueId;
 use gandr_kernel_core::ValueTypeId;
 use gandr_kernel_strata::Level;
 
+/// Proptest recursion depth for the bounded spec strategies.
+const SPEC_RECURSION_DEPTH: u32 = 3;
+/// Proptest expected branch size for the bounded spec strategies.
+const SPEC_BRANCH_SIZE: u32 = 3;
+/// Proptest node budget for the value-type spec strategy.
+const VALUE_TYPE_SPEC_SIZE: u32 = 24;
+/// Proptest node budget for the value spec strategy.
+const VALUE_SPEC_SIZE: u32 = 40;
+
 /// A description of a value type, independent of any arena.
 #[derive(Clone, Debug)]
 pub enum ValueTypeSpec
@@ -644,25 +653,30 @@ pub fn arb_value_type_spec() -> impl Strategy<Value = ValueTypeSpec>
         Just(ValueTypeSpec::Unit),
         arb_level().prop_map(ValueTypeSpec::Universe),
     ];
-    leaf.prop_recursive(3, 24, 3, |inner| {
-        prop_oneof![
-            (inner.clone(), inner.clone())
-                .prop_map(|(one, two)| ValueTypeSpec::Product(Box::new(one), Box::new(two))),
-            (inner.clone(), inner.clone())
-                .prop_map(|(one, two)| ValueTypeSpec::Sum(Box::new(one), Box::new(two))),
-            (inner.clone(), arb_level())
-                .prop_map(|(inner, target)| ValueTypeSpec::Lift(Box::new(inner), target)),
-            inner.clone().prop_map(|result| {
-                ValueTypeSpec::Thunk(Box::new(CompTypeSpec::Returner(Box::new(result))))
-            }),
-            (inner.clone(), inner).prop_map(|(domain, result)| ValueTypeSpec::Thunk(Box::new(
-                CompTypeSpec::Arrow(
-                    Box::new(domain),
-                    Box::new(CompTypeSpec::Returner(Box::new(result))),
-                )
-            ))),
-        ]
-    })
+    leaf.prop_recursive(
+        SPEC_RECURSION_DEPTH,
+        VALUE_TYPE_SPEC_SIZE,
+        SPEC_BRANCH_SIZE,
+        |inner| {
+            prop_oneof![
+                (inner.clone(), inner.clone())
+                    .prop_map(|(one, two)| ValueTypeSpec::Product(Box::new(one), Box::new(two))),
+                (inner.clone(), inner.clone())
+                    .prop_map(|(one, two)| ValueTypeSpec::Sum(Box::new(one), Box::new(two))),
+                (inner.clone(), arb_level())
+                    .prop_map(|(inner, target)| ValueTypeSpec::Lift(Box::new(inner), target)),
+                inner.clone().prop_map(|result| {
+                    ValueTypeSpec::Thunk(Box::new(CompTypeSpec::Returner(Box::new(result))))
+                }),
+                (inner.clone(), inner).prop_map(|(domain, result)| ValueTypeSpec::Thunk(Box::new(
+                    CompTypeSpec::Arrow(
+                        Box::new(domain),
+                        Box::new(CompTypeSpec::Returner(Box::new(result))),
+                    )
+                ))),
+            ]
+        },
+    )
 }
 
 /// A bounded computation-type spec.
@@ -691,48 +705,47 @@ pub fn arb_value_spec() -> impl Strategy<Value = ValueSpec>
         Just(ValueSpec::Unit),
         arb_literal().prop_map(ValueSpec::Literal),
     ];
-    leaf.prop_recursive(3, 40, 3, |inner| {
-        let side = prop_oneof![Just(Side::Left), Just(Side::Right)];
-        prop_oneof![
-            (inner.clone(), inner.clone())
-                .prop_map(|(one, two)| ValueSpec::Pair(Box::new(one), Box::new(two))),
-            (side, inner.clone())
-                .prop_map(|(side, body)| ValueSpec::Injection(side, Box::new(body))),
-            (arb_level(), inner.clone())
-                .prop_map(|(target, body)| ValueSpec::Lift(target, Box::new(body))),
-            inner
-                .clone()
-                .prop_map(
-                    |value| ValueSpec::Thunk(Box::new(ComputationSpec::Return(Box::new(value))))
-                ),
-            inner
-                .clone()
-                .prop_map(
-                    |value| ValueSpec::Thunk(Box::new(ComputationSpec::Lambda(Box::new(
-                        ComputationSpec::Return(Box::new(value))
-                    ))))
-                ),
-            (inner.clone(), inner.clone()).prop_map(|(head, argument)| {
-                ValueSpec::Thunk(Box::new(ComputationSpec::Application(
-                    Box::new(ComputationSpec::Force(Box::new(head))),
-                    Box::new(argument),
-                )))
-            }),
-            (inner.clone(), inner.clone()).prop_map(|(first, second)| {
-                ValueSpec::Thunk(Box::new(ComputationSpec::Bind(
-                    Box::new(ComputationSpec::Return(Box::new(first))),
-                    Box::new(ComputationSpec::Return(Box::new(second))),
-                )))
-            }),
-            (inner.clone(), inner.clone(), inner).prop_map(|(scrutinee, left, right)| {
-                ValueSpec::Thunk(Box::new(ComputationSpec::Case(
-                    Box::new(scrutinee),
-                    Box::new(ComputationSpec::Return(Box::new(left))),
-                    Box::new(ComputationSpec::Return(Box::new(right))),
-                )))
-            }),
-        ]
-    })
+    leaf.prop_recursive(
+        SPEC_RECURSION_DEPTH,
+        VALUE_SPEC_SIZE,
+        SPEC_BRANCH_SIZE,
+        |inner| {
+            let side = prop_oneof![Just(Side::Left), Just(Side::Right)];
+            prop_oneof![
+                (inner.clone(), inner.clone())
+                    .prop_map(|(one, two)| ValueSpec::Pair(Box::new(one), Box::new(two))),
+                (side, inner.clone())
+                    .prop_map(|(side, body)| ValueSpec::Injection(side, Box::new(body))),
+                (arb_level(), inner.clone())
+                    .prop_map(|(target, body)| ValueSpec::Lift(target, Box::new(body))),
+                inner.clone().prop_map(|value| ValueSpec::Thunk(Box::new(
+                    ComputationSpec::Return(Box::new(value))
+                ))),
+                inner.clone().prop_map(|value| ValueSpec::Thunk(Box::new(
+                    ComputationSpec::Lambda(Box::new(ComputationSpec::Return(Box::new(value))))
+                ))),
+                (inner.clone(), inner.clone()).prop_map(|(head, argument)| {
+                    ValueSpec::Thunk(Box::new(ComputationSpec::Application(
+                        Box::new(ComputationSpec::Force(Box::new(head))),
+                        Box::new(argument),
+                    )))
+                }),
+                (inner.clone(), inner.clone()).prop_map(|(first, second)| {
+                    ValueSpec::Thunk(Box::new(ComputationSpec::Bind(
+                        Box::new(ComputationSpec::Return(Box::new(first))),
+                        Box::new(ComputationSpec::Return(Box::new(second))),
+                    )))
+                }),
+                (inner.clone(), inner.clone(), inner).prop_map(|(scrutinee, left, right)| {
+                    ValueSpec::Thunk(Box::new(ComputationSpec::Case(
+                        Box::new(scrutinee),
+                        Box::new(ComputationSpec::Return(Box::new(left))),
+                        Box::new(ComputationSpec::Return(Box::new(right))),
+                    )))
+                }),
+            ]
+        },
+    )
 }
 
 /// A bounded computation spec built from generated values.

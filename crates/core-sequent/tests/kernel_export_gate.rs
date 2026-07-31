@@ -230,13 +230,13 @@ mod tests
                 return;
             }
             assert_eq!(
-                self.eligible, ELIGIBLE_CARDINALITY,
+                ELIGIBLE_CARDINALITY, self.eligible,
                 "the export exit gate drove {} S1-eligible corpus items but pinned {ELIGIBLE_CARDINALITY} \
                  (the partition changed); regenerate with {BLESS_ENV}=1",
                 self.eligible
             );
             assert_eq!(
-                self.goldens, GOLDEN_CARDINALITY,
+                GOLDEN_CARDINALITY, self.goldens,
                 "the export exit gate drove {} kernel-native goldens but pinned {GOLDEN_CARDINALITY}",
                 self.goldens
             );
@@ -646,7 +646,10 @@ mod tests
     /// The checked-in exit-gate manifest path.
     fn manifest_path() -> PathBuf
     {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/kernel_export_gate.manifest")
+        PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/kernel_export_gate.manifest"
+        ))
     }
 
     /// Reads the pinned record lines, verifying the `corpus-fixtures-b3sum`

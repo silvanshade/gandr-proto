@@ -16,7 +16,7 @@
 //! (`Return`) — a failing call logs no `Return`, exactly as the machine takes
 //! no `Return` step past the failing frame — and that event log must equal the
 //! sequence of control registers the machine passes through. This is the
-//! verification anchor described in ADR-9 and `docs/gandr/VISION.md` §6.
+//! verification anchor described in ADR-9 and `VISION.md` §6.
 //!
 //! Scope discipline (Stage 1): core CBPV plus two spec-grounded A2
 //! extensions, each landed in checker, machine, and conformance generators

@@ -108,13 +108,13 @@ mod tests
             "empty leaf should report zero records"
         );
         assert_eq!(
-            layout.child_count(),
             None,
+            layout.child_count(),
             "leaf layout should not report an internal child count"
         );
         assert_eq!(
-            layout.occupancy(),
             NodeOccupancy::Empty,
+            layout.occupancy(),
             "zero-record leaf should be marked empty"
         );
     }
@@ -132,8 +132,8 @@ mod tests
         let layout = inspect_proof_node(node);
 
         assert_eq!(
-            layout.kind(),
             EncodedNodeKind::Leaf,
+            layout.kind(),
             "single-record root should inspect as a leaf node"
         );
         assert_eq!(
@@ -142,13 +142,13 @@ mod tests
             "single-record leaf should report one record"
         );
         assert_eq!(
-            layout.child_count(),
             None,
+            layout.child_count(),
             "leaf layout should not report an internal child count"
         );
         assert_eq!(
-            layout.occupancy(),
             NodeOccupancy::NonEmpty,
+            layout.occupancy(),
             "single-record leaf should not be marked empty"
         );
     }
@@ -167,36 +167,36 @@ mod tests
             .expect("multi-leaf tree should carry leaf proof nodes after the root");
 
         assert_eq!(
-            root_layout.kind(),
             EncodedNodeKind::Internal,
+            root_layout.kind(),
             "multi-leaf root should inspect as an internal node"
         );
         assert_eq!(
-            root_layout.record_count(),
             None,
+            root_layout.record_count(),
             "internal layout should not report a leaf record count"
         );
         assert_eq!(
-            root_layout.child_count(),
             Some(NodeChildCount::from(3_u64)),
+            root_layout.child_count(),
             "one-record-per-leaf params should produce three child references"
         );
         assert_eq!(
-            root_layout.occupancy(),
             NodeOccupancy::NonEmpty,
+            root_layout.occupancy(),
             "internal root with child references should not be marked empty"
         );
         assert_eq!(
-            leaf_nodes.len(),
             3_usize,
+            leaf_nodes.len(),
             "multi-leaf fixture should expose one proof leaf per record"
         );
 
         for leaf_node in leaf_nodes {
             let leaf_layout = inspect_proof_node(leaf_node);
             assert_eq!(
-                leaf_layout.kind(),
                 EncodedNodeKind::Leaf,
+                leaf_layout.kind(),
                 "each child proof node should inspect as a leaf"
             );
             assert_eq!(
@@ -205,13 +205,13 @@ mod tests
                 "one-record-per-leaf params should produce one record per leaf"
             );
             assert_eq!(
-                leaf_layout.child_count(),
                 None,
+                leaf_layout.child_count(),
                 "leaf child nodes should not report internal child counts"
             );
             assert_eq!(
-                leaf_layout.occupancy(),
                 NodeOccupancy::NonEmpty,
+                leaf_layout.occupancy(),
                 "single-record child leaves should not be marked empty"
             );
         }
@@ -333,8 +333,8 @@ mod tests
             .expect("multi-leaf fixture should carry an internal root node");
 
         assert_eq!(
-            inspect_proof_node(node).kind(),
             EncodedNodeKind::Internal,
+            inspect_proof_node(node).kind(),
             "multi-leaf fixture root should be internal"
         );
 

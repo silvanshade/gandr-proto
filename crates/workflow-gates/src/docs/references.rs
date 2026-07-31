@@ -288,7 +288,8 @@ fn is_direct_child(
 /// Parse an ADR number from an ADR record filename.
 fn adr_number_from_path(path: &Path) -> Option<String>
 {
-    let file_name = path.file_name()?.to_string_lossy();
+    let file_name = path.file_name()?;
+    let file_name = file_name.to_string_lossy();
     let mut saw_digit = false;
     let mut significant = String::new();
     for character in file_name.chars() {
@@ -731,8 +732,9 @@ mod tests
     {
         let fixture = fixture("missing-and-adr-fragment")?;
         crate::support::HOST_FILESYSTEM.remove_dir_all(&fixture.adr)?;
+        let numbers = adr_numbers(&fixture.corpus)?;
         assert!(
-            adr_numbers(&fixture.corpus)?.is_empty(),
+            numbers.is_empty(),
             "absent ADR directories should be treated as an empty registry"
         );
         crate::support::HOST_FILESYSTEM.create_dir_all(fixture.adr.join("nested"))?;

@@ -218,11 +218,13 @@ where
     })?;
     let metadata_object = value_object(&value, "metadata root")?;
 
-    let packages = get_array_field(metadata_object, "packages", "metadata root")?
+    let packages = get_array_field(metadata_object, "packages", "metadata root")?;
+    let packages = packages
         .iter()
         .map(parse_metadata_package)
         .collect::<Result<Vec<_>, _>>()?;
-    let workspace_members = get_array_field(metadata_object, "workspace_members", "metadata root")?
+    let workspace_members = get_array_field(metadata_object, "workspace_members", "metadata root")?;
+    let workspace_members = workspace_members
         .iter()
         .map(|member| value_string(member, "workspace member"))
         .collect::<Result<Vec<_>, _>>()?;
@@ -239,16 +241,23 @@ fn parse_metadata_package(package_value: &Value) -> Result<MetadataPackage, Gate
     let object = value_object(package_value, "package")?;
     let id = get_string_field(object, "id", "package")?;
     let name = get_string_field(object, "name", "package")?;
-    let manifest_path = PathBuf::from(get_string_field(object, "manifest_path", "package")?);
+    let manifest_path = get_string_field(object, "manifest_path", "package")?;
+    let manifest_path = PathBuf::from(manifest_path);
     let lib_src_path = match object.get("targets") {
-        | Some(targets) => parse_library_target_path(value_array(targets, "package targets")?)?,
+        | Some(targets) => {
+            let targets = value_array(targets, "package targets")?;
+            parse_library_target_path(targets)?
+        },
         | None => None,
     };
     let dependencies = match object.get("dependencies") {
-        | Some(dependency_values) => value_array(dependency_values, "package dependencies")?
-            .iter()
-            .map(parse_metadata_dependency)
-            .collect::<Result<Vec<_>, _>>()?,
+        | Some(dependency_values) => {
+            let dependency_values = value_array(dependency_values, "package dependencies")?;
+            dependency_values
+                .iter()
+                .map(parse_metadata_dependency)
+                .collect::<Result<Vec<_>, _>>()?
+        },
         | None => Vec::new(),
     };
 
@@ -326,18 +335,14 @@ fn parse_library_target_path(targets: &[Value]) -> Result<Option<PathBuf>, GateE
     for target in targets {
         let object = value_object(target, "package target")?;
         let kinds = get_array_field(object, "kind", "package target")?;
-        let is_library = kinds
+        let kind_names = kinds
             .iter()
             .map(|kind| value_string(kind, "target kind"))
-            .collect::<Result<Vec<_>, _>>()?
-            .iter()
-            .any(|kind| kind == "lib");
+            .collect::<Result<Vec<_>, _>>()?;
+        let is_library = kind_names.iter().any(|kind| kind == "lib");
         if is_library {
-            return Ok(Some(PathBuf::from(get_string_field(
-                object,
-                "src_path",
-                "package target",
-            )?)));
+            let src_path = get_string_field(object, "src_path", "package target")?;
+            return Ok(Some(PathBuf::from(src_path)));
         }
     }
     Ok(None)
@@ -1401,11 +1406,11 @@ fn rust_source_files(root: &Path) -> Result<Vec<PathBuf>, GateError>
     let mut files = Vec::new();
 
     while let Some(directory) = pending.pop() {
-        let mut entries = fs::read_dir(&directory)
-            .map_err(|error| GateError::Io {
-                path: directory.clone(),
-                source: error,
-            })?
+        let entries = fs::read_dir(&directory).map_err(|error| GateError::Io {
+            path: directory.clone(),
+            source: error,
+        })?;
+        let mut entries = entries
             .map(|entry| {
                 entry
                     .map(|dir_entry| dir_entry.path())

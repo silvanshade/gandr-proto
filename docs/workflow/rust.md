@@ -42,6 +42,12 @@
   The keystone: the checker and the machine are **total** — structured errors (`TypeError`, `Outcome::Error`, `LowerError`), never divergence.
 * **The `?` operator is a statement, not a subexpression.** Never bury `?` inside a larger expression (`f(x?)`, `Some(v?.0)`, `break g()?`): bind the fallible step with `let` first, then use the bound name (`question_mark_in_expression` is denied).
   When the introduced binding collides with an existing name, prefer shadowing (`let node = node(parent)?;`) over inventing a near-duplicate name — the shadow keeps each binding's provenance in source order.
+* **Shadow rather than suffix.** When a binding is never used again after a re-binding, reuse the same name instead of minting a suffixed variant (`jobs_value`, `entry_text`, `stripped`).
+  Trivial projections — unwrapping a wrapper field (`.0`, `.token`), dereferencing, `.trim()` — never justify a new name: they produce the same value under the same concept (`let section = section.trim();`).
+  Reserve a distinct name for a genuine transformation (parsing, decoding, conversion into a different domain type) or for a value that must stay live beside its successor.
+  Fewer names means fewer things a reader must track.
+* **No `as` conversions.** Never cast with `as` (`as_conversions` is denied): it truncates, wraps, and changes signedness silently.
+  Convert through the value's total API — `uN::from`/`uN::try_from` with the error consumed, or serialize the source width and take the bytes needed (`value.to_be_bytes()`, then pick the lanes).
 * **No unbounded recursion in the interpreter (ADR-47).** Rust has no guaranteed TCO, so recursion whose depth scales with unbounded input (list length, term/AST depth, environment size) is a latent stack overflow on real data.
   Across the interpreter use an explicit worklist / heap frame-stack / iterative loop; new input-scaled recursion is a review-blocking finding.
   Recursion bounded by a fixed small static structure is fine.
@@ -59,8 +65,8 @@
   Fix the source or file a bead — never bury drift in a `// TODO` (`todo` is lint-denied).
 * **Diagnostics through aifix** ([scripting.md](scripting.md)); `mise run cargo:clippy` and `mise run cargo:dylint` are pass/fail gates, not diagnostic-enumeration interfaces.
 * **Project-local Dylint rules.** `mise run cargo:dylint` loads the immutable Trail of Bits v6.0.1 source pin plus `gandr-workflow-dylint`.
-  The upstream inventory is exhaustive outside `Experimental` and `Testing`: eight `General` lints, all nine lints exported by `Supplementary`, and twelve `Restriction` lints.
-  Five isolated driver invocations cover project-local rules, ordinary upstream rules, `non_local_effect_before_unhandled_error`, `crate_wide_allow`, and warning-level `register_lints_warn`; `DYLINT_RUSTFLAGS="-D warnings"` makes every late-registered warning fatal.
+  The upstream inventory is exhaustive outside `Experimental` and `Testing` apart from three purposely-ignored lints: seven `General` lints (`non_local_effect_before_unhandled_error` ignored — its "handled" analysis false-positives against `Result`-consuming forms the wall accepts), all nine lints exported by `Supplementary`, and nine `Restriction` lints (`misleading_variable_name` ignored — its name/usage matching is too coarse to be useful; `non_topologically_sorted_functions` ignored — its single caller-before-callee order conflicts with deliberate top-down layouts and is unsatisfiable for shared test fixture helpers).
+  Four isolated driver invocations cover project-local rules, ordinary upstream rules, `crate_wide_allow`, and warning-level `register_lints_warn`; `DYLINT_RUSTFLAGS="-D warnings"` makes every late-registered warning fatal.
   `crate_wide_allow` covers every target kind, tests included: no crate-level `allow` is approved anywhere — the sanctioned test relaxation lives in `clippy.toml` configuration, which source attributes cannot express.
   `gandr-workflow-dylint` requires `#[repr(transparent)]` on every single-field struct and rejects project-defined function or method signatures that expose types from the [official primitive index](https://doc.rust-lang.org/std/primitive/index.html).
   Primitive detection follows aliases and non-nominal structural/generic containers; a semantically named transparent wrapper is the boundary, with explicit utility traits.
@@ -74,7 +80,7 @@
   **Known blind spot (2026-07-20):** the recursion rule sees only crate-local source-level call edges — derived-trait recursion (`Clone`/`PartialEq`/`Hash`/`Debug` on a recursive owned type routes through non-local std generics such as `Box<T>: Clone`, so no crate-local edge ever exists) and compiler-generated drop glue (no HIR function at all) are structurally invisible to it.
   Closure-mediated recursion is likewise invisible (2026-07-23, gandr-aaq): a self-call wrapped in a closure argument (`walk_list(xs, \&mut |x| f(x))`) produces no extracted edge, so a recursive walker shaped that way passes unmeasured while the identical direct recursion is held to the contract — write the explicit work stack regardless, treating the lint as a floor, not a proof.
   Destruction/duplication totality on recursive owned types is therefore **not gate-proven**; the mitigations are flat/arena representations or manual worklist impls, and a complementary type-plane lint is tracked as `gandr-cfo`.
-  `non_local_effect_before_unhandled_error` remains a separate driver invocation after a historical upstream panic on a core lib-test target; it currently shares the standard Dylint package scope and `--all-targets` selection, and must be re-split per-core if that defect recurs.
+  `non_local_effect_before_unhandled_error` is purposely ignored (see above); its inert `cfg_attr(dylint_lib = ...)` allow sites remain from when the lint was active, as do those of `non_topologically_sorted_functions`.
 
 ### Toolchain upgrades
 

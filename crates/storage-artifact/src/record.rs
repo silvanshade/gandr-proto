@@ -484,9 +484,9 @@ mod tests
                 first_index,
                 second_index,
             }) => {
-                assert_eq!(key, 3);
-                assert_eq!(first_index, 0);
-                assert_eq!(second_index, 1);
+                assert_eq!(3, key);
+                assert_eq!(0, first_index);
+                assert_eq!(1, second_index);
             },
             | other => panic!("expected a duplicate-key rejection, got {other:?}"),
         }

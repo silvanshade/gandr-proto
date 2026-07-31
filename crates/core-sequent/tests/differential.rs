@@ -11,7 +11,7 @@
 //! CEK retiring (B1 phase-3 stage F), the differential's evidence is preserved
 //! by **freezing** the L machine's own canonical outcome for each hand-built
 //! case — captured once from the final oracle-agreeing run — into a checked-in
-//! regression ([`Check`], `tests/fixtures/differential/<label>.snap`), and by
+//! regression snapshot ([`Check`]), and by
 //! keeping the **intrinsic** L-machine properties the generated lane witnesses:
 //! every run reaches a **defined** outcome and is **deterministic**
 //! ([`l_machine_is_total_and_deterministic`]). The frozen snapshots *are* the
@@ -989,6 +989,10 @@ mod tests
     #[test]
     fn hand_built_higher_order_native_cases_agree()
     {
+        const MAPPED_LIST: [i64; 2] = [10, 20];
+        const UPDATE_LIST: [i64; 3] = [10, 20, 30];
+        const MAPPING_INCREMENT: i64 = 100;
+
         let mut check = Check::load(("higher_order_native").into());
         // `each (\x. x + 1) [1, 2, 3]` maps to `[2, 3, 4]`.
         check.pin(&each(
@@ -1006,6 +1010,7 @@ mod tests
             closure1(("x").into(), Comp::ret(Value::var("x"))),
             int_list((&[]).into()),
         ));
+
         // The mapped result threads into an enclosing bind.
         check.pin(&Comp::bind(
             each(
@@ -1016,7 +1021,7 @@ mod tests
                         Value::int(2),
                     ),
                 ),
-                int_list((&[10, 20]).into()),
+                int_list((&MAPPED_LIST).into()),
             ),
             "ys",
             Comp::ret(Value::pair(Value::var("ys"), Value::var("ys"))),
@@ -1104,7 +1109,7 @@ mod tests
                     ("x").into(),
                     Comp::app(
                         Comp::app(Comp::native(NativePrim::Add), Value::var("x")),
-                        Value::int(100),
+                        Value::int(MAPPING_INCREMENT),
                     ),
                 ),
             ),
@@ -1117,7 +1122,7 @@ mod tests
             Comp::app(
                 Comp::app(
                     Comp::native(NativePrim::UpdateAt),
-                    int_list((&[10, 20, 30]).into()),
+                    int_list((&UPDATE_LIST).into()),
                 ),
                 Value::int(1),
             ),
@@ -1319,11 +1324,13 @@ mod tests
     #[test]
     fn hand_built_prelude_cases_agree()
     {
+        const FORCED_THUNK_BODY: i64 = 42;
+
         let mut check = Check::load(("prelude").into());
         // A hit: a thunk-valued name forces to its body, which continues.
         check.pin_with_prelude(&Comp::force(Value::var("f")), &[(
             String::from("f"),
-            Value::thunk(Grade::ONE, Comp::ret(Value::int(42))),
+            Value::thunk(Grade::ONE, Comp::ret(Value::int(FORCED_THUNK_BODY))),
         )]);
         // The forced body's value threads into the continuation.
         check.pin_with_prelude(
@@ -1854,11 +1861,13 @@ mod tests
     #[test]
     fn host_seam_resumes_a_single_unhandled_perform()
     {
+        const HOST_REPLY: i64 = 42;
+
         assert_host_seam(
             &Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
-            &[HostReply::Resume(Value::int(42))],
+            &[HostReply::Resume(Value::int(HOST_REPLY))],
             (&[("E", "op", Value::int(5))]).into(),
-            &Eval::Value(Comp::ret(Value::int(42))),
+            &Eval::Value(Comp::ret(Value::int(HOST_REPLY))),
         );
     }
 
@@ -1880,6 +1889,8 @@ mod tests
     #[test]
     fn host_seam_offers_deep_re_entry_in_order()
     {
+        const SECOND_REPLY: i64 = 99;
+
         assert_host_seam(
             &Comp::bind(
                 Comp::perform(sig("E".into(), "op".into()), "op", Value::int(1)),
@@ -1888,10 +1899,10 @@ mod tests
             ),
             &[
                 HostReply::Resume(Value::int(10)),
-                HostReply::Resume(Value::int(99)),
+                HostReply::Resume(Value::int(SECOND_REPLY)),
             ],
             (&[("E", "op", Value::int(1)), ("E", "op", Value::int(10))]).into(),
-            &Eval::Value(Comp::ret(Value::int(99))),
+            &Eval::Value(Comp::ret(Value::int(SECOND_REPLY))),
         );
     }
 
@@ -1901,6 +1912,9 @@ mod tests
     #[test]
     fn host_seam_offers_across_a_non_matching_handler()
     {
+        const HANDLED_CLAUSE_VALUE: i64 = 555;
+        const CROSS_HANDLER_REPLY: i64 = 20;
+
         assert_host_seam(
             &Comp::handle(
                 sig("E".into(), "keep".into()),
@@ -1911,13 +1925,18 @@ mod tests
                 ),
                 "r",
                 Comp::ret(Value::var("r")),
-                vec![OpClause::new("keep", "p", "k", Comp::ret(Value::int(555)))],
+                vec![OpClause::new(
+                    "keep",
+                    "p",
+                    "k",
+                    Comp::ret(Value::int(HANDLED_CLAUSE_VALUE)),
+                )],
             ),
-            &[HostReply::Resume(Value::int(20))],
+            &[HostReply::Resume(Value::int(CROSS_HANDLER_REPLY))],
             // Only the escaping `esc` reaches the host; the source handler claims
             // `keep` itself, so it is never offered.
             (&[("E", "esc", Value::int(7))]).into(),
-            &Eval::Value(Comp::ret(Value::int(555))),
+            &Eval::Value(Comp::ret(Value::int(HANDLED_CLAUSE_VALUE))),
         );
     }
 
@@ -1926,19 +1945,26 @@ mod tests
     #[test]
     fn host_seam_never_consulted_for_a_claimed_perform()
     {
+        const CLAIMED_CLAUSE_VALUE: i64 = 77;
+
         assert_host_seam(
             &Comp::handle(
                 sig("E".into(), "op".into()),
                 Comp::perform(sig("E".into(), "op".into()), "op", Value::int(5)),
                 "r",
                 Comp::ret(Value::var("r")),
-                vec![OpClause::new("op", "p", "k", Comp::ret(Value::int(77)))],
+                vec![OpClause::new(
+                    "op",
+                    "p",
+                    "k",
+                    Comp::ret(Value::int(CLAIMED_CLAUSE_VALUE)),
+                )],
             ),
             // A non-empty script would be a bug magnet; the host must not be
             // consulted at all.
             &[HostReply::Resume(Value::int(0))],
             (&[]).into(),
-            &Eval::Value(Comp::ret(Value::int(77))),
+            &Eval::Value(Comp::ret(Value::int(CLAIMED_CLAUSE_VALUE))),
         );
     }
 
@@ -1996,7 +2022,7 @@ mod tests
             &Comp::perform(
                 sig("E".into(), "op".into()),
                 "op",
-                Value::record(vec![
+                Value::record([
                     (String::from("a"), Value::int(1)),
                     (String::from("b"), Value::string("hi")),
                 ]),
@@ -2005,7 +2031,7 @@ mod tests
             (&[(
                 "E",
                 "op",
-                Value::record(vec![
+                Value::record([
                     (String::from("a"), Value::int(1)),
                     (String::from("b"), Value::string("hi")),
                 ]),
@@ -2096,9 +2122,11 @@ mod tests
         /// Resolve the label's checked-in snapshot path.
         fn path(self) -> std::path::PathBuf
         {
-            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("tests/fixtures/differential")
-                .join(format!("{}.snap", self.0))
+            std::path::PathBuf::from(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/tests/fixtures/differential"
+            ))
+            .join(format!("{}.snap", self.0))
         }
     }
 

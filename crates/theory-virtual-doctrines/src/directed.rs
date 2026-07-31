@@ -1,5 +1,5 @@
 //! **The LLV directed fragment** over the reflected layer
-//! (`docs/gandr/spec/proposal-vdc-reflection.md` §7; decisions **ADR-68** /
+//! (§7; decisions **ADR-68** /
 //! **ADR-69**).
 //!
 //! `FVDblTT` (the [`crate::syntax`] judgment layer) is deliberately first-order

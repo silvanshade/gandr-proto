@@ -1,6 +1,6 @@
 //! **The VDC reflection face** — the rewrite layer reflected as a virtual
 //! double category, with `FVDblTT` as its internal language
-//! (`docs/gandr/spec/proposal-vdc-reflection.md` §5–6; decisions **ADR-68**
+//! (§5–6; decisions **ADR-68**
 //! (formal reading + reflection face) and **ADR-69** (certificate identity and
 //! composition)).
 //!

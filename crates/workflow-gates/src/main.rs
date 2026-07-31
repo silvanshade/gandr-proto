@@ -690,7 +690,8 @@ where
     let mode = arguments
         .next()
         .ok_or_else(|| GateError::usage("coverage requires check or ratchet"))?;
-    let mode = match os_string_into_utf8("coverage mode", mode)?.as_str() {
+    let mode_text = os_string_into_utf8("coverage mode", mode)?;
+    let mode = match mode_text.as_str() {
         | "check" => CoverageCommand::Check,
         | "ratchet" => CoverageCommand::Ratchet,
         | other => {
@@ -764,7 +765,8 @@ where
         }
         else if argument == OsStr::new("--to") {
             let value = take_utf8_option_value("--to", &mut arguments)?;
-            set_once(&mut to, "--to", GitRef::new(&value)?)?;
+            let to_ref = GitRef::new(&value)?;
+            set_once(&mut to, "--to", to_ref)?;
         }
         else {
             return Err(unknown_argument(&argument));
@@ -798,11 +800,13 @@ where
         }
         else if argument == OsStr::new("--head") {
             let value = take_utf8_option_value("--head", &mut arguments)?;
-            set_once(&mut head, "--head", GitRef::new(&value)?)?;
+            let head_ref = GitRef::new(&value)?;
+            set_once(&mut head, "--head", head_ref)?;
         }
         else if argument == OsStr::new("--from") {
             let value = take_utf8_option_value("--from", &mut arguments)?;
-            set_once(&mut explicit_from, "--from", GitRef::new(value.trim())?)?;
+            let from_ref = GitRef::new(value.trim())?;
+            set_once(&mut explicit_from, "--from", from_ref)?;
         }
         else if argument == OsStr::new("--watermark") {
             let value = take_option_value("--watermark", &mut arguments)?;
@@ -837,7 +841,8 @@ where
     let mode = arguments
         .next()
         .ok_or_else(|| GateError::usage("mutants requires a mode"))?;
-    match os_string_into_utf8("mutants mode", mode)?.as_str() {
+    let mode_text = os_string_into_utf8("mutants mode", mode)?;
+    match mode_text.as_str() {
         | "snapshot" => parse_mutants_host(MutantsHostMode::Snapshot, arguments),
         | "push" => parse_mutants_host(MutantsHostMode::Push, arguments),
         | "merge" => parse_mutants_host(MutantsHostMode::Merge, arguments),
@@ -917,8 +922,8 @@ fn default_mutants_temporary_paths(
         .duration_since(UNIX_EPOCH)
         .map_err(|source| {
             GateError::operational(format!("system clock before UNIX epoch: {source}"))
-        })?
-        .as_nanos();
+        })?;
+    let nonce = nonce.as_nanos();
 
     for attempt in 0_u16 .. MUTANTS_TEMPORARY_PATH_ATTEMPTS {
         let paths = mutants_temporary_paths_candidate(workspace_root, mode, nonce, attempt);
@@ -1109,7 +1114,8 @@ where
     let mode = arguments
         .next()
         .ok_or_else(|| GateError::usage("workflow requires merge or push"))?;
-    let tier = match os_string_into_utf8("workflow mode", mode)?.as_str() {
+    let tier_text = os_string_into_utf8("workflow mode", mode)?;
+    let tier = match tier_text.as_str() {
         | "merge" => gandr_workflow_gates::workflow::Tier::Merge,
         | "push" => gandr_workflow_gates::workflow::Tier::Push,
         | other => {
@@ -1134,7 +1140,8 @@ where
     while let Some(argument) = arguments.next() {
         if argument == OsStr::new("--target") {
             let value = take_utf8_option_value("--target", &mut arguments)?;
-            set_once(&mut target, "--target", parse_fuzz_smoke_target(&value)?)?;
+            let parsed_target = parse_fuzz_smoke_target(&value)?;
+            set_once(&mut target, "--target", parsed_target)?;
         }
         else {
             return Err(unknown_argument(&argument));
@@ -1594,11 +1601,8 @@ fn fuzz_seed_files(target: FuzzSmokeTarget) -> Result<Vec<PathBuf>, GateError>
             path: path.clone(),
             source,
         })?;
-        if !file_type.is_symlink()
-            && gandr_workflow_gates::support::HOST_FILESYSTEM
-                .metadata(&path)?
-                .is_file()
-        {
+        let metadata = gandr_workflow_gates::support::HOST_FILESYSTEM.metadata(&path)?;
+        if !file_type.is_symlink() && metadata.is_file() {
             seeds.push(path);
         }
     }
@@ -2711,10 +2715,9 @@ impl MutantsScheduledOptions
     /// Convert scheduled parser state into required refs.
     fn into_required_refs(self) -> Result<(String, String), GateError>
     {
-        Ok((
-            required_value(self.from_ref, "mutants scheduled requires --from REF")?,
-            required_value(self.to_ref, "mutants scheduled requires --to REF")?,
-        ))
+        let from_ref = required_value(self.from_ref, "mutants scheduled requires --from REF")?;
+        let to_ref = required_value(self.to_ref, "mutants scheduled requires --to REF")?;
+        Ok((from_ref, to_ref))
     }
 }
 
@@ -2765,7 +2768,8 @@ mod tests
     #[test]
     fn parser_accepts_every_command_variant_and_default() -> TestResult
     {
-        if !running_under_binary_unit_test()?.0 {
+        let under_unit_test = running_under_binary_unit_test()?;
+        if !under_unit_test.0 {
             return Ok(());
         }
         let cases = [
@@ -3423,10 +3427,8 @@ mod tests
         Mode: Into<ModeText<'semantic>>,
     {
         let mode = mode.into().0;
-        assert_eq!(
-            options.workspace_root,
-            gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?
-        );
+        let current_dir = gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?;
+        assert_eq!(options.workspace_root, current_dir);
         assert!(options.cache_image.ends_with(std::path::PathBuf::from(
             ".microsandbox/gandr-mutants-cache.btrfs"
         )));
@@ -3440,7 +3442,8 @@ mod tests
     #[test]
     fn parser_rejects_malformed_options_modes_and_precedence() -> TestResult
     {
-        if !running_under_binary_unit_test()?.0 {
+        let under_unit_test = running_under_binary_unit_test()?;
+        if !under_unit_test.0 {
             return Ok(());
         }
         let cases = [
@@ -3700,7 +3703,8 @@ mod tests
     #[test]
     fn non_utf8_command_text_and_path_arguments_are_classified() -> TestResult
     {
-        if !running_under_binary_unit_test()?.0 {
+        let under_unit_test = running_under_binary_unit_test()?;
+        if !under_unit_test.0 {
             return Ok(());
         }
         assert_usage(
@@ -3783,7 +3787,8 @@ mod tests
     #[test]
     fn fuzz_target_parser_and_plan_projection_are_exact() -> TestResult
     {
-        if !running_under_binary_unit_test()?.0 {
+        let under_unit_test = running_under_binary_unit_test()?;
+        if !under_unit_test.0 {
             return Ok(());
         }
         let cases = [
@@ -3795,7 +3800,8 @@ mod tests
         ];
 
         for (name, target, feature) in cases {
-            assert_eq!(parse_fuzz_smoke_target(name)?, target);
+            let parsed_target = parse_fuzz_smoke_target(name)?;
+            assert_eq!(parsed_target, target);
             assert_eq!(target.as_str().as_ref(), name);
             assert_eq!(target.required_feature().map(|value| value.0), feature);
 
@@ -3871,17 +3877,18 @@ mod tests
     #[test]
     fn agda_plans_and_ready_checkout_are_exact_without_git() -> TestResult
     {
-        if !running_under_binary_unit_test()?.0 {
+        let under_unit_test = running_under_binary_unit_test()?;
+        if !under_unit_test.0 {
             return Ok(());
         }
         let root = TempRoot::create("agda-ready")?;
         let plan = AgdaDependencyPlan::new(root.path().to_path_buf());
         assert_eq!(plan.workspace_root(), root.path());
-        assert_eq!(agda_workspace_root(Some(root.path()))?, root.path());
-        assert_eq!(
-            agda_workspace_root(None)?,
-            gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?
-        );
+        let explicit_root = agda_workspace_root(Some(root.path()))?;
+        assert_eq!(explicit_root, root.path());
+        let default_root = agda_workspace_root(None)?;
+        let current_dir = gandr_workflow_gates::support::HOST_FILESYSTEM.current_dir()?;
+        assert_eq!(default_root, current_dir);
         assert_eq!(agda_vendor_dir(&plan), root.path().join(AGDA_VENDOR_DIR));
         assert_eq!(agda_stdlib_dir(&plan), root.path().join(AGDA_STDLIB_DIR));
         assert_eq!(
@@ -3948,15 +3955,9 @@ mod tests
         run_agda_deps_plan(&plan)?;
         let libraries = gandr_workflow_gates::support::HOST_FILESYSTEM
             .read_to_string(agda_libraries_file(&plan))?;
-        assert_eq!(
-            libraries,
-            format!(
-                "{}\n",
-                gandr_workflow_gates::support::HOST_FILESYSTEM
-                    .canonicalize(stdlib_lib)?
-                    .to_string_lossy()
-            )
-        );
+        let canonical_lib =
+            gandr_workflow_gates::support::HOST_FILESYSTEM.canonicalize(stdlib_lib)?;
+        assert_eq!(libraries, format!("{}\n", canonical_lib.to_string_lossy()));
         Ok(())
     }
 
@@ -3977,7 +3978,8 @@ mod tests
     #[test]
     fn process_status_and_stream_plans_are_observable_without_afl() -> TestResult
     {
-        if !running_under_binary_unit_test()?.0 {
+        let under_unit_test = running_under_binary_unit_test()?;
+        if !under_unit_test.0 {
             return Ok(());
         }
         #[cfg(unix)]
@@ -4000,7 +4002,8 @@ mod tests
             ExternalStream::Inherit,
             ExternalStream::Inherit,
         );
-        assert!(run_streaming_status(&status_plan)?.success());
+        let status = run_streaming_status(&status_plan)?;
+        assert!(status.success());
 
         let spawn_plan = FuzzExternalCommandPlan::new(
             executable,
@@ -4023,7 +4026,8 @@ mod tests
     #[test]
     fn outcomes_classify_payloads_before_process_exit() -> TestResult
     {
-        if !running_under_binary_unit_test()?.0 {
+        let under_unit_test = running_under_binary_unit_test()?;
+        if !under_unit_test.0 {
             return Ok(());
         }
         match GateOutcome::from_findings(Vec::new()) {

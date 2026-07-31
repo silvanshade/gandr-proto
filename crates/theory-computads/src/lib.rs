@@ -1,5 +1,5 @@
 //! **Fusion by completion** — phase **L2** of the sequent-machines kernel
-//! (`../../../docs/gandr/spec/proposal-sequent-kernel.md` §7 + the VDC
+//! (`proposal-sequent-kernel.md` §7 + the VDC
 //! addendum; decision K5; ADRs 65, 68, and 69).
 //!
 //! This crate is the third, purely-additive phase of the sequent kernel. It

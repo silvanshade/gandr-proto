@@ -159,7 +159,7 @@ const EXPECTED_DYLINT_PLUGIN_PATHS: &[&str] = &[
     "examples/restriction/collapsible_unwrap",
     "examples/restriction/const_path_join",
     "examples/restriction/env_literal",
-    "examples/restriction/misleading_variable_name",
+    "examples/restriction/question_mark_in_expression",
     "examples/restriction/ref_aware_redundant_closure_for_method_calls",
     "examples/restriction/register_lints_warn",
     "examples/restriction/suboptimal_pattern",
@@ -203,7 +203,7 @@ const EXPECTED_DYLINT_REPRESENTED_LINT_PATHS: &[&str] = &[
     "examples/restriction/collapsible_unwrap",
     "examples/restriction/const_path_join",
     "examples/restriction/env_literal",
-    "examples/restriction/misleading_variable_name",
+    "examples/restriction/question_mark_in_expression",
     "examples/restriction/ref_aware_redundant_closure_for_method_calls",
     "examples/restriction/register_lints_warn",
     "examples/restriction/suboptimal_pattern",
@@ -220,8 +220,8 @@ const EXPECTED_UPSTREAM_DYLINT_LIBS: &[&str] = &[
     "const_path_join",
     "env_literal",
     "incorrect_matches_operation",
-    "misleading_variable_name",
     "non_thread_safe_call_in_test",
+    "question_mark_in_expression",
     "ref_aware_redundant_closure_for_method_calls",
     "suboptimal_pattern",
     "supplementary",
@@ -280,9 +280,9 @@ fn workspace_mise_tasks(workspace: &Path) -> PathBuf
 /// Parse a workspace TOML file into a structural value.
 fn parse_toml_file(path: &Path) -> TestResult<toml::Value>
 {
-    Ok(toml::from_str(
-        &gandr_workflow_gates::support::HOST_FILESYSTEM.read_to_string(path)?,
-    )?)
+    let text = gandr_workflow_gates::support::HOST_FILESYSTEM.read_to_string(path)?;
+    let value = toml::from_str(&text)?;
+    Ok(value)
 }
 
 /// Locate a nested TOML value.
@@ -464,7 +464,8 @@ where
         .into_iter()
         .map(Into::into)
         .collect::<Vec<KeyText<'semantic>>>();
-    let Some(table) = toml_value_at(value, segments.iter().map(|segment| segment.0))?.as_table()
+    let table = toml_value_at(value, segments.iter().map(|segment| segment.0))?;
+    let Some(table) = table.as_table()
     else {
         return Err(Box::new(std::io::Error::other(format!(
             "TOML value `{}` is not a table",
@@ -831,18 +832,22 @@ fn pure_fixture_documentation_commands_dispatch_cleanly() -> TestResult
     ))?;
     let manifest = fixture.manifest_string();
 
-    assert_clean(cli::run_with_args(os_args([
+    let manifest_args = os_args([
         "gandr-workflow-gates",
         "docs-manifest",
         "--manifest",
         manifest.as_str(),
-    ]))?)?;
-    assert_clean(cli::run_with_args(os_args([
+    ]);
+    let outcome = cli::run_with_args(manifest_args)?;
+    assert_clean(outcome)?;
+    let reference_args = os_args([
         "gandr-workflow-gates",
         "docs-reference",
         "--manifest",
         manifest.as_str(),
-    ]))?)?;
+    ]);
+    let outcome = cli::run_with_args(reference_args)?;
+    assert_clean(outcome)?;
     Ok(())
 }
 
@@ -1226,10 +1231,8 @@ fn configured_mise_mutants_tasks_parse_without_internal_path_flags() -> TestResu
     ];
 
     for (task, mode) in cases {
-        let parsed = cli::parse_command(configured_mutants_task_args(
-            &mise_tasks_mutants_toml,
-            task,
-        )?)?;
+        let args = configured_mutants_task_args(&mise_tasks_mutants_toml, task)?;
+        let parsed = cli::parse_command(args)?;
         let cli::Command::Mutants { command, options } = parsed
         else {
             return Err(Box::new(std::io::Error::other(format!(
@@ -1284,18 +1287,12 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     let dylint_libraries = dylint_metadata_libraries(&manifest)?;
     let upstream_dylint_library = dylint_libraries[0_usize];
     let local_dylint_library = dylint_libraries[1_usize];
-    assert_eq!(
-        "https://github.com/trailofbits/dylint",
-        toml_table_string(upstream_dylint_library, "git")?.0
-    );
-    assert_eq!(
-        EXPECTED_DYLINT_REV,
-        toml_table_string(upstream_dylint_library, "rev")?.0
-    );
-    assert_eq!(
-        EXPECTED_LOCAL_DYLINT_PATH,
-        toml_table_string(local_dylint_library, "path")?.0
-    );
+    let upstream_git = toml_table_string(upstream_dylint_library, "git")?;
+    assert_eq!("https://github.com/trailofbits/dylint", upstream_git.0);
+    let upstream_rev = toml_table_string(upstream_dylint_library, "rev")?;
+    assert_eq!(EXPECTED_DYLINT_REV, upstream_rev.0);
+    let local_path = toml_table_string(local_dylint_library, "path")?;
+    assert_eq!(EXPECTED_LOCAL_DYLINT_PATH, local_path.0);
 
     let plugin_paths = toml_table_string_array(upstream_dylint_library, "pattern")?;
     let forbidden_paths = plugin_paths
@@ -1345,8 +1342,9 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
 
     let cargo_dylint_local = toml_table_at(&mise_tasks_cargo, ["cargo:dylint:local"])?;
+    let local_depends = toml_table_string_array(cargo_dylint_local, "depends")?;
     assert_string_sequence(
-        &toml_table_string_array(cargo_dylint_local, "depends")?,
+        &local_depends,
         ["toolchain:materialize"],
         "cargo:dylint:local must materialize the pinned driver toolchain",
     );
@@ -1358,14 +1356,14 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
             "cargo:dylint:local has no environment table",
         )));
     };
+    let target_dir = toml_table_string(local_dylint_env, "CARGO_TARGET_DIR")?;
     assert_eq!(
-        "{{ config_root }}/target/dylint-local",
-        toml_table_string(local_dylint_env, "CARGO_TARGET_DIR")?.0,
+        "{{ config_root }}/target/dylint-local", target_dir.0,
         "strict project-local artifacts must use their own target directory"
     );
+    let rustflags = toml_table_string(local_dylint_env, "DYLINT_RUSTFLAGS")?;
     assert_eq!(
-        "-D warnings -A clippy::std_instead_of_core",
-        toml_table_string(local_dylint_env, "DYLINT_RUSTFLAGS")?.0,
+        "-D warnings -A clippy::std_instead_of_core", rustflags.0,
         "strict project-local Dylint must deny every warning (the std_instead_of_core allowance is the documented nightly-2026-05-28 rollback residual)"
     );
     let cargo_dylint_local_script = toml_table_string(cargo_dylint_local, "run")?;
@@ -1379,8 +1377,9 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     };
 
     let cargo_dylint = toml_table_at(&mise_tasks_cargo, ["cargo:dylint"])?;
+    let dylint_depends = toml_table_string_array(cargo_dylint, "depends")?;
     assert_string_sequence(
-        &toml_table_string_array(cargo_dylint, "depends")?,
+        &dylint_depends,
         ["cargo:dylint:local"],
         "full cargo:dylint must depend on the strict project-local pass",
     );
@@ -1483,7 +1482,8 @@ fn merge_gate_task_order_is_locked() -> TestResult
                 "gate:merge run step is not an inline table",
             )));
         };
-        merge_tasks.push(toml_table_string(step, "task")?.0.to_owned());
+        let task_name = toml_table_string(step, "task")?;
+        merge_tasks.push(task_name.0.to_owned());
     }
     assert_string_sequence(
         &merge_tasks,
@@ -1577,12 +1577,8 @@ fn gates_fuzz_configuration_is_closed() -> TestResult
     let corpus = workspace.join(cli::fuzz_corpus_dir(cli::FuzzSmokeTarget::Gates));
     let mut nonempty_seed_count = 0_usize;
     for path in gandr_workflow_gates::support::HOST_FILESYSTEM.read_dir_paths(&corpus)? {
-        if path.is_file()
-            && !gandr_workflow_gates::support::HOST_FILESYSTEM
-                .read(&path)?
-                .as_ref()
-                .is_empty()
-        {
+        let contents = gandr_workflow_gates::support::HOST_FILESYSTEM.read(&path)?;
+        if path.is_file() && !contents.as_ref().is_empty() {
             nonempty_seed_count = nonempty_seed_count.saturating_add(1);
         }
     }

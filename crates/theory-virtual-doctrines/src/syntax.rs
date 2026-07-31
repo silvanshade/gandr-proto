@@ -1,8 +1,7 @@
 //! The **reflected judgment layer** — `FVDblTT`'s protypes and proterms as data
 //! the checker validates against a [`crate::CellStoreVdc`].
 //!
-//! Design reference: `../../../docs/gandr/spec/proposal-vdc-reflection.md`
-//! §5.2; ADR-68 D3.
+//! Design reference: the VDC-reflection proposal §5.2; ADR-68 D3.
 //!
 //! Four judgment families, **first-order** — no dependent types anywhere (the
 //! reflection face does not require levitation stage 1). [`Protype`]s are the

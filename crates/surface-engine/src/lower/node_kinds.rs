@@ -4,7 +4,7 @@
 //! kind string it dispatches on lives here — mirroring the grammar's `KW`
 //! table discipline, so the pending keyword bikeshed is a one-table diff in
 //! this crate too. Kinds are `tree-sitter-gandr` node kinds
-//! (`packages/tree-sitter-gandr/src/node-types.json`); anonymous-token kinds
+//! (`node-types.json`); anonymous-token kinds
 //! (operators, `true`/`false`, `ω`) are node kinds in the same sense.
 //!
 //! A final section centralizes the few *surface names* (not node kinds) the

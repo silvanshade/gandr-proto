@@ -508,7 +508,8 @@ fn lower_type<'core>(
         let mut produced: TypeOut = match goal {
             | TypeGoal::Value(spec) => match *spec {
                 | ValueType::Atom(ref name) => {
-                    TypeOut::Value(arena.value_type_base(base_atom(BridgeName(name.as_str()))?))
+                    let atom = base_atom(BridgeName(name.as_str()))?;
+                    TypeOut::Value(arena.value_type_base(atom))
                 },
                 | ValueType::Unit => TypeOut::Value(arena.value_type_unit()),
                 | ValueType::Prod(ref first, ref second) => {
@@ -822,7 +823,7 @@ fn resolve_name(
     name: BridgeName<'_>,
 ) -> Result<ValueId, BridgeRejection>
 {
-    if let Some(position) = locals.0.iter().rposition(|bound| *bound == name.0) {
+    if let Some(position) = locals.0.iter().rposition(|&bound| bound == name.0) {
         // Innermost binder is the last slot; its de Bruijn index is 0.
         let steps = locals.0.len().saturating_sub(1).saturating_sub(position);
         let index = u32::try_from(steps).unwrap_or(u32::MAX);
@@ -857,12 +858,15 @@ fn lower_term<'core>(
     'expand: loop {
         let mut produced: TermOut = match goal {
             | TermGoal::Value(spec) => match *spec {
-                | Value::Var(ref name) => TermOut::Value(resolve_name(
-                    context,
-                    arena,
-                    LocalScope(&locals),
-                    BridgeName(name.as_str()),
-                )?),
+                | Value::Var(ref name) => {
+                    let id = resolve_name(
+                        context,
+                        arena,
+                        LocalScope(&locals),
+                        BridgeName(name.as_str()),
+                    )?;
+                    TermOut::Value(id)
+                },
                 | Value::Unit => TermOut::Value(arena.value_unit()),
                 | Value::Int(literal) => {
                     TermOut::Value(arena.value_literal(integer_literal(BridgeInteger(literal))))

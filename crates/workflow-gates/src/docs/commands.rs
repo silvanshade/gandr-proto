@@ -555,7 +555,8 @@ where
     let rows = json_array(value, "page-balance probe `value` must be an array")?;
     let mut probes = Vec::new();
     for row in rows {
-        probes.push(page_probe(row)?);
+        let probe = page_probe(row)?;
+        probes.push(probe);
     }
     return Ok(probes);
 }
@@ -769,7 +770,8 @@ mod tests
         crate::support::HOST_FILESYSTEM.write(root.join(&second), "# A\n")?;
         let paths = vec![first.clone(), second.clone()];
 
-        let plan = rumdl_command_plan(RumdlMode::parse("check")?, &paths, Some(&root))?;
+        let mode = RumdlMode::parse("check")?;
+        let plan = rumdl_command_plan(mode, &paths, Some(&root))?;
 
         assert_eq!(plan.rumdl_program, OsString::from("rumdl"));
         assert_eq!(
@@ -802,13 +804,15 @@ mod tests
     #[test]
     fn rumdl_modes_and_empty_paths_are_exact() -> TestResult
     {
+        let fmt_mode = RumdlMode::parse("fmt")?;
         assert_eq!(
             "fmt",
-            crate::semantic_value::<AsStrText<'_>, _>(RumdlMode::parse("fmt")?.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(fmt_mode.as_str()).0
         );
+        let check_mode = RumdlMode::parse("check")?;
         assert_eq!(
             "check",
-            crate::semantic_value::<AsStrText<'_>, _>(RumdlMode::parse("check")?.as_str()).0
+            crate::semantic_value::<AsStrText<'_>, _>(check_mode.as_str()).0
         );
         let unsupported = RumdlMode::parse("lint")
             .err()
@@ -1016,9 +1020,8 @@ mod tests
         let name = name.into().0;
         let script_path = root.join(name);
         crate::support::HOST_FILESYSTEM.write(&script_path, source)?;
-        let mut permissions = crate::support::HOST_FILESYSTEM
-            .metadata(&script_path)?
-            .permissions();
+        let metadata = crate::support::HOST_FILESYSTEM.metadata(&script_path)?;
+        let mut permissions = metadata.permissions();
         std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, EXECUTABLE_MODE);
         crate::support::HOST_FILESYSTEM.set_permissions(&script_path, permissions)?;
         Ok(script_path)

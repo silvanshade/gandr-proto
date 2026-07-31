@@ -429,7 +429,8 @@ impl WorkflowIdentityProvider for HostWorkflowIdentity
         {
             return None;
         }
-        let repository = repository_lock_key(cwd)?.token;
+        let repository = repository_lock_key(cwd)?;
+        let repository = repository.token;
         let head = git_text(cwd, ["rev-parse", "HEAD"])?;
         let tree = git_text(cwd, ["show", "-s", "--format=%T", "HEAD"])?;
         let submodules = submodule_identity(cwd)?;
@@ -438,7 +439,10 @@ impl WorkflowIdentityProvider for HostWorkflowIdentity
         let config = config_identity(cwd)?;
         let push = match tier {
             | Tier::Merge => None,
-            | Tier::Push => Some(push_identity(cwd)?),
+            | Tier::Push => {
+                let identity = push_identity(cwd)?;
+                Some(identity)
+            },
         };
         Some(WorkflowInputIdentity {
             repository,
@@ -538,11 +542,8 @@ impl WorkflowCacheBackend for FileWorkflowCache
         key: &CacheKey,
     ) -> Result<impl Into<LookupFlag>, GateError>
     {
-        Ok(self
-            .read_cache_file(&key.repository)?
-            .contains(key)
-            .into()
-            .0)
+        let cache_file = self.read_cache_file(&key.repository)?;
+        Ok(cache_file.contains(key).into().0)
     }
 
     /// Atomically record one successful task key.
@@ -829,17 +830,11 @@ fn trim_terminal_line_endings(mut text: String) -> String
 fn submodule_identity(cwd: Option<&Path>) -> Option<String>
 {
     let mut hasher = blake3::Hasher::new();
-    hasher.update(
-        git_output(cwd, ["ls-tree", "-r", "-z", "HEAD"])?
-            .0
-            .as_slice(),
-    );
+    let tree_output = git_output(cwd, ["ls-tree", "-r", "-z", "HEAD"])?;
+    hasher.update(tree_output.0.as_slice());
     hasher.update(b"\0submodules\0");
-    hasher.update(
-        git_output(cwd, ["submodule", "status", "--recursive"])?
-            .0
-            .as_slice(),
-    );
+    let submodule_output = git_output(cwd, ["submodule", "status", "--recursive"])?;
+    hasher.update(submodule_output.0.as_slice());
     Some(finish_hash(&hasher))
 }
 
@@ -924,7 +919,8 @@ fn update_command_identity(
         hasher.update(arg.as_encoded_bytes());
     }
     hasher.update(b"\0stdout\0");
-    hasher.update(command_output(program, args, cwd)?.0.as_slice());
+    let output = command_output(program, args, cwd)?;
+    hasher.update(output.0.as_slice());
     Some(())
 }
 
@@ -967,25 +963,23 @@ fn command_output(
 /// - panics: none.
 fn config_identity(cwd: Option<&Path>) -> Option<String>
 {
-    Some(hash_bytes(
-        &git_output(cwd, [
-            "ls-tree",
-            "-r",
-            "-z",
-            "HEAD",
-            "--",
-            ".cargo",
-            ".config/nextest.toml",
-            ".mise.toml",
-            "Cargo.lock",
-            "Cargo.toml",
-            "deny.toml",
-            "docs/workflow/rust.md",
-            "mise.toml",
-            "rust-toolchain.toml",
-        ])?
-        .0,
-    ))
+    let config_output = git_output(cwd, [
+        "ls-tree",
+        "-r",
+        "-z",
+        "HEAD",
+        "--",
+        ".cargo",
+        ".config/nextest.toml",
+        ".mise.toml",
+        "Cargo.lock",
+        "Cargo.toml",
+        "deny.toml",
+        "docs/workflow/rust.md",
+        "mise.toml",
+        "rust-toolchain.toml",
+    ])?;
+    Some(hash_bytes(&config_output.0))
 }
 
 /// Return push-tier endpoint and base identity.
@@ -2095,7 +2089,8 @@ mod tests
                 .any(|entry| entry.key.task == "core:check"),
             "old corrupt-recovery entry survived newest-entry eviction"
         );
-        assert_eq!(cache_directory_entries(parent)?, [path]);
+        let remaining_entries = cache_directory_entries(parent)?;
+        assert_eq!(remaining_entries, [path]);
         Ok(())
     }
 
@@ -2124,7 +2119,8 @@ mod tests
             schema: WORKFLOW_CACHE_SCHEMA.saturating_add(1),
             entries: Vec::new(),
         };
-        crate::support::HOST_FILESYSTEM.write(path, serde_json::to_vec(&stale_file)?)?;
+        let stale_bytes = serde_json::to_vec(&stale_file)?;
+        crate::support::HOST_FILESYSTEM.write(path, stale_bytes)?;
 
         assert!(!cache.lookup(&key).map(|value| value.into().0)?);
         Ok(())
@@ -2215,23 +2211,19 @@ mod tests
         assert_eq!(endpoint.push_remote, remote.as_ref());
         assert_eq!("feature", endpoint.branch);
         assert_eq!("refs/remotes/origin/main", endpoint.upstream_ref);
-        assert_eq!(
-            endpoint.upstream_commit,
-            git_text_owned(Some(&fixture.repo), &[
-                os("rev-parse"),
-                OsString::from(upstream.as_str())
-            ],)
-            .ok_or_else(|| GateError::operational("missing upstream commit"))?,
-        );
-        assert_eq!(
-            endpoint.merge_base,
-            git_text_owned(Some(&fixture.repo), &[
-                os("merge-base"),
-                os("HEAD"),
-                OsString::from(upstream.as_str())
-            ],)
-            .ok_or_else(|| GateError::operational("missing merge base"))?,
-        );
+        let upstream_commit = git_text_owned(Some(&fixture.repo), &[
+            os("rev-parse"),
+            OsString::from(upstream.as_str()),
+        ])
+        .ok_or_else(|| GateError::operational("missing upstream commit"))?;
+        assert_eq!(endpoint.upstream_commit, upstream_commit,);
+        let merge_base = git_text_owned(Some(&fixture.repo), &[
+            os("merge-base"),
+            os("HEAD"),
+            OsString::from(upstream.as_str()),
+        ])
+        .ok_or_else(|| GateError::operational("missing merge base"))?;
+        assert_eq!(endpoint.merge_base, merge_base,);
 
         let dirty_path = fixture.repo.join("dirty.txt");
         crate::support::HOST_FILESYSTEM.write(&dirty_path, "dirty\n")?;
@@ -2389,9 +2381,8 @@ mod tests
             shell_quote(log)
         );
         crate::support::HOST_FILESYSTEM.write(target, script)?;
-        let mut permissions = crate::support::HOST_FILESYSTEM
-            .metadata(target)?
-            .permissions();
+        let metadata = crate::support::HOST_FILESYSTEM.metadata(target)?;
+        let mut permissions = metadata.permissions();
         permissions.set_mode(EXECUTABLE_MODE);
         crate::support::HOST_FILESYSTEM.set_permissions(target, permissions)?;
         Ok(())
@@ -2437,9 +2428,9 @@ mod tests
         if let Some(directory) = cwd {
             command.current_dir(directory);
         }
-        let status = command.status().map_err(|error| {
-            format!("git fixture command {args:?} failed to run: {error}")
-        })?;
+        let status = command
+            .status()
+            .map_err(|error| format!("git fixture command {args:?} failed to run: {error}"))?;
         if status.success() {
             return Ok(());
         }

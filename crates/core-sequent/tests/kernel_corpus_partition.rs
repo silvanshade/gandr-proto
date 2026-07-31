@@ -10,8 +10,8 @@
 //! eligible item then **exports and round-trips byte-identically**; every
 //! ineligible item is tagged with the exclusion class that rejected it.
 //!
-//! The partition is recorded durably in the checked-in manifest
-//! `tests/fixtures/kernel_partition.manifest`, one line per item with its class
+//! The partition is recorded durably in the checked-in kernel-partition
+//! manifest, one line per item with its class
 //! tag; this sweep re-derives the classification and asserts it matches the
 //! manifest (regenerate with `GANDR_BLESS_KERNEL_PARTITION=1`). The
 //! exact-variant structural rejections of every exclusion class are pinned by
@@ -197,7 +197,10 @@ mod tests
     /// The checked-in manifest path.
     fn manifest_path() -> PathBuf
     {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/kernel_partition.manifest")
+        PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/kernel_partition.manifest"
+        ))
     }
 
     /// Render the manifest data lines (`<source>\t<index>\t<class>`) for the
@@ -297,6 +300,14 @@ mod tests
     /// The live classification matches the checked-in manifest, and every
     /// eligible item round-trips (asserted inside [`sweep`]).
     #[test]
+    #[cfg_attr(
+        dylint_lib = "non_thread_safe_call_in_test",
+        allow(
+            unknown_lints,
+            non_thread_safe_call_in_test,
+            reason = "the bless-only manifest regeneration runs single-threaded behind the bless environment gate and writes only the checked-in manifest path"
+        )
+    )]
     fn corpus_partition_matches_the_manifest()
     {
         let rows = sweep();

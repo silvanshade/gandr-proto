@@ -70,8 +70,8 @@ cargo dylint \
   --lib const_path_join \
   --lib env_literal \
   --lib incorrect_matches_operation \
-  --lib misleading_variable_name \
   --lib non_thread_safe_call_in_test \
+  --lib question_mark_in_expression \
   --lib ref_aware_redundant_closure_for_method_calls \
   --lib suboptimal_pattern \
   --lib supplementary \
@@ -87,8 +87,24 @@ cargo dylint \
 # across the workspace (tracked in the dylint residual bead); see
 # docs/workflow/rust.md "Toolchain upgrades" residuals.
 # --lib inconsistent_qualification \
-# --lib non_topologically_sorted_functions \
-# --lib question_mark_in_expression \
+
+# Disabled 2026-07-31: purposely ignored — the lint demands a single caller-before-callee function order, which conflicts with the deliberate top-down layout (public drivers before step helpers) and is unsatisfiable for shared test fixture helpers called in per-test orders. Not tracked as a residual; the inert cfg_attr allow sites remain from when the lint was active.
+# cargo dylint \
+#   --lib non_topologically_sorted_functions \
+#   --no-deps \
+#   -- \
+#   --workspace \
+#   --all-targets \
+#   --features=full
+
+# Disabled 2026-07-31: purposely ignored — the lint's name/usage matching is too coarse to be useful. Not tracked as a residual.
+# cargo dylint \
+#   --lib misleading_variable_name \
+#   --no-deps \
+#   -- \
+#   --workspace \
+#   --all-targets \
+#   --features=full
 
 # The pinned non-local-effect rule stays in its own driver invocation after an
 # upstream panic on a core lib-test target. The shared workspace scope is

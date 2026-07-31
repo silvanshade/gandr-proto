@@ -202,7 +202,7 @@ mod tests
             let _id = environment.add_decl_unchecked(declaration);
             let bytes = write(&environment);
             let decoded = decode(bytes.as_ref().into()).expect("the deep artifact decodes");
-            assert_eq!(decoded.declarations().len(), 1, "one declaration decodes");
+            assert_eq!(1, decoded.declarations().len(), "one declaration decodes");
             drop(decoded);
         });
     }

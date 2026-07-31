@@ -31,8 +31,8 @@
 //!
 //! # Snapshots and their provenance
 //!
-//! Each corpus `.sexp` fixture has a sibling `.outcome` record under
-//! `tests/fixtures/corpus/{model,pathological}/`, carrying a provenance header
+//! Each corpus `.sexp` fixture has a sibling `.outcome` record under the
+//! corpus-fixture model/pathological directories, carrying a provenance header
 //! (the `.gandr` source path, the BLAKE3 digest of the `.sexp` fixture bytes,
 //! the generator identity, and the item count) and one line per item — the
 //! `Debug` rendering of that item's [`canonical`] outcome. The header's
@@ -198,6 +198,14 @@ mod tests
     /// `GANDR_BLESS_CORPUS_OUTCOMES` is set; a no-op otherwise so it is inert
     /// under the ordinary gate.
     #[test]
+    #[cfg_attr(
+        dylint_lib = "non_thread_safe_call_in_test",
+        allow(
+            unknown_lints,
+            non_thread_safe_call_in_test,
+            reason = "the bless-only snapshot regeneration runs single-threaded behind the bless environment gate and writes only checked-in fixture paths"
+        )
+    )]
     fn bless_corpus_outcomes()
     {
         if std::env::var_os(BLESS_ENV).is_none() {

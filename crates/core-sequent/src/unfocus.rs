@@ -229,7 +229,8 @@ pub fn unfocus_terminal(
         | LValue::Native { prim, ref args } => {
             let mut values = Vec::with_capacity(args.len());
             for arg in args {
-                values.push(Rc::new(unfocus_value(arg, arena, origins)?));
+                let value = unfocus_value(arg, arena, origins)?;
+                values.push(Rc::new(value));
             }
             Some(Comp::Native { prim, args: values })
         },
@@ -237,7 +238,10 @@ pub fn unfocus_terminal(
         // k-in-value / reified-stack residual, §7a): an empty-stack carrier so
         // the outcome KIND (`Stk`) agrees without a divergent structural quote.
         | LValue::Boxed(_) => Some(Comp::ret(Value::stk(Stack::Empty))),
-        | _ => Some(Comp::ret(unfocus_value(value, arena, origins)?)),
+        | _ => {
+            let value = unfocus_value(value, arena, origins)?;
+            Some(Comp::ret(value))
+        },
     }
 }
 
@@ -284,12 +288,15 @@ fn unfocus_ctor(
 {
     match *tag {
         | CtorTag::Pair => {
-            let fst = unfocus_value(args.first()?, arena, origins)?;
-            let snd = unfocus_value(args.get(1)?, arena, origins)?;
+            let first = args.first()?;
+            let fst = unfocus_value(first, arena, origins)?;
+            let second = args.get(1)?;
+            let snd = unfocus_value(second, arena, origins)?;
             Some(Value::pair(fst, snd))
         },
         | CtorTag::Inj(side) => {
-            let payload = unfocus_value(args.first()?, arena, origins)?;
+            let first = args.first()?;
+            let payload = unfocus_value(first, arena, origins)?;
             Some(Value::Inj(side, Rc::new(payload)))
         },
         | CtorTag::Nil | CtorTag::Cons => {
@@ -300,7 +307,8 @@ fn unfocus_ctor(
                 match here_tag {
                     | CtorTag::Nil => break,
                     | CtorTag::Cons => {
-                        let head = unfocus_value(cursor.first()?, arena, origins)?;
+                        let first = cursor.first()?;
+                        let head = unfocus_value(first, arena, origins)?;
                         elements.push(head);
                         let LValue::Ctor {
                             tag: ref next_tag,
@@ -320,13 +328,19 @@ fn unfocus_ctor(
         | CtorTag::Record(ref labels) => {
             let mut fields = Vec::with_capacity(labels.len());
             for (label, arg) in labels.iter().zip(args.iter()) {
-                fields.push((label.clone(), unfocus_value(arg, arena, origins)?));
+                let value = unfocus_value(arg, arena, origins)?;
+                fields.push((label.clone(), value));
             }
             Some(Value::record(fields))
         },
-        | CtorTag::Here => Some(Value::here(unfocus_value(args.first()?, arena, origins)?)),
+        | CtorTag::Here => {
+            let first = args.first()?;
+            let payload = unfocus_value(first, arena, origins)?;
+            Some(Value::here(payload))
+        },
         | CtorTag::Data(index) => {
-            let payload = unfocus_value(args.first()?, arena, origins)?;
+            let first = args.first()?;
+            let payload = unfocus_value(first, arena, origins)?;
             Some(Value::ctor(placeholder_data_id(), index, payload))
         },
         // An operation constructor is a `perform`, never a data value.
@@ -371,17 +385,27 @@ fn decode_command(
         } => decode_cut(arena, origins, cmd, producer, consumer, tail),
         | CommandNode::Prim { op, ref ps, ref cs } => {
             let head = match op {
-                | PrimOp::Dup => Comp::dup(decode_value(arena, origins, *ps.first()?)?),
-                | PrimOp::Drop => Comp::drop(decode_value(arena, origins, *ps.first()?)?),
+                | PrimOp::Dup => {
+                    let first = ps.first()?;
+                    let value = decode_value(arena, origins, *first)?;
+                    Comp::dup(value)
+                },
+                | PrimOp::Drop => {
+                    let first = ps.first()?;
+                    let value = decode_value(arena, origins, *first)?;
+                    Comp::drop(value)
+                },
                 | PrimOp::Native(prim) => {
                     let mut args = Vec::with_capacity(ps.len());
                     for &p in ps {
-                        args.push(Rc::new(decode_value(arena, origins, p)?));
+                        let value = decode_value(arena, origins, p)?;
+                        args.push(Rc::new(value));
                     }
                     Comp::Native { prim, args }
                 },
             };
-            apply_cont(arena, origins, Piece::Comp(head), *cs.first()?, tail)
+            let cont = cs.first()?;
+            apply_cont(arena, origins, Piece::Comp(head), *cont, tail)
         },
         // `𝓕` emits no top-level jump.
         | CommandNode::Jump { .. } => None,
@@ -409,11 +433,12 @@ fn decode_cut(
 {
     let (head, walk_from): (Piece, ConsumerId) = match *arena.producer(producer)? {
         | ProducerNode::Cocase { ref arms } => {
-            (Piece::Comp(decode_cocase(arena, origins, arms)?), consumer)
+            let cocase = decode_cocase(arena, origins, arms)?;
+            (Piece::Comp(cocase), consumer)
         },
         | ProducerNode::Shift { ref binder, body } => {
             let inner = decode_command(arena, origins, body, &Tail::ByTop)?;
-            (Piece::Comp(Comp::shift(binder.as_str(), inner)), consumer)
+            (Piece::Comp(Comp::shift(binder, inner)), consumer)
         },
         | ProducerNode::Mu(_, body) => decode_delimiter(arena, origins, body, consumer)?,
         | ProducerNode::Ctor {
@@ -421,10 +446,11 @@ fn decode_cut(
             ref ps,
             ..
         } => {
-            let payload = decode_value(arena, origins, *ps.first()?)?;
+            let first = ps.first()?;
+            let payload = decode_value(arena, origins, *first)?;
             let head = Comp::perform(
                 effect_sig(EffectSignatureName::from(sig.as_str())),
-                op.as_str(),
+                op,
                 payload,
             );
             (Piece::Comp(head), consumer)
@@ -435,10 +461,10 @@ fn decode_cut(
             (Piece::Comp(Comp::hole(hole)), consumer)
         },
         // Any other producer is a value being eliminated / returned.
-        | _ => (
-            Piece::Value(decode_value(arena, origins, producer)?),
-            consumer,
-        ),
+        | _ => {
+            let value = decode_value(arena, origins, producer)?;
+            (Piece::Value(value), consumer)
+        },
     };
     apply_cont(arena, origins, head, walk_from, tail)
 }
@@ -473,16 +499,16 @@ fn decode_delimiter(
             for clause in &handler.ops {
                 let clause_body = decode_command(arena, origins, clause.body, &Tail::ByTop)?;
                 ops.push(OpClause::new(
-                    clause.op.as_str(),
-                    clause.payload.as_str(),
-                    clause.resume.as_str(),
+                    &clause.op,
+                    &clause.payload,
+                    &clause.resume,
                     clause_body,
                 ));
             }
             let head = Comp::handle(
                 effect_sig(EffectSignatureName::from(handler.sig.as_str())),
                 scrutinee,
-                handler.ret_binder.as_str(),
+                &handler.ret_binder,
                 ret_body,
                 ops,
             );
@@ -520,7 +546,7 @@ fn apply_cont(
             | ConsumerNode::MuTilde(ref binder, body) => {
                 let bound = current.into_comp();
                 let rest = decode_command(arena, origins, body, tail)?;
-                return Some(Comp::bind(bound, binder.as_str(), rest));
+                return Some(Comp::bind(bound, binder, rest));
             },
             | ConsumerNode::Case { ref arms } => {
                 let scrut = current.into_value()?;
@@ -562,14 +588,18 @@ fn apply_frame(
 ) -> Option<Piece>
 {
     match *tag {
-        | DtorTag::Force => Some(Piece::Comp(Comp::force(current.into_value()?))),
-        | DtorTag::RecordProj(ref label) => Some(Piece::Comp(Comp::record_proj(
-            current.into_value()?,
-            label.as_str(),
-        ))),
+        | DtorTag::Force => {
+            let value = current.into_value()?;
+            Some(Piece::Comp(Comp::force(value)))
+        },
+        | DtorTag::RecordProj(ref label) => {
+            let value = current.into_value()?;
+            Some(Piece::Comp(Comp::record_proj(value, label)))
+        },
         | DtorTag::Resume => {
             let stack = current.into_value()?;
-            let reified = decode_reified(arena, origins, *ps.first()?)?;
+            let first = ps.first()?;
+            let reified = decode_reified(arena, origins, *first)?;
             Some(Piece::Comp(Comp::resume(stack, reified)))
         },
         | DtorTag::Ap => {
@@ -577,7 +607,8 @@ fn apply_frame(
             // (`App(ret v, arg)` — an ill-typed application `𝓕` still emits);
             // wrap it through `ret` so the elimination re-focuses identically.
             let head = current.into_comp();
-            let arg = decode_value(arena, origins, *ps.first()?)?;
+            let first = ps.first()?;
+            let arg = decode_value(arena, origins, *first)?;
             Some(Piece::Comp(Comp::app(head, arg)))
         },
         | DtorTag::Prj(side) => {
@@ -614,7 +645,7 @@ fn decode_cocase(
         let binder = arm.binders.first()?;
         let cobinder = arm.cobinders.first()?;
         let body = decode_command(arena, origins, arm.body, &Tail::ByCoVar(cobinder.clone()))?;
-        return Some(Comp::lam(binder.as_str(), body));
+        return Some(Comp::lam(binder, body));
     }
     if arms.len() == 2 {
         let fst = arms.first()?;
@@ -671,49 +702,52 @@ fn decode_case(
             let right = arms.get(1)?;
             let left_body = decode_command(arena, origins, left.body, tail)?;
             let right_body = decode_command(arena, origins, right.body, tail)?;
+            let left_binder = left.binders.first()?;
+            let right_binder = right.binders.first()?;
             Some(Comp::case(
                 scrut,
-                left.binders.first()?.as_str(),
+                left_binder,
                 left_body,
-                right.binders.first()?.as_str(),
+                right_binder,
                 right_body,
             ))
         },
         | CtorTag::Pair => {
             let body = decode_command(arena, origins, first.body, tail)?;
-            Some(Comp::split(
-                scrut,
-                first.binders.first()?.as_str(),
-                first.binders.get(1)?.as_str(),
-                body,
-            ))
+            let fst_binder = first.binders.first()?;
+            let snd_binder = first.binders.get(1)?;
+            Some(Comp::split(scrut, fst_binder, snd_binder, body))
         },
         | CtorTag::Nil | CtorTag::Cons => {
             let nil = arms.first()?;
             let cons = arms.get(1)?;
             let nil_body = decode_command(arena, origins, nil.body, tail)?;
             let cons_body = decode_command(arena, origins, cons.body, tail)?;
+            let head_binder = cons.binders.first()?;
+            let tail_binder = cons.binders.get(1)?;
             Some(Comp::list_case(
                 scrut,
                 nil_body,
-                cons.binders.first()?.as_str(),
-                cons.binders.get(1)?.as_str(),
+                head_binder,
+                tail_binder,
                 cons_body,
             ))
         },
         | CtorTag::Here => {
             let body = decode_command(arena, origins, first.body, tail)?;
+            let binder = first.binders.first()?;
             Some(Comp::walk(
                 scrut,
                 placeholder_walk_motive(),
-                WalkBase::new(first.binders.first()?.as_str(), body),
+                WalkBase::new(binder, body),
             ))
         },
         | CtorTag::Data(_) => {
             let mut decoded = Vec::with_capacity(arms.len());
             for arm in arms {
                 let body = decode_command(arena, origins, arm.body, tail)?;
-                decoded.push((String::from(arm.binders.first()?.as_str()), body));
+                let binder = arm.binders.first()?;
+                decoded.push((String::from(binder.as_str()), body));
             }
             Some(Comp::data_case(scrut, decoded))
         },
@@ -804,12 +838,15 @@ fn decode_ctor_value(
 {
     match *tag {
         | CtorTag::Pair => {
-            let fst = decode_value(arena, origins, *ps.first()?)?;
-            let snd = decode_value(arena, origins, *ps.get(1)?)?;
+            let first = ps.first()?;
+            let fst = decode_value(arena, origins, *first)?;
+            let second = ps.get(1)?;
+            let snd = decode_value(arena, origins, *second)?;
             Some(Value::pair(fst, snd))
         },
         | CtorTag::Inj(side) => {
-            let payload = decode_value(arena, origins, *ps.first()?)?;
+            let first = ps.first()?;
+            let payload = decode_value(arena, origins, *first)?;
             Some(Value::Inj(side, Rc::new(payload)))
         },
         | CtorTag::Nil => Some(Value::list(Vec::new())),
@@ -817,7 +854,8 @@ fn decode_ctor_value(
             let mut elements = Vec::new();
             let mut current_ps: &[ProducerId] = ps;
             loop {
-                let head = decode_value(arena, origins, *current_ps.first()?)?;
+                let first = current_ps.first()?;
+                let head = decode_value(arena, origins, *first)?;
                 elements.push(head);
                 let tail_producer = *current_ps.get(1)?;
                 match *arena.producer(tail_producer)? {
@@ -837,13 +875,19 @@ fn decode_ctor_value(
         | CtorTag::Record(ref labels) => {
             let mut fields = Vec::with_capacity(labels.len());
             for (label, &p) in labels.iter().zip(ps.iter()) {
-                fields.push((label.clone(), decode_value(arena, origins, p)?));
+                let value = decode_value(arena, origins, p)?;
+                fields.push((label.clone(), value));
             }
             Some(Value::record(fields))
         },
-        | CtorTag::Here => Some(Value::here(decode_value(arena, origins, *ps.first()?)?)),
+        | CtorTag::Here => {
+            let first = ps.first()?;
+            let payload = decode_value(arena, origins, *first)?;
+            Some(Value::here(payload))
+        },
         | CtorTag::Data(index) => {
-            let payload = decode_value(arena, origins, *ps.first()?)?;
+            let first = ps.first()?;
+            let payload = decode_value(arena, origins, *first)?;
             Some(Value::ctor(placeholder_data_id(), index, payload))
         },
         // An operation constructor is a `perform`, never a value.
@@ -1031,14 +1075,15 @@ fn subst_comp(
         },
         | Comp::DataCase(ref scrut, ref arms) => {
             let scrut = subst_value(scrut, name, repl);
+            #[expect(clippy::needless_borrowed_reference, reason = "false positive")]
             let arms = arms
                 .iter()
-                .map(|arm| {
+                .map(|&(ref binder, ref body)| {
                     (
-                        arm.0.clone(),
+                        binder.clone(),
                         Rc::new(subst_under(
-                            SubstitutionName(arm.0.as_str()),
-                            &arm.1,
+                            SubstitutionName(binder.as_str()),
+                            body,
                             name,
                             repl,
                         )),
@@ -1132,12 +1177,7 @@ fn subst_comp(
                     else {
                         subst_comp(&clause.body, name, repl)
                     };
-                    OpClause::new(
-                        clause.op.as_str(),
-                        clause.payload.as_str(),
-                        clause.resume.as_str(),
-                        body,
-                    )
+                    OpClause::new(&clause.op, &clause.payload, &clause.resume, body)
                 })
                 .collect();
             Comp::Handle {
@@ -1179,7 +1219,7 @@ fn subst_comp(
             Comp::Walk {
                 scrut: Rc::new(scrut),
                 motive: motive.clone(),
-                base: WalkBase::new(base.x.as_str(), base_body),
+                base: WalkBase::new(&base.x, base_body),
             }
         },
     }
