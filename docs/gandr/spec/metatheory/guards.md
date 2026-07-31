@@ -109,6 +109,9 @@ Four collisions were caught in one pass and one shipped before it was checked; t
 * **"Rigid"**: two structures share the name — the canonicalization record on a setoid (`Gandr.Rigid`) and the extent-preserving offset-fixed arena map class (`Gandr.Arena.Structure.Rigid`).
   The shared diagnosis (the representation carries structure the semantics cannot see, and rigidity certifies it does not leak — bracketing in one, ordering in the other) is why the name recurs; a rename decision is owed **before a third `Rigid` appears**.
   The arity interface's representation map is **not** a third one: it is the canonicalization record itself, arriving as a field ([[../metatheory#The arity interface, universe-style]]).
+* **"Σ"**: four different objects in the literature of this corpus — gandr's linear typing zone (the context's Σ), a signature functor in the structural-operational sense, the dependent sum, and the Sierpiński object.
+  The semidecision type's naming rule exists precisely for the last of these: it is **Sier**, never spelled as a Σ.
+  The same census applies, milder, to `U` (thunk versus unit versus universe), `coh`, `world`, and `region`: any claim using one of these words names its object at first use.
 
 ## Mode and posture rules, standing
 

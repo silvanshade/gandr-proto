@@ -49,7 +49,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
     role: subdocument
-    b3: 5f54c1589d5afc82094c4c0c2170fd16794df6cde9f5d00e6f54cebaeb7938f8
+    b3: 08e111aad03c02287211256a27e3f254ea304eb2cc461ca058228b053350c789
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
