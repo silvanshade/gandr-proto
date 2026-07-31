@@ -92,7 +92,9 @@ Four collisions were caught in one pass and one shipped before it was checked; t
 * **"Feynman"**: see the naming hazard in the main document — two different objects under one word.
 * **"Conduché"**: this one _survived_ the check — the measured cellular condition is a definitional match with the discrete Conduché condition, not a name match.
 * **"arity"**: monads-with-arities (nerve side) versus arity monads (carrier side) come apart exactly at gandr's rung; every claim must say which sense it uses.
-* **"hereditary"**: the Koszul line supersedes the polytope/cubical-Feynman technique, not the hereditary condition; hereditariness is a different question decided elsewhere.
+* **"hereditary"**: the Koszul line supersedes the polytope/cubical-Feynman technique, not the hereditary condition; hereditariness — many-to-many maps decomposing uniquely as tensor products of many-to-one maps, the axis whose _failure_ distinguishes props and wheeled structures from operads — is **not decided anywhere in the corpus** and stays an open lead, not a settled question.
+* **"Rigid"**: two structures share the name — the canonicalization record on a setoid (`Gandr.Rigid`) and the extent-preserving offset-fixed arena map class (`Gandr.Arena.Structure.Rigid`).
+  The shared diagnosis (the representation carries structure the semantics cannot see, and rigidity certifies it does not leak — bracketing in one, ordering in the other) is why the name recurs; a rename decision is owed **before a third `Rigid` appears**.
 
 ## Mode and posture rules, standing
 

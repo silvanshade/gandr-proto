@@ -1027,3 +1027,30 @@ finster-mimram-2017-catt:
   date: 2017
   serial-number:
     arxiv: "1706.02866"
+
+intermutation-coherence-2013:
+  type: article
+  title: Intermutation
+  author: ["Došen, Kosta", "Petrić, Zoran"]
+  date: 2013
+  serial-number:
+    arxiv: "math/0701325"
+
+palmgren-2019-equality-objects:
+  type: article
+  title: On Equality of Objects in Categories in Constructive Type Theory
+  author: ["Palmgren, Erik"]
+  date: 2019
+  serial-number:
+    doi: "10.4230/LIPIcs.TYPES.2017.7"
+  parent:
+    type: proceedings
+    title: "23rd International Conference on Types for Proofs and Programs (TYPES 2017)"
+
+shapiro-spivak-2025-duoidal:
+  type: article
+  title: Duoidal Structures for Compositional Dependence
+  author: ["Shapiro, Brandon T.", "Spivak, David I."]
+  date: 2025
+  serial-number:
+    arxiv: "2210.01962"

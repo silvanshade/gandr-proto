@@ -64,8 +64,16 @@ The work lives in the threading, not the merger: `split-shift` (a position shift
 The two halves of the converse are asymmetric — the second operand's edges are the ones threading left alone (nearly free), the first operand's are the fresh ones (the work) — and the fresh-cut case **cannot** be stated as an equation on ordered incidence, because a cut's two ends are an unordered pair; it must be stated about the symmetric `Link`.
 Presentation symmetry in the substrate propagates to the _shape of the statable theorem_, not only to proofs.
 
-**The cut's port asymmetry, absorbed three times, never by canonicalization**: at the wiring (`cap-swap` — the same cut written at either port is the same term, by `refl`, because the canonical `Match` writes a capped pair once), at the edge listing (the entry is carried, not computed), at the incidence (`Ends`, the explicit unordered pair).
-This is the identification-sorting test holding in practice: presentation symmetry is free; automorphism symmetry (the merger swap, false on the nose for the ordered carrier) is canonicalization's.
+**The cut's port asymmetry, absorbed three times, never by canonicalization**: at the wiring (`cap-swap` — the same cut written at either port is the same term), at the edge listing (the entry is carried, not computed), at the incidence (`Ends`, the explicit unordered pair).
+`cap-swap` is _not_ free everywhere: its two head clauses are `refl` and its recursion is a congruence, but the cap-meets-cap clause is a reasoning chain ending in the braid (`insert-swap-braid`) — which is exactly the coherence-debt arity law's retrodiction (a cut against an underlying cap threads three positions).
+The structural asymmetry behind the ladder, kept because it predicts the next rung's cost without building it: a base with one of the two _upper_ positions at the front leaves the other three to be reordered — the braid — while a base with one of the two _lower_ positions at the front leaves both routes computing the same term.
+This is the identification-sorting test holding in practice: presentation symmetry is free at the _statement_ level; automorphism symmetry (the merger swap, false on the nose for the ordered carrier) is canonicalization's.
+
+## The local calculus of the listing algebra
+
+The wiring layer's lookups are **views**, each inverse to a construction, with both round trips proved: removal (looking a source out of a wiring) is isomorphic to a wiring over the shrunk interface, and unhitting (looking a sink out) to a wiring into the shrunk interface.
+The reusable instrument: a lookup is a recursion and nothing reaches past it, while a rebuild is a construction and computes — so questions about a matching are answered by _rebuilding_ rather than by re-inducting.
+The composition law over this calculus is half-closed: the **cut half is proved** (the four-layer exchange coherence `insert-swap-coh⁴` and the cut composition lemma in all five clauses, no hypothesis, no parameter), and the **wire half is the live ladder** — see [[roadmap]] for its exact steps and the standing no-further-coherence prediction.
 
 ## Gate witnesses
 
@@ -86,5 +94,5 @@ The counterexample suite is part of the carrier's content — the predicates nee
 
 ## Remaining carrier work
 
-None queued.
-The open _directions_ (deleting the cell record's simple-connectivity demand; the surface-language question; the translation lemma to the graphical-species presentation; canonicalization) are in [[roadmap]].
+The **wire half of the composition law** is the queued carrier work (the ladder in [[roadmap]]); the constructor and incidence layers have none.
+The open _directions_ (deleting the cell record's simple-connectivity demand; the surface-language question; the translation lemma to the graphical-species presentation; canonicalization) are also in [[roadmap]].

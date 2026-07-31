@@ -40,6 +40,8 @@ If one exists, the failure is specification-level, not proof-level.
 * the exhibited witness `dist-moves` that the distributor genuinely permutes offsets, so the non-rigid classification has teeth;
 * scope note: the empty code `𝟘` is excluded because it would make values uninhabited and the distributor's inverse partial — declined for partiality, with the (larger) rig-with-zero coherence family a second, independent reason to price it if ever wanted.
 
+A type-theoretic reading of the rigid/non-rigid split worth keeping beside the computational one: in truncation-based treatments the row-major layout choice is invisible _only because of the propositional truncation_; dropping the truncation — as this development does — makes the choice observable, which is precisely why the associativity/unit generators are rigid while the symmetries and the distributor carry content.
+
 ## The residues, by class
 
 The two ways to fall out of the rigid class are the two residues, and the classification _derives_ the word-problem growth rather than observing it:

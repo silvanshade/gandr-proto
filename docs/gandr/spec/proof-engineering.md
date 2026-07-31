@@ -91,6 +91,31 @@ Supporting disciplines:
 * **computational pins**: where distinct data share a type (every wiring at a one-colour interface), predict normal forms by hand and pin them, because typechecking alone cannot catch a wrong construction;
 * **the three-routes positioning**: to avoid a quotient, one can make the invariant intrinsic (cannot express non-instances — fatal where refuters are the content), go to higher structure (a HIT and a topologically sensitive ambient), or carry a decidable section — this development takes the third, the only one keeping a computational interpretation without either cost.
 
+## Lessons with no other home
+
+Four hard-won rules that belong to no single module header:
+
+* **The lemma-list diagnostic** (the cheapest early-warning signal, checkable by reading a file's lemma list): _how many of my lemmas exist only to refute a case the encoding permits?_ A nonzero answer is the familial-first STOP firing early.
+* **Check the direction you did not prove.** When writing "is" or "are exactly", check the converse; if it fails, say so and say why — a false converse is usually more informative than the theorem.
+* **The h-level charge moves, it does not vanish**: demanded function-side it lands on the unit laws, graph-side on functionality; what removes it from both is the heterogeneous structural comparison, which can ignore the witness layer propositional equality has to identify.
+  The companion rule: before paying for a discipline across a whole tower, build the operation and **measure** what the discipline buys — the measurement is a theorem, not an estimate — and when an interface is about to be extracted, _attempt the extraction against every instance before building any instance's obligations_; the attempt is a review technique that has found defects reading did not.
+* **The `Tower` device**: the moment a coherence's intermediate object is existential (determined by neither endpoint), carry the intermediates as **fields of a record, not indices** — stated with indices the coherence is heterogeneous and needs a transport before it can even be written; packaged, the two routes compare by an ordinary equation and the whole coherence is one congruence.
+
+## The toolchain probe matrix
+
+Thirteen typechecked probes pin what the flag regime admits; none should be re-run to rediscover:
+
+| probe                                                                       | result                                                                                                                                                                                             |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| any `postulate`; `--rewriting`; `--sized-types`; `--irrelevant-projections` | **rejected** under `--safe` — ruling out artifacts that depend on them                                                                                                                             |
+| `--safe --cubical`; `--safe --without-K --prop`                             | **accepted** — so higher inductive types are blocked by gandr's own no-HIT policy, _not_ by the safety checker: a negotiable architectural choice with a recorded reason, like every other decline |
+| small induction-recursion                                                   | typechecks under plain `--safe --without-K`                                                                                                                                                        |
+| the Segal condition over a **semi**-simplicial object                       | typechecks — no degeneracies, no truncation, no HIT (Segal conditions mention only inert maps, which are injective)                                                                                |
+| the augmented and full simplex categories                                   | typecheck with category laws by structural induction — no funext, no UIP, no termination pragma; hom counts pinned by `refl`                                                                       |
+| symmetric species as carrier-plus-symmetry-relation                         | definable, but the fixpoint exists only for the raw unquotiented functor, whose identity type is that of ordered trees                                                                             |
+
+The species probe's ceiling is a theorem, not an impression: an E-category promotes to an H-category only if uniqueness of identity proofs already holds [@palmgren-2019-equality-objects] — which is the theorem behind the three-routes positioning above: the decidable-section route is the only one that keeps a computational interpretation without a HIT or a topologically sensitive ambient.
+
 ## Reasoning and proof style
 
 Equational arguments are multi-setoid reasoning chains everywhere, including `Set`-level modules (whose hom relation is the identity type, so a chain there is a `trans` ladder in the shared vocabulary); the chain layout, the four step markers (forward/backward, plain/under-a-head), the no-`trans`-inside-a-chain and no-`subst`-blob rules, and the head-binder congruence device are specified in `docs/workflow/agda.md`, with worked examples named there.

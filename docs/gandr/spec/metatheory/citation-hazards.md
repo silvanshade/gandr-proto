@@ -32,6 +32,18 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
 3. The Kaufmann–Ward and Bar-Natan–Dancso attributions in the naming note are recall-grade; verify before a citation-bearing surface.
 4. The Hasegawa–Thielecke attribution of the shifts-invertible-iff-thunkable-and-linear characterization is recall-grade.
 
+## Further per-source traps
+
+* The planar string-diagram paper's coherence contribution is its **recumbent-isotopy section, not the linear-time word-problem section** — a mid-arc report cited the wrong one and was corrected [@delpeuch-vicary-2022-normalization].
+* The axiomatic-rewriting **axiom count is contested**: one presentation prints nine standardization axioms, another describes a ten-item interface; both may be right for different presentations — resolve before citing a count (gates the tile-relation spike).
+* The mapping of the abstraction and unit relations onto Lévy counterparts is **open**, not settled: the claim that they have none was refuted by its own verifier against the source's own section; only the shift-equivalence/reversible-permutation relationship is precisely stated.
+* The substitude/Feynman-category line contains **no computad or polygraph content** (exhaustively searched); do not cite it for computads.
+* The decomposition-space papers contain **no polygraph or rewriting content**; the rewriting bridge is the tracelet line, not the combinatorics line.
+* Three refuted over-claims from a factcheck that a fresh document could resurrect: the partition-Lie-algebra link (refuted), "normal ordering is monadic substitution" (refuted), species differential calculus (overstated).
+* The rung/shape figure is the polynomial-monads paper's, not the graphs-hypergraphs paper's — the error propagated into session briefs once.
+* Two different Weber papers travel under one shorthand: the nerve theorem is the familial-2-functors paper; the weakly-cartesian content is the earlier generic-morphisms paper — and the familial entry in this bibliography is one of the four synthesized rows, so the conflation is live.
+* The tracelet paper's tracelet-abstraction definition is one printed page earlier than the page a register row recorded.
+
 ## Register gaps
 
 * The **transformation-monoid / finite-set-category presentation** (the directed word problem's classical presentations) has no bibliography row and no formalized rewriting twin; the row must exist before the directed convergence pass can cite it.
