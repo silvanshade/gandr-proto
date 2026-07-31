@@ -79,6 +79,19 @@ Subtyping is consistent subtyping in the gradual-typing sense once the unknown t
 The recursive checker and the defunctionalized machine are property-tested for step-for-step agreement on a control log; a third, total _marking_ realization is oracle-bound to the recursive one.
 The differential proves the two agree, not that either is correct — a shared soundness bug leaves them agreeing on the wrong answer — which is why the suite is supplemented by directed coherence oracles relating the two _modes_, a declared-companion gate on every biased oracle, and a standing adversarial pass before substantial checker changes.
 
+**The frozen core's grammar, as built.** Value types: unit, eager products, sums, graded thunks `U_r B`, and the gradual `Unknown`, with the value-model ladder's literals, lists, and records; computation types: the returner `F A`, arrows, lazy products (`With`), and `Unknown`; unions, intersections, and the world modality are designed formers outside the current build.
+Terms follow the bidirectional discipline: introductions check, eliminations infer, one subsumption mediates.
+The dependent formers that have landed, each with its guard:
+
+* **Declared data** — generative-nominal declarations with constructors and case elimination; a constructor in inference mode (or against a mismatched data type) is stuck, exactly as an injection.
+* **`Σ` dependent pairs with the motive-carrying split eliminator** — inference-capable exactly when the motive is present (the motive supplies the result type); a motive-less split never infers, firing at rule entry before the scrutinee is touched — the binder-escape hazard resolved by dependent motive, never by a scope check.
+* **The identity fragment, rung 1** — `Path A x y` (gandr's first dependent former: values occur inside the type, but types carry no binders), introduced by `here(v)` and eliminated by the full dinatural `walk` with an explicit motive (β only; no η, no K; Paulin–Mohring forms derived, never primitive).
+  Endpoint comparison is structural value equality — α-respecting, pointer-fast-pathed, hole/annotation-consistent — with **no reduction inside types** at this rung (the NbE-era definitional equality that adds walk-β, congruence, and substitution laws is the identity layer's own phase).
+  The **K-rejection witness is a live diagnostic**: a `case` on an identity type is rejected — the reserved here-pattern fragment requires the without-K unification fragment, whose solver declines the deletion step itself.
+* **The un-levelled code universe** — the levitation stage-1 code former in the checker, with the description decoder; the kernel bridge rejects it — the kernel's levelled universe and explicit lifts are authored kernel-native, and bridged declarations stay level-monomorphic.
+
+The phase table's identity-layer and dependent-core rows are open at the phase level (the directed former `Flow`, kernel inclusion, Π, patterns, and the elaborator), not at the rung level: everything above is landed and differentially gated.
+
 **`core-sequent` is the polarized System-L command IL and the L machine — the sole evaluator.**
 
 ```text

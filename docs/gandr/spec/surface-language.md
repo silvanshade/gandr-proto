@@ -267,11 +267,10 @@ The identity fragment's surface (rung 1, built):
 
 * `Path(A, x, y)` — the identity type family, with numeric endpoints allowed (`Path(Integer, 2 + 2, 4)` is the honesty example);
 * `here(v)` — the introduction form (`refl` is a constructor);
-* `walk(p, fn(a, b, q) => C, fn(x) => c)` — the full eliminator with an explicit motive;
-* rung-2 `case p { here => ret v }` — the pattern sugar over `walk`;
-* the groupoid vocabulary — `then` (composition), `back` (inversion), `Step`, `A <~> B` (the isomorphism spelling), `A ~~> B` (the directed former's spelling) — with the directed family staged beside it and **no kernel coercion between them** (the comparison is a theorem, the core-coincidence obligation of the metatheory track);
-* the **K-rejection witness** is a permanent pathological example: a K-derivation program must fail elaboration with a without-k diagnostic (`//@ expect-diagnostic: without-k`).
+* `walk(p, fn(a, b, q) => C, fn(x) => c)` — the full dinatural eliminator with an explicit motive;
+* the **K-rejection witness is a live diagnostic**: a `case` on an identity type is rejected — the reserved here-pattern fragment requires the without-K unification fragment (rung 2), whose solver declines the deletion step itself, so the pathological example reads `//@ expect-diagnostic: without-k`.
 
+The ratified spellings of record — `then` (composition), `back` (inversion), `Step`, `A <~> B` (the isomorphism spelling), `A ~~> B` (the directed former's spelling) — are decided surface vocabulary **not yet landed**; the directed family stages beside the groupoid one with **no kernel coercion between them** (the comparison is a theorem, the core-coincidence obligation of the metatheory track).
 The former names are the current ratified spellings (a rename from the earlier `Id`/`refl`/`J` family; the rename itself is recorded as a ratified surface decision).
 
 ## The vocabulary decisions of record

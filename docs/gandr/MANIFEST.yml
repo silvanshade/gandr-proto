@@ -24,17 +24,17 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 052db7600888feba078c50e45ef6a198cec9f7babc41cff19da6c4f91448d658
+    b3: 8b4af3fdeb50050fcc703b6ca0113cef251cbae515026871fc48990847f462fe
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
     role: track
-    b3: 9a13526f1e6a7f9a45400086ca0bc442065a1c1c35a1fb1c72fdd1be995437c4
+    b3: e0dd3d73b5c3194d02c6a176d19f228bd262bfa6f1bd681b80c502793111bb3a
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: fa6eb64546ec7c55e036fb840c4a64eb7e6bae917d91dba580cdaef07b55a3f6
+    b3: 6a2fa8d17b303377dda764007bfd58602179b155f42d7142be5ad8844ef89a0d
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
@@ -44,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 7047870b25dc4ad5fefe77ffc7081256931bebe5f7da5e938988952fa41f0f74
+    b3: 5f4744b01e56a46922ec1ffe89072633f731885c9610133c0f1c41c8007a0182
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -54,7 +54,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
     role: subdocument
-    b3: 1aaedb7841bbfe200c17d0c350c9e68465541769cac5d56b08d7e8434b95e691
+    b3: c397baf843993fed1fc3b76347f2185fcb2dde0aea11785dacaf9c80297adfa0
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/carrier.md
@@ -84,7 +84,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: 1ba679200136e058f52ebc10c2167b74f45b91eec7e1a565f9bbc26a88fce14f
+    b3: f3659476a2e4d32b1c23b073228e3c232dbdc967e2a15dfa0d92a860edb9f575
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
