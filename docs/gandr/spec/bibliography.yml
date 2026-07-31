@@ -1,0 +1,1029 @@
+# Hayagriva bibliography for the gandr specification corpus.
+# Entries are copied from the contributor research library; cite as [@key] in the spec documents.
+# Keys are stable; do not rename without sweeping the spec tree.
+
+hackney-robertson-yau-2015-properads:
+  type: book
+  title: Infinity Properads and Infinity Wheeled Properads
+  author: ["Hackney, Philip", "Robertson, Marcy", "Yau, Donald"]
+  date: 2015
+  publisher: Springer
+  volume: 2147
+  serial-number:
+    doi: "10.1007/978-3-319-20547-2"
+    arxiv: "1410.6716"
+  parent:
+    type: book
+    title: Lecture Notes in Mathematics
+
+hackney-robertson-yau-2020-modular:
+  type: article
+  title: Modular Operads and the Nerve Theorem
+  author: ["Hackney, Philip", "Robertson, Marcy", "Yau, Donald"]
+  date: 2020
+  serial-number:
+    doi: "10.1016/j.aim.2020.107206"
+    arxiv: "1906.01144"
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+    volume: 370
+    page-range: "107206"
+
+chu-hackney-2021-rectification:
+  type: article
+  title: On Rectification and Enrichment of Infinity Properads
+  author: ["Chu, Hongyi", "Hackney, Philip"]
+  date: 2022
+  serial-number:
+    doi: "10.1112/jlms.12528"
+    arxiv: "2007.00634"
+  parent:
+    type: periodical
+    title: Journal of the London Mathematical Society
+    volume: 105
+    issue: 3
+    page-range: 1418-1517
+
+raynor-2025-functorial:
+  type: article
+  title: Functorial, Operadic and Modular Operadic Combinatorics of Circuit Algebras
+  author: ["Raynor, Sophie"]
+  date: 2025
+  serial-number:
+    doi: "10.48550/arXiv.2412.20260"
+    arxiv: "2412.20260"
+  parent:
+    type: periodical
+    title: Journal of Pure and Applied Algebra
+    volume: 229
+    issue: 11
+
+raynor-2021-graphical:
+  type: article
+  title: Graphical Combinatorics and a Distributive Law for Modular Operads
+  author: ["Raynor, Sophie"]
+  date: 2021
+  serial-number:
+    doi: "10.1016/j.aim.2021.108011"
+    arxiv: "1911.05914"
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+    volume: 392
+    page-range: "108011"
+
+raynor-2026-nerve:
+  type: article
+  title: Modular Operads, Iterated Distributive Laws and a Nerve Theorem for Circuit Algebras
+  author: ["Raynor, Sophie"]
+  date: 2026
+  serial-number:
+    doi: "10.48550/arXiv.2412.20262"
+    arxiv: "2412.20262"
+
+kock-2016-graphs-hypergraphs:
+  type: article
+  title: Graphs, Hypergraphs, and Properads
+  author: ["Kock, Joachim"]
+  date: 2014
+  serial-number:
+    arxiv: "1407.3744"
+
+chu-haugseng-2021-segal:
+  type: article
+  title: Homotopy-Coherent Algebra via Segal Conditions
+  author: ["Chu, Hongyi", "Haugseng, Rune"]
+  date: 2021
+  serial-number:
+    doi: "10.48550/arXiv.1907.03977"
+    arxiv: "1907.03977"
+
+barkan-2022-arity:
+  type: article
+  title: Arity Approximation of ∞-Operads
+  author: ["Barkan, Shaul"]
+  date: 2023
+  serial-number:
+    doi: "10.48550/arXiv.2207.07200"
+    arxiv: "2207.07200"
+
+barkan-steinebrunner-2022-equifibered:
+  type: article
+  title: The Equifibered Approach to ∞-Properads
+  author: ["Barkan, Shaul", "Steinebrunner, Jan"]
+  date: 2026
+  serial-number:
+    doi: "10.1016/j.aim.2025.110755"
+    arxiv: "2211.02576"
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+    volume: 487
+    page-range: "110755"
+
+barkan-steinebrunner-2023-segalification:
+  type: article
+  title: Segalification and the Boardman-Vogt Tensor Product
+  author: ["Barkan, Shaul", "Steinebrunner, Jan"]
+  date: 2025
+  serial-number:
+    doi: "10.2140/agt.2025.25.5439"
+    arxiv: "2301.08650"
+  parent:
+    type: periodical
+    title: Algebraic & Geometric Topology
+    volume: 25
+    issue: 9
+    page-range: 5439-5462
+
+haine-ramzi-steinebrunner-2025-reedy:
+  type: article
+  title: Fully Faithful Functors and Pushouts of ∞-Categories
+  author: ["Haine, Peter J.", "Ramzi, Maxime", "Steinebrunner, Jan"]
+  date: 2025
+  serial-number:
+    doi: "10.48550/arXiv.2503.03916"
+    arxiv: "2503.03916"
+
+berger-mellies-weber-2012-arities:
+  type: article
+  title: Monads with Arities and Their Associated Theories
+  author: ["Berger, Clemens", "Melliès, Paul-André", "Weber, Mark"]
+  date: 2011
+  serial-number:
+    doi: "10.1016/j.jpaa.2012.02.039"
+    arxiv: "1101.3064"
+  parent:
+    type: periodical
+    title: Journal of Pure and Applied Algebra
+
+batanin-berger-2017-polynomial:
+  type: article
+  title: Homotopy Theory for Algebras over Polynomial Monads
+  author: ["Batanin, Michael", "Berger, Clemens"]
+  date: 2017
+  serial-number:
+    doi: "10.48550/arXiv.1305.0086"
+    arxiv: "1305.0086"
+  parent:
+    type: periodical
+    title: Theory and Applications of Categories
+    volume: 32
+    issue: 6
+
+kock-2012-data-types:
+  type: article
+  title: Data Types with Symmetries and Polynomial Functors over Groupoids
+  author: ["Kock, Joachim"]
+  date: 2012
+  serial-number:
+    arxiv: "1210.0828"
+
+galvez-kock-tonks-2018-decomposition:
+  type: article
+  title: "Decomposition Spaces, Incidence Algebras and Möbius Inversion I: Basic Theory"
+  author: ["Gálvez-Carrillo, Imma", "Kock, Joachim", "Tonks, Andrew"]
+  date: 2015
+  serial-number:
+    doi: "10.1016/j.aim.2018.03.016"
+    arxiv: "1512.07573"
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+    volume: 331
+
+gepner-haugseng-kock-2022-analytic:
+  type: article
+  title: ∞-Operads as Analytic Monads
+  author: ["Gepner, David", "Haugseng, Rune", "Kock, Joachim"]
+  date: 2020
+  serial-number:
+    doi: "10.48550/arXiv.1712.06469"
+    arxiv: "1712.06469"
+
+yau-johnson-2015-props:
+  type: book
+  title: A Foundation for PROPs, Algebras, and Modules
+  author: ["Yau, Donald", "Johnson, Mark W."]
+  date: 2015
+  publisher: American Mathematical Society
+  location: Providence, Rhode Island
+  volume: 203
+  serial-number:
+    doi: "10.1090/surv/203"
+  parent:
+    type: book
+    title: Mathematical Surveys and Monographs
+
+carette-sabry-2016-semirings:
+  type: article
+  title: Computing with Semirings and Weak Rig Groupoids
+  author: ["Carette, Jacques", "Sabry, Amr"]
+  date: 2016
+  note: not in library.bib; verify locator before citation-bearing use
+  parent:
+    type: proceedings
+    title: Programming Languages and Systems (ESOP 2016)
+
+nasu-2024-internal-logic:
+  type: article
+  title: An Internal Logic of Virtual Double Categories
+  author: ["Nasu, Hayato"]
+  date: 2025
+  serial-number:
+    doi: "10.48550/arXiv.2410.06792"
+    arxiv: "2410.06792"
+
+nasu-2025-logical:
+  type: article
+  title: Logical Aspects of Virtual Double Categories
+  author: ["Nasu, Hayato"]
+  date: 2025
+  serial-number:
+    arxiv: "2501.17869"
+
+arkor-mcdermott-2023-relative-monads:
+  type: article
+  title: The Formal Theory of Relative Monads
+  author: ["Arkor, Nathanael", "McDermott, Dylan"]
+  date: 2023
+  serial-number:
+    arxiv: "2302.14014"
+
+arkor-mcdermott-2024-nerve:
+  type: article
+  title: The Nerve Theorem for Relative Monads
+  author: ["Arkor, Nathanael", "McDermott, Dylan"]
+  date: 2024
+  serial-number:
+    doi: "10.48550/arXiv.2404.01281"
+    arxiv: "2404.01281"
+
+arkor-2025-exponentiable:
+  type: article
+  title: Exponentiable Virtual Double Categories and Presheaves for Double Categories
+  author: ["Arkor, Nathanael"]
+  date: 2025
+  serial-number:
+    doi: "10.1007/s10485-026-09869-9"
+    arxiv: "2508.11611"
+
+thompson-carlson-2026-exponentiable:
+  type: article
+  title: Exponentiable Virtual Double Categories and Representability of Exponentials
+  author: ["Carlson, Kevin D.", "Thompson, Ea E."]
+  date: 2026
+  serial-number:
+    arxiv: "2605.20586"
+
+fujii-lack-2025-familial:
+  type: article
+  title: The Familial Nature of Enrichment over Virtual Double Categories
+  author: ["Fujii, Soichiro", "Lack, Stephen"]
+  date: 2025
+  serial-number:
+    arxiv: "2507.05529"
+
+spivak-garner-fairbanks-2021-aggregation:
+  type: article
+  title: Functorial Aggregation
+  author: ["Spivak, David I.", "Garner, Richard", "Fairbanks, Aaron David"]
+  date: 2025
+  serial-number:
+    doi: "10.1016/j.jpaa.2025.107883"
+    arxiv: "2111.10968"
+  parent:
+    type: periodical
+    title: Journal of Pure and Applied Algebra
+    volume: 229
+    issue: 2
+    page-range: "107883"
+
+lambert-patterson-2024-cartesian-double:
+  type: article
+  title: "Cartesian Double Theories: A Double-Categorical Framework for Categorical Doctrines"
+  author: ["Lambert, Michael", "Patterson, Evan"]
+  date: 2023
+  serial-number:
+    doi: "10.1016/j.aim.2024.109630"
+    arxiv: "2310.05384"
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+
+patterson-2025-products:
+  type: article
+  title: Products in Double Categories, Revisited
+  author: ["Patterson, Evan"]
+  date: 2024
+  serial-number:
+    arxiv: "2401.08990"
+  parent:
+    type: periodical
+    title: Theory and Applications of Categories
+    volume: 45
+    issue: 16
+
+clarke-scherer-zeilberger-2026-bifibration:
+  type: article
+  title: The Free Bifibration on a Functor
+  author: ["Clarke, Bryce", "Scherer, Gabriel", "Zeilberger, Noam"]
+  date: 2025
+  serial-number:
+    arxiv: "2511.07314"
+
+laretto-loregian-veltri-2026-directed:
+  type: article
+  title: "Di- Is for Directed: First-Order Directed Type Theory via Dinaturality"
+  author: ["Laretto, Andrea", "Loregian, Fosco", "Veltri, Niccolò"]
+  date: 2024
+  serial-number:
+    arxiv: "2409.10237"
+
+behr-harmer-krivine-2023-fundamentals:
+  type: article
+  title: Fundamentals of Compositional Rewriting Theory
+  author: ["Behr, Nicolas", "Harmer, Russ", "Krivine, Jean"]
+  date: 2022
+  serial-number:
+    arxiv: "2204.07175"
+
+behr-mellies-zeilberger-2023-convolution:
+  type: article
+  title: Convolution Products on Double Categories and Categorification of Rule Algebras
+  author: ["Behr, Nicolas", "Melliès, Paul-André", "Zeilberger, Noam"]
+  date: 2023
+  serial-number:
+    doi: "10.4230/LIPIcs.FSCD.2023.17"
+  parent:
+    type: proceedings
+    title: 8th International Conference on Formal Structures for Computation and Deduction (FSCD 2023)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    volume: 260
+    page-range: "17:1-17:20"
+
+behr-2019-tracelets:
+  type: article
+  title: Tracelets and Tracelet Analysis of Compositional Rewriting Systems
+  author: ["Behr, Nicolas"]
+  date: 2019
+  serial-number:
+    doi: "10.4204/EPTCS.323.4"
+    arxiv: "1904.12829"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 323
+
+behr-kock-2021-tracelet-hopf:
+  type: article
+  title: Tracelet Hopf Algebras and Decomposition Spaces (Extended Abstract)
+  author: ["Behr, Nicolas", "Kock, Joachim"]
+  date: 2022
+  serial-number:
+    doi: "10.4204/EPTCS.372.23"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 372
+    page-range: 323-337
+
+mellies-axiomatic-rewriting:
+  type: article
+  title: Five Basic Concepts of Axiomatic Rewriting Theory
+  author: ["Melliès, Paul-André"]
+  date: 2016
+  serial-number:
+    doi: "10.48550/arXiv.1609.09783"
+    arxiv: "1609.09783"
+
+delpeuch-vicary-2022-normalization:
+  type: article
+  title: Normalization for Planar String Diagrams and a Quadratic Equivalence Algorithm
+  author: ["Delpeuch, Antonin", "Vicary, Jamie"]
+  date: 2022
+  serial-number:
+    doi: "10.46298/lmcs-18(1:10)2022"
+    arxiv: "1804.07832"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 18
+    issue: 1
+
+ara-burroni-guiraud-malbos-metayer-mimram-2025-polygraphs:
+  type: book
+  title: "Polygraphs: From Rewriting to Higher Categories"
+  author:
+    ["Ara, Dimitri", "Burroni, Albert", "Guiraud, Yves", "Malbos, Philippe", "Métayer, François", "Mimram, Samuel"]
+  date: 2023
+  publisher: Cambridge University Press
+  serial-number:
+    doi: "10.1017/9781009498968"
+    arxiv: "2312.00429"
+
+makkai-zawadowski-2008-computads:
+  type: article
+  title: The Category of 3-Computads Is Not Cartesian Closed
+  author: ["Makkai, Mihaly", "Zawadowski, Marek"]
+  date: 2007
+  serial-number:
+    doi: "10.1016/j.jpaa.2008.04.010"
+    arxiv: "0710.5202"
+  parent:
+    type: periodical
+    title: Journal of Pure and Applied Algebra
+    volume: 212
+    issue: 11
+
+henry-2019-nonunital-polygraphs:
+  type: article
+  title: Non-Unital Polygraphs Form a Presheaf Category
+  author: ["Henry, Simon"]
+  date: 2018
+  serial-number:
+    doi: "10.48550/arXiv.1711.00744"
+    arxiv: "1711.00744"
+  parent:
+    type: periodical
+    title: Higher Structures
+    volume: 3
+    issue: 1
+
+levy-cbpv:
+  type: book
+  title: "Call-by-Push-Value: A Functional/Imperative Synthesis"
+  author: ["Levy, Paul Blain"]
+  date: 2003
+  publisher: Springer Netherlands
+  location: Dordrecht
+  serial-number:
+    doi: "10.1007/978-94-007-0954-6"
+
+mangel-mellies-munch-maccagnoni-2026-focalisation:
+  type: article
+  title: Syntax and Semantics of Focalisation with Relative Monads and Comonads
+  author: ["Mangel, Éléonore", "Melliès, Paul-André", "Munch-Maccagnoni, Guillaume"]
+  date: 2026
+  serial-number:
+    doi: "10.48550/arXiv.2606.14652"
+    arxiv: "2606.14652"
+
+munch-maccagnoni-duploids:
+  type: thesis
+  title: Syntax and Models of a Non-Associative Composition of Programs and Proofs
+  author: ["Munch-Maccagnoni, Guillaume"]
+  date: 2013
+  organization: Université Paris-Diderot - Paris VII
+
+mellies-2021-template-games:
+  type: article
+  title: Asynchronous Template Games and the Gray Tensor Product of 2-Categories
+  author: ["Melliès, Paul-André"]
+  date: 2021
+  serial-number:
+    doi: "10.48550/arXiv.2105.04929"
+    arxiv: "2105.04929"
+
+mellies-stefanesco-2020-csl:
+  type: article
+  title: Concurrent Separation Logic Meets Template Games
+  author: ["Melliès, Paul-André", "Stefanesco, Léo"]
+  date: 2020
+  serial-number:
+    doi: "10.48550/arXiv.2005.04453"
+    arxiv: "2005.04453"
+
+chapman-dagand-mcbride-morris-2010-levitation:
+  type: article
+  title: The Gentle Art of Levitation
+  author: ["Chapman, James", "Dagand, Pierre-Évariste", "McBride, Conor", "Morris, Peter"]
+  date: 2010
+  serial-number:
+    doi: "10.1145/1863543.1863547"
+  parent:
+    type: proceedings
+    title: Proceedings of the 15th ACM SIGPLAN International Conference on Functional Programming
+    publisher: ACM
+    page-range: 3-14
+
+cockx-devriese-piessens-2014-without-k:
+  type: article
+  title: Pattern Matching without K
+  author: ["Cockx, Jesper", "Devriese, Dominique", "Piessens, Frank"]
+  date: 2014
+  serial-number:
+    doi: "10.1145/2628136.2628139"
+  parent:
+    type: proceedings
+    title: Proceedings of the 19th ACM SIGPLAN International Conference on Functional Programming
+    publisher: ACM
+    page-range: 257-268
+
+shulman-2015-inverse-diagrams:
+  type: article
+  title: Univalence for Inverse Diagrams and Homotopy Canonicity
+  author: ["Shulman, Michael"]
+  date: 2015
+  serial-number:
+    doi: "10.1017/S0960129514000565"
+    arxiv: "1203.3253"
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science
+    volume: 25
+    issue: 5
+    page-range: 1203-1277
+
+ahrens-north-shulman-tsementzis-2021-univalence-principle:
+  type: article
+  title: The Univalence Principle
+  author: ["Ahrens, Benedikt", "North, Paige Randall", "Shulman, Michael", "Tsementzis, Dimitris"]
+  date: 2022
+  serial-number:
+    doi: "10.48550/arXiv.2102.06275"
+    arxiv: "2102.06275"
+
+petrakis-2022-typoids:
+  type: article
+  title: Univalent Typoids
+  author: ["Petrakis, Iosif"]
+  date: 2022
+  serial-number:
+    doi: "10.48550/arXiv.2205.06651"
+    arxiv: "2205.06651"
+
+riehl-shulman-2017-synthetic:
+  type: article
+  title: A Type Theory for Synthetic ∞-Categories
+  author: ["Riehl, Emily", "Shulman, Michael"]
+  date: 2023
+  serial-number:
+    doi: "10.48550/arXiv.1705.07442"
+    arxiv: "1705.07442"
+
+kolomatskaia-shulman-2023-displayed:
+  type: article
+  title: Displayed Type Theory and Semi-Simplicial Types
+  author: ["Kolomatskaia, Astra", "Shulman, Michael"]
+  date: 2025
+  serial-number:
+    doi: "10.1017/S096012952510025X"
+    arxiv: "2311.18781"
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science
+    volume: 35
+    page-range: e34
+
+altenkirch-chamoun-kaposi-shulman-2024-internal:
+  type: article
+  title: Internal Parametricity, without an Interval
+  author: ["Altenkirch, Thorsten", "Chamoun, Yorgo", "Kaposi, Ambrus", "Shulman, Michael"]
+  date: 2024
+  serial-number:
+    doi: "10.1145/3632920"
+    arxiv: "2307.06448"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 8
+    issue: POPL
+    page-range: 2340-2369
+
+aberle-2024-cohesion:
+  type: article
+  title: Parametricity via Cohesion
+  author: ["Aberlé, C. B."]
+  date: 2024
+  serial-number:
+    doi: "10.46298/entics.14710"
+    arxiv: "2404.03825"
+  parent:
+    type: periodical
+    title: Electronic Notes in Theoretical Informatics and Computer Science
+    volume: 4
+
+kraus-sattler-2017-space-valued:
+  type: article
+  title: Space-Valued Diagrams, Type-Theoretically (Extended Abstract)
+  author: ["Kraus, Nicolai", "Sattler, Christian"]
+  date: 2017
+  serial-number:
+    doi: "10.48550/arXiv.1704.04543"
+    arxiv: "1704.04543"
+
+licata-orton-pitts-spitters-2018-internal-universes:
+  type: article
+  title: Internal Universes in Models of Homotopy Type Theory
+  author: ["Licata, Daniel R.", "Orton, Ian", "Pitts, Andrew M.", "Spitters, Bas"]
+  date: 2018
+  serial-number:
+    doi: "10.4230/LIPIcs.FSCD.2018.22"
+    arxiv: "1801.07664"
+
+cavallo-harper-2021-internal-parametricity:
+  type: article
+  title: Internal Parametricity for Cubical Type Theory
+  author: ["Cavallo, Evan", "Harper, Robert"]
+  date: 2021
+  serial-number:
+    doi: "10.46298/lmcs-17(4:5)2021"
+    arxiv: "2005.11290"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 17
+    issue: 4
+
+vanderweide-2024-enriched-rezk:
+  type: article
+  title: Univalent Enriched Categories and the Enriched Rezk Completion
+  author: ["van der Weide, Niels"]
+  date: 2024
+  serial-number:
+    doi: "10.4230/LIPIcs.FSCD.2024.4"
+  parent:
+    type: proceedings
+    title: 9th International Conference on Formal Structures for Computation and Deduction (FSCD 2024)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    volume: 299
+    page-range: "4:1-4:19"
+
+vanderweide-rasekh-ahrens-north-2023-univalent-double:
+  type: article
+  title: Univalent Double Categories
+  author: ["van der Weide, Niels", "Rasekh, Nima", "Ahrens, Benedikt", "North, Paige Randall"]
+  date: 2023
+  serial-number:
+    doi: "10.48550/arXiv.2310.09220"
+    arxiv: "2310.09220"
+
+guetta-2020-conduche:
+  type: article
+  title: Polygraphs and Discrete Conduché ω-Functors
+  author: ["Guetta, Léonard"]
+  date: 2020
+  serial-number:
+    doi: "10.48550/arXiv.1812.05332"
+    arxiv: "1812.05332"
+
+hadzihasanovic-2020-shape:
+  type: article
+  title: A Combinatorial-Topological Shape Category for Polygraphs
+  author: ["Hadzihasanovic, Amar"]
+  date: 2019
+  serial-number:
+    doi: "10.48550/arXiv.1806.10353"
+    arxiv: "1806.10353"
+
+lucatelli-nunes-2026-freely:
+  type: article
+  title: Freely Generated n-Categories, Coinserters and Presentations of Low Dimensional Categories
+  author: ["Lucatelli Nunes, Fernando"]
+  date: 2026
+  serial-number:
+    doi: "10.48550/arXiv.1704.04474"
+    arxiv: "1704.04474"
+
+forest-2022-unifying:
+  type: article
+  title: Unifying Notions of Pasting Diagrams
+  author: ["Forest, Simon"]
+  date: 2022
+  serial-number:
+    doi: "10.21136/HS.2022.01"
+  parent:
+    type: periodical
+    title: Higher Structures
+    volume: 6
+    issue: 1
+    page-range: 1-79
+
+curien-laplante-anfossi-2023-topological:
+  type: article
+  title: Topological Proofs of Categorical Coherence
+  author: ["Curien, Pierre-Louis", "Laplante-Anfossi, Guillaume"]
+  date: 2024
+  serial-number:
+    doi: "10.48550/arXiv.2302.07391"
+    arxiv: "2302.07391"
+
+curien-2012-operads-clones:
+  type: article
+  title: Operads, Clones, and Distributive Laws
+  author: ["Curien, Pierre-Louis"]
+  date: 2012
+  serial-number:
+    doi: "10.48550/arXiv.1205.3050"
+    arxiv: "1205.3050"
+
+demirdilek-reiher-schweigert-2026-linearly-distributive:
+  type: article
+  title: Linearly Distributive Coherence in the Absence of Units
+  author: ["Demirdilek, Max", "Reiher, Christian", "Schweigert, Christoph"]
+  date: 2026
+  serial-number:
+    doi: "10.48550/arXiv.2605.03113"
+    arxiv: "2605.03113"
+
+kaufmann-ward-2024-schwarz:
+  type: article
+  title: "Schwarz Modular Operads Revisited: SM = S ∘ M"
+  author: ["Kaufmann, Ralph M.", "Ward, Benjamin C."]
+  date: 2024
+  serial-number:
+    arxiv: "2404.17540"
+
+stoeckl-2024-koszul:
+  type: article
+  title: Koszul Operads Governing Props and Wheeled Props
+  author: ["Stoeckl, Kurt"]
+  date: 2024
+  serial-number:
+    doi: "10.48550/arXiv.2308.08718"
+    arxiv: "2308.08718"
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+    volume: 454
+
+kaufmann-lucas-2017-decorated:
+  type: article
+  title: Decorated Feynman Categories
+  author: ["Kaufmann, Ralph M.", "Lucas, Jason"]
+  date: 2017
+  serial-number:
+    doi: "10.48550/arXiv.1602.00823"
+    arxiv: "1602.00823"
+
+dancso-halacheva-robertson-2021-circuit-wheeled:
+  type: article
+  title: Circuit Algebras Are Wheeled Props
+  author: ["Dancso, Zsuzsanna", "Halacheva, Iva", "Robertson, Marcy"]
+  date: 2020
+  serial-number:
+    doi: "10.48550/arXiv.2009.09738"
+    arxiv: "2009.09738"
+
+berger-kaufmann-2022-aggregates:
+  type: article
+  title: "Trees, Graphs and Aggregates: A Categorical Perspective on Combinatorial Surface Topology, Geometry, and Algebra"
+  author: ["Berger, Clemens", "Kaufmann, Ralph M."]
+  date: 2022
+  serial-number:
+    doi: "10.48550/arXiv.2201.10537"
+    arxiv: "2201.10537"
+
+curien-obradovic-2017-cyclic:
+  type: article
+  title: A Formal Language for Cyclic Operads
+  author: ["Curien, Pierre-Louis", "Obradović, Jovana"]
+  date: 2017
+  serial-number:
+    doi: "10.48550/arXiv.1602.07502"
+    arxiv: "1602.07502"
+
+mikhail-2025-thesis:
+  type: thesis
+  title: Type Theory for (∞, ∞)-Categories, and Decomposition Spaces
+  author: ["Mikhail, Thomas Jan"]
+  date: 2025
+  organization: Universitat Autònoma de Barcelona
+
+benjamin-markakis-offord-sarti-vicary-2025-naturality:
+  type: article
+  title: Naturality for Higher-Dimensional Path Types
+  author: ["Benjamin, Thibaut", "Markakis, Ioannis", "Offord, Wilfred", "Sarti, Chiara", "Vicary, Jamie"]
+  date: 2025
+  serial-number:
+    doi: "10.48550/arXiv.2501.11620"
+    arxiv: "2501.11620"
+
+roman-2023-monoidal-context:
+  type: thesis
+  title: Monoidal Context Theory
+  author: ["Román, Mario"]
+  date: 2023
+  organization: TalTech Press
+  serial-number:
+    doi: "10.23658/TALTECH.54/2023"
+
+hefford-wilson-2024-profunctorial:
+  type: article
+  title: A Profunctorial Semantics for Quantum Supermaps
+  author: ["Hefford, James", "Wilson, Matt"]
+  date: 2024
+  serial-number:
+    doi: "10.1145/3661814.3662123"
+    arxiv: "2402.02997"
+  parent:
+    type: proceedings
+    title: Proceedings of the 39th Annual ACM/IEEE Symposium on Logic in Computer Science
+    page-range: 1-15
+
+wilson-hefford-2026-strong-profunctors:
+  type: article
+  title: Higher-Order Quantum Objects Are Strong Profunctors
+  author: ["Wilson, Matt", "Hefford, James"]
+  date: 2026
+  serial-number:
+    doi: "10.48550/arXiv.2603.11221"
+    arxiv: "2603.11221"
+
+wilson-hefford-hoffreumon-2026-supermaps:
+  type: article
+  title: Supermaps on Generalised Theories
+  author: ["Wilson, Matt", "Hefford, James", "Hoffreumon, Timothée"]
+  date: 2026
+  serial-number:
+    doi: "10.48550/arXiv.2602.23865"
+    arxiv: "2602.23865"
+
+nuyts-2026-natpt:
+  type: report
+  title: Models of Naturality Pretype Theory
+  author: ["Nuyts, Andreas"]
+  date: 2026
+  note: not in library.bib; verify locator before citation-bearing use (technical report v0.3, June 2026)
+
+nuyts-devriese-2024-transpension:
+  type: article
+  title: "Transpension: The Right Adjoint to the Pi-Type"
+  author: ["Nuyts, Andreas", "Devriese, Dominique"]
+  date: 2024
+  serial-number:
+    doi: "10.46298/lmcs-20(2:16)2024"
+    arxiv: "2008.08533"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 20
+    issue: 2
+
+vanmuylder-2026-thesis:
+  type: thesis
+  title: "Parametricity in Type Theory: Language Primitives and Applications"
+  author: ["Van Muylder, Antoine"]
+  date: 2026
+
+vanmuylder-nuyts-devriese-2025-nominal:
+  type: article
+  title: Nominal Type Theory by Nullary Internal Parametricity
+  author: ["Van Muylder, Antoine", "Nuyts, Andreas", "Devriese, Dominique"]
+  date: 2026
+  serial-number:
+    doi: "10.48550/arXiv.2512.09464"
+    arxiv: "2512.09464"
+
+altenmuller-2026-string-diagrams:
+  type: thesis
+  title: Combinatorial Presentations of String Diagrams for Non-Symmetric Monoidal Categories
+  author: ["Altenmüller, Malin"]
+  date: 2026
+  organization: University of Strathclyde
+
+hewer-2025-hott-operads:
+  type: article
+  title: HoTT Operads
+  author: ["Hewer, Brandon", "Hutton, Graham"]
+  date: 2026
+  serial-number:
+    doi: "10.4230/LIPIcs.TYPES.2025.4"
+  parent:
+    type: proceedings
+    title: 31st International Conference on Types for Proofs and Programs (TYPES 2025)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    volume: 384
+    page-range: "4:1-4:24"
+
+cohen-coquand-huber-mortberg-2018-cubical:
+  type: article
+  title: "Cubical Type Theory: A Constructive Interpretation of the Univalence Axiom"
+  author: ["Cohen, Cyril", "Coquand, Thierry", "Huber, Simon", "Mörtberg, Anders"]
+  date: 2018
+  serial-number:
+    doi: "10.4230/LIPIcs.TYPES.2015.5"
+  parent:
+    type: proceedings
+    title: 21st International Conference on Types for Proofs and Programs (TYPES 2015)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    volume: 69
+    page-range: "5:1-5:34"
+
+vezzosi-mortberg-abel-2019-cubical-agda:
+  type: article
+  title: "Cubical Agda: A Dependently Typed Programming Language with Univalence and Higher Inductive Types"
+  author: ["Vezzosi, Andrea", "Mörtberg, Anders", "Abel, Andreas"]
+  date: 2019
+  note: not in library.bib; verify locator before citation-bearing use
+  serial-number:
+    doi: "10.1145/3341691"
+  parent:
+    type: proceedings
+    title: Proceedings of the 24th ACM SIGPLAN International Conference on Functional Programming (ICFP 2019)
+
+gratzer-weinberger-buchholtz-2024-directed-univalence:
+  type: article
+  title: Directed Univalence in Simplicial Homotopy Type Theory
+  author: ["Gratzer, Daniel", "Weinberger, Jonathan", "Buchholtz, Ulrik"]
+  date: 2024
+  serial-number:
+    arxiv: "2407.09146"
+
+aehlig-joachimski-2005-continuous:
+  type: article
+  title: Continuous Normalization for the Lambda-Calculus and Gödel's T
+  author: ["Aehlig, Klaus", "Joachimski, Felix"]
+  date: 2005
+  serial-number:
+    doi: "10.1016/j.apal.2004.10.003"
+  parent:
+    type: periodical
+    title: Annals of Pure and Applied Logic
+    volume: 133
+    issue: 1
+    page-range: 39-71
+
+veltri-2021-coherence-focusing:
+  type: article
+  title: Coherence via Focusing for Symmetric Skew Monoidal Categories
+  author: ["Veltri, Niccolò"]
+  date: 2021
+  serial-number:
+    doi: "10.1007/978-3-030-88853-4_12"
+  parent:
+    type: proceedings
+    title: "Logic, Language, Information, and Computation: 27th International Workshop, WoLLIC 2021, Proceedings"
+    publisher: Springer-Verlag
+    location: Berlin, Heidelberg
+    page-range: 184-200
+
+koslowski-2005-polycategories:
+  type: article
+  title: A Monadic Approach to Polycategories
+  author: ["Koslowski, J."]
+  date: 2003
+  serial-number:
+    doi: "10.1016/S1571-0661(04)80565-6"
+  parent:
+    type: periodical
+    title: Electronic Notes in Theoretical Computer Science
+    volume: 69
+    page-range: 183-208
+
+weber-2007-familial:
+  type: article
+  title: Familial 2-Functors and Parametric Right Adjoints
+  author: ["Weber, Mark"]
+  date: 2007
+  note: not in library.bib; verify locator before citation-bearing use
+  parent:
+    type: periodical
+    title: Theory and Applications of Categories
+    volume: 18
+
+galvez-kock-tonks-2018-restriction-species:
+  type: article
+  title: Decomposition Spaces and Restriction Species
+  author: ["Gálvez-Carrillo, Imma", "Kock, Joachim", "Tonks, Andrew"]
+  date: 2017
+  serial-number:
+    doi: "10.1093/imrn/rny089"
+    arxiv: "1708.02570"
+  parent:
+    type: periodical
+    title: International Mathematics Research Notices
+
+hackney-kock-2022-free-decomposition:
+  type: article
+  title: Free Decomposition Spaces
+  author: ["Hackney, Philip", "Kock, Joachim"]
+  date: 2022
+  serial-number:
+    doi: "10.1007/s13348-024-00446-8"
+    arxiv: "2210.11192"
+
+joyal-street-verity-1996-traced:
+  type: article
+  title: Traced Monoidal Categories
+  author: ["Joyal, André", "Street, Ross", "Verity, Dominic"]
+  date: 1996
+  serial-number:
+    doi: "10.1017/s0305004100074338"
+  parent:
+    type: periodical
+    title: Mathematical Proceedings of the Cambridge Philosophical Society
+    publisher: Cambridge University Press
+    volume: 119
+    issue: 3
+    page-range: 447-468
+
+finster-mimram-2017-catt:
+  type: article
+  title: A Type-Theoretical Definition of Weak ω-Categories
+  author: ["Finster, Eric", "Mimram, Samuel"]
+  date: 2017
+  serial-number:
+    arxiv: "1706.02866"
