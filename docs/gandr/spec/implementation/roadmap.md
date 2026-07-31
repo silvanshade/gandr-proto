@@ -30,6 +30,15 @@ The tractability axis (convergent-fragment versus certificate-carried) must stay
 * **Coverage floor seeding**: enforcement is per production file, and the floor table is currently unseeded.
 * **Storage**: persistent backend, deeper tree, and boundary-grinding hardening are declared deficits; wire compatibility is unclaimed.
 
+## Decisions of record pinned for their phases
+
+* **Binder escape resolves by dependent motive**, not a scope check (it also unlocks families) — the dependent-core phase inherits this.
+* **Naming**: `Integer` renames to `Int` with `Nat` added when arbitrary precision lands; the semidecision type is named after Sierpiński, never spelled as a Σ; and Sierpiński truth is never encoded as a boolean or optional boolean.
+* **Corpus policy**: features land _with_ their corpus examples — the executable witness is part of the feature, and the residuals discipline gains a corpus face.
+* **Modules**: the historical conflict between modules-as-compile-time-namespaces and modules-elaborating-to-canonical-records is superseded by the phase commitment to modules as their **own primitive layer**; neither old reading should be cited as current.
+* **Certificate verdicts are three-valued** (holds / refuted / declined-within-budget) wherever budget-gated checks feed the store — decline is stuck, never refuted.
+* **Handler clauses fall through to the live ambient consumer**, with the continuation edge explicit in IL checking.
+
 ## Stale-documentation repairs owed
 
 Found by inventory against the live tree; each is a one-line-to-small fix in its owning artifact:

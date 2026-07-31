@@ -40,6 +40,7 @@ Ordered within each section by what unblocks the most; costs are estimates again
 * **The core-coincidence theorem** of the directed statement (the groupoid statement as the invertible core), and the directed normal-form/faithfulness wall behind it.
 * **Deleting the cell record's simple-connectivity field** (or re-carrying it as a consumer-side predicate) under the generality ruling, with the surface-language question — whether the _surface_ still hides wheels and disconnection — as its own design pass.
 * **The non-unitality condition check** against its polygraph source (cheap, high value; on its face gandr's pattern-to-pattern rules satisfy it).
+* **Standing obligations inherited from the identity/reflection arcs**, each a named hole until discharged: J-as-tabulator-elimination is a **theorem obligation, not an identification**; higher-stratum transport owes explicit lifting/cumulativity coherence; protype-isomorphism certificates stay **separate** from equivalence/univalence certificates until the bridge theorem lands; the variance accounting of directed observations and corecursion owes a theorem rather than a description; unfolding and certificate replay must be defined as an **operational relation** before justifying temporal transport with them; and the base-stage identity law must be stated honestly (never implying full path induction where only the saturated-instance eliminator exists).
 
 ## The wager's falsifiers
 
@@ -53,6 +54,8 @@ Its three falsifiers, all scheduled or spikeable:
 ## Parked deliberately, with reasons
 
 The free-bifibration STOP (gated on the factorization-preorder check, not scheduled); the coproduct-as-cache-keys and antipode-as-rollback directions (need their own design passes); the acceleration band (until the certificate relation has non-empty extension); the session/protocol code stratum (identity at a universe of protocols needs sessions reflected as codes; the cross-stratum seam must be flagged before either stratum hardens — passing to components across an ordering/no-ordering boundary is known not to be conservative); the permission-monoid question against the grade design; higher-order cells and the second hole theory (conditional on wanting them); instance-level keying of the overlap-support relation (the obvious first improvement once the relation is non-empty).
+Also parked with their design substance pinned: **the sized/termination direction** — sizes enter as _indices in their own sort_ reusing the grade-zero erasure machinery, never as a fresh semiring grade (they need a well-founded order the resource semiring cannot express); bounded size quantification is unsound without a consistency gate on reduction; the well-founded fixed-point former is the single recursion-plus-corecursion former that retires the productivity/termination split; the guardedness check is a two-state flag automaton over observation-record introductions; and four named deep-guardedness programs pin the syntactic-check/sizes cliff for the corpus.
+And **the codata dependent slots** — self-dependent projection result types, indexed codata, the without-K unifier extension, forced copatterns, and the empty cosplit — with the elaboration hazard pinned: lowering codata to positive records of thunks smuggles a computation into the value zone unless mediated by the shift, so the value-side and computation-side readings must be resolved deliberately, and codata has **no η** (undecidable, and recursive-record η breaks the elaborator's scope invariant).
 
 ## Open questions
 
@@ -69,6 +72,9 @@ The free-bifibration STOP (gated on the factorization-preorder check, not schedu
 9. The directed eliminator and diagonal-intro spellings; whether directed composition shares the groupoid composition name — surface vocabulary, cheapest settled before the identity-layer rules land.
 10. Where do the constant-map and constant-literal witnesses land as permanent negative tests — the first phase carrying a directed certificate stock over codes.
 11. The variance/directedness annotation slot in the export format: reserved early (recommended) or deferred to the certificate phase at the price of a coordinated format bump on the TCB.
+12. The doctrine complex's carrier shape: does it want **two node sorts per dimension** — signatures and relations, with a higher graph per pair of signatures and only the tight cells carrying cross-dimensional meaning — or does the single-sorted telescope suffice?
+    (An open owner question of record, with a runnable sketch; adjacent to, not settled by, the three-role split.)
+13. A two-point relevant/irrelevant variance record in place of a four-point lattice — co/contravariance presupposes cumulative subtyping, which gandr rejects, so only the irrelevant fragment transfers; and the elaborator will still meet stuck max-plus level equations (the oracle gives entailment and benign loops, not most general unifiers) — an unsolved user-experience surface gandr must own.
 
 ## Reading queue, by leverage
 
