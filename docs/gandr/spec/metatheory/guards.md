@@ -108,6 +108,7 @@ Four collisions were caught in one pass and one shipped before it was checked; t
 * **"hereditary"**: the Koszul line supersedes the polytope/cubical-Feynman technique, not the hereditary condition; hereditariness — many-to-many maps decomposing uniquely as tensor products of many-to-one maps, the axis whose _failure_ distinguishes props and wheeled structures from operads — is **not decided anywhere in the corpus** and stays an open lead, not a settled question.
 * **"Rigid"**: two structures share the name — the canonicalization record on a setoid (`Gandr.Rigid`) and the extent-preserving offset-fixed arena map class (`Gandr.Arena.Structure.Rigid`).
   The shared diagnosis (the representation carries structure the semantics cannot see, and rigidity certifies it does not leak — bracketing in one, ordering in the other) is why the name recurs; a rename decision is owed **before a third `Rigid` appears**.
+  The arity interface's representation map is **not** a third one: it is the canonicalization record itself, arriving as a field ([[../metatheory#The arity interface, universe-style]]).
 
 ## Mode and posture rules, standing
 
@@ -119,6 +120,9 @@ Four collisions were caught in one pass and one shipped before it was checked; t
 * **A price quoted against a superseded presentation is not evidence about the current cost** — re-quote before spending.
 * **Record, per source, which part was read.** A held, cited source can still have its headline theorem unconsumed; the failure has recurred.
   When a source is consumed, the register entry or the consuming document says which sections.
+* **A record can be adopted while one of its fields is refuted, and the refutation is the useful half.** An imported interface's fields are separable claims: a field whose instances all satisfy it for a reason gandr's rung does not share is refuted _at that rung_ without touching the rest of the record.
+  The worked case is the arity interface's representation map, adopted as a field and refuted in its published form at both of gandr's kits, with a mechanized witness at one and two existing decidability checks at the other; what the refutation buys is the identification of the field with an obligation already on the books.
+  So the question to ask of an imported field is **which property of the source's instances is doing the work**, and whether gandr's carrier has it — not whether the field is stated for a general enough universe.
 * **Sorting needs a decidable order, constructively.** A sorted-normal-form canonicalization (the `Rigid` route) presupposes a decidable linear order on the payload; without one, the classical final-coalgebra constructions imply the lesser limited principle of omniscience [@joram-veltri-2023-finite-bags] — the constructive precondition of the whole section discipline.
   The published type-theoretic twin of "ordering is a section" (manifestly finite sets as linearly-ordered finite sets, an at-most-one-path type against an `n!`-path 1-type) is [@yorgey-2014-species].
 * **Geometry as motivation is free; geometry as primitive is priced** (the trusted-surface criterion).

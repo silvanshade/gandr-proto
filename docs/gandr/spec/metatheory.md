@@ -249,13 +249,91 @@ The old licence — "both arities are cartesian because the symmetric group acts
 * **for the carrier**: Burroni–Leinster-style generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr buys it by working over the **ordered representation**, where the monad is cartesian; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
 
 So the whole price of "one construction, two arity bases" at the circuit rung is one obligation: `Rigid.canon-sound` for shapes.
-The construction's own atomicity does not generalize — the linear kit's multiplication is one structural recursion with one inductive graph, while grafting is a composite of nine operations each of whose graphs threads the next — and this asymmetry is why the arity-interface _record_ is still unwritten: two of its fields have no inhabitant in the circuit kit.
-A **universe-style presentation** of the arity layer (codes, an interpretation, an arity former with an interpretation equivalence, a representation map from equivalences to code identifications) is the evaluated candidate for that record: it relocates the nine-relation obligation into a code former plus coherence laws, dissolves the unit-law asymmetry, and merges `Rigid` into the arity structure as the representation map.
-The published parameterization varies the _symmetry_ axis and fixes the arity-shape former at a dependent sum (one-output tree grafting), so extending it to circuit algebras means **replacing the former, not instantiating the parameter** — and the deciding question, whether the graph former's coherence laws stay finite, is a half-day hand computation scheduled in [[metatheory/roadmap]] together with its control experiment at the linear kit.
-The setoid translation the candidate rests on is mechanical and recorded: `hSet` becomes carried cells one dimension up (the lawless-setoid discipline), `ua` becomes `Ua` with its `Ua²` coherence (which stops being a tidy correction and becomes a **prerequisite** — the representation map's path-level laws are exactly what `Ua²` states), truncated finiteness becomes decided finiteness, and the one genuinely different piece is the free construction, where the literature's HIT is replaced by the inductive-family-over-a-lawless-setoid answer of [[#The ambient-primitive policy]].
-Filed beside it as a direction, not a decision: **internalizing** the arity universe — operations as data the way descriptions are data, the rule algebra as an internal object, and `ua` at the operation layer.
+The construction's own atomicity does not generalize — the linear kit's multiplication is one structural recursion with one inductive graph, while grafting is a composite of nine operations each of whose graphs threads the next.
+That asymmetry is what an arity interface has to absorb, and the shape that absorbs it is the universe-style presentation below.
+
+### The arity interface, universe-style
+
+The arity layer is presented as a **universe**: a type of codes, an interpretation, a unit code, a substitution former, and the interpretation equivalences the laws are stated over.
+The published form of that record is a generalised operad universe [@hewer-2025-hott-operads, def. 9] — codes; an interpretation family; a unit code with an equivalence to the singleton; a **dependent-sum code former** with an equivalence from the interpretation of a formed code to the dependent sum of the interpretations; a **representation map** sending an equivalence of interpretations to an identification of codes, with a composition coherence; and **three path-level closure laws** placing the left-unit, right-unit and associativity equivalences in the representation map's image.
+Its four instances are totally-ordered finite sets (planar operads), the groupoid of finite sets and bijections (symmetric operads), the ambient type universe, and the `n`-types for `n ≥ −1`.
+
+**Every published instance is a universe whose code _is_ its interpretation.** That is what the representation map asserts and what its derived section lemma makes precise: the codes' identifications reflect the interpretations' equivalences, and nothing more.
+The consequences of gandr's codes carrying more than that are the whole content of this section.
+
+**The parameterization varies the symmetry axis and fixes the arity-shape axis.** Planar and symmetric operads differ by the universe of codes — ordered versus unordered — while composition is always the dependent sum, which is one-output tree grafting. gandr settles ordering with `Rigid` and needs the other axis varied, so extending to circuit algebras means **replacing the former, not instantiating the parameter**.
+The former to replace it with is **substitution** — the arity monad's multiplication in polynomial form, an outer code together with a code at each of its positions — and not the binary grafting the operations are written as; the graph shape is Raynor's colimit over graphs of a limit over the graph's elements [@raynor-2026-nerve], so the interpretation is a colimit of products where the operad's is a dependent sum.
+
+The dictionary is read off the monad rather than by analogy: a code is an element of the arity monad applied to the one-point species, and the interpretation is the polynomial fibre — that element's positions.
+
+| universe field         | planar operad             | linear kit                   | circuit kit                |
+| ---------------------- | ------------------------- | ---------------------------- | -------------------------- |
+| codes                  | the natural numbers       | `Path a b`                   | `Shape Γ Δ`                |
+| interpretation         | standard finite sets      | the path's **edges**         | the shape's **vertices**   |
+| unit code              | the singleton             | the one-edge path            | `corolla A B`              |
+| the former             | finite summation          | path substitution            | graph substitution         |
+| its interpretation law | the sum's fibre bijection | positions of a concatenation | `verts-graft`, generalized |
+| representation map     | cardinality injectivity   | see below                    | `Rigid.canon-sound`        |
+
+The interpretation is the **vertex** family at the circuit rung, not the leg family, and `Gandr.Shape.Graft.verts-graft` — grafting concatenates the vertex listings — is already the former's interpretation law at the binary rung.
+
+**Three divergences from the published record are forced, and one of them deletes three of its fields.**
+
+* **The codes are indexed by their interface**, not a bare type.
+  This is the reason the cell shape was re-presented familially: an unindexed carrier gives an arity abstraction nothing to quantify over.
+* **The unit is a family, not an element** — one unit code per generator, which at the circuit rung is the corolla family and at the linear kit is the one-edge path.
+* **The positions are labelled**, so the interpretation is a family too: the positions spanning a given interface.
+  Substitution needs the label to _type_ the family it substitutes, and the right-unit law needs it to name which unit goes where.
+  The published positions are bare because the published codes are bare finite sets.
+
+> **The three path-level closure laws disappear.** They exist so that the unit and associativity equivalences on positions are representable as identifications of codes, because in the unindexed setting a formed code is a _new_ code and the operad laws are heterogeneous over it.
+> Here substitution preserves the index — a substituted code and its outer code span the same interface — so all three laws are homogeneous equations and nothing is transported.
+> The index does the work the three laws were doing, and it is a decision the tree had already taken for an unrelated reason.
+
+**The two fields the interface record was short are the two the universe names.** The recorded interface asks for a carrier, a unit, a multiplication spoken only through its **graph**, a heterogeneous structural equality, and six lemmas over them; the circuit kit supplies the carrier, the unit and the multiplication, and owes the graph and the structural equality.
+
+| owed field                 | what it was                                                                                                 | what the universe says it is                                                                                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the multiplication's graph | a first-order relation keeping a defined function out of a matchable index; nine of them in the circuit kit | the code former **together with its interpretation law** — the law's only moving part is a bijection of positions                                          |
+| the structural equality    | introduced for the heterogeneous comparison, then found to be the equality the laws are stated at           | the representation map's **codomain** — the identification relation on codes, whose own coherence is the two-cell obligation of [[#Stratified univalence]] |
+
+Both presentations answer one question: how to state the laws without the defined multiplication appearing where something must match on it.
+The graph answers it by never computing; the universe answers it by making the laws quantify over positions instead of over constructions.
+
+**The representation map does not survive the rung change, and that is the interface's real price.** In its published form it is refuted at gandr's rungs, and the two refutations differ.
+At the linear kit the surplus a code carries over its position family is the **order**, and the refutation holds even against a hypothesis strengthened to label-preserving bijections: two paths using the same edges in the other sequence have isomorphic labelled position families and are distinct codes (`Gandr.Arity.Universe.Refute`).
+There the repair is to enrich the interpretation to the ordered labelled positions, after which the interpretation is the code and the map is free.
+At the circuit kit the surplus is the **vertex ordering**, and no interpretation of a graph sees it: `Gandr.Shape.Graft.merge-swap-apart` and `corollas-swap-apart` exhibit shapes isomorphic as graphs and decidably distinct as terms.
+
+> **So at the circuit rung the representation map cannot land in propositional equality; it lands in the code setoid's relation, and what decides that relation is `canon-sound`.** The map _is_ `Rigid` at this rung — not "merges with" — and specifically it is the canonicalization-soundness obligation.
+> The universe presentation therefore does not dissolve that obligation; it **promotes** it, from a debt recorded in a header to a field the typechecker asks for before the interface can be inhabited at all.
+> This is "ordering is a section" meeting the arity interface, and it is forced by the representation discipline rather than by the choice of ambient.
+
+**What the presentation costs, measured at both kits.** The linear instance is landed in `Gandr.Arity.Universe`, where the answer was already known and so serves as the control: if the presentation is not cheaper there, it will not be cheaper where the answer is unknown.
+
+* **The unit and associativity laws are the existing lemmas, read off the graph by functionality.** The left-unit law _is_ the linear kit's left-unit lemma; associativity runs on its associativity lemma.
+  The presentation reuses the kit rather than replacing it.
+* **The whiskering lemma has no counterpart.** Whiskering is a compatibility the _binary_ multiplication needs — moving one operand past the other's interface — and substitution at all positions never moves an operand past anything.
+* **One lemma is the whole new price**: substitution distributes over concatenation, which is what stating associativity over positions costs in place of stating it over witnesses.
+
+At the circuit kit, eight of the interface's thirteen fields are inhabited against the tree as it stands, and the five that are not all descend from one construction.
+The one new definition needed is the **familial form of the vertex family**, indexed by the profile it spans, which is what typing the substituted family requires.
+The interpretation side of the owed half is already built at the binary rung — `verts-graft`, `verts-merge`, `verts-lwhisk`, `verts-preplug`, `verts-wire-in`, `verts-cap-in` and `verts-wires-in` — where the graph-of-multiplication route's nine relations, with totality and functionality for each, have none of their twenty-seven pieces built.
+
+> **The relocation is a simplification on the side the cost was measured on, and neutral on the side the cost actually sits.** "A multiplication spoken only through its graph is one relation in one kit and nine in the other" is a statement about the **witness** discipline, and the witness discipline is exactly what the interpretation law replaces: one bijection of positions in place of nine relations threading one another's indices.
+> It buys nothing on the **construction** side, whose cost is the listing algebra — matchings, insertions, exchanges — which no presentation of the interface touches.
+
+Two movements in that construction cost are known and they run in opposite directions.
+Substitution's **outer** recursion becomes trivial: grafting onto a pure wiring is a well-founded composition of matchings, where substituting at a wiring is the identity because a wiring has no vertex to substitute at.
+Its **base case** becomes harder: attaching a graph where a vertex's ports were published closes a block of sources against a block of sinks — a two-sided closure, which is what creates a wheel, and which grafting never needs.
+That closure is the located residual of the whole route.
+
+The setoid translation the presentation rests on is mechanical: h-sets become carried cells one dimension up (the lawless-setoid discipline), the ambient univalence becomes the layout univalence map with its two-cell coherence (which stops being a tidy correction and becomes a **prerequisite** — the representation map's coherence is exactly what that two-cell obligation states), truncated finiteness becomes decided finiteness, and the one genuinely different piece is the free construction, where the literature's higher inductive type is replaced by the inductive-family-over-a-lawless-setoid answer of [[#The ambient-primitive policy]].
+
+Filed beside it as a direction, not a decision: **internalizing** the arity universe — operations as data the way descriptions are data, the rule algebra as an internal object, and univalence at the operation layer.
 That is the one concrete payoff a composite doctrine-and-term monad was ever contemplated for (univalence for certificates, not only for codes), reached here without one; the applications are metaprogramming over rewrite systems, signature-to-optimizer, and transport of a program along an equivalence of operations.
-Its four named risks: the graph former's coherence laws may not stay finite (the deciding spike); an object-language universe is a trusted-surface question with a plausible but unchecked Tarski exemption; the representation map makes the `Ua²` obligation load-bearing; and the free construction's non-HIT substitute is recorded but unexercised at this scale.
+Its three standing risks: an object-language universe is a trusted-surface question with a plausible but unchecked Tarski exemption; the representation map makes the two-cell univalence obligation load-bearing; and the free construction's non-HIT substitute is recorded but unexercised at this scale.
+The fourth risk it once carried — that the graph former's coherence laws might not stay finite — is retired: the former is a monad multiplication, so its laws are three whatever it multiplies, and the index makes them homogeneous.
 
 Two senses of "arity" are in play in the literature and must be kept apart at every citation: a **monad with arities** (a property relative to a dense subcategory, consumed by the nerve theorem) and an **arity monad** (the shape of a cell's source, consumed by the carrier, wanting cartesianness).
 A strongly cartesian monad has canonical arities, so the second implies the first — but at gandr's rung and base the implication is unavailable in the needed direction, and the two senses come apart: sense one is available at `Set` and carries the nerve; sense two fails at `Set` and is bought back by ordering.
@@ -708,7 +786,7 @@ The retired falsifiers (real cells not simply connected; the term face needs PRO
 ## Roadmap
 
 The detailed queue — spikes with costs and deciders, standing obligations, open questions, the reading list, and the falsifier ledger — is [[metatheory/roadmap]].
-The five headline directions, for orientation: extend to the directed case (it is forced, three ways); generalize the arena by the factorization-system route; make the four placements of the circuit algebra against the doctrine explicit in built artifacts (the term face is the gate); evaluate the universe presentation of the arity layer (two half-day spikes decide it); adopt the parametricity cluster's technology and take the nominal case as an aim.
+The five headline directions, for orientation: extend to the directed case (it is forced, three ways); generalize the arena by the factorization-system route; make the four placements of the circuit algebra against the doctrine explicit in built artifacts (the term face is the gate); carry the universe-style arity interface to the circuit kit (graph substitution is the one construction the five open fields descend from); adopt the parametricity cluster's technology and take the nominal case as an aim.
 
 ## Sub-documents
 
