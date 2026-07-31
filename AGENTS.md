@@ -3,7 +3,7 @@
 ## Start here
 
 * `PLAN.html` — the approved reboot roadmap and current project wayfinder.
-* `docs/spec/index.xml` — the entry point to the status-attributed, tool-validated specification corpus.
+* `docs/gandr/spec/README.md` — the entry point to the language specification corpus (overview, metatheory, implementation, proof-engineering tracks).
 * `docs/WORKFLOW.md` — the workflow routing layer.
   Read it first, then open only the task-scoped file it points to under `docs/workflow/`.
 
@@ -90,8 +90,8 @@ The `no-machine-local-paths` hook and commitlint are lexical backstops; classifi
 
 ## Specification, corpus, and research
 
-* `docs/spec/index.xml` is the specification entry point.
-  The corpus is validated by `gandr-workflow-docs`; `docs/spec/refs.yml` is derived and must be regenerated, never edited by hand.
+* `docs/gandr/spec/README.md` is the specification entry point; the four track documents under it are the design record.
+  The validated `.gfd` corpus and its `gandr-workflow-docs` pipeline are parked (crates commented out of the workspace); `docs/spec/refs.yml` is derived and must be regenerated, never edited by hand, when that pipeline returns.
   Follow [`docs/workflow/docs.md`](docs/workflow/docs.md).
 * Every surfaced language feature lands its complete executable corpus treatment in the same change.
   Syntax-only work lands a parse-gated `surface/` witness; internal-only work lands named exercised fixtures and an explicit promotion blocker.
