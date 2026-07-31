@@ -15,13 +15,17 @@ run = """
 RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
 export RUSTUP_TOOLCHAIN
 
-cargo clippy --workspace --all-targets --features=full -- -D warnings
+# `-A clippy::std_instead_of_core`: the 2026-05-28 nightly's clippy flags seven
+# std:: import sites in gandr-workflow-gates that the manifest wall's other
+# toolchains accept; the lane-scoped allowance is the sanctioned residual of
+# the dylint-driven pin rollback (docs/workflow/rust.md "Toolchain upgrades").
+cargo clippy --workspace --all-targets --features=full -- -D warnings -A clippy::std_instead_of_core
 """
 
 ["cargo:dylint:local"]
 description = "Run project-local Dylint rules across covered workspace targets"
 depends = ["toolchain:materialize"]
-env = { CARGO_TARGET_DIR = "{{ config_root }}/target/dylint-local", DYLINT_RUSTFLAGS = "-D warnings" }
+env = { CARGO_TARGET_DIR = "{{ config_root }}/target/dylint-local", DYLINT_RUSTFLAGS = "-D warnings -A clippy::std_instead_of_core" }
 run = """
 # Incremental state ICEs the dylint driver on reruns
 # (`shallow_lint_levels_on`); keep the driver run reproducible.
@@ -29,8 +33,6 @@ CARGO_INCREMENTAL=0
 export CARGO_INCREMENTAL
 
 
-# `gandr-workflow-gates` and the driver itself are excluded pending their
-# lint-debt triage (gandr-0ze, gandr-3yh).
 cargo dylint \
   --lib gandr_workflow_dylint \
   --no-deps \
@@ -50,7 +52,7 @@ export RUSTUP_TOOLCHAIN
 # Verify the project-local driver's UI contract before upstream rules.
 cargo test -p gandr-workflow-dylint ui -- --nocapture
 
-DYLINT_RUSTFLAGS="-D warnings"
+DYLINT_RUSTFLAGS="-D warnings -A clippy::std_instead_of_core"
 export DYLINT_RUSTFLAGS
 
 # Incremental state ICEs the dylint driver on reruns

@@ -76,6 +76,18 @@
   Destruction/duplication totality on recursive owned types is therefore **not gate-proven**; the mitigations are flat/arena representations or manual worklist impls, and a complementary type-plane lint is tracked as `gandr-cfo`.
   `non_local_effect_before_unhandled_error` remains a separate driver invocation after a historical upstream panic on a core lib-test target; it currently shares the standard Dylint package scope and `--all-targets` selection, and must be re-split per-core if that defect recurs.
 
+### Toolchain upgrades
+
+The nightly pin (`RUSTUP_TOOLCHAIN_NIGHTLY` in `mise.toml`, materialized into `crates/workflow-dylint/rust-toolchain` by `toolchain:materialize`) moves only deliberately: the upstream Dylint example lints track a specific rustc_private API and lag current nightlies by roughly a release cycle, so the pin targets the newest nightly the upstream Dylint rev supports, not the newest nightly available.
+A bump is its own reviewed change: bump the pin, materialize, run the full merge wall, and clear the residuals list below (closing or refreshing each entry against the new toolchain).
+
+#### Residuals
+
+* **`std_instead_of_core` lane allowance (2026-07-30, pin `nightly-2026-05-28`).** The 2026-05-28 clippy flags seven `std::` import sites in `gandr-workflow-gates` that the 2026-07-07 clippy accepted (the `core::io` stabilization window shifted between the two; the runtime-host cross-toolchain pair pattern covers the same class for `core::io::Error`).
+  Rather than seven cross-toolchain allow pairs, every nightly clippy invocation in the workflow carries `-A clippy::std_instead_of_core` on the command line: `cargo:clippy` and the `cargo:dylint*` lanes (via `DYLINT_RUSTFLAGS`).
+  **Revisit on the next major toolchain bump:** if the newer clippy agrees with the manifest wall on those paths — or the sites are rewritten to a form both toolchains accept — remove the lane flag.
+  The residual exists because the pin is held at `nightly-2026-05-28` by the upstream Dylint examples (their `clippy_utils` pin tracks that nightly); it unblocks when Dylint upstream moves past the window.
+
 ### Dylint adoption and residual ledger
 
 The 2026-07-17 restoration re-enabled the Rust workspace and removed phased package allowlists from the canonical lint tasks, while retaining two explicit Dylint exclusions:

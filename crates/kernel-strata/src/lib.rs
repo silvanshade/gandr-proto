@@ -1,7 +1,7 @@
 //! The minimal certified kernel's **level oracle**: the ADR-78 universe-level
 //! algebra `{0, +1, max}` in always-canonical form, with an evidence-returning
-//! order oracle (decision: `docs/adr/` ADR-78; design record:
-//! `docs/gandr/spec/kernel-boundary.md`, slice 1).
+//! order oracle (decision: ADR-78; design record:
+//! the kernel-boundary design record, slice 1).
 //!
 //! This crate is the first `gandr-kernel-*` subcrate — trusted by the naming
 //! rule of the kernel-boundary design record §2 — and deliberately holds

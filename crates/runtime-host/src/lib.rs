@@ -1,5 +1,5 @@
 //! The headless host-effect runtime for gandr: the thin v0 host handler of
-//! `docs/gandr/spec/effects-control-shell.md` §3/§5 — a top-level handler that
+//! the effects-control-shell design record §3/§5 — a top-level handler that
 //! intercepts the flat `Exec`/`Fs`/`Proc`/`Env` signature, performs the
 //! syscall, and resumes the delimited continuation with the reply.
 //!

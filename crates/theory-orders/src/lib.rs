@@ -1,5 +1,5 @@
 //! A self-contained **order-maintenance** structure for the gandr incremental
-//! pipeline (milestone A2; design: `docs/gandr/spec/incremental-pipeline.md`
+//! pipeline (milestone A2; design: the incremental-pipeline design record
 //! §7, the Porter order-maintenance disposition).
 //!
 //! The *order-maintenance problem* is to maintain a collection of elements

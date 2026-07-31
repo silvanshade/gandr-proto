@@ -1,4 +1,4 @@
-//! gandr's nominal **sort vocabulary** (`docs/adr/` ADR-41).
+//! gandr's nominal **sort vocabulary** (ADR-41).
 //!
 //! [`GandrSort`] tags every machine-minted name-space gandr allocates onto the
 //! one shared atom substrate ([`gandr_theory_nominal_automata`]). The substrate

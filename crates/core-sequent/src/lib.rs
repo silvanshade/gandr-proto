@@ -1,6 +1,6 @@
 //! The polarized command IL, the static focusing translation, and the
 //! operational **L machine** — phases **L0** and **L1** of the sequent-machines
-//! kernel (`docs/gandr/spec/proposal-sequent-kernel.md`; decisions K1/K7,
+//! kernel (the sequent-kernel proposal; decisions K1/K7,
 //! ADR-65).
 //!
 //! This crate carries the sequent kernel through its operational phase, beside

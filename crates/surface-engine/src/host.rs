@@ -1,5 +1,5 @@
 //! The source-level module surface over the canonical host signatures
-//! (`docs/gandr/spec/effects-control-shell.md` §3/§5).
+//! (the effects-control-shell design record §3/§5).
 //!
 //! [`gandr_core_checker::host`] owns the canonical `Exec` / `Fs` / `Proc` /
 //! `Env` signatures alongside the representation-independent host seam.

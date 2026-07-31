@@ -188,7 +188,7 @@ pub fn register_lints(
         PRIMITIVE_SIGNATURE,
         RECURSIVE_FUNCTION_NEEDS_TERMINATION,
     ]);
-    lint_store.register_late_lint_pass(Box::new(|_| Box::<GandrTypeBoundaries>::default()));
+    lint_store.register_late_pass(|_| Box::<GandrTypeBoundaries>::default());
 }
 
 /// Define a transparent copyable semantic wrapper with bidirectional `From`

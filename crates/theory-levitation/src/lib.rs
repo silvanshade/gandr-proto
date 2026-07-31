@@ -1,5 +1,5 @@
 //! Levitation **stage 0**: datatypes as descriptions, Rust-side (ADR-67;
-//! `docs/gandr/spec/proposal-levitation.md`, with the VDC deltas of
+//! the levitation proposal, with the VDC deltas of
 //! `proposal-levitation-addendum-vdc.md`).
 //!
 //! A datatype's *description* is a first-class value, so generic operations

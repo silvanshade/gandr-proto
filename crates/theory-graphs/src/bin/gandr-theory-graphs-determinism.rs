@@ -312,8 +312,8 @@ fn main() -> Result<(), Box<dyn Error>>
 {
     let output_rows = rows()?;
     let rendered = output_rows.join("\n");
-    let mut stdout = std::io::stdout().lock();
-    if let Err(error) = writeln!(stdout, "{rendered}") {
+    let mut stdout_lock = std::io::stdout().lock();
+    if let Err(error) = writeln!(stdout_lock, "{rendered}") {
         return Err(Box::new(error));
     }
     return Ok(());

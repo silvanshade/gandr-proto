@@ -1,7 +1,7 @@
 //! The representation-independent host-effect seam.
 //!
 //! This boundary carries operations no source-level handler claims to an
-//! ambient host interpreter (`docs/gandr/spec/effects-control-shell.md` §3/§5).
+//! ambient host interpreter (the effects-control-shell design record §3/§5).
 //!
 //! This is a **preserved boundary**: it is expressed over the public
 //! [`Value`] / [`EffectSig`] surface and the operation *name* only — never a

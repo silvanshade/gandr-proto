@@ -10,7 +10,7 @@
 //! bus ([`crate::wire`]) carries them as frame bodies. This is the seam the
 //! inspection-protocol proposal calls "the in-process worker→present seam
 //! promoted to a wire protocol"
-//! (`docs/gandr/spec/proposal-inspection-protocol.md` §1).
+//! (the inspection-protocol proposal §1).
 
 use core::fmt;
 use core::ops::Range;

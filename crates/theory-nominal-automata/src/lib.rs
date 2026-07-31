@@ -1,5 +1,5 @@
 //! A generic **nominal atom** substrate for gandr's machine-minted names
-//! (milestone M1; decision: `docs/adr/` ADR-41).
+//! (milestone M1; decision: ADR-41).
 //!
 //! gandr mints machine-internal names in several independent places — the CEK
 //! machine's captured-continuation keys (`%k{id}`), the pipeline lowerer's

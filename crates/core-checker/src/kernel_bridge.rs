@@ -2,7 +2,7 @@
 //!
 //! A total lowering from the checked core CBPV forms ([`crate::syntax`],
 //! [`crate::types`]) into the minimal certified kernel's closed **S1
-//! vocabulary** ([`gandr_kernel_core`], `docs/gandr/spec/kernel-boundary.md`
+//! vocabulary** ([`gandr_kernel_core`], the kernel-boundary design record
 //! §7).
 //!
 //! # The dependency direction

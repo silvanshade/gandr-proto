@@ -1,7 +1,7 @@
 //! The versioned render-bus frame + delta wire schema.
 //!
 //! These types realize the render-bus protocol of the inspection-protocol
-//! proposal (`docs/gandr/spec/proposal-inspection-protocol.md` §4–§5): the
+//! proposal (the inspection-protocol proposal §4–§5): the
 //! frame envelope, the machine-state projection a renderer paints, the
 //! incremental delta form, and the scalar machine summary. They are the
 //! serialized image of the in-process worker→present seam ([`crate::present`])

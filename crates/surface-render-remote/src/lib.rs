@@ -1,6 +1,6 @@
 //! The typing-machine inspection **wire protocol** — the leaf crate of the
 //! render-bus / editor-integration surface
-//! (`docs/gandr/spec/proposal-inspection-protocol.md`).
+//! (the inspection-protocol proposal).
 //!
 //! This crate holds only *wire types*: plain, `Send`-safe, `serde`-ready data
 //! that the pipeline projects and that renderers (the `gandr-tui`, a future

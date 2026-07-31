@@ -1,6 +1,6 @@
 //! The incremental typing pipeline for the gandr language (milestone A2,
-//! `docs/gandr/spec/roadmap.md`; design:
-//! `docs/gandr/spec/incremental-pipeline.md`).
+//! the gandr roadmap; design:
+//! the incremental-pipeline design record).
 //!
 //! This crate implements the pipeline's first boxes:
 //!

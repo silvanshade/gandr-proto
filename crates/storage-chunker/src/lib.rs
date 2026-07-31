@@ -2254,19 +2254,6 @@ fn commitment_byte_at(
     };
 }
 
-/// Computes a commitment position relative to a known field offset.
-const fn relative_index(
-    index: CommitmentIndex,
-    offset: CommitmentOffset,
-) -> CommitmentIndex
-{
-    if let Some(relative) = index.0.checked_sub(offset.0) {
-        return CommitmentIndex(relative);
-    }
-
-    return CommitmentIndex(usize::MAX);
-}
-
 /// Returns one magic byte by position.
 const fn magic_byte(index: CommitmentIndex) -> CommitmentByte
 {
@@ -2281,6 +2268,33 @@ const fn magic_byte(index: CommitmentIndex) -> CommitmentByte
         | 0x07_usize => b'1',
         | _other => 0_u8,
     });
+}
+
+/// Returns one big-endian byte from a 16-bit commitment field.
+const fn u16_be_byte(
+    value: CommitmentWord,
+    index: CommitmentIndex,
+) -> CommitmentByte
+{
+    let [b0, b1] = value.0.to_be_bytes();
+    return CommitmentByte(match index.0 {
+        | 0x00_usize => b0,
+        | 0x01_usize => b1,
+        | _other => 0_u8,
+    });
+}
+
+/// Computes a commitment position relative to a known field offset.
+const fn relative_index(
+    index: CommitmentIndex,
+    offset: CommitmentOffset,
+) -> CommitmentIndex
+{
+    if let Some(relative) = index.0.checked_sub(offset.0) {
+        return CommitmentIndex(relative);
+    }
+
+    return CommitmentIndex(usize::MAX);
 }
 
 /// Returns one salt byte by position.
@@ -2303,36 +2317,6 @@ fn salt_byte(
     return CommitmentByte::from(0_u8);
 }
 
-/// Returns one big-endian byte from a 16-bit commitment field.
-const fn u16_be_byte(
-    value: CommitmentWord,
-    index: CommitmentIndex,
-) -> CommitmentByte
-{
-    let [b0, b1] = value.0.to_be_bytes();
-    return CommitmentByte(match index.0 {
-        | 0x00_usize => b0,
-        | 0x01_usize => b1,
-        | _other => 0_u8,
-    });
-}
-
-/// Returns one big-endian byte from a record-count commitment field.
-const fn u32_be_byte(
-    value: RecordCount,
-    index: CommitmentIndex,
-) -> CommitmentByte
-{
-    let [b0, b1, b2, b3] = value.0.to_be_bytes();
-    return CommitmentByte(match index.0 {
-        | 0x00_usize => b0,
-        | 0x01_usize => b1,
-        | 0x02_usize => b2,
-        | 0x03_usize => b3,
-        | _other => 0_u8,
-    });
-}
-
 /// Returns one big-endian byte from a byte-count commitment field.
 const fn u64_be_byte(
     value: ByteCount,
@@ -2349,6 +2333,22 @@ const fn u64_be_byte(
         | 0x05_usize => b5,
         | 0x06_usize => b6,
         | 0x07_usize => b7,
+        | _other => 0_u8,
+    });
+}
+
+/// Returns one big-endian byte from a record-count commitment field.
+const fn u32_be_byte(
+    value: RecordCount,
+    index: CommitmentIndex,
+) -> CommitmentByte
+{
+    let [b0, b1, b2, b3] = value.0.to_be_bytes();
+    return CommitmentByte(match index.0 {
+        | 0x00_usize => b0,
+        | 0x01_usize => b1,
+        | 0x02_usize => b2,
+        | 0x03_usize => b3,
         | _other => 0_u8,
     });
 }

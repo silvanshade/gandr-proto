@@ -81,7 +81,7 @@ default-features = false
 # - gandr-workflow-dylint
 [workspace.dependencies.clippy_utils]
 git = "https://github.com/rust-lang/rust-clippy"
-rev = "b2ae739f17134c08c1469989c105c752baf24c4f"
+rev = "9fca3bc9fc2bc83c60bde26d18ed68f11564b228"
 
 [workspace.dependencies.color-eyre]
 version = "0.6.5"
@@ -106,13 +106,13 @@ features = ["bracketed-paste"]
 # consumers:
 # - gandr-workflow-dylint
 [workspace.dependencies.dylint_linting]
-version = "6.0.1"
+version = "6.0.2"
 
 # Dylint UI test harness (compiletest `.stderr` fixtures).
 # consumers:
 # - gandr-workflow-dylint (dev)
 [workspace.dependencies.dylint_testing]
-version = "6.0.1"
+version = "6.0.2"
 
 # Multiline editor widget (`gandr-tui`): the one maintained ratatui editor with
 # an external span-injection API (`set_highlights`), which our highlighting

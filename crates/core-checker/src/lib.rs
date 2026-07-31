@@ -2,13 +2,13 @@
 //!
 //! This crate implements Stage 1 of the gandr roadmap (milestone A1 of the
 //! A-track): the core CBPV bidirectional type system of
-//! `docs/gandr/spec/type-system.md` §3, realized twice:
+//! the type-system design record §3, realized twice:
 //!
 //! - [`checker`] — the direct-style *recursive* bidirectional checker;
 //! - [`machine`] — the *defunctionalized typing machine* obtained from the
 //!   recursive checker by the functional correspondence (CPS transform, then
 //!   defunctionalization of the continuations into an explicit stack of
-//!   frames), per `docs/gandr/spec/typing-machine.md` and ADR-9.
+//!   frames), per the typing-machine design record and ADR-9.
 //!
 //! Both implementations are kept in-tree and property-tested for
 //! *step-for-step* agreement: the recursive checker logs a [`control::Control`]

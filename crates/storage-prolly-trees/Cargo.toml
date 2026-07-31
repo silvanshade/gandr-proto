@@ -26,6 +26,7 @@ bao.workspace = true
 
 [features]
 default = ["proofs"]
+full = ["proofs"]
 # Gates the membership / non-membership / range proof machinery and the native
 # witness-transcript surface. Enabled by default so the carried contract suites
 # run; consumers that only need tree construction, lookup/range queries, node

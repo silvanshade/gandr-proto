@@ -2,9 +2,9 @@
 //! value/computation term and type language, the `Def`/`Axiom` declaration
 //! vocabulary, the append-only environment and its single `add_decl` choke
 //! point, the zero-inference S1 checker, and the C5-quarantined
-//! definitional-equality conversion (decisions: `docs/adr/` ADR-77 the minimal
+//! definitional-equality conversion (decisions: ADR-77 the minimal
 //! certified kernel, ADR-78 universe stratification; design record:
-//! `docs/gandr/spec/kernel-boundary.md`, slice 3).
+//! the kernel-boundary design record, slice 3).
 //!
 //! This is the second `gandr-kernel-*` subcrate — **trusted by the naming
 //! rule** of the design record §2 — and depends only on
