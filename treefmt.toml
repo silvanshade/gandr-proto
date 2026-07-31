@@ -193,7 +193,3 @@ excludes = [
   "docs/spec/refs.yml",
   "PLAN.html"
 ]
-
-# [formatter.yamllint]
-# command = "yamllint"
-# includes = ["*.yaml", "*.yml"]

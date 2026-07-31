@@ -16,9 +16,6 @@ binstall = true
 [settings.npm]
 package_manager = "aube"
 
-[settings.pipx]
-uvx = true
-
 [env]
 RUSTUP_TOOLCHAIN = "{{ get_env(name='RUSTUP_TOOLCHAIN', default='1.97.1') }}"
 RUSTUP_TOOLCHAIN_NIGHTLY = "{{ get_env(name='RUSTUP_TOOLCHAIN_NIGHTLY', default='nightly-2026-05-28') }}"
@@ -49,7 +46,6 @@ includes = [".config/mise/tasks"]
 "cargo:rumdl" = "0.2.42"
 "cargo:sizelint" = "0.1.5"
 "cargo:typos-cli" = "1.48.0"
-"cargo:uv" = "0.11.32"
 "cargo:worktrunk" = "0.69.0"
 "github:agda/agda" = "2.8.0"
 "github:numtide/treefmt" = "2.5.0"
@@ -60,7 +56,6 @@ includes = [".config/mise/tasks"]
 "npm:oxlint" = "1.75.0"
 "npm:oxlint-tsgolint" = "7.0.2001"
 "npm:tsdown" = "0.22.14"
-"pipx:yamllint" = "1.38.0"
 aube = "1.32.0"
 node = "26.5.0"
 typst = "0.15.1"

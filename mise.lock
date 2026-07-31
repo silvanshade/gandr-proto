@@ -195,10 +195,6 @@ backend = "cargo:sizelint"
 version = "1.48.0"
 backend = "cargo:typos-cli"
 
-[[tools."cargo:uv"]]
-version = "0.11.32"
-backend = "cargo:uv"
-
 [[tools."cargo:worktrunk"]]
 version = "0.69.0"
 backend = "cargo:worktrunk"
@@ -416,10 +412,6 @@ backend = "npm:oxlint-tsgolint"
 [[tools."npm:tsdown"]]
 version = "0.22.14"
 backend = "npm:tsdown"
-
-[[tools."pipx:yamllint"]]
-version = "1.38.0"
-backend = "pipx:yamllint"
 
 [[tools.typst]]
 version = "0.15.1"
