@@ -1,4 +1,4 @@
-# gandr design corpus registry — stub while the reboot bootstraps.
+# gandr design corpus registry — grown by the spec reboot.
 version: 1
 hash: blake3
 nodes:
@@ -7,8 +7,8 @@ nodes:
     b3: 63ae1999487dee2f72c5151e82e266408b7f81ab115d3ada2761a28176b2f17c
     edges:
       - { rel: orients, to: . }
-  - path: spec/proposal-metatheory-consolidated.md
-    role: proposal
-    b3: 218c45dfcd78a11f5bdabf87ca5b232162b681002e2fea46b2df587304cdf5de
+  - path: spec/README.md
+    role: index
+    b3: e784ec7d72740d947178e895aef4f44365fe5951623297085edc6e8fd8fc5295
     edges:
       - { rel: registered-under, to: README.md }
