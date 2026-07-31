@@ -63,3 +63,5 @@ fuzz/coverage/
 # GF/PGF interop environment (uv-managed) and GF build intermediates
 .venv/
 *.gfo
+
+.obsidian
