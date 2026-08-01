@@ -23,13 +23,6 @@ Carry the warning verbatim: off-TCB applies to the **enumerator only**; the `cel
 
 Closes a gate on the convolution face using a measurement already taken; the one open axiom row (cylindrical decomposition) is what convolution needs _beyond_ exponentiability.
 
-### meta-spike-03
-
-**The four offset functions.** Write the projection, diagonal, injection, and codiagonal realizations against `Gandr.Arena.Offset`; test which satisfy `fixed`; test whether rigid-class closure survives `≤` in place of `≡` on extents.
-**½ day.**
-
-Settles how much of the directed alphabet dissolves at tier 2, and whether the factorization-system generalization of the arena is as cheap as predicted.
-
 ### meta-spike-04
 
 **Is gandr's pattern _analytic_?** Check the two conditions (strict Segal morphism to pointed finite sets; conservative interior) with underlying-legs as the candidate functor.
