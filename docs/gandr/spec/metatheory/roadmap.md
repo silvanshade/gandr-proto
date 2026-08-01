@@ -90,6 +90,21 @@ Settles what fraction of real cells leave the dioperad fragment once sharing is 
 
 Four standardization theorems by citation; turns a vacuous pass into real inheritance.
 
+### meta-spike-16
+
+**Re-decide the double-pushout scoping at the circuit rung.** The track currently scopes graph-shaped DPO instances out on the grounds that the term-rewriting double-category instance is the right shape for a **term-shaped** cell store.
+That reason is sound today and **lapses exactly when cells stop being term-shaped** — which is what the circuit-term lane does ([[../implementation/circuit-terms]]).
+The published replacement is not a sketch: rewriting modulo Frobenius corresponds exactly to DPO on hypergraphs, sound and complete; labelled directed hypergraphs form a presheaf topos and are therefore adhesive; rewriting is taken relative to an **interface**; and pushout complements are unique for mono left legs and effectively enumerable otherwise [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting].
+**1 day**, and it must run before the cell alphabet changes rather than after, because the scoping would otherwise become wrong silently rather than loudly.
+
+The Frobenius hypothesis is the part that does not fit — it is ambient free fan-in, which gandr declines per type — so the spike's real question is whether the correspondence survives at the **symmetric monoidal without Frobenius** rung, which is what the sequel treats [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii].
+
+### meta-spike-17
+
+**Does decidable confluence transfer?** Confluence for rewriting systems over hypergraphs-with-interfaces is reported decidable [@bonchi-gadducci-kissinger-sobocinski-zanasi-2017-confluence-interfaces]. gandr's completion engine ships with the honest caveat that _completed_ means the worklist drained and not that the slice is confluent, and three obstruction classes are silently dropped.
+If the decidability result holds at gandr's rung it changes that contract materially; if it does not, the reason it fails is itself a fact worth recording.
+**1 day**, gated on [[#meta-spike-16|meta-spike-16]] establishing which category gandr's cells live in.
+
 ### meta-spike-15
 
 **Map the landed description constructors onto a graphical-species profile.** The six code-grammar variants against the tiny base of finite sets, bijections, and the input/output involution.
@@ -183,12 +198,19 @@ And **the exact-reals / synthetic-topology track** — a lateral, firewalled lin
 21. **meta-question-21** — **Does the certificate layer's one-directional interchange force laxity into the statement's rule layer?** The directed statement keeps the dimension-2 rules an equivalence at this stratum; if mixed-polarity boundaries eventually force one-directional interchange down into the statement, the η grade needs restating — a new design pass, not an amendment.
 22. **meta-question-22** — **Variance as a shared kind** carried by the reflected universe, decided when directed univalence is scoped on the reflection face.
 23. **meta-question-23** — **The canonical (co)end representation**: does the finite-carrier diagram become the canonical reflected end-object once the description layer can express dipresheaves, or does it remain a property-test vehicle?
+24. **meta-question-24** — **What does an adequacy claim for the certificate layer look like?** The diagrammatic-calculus literature has worked examples of the shape — a calculus, a semantics, and a completeness proof that the rewriting is exactly right for it — and gandr has no fixed semantic target, so the theorems do not transfer but the **argument shape** is the closest available model.
+    **Carried**, with the stabilizer and Clifford+T completeness results and the ZW calculus recorded as the worked examples to read when the certificate layer's own adequacy statement is drafted; specific examples are more useful here than stronger general statements.
 
 ## Reading queue, by leverage
 
 **Next.** The parametricity-cluster entry point [@vanmuylder-2026-thesis]; the pretype-theory report and slides [@nuyts-2026-natpt]; transpension, sections 1–2 [@nuyts-devriese-2024-transpension]; the discrete-Conduché paper, sections 1–2 (for [[#meta-spike-02|meta-spike-02]]) [@guetta-2020-conduche]; the polygraph shape category, introduction and section 5 [@hadzihasanovic-2020-shape]; the (∞,∞)-thesis ch. 1 part 2 (lax cones, for [[#meta-spike-08|meta-spike-08]]) and ch. 2 (the decomposition-space equivalence) [@mikhail-2025-thesis].
 
 **The univalence-transfer chain.** The Univalence Principle, graphs-and-nets chapter first [@ahrens-north-shulman-tsementzis-2021-univalence-principle]; inverse diagrams, sections 11–12 (for [[#meta-spike-06|meta-spike-06]]) [@shulman-2015-inverse-diagrams]; the synthetic line as vocabulary only [@riehl-shulman-2017-synthetic].
+
+**The hypergraph-rewriting sweep**, opened by [[#meta-spike-16|meta-spike-16]] and ordered by leverage.
+The first two are the ones that decide the spike; the rest are the map around it.
+String diagram rewrite theory II, which drops the Frobenius hypothesis and is therefore closer to gandr's rung than the first part [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii]; confluence of graph rewriting with interfaces, for the decidability claim of [[#meta-spike-17|meta-spike-17]] [@bonchi-gadducci-kissinger-sobocinski-zanasi-2017-confluence-interfaces]; equational reasoning with **context-free families** of string diagrams, which is the published mechanism for rule schemas over unbounded arity and is what a many-out rule with a variable port count would need [@kissinger-zamdzhiev-2015-context-free-families]; initial-algebra semantics for **cyclic sharing** structures, which is the wheel axis approached from the syntax side rather than the carrier side [@hamana-2009-cyclic-sharing]; and the two implementations to read as artifacts rather than papers, Cartographer and Chyp [@sobocinski-wilson-zanasi-2019-cartographer] [@chyp].
+The interface-literature map itself is already assembled in the related-work section of the combinatorial string-diagram thesis and should be read there first rather than reconstructed [@altenmuller-2026-string-diagrams].
 
 **The arc's own outstanding reads.** Schwarz modular operads revisited — the one paper running this machine at gandr's exact rung [@kaufmann-ward-2024-schwarz]; circuit algebras are wheeled props (check whether the equivalence survives at `Set` — stated for linear wheeled props) [@dancso-halacheva-robertson-2021-circuit-wheeled]; the graphs/hypergraphs translation source [@kock-2016-graphs-hypergraphs]; the naturality meta-operation [@benjamin-markakis-offord-sarti-vicary-2025-naturality]; monoidal context theory, re-read at the sections the hole identification selects [@roman-2023-monoidal-context].
 

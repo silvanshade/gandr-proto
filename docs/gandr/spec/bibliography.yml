@@ -1623,7 +1623,7 @@ smalltt:
   url: https://github.com/AndrasKovacs/smalltt
   note: not in library.bib; synthesized 2026-07-31 — read at pinned commit ea99b0f (2026-02-02) per [[impl-models-deep-read]]
 
-# --- the multi-out sweep (2026-08-01): diagrammatic rewriting, hypergraph
+# --- the circuit-terms sweep (2026-08-01): diagrammatic rewriting, hypergraph
 # --- structure, semi-strictification, and the reversible-computing neighbours.
 # --- Identifiers below were read off each artifact's own front matter.
 
@@ -1835,3 +1835,168 @@ chen-sabry-2021-negative-fractional:
     type: periodical
     title: Proceedings of the ACM on Programming Languages
     volume: 5
+
+# --- the circuit-terms sweep, second pass (2026-08-01): the internal-wire
+# --- precedent, the durable-computation reference points, and the deeper
+# --- hypergraph-rewriting reading queue.
+
+thomsen-kaarsgaard-soeken-2015-ricercar:
+  type: article
+  title: "Ricercar: A Language for Describing and Rewriting Reversible Circuits with Ancillae and Its Permutation Semantics"
+  author: ["Thomsen, Michael Kirkedal", "Kaarsgaard, Robin", "Soeken, Mathias"]
+  date: 2015
+  parent:
+    type: proceedings
+    title: Reversible Computation
+  note: locator unverified — read from the library artifact; the conference-proceedings DOI is owed before citation-bearing reuse
+
+gluck-yokoyama-2023-reversible-pl-perspective:
+  type: article
+  title: Reversible Computing from a Programming Language Perspective
+  author: ["Glück, Robert", "Yokoyama, Tetsuo"]
+  date: 2023
+  serial-number:
+    doi: "10.1016/j.tcs.2022.06.010"
+  parent:
+    type: periodical
+    title: Theoretical Computer Science
+    volume: 953
+
+james-sabry-2014-isomorphic-interpreters:
+  type: article
+  title: Isomorphic Interpreters from Logically Reversible Abstract Machines
+  author: ["James, Roshan P.", "Sabry, Amr"]
+  date: 2014
+  parent:
+    type: proceedings
+    title: Reversible Computation
+  note: locator unverified — read from the library artifact; the conference-proceedings DOI is owed before citation-bearing reuse
+
+lanese-mezzina-stefani-2016-reversible-hopi:
+  type: article
+  title: Reversibility in the Higher-Order π-Calculus
+  author: ["Lanese, Ivan", "Mezzina, Claudio Antares", "Stefani, Jean-Bernard"]
+  date: 2016
+  serial-number:
+    doi: "10.1016/j.tcs.2016.02.019"
+  parent:
+    type: periodical
+    title: Theoretical Computer Science
+    volume: 625
+    page-range: 25-84
+
+lanese-medic-2020-uncontrolled-reversible:
+  type: article
+  title: A General Approach to Derive Uncontrolled Reversible Semantics
+  author: ["Lanese, Ivan", "Medić, Doriana"]
+  date: 2020
+  serial-number:
+    doi: "10.4230/LIPIcs.CONCUR.2020.33"
+  parent:
+    type: proceedings
+    title: 31st International Conference on Concurrency Theory
+
+lienhardt-lanese-mezzina-stefani-2012-reversible-machine:
+  type: article
+  title: A Reversible Abstract Machine and Its Space Overhead
+  author: ["Lienhardt, Michael", "Lanese, Ivan", "Mezzina, Claudio Antares", "Stefani, Jean-Bernard"]
+  date: 2012
+  serial-number:
+    doi: "10.1007/978-3-642-30793-5_1"
+  parent:
+    type: proceedings
+    title: Formal Techniques for Distributed Systems
+
+aman-et-al-2020-foundations-reversible:
+  type: article
+  title: Foundations of Reversible Computation
+  author:
+    [
+      "Aman, Bogdan",
+      "Ciobanu, Gabriel",
+      "Glück, Robert",
+      "Kaarsgaard, Robin",
+      "Kari, Jarkko",
+      "Kutrib, Martin",
+      "Lanese, Ivan",
+      "Mezzina, Claudio Antares",
+      "Mikulski, Łukasz",
+      "Nagarajan, Rajagopal",
+      "Phillips, Iain",
+      "Pinna, G. Michele",
+      "Prigioniero, Luca",
+      "Ulidowski, Irek",
+      "Vidal, Germán",
+    ]
+  date: 2020
+  serial-number:
+    doi: "10.1007/978-3-030-47361-7_1"
+  parent:
+    type: proceedings
+    title: "Reversible Computation: Extending Horizons of Computing"
+
+bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii:
+  type: article
+  title: "String Diagram Rewrite Theory II: Rewriting with Symmetric Monoidal Structure"
+  author: ["Bonchi, Filippo", "Gadducci, Fabio", "Kissinger, Aleks", "Sobociński, Paweł", "Zanasi, Fabio"]
+  date: 2022
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science
+    volume: 32
+    page-range: 511-541
+  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+
+bonchi-gadducci-kissinger-sobocinski-zanasi-2017-confluence-interfaces:
+  type: article
+  title: Confluence of Graph Rewriting with Interfaces
+  author: ["Bonchi, Filippo", "Gadducci, Fabio", "Kissinger, Aleks", "Sobociński, Paweł", "Zanasi, Fabio"]
+  date: 2017
+  parent:
+    type: proceedings
+    title: Programming Languages and Systems — ESOP 2017
+    volume: 10201
+    page-range: 141-169
+  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+
+kissinger-zamdzhiev-2015-context-free-families:
+  type: article
+  title: Equational Reasoning with Context-Free Families of String Diagrams
+  author: ["Kissinger, Aleks", "Zamdzhiev, Vladimir"]
+  date: 2015
+  parent:
+    type: proceedings
+    title: Graph Transformation — ICGT 2015
+    volume: 9151
+    page-range: 138-154
+  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+
+hamana-2009-cyclic-sharing:
+  type: article
+  title: Initial Algebra Semantics for Cyclic Sharing Structures
+  author: ["Hamana, Makoto"]
+  date: 2009
+  parent:
+    type: proceedings
+    title: Typed Lambda Calculi and Applications — TLCA 2009
+    volume: 5608
+    page-range: 127-141
+  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+
+sobocinski-wilson-zanasi-2019-cartographer:
+  type: article
+  title: "Cartographer: A Tool for String Diagrammatic Reasoning"
+  author: ["Sobociński, Paweł", "Wilson, Paul W.", "Zanasi, Fabio"]
+  date: 2019
+  parent:
+    type: proceedings
+    title: 8th Conference on Algebra and Coalgebra in Computer Science — CALCO 2019
+    volume: 139
+  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+
+chyp:
+  type: software
+  title: "Chyp: an interactive theorem prover for string diagrams"
+  author: ["Kissinger, Aleks"]
+  date: 2023
+  note: not yet read; named in the tool survey of [@altenmuller-2026-string-diagrams]

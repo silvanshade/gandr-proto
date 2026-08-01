@@ -35,6 +35,10 @@ The boundary between metatheory and proof engineering requires judgement: conten
   Historical narrative is out of scope except where a superseded claim must stay visibly superseded to prevent relitigation; those live in each track's `guards` or `hazards` sub-documents.
 * **Dispositions.** Every open item imported from a source — an open question, spike, obligation, falsifier, pending read — carries exactly one disposition where a reader meets it: carried; declined with a reversal condition (in `guards`); parked with a reason (in `roadmap`); or retired with a tombstone (in `guards`).
   Nothing open vanishes silently; a settlement claim for something a source left open is a refutation and follows `docs/workflow/review.md`.
+* **A decline carries a revisit obligation.** Many of this corpus's declines were adopted because the design had reached a point where it was not known how to go further while keeping the properties it needs — and several have since been dissolved by literature that was newer, or simply never found the first time.
+  So meeting a recorded decline obliges the reader to ask **is this still necessary, and if so why**, before treating it as settled.
+  A decline that can answer with a current reason is a rule; one that cannot is a defect, and the reversal conditions exist to make the difference cheap to see.
+  This does not weaken the refutation discipline: reopening a decline is a claim like any other and is argued, not assumed.
 
 ## Roadmaps
 
