@@ -259,9 +259,21 @@ The corrected statement of what a kit is (the retired record's "two arity monads
 The old licence — "both arities are cartesian because the symmetric group acts freely" — is **dead at the circuit rung and replaced by two facts**:
 
 * **for the nerve**: $T^times$ **has arities** at `Set` (the graphs inside graphical species), which is the hypothesis the abstract nerve theorem consumes [@berger-mellies-weber-2012-arities]; cartesianness is not on that chain;
-* **for the carrier**: Burroni–Leinster-style generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr buys it by working over the **ordered representation**, where the monad is cartesian; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
+* **for the carrier**: Leinster-style generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr works over the **ordered representation**, where the monad is cartesian; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
 
-So the whole price of "one construction, two arity bases" at the circuit rung is one obligation: `Rigid.canon-sound` for shapes.
+**The carrier-side requirement is not what it was assumed to be, and the unified framework prices it in three tiers rather than one** [@cruttwell-shulman-2009-generalized-multicategories].
+Cartesian means the monad preserves pullbacks _and_ every naturality square of the unit and multiplication is a pullback (Definition B.2).
+A **pullback-preserving** monad on a category with pullbacks already extends to a strong monad on the spans, and generalized multicategories are its monoids; cartesianness is what makes that extension _horizontally_ strong, which is what recovers Leinster's bicategory on the nose (Example 3.6; appendix B.1; Proposition B.3).
+And **Burroni's tier requires nothing at all of the monad** — not even pullback preservation, only that the base have pullbacks — which the framework reaches by observing that any endofunctor on such a base induces an **oplax** functor on the spans, hence any monad an oplax monad, with the horizontal Kleisli construction extended to those (appendix B.11; Definition B.12).
+
+gandr's base qualifies at every tier: graphical species is a presheaf category, so it has all limits.
+So the existence of the generalized-multicategory structure over $T^times$ at `Set` does **not** depend on a cartesian arity, and it does not depend on pullback preservation either.
+
+> **The consequence is a re-basing, not a removal.** What the ordered representation buys on the carrier side is **decidability** — a decidable section, content-addressable storage, and the identification-sorting test — and not the existence of the construction, which Burroni's tier supplies without it.
+> `canon-sound` is unaffected: it is owed for the decidability, for the merger's commutativity, and now as a field of the arity interface.
+> The claim being narrowed here is the _warrant_ recorded for the ordered representation on the carrier side, and narrowing a load-bearing warrant is a refutation, so it is recorded with its locators and left for sign-off rather than propagated.
+
+So the price of "one construction, two arity bases" at the circuit rung is one obligation: `Rigid.canon-sound` for shapes.
 The construction's own atomicity does not generalize — the linear kit's multiplication is one structural recursion with one inductive graph, while grafting is a composite of nine operations each of whose graphs threads the next.
 That asymmetry is what an arity interface has to absorb, and the shape that absorbs it is the universe-style presentation below.
 
@@ -398,10 +410,11 @@ This replaces the essential-discreteness argument entirely, needs no planarity, 
 A binding constraint on this layer from the reserved sized/irrelevant-index direction: **content-address on the erased skeleton** — if content-addressing does not erase irrelevant indices, two propositionally equal nodes get distinct identities, hash-consing loses sharing, and conversion diverges from node identity; erasure before addressing is mandatory, not optional, and it binds the canonicalization layer _before_ any size discipline lands.
 
 **The flat arena is a published object.** $"size" 𝟙 = 1$, $"size"(c ⊗ d) = "size" c · "size" d$, $"size"(c ⊕ d) = "size" c + "size" d$, values indexed by $"Fin"("size" c)$, offsets $⊗"ix" b i j = b·i + j$ and $⊕"ix"^r a j = a + j$: the cardinality homomorphism, implementing the bridge diagram's three-step evaluation ($Σ_t ∘ Π_π ∘ Δ_s$) with the indexing made arithmetic.
-The arena _is_ the bipermutative category whose objects are the natural numbers and whose morphisms are the symmetric groups, with the row-major index formula verbatim [@yau-johnson-2015-props]; its strictification theory fixes exactly how far strictification reaches — both associators, all unitors, one unit-side symmetry, and one distributor become identities; the two symmetries and the **left** distributor survive (the right distributor is already the identity on offsets).
+The arena _is_ the right bipermutative category `Σ′` whose objects are the natural numbers and whose morphisms are the symmetric groups — Def I.2.4.18, tight with both structures permutative by Prop I.2.4.23, right bipermutative by Ex I.2.5.8 [@johnson-yau-2024-bimonoidal] — with the row-major index formula verbatim at (I.2.4.19).
+Its strictification theory fixes exactly how far strictification reaches, and the reach is in the definition rather than inferred: both associators, all unitors, one unit-side symmetry, and one distributor become identities; the two symmetries and the **left** distributor survive, the latter as the explicit permutation (I.2.4.21), and the right distributor is already the identity on offsets.
 The code universe's reversible-language reading is likewise prior art: the reversible language for the rig structure comes with a published minimization of its relation set and two corrections to its definitions [@carette-sabry-2016-semirings].
 The arena fixes a canonical layout that truncation-based treatments deliberately forget: gandr gains computable offsets and pays the visibility of the choice — ordering-as-section one layer down.
-The precise proposition locator for the bipermutative identity is **unverified** (its adversarial check died mid-run); do not cite it outside the repository — [[metatheory/citation-hazards]].
+The locators above are verified at source; what remains marked is the author-pair trap, since the bimonoidal monograph and the PROPs monograph share a second author and are one citation-slip apart — [[metatheory/citation-hazards]].
 
 **The coherence verdict.** Must the structural coherence family of a tree-shaped edit calculus be imposed as mathematics, or is it presentational?
 Presentational, in two halves, and the proof is landed:

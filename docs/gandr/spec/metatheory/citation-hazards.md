@@ -33,12 +33,14 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
 
 ## Unverified items, marked
 
-1. **The bipermutative locator and its rigidity package** [@yau-johnson-2015-props]: reported by a scout whose adversarial verifier died mid-run; two of its three sibling reports came back overstated.
-   Partial repair: the two Σ-freeness results it depended on are independently cited and relied on by [@chu-hackney-2021-rectification], so the package survives; only the proposition number wants confirmation.
-   Do not cite outside the repository until re-checked.
-   **A verified repair path exists and is unexercised**: the same mathematical object (gandr's arena is literally the category `Σ′`) is located in the _other_ Johnson–Yau book — the bimonoidal monograph [@johnson-yau-2024-bimonoidal] — with exact locators (Def I.2.4.18; tight with both structures permutative, Prop I.2.4.23; right bipermutative, Ex I.2.5.8; and the nine-versus-three reduced-Laplaza split: exactly three axioms carry content).
-   **Author-pair trap**: that book is Niles Johnson with Donald Yau; the PROPs monograph is Mark W. Johnson with Donald Yau — different first authors, same second; the two are one citation-slip apart.
-   Re-check against the bimonoidal locators first, then clear this item.
+1. **The bipermutative locator and its rigidity package** — **cleared**, by re-checking against the bimonoidal monograph [@johnson-yau-2024-bimonoidal] rather than the PROPs monograph the original report cited.
+   The arena is literally the category `Σ′` there, and the three structural locators verify verbatim: **Def I.2.4.18** defines `Σ′`; **Prop I.2.4.23** states it is "a small and tight symmetric bimonoidal category whose additive structure and multiplicative structure are both permutative categories"; **Ex I.2.5.8** states it is a right bipermutative category.
+   The row-major index formula is **(I.2.4.19)**, and the split gandr relies on — right distributivity the identity, left distributivity an explicit permutation — is **verbatim in Def I.2.4.18**, with the left distributor given by **(I.2.4.21)**.
+   **One part of the recorded repair path was wrong and is corrected rather than carried**: the "nine-versus-three reduced-Laplaza split" is substantively right but was attached to the wrong theorem.
+   The Laplaza **reduction** is **Thm I.2.2.13**, and it is 24 axioms to 12, not nine to three.
+   The nine-and-three belong to the proof of **Prop I.2.5.7** (every right bipermutative category is a tight symmetric bimonoidal category): three axioms — (2.1.5), (2.1.7), (2.1.13) — hold **by assumption** and are the definitional content, nine are discharged by the identity assumptions on the multiplicative zeros and the right distributor, one more by a lemma, and the rest by the reduction.
+   Cite Prop I.2.5.7 for the split and Thm I.2.2.13 for the reduction; they are different facts.
+   **Author-pair trap, still live**: the bimonoidal monograph is Niles Johnson with Donald Yau; the PROPs monograph [@yau-johnson-2015-props] is Mark W. Johnson with Donald Yau — different first authors, same second, one citation-slip apart.
 2. **Two works by one author pair share an initial-matching key**: the source of the Σ-freeness lemmas cited in the rectification paper is _not_ the bipermutative monograph; resolve before citing either as the other.
 3. The Kaufmann–Ward and Bar-Natan–Dancso attributions in the naming note are recall-grade; verify before a citation-bearing surface.
 4. The Hasegawa–Thielecke attribution of the shifts-invertible-iff-thunkable-and-linear characterization is recall-grade.
