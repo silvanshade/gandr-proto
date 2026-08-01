@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 167fd9ce1768036252b4b1c34ad4315a04ba0e862fbf561830ad6a22fa5d3461
+    b3: 458a9acaa96fcae46162642bef67e630daa883b1b9c39630589aa993ee7b0e1a
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md

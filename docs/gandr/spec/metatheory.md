@@ -199,6 +199,9 @@ If a cup is ever added, all three go at once; do not add one to make an operatio
 > The cup is far stronger than that needs: it is a binary pairing of two named sinks, so it inhabits hom-sets that must stay empty and takes 1 and 3 with it, while a **circle consumes no port and produces none** and touches neither.
 > Not derivable and not adjoinable are different claims, and only the first is above.
 
+All three are the source's, not gandr's restatements of it, and each has a locator [@raynor-2025-functorial, def 3.14 and rmk 3.9]: the downward hom-sets are empty whenever the target is longer, the cup is not one of their morphisms, and the open diagrams fail to be a subcategory of the _full_ Brauer category precisely because the unit trace $"tr"("id"_1) = ⃝$ is not open.
+That last reading is the sharp one, and it is what the arity ruling below turns on — **the open fragment is closed under composition and not under contraction**, which is why the count could stay at zero for exactly as long as the former was grafting.
+
 Consequence 2 once carried a third clause — that no scalar ever has to be assigned to a free loop, so the "problem of loops" of the unital rung never arises.
 That clause is **retired**: it was bought by the trace not existing, and the trace is now the arity's primitive former.
 What replaces it is the source's own answer rather than a gandr device — a Brauer diagram **is** a pairing together with $k$, its number of closed components, with $k$ additive under composition plus the components that composition closes [@raynor-2025-functorial, def 3.4]. gandr's `Match` is the $k = 0$ fragment, the _open_ diagrams; carrying $k$ at the code is the passage from the open fragment to the definition, and it leaves 1, 2 and 3 exactly as stated.
@@ -447,8 +450,9 @@ Discarding them is not the neutral option it looks like — it sets $"tr"("id"_X
 The count sits at the **code** and not in `Match`, and the two are isomorphic, since a shape has one wiring at the bottom.
 Carrying it in `Match` would put a number inside every listing-algebra lemma — `match-insert`, `match-cap`, the braid, `insert-swap-coh⁴` — none of which can close a circle, while at the code exactly the operations that close one touch it.
 
-> **And the placement is load-bearing rather than merely cheaper.** $"Match" Γ Δ$ is finite and $"Match" Γ Δ × ℕ$ is not, while $"Shape" Γ Δ$ is already infinite, so the count is free at the code and not free in the wiring.
-> Read against the hom-finiteness that retired the old restriction ladder ([[#The rung, identified]]), the wiring placement would reopen it.
+> **And the placement is load-bearing rather than merely cheaper, which the source settles rather than suggests.** The downward category is _defined_ as the subcategory of **open** morphisms, and its hom-finiteness is stated with openness as the reason: since its morphisms are open, each hom-set is finite [@raynor-2025-functorial, def 3.14].
+> $"Match"$ is that hom-set, so carrying the count there would delete the stated hypothesis of the finiteness that retired the old restriction ladder ([[#The rung, identified]]), while $"Shape" Γ Δ$ is infinite already and the count changes nothing.
+> The code placement is also the source's own decomposition rather than a gandr convenience: every Brauer diagram is a horizontal sum of an open diagram and a **scalar**, the scalar being $(∅, k)$.
 
 **What the ruling costs the downward condition is nothing, and saying why keeps the two questions apart.** The condition is a property of the _pairing_, which the count does not touch, so consequences 1 and 3 stand verbatim.
 What is true, and narrower, is that the open fragment is closed under **composition** — which is consequence 3, and is why $k = 0$ sufficed while the former was grafting — and **not** under contraction.
