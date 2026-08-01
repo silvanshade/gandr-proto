@@ -138,6 +138,10 @@ Three facts transfer with it, each cited at its own statement:
 * **acyclicity is load-bearing in that proof** — the authors state that if the two hyperedges of a Frobenius rule's left-hand side lay on a directed cycle, an infinite rewrite sequence is possible — so the supply and the wheel axis are **not independent**, and admitting wheels costs the termination argument rather than merely the representation;
 * it is **not confluent** under naive critical-pair analysis, and it is that paper's own counterexample for why — see the convexity hazard under [[#The correspondence at gandr's own rung, at theorem grade]].
 
+**The pattern's third ingredient — a preserved refuter — survives, and checking it is what makes this a supply rather than a loophole.** Because the structure is carried as _generators on one type_ rather than as an ambient assumption, a type that does not declare them simply has no such generator: a fan-in cell over it does not typecheck, and the diagnostic is at the declaration.
+The invariant therefore stays falsifiable in the corpus's own sense — a program can still write the thing that lacks the structure and be told so — which is exactly what an ambient supply would have destroyed.
+The witness plan below carries the refuter for both directions.
+
 **The fourth row is settled, and the corpus's caution was right for a reason it had not yet named.** Full (co)unital Frobenius algebras **always induce a compact closed structure**, which is stated in that same case study as the reason the semi-algebra fragment is worth isolating at all [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, sec. 5.1].
 So a per-type _unital_ Frobenius supply is a per-type cup by construction, and the standing no-cup instruction applies to it verbatim.
 A **nonunital** Frobenius supply — dropping the unit and the counit — carries no cup, and lands on the rung gandr's carrier already occupies for four independent reasons ([[../metatheory#Cellular data — descriptions, cells, and computads]]).
@@ -192,6 +196,13 @@ It is also **superseded at the Frobenius-free rung** by the boundary-complement 
 
 The sequel drops the Frobenius assumption, and the third part supplies the confluence theory.
 Both were read at theorem grade for this pass; the statements below are quoted or cited at their own numbers rather than paraphrased from abstracts.
+
+> **The engine question, answered in one paragraph, because it is the thing this lane most needed decided.** gandr's rewriting engine does **not** become a hypergraph double-pushout engine, and it does **not** stay as it is.
+> It becomes **a critical-pair engine that borrows the confluence procedure and keeps its own representation**, and the reason is that the two halves of the correspondence have very different prices for gandr.
+> The representation half is nearly free and mostly already paid: the monogamous fragment's canonical representation is a bijection on ports, and gandr's carrier already is one, so adopting a node-carrying hypergraph would be re-representing what the tree has rather than acquiring something.
+> The rewriting half is what gandr lacks and what the line supplies: **boundary complements** in place of pushout complements, **convex matching** in place of position-indexed matching, **pre-critical pairs with interfaces** in place of bare overlaps, and the two routes to decidable confluence.
+> The engine keeps enumerating critical pairs — that part was right all along — and gains three things it does not have: a definition of pre-critical pair that carries the interface, a convexity condition on matches, and a route choice (left-connected, or path joinability) that turns "the worklist drained" into a decidable claim once a termination argument exists.
+> **The one thing this verdict does not cover is the wheel axis**, and that is stated at the end of this section rather than buried.
 
 **The Frobenius-free correspondence is exact, and it is exact on a fragment shaped like gandr's declines.** The image of the syntax under the cospan-of-hypergraphs encoding is precisely the **monogamous acyclic** cospans — no directed cycle, and every node of in-degree and out-degree at most one — and this holds for **coloured** PROPs as it does for one-sorted ones [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 25 and thm 27].
 Reading gandr's four axes against that fragment is the sharpest calibration this pass found:
