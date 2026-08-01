@@ -291,8 +291,7 @@ The row understates the scope; all three are unbuilt, so the _stance_ is right b
 
 ### 7.5 `proposal-surface-syntax.md` body describes retired tree-sitter authority (LOW)
 
-The banner amendment (`:5`) correctly declares the PBG parser normative and tree-sitter parity-only, but the **body** of the document is still written as a tree-sitter grammar design record (G3 gates framed as tree-sitter conflicts, `:514` still poses "tree-sitter-first acceptable?"
-as an open question).
+The banner amendment (`:5`) correctly declares the PBG parser normative and tree-sitter parity-only, but the **body** of the document is still written as a tree-sitter grammar design record (G3 gates framed as tree-sitter conflicts, `:514` still poses "tree-sitter-first acceptable?" as an open question).
 The banner resolves the authority; a reader who skips it could be misled.
 Flagged as banner-vs-body tension, not a decision conflict.
 

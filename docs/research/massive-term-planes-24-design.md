@@ -113,8 +113,7 @@ The question: how to avoid re-running K2/E3 replay over declaration prefixes sha
 **Recommendation: prefix-granular checkpoints, keyed by the outer prolly node-hash of the declaration prefix.**
 
 The prefix is the only sound resumable unit (§2.1): a prefix `0..k` is closed under child references, so replaying it produces a well-defined `Environment` independent of any suffix.
-The outer plane already makes "do two artifacts share a prefix of length `k`?"
-cheap: because chunk boundaries are declaration boundaries (§2.4) and the prolly tree is a deterministic function of the ordered record set, a shared declaration prefix yields **identical node hashes** — the shared-prefix test is an outer, untrusted, hash comparison, never a term walk.
+The outer plane already makes "do two artifacts share a prefix of length `k`?" cheap: because chunk boundaries are declaration boundaries (§2.4) and the prolly tree is a deterministic function of the ordered record set, a shared declaration prefix yields **identical node hashes** — the shared-prefix test is an outer, untrusted, hash comparison, never a term walk.
 
 Options weighed:
 

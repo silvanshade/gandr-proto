@@ -761,8 +761,7 @@ The full design, the staged plan with its gates, the decision register, and ever
 
 ### Three roles, kept apart
 
-Three different objects were once fused under "the virtual-double-category machinery", and the fusion is what made the question "where does it live?"
-unanswerable:
+Three different objects were once fused under "the virtual-double-category machinery", and the fusion is what made the question "where does it live?" unanswerable:
 
 | role                     | what it is                                                                                                                                                                         | side                                                           |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |

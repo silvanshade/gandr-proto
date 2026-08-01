@@ -120,8 +120,7 @@ The fix: add states that **drop** some names from the support of predecessor sta
 
 * **Lemma 5.1.** Every RNTA has an equivalent RNTA whose state set is a **strong** nominal set.
 * **Def 5.2/5.3.** Restriction to **partial injective** maps `r: Xᵢ ⇀ 𝔸` (registers may be empty), written `𝔸^{$X}`; the **name-dropping modification** `A_⊥ = (Q_⊥, Δ_⊥, q₀)`.
-* **Theorem 5.5.** _For each RNTA `A`, the name-dropping modification `A_⊥` is an RNTA that accepts the **closure of the literal tree language of `A` under α-equivalence**, hence the **same alphatic tree language**. `A_⊥` has the same degree `d`, and its number of orbits exceeds that of `A` by at most a factor `2^d`._
-  (The `2^d` = the number of ways to delete names from a support of size `d`.)
+* **Theorem 5.5.** _For each RNTA `A`, the name-dropping modification `A_⊥` is an RNTA that accepts the **closure of the literal tree language of `A` under α-equivalence**, hence the **same alphatic tree language**. `A_⊥` has the same degree `d`, and its number of orbits exceeds that of `A` by at most a factor `2^d`._ (The `2^d` = the number of ways to delete names from a support of size `d`.)
 * **Remark 5.6 (Lossiness).** In the automata↔register correspondence, name-dropping is a **lossiness** property: during any transition, letters may be nondeterministically lost from the registers.
   Distinctness of the current letter from an earlier one can be enforced _only if the earlier one is expected to be seen again_ (RNTA Remark 5.6, Ex 3.6/4.5).
 
@@ -129,8 +128,7 @@ The fix: add states that **drop** some names from the support of predecessor sta
 
 * **Def 6.1.** `T_S(Σ) = {t ∈ T_𝔸(Σ) | supp(t) ⊆ S}` (terms whose names all lie in finite `S`).
 * **Lemma 6.2.** For RNTA of degree `d_A`, max symbol arity `n_ar`, and any `S` with `|S| = d_A·n_ar + 1`: if `A` accepts `t`, it accepts some `t' ∈ T_S(Σ)` with `t' ≡_α t`. (**A bounded name alphabet suffices** to witness every α-class.)
-* **Theorem 6.3 (main).** _Alphatic tree language inclusion `L_α(A) ⊆ L_α(B)` of RNTAs `A,B` of degrees `d_A,d_B`, over the fixed signature Σ, is decidable in **doubly exponential time**, and in fact in **parametrized singly exponential time with the degree as the parameter**, i.e. exponential in a function that depends exponentially on `d_A + d_B` and polynomially on the size of `A,B`._
-  (Recall NFTA inclusion is **EXPTIME-complete** — [35] Seidl 1990 — so the finite-alphabet floor is already EXPTIME; RNTA §5 end.)
+* **Theorem 6.3 (main).** _Alphatic tree language inclusion `L_α(A) ⊆ L_α(B)` of RNTAs `A,B` of degrees `d_A,d_B`, over the fixed signature Σ, is decidable in **doubly exponential time**, and in fact in **parametrized singly exponential time with the degree as the parameter**, i.e. exponential in a function that depends exponentially on `d_A + d_B` and polynomially on the size of `A,B`._ (Recall NFTA inclusion is **EXPTIME-complete** — [35] Seidl 1990 — so the finite-alphabet floor is already EXPTIME; RNTA §5 end.)
   + _Proof shape (RNTA §6):_ reduce to NFTA inclusion.
     Take `S` with `|S|=d_A·n_ar+1` (Lemma 6.2), build the name-dropping modification `B_⊥` (Thm 5.5), then **S-restrict** `A` and `B_⊥` to finite NFTAs `A_S`, `B_S` over `S̄ × Σ`; classical NFTA inclusion applies.
     Sizes: `#states(A_S) =` `#orbits(A) × (singly-exp in degree)`; name-dropping adds an exponential factor in `d_B` but leaves the degree unchanged; each orbit of support size `m` has ≤ `m!` elements with a fixed support.
@@ -156,7 +154,8 @@ Three headline contributions (NDA §1):
 
 1. a **name-dropping modification** closing the language under α-equivalence (§6);
 2. a **Kleene theorem**: NDA ≡ **regular deallocation expressions** (§7);
-3. a **determinization** construction preserving local-freshness semantics (**§8**) — "a quite unusual phenomenon in the realm of regular and nominal automata, where non-deterministic models typically have strictly higher expressivity than their deterministic restrictions." _All that needs to be added to RNNA to allow determinization is explicit deallocation._
+3. a **determinization** construction preserving local-freshness semantics (**§8**) — "a quite unusual phenomenon in the realm of regular and nominal automata, where non-deterministic models typically have strictly higher expressivity than their deterministic restrictions."
+   _All that needs to be added to RNNA to allow determinization is explicit deallocation._
 
 ### 4.2 Explicit deallocation (§3)
 
@@ -185,22 +184,19 @@ Three headline contributions (NDA §1):
   Degree `deg(A)=deg(Q)= max_{x∈Q}|supp(x)|`.
 * **Example 5.6 (sessions!).** An NDA accepting **valid logs of sessions with ≤ 2 participants (a, b) and an admin (c)**, accepting all logs where all users except the admin are logged out at the end.
   `⟦a` = user `a` logs in (allocates), `a⟧` = logs out (deallocates); `c` (admin) is a free transition (acts without login); a blocklisted user `d` can never log in or out (its `⟦d` / `d⟧` is blocked everywhere).
-  _This is directly a multi-party-session lifecycle monitor._
-  (NDA §5, Fig. 2.)
+  _This is directly a multi-party-session lifecycle monitor._ (NDA §5, Fig. 2.)
 * **Lemma 5.7 (Support lemma).** For all `q →γ q'`: (1) `q →a q'` ⇒ `supp(q') ∪ {a} ⊆ supp(q)` (free move: `a` must be in memory); (2) `q →⟦a q'` ⇒ `supp(q') ⊆ supp(q) ∪ {a}` (allocate: adds `a`); (3) `q →a⟧ q'` ⇒ `supp(q') ⊆ supp(q) \ {a}`, `a ∉ supp(q')` (deallocate: removes `a`); (4) `q →⟦a⟧ q'` ⇒ `supp(q') ⊆ supp(q) \ {a}`.
   "Analogy to the register paradigm: transitions for `a` or `a⟧` can only be taken if `a` is in memory; `⟦a` adds `a`; `a⟧`/`⟦a⟧` erase `a`." (NDA §5.)
 * **Proposition 5.8.** Every word accepted by an NDA is **right non-shadowing**.
 * **Lemma 5.9 (ε-elimination).** ε-transitions can be removed (standard).
 * **Proposition 5.11.** _Under local freshness semantics, **NDA and RNNA are equiexpressive**._ (Every NDA has a data-language-equivalent RNNA by replacing `a⟧ → a`, `⟦a → |a`.) ⇒ NDA inherit RNNA's tractability.
-* **Theorem 5.12 (inclusion).** _Under local freshness semantics, **language inclusion of NDAs is decidable in exponential space, in fact parametrized polynomial space, with the degree as the parameter**._
-  (Via the RNNA translation + RNNA inclusion, [21, Cor 7.4]; degree = number of registers.)
+* **Theorem 5.12 (inclusion).** _Under local freshness semantics, **language inclusion of NDAs is decidable in exponential space, in fact parametrized polynomial space, with the degree as the parameter**._ (Via the RNNA translation + RNNA inclusion, [21, Cor 7.4]; degree = number of registers.)
 
 ### 4.5 Name dropping & closure under α (§6)
 
 * **Prop 6.2.** Every NDA has an equivalent NDA with a **strong** nominal state set.
 * **Construction 6.3 (Name-dropping modification).** `A_⊥ = (Q_⊥, Δ_⊥, i, F_⊥)` over partial injective register maps `𝔸^{$nⱼ}`, adding transitions that drop names from supports.
-* **Theorem 6.9.** _The name-dropping modification **closes the language of an NDA under α-equivalence**._
-  (Literal language of `A_⊥` is α-closed, and its alphatic language coincides with `A`'s — Lemmas 6.6, 6.8.)
+* **Theorem 6.9.** _The name-dropping modification **closes the language of an NDA under α-equivalence**._ (Literal language of `A_⊥` is α-closed, and its alphatic language coincides with `A`'s — Lemmas 6.6, 6.8.)
 
 ### 4.6 Kleene theorem (§7) — regular deallocation expressions
 
@@ -208,8 +204,7 @@ Three headline contributions (NDA §1):
   `?` = the "unknown"/free letter.
   **Lemma 7.2:** deciding whether a classical regexp over `Â` is a regular deallocation expression is decidable.
 * **Def 7.4 (D-NFA).** A classical NFA over `Â` with, per state `q`, disjoint `RC_A(q) ∩ LO_A(q) = ∅` — the finite-alphabet shadow of an NDA.
-* **Theorem 7.19.** _For every regular deallocation expression `r`, there is a D-NFA `A` with `L_α(r) = L_α(A)`._
-  (Kleene constructions + ε-elimination.)
+* **Theorem 7.19.** _For every regular deallocation expression `r`, there is a D-NFA `A` with `L_α(r) = L_α(A)`._ (Kleene constructions + ε-elimination.)
 * **Theorem 7.20.** _For every D-NFA `A`, there is a regular deallocation expression `r` with `L(r) = L(A)`._ (State-elimination.)
 * ⇒ **Kleene theorem:** regular deallocation expressions ≡ D-NFA; and via Constructions 7.8 (nominalization) / 7.11 (S-restriction) both translate to/from NDA (NDA Fig. 3).
   _This gives the crate a **surface syntax** for alloc/dealloc protocols (a regex-like DSL) that compiles to the automaton — directly usable as a session/resource-protocol specification language._
@@ -267,7 +262,8 @@ Consequences for the crate:
 ### 6.1 Layering on `gandr-nominal` (ADR-41)
 
 `wyrd@failed-refactor:crates/gandr-nominal/src/lib.rs` provides only `Atom<S>` (sort-tagged machine-minted name) and the monotone `Gensym<S>` allocator, plus the `is_unifiable` atom-vs-variable boundary.
-Its module doc _explicitly reserves_ (lines 50–59) the exact pieces these papers need: `Perm` (swapping-list permutation + action + freshness `#`), the finite-**support** skin (`BTreeSet<Atom>` with native `⊆`), nominal unification, and — verbatim — "the explicit-dealloc **automaton** that reclaims atoms (arrives with `Σ` sessions; the M1 allocator here is the monotone counter that never reclaims)." **The theory-nominal-automata crate is that reserved automaton layer.** It must build, in order:
+Its module doc _explicitly reserves_ (lines 50–59) the exact pieces these papers need: `Perm` (swapping-list permutation + action + freshness `#`), the finite-**support** skin (`BTreeSet<Atom>` with native `⊆`), nominal unification, and — verbatim — "the explicit-dealloc **automaton** that reclaims atoms (arrives with `Σ` sessions; the M1 allocator here is the monotone counter that never reclaims)."
+**The theory-nominal-automata crate is that reserved automaton layer.** It must build, in order:
 
 1. **`Perm`** = finite permutation as a swapping list / transposition codes (matches the Urban–Pitts–Gabbay representation cited in the `gandr-nominal` doc and the Agda/Rocq mechanizations, `wyrd-notes:archive/digest/props-successors-handoff.md` line 31; keeps MGUs **unitary** per the `is_unifiable` boundary).
 2. **`Support`** = `BTreeSet<Atom<S>>`, freshness `a # x`, equivariance — the finite serializable support skin (widens `Sort` with `Ord`/`Hash`, as the ADR-41 doc anticipates).

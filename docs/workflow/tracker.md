@@ -98,8 +98,7 @@ Passing narrower gates (build, scoped clippy, nextest) is not sufficient: the me
   Its closeout residuals bead names those future programs and the exact surface blocker that enables promotion.
   The manual face says plainly that no user syntax exists yet; conformance-only support is not presented as a runnable feature.
 
-A reviewer and a user must be able to answer “what can I run to see this work?”
-from the landing itself.
+A reviewer and a user must be able to answer “what can I run to see this work?” from the landing itself.
 “The crate tests pass” is sufficient only when the named internal fixtures are exercised by those passing tests and the future program shape and promotion blocker are both recorded.
 
 ### One residuals bead, four faces

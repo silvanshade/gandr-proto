@@ -58,8 +58,7 @@ Snapshot state observed (for reproducibility / staleness judgement):
 * **Implication for gandr.** "Absorb verbatim" ⇒ keep `Internal.*`.
   A `Gandr.Metatheory.Internal.*` or `Gandr.*` re-root is mechanically possible but touches every module header/import in 67 modules **and** breaks the wyrd contract and the owner's permanence decision.
   If gandr wants a single house root, the low-cost option is to leave `Internal.*` as-is and let `Gandr.*` (the wyrd signature tree, §4) sit _above_ it — exactly today's wyrd layering.
-  Recommend: **keep `Internal.*`; do not re-root.**
-  (Owner authority: this is an iu-owner decision already; a gandr re-root would need explicit new authority.)
+  Recommend: **keep `Internal.*`; do not re-root.** (Owner authority: this is an iu-owner decision already; a gandr re-root would need explicit new authority.)
 
 ## 2. Build configuration
 
