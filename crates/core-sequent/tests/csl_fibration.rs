@@ -127,8 +127,14 @@ mod tests
 
     /// A live cell index — a slot after wrapping into the allocated range.
     #[repr(transparent)]
-    #[derive(Clone, Copy, Debug)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     struct LiveCell(usize);
+
+    /// A write-back value selector: which `LValue` allocation a
+    /// `ResolvePure` payload builds.
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug)]
+    struct ValuePick(u8);
 
     /// The suite's proptest configuration: the default profile with the case
     /// count pinned unless the caller overrides it through `PROPTEST_CASES`
@@ -162,7 +168,7 @@ mod tests
         /// The pure-spine write-back resolving an open probe: cache the exact
         /// allocation the probe returned (the payload selects which `LValue`
         /// allocation to build).
-        ResolvePure(CellSlot, u8),
+        ResolvePure(CellSlot, ValuePick),
         /// The decline path resolving an open probe: clear the black hole
         /// back to unforced and run inline (no cache residue).
         ResolveDecline(CellSlot),
@@ -339,9 +345,9 @@ mod tests
 
     /// The write-back value a `ResolvePure` payload selects (a fresh
     /// allocation every time, so pointer identity has teeth).
-    fn probe_value(pick: u8) -> Rc<LValue>
+    fn probe_value(pick: ValuePick) -> Rc<LValue>
     {
-        Rc::new(LValue::Lit(Lit::Int(i64::from(pick))))
+        Rc::new(LValue::Lit(Lit::Int(i64::from(pick.0))))
     }
 
     /// Snapshot every tracked cell, from both sides of the nominal boundary.
@@ -494,7 +500,7 @@ mod tests
             3 => slot.clone().prop_map(HeapOp::Share),
             4 => slot.clone().prop_map(HeapOp::Force),
             3 => (slot.clone(), any::<u8>())
-                .prop_map(|(slot, pick)| HeapOp::ResolvePure(slot, pick)),
+                .prop_map(|(slot, pick)| HeapOp::ResolvePure(slot, ValuePick(pick))),
             2 => slot.clone().prop_map(HeapOp::ResolveDecline),
             3 => slot.prop_map(HeapOp::Observe),
         ]
@@ -510,11 +516,10 @@ mod tests
             .boxed()
     }
 
-    /// The live-cell index a step acted on, as a plain position into the
-    /// step's view vectors.
-    fn subject(step: &Step) -> Option<usize>
+    /// The live cell a step acted on, for folding the trace.
+    fn subject(step: &Step) -> Option<LiveCell>
     {
-        step.resolved.map(|live| live.0)
+        step.resolved
     }
 
     proptest! {
@@ -542,7 +547,7 @@ mod tests
             let trace = run(&ops);
             for step in &trace.steps {
                 for (index, before_views) in step.before.iter().enumerate() {
-                    if subject(step) == Some(index) {
+                    if subject(step).is_some_and(|live| live.0 == index) {
                         continue;
                     }
                     let after_views = step
@@ -636,7 +641,7 @@ mod tests
                 // Separability: a step on cell `i` is invisible through the
                 // handles of every `j ≠ i` (distinct allocations never alias).
                 for (index, before_views) in step.before.iter().enumerate() {
-                    if subject(step) == Some(index) {
+                    if subject(step).is_some_and(|live| live.0 == index) {
                         continue;
                     }
                     let after_views = step
@@ -677,7 +682,7 @@ mod tests
         {
             let trace = run(&ops);
             for step in &trace.steps {
-                let Some(index) = subject(step) else {
+                let Some(LiveCell(index)) = subject(step) else {
                     continue;
                 };
                 let (Some(before_views), Some(after_views)) =
@@ -797,7 +802,7 @@ mod tests
         {
             let trace = run(&ops);
             for step in &trace.steps {
-                let Some(index) = subject(step) else {
+                let Some(LiveCell(index)) = subject(step) else {
                     continue;
                 };
                 let (Some(before_views), Some(after_views)) =
