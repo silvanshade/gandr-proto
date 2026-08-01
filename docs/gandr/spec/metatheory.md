@@ -108,7 +108,7 @@ Four of its properties carry the rest of this document.
 **Fusion is Squier completion on cut seams** [@squier-1987-word-problems].
 Surface rewrite members elaborate to oriented command cells; overlaps at cuts are bona-fide critical pairs; a budgeted completion loop synthesizes derived cells whose certificates are the pair of joining paths, differential-tested against the two-step composite and **replayed rather than trusted**.
 Two limits are permanent: natives are opaque, and non-linear overlaps fan out into families rather than a single fused rule — the second is a theorem of the virtual reading ([[#The doctrine layer]]), not a shortfall.
-The Squier citation is good at dimension one, where the completion loop lives [@squier-1987-word-problems] [@squier-otto-kobayashi-1994-finiteness]; **finite derivation type fails above dimension one** (an explicit finite convergent 3-polygraph with finite critical branchings lacks it [@ara-burroni-guiraud-malbos-metayer-mimram-2025-polygraphs]), so the higher-cells lane must not assume the completion story lifts.
+The Squier citation is good at dimension one, where the completion loop lives [@squier-1987-word-problems] [@squier-otto-kobayashi-1994-finiteness]; **finite derivation type fails above dimension one** (an explicit finite convergent 3-polygraph with finite critical branchings lacks it [@ara-burroni-guiraud-malbos-metayer-mimram-2025-polygraphs]), so the higher-cells lane ([[surface-language/higher-cells]]) must not assume the completion story lifts.
 
 **Closure conversion is an in-IL rewrite** at the shift boundary, from the abstract-closures account of Sullivan's thesis [@sullivan-2023-reflections] (its published précis is [@sullivan-downen-ariola-2023-little-pieces]).
 The device: environments are first-class syntax — a delayed substitution $sigma ::= epsilon | sigma, V \/ x$ — and an abstract closure $\{sigma, "force" arrow.r M\} : U_r B$ attaches one to the only introduction site that needs it.
@@ -717,7 +717,7 @@ The contract, at full strength and correctly scoped:
 > The normal form is a performance fast path, never a decidability result; replay-equivalence is already decidable by boundary equality plus two replays, and the normal form answers its _cost_ question.
 
 What the fast path buys beyond comparison: compression to a primitive multiset plus a minimal schedule, and **coherence-cell elimination** — the 3-cell relating the two orders of two independent steps becomes _definitional_ under shift equivalence, discharging a whole class of interchange obligations by normalization instead of carrying them.
-That is also the principled semantics for the declined horizontal-composition sugar of [[#Cells at every dimension]]: accept exactly on disjoint positions, where the two sequential readings are shift-equal.
+That is also the principled semantics for the declined horizontal-composition sugar of the boundary language ([[surface-language/higher-cells#The boundary language]]): accept exactly on disjoint positions, where the two sequential readings are shift-equal.
 
 **Certificate verdicts are three-valued.** A declined round-trip or composition check leaves a certificate **stuck, not refuted**: the store must distinguish _holds_, _refuted_, and _declined-within-budget_, or it silently conflates "not yet composable within budget" with "not univalent" — the verdict discipline that budget-gated checking forces.
 

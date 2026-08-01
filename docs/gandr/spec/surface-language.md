@@ -8,6 +8,7 @@ If the exhaustiveness claim is ever wrong, that is a defect in this document, no
 
 * [[surface-language/grammar]] — the grammar machinery: the PBG, precedence DAGs, the molder/melder pipeline, the obligation taxonomy, the build-time gates, the adaptations registry, and the complete parse-and-decline inventory.
 * [[surface-language/declarations]] — the declaration forms in full: the `def` family, `val`/`run`, attributes, `data`/`codata`, `extern`, `import`, `module`, operator declarations, and the elaboration behaviors.
+* [[surface-language/higher-cells]] — the dimension-named `data`-block members in full: the `sort`/`cons`/`oper`/`rule`/`meta` ladder with the reserved `cell` tower, mandatory 2- and 3-cell names, the boundary language and its sphere typing, and the derived `Model(S)` signature-former with its flagship shapes.
 * [[surface-language/recursion]] — the (co)recursion surface: `def rec`/`rec { … }`, the instantiation slot with its direction sigils, the productivity ladder, loops, and the as-built scope rung.
 * [[surface-language/shell]] — the shell fragment: shell blocks and jobs, the embedded sub-grammar, the host escape, string interpolation, and the REPL split.
 * [[surface-language/roadmap]] — graduation rungs per reserved form, the pending lanes, and the deferred-with-reasons inventory.

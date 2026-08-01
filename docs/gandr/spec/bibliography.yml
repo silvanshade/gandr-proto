@@ -1147,6 +1147,51 @@ leinster-2003-higher-operads:
   serial-number:
     arxiv: "math/0305049"
 
+lumsdaine-2008-weak-omega-categories:
+  type: article
+  title: Weak Omega-Categories from Intensional Type Theory
+  author: ["Lumsdaine, Peter LeFanu"]
+  date: 2008
+  serial-number:
+    arxiv: "0812.0409"
+
+vandenberg-garner-2008-types-weak-omega-groupoids:
+  type: article
+  title: Types Are Weak Omega-Groupoids
+  author: ["van den Berg, Benno", "Garner, Richard"]
+  date: 2008
+  serial-number:
+    arxiv: "0812.0298"
+
+maclane-2010-cwm:
+  type: book
+  title: Categories for the Working Mathematician
+  author: ["Mac Lane, Saunders"]
+  date: 2010
+  edition: 2
+  publisher: Springer
+  volume: 5
+  serial-number:
+    isbn: "978-1-4419-3123-8"
+  parent:
+    type: book
+    title: Graduate Texts in Mathematics
+
+carette-kiselyov-shan-2009-tagless:
+  type: article
+  title: "Finally Tagless, Partially Evaluated: Tagless Staged Interpreters for Simpler Typed Languages"
+  author: ["Carette, Jacques", "Kiselyov, Oleg", "Shan, Chung-chieh"]
+  date: 2009
+  serial-number:
+    doi: "10.1017/S0956796809007205"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming
+    volume: 19
+    issue: 5
+    page-range: 509-543
+  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use (an earlier APLAS 2007 version exists under the same title)
+
 joram-veltri-2023-finite-bags:
   type: article
   title: Constructive Final Semantics of Finite Bags

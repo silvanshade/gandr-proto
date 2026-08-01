@@ -82,6 +82,7 @@ data Nat {
   + a **generalized constructor result** — `Cons(x: a, xs: Vec(a)) : Vec(a)`;
   + a **per-symbol attribute slot** — `[ctor, assoc]`.
 * A `meta name: ρ ~>> ρ′` coherence member (a 3-cell, higher-rule form) **does not exist yet** — named here so its absence is visible, per the keyword-ladder lineage (`sort`/`cons`/`oper`/`rule`/`meta`).
+  The whole ladder — the respell, mandatory 2- and 3-cell names, the `meta` boundary language, the reserved `cell` tower, and the `Model(S)` signature-former the members exist to feed — is [[higher-cells]]; the `rule` member above is its dimension-2 rung as landed, and its anonymity is precisely what the respell fixes.
 
 ## `codata` declarations
 
