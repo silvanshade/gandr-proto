@@ -1,5 +1,8 @@
-//! **Two-mode certificate composition** and the **acyclicity gate** (ADR-69 D3;
-//! `proposal-vdc-reflection.md` §4.1, §4.3; VDC addendum §A).
+//! **Two-mode certificate composition** and the **acyclicity gate** (ADR-69
+//! D3).
+//!
+//! Spec: `proposal-vdc-reflection.md` §4.1, §4.3; VDC addendum §A. Generic
+//! over the [`CellAlphabet`] (metatheory roadmap spike S1).
 //!
 //! Chaining derived transformations (certificates) has two costs, and the
 //! categorical line proves they behave differently:
@@ -12,9 +15,9 @@
 //!   dinaturality-shaped, and dinaturals compose only under **loop-freeness**
 //!   (LLV Thm 5.3's no-full-cut, the Danos–Regnier proof-net pedigree of §4.3).
 //!   The gate builds the **variable-flow graph** across the composed seam,
-//!   preserving *both* face-internal directions for `Mixed`-variance holes, and
-//!   [`cycle_witness`] it **once**: a cycle DECLINES the composition, carrying
-//!   the cycle as the diagnostic (the completion-budget posture —
+//!   preserving *both* face-internal directions for [`SeamRole::Both`] holes,
+//!   and [`cycle_witness`] it **once**: a cycle DECLINES the composition,
+//!   carrying the cycle as the diagnostic (the completion-budget posture —
 //!   decline-with-report, never divergence or panic).
 //!
 //! Both modes glue the certificates **sequentially**: `a`'s certified output
@@ -25,14 +28,16 @@
 //!
 //! # The graph seam
 //!
-//! Nodes are `(CellId, MetaVar)` — the metavariable holes of the cells the two
+//! Nodes are `(CellId, hole)` — the metavariable holes of the cells the two
 //! certificates fire, restricted to those the **seam variables** (the holes of
-//! `a.joins_at`) touch. Edges carry the face-internal flow across the seam:
+//! `a.joins_at`) touch. Edges carry the face-internal flow across the seam,
+//! read through [`CellAlphabet::hole_flow`]:
 //!
-//! - a **producer** hole flows forward, `a`-side → `b`-side;
-//! - a **consumer** hole flows backward, `b`-side → `a`-side;
-//! - a **`Mixed`** hole (a name at both polarities — `μ`/`μ̃` and cocase create
-//!   it) flows **both** ways, so a shared `Mixed` seam hole closes a loop.
+//! - a [`SeamRole::Forward`] hole flows forward, `a`-side → `b`-side;
+//! - a [`SeamRole::Backward`] hole flows backward, `b`-side → `a`-side;
+//! - a [`SeamRole::Both`] hole (the sequent `Mixed` — a name at both
+//!   polarities, which `μ`/`μ̃` and cocase create) flows **both** ways, so a
+//!   shared `Both` seam hole closes a loop.
 //!
 //! The criterion is a **sufficient** loop-freeness check (conservative by
 //! design: the reversal trigger of ADR-69 is "refine the criterion, never
@@ -40,7 +45,6 @@
 //! edges, so cell *application* (as opposed to certificate *composition*) is
 //! untouched.
 
-use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
@@ -50,30 +54,28 @@ use gandr_theory_graphs::NodeCount;
 use gandr_theory_graphs::NodeId;
 use gandr_theory_graphs::cycle_witness;
 
-use crate::boundary::HoleNameRef;
+use crate::alphabet::CellAlphabet;
+use crate::alphabet::SeamRole;
 use crate::boundary::VarianceFlowRole;
 use crate::cell::CellId;
 use crate::cell::CellStore;
-use crate::cell::CellVariance;
-use crate::pattern::CmdPat;
-use crate::pattern::MetaVar;
-use crate::pattern::collect_cmd_metavars;
+use crate::sequent::SequentAlphabet;
 use crate::tracelet::Tracelet;
 
 /// A **variable-flow cycle** obstructing directed certificate composition
 /// (`proposal-vdc-reflection.md` §4.3; ADR-69 D3).
 ///
-/// The `cycle` is the closed walk of `(CellId, MetaVar)` holes whose seam flow
-/// loops — the decline diagnostic. A `Mixed`-variance seam hole (shared across
-/// the composed seam) is the canonical cause: it flows both ways, so it closes
-/// a loop the directed lane cannot admit (over groupoids it could —
+/// The `cycle` is the closed walk of `(CellId, hole)` nodes whose seam flow
+/// loops — the decline diagnostic. A [`SeamRole::Both`] seam hole (shared
+/// across the composed seam) is the canonical cause: it flows both ways, so it
+/// closes a loop the directed lane cannot admit (over groupoids it could —
 /// [`compose_invertible`]).
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompositionObstruction
+pub struct CompositionObstruction<A: CellAlphabet = SequentAlphabet>
 {
     /// The closed walk of `(cell, hole)` nodes the seam flow loops through.
-    pub cycle: Vec<(CellId, MetaVar)>,
+    pub cycle: Vec<(CellId, A::Var)>,
 }
 
 /// **Compose two invertible certificates** — the coherence lane, unconditional
@@ -82,9 +84,9 @@ pub struct CompositionObstruction
 /// The composite certifies `a.overlap.peak ~> b.joins_at` by replaying `a`'s
 /// derivation then `b`'s; it reuses `a`'s overlap (whose peak is the
 /// composite's input boundary) and concatenates the recorded paths. No
-/// acyclicity gate: the invertible flag ([`crate::cell::CellMeta::invertible`])
-/// is the caller's warrant that both certificates live in the groupoid
-/// fragment.
+/// acyclicity gate: the invertible flag (the metadata's `invertible` — in the
+/// sequent alphabet [`crate::sequent::CellMeta::invertible`]) is the caller's
+/// warrant that both certificates live in the groupoid fragment.
 ///
 /// # Contract
 /// - requires: `a.joins_at == b.overlap.peak` (`a`'s certified output is `b`'s
@@ -103,10 +105,12 @@ pub struct CompositionObstruction
 /// - witness: `composition::tests::invertible_composition_of_a_ground_chain_replays`
 #[inline]
 #[must_use]
-pub fn compose_invertible(
-    a: &Tracelet,
-    b: &Tracelet,
-) -> Tracelet
+pub fn compose_invertible<A>(
+    a: &Tracelet<A>,
+    b: &Tracelet<A>,
+) -> Tracelet<A>
+where
+    A: CellAlphabet,
 {
     graft(a, b)
 }
@@ -114,10 +118,10 @@ pub fn compose_invertible(
 /// **Compose two directed certificates**, gated by variable-flow acyclicity
 /// across the composed seam (ADR-69 D3; the decline-with-report posture).
 ///
-/// Builds the seam variable-flow graph (nodes `(CellId, MetaVar)`, edges the
-/// face-internal flow with both directions for `Mixed` holes), calls
-/// [`cycle_witness`] **once**, and either declines
-/// (a validated closed walk mapped back to `(CellId, MetaVar)`) or composes
+/// Builds the seam variable-flow graph (nodes `(CellId, hole)`, edges the
+/// face-internal flow with both directions for [`SeamRole::Both`] holes),
+/// calls [`cycle_witness`] **once**, and either declines
+/// (a validated closed walk mapped back to `(CellId, hole)`) or composes
 /// (the sequential graft, as [`compose_invertible`]).
 ///
 /// # Contract
@@ -126,7 +130,7 @@ pub fn compose_invertible(
 ///   — the loop is read from the cells' variance alone.
 /// - ensures: `Ok(tracelet)` (the graft) when the seam variable-flow graph is
 ///   acyclic; `Err(obstruction)` carrying the closed `(cell, hole)` cycle when
-///   a shared seam hole (canonically `Mixed`) loops the flow. Never diverges or
+///   a shared seam hole (canonically `Both`) loops the flow. Never diverges or
 ///   panics — the gate is a bounded static check.
 /// - panics: none.
 ///
@@ -137,17 +141,18 @@ pub fn compose_invertible(
 /// # Adequacy
 /// - hypothesis: L1 evidence — the mixed-variance cycle fixture drives this
 ///   function to `Err` and validates the returned cycle is a closed walk of
-///   `(CellId, MetaVar)` nodes over the participating cells with the `Mixed`
-///   hole `r`; the linear ground chain drives it to `Ok` and the composite
-///   replays.
+///   `(CellId, hole)` nodes over the participating cells with the `Mixed` hole
+///   `r`; the linear ground chain drives it to `Ok` and the composite replays.
 /// - witness: `composition::tests::directed_composition_declines_a_mixed_variance_cycle`
 /// - witness: `composition::tests::directed_composition_of_a_ground_chain_replays`
 #[inline]
-pub fn compose_directed(
-    a: &Tracelet,
-    b: &Tracelet,
-    store: &CellStore,
-) -> Result<Tracelet, CompositionObstruction>
+pub fn compose_directed<A>(
+    a: &Tracelet<A>,
+    b: &Tracelet<A>,
+    store: &CellStore<A>,
+) -> Result<Tracelet<A>, CompositionObstruction<A>>
+where
+    A: CellAlphabet,
 {
     let graph = VarFlowGraph::build(a, b, store);
     // One call; a well-formed dense graph never surfaces a validation error, so
@@ -166,10 +171,12 @@ pub fn compose_directed(
 ///   of `a`'s and `b`'s, joining at `b.joins_at`.
 /// - panics: none.
 #[inline]
-fn graft(
-    a: &Tracelet,
-    b: &Tracelet,
-) -> Tracelet
+fn graft<A>(
+    a: &Tracelet<A>,
+    b: &Tracelet<A>,
+) -> Tracelet<A>
+where
+    A: CellAlphabet,
 {
     let mut path_a = a.path_a.clone();
     path_a.extend(b.path_a.iter().cloned());
@@ -184,16 +191,16 @@ fn graft(
 }
 
 /// The dense **variable-flow graph** of a composed seam — an
-/// [`EdgeSource`] over `(CellId, MetaVar)` nodes.
-struct VarFlowGraph
+/// [`EdgeSource`] over `(CellId, hole)` nodes.
+struct VarFlowGraph<A: CellAlphabet>
 {
     /// The nodes, densely indexed; dense id `i` is node `nodes[i]`.
-    nodes: Vec<(CellId, MetaVar)>,
+    nodes: Vec<(CellId, A::Var)>,
     /// Outgoing successor dense ids per node, indexed by dense id.
     adjacency: Vec<Vec<NodeId>>,
 }
 
-impl VarFlowGraph
+impl<A: CellAlphabet> VarFlowGraph<A>
 {
     /// Build the seam variable-flow graph for composing `a` then `b`.
     ///
@@ -201,22 +208,22 @@ impl VarFlowGraph
     /// - ensures: a dense graph whose nodes are the `(cell, hole)` endpoints
     ///   the seam variables (the holes of `a.joins_at`) touch across `a`'s and
     ///   `b`'s participating cells, and whose edges are the face-internal flow
-    ///   — `a`→`b` for a producer role, `b`→`a` for a consumer role, both for a
-    ///   `Mixed` role; every edge target is a valid node index.
+    ///   — `a`→`b` for a forward role, `b`→`a` for a backward role, both for a
+    ///   [`SeamRole::Both`] role; every edge target is a valid node index.
     /// - panics: none.
     #[inline]
     fn build(
-        a: &Tracelet,
-        b: &Tracelet,
-        store: &CellStore,
+        a: &Tracelet<A>,
+        b: &Tracelet<A>,
+        store: &CellStore<A>,
     ) -> Self
     {
         let a_cells = participating_cells(a);
         let b_cells = participating_cells(b);
         let mut builder = GraphBuilder::default();
-        for name in seam_names(&a.joins_at).0 {
-            let a_endpoints = endpoints(&a_cells, name.as_ref().into(), store);
-            let b_endpoints = endpoints(&b_cells, name.as_ref().into(), store);
+        for hole in seam_holes::<A>(&a.joins_at) {
+            let a_endpoints = endpoints(&a_cells, &hole, store);
+            let b_endpoints = endpoints(&b_cells, &hole, store);
             if a_endpoints.is_empty() || b_endpoints.is_empty() {
                 // Not shared across the seam — no cross flow.
                 continue;
@@ -224,11 +231,11 @@ impl VarFlowGraph
             let forward = a_endpoints
                 .iter()
                 .chain(&b_endpoints)
-                .any(|&(_, _, variance)| bool::from(producer_role(variance)));
+                .any(|&(_, _, role)| bool::from(forward_role(role)));
             let backward = a_endpoints
                 .iter()
                 .chain(&b_endpoints)
-                .any(|&(_, _, variance)| bool::from(consumer_role(variance)));
+                .any(|&(_, _, role)| bool::from(backward_role(role)));
             for a_endpoint in &a_endpoints {
                 for b_endpoint in &b_endpoints {
                     let node_a = builder.intern(a_endpoint.0, &a_endpoint.1);
@@ -245,7 +252,7 @@ impl VarFlowGraph
         builder.finish()
     }
 
-    /// Map a validated cycle witness back to the semantic `(CellId, MetaVar)`
+    /// Map a validated cycle witness back to the semantic `(CellId, hole)`
     /// obstruction.
     ///
     /// # Contract
@@ -257,7 +264,7 @@ impl VarFlowGraph
     fn obstruction(
         &self,
         witness: &CycleWitness,
-    ) -> CompositionObstruction
+    ) -> CompositionObstruction<A>
     {
         // Drop the trailing node that closes the walk (`first == last`).
         let walk = witness
@@ -277,7 +284,7 @@ impl VarFlowGraph
     }
 }
 
-impl EdgeSource for VarFlowGraph
+impl<A: CellAlphabet> EdgeSource for VarFlowGraph<A>
 {
     type Successors<'successors>
         = core::iter::Copied<core::slice::Iter<'successors, NodeId>>
@@ -307,28 +314,40 @@ impl EdgeSource for VarFlowGraph
 }
 
 /// Accumulates the dense node table and edge set of a [`VarFlowGraph`].
-#[derive(Default)]
-struct GraphBuilder
+struct GraphBuilder<A: CellAlphabet>
 {
     /// The interned nodes, in allocation order (dense id order).
-    nodes: Vec<(CellId, MetaVar)>,
-    /// The dense id assigned to each `(cell, hole name)` key.
-    index: BTreeMap<(CellId, Box<str>), NodeId>,
+    nodes: Vec<(CellId, A::Var)>,
+    /// The dense id assigned to each `(cell, hole)` key.
+    index: BTreeMap<(CellId, A::Hole), NodeId>,
     /// Outgoing successor dense ids per node, indexed by dense id.
     adjacency: Vec<Vec<NodeId>>,
 }
 
-impl GraphBuilder
+impl<A: CellAlphabet> Default for GraphBuilder<A>
+{
+    #[inline]
+    fn default() -> Self
+    {
+        Self {
+            nodes: Vec::new(),
+            index: BTreeMap::new(),
+            adjacency: Vec::new(),
+        }
+    }
+}
+
+impl<A: CellAlphabet> GraphBuilder<A>
 {
     /// The dense id for `(cell, hole)`, allocating one on first sight.
     #[inline]
     fn intern(
         &mut self,
         cell: CellId,
-        var: &MetaVar,
+        var: &A::Var,
     ) -> NodeId
     {
-        let key = (cell, var.name.clone());
+        let key = (cell, A::hole_of(var));
         if let Some(&id) = self.index.get(&key) {
             return id;
         }
@@ -358,7 +377,7 @@ impl GraphBuilder
 
     /// The finished graph.
     #[inline]
-    fn finish(self) -> VarFlowGraph
+    fn finish(self) -> VarFlowGraph<A>
     {
         VarFlowGraph {
             nodes: self.nodes,
@@ -367,24 +386,18 @@ impl GraphBuilder
     }
 }
 
-/// Whether a variance contributes a **producer** (forward) flow role.
+/// Whether a flow role contributes the **forward** direction.
 #[inline]
-fn producer_role(variance: CellVariance) -> VarianceFlowRole
+fn forward_role(role: SeamRole) -> VarianceFlowRole
 {
-    VarianceFlowRole::from(matches!(
-        variance,
-        CellVariance::Producer | CellVariance::Mixed
-    ))
+    VarianceFlowRole::from(matches!(role, SeamRole::Forward | SeamRole::Both))
 }
 
-/// Whether a variance contributes a **consumer** (backward) flow role.
+/// Whether a flow role contributes the **backward** direction.
 #[inline]
-fn consumer_role(variance: CellVariance) -> VarianceFlowRole
+fn backward_role(role: SeamRole) -> VarianceFlowRole
 {
-    VarianceFlowRole::from(matches!(
-        variance,
-        CellVariance::Consumer | CellVariance::Mixed
-    ))
+    VarianceFlowRole::from(matches!(role, SeamRole::Backward | SeamRole::Both))
 }
 
 /// The distinct cells a certificate fires, in first-appearance order over
@@ -395,7 +408,9 @@ fn consumer_role(variance: CellVariance) -> VarianceFlowRole
 ///   order.
 /// - panics: none.
 #[inline]
-fn participating_cells(tracelet: &Tracelet) -> Vec<CellId>
+fn participating_cells<A>(tracelet: &Tracelet<A>) -> Vec<CellId>
+where
+    A: CellAlphabet,
 {
     let mut cells = Vec::new();
     for step in tracelet.path_a.iter().chain(&tracelet.path_b) {
@@ -406,45 +421,44 @@ fn participating_cells(tracelet: &Tracelet) -> Vec<CellId>
     cells
 }
 
-/// Distinct seam-hole names in first-occurrence order.
-#[repr(transparent)]
-struct SeamNames(Vec<Box<str>>);
-
-/// The distinct hole names of a command pattern (the seam variables), in
+/// The distinct hole identities of a term (the seam variables), in
 /// first-occurrence order.
 ///
 /// # Contract
-/// - ensures: one entry per distinct [`MetaVar::name`], preserving first
-///   occurrence.
+/// - ensures: one entry per distinct [`CellAlphabet::Hole`] of `cmd`'s
+///   metavariables, preserving first occurrence.
 /// - panics: none.
 #[inline]
-fn seam_names(cmd: &CmdPat) -> SeamNames
+fn seam_holes<A>(cmd: &A::Cmd) -> Vec<A::Hole>
+where
+    A: CellAlphabet,
 {
-    let mut occurrences = Vec::new();
-    collect_cmd_metavars(cmd, &mut occurrences);
-    let mut names: Vec<Box<str>> = Vec::new();
-    for mv in occurrences {
-        if !names.iter().any(|name| **name == *mv.name) {
-            names.push(mv.name);
+    let mut holes: Vec<A::Hole> = Vec::new();
+    for var in A::metavariables(cmd) {
+        let hole = A::hole_of(&var);
+        if !holes.contains(&hole) {
+            holes.push(hole);
         }
     }
-    SeamNames(names)
+    holes
 }
 
-/// The `(cell, hole, variance)` endpoints among `cells` whose derived metadata
-/// carries the hole `name`.
+/// The `(cell, hole, role)` endpoints among `cells` whose derived metadata
+/// carries `hole`.
 ///
 /// # Contract
 /// - ensures: one endpoint per `(cell, matching hole)`, reading the live
-///   [`crate::cell::CellMeta`] ([`crate::cell::CellMeta::derive`]) of each
-///   present cell; a stale id contributes nothing.
+///   metadata of each present cell through [`CellAlphabet::hole_flow`]; a stale
+///   id contributes nothing.
 /// - panics: none.
 #[inline]
-fn endpoints(
+fn endpoints<A>(
     cells: &[CellId],
-    name: HoleNameRef<'_>,
-    store: &CellStore,
-) -> Vec<(CellId, MetaVar, CellVariance)>
+    hole: &A::Hole,
+    store: &CellStore<A>,
+) -> Vec<(CellId, A::Var, SeamRole)>
+where
+    A: CellAlphabet,
 {
     let mut out = Vec::new();
     for &cell in cells {
@@ -452,10 +466,8 @@ fn endpoints(
         else {
             continue;
         };
-        for var_meta in &entry.meta.vars {
-            if var_meta.var.name.as_ref() == name.as_ref() {
-                out.push((cell, var_meta.var.clone(), var_meta.variance));
-            }
+        for (var, role) in A::hole_flow(&entry.meta, hole) {
+            out.push((cell, var, role));
         }
     }
     out

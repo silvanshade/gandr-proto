@@ -1,5 +1,6 @@
 //! **Overlap enumeration at cut seams** — the multi-sum-shaped enumerator
-//! (`proposal-sequent-kernel.md` §7.3.2; VDC addendum §7.4).
+//! (`proposal-sequent-kernel.md` §7.3.2; VDC addendum §7.4), generic over the
+//! [`CellAlphabet`] (metatheory roadmap spike S1).
 //!
 //! For each ordered pair of cells the enumerator returns the *complete family*
 //! of unifications at a cut, never a single chosen one (§7.3.2: "enumerate
@@ -22,28 +23,21 @@
 //! Both are single root/seam unifications, which is exactly why the enumeration
 //! is tractable where tree rewriting would need full subterm traversal
 //! (§7.3.2).
+//!
+//! The enumerator emits **seam data** — span-level overlap descriptions (the
+//! unifier, the seam position, the superposition peak, and the apartness-
+//! renamed right leg), never just booleans or reduced results; a cell store
+//! that could answer overlaps but not describe them would starve the
+//! convolution face. This holds for every alphabet, and the enumerator stays
+//! off-TCB (the module-level warning of [`crate::alphabet`]).
 
-use alloc::boxed::Box;
-use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use crate::boundary::PrimeNameRef;
+use crate::alphabet::CellAlphabet;
 use crate::cell::Cell;
 use crate::cell::CellId;
 use crate::cell::CellStore;
-use crate::pattern::CmdPat;
-use crate::pattern::ConsPat;
-use crate::pattern::MetaVar;
-use crate::pattern::Node;
-use crate::pattern::Pos;
-use crate::pattern::ProdPat;
-use crate::pattern::collect_cmd_metavars;
-use crate::pattern::splice_at;
-use crate::pattern::subterm_at;
-use crate::pattern::transform_node;
-use crate::rewrite::command_positions;
-use crate::subst::Subst;
-use crate::subst::unify_cmd;
+use crate::sequent::SequentAlphabet;
 
 /// The kind of overlap (`proposal-sequent-kernel.md` §7.2–§7.3.2).
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -59,7 +53,7 @@ pub enum OverlapKind
 /// One **overlap** between two cells at a seam (`proposal-sequent-kernel.md`
 /// §7.3, the `Overlap` struct).
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Overlap
+pub struct Overlap<A: CellAlphabet = SequentAlphabet>
 {
     /// The left cell.
     pub left: CellId,
@@ -68,18 +62,18 @@ pub struct Overlap
     /// The overlap kind.
     pub kind: OverlapKind,
     /// The most general unifier at the seam.
-    pub unifier: Subst,
+    pub unifier: A::Subst,
     /// The seam position (the root for a confluence overlap; the command
     /// position in the left right-hand side for a composition overlap).
-    pub seam: Pos,
+    pub seam: A::Pos,
     /// The superposition term `σ(lₐ)` the overlap is rooted at.
-    pub peak: CmdPat,
+    pub peak: A::Cmd,
     /// The right cell renamed apart from the left (so unification kept the two
     /// cells' metavariables disjoint); the reduct methods contract against it.
-    right_renamed: Cell,
+    right_renamed: Cell<A>,
 }
 
-impl Overlap
+impl<A: CellAlphabet> Overlap<A>
 {
     /// The left reduct — the peak contracted by the **left** cell at the root.
     ///
@@ -91,11 +85,11 @@ impl Overlap
     #[must_use]
     pub fn left_reduct(
         &self,
-        store: &CellStore,
-    ) -> Option<CmdPat>
+        store: &CellStore<A>,
+    ) -> Option<A::Cmd>
     {
         let left = store.get(self.left)?;
-        Some(self.unifier.apply_cmd(&left.rhs))
+        Some(A::apply_subst(&self.unifier, &left.rhs))
     }
 
     /// The right reduct of a **confluence** overlap — the peak contracted by
@@ -110,10 +104,10 @@ impl Overlap
     #[must_use]
     pub fn right_reduct(
         &self,
-        _store: &CellStore,
-    ) -> Option<CmdPat>
+        _store: &CellStore<A>,
+    ) -> Option<A::Cmd>
     {
-        Some(self.unifier.apply_cmd(&self.right_renamed.rhs))
+        Some(A::apply_subst(&self.unifier, &self.right_renamed.rhs))
     }
 
     /// The right cell **renamed apart** from the left — the span's right leg
@@ -133,7 +127,7 @@ impl Overlap
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub const fn right_renamed(&self) -> &Cell
+    pub const fn right_renamed(&self) -> &Cell<A>
     {
         &self.right_renamed
     }
@@ -153,15 +147,12 @@ impl Overlap
     #[must_use]
     pub fn composite(
         &self,
-        store: &CellStore,
-    ) -> Option<CmdPat>
+        store: &CellStore<A>,
+    ) -> Option<A::Cmd>
     {
         let after_left = self.left_reduct(store)?;
-        let right_rhs = self.unifier.apply_cmd(&self.right_renamed.rhs);
-        match splice_at(&Node::Cmd(after_left), &self.seam, Node::Cmd(right_rhs))? {
-            | Node::Cmd(result) => Some(result),
-            | Node::Prod(_) | Node::Cons(_) => None,
-        }
+        let right_rhs = A::apply_subst(&self.unifier, &self.right_renamed.rhs);
+        A::splice_cmd_at(&after_left, &self.seam, right_rhs)
     }
 }
 
@@ -174,27 +165,46 @@ impl Overlap
 ///   pair at a command seam) among the store's cells, in a deterministic order.
 ///   The list is the multi-sum family — one entry per unifier, never collapsed.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the sequent-alphabet suite asserts the same
+///   deterministic multi-sum family as before the lift (behavior preserved),
+///   and the toy alphabet drives the same generic loop to a real composition
+///   overlap (polymorphism exercised).
+/// - witness: `overlap::tests::the_frame_and_add_cells_compose_into_the_commutation_cell`
+/// - witness: `overlap::tests::overlaps_are_a_deterministic_family`
+/// - witness: `toy_alphabet::tests::the_enumerator_finds_the_toy_composition_overlap`
 #[inline]
 #[must_use]
-pub fn enumerate_overlaps(store: &CellStore) -> Vec<Overlap>
+pub fn enumerate_overlaps<A>(store: &CellStore<A>) -> Vec<Overlap<A>>
+where
+    A: CellAlphabet,
 {
     let mut out = Vec::new();
     for (id_left, cell_left) in store.iter() {
         for (id_right, cell_right) in store.iter() {
-            let avoid = cmd_var_names(&cell_left.lhs, &cell_left.rhs);
-            let renamed = rename_cell_apart(cell_right, &avoid);
+            let (renamed_lhs, renamed_rhs) = A::rename_apart(
+                (&cell_left.lhs, &cell_left.rhs),
+                (&cell_right.lhs, &cell_right.rhs),
+            );
+            let renamed = Cell::new(
+                renamed_lhs,
+                renamed_rhs,
+                cell_right.orient,
+                cell_right.provenance,
+            );
             // Confluence: unify the two left-hand sides (skip the trivial
             // self-overlap, whose reducts are identical by construction).
             if id_left != id_right {
-                let mut unifier = Subst::new();
-                if bool::from(unify_cmd(&cell_left.lhs, &renamed.lhs, &mut unifier)) {
-                    let peak = unifier.apply_cmd(&cell_left.lhs);
+                let mut unifier = A::Subst::default();
+                if bool::from(A::unify_cmd(&cell_left.lhs, &renamed.lhs, &mut unifier)) {
+                    let peak = A::apply_subst(&unifier, &cell_left.lhs);
                     out.push(Overlap {
                         left: id_left,
                         right: id_right,
                         kind: OverlapKind::Confluence,
                         unifier,
-                        seam: Pos::root(),
+                        seam: A::root_position(),
                         peak,
                         right_renamed: renamed.clone(),
                     });
@@ -202,14 +212,14 @@ pub fn enumerate_overlaps(store: &CellStore) -> Vec<Overlap>
             }
             // Composition: unify the left RHS (at each command position) with the
             // right LHS.
-            for seam in command_positions(&cell_left.rhs) {
-                let Some(Node::Cmd(sub)) = subterm_at(&Node::Cmd(cell_left.rhs.clone()), &seam)
+            for seam in A::command_positions(&cell_left.rhs) {
+                let Some(sub) = A::subterm_cmd_at(&cell_left.rhs, &seam)
                 else {
                     continue;
                 };
-                let mut unifier = Subst::new();
-                if bool::from(unify_cmd(&sub, &renamed.lhs, &mut unifier)) {
-                    let peak = unifier.apply_cmd(&cell_left.lhs);
+                let mut unifier = A::Subst::default();
+                if bool::from(A::unify_cmd(&sub, &renamed.lhs, &mut unifier)) {
+                    let peak = A::apply_subst(&unifier, &cell_left.lhs);
                     out.push(Overlap {
                         left: id_left,
                         right: id_right,
@@ -226,161 +236,19 @@ pub fn enumerate_overlaps(store: &CellStore) -> Vec<Overlap>
     out
 }
 
-/// Set of metavariable names reserved during apartness renaming.
-#[repr(transparent)]
-struct MetaVarNameSet(BTreeSet<Box<str>>);
-
-/// Freshened metavariable name produced by deterministic priming.
-#[repr(transparent)]
-struct FreshMetaVarName(Box<str>);
-
-/// The set of metavariable names occurring in two command patterns.
-///
-/// # Contract
-/// - ensures: every metavariable name of `lhs` and `rhs`, deduplicated.
-/// - panics: none.
-#[inline]
-fn cmd_var_names(
-    lhs: &CmdPat,
-    rhs: &CmdPat,
-) -> MetaVarNameSet
-{
-    let mut occurrences = Vec::new();
-    collect_cmd_metavars(lhs, &mut occurrences);
-    collect_cmd_metavars(rhs, &mut occurrences);
-    MetaVarNameSet(occurrences.into_iter().map(|mv| mv.name).collect())
-}
-
-/// Rename a cell's metavariables to be disjoint from `avoid`, priming each name
-/// until fresh (a deterministic apartness renaming).
-///
-/// # Contract
-/// - ensures: the returned cell is structurally the input with every
-///   metavariable name replaced by a name absent from `avoid` and from the
-///   other renamed names, preserving each metavariable's category and the
-///   pattern shape; a cell already disjoint from `avoid` is unchanged.
-/// - panics: none.
-#[inline]
-fn rename_cell_apart(
-    cell: &Cell,
-    avoid: &MetaVarNameSet,
-) -> Cell
-{
-    let mut occurrences = Vec::new();
-    collect_cmd_metavars(&cell.lhs, &mut occurrences);
-    collect_cmd_metavars(&cell.rhs, &mut occurrences);
-    let mut mapping: Vec<(MetaVar, MetaVar)> = Vec::new();
-    let mut taken: BTreeSet<Box<str>> = avoid.0.clone();
-    for mv in &occurrences {
-        let mut already_mapped = false;
-        for pair in &mapping {
-            if pair.0 == *mv {
-                already_mapped = true;
-                break;
-            }
-        }
-        if already_mapped {
-            continue;
-        }
-        let mut fresh = mv.name.clone();
-        while taken.contains(&fresh) {
-            fresh = prime(fresh.as_ref().into()).0;
-        }
-        taken.insert(fresh.clone());
-        mapping.push((mv.clone(), MetaVar {
-            name: fresh,
-            cat: mv.cat,
-        }));
-    }
-    Cell::new(
-        rename_cmd(&cell.lhs, &mapping),
-        rename_cmd(&cell.rhs, &mapping),
-        cell.orient,
-        cell.provenance,
-    )
-}
-
-/// Append a prime `'` to a name (the fresh-name step of [`rename_cell_apart`]).
-///
-/// # Contract
-/// - ensures: a strictly longer name, so priming terminates against any finite
-///   `avoid` set.
-/// - panics: none.
-#[inline]
-fn prime(name: PrimeNameRef<'_>) -> FreshMetaVarName
-{
-    let name = name.as_ref();
-    let mut out = alloc::string::String::with_capacity(name.len().saturating_add(1));
-    out.push_str(name);
-    out.push('\'');
-    FreshMetaVarName(out.into_boxed_str())
-}
-
-/// Rename a command pattern's metavariables through `mapping`.
-///
-/// # Contract
-/// - ensures: every metavariable in `mapping`'s domain is replaced by its
-///   image; others are left in place.
-/// - panics: none.
-#[inline]
-fn rename_cmd(
-    cmd: &CmdPat,
-    mapping: &[(MetaVar, MetaVar)],
-) -> CmdPat
-{
-    let Some(Node::Cmd(cmd)) = transform_node(Node::Cmd(cmd.clone()), |node| {
-        Some(rename_node(node, mapping))
-    })
-    else {
-        return cmd.clone();
-    };
-    cmd
-}
-
-/// Rename one rebuilt node.
-#[inline]
-fn rename_node(
-    node: Node,
-    mapping: &[(MetaVar, MetaVar)],
-) -> Node
-{
-    match node {
-        | Node::Prod(ProdPat::Meta(mv)) => Node::Prod(ProdPat::Meta(rename_var(&mv, mapping))),
-        | Node::Cons(ConsPat::Meta(mv)) => Node::Cons(ConsPat::Meta(rename_var(&mv, mapping))),
-        | other => other,
-    }
-}
-
-/// Look a metavariable up in `mapping`, returning its image or the variable
-/// unchanged.
-///
-/// # Contract
-/// - ensures: the mapped variable when present, else the input clone.
-/// - panics: none.
-#[inline]
-fn rename_var(
-    mv: &MetaVar,
-    mapping: &[(MetaVar, MetaVar)],
-) -> MetaVar
-{
-    for pair in mapping {
-        if pair.0 == *mv {
-            return pair.1.clone();
-        }
-    }
-    mv.clone()
-}
-
 #[cfg(test)]
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
 
     use super::*;
-    use crate::cell::CellProvenance;
-    use crate::cell::Orientation;
-    use crate::cell::frame_defining_cell;
+    use crate::pattern::CmdPat;
+    use crate::pattern::ConsPat;
+    use crate::pattern::ProdPat;
     use crate::pattern::Sym;
+    use crate::sequent::CellProvenance;
+    use crate::sequent::Orientation;
+    use crate::sequent::frame_defining_cell;
 
     #[test]
     fn the_frame_and_add_cells_compose_into_the_commutation_cell()

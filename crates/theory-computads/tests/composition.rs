@@ -304,7 +304,7 @@ mod tests
         // the multi-sum FAMILY of both overlaps — never a single fused rule (the
         // canonicity cost of §4.1). One consumer is non-linear (`Pair(y; y)`
         // duplicates `y`), which the LIVE derivation marks.
-        let mut store = CellStore::new();
+        let mut store: CellStore = CellStore::new();
         let left = store.insert(Cell::new(
             CmdPat::cut(
                 Polarity::Positive,

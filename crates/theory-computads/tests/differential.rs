@@ -271,7 +271,7 @@ mod tests
         // The `eta-wrong-polarity` pathological pin (§11): a data-η cell (positive)
         // must not fire at a negative cut.
         let negative_cut = CmdPat::cut(Polarity::Negative, ProdPat::meta("x"), ConsPat::meta("a"));
-        let data_eta = Cell::new(
+        let data_eta: Cell = Cell::new(
             negative_cut.clone(),
             negative_cut.clone(),
             Orientation::PolarityDerived,
@@ -283,7 +283,7 @@ mod tests
             "data-η is refused at a negative cut"
         );
         // A codata-η cell, requiring negative, fires there.
-        let codata_eta = Cell::new(
+        let codata_eta: Cell = Cell::new(
             negative_cut.clone(),
             negative_cut.clone(),
             Orientation::PolarityDerived,

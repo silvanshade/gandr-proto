@@ -1,5 +1,6 @@
 //! **Direct command-level rewriting** — applying cells to command
-//! configurations and normalizing under a budget.
+//! configurations and normalizing under a budget, generic over the
+//! [`CellAlphabet`] (metatheory roadmap spike S1).
 //!
 //! Spec: `proposal-sequent-kernel.md` §7.3.4, §4.1 — the "direct command-level
 //! rewriting" the fused≡two-step differential runs on.
@@ -12,17 +13,19 @@
 //! form or a **budget** exhaustion — the same decline-and-report posture as the
 //! completion budget (§7.3.3) and the machine's step budget.
 //!
-//! # η-polarity discipline
+//! # Firing discipline
 //!
-//! An η cell ([`crate::cell::CellProvenance::Eta`]) may fire **only** at a cut
-//! whose polarity matches its [`crate::cell::EtaKind`] (§5, K2: data η at
-//! positive cuts, codata η at negative cuts). [`rewrite_at`] checks this before
-//! contracting, so an
-//! η-step at the wrong polarity is rejected — the `eta-wrong-polarity`
-//! pathological pin (§11).
+//! A cell fires only where its provenance permits
+//! ([`CellAlphabet::may_fire`]) — the sequent alphabet's η-polarity
+//! discipline (§5, K2): an η cell
+//! ([`crate::sequent::CellProvenance::Eta`]) may fire **only** at a cut whose
+//! polarity matches its [`crate::sequent::EtaKind`]. [`rewrite_at`] consults
+//! the hook before contracting, so an η-step at the wrong polarity is rejected
+//! — the `eta-wrong-polarity` pathological pin (§11).
 
 use alloc::vec::Vec;
 
+use crate::alphabet::CellAlphabet;
 use crate::boundary::NormalizationBudget;
 use crate::boundary::PositionStep;
 use crate::cell::Cell;
@@ -31,10 +34,7 @@ use crate::cell::CellStore;
 use crate::pattern::CmdPat;
 use crate::pattern::Node;
 use crate::pattern::Pos;
-use crate::pattern::splice_at;
-use crate::pattern::subterm_at;
-use crate::subst::Subst;
-use crate::subst::match_cmd;
+use crate::sequent::SequentAlphabet;
 
 /// One **rewrite step** — a cell applied at a position (`CellApp` of the
 /// tracelet sketch, `proposal-sequent-kernel.md` §7.3).
@@ -43,33 +43,33 @@ use crate::subst::match_cmd;
 /// substitution: replay ([`crate::tracelet`]) re-matches and re-contracts, so a
 /// certificate is re-executed rather than trusted (ADR-69).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct CellApp
+pub struct CellApp<A: CellAlphabet = SequentAlphabet>
 {
     /// The cell that fired.
     pub cell: CellId,
     /// The position it fired at.
-    pub at: Pos,
+    pub at: A::Pos,
 }
 
 /// The result of a single successful rewrite — the step and the rewritten term.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Rewrite
+pub struct Rewrite<A: CellAlphabet = SequentAlphabet>
 {
     /// The step that fired.
-    pub step: CellApp,
+    pub step: CellApp<A>,
     /// The whole term after the contraction.
-    pub result: CmdPat,
+    pub result: A::Cmd,
 }
 
 /// The outcome of [`normalize`] — the normal form, the path taken, and whether
 /// the budget was exhausted before a normal form was reached.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Normalization
+pub struct Normalization<A: CellAlphabet = SequentAlphabet>
 {
     /// The term reached (a normal form when `!exhausted`).
-    pub normal: CmdPat,
+    pub normal: A::Cmd,
     /// The rewrite path from the input to `normal`.
-    pub path: Vec<CellApp>,
+    pub path: Vec<CellApp<A>>,
     /// Whether the budget ran out before a normal form was reached.
     pub exhausted: bool,
 }
@@ -85,13 +85,25 @@ pub struct Normalization
 ///   re-running it reproduces `normal`. Never diverges or panics (the budget is
 ///   the guard).
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the sequent-alphabet pins (frame reduction,
+///   η-polarity rejection, zero-budget report) hold verbatim through the
+///   generic loop, and the toy alphabet normalizes a ground term to the same
+///   normal form the two constituent steps reach.
+/// - witness: `rewrite::tests::a_frame_defining_cell_fires_at_the_root`
+/// - witness: `rewrite::tests::an_eta_cell_is_rejected_at_the_wrong_polarity`
+/// - witness: `rewrite::tests::a_budget_of_zero_reports_a_pending_redex`
+/// - witness: `toy_alphabet::tests::the_normalizer_runs_over_the_toy_alphabet`
 #[inline]
 #[must_use]
-pub fn normalize(
-    store: &CellStore,
-    term: &CmdPat,
+pub fn normalize<A>(
+    store: &CellStore<A>,
+    term: &A::Cmd,
     budget: NormalizationBudget,
-) -> Normalization
+) -> Normalization<A>
+where
+    A: CellAlphabet,
 {
     let mut current = term.clone();
     let mut path = Vec::new();
@@ -131,12 +143,14 @@ pub fn normalize(
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn apply_once(
-    store: &CellStore,
-    term: &CmdPat,
-) -> Option<Rewrite>
+pub fn apply_once<A>(
+    store: &CellStore<A>,
+    term: &A::Cmd,
+) -> Option<Rewrite<A>>
+where
+    A: CellAlphabet,
 {
-    for pos in command_positions(term) {
+    for pos in A::command_positions(term) {
         for (id, cell) in store.iter() {
             if let Some(result) = rewrite_at(cell, term, &pos) {
                 return Some(Rewrite {
@@ -149,8 +163,11 @@ pub fn apply_once(
     None
 }
 
-/// Every **command position** in `term` — the positions a command cell can fire
-/// at (`proposal-sequent-kernel.md` §7.3.2, "the seam is the root").
+/// Every **command position** in a sequent command pattern.
+///
+/// The positions a command cell can fire at (`proposal-sequent-kernel.md`
+/// §7.3.2, "the seam is the root"). This is the sequent alphabet's
+/// [`CellAlphabet::command_positions`].
 ///
 /// # Contract
 /// - ensures: the returned positions each address a [`Node::Cmd`] subterm, in a
@@ -179,38 +196,32 @@ pub fn command_positions(term: &CmdPat) -> Vec<Pos>
 ///
 /// # Contract
 /// - ensures: `Some(result)` when the subterm at `pos` is a command matching
-///   `cell.lhs` (ground matching, polarity included) **and** the η-polarity
-///   discipline permits it; `None` when there is no redex, the position is not
-///   a command, or an η cell would fire at the wrong-polarity cut.
+///   `cell.lhs` (ground matching, polarity included) **and** the firing
+///   discipline ([`CellAlphabet::may_fire`]) permits it; `None` when there is
+///   no redex, the position is not a command, or the discipline refuses the
+///   firing (an η cell at the wrong-polarity cut, in the sequent alphabet).
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn rewrite_at(
-    cell: &Cell,
-    term: &CmdPat,
-    pos: &Pos,
-) -> Option<CmdPat>
+pub fn rewrite_at<A>(
+    cell: &Cell<A>,
+    term: &A::Cmd,
+    pos: &A::Pos,
+) -> Option<A::Cmd>
+where
+    A: CellAlphabet,
 {
-    let Node::Cmd(sub) = subterm_at(&Node::Cmd(term.clone()), pos)?
-    else {
-        return None;
-    };
-    // η-polarity discipline (§5): an η cell fires only at its required polarity.
-    if let Some(required) = cell.eta_requirement()
-        && sub.polarity() != required
-    {
+    let sub = A::subterm_cmd_at(term, pos)?;
+    // The firing discipline (§5): an η cell fires only at its required polarity.
+    if !bool::from(A::may_fire(&cell.provenance, &sub)) {
         return None;
     }
-    let mut subst = Subst::new();
-    if !bool::from(match_cmd(&cell.lhs, &sub, &mut subst)) {
+    let mut subst = A::Subst::default();
+    if !bool::from(A::match_cmd(&cell.lhs, &sub, &mut subst)) {
         return None;
     }
-    let contractum = subst.apply_cmd(&cell.rhs);
-    let Node::Cmd(rebuilt) = splice_at(&Node::Cmd(term.clone()), pos, Node::Cmd(contractum))?
-    else {
-        return None;
-    };
-    Some(rebuilt)
+    let contractum = A::apply_subst(&subst, &cell.rhs);
+    A::splice_cmd_at(term, pos, contractum)
 }
 
 #[cfg(test)]
@@ -219,13 +230,13 @@ mod tests
     use gandr_core_sequent::il::Polarity;
 
     use super::*;
-    use crate::cell::CellProvenance;
-    use crate::cell::EtaKind;
-    use crate::cell::Orientation;
-    use crate::cell::frame_defining_cell;
     use crate::pattern::ConsPat;
     use crate::pattern::ProdPat;
     use crate::pattern::Sym;
+    use crate::sequent::CellProvenance;
+    use crate::sequent::EtaKind;
+    use crate::sequent::Orientation;
+    use crate::sequent::frame_defining_cell;
 
     #[test]
     fn a_frame_defining_cell_fires_at_the_root()
@@ -255,7 +266,7 @@ mod tests
         // A data-η cell (requires positive) built over a negative cut is refused.
         let lhs = CmdPat::cut(Polarity::Negative, ProdPat::meta("x"), ConsPat::meta("a"));
         let rhs = lhs.clone();
-        let eta = Cell::new(
+        let eta: Cell = Cell::new(
             lhs.clone(),
             rhs,
             Orientation::PolarityDerived,

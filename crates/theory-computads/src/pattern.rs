@@ -15,7 +15,7 @@
 //! **metavariable** ([`MetaVar`]) carrying its producer/consumer [`Cat`]. The
 //! [`Polarity`] on a cut is reused verbatim from [`gandr_core_sequent::il`]
 //! (the read-only consumption of the L0 IL vocabulary; K2's per-cut orientation
-//! is what the η discipline of [`crate::cell::EtaKind`] checks).
+//! is what the η discipline of [`crate::sequent::EtaKind`] checks).
 //!
 //! # Content addressing
 //!
@@ -202,7 +202,7 @@ pub enum ConsPat
     },
     /// A **return-side constructor frame** `K⁻(c)` (§7.1) — the definable frame
     /// `K⁻(c) := μ̃x.⟨K(x) | c⟩`; its defining cell is
-    /// [`crate::cell::frame_defining_cell`].
+    /// [`crate::sequent::frame_defining_cell`].
     Frame
     {
         /// The constructor symbol `K` the frame re-wraps.

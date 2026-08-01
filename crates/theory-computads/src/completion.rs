@@ -1,16 +1,20 @@
 //! **Knuth–Bendix / Squier completion** over the convergent slice, with an
-//! explicit **completion budget** (`proposal-sequent-kernel.md` §7.3.3; ADR-46
-//! Decision B).
+//! explicit **completion budget**.
+//!
+//! Spec: `proposal-sequent-kernel.md` §7.3.3; ADR-46 Decision B. Generic over
+//! the [`CellAlphabet`] (metatheory roadmap spike S1).
 //!
 //! [`complete`] runs confluence completion: it normalizes both reducts of every
 //! [`OverlapKind::Confluence`] critical pair; a joinable pair emits a coherence
 //! [`Tracelet`]; a non-joinable pair is **oriented** by the reduction order
-//! ([`crate::pattern::reduction_cmp`]) into a new derived cell, whose fresh
+//! ([`CellAlphabet::reduction_cmp`]) into a new derived cell, whose fresh
 //! overlaps re-enter the worklist. Termination is bounded by the
 //! [`CompletionBudget`]: exhausting the step or cell budget is a **defined
 //! decline** carrying the pending overlaps ([`CompletionOutcome::Declined`]),
 //! never divergence or a panic — the same posture as the machine's step budget
-//! (§7.3.3, §4.1).
+//! (§7.3.3, §4.1). The three honest obstruction classes stay part of the
+//! contract: a normalization-budget exhaustion, an unorientable equal-size
+//! divergence, and a duplicate derived cell are each *left*, never guessed at.
 //!
 //! Fusion (the "requested shortcut" of §7.3.3) is the separate
 //! [`crate::tracelet::derive_fused`] on an [`OverlapKind::Composition`]
@@ -18,20 +22,19 @@
 
 use alloc::vec::Vec;
 
+use crate::alphabet::CellAlphabet;
 use crate::boundary::CompletionCellBudget;
 use crate::boundary::CompletionStatus;
 use crate::boundary::CompletionStepBudget;
 use crate::boundary::NormalizationBudget;
 use crate::cell::Cell;
 use crate::cell::CellId;
-use crate::cell::CellProvenance;
 use crate::cell::CellStore;
-use crate::cell::Orientation;
 use crate::overlap::Overlap;
 use crate::overlap::OverlapKind;
 use crate::overlap::enumerate_overlaps;
-use crate::pattern::reduction_cmp;
 use crate::rewrite::normalize;
+use crate::sequent::SequentAlphabet;
 use crate::tracelet::Tracelet;
 use crate::tracelet::confluence_tracelet;
 
@@ -83,35 +86,35 @@ pub enum DeclineReason
 /// defined decline carrying what was left (`proposal-sequent-kernel.md`
 /// §7.3.3).
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CompletionOutcome
+pub enum CompletionOutcome<A: CellAlphabet = SequentAlphabet>
 {
     /// Completion ran the whole worklist within budget.
     Completed
     {
         /// The final cell store (the original cells plus every oriented cell).
-        store: CellStore,
+        store: CellStore<A>,
         /// The ids of the cells completion derived, in derivation order.
         derived: Vec<CellId>,
         /// The coherence certificates emitted for joinable critical pairs.
-        certificates: Vec<Tracelet>,
+        certificates: Vec<Tracelet<A>>,
     },
     /// Completion declined on a budget ceiling, carrying the pending overlaps.
     Declined
     {
         /// The cell store as of the decline.
-        store: CellStore,
+        store: CellStore<A>,
         /// The cells derived before the decline.
         derived: Vec<CellId>,
         /// The certificates emitted before the decline.
-        certificates: Vec<Tracelet>,
+        certificates: Vec<Tracelet<A>>,
         /// The overlaps left unprocessed (what remained).
-        pending: Vec<Overlap>,
+        pending: Vec<Overlap<A>>,
         /// Which ceiling was reached.
         reason: DeclineReason,
     },
 }
 
-impl CompletionOutcome
+impl<A: CellAlphabet> CompletionOutcome<A>
 {
     /// The final (or as-of-decline) cell store.
     ///
@@ -120,7 +123,7 @@ impl CompletionOutcome
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn store(&self) -> &CellStore
+    pub fn store(&self) -> &CellStore<A>
     {
         match *self {
             | Self::Completed { ref store, .. } | Self::Declined { ref store, .. } => store,
@@ -134,7 +137,7 @@ impl CompletionOutcome
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn certificates(&self) -> &[Tracelet]
+    pub fn certificates(&self) -> &[Tracelet<A>]
     {
         match *self {
             | Self::Completed {
@@ -185,16 +188,27 @@ impl CompletionOutcome
 ///   terminates in at most `budget.max_steps` iterations, never diverging or
 ///   panicking.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the sequent-alphabet pins (completion within
+///   budget, starved-budget decline carrying pending) hold verbatim through the
+///   generic loop, and the toy alphabet drives the same loop to an oriented
+///   derived cell plus a replaying certificate.
+/// - witness: `completion::tests::completion_processes_within_budget`
+/// - witness: `completion::tests::a_starved_budget_declines_with_pending`
+/// - witness: `toy_alphabet::tests::completion_orients_and_certifies_over_the_toy_alphabet`
 #[inline]
 #[must_use]
-pub fn complete(
-    mut store: CellStore,
+pub fn complete<A>(
+    mut store: CellStore<A>,
     budget: CompletionBudget,
-) -> CompletionOutcome
+) -> CompletionOutcome<A>
+where
+    A: CellAlphabet,
 {
     let mut derived: Vec<CellId> = Vec::new();
-    let mut certificates: Vec<Tracelet> = Vec::new();
-    let mut worklist: Vec<Overlap> = confluence_overlaps(&store);
+    let mut certificates: Vec<Tracelet<A>> = Vec::new();
+    let mut worklist: Vec<Overlap<A>> = confluence_overlaps(&store);
     let mut steps: usize = 0;
     while let Some(overlap) = worklist.pop() {
         if steps >= usize::from(budget.max_steps) {
@@ -228,7 +242,7 @@ pub fn complete(
             continue;
         }
         // Orient the divergence into a new rule (Knuth–Bendix).
-        let ordered = orient(norm_left.normal, norm_right.normal);
+        let ordered = orient::<A>(norm_left.normal, norm_right.normal);
         let Some((bigger, smaller)) = ordered
         else {
             // Equal-size divergence: incomparable by this order; an obstruction
@@ -238,8 +252,8 @@ pub fn complete(
         let new_cell = Cell::new(
             bigger,
             smaller,
-            Orientation::CompletionDerived,
-            CellProvenance::DerivedByCompletion,
+            A::derived_orientation(),
+            A::derived_provenance(),
         );
         let already_present = store.iter().any(|(_, cell)| *cell == new_cell);
         if already_present {
@@ -276,7 +290,9 @@ pub fn complete(
 ///   [`enumerate_overlaps`], in the same deterministic order.
 /// - panics: none.
 #[inline]
-fn confluence_overlaps(store: &CellStore) -> Vec<Overlap>
+fn confluence_overlaps<A>(store: &CellStore<A>) -> Vec<Overlap<A>>
+where
+    A: CellAlphabet,
 {
     enumerate_overlaps(store)
         .into_iter()
@@ -293,12 +309,14 @@ fn confluence_overlaps(store: &CellStore) -> Vec<Overlap>
 ///   as an obstruction).
 /// - panics: none.
 #[inline]
-fn orient(
-    left: crate::pattern::CmdPat,
-    right: crate::pattern::CmdPat,
-) -> Option<(crate::pattern::CmdPat, crate::pattern::CmdPat)>
+fn orient<A>(
+    left: A::Cmd,
+    right: A::Cmd,
+) -> Option<(A::Cmd, A::Cmd)>
+where
+    A: CellAlphabet,
 {
-    match reduction_cmp(&left, &right) {
+    match A::reduction_cmp(&left, &right) {
         | core::cmp::Ordering::Greater => Some((left, right)),
         | core::cmp::Ordering::Less => Some((right, left)),
         | core::cmp::Ordering::Equal => None,
@@ -311,11 +329,11 @@ mod tests
     use gandr_core_sequent::il::Polarity;
 
     use super::*;
-    use crate::cell::CellProvenance;
-    use crate::cell::Orientation;
     use crate::pattern::CmdPat;
     use crate::pattern::ConsPat;
     use crate::pattern::ProdPat;
+    use crate::sequent::CellProvenance;
+    use crate::sequent::Orientation;
 
     #[test]
     fn completion_processes_within_budget()

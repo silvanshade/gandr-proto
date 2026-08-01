@@ -97,6 +97,11 @@ copy_wrapper!(
     "Whether completion reached convergence without declining."
 );
 copy_wrapper!(
+    FiringPermission,
+    bool,
+    "Whether a cell's provenance permits it to fire at a target term."
+);
+copy_wrapper!(
     DeclinedFaceIndex,
     usize,
     "Index of a surface 2-cell face declined during elaboration."
@@ -157,10 +162,6 @@ copy_wrapper!(
     "Whether a cell variance contributes a flow role."
 );
 
-str_wrapper!(
-    HoleNameRef,
-    "Borrowed metavariable-hole name used by the composition gate."
-);
 str_wrapper!(
     PrimeNameRef,
     "Borrowed name receiving a deterministic freshening prime."

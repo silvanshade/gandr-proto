@@ -1540,7 +1540,7 @@ mod tests
                         // construction; the two faces generalize with
                         // disjoint fresh names, or no shared hole could
                         // bind consistently).
-                        let b = Cell::new(
+                        let b: Cell = Cell::new(
                             generalize_cmd(
                                 &tau.apply_cmd(&a.lhs),
                                 GenPrefix::LhsFace,

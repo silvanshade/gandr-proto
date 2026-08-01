@@ -1,6 +1,7 @@
 //! **Fusion by completion** — phase **L2** of the sequent-machines kernel
 //! (`proposal-sequent-kernel.md` §7 + the VDC
-//! addendum; decision K5; ADRs 65, 68, and 69).
+//! addendum; decision K5; ADRs 65, 68, and 69), lifted over its cell alphabet
+//! (metatheory roadmap spike S1).
 //!
 //! This crate is the third, purely-additive phase of the sequent kernel. It
 //! reifies the fusion engine of §7 over the polarized command IL: an oriented
@@ -14,21 +15,29 @@
 //!
 //! # The layers
 //!
+//! - [`alphabet`] — the [`alphabet::CellAlphabet`] trait: the pattern grammar,
+//!   ordered-map substitution, and seam/overlap vocabulary the engines quantify
+//!   over (spike S1 — the crate was intentionally monomorphic as a review
+//!   tripwire; the lift is a design change, documented there).
+//! - [`sequent`] — the [`sequent::SequentAlphabet`], the first
+//!   [`alphabet::CellAlphabet`] inhabitant: the sequent-kernel command-pattern
+//!   alphabet with its orientation/provenance tags, live variance metadata, and
+//!   η-polarity firing discipline.
 //! - [`pattern`] — the **command-pattern IL**: the §2.1 cut grammar with
 //!   pattern metavariables, the §7.1 operation frame `f(p̄; c)` and return-side
 //!   constructor frame `K⁻(c)`, positions, and the reduction order.
 //! - [`subst`] — substitutions, one-sided **matching** (cell application) and
 //!   two-sided **unification** (overlaps), both iterative (ADR-47).
 //! - [`cell`] — the [`cell::Cell`] (`lhs ~> rhs`, orientation, provenance,
-//!   derived [`cell::CellMeta`] with the VDC variance/linearity and
-//!   `invertible` flag) and the content-addressed [`cell::CellStore`].
+//!   derived metadata) and the content-addressed [`cell::CellStore`], generic
+//!   over the alphabet.
 //! - [`elaborate`] — surface `rule` faces
 //!   ([`gandr_theory_levitation::CellFace`]) into cells (§7.1), the ADR-54
 //!   acceptance target.
 //! - [`rewrite`] — direct command-level rewriting with a budget and the
-//!   η-polarity discipline (§5).
+//!   alphabet's firing discipline (the sequent η-polarity gate, §5).
 //! - [`overlap`] — the multi-sum overlap enumerator (§7.3.2): confluence
-//!   critical pairs and composition (fusion) overlaps.
+//!   critical pairs and composition (fusion) overlaps, emitting seam data.
 //! - [`completion`] — budgeted Knuth–Bendix / Squier completion with
 //!   decline-and-report (§7.3.3).
 //! - [`tracelet`] — replayable 3-cell certificates and the derived fused cell
@@ -48,9 +57,9 @@
 //! are the phase-L2 gate rows (§9). The `compose_invertible` /
 //! `compose_directed` operations and the acyclicity gate (VDC addendum §A)
 //! now live in [`compose`], reading the **live**
-//! [`cell::CellVariance`] (with `Mixed` reachable) and the
-//! [`cell::CellMeta::invertible`] flag [`cell::CellMeta::derive`] computes at
-//! construction.
+//! [`sequent::CellVariance`] (with `Mixed` reachable) and the
+//! [`sequent::CellMeta::invertible`] flag [`sequent::CellMeta::derive`]
+//! computes at construction.
 //!
 //! # Draft-ADR candidate
 //!
@@ -66,6 +75,7 @@
 
 extern crate alloc;
 
+pub mod alphabet;
 pub mod boundary;
 pub mod bridge;
 pub mod cell;
@@ -75,9 +85,12 @@ pub mod elaborate;
 pub mod overlap;
 pub mod pattern;
 pub mod rewrite;
+pub mod sequent;
 pub mod subst;
 pub mod tracelet;
 
+pub use crate::alphabet::CellAlphabet;
+pub use crate::alphabet::SeamRole;
 pub use crate::boundary::CellCount;
 pub use crate::boundary::CellInvertibility;
 pub use crate::boundary::CellLinearity;
@@ -86,6 +99,7 @@ pub use crate::boundary::CompletionCellBudget;
 pub use crate::boundary::CompletionStatus;
 pub use crate::boundary::CompletionStepBudget;
 pub use crate::boundary::DeclinedFaceIndex;
+pub use crate::boundary::FiringPermission;
 pub use crate::boundary::GroundPatternStatus;
 pub use crate::boundary::NormalizationBudget;
 pub use crate::boundary::PatternSize;
@@ -99,14 +113,7 @@ pub use crate::boundary::TraceletReplay;
 pub use crate::boundary::VarianceFlowRole;
 pub use crate::cell::Cell;
 pub use crate::cell::CellId;
-pub use crate::cell::CellMeta;
-pub use crate::cell::CellProvenance;
 pub use crate::cell::CellStore;
-pub use crate::cell::CellVarMeta;
-pub use crate::cell::CellVariance;
-pub use crate::cell::EtaKind;
-pub use crate::cell::Orientation;
-pub use crate::cell::frame_defining_cell;
 pub use crate::completion::CompletionBudget;
 pub use crate::completion::CompletionOutcome;
 pub use crate::completion::DeclineReason;
@@ -130,6 +137,15 @@ pub use crate::pattern::Sym;
 pub use crate::rewrite::CellApp;
 pub use crate::rewrite::Normalization;
 pub use crate::rewrite::normalize;
+pub use crate::sequent::CellMeta;
+pub use crate::sequent::CellProvenance;
+pub use crate::sequent::CellVarMeta;
+pub use crate::sequent::CellVariance;
+pub use crate::sequent::EtaKind;
+pub use crate::sequent::HoleName;
+pub use crate::sequent::Orientation;
+pub use crate::sequent::SequentAlphabet;
+pub use crate::sequent::frame_defining_cell;
 pub use crate::subst::Subst;
 pub use crate::tracelet::Tracelet;
 pub use crate::tracelet::confluence_tracelet;

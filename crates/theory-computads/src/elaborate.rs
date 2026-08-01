@@ -38,15 +38,15 @@ use gandr_theory_levitation::FreeTerm;
 
 use crate::boundary::DeclinedFaceIndex;
 use crate::cell::Cell;
-use crate::cell::CellProvenance;
 use crate::cell::CellStore;
-use crate::cell::Orientation;
-use crate::cell::frame_defining_cell;
 use crate::pattern::CmdPat;
 use crate::pattern::ConsPat;
 use crate::pattern::MetaVar;
 use crate::pattern::ProdPat;
 use crate::pattern::Sym;
+use crate::sequent::CellProvenance;
+use crate::sequent::Orientation;
+use crate::sequent::frame_defining_cell;
 
 /// The reserved return-continuation metavariable name a rule's cut binds — the
 /// `$`-prefix keeps it disjoint from every user pattern variable.

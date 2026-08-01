@@ -1,5 +1,6 @@
 //! **Tracelet 3-cell certificates** — replayable derivations that certify a
-//! fused cell equals its two-step composite.
+//! fused cell equals its two-step composite, generic over the
+//! [`CellAlphabet`] (metatheory roadmap spike S1).
 //!
 //! Spec: `proposal-sequent-kernel.md` §7.3 (the `Tracelet` struct); VDC
 //! addendum §A (replay-equivalence as identity, ADR-69).
@@ -12,6 +13,9 @@
 //! Replay-equivalence ([`replay_equivalent`]) — same boundary, both replay — is
 //! the **identity criterion** the addendum promotes tracelet grafting to (the
 //! coherence that makes the future `compose_*` operations associative/unital).
+//! Certificate identity (replay-equivalence) stays strictly separate from
+//! type-level term identity (structural [`Eq`]) — no conflation anywhere in
+//! the abstraction.
 //!
 //! - A **confluence** tracelet ([`confluence_tracelet`]) joins the two reducts
 //!   of a Knuth–Bendix critical pair (§7.3.3).
@@ -20,47 +24,37 @@
 //!   single fused step, and `joins_at` their common result — the fused≡two-step
 //!   contract as a replayable object (§7.2, §7.3.4).
 
-use alloc::boxed::Box;
-use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::alphabet::CellAlphabet;
 use crate::boundary::NormalizationBudget;
 use crate::boundary::TraceletEquivalence;
 use crate::boundary::TraceletReplay;
 use crate::cell::Cell;
 use crate::cell::CellId;
-use crate::cell::CellProvenance;
 use crate::cell::CellStore;
-use crate::cell::Orientation;
 use crate::overlap::Overlap;
-use crate::pattern::CmdPat;
-use crate::pattern::ConsPat;
-use crate::pattern::MetaVar;
-use crate::pattern::Node;
-use crate::pattern::Pos;
-use crate::pattern::ProdPat;
-use crate::pattern::Sym;
-use crate::pattern::transform_node;
 use crate::rewrite::CellApp;
 use crate::rewrite::normalize;
 use crate::rewrite::rewrite_at;
+use crate::sequent::SequentAlphabet;
 
 /// A **3-cell certificate** — a peak and two replayable paths joining at a
 /// common term (`proposal-sequent-kernel.md` §7.3).
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Tracelet
+pub struct Tracelet<A: CellAlphabet = SequentAlphabet>
 {
     /// The overlap the tracelet certifies.
-    pub overlap: Overlap,
+    pub overlap: Overlap<A>,
     /// The first path from the peak to `joins_at`.
-    pub path_a: Vec<CellApp>,
+    pub path_a: Vec<CellApp<A>>,
     /// The second path from the peak to `joins_at`.
-    pub path_b: Vec<CellApp>,
+    pub path_b: Vec<CellApp<A>>,
     /// The common term both paths reach.
-    pub joins_at: CmdPat,
+    pub joins_at: A::Cmd,
 }
 
-impl Tracelet
+impl<A: CellAlphabet> Tracelet<A>
 {
     /// **Replay** the certificate: re-execute both paths from the peak and
     /// check they reach `joins_at` (ADR-69 — replayed, not trusted).
@@ -76,11 +70,11 @@ impl Tracelet
     #[must_use]
     pub fn replay(
         &self,
-        store: &CellStore,
+        store: &CellStore<A>,
     ) -> TraceletReplay
     {
-        let peak = skolemize_cmd(&self.overlap.peak);
-        let target = skolemize_cmd(&self.joins_at);
+        let peak = A::skolemize(&self.overlap.peak);
+        let target = A::skolemize(&self.joins_at);
         let ran_a = run_path(store, peak.clone(), &self.path_a);
         let ran_b = run_path(store, peak, &self.path_b);
         TraceletReplay::from(
@@ -112,11 +106,13 @@ impl Tracelet
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn replay_equivalent(
-    a: &Tracelet,
-    b: &Tracelet,
-    store: &CellStore,
+pub fn replay_equivalent<A>(
+    a: &Tracelet<A>,
+    b: &Tracelet<A>,
+    store: &CellStore<A>,
 ) -> TraceletEquivalence
+where
+    A: CellAlphabet,
 {
     TraceletEquivalence::from(
         a.overlap.peak == b.overlap.peak
@@ -140,11 +136,13 @@ pub fn replay_equivalent(
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn confluence_tracelet(
-    overlap: &Overlap,
-    store: &CellStore,
+pub fn confluence_tracelet<A>(
+    overlap: &Overlap<A>,
+    store: &CellStore<A>,
     budget: NormalizationBudget,
-) -> Option<Tracelet>
+) -> Option<Tracelet<A>>
+where
+    A: CellAlphabet,
 {
     let left_reduct = overlap.left_reduct(store)?;
     let right_reduct = overlap.right_reduct(store)?;
@@ -155,12 +153,12 @@ pub fn confluence_tracelet(
     }
     let mut path_a = alloc::vec![CellApp {
         cell: overlap.left,
-        at: Pos::root(),
+        at: A::root_position(),
     }];
     path_a.extend(norm_a.path);
     let mut path_b = alloc::vec![CellApp {
         cell: overlap.right,
-        at: Pos::root(),
+        at: A::root_position(),
     }];
     path_b.extend(norm_b.path);
     Some(Tracelet {
@@ -178,24 +176,25 @@ pub fn confluence_tracelet(
 /// # Contract
 /// - requires: `overlap.kind == OverlapKind::Composition`.
 /// - ensures: `Some((fused_id, tracelet))` where the fused cell is `peak ~>
-///   composite` (provenance [`CellProvenance::DerivedByCompletion`], an
-///   invertible certificate), `path_a = [left@root, right@seam]` is the
-///   two-step derivation and `path_b = [fused@root]` the single fused step,
-///   both reaching the composite. `None` if the composite cannot be formed.
+///   composite` (the derived provenance, an invertible certificate), `path_a =
+///   [left@root, right@seam]` is the two-step derivation and `path_b =
+///   [fused@root]` the single fused step, both reaching the composite. `None`
+///   if the composite cannot be formed.
 /// - panics: none.
 #[inline]
-#[must_use]
-pub fn derive_fused(
-    overlap: &Overlap,
-    store: &mut CellStore,
-) -> Option<(CellId, Tracelet)>
+pub fn derive_fused<A>(
+    overlap: &Overlap<A>,
+    store: &mut CellStore<A>,
+) -> Option<(CellId, Tracelet<A>)>
+where
+    A: CellAlphabet,
 {
     let composite = overlap.composite(store)?;
     let fused = Cell::new(
         overlap.peak.clone(),
         composite.clone(),
-        Orientation::CompletionDerived,
-        CellProvenance::DerivedByCompletion,
+        A::derived_orientation(),
+        A::derived_provenance(),
     );
     let fused_id = store.insert(fused);
     let tracelet = Tracelet {
@@ -203,7 +202,7 @@ pub fn derive_fused(
         path_a: alloc::vec![
             CellApp {
                 cell: overlap.left,
-                at: Pos::root(),
+                at: A::root_position(),
             },
             CellApp {
                 cell: overlap.right,
@@ -212,7 +211,7 @@ pub fn derive_fused(
         ],
         path_b: alloc::vec![CellApp {
             cell: fused_id,
-            at: Pos::root(),
+            at: A::root_position(),
         }],
         joins_at: composite,
     };
@@ -227,11 +226,13 @@ pub fn derive_fused(
 ///   no-longer-present redex).
 /// - panics: none.
 #[inline]
-fn run_path(
-    store: &CellStore,
-    start: CmdPat,
-    path: &[CellApp],
-) -> Option<CmdPat>
+fn run_path<A>(
+    store: &CellStore<A>,
+    start: A::Cmd,
+    path: &[CellApp<A>],
+) -> Option<A::Cmd>
+where
+    A: CellAlphabet,
 {
     let mut current = start;
     for step in path {
@@ -241,76 +242,21 @@ fn run_path(
     Some(current)
 }
 
-/// **Skolemize** a command pattern — replace each metavariable with a fresh,
-/// reserved-name constant so the schematic peak becomes a ground configuration
-/// the replay can rewrite.
-///
-/// # Contract
-/// - ensures: every producer metavariable `x` becomes a nullary constructor
-///   `$k$x` and every consumer metavariable `α` an opaque nullary operation
-///   frame `$k$α(; ★)`; the reserved `$k$` prefix never collides with a real
-///   constructor / operation, so the constants are irreducible. The mapping is
-///   name-deterministic, so shared metavariables skolemize identically across
-///   peak and join.
-/// - panics: none.
-#[inline]
-#[must_use]
-pub fn skolemize_cmd(cmd: &CmdPat) -> CmdPat
-{
-    let Some(Node::Cmd(cmd)) =
-        transform_node(Node::Cmd(cmd.clone()), |node| Some(skolemize_node(node)))
-    else {
-        return cmd.clone();
-    };
-    cmd
-}
-
-/// Skolemize one rebuilt node.
-#[inline]
-fn skolemize_node(node: Node) -> Node
-{
-    match node {
-        | Node::Prod(ProdPat::Meta(mv)) => Node::Prod(ProdPat::Ctor {
-            ctor: skolem_sym(&mv),
-            args: Box::from([]),
-        }),
-        | Node::Cons(ConsPat::Meta(mv)) => Node::Cons(ConsPat::Op {
-            op: skolem_sym(&mv),
-            args: Box::from([]),
-            ret: Box::new(ConsPat::Top),
-        }),
-        | other => other,
-    }
-}
-
-/// The reserved skolem constant name for a metavariable.
-///
-/// # Contract
-/// - ensures: the name `$k$<metavariable-name>`, whose `$k$` prefix a real
-///   datatype symbol never carries.
-/// - panics: none.
-#[inline]
-fn skolem_sym(mv: &MetaVar) -> Sym
-{
-    let mut name = String::with_capacity(mv.name.len().saturating_add(3));
-    name.push_str("$k$");
-    name.push_str(&mv.name);
-    Sym::new(name)
-}
-
 #[cfg(test)]
 mod tests
 {
     use gandr_core_sequent::il::Polarity;
 
     use super::*;
-    use crate::cell::CellProvenance;
-    use crate::cell::Orientation;
-    use crate::cell::frame_defining_cell;
     use crate::overlap::OverlapKind;
     use crate::overlap::enumerate_overlaps;
+    use crate::pattern::CmdPat;
     use crate::pattern::ConsPat;
     use crate::pattern::ProdPat;
+    use crate::pattern::Sym;
+    use crate::sequent::CellProvenance;
+    use crate::sequent::Orientation;
+    use crate::sequent::frame_defining_cell;
 
     #[test]
     fn a_fused_cell_certificate_replays()
@@ -331,21 +277,6 @@ mod tests
         );
         assert_eq!(2, tracelet.path_a.len(), "two-step path");
         assert_eq!(1, tracelet.path_b.len(), "single fused step");
-    }
-
-    #[test]
-    fn skolemization_is_name_stable()
-    {
-        let peak = CmdPat::cut(
-            Polarity::Positive,
-            ProdPat::meta("v"),
-            ConsPat::frame("Succ", ConsPat::meta("v_cons")),
-        );
-        assert_eq!(
-            skolemize_cmd(&peak),
-            skolemize_cmd(&peak),
-            "skolemization is deterministic"
-        );
     }
 
     #[test]
@@ -431,6 +362,7 @@ mod tests
         );
     }
 
+    /// (add-S): ⟨Succ(m) | add(n; α)⟩ ~> ⟨m | add(n; Succ⁻(α))⟩.
     fn add_s() -> Cell
     {
         let lhs = CmdPat::cut(

@@ -1,0 +1,372 @@
+//! The **cell-alphabet abstraction** (metatheory roadmap spike **S1**; the
+//! alphabet-polymorphic-enumerator item of the implementation roadmap).
+//!
+//! The trait the overlap enumerator, the completion loop, and the normalizer
+//! quantify over.
+//!
+//! # Why this lift is a design change, not a refactor
+//!
+//! This crate was **intentionally monomorphic** over the sequent-kernel
+//! command-pattern alphabet — no trait, no type parameter — as a review
+//! tripwire: the cell-visible fragment ([`crate::pattern::CmdPat`]) is
+//! deliberately narrower than the full IL, matches over it are total by
+//! policy, and any grammar extension was meant to be a compile-visible change
+//! at every match site. Lifting the engines over an alphabet loosens that
+//! tripwire on purpose: the shape layer and the directed rule layers need the
+//! completion machinery (the four-layer exchange identity and the shape-layer
+//! interchange equation are exactly the hand completion work the enumerator
+//! exists to mechanize, per spike S1), and a second copy of the engine per
+//! alphabet is not a maintainable answer. The narrowing discipline survives
+//! the lift one level down: each alphabet decides its own fragment, and the
+//! sequent alphabet ([`crate::sequent`]) keeps its total matches verbatim.
+//!
+//! # The interface
+//!
+//! One deep trait, not a spray of knobs. An **alphabet** fixes:
+//!
+//! - the **pattern grammar** — the term type [`CellAlphabet::Cmd`] cells
+//!   rewrite, its metavariables [`CellAlphabet::Var`] (with the hole identity
+//!   [`CellAlphabet::Hole`] the composition gate keys on), its seam positions
+//!   [`CellAlphabet::Pos`], navigation and splicing
+//!   ([`CellAlphabet::subterm_cmd_at`] / [`CellAlphabet::splice_cmd_at`]), the
+//!   well-founded [`CellAlphabet::reduction_cmp`] completion orients by, the
+//!   deterministic apartness renaming [`CellAlphabet::rename_apart`], and the
+//!   replay [`CellAlphabet::skolemize`];
+//! - the **ordered-map substitution** — one-sided matching
+//!   ([`CellAlphabet::match_cmd`], cell application) and two-sided unification
+//!   ([`CellAlphabet::unify_cmd`], overlap superposition), both over the
+//!   deterministic [`CellAlphabet::Subst`] carrier;
+//! - the **cell vocabulary** — orientation and provenance tags, the derived
+//!   per-cell metadata [`CellAlphabet::Meta`], the firing discipline
+//!   ([`CellAlphabet::may_fire`], the sequent η-polarity gate's slot), and the
+//!   provenance-to-certificate reading
+//!   ([`CellAlphabet::completion_certificate`]).
+//!
+//! The two intended **future consumers** are the **shape layer** (whose
+//! interchange equation is a completion problem over shape cells) and the
+//! **directed rule layers** (whose rule alphabets need the same budgeted
+//! Knuth–Bendix/Squier machinery); the sequent-kernel command-pattern alphabet
+//! ([`crate::sequent::SequentAlphabet`]) is the first inhabitant and the
+//! reference implementation.
+//!
+//! # Trust placement (standing warning, verbatim)
+//!
+//! off-TCB applies to the **enumerator only**; the `cells_equal` normal-form
+//! fast path is TCB-adjacent and needs a guard plus a soundness witness,
+//! never documentation.
+//!
+//! Concretely for this abstraction: [`crate::overlap::enumerate_overlaps`]
+//! asserts nothing — it emits seam data and stays off-TCB. The equality the
+//! engines decide with — the completion join check `normal == normal` and the
+//! store's structural dedup — rides [`CellAlphabet::Cmd`]'s [`Eq`], so that
+//! equality MUST be **structural content identity**: no arena addresses,
+//! generation stamps, or session state may enter hashed or compared term
+//! identity (this is also why an alphabet is a stateless marker type, never a
+//! handle to an interner). Any future normal-form fast path for cell equality
+//! lands behind a guard plus a soundness witness, per the warning — never as
+//! an unchecked [`Eq`] shortcut.
+//!
+//! # Certificate identity versus term identity
+//!
+//! The abstraction never conflates the two: terms are identified structurally
+//! ([`Eq`]); certificates (tracelets) are identified by **replay-equivalence**
+//! ([`crate::tracelet::replay_equivalent`]) — proof-irrelevant up to replay.
+//! No `Path`/`Flow`-style conflation is admitted anywhere in the interface:
+//! an alphabet contributes the term plane; the certificate plane lives in
+//! [`crate::tracelet`] and [`crate::compose`] over it. The two critical-pair
+//! kinds (confluence Knuth–Bendix and composition sequential fusion) stay a
+//! complete family in [`crate::overlap::OverlapKind`], never collapsed, and
+//! budgeted decline-and-report stays the completion contract in
+//! [`crate::completion`], including the three honest obstruction classes.
+
+use alloc::vec::Vec;
+
+use crate::boundary::CellInvertibility;
+use crate::boundary::FiringPermission;
+use crate::boundary::SubstitutionDecision;
+
+/// The **flow role** a metavariable hole contributes across a composed seam —
+/// the alphabet-neutral dinaturality vocabulary the directed composition gate
+/// ([`crate::compose::compose_directed`]) reads.
+///
+/// The sequent alphabet maps its [`crate::sequent::CellVariance`] onto these
+/// roles (producer → [`SeamRole::Forward`], consumer → [`SeamRole::Backward`],
+/// mixed → [`SeamRole::Both`]); an alphabet without a polarity split reports
+/// the roles its own metadata supports.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum SeamRole
+{
+    /// Forward flow across the seam, `a`-side → `b`-side.
+    Forward,
+    /// Backward flow across the seam, `b`-side → `a`-side.
+    Backward,
+    /// Both directions — the dinaturality-shaped hole that closes a loop when
+    /// shared across the seam.
+    Both,
+}
+
+/// The **cell alphabet** the engines quantify over — the pattern grammar, the
+/// ordered-map substitution, and the seam/overlap vocabulary of one term
+/// language.
+///
+/// An alphabet is a **stateless marker type** (a ZST: the supertraits require
+/// [`Copy`] and [`Default`]): every operation is a static method, so no arena,
+/// generation, or session state can leak into term identity or the engines'
+/// decisions.
+///
+/// # Contract
+/// - requires: implementors keep [`CellAlphabet::Cmd`] equality and hashing
+///   **structural** (content identity only); [`CellAlphabet::match_cmd`] is
+///   one-sided (binds the pattern's metavariables against a ground target),
+///   [`CellAlphabet::unify_cmd`] two-sided (a most general unifier), and both
+///   leave `subst` possibly partially extended on failure;
+///   [`CellAlphabet::rename_apart`] is deterministic and structure-preserving.
+/// - ensures: the engines (`crate::overlap`, `crate::completion`,
+///   `crate::rewrite`, `crate::tracelet`, `crate::compose`) are total over any
+///   implementor — every decline path is data, never a panic or divergence.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the sequent alphabet's existing gate suite runs
+///   unmodified through the generic interface (behavior preserved), and a
+///   second, minimal toy alphabet drives all three engines through the same
+///   generic entry points (the lift is genuinely polymorphic, not sequent
+///   special-casing).
+/// - witness: `toy_alphabet::tests::the_enumerator_finds_the_toy_composition_overlap`
+/// - witness: `toy_alphabet::tests::the_normalizer_runs_over_the_toy_alphabet`
+/// - witness: `toy_alphabet::tests::completion_orients_and_certifies_over_the_toy_alphabet`
+pub trait CellAlphabet: Copy + Default + Eq + Ord + core::hash::Hash + core::fmt::Debug
+{
+    /// The **command-pattern term type** — the tree a cell's two faces are
+    /// and the engines rewrite. Equality and hashing are structural content
+    /// identity (see the module-level trust warning).
+    type Cmd: Clone + Eq + core::hash::Hash + core::fmt::Debug;
+    /// The **metavariable** type — a hole in a pattern.
+    type Var: Clone + Eq + core::hash::Hash + core::fmt::Debug;
+    /// The **hole identity** — how a metavariable is keyed across a cell's
+    /// two faces (the sequent alphabet keys by *name*: a name worn at two
+    /// polarities is one hole, the dinaturality case).
+    type Hole: Clone + Eq + Ord + core::hash::Hash + core::fmt::Debug;
+    /// The **position** type — a path addressing a command subterm (the seam
+    /// an overlap roots at or a step fires at).
+    type Pos: Clone + Eq + core::hash::Hash + core::fmt::Debug;
+    /// The **ordered substitution map** — deterministic (a `BTreeMap`-backed
+    /// carrier; hash-order iteration is denied workspace-wide).
+    type Subst: Clone + Default + Eq + core::fmt::Debug;
+    /// How a cell's orientation was fixed (the alphabet's tag vocabulary).
+    type Orientation: Copy + Eq + core::hash::Hash + core::fmt::Debug;
+    /// Where a cell came from (the alphabet's tag vocabulary).
+    type Provenance: Copy + Eq + core::hash::Hash + core::fmt::Debug;
+    /// The **derived per-cell metadata** (variance/linearity/invertibility in
+    /// the sequent alphabet), computed live by [`CellAlphabet::derive_meta`].
+    type Meta: Clone + Eq + core::hash::Hash + core::fmt::Debug;
+
+    /// **One-sided matching** — bind `pattern`'s metavariables so the
+    /// instantiated pattern equals the ground `target`, extending `subst`
+    /// (cell application; the sequent alphabet also checks cut polarity, K2).
+    ///
+    /// # Contract
+    /// - requires: `target` is metavariable-free.
+    /// - ensures: a positive decision instantiates `pattern` to `target` under
+    ///   `subst`; a negative decision may leave `subst` partially extended.
+    /// - panics: none.
+    fn match_cmd(
+        pattern: &Self::Cmd,
+        target: &Self::Cmd,
+        subst: &mut Self::Subst,
+    ) -> SubstitutionDecision;
+
+    /// **Two-sided unification** — a most general unifier of `lhs` and `rhs`,
+    /// extending `subst` (overlap superposition).
+    ///
+    /// # Contract
+    /// - requires: the two sides' metavariables are kept apart (the enumerator
+    ///   renames one cell with [`CellAlphabet::rename_apart`] first).
+    /// - ensures: a positive decision makes `subst` a unifier — both sides
+    ///   instantiate to the same term; a negative decision (a clash or an
+    ///   occurs-check failure) may leave `subst` partially extended.
+    /// - panics: none.
+    fn unify_cmd(
+        lhs: &Self::Cmd,
+        rhs: &Self::Cmd,
+        subst: &mut Self::Subst,
+    ) -> SubstitutionDecision;
+
+    /// Apply a substitution to a term (instantiating every bound
+    /// metavariable).
+    ///
+    /// # Contract
+    /// - ensures: every bound metavariable leaf is replaced by its binding;
+    ///   unbound metavariables are left in place.
+    /// - panics: none.
+    fn apply_subst(
+        subst: &Self::Subst,
+        cmd: &Self::Cmd,
+    ) -> Self::Cmd;
+
+    /// The term's metavariables, in left-to-right order **with repeats** (the
+    /// metadata derivation counts linearity by occurrences).
+    ///
+    /// # Contract
+    /// - ensures: one entry per metavariable occurrence, in left-to-right
+    ///   order.
+    /// - panics: none.
+    fn metavariables(cmd: &Self::Cmd) -> Vec<Self::Var>;
+
+    /// Every **command position** of the term — the seams a cell can fire at
+    /// and the composition enumerator unifies at, in a deterministic
+    /// outer-to-inner order.
+    ///
+    /// # Contract
+    /// - ensures: each returned position addresses a command subterm
+    ///   ([`CellAlphabet::subterm_cmd_at`] returns `Some` at it).
+    /// - panics: none.
+    fn command_positions(cmd: &Self::Cmd) -> Vec<Self::Pos>;
+
+    /// The root position (the seam of a confluence overlap).
+    ///
+    /// # Contract
+    /// - ensures: [`CellAlphabet::subterm_cmd_at`] at the root is the whole
+    ///   term.
+    /// - panics: none.
+    fn root_position() -> Self::Pos;
+
+    /// The command subterm at `pos`, if the path addresses one.
+    ///
+    /// # Contract
+    /// - ensures: `Some(subterm)` when `pos` addresses a command inside `cmd`;
+    ///   `None` when the path leaves the tree or addresses a non-command
+    ///   subterm.
+    /// - panics: none.
+    fn subterm_cmd_at(
+        cmd: &Self::Cmd,
+        pos: &Self::Pos,
+    ) -> Option<Self::Cmd>;
+
+    /// Splice `replacement` into `cmd` at `pos`, returning the rebuilt term.
+    ///
+    /// # Contract
+    /// - requires: `pos` addresses an existing command subterm.
+    /// - ensures: `Some(rebuilt)` with the subterm at `pos` replaced; `None`
+    ///   when the path leaves the tree or the replacement does not fit the
+    ///   slot.
+    /// - panics: none.
+    fn splice_cmd_at(
+        cmd: &Self::Cmd,
+        pos: &Self::Pos,
+        replacement: Self::Cmd,
+    ) -> Option<Self::Cmd>;
+
+    /// The **reduction order** — a well-founded orientation completion uses
+    /// to turn a divergent critical pair into a rule (larger on the left).
+    ///
+    /// # Contract
+    /// - ensures: [`core::cmp::Ordering::Equal`] only for pairs the order
+    ///   cannot orient (an honest obstruction, never a guessed orientation).
+    /// - panics: none.
+    fn reduction_cmp(
+        lhs: &Self::Cmd,
+        rhs: &Self::Cmd,
+    ) -> core::cmp::Ordering;
+
+    /// Rename `renamed`'s metavariables disjoint from `anchor`'s (the
+    /// deterministic apartness renaming overlap enumeration performs on the
+    /// right cell of a pair before unifying).
+    ///
+    /// # Contract
+    /// - ensures: the pair `(lhs, rhs)` of `renamed` with every metavariable
+    ///   replaced by a fresh one absent from both `anchor` faces and from the
+    ///   other renamed variables, preserving the pattern shapes (so the
+    ///   original right leg is recoverable by zipping occurrences); an
+    ///   already-disjoint cell is returned unchanged.
+    /// - panics: none.
+    fn rename_apart(
+        anchor: (&Self::Cmd, &Self::Cmd),
+        renamed: (&Self::Cmd, &Self::Cmd),
+    ) -> (Self::Cmd, Self::Cmd);
+
+    /// **Skolemize** a term — replace each metavariable with a fresh,
+    /// reserved constant so replay can ground-rewrite the schematic peak.
+    ///
+    /// # Contract
+    /// - ensures: the result is metavariable-free; the mapping is
+    ///   name-deterministic, so shared metavariables skolemize identically
+    ///   across a tracelet's peak and join, and the constants are irreducible
+    ///   under the alphabet's own cells.
+    /// - panics: none.
+    fn skolemize(cmd: &Self::Cmd) -> Self::Cmd;
+
+    /// The hole identity of a metavariable (the composition gate keys flow by
+    /// it).
+    ///
+    /// # Contract
+    /// - ensures: metavariables denoting the same hole across a cell's two
+    ///   faces map to equal holes.
+    /// - panics: none.
+    fn hole_of(var: &Self::Var) -> Self::Hole;
+
+    /// Whether `provenance` marks an **invertible joinability certificate**
+    /// (a completion-emitted cell) as opposed to an oriented optimization
+    /// cell — the flag the two-mode composition lane branches on.
+    ///
+    /// # Contract
+    /// - ensures: positive exactly for the provenance
+    ///   [`CellAlphabet::derived_provenance`] produces.
+    /// - panics: none.
+    fn completion_certificate(provenance: &Self::Provenance) -> CellInvertibility;
+
+    /// Derive the per-cell metadata **live** from the two faces (never a
+    /// stage-0 constant).
+    ///
+    /// # Contract
+    /// - ensures: the metadata a freshly built cell carries; `invertible` is
+    ///   carried through verbatim.
+    /// - panics: none.
+    fn derive_meta(
+        lhs: &Self::Cmd,
+        rhs: &Self::Cmd,
+        invertible: CellInvertibility,
+    ) -> Self::Meta;
+
+    /// The `(variable, flow role)` endpoints `meta` carries for `hole` — the
+    /// composition gate's per-cell read of one seam hole.
+    ///
+    /// # Contract
+    /// - ensures: one endpoint per metadata entry whose hole identity equals
+    ///   `hole`; empty when the hole does not occur.
+    /// - panics: none.
+    fn hole_flow(
+        meta: &Self::Meta,
+        hole: &Self::Hole,
+    ) -> Vec<(Self::Var, SeamRole)>;
+
+    /// The **firing discipline** — whether a cell of `provenance` may fire at
+    /// `target` (the sequent alphabet's η-polarity gate: an η cell fires only
+    /// at a cut of its required polarity; every other cell fires freely).
+    ///
+    /// # Contract
+    /// - ensures: a negative permission means the cell must not fire at
+    ///   `target`, however well its left-hand side matches.
+    /// - panics: none.
+    fn may_fire(
+        provenance: &Self::Provenance,
+        target: &Self::Cmd,
+    ) -> FiringPermission;
+
+    /// The orientation tag stamped on cells completion and fusion derive.
+    ///
+    /// # Contract
+    /// - ensures: the orientation [`crate::completion`] and
+    ///   [`crate::tracelet::derive_fused`] stamp derived cells with.
+    /// - panics: none.
+    fn derived_orientation() -> Self::Orientation;
+
+    /// The provenance tag stamped on cells completion and fusion derive (the
+    /// tag [`CellAlphabet::completion_certificate`] reads).
+    ///
+    /// # Contract
+    /// - ensures: the provenance [`crate::completion`] and
+    ///   [`crate::tracelet::derive_fused`] stamp derived cells with.
+    /// - panics: none.
+    fn derived_provenance() -> Self::Provenance;
+}
