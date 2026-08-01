@@ -42,6 +42,27 @@ Three instances stand in the tree, and reading them together is what makes the p
 This is not the **unobserved** row of the sort table below.
 That row is for a piece that is never discriminated; each collapse above drops something the producing operation had to discriminate in order to drop it, so the choice is between carrying what was detected and asserting a value for it.
 
+**And a fourth case hides inside that row, which is the one to watch.** A quantity can go undiscriminated because nothing observes it, or because **the operation that would observe it is not built yet** — and from inside an incomplete structure the two are indistinguishable, since neither leaves a term behind.
+
+| the quantity is…                                       | reading     |
+| ------------------------------------------------------ | ----------- |
+| produced and carried                                   | `𝟘`         |
+| produced and collapsed to the unit                     | `𝟙`         |
+| never discriminated by anything                        | unobserved  |
+| not discriminated **yet**, its operation being unbuilt | **not yet** |
+
+The fourth is `𝟙` on a delay.
+Build the missing operation the obvious way and its degenerate clause returns the unit, so the collapse is made by the implementation rather than by anyone — which is the same failure as before, arriving through a gap instead of through a choice.
+
+**So a carrier identified with a named structure owes that structure's operations, enumerated.** Each is then either built or explicitly owed; what must not happen is leaving the set unenumerated, because an unbuilt operation is indistinguishable from an absent one and the difference is resolved by whoever writes the first implementation.
+
+This is not "build everything", which is not affordable and which this tree deliberately declines all over.
+The obligation is the **enumeration**, and building is what you do where you can.
+
+The instrument is the one the arity interface already demonstrates: a **record whose fields the typechecker demands**, rather than a prose list a reader has to remember.
+The worked case is the circuit rung — the substrate is identified with the nonunital wheeled props, a wheeled prop's operations include contraction, and contraction was neither built nor recorded as owed until it became a field ([[metatheory#The arity interface, universe-style]]).
+Nothing was wrong in the tree while it was missing; it was simply not visible as missing, which is the whole cost.
+
 **Where a structure has content is declared, not discovered**: the region-indexed certification (`At`, with `Everywhere` and the singleton region as its ends) certifies a structure at exactly the addresses a predicate admits, and an out-of-region address is discharged by constructor disjointness — the suite cannot even be formed there.
 The region is per doctrine, not per carrier: one carrier can inhabit `Setoid` and refuse `Category`, and a refutation of a _certification_ must never be read as a refutation of the bare structure.
 `Set`-level structures present through the discrete setoid on the identity type (the identity type as 1-cells, `𝟘` above), with a named former for the hom family so the separation between the bare instance and the dimension-wise certification stays real.

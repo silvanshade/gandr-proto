@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 458a9acaa96fcae46162642bef67e630daa883b1b9c39630589aa993ee7b0e1a
+    b3: d1c8fa48043f106c01da0d74048e00e9abd6b7afd500ba15503622d5e7983eda
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -29,7 +29,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
     role: track
-    b3: bdb16b8429b741ea5871f9167583e4b6b07cae2cd743e8e6c349b576efc914f1
+    b3: a737db7bb1437440b8161fc0e6dd40d87a5116578a66b923920b93697d29148c
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md

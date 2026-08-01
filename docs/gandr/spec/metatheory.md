@@ -204,6 +204,10 @@ That last reading is the sharp one, and it is what the arity ruling below turns 
 
 Consequence 2 once carried a third clause — that no scalar ever has to be assigned to a free loop, so the "problem of loops" of the unital rung never arises.
 That clause is **retired**: it was bought by the trace not existing, and the trace is now the arity's primitive former.
+
+> **What that clause recorded was "not yet", and it is worth saying so rather than reading it as either an error or an abstention.** No scalar was assigned because no operation produced a circle: grafting and merging cannot, the first by consequence 3 and the second by construction.
+So the tree was not silently setting the loop to the unit — but neither had it decided the loop was unobservable, because the operation that observes it was simply unbuilt, and from inside an incomplete operation set those two look identical ([[proof-engineering#The substrate tower]]).
+The clause was therefore true when written and had no expiry on it; completing the operation set is what expired it, and had substitution been built without anyone reading it, its degenerate clause would have assigned the unit by default.
 What replaces it is the source's own answer rather than a gandr device — a Brauer diagram **is** a pairing together with $k$, its number of closed components, with $k$ additive under composition plus the components that composition closes [@raynor-2025-functorial, def 3.4]. gandr's `Match` is the $k = 0$ fragment, the _open_ diagrams; carrying $k$ at the code is the passage from the open fragment to the definition, and it leaves 1, 2 and 3 exactly as stated.
 Downward hom-sets are finite for all profiles with **no graph-shape hypothesis** — so hom-finiteness, previously attributed to simple connectivity, is free at this rung, and the old finiteness-motivated restriction ladder is retired.
 Two cautions keep the rung honest.
