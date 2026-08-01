@@ -777,6 +777,35 @@ berger-kaufmann-2022-aggregates:
     doi: "10.48550/arXiv.2201.10537"
     arxiv: "2201.10537"
 
+curien-hothanh-mimram-2019-opetopes:
+  type: article
+  title: Syntactic Approaches to Opetopes
+  author: ["Curien, Pierre-Louis", "Ho Thanh, Cédric", "Mimram, Samuel"]
+  date: 2019
+  serial-number:
+    doi: "10.48550/arXiv.1903.05848"
+    arxiv: "1903.05848"
+
+hasegawa-1997-recursion-cyclic-sharing:
+  type: article
+  title: "Recursion from Cyclic Sharing: Traced Monoidal Categories and Models of Cyclic Lambda Calculi"
+  author: ["Hasegawa, Masahito"]
+  date: 1997
+  serial-number:
+    doi: "10.1007/3-540-62688-3_37"
+  parent:
+    type: proceedings
+    title: Typed Lambda Calculi and Applications
+    publisher: Springer
+    page-range: 196-213
+
+discopy:
+  type: software
+  title: "DisCoPy: a Python toolkit for computing with string diagrams"
+  organization: DisCoPy contributors
+  url: https://github.com/discopy/discopy
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit e80ea3871d (2026-07-30)
+
 curien-obradovic-2017-cyclic:
   type: article
   title: A Formal Language for Cyclic Operads

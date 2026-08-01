@@ -95,7 +95,25 @@ data <Name> (params)? {
 The surface track already names this ladder as its lineage and names `meta` as absent, so the respell graduates a recorded slot rather than inventing one: see [[declarations#data declarations]].
 
 **The migration this implies.** `op` and `rule` members parse today, so the respell is a breaking change to a shipped-if-declined surface.
-The migration is a decline-with-hint — the old anonymous `rule lhs ~> rhs` form declines with a rename hint — which is cheap but real, and it is pinned by a pathological corpus example rather than left to a release note.
+The migration is a decline-with-hint, and it is pinned by a pathological corpus example rather than left to a release note:
+
+```text
+data Nat {
+  Zero,
+  Succ(n: Nat),
+  op add(m: Nat, n: Nat) -> Nat,       -- today: parses, declined
+  rule add(Zero, n) ~> n,              -- today: parses, declined; anonymous
+}
+
+data Nat {                             -- after the respell
+  cons Zero,
+  cons Succ(n: Nat),
+  oper add(m: Nat, n: Nat) -> Nat,
+  rule addZero: add(Zero, n) ~> n,     -- named; the name is the migration
+}
+```
+
+The decline a reader meets is on the old form's missing name — "`rule` requires a name; write `rule <name>: …`" — which is cheap but real, and it touches every existing `rule` member.
 
 ## Named 2-cells and the identity discipline
 
@@ -448,7 +466,23 @@ They are never ambient truncation.
 This is the identity ban list extended one dimension.
 **Definitional proof-irrelevance for identity was banned at dimension 2; a blanket 3-cell filler is the same collapse at dimension 3.** The standing discipline "variance is derived, never declared" gets its exact dual here — **fillers are declared or certified, never derived ambiently** — and each guards a collapse from the opposite side.
 
-The corpus pins this with a pathological example: a surface attempt to _request_ an ambient filler between parallel composites declines.
+The corpus pins this with a pathological example — a surface attempt to _request_ an ambient filler between two parallel composites, which declines:
+
+```text
+data MonoidShape {
+  sort M,
+  oper unit() -> M,
+  oper mul(x: M, y: M) -> M,
+  rule unitL: mul(unit(), x) ~> x,
+  rule assoc: mul(mul(x, y), z) ~> mul(x, mul(y, z)),
+
+  meta anyFiller: _ ~>> _,       -- declined: a `meta` states its two faces.
+                                 -- "fill whatever is parallel here" is the
+                                 -- blanket filler, and it entails UIP without K.
+}
+```
+
+The contrast with a legal `meta` is the whole discipline in one line: `meta triangle: (assoc(…) then …) ~>> …` **names both composites**, so the machine replays a boundary the author asserted; `meta anyFiller: _ ~>> _` asks the machine to invent one.
 
 ### The reflection face
 

@@ -34,12 +34,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 4ed921de93e6fa63f177f3abcca8c54c3ba9887d6379a4d66f832a3b59aac1fc
+    b3: 3ca69ebc7b733fedb5f5958657b909f3cdd59acb326bceb8dd9c40dd573224b6
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: dd0e7d75d16d648f23c8cfdd7abbd18d4a465b6cc9c7aa6f45570bb761047c5b
+    b3: 05426b42e2d0bc94aa6105fac0b046d6929440cbc0e2d21e35e682171f13d681
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -112,9 +112,14 @@ nodes:
     b3: 611c6456ade9ff4ab6faa6d724d6d890783ab2c89da8ffd71d5ab6e0970a0435
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/circuit-cells.md
+    role: subdocument
+    b3: ef01fbc46f83de7b42e5f64234c8e601b72cba16cecbccc9d49093fb12d1ad6c
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
     role: subdocument
-    b3: c8ea6bc8a76a57274f10cd599f9c49f2d9be5119a2a87c040232cf7aa33689fd
+    b3: 6f302b473f9fd586aea32abc1086b43a40b8575db1f65b27a293e4a7f98f33b8
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
