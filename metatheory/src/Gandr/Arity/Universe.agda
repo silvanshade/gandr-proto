@@ -171,9 +171,18 @@
 --     never moves anything past anything. In the graph kit five of the nine
 --     operations (`lwhisk`, `wire-in`, `cap-in`, `insert-shift`,
 --     `match-lwhisk`) exist for exactly that crossing. Whether they dissolve
---     under substitution or reappear as a partial trace is spike S11 and is NOT
---     decided here; what is decided is that the linear kit's whiskering does
---     dissolve, which is the control the prediction needed.
+--     under substitution or reappear as a partial trace was deferred from here;
+--     what is decided here is that the linear kit's whiskering does dissolve,
+--     which is the control the prediction needed.
+--
+--     **They split, and the disjunction was too clean.** Scoping the closure
+--     (§*And that closure is now scoped* below) answers it: `lwhisk` and
+--     `match-lwhisk` dissolve, since substitution never moves an operand past
+--     an interface; `wire-in`, `cap-in` and `insert-shift` SURVIVE, but as the
+--     merger's threading rather than as a crossing, which the interface owes
+--     whatever the former is. And the partial trace does appear — as a NEW
+--     operation and not as one of these five reappearing, because it is not a
+--     crossing at all.
 --
 -- The residual cost is `sub-cat` — substitution distributes over concatenation
 -- — which is new, and is the one place the presentation pays rather than
@@ -977,8 +986,44 @@ module Refute where
 --     leaves a graph to be attached where the vertex's ports were published,
 --     and its wiring clause closes a block of sources against a block of sinks
 --     — a two-sided closure, which is what creates a wheel. `graft` never needs
---     one. That construction is the residual, it is named here so it is not
---     rediscovered, and it is NOT built.
+--     one. That construction is the residual; it is scoped below as
+--     `MatchClose` and `CloseIn`, and it is NOT built.
+--
+-- ── AND THAT CLOSURE IS NOW SCOPED, WHICH MOVED THE QUESTION ────────────────
+-- The scoping was run to decide whether substitution is the primitive former or
+-- stays derived from grafting. Three results, and the first is that the count
+-- cannot decide it.
+--
+--   * **The closure is owed on EITHER route.** `sub` is a total field, and
+--     substituting a graph at a vertex whose ports are wired back to each other
+--     is not reachable from `graft` and `merge`, both of which leave the
+--     block's two sides alone. So the operation the count was counting is
+--     common, and what the count decides is what each route owes BEYOND it.
+--
+--   * **It decomposes as the merger plus one non-recursive operation**, and it
+--     retires the kit's only well-founded recursion rather than adding to it —
+--     see `MatchClose` below. Sixteen auxiliaries against `graft`'s ten, of
+--     which twelve are already built: six of `graft`'s own and six of the
+--     merger's, which the interface owes anyway. Four are new. The four not
+--     needed are `preplug`, `lwhisk`, `match-lwhisk`, and `match-comp` with its
+--     accumulator.
+--
+--     `graft`'s count is recorded as nine in `Gandr.Shape.Graft`; it is ten,
+--     `match-unhit` having joined the chain when the cut did.
+--
+--   * **And the closure's degenerate case has no term in the carrier.**
+--     `no-circle` below is that, checked rather than argued. This is a
+--     REPRESENTATION question and not a refutation: that substitution closes
+--     circles is a fact about the machinery, but that there is nowhere to put
+--     one is a fact about our carrier, and a premise about us carries no
+--     refutation. The cheapest admission is at the CODE — a shape with its
+--     count of vertexless circles — which leaves `Shape`, the incidence, the
+--     predicates and their refuters alone.
+--
+-- The recommendation on the record is that substitution becomes the primitive
+-- former, because the other route inhabits a weakening of the interface rather
+-- than the interface. It is a code change, so it binds only with sign-off, and
+-- nothing below it should be built against either former first.
 --
 -- ── AND ONE OBLIGATION IS PROMOTED RATHER THAN DISCHARGED ───────────────────
 -- `Inj` is not in the table because it is not inhabitable here at all: at this
@@ -1013,6 +1058,18 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (verts)
     using (ins)
     using (outs)
+    -- for the closure's signature and for the refuter below
+    using (Insert)
+    using (head)
+    using (Append)
+    using (nil)
+    using (cons)
+    using (Wire)
+    using (flow)
+    using (edges)
+    -- the wiring constructors, renamed: `[]` and `_∷_` are the list
+    -- constructors in this module
+    renaming ([] to no-wire; _∷_ to _wired∷_)
 
   -- THE INTERPRETATION, familially — and DERIVED rather than declared, which is
   -- the answer to whether the vertex family should be re-presented.
@@ -1100,3 +1157,96 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     → (v : Vtxᶠ X c d)
     → Vtxᶠ (Y v) e f
     → Vtxᶠ (sb X Y) e f
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- AND WHAT THAT FORMER'S BASE CASE DECOMPOSES INTO. `Subst` is the statement
+  -- the interface asks for; these are the statements it is assembled from, and
+  -- below them is the one term the carrier does not have.
+  --
+  -- Substituting at the head vertex is MERGING the replacement beside the rest
+  -- — `merge` places `Shape A B` beside `Shape (B ++ Γ) (A ++ Δ)` disconnected,
+  -- which `merge-apart` proves — and then closing the two blocks ONE WIRE AT A
+  -- TIME. So the residual is a single-wire operation and its block form is that
+  -- operation iterated, which is `lwhisk`'s and `wires-in`'s technique and the
+  -- reason no permutation enters.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- What a closure returns. The wiring is the point; the count is the residual
+  -- the carrier cannot absorb. Carried HERE and not inside `Shape`, which is
+  -- what leaves the incidence, the predicates and their refuters untouched.
+  record Closed (Γ Δ : List Ob) : Set ℓ where
+    constructor closed
+    field
+      wiring : Match Ob Γ Δ
+      loops : ℕ
+
+  -- THE RESIDUAL PROPER: delete the source at `i` and the sink at `j`, and join
+  -- whatever each was attached to. `match-insert`'s inverse.
+  --
+  -- IT DOES NOT RECURSE, which is the finding that bears on the ladder.
+  -- `match-remove i` reads the source's partner and `match-unhit j` reads the
+  -- sink's hitter — both landed, both structural — and the rebuild is one
+  -- existing operation: `match-insert` when the source ran through to some
+  -- OTHER sink, `match-cap` when the source was already cut, and NEITHER when
+  -- the source ran to that very sink, which is the case that closes a circle.
+  -- The cut case cannot close one, because a source has exactly one end: a
+  -- source cut to `w` leaves `w` spent, so `w` does not hit `j`.
+  --
+  -- So composing two wirings is merging them and closing the shared interface,
+  -- and this SUBSUMES `match-comp` — whose fused clause recurses on a matching
+  -- `match-unhit` produced rather than on a subterm, and whose accessibility
+  -- bookkeeping is what makes its associativity hard. On the nose, since
+  -- `Match` has one term per wiring; the induction saying so is not written.
+  MatchClose : Set ℓ
+  MatchClose =
+      ∀ {x Γ Γˣ Δ Δˣ}
+    → Insert Ob x Γ Γˣ
+    → Insert Ob x Δ Δˣ
+    → Match Ob Γˣ Δˣ
+    → Closed Γ Δ
+
+  -- and its shape-level lift, pushing past each published port block exactly as
+  -- `wire-in` does
+  CloseIn : Set ℓ
+  CloseIn =
+      ∀ {x Γ Γˣ Δ Δˣ}
+    → Insert Ob x Γ Γˣ
+    → Insert Ob x Δ Δˣ
+    → Shape Ob Γˣ Δˣ
+    → Shape Ob Γ Δ × ℕ
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- WHY THE COUNT IS IN THOSE TYPES, CHECKED RATHER THAN ARGUED. The published
+  -- `Subst` above is TOTAL, so this is not a corner a hypothesis can exclude.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- A vertex whose output is wired straight back into its own input. A legal
+  -- shape, and closed: no legs, one vertex, one edge.
+  selfloop : (x : Ob) → Shape Ob [] []
+  selfloop x =
+    node (x ∷ []) (x ∷ []) (cons nil) (cons nil) (wires (head wired∷ no-wire))
+
+  -- A bare wire of that vertex's profile. A legal CODE, so `Subst` has to take
+  -- it, and it has no vertex.
+  bare-wire : (x : Ob) → Shape Ob (x ∷ []) (x ∷ [])
+  bare-wire x = wires (head wired∷ no-wire)
+
+  -- Substituting the second at the first closes a circle: no vertex, no leg,
+  -- one edge. THE CARRIER HAS NO TERM FOR IT, for the reason
+  -- `Gandr.Shape.Graph` records at the constructor — closing a circle with no
+  -- vertex needs a pairing of two SINKS, and there is no such constructor.
+  -- Said where a proof can use it: over closed interfaces, a shape with no
+  -- vertex has no edge either.
+  closed-vertexless-edgeless
+    : (S : Shape Ob [] [])
+    → verts S ≡ []
+    → edges S ≡ []
+  closed-vertexless-edgeless (wires no-wire) refl = refl
+
+  no-circle
+    : (x : Ob)
+    → (S : Shape Ob [] [])
+    → verts S ≡ []
+    → edges S ≡ (flow x ∷ [])
+    → ⊥
+  no-circle x (wires no-wire) refl ()

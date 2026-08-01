@@ -59,13 +59,17 @@
 -- ── THE MULTIPLICATION IS A COMPOSITE, AND THAT HAS A COST ──────────────────
 -- Stated plainly because it bears on the interface extraction. In the linear
 -- kit concatenation is directly structurally recursive, so ONE inductive graph
--- (`Cat`) speaks it. Here `graft` is built from seven operations — `preplug`,
+-- (`Cat`) speaks it. Here `graft` is built from eight operations — `preplug`,
 -- `lwhisk`, `wire-in`, `match-comp`, `match-lwhisk`, `match-insert`,
--- `insert-shift`, over `match-remove` and `insert-swap` — and the witness
--- discipline does not stop at the outermost one: a defined function may not
--- head a matchable index, and each auxiliary's result sits in the index of the
--- next one's graph. So "speak the multiplication through its graph" propagates
--- to every operation the composite is assembled from.
+-- `insert-shift`, `match-unhit`, over `match-remove` and `insert-swap` — and
+-- the witness discipline does not stop at the outermost one: a defined function
+-- may not head a matchable index, and each auxiliary's result sits in the index
+-- of the next one's graph. So "speak the multiplication through its graph"
+-- propagates to every operation the composite is assembled from.
+--
+-- `match-unhit` is in that list because the cut put it there: `match-comp`'s
+-- fused clause traces a capped strand back through the first wiring. An earlier
+-- revision of this paragraph counted nine, from before the cut existed.
 --
 -- That is a real difference between the two instances and it is what
 -- `Gandr.Arity` has to be designed against: an interface that asks only for "a

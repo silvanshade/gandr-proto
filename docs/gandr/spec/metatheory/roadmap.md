@@ -97,14 +97,6 @@ Four standardization theorems by citation; turns a vacuous pass into real inheri
 
 The first thing to test on the pasting side — everything in the univalence section assumes it; the falsifier is a description needing dependency or indexing the base cannot express.
 
-### meta-spike-17
-
-**Scope the two-sided closure and decide whether graph substitution is primitive or derived.** Substitution subsumes grafting and merging; its outer recursion is trivial where grafting's is a well-founded composition of matchings, and its base case closes a block of sources against a block of sinks — the wheel-creating operation grafting never needs.
-**½ day, by hand.**
-
-Settles whether **grafting associativity is a goal or a corollary**, and with it the scope of the wire half of the composition law.
-Not a licence to defer the wiring composition underneath: the listing algebra is untouched by how the interface is presented, so the braid, the four-layer exchange coherence and the threading-commutation lemma are needed on either route — only the binary-operation laws are in question.
-
 ## Standing obligations — what must be proved or built
 
 * **The wire half of the composition law.** The four-layer exchange coherence's **cut half is closed** — `insert-swap-coh⁴` is proved and the cut composition lemma is proved in all five clauses, with no hypothesis and no parameter — and the live ladder is the wire half, precisely located: the wire apart-lemma at arity three (needs the braid), the cut apart-lemma at arity four (needs the four-layer coherence, held), then the removal composition law and its unanalysed unhit mirror, dropping the wiring category's associator parameter, grafting associativity, and the shape layer's `Monoidal` instance with its interchange **equation** — the duoid target.
@@ -112,11 +104,15 @@ Not a licence to defer the wiring composition underneath: the listing algebra is
   The halves differ for a stated structural reason worth keeping: a cut leaves the second wiring's sources alone, so both sides consult it at the same position, while threading a wire _moves the lookup_, so the two sides consult the second wiring at two different positions.
   The standing prediction is that **no further coherence is owed** on this ladder — a prediction, not a measurement, falsified if either apart-lemma needs a layer the file does not have.
   Keep acyclicity, tractability, and termination as separate named obligations with separate suppliers, never one monolithic convergence proof.
+  **The upper rungs are contingent on the former ruling of the arity-interface item below**: if substitution becomes primitive, the closure subsumes `match-comp`, so the removal composition law and grafting associativity are reached through the monad law rather than through the accumulator, and what stays owed here is the two apart-lemmas and the interchange equation.
+  Start no rung above the apart-lemmas until that is signed off.
 * **Unit five's interchange as a `Tower` consumer**: the interchange equation's middle profile is an existential intermediate — the coend variable, appearing on one side only — which is exactly the shape the `Tower` device packages (carry the intermediates as fields, not indices); reach for it before stating the equation.
 * **`Rigid.canon-sound` at the circuit rung**: the construction-term normal form (permutations outermost, ordered tree monomials, unique minimal representative), with the **monomial-to-monomial rewriting condition** checked before anything leans on it.
 * **The arity interface at the circuit kit.** The interface is settled and landed universe-style in `Gandr.Arity.Universe`, with the linear instance complete and eight of thirteen fields inhabited at the circuit kit ([[../metatheory#The arity interface, universe-style]]).
   The five that remain all descend from **graph substitution**, whose statement is carried as a type in that module so the next pass starts from a signature.
-  Its located residual is the **two-sided closure**: attaching a graph where a vertex's ports were published closes a block of sources against a block of sinks — the operation that creates a wheel, which grafting never needs and the listing algebra does not have.
+  Its residual, the **two-sided closure**, is now scoped: it decomposes as the merger plus a single-wire closure that does not recurse, it costs four new auxiliaries and retires four including the kit's only well-founded recursion, and it is owed on either route because `sub` is a total field.
+  **What blocks it is a code change awaiting sign-off** — the closure's degenerate case is the nodeless loop, which the carrier excludes by construction, so a code becomes a shape with its count of vertexless circles.
+  The recommendation is that substitution becomes the primitive former; nothing below it should be built against either former until that is signed off.
   The interpretation is already derived — the profile-indexed vertex family is the generic listing-occurrence family at the vertex listing, so it is not a second induction over the shape and must not be re-declared as one.
   The obligation the presentation promotes rather than discharges is the representation map, which at this rung _is_ `Rigid.canon-sound`; it is a field of the interface, so no circuit instance exists before it does.
   The linear kit is the worked precedent for what that field asks: refuted against the bare interpretation, proved against the ordered one, with the two bracketing what the interpretation must remember.

@@ -362,7 +362,72 @@ The interpretation side of the owed half is already built at the binary rung —
 Two movements in that construction cost are known and they run in opposite directions.
 Substitution's **outer** recursion becomes trivial: grafting onto a pure wiring is a well-founded composition of matchings, where substituting at a wiring is the identity because a wiring has no vertex to substitute at.
 Its **base case** becomes harder: attaching a graph where a vertex's ports were published closes a block of sources against a block of sinks — a two-sided closure, which is what creates a wheel, and which grafting never needs.
-That closure is the located residual of the whole route.
+
+That closure is now scoped, and the scoping moved the question rather than answering it as posed.
+
+> **The closure is not the substitution route's price; it is the interface's.** `sub` is a total field of the record, so a circuit instance owes the closure whichever former is primitive — substituting a graph at a vertex whose ports are wired back to each other is not reachable from grafting and merging, both of which leave the block's two sides alone.
+> So the auxiliary count cannot decide "primitive or derived", because the operation it was counting is common to both routes.
+> What the count does decide is what each route owes _beyond_ it.
+
+**The closure decomposes into the merger and one new operation.** Substituting at the head vertex is merging the replacement beside the rest — `merge` places `Shape A B` beside `Shape (B ++ Γ) (A ++ Δ)`, disconnected, by `merge-apart` — and then closing the two blocks one wire at a time.
+Each closure deletes one source and one sink and joins whatever they were attached to, so the residual is a single-wire operation and its block form is that operation iterated: the technique `lwhisk` and `wires-in` already use, and the reason no permutation enters.
+
+```agda
+-- what a closure returns: a wiring, AND the vertexless circles it closed
+record Closed (Γ Δ : List Ob) : Set ℓ where
+  field
+    wiring : Match Ob Γ Δ
+    loops  : ℕ
+
+-- the residual proper: delete the source at `i` and the sink at `j`, and join
+-- whatever each was attached to. `match-insert`'s inverse, and `wire-in`'s
+match-close
+  : Insert Ob x Γ Γˣ → Insert Ob x Δ Δˣ → Match Ob Γˣ Δˣ → Closed Γ Δ
+```
+
+**It is three cases and it does not recurse.** `match-remove i` reads the source's partner and `match-unhit j` reads the sink's hitter — both landed, both structural — and the rebuild is one existing operation: `match-insert` when the source ran through to some other sink, `match-cap` when the source was already cut, and neither when the source ran to _that_ sink, which is the case that closes a circle.
+The cut case cannot close one, because a source has exactly one end: if the source at `i` is cut to `w`, then `w` is spent and does not hit `j`.
+
+> **So the closure retires the kit's only well-founded recursion rather than adding to it.** `match-comp` is well-founded because its fused clause recurses on a matching `match-unhit` produced rather than on a subterm, and that accessibility bookkeeping is what makes its associativity hard.
+> Composing two wirings is merging them and closing the shared interface, so the closure subsumes `match-comp` — as a value on the nose, since `Match` has one term per wiring and two operations computing one wiring compute one term.
+> The Agda induction saying so is not written, and until it is, the tree would carry two compositions.
+
+**The count, against grafting's nine — which is ten.** The recorded list omits `match-unhit`, which joined the chain when the cut did.
+
+| chain                                | auxiliaries | already built | new |
+| ------------------------------------ | ----------- | ------------- | --- |
+| grafting, as it stands               | 10          | 10            | 0   |
+| substitution, as merger plus closure | 16          | 12            | 4   |
+
+Substitution reuses six of grafting's ten (`wire-in`, `match-insert`, `insert-shift`, `insert-swap`, `match-remove`, `match-unhit`) and six of the merger's, which the interface owes anyway (`merge`, `wires-in`, `append-regroup`, `insert-widen`, `cap-in`, `match-cap`).
+Its four new ones are `match-close`, its shape-level lift past each published port block, the block iteration, and the `Closed` record.
+The four it does not need are grafting's own: `preplug`, `lwhisk`, `match-lwhisk`, and `match-comp` with its accumulator.
+
+**And the closure's degenerate case has no term in the carrier, which is the spike's real finding.** A vertex whose output is wired back to its own input is a legal shape; a bare wire of the same profile is a legal code; substituting the second at the first closes a circle with no vertex, no leg and one edge.
+`Gandr.Shape.Graph`'s carrier excludes exactly that object, deliberately and by name — closing a circle with no vertex would need a pairing of two _sinks_, and no constructor makes one.
+The refutation is checked rather than argued: over closed interfaces, a shape with no vertex has no edge either (`Gandr.Arity.Universe.Circuit.no-circle`).
+
+> **This is a representation question and not a refutation, and the premise tags are what say so.** That graph substitution closes circles is a fact about the machinery — it is why a trace has a loop scalar at all [@joyal-street-verity-1996-traced] — but that the closure has nowhere to put one is a fact about **our** carrier, and a premise about us carries no refutation.
+> The literature's own answer is the same move: the nodeless loop is a named object there, excluded from the graphical category for modular operads and admitted by its extension [@hackney-robertson-yau-2020-modular, ex 1.2 and def 1.6].
+> The tree already borrowed that term for what it excludes, so the exclusion was considered rather than overlooked, and disturbing it wants sign-off.
+
+The cheapest admission is at the **code** and not at the carrier: `Code a b = Shape a b × ℕ`, a shape together with its count of vertexless circles.
+`Shape` is untouched, and so are the incidence, `WheelFree`, `Acyclic`, the cell record and every refuter standing on them; `Pos`, `lab`, `one` and `one-elim` are unchanged because a circle carries no vertex; the unit code counts zero, the merger adds counts, and substitution adds what the closure returns.
+
+| route                  | the closure           | `Arity.sub`                           | grafting associativity         |
+| ---------------------- | --------------------- | ------------------------------------- | ------------------------------ |
+| substitution primitive | total, at `Shape × ℕ` | inhabited as stated                   | a corollary                    |
+| grafting primitive     | partial, at `Shape`   | inhabited only where no strand closes | a goal, on the existing ladder |
+
+**The recommendation is that substitution becomes the primitive former, and the reason is the second column.** Route two does not inhabit the interface — it inhabits a weakening of it — so the presentation the whole arc is for is not reached, and the price of route one is one product with `ℕ` at the code.
+Grafting is then derived by substituting into a two-corolla series shape, which is written as an ordinary term and needs no grafting to build, and grafting associativity falls out of the monad law.
+
+Three things it costs, stated so the ruling can be taken with them rather than after them:
+
+* **the code change wants sign-off**: it widens what a code is, and it widens it with an object the carrier was designed to exclude;
+* **an agreement lemma** between the derived grafting and the built `graft`, without which `verts-graft`, the two unit laws and the merger's incidence theorems do not transfer, and the tree carries two compositions;
+* **the ladder-depth claim is a prediction**: the closure's own exchange law — closing two wires in either order — is predicted at arity three by the recorded debt-arity law, which is the braid and is proved, and its falsifier is a cap case that reaches the four-layer coherence instead.
+  That coherence is held too, so the falsifier costs the prediction and not the route.
 
 The setoid translation the presentation rests on is mechanical: h-sets become carried cells one dimension up (the lawless-setoid discipline), the ambient univalence becomes the layout univalence map with its two-cell coherence (which stops being a tidy correction and becomes a **prerequisite** — the representation map's coherence is exactly what that two-cell obligation states), truncated finiteness becomes decided finiteness, and the one genuinely different piece is the free construction, where the literature's higher inductive type is replaced by the inductive-family-over-a-lawless-setoid answer of [[#The ambient-primitive policy]].
 
