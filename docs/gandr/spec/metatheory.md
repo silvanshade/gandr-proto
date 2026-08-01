@@ -315,7 +315,12 @@ The graph answers it by never computing; the universe answers it by making the l
 
 **The representation map does not survive the rung change, and that is the interface's real price.** In its published form it is refuted at gandr's rungs, and the two refutations differ.
 At the linear kit the surplus a code carries over its position family is the **order**, and the refutation holds even against a hypothesis strengthened to label-preserving bijections: two paths using the same edges in the other sequence have isomorphic labelled position families and are distinct codes (`Gandr.Arity.Universe.Refute`).
-There the repair is to enrich the interpretation to the ordered labelled positions, after which the interpretation is the code and the map is free.
+There the repair is to enrich the interpretation to the ordered labelled positions, and it is carried out — `Refines` is the enriched map, `inj` the representation map over it, `inj-sound` the converse — so the code relation and the enriched interpretation determine each other.
+
+> **The refutation and the repair bracket the enrichment exactly, and the bracket is tighter than "order is needed".** The refuted hypothesis supplies a full bijection — two maps _and_ both round trips — plus label preservation, and does not determine the code.
+> The sufficient hypothesis supplies two maps, **no** round trips, plus labels and order.
+> At this kit order is therefore worth more than invertibility, which is a measurement of what the interpretation has to remember rather than a restatement that it has to remember something.
+
 At the circuit kit the surplus is the **vertex ordering**, and no interpretation of a graph sees it: `Gandr.Shape.Graft.merge-swap-apart` and `corollas-swap-apart` exhibit shapes isomorphic as graphs and decidably distinct as terms.
 
 > **So at the circuit rung the representation map cannot land in propositional equality; it lands in the code setoid's relation, and what decides that relation is `canon-sound`.** The map _is_ `Rigid` at this rung — not "merges with" — and specifically it is the canonicalization-soundness obligation.
@@ -328,9 +333,15 @@ At the circuit kit the surplus is the **vertex ordering**, and no interpretation
   The presentation reuses the kit rather than replacing it.
 * **The whiskering lemma has no counterpart.** Whiskering is a compatibility the _binary_ multiplication needs — moving one operand past the other's interface — and substitution at all positions never moves an operand past anything.
 * **One lemma is the whole new price**: substitution distributes over concatenation, which is what stating associativity over positions costs in place of stating it over witnesses.
+* **The interpretation law is inhabited as an equivalence and not as a map.** The three laws consume only its pairing direction, so the splitting direction is what makes the instance satisfy the published field as stated rather than a weakening of it; it is written as a view throughout, so a consumer learns the decomposition by matching rather than by inverting a defined function in an index.
+
+The code relation carries its own three laws, which the presentation is what forced: it is the relation the laws are stated at and the relation the representation map lands in, so reflexivity alone does not suffice.
+All three are available heterogeneously and none of them is available homogeneously — the endpoints must stay distinct variables, or a constructor match has a reflexive equation to delete, which is the same wall that defers decidable equality on the linear carrier and not a second one.
 
 At the circuit kit, eight of the interface's thirteen fields are inhabited against the tree as it stands, and the five that are not all descend from one construction.
-The one new definition needed is the **familial form of the vertex family**, indexed by the profile it spans, which is what typing the substituted family requires.
+The interpretation is the vertex family **indexed by the profile it spans**, which is what typing the substituted family requires — and it is derived rather than declared.
+A position with its profile read back by lookup and a position with its profile in the index are the same positions addressed two ways, so the refinement belongs to the **listing** and not to the shape: `Gandr.Shape.Graph.Occ` is the position family with its element carried, and the arity interpretation is its instance at the vertex listing.
+Neither addressing replaces the other, and the rule is stated where the generic family is defined: reasoning about **order**, or relating two positions of one listing, wants the bare position — reachability, adjacency, incidence, rank and connectivity are all of that kind, and profile indices there carry nothing — while **typing a datum at a position** is the one job that needs the element in the index.
 The interpretation side of the owed half is already built at the binary rung — `verts-graft`, `verts-merge`, `verts-lwhisk`, `verts-preplug`, `verts-wire-in`, `verts-cap-in` and `verts-wires-in` — where the graph-of-multiplication route's nine relations, with totality and functionality for each, have none of their twenty-seven pieces built.
 
 > **The relocation is a simplification on the side the cost was measured on, and neutral on the side the cost actually sits.** "A multiplication spoken only through its graph is one relation in one kit and nine in the other" is a statement about the **witness** discipline, and the witness discipline is exactly what the interpretation law replaces: one bijection of positions in place of nine relations threading one another's indices.

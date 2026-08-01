@@ -109,8 +109,17 @@
 --     deliberately STRONGER than the published one — a bijection of positions
 --     that also preserves labels — by exhibiting two paths with the same
 --     labelled positions in the other sequence. The repair is to enrich the
---     interpretation to the ORDERED labelled positions, and then the
---     interpretation is the code and `Inj` is free.
+--     interpretation to the ORDERED labelled positions, and it is carried out:
+--     `Refines` is the enriched map, `inj` is the representation map over it,
+--     and `inj-sound` is the converse.
+--
+--     **The two together bracket the enrichment rather than gesturing at it,
+--     and the measurement is sharper than expected.** The refuted hypothesis
+--     supplies a full bijection — two maps AND both round trips — plus label
+--     preservation, and does not determine the code. The hypothesis proved
+--     sufficient supplies two maps, NO round trips, plus labels and depth. So
+--     order does not merely close the gap: at this kit it is worth more than
+--     invertibility.
 --
 --   * **At the circuit kit the surplus is ORDER AGAIN, and it is NOT
 --     recoverable.** Enriching to the richest available interpretation — the
@@ -172,12 +181,21 @@
 -- over witnesses.
 --
 -- ── WHAT IS NOT HERE ────────────────────────────────────────────────────────
--- The splitting half of `⟦Σ̂⟧` — that `pair` is a bijection and not merely a
--- map — is not proved. The three laws consume only the forward half, so its
--- absence does not weaken them; it does mean this module inhabits the FORMER
--- half of Definition 9 and not the representation half. `Inj`, `InjComp` and
--- the circuit-kit instance are the rest, and the first two are stated as a
--- refuted naive form rather than left unmentioned.
+-- The circuit instance, which is the whole of the residual: `Subst` and the
+-- four fields downstream of it, and the representation map, which at that rung
+-- is `canon-sound`.
+--
+-- Everything else of Definition 9's former half is inhabited at the linear kit,
+-- including the splitting half of `⟦Σ̂⟧` (`place-split`) — the published field
+-- asserts an equivalence and the three laws consume only the pairing, so the
+-- splitting is what makes the instance inhabit the field as stated rather than
+-- a weakening of it.
+--
+-- `InjComp` is not stated. Its content is that the representation map preserves
+-- composition, and at this kit that is `same-seq` — `Same`'s transitivity, now
+-- proved in `Gandr.Arity.Path` — so what is missing is the packaging and not
+-- the fact. It is left until a consumer needs the two-cell form, because that
+-- is where the layout univalence map's own coherence will fix its shape.
 ------------------------------------------------------------------------------
 
 module Gandr.Arity.Universe where
@@ -193,6 +211,10 @@ open import Gandr.Arity.Path
   using (cat-fun)
   using (cat-assoc)
   using (cat-idnˡ)
+  using (Same)
+  using (here≈)
+  using (then≈)
+  using (same-inv)
 open import Gandr.Setoid
   using (≡ˢ)
   using (bundle)
@@ -203,12 +225,24 @@ open import Data.Bool
   using (false)
 open import Data.Empty
   using (⊥)
+  using (⊥-elim)
+open import Data.Nat
+  using (ℕ)
+  using (zero)
+  using (suc)
+open import Data.Nat.Properties
+  using (suc-injective)
+open import Data.Product
+  using (_×_)
+  using (_,_)
 open import Data.Unit
   using (⊤)
   using (tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_)
   using (refl)
+  using (sym)
+  using (trans)
   using (cong)
 
 -- The reasoning vocabulary, on `Gandr.Shape.Graft`'s terms: `bundle (≡ˢ _)` is
@@ -392,6 +426,95 @@ module Linear {o} (Ob : Set o) (Step : Ob → Ob → Set o) where
   pair q last j = cat-inr (sub _ (λ i → q (push i))) j
   pair q (push i) j = cat-inl (q last) (pair (λ k → q (push k)) i j)
 
+  -- AND THE SPLITTING HALF, so the interpretation law is an equivalence rather
+  -- than a map. The published field asserts an equivalence; the three laws
+  -- consume only the pairing, so this is what makes the instance inhabit the
+  -- field as stated rather than a weakening of it.
+  --
+  -- It is written as a VIEW throughout — an inductive family whose index is the
+  -- position being viewed — so a consumer learns the decomposition by matching
+  -- the view and never by inverting a defined function in an index.
+
+  -- Which factor of a concatenation a position came from.
+  data CatSide {a m b} (x : Pth a m) (y : Pth m b)
+    : ∀ {c d} → Place (x ++ y) c d → Set o where
+    left
+      : ∀ {c d}
+      → (i : Place x c d)
+      → CatSide x y (cat-inl y i)
+    right
+      : ∀ {c d}
+      → (j : Place y c d)
+      → CatSide x y (cat-inr x j)
+
+  -- Carrying the view past one more edge of the right factor. Written as an
+  -- application rather than a `with` on the recursive call, so the call stays a
+  -- visible subterm — the module-wide rule that `split`, `ends` and `route`
+  -- follow in the shape kit.
+  cat-view-push
+    : ∀ {a m n b} {x : Pth a m} {y : Pth m n} {h : Step n b} {c d}
+    → {k : Place (x ++ y) c d}
+    → CatSide x y k
+    → CatSide x (then y h) (push k)
+  cat-view-push (left i) = left i
+  cat-view-push (right j) = right (push j)
+
+  cat-view
+    : ∀ {a m b}
+    → (x : Pth a m) (y : Pth m b)
+    → ∀ {c d} (k : Place (x ++ y) c d)
+    → CatSide x y k
+  cat-view x here k = left k
+  cat-view x (then y h) last = right last
+  cat-view x (then y h) (push k) = cat-view-push (cat-view x y k)
+
+  -- A position of a substitution, decomposed: which outer position it came
+  -- from, which inner position of the code substituted there, and that pairing
+  -- them recovers it.
+  record Split {a b} (p : Pth a b)
+               (q : ∀ {c d} → Place p c d → Pth c d)
+               {e f} (k : Place (sub p q) e f) : Set o where
+    constructor split
+    field
+      -- the interface the outer position spans
+      {oc} : Ob
+      {od} : Ob
+      -- the outer position
+      out : Place p oc od
+      -- and the inner one, in the code substituted there
+      inn : Place (q out) e f
+      -- which is the position we started from
+      spot : pair q out inn ≡ k
+
+  -- The recursive step, taking the tail's decomposition rather than computing
+  -- it, so the recursion below stays structural in the outer code.
+  split-cat
+    : ∀ {a m b} {p′ : Pth a m} {g : Step m b}
+    → (q : ∀ {c d} → Place (then p′ g) c d → Pth c d)
+    → ∀ {e f} {k : Place (sub p′ (λ z → q (push z)) ++ q last) e f}
+    → CatSide (sub p′ (λ z → q (push z))) (q last) k
+    → (∀ {e′ f′} (i : Place (sub p′ (λ z → q (push z))) e′ f′)
+       → Split p′ (λ z → q (push z)) i)
+    → Split (then p′ g) q k
+  split-cat q (left i) rec =
+    split
+      (push (Split.out (rec i)))
+      (Split.inn (rec i))
+      (cong (λ z → cat-inl (q last) z) (Split.spot (rec i)))
+  split-cat q (right j) rec = split last j refl
+
+  place-split
+    : ∀ {a b}
+    → (p : Pth a b) (q : ∀ {c d} → Place p c d → Pth c d)
+    → ∀ {e f} (k : Place (sub p q) e f)
+    → Split p q k
+  place-split here q ()
+  place-split (then p′ g) q k =
+    split-cat
+      q
+      (cat-view (sub p′ (λ z → q (push z))) (q last) k)
+      (λ i → place-split p′ (λ z → q (push z)) i)
+
   -- ══════════════════════════════════════════════════════════════════════════
   -- THE TWO REUSES. `Gandr.Arity.Path` states the unit and associativity laws
   -- on the GRAPH; functionality reads them back off as equations on the
@@ -485,6 +608,181 @@ module Linear {o} (Ob : Set o) (Step : Ob → Ob → Set o) where
                      (λ j → r (cat-inl (q last) (pair (λ k → q (push k)) i j))))
         ++ sub (q last) (λ j → r (cat-inr (sub p (λ i → q (push i))) j))
     ∎
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE ENRICHED INTERPRETATION, AND THE REPRESENTATION MAP IT RECOVERS.
+  --
+  -- The published representation map is refuted below against the BARE
+  -- interpretation. This is its repair, and the two together bracket the
+  -- enrichment exactly rather than gesturing at it: what the bare
+  -- interpretation is missing is the ORDER, and nothing else.
+  --
+  -- The contrast is sharp enough to be worth stating as a measurement. The
+  -- refuted hypothesis supplies a bijection — two maps AND both round trips —
+  -- that preserves labels, and it does not determine the code. The hypothesis
+  -- proved sufficient here supplies two maps, NO round trips, and preserves
+  -- labels and depth. So order is not merely sufficient to close the gap; it is
+  -- worth more than invertibility.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- A position's index into the sequence. This is the enrichment: the bare
+  -- interpretation is the positions with their labels, and the enriched one
+  -- remembers where in the order each position sits.
+  depth : ∀ {a b} {p : Pth a b} {c d} → Place p c d → ℕ
+  depth last = zero
+  depth (push i) = suc (depth i)
+
+  -- A map of interpretations respecting the labelling AND the order.
+  record Refines {a b b′} (p : Pth a b) (q : Pth a b′) : Set o where
+    field
+      -- the map on positions
+      map : ∀ {c d} → Place p c d → Place q c d
+      -- which carries each position's label
+      map-lab : ∀ {c d} (i : Place p c d) → lab (map i) ≡ lab i
+      -- and its place in the order
+      map-depth : ∀ {c d} (i : Place p c d) → depth (map i) ≡ depth i
+
+  -- The empty path has no position, which is what rules out a code refining one
+  -- of a different length.
+  place-here : ∀ {a c d} → Place {a} {a} here c d → ⊥
+  place-here ()
+
+  -- A position at depth zero is the outermost one. This is an ELIMINATOR rather
+  -- than an equation because what the outermost case needs from it is the INDEX
+  -- identification — that the two codes' last steps span the same interface —
+  -- and an equation at fixed indices cannot carry that.
+  place-last
+    : ∀ {a m b} {y : Pth a m} {h : Step m b}
+    → (P : ∀ {c d} → Place (then y h) c d → Set o)
+    → P (last {p = y} {g = h})
+    → ∀ {c d} (k : Place (then y h) c d)
+    → depth k ≡ zero
+    → P k
+  place-last P x last _ = x
+  place-last P x (push i) ()
+
+  -- A position at positive depth is a `push`, packaged with the equation that
+  -- says so, since the caller has to rewrite both the label and the depth
+  -- through it.
+  record Tail {a m b} (y : Pth a m) (h : Step m b) {c d}
+              (k : Place (then y h) c d) : Set o where
+    constructor tail
+    field
+      -- the position one layer in
+      pos : Place y c d
+      -- and that it is the one
+      spot : k ≡ push pos
+
+  place-tail
+    : ∀ {a m b} {y : Pth a m} {h : Step m b} {c d n}
+    → (k : Place (then y h) c d)
+    → depth k ≡ suc n
+    → Tail y h k
+  place-tail last ()
+  place-tail (push i) _ = tail _ refl
+
+  -- Restricting a refinement to the tails, which is what makes the recursion
+  -- below structural. Every position other than the outermost has positive
+  -- depth, so it lands on a `push` and its target is read off there.
+  private
+    tail-of
+      : ∀ {a m b m′ b′}
+      → {p′ : Pth a m} {g : Step m b} {q′ : Pth a m′} {h : Step m′ b′}
+      → (r : Refines (then p′ g) (then q′ h))
+      → ∀ {c d} (i : Place p′ c d)
+      → Tail q′ h (Refines.map r (push i))
+    tail-of r i =
+      place-tail (Refines.map r (push i)) (Refines.map-depth r (push i))
+
+  refines-tail
+    : ∀ {a m b m′ b′}
+    → {p′ : Pth a m} {g : Step m b} {q′ : Pth a m′} {h : Step m′ b′}
+    → Refines (then p′ g) (then q′ h)
+    → Refines p′ q′
+  refines-tail r .Refines.map i = Tail.pos (tail-of r i)
+  refines-tail r .Refines.map-lab i =
+    trans
+      (sym (cong lab (Tail.spot (tail-of r i))))
+      (Refines.map-lab r (push i))
+  refines-tail r .Refines.map-depth i =
+    suc-injective
+      (trans
+        (sym (cong depth (Tail.spot (tail-of r i))))
+        (Refines.map-depth r (push i)))
+
+  -- THE REPRESENTATION MAP, at the linear kit. An enriched interpretation
+  -- determines the code up to the code setoid's relation, which is all a setoid
+  -- presentation ever asks of it — and `Same` is that relation, so this is the
+  -- field the published record could not supply here.
+  inj
+    : ∀ {a b b′}
+    → (p : Pth a b) (q : Pth a b′)
+    → Refines p q
+    → Refines q p
+    → Same p q
+  inj here here r r⁻ = here≈
+  inj here (then q′ h) r r⁻ = ⊥-elim (place-here (Refines.map r⁻ last))
+  inj (then p′ g) here r r⁻ = ⊥-elim (place-here (Refines.map r last))
+  inj {a} (then p′ g) (then q′ h) r r⁻ =
+    place-last
+      (λ {c} {d} k →
+        (p″ : Pth a c) (g″ : Step c d)
+        → Same p″ q′
+        → lab k ≡ g″
+        → Same (then p″ g″) (then q′ h))
+      (λ p″ g″ s e → then≈ s (sym e))
+      (Refines.map r last)
+      (Refines.map-depth r last)
+      p′
+      g
+      (inj p′ q′ (refines-tail r) (refines-tail r⁻))
+      (Refines.map-lab r last)
+
+  -- And the converse, so the characterization is exact rather than one-sided:
+  -- the code relation gives back the enriched interpretation's map.
+  same-map
+    : ∀ {a b b′} {p : Pth a b} {q : Pth a b′}
+    → Same p q
+    → ∀ {c d} → Place p c d → Place q c d
+  same-map here≈ ()
+  same-map (then≈ s e) last = last
+  same-map (then≈ s e) (push i) = push (same-map s i)
+
+  same-map-lab
+    : ∀ {a b b′} {p : Pth a b} {q : Pth a b′}
+    → (s : Same p q)
+    → ∀ {c d} (i : Place p c d)
+    → lab (same-map s i) ≡ lab i
+  same-map-lab here≈ ()
+  same-map-lab (then≈ s e) last = sym e
+  same-map-lab (then≈ s e) (push i) = same-map-lab s i
+
+  same-map-depth
+    : ∀ {a b b′} {p : Pth a b} {q : Pth a b′}
+    → (s : Same p q)
+    → ∀ {c d} (i : Place p c d)
+    → depth (same-map s i) ≡ depth i
+  same-map-depth here≈ ()
+  same-map-depth (then≈ s e) last = refl
+  same-map-depth (then≈ s e) (push i) = cong suc (same-map-depth s i)
+
+  same-refines
+    : ∀ {a b b′} {p : Pth a b} {q : Pth a b′}
+    → Same p q
+    → Refines p q
+  same-refines s .Refines.map = same-map s
+  same-refines s .Refines.map-lab = same-map-lab s
+  same-refines s .Refines.map-depth = same-map-depth s
+
+  -- So at this kit the enriched interpretation and the code relation determine
+  -- each other, which is the precise form of "the interpretation is the code".
+  -- The circuit kit is where this fails and no enrichment repairs it, because
+  -- there the surplus is the vertex ordering rather than a position order.
+  inj-sound
+    : ∀ {a b b′} {p : Pth a b} {q : Pth a b′}
+    → Same p q
+    → Refines p q × Refines q p
+  inj-sound s = same-refines s , same-refines (same-inv s)
 
   -- The instance. Every field of the former half, at the kit whose answer was
   -- already written.
@@ -614,17 +912,29 @@ module Refute where
 -- ── EIGHT OF THIRTEEN FIELDS ARE INHABITED TODAY, AND THE REST DESCEND FROM
 -- ── ONE CONSTRUCTION
 -- Everything below is supplied against the tree as it stands. The interpretation
--- is the vertex family, and it needs one new definition — the FAMILIAL form of
--- `Vtx`, indexed by the profile it spans, which is what typing the substituted
--- family requires and what `docs/workflow/agda.md` §*Representation: familial
--- first* would have wanted anyway. `Vtxᶠ` is a view of `Vtx` and not a rival:
--- `toVtx` and the two profile lemmas below say so.
+-- is the vertex family, indexed by the profile it spans, which is what typing
+-- the substituted family requires.
+--
+-- **It is DERIVED, not declared, and that is the answer to whether the vertex
+-- family should be re-presented.** The two addressings — a position with the
+-- profile read back by `lookup`, and a position with the profile in the index —
+-- are the same positions, so the refinement belongs to the LISTING rather than
+-- to the shape. `Gandr.Shape.Graph.Occ` is `Ix` with its element carried,
+-- `Vtxᶠ` is its instance at the vertex listing, and there is no second
+-- induction over `Shape` anywhere.
+--
+-- **Neither addressing replaces the other, and the rule is stated at `Occ`.**
+-- Every consumer of `Vtx` in the shape kit — reachability, adjacency, the
+-- incidence, the rank structure, connectivity — uses it as a bare position, and
+-- several RELATE two vertices of one shape; profile indices there are four
+-- extra arguments carrying nothing. Typing a datum at a position is the one job
+-- that needs the element in the index, and it is why `Occ` exists.
 --
 --   field       status at the circuit kit
 --   ─────────   ───────────────────────────────────────────────────────────────
 --   Ifc         `List Ob`
 --   Code        `Shape`
---   Pos         `Vtxᶠ` — new, and the only new definition here
+--   Pos         `Vtxᶠ` — the listing-occurrence family at the vertex listing
 --   Gen         `⊤`, one generator per profile: the corolla
 --   lab         trivial, for the same reason
 --   unit        `corolla`
@@ -690,64 +1000,59 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (Shape)
     using (wires)
     using (node)
-    using (Append)
     using (Match)
     using (Prof)
     using (prof)
     using (corolla)
+    using (Occ)
+    using (hit)
+    using (miss)
+    using (occ-ix)
+    using (occ-lookup)
     using (Vtx)
     using (verts)
     using (ins)
     using (outs)
-    using (lookup)
-    renaming (here to ixᶻ)
-    renaming (there to ixˢ)
 
-  -- THE INTERPRETATION, familially. `Gandr.Shape.Graph.Vtx S` is `Ix (verts S)`
-  -- — a position in a listing, with the profile read back by `lookup`. The
-  -- universe presentation needs the profile in the INDEX, because it is what
-  -- types the family being substituted, so the same information is presented as
-  -- an inductive family here. This is `Gandr.Arity.Universe.Linear.Place` one
-  -- rung up, and it is the only new definition the circuit half needs.
-  data Vtxᶠ : ∀ {Γ Δ} → Shape Ob Γ Δ → List Ob → List Ob → Set ℓ where
-    -- the outermost vertex
-    top
-      : ∀ {Γ Δ Γ′ Δ′ A B}
-      → {p : Append Ob B Γ Γ′} {q : Append Ob A Δ Δ′}
-      → {S : Shape Ob Γ′ Δ′}
-      → Vtxᶠ (node A B p q S) A B
-    -- one further in
-    down
-      : ∀ {Γ Δ Γ′ Δ′ A B C D}
-      → {p : Append Ob B Γ Γ′} {q : Append Ob A Δ Δ′}
-      → {S : Shape Ob Γ′ Δ′}
-      → Vtxᶠ S C D
-      → Vtxᶠ (node A B p q S) C D
+  -- THE INTERPRETATION, familially — and DERIVED rather than declared, which is
+  -- the answer to whether the vertex family should be re-presented.
+  --
+  -- `Gandr.Shape.Graph.Vtx S` is `Ix (verts S)`: a position in a listing, with
+  -- the profile read back by `lookup`. The universe presentation needs the
+  -- profile in the INDEX, because that is what types the family being
+  -- substituted. Those are the same positions addressed two ways, so the
+  -- refinement belongs to the LISTING and not to the shape: `Occ` is `Ix` with
+  -- its element carried, and the vertex family is its instance at the vertex
+  -- listing. There is no second induction over `Shape` here.
+  --
+  -- Neither presentation replaces the other, and the rule is in `Occ`'s own
+  -- comment: order and vertex-to-vertex relations want `Ix`; typing a datum at
+  -- a position wants `Occ`.
+  Vtxᶠ : ∀ {Γ Δ} → Shape Ob Γ Δ → List Ob → List Ob → Set ℓ
+  Vtxᶠ S c d = Occ (verts S) (prof c d)
 
-  -- It is a VIEW of the listing position, not a rival to it.
+  -- The view maps come with the generic family, so the three shape-specific
+  -- bridge lemmas the declared form needed are one generic lemma and two
+  -- congruences.
   toVtx : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {c d} → Vtxᶠ S c d → Vtx S
-  toVtx top = ixᶻ
-  toVtx (down v) = ixˢ (toVtx v)
+  toVtx v = occ-ix v
 
-  -- and the index is the profile the listing records, on both sides
   ins-toVtx
     : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {c d}
     → (v : Vtxᶠ S c d)
     → ins (toVtx v) ≡ c
-  ins-toVtx top = refl
-  ins-toVtx (down v) = ins-toVtx v
+  ins-toVtx {S} v = cong Prof.dom (occ-lookup (verts S) v)
 
   outs-toVtx
     : ∀ {Γ Δ} {S : Shape Ob Γ Δ} {c d}
     → (v : Vtxᶠ S c d)
     → outs (toVtx v) ≡ d
-  outs-toVtx top = refl
-  outs-toVtx (down v) = outs-toVtx v
+  outs-toVtx {S} v = cong Prof.cod (occ-lookup (verts S) v)
 
-  -- A WIRING HAS NO POSITION. This is what makes substitution's outer recursion
-  -- trivial where grafting's is a well-founded composition of matchings, and it
-  -- is the circuit-rung counterpart of `cat-whisk` having no counterpart at the
-  -- linear kit.
+  -- A WIRING HAS NO POSITION, because its vertex listing is empty. This is what
+  -- makes substitution's outer recursion trivial where grafting's is a
+  -- well-founded composition of matchings, and it is the circuit-rung
+  -- counterpart of `cat-whisk` having no counterpart at the linear kit.
   vtx-wires : ∀ {Γ Δ} {m : Match Ob Γ Δ} {c d} → Vtxᶠ (wires m) c d → ⊥
   vtx-wires ()
 
@@ -757,7 +1062,7 @@ module Circuit {ℓ} {Ob : Set ℓ} where
   unit = corolla
 
   one : ∀ {A B} → Vtxᶠ (unit A B) A B
-  one = top
+  one = hit
 
   -- `⟦⊤̂⟧`. The corolla has exactly one position, and the second clause is the
   -- emptiness above read at the corolla's own wiring.
@@ -766,8 +1071,8 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     → (P : ∀ {c d} → Vtxᶠ (unit A B) c d → Set ℓ)
     → P (one {A} {B})
     → ∀ {c d} (v : Vtxᶠ (unit A B) c d) → P v
-  corolla-elim P x top = x
-  corolla-elim P x (down ())
+  corolla-elim P x hit = x
+  corolla-elim P x (miss ())
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- WHAT IS OWED, AS TYPES RATHER THAN AS PROSE. Nothing here is postulated;

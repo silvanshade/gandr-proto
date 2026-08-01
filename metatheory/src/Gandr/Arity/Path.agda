@@ -89,6 +89,19 @@
 -- laws are stated at, and the graph kit owes one before the record can be
 -- written.
 --
+-- A relation the laws are stated at owes all three of its own laws, and it now
+-- has them: `same-here`, `same-inv` and `same-seq` below. All three are K-free
+-- for the reason the heterogeneous presentation exists — the endpoints are
+-- distinct variables, so a constructor match solves each once and no reflexive
+-- equation is deleted — and the homogeneous forms do not typecheck, which is
+-- the wall recorded below rather than a second one.
+--
+-- The third job arrives with the universe presentation of the same interface in
+-- `Gandr.Arity.Universe`: `Same` is what the REPRESENTATION MAP lands in. That
+-- module refutes the published map against the bare positions and proves it
+-- over the positions with their order, so `Same` is exactly the identification
+-- relation an enriched interpretation determines.
+--
 -- ── THE PROPOSED INTERFACE, AND WHAT IS STILL OWED ──────────────────────────
 -- Recorded rather than written, because two of its fields have no inhabitant in
 -- the graph kit yet and a record with one instance is the mistake this section
@@ -149,6 +162,8 @@ private
     open import Relation.Binary.PropositionalEquality public
       using (_≡_)
       renaming (refl to idn)
+      renaming (sym to inv)
+      renaming (trans to seq)
       renaming (cong to fun*)
       renaming (subst to coe*)
 open ≡
@@ -295,3 +310,30 @@ module _ {ℓ} {Pos : Set ℓ} {Edge : Pos → Pos → Set ℓ} where
   same-here : ∀ {a b} (x : Path Pos Edge a b) → Same x x
   same-here here = here≈
   same-here (then q g) = then≈ (same-here q) ≡.idn
+
+  -- SYMMETRY AND TRANSITIVITY, which make `Same` an equivalence rather than
+  -- merely a reflexive comparison. The interface's functionality lemma lands
+  -- here rather than in `_≡_`, so it is the relation the laws are stated at,
+  -- and a relation the laws are stated at owes all three.
+  --
+  -- Both are K-free for the reason the heterogeneous presentation exists: the
+  -- two endpoints are DISTINCT variables, so a constructor match solves each of
+  -- them once and no reflexive equation is ever deleted. The homogeneous forms
+  -- do not typecheck, which is the same wall the header records for decidable
+  -- equality and is not a second one.
+  same-inv
+    : ∀ {a b b′}
+    → {p : Path Pos Edge a b} {q : Path Pos Edge a b′}
+    → Same p q
+    → Same q p
+  same-inv here≈ = here≈
+  same-inv (then≈ s e) = then≈ (same-inv s) (≡.inv e)
+
+  same-seq
+    : ∀ {a b b′ b″}
+    → {p : Path Pos Edge a b} {q : Path Pos Edge a b′} {r : Path Pos Edge a b″}
+    → Same p q
+    → Same q r
+    → Same p r
+  same-seq here≈ here≈ = here≈
+  same-seq (then≈ s e) (then≈ t f) = then≈ (same-seq s t) (≡.seq e f)

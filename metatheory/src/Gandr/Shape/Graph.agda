@@ -384,6 +384,54 @@ lookup
 lookup (x ∷ xs) here = x
 lookup (x ∷ xs) (there i) = lookup xs i
 
+-- A position at which a KNOWN element sits — `Ix` with the element carried in
+-- the index rather than read back by `lookup`. Same positions, addressed the
+-- other way round, and the two are related by the pair of maps below.
+--
+-- Both presentations are wanted and neither replaces the other. A consumer that
+-- reasons about the listing's ORDER, or that relates two positions of one
+-- listing, wants `Ix`: reachability, adjacency, incidence and the rank
+-- structure below are all of that kind, and profile indices there would be four
+-- extra arguments carrying nothing. A consumer that has to TYPE data at a
+-- position wants `Occ`, because the element has to be in the index for the
+-- datum's type to mention it — which is what an arity's substitution needs, and
+-- the only reason this family exists.
+data Occ {a} {A : Set a} : List A → A → Set a where
+  -- it sits at the front
+  hit
+    : ∀ {x xs}
+    → Occ (x ∷ xs) x
+  -- it sits further along
+  miss
+    : ∀ {x y xs}
+    → Occ xs y
+    → Occ (x ∷ xs) y
+
+-- An occurrence is a position, and the position reads back the element it was
+-- indexed by. These two are what make `Occ` a VIEW of `Ix` rather than a second
+-- listing relation to keep in step with the first.
+occ-ix
+  : ∀ {a} {A : Set a} {xs : List A} {x}
+  → Occ xs x
+  → Ix xs
+occ-ix hit = here
+occ-ix (miss o) = there (occ-ix o)
+
+occ-lookup
+  : ∀ {a} {A : Set a} (xs : List A) {x}
+  → (o : Occ xs x)
+  → lookup xs (occ-ix o) ≡ x
+occ-lookup (x ∷ xs) hit = refl
+occ-lookup (x ∷ xs) (miss o) = occ-lookup xs o
+
+-- and back: every position is an occurrence of what it reads
+ix-occ
+  : ∀ {a} {A : Set a} (xs : List A)
+  → (i : Ix xs)
+  → Occ xs (lookup xs i)
+ix-occ (x ∷ xs) here = hit
+ix-occ (x ∷ xs) (there i) = miss (ix-occ xs i)
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- SUM PLUMBING. Every incidence value below is a sum — a vertex or a leg — and
 -- the derived operations reindex one side at a time. These three facts are all
