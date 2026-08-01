@@ -8,6 +8,7 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
 * [@raynor-2026-nerve] (the circuit-algebra nerve theorem) is a **preprint**; the disconnected nerve exists only there. [@raynor-2025-functorial] and [@raynor-2021-graphical] are published.
 * The held arXiv v3 of [@raynor-2021-graphical] is the _corrected_ version and **renumbers against the published version** (Adv.
   Math. 392): the nerve preprint's citations `[41, Prop 5.16]`, `[41, Cor 5.19]`, `[41, Prop 7.15]` resolve in the held v3 as Prop 5.13, Cor 5.18 (connectivity half Cor 5.19), and Prop 7.17 respectively.
+  **Its Section 6, the problem of loops, is stable across that renumbering** — checked in the held v3, so the circuit-algebra combinatorics' citation of it resolves as written and needs no translation.
 * The unpublished Hackney–Robertson–Stoeckl ∞-props announcement (a fully faithful nerve for props, slide-deck only) is a **watch item**: cite nothing from it.
 * The pretype-theory technical report [@nuyts-2026-natpt] is v0.3 and in motion.
 

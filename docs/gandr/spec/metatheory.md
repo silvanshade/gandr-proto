@@ -203,6 +203,7 @@ All three are the source's, not gandr's restatements of it, and each has a locat
 That last reading is the sharp one, and it is what the arity ruling below turns on — **the open fragment is closed under composition and not under contraction**, which is why the count could stay at zero for exactly as long as the former was grafting.
 
 Consequence 2 once carried a third clause — that no scalar ever has to be assigned to a free loop, so the "problem of loops" of the unital rung never arises.
+That name is the literature's and is worth carrying with its locator, since the phrase reads as informal and is not: it is the subject of Section 6 of [@raynor-2021-graphical], which the circuit-algebra combinatorics cites for it directly.
 That clause is **retired**: it was bought by the trace not existing, and the trace is now the arity's primitive former.
 
 > **What that clause recorded was "not yet", and it is worth saying so rather than reading it as either an error or an abstention.** No scalar was assigned because no operation produced a circle: grafting and merging cannot, the first by consequence 3 and the second by construction.
