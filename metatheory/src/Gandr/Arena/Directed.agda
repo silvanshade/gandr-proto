@@ -1,52 +1,67 @@
 {-# OPTIONS --safe --without-K --hidden-argument-puns #-}
 
 ------------------------------------------------------------------------------
--- Gandr.Arena.Directed — the four offset functions, and the `≤` verdict.
+-- Gandr.Arena.Directed — the directed alphabet at the offsets.
 --
--- Verdict record for meta-spike-03 (docs/gandr/spec/metatheory/roadmap.md).
+-- Partial execution of meta-spike-03 (docs/gandr/spec/metatheory/roadmap.md),
+-- toward the arena's directed generalization. The design of record is
+-- "characterize as the clone, build as the factorization system"
+-- (docs/gandr/spec/metatheory.md; guards.md; layout-and-coherence.md):
+-- `Rigid` splits as `RigidMono ∩ RigidEpi` at the monotone rung of the
+-- classical ladder, with the simplex category's epi–mono factorization as
+-- the normal form. This module builds the arithmetic substrate of that
+-- split and measures exactly how far the offset-fixed fragment reaches.
 --
--- THE QUESTION. The rigid class (Gandr.Arena.Structure) closes the invertible
--- generators under composition and whiskering, with `ext : size c ≡ size d`
--- pinning the two runs of cells to the same extent. The directed alphabet —
--- the projection, the diagonal, the injection, and the codiagonal — is what
--- the next tier adds on top of the invertible fragment. This module realizes
--- all four against the offsets of Gandr.Arena.Offset and records the two
--- tests the spike called for, every verdict machine-checked: the positives
--- are proved, the negatives are concrete counterexample cells.
+-- DONE HERE, all machine-checked:
 --
---   WHICH SATISFY `fixed`? Only the LEFT injection, everywhere
---   (`injˡ-fixed`): it adds no offset. The right injection adds the left
---   block's width and moves every cell (`injʳ-moves`). The diagonal fixes
---   exactly the cell at offset 0 (`dup-fixed₀`) and moves every other
---   (`dup-moves`): a copy at row-major offset `b * i + i` is `i` only when
---   `i = 0`. The codiagonal fixes exactly the left summand
---   (`codiag-fixed-inl`) and moves every right cell (`codiag-moves`): its
---   right leg IS the right injection. Each projection moves every cell whose
---   dropped mate or surviving index is not at offset 0 (`projˡ-moves`,
---   `projʳ-moves`); the cases where a projection is fixed are exactly the
---   unit laws, already rigid in the hierarchy (`rigid-⊗unitr`,
---   `rigid-⊗unitl`). At 𝟙 all four collapse to the rigid identity; the
---   counterexamples live at the first non-trivial code, `𝟙 ⊕ 𝟙`.
+--   THE REALIZATIONS. All six generators of the directed alphabet — the two
+--   projections, the diagonal, the two injections, the codiagonal — written
+--   against Gandr.Arena.Offset. These are the maps the directed arena
+--   consumes; everything below is their measured offset behaviour.
 --
---   DOES THE CLASS SURVIVE `≤`? As a CATEGORY, yes: `Rigid≤` — the rigid
---   record with `ext` weakened to `size c ≤ size d` — has identity and
---   composition (`rigid≤-id`, `rigid≤-∘`; the fixed-cell certificate never
---   used the extent equation), and the injection inhabits it
---   (`rigid≤-injˡ`). As a MONOIDAL class, no. Whiskering survives only on
---   the side whose extent never enters a later offset: the widened factor
---   may sit on the LEFT of a product (`rigid≤-⊗ˡ`) or on the RIGHT of a sum
---   (`rigid≤-⊕ʳ`). The other two positions move cells: widening the right
---   factor widens every block, so any cell with a non-zero left index shifts
---   (`rigid≤-⊗ʳ-moves`); widening the left summand shifts every right cell
---   (`rigid≤-⊕ˡ-moves`). The shrinking direction adds nothing at all: every
---   one of the four in that direction fails `fixed`, so a `Rigid≥` would be
---   the rigid class and no more.
+--   THE OFFSET-FIXED BOUNDARY. Exactly which cells each generator fixes,
+--   with proofs for the positives and pinned counterexample cells for the
+--   negatives: `inl` is offset-fixed verbatim (`injˡ-fixed`); `inr` shifts
+--   every cell by the left block's width (`injʳ-moves`) — the base shift
+--   the design's `RigidMono` names; the diagonal fixes exactly offset 0
+--   (`dup-fixed₀`, `dup-moves`); each projection moves every cell past the
+--   unit laws (`projˡ-moves`, `projʳ-moves`) — the unit cases being the
+--   rigid ⊗-unitors already in the hierarchy; the codiagonal fixes exactly
+--   the left summand (`codiag-fixed-inl`, `codiag-moves`). These witnesses
+--   are the arithmetic the offset transforms (remaining, below) are stated
+--   from.
 --
--- THE SETTLEMENT. The generalization is exactly as cheap as the arithmetic
--- says and no cheaper: of the directed alphabet only the injection survives
--- tier 2, and its closure is a category with one-sided whiskering on each
--- tensor — not a monoidal class. Anything that needs the full two-sided
--- closure needs the extent equation back; that is the rigid class.
+--   THE SHIFT-0 CORE OF `RigidMono`, CLOSED. The offset-fixed maps into
+--   longer runs form a category (`rigidMono-id`, `rigidMono-∘` — the
+--   fixed-cell certificate never uses the extent), contain the left
+--   injection (`rigidMono-injˡ`), and whisker on the sides whose extent no
+--   later offset reads: the LEFT factor of a product (`rigidMono-⊗ˡ`) and
+--   the RIGHT summand of a sum (`rigidMono-⊕ʳ`). The other two whiskerings
+--   provably escape (`rigidMono-⊗ʳ-moves`, `rigidMono-⊕ˡ-moves`): widening
+--   the right factor or the left summand changes the block arithmetic every
+--   later offset is computed from. In the design's reading that escape is
+--   expected, not a failure: those positions leave the offset-fixed
+--   fragment and land in the monotone class — which is exactly why the
+--   generalization sits at the monotone rung and not at offset-fixed.
+--
+-- REMAINING (the spike stays open):
+--
+--   * The offset transforms as named lemmas: the right injection's shift
+--     (`ix (injʳ j) ≡ size c + ix j` — the arithmetic is already `ix-inr`),
+--     the projections' floor-division (`ix (projˡ x) ≡ ix x / size d`, off
+--     the `remQuot` decomposition `⊗-split` already computes), and the
+--     diagonal's `ix (dup x) ≡ size c * ix x + ix x`.
+--   * The four monotonicity proofs the layout document cites as unchecked:
+--     injections, projections, and the diagonal are monotone — each is one
+--     stdlib `≤`-monotonicity lemma applied to its transform.
+--   * The codiagonal's order-break, witnessed at the block boundary. Needs
+--     a size-2 code: at `c = 𝟙 ⊕ 𝟙`, offset 1 maps to 1 and offset 2 maps
+--     to 0. (The `codiag-moves` cell here sits at size 1, where the
+--     collapse happens to preserve order.)
+--   * `RigidMono` carrying the shift as data (see the record's comment),
+--     `RigidEpi` (offset-determined collapse — the projections and the
+--     codiagonal's left leg, realized above, are its generators), and the
+--     epi–mono decomposition carried as data per map.
 ------------------------------------------------------------------------------
 
 module Gandr.Arena.Directed where
@@ -99,7 +114,7 @@ codiag : {c : Code} → Val (c ⊕ c) → Val c
 codiag {c} x = [ id-Val {c} , id-Val {c} ]′ (⊕-split x)
 
 -- ────────────────────────────────────────────────────────────────────────────
--- Which of the four satisfy `fixed`.
+-- The offset-fixed boundary: exactly which cells each generator fixes.
 -- ────────────────────────────────────────────────────────────────────────────
 
 -- The moving cell, at the smallest non-trivial code: offset 1 of `𝟙 ⊕ 𝟙`.
@@ -118,7 +133,8 @@ opaque
   injˡ-fixed : {c d : Code} (i : Val c) → injˡ {c} {d} i ≐ i
   injˡ-fixed {c} {d} i = ix-inl {c} {d} i
 
-  -- The right injection shifts every cell by the left block's width.
+  -- The right injection shifts every cell by the left block's width: this is
+  -- the base shift the design's `RigidMono` carries, exhibited at offset 0.
   injʳ-moves : ¬ ((x : Val 𝟙) → injʳ {c = 𝟙} {d = 𝟙} x ≐ x)
   injʳ-moves h with trans (sym (ix-inr {c = 𝟙} {d = 𝟙} unit)) (h unit)
   ... | ()
@@ -174,32 +190,38 @@ opaque
   ... | ()
 
 -- ────────────────────────────────────────────────────────────────────────────
--- The weakened class: `≤` on extents in place of `≡`.
+-- `RigidMono`: embeddings into longer runs. The shift-0 core, closed.
 -- ────────────────────────────────────────────────────────────────────────────
 
--- A `Rigid≤` map still relabels nothing; the two runs of cells may now differ
--- in extent, the source no wider than the target.
-record Rigid≤ (c d : Code) : Set where
-  constructor rigid≤
+-- A `RigidMono` map is an embedding that relabels nothing up to a base
+-- shift: the design of record has `ext : size c ≤ size d` and
+-- `fixed : (x : Val c) → ix (app x) ≡ shift + ix x` for a shift the map
+-- carries as data. INCOMPLETE: this is the SHIFT-0 CORE — `fixed` is still
+-- verbatim — so the right injection is not yet an inhabitant. Carrying the
+-- shift admits it, and re-runs the whiskering results below with the shift
+-- scaled by the block width.
+record RigidMono (c d : Code) : Set where
+  constructor rigidMono
   field
     app   : Val c → Val d
     ext   : size c ≤ size d
     fixed : (x : Val c) → app x ≐ x
 
-open Rigid≤
+open RigidMono
 
--- Closure as a CATEGORY survives: the fixed-cell certificate never mentions
--- the extent, and `≤` is reflexive and transitive.
-rigid≤-id : {c : Code} → Rigid≤ c c
-rigid≤-id {c} = rigid≤ (id-Val {c}) (≤-refl {size c}) (λ x → ≐-refl {c} {x})
+-- Closure as a CATEGORY: the fixed-cell certificate never mentions the
+-- extent, and `≤` is reflexive and transitive. These two survive the
+-- shift-carrying completion unchanged, with shifts adding under composition.
+rigidMono-id : {c : Code} → RigidMono c c
+rigidMono-id {c} = rigidMono (id-Val {c}) (≤-refl {size c}) (λ x → ≐-refl {c} {x})
 
-rigid≤-∘ : {c d e : Code} → Rigid≤ c d → Rigid≤ d e → Rigid≤ c e
-rigid≤-∘ r s = rigid≤ (λ x → app s (app r x)) (≤-trans (ext r) (ext s))
+rigidMono-∘ : {c d e : Code} → RigidMono c d → RigidMono d e → RigidMono c e
+rigidMono-∘ r s = rigidMono (λ x → app s (app r x)) (≤-trans (ext r) (ext s))
   (λ x → trans (fixed s (app r x)) (fixed r x))
 
--- The injection is the new inhabitant the weakening buys.
-rigid≤-injˡ : {c d : Code} → Rigid≤ c (c ⊕ d)
-rigid≤-injˡ {c} {d} = rigid≤ (injˡ {c} {d}) (m≤m+n (size c) (size d)) (injˡ-fixed {c} {d})
+-- The left injection is the first directed inhabitant.
+rigidMono-injˡ : {c d : Code} → RigidMono c (c ⊕ d)
+rigidMono-injˡ {c} {d} = rigidMono (injˡ {c} {d}) (m≤m+n (size c) (size d)) (injˡ-fixed {c} {d})
 
 -- One-sided whiskering survives, on the side whose extent no later offset
 -- reads. Inside a product the block width is the RIGHT factor's extent, so
@@ -210,8 +232,8 @@ rigid≤-injˡ {c} {d} = rigid≤ (injˡ {c} {d}) (m≤m+n (size c) (size d)) (i
   → (x : Val (c ⊗ d)) → ⊗-map f (id-Val {d}) x ≐ x
 ⊗-map-fixedˡ {c} {c′} {d} f hf = ⊗-map-fixed f (id-Val {d}) refl hf (λ v → ≐-refl {d} {v})
 
-rigid≤-⊗ˡ : {c c′ d : Code} → Rigid≤ c c′ → Rigid≤ (c ⊗ d) (c′ ⊗ d)
-rigid≤-⊗ˡ {c} {c′} {d} r = rigid≤ (λ x → ⊗-map (app r) (id-Val {d}) x)
+rigidMono-⊗ˡ : {c c′ d : Code} → RigidMono c c′ → RigidMono (c ⊗ d) (c′ ⊗ d)
+rigidMono-⊗ˡ {c} {c′} {d} r = rigidMono (λ x → ⊗-map (app r) (id-Val {d}) x)
   (*-mono-≤ (ext r) (≤-refl {size d})) (⊗-map-fixedˡ {c} {c′} {d} (app r) (fixed r))
 
 -- Inside a sum the shift past a right cell is the LEFT summand's extent, so
@@ -222,8 +244,8 @@ rigid≤-⊗ˡ {c} {c′} {d} r = rigid≤ (λ x → ⊗-map (app r) (id-Val {d}
   → (x : Val (c ⊕ d)) → ⊕-map (id-Val {c}) g x ≐ x
 ⊕-map-fixedʳ {c} {d} {d′} g hg = ⊕-map-fixed (id-Val {c}) g refl (λ u → ≐-refl {c} {u}) hg
 
-rigid≤-⊕ʳ : {c d d′ : Code} → Rigid≤ d d′ → Rigid≤ (c ⊕ d) (c ⊕ d′)
-rigid≤-⊕ʳ {c} {d} {d′} r = rigid≤ (λ x → ⊕-map (id-Val {c}) (app r) x)
+rigidMono-⊕ʳ : {c d d′ : Code} → RigidMono d d′ → RigidMono (c ⊕ d) (c ⊕ d′)
+rigidMono-⊕ʳ {c} {d} {d′} r = rigidMono (λ x → ⊕-map (id-Val {c}) (app r) x)
   (+-mono-≤ (≤-refl {size c}) (ext r)) (⊕-map-fixedʳ {c} {d} {d′} (app r) (fixed r))
 
 opaque
@@ -231,12 +253,14 @@ opaque
   unfolding ⊗-ixˡ
   unfolding ⊗-ixʳ
 
-  -- The other two whiskerings FAIL. Widening the right factor of a product
-  -- widens every block: `pair cell₁ unit` sits at `1 * 1 + 0 = 1`, and its
-  -- image at `2 * 1 + 0 = 2`.
-  rigid≤-⊗ʳ-moves
+  -- The other two whiskerings escape the shift-0 core — the step the design
+  -- expects to leave offset-fixed for monotone, since the block-width
+  -- change is a monotone reindexing rather than a shift. Widening the right
+  -- factor of a product widens every block: `pair cell₁ unit` sits at
+  -- `1 * 1 + 0 = 1`, and its image at `2 * 1 + 0 = 2`.
+  rigidMono-⊗ʳ-moves
     : ¬ ((x : Val ((𝟙 ⊕ 𝟙) ⊗ 𝟙)) → ⊗-map (id-Val {𝟙 ⊕ 𝟙}) (injˡ {c = 𝟙} {d = 𝟙}) x ≐ x)
-  rigid≤-⊗ʳ-moves h with
+  rigidMono-⊗ʳ-moves h with
     trans
       (trans
         (sym (trans
@@ -248,9 +272,9 @@ opaque
 
   -- Widening the left summand of a sum shifts every right cell: `inr unit`
   -- sits at `1 + 0 = 1`, and its image at `2 + 0 = 2`.
-  rigid≤-⊕ˡ-moves
+  rigidMono-⊕ˡ-moves
     : ¬ ((x : Val (𝟙 ⊕ 𝟙)) → ⊕-map (injˡ {c = 𝟙} {d = 𝟙}) (id-Val {𝟙}) x ≐ x)
-  rigid≤-⊕ˡ-moves h with
+  rigidMono-⊕ˡ-moves h with
     trans
       (trans
         (sym (trans
