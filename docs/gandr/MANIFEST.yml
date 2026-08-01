@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 36d85ef47d14f96e1b75465ea3924c4efa348aebc124ffd6c68843a7531371e2
+    b3: e76614831597b65725b41ecf4b03f6e89785af9203018b90e03958a22ab80bd0
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -34,7 +34,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 3ca69ebc7b733fedb5f5958657b909f3cdd59acb326bceb8dd9c40dd573224b6
+    b3: c82c04e1303be2dc20ab26ef368e1442e6cd7a1051b4c59e39bc63245af4fe0f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
@@ -44,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 5f4744b01e56a46922ec1ffe89072633f731885c9610133c0f1c41c8007a0182
+    b3: ebde0b0f35cf08dfc5c2faebfa7f404b7dc0098d09cd3ec40276eb15a57f87e0
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -64,7 +64,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/directed-univalence.md
     role: subdocument
-    b3: 607b6de6a9b64f2cc0c57959b71ff359be8740889fa30080df8a649d213fddd2
+    b3: f7caa03fd0d2c89a15a62d7ba29115526f4143082b6715b76bd5c5581ce27a88
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/layout-and-coherence.md
@@ -122,9 +122,14 @@ nodes:
     b3: 6f302b473f9fd586aea32abc1086b43a40b8575db1f65b27a293e4a7f98f33b8
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/directed-family.md
+    role: subdocument
+    b3: 07951b07b60e6c54fdb7ac1e5c7984e978dffe7649583ee88a985367d3ee5ece
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: 8eedd3c921dbf5a6ed770b49a1f0e51951cfbec461b1f555207056fa87f9b85d
+    b3: 91f08bf9208e2bb6153a0025bbf5700dd584bf979e98215059596b36190e36c5
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/proof-engineering/roadmap.md

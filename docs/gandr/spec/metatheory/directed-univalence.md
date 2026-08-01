@@ -30,6 +30,17 @@ The four obligations:
 * **core-coincident**: the canonical comparison from the groupoid statement into the invertible core of the directed one is a bijection at the stated grades.
   Genuinely new work: invertible realizations arise from non-invertible letters (a fold after an injection realizes the identity while neither letter is invertible), so the directed rule layer needs the simplicial-identity-style cells _and_ a word-problem argument on the invertible-realization sub-stock.
 
+The two statements, side by side:
+
+```agda
+ua      : Equiv a b → Terms a ≅ Terms b       -- the groupoid statement (rung 1's shape; an Equiv IS a natural iso)
+ua-dir  : FlowEquiv a b → Terms a ~~> Terms b -- a FlowEquiv IS a leaf-natural one-way certificate
+```
+
+`FlowEquiv` is the one-way analogue of the `Equiv` record of [[../metatheory#Equivalence as finite, checkable data|the groupoid statement]]: a forward translator per shape, uniform in leaf contents, with replay evidence and **no inverse and no round trip demanded** — the translator singletons of [[#The alphabets]].
+What the statement is for, at the surface: `ua-dir` is how a **directed** identification between presented structures becomes usable transport — replay along a one-way certificate, e.g. a deprecation, a backend migration, a refinement — where `ua` serves the invertible cases.
+The surface account of the family is [[../surface-language/directed-family]].
+
 ## The alphabets
 
 | alphabet         | directed form                                                                                                                                                                                                                                                      | the witness if unfixed                                                                                                                                                                                                                   |
@@ -47,16 +58,20 @@ The two-cell coherence obligation (the typoid-function condition) lands on this 
 
 ## The kernel formers
 
-| form            | groupoid                                     | directed                                                                                                                                                                                                                             |
-| --------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| former          | `Path A x y`, endpoints invariant            | `Flow A x y`, endpoints invariant at the identity-layer phase                                                                                                                                                                        |
-| intro           | `here(v)`                                    | the diagonal intro                                                                                                                                                                                                                   |
-| elim            | `walk` — full dinatural J                    | the directed walk with the **motive-covariance side condition**: a motive placing the moving endpoint in the contravariant slot is refused; the check is term-structural and total, no variance-sorted contexts needed at this phase |
-| composition     | derived by one walk                          | derived by the same script — composition _is_ covariant transport; directedness costs nothing at dimension 1                                                                                                                         |
-| inversion       | derived                                      | **underivable by construction** — the refused motive shape is the symmetry shape                                                                                                                                                     |
-| permanent guard | a K-derivation witness must fail elaboration | a symmetry-derivation witness must fail elaboration                                                                                                                                                                                  |
+| form            | groupoid                                     | directed                                                                                                                                                                                                                                                 |
+| --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| former          | `Path A x y`, endpoints invariant            | `Flow A x y`, endpoints invariant at the identity-layer phase                                                                                                                                                                                            |
+| intro           | `here(v)`                                    | `diag` — the diagonal intro                                                                                                                                                                                                                              |
+| elim            | `walk` — full dinatural J                    | the shared `walk` — the directed walk with the **motive-covariance side condition**: a motive placing the moving endpoint in the contravariant slot is refused; the check is term-structural and total, no variance-sorted contexts needed at this phase |
+| composition     | derived by one walk, spelled `then`          | derived by the same script and the **same spelling** — composition _is_ covariant transport; directedness costs nothing at dimension 1                                                                                                                   |
+| iso spelling    | `A <~> B`                                    | `A ~~> B` — a one-way certificate, not an iso                                                                                                                                                                                                            |
+| inversion       | derived (`back`)                             | **underivable by construction** — the refused motive shape is the symmetry shape                                                                                                                                                                         |
+| permanent guard | a K-derivation witness must fail elaboration | a symmetry-derivation witness must fail elaboration                                                                                                                                                                                                      |
+
+The surface spellings are settled (the metatheory roadmap's open question 9, owner decision 2026-07-31): `diag` for the diagonal intro, `walk` shared across both families, `then` shared for composition; the ratified `A ~~> B` is the directed former's type-level spelling and `A <~> B` the groupoid family's isomorphism spelling.
 
 The two formers are independent primitives; no kernel coercion between them (the comparison is the core-coincidence theorem, and a coercion would assume it as an axiom).
+A **derived** `Path → Flow` coercion is wanted after `ua-dir` lands, as a surface form at a named stratum (the roadmap's open question 20) — never a kernel coercion before the theorem.
 Variance staging: none at the identity layer (motive-shape check only); variance-sorted contexts on the reflected layer only; the general dipresheaf variance judgment is metatheory work.
 An annotation slot for the polarity/variance plane in the export format is the one cross-phase coupling to watch: cheap reserved early, a coordinated format bump across two checkers on the trusted base if retrofitted after the replay checker exists.
 

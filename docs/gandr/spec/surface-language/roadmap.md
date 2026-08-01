@@ -39,7 +39,8 @@ Each reserved form's graduation is gated on the semantics that owns it — **no 
 * **`yield`/`await`** — keyword-only commitments gated on the handler-reification mechanism (generators/async as handler-to-codata reification).
 * **Labeled `break 'l`** — needs per-label atoms or named handlers; the `'` sigil collides with the character lexer.
 * **Sessions surface** — linear typestate codata with a duality involution, after the codata MVP and the duality engine; no session channel syntax (`(νxy)`, `T ⊥ U`) in any near rung.
-* **The `Path`/`Flow` surface spellings for the directed family** — the directed eliminator and diagonal-intro spellings, and whether directed composition shares the groupoid composition name, are open vocabulary, cheapest settled before the identity-layer rules land (the metatheory roadmap's open question 9).
+* ~~**The `Path`/`Flow` surface spellings for the directed family**~~ — **settled 2026-07-31** (owner decision, closing the metatheory roadmap's open question 9): the eliminator is the shared `walk` (under the motive-covariance side condition), the diagonal intro is `diag`, and directed composition shares `then`.
+  The landed vocabulary is [[directed-family]]; the identity-layer phase still owns the landing itself.
 * **Display elision of inferable recursion markers** — a projection concern; unowned.
 * **`let` (unassigned) and `mut` (unreserved)** — keyword decisions owned by the dependent-rung and value-semantics passes respectively.
 

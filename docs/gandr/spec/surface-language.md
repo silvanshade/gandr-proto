@@ -8,6 +8,7 @@ If the exhaustiveness claim is ever wrong, that is a defect in this document, no
 
 * [[surface-language/grammar]] — the grammar machinery: the PBG, precedence DAGs, the molder/melder pipeline, the obligation taxonomy, the build-time gates, the adaptations registry, and the complete parse-and-decline inventory.
 * [[surface-language/declarations]] — the declaration forms in full: the `def` family, `val`/`run`, attributes, `data`/`codata`, `extern`, `import`, `module`, operator declarations, and the elaboration behaviors.
+* [[surface-language/directed-family]] — the directed identity family's surface: `Flow(A, x, y)` spelled `A ~~> B` at the type level, the diagonal intro `diag`, the shared `walk` under the motive-covariance side condition, the shared `then`, and `ua-dir` with what it buys a program.
 * [[surface-language/circuit-cells]] — the design sketch for full circuit-algebra cells: reconvergence, disconnection, and wheels at the surface, port-named interfaces with polarity, the wheel guard, holes as contexts, and the cost of each feature.
 * [[surface-language/higher-cells]] — the dimension-named `data`-block members in full: the `sort`/`cons`/`oper`/`rule`/`meta` ladder with the reserved `cell` tower, mandatory 2- and 3-cell names, the boundary language and its sphere typing, and the derived `Model(S)` signature-former with its flagship shapes.
 * [[surface-language/recursion]] — the (co)recursion surface: `def rec`/`rec { … }`, the instantiation slot with its direction sigils, the productivity ladder, loops, and the as-built scope rung.
@@ -272,7 +273,18 @@ The identity fragment's surface (rung 1, built):
 * `walk(p, fn(a, b, q) => C, fn(x) => c)` — the full dinatural eliminator with an explicit motive;
 * the **K-rejection witness is a live diagnostic**: a `case` on an identity type is rejected — the reserved here-pattern fragment requires the without-K unification fragment (rung 2), whose solver declines the deletion step itself, so the pathological example reads `//@ expect-diagnostic: without-k`.
 
-The ratified spellings of record — `then` (composition), `back` (inversion), `Step`, `A <~> B` (the isomorphism spelling), `A ~~> B` (the directed former's spelling) — are decided surface vocabulary **not yet landed**; the directed family stages beside the groupoid one with **no kernel coercion between them** (the comparison is a theorem, the core-coincidence obligation of the metatheory track).
+The directed family stages beside the groupoid one (designed; the identity-layer phase owns the landing):
+
+* `Flow(A, x, y)` — the directed identity family, spelled `A ~~> B` at the type level: `x` transports into `y`, in one direction — a deprecation, a backend migration, a refinement, never an iso;
+* `diag(v)` — the diagonal intro: every point flows to itself;
+* `walk` — the **same eliminator**, under the motive-covariance side condition: a motive placing the moving endpoint in the contravariant slot is refused, and the refused motive shape is exactly the symmetry shape — so inversion is underivable by construction, not merely unimplemented;
+* `then` — composition, the **same spelling**: directed composition is covariant transport, and directedness costs nothing at dimension 1;
+* the **symmetry-derivation witness is the permanent guard**: it must fail elaboration, the directed twin of the K-rejection witness above.
+
+The full treatment — the two families side by side, the worked motives (accepted and refused), `ua-dir` and what it buys a program, and the open items — is [[surface-language/directed-family]].
+
+The ratified spellings of record — `then` (composition, shared by both families), `back` (inversion, groupoid only), `diag` (the diagonal intro), `Step`, `A <~> B` (the isomorphism spelling), `A ~~> B` (the directed former's spelling) — are decided surface vocabulary **not yet landed**; the directed family stages beside the groupoid one with **no kernel coercion between them** (the comparison is a theorem, the core-coincidence obligation of the metatheory track).
+The eliminator `walk` and the composition `then` are shared across both families — the settled answer to the metatheory roadmap's open question 9 (owner decision, 2026-07-31).
 The former names are the current ratified spellings (a rename from the earlier `Id`/`refl`/`J` family; the rename itself is recorded as a ratified surface decision).
 
 ## The vocabulary decisions of record
