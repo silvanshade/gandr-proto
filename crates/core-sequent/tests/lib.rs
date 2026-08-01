@@ -12,6 +12,8 @@ mod corpus_differential;
 #[cfg(test)]
 mod corpus_totality;
 #[cfg(test)]
+mod csl_fibration;
+#[cfg(test)]
 mod differential;
 #[cfg(test)]
 mod focus_properties;
