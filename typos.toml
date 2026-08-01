@@ -118,6 +118,15 @@ substitude = "substitude"
 Substitude = "Substitude"
 substitudes = "substitudes"
 Substitudes = "Substitudes"
+# "corelation" — the categorical dual of a relation (a jointly-epic cospan);
+# Fong's decorated-corelation construction and the Fong–Zanasi universal
+# construction are both titled with it. typos rewrites it to "correlation", a
+# different concept entirely, and it has already corrupted both prose and
+# bibliography KEYS in this corpus (H8-class fidelity hazard).
+corelation = "corelation"
+Corelation = "Corelation"
+corelations = "corelations"
+Corelations = "Corelations"
 
 [default.extend-identifiers]
 CertiCoq = "CertiCoq"

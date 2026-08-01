@@ -1622,3 +1622,216 @@ smalltt:
   author: ["Kovács, András"]
   url: https://github.com/AndrasKovacs/smalltt
   note: not in library.bib; synthesized 2026-07-31 — read at pinned commit ea99b0f (2026-02-02) per [[impl-models-deep-read]]
+
+# --- the multi-out sweep (2026-08-01): diagrammatic rewriting, hypergraph
+# --- structure, semi-strictification, and the reversible-computing neighbours.
+# --- Identifiers below were read off each artifact's own front matter.
+
+bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting:
+  type: article
+  title: "String Diagram Rewrite Theory I: Rewriting with Frobenius Structure"
+  author: ["Bonchi, Filippo", "Gadducci, Fabio", "Kissinger, Aleks", "Sobociński, Paweł", "Zanasi, Fabio"]
+  date: 2022
+  serial-number:
+    doi: "10.1145/3502719"
+    arxiv: "2012.01847"
+  parent:
+    type: periodical
+    title: Journal of the ACM
+    volume: 69
+    issue: 2
+
+fong-spivak-2019-hypergraph-categories:
+  type: article
+  title: Hypergraph Categories
+  author: ["Fong, Brendan", "Spivak, David I."]
+  date: 2019
+  serial-number:
+    arxiv: "1806.08304"
+
+fong-spivak-2020-supply:
+  type: article
+  title: Supplying Bells and Whistles in Symmetric Monoidal Categories
+  author: ["Fong, Brendan", "Spivak, David I."]
+  date: 2020
+  serial-number:
+    arxiv: "1908.02633"
+
+fong-2015-decorated-cospans:
+  type: article
+  title: Decorated Cospans
+  author: ["Fong, Brendan"]
+  date: 2015
+  serial-number:
+    arxiv: "1502.00872"
+  parent:
+    type: periodical
+    title: Theory and Applications of Categories
+
+fong-2017-decorated-corelations:
+  type: article
+  title: Decorated Corelations
+  author: ["Fong, Brendan"]
+  date: 2017
+  serial-number:
+    arxiv: "1703.09888"
+  parent:
+    type: periodical
+    title: Theory and Applications of Categories
+
+fong-zanasi-2018-universal-corelations:
+  type: article
+  title: "Universal Constructions for (Co)Relations: Categories, Monoidal Categories, and Props"
+  author: ["Fong, Brendan", "Zanasi, Fabio"]
+  date: 2018
+  serial-number:
+    doi: "10.23638/LMCS-14(3:14)2018"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 14
+    issue: 3
+
+fong-2016-thesis:
+  type: thesis
+  title: The Algebra of Open and Interconnected Systems
+  author: ["Fong, Brendan"]
+  date: 2016
+  organization: University of Oxford
+  serial-number:
+    arxiv: "1609.05382"
+
+kissinger-2015-finite-matrices-hypergraph:
+  type: article
+  title: Finite Matrices Are Complete for (Dagger-)Hypergraph Categories
+  author: ["Kissinger, Aleks"]
+  date: 2015
+  serial-number:
+    arxiv: "1406.5942"
+
+coecke-duncan-2011-interacting-observables:
+  type: article
+  title: "Interacting Quantum Observables: Categorical Algebra and Diagrammatics"
+  author: ["Coecke, Bob", "Duncan, Ross"]
+  date: 2011
+  serial-number:
+    arxiv: "0906.4725"
+  parent:
+    type: periodical
+    title: New Journal of Physics
+
+defelice-toumi-coecke-2021-discopy:
+  type: article
+  title: "DisCoPy: Monoidal Categories in Python"
+  author: ["de Felice, Giovanni", "Toumi, Alexis", "Coecke, Bob"]
+  date: 2021
+  serial-number:
+    doi: "10.4204/EPTCS.333.13"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 333
+
+chanavat-hadzihasanovic-2025-semistrictification:
+  type: article
+  title: Semi-Strictification of (∞, n)-Categories
+  author: ["Chanavat, Clémence", "Hadzihasanovic, Amar"]
+  date: 2025
+  serial-number:
+    arxiv: "2507.00146"
+
+chanavat-2026-pasting-theorem:
+  type: article
+  title: A Strengthened (∞, n)-Categorical Pasting Theorem
+  author: ["Chanavat, Clémence"]
+  date: 2026
+  serial-number:
+    arxiv: "2603.22242"
+
+nishida-palacios-vidal-2017-reversible-term-rewriting:
+  type: article
+  title: Reversible Computation in Term Rewriting
+  author: ["Nishida, Naoki", "Palacios, Adrián", "Vidal, Germán"]
+  date: 2017
+  serial-number:
+    arxiv: "1710.02804"
+  parent:
+    type: periodical
+    title: Journal of Logical and Algebraic Methods in Programming
+
+carette-heunen-kaarsgaard-sabry-2024-compositional-reversible:
+  type: article
+  title: Compositional Reversible Computation
+  author: ["Carette, Jacques", "Heunen, Chris", "Kaarsgaard, Robin", "Sabry, Amr"]
+  date: 2024
+  serial-number:
+    arxiv: "2405.20842"
+
+kaarsgaard-axelsen-gluck-2017-join-inverse-recursion:
+  type: article
+  title: Join Inverse Categories and Reversible Recursion
+  author: ["Kaarsgaard, Robin", "Axelsen, Holger Bock", "Glück, Robert"]
+  date: 2017
+  serial-number:
+    doi: "10.1016/j.jlamp.2016.08.003"
+  parent:
+    type: periodical
+    title: Journal of Logical and Algebraic Methods in Programming
+    volume: 87
+    page-range: 33-50
+
+kaarsgaard-rennela-2021-join-inverse-rig:
+  type: article
+  title: "Join Inverse Rig Categories for Reversible Functional Programming, and Beyond"
+  author: ["Kaarsgaard, Robin", "Rennela, Mathys"]
+  date: 2021
+  serial-number:
+    doi: "10.4204/EPTCS.351.10"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 351
+
+chardonnet-lemonnier-valiron-2021-reversible-pattern-matching:
+  type: article
+  title: Categorical Semantics of Reversible Pattern-Matching
+  author: ["Chardonnet, Kostia", "Lemonnier, Louis", "Valiron, Benoît"]
+  date: 2021
+  serial-number:
+    doi: "10.4204/EPTCS.351.2"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 351
+
+choudhury-karwowski-sabry-2022-symmetries-reversible:
+  type: article
+  title: "Symmetries in Reversible Programming: From Symmetric Rig Groupoids to Reversible Programming Languages"
+  author: ["Choudhury, Vikraman", "Karwowski, Jacek", "Sabry, Amr"]
+  date: 2022
+  serial-number:
+    doi: "10.1145/3498667"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 6
+
+carette-chen-choudhury-sabry-2017-reversible-univalent:
+  type: article
+  title: From Reversible Programs to Univalent Universes and Back
+  author: ["Carette, Jacques", "Chen, Chao-Hong", "Choudhury, Vikraman", "Sabry, Amr"]
+  date: 2017
+  serial-number:
+    arxiv: "1708.02710"
+
+chen-sabry-2021-negative-fractional:
+  type: article
+  title: "A Computational Interpretation of Compact Closed Categories: Reversible Programming with Negative and Fractional Types"
+  author: ["Chen, Chao-Hong", "Sabry, Amr"]
+  date: 2021
+  serial-number:
+    doi: "10.1145/3434290"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 5
