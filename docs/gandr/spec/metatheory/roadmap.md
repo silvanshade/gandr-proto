@@ -5,21 +5,104 @@ Ordered within each section by what unblocks the most; costs are estimates again
 
 ## Spikes — cheap experiments that decide design questions
 
-| #       | spike                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | cost           | what it settles                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **S1**  | **Make the `theory-computads` enumerator alphabet-polymorphic.** EXECUTED on the Rust side — the engines are generic over `CellAlphabet` with `SequentAlphabet` as the first inhabitant, and an external toy alphabet drives all three engines; the guard-plus-witness half of the warning below is tracked as `gandr-s9q`. `enumerate_overlaps`, `completion::complete`, and `rewrite::normalize` were gate-tested but monomorphic over the sequent-kernel command-pattern alphabet                                                                   | days           | the highest-leverage engineering item on the board: the coherence grinds ahead (the four-layer exchange identity; the shape-layer interchange equation) are exactly the hand work the tool exists to prevent. Carry the warning verbatim — off-TCB applies to the **enumerator only**; the `cells_equal` normal-form fast path is TCB-adjacent and needs a guard plus a soundness witness, never documentation            |
-| **S2**  | **Is the measured cellular-Conduché condition the exponentiability condition the convolution face waits on?**                                                                                                                                                                                                                                                                                                                                                                                                                                          | ≈ 1 day        | closes a gate on the convolution face using a measurement already taken; the one open axiom row (cylindrical decomposition) is what convolution needs _beyond_ exponentiability                                                                                                                                                                                                                                           |
-| **S3**  | **The four offset functions.** Write the projection, diagonal, injection, and codiagonal realizations against `Gandr.Arena.Offset`; test which satisfy `fixed`; test whether rigid-class closure survives `≤` in place of `≡` on extents                                                                                                                                                                                                                                                                                                               | ½ day          | how much of the directed alphabet dissolves at tier 2, and whether the factorization-system generalization of the arena is as cheap as predicted                                                                                                                                                                                                                                                                          |
-| **S4**  | **Is gandr's pattern _analytic_?** Check the two conditions (strict Segal morphism to pointed finite sets; conservative interior) with underlying-legs as the candidate functor                                                                                                                                                                                                                                                                                                                                                                        | ½ day          | whether arity approximation applies — i.e. whether circuit algebras at `Set` are determined by arity-≤k data, a truncation result more useful than raw finiteness                                                                                                                                                                                                                                                         |
-| **S5**  | **Is the operadic partition complex built from the graphical category's slice?** Compute at a corolla and at the diamond                                                                                                                                                                                                                                                                                                                                                                                                                               | ½ day          | if yes, the Morita-restriction failure, the elegance gate, and the coherence-connectivity criterion are three faces of one condition                                                                                                                                                                                                                                                                                      |
-| **S6**  | **Is the graphical category *elegant*** (Bergner–Rezk [@bergner-rezk-2013-comparison])?                                                                                                                                                                                                                                                                                                                                                                                                                                                                | unmeasured     | the gate on univalence transfer to the diagram model; if elegance fails for the site but holds for its rigidified form, `Rigid` is load-bearing for transfer — the fourth appearance of one decision                                                                                                                                                                                                                      |
-| **S7**  | **The descent corolla-restriction lemma** — reflect an isomorphism of free algebras back to the generating species                                                                                                                                                                                                                                                                                                                                                                                                                                     | small          | per-stratum `ua` is a citation **plus this lemma**; easier at the nonunital rung; must not be discovered at implementation time                                                                                                                                                                                                                                                                                           |
-| **S8**  | **Exhibit the protype whose tabulation is funext over cellular data**, and confirm both ends are objects of one equipment.  A named candidate answer exists from the synthetic-calculi analysis: the protype is the **loose unit**, and funext is **unit-pureness** — full faithfulness of the unit — so the spike may be a verification rather than a search; the fallback template is the syntactic lax-cones-over-computads construction ([@mikhail-2025-thesis] ch. 1; globular contexts only, a limit not a tabulator, general case a conjecture) | unmeasured     | the one genuine construction the equipment join rests on                                                                                                                                                                                                                                                                                                                                                                  |
-| **S9**  | **Is the removal/rebuild pair an instance of the context comonad for tree-like types**, and does the spanning-tree traversal give a shape for `canon`? [@altenmuller-2026-string-diagrams]                                                                                                                                                                                                                                                                                                                                                             | ½ day          | generalizes a bespoke device; the only concrete lead for the _form_ of a canonical linearization                                                                                                                                                                                                                                                                                                                          |
-| **S12** | **The finiteness/simple-connectivity measurement, re-specified.** The gate must measure the _semantic_ shape (count cells with a repeated metavariable), not the as-built shape — nominal sharing makes the as-built measurement circular                                                                                                                                                                                                                                                                                                              | 1 day          | what fraction of real cells leave the dioperad fragment once sharing is a wire                                                                                                                                                                                                                                                                                                                                            |
-| **S13** | **Supply the tile relation** and instantiate the axiomatic-rewriting axiom interface non-vacuously, resolving the contested axiom count first (nine axioms in one presentation, a ten-item interface in another — both may be right for different presentations)                                                                                                                                                                                                                                                                                       | 2 days         | four standardization theorems by citation; turns a vacuous pass into real inheritance                                                                                                                                                                                                                                                                                                                                     |
-| **S17** | **Scope the two-sided closure and decide whether graph substitution is primitive or derived.** Substitution subsumes grafting and merging; its outer recursion is trivial where grafting's is a well-founded composition of matchings, and its base case closes a block of sources against a block of sinks — the wheel-creating operation grafting never needs                                                                                                                                                                                        | ½ day, by hand | whether **grafting associativity is a goal or a corollary**, and with it the scope of the wire half of the composition law. Not a licence to defer the wiring composition underneath: the listing algebra is untouched by how the interface is presented, so the braid, the four-layer exchange coherence and the threading-commutation lemma are needed on either route — only the binary-operation laws are in question |
-| **S15** | **Map the landed description constructors onto a graphical-species profile.** The six code-grammar variants against the tiny base of finite sets, bijections, and the input/output involution                                                                                                                                                                                                                                                                                                                                                          | 1 day          | the first thing to test on the pasting side — everything in the univalence section assumes it; the falsifier is a description needing dependency or indexing the base cannot express                                                                                                                                                                                                                                      |
+Each spike is a heading so it can be linked into directly — `[[metatheory/roadmap#meta-spike-04]]` and the like.
+The numbering is stable and its gaps are meaningful: a missing number is a spike that has been executed and retired, and its verdict is recorded where the decision it settled lives.
+
+### meta-spike-01
+
+**Make the `theory-computads` enumerator alphabet-polymorphic.** EXECUTED on the Rust side — the engines are generic over `CellAlphabet` with `SequentAlphabet` as the first inhabitant, and an external toy alphabet drives all three engines; the guard-plus-witness half of the warning below is tracked as `gandr-s9q`.
+`enumerate_overlaps`, `completion::complete`, and `rewrite::normalize` were gate-tested but monomorphic over the sequent-kernel command-pattern alphabet.
+**Days.**
+
+Settles the highest-leverage engineering item on the board: the coherence grinds ahead — the four-layer exchange identity, the shape-layer interchange equation — are exactly the hand work the tool exists to prevent.
+Carry the warning verbatim: off-TCB applies to the **enumerator only**; the `cells_equal` normal-form fast path is TCB-adjacent and needs a guard plus a soundness witness, never documentation.
+
+### meta-spike-02
+
+**Is the measured cellular-Conduché condition the exponentiability condition the convolution face waits on?** **≈ 1 day.**
+
+Closes a gate on the convolution face using a measurement already taken; the one open axiom row (cylindrical decomposition) is what convolution needs _beyond_ exponentiability.
+
+### meta-spike-03
+
+**The four offset functions.** Write the projection, diagonal, injection, and codiagonal realizations against `Gandr.Arena.Offset`; test which satisfy `fixed`; test whether rigid-class closure survives `≤` in place of `≡` on extents.
+**½ day.**
+
+Settles how much of the directed alphabet dissolves at tier 2, and whether the factorization-system generalization of the arena is as cheap as predicted.
+
+### meta-spike-04
+
+**Is gandr's pattern _analytic_?** Check the two conditions (strict Segal morphism to pointed finite sets; conservative interior) with underlying-legs as the candidate functor.
+**½ day.**
+
+Settles whether arity approximation applies — whether circuit algebras at `Set` are determined by arity-≤k data, a truncation result more useful than raw finiteness.
+
+### meta-spike-05
+
+**Is the operadic partition complex built from the graphical category's slice?** Compute at a corolla and at the diamond.
+**½ day.**
+
+If yes, the Morita-restriction failure, the elegance gate, and the coherence-connectivity criterion are three faces of one condition.
+
+### meta-spike-06
+
+**Is the graphical category _elegant_** (Bergner–Rezk [@bergner-rezk-2013-comparison])?
+**Unmeasured.**
+
+The gate on univalence transfer to the diagram model.
+If elegance fails for the site but holds for its rigidified form, `Rigid` is load-bearing for transfer — the fourth appearance of one decision.
+
+### meta-spike-07
+
+**The descent corolla-restriction lemma** — reflect an isomorphism of free algebras back to the generating species.
+**Small.**
+
+Per-stratum `ua` is a citation **plus this lemma**; easier at the nonunital rung; must not be discovered at implementation time.
+
+### meta-spike-08
+
+**Exhibit the protype whose tabulation is funext over cellular data**, and confirm both ends are objects of one equipment.
+A named candidate answer exists from the synthetic-calculi analysis: the protype is the **loose unit**, and funext is **unit-pureness** — full faithfulness of the unit — so the spike may be a verification rather than a search.
+The fallback template is the syntactic lax-cones-over-computads construction ([@mikhail-2025-thesis] ch. 1; globular contexts only, a limit not a tabulator, general case a conjecture).
+**Unmeasured.**
+
+The one genuine construction the equipment join rests on.
+
+### meta-spike-09
+
+**Is the removal/rebuild pair an instance of the context comonad for tree-like types**, and does the spanning-tree traversal give a shape for `canon`?
+[@altenmuller-2026-string-diagrams] **½ day.**
+
+Generalizes a bespoke device; the only concrete lead for the _form_ of a canonical linearization.
+
+### meta-spike-12
+
+**The finiteness/simple-connectivity measurement, re-specified.** The gate must measure the _semantic_ shape (count cells with a repeated metavariable), not the as-built shape — nominal sharing makes the as-built measurement circular.
+**1 day.**
+
+Settles what fraction of real cells leave the dioperad fragment once sharing is a wire.
+
+### meta-spike-13
+
+**Supply the tile relation** and instantiate the axiomatic-rewriting axiom interface non-vacuously, resolving the contested axiom count first (nine axioms in one presentation, a ten-item interface in another — both may be right for different presentations).
+**2 days.**
+
+Four standardization theorems by citation; turns a vacuous pass into real inheritance.
+
+### meta-spike-15
+
+**Map the landed description constructors onto a graphical-species profile.** The six code-grammar variants against the tiny base of finite sets, bijections, and the input/output involution.
+**1 day.**
+
+The first thing to test on the pasting side — everything in the univalence section assumes it; the falsifier is a description needing dependency or indexing the base cannot express.
+
+### meta-spike-17
+
+**Scope the two-sided closure and decide whether graph substitution is primitive or derived.** Substitution subsumes grafting and merging; its outer recursion is trivial where grafting's is a well-founded composition of matchings, and its base case closes a block of sources against a block of sinks — the wheel-creating operation grafting never needs.
+**½ day, by hand.**
+
+Settles whether **grafting associativity is a goal or a corollary**, and with it the scope of the wire half of the composition law.
+Not a licence to defer the wiring composition underneath: the listing algebra is untouched by how the interface is presented, so the braid, the four-layer exchange coherence and the threading-commutation lemma are needed on either route — only the binary-operation laws are in question.
 
 ## Standing obligations — what must be proved or built
 
@@ -43,7 +126,7 @@ Ordered within each section by what unblocks the most; costs are estimates again
 * **The directed convergence pass** for the directed rule layer — **re-quote its price against the arena presentation first** (the recorded transformation-monoid price was quoted against the superseded tree presentation), and evaluate a focusing-staged normal form before any raw completion pass.
 * **The carrier-to-source translation lemma** (the shape carrier against the graphical-species presentation).
 * **The decomposition-space edge**: verify the measured strict pullbacks are the stability condition, establish or refuse a set-level shadow, and record the certificate-layer/doctrine-layer identification with its citations.
-  The unitality half is dissolved by citation — every 2-Segal space is unital [@feller-garner-kock-proulx-weber-2019-unital]; the pita-nerve result — the nerve of a strictly factorisable operadic category with invertible quasibijections is a decomposition space, with an explicit non-Segal counterexample when they are not invertible [@batanin-kock-weber-2018-regular-patterns] — is adjacent input; and the decomposition-space line's _locally discrete_ grading is the literature's closest analog of a witness h-level, logically independent of Segal versus 2-Segal, and bears on open question 8.
+  The unitality half is dissolved by citation — every 2-Segal space is unital [@feller-garner-kock-proulx-weber-2019-unital]; the pita-nerve result — the nerve of a strictly factorisable operadic category with invertible quasibijections is a decomposition space, with an explicit non-Segal counterexample when they are not invertible [@batanin-kock-weber-2018-regular-patterns] — is adjacent input; and the decomposition-space line's _locally discrete_ grading is the literature's closest analog of a witness h-level, logically independent of Segal versus 2-Segal, and bears on [[#Open questions|meta-question-08]].
   Two adjacent set-level facts from the held properads literature frame the same edge [@hackney-robertson-yau-2015-properads]: the strict-Segal nerve theorem (a fully faithful nerve for properads, with the strict properadic Segal condition and unique inner-horn fillers) is a set-level warrant for the nerve direction at the properadic rung, decoupled from the polynomial-interpretation obstruction; and the finiteness wall — the free many-to-many term set over a cell is finite exactly when the cell is simply connected — is the computable-layout-relevant boundary, more than automorphisms or the nerve theorem itself.
 * **The core-coincidence theorem** of the directed statement (the groupoid statement as the invertible core), and the directed normal-form/faithfulness wall behind it.
 * **Deleting the cell record's simple-connectivity field** (or re-carrying it as a consumer-side predicate) under the generality ruling, with the surface-language question — whether the _surface_ still hides wheels and disconnection — as its own design pass.
@@ -71,42 +154,42 @@ And **the exact-reals / synthetic-topology track** — a lateral, firewalled lin
 
 ## Open questions
 
-1. Is the free-rig monad cartesian?
+1. **meta-question-01** — Is the free-rig monad cartesian?
    — the single technical question on which any nerve route for the _layout_ universe turns; no published answer.
-2. Does the description universe fit a graphical species?
+2. **meta-question-02** — Does the description universe fit a graphical species?
    — gated by its named spike; falsifier: dependency or indexing.
-3. Where does shift equivalence sit in certificate identity — should the _store_ key on the normal form, or only the comparator?
-4. Does the reflection face's cartesian-fibrational target restrict to the double-theory cartesian notions where both apply?
-5. With non-linear patterns admitted, is the overlap family still finite and multi-universal, or does an occurs-check fragment need fencing?
-6. Does gandr _state_ the trek-to-tracelet seam (a publishable convergence of two disconnected literatures) or merely use it?
-7. Which cell classes exercise the residual part of the target-opfibration axiom beyond redex-creating instantiations?
-8. Is there operational content in the correspondence between the determinism axis (Segal → 2-Segal) and the symmetry axis, or is it orientation only?
-9. ~~The directed eliminator and diagonal-intro spellings; whether directed composition shares the groupoid composition name — surface vocabulary, cheapest settled before the identity-layer rules land~~ — **settled 2026-07-31 (owner decision)**: the eliminator is the shared `walk` (under the motive-covariance side condition), the diagonal intro is `diag`, and directed composition shares `then`.
+3. **meta-question-03** — Where does shift equivalence sit in certificate identity — should the _store_ key on the normal form, or only the comparator?
+4. **meta-question-04** — Does the reflection face's cartesian-fibrational target restrict to the double-theory cartesian notions where both apply?
+5. **meta-question-05** — With non-linear patterns admitted, is the overlap family still finite and multi-universal, or does an occurs-check fragment need fencing?
+6. **meta-question-06** — Does gandr _state_ the trek-to-tracelet seam (a publishable convergence of two disconnected literatures) or merely use it?
+7. **meta-question-07** — Which cell classes exercise the residual part of the target-opfibration axiom beyond redex-creating instantiations?
+8. **meta-question-08** — Is there operational content in the correspondence between the determinism axis (Segal → 2-Segal) and the symmetry axis, or is it orientation only?
+9. **meta-question-09** — ~~The directed eliminator and diagonal-intro spellings; whether directed composition shares the groupoid composition name — surface vocabulary, cheapest settled before the identity-layer rules land~~ — **settled 2026-07-31 (owner decision)**: the eliminator is the shared `walk` (under the motive-covariance side condition), the diagonal intro is `diag`, and directed composition shares `then`.
    Landed at [[../surface-language/directed-family]].
-10. Where do the constant-map and constant-literal witnesses land as permanent negative tests — the first phase carrying a directed certificate stock over codes.
-11. The variance/directedness annotation slot in the export format: reserved early (recommended) or deferred to the certificate phase at the price of a coordinated format bump on the TCB.
-12. The doctrine complex's carrier shape: does it want **two node sorts per dimension** — signatures and relations, with a higher graph per pair of signatures and only the tight cells carrying cross-dimensional meaning — or does the single-sorted telescope suffice?
+10. **meta-question-10** — Where do the constant-map and constant-literal witnesses land as permanent negative tests — the first phase carrying a directed certificate stock over codes.
+11. **meta-question-11** — The variance/directedness annotation slot in the export format: reserved early (recommended) or deferred to the certificate phase at the price of a coordinated format bump on the TCB.
+12. **meta-question-12** — The doctrine complex's carrier shape: does it want **two node sorts per dimension** — signatures and relations, with a higher graph per pair of signatures and only the tight cells carrying cross-dimensional meaning — or does the single-sorted telescope suffice?
     (An open owner question of record, with a runnable sketch; the sketch's source file is in the pending sweep, so it re-lands when that sweep runs.
     Adjacent to, not settled by, the three-role split.)
-13. A two-point relevant/irrelevant variance record in place of a four-point lattice — co/contravariance presupposes cumulative subtyping, which gandr rejects, so only the irrelevant fragment transfers; and the elaborator will still meet stuck max-plus level equations (the oracle gives entailment and benign loops, not most general unifiers) — an unsolved user-experience surface gandr must own.
-14. **Cauchy completion as the representability axis** — how Cauchyness and Cauchisation sit under both univalence statements, and the equipment-level Rezk completion; state before either statement's representability is claimed.
-15. **The contraction locus** — what adopting the internal-logic equipment costs (no endo-coends), with its honesty gate; state the cost where the equipment is adopted, not after.
-16. **The Σ-former at the multi-output face** — the Σ-η direction is where fan-out actually bites (the dual of the data-η discipline), and premise-form statement is what keeps associative–commutative completion out of the rule layer; design before the term face hardens.
-17. **The Tietze ancestry note** — the edit-polygraph fullness statement ("complete up to a located obstruction") has a classical ancestor in Tietze-transformation completeness, with the simple-homotopy line as the cautionary instance above dimension one; record the lineage when the layout statement is next touched.
-18. ~~Pending targeted reads before import~~ — **resolved by the phase-2 sweep** (each item read at import grade against its primary and folded): the statement-blocker lesson with its blanket-base instance, the frame-bound impossibility, and the observation-grade ledger are carried in [[../proof-engineering#Lessons with no other home|the proof-engineering lessons]], as is the compare-site four-class taxonomy with the shape/witness grading ledger; the per-level cost law of the alphabet discipline (the square-compatibility cylinder one level up is the shape of term the naturality meta-operation generates, and any filler works there) is stated in [[ambient-and-primitives#The technology cluster|the technology cluster]].
-19. **The strictness warrant at the circuit rung.** The old licence — the rectification theorem, which said strict semantics is provably adequate at the dioperad rung and not above it — lapsed with the rung change, and nothing has replaced it: either show the rectification dichotomy has no set-level shadow (gandr's cells are finite ordered data compared by content address, not models of an ∞-object), or re-warrant strictness by a coherence-by-decision-procedure story — the skew-monoidal focusing line, the duploid line, or the Schwarz-paper Koszul machine at gandr's own rung [@kaufmann-ward-2024-schwarz].
+13. **meta-question-13** — A two-point relevant/irrelevant variance record in place of a four-point lattice — co/contravariance presupposes cumulative subtyping, which gandr rejects, so only the irrelevant fragment transfers; and the elaborator will still meet stuck max-plus level equations (the oracle gives entailment and benign loops, not most general unifiers) — an unsolved user-experience surface gandr must own.
+14. **meta-question-14** — **Cauchy completion as the representability axis** — how Cauchyness and Cauchisation sit under both univalence statements, and the equipment-level Rezk completion; state before either statement's representability is claimed.
+15. **meta-question-15** — **The contraction locus** — what adopting the internal-logic equipment costs (no endo-coends), with its honesty gate; state the cost where the equipment is adopted, not after.
+16. **meta-question-16** — **The Σ-former at the multi-output face** — the Σ-η direction is where fan-out actually bites (the dual of the data-η discipline), and premise-form statement is what keeps associative–commutative completion out of the rule layer; design before the term face hardens.
+17. **meta-question-17** — **The Tietze ancestry note** — the edit-polygraph fullness statement ("complete up to a located obstruction") has a classical ancestor in Tietze-transformation completeness, with the simple-homotopy line as the cautionary instance above dimension one; record the lineage when the layout statement is next touched.
+18. **meta-question-18** — ~~Pending targeted reads before import~~ — **resolved by the phase-2 sweep** (each item read at import grade against its primary and folded): the statement-blocker lesson with its blanket-base instance, the frame-bound impossibility, and the observation-grade ledger are carried in [[../proof-engineering#Lessons with no other home|the proof-engineering lessons]], as is the compare-site four-class taxonomy with the shape/witness grading ledger; the per-level cost law of the alphabet discipline (the square-compatibility cylinder one level up is the shape of term the naturality meta-operation generates, and any filler works there) is stated in [[ambient-and-primitives#The technology cluster|the technology cluster]].
+19. **meta-question-19** — **The strictness warrant at the circuit rung.** The old licence — the rectification theorem, which said strict semantics is provably adequate at the dioperad rung and not above it — lapsed with the rung change, and nothing has replaced it: either show the rectification dichotomy has no set-level shadow (gandr's cells are finite ordered data compared by content address, not models of an ∞-object), or re-warrant strictness by a coherence-by-decision-procedure story — the skew-monoidal focusing line, the duploid line, or the Schwarz-paper Koszul machine at gandr's own rung [@kaufmann-ward-2024-schwarz].
     This was the substrate arc's deepest open question and it is still open; the re-read of the rectification paper against the shadow question is the named next step, and no consumer may silently assume strictness is adequate.
-20. **A derived `Path`→`Flow` coercion**, once `ua-dir` lands — wanted as a derived surface form, and at which stratum?
+20. **meta-question-20** — **A derived `Path`→`Flow` coercion**, once `ua-dir` lands — wanted as a derived surface form, and at which stratum?
     (No kernel coercion: the comparison is the core-coincidence theorem, and a coercion before it would assume the theorem as an axiom.)
-21. **Does the certificate layer's one-directional interchange force laxity into the statement's rule layer?** The directed statement keeps the dimension-2 rules an equivalence at this stratum; if mixed-polarity boundaries eventually force one-directional interchange down into the statement, the η grade needs restating — a new design pass, not an amendment.
-22. **Variance as a shared kind** carried by the reflected universe, decided when directed univalence is scoped on the reflection face.
-23. **The canonical (co)end representation**: does the finite-carrier diagram become the canonical reflected end-object once the description layer can express dipresheaves, or does it remain a property-test vehicle?
+21. **meta-question-21** — **Does the certificate layer's one-directional interchange force laxity into the statement's rule layer?** The directed statement keeps the dimension-2 rules an equivalence at this stratum; if mixed-polarity boundaries eventually force one-directional interchange down into the statement, the η grade needs restating — a new design pass, not an amendment.
+22. **meta-question-22** — **Variance as a shared kind** carried by the reflected universe, decided when directed univalence is scoped on the reflection face.
+23. **meta-question-23** — **The canonical (co)end representation**: does the finite-carrier diagram become the canonical reflected end-object once the description layer can express dipresheaves, or does it remain a property-test vehicle?
 
 ## Reading queue, by leverage
 
-**Next.** The parametricity-cluster entry point [@vanmuylder-2026-thesis]; the pretype-theory report and slides [@nuyts-2026-natpt]; transpension, sections 1–2 [@nuyts-devriese-2024-transpension]; the discrete-Conduché paper, sections 1–2 (for S2) [@guetta-2020-conduche]; the polygraph shape category, introduction and section 5 [@hadzihasanovic-2020-shape]; the (∞,∞)-thesis ch. 1 part 2 (lax cones, for S8) and ch. 2 (the decomposition-space equivalence) [@mikhail-2025-thesis].
+**Next.** The parametricity-cluster entry point [@vanmuylder-2026-thesis]; the pretype-theory report and slides [@nuyts-2026-natpt]; transpension, sections 1–2 [@nuyts-devriese-2024-transpension]; the discrete-Conduché paper, sections 1–2 (for [[#meta-spike-02|meta-spike-02]]) [@guetta-2020-conduche]; the polygraph shape category, introduction and section 5 [@hadzihasanovic-2020-shape]; the (∞,∞)-thesis ch. 1 part 2 (lax cones, for [[#meta-spike-08|meta-spike-08]]) and ch. 2 (the decomposition-space equivalence) [@mikhail-2025-thesis].
 
-**The univalence-transfer chain.** The Univalence Principle, graphs-and-nets chapter first [@ahrens-north-shulman-tsementzis-2021-univalence-principle]; inverse diagrams, sections 11–12 (for S6) [@shulman-2015-inverse-diagrams]; the synthetic line as vocabulary only [@riehl-shulman-2017-synthetic].
+**The univalence-transfer chain.** The Univalence Principle, graphs-and-nets chapter first [@ahrens-north-shulman-tsementzis-2021-univalence-principle]; inverse diagrams, sections 11–12 (for [[#meta-spike-06|meta-spike-06]]) [@shulman-2015-inverse-diagrams]; the synthetic line as vocabulary only [@riehl-shulman-2017-synthetic].
 
 **The arc's own outstanding reads.** Schwarz modular operads revisited — the one paper running this machine at gandr's exact rung [@kaufmann-ward-2024-schwarz]; circuit algebras are wheeled props (check whether the equivalence survives at `Set` — stated for linear wheeled props) [@dancso-halacheva-robertson-2021-circuit-wheeled]; the graphs/hypergraphs translation source [@kock-2016-graphs-hypergraphs]; the naturality meta-operation [@benjamin-markakis-offord-sarti-vicary-2025-naturality]; monoidal context theory, re-read at the sections the hole identification selects [@roman-2023-monoidal-context].
 

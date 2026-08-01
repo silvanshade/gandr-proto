@@ -28,6 +28,8 @@ The boundary between metatheory and proof engineering requires judgement: conten
   The bibliography is local to this directory: entries used by the specs are copied here from the contributor's research library, so the specs are self-contained.
   Claims that rest on an unverified locator say so at the claim.
 * **No bare letter-number references.** Decisions, commitments, obligations, and findings are referred to by meaningful names and linked anchors, never by bare codes like "M1" or "F3.19" whose referent lives in a retired document.
+  Where an item genuinely needs an identifier, the identifier carries a topic prefix and a zero-padded number — `meta-spike-04`, `meta-question-19` — is anchored so it can be linked into, and is cited by that link.
+  See [`docs/workflow/specs.md`](../../workflow/specs.md) for the rule and what a bare letter cost this corpus.
   Where a named decision is load-bearing it has a heading in the owning track document.
 * **Status.** The specs describe the current state and accepted directions.
   Historical narrative is out of scope except where a superseded claim must stay visibly superseded to prevent relitigation; those live in each track's `guards` or `hazards` sub-documents.

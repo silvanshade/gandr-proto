@@ -82,6 +82,25 @@ Prose in the corpus is **aired out**: one load-bearing idea per paragraph, with 
 Density belongs in payload blocks (tables, grammars, code, registers); prose carries one idea at a time.
 A paragraph that needs two load-bearing ideas gets split; a paragraph whose idea needs emphasis gets it; emphasis is the concept marker, so roughly one emphasized idea per paragraph is the shape of the target, not a quota.
 
+### Identifiers are informative, prefixed, and linkable — never a bare letter and a number
+
+**No uninformative single-letter naming schemes.** Anything referenced anywhere that matters — a spike, an open question, a stage, an obligation, a decision — gets an identifier whose prefix abbreviates what it _is_ or the topic it belongs to, followed by a zero-padded number: `meta-spike-04`, `meta-question-19`.
+A bare `S1` or `P1` names nothing, so a reader who meets it outside its home document cannot tell what it refers to, or even which document to open.
+
+**This is not hypothetical, and the corpus has already paid for it.** `S1` meant two unrelated things at once: a spike in the metatheory roadmap and "the trusted S1 core" in the implementation track — the second of which was never defined anywhere, in three uses.
+Collisions like that are invisible until someone cites one and means the other.
+
+Three rules follow, and the third is what makes the first two worth the edit:
+
+* **Prefix by topic, number by position.** The prefix is the disambiguator; the number is only an index within it.
+  Numbering is **stable** — retiring an item leaves its number unused rather than renumbering the rest, because renumbering silently invalidates every reference taken before it.
+* **Give the identifier an anchor.** An identifier nobody can link to is a search string.
+  Prefer a heading per item (`### meta-spike-04`), which Obsidian resolves as `[[metatheory/roadmap#meta-spike-04]]`; a table cannot be linked into row by row, so a list of items that get cited individually should not be a table.
+  Where a heading per item is too heavy, lead the item with the bolded identifier and link to the section.
+* **Cite by link, not by code.** `[[roadmap#Open questions|meta-question-19]]` survives a document being reorganised and tells the reader where to go; `open question 19` does neither.
+
+Retired schemes are the exception and stay exactly as they were: the concordance in the guards ledger exists to decode old notes, so the codes in its left-hand column are data, not usage.
+
 ### A period is a sentence end, so do not spend one on an abbreviation
 
 `rumdl` reflows corpus prose with `reflow-mode = "semantic-line-breaks"`, which puts one sentence per line by splitting at a period followed by a space.
