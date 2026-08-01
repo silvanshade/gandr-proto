@@ -236,7 +236,7 @@ What the sweep still owes, in order of leverage:
   This is the sweep's open end, not a pending read;
 * equational reasoning with **context-free families** of string diagrams, the published mechanism for rule schemas over unbounded arity, which a many-out rule with a variable port count would need [@kissinger-zamdzhiev-2015-context-free-families], with its language-theoretic successor beside it [@earnshaw-roman-2024-context-free-languages];
 * initial-algebra semantics for **cyclic sharing** structures, the wheel axis from the syntax side rather than the carrier side [@hamana-2009-cyclic-sharing];
-* the **multi-runtime** direction, which is where gandr's disconnection axis lands and which the literature proposes without axiomatizing [@earnshaw-2025-thesis].
+* the **multi-device** direction, which is where gandr's disconnection axis lands: effectful categories over several devices, presented by resourceful traces, with a commuting tensor product [@earnshaw-nester-roman-2025-resourceful-traces], read after the thesis that collects the single-device case [@earnshaw-2025-thesis].
 
 The interface-literature map itself is already assembled in the related-work section of the combinatorial string-diagram thesis and should be read there first rather than reconstructed [@altenmuller-2026-string-diagrams].
 

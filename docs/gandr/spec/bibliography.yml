@@ -2115,3 +2115,78 @@ homotopy-rs:
   organization: homotopy.io contributors
   url: https://github.com/homotopy-io/homotopy-rs
   note: read at source 2026-08-01 for its diagram representation and its well-formedness invariants
+
+earnshaw-nester-roman-2025-resourceful-traces:
+  type: article
+  title: Resourceful Traces for Commuting Processes
+  author: ["Earnshaw, Matthew", "Nester, Chad", "Román, Mario"]
+  date: 2025
+  serial-number:
+    arxiv: "2507.18246"
+  note: >-
+    abstract and introduction read 2026-08-01; the numbered results (the effectful-graph
+    adjunction, the commuting tensor product) are cited from the paper's own related-work
+    summary and are not yet read at theorem grade
+
+# --- routed elsewhere by the circuit-terms sweep: entries added so the findings
+# --- that leave this lane cite a register key rather than a description.
+
+spahn-2025-mendler-dialgebras:
+  type: article
+  title: Mendler Dialgebras and Recursion Schemes of Mixed Variance
+  author: ["Spahn, Stephan Alexander"]
+  date: 2025
+  serial-number:
+    doi: "10.4230/LIPIcs.TYPES.2025.15"
+
+hubers-ingle-marmaduke-morris-2025-extensible-recursive:
+  type: article
+  title: Abstracting Extensible Recursive Functions
+  author: ["Hubers, Alex", "Ingle, Apoorv", "Marmaduke, Andrew", "Morris, J. Garrett"]
+  date: 2025
+  serial-number:
+    arxiv: "2410.11742"
+
+loregian-trimble-2023-differential-2-rigs:
+  type: article
+  title: Differential 2-Rigs
+  author: ["Loregian, Fosco", "Trimble, Todd"]
+  date: 2023
+  serial-number:
+    doi: "10.4204/EPTCS.380.10"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 380
+
+loregian-2024-automata-species:
+  type: article
+  title: Automata and Coalgebras in Categories of Species
+  author: ["Loregian, Fosco"]
+  date: 2024
+  serial-number:
+    arxiv: "2401.04242"
+
+barrett-heijltjes-mccusker-2023-fmc-semantics:
+  type: article
+  title: "The Functional Machine Calculus II: Semantics"
+  author: ["Barrett, Chris", "Heijltjes, Willem", "McCusker, Guy"]
+  date: 2023
+  serial-number:
+    arxiv: "2211.13140"
+
+arellanes-2026-control-data-separation:
+  type: article
+  title: Compositional Separation of Control Flow and Data Flow
+  author: ["Arellanes, Damian"]
+  date: 2026
+  serial-number:
+    arxiv: "2309.06397"
+
+bonchi-dilavore-roman-2026-effectful-mealy:
+  type: article
+  title: Effectful Mealy Machines
+  author: ["Bonchi, Filippo", "Di Lavore, Elena", "Román, Mario"]
+  date: 2026
+  serial-number:
+    arxiv: "2410.10627"
