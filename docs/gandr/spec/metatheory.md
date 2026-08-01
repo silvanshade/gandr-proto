@@ -286,7 +286,7 @@ The corrected statement of what a kit is (the retired record's "two arity monads
 The old licence — "both arities are cartesian because the symmetric group acts freely" — is **dead at the circuit rung and replaced by two facts**:
 
 * **for the nerve**: $T^times$ **has arities** at `Set` (the graphs inside graphical species), which is the hypothesis the abstract nerve theorem consumes [@berger-mellies-weber-2012-arities]; cartesianness is not on that chain;
-* **for the carrier**: Leinster-style generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr works over the **ordered representation**, where the monad is cartesian; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
+* **for the carrier**: Leinster's _presentation_ of generalized-multicategory theory wants a cartesian arity [@leinster-2003-higher-operads], and gandr's **ordered representation** supplies one — but the construction's existence needs neither that nor pullback preservation (below), so what the ordering buys on this side is **decidability** and not existence; the symmetric-group quotient is not avoided but _relocated_ into canonicalization soundness.
 
 **The carrier-side requirement is not what it was assumed to be, and the unified framework prices it in three tiers rather than one** [@cruttwell-shulman-2009-generalized-multicategories].
 Cartesian means the monad preserves pullbacks _and_ every naturality square of the unit and multiplication is a pullback (Definition B.2).
@@ -298,10 +298,12 @@ So the existence of the generalized-multicategory structure over $T^times$ at `S
 
 > **The consequence is a re-basing, not a removal.** What the ordered representation buys on the carrier side is **decidability** — a decidable section, content-addressable storage, and the identification-sorting test — and not the existence of the construction, which Burroni's tier supplies without it.
 > `canon-sound` is unaffected: it is owed for the decidability, for the merger's commutativity, and now as a field of the arity interface.
-> The claim being narrowed here is the _warrant_ recorded for the ordered representation on the carrier side, and narrowing a load-bearing warrant is a refutation, so it is recorded with its locators and left for sign-off rather than propagated.
+> The claim narrowed is the _warrant_ recorded for the ordered representation on the carrier side, and narrowing a load-bearing warrant is a refutation.
+> **Ruled (owner): the narrowing stands, and it is propagated** — the carrier-side bullet above is restated to it, and the superseded form is tombstoned in [[metatheory/guards]].
+> What is narrowed is the warrant and nothing else: the ordered representation is not in question, and every other reason for it is untouched.
 
 So the price of "one construction, two arity bases" at the circuit rung is one obligation: `Rigid.canon-sound` for shapes.
-The construction's own atomicity does not generalize — the linear kit's multiplication is one structural recursion with one inductive graph, while grafting is a composite of nine operations each of whose graphs threads the next.
+The construction's own atomicity does not generalize — the linear kit's multiplication is one structural recursion with one inductive graph, while grafting is a composite of ten operations each of whose graphs threads the next.
 That asymmetry is what an arity interface has to absorb, and the shape that absorbs it is the universe-style presentation below.
 
 ### The arity interface, universe-style
