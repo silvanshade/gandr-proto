@@ -101,7 +101,9 @@ The convention (authored docs are clean by construction):
   A backtick code span is the fallback for code-like identifiers.
   Wrap the _whole_ expression containing the `*`.
   Math holding a literal `|` inside a pipe-table cell needs `\|`.
-* **Display math** — a fenced code block tagged `math`; **never** bare `$$…$$` (MD013 reflow joins it to one line).
+* **Display math** — `$$…$$`, which is what the corpus's own conventions prescribe (`docs/gandr/spec/README.md`).
+  A balanced block is inert to the reflow wherever it sits: its own paragraph, tight against prose, inside a list item or a blockquote, all on one line, or carrying sentence-looking periods in its body.
+  An **unbalanced** `$$` is the live hazard — with no closing delimiter the block stops being recognised, the reflow absorbs it into the surrounding prose line, and `rumdl check` reports success on the result.
 * **Editorial bracket-notes** (`[corrected: …]`) — plain prose; MD052 `shortcut-syntax = false` keeps them inert.
 * **Write every paragraph expecting the line breaks to fall at sentence boundaries** — that is what `reflow-mode = "semantic-line-breaks"` means, and inline formatting must not straddle one of those boundaries.
   A sentence's period therefore sits _outside_ the emphasis that ends it: write `**the rule**.` rather than `**the rule.**` (both are code spans here, so this bullet does not demonstrate the effect on itself).
