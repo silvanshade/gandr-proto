@@ -9,12 +9,12 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: 9cfd5f55b8b1ba9116c0c33f0bf940ddd65888cb9a22cecb284cd6e3132ed927
+    b3: 11a8b7af116fb40f68304429b9d17a3bdca5f408986372f89dca533cf2ae935f
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
     role: track
-    b3: 98559fdcdb9a3a1e5f9b6eba0d579c0540fe6ca59307cdfe86c16a2e3582f87e
+    b3: 171a4a7295dd0d8567b0a0347b64b1dda69dd838cfbda1d2ae2c445bd277e58c
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
@@ -24,12 +24,17 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 23b8b6ef3842fd97dba731fe90ff3db9198dcbb4a812cd759bb3e813ffa73d65
+    b3: 052db7600888feba078c50e45ef6a198cec9f7babc41cff19da6c4f91448d658
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
     role: track
     b3: 9a13526f1e6a7f9a45400086ca0bc442065a1c1c35a1fb1c72fdd1be995437c4
+    edges:
+      - { rel: registered-under, to: spec/README.md }
+  - path: spec/surface-language.md
+    role: track
+    b3: fa6eb64546ec7c55e036fb840c4a64eb7e6bae917d91dba580cdaef07b55a3f6
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
@@ -87,6 +92,31 @@ nodes:
     b3: a14ca6c90704066bd52dacca65d527c11cd9b746848c52422042e2501b1cc96a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/surface-language/grammar.md
+    role: subdocument
+    b3: db008ef4294ed7e4536be02ba79249080b2ffdb5bef36bc8ae79545655d54931
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/declarations.md
+    role: subdocument
+    b3: af1693fbf4b5ce16d447369f6290dd07476011c69876655d8e090ca00dc026f0
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/recursion.md
+    role: subdocument
+    b3: c17a64f32ac8915550353a804087971a90f2eb77e609bdd1e8966a4768aab06d
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/shell.md
+    role: subdocument
+    b3: 611c6456ade9ff4ab6faa6d724d6d890783ab2c89da8ffd71d5ab6e0970a0435
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/roadmap.md
+    role: subdocument
+    b3: 8eedd3c921dbf5a6ed770b49a1f0e51951cfbec461b1f555207056fa87f9b85d
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/proof-engineering/roadmap.md
     role: subdocument
     b3: 25c429bf959eca5af9c6bdeee8a7c95bc596ea9a980eec0af4a2ded44e4e76fa

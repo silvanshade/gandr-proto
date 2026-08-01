@@ -2,18 +2,19 @@
 
 This directory is the specification corpus for the gandr language: the project entrypoint for any session or contributor that needs to know what gandr _is_, what has been decided, what is built, and what remains.
 
-It is organized as four tracks.
+It is organized as five tracks.
 Each track has one main document — thorough enough that no load-bearing detail is missable — plus a subdirectory of focused sub-documents and a detailed roadmap.
 The main documents describe what _currently is the case_ and summarize what remains; the roadmaps carry the detailed remaining work.
 
 ## The tracks
 
-| track                 | main document         | subdirectory         | what it owns                                                                                                                                                                                      |
-| --------------------- | --------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Overview**          | [[overview]]          | —                    | what the language is about, in brief, and a map of the other tracks                                                                                                                               |
-| **Metatheory**        | [[metatheory]]        | `metatheory/`        | the mathematics specific to gandr's semantic model: the circuit-algebra substrate, the sequent kernel's metatheory, the type system, identity and univalence, the doctrine and certificate layers |
-| **Implementation**    | [[implementation]]    | `implementation/`    | the Rust implementation: crates, the kernel IL, the rewriting and completion engines, storage, surfaces                                                                                           |
-| **Proof engineering** | [[proof-engineering]] | `proof-engineering/` | the Agda development discipline: how structures are represented and organized, independent of gandr-specific content                                                                              |
+| track                 | main document         | subdirectory         | what it owns                                                                                                                                                                                                        |
+| --------------------- | --------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Overview**          | [[overview]]          | —                    | what the language is about, in brief, and a map of the other tracks                                                                                                                                                 |
+| **Metatheory**        | [[metatheory]]        | `metatheory/`        | the mathematics specific to gandr's semantic model: the circuit-algebra substrate, the sequent kernel's metatheory, the type system, identity and univalence, the doctrine and certificate layers                   |
+| **Implementation**    | [[implementation]]    | `implementation/`    | the Rust implementation: crates, the kernel IL, the rewriting and completion engines, storage, surfaces                                                                                                             |
+| **Proof engineering** | [[proof-engineering]] | `proof-engineering/` | the Agda development discipline: how structures are represented and organized, independent of gandr-specific content                                                                                                |
+| **Surface language**  | [[surface-language]]  | `surface-language/`  | the surface language: the grammar's design (precedence-bounded grammars, the molder/melder pipeline, obligations), the declaration forms and their reserved slots, the shell fragment, and the vocabulary decisions |
 
 The boundary between metatheory and proof engineering requires judgement: content belongs to **metatheory** when it is both mathematical _and_ specific to gandr's semantic model (the carrier, the site, the kernel calculus, gandr's univalence statements); it belongs to **proof engineering** when it concerns how mathematics is mechanized here in general (the ∞-graph substrate, the familial representation principle, coherence-cost policy), even when the examples are gandr modules.
 
