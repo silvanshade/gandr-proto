@@ -23,6 +23,14 @@ Carry the warning verbatim: off-TCB applies to the **enumerator only**; the `cel
 
 Closes a gate on the convolution face using a measurement already taken; the one open axiom row (cylindrical decomposition) is what convolution needs _beyond_ exponentiability.
 
+### meta-spike-03
+
+**The four offset functions.** Check the monotone-rung placement the directed arena is built on — the computations [[layout-and-coherence]] cites as unchecked — against `Gandr.Arena.Offset`.
+**½ day.** Settles the arithmetic substrate of the arena's directed generalization: which of the four one-way generator classes lands in the monotone rung, and where the codiagonal breaks order.
+
+Partially executed in `Gandr.Arena.Directed`: the six realizations; the offset-fixed boundary with proofs and pinned counterexample cells (`inl` fixed verbatim, `inr` fixed modulo the right-injection shift, the diagonal fixing exactly offset 0, the projections fixed exactly at the unit laws, the codiagonal fixing exactly the left leg); and the shift-0 core of `RigidMono`, closed as a category with one-sided whiskering.
+Remaining: the named offset transforms (the right injection's shift, the projections' floor-division, the diagonal's `b · i + i`), the four monotonicity proofs, the codiagonal's order-break witness at a size-2 code, and `RigidMono` carrying the shift as data.
+
 ### meta-spike-04
 
 **Is gandr's pattern _analytic_?** Check the two conditions (strict Segal morphism to pointed finite sets; conservative interior) with underlying-legs as the candidate functor.
