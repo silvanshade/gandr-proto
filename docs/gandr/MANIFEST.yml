@@ -24,8 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-2: @ours
-3: @both
+    b3: 52703f4bc04bdf18ef34490566ad8b457ee65b6fdab2ae4c531cdf79e392b7ac
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -45,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: ebde0b0f35cf08dfc5c2faebfa7f404b7dc0098d09cd3ec40276eb15a57f87e0
+    b3: eaf13906a1c8f1e39c05d802cd6551d504d4596227d09bf870ca9e65d64eb257
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -85,7 +84,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: f3659476a2e4d32b1c23b073228e3c232dbdc967e2a15dfa0d92a860edb9f575
+    b3: d5387c4e751007825a8bafbecd36e0b5da6897b76350d82d5341a2a8c30d1079
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
