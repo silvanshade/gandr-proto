@@ -13,6 +13,7 @@ module Gandr.Everything where
 
 import Gandr.Arena.Code
 import Gandr.Arena.Coherence
+import Gandr.Arena.Directed
 import Gandr.Arena.Offset
 import Gandr.Arena.Structure
 import Gandr.Arena.Tree
