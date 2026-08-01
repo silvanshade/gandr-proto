@@ -91,6 +91,33 @@ Ambient free fan-in is declined for three reasons, in order of force.
 It does not cover per-type supply, which is exactly what this lane wants: a target that has the structure gets the cell, and the supply notion is the right shape for recording that it does.
 So the reversal condition is narrow — **a construction that makes "this type supplies the structure" a checked, per-type judgement rather than an ambient assumption** dissolves the decline without touching the rung, and that construction is what [[#circuit-terms-spike-03|circuit-terms-spike-03]] goes looking for.
 
+## Per-type supply as a general decline-relaxation pattern
+
+The fan-in decline dissolves not by admitting the structure everywhere but by making "this type has it" a **checked per-type judgement**.
+That move is more general than the case that produced it, and it is worth stating as a pattern, because several of this corpus's declines have the same shape: _we cannot have X, because X ambient would destroy a property we need_.
+Whenever a decline has that form, the question to ask before treating it as settled is whether the property survives when X is **supplied per type and checked** rather than assumed.
+
+The pattern's ingredients, in the order they have to be established:
+
+* a **carrier of the obligation** — what it means for one type to have the structure, expressible in gandr's own formers rather than as an ambient axiom;
+* a **checked judgement** — the obligation is discharged at the declaration, with a decline and a diagnostic when it is not;
+* a **preserved refuter** — the invariant stays falsifiable, because a program can still write the thing that lacks the structure and be told so.
+
+Three standing declines are candidates for exactly this treatment, and each is recorded here as a candidate rather than as a proposal.
+
+| decline                                  | what per-type supply would change                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ambient free fan-in** (the case above) | fan-in cells become lawful exactly where the commutative monoid is supplied, and unlawful with a diagnostic elsewhere                                                                                                                                                                                                                                                             |
+| **Frobenius structure**                  | a type that supplies Frobenius gets the **spider normal form** — a decision procedure for connected diagrams — without every type getting split, merge, init, and discard                                                                                                                                                                                                         |
+| **the cup**, and with it compact closure | the standing instruction is that a cup must never be added to make an operation total, and that adding one brings three consequences at once. A per-type cup does not obviously satisfy that instruction — the no-cup consequences are stated about the **carrier**, not about a type — so this is the candidate that most needs the instruction re-read before anyone acts on it |
+
+**The spider normal form is what makes the second row attractive.** Where a type supplies Frobenius, "are these two connected diagrams equal?" collapses to comparing a single many-to-many generator, which is a decision procedure gandr does not otherwise have for that fragment.
+Getting it per type, on the types that genuinely have the structure, is a strictly better trade than either getting it everywhere or not at all.
+
+**The third row is the one to be careful with**, and it is recorded with its hazard rather than its appeal.
+The negative-and-fractional-types line shows what compact closure buys operationally and what it costs [@chen-sabry-2021-negative-fractional]; the corpus's no-cup consequences are stated at the carrier, and a per-type reading would have to establish that a type-level cup does not smuggle a carrier-level one.
+That is a metatheory question, not an implementation one.
+
 ## The substrate, layer by layer
 
 Verified against the tree at the time of writing, symbol by symbol.
@@ -191,6 +218,20 @@ What transfers:
 What does not transfer: its primitives (identity and not, with Boolean control), its permutation semantics over symmetric groups, and the physical ancilla-reuse motivation.
 The construct is the import; the circuit model is not.
 
+### Premonoidal and effectful categories are the published home of gandr's interchange stratification
+
+gandr declines two simultaneous rewrite arguments because the diagram is unambiguous while its **sequentializations are not**, and it stratifies interchange by layer rather than assuming it.
+That is not an idiosyncrasy: it is the defining feature of a **premonoidal** category — a monoidal category **without the interchange law** — and of an **effectful** category, which is a premonoidal category with a chosen monoidal subcategory of morphisms that _do_ interchange [@roman-sobocinski-2025-premonoidal-string-diagrams].
+
+The correspondence to gandr's own position is close enough to be worth stating precisely. gandr's reversal condition for the horizontal-composition decline is "accept exactly on **disjoint positions**, where the two readings are shift-equal" — which is a chosen class of pairs that commute, sitting inside a structure where commuting is not general.
+That is the effectful-category shape, arrived at independently.
+
+What the source supplies beyond the vocabulary: string diagrams with an added **runtime object** are an internal language for effectful, premonoidal, and Freyd categories.
+The runtime object is a wire threaded through every generator that has not been declared to interchange, which is exactly how a sequential spine is made visible inside a diagram — and gandr's single-spine cell grammar is that same spine, currently structural rather than represented.
+
+The adjacent trace-theory line makes the sequentialization question its subject: Mazurkiewicz trace languages are exactly symmetric monoidal languages over distributed alphabets, and premonoidal string diagrams are used to **derive serializations of traces** [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory].
+"How many sequentializations does this diagram have, and when do they agree" is the question gandr's interchange decline is a special case of, and it has a literature.
+
 ### The spider theorem is the normal form fan-in cells want
 
 Where a commutative Frobenius structure is present, any connected diagram of its generators with $n$ inputs and $m$ outputs equals the single $n → m$ generator [@coecke-duncan-2011-interacting-observables], and a production implementation takes this literally — a spider is **boxless**, introducing no generator, so many-in/many-out is the wiring map being allowed to repeat a label [@discopy].
@@ -283,6 +324,8 @@ Every one carries a disposition.
 13. **circuit-terms-question-13** — **does gandr want checked implicit coercions**, and is the circuit-term boundary one of their first customers?
     The observation is that a proof assistant's coercion mechanism is normally a bare insertion rule with no evidence attached, whereas gandr already plans a directed transformation family, a certificate layer, and named rewrite cells — so a coercion could be an **inhabitant of an existing evidence type** rather than new machinery, and mediating between primitive terms and circuit terms is the obvious motivating case.
     **Carried as a future direction, explicitly not scoped**, with its hazards named in the spike below.
+14. **circuit-terms-question-14** — **is gandr's cell layer an effectful category?** Interchange holding only on a declared subclass of morphisms is the defining feature of premonoidal and effectful categories, and gandr's disjoint-positions reversal condition is that shape arrived at independently.
+    **Carried**, with the specific sub-question being whether the **runtime object** device — a wire threaded through every generator not declared to interchange — is what gandr's single-spine cell grammar should become once the spine is represented rather than structural.
 
 ## Spikes
 

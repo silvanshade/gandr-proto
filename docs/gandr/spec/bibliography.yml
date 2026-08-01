@@ -2000,3 +2000,50 @@ chyp:
   author: ["Kissinger, Aleks"]
   date: 2023
   note: not yet read; named in the tool survey of [@altenmuller-2026-string-diagrams]
+
+# --- the circuit-terms sweep, round 2 (2026-08-01): the confluence answer, the
+# --- premonoidal/effectful interchange framework, and the trace-theory cluster.
+
+bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii:
+  type: article
+  title: "String Diagram Rewrite Theory III: Confluence with and without Frobenius"
+  author: ["Bonchi, Filippo", "Gadducci, Fabio", "Kissinger, Aleks", "Sobociński, Paweł", "Zanasi, Fabio"]
+  date: 2022
+  serial-number:
+    arxiv: "2109.06049"
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science
+
+roman-sobocinski-2025-premonoidal-string-diagrams:
+  type: article
+  title: String Diagrams for Premonoidal Categories
+  author: ["Román, Mario", "Sobociński, Paweł"]
+  date: 2025
+  serial-number:
+    doi: "10.46298/LMCS-21(2:9)2025"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 21
+    issue: 2
+
+earnshaw-sobocinski-2023-string-diagrammatic-trace-theory:
+  type: article
+  title: String Diagrammatic Trace Theory
+  author: ["Earnshaw, Matthew", "Sobociński, Paweł"]
+  date: 2023
+  serial-number:
+    arxiv: "2306.16341"
+
+nester-2022-situated-transition-systems:
+  type: article
+  title: Situated Transition Systems
+  author: ["Nester, Chad"]
+  date: 2022
+  serial-number:
+    doi: "10.4204/EPTCS.372.8"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 372

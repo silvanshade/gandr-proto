@@ -39,12 +39,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 1243ba5e3e24e207d61847ef84d8b95fe33cafef185083125a184829aabb990a
+    b3: 0fb956c093870a75f4ee6ba0b49070bfc51ecfeb4126b0f23d821957e82645e4
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: f8cd45fe8203a3cfe3ed60585e1c4ac6f3aca0976488cba21c2191c2fab3d7cb
+    b3: 5bf17838e1dccff3fefd46e8282bcd6dfcb8e0e4b46b4258a8d6e5fbae5106a0
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -139,12 +139,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: 278734d25648e41f78e79a3ce2bf6a79335b232e3c7e2a11f24a803f9c2d0bfb
+    b3: ffd6a55835667ca02ffb77689de11af8862251ecea22b4c18076c8292f19d1c8
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
     role: subdocument
-    b3: b55000c68a3c450453272204c802ddba73a9b816366d1c1ff5317e14e3fe356b
+    b3: 584b48e12f0c0928cc16b887506952fb7a75574b8a0d6e3f7940a19710eba7d7
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md
