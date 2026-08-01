@@ -28,7 +28,7 @@ This is the **routing layer**: the base operating doctrine lives in the shared c
 | [workflow/rust.md](workflow/rust.md)                             | writing or reviewing Rust; `# Contract` / `# Adequacy` conventions                                                                        |
 | [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)   | adequacy hypotheses, survivor triage, mutation campaigns                                                                                  |
 | [workflow/soundness.md](workflow/soundness.md)                   | checker/machine/subtype/effect/grade changes, coherence oracles                                                                           |
-| [workflow/corpus.md](workflow/corpus.md)                         | gandr-corpus examples, the feature landing rule, `gandr-pro`                                                                              |
+| [workflow/corpus.md](workflow/corpus.md)                         | surface-corpus examples, the feature landing rule                                                                                         |
 | [workflow/agda.md](workflow/agda.md)                             | anything under `metatheory/`                                                                                                              |
 | [workflow/scripting.md](workflow/scripting.md)                   | project scripts (Nushell/TS), reading diagnostics (aifix)                                                                                 |
 | [workflow/review.md](workflow/review.md)                         | adversarial review, interpreting adversary findings, research outlooks — **and, standing for every task, declining or refuting anything** |
