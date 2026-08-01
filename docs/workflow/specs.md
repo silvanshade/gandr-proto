@@ -82,6 +82,32 @@ Prose in the corpus is **aired out**: one load-bearing idea per paragraph, with 
 Density belongs in payload blocks (tables, grammars, code, registers); prose carries one idea at a time.
 A paragraph that needs two load-bearing ideas gets split; a paragraph whose idea needs emphasis gets it; emphasis is the concept marker, so roughly one emphasized idea per paragraph is the shape of the target, not a quota.
 
+### A period is a sentence end, so do not spend one on an abbreviation
+
+`rumdl` reflows corpus prose with `reflow-mode = "semantic-line-breaks"`, which puts one sentence per line by splitting at a period followed by a space.
+**It cannot know that an abbreviating period is not a sentence end, and it should not have to** — the ambiguity is in the prose, not in the tool.
+So the abbreviating period is what gives way.
+
+The symptom is worth knowing because it does not point at its cause: the text is fine as written, `treefmt` reflows it, and what you notice afterwards is a line shattered mid-clause with the fragment stranded below.
+The fix belongs in the sentence, never in a formatter exemption.
+
+**The trigger is narrower than "any abbreviation", and knowing which one saves rewriting prose that was never at risk.** Measured against the pinned `rumdl`: a split needs a period, a space, and then a **capital letter**.
+
+| written         | reflowed | why                 |
+| --------------- | -------- | ------------------- |
+| `Prop. I.2.5.7` | splits   | capital `I` follows |
+| `Def. B.2`      | splits   | capital `B` follows |
+| `Fig. 3`        | survives | a digit follows     |
+| `i.e. the …`    | survives | lowercase follows   |
+
+So the hazard is the abbreviation standing before a capitalised token, which in this corpus is almost always a **locator with a letter in it** — and the Latin abbreviations are safe in practice, because what follows them is normally lowercase.
+
+* **Where the punctuation introduces or separates, use a colon.** `Note:`, `Caveat:`, `Definition B.2:` — a colon is never a sentence end, so nothing has to be disambiguated and nothing depends on what follows.
+* **Where the period only abbreviates a locator, drop it.** The corpus already reads `Prop 5.13`, `Thm 4.10`, `Def 3.1.1`; keep locators in that form and the capital after them stops mattering.
+
+**And one neighbouring trap, because it fires on the same edit and reports somewhere else entirely.** `§` is reserved for _corpus_ anchors: `docs:reference-integrity` reads `§N.N` as a section reference and fails it as dangling when no corpus document defines it.
+An external source's own sections are written out — "appendix B.11", "Example 3.6" — and the gate then leaves them alone.
+
 Explicitly _not_ the target: syllable- and complex-word readability scores (Flesch/Fog and friends).
 This is a mathematics corpus — complex words are not the enemy (owner direction, 2026-07-23); density, pacing, concept placement at paragraph boundaries, and flow are.
 When prose-measurement tooling exists for the corpus again, it measures and locates, and never gates: a coverage gate makes authors write to the instrument and kills the essay.
