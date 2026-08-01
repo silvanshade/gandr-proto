@@ -5,6 +5,8 @@ It exists as its own component because the lane crosses every layer — the sequ
 
 * Status: **design component; the substrate is audited and nothing is built.** Both ends of the multi-output special case exist and the middle is empty; the other three axes are not representable anywhere above the carrier.
   Every as-built claim below names the crate and symbol it was verified against.
+* The **rewriting question is settled at theorem grade** as of 2026-08-01: the applicable instance is convex double-pushout rewriting with interfaces over monogamous acyclic hypergraphs, its fragment matches three of gandr's four axes exactly, and confluence there is decidable.
+  What that pass opened is smaller and sharper than what it closed — a convexity hazard on a TCB-adjacent quotient, the wheel axis falling outside every published statement, and the fan-out obligation the retired asymmetry had hidden.
 * The carrier-side facts are landed and machine-checked in [[../metatheory/carrier]]; the surface half of the same question is the design sketch [[../surface-language/circuit-cells]], whose concrete syntax is deliberately unsettled and lands last.
 * The mathematics of the arity is the metatheory track's [[../metatheory#Cellular data — descriptions, cells, and computads|bridge-diagram account]]; nothing here proposes changing the carrier.
 
@@ -34,24 +36,38 @@ It is not the destination.
 * **normalization** — what a normal form _is_ for these terms, and whether it needs machinery of its own;
 * **the crate boundary** — the proposal that this machinery lives in a new `theory-circuit-algebras` beside the existing theory crates, rather than growing inside `theory-computads`.
 
-## Fan-in, supply, and Frobenius, in plain terms
+## Many-out, fan-out, fan-in, supply, and Frobenius, in plain terms
 
 This vocabulary recurs below and in the cited literature, so it is stated once here with examples rather than assumed.
+An earlier revision of this section stated a **fan-out/fan-in asymmetry that the sources and gandr's own carrier both contradict**; the corrected three-way split is below, and the correction is recorded rather than quietly applied because the retired claim was load-bearing for the aggregation split.
 
-**Fan-out** is one wire going to two places.
-**Fan-in** is two wires arriving at one place.
-On a diagram they look like mirror images, and they are not symmetric in what they cost.
+Three things get confused under two words, and the corpus needs all three apart.
 
-Fan-out is **free**, in the exact sense that it needs no structure on the type: to send one value to two destinations the wiring map simply names two targets, and nothing has to be decided.
-The corpus states this as _routing is free — non-combining multi-output is just the target map_.
+* **Many-out** is one cell with several output _ports_, each carrying a different result to one destination.
+* **Fan-out** is one _wire_ going to two places — the same value arriving twice.
+* **Fan-in** is two wires arriving at one place.
 
-Fan-in is **not free**, because two things arriving at one place have to become one thing, and nothing in the wiring says how.
-Concretely: if two producers both feed one `Pipe` port, the target must answer "what are these two contributions, together?" — and that answer is a binary operation.
-For the diagram to denote anything, the operation must not depend on which contribution the wiring happens to present first (**commutativity**) or on how a three-way fan-in is bracketed (**associativity**), and an empty fan-in must mean something (**a unit**).
-A commutative, associative operation with a unit is exactly a **commutative monoid**, which is why the corpus says a combining fan-in cell is lawful only where its target carries one.
+**Many-out is free**, in the exact sense that it needs no structure on the type: a cell's several results are named by the arity's target map, and nothing has to be decided.
+This is the Π-layer of the bridge diagram, and it is what "routing is free" correctly names.
+
+**Fan-out and fan-in are the mirror images of each other, and they cost the same thing.** Two wires arriving at one place have to become one thing, and nothing in the wiring says how: the target must answer "what are these two contributions, together?", and that answer is a binary operation.
+For the diagram to denote anything, the operation must not depend on which contribution the wiring happens to present first (**commutativity**) or on how a three-way fan-in is bracketed (**associativity**), and an empty fan-in must mean something (**a unit**) — which is exactly a **commutative monoid**.
+Dually, one wire arriving at two places has to become two things, and that is a **cocommutative comonoid**: a copy with a discard.
+Neither is wiring; both are generators with laws.
+
+**gandr's carrier already says so, and this is the check that settles it.** `Match` pairs every source with exactly one partner and every sink is hit exactly once ([[../metatheory/carrier]], machine-checked) — so no wiring datum in the carrier can name two targets for one source, and fan-out is no more expressible there than fan-in.
+The surface says so too: `dup(v)` and `drop(v)` are **ordinary computations**, not wiring ([[../surface-language#Expressions: every form]]), and grades exist precisely because duplication is priced.
+The literature says so a third time: the image of the syntax under the Frobenius-free hypergraph correspondence is exactly the **monogamous** acyclic cospans — every node of in-degree and out-degree at most one [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 25; coloured, thm 27].
+
+The retired asymmetry was a **cartesian** intuition: in a cartesian category every object carries a comonoid, so copying looks free while merging does not. gandr's cell layer is resource-sensitive — session channels, linear resources, affine capabilities, grades — which is precisely the setting where that intuition does not hold.
+The consequence for the rest of this document is that **the per-type-supply pattern below has two rows where it had one**, and that the aggregation obligation has a dual the corpus had not named.
 
 ```text
-// free: routing. one source, two destinations, nothing combined.
+// free: many-out. one cell, two distinct results, each to one destination.
+*divmod(-m: Nat, -n: Nat, +q: Nat, +r: Nat)
+
+// not free: one source, two destinations, the same value twice. a `copy` on
+// Pipe must be a cocommutative comonoid.
 *split(-p: Pipe, +l: Pipe, +r: Pipe)
 
 // not free: two sources, one destination. an `append` on Pipe must be a
@@ -103,20 +119,29 @@ The pattern's ingredients, in the order they have to be established:
 * a **checked judgement** — the obligation is discharged at the declaration, with a decline and a diagnostic when it is not;
 * a **preserved refuter** — the invariant stays falsifiable, because a program can still write the thing that lacks the structure and be told so.
 
-Three standing declines are candidates for exactly this treatment, and each is recorded here as a candidate rather than as a proposal.
+Four standing declines are candidates for exactly this treatment, and each is recorded here as a candidate rather than as a proposal.
 
-| decline                                  | what per-type supply would change                                                                                                                                                                                                                                                                                                                                                 |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ambient free fan-in** (the case above) | fan-in cells become lawful exactly where the commutative monoid is supplied, and unlawful with a diagnostic elsewhere                                                                                                                                                                                                                                                             |
-| **Frobenius structure**                  | a type that supplies Frobenius gets the **spider normal form** — a decision procedure for connected diagrams — without every type getting split, merge, init, and discard                                                                                                                                                                                                         |
-| **the cup**, and with it compact closure | the standing instruction is that a cup must never be added to make an operation total, and that adding one brings three consequences at once. A per-type cup does not obviously satisfy that instruction — the no-cup consequences are stated about the **carrier**, not about a type — so this is the candidate that most needs the instruction re-read before anyone acts on it |
+| decline                                   | what per-type supply would change                                                                                                                                                                                                                                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ambient free fan-in** (the case above)  | fan-in cells become lawful exactly where the commutative monoid is supplied, and unlawful with a diagnostic elsewhere                                                                                                                                                              |
+| **ambient free fan-out** (the case above) | copy cells become lawful exactly where the cocommutative comonoid is supplied. The row exists because the fan-out/fan-in asymmetry did not survive; grades and `dup`/`drop` are already the value-side answer, so the open half is what the obligation means at the **cell** layer |
+| **Frobenius structure**                   | a type that supplies Frobenius gets the **spider normal form** — a decision procedure for connected diagrams — without every type getting split, merge, init, and discard                                                                                                          |
+| **the cup**, and with it compact closure  | **retired into the row above rather than carried**: a per-type _unital_ Frobenius supply _is_ a per-type cup, and the nonunital supply is not                                                                                                                                      |
 
-**The spider normal form is what makes the second row attractive.** Where a type supplies Frobenius, "are these two connected diagrams equal?" collapses to comparing a single many-to-many generator, which is a decision procedure gandr does not otherwise have for that fragment.
+**The spider normal form is what makes the third row attractive.** Where a type supplies Frobenius, "are these two connected diagrams equal?" collapses to comparing a single many-to-many generator, which is a decision procedure gandr does not otherwise have for that fragment.
 Getting it per type, on the types that genuinely have the structure, is a strictly better trade than either getting it everywhere or not at all.
 
-**The third row is the one to be careful with**, and it is recorded with its hazard rather than its appeal.
-The negative-and-fractional-types line shows what compact closure buys operationally and what it costs [@chen-sabry-2021-negative-fractional]; the corpus's no-cup consequences are stated at the carrier, and a per-type reading would have to establish that a type-level cup does not smuggle a carrier-level one.
-That is a metatheory question, not an implementation one.
+**That row now has a construction rather than a hope, and it is the literature's own worked case.** A per-type supply of Frobenius structure, expressed _inside_ a Frobenius-free symmetric monoidal theory, is a pair of generators $\{μ : 2 → 1, δ : 1 → 2\}$ on that type with the Frobenius equations oriented as rules — which is the theory of **Frobenius semi-algebras**, the first case study of the correspondence paper.
+Three facts transfer with it, each cited at its own statement:
+
+* it is **terminating**, by a lexicographic reduction ordering that counts µ-trees and µ→δ paths [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 44];
+* **acyclicity is load-bearing in that proof** — the authors state that if the two hyperedges of a Frobenius rule's left-hand side lay on a directed cycle, an infinite rewrite sequence is possible — so the supply and the wheel axis are **not independent**, and admitting wheels costs the termination argument rather than merely the representation;
+* it is **not confluent** under naive critical-pair analysis, and it is that paper's own counterexample for why — see the convexity hazard under [[#The correspondence at gandr's own rung, at theorem grade]].
+
+**The fourth row is settled, and the corpus's caution was right for a reason it had not yet named.** Full (co)unital Frobenius algebras **always induce a compact closed structure**, which is stated in that same case study as the reason the semi-algebra fragment is worth isolating at all [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, sec. 5.1].
+So a per-type _unital_ Frobenius supply is a per-type cup by construction, and the standing no-cup instruction applies to it verbatim.
+A **nonunital** Frobenius supply — dropping the unit and the counit — carries no cup, and lands on the rung gandr's carrier already occupies for four independent reasons ([[../metatheory#Cellular data — descriptions, cells, and computads]]).
+The disposition is therefore: **the cup row is retired in favour of the Frobenius row read nonunitally**; the negative-and-fractional-types line stays the worked account of what a cup would buy and cost [@chen-sabry-2021-negative-fractional], and nothing here proposes adding one.
 
 ## The substrate, layer by layer
 
@@ -146,8 +171,7 @@ The other three axes have no representation anywhere above the carrier.
 
 ## What the diagrammatic-rewriting literature supplies
 
-Findings from a triage sweep of the string-diagram and circuit-algebra implementations, which have been computing with these structures for a decade.
-Each names what it supplies and what it does not.
+The first subsection below was read **at theorem grade** and answers this lane's decisive question; everything after it is from a triage sweep, marked as such, and each entry names what it supplies and what it does not.
 
 ### The hypergraph correspondence is the applicable rewriting instance once cells stop being trees
 
@@ -162,9 +186,56 @@ The literature has already built the replacement [@bonchi-gadducci-kissinger-sob
 * pushout complements are **unique when the rule's left leg is mono**, and effectively enumerable when they are not.
 
 That last point is the same phenomenon gandr already records from the virtual reading — non-linear overlaps fan out into families rather than a single fused rule — arriving independently from the DPO side, which is corroboration rather than a new constraint.
+It is also **superseded at the Frobenius-free rung** by the boundary-complement result below, which restores uniqueness without the mono hypothesis.
 
-**The caveat is the Frobenius assumption**, which is the free fan-in this lane declines ambiently.
-The sequel that drops it — rewriting modulo _symmetric monoidal_ structure without Frobenius — is closer to gandr's rung and is the first item of the deeper sweep this finding triggers ([[../metatheory/roadmap]]).
+### The correspondence at gandr's own rung, at theorem grade
+
+The sequel drops the Frobenius assumption, and the third part supplies the confluence theory.
+Both were read at theorem grade for this pass; the statements below are quoted or cited at their own numbers rather than paraphrased from abstracts.
+
+**The Frobenius-free correspondence is exact, and it is exact on a fragment shaped like gandr's declines.** The image of the syntax under the cospan-of-hypergraphs encoding is precisely the **monogamous acyclic** cospans — no directed cycle, and every node of in-degree and out-degree at most one — and this holds for **coloured** PROPs as it does for one-sorted ones [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 25 and thm 27].
+Reading gandr's four axes against that fragment is the sharpest calibration this pass found:
+
+| gandr's axis      | inside the monogamous-acyclic fragment? | why                                                                                                                                       |
+| ----------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **multi-output**  | **yes**, freely                         | a hyperedge has several ordered targets; each target node still has in-degree 1                                                           |
+| **reconvergence** | **yes**, freely                         | two targets of one hyperedge may be two sources of another; degrees stay at 1                                                             |
+| **disconnection** | **yes**, freely                         | the fragment imposes no connectivity condition                                                                                            |
+| **fan-in**        | **no** — and that is monogamy           | in-degree 2 is exactly the combining fan-in this lane declines. **The decline is the fragment's own condition, arrived at independently** |
+| **fan-out**       | **no** — and that is monogamy too       | out-degree 2 is the copy; the mirror image, priced the same, which is the correction recorded above                                       |
+| **wheels**        | **no** — and that is acyclicity         | the axis this lane wants last is the one condition the Frobenius-free theory cannot drop (below)                                          |
+
+So the correspondence covers three of gandr's four axes exactly, excludes the two aggregation moves gandr already declines, and excludes wheels.
+**That is a much better fit than the corpus assumed**, and it means the applicable instance is not a distant target: it is the fragment gandr's carrier is already inside.
+
+**Boundary complements retire the mono-left-leg condition.** The Frobenius-free theory replaces pushout complements with **boundary complements**, which additionally require the complement's own cospan to be monogamous, and these are **unique whenever they exist** — stated with the explicit remark that this "restore[es] uniqueness of pushout complements, even though we consider some rules which are not left-linear" [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, prop 31].
+The soundness-and-completeness statement built on them is an **iff for arbitrary rewriting systems**: $d ⇒_R e$ exactly when $[\![d]\!] ⇛_{[\![R]\!]} [\![e]\!]$ under **convex** DPO rewriting [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 35; coloured, thm 39].
+The mono-left-leg claim the corpus carried is therefore true of the Frobenius rung and **not the condition that matters at gandr's**; what matters instead is convexity.
+
+**Confluence is decidable, and the interface is what makes it so.** For DPO-with-interfaces the Knuth–Bendix property holds: joinability of all pre-critical pairs entails local confluence [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, thm 3.1], and for a **computable terminating** such system confluence is decidable [ibid., cor 3.1].
+Two conditions travel with it and both are load-bearing:
+
+* the **ambient hypotheses** are an epi–mono factorisation system, binary coproducts, pushouts and pullbacks, adhesivity, and pushouts stable under pullbacks — which "hold in any presheaf category" and are closed under slice [ibid., asm 3.1];
+* **computable** is defined, not assumed: pullbacks computable, the set of quotients of $L_i + L_j$ finite and computable for every rule pair, and every one-step rewrite of a given $G ← J$ enumerable [ibid., sec. 3].
+
+**The empty interface is the undecidable case, and the analogy is exact.** The authors' own framing: hypergraphs with empty interface are "morally the graphical analogue of ground terms", Plump's undecidability result is about them, and **ground confluence is undecidable for both terms and graphs while confluence is decidable for both** [ibid., secs. 3 and 7].
+This is the single most important sentence in the pass for gandr, because gandr's completion engine works on cell **patterns** and its overlaps carry seam data — which is to say gandr is already on the decidable side, and the honest caveat it ships is about budget rather than about undecidability.
+
+**Without Frobenius there are two routes, and gandr must choose one.**
+
+* **Left-connected systems** — left-linear, ma-rules, and every left-hand side **strongly connected** (a path from every input to every output).
+  There the naive notion of critical pair is unchanged, local confluence follows from joinability of ma-pre-critical pairs, and confluence of a terminating system is decidable [ibid., def 5.6, thm 5.3, cor 5.1].
+* **Convex critical-pair analysis via formal path extensions** — for systems that are not left-connected, joinability must be checked not only for the critical pair but for its **path extensions**: the signature is extended with three formal path generators, a critical pair is **path joinable** when it joins under every _maximal path relation_, and path joinability of all ma-pre-critical pairs entails local confluence, with a near-converse over the extended signature [ibid., def 5.7–5.10, thm 5.4, thm 5.5].
+
+**The convexity hazard is the finding that bears on gandr's soundness surface, not just its schedule.** Under convex rewriting, **two rule applications acting on disjoint sets of hyperedges can still block one another**: applying one can create a directed path that destroys the convexity of the other's match, so the second is no longer a legal rewrite [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, ex 45].
+The worked instance is the Frobenius-semi-algebra theory, and it is why that theory is terminating but not confluent.
+
+> **gandr's shift equivalence is stated as "two adjacent cell applications at disjoint positions with trivial overlap commute", and disjointness of supports does not imply independence once matches must be convex.** The quotient is TCB-adjacent — it is what the `cells_equal` normal-form fast path decides — so this is a **guard obligation at the circuit rung**, not a scheduling note.
+> Either the disjointness test is strengthened to a convexity-stable one, or the shift quotient is fenced to the fragment where convexity cannot be broken (left-connected left-hand sides are the published such fragment).
+> Recorded as [[#circuit-terms-question-15|circuit-terms-question-15]] and [[#circuit-terms-spike-07|circuit-terms-spike-07]].
+
+**What the confluence theory cannot give gandr is the wheel axis.** Acyclicity is a hypothesis of the ma-fragment, of convexity (the path relation is a relation on directed paths), and of the termination arguments; the correspondence paper is explicit that a Frobenius-free rewrite that would need to move a box past a redex requires "at least a traced symmetric monoidal structure" to be applied at all [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, ex 5.2]. gandr's arity ruling has since made the two-sided closure — the trace — the **primitive** former ([[../metatheory#The arity interface, universe-style]]), so gandr's destination rung is traced symmetric monoidal without Frobenius, which is **outside** everything this line proves.
+That gap is now the lane's largest cited unknown, and it is stated as such rather than assumed away.
 
 ### The closest Agda encoding forks from gandr exactly here
 
@@ -183,7 +254,7 @@ Two further facts it supplies, both actionable:
 
 ### Fan-in is a supply, not a per-cell side condition
 
-The supply notion, its coherence theorem, and its survival of strictification are stated under [[#Fan-in, supply, and Frobenius, in plain terms]] above [@fong-spivak-2020-supply].
+The supply notion, its coherence theorem, and its survival of strictification are stated under [[#Many-out, fan-out, fan-in, supply, and Frobenius, in plain terms]] above [@fong-spivak-2020-supply].
 The construction literature for building such categories is decorated cospans and decorated corelations, with corelations giving the black-boxing direction that discards interior structure [@fong-2015-decorated-cospans] [@fong-2017-decorated-corelations] [@fong-2016-thesis], and the universal-construction account presents these semantic categories as colimits of simpler ones, which is what makes complete axiomatisation tractable [@fong-zanasi-2018-universal-corelations].
 Completeness of finite matrices for (dagger-)hypergraph categories is the semantic counterpart [@kissinger-2015-finite-matrices-hypergraph].
 
@@ -226,11 +297,25 @@ That is not an idiosyncrasy: it is the defining feature of a **premonoidal** cat
 The correspondence to gandr's own position is close enough to be worth stating precisely. gandr's reversal condition for the horizontal-composition decline is "accept exactly on **disjoint positions**, where the two readings are shift-equal" — which is a chosen class of pairs that commute, sitting inside a structure where commuting is not general.
 That is the effectful-category shape, arrived at independently.
 
-What the source supplies beyond the vocabulary: string diagrams with an added **runtime object** are an internal language for effectful, premonoidal, and Freyd categories.
+What the source supplies beyond the vocabulary, read at theorem grade for this pass: string diagrams with an added **runtime object** are an internal language for effectful, premonoidal, and Freyd categories, and the statement is an isomorphism rather than an analogy — the free strict effectful category's homs are exactly the runtime-monoidal category's homs with the runtime adjoined on both sides, $\mathrm{EffString}(V,G)(A,B) ≅ \mathrm{String}_{\mathrm{Run}}(V,G)(R ⊗ A, R ⊗ B)$ [@roman-sobocinski-2025-premonoidal-string-diagrams, thm 3.14], with ordinary isotopy sound and complete on the result [ibid., cor 3.15] and the corresponding adjunction for premonoidal categories at [ibid., thm 5.5].
 The runtime object is a wire threaded through every generator that has not been declared to interchange, which is exactly how a sequential spine is made visible inside a diagram — and gandr's single-spine cell grammar is that same spine, currently structural rather than represented.
+The source's own related work names **call-by-push-value** as the closest translation of effectful categories into a programming language, so gandr's core calculus and this structure are the same object approached from two sides.
 
-The adjacent trace-theory line makes the sequentialization question its subject: Mazurkiewicz trace languages are exactly symmetric monoidal languages over distributed alphabets, and premonoidal string diagrams are used to **derive serializations of traces** [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory].
-"How many sequentializations does this diagram have, and when do they agree" is the question gandr's interchange decline is a special case of, and it has a literature.
+**Three details make this actionable rather than decorative, and one of them is an argument for representing the spine.**
+
+* **Not representing it costs locality of substitution.** The authors consider the cheap alternative — keep a side table of which morphisms must not interchange — and reject it by a worked failure: knowing $f = g ; h$ no longer licenses substituting $g ; h$ for $f$ inside a larger diagram, because the relative order of $g$, $h$ and a neighbouring effectful $k$ becomes meaningful [ibid., rmk 2.8].
+  Read into gandr: **a structural spine is exactly such a side table**, and locality of substitution is precisely the property gandr's matcher needs once a match is a sub-diagram embedding rather than a position.
+* **The runtime is a linear resource in the Drinfeld centre.** It braids past every object, so its position in the interface does not matter (formalised as a _braid clique_), but it is neither copied nor discarded [ibid., def 3.8–3.10].
+  A represented gandr spine would inherit both properties, and the second is the one that makes it a resource rather than a label.
+* **One runtime means one sequentialization, and that is in direct tension with the disconnection axis.** The trace-theory development states it plainly: the runtime string appears **only once in each string diagram**, reflecting that premonoidal categories have no tensor product on morphisms, and the resulting endomorphism monoid is the **free** monoid on the generators — every order distinct [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory, prop 34].
+  A single represented spine would therefore make every cell depend on every other, which is the opposite of what gandr's disconnection axis is for.
+
+**The trace-theory line supplies the identification, and it names gandr's shift equivalence.** Mazurkiewicz trace languages are exactly symmetric monoidal languages over **monoidal distributed alphabets**, where each generator carries a set of locations and independence is disjointness of location sets [ibid., thm 22]; and the serialization square commutes — the free monoid on the generators (the premonoidal, one-runtime reading) quotients onto the trace monoid (the monoidal reading) by erasing the runtime [ibid., thm 35]. gandr's certificate normal form is a primitive multiset plus a canonical schedule, quotiented by "adjacent applications at disjoint positions commute"; **that is the trace monoid of the independence relation "disjoint support"**, and the canonical schedule is its normal form.
+This is an identification worth carrying because it names what gandr built and supplies its literature, not because anything is adopted from it.
+
+**The multi-runtime generalization is where gandr's disconnection axis actually lands, and it is open.** The same authors observe that monoidal distributed alphabets are already "monoidal categories with multiple runtimes", propose generalizing effectful categories to several runtimes so that actions may have input and output types rather than being atomic, and state that they plan to pursue it axiomatically in future work — in the 2023 paper and again in the 2025 thesis that collects it [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory, sec. 8] [@earnshaw-2025-thesis].
+So the structure gandr wants — a spine per independent component, disconnection meaning genuinely independent runtimes — is named in the literature, motivated there for gandr's own reason, and **not yet axiomatized by anyone**.
+Recorded as [[#circuit-terms-question-16|circuit-terms-question-16]].
 
 ### The spider theorem is the normal form fan-in cells want
 
@@ -262,14 +347,46 @@ The interesting fact is that the escape route is a **restriction class** (pure-c
 **Compact closure by negative and fractional types.** A first-order reversible language of type isomorphisms extends to a compact closed category by adding a dual to sums and a dual to products, with negative types reversing execution flow and fractional types garbage-collecting [@chen-sabry-2021-negative-fractional].
 This is the cup gandr's carrier declines, and it is therefore the best worked account of what admitting one would buy and cost — which the standing instruction asks for.
 
+## What the implementations supply, read as artifacts
+
+Four existing engines were read at source for this pass.
+They are read as **engineering evidence about representation and search**, never as authorities on the mathematics, and each entry says what was checked.
+
+**The monogamous fragment needs no node set at all, and gandr already has the representation.** Cartographer represents an open hypergraph as a **bijection between source ports and target ports** and drops the node set entirely, with the reason stated at the type: monogamy makes nodes redundant, because a node "is identified uniquely by the two Ports [it] connect[s]" [@sobocinski-wilson-zanasi-2019-cartographer]. gandr's `Match Γ Δ` — a source chooses a sink, every sink hit once — **is that structure**, arrived at independently ([[../metatheory/carrier]]).
+The contrast with the Frobenius side is exactly one bit: DisCoPy, which supports spiders, represents the wiring as an arbitrary **function** from ports to a set of spider labels, so a label may be repeated and many-in/many-out costs no generator [@discopy].
+**Bijection versus function is the whole representational content of the Frobenius/no-Frobenius choice**, which makes the per-type supply above concretely representable: a mixed wiring datum, a bijection on ports of non-supplying types and a function on ports of supplying types.
+What this pass did **not** check is whether the published correspondence covers that mixed case; the coloured statements quantify Frobenius over every colour, so the mixed case is currently unwarranted rather than warranted.
+
+**Matching a monogamous pattern branches once per connected component, and is deterministic after that.** Cartographer traverses the pattern's wires in an undirected depth-first order and, for each pattern wire, uses the already-matched endpoint hyperedge to _determine_ the context wire wherever one endpoint is fixed, falling back to nondeterministic choice only when neither is.
+Chyp does the same job vertex-first, with three local invariants at each extension — type and size agreement, non-injectivity permitted **only at boundary vertices**, and, at an interior vertex, exact equality of in-degree and out-degree, which its comments state is what makes the DPO gluing conditions hold — plus one **global post-check**, convexity, implemented as "no path from the image of an output to the image of an input" [@chyp].
+The seam data on the gandr side is therefore not a position but a **pair of partial bijections** — wire↔wire and edge↔edge — which is what the corpus's span-level seam data becomes when a match is an embedding.
+
+**Chyp also answers the internal-wire question by refusing it.** Its declarative language never lets a wire be named: generators are declared by arity alone (`gen f : 2 -> 1`), diagrams are built from `;`, `*`, `id`, `id0` and `sw[…]`, and internal wires exist only as the positional seam of a sequential composition.
+There is no ancilla scope, no name binding, and consequently no unbound-wire error class.
+The cost is visible and admitted in its own documentation: permutation indices are **local to each swap**, so "splitting or combining swap maps will change some indices in general" — positional wiring is not compositional in its indices, which is the concrete price of the all-ordered choice gandr's [[#The design questions|circuit-terms-question-02]] weighs.
+Its governing slogan, "**only connectivity matters**", is the diagram-normal-form half made into a user-visible rule, and its `refl` tactic decides it by **cospan isomorphism** rather than by rewriting — which is the split this document insists on, implemented.
+
+**Chyp's DPO refuses a repeated boundary vertex by name, and the name is "Frobenius".** Its pushout-complement construction handles a boundary vertex of in-degree and out-degree one by splitting it, and raises `NotImplementedError("Rewriting modulo Frobenius not yet supported.")` as soon as a boundary vertex is used more than once on either side.
+**A repeated hole in a rule's left-hand side is precisely that case, and gandr admits one today.** Verified at source: `CellMeta::derive` in `theory-computads/src/sequent.rs` sets `linear: CellLinearity::from(lhs_count == 1)`, so a metavariable occurring twice on the left is **admitted and recorded as non-linear** rather than rejected, with `a_repeated_metavariable_is_nonlinear` exhibiting `⟨Pair(x; x) | α⟩`; and the substitution layer's matcher accepts a repeated occurrence by binding once and requiring agreement on the rebind (`subst.rs`, conflicting-rebind contract).
+At the circuit rung that same pattern stops being free substitution and becomes a copy on a wire, and the leading implementation of gandr's own rung declines it explicitly.
+This is the sharpest single consequence of the term-shaped-to-circuit-shaped move, and it is recorded as [[#circuit-terms-question-17|circuit-terms-question-17]].
+
+**The fastest engine in the family gets its speed by abandoning general matching.** PyZX's rewrites are not DPO: each is a `check_*` predicate on one or two vertices paired with an `unsafe_*` in-place graph surgery, driven by a fixed strategy pipeline (`full_reduce` as a loop over named simplification phases with per-rule ordering flags), counted by a rewrite-statistics object, and guarded by a debug mode that compares **tensor semantics after every step** to find the first divergence.
+Two lessons transfer without adopting anything: a rule whose left-hand side is one or two generators does not need a matcher at all, and the correctness net for a strategy-driven normalizer is a differential against an independent semantics — which is the discipline gandr already runs between its two checker realizations.
+
+**Diagram-level hash-consing is precedented; evaluator-level is still declined.** `homotopy-rs` hash-conses both diagrams and rewrites through a thread-local factory, with an $n$-diagram represented as a source $(n-1)$-diagram plus a list of cospans of rewrites, and structural equality on that pair.
+Its well-formedness checker carries typed defect variants that include **normal-form conditions as invariants** — a cone may not be trivial, cones must be correctly ordered — rather than as a separate pass.
+Neither observation conflicts with the performance track's "no global hash-consing in the evaluator": the consing there is on the diagram representation, which is gandr's storage layer, not its machine.
+
 ## Matching, normalization, and the crate boundary
 
 The three faces that make this "computing with" rather than "representing".
 
 **Matching.** gandr's one-sided matcher and two-sided unifier are written against a pattern language whose consumer side is a linear spine.
 A circuit pattern is not a spine and not a tree: it has several roots, may reconverge, and may have components with no wire between them.
-Matching therefore stops being a structural recursion and becomes a **sub-diagram embedding problem**, which is where the DPO line's matching-plus-pushout-complement formulation is the published answer and where the mono-left-leg condition earns its keep.
-The open half is what the corpus's own span-level seam data means when a match is an embedding rather than a position.
+Matching therefore stops being a structural recursion and becomes a **sub-diagram embedding problem**, which is where the DPO line's matching-plus-boundary-complement formulation is the published answer.
+Two things are now settled rather than open: the search shape is wire- or vertex-driven propagation with one nondeterministic seed per connected component of the pattern, and the span-level seam data becomes a pair of partial bijections rather than a position — both read off working implementations above.
+What remains open is convexity, which is a **global** condition on the match and therefore the one part of the check that does not decompose along the pattern.
 
 **Normalization.** Two normal-form questions must be kept apart, and conflating them is the hazard.
 
@@ -279,6 +396,10 @@ The open half is what the corpus's own span-level seam data means when a match i
 
 The first is a property of the representation and is what content-addressing must intern on; the second is a property of the theory. gandr's `Rigid` device is where the first lands, and `Rigid.canon-sound` at the circuit rung is the standing obligation that owes it.
 **Whether the first needs machinery of its own is the lane's largest unpriced question**, and it is what would justify a crate of its own.
+
+**The first question is smaller than it looked, at least for the monogamous fragment.** Chyp decides it by cospan isomorphism and states it to users as "only connectivity matters"; and the isomorphism problem it decides is over the port bijection, not over an arbitrary labelled graph.
+Two concrete shapes for a canonical linearization are now on the table, and they are the two extremes of one family rather than two guesses: orienting the cut equation one way makes normal forms **corolla decompositions** — pick a vertex, recurse into the components its removal leaves — and orienting it the other way makes them **edge decompositions** — pick an edge, recurse into the two components its removal leaves; both are exhibited for one syntax over unrooted trees, with the observation that the two orientations bracket a mixed style [@obradovic-2017-thesis, sec. 2.4.2].
+The second is a spanning-tree traversal, which is the shape [[../metatheory/roadmap#meta-spike-09|meta-spike-09]] went looking for; recording both here is what that spike was owed on the `canon` side.
 
 **The crate boundary.** The proposal of record is a new **`theory-circuit-algebras`** beside the existing theory crates, owning the circuit-term representation, its interfaces and internal-wire binders, embedding-based matching, and diagram normal form — with `theory-computads` continuing to own cells, overlaps, completion, and tracelets over whatever alphabet it is given.
 The seam is the `CellAlphabet` trait, which already exists and is already the place an alphabet is supplied, so the new crate would be an _inhabitant_ of that interface rather than a fork of the engines.
@@ -299,9 +420,11 @@ Every one carries a disposition.
 4. **circuit-terms-question-04** — **the Σ-former at the multi-output face**, the metatheory track's own open question: the Σ-η direction is where fan-out bites, and premise-form statement is what keeps associative–commutative completion out of the rule layer.
    **Parked on the metatheory track, and a hard gate on the Σ-layer half.** The Π-layer half does not wait for it.
 5. **circuit-terms-question-05** — **is the fan-in obligation carried as a per-type supply?** See the decline section above for what this would narrow rather than overturn.
-   **Carried.**
+   **Closed in the affirmative, with one residual.** The construction exists and is worked in the literature: a per-type supply expressed inside a Frobenius-free theory is a generator pair with the Frobenius equations as rules, terminating at [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 44], carrying no cup as long as the unit and counit are omitted, and representable as a mixed wiring datum (a bijection on non-supplying colours, a function on supplying ones).
+   **The residual is the warrant, not the construction**: the published correspondence quantifies Frobenius over _every_ colour, so the mixed case is unwarranted rather than warranted, and [[#circuit-terms-spike-03|circuit-terms-spike-03]] is re-scoped to it while the dual obligation for fan-out becomes its own question below.
 6. **circuit-terms-question-06** — **does the hypergraph DPO instance become the applicable one at this rung**, retiring the scoping that says graph-shaped double-pushout instances do not apply?
-   **Carried, and owed a decision before the alphabet changes** — the scoping is stated in the metatheory track and would otherwise become wrong silently.
+   **Closed, and the answer is qualified rather than flat.** The scoping is **retired for gandr's first three axes and stands for the fourth.** Convex DPO with interfaces over monogamous acyclic hypergraphs is sound and complete for arbitrary symmetric monoidal theories including coloured ones, and its fragment admits many-out, reconvergence and disconnection while excluding exactly the fan-in and fan-out gandr already declines; the acyclic hypothesis is what gandr's wheel axis will leave, and no published statement covers the traced case.
+   The engineering consequence is stated at [[#The correspondence at gandr's own rung, at theorem grade]] and the residual is [[#circuit-terms-question-19|circuit-terms-question-19]].
 7. **circuit-terms-question-07** — **how does the arity index the description universe?** Generalizing the recursive-occurrence code to a multiset of output sorts is a container, so the term face forces the **indexed** description universe.
    **Carried**, and shared with the higher-cells lane, which wants sort members for the same reason.
 8. **circuit-terms-question-08** — **what does the enumerator cost once interfaces are circuit-shaped?** Non-linear interfaces fan out families and the measured multi-sum degeneracy ends, which the corpus already names as the trigger for revisiting full multi-globularity.
@@ -320,19 +443,39 @@ Every one carries a disposition.
 11. **circuit-terms-question-11** — **can trace positions be dropped on gandr's cell fragment**, as the reversible-rewriting line drops them on pure-constructor systems?
     **Carried**, and cheap to settle.
 12. **circuit-terms-question-12** — **does this machinery want its own crate?** The proposal of record is `theory-circuit-algebras`, an inhabitant of the existing `CellAlphabet` interface rather than a fork of the engines.
-    **Carried, and cheapest settled before the alphabet grows.**
+    **Carried, and cheapest settled before the alphabet grows** — but **narrower than it was**: the representation half is not new work, because the monogamous fragment's canonical representation is a port bijection and the Agda carrier already is one, so what the crate would own is interface bookkeeping, embedding-based matching with its convexity check, and diagram normal form.
 13. **circuit-terms-question-13** — **does gandr want checked implicit coercions**, and is the circuit-term boundary one of their first customers?
     The observation is that a proof assistant's coercion mechanism is normally a bare insertion rule with no evidence attached, whereas gandr already plans a directed transformation family, a certificate layer, and named rewrite cells — so a coercion could be an **inhabitant of an existing evidence type** rather than new machinery, and mediating between primitive terms and circuit terms is the obvious motivating case.
     **Carried as a future direction, explicitly not scoped**, with its hazards named in the spike below.
 14. **circuit-terms-question-14** — **is gandr's cell layer an effectful category?** Interchange holding only on a declared subclass of morphisms is the defining feature of premonoidal and effectful categories, and gandr's disjoint-positions reversal condition is that shape arrived at independently.
-    **Carried**, with the specific sub-question being whether the **runtime object** device — a wire threaded through every generator not declared to interchange — is what gandr's single-spine cell grammar should become once the spine is represented rather than structural.
+    **Closed in the affirmative for the single-spine layer, and the runtime object is what the spine becomes.** The identification is a theorem rather than an analogy [@roman-sobocinski-2025-premonoidal-string-diagrams, thm 3.14], the same source names call-by-push-value as the closest programming-language rendering, and there is a positive argument for representing the spine rather than keeping it structural: a structural spine is the side-table alternative the authors reject because it **loses locality of substitution** [ibid., rmk 2.8], which is exactly the property embedding-based matching needs.
+    What does not close with it is the disconnection axis, which is [[#circuit-terms-question-16|circuit-terms-question-16]].
+15. **circuit-terms-question-15** — **is gandr's disjointness test convexity-stable?** Under convex rewriting, two rule applications on **disjoint** sets of hyperedges can block one another, because one can create a directed path that destroys the other's convexity [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, ex 45]. gandr's shift equivalence commutes adjacent applications at disjoint positions with trivial overlap, and that quotient is TCB-adjacent.
+    **Carried, and it is a guard obligation rather than a design preference** — the two available answers are a strengthened disjointness test or a fence to the left-connected fragment, and neither may be assumed.
+    [[#circuit-terms-spike-07|circuit-terms-spike-07]] decides it.
+16. **circuit-terms-question-16** — **what carries the spine once diagrams disconnect?** One runtime object means one sequentialization and makes every cell depend on every other [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory, prop 34], which is the opposite of what the disconnection axis is for; the structure that fits is **several runtimes**, one per independent component, with independence as disjointness of the location sets — the monoidal-distributed-alphabet shape.
+    **Carried, and it is an open problem in the literature rather than in gandr**: the multi-runtime generalization of effectful categories is proposed as future work by the same authors and is not axiomatized [ibid., sec. 8] [@earnshaw-2025-thesis].
+    This is the lane's best candidate for a genuine contribution rather than an import.
+17. **circuit-terms-question-17** — **what happens to non-linear patterns?** A repeated hole on a rule's left-hand side is free in a term-shaped store, because substitution copies; at the circuit rung it is a **copy on a wire**, which is a comonoid the type may not have.
+    The leading implementation of gandr's own rung refuses exactly this case by name, raising a not-implemented error labelled "rewriting modulo Frobenius" as soon as a boundary vertex is used more than once [@chyp].
+    **Carried, and it is the sharpest single consequence of the term-shaped-to-circuit-shaped move** — gandr admits non-linear patterns today (`CellMeta::derive`, `theory-computads/src/sequent.rs`, verified at source), so this is a live behaviour change and not a hypothetical.
+18. **circuit-terms-question-18** — **is the fan-out obligation carried as a per-type supply, and at which layer?** The fan-out/fan-in asymmetry did not survive this pass, so copy owes the same treatment as merge. gandr already prices duplication on the **value** side, with grades and with `dup`/`drop` as ordinary computations; what has no answer is what the obligation means at the **cell** layer, where a repeated hole is the thing that would have to carry it.
+    **Carried**, and coupled to [[#circuit-terms-question-17|circuit-terms-question-17]] — they are the same fact seen from the supply side and from the pattern side.
+19. **circuit-terms-question-19** — **what covers the wheel axis?** Acyclicity is a hypothesis of the monogamous-acyclic fragment, of convex matching, and of the published termination arguments; gandr's arity ruling has made the trace primitive, so gandr's destination is traced symmetric monoidal without Frobenius, which no statement in the hypergraph-rewriting line reaches.
+    **Carried, and it is now the lane's largest cited unknown** — the previous largest, whether the DPO instance applies at all, closed above.
 
 ## Spikes
 
 ### circuit-terms-spike-01
 
 **Does the hypergraph DPO-with-interfaces instance apply to gandr's circuit cells?** Take one circuit cell shape, write it as a hypergraph with interface, and check three claims: that the interface is the coproduct of the cell's input and output ports, that gandr's rules have mono left legs so pushout complements are unique, and that a rewrite respecting the interface is the same relation as a gandr cell application.
-**Small.** Settles the DPO-applicability question and decides whether the corpus's scoping is retired or re-scoped rather than contradicted.
+**EXECUTED (2026-08-01), and the numbering is retained rather than reused.** Its three claims resolved as follows, against the sources rather than against a toy encoding.
+
+* **The interface is the coproduct of the cell's input and output ports** — **confirmed as the setting's own definition**: a rule is $L ← i + j → R$ with $i + j$ discrete, and a hypergraph with interface is $G ← n + m$ for the ma-cospan $n → G ← m$ [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, sec. 5.1].
+* **gandr's rules have mono left legs, so pushout complements are unique** — **the wrong question at this rung, and it dissolves.** The Frobenius-free theory does not use plain pushout complements; it uses **boundary complements**, which are unique whenever they exist, explicitly including rules that are not left-linear [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, prop 31]. gandr does **not** have mono left legs in general — non-linear patterns are admitted and their linearity recorded as derived metadata — so the claim as posed would have failed; the uniqueness gandr needs comes from elsewhere and is unconditional.
+* **A rewrite respecting the interface is the same relation as a gandr cell application** — **confirmed for the correspondence and not yet for gandr.** The correspondence is an iff for arbitrary rewriting systems over arbitrary (including coloured) symmetric monoidal theories, at [ibid., thm 35 and thm 39], **provided the rewrite is convex**; whether gandr's cell application is convex is not a fact about the literature and is now [[#circuit-terms-question-15|circuit-terms-question-15]].
+
+**The verdict is that the corpus's scoping is re-scoped, not contradicted**, and the re-scoping is written at [[#The correspondence at gandr's own rung, at theorem grade]].
 
 ### circuit-terms-spike-02
 
@@ -341,8 +484,10 @@ Every one carries a disposition.
 
 ### circuit-terms-spike-03
 
-**Is the fan-in obligation expressible as a per-type supply over gandr's own formers?** Write the obligation for one concrete target, check that the coherence the supply theorem grants is the coherence gandr would otherwise check per cell, and confirm the construction stays per-type rather than ambient.
-**Small**, and it is the construction whose existence narrows the fan-in decline.
+**RE-SCOPED (2026-08-01) to the warrant, because the construction is settled.** The original question — is the fan-in obligation expressible as a per-type supply — is answered in the affirmative under [[#Per-type supply as a general decline-relaxation pattern]], with the construction, its termination theorem, and its no-cup condition all cited.
+What remains is one thing and it is a warrant question: **does the sound-and-complete correspondence survive a _mixed_ signature**, where some colours supply the structure and others do not?
+The published coloured statements quantify Frobenius over every colour, so nothing yet covers the mixed case; check whether the encoding of a supply as ordinary generators plus rules keeps the whole theory inside the monogamous acyclic fragment, and whether the resulting system is left-connected (which would make its confluence decidable by the cheap route) or needs path joinability.
+**Small**, and it is now the gate on the second row of the supply table rather than on the first.
 
 ### circuit-terms-spike-04
 
@@ -358,6 +503,17 @@ Every one carries a disposition.
 
 **What would a checked implicit coercion cost, and what would it be evidence of?** Write one coercion between a primitive term and a circuit term and answer three questions: what evidence type inhabits it; whether coherence — two coercion paths between the same pair agreeing — is a theorem, a certificate, or an unmet obligation; and whether insertion is decidable without search.
 **Unmeasured, and deliberately fenced.** The hazards are named rather than solved: an insertion rule that fires silently is a readability surface and a soundness surface at once, and the corpus's standing position that variance is derived and never declared has coercion as its neighbouring temptation.
+
+### circuit-terms-spike-07
+
+**Is gandr's disjointness test convexity-stable, and if not, what is the fence?** Take the published counterexample — two rule applications on disjoint hyperedge sets where each destroys the other's convexity [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, ex 45] — and answer three questions in order.
+
+* Does an analogous pair exist over gandr's cell fragment once patterns are circuit-shaped, or does the cut-rooted left-hand-side discipline already exclude it?
+* If it exists, is the repair a strengthened disjointness predicate (disjoint **and** no new path created between the other match's boundary), or a fence of the shift quotient to left-connected left-hand sides?
+* Either way, what does the `cells_equal` fast path have to check before it may commute two applications, and does that check stay cheap enough to keep the fast path a fast path?
+
+**Small to write, and it is the one item in this lane that touches a TCB-adjacent surface**, so it runs before the alphabet grows rather than after.
+The honest default until it runs is that the shift quotient is warranted only on the fragment where matches cannot be non-convex, which today is the whole cell store and after the alphabet change is not.
 
 ## Findings that route to other tracks
 
@@ -383,19 +539,23 @@ None is scoped by this lane.
 | a bridge arity whose maps do not compose                        | the `WfKind::ArityDoesNotCompose` decline, at the declaration table                   |
 | two disjoint redexes in one body                                | the declined-horizontal-composition guard, writable once bodies exist                 |
 | a fan-in cell whose target carries no commutative monoid        | the aggregation obligation, named at the declaration rather than implied by a picture |
+| a fan-out cell whose source carries no cocommutative comonoid   | the dual obligation, which the retired asymmetry had hidden                           |
 | a body with an unbound internal wire                            | the internal-wire binder, and the disjointness check shaped after `rwf`               |
 | a wheel with no delay                                           | the wheel guard, which is a **new** guard and owes a witness once it exists           |
 | a multi-consumer command the typed-IL checker admits or refuses | the tag-declared arity, replacing the hard-coded one                                  |
+| two disjoint redexes where applying one destroys the other      | the convexity hazard, and whatever [[#circuit-terms-spike-07]] decides the guard is   |
 
-The middle three are owed to the binding-guards inventory independently; this lane is where they stop being unwritable.
+Four of these are owed to the binding-guards inventory independently; this lane is where they stop being unwritable.
 
 ## Source and confidence
 
 * **Every as-built row was verified against this tree at the time of writing**, with the crate and symbol named at the claim.
   The load-bearing negative claims — that no construction site emits more than one consumer, that the machine reads only the first, and that the description table's operations are never read — were checked at their sites.
-* **The literature findings come from a triage sweep, not from close readings**, and are marked accordingly: abstracts and section maps for the whole set, with targeted section-level reads for the hypergraph-rewriting, supply, ancilla-scope, and reversible-term-rewriting results.
+* **The hypergraph-rewriting results are now read at theorem grade** and are cited at their own numbered statements: the monogamous-acyclic characterisation, boundary-complement uniqueness, the sound-and-complete convex correspondence including its coloured form, the Frobenius-semi-algebra termination proof and the disjoint-but-blocking counterexample [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii]; local confluence for DPO with interfaces, its computability conditions and decidability corollary, the left-connected route, and the path-joinability route with its converse [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii].
+  The premonoidal and trace-theory results are likewise cited at their statements.
+* **The remaining literature findings come from a triage sweep, not from close readings**, and are marked accordingly: abstracts and section maps, with targeted section-level reads for the supply, ancilla-scope, and reversible-term-rewriting results.
   Anything a rung depends on is filed as a spike rather than treated as established.
-* **The Ricercar transcription is checked against its own figures**; the four-clause well-formedness fold and the inversion clause are quoted, not paraphrased.
+* **Two claims of an earlier revision did not survive and are corrected in place rather than dropped**: that fan-out is free while fan-in is not (contradicted by gandr's own monogamous carrier, by `dup`/`drop` on the surface, and by the monogamy condition of the correspondence), and that the mono-left-leg condition is what buys uniqueness at gandr's rung (superseded by boundary complements, which are unique unconditionally).
+* **The readings of the implementations are this pass's own**, taken from source at the checkouts to hand, and are engineering observations rather than claims those projects make: the port-bijection representation and its stated reason [@sobocinski-wilson-zanasi-2019-cartographer], the matcher invariants, the convexity post-check, the language's refusal to name a wire and the Frobenius not-implemented path [@chyp], the spider-label wiring map [@discopy], the predicate-plus-surgery rewrite shape and the per-step semantic differential [@pyzx], and the hash-consed diagram representation with normal-form conditions as well-formedness invariants [@homotopy-rs].
 * **One neighbouring result was already absorbed and carries a standing ruling**: the planar string-diagram normalization work is cited by the metatheory track with the ruling that its quotient must **not** be substituted for the symmetric one [@delpeuch-vicary-2022-normalization].
 * **The hypergraph reading of the closest Agda encoding is this pass's own**, and is a fork-identification rather than a claim that thesis makes about gandr [@altenmuller-2026-string-diagrams].
-* The deeper sweep these findings trigger is scheduled by the metatheory track's reading queue, not here.

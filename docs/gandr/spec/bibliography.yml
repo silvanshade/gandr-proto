@@ -1945,7 +1945,12 @@ bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii:
     title: Mathematical Structures in Computer Science
     volume: 32
     page-range: 511-541
-  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+  serial-number:
+    arxiv: "2104.14686"
+  note: >-
+    read at theorem grade 2026-08-01 against the held arXiv v2 (14 Sep 2022); the held copy is
+    paginated 1-00 by its own header, so cite by numbered statement (thm 25, prop 31, thm 35,
+    thm 38/39, thm 44, ex 45) and never by page
 
 bonchi-gadducci-kissinger-sobocinski-zanasi-2017-confluence-interfaces:
   type: article
@@ -1957,7 +1962,10 @@ bonchi-gadducci-kissinger-sobocinski-zanasi-2017-confluence-interfaces:
     title: Programming Languages and Systems — ESOP 2017
     volume: 10201
     page-range: 141-169
-  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+  note: >-
+    superseded for citation purposes by [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii],
+    which states itself to be its updated and extended successor; cite the successor unless the
+    conference form is specifically wanted
 
 kissinger-zamdzhiev-2015-context-free-families:
   type: article
@@ -1992,14 +2000,22 @@ sobocinski-wilson-zanasi-2019-cartographer:
     type: proceedings
     title: 8th Conference on Algebra and Coalgebra in Computer Science — CALCO 2019
     volume: 139
-  note: not yet read; bibliographic data taken from the reference list of [@altenmuller-2026-string-diagrams]
+  note: >-
+    paper not read; the accompanying implementation was read at source 2026-08-01 for its
+    representation and matching algorithm, and the representation claims in the corpus are taken
+    from the code rather than from the paper
 
 chyp:
   type: software
   title: "Chyp: an interactive theorem prover for string diagrams"
   author: ["Kissinger, Aleks"]
   date: 2023
-  note: not yet read; named in the tool survey of [@altenmuller-2026-string-diagrams]
+  url: https://github.com/akissinger/chyp
+  note: >-
+    read at source 2026-08-01 for its declarative language, its matcher invariants and its
+    double-pushout construction; it implements the theory of
+    [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii], by its own
+    statement, and not the Frobenius theory
 
 # --- the circuit-terms sweep, round 2 (2026-08-01): the confluence answer, the
 # --- premonoidal/effectful interchange framework, and the trace-theory cluster.
@@ -2047,3 +2063,55 @@ nester-2022-situated-transition-systems:
     type: periodical
     title: Electronic Proceedings in Theoretical Computer Science
     volume: 372
+
+# --- the circuit-terms deep pass (2026-08-01): the thesis behind the mu-syntax,
+# --- the language-theoretic successor, and the implementations read at source.
+
+obradovic-2017-thesis:
+  type: thesis
+  title: "Cyclic operads: syntactic, algebraic and categorified aspects"
+  author: ["Obradović, Jovana"]
+  date: 2017
+  organization: Université Paris Diderot — Paris 7, Sorbonne Paris Cité
+  serial-number:
+    hal: "tel-01676983"
+  url: https://hal.science/tel-01676983v1
+
+earnshaw-2025-thesis:
+  type: thesis
+  title: Languages of String Diagrams
+  author: ["Earnshaw, Matthew David"]
+  date: 2025
+  organization: Tallinn University of Technology
+
+earnshaw-roman-2024-context-free-languages:
+  type: article
+  title: Context-Free Languages of String Diagrams
+  author: ["Earnshaw, Matt", "Román, Mario"]
+  date: 2024
+  serial-number:
+    arxiv: "2404.10653"
+
+kissinger-vandewetering-2020-pyzx:
+  type: article
+  title: "PyZX: Large Scale Automated Diagrammatic Reasoning"
+  author: ["Kissinger, Aleks", "van de Wetering, John"]
+  date: 2020
+  serial-number:
+    arxiv: "1904.04735"
+
+pyzx:
+  type: software
+  title: "PyZX: a Python library for automated reasoning with large ZX-diagrams"
+  author: ["Kissinger, Aleks", "van de Wetering, John"]
+  url: https://github.com/zxcalc/pyzx
+  note: >-
+    read at source 2026-08-01 for rewrite-strategy engineering only; the accompanying paper is
+    [@kissinger-vandewetering-2020-pyzx]
+
+homotopy-rs:
+  type: software
+  title: "homotopy.io: a proof assistant for finitely presented globular n-categories"
+  organization: homotopy.io contributors
+  url: https://github.com/homotopy-io/homotopy-rs
+  note: read at source 2026-08-01 for its diagram representation and its well-formedness invariants
