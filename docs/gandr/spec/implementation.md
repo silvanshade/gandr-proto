@@ -169,6 +169,7 @@ Four signatures with a closed operation set (exec; filesystem read/write/glob/st
 Representable outcomes (a non-zero exit, a stat of a missing path) are ordinary reply values, not errors; only a fatal syscall aborts.
 Early outcomes (exit, host failure) are captured out of band and replace the machine's no-handler blame after termination.
 **There is no capability or sandbox model** — ambient always-resume posture, no path allowlist, no per-signature grant — and the linear-zone claim is vacuous with multi-shot resumption; stating this here is the first step of the roadmap item that prices it, and the certified-implementation criterion from the layered-game-semantics line [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered] is the named candidate for the soundness note the crate currently lacks.
+The design owed by that roadmap item is [[implementation/capability-model]]: grants as explicit capabilities threaded through handler install and resume, a grant-check point at the driver/handler boundary with denial as a third runtime outcome, the linear zone made non-vacuous by held-capability obligations, and the shell language's staging obligations priced.
 
 ## The performance discipline
 
@@ -191,4 +192,4 @@ Stated in code and easy to drop in a naive read of the design docs: completion's
 ## Sub-documents
 
 * [[implementation/roadmap]] — the remaining build-out in detail, the anticipation register, the engine↔metatheory statement contract, and the stale-documentation repairs owed.
-* [[implementation/performance-architecture]] — the performance program's design basis: the role partition, the glued-representation split, the unfolding recipe set, the machine cribs, and the parked items.
+1: @both

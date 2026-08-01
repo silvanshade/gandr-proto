@@ -24,7 +24,8 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 8b4af3fdeb50050fcc703b6ca0113cef251cbae515026871fc48990847f462fe
+2: @ours
+3: @both
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -132,6 +133,11 @@ nodes:
     b3: 91f08bf9208e2bb6153a0025bbf5700dd584bf979e98215059596b36190e36c5
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/implementation/capability-model.md
+    role: subdocument
+    b3: f3886233d01f73d5c3e6ec953d1c0a4f7d0f1205dca8d684f43f47af7c0e8982
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md
     role: subdocument
     b3: 25c429bf959eca5af9c6bdeee8a7c95bc596ea9a980eec0af4a2ded44e4e76fa
