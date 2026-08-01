@@ -327,10 +327,10 @@ mod tests
     /// Resolve a generated slot to a live tracked cell, wrapping the slot
     /// into the allocated range (checked remainder — no bare arithmetic);
     /// `None` while the heap is empty.
-    fn live<'heap>(
-        cells: &'heap mut [TrackedCell],
-        slot: &CellSlot,
-    ) -> Option<(LiveCell, &'heap mut TrackedCell)>
+    fn live(
+        cells: &mut [TrackedCell],
+        slot: CellSlot,
+    ) -> Option<(LiveCell, &mut TrackedCell)>
     {
         let index = slot.0.checked_rem(cells.len())?;
         let tracked = cells.get_mut(index)?;
@@ -374,7 +374,7 @@ mod tests
         op: &HeapOp,
     ) -> (Outcome, Option<LiveCell>)
     {
-        match op {
+        match *op {
             | HeapOp::Alloc => {
                 let (id, cell) = store.alloc_cell();
                 cells.push(TrackedCell {
@@ -420,7 +420,7 @@ mod tests
                         .last()
                         .expect("a tracked cell always has its allocation handle");
                     if matches!(handle.state(), MemoState::InProgress) {
-                        let value = probe_value(*pick);
+                        let value = probe_value(pick);
                         handle.set_forced(Rc::clone(&value));
                         (Outcome::WriteBack(CachePtr(value)), Some(index))
                     }
@@ -595,9 +595,9 @@ mod tests
                 "every allocation is registered exactly once",
             );
             for step in &trace.steps {
-                if let Outcome::Allocated(id) = &step.outcome {
+                if let &Outcome::Allocated(id) = &step.outcome {
                     prop_assert_eq!(
-                        usize::from(*id),
+                        usize::from(id),
                         step.before.len(),
                         "an allocation returned a non-dense or reused address",
                     );
@@ -615,7 +615,7 @@ mod tests
                 }
                 // Alias coherence: the address view equals every handle view.
                 for (index, after_views) in step.after.iter().enumerate() {
-                    let Some(address_view) = &after_views.at_address else {
+                    let Some(address_view) = after_views.at_address.as_ref() else {
                         return Err(TestCaseError::fail(format!(
                             "cell {index} is registered but unreadable at its nominal address"
                         )));
@@ -685,8 +685,10 @@ mod tests
                 else {
                     continue;
                 };
-                let (Some(before), Some(after)) =
-                    (&before_views.at_address, &after_views.at_address)
+                let (Some(before), Some(after)) = (
+                    before_views.at_address.as_ref(),
+                    after_views.at_address.as_ref(),
+                )
                 else {
                     return Err(TestCaseError::fail(format!(
                         "cell {index} unreadable at its nominal address"
@@ -695,10 +697,9 @@ mod tests
                 // Transition legality (the machine-legal fragment only).
                 let changed = before != after;
                 let legal = matches!(
-                    (&before.shape, &after.shape),
+                    (before.shape, after.shape),
                     (StateShape::Unforced, StateShape::InProgress)
-                        | (StateShape::InProgress, StateShape::Forced)
-                        | (StateShape::InProgress, StateShape::Unforced)
+                        | (StateShape::InProgress, StateShape::Forced | StateShape::Unforced)
                 ) || !changed;
                 prop_assert!(
                     legal,
@@ -720,7 +721,7 @@ mod tests
                 // Outcome ↔ transition agreement: the resolution belongs to
                 // the opening probe alone.
                 if changed {
-                    match (&before.shape, &after.shape) {
+                    match (before.shape, after.shape) {
                         | (StateShape::Unforced, StateShape::InProgress) => prop_assert!(
                             matches!(step.outcome, Outcome::ProbeOpened),
                             "a black hole opened without a probe entry",
@@ -750,7 +751,7 @@ mod tests
                     );
                 }
                 // An observation reports the state faithfully.
-                if let Outcome::Observed(observed) = &step.outcome {
+                if let Outcome::Observed(ref observed) = step.outcome {
                     prop_assert_eq!(
                         before, observed,
                         "an observation misreported the cell state",
@@ -804,8 +805,8 @@ mod tests
                 else {
                     continue;
                 };
-                match &step.outcome {
-                    | Outcome::WriteBack(ptr) => {
+                match step.outcome {
+                    | Outcome::WriteBack(ref ptr) => {
                         let cached = after_views
                             .at_address
                             .as_ref()
@@ -816,7 +817,7 @@ mod tests
                             "the write-back copied or re-derived the probe allocation",
                         );
                     },
-                    | Outcome::CacheHit(ptr) => {
+                    | Outcome::CacheHit(ref ptr) => {
                         let cached = before_views
                             .at_address
                             .as_ref()
@@ -856,7 +857,7 @@ mod tests
                         .and_then(|views| views.at_address.as_ref())
                         .and_then(|views| views.cached.as_ref());
                     if let Some(ptr) = view {
-                        if let Some(existing) = &cached {
+                        if let Some(existing) = cached.as_ref() {
                             prop_assert_eq!(
                                 existing,
                                 ptr,
