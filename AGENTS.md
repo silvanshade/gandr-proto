@@ -9,6 +9,30 @@
 
 This file is a thin orientation adapter.
 Substantive process guidance belongs in the routed workflow documents; reference it instead of restating it here.
+The one deliberate exception is the reference discipline below, restated here because it binds on every entry path into this repository.
+
+## Unambiguous reference — identifiers and citations
+
+**Both rules below bind in every context, not only in the specification corpus**: tracked documents, code comments and rustdoc, commit messages, tracker items, review artifacts, plans, notes, and chat.
+
+The reason is one reason, and it is about what happens to text _after_ it is written.
+Documents come to cite other documents; fragments get quoted, excerpted, summarized, and carried into contexts their author never saw.
+A reference that resolves only inside its home document arrives somewhere else meaning nothing — or, worse, meaning something else.
+**A colliding reference is worse than no reference at all, because it reads as precise.** So the test is never "is this clear here"; it is "does this still resolve, and resolve uniquely, when it arrives somewhere else with no context attached".
+
+**No bare letter-number identifiers.** Anything referred to anywhere that matters — a decision, commitment, obligation, finding, spike, open question, stage, rung, phase — carries an identifier whose prefix abbreviates what it _is_ or the topic it belongs to, followed by a zero-padded number: `meta-spike-04`, `meta-question-19`.
+Never `M1`, `S1`, `P1`, `H2`, `D11`, `F3.19`.
+Numbering is **stable**: retiring an item leaves its number unused rather than renumbering the rest, because renumbering silently invalidates every reference already taken against it.
+Give each identifier an anchor and cite it **by link, not by code** — `[[metatheory/roadmap#meta-question-19]]`, never "open question 19".
+
+This is not hypothetical, and this project has already paid for it: `S1` named a metatheory spike and an undefined "trusted S1 core" at the same time, and the collision stayed invisible until someone cited one and meant the other.
+Retired schemes are the sole exception and stay exactly as they are — the concordance in the guards ledger exists to decode old notes, so the codes in its left-hand column are data, not usage.
+
+**No ambiguous citations, ever.** A reference to external work is one of exactly two things: a key from a durable reference register — `[@key]` resolving in `docs/gandr/spec/bibliography.yml` (Hayagriva), or an equivalent BibTeX register — or the full title with its authors and its most accurate stable identifier (DOI, ISBN, arXiv id, HAL id, and the like).
+"The tagless-final paper", "the leading implementation", "a published mechanization", and a bare author-year with no register entry are each unusable by the next reader and unverifiable by the next reviewer.
+A claim resting on an unverified locator says so at the claim.
+
+The full statement of the identifier rule, with the anchoring and linking conventions, is [`docs/workflow/specs.md`](docs/workflow/specs.md) §"Identifiers are informative, prefixed, and linkable — never a bare letter and a number"; the corpus's citation convention is [`docs/gandr/spec/README.md`](docs/gandr/spec/README.md).
 
 ## Working posture
 
