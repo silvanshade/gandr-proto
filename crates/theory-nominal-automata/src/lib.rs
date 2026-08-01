@@ -43,9 +43,30 @@
 //!
 //! # What this crate is, and is not
 //!
-//! This crate is **only** the atom space, the monotone allocator, and the sort
-//! trait — born minimal (ADR-41 D2). Deliberately out of scope, each reserved
-//! behind this API until its consuming feature lands:
+//! The crate is the atom space, the monotone allocator, and the sort trait
+//! (ADR-41) **plus the first slice of the nominal-automata layer** this
+//! module doc reserved: the explicit-dealloc **automaton** that reclaims
+//! atoms. The adopted design is `docs/research/nominal-automata.md`; the
+//! landed modules map onto it as follows:
+//!
+//! - [`handle`] — the finitary orbit-level representation (control points,
+//!   registers, partial injective stores, degree): design doc §6.4.
+//! - [`letter`] — the extended alphabet `Â = { ⟦a, a⟧, ⟦a⟧ }` plus free uses:
+//!   NDA §3.
+//! - [`nda`] — the **NDA** model inventory (NDA Def 5.1) and the **membership**
+//!   decision procedure (forward reachability; on a DDA the deterministic
+//!   online monitor): design doc §4, §6.3, §7.3.
+//! - [`rnna`] — the **RNNA** model inventory (`FoSSaCS` 2017): design doc §2.2.
+//! - [`rnta`] — the **RNTA** model inventory (RNTA Def 4.1) and nominal terms
+//!   (RNTA Def 3.1): design doc §3.
+//! - [`dropping`] — the **name-dropping modification** `A_⊥` (NDA Constr 6.3 /
+//!   Thm 6.9; RNTA Def 5.3 / Thm 5.5), step ① of the shared name-dropping /
+//!   bounded-alphabet / reduce-to-classical template: design doc §5.
+//! - [`catalogue`] — the decision-procedure register (membership, emptiness,
+//!   inclusion, equivalence, determinization, Kleene) with the papers' theorem
+//!   numbers: design doc §6.3, §10.
+//!
+//! Still reserved behind this API until their consuming features land:
 //!
 //! - the swapping-list **permutation** (`Perm`) and its action / freshness `#`
 //!   discipline (arrives with the α / equivariance metatheory);
@@ -54,12 +75,54 @@
 //!   widens [`Sort`] with `Ord` — and `Hash` for hash-set support — so
 //!   `Atom<S>` can key the support container);
 //! - **nominal unification** (arrives with the real solver);
-//! - the explicit-dealloc **automaton** that reclaims atoms (arrives with `Σ`
-//!   sessions; the M1 allocator here is the monotone counter that never
-//!   reclaims).
+//! - the bounded-alphabet S-restriction and the classical NFA/NFTA back-end
+//!   (steps ② and ③ of the design doc §5 template), the RNTA top-down run,
+//!   determinization (NDA Thm 8.14), and the Kleene expression compiler (NDA
+//!   Thm 7.19/7.20) — recorded residuals of the current slice.
 //!
 //! The crate is generic over the sort so it carries no gandr vocabulary; gandr
 //! supplies its own `enum GandrSort : Sort`.
+
+extern crate alloc;
+
+pub mod catalogue;
+pub mod dropping;
+pub mod handle;
+pub mod letter;
+pub mod nda;
+pub mod rnna;
+pub mod rnta;
+
+pub use crate::catalogue::CATALOGUE;
+pub use crate::catalogue::CatalogueEntry;
+pub use crate::catalogue::Model;
+pub use crate::catalogue::Problem;
+pub use crate::catalogue::Status;
+pub use crate::dropping::name_dropping;
+pub use crate::handle::Arity;
+pub use crate::handle::AutomatonError;
+pub use crate::handle::Configuration;
+pub use crate::handle::Control;
+pub use crate::handle::Controls;
+pub use crate::handle::Degree;
+pub use crate::handle::Freshness;
+pub use crate::handle::Membership;
+pub use crate::handle::Register;
+pub use crate::handle::Store;
+pub use crate::handle::StoreError;
+pub use crate::handle::Transfer;
+pub use crate::letter::Letter;
+pub use crate::nda::Nda;
+pub use crate::nda::Rule;
+pub use crate::nda::RuleKind;
+pub use crate::rnna::Rnna;
+pub use crate::rnna::RnnaRule;
+pub use crate::rnna::RnnaRuleKind;
+pub use crate::rnta::ChildTarget;
+pub use crate::rnta::NodeKind;
+pub use crate::rnta::Rnta;
+pub use crate::rnta::RntaRule;
+pub use crate::rnta::Term;
 
 /// The dense identity an [`Atom`] carries within its sort.
 ///
