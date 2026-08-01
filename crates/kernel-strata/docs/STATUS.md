@@ -1,6 +1,6 @@
 # Status
 
-The crate is slices 1 and 2 of the minimal certified kernel (`docs/gandr/spec/kernel-boundary.md` §8): the ADR-78 level algebra's **free fragment** plus the **landmark poset** — admission and entailment by Bezem–Coquand loop-checking (TCS 913, 2022) — complete and green.
+The crate is the level-oracle slice of the minimal certified kernel (`docs/gandr/spec/implementation.md` §"The trusted base"): the ADR-78 level algebra's **free fragment** plus the **landmark poset** — admission and entailment by Bezem–Coquand loop-checking (TCS 913, 2022) — complete and green.
 
 Implemented (slice 1, landed 2026-07-13):
 

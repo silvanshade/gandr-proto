@@ -6,7 +6,7 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
 
 ## current
 
-* The crate is the leaf wire-protocol layer of the render-bus / editor-integration surface (`docs/gandr/spec/proposal-inspection-protocol.md`): plain, `Send`-safe, `serde`-ready data that the pipeline projects and that renderers (a TUI, a future editor webview, an agent) consume.
+* The crate is the leaf wire-protocol layer of the render-bus / editor-integration surface (`docs/gandr/spec/implementation.md` §"The surface pipeline"): plain, `Send`-safe, `serde`-ready data that the pipeline projects and that renderers (a TUI, a future editor webview, an agent) consume.
   It parses, lowers, types, and marks nothing — the renderer firewall — and depends on no other workspace crate, so downstream consumers link it without a cycle.
 * Naming: this crate is the _remote_ face of the render surface — the typing-machine inspection wire protocol (`present` + `wire`) that a renderer consumes over a channel or socket.
   It is named to dovetail with the planned `surface-render` presentation printer (the wyrd-era `gandr-pretty`), which will own the in-process rendering; `surface-render-remote` owns the projected/serialized wire vocabulary that crosses the process boundary.

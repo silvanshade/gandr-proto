@@ -72,7 +72,7 @@ Consequence: `NodeFacts` carries `dirty: bool` (the representation is complete) 
 
 Decision: the syntax and type enums are non-exhaustive, so later A-track stages (effects `F^ε`, control, grade ops, the linear context) can add constructors without breaking downstream matches.
 
-Rationale: the live spine is pure CBPV plus the two A2 extensions (integer literals, holes / `Unknown`), and the frozen-but-unbuilt constructs are recorded in `docs/gandr/spec/core-ir-contract.md` §0.
+Rationale: the live spine is pure CBPV plus the two A2 extensions (integer literals, holes / `Unknown`), and the frozen-but-unbuilt constructs are recorded in `docs/gandr/spec/implementation.md` (§"The checked language"; the reserved-slot forms in §"The surface pipeline").
 
 Consequence: downstream matches keep a catch-all arm and stay forward-compatible.
 

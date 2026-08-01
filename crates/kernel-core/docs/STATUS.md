@@ -1,6 +1,6 @@
 # Status
 
-The crate is slice 3 of the minimal certified kernel (`docs/gandr/spec/kernel-boundary.md` §8), stages B2.1 and B2.2: the **S1 pure polarized core** — term/type language, declaration vocabulary, environment + choke point, checker, and the C5-quarantined conversion (B2.1) — plus the **K5 export writer and validating reader** (B2.2) — complete and green.
+The crate is the S1 core slice of the minimal certified kernel (`docs/gandr/spec/implementation.md` §"The trusted base"), stages B2.1 and B2.2: the **S1 pure polarized core** — term/type language, declaration vocabulary, environment + choke point, checker, and the C5-quarantined conversion (B2.1) — plus the **K5 export writer and validating reader** (B2.2) — complete and green.
 Stage B2.3 landed the **kernel-native C5 goldens** here (`tests/goldens.rs` — the levelled-universe and explicit-lift fixtures, authored directly in kernel-core terms and round-tripping byte-identically); the bridge itself and the S1-eligible corpus partition live in the consumer crates (`gandr-core-checker` `kernel_bridge`, `gandr-core-sequent`'s partition sweep) since the TCB wall forbids the kernel depending on them.
 Stage B2.3 also added the **artifact-total amplification bound** (`MAX_ARTIFACT_EXPANDED_WORK`, gandr-4p3, closed here) and the deterministic **`DecodeMetrics`** the export exit gate records, and **D3-retuned** the three reader budgets from their blind launch values on real corpus telemetry (see "Reader budgets" below); the exit-gate harness itself (`GANDR_BLESS_KERNEL_EXPORT`) lives in the consumer crate (`gandr-core-sequent`'s `kernel_export_gate`) since recording the outer `ArtifactIdentity` needs the `storage-artifact` layer the TCB wall keeps out of kernel-core.
 The fcw.8 spec components (B2.4) are the remaining B2 stage.
@@ -41,7 +41,7 @@ Implemented (B2.1, slice 3):
 
 Implemented (B2.2, slice 3):
 
-* **Export writer/reader** (`export`) — the K5 re-checkable export at the ratified **v1 maximal-sharing subterm-table format** (kernel-boundary.md §5, E1–E6; `docs/research/massive-term-design.md` §4, §7).
+* **Export writer/reader** (`export`) — the K5 re-checkable export at the ratified **v1 maximal-sharing subterm-table format** (the export obligations E1–E6 — `docs/gandr/spec/implementation.md` §"The trusted base", export and replay; `docs/research/massive-term-design.md` §4, §7).
   `write` serializes an `Environment` to self-contained, deterministic canonical bytes: a v1 version header, the reserved sections, then the admission-ordered declaration sequence — each segment a **subterm table** (a unified tagged node table over all four families, one frozen `NODE_*` byte per former in the §4.5 order `0x00..=0x16`) rather than an expanded tree.
   Sharing is **maximal under structural equality**, computed by the writer via a **content-keyed dedup** post-order intern pass (the encoded entry bytes are the content key; the bytes are a function of the _abstract_ environment, never of in-memory sharing — a `no_std` `BTreeMap`); the walk is sharing-aware, so re-encoding a decoded DAG is `O(entries)`.
   Each declaration carries its admission mark and `Axiom`s serialize as `Axiom`s (E6); the precomputed `rested_on` sets are not written (E3).
@@ -125,7 +125,7 @@ Export (B2.2) design decisions recorded for review:
 These are the documented codec-interior deviation, not new debt; `cargo:clippy`, `cargo:nextest`, and `treefmt:check` are green.
 A dedicated pass to wrap the codec's byte/index interior (or to record a scoped `cargo:dylint` override) is a tracked follow-up.
 
-Deliberately **not** here (kernel-boundary.md §7 S1 exclusions): effects/handlers, the control fragment, general recursion/natives, datatype declarations and description codes, `Sigma`/`Split`, `Path`/identity, `List`/`Record`/`With`, holes, marks, annotations, `dup`/`drop`.
+Deliberately **not** here (the S1 closed-input exclusions, `docs/gandr/spec/implementation.md` §"The trusted base"): effects/handlers, the control fragment, general recursion/natives, datatype declarations and description codes, `Sigma`/`Split`, `Path`/identity, `List`/`Record`/`With`, holes, marks, annotations, `dup`/`drop`.
 The export format's seven ratified reservations are format-plane only and landed in B2.2 (`export`) — nothing is reserved inside the S1 types.
 
-The crate is `#![no_std]` over `core`/`alloc`, depending only on `gandr-kernel-strata` — the design record's TCB dependency wall (kernel-boundary.md §2) in its sharpest form.
+The crate is `#![no_std]` over `core`/`alloc`, depending only on `gandr-kernel-strata` — the TCB dependency wall (`docs/gandr/spec/implementation.md` §"Architectural commitments") in its sharpest form.
