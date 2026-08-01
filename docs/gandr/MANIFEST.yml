@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 4d549fdde46f64f50930ebdf3c416c4f7de83bb92a8cbfd732e1d3847c4461aa
+    b3: 167fd9ce1768036252b4b1c34ad4315a04ba0e862fbf561830ad6a22fa5d3461
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -29,7 +29,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
     role: track
-    b3: e0dd3d73b5c3194d02c6a176d19f228bd262bfa6f1bd681b80c502793111bb3a
+    b3: bdb16b8429b741ea5871f9167583e4b6b07cae2cd743e8e6c349b576efc914f1
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
@@ -39,12 +39,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 7fede21c42c4bfb733f6daba697f6e1928cc1c1a5d21787c1224e19ea5334f1d
+    b3: 8100bbdbd7f0c4d22f3a10dad3d2a4d17a2fc7b095b6392451fd96dfe064bf3f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 17b6c8896ac23fd2e8ec8621e0bd7f85848d8800ceb863f5c02a4a97e90b4245
+    b3: 899d4b41cc36d361ec06aeff7db0da922431730e62224b0b7fe5d604cbb839dc
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md

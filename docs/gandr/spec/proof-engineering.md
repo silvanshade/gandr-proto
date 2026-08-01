@@ -25,6 +25,23 @@ Consequences that are structural, not stylistic: quotients need not be effective
 * `𝟙` above is forbidden by default: a terminal hom silently discharges coherences nobody checked — the premature-truncation failure mode.
 * Forcing uniqueness of identity proofs is out of scope entirely; where set-ness is genuinely needed it enters as a `UIP` **parameter** on the index type, never through a shortcut.
 
+**Discarding is an assertion, and the rule above is the dimension-axis instance of it.** Wherever an operation produces a quantity its current consumers do not read, carrying it is `𝟘` — it asserts nothing, discharges nothing, and reopens if a consumer appears — while collapsing it to the unit is `𝟙`, and silently discharges a question nobody asked.
+The two are not "carry" against "abstain": **the unit is a value**, so the collapse is a commitment, and it is the one commitment no reader can find later because nothing in the tree records it.
+
+The tell is the same one the refuters serve: after the collapse, **no term can witness the other answer**, because the object that would witness it is the object that was dropped.
+Weigh it that way and the choice reads correctly, since the collapse is always the cheaper-looking side — it removes a field, and the thing it costs is invisible by construction.
+
+Three instances stand in the tree, and reading them together is what makes the pattern checkable rather than a slogan:
+
+| the collapse                                         | what it looks like                            | what it silently asserts                                                              |
+| ---------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| a terminal hom above the last dimension with content | a truncation                                  | the coherences up there hold                                                          |
+| a pool discipline on the cell shape                  | structural wheel-freeness                     | there are no wheels — and `WheelFree` loses its refuter                               |
+| dropping the closure's vertexless circles            | a total operation on the carrier as it stands | every object has dimension one, at every colour ([[metatheory#The rung, identified]]) |
+
+This is not the **unobserved** row of the sort table below.
+That row is for a piece that is never discriminated; each collapse above drops something the producing operation had to discriminate in order to drop it, so the choice is between carrying what was detected and asserting a value for it.
+
 **Where a structure has content is declared, not discovered**: the region-indexed certification (`At`, with `Everywhere` and the singleton region as its ends) certifies a structure at exactly the addresses a predicate admits, and an out-of-region address is discharged by constructor disjointness — the suite cannot even be formed there.
 The region is per doctrine, not per carrier: one carrier can inhabit `Setoid` and refuse `Category`, and a refutation of a _certification_ must never be read as a refutation of the bare structure.
 `Set`-level structures present through the discrete setoid on the identity type (the identity type as 1-cells, `𝟘` above), with a named former for the hom family so the separation between the bare instance and the dimension-wise certification stays real.

@@ -45,6 +45,20 @@ chu-hackney-2021-rectification:
     issue: 3
     page-range: 1418-1517
 
+stoll-2022-modular-brauer:
+  type: article
+  title: Modular Operads as Modules over the Brauer Properad
+  author: ["Stoll, Robin"]
+  date: 2022
+  serial-number:
+    arxiv: "2202.02201"
+  parent:
+    type: periodical
+    title: Theory and Applications of Categories
+    volume: 38
+    issue: 40
+    page-range: "1538-1607"
+
 raynor-2025-functorial:
   type: article
   title: Functorial, Operadic and Modular Operadic Combinatorics of Circuit Algebras

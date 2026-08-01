@@ -190,14 +190,34 @@ The identification is structural, not aspirational: the carrier's wiring datum `
 That is verbatim the **downward** condition on Brauer diagrams, and three consequences stand or fall together, each proved in the carrier rather than cited:
 
 1. **the wiring is downward** — $"Match" Γ Δ$ is inhabited only when $Γ$ is at least as long as $Δ$, the difference paid in caps, reproducing the downward category's hom-emptiness;
-2. **the nodeless loop is inexpressible** — a closed circle needs a cap composed with a cup; the cup does not exist, so no scalar ever has to be assigned to a free loop (the "problem of loops" of the unital rung never arises);
+2. **the nodeless loop is not _derivable_** — a closed circle needs a cap composed with a cup, and the cup does not exist;
 3. **composition cannot manufacture a closed component** — a composite of downward wirings is downward.
 
 If a cup is ever added, all three go at once; do not add one to make an operation total.
+
+> **That ruling stood when an operation turned out not to be total, and the repair went the other way.** Graph substitution's base case is a two-sided closure — a trace — and its degenerate case is exactly a closed circle ([[#The arity interface, universe-style]]).
+> The cup is far stronger than that needs: it is a binary pairing of two named sinks, so it inhabits hom-sets that must stay empty and takes 1 and 3 with it, while a **circle consumes no port and produces none** and touches neither.
+> Not derivable and not adjoinable are different claims, and only the first is above.
+
+Consequence 2 once carried a third clause — that no scalar ever has to be assigned to a free loop, so the "problem of loops" of the unital rung never arises.
+That clause is **retired**: it was bought by the trace not existing, and the trace is now the arity's primitive former.
+What replaces it is the source's own answer rather than a gandr device — a Brauer diagram **is** a pairing together with $k$, its number of closed components, with $k$ additive under composition plus the components that composition closes [@raynor-2025-functorial, def 3.4]. gandr's `Match` is the $k = 0$ fragment, the _open_ diagrams; carrying $k$ at the code is the passage from the open fragment to the definition, and it leaves 1, 2 and 3 exactly as stated.
 Downward hom-sets are finite for all profiles with **no graph-shape hypothesis** — so hom-finiteness, previously attributed to simple connectivity, is free at this rung, and the old finiteness-motivated restriction ladder is retired.
 Two cautions keep the rung honest.
 What is special about the substrate is that the wiring category is **free** — the free compact closed category on a palette — not that it is operadic (every permutative category has an underlying operad; that construction distinguishes nothing).
 And the passage from gandr's duals-free directed interfaces to the compact-closed Brauer world is the Int construction [@joyal-street-verity-1996-traced]: gandr needs no duals, Int supplies them, and the inclusion is an equivalence.
+
+**Those two sentences are about different categories, and reading them as one is the trap.** The source separates three, and naming all three is what stops the freeness line from looking like a claim that gandr's own wiring admits duals [@raynor-2025-functorial, ex 3.25]:
+
+| category               | what it is                                                                                                                             | gandr                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| $W_D$                  | the full subcategory on all-upward objects — canonically a $D$-coloured wheeled prop, **not** compact closed, since it admits no duals | **this one**                                 |
+| $"Int"(W_D) = W"BD"_D$ | walled Brauer diagrams, on objects $↑c ↓d$: duals arrive by reversing a strand across the wall, never by a cup                         | the passage                                  |
+| $"OBD"_D$              | all oriented Brauer diagrams — the free compact closed prop on the palette and its formal duals                                        | the ambient the literature states results in |
+
+So the licence Int buys is precise: **a result about the compact-closed ambient reaches gandr without a cup ever entering the carrier.** Its hypothesis is that $W_D$ be traced, and the trace on a wheeled prop is contraction — feeding an output back into an input of its own colour.
+That hypothesis is discharged by the arity ruling below rather than assumed: before the closure was primitive, the trace existed in the structure gandr is _identified with_ and not in the carrier as built.
+The same passage is what fixes the accounting question, since $W"BD"_D$'s diagrams carry $k$: dropping the circles would land Int in a quotient of it and not in it.
 
 ### The carrier, as landed
 
@@ -403,31 +423,51 @@ Substitution reuses six of grafting's ten (`wire-in`, `match-insert`, `insert-sh
 Its four new ones are `match-close`, its shape-level lift past each published port block, the block iteration, and the `Closed` record.
 The four it does not need are grafting's own: `preplug`, `lwhisk`, `match-lwhisk`, and `match-comp` with its accumulator.
 
-**And the closure's degenerate case has no term in the carrier, which is the spike's real finding.** A vertex whose output is wired back to its own input is a legal shape; a bare wire of the same profile is a legal code; substituting the second at the first closes a circle with no vertex, no leg and one edge.
-`Gandr.Shape.Graph`'s carrier excludes exactly that object, deliberately and by name — closing a circle with no vertex would need a pairing of two _sinks_, and no constructor makes one.
-The refutation is checked rather than argued: over closed interfaces, a shape with no vertex has no edge either (`Gandr.Arity.Universe.Circuit.no-circle`).
+**And the closure's degenerate case has no term in the carrier, which is what the scoping was for.** A vertex whose output is wired back to its own input is a legal shape; a bare wire of the same profile is a legal code; substituting the second at the first closes a circle with no vertex, no leg and one edge.
+`Gandr.Shape.Graph`'s carrier excludes exactly that object, deliberately and by name.
+Checked rather than argued: over closed interfaces, a shape with no vertex has no edge either (`Gandr.Arity.Universe.Circuit.no-circle`, with `selfloop` and `bare-wire` beside it).
 
-> **This is a representation question and not a refutation, and the premise tags are what say so.** That graph substitution closes circles is a fact about the machinery — it is why a trace has a loop scalar at all [@joyal-street-verity-1996-traced] — but that the closure has nowhere to put one is a fact about **our** carrier, and a premise about us carries no refutation.
-> The literature's own answer is the same move: the nodeless loop is a named object there, excluded from the graphical category for modular operads and admitted by its extension [@hackney-robertson-yau-2020-modular, ex 1.2 and def 1.6].
-> The tree already borrowed that term for what it excludes, so the exclusion was considered rather than overlooked, and disturbing it wants sign-off.
+> **The exclusion is of a _derivation_, and what the closure needs is an _adjunction_ of the object.** Deriving a circle would need a cup, which inhabits hom-sets that must stay empty; a circle consumes no port and produces none, so it disturbs neither the downward condition nor the finiteness that rests on it ([[#The rung, identified]]).
+> That distinction is the whole width of the repair, and the standing ruling against adding a cup to make an operation total is untouched by it.
 
-The cheapest admission is at the **code** and not at the carrier: `Code a b = Shape a b × ℕ`, a shape together with its count of vertexless circles.
+**Ruling (owner): substitution is the primitive former, and grafting is derived from it.** The reason is not the auxiliary count, which is common to both routes.
+Route two inhabits `Arity.sub` only where no strand closes — a weakening of the interface rather than the interface — so the presentation the whole arc is for is never reached.
+
+| route                      | the closure           | `Arity.sub`                           | grafting associativity         |
+| -------------------------- | --------------------- | ------------------------------------- | ------------------------------ |
+| **substitution primitive** | total, at `Shape × ℕ` | inhabited as stated                   | a corollary                    |
+| grafting primitive         | partial, at `Shape`   | inhabited only where no strand closes | a goal, on the existing ladder |
+
+Grafting is derived by substituting into a two-corolla series shape, which is written as an ordinary term and needs no grafting to build, so grafting associativity follows from the monad law.
+
+**Ruling (owner): the closure's circles are counted, not discarded** — `Code a b = Shape a b × ℕ`, a shape together with its number of closed components.
+This is [@raynor-2025-functorial, def 3.4] rather than a gandr device: a Brauer diagram is a pairing together with that count, and gandr's codes were its open fragment.
+Discarding them is not the neutral option it looks like — it sets $"tr"("id"_X)$ to the unit at every colour, which is `𝟙` where `𝟘` was available, and leaves no term able to witness the other answer ([[proof-engineering#The substrate tower]]).
+
+The count sits at the **code** and not in `Match`, and the two are isomorphic, since a shape has one wiring at the bottom.
+Carrying it in `Match` would put a number inside every listing-algebra lemma — `match-insert`, `match-cap`, the braid, `insert-swap-coh⁴` — none of which can close a circle, while at the code exactly the operations that close one touch it.
+
+> **And the placement is load-bearing rather than merely cheaper.** $"Match" Γ Δ$ is finite and $"Match" Γ Δ × ℕ$ is not, while $"Shape" Γ Δ$ is already infinite, so the count is free at the code and not free in the wiring.
+> Read against the hom-finiteness that retired the old restriction ladder ([[#The rung, identified]]), the wiring placement would reopen it.
+
+**What the ruling costs the downward condition is nothing, and saying why keeps the two questions apart.** The condition is a property of the _pairing_, which the count does not touch, so consequences 1 and 3 stand verbatim.
+What is true, and narrower, is that the open fragment is closed under **composition** — which is consequence 3, and is why $k = 0$ sufficed while the former was grafting — and **not** under contraction.
+The trace is not a downward-category operation but the wheeled prop's, and it is what generates the count.
 `Shape` is untouched, and so are the incidence, `WheelFree`, `Acyclic`, the cell record and every refuter standing on them; `Pos`, `lab`, `one` and `one-elim` are unchanged because a circle carries no vertex; the unit code counts zero, the merger adds counts, and substitution adds what the closure returns.
 
-| route                  | the closure           | `Arity.sub`                           | grafting associativity         |
-| ---------------------- | --------------------- | ------------------------------------- | ------------------------------ |
-| substitution primitive | total, at `Shape × ℕ` | inhabited as stated                   | a corollary                    |
-| grafting primitive     | partial, at `Shape`   | inhabited only where no strand closes | a goal, on the existing ladder |
+Two things the ruling owes, and one prediction it makes:
 
-**The recommendation is that substitution becomes the primitive former, and the reason is the second column.** Route two does not inhabit the interface — it inhabits a weakening of it — so the presentation the whole arc is for is not reached, and the price of route one is one product with `ℕ` at the code.
-Grafting is then derived by substituting into a two-corolla series shape, which is written as an ordinary term and needs no grafting to build, and grafting associativity falls out of the monad law.
-
-Three things it costs, stated so the ruling can be taken with them rather than after them:
-
-* **the code change wants sign-off**: it widens what a code is, and it widens it with an object the carrier was designed to exclude;
 * **an agreement lemma** between the derived grafting and the built `graft`, without which `verts-graft`, the two unit laws and the merger's incidence theorems do not transfer, and the tree carries two compositions;
+* **the count law** — that the two sides of associativity close the same number of circles — which is the source's $k$ formula as an induction, and is the one place the count is paid for rather than carried;
 * **the ladder-depth claim is a prediction**: the closure's own exchange law — closing two wires in either order — is predicted at arity three by the recorded debt-arity law, which is the braid and is proved, and its falsifier is a cap case that reaches the four-layer coherence instead.
   That coherence is held too, so the falsifier costs the prediction and not the route.
+
+> **Two alternatives were assessed and are not taken; both are recorded so neither is re-proposed.** Mapping circles to zero inside the _full_ Brauer category is unavailable at this base before it is weighed at all: **it needs a zero morphism**, being an ideal construction in a linear setting, and gandr's carrier is combinatorial at `Set`.
+> Reaching for it means enriching in pointed sets or abelian groups, which is a larger change than the cup it was to pay for.
+> Weighed anyway, for the case the enrichment ever exists: it does restore hom-finiteness with cups present, since pairings on a finite interface are finite once the count is killed — but it spends consequences 1 and 3 and therefore the rung, it leaves whether the circuit-algebra nerve theorem still covers the result an open question rather than an assumed one, and $δ = 0$ is the same collapse as discarding, pointed the other way.
+> The prior question is whether standalone cups are ever needed at all: what a cup buys is **duals**, and duals are what Int supplies without touching the carrier, so only something demanding a sink-sink pairing _in the carrier_ would force one.
+> And the modules-over-the-Brauer-properad presentation of modular operads [@stoll-2022-modular-brauer], which reaches the Feynman transform as a cobar construction and carries no downward restriction, is not a substitute for the rung's nerve theorem: it works in differential graded vector spaces over a field of characteristic zero, over _unrooted_ modular operads, and its result is a bar–cobar resolution rather than a nerve theorem for a monad with arities.
+> Its "no downward restriction" is vacuous for this question, because an unrooted setting has no direction to restrict; it stays adjacent input for a Feynman-transform or Koszul-duality angle, and for nothing here.
 
 The setoid translation the presentation rests on is mechanical: h-sets become carried cells one dimension up (the lawless-setoid discipline), the ambient univalence becomes the layout univalence map with its two-cell coherence (which stops being a tidy correction and becomes a **prerequisite** — the representation map's coherence is exactly what that two-cell obligation states), truncated finiteness becomes decided finiteness, and the one genuinely different piece is the free construction, where the literature's higher inductive type is replaced by the inductive-family-over-a-lawless-setoid answer of [[#The ambient-primitive policy]].
 

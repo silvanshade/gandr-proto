@@ -1012,18 +1012,37 @@ module Refute where
 --     `match-unhit` having joined the chain when the cut did.
 --
 --   * **And the closure's degenerate case has no term in the carrier.**
---     `no-circle` below is that, checked rather than argued. This is a
---     REPRESENTATION question and not a refutation: that substitution closes
---     circles is a fact about the machinery, but that there is nowhere to put
---     one is a fact about our carrier, and a premise about us carries no
---     refutation. The cheapest admission is at the CODE — a shape with its
---     count of vertexless circles — which leaves `Shape`, the incidence, the
---     predicates and their refuters alone.
+--     `no-circle` below is that, checked rather than argued. What the carrier
+--     excludes is a DERIVATION — a circle would need a cap composed with a cup,
+--     and there is no cup — and what the closure needs is the object ADJOINED.
+--     Those are different claims: a cup inhabits hom-sets that must stay empty,
+--     while a circle consumes no port and produces none, so the downward
+--     condition and the finiteness resting on it are untouched.
 --
--- The recommendation on the record is that substitution becomes the primitive
--- former, because the other route inhabits a weakening of the interface rather
--- than the interface. It is a code change, so it binds only with sign-off, and
--- nothing below it should be built against either former first.
+-- ── THE RULING (OWNER) ──────────────────────────────────────────────────────
+-- SUBSTITUTION IS THE PRIMITIVE FORMER, and grafting is derived from it by
+-- substituting into a two-corolla series shape — an ordinary term, needing no
+-- grafting to build — so grafting associativity follows from the monad law.
+-- The reason is not the count, which is common to both routes: the other route
+-- inhabits `sub` only where no strand closes, which is a weakening of the
+-- interface rather than the interface.
+--
+-- AND THE CIRCLES ARE COUNTED, NOT DISCARDED. `Code a b` is `Shape a b × ℕ`, a
+-- shape with its number of closed components. This is the source's own
+-- definition rather than a gandr device — a Brauer diagram IS a pairing
+-- together with that count, additive under composition plus the components the
+-- composition closes [@raynor-2025-functorial, Def 3.4] — and gandr's codes
+-- were its OPEN fragment. Discarding is not the neutral option it resembles:
+-- it sets the trace of every identity to the unit, at every colour, which is
+-- `𝟙` where `𝟘` was available and leaves no term able to witness the other
+-- answer.
+--
+-- The count sits at the CODE and not in `Match`, and that is a cost decision
+-- rather than a fidelity one — the two are isomorphic, since a shape has one
+-- wiring at the bottom. In `Match` it would ride inside every listing-algebra
+-- lemma (`match-insert`, `match-cap`, the braid, `insert-swap-coh⁴`), none of
+-- which can close a circle; at the code, exactly the operations that close one
+-- touch it.
 --
 -- ── AND ONE OBLIGATION IS PROMOTED RATHER THAN DISCHARGED ───────────────────
 -- `Inj` is not in the table because it is not inhabitable here at all: at this
@@ -1137,26 +1156,38 @@ module Circuit {ℓ} {Ob : Set ℓ} where
   -- next pass starts from a signature instead of from a paragraph.
   -- ══════════════════════════════════════════════════════════════════════════
 
-  -- The former. Graph substitution: replace every vertex of a shape by a shape
-  -- of the same profile. Its base case is the two-sided closure named in the
-  -- header, and that is the residual this spike locates rather than discharges.
+  -- THE CODE, per the ruling: a shape with its number of closed components.
+  -- `Match` and `Shape` are untouched; the count rides here, where the only
+  -- operations that can close a circle are.
+  Cod : List Ob → List Ob → Set ℓ
+  Cod Γ Δ = Shape Ob Γ Δ × ℕ
+
+  -- and the interpretation reads through it, because a circle carries no
+  -- vertex — which is why `Pos`, `lab`, `one` and `one-elim` are unchanged
+  Vtxᶜ : ∀ {Γ Δ} → Cod Γ Δ → List Ob → List Ob → Set ℓ
+  Vtxᶜ (X , _) = Vtxᶠ X
+
+  -- The former. Graph substitution: replace every vertex of a shape by a code
+  -- of the same profile. Its base case is the two-sided closure below, whose
+  -- circles are added to the counts the operands carried.
   Subst : Set ℓ
   Subst =
       ∀ {Γ Δ}
-    → (X : Shape Ob Γ Δ)
-    → (∀ {c d} → Vtxᶠ X c d → Shape Ob c d)
-    → Shape Ob Γ Δ
+    → (X : Cod Γ Δ)
+    → (∀ {c d} → Vtxᶜ X c d → Cod c d)
+    → Cod Γ Δ
 
   -- `⟦Σ̂⟧`, the half the laws consume. At the binary rung this is `verts-graft`
-  -- and `verts-merge`, both proved.
+  -- and `verts-merge`, both proved. The count is invisible to it, for the same
+  -- reason it is invisible to `Pos`.
   Pairing : Subst → Set ℓ
   Pairing sb =
-      ∀ {Γ Δ} {X : Shape Ob Γ Δ}
-    → (Y : ∀ {c d} → Vtxᶠ X c d → Shape Ob c d)
+      ∀ {Γ Δ} {X : Cod Γ Δ}
+    → (Y : ∀ {c d} → Vtxᶜ X c d → Cod c d)
     → ∀ {c d e f}
-    → (v : Vtxᶠ X c d)
-    → Vtxᶠ (Y v) e f
-    → Vtxᶠ (sb X Y) e f
+    → (v : Vtxᶜ X c d)
+    → Vtxᶜ (Y v) e f
+    → Vtxᶜ (sb X Y) e f
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- AND WHAT THAT FORMER'S BASE CASE DECOMPOSES INTO. `Subst` is the statement
@@ -1206,14 +1237,16 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     → Closed Γ Δ
 
   -- and its shape-level lift, pushing past each published port block exactly as
-  -- `wire-in` does
+  -- `wire-in` does. It lands in `Cod` rather than in `Shape`, which is where
+  -- the count enters the interface: `Subst` adds what this returns to the
+  -- counts its operands carried.
   CloseIn : Set ℓ
   CloseIn =
       ∀ {x Γ Γˣ Δ Δˣ}
     → Insert Ob x Γ Γˣ
     → Insert Ob x Δ Δˣ
     → Shape Ob Γˣ Δˣ
-    → Shape Ob Γ Δ × ℕ
+    → Cod Γ Δ
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- WHY THE COUNT IS IN THOSE TYPES, CHECKED RATHER THAN ARGUED. The published
