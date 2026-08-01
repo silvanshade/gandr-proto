@@ -218,7 +218,8 @@ Landed and green on this carrier (the full record, with each theorem named, is [
 * **the merger's incidence theorem, both directions**: no edge of a merge joins the two operands, and each operand's own adjacencies survive — so a merge of two connected shapes has **exactly two components, and they are the operands**.
   Disconnection is what the substrate says, not what the engine arranges.
 
-Grafting and merging are total and **do not preserve the predicates**: connectivity is a predicate on objects, so any two shapes compose and cell-ness is checked of the result, with the counterexamples (a graft that reconverges; a merge that disconnects; a self-gluing that closes a wheel) exhibited and refuted in the tree.
+Grafting and merging are total and **do not preserve the predicates**: connectivity is a predicate on objects, so any two shapes compose and cell-ness is checked of the result, with the counterexamples exhibited and refuted in the tree — `bigon`, two corollas grafted along two legs that reconverge and so lose acyclicity; `two-points`, a merge of two cells that disconnects and so loses connectivity; and `wheel`, one vertex whose out-leg is glued to its own in-leg, closing a directed loop.
+The tree's named _self-gluing_ witness, `gluing` — two vertices joined by one contracted wire — is connected, acyclic, and a cell: a self-gluing as such is not a wheel; the loop at one vertex is.
 The predicates need their refuters: an invariant can be structural or refutable, never both in one type, which is why a "generated cell" variant is deferred to the pasting layer as an adequacy pair rather than adopted as the carrier.
 
 As built, the `Cell` record still demands simple connectivity — the dioperad fragment — and this is the **one remaining carrier restriction**; deleting it (or replacing `Cell` with a family of carried predicates) is an accepted direction under the generality ruling, scheduled in [[metatheory/roadmap]].
@@ -689,8 +690,11 @@ The sharpest one-line statement of the whole section, kept because it is the mec
 
 ### Holes
 
-The adopted hole theory is **monoidal context theory** [@roman-2023-monoidal-context]: diagrams with holes over a polygraph, contexts as lists of interface pairs — one per hole — with derivations forming the cofree produoidal category over the free monoidal category.
+The adopted hole theory is **monoidal context theory** [@roman-2023-monoidal-context]: diagrams with holes over a polygraph, where a context in the **sequential** fragment is a list of interface pairs — one per hole; the full theory is built to allow incomplete morphisms of any two-dimensional shape, and the normalization monad is what permits them.
+Each monoidal category induces the **cofree produoidal category** of its monoidal spliced arrows (the splice–contour adjunction, its Theorem 3.3.10), whose free normalization is the normal produoidal category of monoidal lenses (its Theorem 3.5.3); the same lenses carry a second, independent universal characterization as **the free message theory** (its Theorem 4.5.9), which belongs to the message-passing application and is not the context theory's construction.
 The identification with the substrate is exact: the holes are the vertices, the vertex listing is the context, and the algebra of such things is a normal produoidal category; the ambient duoidal structure above is its instance at gandr's interface category.
+**A hole at the monoidal unit severs a diagram.** The splice distinguishes a plain morphism from one with a hole in the monoidal unit, because the latter hole splits the morphism in two parts — disconnection _is_ a hole with an empty interface — and normalization is what sews the two parts back into one.
+A hole layer that must see disconnection therefore lives at the splice, before the sewing.
 A second, independent hole theory exists for the _higher-order_ direction — diagrams-with-holes as strong profunctors, embedded lax-lax duoidally with a sequencer interpreting one-way signalling, and a Yoneda lemma pinning the notion down given channel–state duality [@hefford-wilson-2024-profunctorial] [@wilson-hefford-2026-strong-profunctors] [@wilson-hefford-hoffreumon-2026-supermaps]; it is conditional on wanting higher-order cells (a circuit with a hole taking another circuit), and the convergence of both lines on duoidal-structure-over-profunctors is the signal that the hole layer's home is the equipment's loose direction.
 
 ### Doctrine odds and ends that are load-bearing

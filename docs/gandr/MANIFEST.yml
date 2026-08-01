@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: e76614831597b65725b41ecf4b03f6e89785af9203018b90e03958a22ab80bd0
+    b3: 961075a7f6ffe719ebdcd34b03e97659c72f66bdf59d1feef639e6c8c104a761
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -114,7 +114,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
     role: subdocument
-    b3: 900e2a620b9e8efebcf182ed4fb9c7e8a7de06b807edf7f266719e5fa49a0a7d
+    b3: e9e70e2dee98ded3f7d2da9a13882af12d152f7176e8b1f3a879ecc9b475d753
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md

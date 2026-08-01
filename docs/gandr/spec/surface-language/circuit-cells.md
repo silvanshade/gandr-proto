@@ -38,7 +38,8 @@ It is that the carrier **deliberately** made them refutable, and a surface that 
 * The carrier's `node` constructor publishes a corolla's ports into the shared interface **rather than consuming from a pool** — and the recorded reason is exact: "a pool discipline would make wheel-freeness **structural** and cost the predicates their **refuters**."
 * The governing principle is stated once and binds everywhere: **an invariant can be structural or refutable, never both in one type.**
 * Grafting and merging are total and do **not** preserve the predicates.
-  Connectivity is a predicate on objects, so any two shapes compose and cell-ness is checked of the result — with the counterexamples (a graft that reconverges, a merge that disconnects, a self-gluing that closes a wheel) exhibited and refuted in the tree.
+  Connectivity is a predicate on objects, so any two shapes compose and cell-ness is checked of the result — with the counterexamples exhibited and refuted in the tree: `bigon`, a graft that reconverges and loses acyclicity; `two-points`, a merge that disconnects and loses connectivity; and `wheel`, a vertex whose out-leg is glued to its own in-leg.
+  The tree's named self-gluing, `gluing`, is connected, acyclic, and a cell — a self-gluing is not per se a wheel.
 
 So the carrier already pays for refutability, and the refuters already exist as Agda terms.
 A surface that cannot write a wheel makes the wheel guard **unfalsifiable** — the checker would be refusing something no program can express, which is not a guard but a tautology.
@@ -357,7 +358,7 @@ rule *whole(-src: A, +dst: D) {
 ```
 
 **This is the disconnection axis and the hole axis meeting**: disconnection is a hole with an empty interface.
-That identification is the most useful thing this reading produced, and it is not currently stated in the corpus.
+That identification is the most useful thing this reading produced, and it is now carried by the corpus's Holes section ([[../metatheory#Holes]]).
 
 * **Polarity plus acyclicity is a published, linear-time discipline.** The same work's polar lists are lists of types with a polarity function, and a **polar shuffle** is a bijection between the positive and negative halves whose induced directed graph is **acyclic** — with validity checkable in time linear in the interfaces, at most one shuffle between distinctly-typed lists, and composition preserving acyclicity.
 
@@ -375,10 +376,10 @@ the shuffle pairs producer's B• with consumer's B°, leaving [ A°, C• ]
 A wheel is exactly a pairing whose induced graph is **not** acyclic, which is why it needs a form of its own rather than falling out of ordinary attachment.
 The corpus's own "the normal-form check is a linear-time acyclicity test" and this bound are the same shape.
 
-**A correction to the corpus's Holes section.** It currently states that derivations form "the cofree produoidal category over the free monoidal category".
-The source says neither half of that: the cofree produoidal category is over **a** (monoidal) category, not the free one, and the "derivations form the free …" statement is a **different** theorem about message theories.
+**The precise statements, now carried by the corpus's Holes section.** The cofree produoidal category is over **a** (monoidal) category, not the free one, and the "derivations form the free …" statement is a **different** theorem about message theories.
 The precise statements are that spliced monoidal arrows are the cofree produoidal category over a monoidal category, and that monoidal lenses are the **free normalization** of it.
 The "contexts as lists of interface pairs" half is right for the **sequential** fragment and only there — parallel holes need the other tensor, and are not a list.
+An earlier revision of the corpus's Holes section conflated the first two and overgeneralized the third; the correction landed in the phase-4 pass.
 
 One honest note the source itself supplies: its author records that these produoidal types "are tedious — see, for instance, the long type of Stage — and it is not clear how to compose them."
 A gandr surface should not copy the notation; it should copy the structure.
