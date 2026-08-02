@@ -266,6 +266,26 @@
 -- withdrawn and stays withdrawn: one was owed. What the packaging changed is
 -- what it cost to pay.
 --
+-- WHAT IS LEFT IS ASSEMBLY, and half of it is done. Above the instruments the
+-- route runs: `match-comp` against a threaded wire, then `match-remove-comp` by
+-- rebuilding the FIRST factor — whose capped branch is `match-comp-cut`, already
+-- proved, so only the through branch is owed. That branch rebuilds the SECOND
+-- factor too, and splits in two:
+--
+--   * `match-comp-plug` — the second wiring carries the strand on to a sink.
+--     Proved. It mirrors `match-comp`'s recursion, and past that it costs only
+--     the wire apart-lemmas.
+--   * the fused half — the second wiring CAPS the strand's sink to another of
+--     its sources, which is then traced back through the first. Not written.
+--     Its case tree is the one place where the removed source has to be compared
+--     with the cut's inner port, so it consumes `match-remove-cut-apart` and
+--     `match-remove-cut-same`, and its deepest branch rebuilds the first
+--     wiring's tail from an inverse lookup to reach `match-unhit-insert-apart` a
+--     second time. No coherence is owed on it and no instrument is missing.
+--
+-- `match-unhit-comp` is the second parameter and is not analysed to this depth;
+-- the same instruments are what it will use.
+--
 -- AND THE ARITY OF SUCH A DEBT IS NOT ARBITRARY, which is worth knowing before
 -- reaching for heavier machinery: it is the number of positions the operations
 -- in play THREAD, plus the head they meet. `match-insert` threads one and
@@ -5230,6 +5250,229 @@ module _ {ℓ} {Ob : Set ℓ} where
     → (o : Match Ob Ξ Θ)
     → match-comp (match-cap i k m) o ≡ match-cap i k (match-comp m o)
   match-comp-cut {Γ} = match-comp-cut-acc (<-wellFounded (length Γ))
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- A WIRE THREADED INTO BOTH FACTORS at the position they share composes to a
+  -- wire threaded into the composite. This is the first of the two halves the
+  -- WIRE case of composition splits into: the strand runs through the first
+  -- wiring to the sink `j`, and the second wiring carries it on to `σ`.
+  --
+  -- It mirrors `match-comp`'s own recursion and pays the same measure, and what
+  -- it costs beyond that is exactly the wire apart-lemmas: the composite's
+  -- leading source sits past the threaded one, so both sides consult the second
+  -- wiring at DIFFERENT positions, and `match-remove-insert-apart` and
+  -- `match-unhit-insert-apart` are what say those two agree.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  mutual
+
+    match-comp-plug-acc
+      : ∀ {x Γ Γˣ Δ Δˣ Θ Θˣ}
+      → Acc _<_ (length Γˣ)
+      → (i : Insert Ob x Γ Γˣ)
+      → (j : Insert Ob x Δ Δˣ)
+      → (m : Match Ob Γ Δ)
+      → (σ : Insert Ob x Θ Θˣ)
+      → (β : Match Ob Δ Θ)
+      → match-comp (match-insert i j m) (match-insert j σ β)
+        ≡ match-insert i σ (match-comp m β)
+    match-comp-plug-acc a head j m σ β =
+      match-comp-∷-through j m (match-insert j σ β) σ β (match-remove-insert j σ β)
+    match-comp-plug-acc a (tail i) j (c ∷ b) σ β =
+      plug-∷ a i j c b σ β (match-remove c β) refl
+    match-comp-plug-acc (acc rec) (tail i) j (cap c b) σ β =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (cap
+            (Exchange.outer (insert-swap i c))
+            (match-insert (Exchange.inner (insert-swap i c)) j b))
+          (match-insert j σ β)
+      ≈⟨ match-comp-cap
+           (Exchange.outer (insert-swap i c))
+           (match-insert (Exchange.inner (insert-swap i c)) j b)
+           (match-insert j σ β) ⟩
+        [ M ↦ cap (Exchange.outer (insert-swap i c)) M ]·
+          match-comp
+            (match-insert (Exchange.inner (insert-swap i c)) j b)
+            (match-insert j σ β)
+      ≈·⟨ match-comp-plug-acc
+            (rec (insert-shrink (Exchange.outer (insert-swap i c))))
+            (Exchange.inner (insert-swap i c))
+            j
+            b
+            σ
+            β ⟩
+        [ M ↦ match-insert (tail i) σ M ]· cap c (match-comp b β)
+      ≈·⁻¹⟨ match-comp-cap c b β ⟩
+        match-insert (tail i) σ (match-comp (cap c b) β)
+      ∎
+
+    -- what the second wiring does with the leading source, taken as an argument
+    plug-∷
+      : ∀ {v x Γ Γˣ Δ Δˣ ys Θ Θˣ}
+      → Acc _<_ (length (v ∷ Γˣ))
+      → (i : Insert Ob x Γ Γˣ)
+      → (j : Insert Ob x Δ Δˣ)
+      → (c : Insert Ob v ys Δ)
+      → (b : Match Ob Γ ys)
+      → (σ : Insert Ob x Θ Θˣ)
+      → (β : Match Ob Δ Θ)
+      → (r : Removal v ys Θ)
+      → match-remove c β ≡ r
+      → match-comp (match-insert (tail i) j (c ∷ b)) (match-insert j σ β)
+        ≡ match-insert (tail i) σ (match-comp (c ∷ b) β)
+    plug-∷ (acc rec) i j c b σ β (through σ′ β′) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (Exchange.outer (insert-swap j c)
+            ∷ match-insert i (Exchange.inner (insert-swap j c)) b)
+          (match-insert j σ β)
+      ≈⟨ match-comp-∷-through
+           (Exchange.outer (insert-swap j c))
+           (match-insert i (Exchange.inner (insert-swap j c)) b)
+           (match-insert j σ β)
+           (Exchange.outer (insert-swap σ σ′))
+           (match-insert
+             (Exchange.inner (insert-swap j c))
+             (Exchange.inner (insert-swap σ σ′))
+             β′)
+           (begin⟨ bundle (≡ˢ _) ⟩
+              match-remove (Exchange.outer (insert-swap j c)) (match-insert j σ β)
+            ≈⟨ match-remove-insert-apart j c σ β ⟩
+              [ r ↦ removal-thread (Exchange.inner (insert-swap j c)) σ r ]·
+                match-remove c β
+            ≈·⟨ eq ⟩
+              through
+                (Exchange.outer (insert-swap σ σ′))
+                (match-insert
+                  (Exchange.inner (insert-swap j c))
+                  (Exchange.inner (insert-swap σ σ′))
+                  β′)
+            ∎) ⟩
+        [ M ↦ Exchange.outer (insert-swap σ σ′) ∷ M ]·
+          match-comp
+            (match-insert i (Exchange.inner (insert-swap j c)) b)
+            (match-insert
+              (Exchange.inner (insert-swap j c))
+              (Exchange.inner (insert-swap σ σ′))
+              β′)
+      ≈·⟨ match-comp-plug-acc
+            (rec (n<1+n _))
+            i
+            (Exchange.inner (insert-swap j c))
+            b
+            (Exchange.inner (insert-swap σ σ′))
+            β′ ⟩
+        [ M ↦ match-insert (tail i) σ M ]· (σ′ ∷ match-comp b β′)
+      ≈·⁻¹⟨ match-comp-∷-through c b β σ′ β′ eq ⟩
+        match-insert (tail i) σ (match-comp (c ∷ b) β)
+      ∎
+    plug-∷ a i j c b σ β (capped ι β′) eq =
+      plug-fuse a i j c b σ β ι β′ eq (match-unhit ι b) refl
+
+    -- and the trace back through the first wiring, likewise
+    plug-fuse
+      : ∀ {u v x Γ Γˣ Δ Δˣ ys ys′ Θ Θˣ}
+      → Acc _<_ (length (v ∷ Γˣ))
+      → (i : Insert Ob x Γ Γˣ)
+      → (j : Insert Ob x Δ Δˣ)
+      → (c : Insert Ob v ys Δ)
+      → (b : Match Ob Γ ys)
+      → (σ : Insert Ob x Θ Θˣ)
+      → (β : Match Ob Δ Θ)
+      → (ι : Insert Ob u ys′ ys)
+      → (β′ : Match Ob ys′ Θ)
+      → match-remove c β ≡ capped ι β′
+      → (u₀ : Unhit u Γ ys′)
+      → match-unhit ι b ≡ u₀
+      → match-comp (match-insert (tail i) j (c ∷ b)) (match-insert j σ β)
+        ≡ match-insert (tail i) σ (match-comp (c ∷ b) β)
+    plug-fuse (acc rec) i j c b σ β ι β′ eq (unhit π b″) eq′ =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (Exchange.outer (insert-swap j c)
+            ∷ match-insert i (Exchange.inner (insert-swap j c)) b)
+          (match-insert j σ β)
+      ≈⟨ match-comp-∷-capped
+           (Exchange.outer (insert-swap j c))
+           (match-insert i (Exchange.inner (insert-swap j c)) b)
+           (match-insert j σ β)
+           (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+           (match-insert
+             (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+             σ
+             β′)
+           (Exchange.outer (insert-swap i π))
+           (match-insert
+             (Exchange.inner (insert-swap i π))
+             (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+             b″)
+           (begin⟨ bundle (≡ˢ _) ⟩
+              match-remove (Exchange.outer (insert-swap j c)) (match-insert j σ β)
+            ≈⟨ match-remove-insert-apart j c σ β ⟩
+              [ r ↦ removal-thread (Exchange.inner (insert-swap j c)) σ r ]·
+                match-remove c β
+            ≈·⟨ eq ⟩
+              capped
+                (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+                (match-insert
+                  (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+                  σ
+                  β′)
+            ∎)
+           (begin⟨ bundle (≡ˢ _) ⟩
+              match-unhit
+                (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+                (match-insert i (Exchange.inner (insert-swap j c)) b)
+            ≈⟨ match-unhit-insert-apart i (Exchange.inner (insert-swap j c)) ι b ⟩
+              [ u ↦ unhit-thread
+                      i
+                      (Exchange.inner
+                        (insert-swap (Exchange.inner (insert-swap j c)) ι))
+                      u ]·
+                match-unhit ι b
+            ≈·⟨ eq′ ⟩
+              unhit
+                (Exchange.outer (insert-swap i π))
+                (match-insert
+                  (Exchange.inner (insert-swap i π))
+                  (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+                  b″)
+            ∎) ⟩
+        [ M ↦ cap (Exchange.outer (insert-swap i π)) M ]·
+          match-comp
+            (match-insert
+              (Exchange.inner (insert-swap i π))
+              (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+              b″)
+            (match-insert
+              (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+              σ
+              β′)
+      ≈·⟨ match-comp-plug-acc
+            (rec (insert-shrink (Exchange.outer (insert-swap i π))))
+            (Exchange.inner (insert-swap i π))
+            (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+            b″
+            σ
+            β′ ⟩
+        [ M ↦ match-insert (tail i) σ M ]· cap π (match-comp b″ β′)
+      ≈·⁻¹⟨ match-comp-∷-capped c b β ι β′ π b″ eq eq′ ⟩
+        match-insert (tail i) σ (match-comp (c ∷ b) β)
+      ∎
+
+  -- A WIRE THREADED INTO BOTH FACTORS at the position they share composes to a
+  -- wire threaded into the composite.
+  match-comp-plug
+    : ∀ {x Γ Γˣ Δ Δˣ Θ Θˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → (σ : Insert Ob x Θ Θˣ)
+    → (β : Match Ob Δ Θ)
+    → match-comp (match-insert i j m) (match-insert j σ β)
+      ≡ match-insert i σ (match-comp m β)
+  match-comp-plug {Γˣ} = match-comp-plug-acc (<-wellFounded (length Γˣ))
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- WHAT COMPOSITION DOES TO A REMOVAL AND TO AN INVERSE LOOKUP. These are the
