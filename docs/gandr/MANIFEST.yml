@@ -149,6 +149,6 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md
     role: subdocument
-    b3: 25c429bf959eca5af9c6bdeee8a7c95bc596ea9a980eec0af4a2ded44e4e76fa
+    b3: b20170c6ca72f49571fd29a3e0e4fa13db5ae60b46635ee2dbc1436e45d1a716
     edges:
       - { rel: registered-under, to: spec/proof-engineering.md }
