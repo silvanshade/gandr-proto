@@ -127,6 +127,11 @@ copy_wrapper!(
     "Child index within a first-order free term position."
 );
 copy_wrapper!(
+    PortArgumentCount,
+    usize,
+    "Number of arguments a rewrite-sorted port's instantiation involves."
+);
+copy_wrapper!(
     RoundTripSampleCount,
     usize,
     "Number of code-isomorphism replay samples checked in one direction."

@@ -68,6 +68,9 @@ pub enum WfKind
     /// A circuit rule's wiring reaches a port from itself, so no boundary term
     /// unfolds from it.
     CyclicCircuitWiring,
+    /// A circuit rule's redex line applies a rewrite its parameter telescope
+    /// does not declare.
+    UnknownRewritePort,
 }
 
 /// One well-formedness **diagnostic** — an inspectable failure with a message
@@ -115,9 +118,10 @@ impl WfDiagnostic
 ///
 /// # Adequacy
 /// - hypothesis: L3 — a clean description passes; an out-of-signature cell, a
-///   non-composing arity, a reserved-derived attribute, and a circuit rule
-///   whose wiring derives a boundary its sphere does not fix each surface
-///   exactly their diagnostic.
+///   non-composing arity, a reserved-derived attribute, a circuit rule whose
+///   wiring derives a boundary its sphere does not fix, and a redex applying a
+///   rewrite the rule's telescope does not declare each surface exactly their
+///   diagnostic.
 /// - witness: `wellformed::tests::*`.
 #[inline]
 #[must_use]
@@ -190,7 +194,10 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
 /// declared sphere's terms and every frame head must name a constructor or
 /// operation of this datatype. A redex head is **not** checked against the
 /// signature — it names a rewrite-sorted port of the rule's own telescope, not
-/// a signature symbol.
+/// a signature symbol — and is instead checked against that telescope
+/// ([`CircuitRule::ports`]) when the member declares one. An empty telescope
+/// means the ports are not declared here rather than that the heads are
+/// unknown, so the check bites only on a written telescope.
 ///
 /// The one rule deliberately **not** re-run is
 /// [`WfKind::UnboundRhsVariable`], which reads a rule's variables off its
@@ -220,23 +227,44 @@ fn check_circuit_rule(
         diagnostics,
     );
     for node in &rule.body.nodes {
-        let CircuitNode::Frame(ref frame) = *node
-        else {
-            continue;
-        };
-        if signature.contains(frame.head.name()) {
-            continue;
+        match *node {
+            | CircuitNode::Frame(ref frame) => {
+                if signature.contains(frame.head.name()) {
+                    continue;
+                }
+                diagnostics.push(WfDiagnostic::new(
+                    WfKind::OutOfSignatureCell,
+                    format!(
+                        "circuit rule `{}`'s frame applies symbol `{}` not in the datatype's \
+                         signature",
+                        rule.name,
+                        frame.head.name()
+                    )
+                    .into(),
+                    Some(rule.sphere.provenance),
+                ));
+            },
+            | CircuitNode::Redex(ref redex) => {
+                // An undeclared telescope is what every member built before
+                // rewrite-sorted ports existed carries, and it means the redex
+                // heads are simply not declared here — not that they are
+                // unknown. The check bites only where a telescope was written.
+                if rule.ports.is_empty() || rule.ports.iter().any(|port| port.name == redex.rewrite)
+                {
+                    continue;
+                }
+                diagnostics.push(WfDiagnostic::new(
+                    WfKind::UnknownRewritePort,
+                    format!(
+                        "circuit rule `{}`'s redex applies rewrite `{}`, which its parameter \
+                         telescope does not declare",
+                        rule.name, redex.rewrite
+                    )
+                    .into(),
+                    Some(rule.sphere.provenance),
+                ));
+            },
         }
-        diagnostics.push(WfDiagnostic::new(
-            WfKind::OutOfSignatureCell,
-            format!(
-                "circuit rule `{}`'s frame applies symbol `{}` not in the datatype's signature",
-                rule.name,
-                frame.head.name()
-            )
-            .into(),
-            Some(rule.sphere.provenance),
-        ));
     }
 
     let derived = match derive_boundaries(&rule.body) {
@@ -499,6 +527,7 @@ mod tests
     use crate::desc::DeclPolarity;
     use crate::desc::NominalId;
     use crate::desc::OpDesc;
+    use crate::elaborate::RewritePort;
 
     #[test]
     fn a_clean_description_passes()
@@ -754,6 +783,60 @@ mod tests
                 .iter()
                 .any(|diag| diag.kind == WfKind::DerivedBoundaryMismatch),
             "no boundary comparison is reported for a wiring that derives nothing"
+        );
+    }
+    #[test]
+    fn a_declared_telescope_admits_the_redex_heads_it_names()
+    {
+        // `rule cong2 : (rule p : Nat ==> Nat, rule q : Nat ==> Nat, …)`: both
+        // redex heads are ports of the rule's own telescope, and neither is a
+        // signature symbol.
+        let rule = CircuitRule::new(
+            "cong2",
+            congruence_sphere(FreeTerm::op("add", [
+                FreeTerm::var("x\u{2032}"),
+                FreeTerm::var("y\u{2032}"),
+            ])),
+            congruence_body(),
+        )
+        .with_ports(vec![
+            RewritePort::sorted("p", "Nat"),
+            RewritePort::sorted("q", "Nat"),
+        ]);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        assert!(
+            check_desc(&desc).is_empty(),
+            "a redex head the telescope declares is not an out-of-signature symbol"
+        );
+    }
+    #[test]
+    fn a_redex_applying_an_undeclared_port_is_declined()
+    {
+        // The same wiring with only `p` in the telescope: `q` is applied by a
+        // redex line but bound nowhere.
+        let rule = CircuitRule::new(
+            "cong2",
+            congruence_sphere(FreeTerm::op("add", [
+                FreeTerm::var("x\u{2032}"),
+                FreeTerm::var("y\u{2032}"),
+            ])),
+            congruence_body(),
+        )
+        .with_ports(vec![RewritePort::sorted("p", "Nat")]);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        let diagnostics = check_desc(&desc);
+        let unknown = diagnostics
+            .iter()
+            .find(|diag| diag.kind == WfKind::UnknownRewritePort)
+            .expect("an undeclared redex head is declined");
+        assert!(
+            unknown.message.as_ref().contains('q'),
+            "the diagnostic names the rewrite the telescope does not declare"
+        );
+        assert_eq!(
+            1,
+            diagnostics.len(),
+            "and the declared port is not reported alongside it"
         );
     }
     /// The `cong2` wiring: two disjoint redexes whiskered into one `add` frame.

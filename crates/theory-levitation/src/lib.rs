@@ -55,6 +55,21 @@
 //! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Frame and
 //! redex").
 //!
+//! # Elaborating a circuit block (`elaborate`)
+//!
+//! A rewrite-sorted port (`rule p : Nat ==> Nat`) is sorted by the 2-cell face
+//! and binds the interface pair `(a, b, ρ : a ==> b)` — the shape a hole
+//! carries — with the pinned form `rule p : x ==> x′` available when the
+//! interface should name its endpoints ([`RewritePort`], [`InterfacePair`]).
+//! Instantiating one at a redex line unifies the source against the line's
+//! input wiring and binds the target, producing the [`CircuitRedex`] the
+//! derivation consumes. A block then elaborates to the boundary language's
+//! whiskered composite of its redex inside its frames ([`elaborate_body`],
+//! [`WhiskeredCell`]), against the boundaries the sphere check already fixed
+//! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Sorting a
+//! rewrite port"; `docs/gandr/spec/surface-language/higher-cells.md`, section
+//! "The boundary language").
+//!
 //! # Multi-out arities (`arity`)
 //!
 //! A multi-output operation is presented by the **bridge diagram**
@@ -118,6 +133,7 @@ pub mod circuit;
 pub mod code;
 pub mod decode;
 pub mod desc;
+pub mod elaborate;
 pub mod generic;
 pub mod intern;
 pub mod typed_cell;
@@ -148,6 +164,7 @@ pub use crate::boundary::MonomorphicStatus;
 pub use crate::boundary::NominalSerial;
 pub use crate::boundary::NumeralCount;
 pub use crate::boundary::PatternMatch;
+pub use crate::boundary::PortArgumentCount;
 pub use crate::boundary::RecursiveStatus;
 pub use crate::boundary::ReplayClassCount;
 pub use crate::boundary::ReplayEquivalence;
@@ -192,6 +209,14 @@ pub use crate::desc::NominalId;
 pub use crate::desc::OpDesc;
 pub use crate::desc::ParamDesc;
 pub use crate::desc::SurfaceSpan;
+pub use crate::elaborate::CircuitElaborationError;
+pub use crate::elaborate::InterfacePair;
+pub use crate::elaborate::PortFace;
+pub use crate::elaborate::PortInstantiationError;
+pub use crate::elaborate::RedexOccurrence;
+pub use crate::elaborate::RewritePort;
+pub use crate::elaborate::WhiskeredCell;
+pub use crate::elaborate::elaborate_body;
 pub use crate::generic::DescValue;
 pub use crate::generic::Payload;
 pub use crate::generic::Side;

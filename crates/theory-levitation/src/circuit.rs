@@ -53,6 +53,7 @@ use alloc::collections::BTreeSet;
 use crate::cell::CellFace;
 use crate::cell::FreeTerm;
 use crate::code::Name;
+use crate::elaborate::RewritePort;
 
 /// Which alphabet a frame's head is declared in — the member kind the ruled
 /// block form reads the frame's arrow off.
@@ -236,6 +237,14 @@ pub struct CircuitRule
     /// The **declared sphere**: the boundary pair the member's declaration
     /// fixes, carried at dimension 2 as the face's `lhs ⇴ rhs`.
     pub sphere: CellFace,
+    /// The **rewrite-sorted ports** of the rule's parameter telescope — the
+    /// binders a redex line applies by name ([`RewritePort`]).
+    ///
+    /// An empty telescope means the rule's redex heads are not declared here,
+    /// which is what every member built before the telescope existed carries;
+    /// the declaration table checks a redex head against this list only when it
+    /// is non-empty ([`crate::check_desc`]).
+    pub ports: Box<[RewritePort]>,
     /// The block body whose wiring must derive that pair.
     pub body: CircuitBody,
 }
@@ -243,6 +252,10 @@ pub struct CircuitRule
 impl CircuitRule
 {
     /// A circuit rule named `name`, declared at `sphere`, filled by `body`.
+    ///
+    /// The parameter telescope defaults to empty and is supplied by
+    /// [`CircuitRule::with_ports`], so a member built before rewrite-sorted
+    /// ports existed is exactly what it was.
     #[inline]
     #[must_use]
     pub fn new<N>(
@@ -256,7 +269,24 @@ impl CircuitRule
         Self {
             name: name.into(),
             sphere,
+            ports: Box::default(),
             body,
+        }
+    }
+
+    /// The same rule carrying `ports` as its parameter telescope.
+    #[inline]
+    #[must_use]
+    pub fn with_ports<P>(
+        self,
+        ports: P,
+    ) -> Self
+    where
+        P: Into<Box<[RewritePort]>>,
+    {
+        Self {
+            ports: ports.into(),
+            ..self
         }
     }
 }
