@@ -95,8 +95,16 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 * **Back up before graph-wide operations.** Before bulk triage, normalization, relabeling, dependency rewrites, or any other graph-wide mutation, create and sync a Dolt-native `bd backup` to a durable location outside the project tree.
   Verify the backup status and retain the backup until the operation is complete, synchronized, and verified safe to roll forward without it.
   Follow the end-to-end [beads graph sweep workflow](beads-graph-sweep.xml) for baseline capture, read-only classification, deterministic mutation, conservation checks, and reporting.
-* **Progress additions are comments only, except references.** After filing, append progress, evidence, and closeout chronology with `bd comment`; never accumulate them by amending `notes`, `description`, `design`, or `acceptance_criteria`.
-  Edit those standing fields only to correct the bead's authoritative current contract or to add and maintain its canonical research references.
+* **Progress additions are comments only, except references and ledger beads.** After filing, append progress, evidence, and closeout chronology with `bd comment`; never accumulate them by amending `notes`, `description`, `design`, or `acceptance_criteria`.
+  Edit those standing fields only to correct the bead's authoritative current contract, to add and maintain its canonical research references, or to maintain a **ledger bead** as defined below.
+* **A ledger bead is edited in place, and that is the point of it** (owner ruling, 2026-08-02).
+  A ledger bead's substance is a **register whose current state is the deliverable** — one row per tracked thing, kept correct — rather than a task with a history.
+  A register split across a comment stream is not a register: a reader would have to reassemble the present from a chronology, which is exactly the fragmentation it exists to prevent.
+  So its `design` field is edited in place, and a change that affects a row updates that row in the same change.
+  Comments on a ledger bead are for anything that is **not** a row.
+* **What makes a bead a ledger bead, so this does not become a licence to amend anything.** It says so in its own description, it is a register rather than a task, and its rows are maintained by _other_ work rather than by progress on itself.
+  The specification absorption ledger (`gandr-fid.11`) is the standing instance: one row per pre-reboot source, updated by whichever absorption touches that source.
+  Everything else keeps the comment-only rule, and "this bead accumulates state" is not on its own a reason to claim the exception — most beads accumulate state, which is what comments are for.
 * Beads cite corpus paths (`docs/gandr/spec/…`, `docs/adr/…`) so an agent lands with context.
 * Every doc-drift finding files a bead (`docs/KNOWLEDGE.md` phase 1) — drift produces work items, not silent warnings.
 * Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
