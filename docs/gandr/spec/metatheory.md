@@ -258,7 +258,11 @@ The tree's named _self-gluing_ witness, `gluing` — two vertices joined by one 
 The predicates need their refuters: an invariant can be structural or refutable, never both in one type, which is why a "generated cell" variant is deferred to the pasting layer as an adequacy pair rather than adopted as the carrier.
 
 As built, the `Cell` record still demands simple connectivity — the dioperad fragment — and this is the **one remaining carrier restriction**; deleting it (or replacing `Cell` with a family of carried predicates) is an accepted direction under the generality ruling, scheduled in [[metatheory/roadmap]].
-What each dropped restriction buys in the _derivation_ dimension is named there too: many-out is multi-conclusion derivation (the ratified term face), disconnection is **concurrency** (parallel independent rewriting arriving in the doctrine dimension), wheels are cyclic derivation (the completion loop's fixpoints).
+
+> **Read that sentence precisely, because it is easy to over-read and has been.** The restriction is on the **record**, not on the algebra: `graft`, `merge` and substitution are all typed at `Shape`, they are total, and they do not preserve the predicate — so nothing in the operations is confined to the dioperad fragment, and reconvergence and disconnection are already ordinary results of composing.
+> `Cell` is a bundle of a shape with a proof, consumed by nothing outside its own witnesses (`corolla-cell`, `point-cell`, `chain-cell`, `gluing-cell`).
+> The restriction therefore stopped being structural when the operations were typed at `Shape`; what remains is a record definition and a bookkeeping item, not a constraint a consumer is fighting.
+> What each dropped restriction buys in the _derivation_ dimension is named there too: many-out is multi-conclusion derivation (the ratified term face), disconnection is **concurrency** (parallel independent rewriting arriving in the doctrine dimension), wheels are cyclic derivation (the completion loop's fixpoints).
 
 ### Decoration — what belongs on the substrate
 
@@ -801,7 +805,8 @@ Verdicts: multi-sums hold degenerate-singleton (first-order syntactic unificatio
 The payoff: the universal concurrency and associativity theorems hold on that fragment by the universal proofs, with the differentials retained as adequacy witnesses.
 The measured cellular-Conduché row is a **definitional match** with the discrete Conduché condition (lifting of factorizations, uniquely) [@guetta-2020-conduche], which is both an exponentiability condition and one of directed type theory's fibrancy notions — so gandr has already measured a directed-fibrancy condition on its own cell store; whether it is the exponentiability the convolution face waits on is a scheduled one-day check.
 How to hold the framework: its fibrational reformulation was reverse-engineered from a naturality observation rather than posited as a doctrine, so testing it empirically per system is the intended use — and the indexed side (what the Grothendieck construction of these multi-opfibrations yields) is explicitly unexplored by its authors, a research door for the fibration-shaped reflection face.
-The trigger to revisit globularity-above-the-base is precise and cheap to watch: a non-linear pattern producing a genuine (non-singleton) multi-sum family — many-out one dimension up.
+The trigger to revisit globularity-above-the-base was precise and cheap to watch: a non-linear pattern producing a genuine (non-singleton) multi-sum family — many-out one dimension up.
+**That trigger cannot fire under the linearity ruling** ([[implementation/circuit-terms#The design questions|circuit-terms-question-17]]), which refuses the pattern that would produce the family; so it is restated rather than watched, and its new form is the **per-type comonoid generalization** — a type supplying a copy is where a genuine family could reappear, and landing that supply is what re-arms the watch.
 
 ### The convolution face
 

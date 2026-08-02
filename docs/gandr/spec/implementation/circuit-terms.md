@@ -245,8 +245,47 @@ The worked instance is the Frobenius-semi-algebra theory, and it is why that the
 > Either the disjointness test is strengthened to a convexity-stable one, or the shift quotient is fenced to the fragment where convexity cannot be broken (left-connected left-hand sides are the published such fragment).
 > Recorded as [[#circuit-terms-question-15|circuit-terms-question-15]] and [[#circuit-terms-spike-07|circuit-terms-spike-07]].
 
-**What the confluence theory cannot give gandr is the wheel axis.** Acyclicity is a hypothesis of the ma-fragment, of convexity (the path relation is a relation on directed paths), and of the termination arguments; the correspondence paper is explicit that a Frobenius-free rewrite that would need to move a box past a redex requires "at least a traced symmetric monoidal structure" to be applied at all [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, ex 5.2]. gandr's arity ruling has since made the two-sided closure — the trace — the **primitive** former ([[../metatheory#The arity interface, universe-style]]), so gandr's destination rung is traced symmetric monoidal without Frobenius, which is **outside** everything this line proves.
-That gap is now the lane's largest cited unknown, and it is stated as such rather than assumed away.
+**What the confluence theory cannot give gandr is the wheel axis.** Acyclicity is a hypothesis of the ma-fragment, of convexity (the path relation is a relation on directed paths), and of the termination arguments; the correspondence paper is explicit that a Frobenius-free rewrite that would need to move a box past a redex requires "at least a traced symmetric monoidal structure" to be applied at all [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, ex 5.2]. gandr's arity ruling has since made the two-sided closure — the trace — the **primitive** former ([[../metatheory#The arity interface, universe-style]]), so a naive reading puts gandr's destination at traced symmetric monoidal without Frobenius, which is **outside** everything this line proves.
+The next section says why that reading is the wrong one, and what the right one costs.
+
+## Wheels, and which structure the cell layer takes
+
+The corpus has carried three accounts of cycles at three layers without saying how they relate, so a reader asking "may a cell have a wheel" has had to reconstruct the answer.
+This section states the relation and the ruling that follows.
+
+| layer                                | what it says about a cycle                                                                                                                                              | status                       |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| **carrier** (`Shape`, `Match`)       | a wheel is representable; wheel-freeness is a **predicate**, and the operations do not preserve it                                                                      | landed, machine-checked      |
+| **arity** (`Arity.sub`, the closure) | the **trace is the primitive former** — substitution's base case closes a block of sources against a block of sinks, and its degenerate case closes a vertexless circle | ruled; partly built          |
+| **cell store and surface**           | a wheel needs a **delay guard**: a fed-back port must be delayed, and feedback categories are the adopted entry tier                                                    | design sketch, nothing built |
+
+**These are three answers to three questions, and only the middle one is about equations.** The carrier's business is what is representable, and under the generality ruling it must represent more than gandr admits.
+The arity layer's business is the combinatorics of graph substitution, where the closure is an operation on shapes and the circle count is bookkeeping; it makes no claim that a program may loop.
+The cell layer's business is what the rewriting engine may assume, and that is where a choice has to be made.
+
+**The choice is trace versus feedback, and it is a choice about which equations the engine may use.**
+
+|                                   | **traced**                                                                                                   | **feedback** — the adopted tier                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| yanking, $"Tr"(σ) = "id"$         | holds — a bare loop collapses to a wire                                                                      | **fails** — a bare loop is a delay, not an identity |
+| sliding (dinaturality)            | holds — a cell may be rotated freely around the loop                                                         | **fails** — the loop has a distinguished cut point  |
+| what matching becomes             | matching **modulo rotation**: a cyclic pattern has no first position, so the engine matches in a cyclic word | matching on a **directed acyclic graph**, unchanged |
+| what the diagram normal form owes | a canonical rotation, on top of everything `canon` already owes                                              | nothing new                                         |
+| what a wheel means operationally  | a fixpoint, computed                                                                                         | a stream: the same value one step later             |
+
+**The proposal of record is feedback, because it costs the rewriting theory nothing.** If every directed cycle in a body must contain at least one **delayed** port, then cutting every delayed port yields an acyclic diagram — removing an edge from every cycle leaves a directed acyclic graph, by definition.
+A cyclic body $Γ → Δ$ with delayed ports $D$ becomes an acyclic body $Γ + D → Δ + D$, and **the cut points join the interface** — which is exactly the shape a double-pushout rewrite with interfaces already takes.
+So a delay-guarded wheel is not outside the monogamous acyclic fragment: it is an ma-cospan with its delays in the interface, and every result of the correspondence applies to it unchanged.
+
+This is a **proposal and an inference, not a cited result**, and it has one gap that must close before anything leans on it.
+Convexity is a condition on paths **in the target**, and the target here is the cut-open diagram; a match convex in the cut-open form may cease to be convex once the delays are re-closed, because a path may run round the loop.
+That is the same phenomenon as the disjoint-redex blocking above, and it is what [[#circuit-terms-spike-08|circuit-terms-spike-08]] asks.
+
+**The per-type reading of the wheel axis is a delay supply, not a Frobenius one**, and saying why keeps the supply table honest.
+The tempting analogy — fan-in is a commutative monoid, so a wheel is a Frobenius structure — **does not work**: the trace is bought by compact closure, compact closure comes from **(co)unital** Frobenius, and the unit is precisely what the nonunital rung omits.
+A nonunital Frobenius supply therefore gives no loop at all, and a unital one is a cup by another name.
+What a feedback structure needs is far weaker, and gandr already has its vocabulary: a **delay** on the type.
+So a type supplies the ability to be fed back exactly when it supplies a delay — the productivity discipline the (co)recursion surface already runs, promoted from a checking rule to a supply — and a program closing a loop on a type without one is refused at the declaration, which is the refuter the wheel guard owes.
 
 ### The closest Agda encoding forks from gandr exactly here
 
@@ -474,11 +513,17 @@ Every one carries a disposition.
     An earlier revision of this entry recorded the construction as unbuilt, on the 2023 paper's future-work note; the follow-up was in the library and the claim is corrected rather than carried.
 17. **circuit-terms-question-17** — **what happens to non-linear patterns?** A repeated hole on a rule's left-hand side is free in a term-shaped store, because substitution copies; at the circuit rung it is a **copy on a wire**, which is a comonoid the type may not have.
     The leading implementation of gandr's own rung refuses exactly this case by name, raising a not-implemented error labelled "rewriting modulo Frobenius" as soon as a boundary vertex is used more than once [@chyp].
-    **Carried, and it is the sharpest single consequence of the term-shaped-to-circuit-shaped move** — gandr admits non-linear patterns today (`CellMeta::derive`, `theory-computads/src/sequent.rs`, verified at source), so this is a live behaviour change and not a hypothetical.
+    > **Ruled (owner, 2026-08-01): cell patterns are linear, and the per-type comonoid is the named later generalization.** A metavariable occurring twice on a left-hand side is refused with a diagnostic naming the copy; a type supplying a cocommutative comonoid may host the copy explicitly, and that is [[#circuit-terms-question-18|circuit-terms-question-18]] rather than an omission.
+    > **The ruling is free today, measured rather than assumed**: three non-linear cut patterns exist in `theory-computads`, and all three are fixtures exercising the metadata itself rather than rules anyone depends on.
+    > **What it costs is idempotence and cancellation** — `and(x, x) ~> x`, `x - x ~> 0` — which stop being writable with a repeated hole.
+    > They are respelled with the copy named rather than lost, exactly as a fan-in cell must name its monoid: the rule matches through the copying cell, and a type whose grade already licenses duplication is where such a rule lives.
+    > Two consequences ride with it: `CellMeta::derive`'s `linear` field turns from derived metadata into a **check with a diagnostic**, and the corpus's globularity-above-the-base trigger must be restated, because it was conditioned on a measurement this ruling now prevents.
 18. **circuit-terms-question-18** — **is the fan-out obligation carried as a per-type supply, and at which layer?** The fan-out/fan-in asymmetry did not survive this pass, so copy owes the same treatment as merge. gandr already prices duplication on the **value** side, with grades and with `dup`/`drop` as ordinary computations; what has no answer is what the obligation means at the **cell** layer, where a repeated hole is the thing that would have to carry it.
-    **Carried**, and coupled to [[#circuit-terms-question-17|circuit-terms-question-17]] — they are the same fact seen from the supply side and from the pattern side.
-19. **circuit-terms-question-19** — **what covers the wheel axis?** Acyclicity is a hypothesis of the monogamous-acyclic fragment, of convex matching, and of the published termination arguments; gandr's arity ruling has made the trace primitive, so gandr's destination is traced symmetric monoidal without Frobenius, which no statement in the hypergraph-rewriting line reaches.
-    **Carried, and it is now the lane's largest cited unknown** — the previous largest, whether the DPO instance applies at all, closed above.
+    **Carried as the named generalization of the linearity ruling above**, and it is the row that makes idempotence rules writable again on the types that genuinely support them.
+    The sub-question to answer first is whether the cell-layer comonoid is a **new** supply or is read off the existing grade discipline, since a grade-ω binding already licenses duplication on the value side.
+19. **circuit-terms-question-19** — **does the cell layer take trace or feedback, and is the delay cut convexity-stable?** Restated 2026-08-01 from "what covers the wheel axis", which conflated three layers; the layer-by-layer account and the proposal are [[#Wheels, and which structure the cell layer takes]].
+    **Carried, with feedback proposed and the trace declined at this layer only** — the arity layer's closure is untouched, because it is an operation on shapes rather than an equation the engine may use.
+    The residual is not the choice but its warrant: whether cutting at the delays preserves convexity under re-closure, which is [[#circuit-terms-spike-08|circuit-terms-spike-08]].
 
 ## Spikes
 
@@ -530,6 +575,17 @@ The published coloured statements quantify Frobenius over every colour, so nothi
 
 **Small to write, and it is the one item in this lane that touches a TCB-adjacent surface**, so it runs before the alphabet grows rather than after.
 The honest default until it runs is that the shift quotient is warranted only on the fragment where matches cannot be non-convex, which today is the whole cell store and after the alphabet change is not.
+
+### circuit-terms-spike-08
+
+**Is the delay cut convexity-stable?** The wheel proposal is that a delay-guarded cyclic body is an ma-cospan with its delays in the interface, so cutting every delayed port turns a body $Γ → Δ$ into an acyclic $Γ + D → Δ + D$ that the whole correspondence covers.
+Check the one gap that would sink it, in three steps.
+
+* Take a body with one delayed back-edge and a match convex in the cut-open form; re-close the delay and check whether a path now runs from an output of the match to an input of it.
+* If it can, decide whether the repair is a convexity condition stated on the **re-closed** diagram (which the engine would then have to compute at match time) or a restriction on where a delay may sit relative to a redex.
+* Either way, state whether the guard — every directed cycle contains a delayed port — stays a linear-time back-edge check, since that cheapness is most of the proposal's appeal.
+
+**Small**, and it shares its shape with [[#circuit-terms-spike-07|circuit-terms-spike-07]]: both ask whether a local independence test survives a global path condition, so running them together is cheaper than running either alone.
 
 ## Findings that route to other tracks
 

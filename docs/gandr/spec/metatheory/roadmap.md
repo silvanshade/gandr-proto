@@ -191,7 +191,10 @@ And **the exact-reals / synthetic-topology track** — a lateral, firewalled lin
    — gated by its named spike; falsifier: dependency or indexing.
 3. **meta-question-03** — Where does shift equivalence sit in certificate identity — should the _store_ key on the normal form, or only the comparator?
 4. **meta-question-04** — Does the reflection face's cartesian-fibrational target restrict to the double-theory cartesian notions where both apply?
-5. **meta-question-05** — With non-linear patterns admitted, is the overlap family still finite and multi-universal, or does an occurs-check fragment need fencing?
+5. **meta-question-05** — ~~With non-linear patterns admitted, is the overlap family still finite and multi-universal, or does an occurs-check fragment need fencing?~~ — **dissolved by ruling 2026-08-01**, not answered: cell patterns are linear, so the premise no longer holds ([[../implementation/circuit-terms#The design questions|circuit-terms-question-17]]).
+   Two things the dissolution changes rather than removes.
+   The **globularity-above-the-base trigger** was "a non-linear pattern producing a genuine, non-singleton multi-sum family", which the ruling now prevents; it must be restated against the per-type-comonoid generalization, because that is the construction under which a genuine family could reappear.
+   And the question **returns unchanged** if that generalization lands, so it is retired-with-a-reversal-condition rather than tombstoned.
 6. **meta-question-06** — Does gandr _state_ the trek-to-tracelet seam (a publishable convergence of two disconnected literatures) or merely use it?
 7. **meta-question-07** — Which cell classes exercise the residual part of the target-opfibration axiom beyond redex-creating instantiations?
 8. **meta-question-08** — Is there operational content in the correspondence between the determinism axis (Segal → 2-Segal) and the symmetry axis, or is it orientation only?

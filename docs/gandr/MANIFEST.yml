@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 92342cef043b93a615723570f28952bc4a9d4feda633fe918645c136a93802fc
+    b3: 15c80bf7d40a80570f802659b9bfc04b1ddfac69fa2153c99f667c955ab93362
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -44,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 3f870b522a5f5974744acebbbed23bddca56c5995bf5686a0a571de719acdc48
+    b3: 1d2a766256b752a4a937470df024032b67d7a8e7ea5334a4a294aa9fce9ef2cd
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -139,7 +139,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: 8d7b4bb40843a4fe195548cb26eb6940d157c22dd8f673970436f7c1c88e7a3a
+    b3: 024e55107972b8aee43633324dab3aabb9389d261f8b3b7926c39855fbf96315
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
