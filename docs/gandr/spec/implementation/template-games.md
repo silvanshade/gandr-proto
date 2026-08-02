@@ -5,7 +5,7 @@ This document owns gandr's adoption of the template-games programme: which objec
 It exists as its own component because the apparatus is **semantic-foundations technology rather than an importable presentation theorem**.
 Neither source contains a statement gandr can cite to discharge an obligation it already carries, so everything on offer is construction, and the constructions are heavy — which means what adoption buys has to be stated with its price attached, at a length the commissioning ruling cannot hold.
 
-* Status: **an adopted direction whose constructions are unbuilt, and one gate before any tile-level result transfers.** The apparatus was adopted 2026-08-02 on a theorem-grade read of both sources; every rung below is unbuilt, and the transfer is held behind [[#template-games-spike-01]].
+* Status: **an adopted direction whose constructions are unbuilt; the tile-level gate has reported positive at small-scope-exhaustive grade.** The apparatus was adopted 2026-08-02 on a theorem-grade read of both sources; every rung below is unbuilt, and tile-level transfers are licensed at the gate's own grade by [[#template-games-spike-01]].
   The separation-logic half of the same line is **deferred on machinery rather than adopted or declined**, and it is carried, with the requirements it places on that machinery, at [[proposed/separation-logic]].
 * **The read's confidence is carried and never upgraded.** Each claim about the sources names the statement it rests on; the statements the read took on structure rather than line by line, and the gandr-side facts it inferred rather than proved, are marked where they are used and collected at [[#Source and confidence]].
 * The ruling that commissioned the read is the device decline and its named replacement direction at [[circuit-terms#The design questions]], recorded there as `circuit-terms-question-16`; the interchange-strength decision the corpus already meets this line at is [[../metatheory#Interchange, by layer]].
@@ -76,6 +76,7 @@ The chain runs: determinism, then tiles are inherited by equalizer subgraphs, th
 
 **The gate is therefore these axioms, and it is a hard one: nothing transfers at tile level before it is answered.** Every downstream result in the source consumes tiles; none produces one, so a tile-level statement borrowed before the axioms hold would be borrowed against a structure gandr has not been shown to have.
 The gate's executing scope is [[#template-games-spike-01]], and no rung of [[#The theorems owed]] may be started against a tile-level premise until that spike reports.
+The spike has reported, positive at small-scope-exhaustive grade, so rungs may start — carrying the verdict's grade, not the source's.
 
 **This is also the cheapest experiment in the programme**, which is why it is the gate rather than a deferred obligation: the two unproved axioms are decidable questions about a landed artifact, not construction programmes, and a failure witness settles the direction as usefully as a proof.
 
@@ -105,6 +106,10 @@ The spike's two halves are the two cheapest facts the adoption decision needs.
 **Small**, in the sense the corpus uses for a bounded decidable question over landed code, and it shares a substrate with the guard it sits beside — so running it against the shift machinery is cheaper than running it against a reconstruction.
 
 Tracked as `gandr-ng9.11`, whose scope is exactly the two halves above.
+
+**Reported, 2026-08-02, positive on both halves — at a grade every consumer inherits.** Determinism and the cube property hold for the shift quotient as built, at **small-scope-exhaustive-plus-structural-argument** grade over the spike's fixture family — evidence, not proof; a property-based generator over terms and position sets would raise the grade — with symmetry restated at the square level as the run conditions required.
+The polarized half reported the strictly larger commuting class, with the containment direction asserted empty over the comparison table.
+The record is on `gandr-ng9.11`; tile-level transfers are licensed **at that grade and no stronger**, and the criterion consequence is [[#template-games-criterion-01]].
 
 ## Footprints are polarized, and that is what licenses more
 
@@ -309,8 +314,20 @@ All three are decidable questions about the landed shift witness and the cheapes
 * **Interchange in the third dimension rather than mere whiskering.** Every asynchronous graph presents a sesquicategory whose 2-cells are permutation sequences [ibid., prop 7, appendix D-A]; it presents a **2-category** once 2-cells are reschedulings modulo the induced bijection on edge indices [ibid., prop 8, appendix D-B], and the cube property's two sweeps are what make that quotient class nonempty from either side.
   **That last step is a reading of appendix D-B and not a statement the source makes**, since the source imposes all three axioms throughout.
 * **Standing beyond this epic.** The coherent-congruence line concedes that it supplies **no correctness criterion** for its congruences [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8], and these axioms are exactly the criterion it says it lacks — so a clean positive verdict is evidence for more than gandr's own quotient.
+  The verdict landed positive, and the record is [[#template-games-criterion-01]].
 
-**Grade.** **Not verified, and load-bearing.** Both properties are unproved for gandr and both are preconditions for any tile-level transfer; the axioms themselves are read at theorem grade in the original.
+**Grade.** **Landed positive at small-scope-exhaustive grade** ([[#template-games-spike-01]]): determinism and the cube property hold for the shift quotient as built, at small-scope-exhaustive-plus-structural-argument grade — evidence, not proof — with symmetry restated at the square level.
+The axioms themselves are read at theorem grade in the original; every tile-level transfer this rung licenses inherits the verdict's grade, not the source's.
+
+### template-games-criterion-01
+
+**The shift-quotient axioms are the correctness criterion the coherent-congruence line concedes it lacks — recorded at the verdict's grade and citable at no more than that grade.**
+
+The layered line's coherent congruences are the shift quotient's strictly-coarser, structurally-incomparable cousin, and that line concedes it supplies **no correctness criterion** for them [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8].
+The asynchronous-graph axioms — symmetry, determinism, the cube property — are exactly the criterion it names as missing, and they are decidable over gandr's landed shift machinery, which is what made the question cheap to settle.
+
+**The record.** With [[#template-games-spike-01]] landed positive, gandr's shift quotient **satisfies that criterion at small-scope-exhaustive-plus-structural-argument grade**: determinism and the cube property hold over the spike's fixture family — evidence, not proof — and symmetry is restated at the square level.
+A property-based pass or a proof would strengthen the claim; until one lands, no consumer may cite this anchor as more than its grade, and a failure witness found later revokes the claim rather than qualifying it.
 
 ### template-games-rung-03
 
@@ -478,7 +495,7 @@ Also unchased, and named with the locator the primary gives so each can be resol
 
 **gandr-side facts not verified, two of them load-bearing.**
 
-* **Whether the shift witness tile set is deterministic and satisfies the cube property.** Both unproved, both preconditions for any tile-level transfer, both decidable — [[#template-games-rung-02]] and [[#template-games-spike-01]].
+* **Whether the shift witness tile set is deterministic and satisfies the cube property.** Answered positive at small-scope-exhaustive grade ([[#template-games-spike-01]]); what stays open is the grade itself — a property-based pass or a proof would settle it — and every tile-level transfer inherits the verdict's grade meanwhile ([[#template-games-rung-02]]).
 * **Whether the store-transition ambient gandr would need is adhesive.** Satisfiability was **inferred** from the corpus's own record that labelled directed hypergraphs are a presheaf topos; it was not proved that gandr's certificate supports can be presented in that ambient, and the argument fails if they must be computads — [[#template-games-rung-01]].
 * **The three-conjunct guard was read from the shift module's own documentation rather than from its body.** Verified against the tree at write time for this document: `gandr-theory-computads`'s `shift` module exists and documents the three conjuncts and their order, `derive_shift_equivalence` is its constructor, `ShiftObstruction` is the typed refusal, the overlap conjunct is asked of the cell pair through `overlaps_between`, and the convexity conjunct is carried as a `ConvexityDischarge` datum whose two inhabitants are the left-connected-over-acyclic-target discharge and the re-check-required refusal.
   **What is verified is the interface and its documented contract, not that the body decides what the documentation says it decides.**

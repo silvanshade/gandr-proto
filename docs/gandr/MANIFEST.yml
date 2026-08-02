@@ -154,7 +154,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 1fda7de6e1c32ea4b3dbb63f7fa5912c08910fc4d0a09314123da52d441f64a0
+    b3: 0366ea7c6e80a8ca620dd66a205f31f953547ce7bb7058a574d8572e15c16c1e
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/separation-logic.md
