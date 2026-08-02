@@ -1,26 +1,31 @@
-# Template games — the cobordism apparatus, and the separation logic that does not come with it
+# Template games — the cobordism apparatus, and the separation logic it defers
 
-This document owns gandr's adoption of the template-games programme: which objects gandr takes, which half it declines at the door and why, the single pairing the whole transfer turns on, the theorems the adoption owes, and the gate that holds every tile-level transfer until two decidable facts about the landed shift machinery are settled.
+This document owns gandr's adoption of the template-games programme: which objects gandr takes now, which half it defers and on what machinery, the single pairing the whole transfer turns on, the theorems the adoption owes, and the gate that holds every tile-level transfer until two decidable facts about the landed shift machinery are settled.
 
 It exists as its own component because the apparatus is **semantic-foundations technology rather than an importable presentation theorem**.
 Neither source contains a statement gandr can cite to discharge an obligation it already carries, so everything on offer is construction, and the constructions are heavy — which means what adoption buys has to be stated with its price attached, at a length the commissioning ruling cannot hold.
 
-* Status: **an adopted direction with nothing built, and one gate before any tile-level result transfers.** The apparatus was adopted 2026-08-02 on a theorem-grade read of both sources; every rung below is unbuilt, and the transfer is held behind [[#template-games-spike-01]].
+* Status: **an adopted direction whose constructions are unbuilt, and one gate before any tile-level result transfers.** The apparatus was adopted 2026-08-02 on a theorem-grade read of both sources; every rung below is unbuilt, and the transfer is held behind [[#template-games-spike-01]].
+  The separation-logic half of the same line is **deferred on machinery rather than adopted or declined**, and it is carried, with the requirements it places on that machinery, at [[proposed/separation-logic]].
 * **The read's confidence is carried and never upgraded.** Each claim about the sources names the statement it rests on; the statements the read took on structure rather than line by line, and the gandr-side facts it inferred rather than proved, are marked where they are used and collected at [[#Source and confidence]].
 * The ruling that commissioned the read is the device decline and its named replacement direction at [[circuit-terms#The design questions]], recorded there as `circuit-terms-question-16`; the interchange-strength decision the corpus already meets this line at is [[../metatheory#Interchange, by layer]].
   Both are linked rather than restated, and nothing here re-opens either.
 
-## The adopted object, and the declined half
+## The adopted object, and the half that waits on the memory model
 
-**gandr adopts the template/cobordism apparatus**: the machinery of [@mellies-stefanesco-2020-csl] secs 1-5 and sec 10, standing on the asynchronous template games of [@mellies-2021-template-games].
+**gandr adopts the template/cobordism apparatus now**: the machinery of [@mellies-stefanesco-2020-csl] secs 1-5 and sec 10, standing on the asynchronous template games of [@mellies-2021-template-games].
 
-**gandr declines the concurrent separation logic riding on it, at the door**: separated states, the separating conjunction over a permission monoid, permissions themselves, locks, critical sections, resource invariants, and the data-race half of soundness.
+**gandr defers the concurrent separation logic riding on it**: separated states, the separating conjunction over a permission monoid, permissions themselves, and the Frame rule at the predicate level.
+That half is deferred on machinery gandr is committed to and has not built, and it is carried as a proposal — with the requirements it places on that machinery, and the fragments that can be built ahead of it — at [[proposed/separation-logic]].
 
-**The reason is one reason and it is about the carrier rather than about taste: the CSL half does not survive contact with gandr's store.** The separation product is defined by domain union with permission multiplication [@mellies-stefanesco-2020-csl, sec 7.1], so it presupposes that a state is a partial function from addresses to value-and-permission pairs over a partial cancellative commutative monoid. gandr's store is a directed hypergraph: there is no address set, no partial-map structure, and no permission monoid.
-Every statement about the separating conjunction — the separated-state definition [ibid., def 7.1], the predicate semantics, and the Frame rule — is therefore unavailable without inventing that structure first, and inventing it is not a small move.
+**Two items of the same neighbourhood are cut rather than deferred, and the difference is not cosmetic**: locks, critical sections, and resource invariants, and the data-race half of soundness.
+Nothing the memory model becomes brings those back ([[#What stays out of scope]]).
 
-**Naming the candidate correctly matters, because the commissioning ruling named it the other way round.** The entry at [[circuit-terms#The design questions]] calls the replacement direction "the separation-logic line", and the read's verdict is that the separation logic is precisely the part that does not come.
-The correction is recorded here rather than applied silently to that entry, because the entry's ruling — that the device mapping is declined and that this line is its replacement — stands unchanged; only the name of what arrives has moved.
+**The import order is set by the carrier as it stands today, and it is an order rather than a verdict.** The separation product is defined by domain union with permission multiplication [@mellies-stefanesco-2020-csl, sec 7.1], so it presupposes that a state is a partial function from addresses to value-and-permission pairs over a partial cancellative commutative monoid. gandr's store is a directed hypergraph: there is no address set, no partial-map structure, and no permission monoid.
+Every statement about the separating conjunction — the separated-state definition [ibid., def 7.1], the predicate semantics, and the Frame rule — therefore waits on the heap and reference machinery gandr is committed to and has not yet built, and what each of them will require of that machinery is recorded at [[proposed/separation-logic#The requirements ledger]] so the build-out meets those requirements the first time.
+
+**Naming the candidate correctly matters, because the commissioning ruling named it the other way round.** The entry at [[circuit-terms#The design questions]] calls the replacement direction "the separation-logic line", and the read's verdict is that the separation logic is the part that arrives later, behind the apparatus that carries it.
+The correction is recorded here rather than applied silently to that entry, because the entry's ruling — that the device mapping is declined and that this line is its replacement — stands unchanged; only the order in which the line's two halves arrive has moved.
 
 ## What adoption builds
 
@@ -134,7 +139,7 @@ The source is polarized and shallow.
 
 **Component by component, the mapping is uneven and the unevenness is informative.** The read and write sets map to the polarized match image.
 The allocation set — plain disjointness there — maps **plausibly** to internal-wire freshness, which the corpus witness plan already carries as the internal-wire binder.
-The lock set has **no gandr counterpart whatsoever**, and that absence is not a gap to be filled: it is the load-bearing edge of the declined half.
+The lock set has **no gandr counterpart whatsoever**, and that absence is not a gap to be filled: it is the load-bearing edge of the part that stays out whatever the memory model becomes ([[proposed/separation-logic#What stays out of scope regardless]]).
 
 **The guard fence, stated so it cannot be read as a licence.** The polarized test is **prototyped beside the decided guard and never replaces it unproven**.
 The decided guard is the three-conjunct one recorded at [[circuit-terms#circuit-terms-spike-07]] — incomparable positions, trivial cell-pair overlap, and each match image still convex in the other's reduct — and a polarized independence test that licensed more without a proof that it licenses only what the guard would have licensed would be a silent weakening of a TCB-adjacent quotient.
@@ -168,7 +173,7 @@ What is genuinely new is the composite result downstream of it [ibid., thm 10.1,
 ## What the semantic model attaches to
 
 Each source object is paired against its gandr counterpart and marked **exact**, **plausible**, **forced**, or **absent**.
-"Forced" means the pairing can be made but only by adding structure gandr does not have; "absent" means there is no counterpart and the row is a decline rather than a gap.
+"Forced" means the pairing can be made but only by adding structure gandr does not have; "absent" means there is no counterpart today, and the row says whether that is a cut or a deferral on machinery.
 
 | source object                                                                       | statement                                                                                    | gandr counterpart                                                                         | mark                                                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -183,15 +188,15 @@ Each source object is paired against its gandr counterpart and marked **exact**,
 | lax-monoidal structure on the cobordism double category, laxator the Hoare coercion | [ibid., thm 4.4]                                                                             | the "certificate composition is structurally lax" level of the interchange stratification | **plausible** — and this is where that level would acquire a theorem instead of a design ruling ([[#template-games-rung-05]])                                                                                                            |
 | Gray tensor and invertible reshuffling                                              | [@mellies-2021-template-games, def 1, thm 4]                                                 | the invertible top level of the interchange stratification                                | **exact**                                                                                                                                                                                                                                |
 | the interchange stratification as such                                              | —                                                                                            | —                                                                                         | **absent on the source side**: the pair supplies two of gandr's four levels and does not stratify                                                                                                                                        |
-| separated state, permission monoid, separating conjunction                          | [@mellies-stefanesco-2020-csl, def 7.1, sec 7.1]                                             | none                                                                                      | **absent** — the declined half                                                                                                                                                                                                           |
-| machine state, as stack, heap, and locks                                            | [ibid., sec 3.2.1]                                                                           | the cell store                                                                            | **fails at the carrier** ([[#Where the fit fails]])                                                                                                                                                                                      |
+| separated state, permission monoid, separating conjunction                          | [@mellies-stefanesco-2020-csl, def 7.1, sec 7.1]                                             | none                                                                                      | **absent, and deferred rather than cut** — the gating machinery and what it must supply are at [[proposed/separation-logic]]                                                                                                             |
+| machine state, as stack, heap, and locks                                            | [ibid., sec 3.2.1]                                                                           | the cell store                                                                            | **fails at the carrier** ([[#Where the fit fails]]); the heap half of the mismatch is what the deferral waits on and the lock half is cut                                                                                                |
 
 ## Where the fit fails
 
 Four failures, each stated as precisely as the holdings above.
-The first is the reason the CSL half is declined at the door; the remaining three are debts adoption incurs.
+The first is the reason the separation-logic half waits on machinery rather than arriving with the apparatus; the remaining three are debts adoption incurs.
 
-1. **The store structure the separating conjunction needs is structure gandr does not have.** Stated at [[#The adopted object, and the declined half]] and not restated here; it is a failure of the carrier, not of the mapping.
+1. **The store structure the separating conjunction needs is structure gandr does not have yet.** Stated at [[#The adopted object, and the half that waits on the memory model]] and not restated here; it is a fact about the carrier as built rather than about the mapping, and its disposition is deferral on the heap and reference machinery ([[proposed/separation-logic]]) rather than decline.
 2. **Locks are load-bearing rather than incidental, so deleting them does not leave a smaller theorem.** They appear in both footprints [@mellies-stefanesco-2020-csl, sec 3.2.1, sec 3.2.2], in the machine model's acquire and release transitions, throughout the change-of-locks development [ibid., sec 8], in the indexing of the separated-state model, and in three of the appendix lemmas [ibid., lem E.3, lem E.4, lem E.5].
    The stateless model exists only to project onto locks and allocations, and the second half of soundness is data-race freedom, where a race is **defined** by the tile mismatch between the machine-state model and the stateless one [ibid., sec 3.2.2, thm 10.6]. gandr has no race notion, so that half of the soundness theorem has no gandr statement to be about — which is why the prize below is the first half and the fibration structure, never the pair.
 3. **There is no disjoint parallel product anywhere in the source.** The parallel product is a synchronizing pullback over a shared object [ibid., eqns 28-29], and gandr's disconnection is disjoint by construction.
@@ -417,8 +422,10 @@ The disposition is that the re-index is settled **before** the axiom half of [[#
 
 Explicitly, so that nothing here is later read as a partial adoption of the whole.
 
-* **Separation logic proper**: the separating conjunction, permissions, separated states, predicate-indexed colouring, and the Frame rule as an inference rule.
-* **Locks, critical sections, and resource invariants**, together with the change-of-locks development and the frame-rule interpretation that stands on it [@mellies-stefanesco-2020-csl, sec 8, sec 9.3, sec E.2].
+**The separation-logic half is not in this list, because it is deferred rather than cut, and it is owned elsewhere.** The separating conjunction, permissions, separated states, predicate-indexed colouring, and the Frame rule at the predicate level are carried as a proposal at [[proposed/separation-logic]], held against the heap and reference machinery gandr is committed to; nothing below re-opens that, and nothing below is waiting on machinery.
+
+* **Locks, critical sections, and resource invariants**, together with the change-of-locks development and the lock indexing the separated-state model carries [@mellies-stefanesco-2020-csl, sec 8, sec E.2].
+  The frame-rule interpretation stated over that indexing [ibid., sec 9.3] is deferred with the separation-logic half rather than cut, and what it would require is [[proposed/separation-logic#separation-logic-requirement-05]].
 * **Data-race freedom and the stateless model**, because gandr has no race notion and the second half of the soundness theorem therefore has no gandr statement to be about [ibid., thm 10.6].
 * **The error monad** [ibid., sec 6], because gandr's three-valued verdict discipline is a different and already-recorded device: a declined check leaves a certificate stuck rather than refuted.
 * **Multiplicative-additive linear logic and star-autonomy** [@mellies-2021-template-games, thm 1, thm 4], because gandr is not building a linear-logic model.
@@ -426,6 +433,7 @@ Explicitly, so that nothing here is later read as a partial adoption of the whol
   Neither is cited at a statement here, and neither has a bibliography key.
 
 **One further exclusion is a decline rather than a scope cut, and it is recorded so it is not re-proposed.** The lock component of the footprint has no gandr counterpart, and that is not a gap: filling it would mean inventing a shared-resource notion in order to import machinery whose payoff is a race theory gandr does not want.
+It is a decline in the strong sense — the arrival of a heap does not revive it ([[proposed/separation-logic#What stays out of scope regardless]]).
 
 ## Cost, stated honestly
 

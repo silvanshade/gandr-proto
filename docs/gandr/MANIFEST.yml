@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 3e257dd1487fb0a40cfd453160f43eda3fac53a36db8d19835dad45a2ede390f
+    b3: 3a358177c603ce6f996f53e3f44fe2a5fdac84c9e186713fb754830c3394d082
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -147,7 +147,12 @@ nodes:
     b3: f97bf2e657ec8ea572ba1c82981a09a18dd11bd2c9cf1e4af2f5b49ccf5564ab
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 2f4d8c20b6c16af1caaadbbfa30ad6c385a111e011e0fd2a6886205ec31a9583
+    b3: 59adeec06c072da31a16eaddd238f6071d5efbdbec7c488af706b41a48a235a0
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/separation-logic.md
+    role: subdocument
+    b3: 618e06fe383fb274eb27613608ba0676232499286281a0acf0c3222869132108
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
