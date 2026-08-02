@@ -1,7 +1,9 @@
 # The (co)recursion surface
 
 Where recursion and corecursion are declared, where their termination and productivity evidence lives, and how that evidence grows into sized types, cost annotations, and explicit implicit-instantiation without retrofit.
-The core former (`fix x. t`, recursion through a graded thunk) and the loop sugar are the metatheory-facing substrate; this document owns the **surface discipline** — the scope rules, the call-site markers, and the ladder that strengthens what a marker means.
+The core former (`fix x. t`, recursion through a graded thunk) and the loop sugar are the substrate this surface lowers into; this document owns the **surface discipline** — the scope rules, the call-site markers, and the ladder that strengthens what a marker means.
+That substrate **does not exist in this tree**: the kernel's computation vocabulary has no fixpoint, so a recursive definition scope-checks and then declines at lowering.
+Its design — the former, its checker and operational rules, its machine realization, and the termination ladder past the step budget — is [[../implementation/proposed/recursion-former]].
 
 ## The decision: a hybrid of two sites
 
@@ -122,6 +124,7 @@ The loop constructs are surface sugar producing `F 1`, spliced into bind chains 
 * **`break` and `continue` are effect operations, not `reset`/`shift`**: single-prompt delimited control cannot give `break` (outermost) and `continue` (innermost) distinct targets in one loop, so the desugaring installs two op-name-keyed deep handlers — `Break` caught by the outer handler, `Continue` by the inner per-iteration handler — and `reset`/`shift` stay reserved for user-level delimited control.
 * Labeled `break 'l` is deferred growth: labels need distinct operation instances (fresh atoms per labeled loop) or named handlers, and the `'` sigil collides with the character-literal lexer.
 * The `def rec` marker is the honesty about non-termination: termination is unchecked at the current rung, guarded operationally by the machine's step budget — a divergent `fix` halts at the budget with a stuck outcome; it never hangs, overflows, or mis-caches a bogus value (the black-holing memo discipline caches only a reached pure WHNF).
+  The elaborations above are the substrate document's, stated here for the reading; the two-handler nesting that gives `break` and `continue` distinct targets is written out in [[../implementation/proposed/recursion-former#Loops elaborate through the former]].
 
 ## The as-built rung
 
@@ -153,5 +156,5 @@ The scope rung is built and verified against the tree:
 ## Source and confidence
 
 The design record is the recursion-surface component of the parked `.gfd` corpus (high confidence — it passed its own two-axis fidelity review), verified against the as-built scope pass, the grammar's instantiation-sort rules, and the surface witnesses.
-The core-former substrate (`fix x. t`, the step-budget termination stance, the black-holing discipline) descends from the fix-former design record, which this surface supersedes in presentation without touching in substance.
+The core-former substrate (`fix x. t`, the step-budget termination stance, the black-holing discipline) is [[../implementation/proposed/recursion-former]], which this surface supersedes in presentation without touching in substance.
 The earlier loop sugar and the mutual-`fix` bundle encoding are carried here unchanged.

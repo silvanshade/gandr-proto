@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 3a358177c603ce6f996f53e3f44fe2a5fdac84c9e186713fb754830c3394d082
+    b3: 32c848239fc2910fac728c48857158ce80985c56c5ae8763793dc3107bd2ba89
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -99,12 +99,12 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: 6c904568398a7151a856cff8522c70068fdba696ff8f516b0fcec4e75168e560
+    b3: 7defb424a9a2c6ebb1844f788b8d012454d91eb4a20f23233ff7b9c585d31bb4
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
     role: subdocument
-    b3: c17a64f32ac8915550353a804087971a90f2eb77e609bdd1e8966a4768aab06d
+    b3: 73b6bcd18c1d2b296a7a06e01b0ff29e05587d7bcb353b67b7f5c4de6a43000e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/shell.md
@@ -155,6 +155,11 @@ nodes:
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
     b3: 618e06fe383fb274eb27613608ba0676232499286281a0acf0c3222869132108
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/recursion-former.md
+    role: subdocument
+    b3: ab2a2009a60693d6439977693027baabd9f70e1bb7db0e1260a29802eed6301c
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
