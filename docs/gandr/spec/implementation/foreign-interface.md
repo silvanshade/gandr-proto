@@ -13,7 +13,8 @@ Verified against the tree at write time, with the module named at each claim.
 
 **Built.** The `extern` block parses and lowers.
 `gandr-surface-grammar` carries the `extern_block`, `extern_type`, and `extern_function` node kinds; `gandr-surface-engine`'s `lower` module collects every block into a **foreign-module registry** keyed by namespace in a pre-pass before ordinary item lowering, so a block is a _declaration_ and never a runnable item, and the registry **persists across REPL submissions** exactly as definitions do.
-`extern_function` lowers each bodiless signature to a `ForeignFn` of `ForeignParam`s, and `boundary_ctype` maps each parameter and result through the boundary: the six numeric atoms to their `CType` counterparts by identity, `CStr` to a string copy, a block-declared opaque handle type to a pointer, and unit to a void slot — with every composite type (functions, products, sums, records, struct-by-value) **rejected at lowering** as outside the boundary.
+The foreign vocabulary itself — `ForeignModule`, `ForeignFn`, `ForeignParam`, and the `CType` enumeration of foreign argument and result shapes — is `gandr-surface-engine`'s **`ffi` module**, which is the corpus's only value-representation model of any kind and is deliberately boundary-scoped.
+`extern_function` lowers each bodiless signature into that vocabulary, and `boundary_ctype` maps each parameter and result through it: the six numeric atoms to their `CType` counterparts by identity, `CStr` to a string copy, a block-declared opaque handle type to a pointer, and unit to a void slot — with every composite type (functions, products, sums, records, struct-by-value) **rejected at lowering** as outside the boundary.
 A call `m.op(args)` on an `extern`-declared module elaborates through the host-effect seam, and an `extern`-declared module **shadows** a host module of the same name.
 
 **Not built: the native handler.** There is no foreign-call runtime crate in the workspace.
@@ -215,7 +216,8 @@ Everything that would require a kernel-format change, the linear zone, or the ba
 * **The host-effect seam.** The scoped-handler work proves the effect-signature-with-native-handler shape this generalizes; the `extern` block is that shape _source-generated_ rather than hand-written ([[../implementation#The runtime host]], [[capability-model]]).
 * **The compilation backend.** The five requirements above are a direct input to the backend's intermediate-representation design.
 * **Data declarations.** A foreign opaque type is the degenerate declared datatype — a sort with no constructors — and a declared C layout is a data-declaration attribute, so the struct-by-value growth path routes through that surface ([[../surface-language/declarations#data declarations]]).
-* **Value semantics and modes.** "Arguments are borrowed in, returns are owned" is the **boundary instance of the mode calculus**, and the linear library handle is its exclusive-borrow case.
+* **Value semantics and modes.** This boundary is where gandr's only representation model lives, so it is also the one place several mode-calculus decisions already have a home rather than a question.
+  "Arguments are borrowed in, returns are owned" is the **boundary instance of the mode calculus**, and the linear library handle is its exclusive-borrow case.
   The full boundary discipline, and the decisions it turns on — representation and ABI stability, ownership in the calling convention, foreign value representation, and the unsoundness of contraction on a non-trivially-copyable foreign type — are [[../surface-language/proposed/modes-and-references#Foreign-interface design impact]].
 * **Attributes.** The unwind, variadic, and layout markers, the calling convention, and the link and symbol names are typed **attribute schemas** on foreign declarations ([[../surface-language/declarations#Attributes]]).
 * **Modules and packaging.** Which libraries an artifact may link, and how they are found, is the package and build concern; the link manifest lives there.
@@ -317,7 +319,7 @@ The hazard is precise: **a trampoline outliving its closure is undefined behavio
 
 Written against the pre-reboot foreign-interface design record in full — its design-space axes, safety model, boundary mapping, execution paths, backend requirements, growth table, interaction map, corpus plan, outlook, open questions, and its own as-built notes — and against the current tree, which is the arbiter on status.
 
-As-built claims name their module: the `extern` node kinds in `gandr-surface-grammar`; the foreign-module registry, the pre-pass, `extern_block`, `extern_function`, and `boundary_ctype` in `gandr-surface-engine`'s `lower` module; and the frozen `ffi` mode with its inert check in `gandr-surface-corpus`.
+As-built claims name their module: the `extern` node kinds in `gandr-surface-grammar`; the `ForeignModule` / `ForeignFn` / `ForeignParam` / `CType` vocabulary in `gandr-surface-engine`'s `ffi` module; the foreign-module registry, the pre-pass, `extern_block`, `extern_function`, and `boundary_ctype` in that crate's `lower` module; and the frozen `ffi` mode with its inert check in `gandr-surface-corpus`.
 
 Two divergences from the design record are stated at the claim rather than reconciled: **the native handler does not exist in this tree**, so the interpreter path is designed and unbuilt here even though the design record describes it as landed; and the corpus treatment is correspondingly **frozen rather than running**, with the two examples that need no foreign call being the exceptions.
 

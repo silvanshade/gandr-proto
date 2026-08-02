@@ -162,6 +162,6 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md
     role: subdocument
-    b3: 53a0b2870fdb2df9b073f77c920a9fcc90f78503262a5f4c0fafe3e77ca951d5
+    b3: e70f9f8f3f9232162eafd576a6dae0a92de88f7f4add934240924b5f0a33b398
     edges:
       - { rel: registered-under, to: spec/implementation.md }
