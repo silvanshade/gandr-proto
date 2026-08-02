@@ -114,7 +114,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
     role: subdocument
-    b3: f299ce37478256a3b68fd4fc9db51fe17ce10ce7576be80cbde5f152aac81219
+    b3: 10b53b5fc22993a758c344d0030becf593efbd67505433725f5df8554f3f6d52
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
@@ -139,7 +139,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: d215a4c3b619aae9666a4ab91cd7adb132018587f2a5b237c5acabc53b08e48c
+    b3: 6b2f42647e8ac22387299a1b0da9aac724d8cefbd9668aaebb1cbcd10306eae4
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md

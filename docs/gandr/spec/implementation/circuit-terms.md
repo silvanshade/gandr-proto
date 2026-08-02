@@ -483,8 +483,9 @@ Completeness of finite matrices for (dagger-)hypergraph categories is the semant
 
 ### Internal wires are a binder, and there is a worked precedent
 
-gandr's circuit-body sketch wires by name sharing and has **no construct that says a name is internal to a block** — so every intermediate wire in a body is either accidentally part of the interface or needs a separate interface declaration.
-The reversible-circuit language Ricercar supplies exactly the missing construct, and it is worth transcribing because three of its four parts transfer [@thomsen-kaarsgaard-soeken-2015-ricercar].
+gandr's circuit-body sketch wires by name sharing and originally had **no construct that says a name is internal to a block** — so every intermediate wire in a body was either accidentally part of the interface or needed a separate interface declaration.
+The ruled block form ([[../surface-language/circuit-cells#The block form, ruled]], 2026-08-02) closes half of that gap from the other side: the head declares the interface, so internal wires are the body names not in it, computed and checked by exactly the fold below; the explicit binder stays reserved for obligation-carrying wires, whose surface form is the `feed` statement.
+The reversible-circuit language Ricercar supplies the construct and the fold, and it is worth transcribing because three of its four parts transfer [@thomsen-kaarsgaard-soeken-2015-ricercar].
 
 Its **ancilla scope** `α x. A` binds an internal wire `x` over a circuit `A`, with fresh names minted on introduction and an obligation that `x` is constant at **both** ends of `A`.
 Well-formedness is a fold over the syntax returning the set of used names:

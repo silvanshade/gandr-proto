@@ -3,7 +3,8 @@
 The design pass on a standing question: the substrate carries the full generality of circuit algebras, and the surface does not.
 This document asks whether it should, sketches a syntax that would, and prices each feature.
 
-* Status: **design sketch.** **Nothing here is committed, and no concrete syntax is chosen.** Every spelling below is a starting point recorded so the decision is cheap when it is taken; every example is **unworked** — none has a corpus witness, an elaboration, or a checked semantics.
+* Status: **partially ruled.** The block form's core spellings — the declaration shape, the arrow grid, the statement forms, and the port discipline — are **ruled** (owner, 2026-08-02) and recorded at [[#The block form, ruled]]; the sections below that sketch alternatives to them are superseded where they conflict and are annotated in place.
+  Everything else remains **design sketch**, and every example remains **unworked** — none has a corpus witness, an elaboration, or a checked semantics; the ruling chose spellings, not semantics.
 * This is the surface half of a standing metatheory obligation: deleting the cell record's simple-connectivity field, or re-carrying it as a consumer-side predicate, "with the surface-language question — whether the _surface_ still hides wheels and disconnection — as its own design pass" ([[../metatheory/roadmap]]).
 * The carrier-side facts it rests on are landed and machine-checked ([[../metatheory/carrier]]); the ruling it must honour is the generality ruling of the [[../metatheory#The substrate is the full circuit-algebra rung|metatheory track]].
   **Nothing here proposes a carrier change.**
@@ -56,40 +57,96 @@ The wheel is **not** in that inventory, and the inventory's "acyclicity gate's d
 So the honest claim is narrower than "these axes make the owed witnesses writable": two of the seven become writable, and **a wheel guard would be a new guard**, owing a witness once it exists rather than discharging one already owed.
 That, and not expressive power, is the argument.
 
+## The block form, ruled
+
+> **Ruled (owner, 2026-08-02), in design dialogue.** The circuit block form's core spellings are decided: judgment-style declarations with kind keywords, arrow-separated two-sided port lists in place of polarity sigils, the four-glyph arrow grid, and keyword-led body statements.
+> The ruling chose spellings and their checking obligations; the semantics behind them (elaboration, boundaries, the certificate witness) is the build ladder's, and the residuals at the end of this section are open.
+
+The worked example, in the ruled form — the congruence cell this document's reconvergence section motivates, and the first stateful wheel:
+
+```text
+sign Nat {
+  sort Nat : Type
+  data Zero : Nat                      // sugar for: data Zero : () --> (_ : Nat)
+  data Succ : Nat --> Nat              // sugar for: data Succ : (_ : Nat) --> (_ : Nat)
+  oper add : (Nat, Nat) --> Nat
+
+  rule cong2 : (
+    rule p : Nat ==> Nat,
+    rule q : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (x′);
+    node : q(y) ==> (y′);
+    node : add(x′, y′) --> (z);
+  }
+}
+
+oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
+  node : zip(stream, state) --> (next, out2);
+  feed : (next) --> (state);
+}
+```
+
+**Declarations are judgments.** Every member reads `name : signature`, and a block-bodied member reads `name : sphere { filler }` — the signature left of the block is the boundary data, which is the sphere discipline of [[higher-cells#Sphere-typed boundaries]] made syntactic.
+The kind keywords `sort` / `data` / `oper` / `rule` are the description universe's own structure surfaced, and they carry the dimension: `rule` binders may appear in a `rule`'s parameter list (a cell parameterized by rewrites), and a rule between rule-sorted endpoints is a 3-cell with no new syntax.
+
+**The arrow grid: four glyphs, and never more.** The shaft carries the kind-class and the head carries directedness:
+
+| kind-class                    | directed | bidirectional                                                                                                   |
+| ----------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| circuit 1-cell former         | `-->`    | `<->` — **reserved** for reversible opers; parse-and-decline until the reversible lane lands its checking story |
+| rewrite face, every dimension | `==>`    | `<=>` — the invertible cell, the certificate algebra's unconditional-composition licence                        |
+
+Dimension is read from the endpoints, never from the arrow: `p : Nat ==> Nat` is a 2-cell face because its endpoints are sorts; `α : p ==> q` with `p`, `q` rule-sorted is a 3-cell face with the same glyph.
+The term language's function arrow `->` is untouched and disjoint: a `-->` names a circuit interface — ports, monogamy, boxable into the cell layer — while `->` names a term function, and whether a function can be boxed into an interface is an honest later question rather than a pun.
+`<->` and `<=>` are deliberately **not** one notion: `<=>` on a rule is an engine licence (both orientations admitted; completion orients), while `<->` on an oper is a semantic claim about the function (a data-level iso) whose checking discipline the reversible lane owes — the ancilla-scope precedent below is inversion-compatible by construction (`inv(α x. A) = α x. inv(A)`), which is why the reservation is credible.
+
+**Every arrow reports the kind of the thing it belongs to.** A declaration's arrow comes from the declared member's kind; a body line's arrow comes from the **applied head's** kind — `p(x) ==> (x′)` because `p` is a rule (a redex line), `add(x′, y′) --> (z)` because `add` is an oper (a frame line).
+So a reader sees redex against frame locally, the block's own dimension is visible (a body containing a `==>` line is a 2-cell), and the checker confirms every arrow against the environment — three independent spellings of each fact, and a disagreement in any one is a localized, nameable error.
+This replaces the sketch's `*` redex marker below.
+
+**Bodies are keyword-led statements with an optional label slot.** `node : …` is the plain hyperedge (anonymous), `node w1 : …` names the occurrence — the named-face slot the attachment discipline below wants, kept open for the higher-cells lane and for diagnostics.
+`feed : (a) --> (b)` is the feedback back-edge and the **only cycle-forming statement**: the port discipline alone does not exclude a delay-free cycle written with `node` lines, so the checker owes the linear back-edge sweep over node-only wiring, and its diagnostic is a spelling correction — _this cycle has no `feed`; close loops with `feed`_.
+The `feed` statement is the obligation-carrying wire binder of [[../implementation/circuit-terms#Internal wires are a binder, and there is a worked precedent|the Ricercar precedent]], arrived at its intended use.
+
+**Ports are two-sided, and the name discipline is monogamy.** Inputs left of the arrow, outputs right, both as named lists — the interface is a cospan boundary written down, which is the shape the carrier (`Match Γ Δ`), the sequent kernel, and the rewriting correspondence all already have.
+Each wire name is produced exactly once and consumed exactly once; internal wires are **implicit** — the head declares the interface, and the body names not in it are internal, computed and checked by the name-set fold — so a misspelled wire is a linearity failure, not a silent fresh wire.
+The polarity sigils of the sketch below are superseded: what they carried is carried by position.
+
+**Sugar desugars to one named-port normal form.** `data Zero : Nat` is `() --> (_ : Nat)`; `data Succ : Nat --> Nat` is `(_ : Nat) --> (_ : Nat)`; unnamed tuple inputs mint fresh names in order.
+The named-port normal form is what the elaborator and the fold see.
+
+**`~>` retires.** The rewrite face former is `==>` at every position, so the recorded `~>`-versus-`~~>` type-position hazard dissolves rather than being managed: `~~>` (the directed former on types) is unaffected and no longer has a near-neighbour.
+The landed description-rule syntax (`rule add(Zero, n) ~> n`) migrates to `==>`.
+
+**Open residuals of the ruling, named rather than absorbed:**
+
+* the `feed` statement's typing — tick-zero and initialization — is exactly the delay-placement decision ([[../implementation/circuit-terms#circuit-terms-spike-08|the per-placement notes]]): the asymmetric (guarded) placement makes the delay operator's tick-zero triviality force the body to compute its own initial state, while the symmetric spelling above leaves the register-initialization obligation to be carried explicitly;
+* the back-edge sweep and its diagnostic are a checking obligation, not yet a checker;
+* lexical checks owed at the grammar's landing: `==>` beside the live `=>` of case arms; `<->` against any `<-` use; `--` inside `-->` against comment conventions (the repo comments with `//`).
+
 ## The sketch
 
-Nothing in this section is decided.
-It is one coherent set of choices, recorded with its alternatives.
+The subsections below predate the ruling above and are kept for the analysis they carry, which survives; where a spelling conflicts with the ruled form, the ruling wins and the subsection says so in place.
 
 ### Port-named cells
 
-Cells are declared with the [[higher-cells#The keyword ladder|higher-cells keywords]] `oper`/`cons`; every port carries its direction as a prefix on its name — `-` for inputs, `+` for outputs — and a leading `*` marks the cell as being in explicit-port (circuit) form:
+> **Superseded by [[#The block form, ruled]]** (owner, 2026-08-02).
+> This subsection sketched polarity sigils (`-`/`+` name prefixes) and a `*` circuit-form marker; the ruled form carries direction by position (inputs left of the arrow, outputs right), the block-with-arrow-head discriminates the circuit form, and no sigil exists.
+> The paragraphs are kept because three of their findings survive the respelling.
 
-```text
-oper *add(-x: Nat, -y: Nat, +z: Nat) -> *
-cons *add(-x: Nat, -y: Nat, +z: Nat): *
-```
+What survives, restated against the ruled form:
 
-* **The plain form is sugar.** The ordinary positional declaration parses to the same thing, with fresh port names minted in order:
-
-```text
-oper add(Nat, Nat) -> Nat     // parses to: oper *add(-x: Nat, -y: Nat, +z: Nat) -> *
-```
-
-The starred form is what the engine ever sees.
-The `cons`/`oper` split keeps its generative meaning; the trailing `-> *` / `: *` marks that the starred ports are the whole interface.
-
-* **The result clause is kept for readability, not necessity.** The `+` ports already _are_ the result, so a circuit cell has no distinguished return that the clause names.
-  It is retained because a reader should see where the interface ends without counting polarities — recorded as a readability decision so a later pass does not "discover" the redundancy and delete it.
-* **The marker is load-bearing at application sites.** `-` is the language's **only** unary operator, so in argument position `-x` already parses as _negate `x`_.
-  The marker is what switches the argument sort from expressions to ports, licensing `-`/`+` to mean polarity rather than arithmetic.
-  In a _declaration's_ parameter list there is no expression context, so there the marker is redundant for parsing and earns its keep on legibility, on zero-port cells, and on making a half-prefixed port list a hard error rather than a silent reinterpretation.
-* **The sigil spelling is open.** `*` is doubly taken in the landed grammar — binary multiplication and the eager-product former `A * B` — so `-> *` is that former written with no operands.
-  The alternatives are surveyed under [[#Open questions, dispositioned]]; the decision is the owner's and is parked rather than settled here.
+* **The plain form is sugar.** The ordinary positional declaration desugars to the named-port normal form with fresh names minted in order, and the normal form is what the engine ever sees — unchanged, now as the ruling's sugar ladder.
+* **The interface end must be visible.** The sketch kept a result clause for readability; the ruled form makes the output list **structural** (`--> (z : Nat)`), so the reader's need and the machine's datum are one thing and no later pass can delete it as redundant.
+* **The `-x`-parses-as-negation collision is dissolved, not solved.** The sigil form needed a marker to switch argument positions from expressions to ports; the ruled form has no signed names, so the collision cannot arise.
+  The `*`-sigil availability survey below at [[#Open questions, dispositioned]] is likewise dissolved.
 
 ### Attachment is by name, and that is a soundness property
 
-Wiring is name-sharing: a diagram is a sequence of cell applications with shared port names, polarity-checked at every attachment (`+` feeds `-`, always).
+Wiring is name-sharing: a diagram is a sequence of cell applications with shared port names, polarity-checked at every attachment — an output position feeds an input position, always; in the ruled form the polarity is the side of the arrow rather than a sigil on the name.
 
 Three reasons, in order of force — the first is the one that matters:
 
@@ -97,7 +154,7 @@ Three reasons, in order of force — the first is the one that matters:
   A positional port list imposes an order at every site and would have to be quotiented back out; a name-keyed one never imposes it.
   The cyclic-operad literature makes the same choice for the same reason: its simultaneous-composition term `a{tₓ | x ∈ X}` is explicitly order-irrelevant [@curien-obradovic-2017-cyclic].
 * **A wiring error becomes a named-port diagnostic** rather than an arity-index mismatch, and the polarity prefix makes the direction of every edge readable at the attachment site.
-* **Names dovetail with dependency**: a port's type may mention an earlier port's value (`+r: Vec(x)`), which is the shape the dependent-core era needs anyway.
+* **Names dovetail with dependency**: a port's type may mention an earlier port's value (`r : Vec(x)` in an output list), which is the shape the dependent-core era needs anyway — and binding a pinned rewrite's endpoints in the parameter telescope is the same mechanism one dimension up.
 
 The published attachment discipline closest to this is the named approach to opetopes [@curien-hothanh-mimram-2019-opetopes], whose grafting rule attaches at a **named face** and carries exactly two side conditions worth copying:
 
@@ -123,7 +180,8 @@ A block's body is a list of circuit applications, and each node is one of two ki
 * **redex** — a rewrite (a 2-cell): a named rule instantiation, or a port whose sort is a rewrite face.
 
 A body whose nodes are all frame is a **1-cell definition** and takes `oper`/`cons`; a body containing redexes is a **2-cell** and takes `rule`.
-A circuit `rule` therefore needs no `lhs ~> rhs`: the **wiring determines both boundaries** — the source boundary is the diagram with every redex replaced by its source, the target boundary the same diagram with every redex replaced by its target.
+Under the ruled form both facts are locally visible and checker-confirmed: a frame line carries `-->`, a redex line carries `==>` (the applied head's kind), so the declaration keyword, the head arrow, and the body lines spell the block's dimension three independent ways.
+A circuit `rule` therefore needs no explicit `lhs`/`rhs` pair: the **wiring determines both boundaries** — the source boundary is the diagram with every redex replaced by its source, the target boundary the same diagram with every redex replaced by its target.
 The rewrite _is_ the diagram.
 
 **Where that has to land, and does not yet.** The corpus's boundaries are not free-standing terms: they are **globular telescopes**, sphere-indexed, so parallelism is judgmental and a mis-glued boundary fails at the declaration table rather than downstream ([[higher-cells#Sphere-typed boundaries]]).
@@ -136,36 +194,40 @@ This document proposes starred `oper`/`cons`/`rule` forms and says nothing about
 
 A port that ranges over rewrites is sorted by the **2-cell face at the level's own arrow**, not by an operation type and not by the `Model` field's type:
 
-| candidate sort for a rewrite port      | what it would make the block                                                | verdict                                                                       |
-| -------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `Nat -> Nat` — a 1-cell                | every node becomes frame, no redex exists, and the block is a plain circuit | **wrong**: it de-dimensions the block and deletes the rewriting content       |
-| `Path(Nat, x, x′)` — the `Model` field | the _interpretation_ written into the syntax, and `Path` is groupoidal      | **wrong level, and unsound**: it silently makes a directed rewrite invertible |
-| `Nat ~> Nat` — the 2-cell face         | two rewrites, whiskerable into one frame                                    | **adopted for the sketch**                                                    |
+| candidate sort for a rewrite port       | what it would make the block                                                | verdict                                                                       |
+| --------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `Nat --> Nat` — a 1-cell                | every node becomes frame, no redex exists, and the block is a plain circuit | **wrong**: it de-dimensions the block and deletes the rewriting content       |
+| `Path(Nat, x, x′)` — the `Model` field  | the _interpretation_ written into the syntax, and `Path` is groupoidal      | **wrong level, and unsound**: it silently makes a directed rewrite invertible |
+| `Nat ==> Nat` — the 2-cell face         | two rewrites, whiskerable into one frame                                    | **adopted, and now ruled**                                                    |
 
 * The sort is the **boundary sort, not the boundary terms**.
-  `*f(-x, +x′)` unifies `f`'s source with `x` and binds `x′` to its target, so the inhabitant is the triple `(a, b, ρ : a ~> b)` — the same interface-pair shape as a hole.
-  A pinned form `-f: x ~> x′` stays available when the interface should name its endpoints.
-* The spelling is **stable across the directed family**: it interprets as `Path` under today's invertible overlay and as the directed former when that lands, with no surface change.
-* **Hazard recorded**: this puts `~>` in _type_ position, where the corpus already has `~~>` for the directed former at the type level.
-  They are distinguishable — `~>` relates terms of one sort, `~~>` relates types — but confusable.
-  `Step(Nat, x, x′)` is the alternative, and it is not free: `Step` is already taken by the abstract machine's successor-state outcome ([[higher-cells#As-built impact]]).
+  `node : p(x) ==> (x′)` unifies `p`'s source with `x` and binds `x′` to its target, so the inhabitant is the triple `(a, b, ρ : a ==> b)` — the same interface-pair shape as a hole.
+  A pinned form `rule p : x ==> x′` stays available when the interface should name its endpoints, and binding pinned rewrites in the parameter telescope is what lets a congruence cell's body shrink to its frame.
+* The spelling is **stable across the directed family**: it interprets as `Path` under today's invertible overlay and as the directed former when that lands, with no surface change; `<=>` marks the invertible member explicitly rather than by overlay.
+* **Hazard dissolved by the ruling**: the sketch's `~>` in type position sat one glyph from `~~>`, the directed former at the type level.
+  With `~>` retired and `==>` the face former, the near-collision no longer exists; `Step(Nat, x, x′)` is no longer needed as an escape.
 
 ## Reconvergence
 
 The dioperad fragment's actual boundary, and the one a term syntax hides most completely: a term has one root, so two paths that rejoin have no spelling.
 
 ```text
-rule *cong2(-f: Nat ~> Nat, -g: Nat ~> Nat, -x: Nat, -y: Nat, +z: Nat) {
-  *f(-x, +x′);             // redex: rewrite the first argument
-  *g(-y, +y′);             // redex: the second — no port shared with the line above
-  *add(-x′, -y′, +z);      // frame: an operation, not a redex
+rule cong2 : (
+  rule p : Nat ==> Nat,
+  rule q : Nat ==> Nat,
+  data x : Nat,
+  data y : Nat
+) ==> (z : Nat) {
+  node : p(x) ==> (x′);        // redex: rewrite the first argument
+  node : q(y) ==> (y′);        // redex: the second — no port shared with the line above
+  node : add(x′, y′) --> (z);  // frame: an operation, not a redex
 }
 ```
 
 ```text
-   x ──[f]── x′ ──┐
+   x ──[p]── x′ ──┐
                   ├──[ add ]── z        (one diagram, two disjoint redexes)
-   y ──[g]── y′ ──┘
+   y ──[q]── y′ ──┘
 ```
 
 This is the shape of Agda's `cong₂` — two rewrites applied to two arguments of one operation — and it is exactly what the boundary language **declines** today.
@@ -174,8 +236,8 @@ The reason is worth writing out rather than naming, because the whole section tu
 One diagram, but **two ways to read it as a sequence** — fire the first argument's redex first, or the second's:
 
 ```text
-add(f, y) then add(x′, g)        -- rewrite x first, then y
-add(x, g) then add(f, y′)        -- rewrite y first, then x
+add(p, y) then add(x′, q)        -- rewrite x first, then y
+add(x, q) then add(p, y′)        -- rewrite y first, then x
 ```
 
 Both start at `add(x, y)` and both end at `add(x′, y′)`, so they are parallel composites with the same boundary — but they are **not the same composite**, and nothing makes them equal by construction.
@@ -183,7 +245,7 @@ They agree only **up to interchange**, and adjudicating that silently is exactly
 That is why two simultaneous rewrite arguments are declined: the diagram is unambiguous, but its sequentializations are not, and a rule that fires "both at once" would be picking one without saying so.
 
 **The circuit form is what turns that decline's reversal condition into a construction.** The guards ledger fences it precisely: acceptance is licensed "exactly on **disjoint positions**, where the two readings are shift-equal", and "do not accept it any earlier or any wider" ([[../metatheory/guards#Horizontal-composition surface sugar]]).
-In a port-named body, **two redexes are disjoint iff they share no port name** — and in the block above, `f`'s ports are `x`/`x′` while `g`'s are `y`/`y′`, sharing nothing.
+In a port-named body, **two redexes are disjoint iff they share no port name** — and in the block above, `p`'s ports are `x`/`x′` while `q`'s are `y`/`y′`, sharing nothing.
 So disjointness becomes a check the parser performs on names rather than a property the reader asserts, and the two readings above become shift-equal rather than merely parallel.
 That is the trigger the guard was waiting for, and it is why this document and the boundary language's open question have to move together.
 
@@ -196,9 +258,9 @@ The general point is larger than the example: **congruence is the free coherence
 Two independent components in one diagram, with no wire between them:
 
 ```text
-oper *both(-src: A, -aux: B, +mid: C, +dst: D) -> * {
-  *pipeline1(-src, +mid);   // shares nothing with the next line
-  *pipeline2(-aux, +dst);
+oper both : (src : A, aux : B) --> (mid : C, dst : D) {
+  node : pipeline1(src) --> (mid);   // shares nothing with the next line
+  node : pipeline2(aux) --> (dst);
 }
 ```
 
@@ -236,12 +298,12 @@ By contrast, a production implementation at the _unital_ rung must carry the fre
 
 ### Two guard disciplines, and they are complementary
 
-The handoff sketch proposed a `wheel` keyword marking the block, with a delay cell as the checker's obligation:
+The handoff sketch proposed a `wheel` keyword marking the block, with a delay cell as the checker's obligation; the ruled form carries the cycle in the `feed` statement instead — the only statement that may close one, so the marking sits at the back-edge rather than on the block:
 
 ```text
-wheel oper *accumulate(-stream: Stream(Nat), +out2: Stream(Nat)) -> * {
-  *zip(-stream, -state, +next, +out2);
-  *delay(-next, +state);      // the unit delay: `state` is `next` one step later
+oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
+  node : zip(stream, state) --> (next, out2);
+  feed : (next) --> (state);      // the unit delay: `state` is `next` one step later
 }
 ```
 
@@ -254,32 +316,35 @@ wheel oper *accumulate(-stream: Stream(Nat), +out2: Stream(Nat)) -> * {
           │                    v
           └────── next <───────┘
 
-   the wheel: zip's +next feeds back (through delay) as its own -state
-   — an output port attached, one step later, to an input port of the same cell
+   the wheel: zip's next feeds back (through the feed statement's delay)
+   as its own state — an output port attached, one step later, to an
+   input port of the same cell
 ```
 
-There is a second discipline, and it is **stronger**: make the delay a **type-level** operation, so that a feedback former only typechecks when the fed-back port is delayed.
+There is a second discipline, and it is **stronger**: make the delay a **type-level** operation, so that the `feed` statement only typechecks when the fed-back port is delayed.
 Written out, the same cell under that discipline — note the `.d` on the fed-back **type**, not on a cell:
 
 ```text
-oper *zip(-stream: Stream(Nat), -state: Stream(Nat).d, +next: Stream(Nat), +out2: Stream(Nat)) -> *
+oper zip : (stream : Stream(Nat), state : Stream(Nat).d) --> (next : Stream(Nat), out2 : Stream(Nat))
 
-wheel oper *accumulate(-stream: Stream(Nat), +out2: Stream(Nat)) -> * {
-  *zip(-stream, -state, +next, +out2);
-  feedback next as state;      // legal: `state`'s type is delayed, `next`'s is not
+oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
+  node : zip(stream, state) --> (next, out2);
+  feed : (next) --> (state);      // legal: `state`'s type is delayed, `next`'s is not
 }
 ```
 
 and the ill-formed one, which is now a **type** error rather than an analysis refusal:
 
 ```text
-oper *zip'(-stream: Stream(Nat), -state: Stream(Nat), +next: Stream(Nat), +out2: Stream(Nat)) -> *
+oper zip' : (stream : Stream(Nat), state : Stream(Nat)) --> (next : Stream(Nat), out2 : Stream(Nat))
 
-wheel oper *diverge(-stream: Stream(Nat), +out2: Stream(Nat)) -> * {
-  *zip'(-stream, -state, +next, +out2);
-  feedback next as state;      // declined: -state: Stream(Nat), expected Stream(Nat).d
+oper diverge : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
+  node : zip'(stream, state) --> (next, out2);
+  feed : (next) --> (state);      // declined: state : Stream(Nat), expected Stream(Nat).d
 }
 ```
+
+Whether the delay lives on the type this way — the asymmetric, guarded placement, under which tick-zero triviality forces the body to compute its own initial state — or stays a property of the `feed` statement with the same type at both ends is **the delay-placement decision**, open and owner-owned; the ruled form's spelling above is placement-neutral, and the `.d` here illustrates the typed discipline rather than deciding it.
 
 This is the **feedback-category** structure [@katis-sabadini-walters-2002-feedback]: a symmetric monoidal category with a monoidal endofunctor `delay` and a `feedback` operator taking `f : x ⊗ delay(m) → y ⊗ m` to `f : x → y`.
 It is **not** a new proposal here — feedback categories are the project's already-adopted entry tier for wheels, and the stateful-stream reading is recorded beside it [@dilavore-defelice-roman-2022-monoidal-streams].
@@ -298,16 +363,14 @@ There is no guarded-form fence in the corpus, and "guardedness" there is exclusi
 
 The two disciplines compose rather than compete:
 
-| discipline            | what it gives                                                                                                          | what it does not give                                          |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `wheel` on the block  | the cycle is declared **once, at the top**, and is visible without tracing every port name; the refuter stays writable | nothing about whether the guard is present                     |
-| delay on the **type** | the guard becomes a **typing obligation** — an unguarded feedback does not typecheck                                   | nothing about visibility; a reader still has to find the cycle |
+| discipline              | what it gives                                                                                                                                                                         | what it does not give                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `feed` at the back-edge | the cycle is spelled at its closing statement — the **only** statement that may close one — so the refuter stays writable and the checker's cycle diagnostic is a spelling correction | nothing about whether the guard is present                         |
+| delay on the **type**   | the guard becomes a **typing obligation** — an unguarded feedback does not typecheck                                                                                                  | nothing about which statement closed the cycle a reader is tracing |
 
-**Recommendation for the sketch**: carry both.
-The keyword answers "is there a cycle here", which is a legibility and refutability question; the typed delay answers "is it well-founded", which is a soundness question.
-Neither answers the other's.
+The ruled form takes the first (the sketch's block-keyword variant lost to it: the wheel is closed at a statement, so the marking sits where the closing happens); the second is the asymmetric half of the open delay-placement decision, and the recommendation to carry both survives the respelling — the statement answers "where is the cycle closed", the typed delay answers "is it well-founded", and neither answers the other's.
 
-Alternatives recorded: a glyph on the feeding attachment itself (more local, but splits the marking across sites); the reserved `↻u` marker from the deferred inventory, which this design may consume; a separate `wheel` declaration form beside `rule` (heavier — a second mold family).
+Alternatives recorded and disposed: the block keyword (superseded by `feed`, above); a glyph on the feeding attachment (subsumed — `feed` is that marking, as a statement rather than a glyph); the reserved `↻u` marker (unconsumed; still deferred-with-reasons); a separate `wheel` declaration form (declined — a second mold family with no remaining purpose).
 
 ### What the wheel is, and where it materializes
 
@@ -329,9 +392,9 @@ Whether the optimizer's overlap shapes are themselves hole-contexts is a plausib
 A fusion is the plugging of two of them:
 
 ```text
-rule *fuse(-x: A, +r: C) {
-  *producer(-x, +?mid: B);   // the hole: an open port the context owns
-  *consumer(-?mid, +r);
+rule fuse : (x : A) ==> (r : C) {
+  node : producer(x) --> (?mid : B);   // the hole: an open port the context owns
+  node : consumer(?mid) --> (r);
 }
 ```
 
@@ -345,15 +408,15 @@ Four things it supplies, and one correction to how the corpus currently states i
   Written in this sketch's notation, the two units look like this — and the first is the `both` block of [[#Disconnection]], read as one context rather than as two components:
 
 ```text
-rule *sever(-src: A, +dst: D) {
-  *pipeline1(-src, +mid);
-  ?gap();                    // the I-hole: an interface pair with no ports
-  *pipeline2(-aux, +dst);    // shares nothing above the gap
+rule sever : (src : A) ==> (dst : D) {
+  node : pipeline1(src) --> (mid);
+  ?gap();                              // the I-hole: an interface pair with no ports
+  node : pipeline2(aux) --> (dst);     // shares nothing above the gap
 }
 
-rule *whole(-src: A, +dst: D) {
-  *pipeline1(-src, +mid);
-  *pipeline2(-mid, +dst);    // no hole at all — the N unit
+rule whole : (src : A) ==> (dst : D) {
+  node : pipeline1(src) --> (mid);
+  node : pipeline2(mid) --> (dst);     // no hole at all — the N unit
 }
 ```
 
@@ -362,12 +425,12 @@ That identification is the most useful thing this reading produced, and it is no
 
 * **Polarity plus acyclicity is a published, linear-time discipline.** The same work's polar lists are lists of types with a polarity function, and a **polar shuffle** is a bijection between the positive and negative halves whose induced directed graph is **acyclic** — with validity checkable in time linear in the interfaces, at most one shuffle between distinctly-typed lists, and composition preserving acyclicity.
 
-  gandr's `-`/`+` ports **are** a polar list, and its attachment check **is** a polar shuffle.
+  gandr's two-sided ports **are** a polar list — inputs the negative half, outputs the positive — and its attachment check **is** a polar shuffle.
   Side by side, the `fuse` block above and its polar reading:
 
 ```text
-*producer(-x: A, +mid: B)     polar list:  [ A°, B• ]
-*consumer(-mid: B, +r: C)     polar list:  [ B°, C• ]
+producer : (x : A) --> (mid : B)     polar list:  [ A°, B• ]
+consumer : (mid : B) --> (r : C)     polar list:  [ B°, C• ]
 
 the shuffle pairs producer's B• with consumer's B°, leaving [ A°, C• ]
 — acyclic, so the attachment is legal and the composite is again a polar list
@@ -395,16 +458,16 @@ So a fan-in cell is lawful only when its target carries that structure, and the 
 
 ```text
 // free: pure routing. one source, two destinations, nothing combined.
-oper *split(-p: Pipe, +l: Pipe, +r: Pipe) -> *
+oper split : (p : Pipe) --> (l : Pipe, r : Pipe)
 
 // not free: two sources arriving at one destination.
-oper *merge(-p: Pipe, -q: Pipe, +r: Pipe) -> *   // lawful only because stream append
-                                                 // is a commutative monoid
+oper merge : (p : Pipe, q : Pipe) --> (r : Pipe)   // lawful only because stream append
+                                                   // is a commutative monoid
 ```
 
 The two look symmetric on the page and are not symmetric in what they cost.
-`*split` needs nothing: the target map is the whole content.
-`*merge` needs a commutative monoid on `Pipe`, and if `Pipe` has none the cell is **not** a wiring question that a diagram can settle — it is an unmet obligation the surface should name at the declaration rather than let the picture imply.
+`split` needs nothing: the target map is the whole content.
+`merge` needs a commutative monoid on `Pipe`, and if `Pipe` has none the cell is **not** a wiring question that a diagram can settle — it is an unmet obligation the surface should name at the declaration rather than let the picture imply.
 
 The related precedent, read: in DisCoPy a spider is **boxless** — `spiders(n_legs_in, n_legs_out, typ)` introduces no generator at all, it simply repeats one wire label on both sides, so many-in/many-out is the wiring map being allowed to repeat a label rather than a primitive to add [@discopy].
 Its Frobenius and commutative-monoid laws are then not rewrite rules but consequences of the representation: equality is decided by translating to hypergraph form and comparing.
@@ -461,28 +524,28 @@ A document about "circuit cells" is exactly where the wrong neighbour is importe
 
 ## Open questions, dispositioned
 
-| #   | question                                                                                                                            | disposition                                                                                                                                                                                                                                                                                                                                                                         |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | the circuit-form **sigil**: `*` is doubly taken (binary multiply, eager product), so `-> *` is that former with no operands         | **parked with the owner**, who has seen the collision and elected to keep `*` pending their own decision. Surveyed: `#` is free apart from `#{…}`/`#!{…}` and would extend the labeled-bundle reading; `%` risks modulo; `@` was already declined for the `@[…]` conflict; `^` is wanted by the deferred sized-type surface; `~` reads as the rewrite family; `!` risks logical-not |
-| 2   | whether the **result clause** `-> *` / `: *` should exist at all, given the `+` ports are the result                                | **carried as a readability decision** (owner, explicit). Recorded so it is not deleted as redundant by a later pass                                                                                                                                                                                                                                                                 |
-| 3   | `~>` in **type position** for a rewrite port, against `~~>` for the directed former                                                 | **carried** as a recorded hazard; `Step(…)` is the alternative and is not free                                                                                                                                                                                                                                                                                                      |
-| 4   | whether the explicit two-body form `{ … } ~> { … }` stays available beside the derived-boundary form                                | **carried**; the derived form is what makes disjointness a name check, but a checkable explicit spelling may still be wanted                                                                                                                                                                                                                                                        |
-| 5   | whether `wheel` marks the block, the attachment, or a separate declaration form                                                     | **carried**, with the block form preferred because the wheel is a property of the whole wiring                                                                                                                                                                                                                                                                                      |
-| 6   | whether the delay guard is **static analysis** or a **typing obligation** on a delayed type                                         | **carried**, with the recommendation that it be both — they answer different questions                                                                                                                                                                                                                                                                                              |
-| 7   | whether the reserved `↻u` marker is consumed by this design                                                                         | **carried**; the glyph is recorded but the marker is deferred-with-reasons and has no grammar rule, slot, or sort ([[roadmap]])                                                                                                                                                                                                                                                     |
-| 8   | multi-hole contexts: whether the surface tracks hole **order** (the sequential fragment is a list) or the full two-tensor structure | **carried**; the source's own notation is acknowledged tedious, so this is a design question and not a transcription                                                                                                                                                                                                                                                                |
-| 9   | whether the corpus's Holes section is corrected in place                                                                            | **carried, and owed** — the "cofree produoidal over the free monoidal category" phrasing conflates two theorems and should be fixed where it stands                                                                                                                                                                                                                                 |
-| 10  | the higher-order hole direction — a circuit with a hole taking another circuit                                                      | **parked**, conditional on wanting higher-order cells; the second hole theory already has a home in the metatheory track                                                                                                                                                                                                                                                            |
-| 11  | the feedback-category sources — read only through DisCoPy's implementation of them, not in the original                             | **carried, with the reading gap marked at the claim.** Both locators are in the project register: the origin [@katis-sabadini-walters-2002-feedback] and the stream reading [@dilavore-defelice-roman-2022-monoidal-streams]. Nothing here rests on either beyond the implementation actually read, and neither is quoted                                                           |
-| 12  | how a **derived** rule boundary lands on the corpus's sphere-indexed (globular-telescope) boundaries                                | **carried**, and unresolved. The derived-boundary form is what makes disjointness a name check, so this interaction has to be settled before it lands, not after                                                                                                                                                                                                                    |
-| 13  | the respelled starred forms in **codata** position                                                                                  | **carried**, inherited from [[higher-cells#Open questions, dispositioned]]. Declining there is legitimate; omitting it is not                                                                                                                                                                                                                                                       |
-| 14  | traversal order in a parallel body — where an implementation is tempted to impose one, against the symmetry ruling                  | **carried as a stated hazard**, not solved. It is the sharpest place the symmetry refusal bites, and the sketch offers name-keyed attachment as the mitigation rather than a proof                                                                                                                                                                                                  |
-| 15  | adding the disconnection-is-a-unit-hole identification to the corpus's Holes section                                                | **carried, and owed** — like the produoidal correction of question 9, it is a change to a document this pass did not edit                                                                                                                                                                                                                                                           |
+| #   | question                                                                                                                            | disposition                                                                                                                                                                                                                                                                                                                                   |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | the circuit-form **sigil**: `*` is doubly taken (binary multiply, eager product), so `-> *` is that former with no operands         | **dissolved by the ruling** ([[#The block form, ruled]]): no sigil exists — the block-with-arrow-head discriminates the circuit form. The glyph survey is retired with it                                                                                                                                                                     |
+| 2   | whether the **result clause** should exist at all, given the output ports are the result                                            | **answered by the ruling**: the output list (`--> (z : Nat)` / `==> (z : Nat)`) is structural, not a readability clause — the reader's need and the machine's datum are one thing                                                                                                                                                             |
+| 3   | `~>` in **type position** for a rewrite port, against `~~>` for the directed former                                                 | **dissolved by the ruling**: `~>` retires and `==>` is the face former at every position, so the near-collision no longer exists                                                                                                                                                                                                              |
+| 4   | whether an explicit two-body form `{ … } ==> { … }` stays available beside the derived-boundary form                                | **carried**, respelled; the derived form is what makes disjointness a name check, but a checkable explicit spelling may still be wanted                                                                                                                                                                                                       |
+| 5   | whether `wheel` marks the block, the attachment, or a separate declaration form                                                     | **answered by the ruling**: the `feed` statement marks the back-edge — the only statement that may close a cycle — so the marking sits at the closing attachment; the block-keyword and separate-declaration variants are disposed under [[#Two guard disciplines, and they are complementary]]                                               |
+| 6   | whether the delay guard is **static analysis** or a **typing obligation** on a delayed type                                         | **carried, and sharpened**: this is now the delay-placement decision (symmetric feed-statement guard versus asymmetric type-level delay), owner-owned, with the tick-zero/initialization consequence stated at [[#The block form, ruled]]                                                                                                     |
+| 7   | whether the reserved `↻u` marker is consumed by this design                                                                         | **carried**; the glyph is recorded but the marker is deferred-with-reasons and has no grammar rule, slot, or sort ([[roadmap]])                                                                                                                                                                                                               |
+| 8   | multi-hole contexts: whether the surface tracks hole **order** (the sequential fragment is a list) or the full two-tensor structure | **carried**; the source's own notation is acknowledged tedious, so this is a design question and not a transcription                                                                                                                                                                                                                          |
+| 9   | whether the corpus's Holes section is corrected in place                                                                            | **carried, and owed** — the "cofree produoidal over the free monoidal category" phrasing conflates two theorems and should be fixed where it stands                                                                                                                                                                                           |
+| 10  | the higher-order hole direction — a circuit with a hole taking another circuit                                                      | **parked**, conditional on wanting higher-order cells; the second hole theory already has a home in the metatheory track                                                                                                                                                                                                                      |
+| 11  | the feedback-category sources — read only through DisCoPy's implementation of them, not in the original                             | **closed (2026-08-02)**: both sources are now read in the original at their numbered statements, and the hardened record is [[../implementation/circuit-terms#Wheels, and which structure the cell layer takes]] — the origin [@katis-sabadini-walters-2002-feedback] and the stream reading [@dilavore-defelice-roman-2022-monoidal-streams] |
+| 12  | how a **derived** rule boundary lands on the corpus's sphere-indexed (globular-telescope) boundaries                                | **carried**, and unresolved — now owned by the build ladder as its own rung. One easing from the ruling: pinned rewrite binders in the parameter telescope give the congruence fragment its sphere judgmentally, so the derivation question bites only where redexes target internal wires                                                    |
+| 13  | the ruled block forms in **codata** position                                                                                        | **carried**, inherited from [[higher-cells#Open questions, dispositioned]]. Declining there is legitimate; omitting it is not                                                                                                                                                                                                                 |
+| 14  | traversal order in a parallel body — where an implementation is tempted to impose one, against the symmetry ruling                  | **carried as a stated hazard**, not solved. It is the sharpest place the symmetry refusal bites, and the sketch offers name-keyed attachment as the mitigation rather than a proof                                                                                                                                                            |
+| 15  | adding the disconnection-is-a-unit-hole identification to the corpus's Holes section                                                | **carried, and owed** — like the produoidal correction of question 9, it is a change to a document this pass did not edit                                                                                                                                                                                                                     |
 
 ## Source and confidence
 
-* **This document is a sketch, and its status is the load-bearing part of it.** No example has been elaborated, checked, or given a corpus witness; no syntax is committed; the sigil is undecided.
-  Treat every code block as a shape, not a spelling.
+* **This document's status is the load-bearing part of it, and it split on 2026-08-02.** The block form's core spellings are ruled ([[#The block form, ruled]], owner, in design dialogue): those code blocks are spellings.
+  No example has been elaborated, checked, or given a corpus witness, so everything else — semantics, elaboration, holes, aggregation — remains a sketch, and its code blocks remain shapes.
 * The **carrier facts are high confidence**: they are landed, machine-checked, and named in [[../metatheory/carrier]].
   Nothing here proposes changing them, and the no-cup consequence is quoted rather than inferred.
 * The **rulings it honours** — the generality ruling, the symmetry refusal, the horizontal-composition decline and its reversal condition, the aggregation split — are quoted from the corpus with their reversal conditions intact.
