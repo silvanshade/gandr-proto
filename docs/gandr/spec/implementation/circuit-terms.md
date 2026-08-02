@@ -303,15 +303,21 @@ The cell layer's business is what the rewriting engine may assume, and that is w
 
 > **Ruled (owner, 2026-08-01): the cell layer takes feedback, and the trace is declined there.** The decline is **scoped to the cell layer and to it alone** — three fences follow — and it carries a reversal condition.
 
-**The decisive reason is not that matching gets easier; it is that three devices gandr already ships require the causal order to be a partial order, and a trace destroys it.**
+**The decisive reason is not that matching gets easier; it is that devices gandr already ships are stated over _positions in the diagram_, and the trace equations make a position ill-defined.**
 
-* The certificate normal form's **canonical schedule** is "earliest causal position, content-address tie-break".
-  A cycle has no earliest position, so on a traced diagram that schedule is not merely expensive — it is **undefined**.
-* The bracket oracle's **replay fuel is the causal critical path**, and a cycle has no critical path.
-* Normalization is deterministic by "outermost position, then store insertion order", which needs a well-founded position order to be a decision at all.
+> **An earlier draft of this passage overstated the case, and the overstatement is recorded rather than quietly fixed because it made the error this corpus is most prone to.** It claimed three devices break, on the grounds that "a cycle has no earliest position" and "a cycle has no critical path".
+> Both read a cycle in the **diagram** as a cycle in the **derivation** — the layer conflation [[../metatheory#The representation is not the theory|the reading rule]] names, committed in the same session that promoted the rule.
+> A cyclic diagram does not by itself make the causal order among rewrites cyclic, so the **bracket oracle's critical path is not broken by a trace and that bullet is withdrawn**.
+> What survives is narrower and sound.
 
-Sliding is exactly the equation that moves a cell around a loop, and moving a cell around a loop is what makes those three ill-defined; yanking is the equation that erases a step, which would have to be absorbed into replay-equivalence.
-Under feedback neither is available, the delay is the tick boundary, and all three devices keep working unchanged.
+* **Deterministic normalization does break, and it is the load-bearing one.** Normalization is deterministic by "outermost position, then store insertion order", and _outermost_ presupposes a well-founded order on positions.
+  Sliding moves a cell arbitrarily far around a loop, so a cyclic diagram has no outermost position and the strategy stops being a decision at all.
+* **The canonical schedule is weakened, not destroyed.** Its "earliest causal position" is causal order among rewrites, which survives a trace; but _position_ is position in the diagram, and under sliding it is defined only **up to rotation**.
+  So the schedule needs a canonical rotation it does not have — one more `canon` obligation, not an undefined notion.
+* **Yanking is a cost independent of sliding.** It erases a step, so replay-equivalence would owe closure under an equation that deletes one from a record whose purpose is to have recorded it.
+
+Under feedback none of that arises: the delay is the tick boundary, position is well-founded, and the schedule needs no rotation.
+The decline therefore rests on one device breaking and two paying, which is still decisive against a structure gandr has no use for — but it is a smaller claim than the one first written, and the difference is the kind that matters.
 
 **The second reason is coherence with the track's own temporal reading.** Identity here is a construction in time over an unfinished substrate, and the storage discipline is bounded sensitivity of the address map under local edits.
 A delay is a temporal notion and a tick is a natural edit boundary; yanking is an atemporal statement — that a loop containing nothing _is_ nothing — and it is the one equation that erases a step from a record whose whole purpose is to have recorded the steps.
@@ -581,7 +587,7 @@ Every one carries a disposition.
     **Carried as the named generalization of the linearity ruling above**, and it is the row that makes idempotence rules writable again on the types that genuinely support them.
     The sub-question to answer first is whether the cell-layer comonoid is a **new** supply or is read off the existing grade discipline, since a grade-ω binding already licenses duplication on the value side.
 19. **circuit-terms-question-19** — **does the cell layer take trace or feedback?** Restated 2026-08-01 from "what covers the wheel axis", which conflated three layers.
-    **Ruled: feedback, with the trace declined at this layer only**, on three grounds — the causal order must stay a partial order for the canonical schedule, the bracket oracle's critical path and deterministic normalization to be defined at all; the temporal reading of identity; and the delay cut keeping the whole correspondence applicable.
+    **Ruled: feedback, with the trace declined at this layer only**, on three grounds — deterministic normalization needs a well-founded position order that sliding destroys, while the canonical schedule pays a rotation and yanking pays an equation that erases a step; the temporal reading of identity; and the delay cut keeping the whole correspondence applicable.
     The account, the three fences, the reversal condition and the two conditions on hardening are [[#Wheels, and which structure the cell layer takes]].
     **What stays open is the warrant, not the choice**: whether cutting at the delays preserves convexity under re-closure ([[#circuit-terms-spike-08|circuit-terms-spike-08]]), and what carries the delay supply, which has no former of its own.
 20. **circuit-terms-question-20** — **when a type supplies both fan-in and fan-out, which interaction law comes with them?** The two canonical answers over the same generators are **Frobenius**, under which connected diagrams contract to a standard form, and **bialgebra**, under which they expand — the correspondence paper's bialgebra case study needs a four-component lexicographic order to terminate, because one of its rules increases the hyperedge count.
