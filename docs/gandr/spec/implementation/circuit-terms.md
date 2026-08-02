@@ -455,8 +455,10 @@ The productivity discipline is therefore **not** promoted to a supply — it sta
 The corpus witness "a wheel with no delay" is satisfiable with no supply machinery at all; what it waits on is the binder.
 The one true reading of "the type supplies it" survives as a consequence rather than a mechanism: a type that is not codata has no observation to sit under, so it cannot host a fed-back port.
 
-> **Recommendation to the owner, not a decision taken here.** Whether gandr's surface gains a first-class delay type former, as the monoidal-streams type theory has, is new syntax and therefore the owner's call.
-> The source needs one because its context operation is defined type-wise; gandr's guardedness check is a side condition on observation depth and needs no type to name it, so the cheaper route is available and is what the paragraphs above assume.
+> **Ruled (owner, 2026-08-02): the surface gains a type-level delay, and the typed discipline is required.** The feedback binder's typing rule is the monoidal-streams shape — the fed-back port sits at the delayed type in the premise and is produced undelayed — so the delay placement is the asymmetric, guarded one, and the guardedness discipline above remains what discharges the obligation.
+> **The former's name and precise syntax are provisional** and the corpus writes a placeholder (`.d`) until three recorded collision risks are cleared: `Delay` as the partiality monad, should that lane open; the abstract-stone-duality direction; and the Lipschitz-condition mechanism, which may want the delay generalized to a graded modality.
+> The surface record is [[../surface-language/circuit-cells#The block form, ruled]]; the cheaper no-former route the earlier recommendation named is superseded by this ruling.
+> One consequence worth naming at the engine: the symmetric $Γ + D → Δ + D$ cut shape used below remains the placement-erased reading — forgetting the delay marking on the interface recovers it — so the spike results stated against it stand, with the seam test taking its typed form.
 
 ### The closest Agda encoding forks from gandr exactly here
 
@@ -802,7 +804,7 @@ So the test the quotient asks for reads, as built, as **two `Pos` paths of which
 
 **Is the delay cut convexity-stable?** The wheel ruling is that the **cut-open form** of a delay-guarded cyclic body is an ma-cospan whose boundary carries the delays' cut ends, so cutting every delayed port turns a body $Γ → Δ$ into an acyclic $Γ + D → Δ + D$ that the whole correspondence covers.
 Check the one gap that would sink it, in three steps.
-**EXECUTED (2026-08-01), for the symmetric delay placement the corpus assumes**, with the asymmetric placement's differences stated at the one answer that has any.
+**EXECUTED (2026-08-01), for the symmetric delay placement the corpus then assumed**, with the asymmetric placement's differences stated at the one answer that has any; **the placement has since been ruled asymmetric-typed** (owner, 2026-08-02, at [[#Wheels, and which structure the cell layer takes]]), which collapses those notes as marked below.
 **The gap is real and it does not sink the proposal**, because what it costs is a fence on which diagram may be matched, not a repair to the convexity test.
 
 * Take a body with one delayed back-edge and a match convex in the cut-open form; re-close the delay and check whether a path now runs from an output of the match to an input of it.
@@ -846,8 +848,9 @@ So delay occurrence is invariant under exactly the equations the cell layer keep
 **The seam criterion is the one answer that moves, and it moves in a direction worth the owner's attention.** Under the asymmetric placement the delay is carried by a **type**, so the occurrence test is a question the type checker already answers — a rule mentions the delay exactly when one of its ports sits at the delayed type — whereas under the symmetric placement the delay is a **generator** and the test inspects the rule's diagram content.
 A smaller difference travels with it: the asymmetric cut gives the two ends of one delay **different types**, so no match can identify them, which the symmetric cut permits.
 
-**And the corpus's own answer to where a delay lives already leans asymmetric**, which is an input to the placement fork rather than a decision taken here: the delay is carried by the feedback binder's typing rule and discharged by the guardedness discipline ([[#circuit-terms-question-19|circuit-terms-question-19]]), which is the monoidal-streams shape, while the cut this document assumes is the Katis–Sabadini–Walters one.
-The placement is the owner's; what this spike adds is that it is not purely presentational, because the seam criterion's evaluable form differs between the two.
+**The placement fork is closed (owner ruling, 2026-08-02): asymmetric-typed**, consistently with where the corpus's delay answer already leaned — the delay is carried by the feedback binder's typing rule and discharged by the guardedness discipline ([[#circuit-terms-question-19|circuit-terms-question-19]]), the monoidal-streams shape.
+The collapse of the notes above: every placement-invariant answer stands as written; the symmetric cut shape stays valid as the placement-erased reading; and the seam criterion takes its **typed** form — a rule mentions the delay exactly when one of its ports sits at the delayed type, a question the type checker answers — which was the sharper of the two evaluable forms.
+What the spike recorded as the fork's stake is thereby realized rather than mooted, and the delay former's name stays provisional per the ruling.
 
 **Small**, and it shares its shape with [[#circuit-terms-spike-07|circuit-terms-spike-07]]: both ask whether a local independence test survives a global path condition, so running them together is cheaper than running either alone.
 
