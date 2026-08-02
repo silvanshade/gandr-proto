@@ -199,5 +199,32 @@ After dependency changes, regenerate the passive export as described above.
 
 ## Agent-attribution metadata
 
-Bead closures carry agent attribution, stamped at close via `bd update --set-metadata`: `model=<model-id>`, `runner=<runner>`, `agent_tokens=<n>`.
+### An agent acts under its commit-trailer name, on every tracker write
+
+**Binding, no exceptions.** The name an agent signs commits with is the name it files, comments, updates, and closes under.
+`bd` takes it as `--actor`, a global flag on every subcommand:
+
+```sh
+bd create … --actor 'Claude Opus 5 (1M context)'
+bd comment <id> --file … --actor 'Claude Opus 5 (1M context)'
+bd close <id> --reason … --actor 'Claude Opus 5 (1M context)'
+```
+
+**The string is the canonical trailer's name part, byte-for-byte, with the address dropped** — `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>` gives the actor `Claude Opus 5 (1M context)`.
+The registry in `.commitlintrc.mts` is authoritative for the spelling, exactly as it is for commits; a shortened, harness-supplied, or session-specific variant is a different agent as far as the record is concerned, which is the whole failure this rule closes.
+
+**Why it is required rather than nice.** Without `--actor`, `bd` falls back to `$BEADS_ACTOR`, then `git user.name`, then `$USER` — so every agent writes under the **owner's** name, and the tracker records the one identity that is certainly wrong.
+Comment streams and audit trails then read as if the owner asked the questions, made the corrections, and closed the beads.
+Several agents share this repository and this tracker at once — the reason a rejected push is contention rather than breakage, above — so "who wrote this" is a live question during a session and not merely an archival one.
+
+**Do not set `BEADS_ACTOR` globally.** A machine-wide value pins one model name across every session and every model on that machine, which reintroduces the same wrong-identity failure one level up.
+Pass `--actor` per invocation, or let a per-session harness set the variable if one can.
+
+**Two things this is not.** It is not `--assignee`, which records who will _do_ the work and is normally the owner or unset.
+And it is not retroactive: the audit trail is append-only, so writes already made under the fallback name stay as they are, and a correction goes in a comment rather than in a rewrite.
+
+### Closure metadata
+
+Bead closures also carry agent attribution as structured metadata, stamped at close via `bd update --set-metadata`: `model=<model-id>`, `runner=<runner>`, `agent_tokens=<n>`.
 Unstamped closures surface as "unattributed" in the metrics report (`mise run metrics:agents`, lands with the code tooling), so coverage gaps stay visible.
+The actor rule above and this metadata answer different questions — _who acted_ against _what ran_ — and both are recorded.

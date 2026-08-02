@@ -141,6 +141,9 @@ Commit messages are enforced by `commitlint`; `.commitlintrc.mts` is authoritati
   Separate header, body, and footer with blank lines; omit a trailing period from the subject.
 * Agent co-author trailers must match the canonical registry byte-for-byte.
   Session trailers are prohibited.
+* **One agent, one name, every surface.** The name an agent signs a commit with is the name it acts under everywhere an author or actor is recorded — tracker writes above all.
+  It is the registry entry's name part, byte-for-byte, without the address: `Claude Opus 5 (1M context)`, never a shortened, harness, or session variant.
+  The mechanics for the tracker are [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"Agent-attribution metadata".
 * **Never begin a body line with `word:`.** The parser reads any such line as the start of the footer, so the prose above it stops being the body and `footer-leading-blank` rejects the message.
   This bites on ordinary sentences — `Note: …`, `Caveat: …`, `Exception: …` — and the error names the footer rather than the line that caused it, so it reads as unrelated.
   Reword (`One caveat is that …`) or move the colon off the line start.
