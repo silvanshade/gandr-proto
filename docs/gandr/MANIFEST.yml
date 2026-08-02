@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 432054fc5baf14b5f2489ff38bc9cb8927367ab74d55492e91eae0c5287a9064
+    b3: 4978dc10c9aba4e5729bcd7df3e38e000592712f519256a1be31cfd3bbe8c27d
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -164,7 +164,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/ornaments.md
     role: subdocument
-    b3: df5d999de9ffa5e03cf75207574dbab9b42d1947ba6997d5bca179092611c1a1
+    b3: 26c3e4f947a06c49b027395788f2ec8720641e814eceebcb927a489d7c761a43
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/interactive-surface.md

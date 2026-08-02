@@ -3223,3 +3223,21 @@ fiore-kammar-moser-staton-2025-mast:
     in this article: they are in the accompanying technical report, arXiv:2511.03946, which the
     article's own Sec. 1 states "is not published as part of this article". Cite Thm 8.3 from the
     article and its proof from the report
+
+atkey-johann-ghani-2012-refining:
+  type: article
+  title: Refining Inductive Types
+  author: ["Atkey, Robert", "Johann, Patricia", "Ghani, Neil"]
+  date: 2012
+  serial-number:
+    doi: "10.2168/LMCS-8(2:9)2012"
+    arxiv: "1205.2492"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 8
+    issue: "2:9"
+    page-range: 1-30
+  note: >-
+    locator transcribed from the cosmology thesis's bibliography and verified against the LMCS
+    and arXiv records at registration time
