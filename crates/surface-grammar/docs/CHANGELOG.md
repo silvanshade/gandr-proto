@@ -8,7 +8,12 @@ The format is hand-maintained and grows only with real changes; it is not auto-g
 * `current`: The grammar admits **any** grid glyph at **every** arrow position by design: the ruling requires a disagreement to be a localized, nameable error, and a body line's arrow is confirmed against the applied head's kind — an environment fact no grammar sees.
   Confirmation is `gandr-surface-engine`'s `circuit` pass.
 * `current`: Three new PBG-only provenances (`sign_declaration`, `circuit_declaration`) and five folded adaptation surfaces (`circuit_member`, `circuit_signature`, `circuit_body`, `node_statement`, `feed_statement`) join `PBG_ONLY_KINDS`; the highlighter's keyword and operator tables gain the five circuit leads and the four grid glyphs.
-* `current`: Mold-count effect, pinned in `tests/walk.rs` — declared molds 1482 → 1720, reachable multi-mold labels 64 → 72, fingerprint `0x7b0c_4e6c_c16b_8608` → `0xbd0b_3e33_5961_a25a`.
+* `current`: A top-level circuit declaration takes **parenthesized sides**; the sugar ladder's bare-sort rungs are `sign`-member-only.
+  An Item-sort form that can end in a sort hole does not close — a bare-sort side detaches and the declaration silently keeps its prefix, a clean parse of the wrong tree the zero-obligation gate cannot see — and no other Item form in this grammar ends in one.
+  Pinned by `gandr-surface-parser` `acceptance::a_top_level_circuit_declaration_keeps_its_whole_signature`, which asserts the arrow is a _descendant_ of the declaration rather than merely that the parse is clean.
+* `current`: Recorded, not fixed: `sort` is a contextual keyword whose mold is admissible exactly where a member's bare-sort side sits, so `sign S { oper f : sort --> Nat … }` regroups cleanly and wrongly.
+  Reserving `sort` is not available — `list.sort` is a live corpus projection — and the collision is bounded to that one slot and to that one keyword.
+* `current`: Mold-count effect, pinned in `tests/walk.rs` — declared molds 1482 → 1720, reachable multi-mold labels 64 → 72, fingerprint `0x7b0c_4e6c_c16b_8608` → `0x0ad7_e73c_f55a_db6c`.
   The `oper` / `rule` judgment is declared once and shared by the `sign` member and the top-level declaration, and the telescope binders are kept off the result side; both are cost decisions against the `identifier` / `(` / `:` menus, which a duplicated tail would have widened twice as far.
 
 ## 2026-07-21 — Restore the parser-coupled surface-acceptance contracts suite (F2)

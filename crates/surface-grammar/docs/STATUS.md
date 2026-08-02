@@ -16,7 +16,7 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
   Zero survive into rustdoc; the crate documents clean under the merge-wall `cargo:doc-check` (`cargo doc --document-private-items -D warnings`).
   The wyrd design-wave labels (W4d / W4e / W5′) were preserved: they are not bead ids or ADR citations, and several appear inside load-bearing `AdaptationReason` data strings where a rewrite would be a behaviour change.
 * Tests — the parser-free PBG, walk-index, comparison-table, reachability, and highlighter contracts plus the parser-driven surface-acceptance suite all funnel through the `autotests = false` `tests/lib.rs` aggregator (the `surface` test target).
-  All 36 pass under nextest, including the dedicated instantiation-sort decoder and recursion-marker clean-parse contract, the pinned `built_in` grammar fingerprint (`0xbd0b_3e33_5961_a25a`), declared mold count (1720), per-label candidate inventory, and reachable multi-mold goldens.
+  All 36 pass under nextest, including the dedicated instantiation-sort decoder and recursion-marker clean-parse contract, the pinned `built_in` grammar fingerprint (`0x0ad7_e73c_f55a_db6c`), declared mold count (1720), per-label candidate inventory, and reachable multi-mold goldens.
   A `walk_index` criterion bench (`harness = false`) is present.
 * Feature posture — `default = []`, `full = []`; the `parity` feature is omitted entirely (see below).
 

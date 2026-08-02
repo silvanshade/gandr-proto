@@ -1557,13 +1557,16 @@ fn scan_word_or_underscore(
     }
 }
 
-/// Advance over an identifier/constructor word `[A-Za-z0-9_]*`, with any run of
-/// trailing primes (`′`), from its lead.
+/// Advance over an identifier/constructor word from its lead, over
+/// `[A-Za-z0-9_]` and the prime `′`.
 ///
-/// The prime is a **continuation only** — it never starts a word, so a stray
-/// `′` stays an [`Lexeme::Unknown`] byte and `x′` is one word rather than a
-/// word plus a stray. The primed variable is the ruled circuit block form's own
-/// spelling for a rewrite's target endpoint (`node : p(x) ==> (x′)`,
+/// The prime is a **continuation** — it never starts a word, so a stray `′`
+/// stays an [`Lexeme::Unknown`] byte and `x′` is one word rather than a word
+/// plus a stray. It is not restricted to the tail: `x′y` and `x′1` are single
+/// words, exactly as an underscore in the same position would be, because a
+/// prime that ended the word would make `x′y` two adjacent operands with no
+/// operator between them. The primed variable is the ruled circuit block form's
+/// own spelling for a rewrite's target endpoint (`node : p(x) ==> (x′)`,
 /// `docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
 /// ruled"), and it is the mathematical convention the rest of the corpus writes
 /// in prose. ASCII `'` is deliberately **not** a word byte: it opens a shell
@@ -2121,6 +2124,25 @@ mod tests
         );
     }
     #[test]
+    fn the_operator_table_never_lets_a_prefix_shadow_a_longer_tile()
+    {
+        // `punct_len` returns the FIRST table match, not the longest, so the
+        // table's declaration order *is* the maximal-munch rule. A new operator
+        // appended after one of its own prefixes would silently never match,
+        // and no other test would notice — the prefix would keep winning and
+        // the longer tile would look like two tokens. This pins the invariant
+        // that makes the doc's "longest first" claim true.
+        for (later, entry) in super::MULTI_PUNCT.iter().enumerate() {
+            for earlier in super::MULTI_PUNCT.iter().take(later) {
+                assert!(
+                    !entry.starts_with(earlier),
+                    "{entry:?} is shadowed by its prefix {earlier:?} declared earlier in \
+                     MULTI_PUNCT; move the longer tile ahead of it"
+                );
+            }
+        }
+    }
+    #[test]
     fn a_primed_word_is_one_word_and_a_lone_prime_is_not()
     {
         // `x′` is the ruled circuit form's spelling for a rewrite's target
@@ -2149,6 +2171,26 @@ mod tests
             vec![
                 (Lexeme::LowerWord, "x".to_owned()),
                 (Lexeme::Punct, "'".to_owned()),
+            ]
+        );
+        // The prime continues a word rather than ending it, so an interior
+        // prime keeps one word — the alternative would make `x′y` two adjacent
+        // operands with no operator between them.
+        assert_eq!(
+            tiles(SourceSlice::from("x′y"), &label(SourceSlice::from("x′y"))),
+            vec![(Lexeme::LowerWord, "x′y".to_owned())]
+        );
+        // The prime reaches only the word scanner: strings, comments, and shell
+        // words all run their own scanners and are untouched.
+        assert_eq!(
+            tiles(
+                SourceSlice::from("\"a ′ b\""),
+                &label(SourceSlice::from("\"a ′ b\""))
+            ),
+            vec![
+                (Lexeme::Quote, "\"".to_owned()),
+                (Lexeme::StringFragment, "a ′ b".to_owned()),
+                (Lexeme::Quote, "\"".to_owned()),
             ]
         );
     }

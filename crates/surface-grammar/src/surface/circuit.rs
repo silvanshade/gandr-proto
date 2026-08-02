@@ -155,7 +155,7 @@ fn circuit_declarations(
         Provenance("circuit_declaration"),
         Sort::Item,
         p,
-        circuit_judgment(),
+        top_level_judgment(),
     );
     declaration.adaptations.push(Adaptation::new(
         RuleName("circuit_declaration"),
@@ -175,7 +175,8 @@ fn circuit_declarations(
     out.push(declaration);
 }
 
-/// Build the block-bodied judgment `oper|rule name : signature { filler }?`.
+/// Build the block-bodied judgment `oper|rule name : signature { filler }?` as
+/// a `sign` **member**.
 ///
 /// The block body is optional because a declaration may be a **boundary
 /// without a filler** — `oper add : (Nat, Nat) --> Nat` declares an interface
@@ -192,6 +193,32 @@ fn circuit_judgment() -> Regex
         t(TileLabel("identifier")),
         t(TileLabel(":")),
         signature(),
+        opt(body()),
+    ])
+}
+
+/// Build the same judgment at **item position**, where its sides must be
+/// parenthesized.
+///
+/// The difference is forced, and it is the one place the sugar ladder does not
+/// reach. A top-level form that can end in a **sort hole** does not close: the
+/// melder has no following tile of an enclosing form to close it against, so a
+/// bare-sort side detaches and the declaration silently keeps only its prefix
+/// — a clean parse of the wrong tree, which the zero-obligation gate cannot
+/// see. No other Item-sort form in this grammar ends in a sort hole either;
+/// every `def` / `module` / `import` / `data` tail ends in `;`, `}`, or `)`.
+///
+/// Requiring parentheses restores that discipline: every branch here ends in
+/// `)` or `}`. Inside a `sign` block the bare-sort spellings stay available,
+/// because there the member's sort hole is form-**interior** — the block's own
+/// members and its closing brace follow it.
+fn top_level_judgment() -> Regex
+{
+    seq([
+        alt([t(TileLabel("oper")), t(TileLabel("rule"))]),
+        t(TileLabel("identifier")),
+        t(TileLabel(":")),
+        seq([parameter_group(), opt(seq([arrow_grid(), result_group()]))]),
         opt(body()),
     ])
 }
@@ -249,13 +276,16 @@ fn signature() -> Regex
 /// against a one-port list.
 fn parameter_side() -> Regex
 {
-    alt([
-        h(Sort::Type),
-        seq([
-            t(TileLabel("(")),
-            opt(comma1(parameter())),
-            t(TileLabel(")")),
-        ]),
+    alt([h(Sort::Type), parameter_group()])
+}
+
+/// Build a parenthesized parameter list `( … )`, binders admitted.
+fn parameter_group() -> Regex
+{
+    seq([
+        t(TileLabel("(")),
+        opt(comma1(parameter())),
+        t(TileLabel(")")),
     ])
 }
 
@@ -268,10 +298,13 @@ fn parameter_side() -> Regex
 /// shapes off the `identifier` and `rule` / `data` menus.
 fn result_side() -> Regex
 {
-    alt([
-        h(Sort::Type),
-        seq([t(TileLabel("(")), opt(comma1(port())), t(TileLabel(")"))]),
-    ])
+    alt([h(Sort::Type), result_group()])
+}
+
+/// Build a parenthesized result list `( … )`, plain ports only.
+fn result_group() -> Regex
+{
+    seq([t(TileLabel("(")), opt(comma1(port())), t(TileLabel(")"))])
 }
 
 /// Build one parameter-list entry.

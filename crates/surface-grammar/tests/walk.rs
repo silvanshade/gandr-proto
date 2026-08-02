@@ -60,7 +60,7 @@ mod contracts
     /// judgment members, the four-glyph arrow grid, the two-sided port lists
     /// with parameter-side binders, and the top-level `oper` / `rule`
     /// declaration with its `node` / `feed` body statements.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xbd0b_3e33_5961_a25a);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x0ad7_e73c_f55a_db6c);
 
     /// The pinned declared mold count of the built-in surface.
     ///

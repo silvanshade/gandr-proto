@@ -94,7 +94,9 @@ The live keyword set (one table; a rename is a one-table change):
 * Reservation policy: a **small closed set of globally reserved keywords**, with fixity classes contextual; new keywords are swept against the corpus for identifier collisions first — the fold-in reserved thirteen (`data codata rec op rule for in while loop break continue with`) globally, collision-free.
 * `rec` was a legal identifier before its reservation — an accepted, intended source break (the explicit-marker decision); `codata` reserves as one whole keyword so it never lexes as `co` + `data`.
 * The circuit block form reserves exactly its two **item-position** leads, `sign` and `oper`: at a fresh top-level slot a lowercase word is otherwise an expression statement, so an unreserved form-first lead would tie its own tile against `identifier` at every declaration.
-  Its other leads stay contextual — the member keyword `sort` and the body statements `node` / `feed` are only ever `≐`-successors inside an open block, where `identifier` is inadmissible, so a program may still bind them as ordinary names.
+  Its other leads stay contextual — the member keyword `sort` and the body statements `node` / `feed` are `≐`-successors inside an open block, so a program may still bind them as ordinary names (`list.sort` is a live projection in the corpus, so `sort` could not be reserved even if wanted).
+  Contextual is **not** inadmissible-everywhere-else: because members carry no separator, a member lead is admissible exactly where the previous member's bare-sort side would sit, so `sign S { oper f : sort --> Nat … }` regroups cleanly and wrongly.
+  The collision is bounded to that slot and to `sort`; the grammar module records it.
 * The fixed term operator table: `||`, `&&`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `++`, `+`, `-`, `*` (binary, left-associative), unary `-`; comparison chains ride the comparison band.
 * The circuit arrow grid is four tiles and never more — `-->` / `<->` (circuit 1-cell formers) and `==>` / `<=>` (rewrite faces at every dimension) ([[circuit-cells#The block form, ruled]]).
   Each strictly extends a live shorter tile (`->`, `<-`, `==`, `<=`), so all four sit ahead of their prefixes in the labeler's longest-first table; `=>` never competes (neither glyph prefixes the other), and `--` is not a comment lead here.
@@ -113,6 +115,10 @@ Every divergence from a sketched design is recorded in-code as an `Adaptation` r
 * Member forms are **first-token-discriminated by case** inside `data`/`codata` blocks: uppercase-led constructors versus lowercase-led `op`/`rule` keywords.
 * **The `oper` / `rule` circuit judgment is declared once** and shared by the `sign` member and the top-level declaration, and telescope binders are confined to the parameter side — a duplicated tail would clone the signature, the port lists, and the body statements into a second set of molds, widening the hottest menus (`identifier`, `(`, `:`) twice as far.
 * **The circuit arrow grid is admitted whole at every arrow position**, with the confirmation left to the checker: a body line's arrow comes from the applied head's kind, which is an environment fact no grammar sees, and a grammar restricted to the matching glyph would turn a nameable disagreement into a parse failure.
+* **A top-level circuit declaration takes parenthesized sides**, so the sugar ladder's bare-sort rungs are `sign`-member-only.
+  An Item-sort form that can end in a **sort hole** does not close — the melder has no following tile of an enclosing form to close it against, so a bare-sort side detaches and the declaration silently keeps only its prefix, a clean parse of the wrong tree that the zero-obligation gate cannot see.
+  No other Item form in this grammar ends in a sort hole either: every `def` / `module` / `import` / `data` tail ends in `;`, `}`, or `)`.
+  Inside a `sign` block the bare rungs stay available, because there the member's sort hole is form-**interior**.
 
 ## The parse-and-decline semantics
 

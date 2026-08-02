@@ -260,13 +260,14 @@ fn source_slice(src: SourceText<'_>) -> SourceSlice<'_>
 /// leads, `sign` and `oper`: at a fresh top-level slot a lowercase word is
 /// otherwise an expression statement, so an unreserved form-first lead would
 /// tie its own tile against `identifier` at every declaration. Its four other
-/// leads stay **contextual** — the member keywords `sort` (and the already-
-/// reserved `data` / `rule`) and the body statements `node` / `feed` are only
-/// ever `≐`-successors inside an open `sign` block or circuit body, where
-/// `identifier` is inadmissible, so the pre-filter drops the keyword mold at
-/// every other lowercase-word slot (the `hole_name` precedent above). A user
-/// program may therefore still bind `sort`, `node`, or `feed` as an ordinary
-/// name; `sign` and `oper` it may not.
+/// leads stay **contextual** — the member keyword `sort` (beside the already-
+/// reserved `data` / `rule`) and the body statements `node` / `feed` are
+/// `≐`-successors inside an open `sign` block or circuit body, so a user
+/// program may still bind `sort`, `node`, or `feed` as an ordinary name;
+/// `sign` and `oper` it may not. `sort` in particular could not be reserved
+/// even if wanted: `list.sort` is a live projection in the corpus. Contextual
+/// is not the same as inadmissible-elsewhere, and the circuit grammar module
+/// records the one slot where `sort`'s mold does collide with a type variable.
 const KEYWORDS: &[&str] = &[
     "def", "val", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
     "case", "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer",

@@ -269,6 +269,86 @@ fn circuit_arrows_leave_the_shorter_tiles_alone() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+/// A top-level circuit declaration keeps its whole signature, and a bare-sort
+/// side there is **declined** rather than silently dropped.
+///
+/// An Item-sort form that can end in a sort hole does not close: the melder has
+/// no following tile of an enclosing form to close it against, so a bare-sort
+/// side detaches and the declaration silently keeps only its prefix — a clean
+/// parse of the wrong tree, which the zero-obligation corpus gate cannot see.
+/// The top-level form therefore requires parenthesized sides, and this test
+/// pins both halves: the ruled shape keeps its arrow *inside* the declaration
+/// meld, and the bare-sort shape now flags a repair instead of regrouping.
+#[test]
+fn a_top_level_circuit_declaration_keeps_its_whole_signature() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    // Clean parses are not enough: `is_clean()` was true for the shattered
+    // reading too. The load-bearing assertion is that the arrow is a
+    // *descendant* of the one top-level meld, not a sibling of it.
+    let whole: &[&str] = &[
+        "oper f : (a : A) --> (b : B)",
+        "rule step : (x : Nat) ==> (y : Nat)",
+        "oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {\n  node : \
+         zip(stream, state) --> (next, out2);\n  feed : (next) --> (state);\n}\n",
+    ];
+    for &src in whole {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(bool::from(result.is_clean()), "{src:?} molds clean");
+        let root_children = result.cst().children(result.cst().root())?;
+        let significant: Vec<NodeId> = root_children
+            .iter()
+            .copied()
+            .filter(|&child| {
+                result
+                    .cst()
+                    .node(child)
+                    .is_ok_and(|view| view.material() != Material::Space)
+            })
+            .collect();
+        assert_eq!(
+            1,
+            significant.len(),
+            "{src:?} is ONE top-level item, not a shattered run: {significant:?}"
+        );
+        let Some(&item) = significant.first()
+        else {
+            panic!("a top-level item was counted but not readable");
+        };
+        assert!(
+            descendant_tiles(result.cst(), item)
+                .iter()
+                .any(|tile| tile == "-->" || tile == "==>"),
+            "{src:?} keeps its arrow inside the declaration"
+        );
+    }
+    // A bare-sort side at item position is declined, not silently dropped. The
+    // sugar ladder's bare rungs stay available inside a `sign` block, where the
+    // member's sort hole is form-interior.
+    for &src in &[
+        "oper f : Nat --> Nat",
+        "oper f : (a : A) --> Nat",
+        "oper f : Nat",
+    ] {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            !bool::from(result.is_clean()),
+            "{src:?} must flag a repair rather than regroup silently"
+        );
+    }
+    let member = parse(
+        pbg,
+        SourceSlice::from(
+            "sign S { data Zero : Nat data Succ : Nat --> Nat oper add : (Nat, Nat) --> Nat }",
+        ),
+    )?;
+    assert!(
+        bool::from(member.is_clean()),
+        "the bare-sort rungs stay available as `sign` members"
+    );
+    Ok(())
+}
+
 /// The circuit form's **contextual** leads still bind as ordinary names.
 ///
 /// Only the two item-position leads (`sign` and `oper`) reserve globally. The
@@ -295,6 +375,28 @@ fn circuit_contextual_keywords_still_bind_as_names() -> Result<(), Box<dyn Error
         assert!(
             bool::from(result.is_clean()),
             "{src:?} still binds a contextual circuit keyword; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+    // Contextual is not the same as inadmissible-elsewhere, and the bound
+    // matters: inside a `sign` block, the positions where a member's *typed*
+    // ports sit are past the member lead's slot, so a type variable spelled
+    // `sort` molds as a type there.
+    let inside: &[&str] = &[
+        "sign S { oper f : (a : sort) --> (b : Nat) sort Bit : Type }",
+        "sign S { rule r : (rule p : sort ==> other, data x : Nat) ==> (z : Nat) }",
+        "sign S { oper f : node --> Nat }",
+        "sign S { oper f : (a : feed) --> (b : Nat) }",
+    ];
+    for &src in inside {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "{src:?} molds clean inside a circuit block; obligations: {:?}",
             result
                 .obligations()
                 .iter()

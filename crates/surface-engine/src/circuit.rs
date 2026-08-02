@@ -371,7 +371,8 @@ impl<'tree> Check<'_, 'tree>
     ) -> Option<(CircuitName<'tree>, CircuitKind)>
     {
         let &lead = run.first()?;
-        let kind = CircuitKind::from_keyword(self.reader.label(lead)?)?;
+        let label = self.reader.label(lead)?;
+        let kind = CircuitKind::from_keyword(label)?;
         let &name = run.get(1)?;
         Some((CircuitName(self.reader.text(name).0), kind))
     }
@@ -465,6 +466,19 @@ impl<'tree> Check<'_, 'tree>
 
     /// Split a judgment's tail into its signature and its optional body
     /// interior, at the top-level `{` that opens the filler.
+    ///
+    /// # Contract
+    /// - requires: `tail` is a judgment run past its `:`, from a **clean**
+    ///   parse — the melder's commit then puts the body's matching `}` last,
+    ///   which is what bounds the interior. A repaired parse can violate that;
+    ///   the slice is taken with `get`, so the result is a shorter interior,
+    ///   never a panic.
+    /// - ensures: returns the signature before the `{`, and the interior
+    ///   strictly between the `{` and the run's last node; a tail with no
+    ///   top-level `{` is all signature and no body.
+    /// - provides: the boundary between a declaration's sphere and its filler.
+    /// - fails: never.
+    /// - panics: none.
     fn split_body<'run>(
         &self,
         tail: &'run [NodeId],
@@ -530,6 +544,12 @@ impl<'tree> Check<'_, 'tree>
     /// A bare-sort parameter side has no group, and a bare-sort *result* side
     /// must not be mistaken for one, which is what the `before` bound rules
     /// out.
+    ///
+    /// The closer is found by scanning from the **opener**, not from just past
+    /// it. [`Self::scan_top_level`] offers both brackets at the outer depth, so
+    /// a scan that started inside the group would return a *nested* group's
+    /// closer and silently truncate the interior — dropping every entry after
+    /// the nesting, and with it every binder those entries bind.
     fn parameter_interior<'run>(
         &self,
         signature: &'run [NodeId],
@@ -540,9 +560,9 @@ impl<'tree> Check<'_, 'tree>
         if before.is_some_and(|arrow| open.0 >= arrow.0) {
             return None;
         }
-        let after_open = signature.get(open.0.saturating_add(1) ..)?;
-        let close = self.find_at_top_level(after_open, TileSpelling(")"))?;
-        after_open.get(.. close.0)
+        let group = signature.get(open.0 ..)?;
+        let close = self.find_at_top_level(group, TileSpelling(")"))?;
+        group.get(1 .. close.0)
     }
 
     /// Confirm one body statement's arrow against the kind of the thing it
@@ -801,9 +821,9 @@ fn reserved_diagnostic(
     ElabDiagnostic::new(
         format!(
             "{} writes the reserved arrow `<->`: a reversible circuit former is a semantic claim \
-             that the operation is a data-level iso — distinct from a rule's bidirectionality, \
-             which `<=>` carries as an engine licence — so the form parses and is declined until \
-             the reversible-oper lane lands its checking discipline",
+             that the thing it forms is a data-level iso — distinct from a rule's \
+             bidirectionality, which `<=>` carries as an engine licence — so the form parses and \
+             is declined until the reversible-oper lane lands its checking discipline",
             subject.describe()
         ),
         span,

@@ -254,6 +254,17 @@ impl<'run, 'tree> Cursor<'run, 'tree>
     /// early. A description block never has a flat nested brace — its
     /// brace-bearing sub-forms sit at sort holes and reach the run as Melds —
     /// so the count is inert there and the behaviour is unchanged.
+    ///
+    /// # Contract
+    /// - requires: the cursor sits just past a declaration body's opening `{`,
+    ///   and the run's brackets balance (the melder's commit guarantees this
+    ///   for a clean parse).
+    /// - ensures: returns every node up to the matching `}`, which is consumed
+    ///   and excluded; an unbalanced or truncated run returns everything left,
+    ///   with the cursor at the end.
+    /// - provides: the member region a declaration's members are split out of.
+    /// - fails: never.
+    /// - panics: none.
     pub fn until_close_brace(&mut self) -> Vec<NodeId>
     {
         let mut region = Vec::new();
