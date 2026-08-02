@@ -59,9 +59,12 @@ use crate::boundary::CircuitName;
 use crate::boundary::MatchDecision;
 use crate::boundary::PipelineSource;
 use crate::boundary::TileSpelling;
+use crate::cst_read::BracketLabel;
 use crate::cst_read::Cursor;
 use crate::cst_read::Reader;
 use crate::cst_read::grammar;
+use crate::cst_read::is_closer;
+use crate::cst_read::is_opener;
 use crate::cst_read::split_at_top_level;
 use crate::desc_elab::ElabDiagnostic;
 use crate::synnode::SynTree;
@@ -668,8 +671,7 @@ impl<'tree> Check<'_, 'tree>
             else {
                 continue;
             };
-            let closing = matches!(label.0, ")" | "]" | "}");
-            if closing {
+            if is_closer(BracketLabel(label.0)).0 {
                 depth = depth.saturating_sub(1);
             }
             if depth == 0
@@ -677,7 +679,7 @@ impl<'tree> Check<'_, 'tree>
             {
                 return Some((RunIndex(index), hit));
             }
-            if matches!(label.0, "(" | "[" | "{" | "#{") {
+            if is_opener(BracketLabel(label.0)).0 {
                 depth = depth.saturating_add(1);
             }
         }
@@ -837,13 +839,13 @@ fn split_before_leads(
     for &id in region {
         let label = reader.label(id);
         if let Some(label) = label {
-            if matches!(label.0, ")" | "]" | "}") {
+            if is_closer(BracketLabel(label.0)).0 {
                 depth = depth.saturating_sub(1);
             }
             if depth == 0 && leads.contains(&label) && !current.is_empty() {
                 members.push(core::mem::take(&mut current));
             }
-            if matches!(label.0, "(" | "[" | "{" | "#{") {
+            if is_opener(BracketLabel(label.0)).0 {
                 depth = depth.saturating_add(1);
             }
         }

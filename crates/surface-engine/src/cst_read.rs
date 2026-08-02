@@ -279,19 +279,19 @@ impl<'run, 'tree> Cursor<'run, 'tree>
 /// A tile label under bracket classification.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct BracketLabel<'label>(&'label str);
+pub struct BracketLabel<'label>(pub &'label str);
 
 /// Whether a tile label opens a bracketed region.
 ///
 /// `#{` is an opener whose closer is the ordinary `}`, which is why the two
 /// predicates are not symmetric in spelling.
-fn is_opener(label: BracketLabel<'_>) -> MatchDecision
+pub fn is_opener(label: BracketLabel<'_>) -> MatchDecision
 {
     MatchDecision(matches!(label.0, "(" | "[" | "{" | "#{"))
 }
 
 /// Whether a tile label closes a bracketed region.
-fn is_closer(label: BracketLabel<'_>) -> MatchDecision
+pub fn is_closer(label: BracketLabel<'_>) -> MatchDecision
 {
     MatchDecision(matches!(label.0, ")" | "]" | "}"))
 }
