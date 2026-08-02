@@ -18,8 +18,8 @@ mod tests
     /// A `Nat` theory whose `add` is declared single-output and whose two rules
     /// are in the supported flattening fragment.
     const NAT_ADD: &str = "data NatAdd {\n  Zero,\n  Succ(n: NatAdd),\n  op add(m: NatAdd, n: \
-                           NatAdd) -> NatAdd,\n  rule add(Zero, n) ~> n,\n  rule add(Succ(m), n) \
-                           ~> Succ(add(m, n))\n}";
+                           NatAdd) -> NatAdd,\n  rule add(Zero, n) ==> n,\n  rule add(Succ(m), n) \
+                           ==> Succ(add(m, n))\n}";
 
     /// The promoted many-out witness: a well-formed description whose `divmod`
     /// the single-continuation cell grammar cannot hold.
@@ -106,7 +106,7 @@ mod tests
         // frame's single return continuation cannot carry: elaborating it would
         // silently drop the second output port.
         let source = "data NatDiv2 {\n  Zero,\n  op divmod(m: NatDiv2, n: NatDiv2) -> (q: \
-                      NatDiv2, r: NatDiv2),\n  rule divmod(Zero, n) ~> Zero\n}";
+                      NatDiv2, r: NatDiv2),\n  rule divmod(Zero, n) ==> Zero\n}";
         let elab = elaborate_data_descs(source);
         let cells = elaborate_desc_cells(&elab.descs);
         assert!(

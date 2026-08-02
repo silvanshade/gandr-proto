@@ -34,7 +34,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 2b4884b32cd5cb18bf65ce8cf9a6157812df3565a9168dcd944e9fd1684a2135
+    b3: 68881825c389afcfebf95180676d4620efb12e18240dd75be1fba3f5addc688f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
@@ -94,12 +94,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
     role: subdocument
-    b3: cfc7b3a7fce9c7138188ff5f930bd45741ba3e7ae5a7f8f852c395a8cc66e725
+    b3: 7d0396dc9fdfb6910a0a318a6eb1daa52b158f05f963009ef433f65b8cce813c
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: 79c3bd261d608a5d4714cb338b26d0db94905556482ffc8395e581a0698a7c6d
+    b3: 6c904568398a7151a856cff8522c70068fdba696ff8f516b0fcec4e75168e560
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md

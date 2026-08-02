@@ -84,7 +84,7 @@ mod label
     pub const REC: TileSpelling = TileSpelling("rec");
     /// `codata` datatype-declaration lead tile (PBG surface; codata design).
     pub const CODATA: TileSpelling = TileSpelling("codata");
-    /// Reserved 2-cell / rewrite-rule member lead tile (`rule lhs ~> rhs`).
+    /// Reserved 2-cell / rewrite-rule member lead tile (`rule lhs ==> rhs`).
     pub const RULE: TileSpelling = TileSpelling("rule");
     /// `extern` block lead tile.
     pub const EXTERN: TileSpelling = TileSpelling("extern");
@@ -3576,7 +3576,7 @@ mod tests
             "second observation name"
         );
 
-        let reserved = tree("codata Session { 1 step: F(Unit), rule tail(x) ~> x }")?;
+        let reserved = tree("codata Session { 1 step: F(Unit), rule tail(x) ==> x }")?;
         let members = {
             let item0 = item0(&reserved)?;
             core::convert::identity(item0)

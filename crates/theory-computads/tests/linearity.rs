@@ -21,16 +21,16 @@
 //! # The fixtures
 //!
 //! - [`the_idempotence_rule_written_with_a_repeated_hole_is_refused`] mirrors
-//!   **`nonlinear-cell-refused.gandr`**: `rule and(x, x) ~> x`, the idempotence
-//!   law written with a copy, refused at admission with the copy named and the
-//!   respelling pointed at.
+//!   **`nonlinear-cell-refused.gandr`**: `rule and(x, x) ==> x`, the
+//!   idempotence law written with a copy, refused at admission with the copy
+//!   named and the respelling pointed at.
 //! - [`the_cancellation_rule_written_with_a_repeated_hole_is_refused`] mirrors
-//!   the same program's second member, `rule sub(x, x) ~> Zero` — the
+//!   the same program's second member, `rule sub(x, x) ==> Zero` — the
 //!   cancellation shape, refused for the same reason, so the diagnostic is not
 //!   tied to one operation.
 //! - [`the_linear_companion_rule_is_admitted`] mirrors
 //!   **`linear-cell-admitted.gandr`**: the respelled neighbour `rule and(x, y)
-//!   ~> y` is admitted unchanged, so the refusal is the copy and not the
+//!   ==> y` is admitted unchanged, so the refusal is the copy and not the
 //!   operation.
 //! - [`a_refused_face_does_not_stop_its_linear_neighbours`] pins the
 //!   decline-and-report posture: one refused face declines by index and the
@@ -75,7 +75,7 @@ mod tests
         )
     }
 
-    /// One surface `rule lhs ~> rhs` member.
+    /// One surface `rule lhs ==> rhs` member.
     fn rule(
         lhs: FreeTerm,
         rhs: FreeTerm,
@@ -106,7 +106,7 @@ mod tests
     #[test]
     fn the_idempotence_rule_written_with_a_repeated_hole_is_refused()
     {
-        // `rule and(x, x) ~> x`.
+        // `rule and(x, x) ==> x`.
         let desc = bit_theory([rule(
             FreeTerm::op("and", [FreeTerm::var("x"), FreeTerm::var("x")]),
             FreeTerm::var("x"),
@@ -122,7 +122,7 @@ mod tests
             "the diagnostic names the copy: {diagnostic}"
         );
         assert!(
-            diagnostic.contains("and(x, x) ~> x") && diagnostic.contains("x - x ~> 0"),
+            diagnostic.contains("and(x, x) ==> x") && diagnostic.contains("x - x ==> 0"),
             "the diagnostic points at the idempotence and cancellation respellings: {diagnostic}"
         );
         assert!(
@@ -138,7 +138,7 @@ mod tests
     #[test]
     fn the_cancellation_rule_written_with_a_repeated_hole_is_refused()
     {
-        // `rule sub(x, x) ~> Off` — the cancellation shape.
+        // `rule sub(x, x) ==> Off` — the cancellation shape.
         let desc = bit_theory([rule(
             FreeTerm::op("sub", [FreeTerm::var("x"), FreeTerm::var("x")]),
             FreeTerm::ctor("Off", []),
@@ -153,7 +153,7 @@ mod tests
     #[test]
     fn the_linear_companion_rule_is_admitted()
     {
-        // `rule and(x, y) ~> y` — the respelled neighbour, every hole once.
+        // `rule and(x, y) ==> y` — the respelled neighbour, every hole once.
         let desc = bit_theory([rule(
             FreeTerm::op("and", [FreeTerm::var("x"), FreeTerm::var("y")]),
             FreeTerm::var("y"),

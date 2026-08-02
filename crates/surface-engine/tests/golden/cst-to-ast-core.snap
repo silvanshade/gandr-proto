@@ -85,23 +85,23 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #55d8e264cc46b06c [DefFunctionSugar]
-[0, 0] => 0..53 #55d8e264cc46b06c [DefFunctionSugar]
-[0, 0, 0] => 40..51 #e201142bf560ecf5 [BindHoist]
-[0, 0, 0, 0] => 45..50 #66c8cb6b768e3b9e [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #66c8cb6b768e3b9e [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #1d977b99a305f953 [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #1d977b99a305f953 [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #fabc197d39642ffc
-[0, 0, 0, 0, 1] => 49..50 #fabc197d39642ffc
-[0, 0, 0, 1] => 40..51 #e201142bf560ecf5
-[0, 0, 0, 1, 0] => 44..51 #ee1985ea3530b51f [BindHoist]
-[1] => 55..99 #08ffded7af87df88
-[1, 0] => 65..97 #45bb50b684a0e152 [IfSugar]
-[1, 0, 0] => 68..72 #502deb24857d6736 [BoolLiteral]
-[1, 0, 0, 0] => 68..72 #502deb24857d6736 [BoolLiteral]
-[1, 0, 0, 0, 0] => 68..72 #502deb24857d6736 [BoolLiteral]
-[1, 0, 1] => 75..80 #24ffdfc459e1a6d2
-[1, 0, 1, 0] => 79..80 #fabc197d39642ffc
-[1, 0, 2] => 90..95 #ac58b7e25aeb2079
-[1, 0, 2, 0] => 94..95 #2da2ade47cf4a5b8
+[0] => 0..53 #74cec201db901107 [DefFunctionSugar]
+[0, 0] => 0..53 #74cec201db901107 [DefFunctionSugar]
+[0, 0, 0] => 40..51 #539e43f5114279c5 [BindHoist]
+[0, 0, 0, 0] => 45..50 #ebe73690486298a8 [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #ebe73690486298a8 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #505308439843a2df [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #505308439843a2df [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #2da265e47cf42b60
+[0, 0, 0, 0, 1] => 49..50 #2da265e47cf42b60
+[0, 0, 0, 1] => 40..51 #539e43f5114279c5
+[0, 0, 0, 1, 0] => 44..51 #1b0b6d7bb850cbe1 [BindHoist]
+[1] => 55..99 #014f7b13fe4e255a
+[1, 0] => 65..97 #68c604cabc50fd76 [IfSugar]
+[1, 0, 0] => 68..72 #e22b43c00fffaf6a [BoolLiteral]
+[1, 0, 0, 0] => 68..72 #e22b43c00fffaf6a [BoolLiteral]
+[1, 0, 0, 0, 0] => 68..72 #e22b43c00fffaf6a [BoolLiteral]
+[1, 0, 1] => 75..80 #da235a4200657a58
+[1, 0, 1, 0] => 79..80 #2da265e47cf42b60
+[1, 0, 2] => 90..95 #d1772f1022835bd0
+[1, 0, 2, 0] => 94..95 #60335ad123dfc70c

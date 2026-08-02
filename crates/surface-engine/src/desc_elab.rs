@@ -24,10 +24,14 @@
 //! * `op` members and parameterized observations →
 //!   [`gandr_theory_levitation::OpDesc`] with a bridge arity;
 //! * `rule` members → [`gandr_theory_levitation::CellFace`] with derived
-//!   per-variable metadata;
+//!   per-variable metadata, the face written `lhs ==> rhs`;
 //! * a **function-typed field** is declined at elaboration — it is outside the
 //!   first-order fragment (proposal §8's `desc-higher-order-field`, pinning
-//!   V2).
+//!   V2);
+//! * a `rule` member spelling its face with the **retired** `~>` is declined at
+//!   elaboration and told the respelling — the block-form ruling made `==>` the
+//!   face former at every position, and the grammar keeps `~>` admissible in
+//!   the arrow slot precisely so this decline can name it.
 
 use gandr_core_checker::boundary::GradeBound;
 use gandr_core_checker::boundary::NameRef;
@@ -65,9 +69,18 @@ use crate::cst_read::split_at_top_level;
 use crate::lower::node_kinds;
 use crate::synnode::SynTree;
 
+/// The rewrite-face former of a `rule` member, ruled at `==>` for every
+/// position by the block form
+/// (`docs/gandr/spec/surface-language/circuit-cells.md`).
+const RULE_FACE_ARROW: &str = "==>";
+/// The retired rewrite-face former. It still lexes and still parses in the
+/// member's arrow slot, so a stale face reaches this elaborator whole and is
+/// declined by name rather than repaired by the parser.
+const RETIRED_RULE_FACE_ARROW: &str = "~>";
+
 /// One elaboration **diagnostic** — an inspectable stage-0 decline (a
-/// higher-order field, or a well-formedness failure surfaced by
-/// [`gandr_theory_levitation::check_desc`]).
+/// higher-order field, a retired face arrow, or a well-formedness failure
+/// surfaced by [`gandr_theory_levitation::check_desc`]).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ElabDiagnostic
 {
@@ -277,7 +290,7 @@ impl<'tree> Reader<'tree>
                 }
             },
             | Some("rule") => {
-                if let Some(cell) = self.rule_member(run) {
+                if let Some(cell) = self.rule_member(run, elab) {
                     lists.cells.push(cell);
                 }
             },
@@ -612,20 +625,42 @@ impl<'tree> Reader<'tree>
             .unwrap_or_default()
     }
 
-    /// Elaborate a `rule lhs ~> rhs` member into a [`CellFace`] with derived
-    /// per-variable metadata.
+    /// Elaborate a `rule lhs ==> rhs` member into a [`CellFace`] with derived
+    /// per-variable metadata, declining the retired `~>` spelling by name.
+    ///
+    /// The block-form ruling
+    /// (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+    /// ruled") makes `==>` the rewrite-face former at every position. The
+    /// grammar still admits `~>` in this slot so a stale face arrives here
+    /// whole: the decline can then quote the member and name the respelling,
+    /// which a parse repair over a lone token could not.
     fn rule_member(
         &self,
         run: &[NodeId],
+        elab: &mut DescElab,
     ) -> Option<CellFace>
     {
-        // `rule <lhs> ~> <rhs>`: the lhs is the single expression node after the
-        // `rule` lead; the rhs is the single node after the `~>` tile.
+        // `rule <lhs> ==> <rhs>`: the lhs is the single expression node after
+        // the `rule` lead; the rhs is the single node after the face arrow.
         let lead = run.first().copied()?;
         let lhs_id = run.get(1).copied()?;
-        let arrow_pos = run
-            .iter()
-            .position(|&id| self.label(id).map(|label| label.0) == Some("~>"))?;
+        let arrow_pos = run.iter().position(|&id| {
+            matches!(
+                self.label(id).map(|label| label.0),
+                Some(RULE_FACE_ARROW | RETIRED_RULE_FACE_ARROW)
+            )
+        })?;
+        let arrow_id = run.get(arrow_pos).copied()?;
+        if self.label(arrow_id).map(|label| label.0) == Some(RETIRED_RULE_FACE_ARROW) {
+            elab.diagnostics.push(ElabDiagnostic::new(
+                format!(
+                    "rule face arrow `{RETIRED_RULE_FACE_ARROW}` is retired; respell this face \
+                     with `{RULE_FACE_ARROW}`"
+                ),
+                self.span(arrow_id),
+            ));
+            return None;
+        }
         let rhs_id = run.get(arrow_pos.saturating_add(1)).copied()?;
         let lhs = self.free_term(lhs_id);
         let rhs = self.free_term(rhs_id);

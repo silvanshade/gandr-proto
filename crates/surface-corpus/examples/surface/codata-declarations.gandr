@@ -17,4 +17,4 @@ codata Fun(a, b) { ap(x: a): b }
 codata Session { 1 step: F(Unit) }
 
 // Reserved `rule` 2-cell member also rides the codata block.
-codata Colist(a) { head: a, tail: Colist(a), rule tail(x) ~> x }
+codata Colist(a) { head: a, tail: Colist(a), rule tail(x) ==> x }

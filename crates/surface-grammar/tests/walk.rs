@@ -60,7 +60,10 @@ mod contracts
     /// judgment members, the four-glyph arrow grid, the two-sided port lists
     /// with parameter-side binders, and the top-level `oper` / `rule`
     /// declaration with its `node` / `feed` body statements.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x0ad7_e73c_f55a_db6c);
+    /// The rule-face migration then made `==>` the description-rule face former
+    /// beside the retired `~>`, which stays admissible only so a stale face
+    /// reaches the elaborator's decline.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x483c_357b_641a_298e);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -88,8 +91,11 @@ mod contracts
     /// `rule` judgment is declared **once** and shared by the `sign` member and
     /// the top-level declaration precisely to keep that number from doubling,
     /// and the parameter-side binders are kept off the result side for the same
-    /// reason.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1720);
+    /// reason. The rule-face migration adds four: the `data` and `codata`
+    /// members' face arrow becomes a two-way alternation (`==>` ruled, `~>`
+    /// retired-but-admissible), and each member family carries two copies of
+    /// its arrow through `comma1`.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1724);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -133,7 +139,7 @@ mod contracts
         ("<>", 1),
         ("=", 50),
         ("==", 1),
-        ("==>", 13),
+        ("==>", 17),
         ("=>", 8),
         (">", 3),
         (">&", 1),

@@ -2,6 +2,13 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-02 — Keep the retired `~>` lexing so its migration decline can name it
+
+* `current`: No table change; the record is the reason `~>` stays in `MULTI_PUNCT` after the block-form ruling retired it as the rewrite-face former.
+  Removing it would splinter a stale face into `~` plus `>` and turn the migration into a parse repair naming bytes; keeping it munches the stale spelling as one tile, so `gandr-surface-engine`'s stage-0 elaborator receives the member whole and declines it with the respelling.
+* `current`: `~~>`, the ratified but unlanded directed former on types, is unaffected — the byte run still scans as a stray `~` followed by `~>`, so landing it stays the single entry inserted ahead of `~>`.
+  Pinned by `label::tests::the_face_migration_leaves_the_directed_type_former_run_alone`, which also holds `==>` and `~~>` apart in one source.
+
 ## 2026-08-02 — Lex the ruled circuit arrow grid and the primed word
 
 * `current`: `label`'s `MULTI_PUNCT` table gains the four circuit arrow-grid glyphs (`-->`, `<->`, `==>`, `<=>`) ahead of the shorter tiles each strictly extends (`->`, `<-`, `==`, `<=`), so the grid glyph wins the maximal munch and every shorter tile keeps its own reading.

@@ -8,8 +8,8 @@
 // Reserved `op` operation member: `op name(params) -> Result`.
 data NatOp { Zero, Succ(n: NatOp), op add(m: NatOp, n: NatOp) -> NatOp }
 
-// Reserved `rule` 2-cell member: `rule lhs ~> rhs` (a directed rewrite).
-data NatRule { Zero, Succ(n: NatRule), rule id(Zero) ~> Zero }
+// Reserved `rule` 2-cell member: `rule lhs ==> rhs` (a directed rewrite).
+data NatRule { Zero, Succ(n: NatRule), rule id(Zero) ==> Zero }
 
 // Reserved named multi-output result on an `op` member.
 data NatDiv { Zero, op divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }

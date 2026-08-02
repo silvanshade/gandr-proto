@@ -153,7 +153,7 @@ mod tests
         );
 
         // Well-formedness runs over the real fixture: `NatRule`'s `rule id(Zero)
-        // ~> Zero` mentions `id`, which the datatype's signature does not
+        // ==> Zero` mentions `id`, which the datatype's signature does not
         // declare — the host check surfaces exactly that decline (proposal §8
         // `desc-illformed-cell`).
         assert!(
@@ -163,6 +163,70 @@ mod tests
                     && diag.message.contains("not in the datatype's signature")),
             "the out-of-signature rule symbol is declined: {:?}",
             elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn the_ruled_face_arrow_elaborates_and_the_retired_one_declines_with_its_respelling()
+    {
+        // The block-form ruling makes `==>` the rewrite-face former at every
+        // position and retires `~>`. The two spellings are exercised over one
+        // otherwise-identical declaration, so what separates them is the arrow
+        // and nothing else.
+        let ruled = elaborate_data_descs(
+            "data NatFace { Zero, op id(x: NatFace) -> NatFace, rule id(Zero) ==> Zero }",
+        );
+        let face = ruled
+            .descs
+            .iter()
+            .find(|desc| desc.id.name.as_ref() == "NatFace")
+            .expect("NatFace elaborated");
+        assert_eq!(1, face.cells.len(), "the ruled `==>` face becomes a cell");
+        assert!(
+            ruled.diagnostics.is_empty(),
+            "the ruled face earns no decline: {:?}",
+            ruled.diagnostics
+        );
+
+        // A stale `~>` is not a parse failure — the grammar still admits it in
+        // the arrow slot precisely so the decline can be an elaboration
+        // diagnostic that names the respelling rather than a repair that names
+        // a token.
+        let retired = elaborate_data_descs(
+            "data NatFace { Zero, op id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }",
+        );
+        let stale = retired
+            .descs
+            .iter()
+            .find(|desc| desc.id.name.as_ref() == "NatFace")
+            .expect("NatFace still elaborates around the declined member");
+        assert!(
+            stale.cells.is_empty(),
+            "the retired face is declined rather than admitted as a silent synonym"
+        );
+        assert!(
+            retired.diagnostics.iter().any(|diagnostic| {
+                diagnostic.message.contains("`~>`")
+                    && diagnostic.message.contains("retired")
+                    && diagnostic.message.contains("`==>`")
+            }),
+            "the decline points at the respelling: {:?}",
+            retired.diagnostics
+        );
+        // The diagnostic is located at the arrow, not at the whole member: the
+        // respelling is a one-token edit and the span is what an editor acts on.
+        let located = retired
+            .diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.message.contains("`~>`"))
+            .expect("the migration decline is located");
+        let source = "data NatFace { Zero, op id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }";
+        let start = usize::from(located.span.start);
+        let end = usize::from(located.span.end);
+        assert_eq!(
+            Some("~>"),
+            source.get(start .. end),
+            "the decline's span covers the retired arrow"
         );
     }
 

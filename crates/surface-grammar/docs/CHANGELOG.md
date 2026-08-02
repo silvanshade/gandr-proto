@@ -2,6 +2,17 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-02 — Migrate the description-rule face arrow from `~>` to `==>`
+
+* `current`: The `data` / `codata` `rule` member's face arrow is now the ruled `==>` (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled" retires `~>` and makes `==>` the rewrite-face former at every position).
+  Both member families share one `rule_face_arrow()` alternation.
+* `current`: The retired `~>` stays **admissible in the arrow slot** rather than being deleted.
+  Deleting it would turn a stale face into a parse repair naming a token; admitting it keeps the member whole so `gandr-surface-engine`'s stage-0 elaborator declines it and names the respelling.
+  The decline, not the grammar, is what refuses the old spelling — it is never a silent synonym.
+* `current`: `~~>`, the ratified directed former on types, is untouched: it never entered `MULTI_PUNCT`, and the ruling's whole point was that retiring `~>` dissolves the near-collision instead of managing it.
+  Pinned by `gandr-surface-parser` `label::tests::the_face_migration_leaves_the_directed_type_former_run_alone`.
+* `current`: Mold-count effect, pinned in `tests/walk.rs` — declared molds 1720 → 1724 (the arrow alternation, twice per member family through `comma1`), reachable multi-mold labels unchanged at 72, fingerprint `0x0ad7_e73c_f55a_db6c` → `0x483c_357b_641a_298e`.
+
 ## 2026-08-02 — Land the ruled circuit block form in the checked surface
 
 * `current`: New `surface/circuit` submodule realising the ruled circuit block form (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled") — the `sign` block with `sort` / `data` / `oper` / `rule` judgment members, the four-glyph arrow grid (`-->` / `<->` circuit 1-cell formers, `==>` / `<=>` rewrite faces), arrow-separated two-sided port lists with parameter-side rewrite and data binders, and the top-level `oper` / `rule` declaration with its `node` / `feed` body statements.

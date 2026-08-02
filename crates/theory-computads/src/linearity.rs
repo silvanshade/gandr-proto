@@ -72,8 +72,8 @@ impl core::fmt::Display for NonLinearPattern
             "non-linear cell pattern: the {side} hole `{name}` occurs more than once on the \
              left-hand side, which is a copy on a wire, and a copy needs a comonoid the type may \
              not have; cell patterns are linear. Respell the rule with the copy named: an \
-             idempotence or cancellation law written with a repeated hole — `and(x, x) ~> x`, \
-             `x - x ~> 0` — is written instead by matching through the copying cell, exactly as a \
+             idempotence or cancellation law written with a repeated hole — `and(x, x) ==> x`, \
+             `x - x ==> 0` — is written instead by matching through the copying cell, exactly as a \
              fan-in cell must name its monoid, and a type supplying a cocommutative comonoid may \
              host the copy explicitly.",
             side = side,
@@ -197,7 +197,7 @@ mod tests
         )
     }
 
-    /// `⟨x | and(x; α)⟩` — the elaborated shape of `rule and(x, x) ~> x`.
+    /// `⟨x | and(x; α)⟩` — the elaborated shape of `rule and(x, x) ==> x`.
     fn idempotence_lhs() -> CmdPat
     {
         CmdPat::cut(
@@ -289,11 +289,11 @@ mod tests
             "the diagnostic names the copy: {diagnostic}"
         );
         assert!(
-            diagnostic.contains("and(x, x) ~> x"),
+            diagnostic.contains("and(x, x) ==> x"),
             "the diagnostic points at the idempotence respelling: {diagnostic}"
         );
         assert!(
-            diagnostic.contains("x - x ~> 0"),
+            diagnostic.contains("x - x ==> 0"),
             "the diagnostic points at the cancellation respelling: {diagnostic}"
         );
         assert!(

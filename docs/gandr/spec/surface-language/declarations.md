@@ -68,8 +68,8 @@ data Nat {
   Zero,
   Succ(n: Nat),
   op add(m: Nat, n: Nat) -> Nat,        // reserved
-  rule add(Zero, n)    ~> n,            // reserved
-  rule add(Succ(m), n) ~> Succ(add(m, n)),
+  rule add(Zero, n)    ==> n,           // reserved
+  rule add(Succ(m), n) ==> Succ(add(m, n)),
 }
 ```
 
@@ -78,7 +78,8 @@ data Nat {
 * Declared data is **generative-nominal**: the declaration mints a fresh nominal identity, so two `data Boolean` declarations in different modules are different types; type-level self-reference needs no marker (see [[recursion#Type-level self-reference]]).
 * The reserved members, all parse-and-decline:
   + `op name(params) -> R` — an **operation** member, with a multi-output tuple result form `-> (o1: A, o2: B)` kept local to it;
-  + `rule lhs ~> rhs` — a **directed rewrite** member, the user 2-cell: it elaborates (when its rung lands) to an oriented command cell on the rule's cut seam, never to an unverified equation — the anti-pragma discipline;
+  + `rule lhs ==> rhs` — a **directed rewrite** member, the user 2-cell: it elaborates (when its rung lands) to an oriented command cell on the rule's cut seam, never to an unverified equation — the anti-pragma discipline.
+    The face former was respelled from `~>` to `==>` by the block-form ruling ([[circuit-cells#The block form, ruled]]), which makes `==>` the rewrite face at every position; `~>` still parses in this slot and the stage-0 elaborator declines it with the respelling, so a stale program is told what to write rather than silently accepted;
   + a **grade prefix** on a field — `Some(1 x: a)` — grade tile restricted to `{ number, ω }`;
   + a **generalized constructor result** — `Cons(x: a, xs: Vec(a)) : Vec(a)`;
   + a **per-symbol attribute slot** — `[ctor, assoc]`.

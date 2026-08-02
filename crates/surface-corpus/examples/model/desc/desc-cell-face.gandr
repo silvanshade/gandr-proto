@@ -8,7 +8,7 @@
 data NatTheory {
   Zero,
   op id(x: NatTheory) -> NatTheory,
-  rule id(Zero) ~> Zero
+  rule id(Zero) ==> Zero
 }
 
 //@ mode: desc

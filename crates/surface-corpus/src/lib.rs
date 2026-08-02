@@ -1570,7 +1570,7 @@ mod tests
         // many-out `op` is declined with an inspectable reason.
         assert!(
             check_case(concat!(
-                "data NatId { Zero, op id(x: NatId) -> NatId, rule id(Zero) ~> Zero }\n",
+                "data NatId { Zero, op id(x: NatId) -> NatId, rule id(Zero) ==> Zero }\n",
                 "//",
                 "@ mode: desc\n",
                 "//",
@@ -1581,7 +1581,7 @@ mod tests
         );
         assert!(
             check_case(concat!(
-                "data NatId { Zero, op id(x: NatId) -> NatId, rule id(Zero) ~> Zero }\n",
+                "data NatId { Zero, op id(x: NatId) -> NatId, rule id(Zero) ==> Zero }\n",
                 "//",
                 "@ mode: desc\n",
                 "//",

@@ -3,7 +3,7 @@
 //
 // Cell patterns are linear (circuit-terms-question-17): a metavariable that
 // occurs twice on a left-hand side is a copy on a wire, and a copy needs a
-// comonoid the type may not have. `rule and(x, x) ~> x` — idempotence written
+// comonoid the type may not have. `rule and(x, x) ==> x` — idempotence written
 // with a repeated hole — elaborates to a cut whose producer hole `x` occurs
 // twice, so the admission boundary refuses the cell, and the diagnostic names
 // the copy and the respelling: match through the copying cell, exactly as a
@@ -18,8 +18,8 @@ data Bit {
   Off,
   On,
   op and(a: Bit, b: Bit) -> Bit,
-  rule and(x, y) ~> y,
-  rule and(x, x) ~> x
+  rule and(x, y) ==> y,
+  rule and(x, x) ==> x
 }
 
 //@ mode: desc

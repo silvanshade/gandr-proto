@@ -127,23 +127,23 @@ Decline is never a parse failure — the form is grammatical; the decline is a t
 
 The complete reserved-slot inventory, as built:
 
-| form                           | shape                                                               | status                                                                                               |
-| ------------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| operation member               | `op name(params) -> R` inside `data`                                | parse-and-decline                                                                                    |
-| multi-output result            | `op name(..) -> (o1: A, o2: B)`                                     | parse-and-decline; the named-tuple result is **local to the op member**, never a general type form   |
-| directed rewrite member        | `rule lhs ~> rhs` inside `data` or `codata`                         | parse-and-decline (`~>` is a fixed token)                                                            |
-| grade-prefixed field           | `Cons(1 x: a)`                                                      | parse-and-decline; grade tile restricted to `{ number, ω }`                                          |
-| generalized constructor result | `C(..) : Vec(..)`                                                   | parse-and-decline                                                                                    |
-| per-symbol attribute slot      | `C(..) [ctor, assoc]`                                               | parse-and-decline; declaration-position only, no `@` sigil inside the block                          |
-| parameterized observation      | `ap(x: a): b`                                                       | parse-and-decline                                                                                    |
-| grade-prefixed observation     | `1 next: F(Unit)`                                                   | parse-and-decline                                                                                    |
-| with-view match                | `case xs with length(xs) { .. }`                                    | parse-and-decline                                                                                    |
-| mutual-recursion block         | `rec { def ..; def .. }`                                            | parse-and-decline                                                                                    |
-| operator-fixity declaration    | `op infixl 6 "++" ;`                                                | parse-and-decline; wiring seam unwired                                                               |
-| copattern default arm          | `_ => e`                                                            | parse-and-decline                                                                                    |
-| reversible circuit former      | `oper f : (a : A) <-> (b : B)`                                      | parse-and-decline; the circuit surface check names the reversible-oper lane that owes its discipline |
-| circuit block members          | `sign`, `oper`, and `rule` declarations with `node` / `feed` bodies | parsed and arrow-confirmed; parse-and-decline at lowering                                            |
-| instantiation-slot residents   | `f[m<]`, `f[x = e]`, `f[size = e]`, `f[cost = e]`, `f[tail]`        | parsed by the grammar; **declined by name** by the recursion-surface scope pass (see [[recursion]])  |
+| form                           | shape                                                               | status                                                                                                                                    |
+| ------------------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| operation member               | `op name(params) -> R` inside `data`                                | parse-and-decline                                                                                                                         |
+| multi-output result            | `op name(..) -> (o1: A, o2: B)`                                     | parse-and-decline; the named-tuple result is **local to the op member**, never a general type form                                        |
+| directed rewrite member        | `rule lhs ==> rhs` inside `data` or `codata`                        | parse-and-decline (`==>` is a fixed token); the retired `~>` also parses here, and the stage-0 elaborator declines it with the respelling |
+| grade-prefixed field           | `Cons(1 x: a)`                                                      | parse-and-decline; grade tile restricted to `{ number, ω }`                                                                               |
+| generalized constructor result | `C(..) : Vec(..)`                                                   | parse-and-decline                                                                                                                         |
+| per-symbol attribute slot      | `C(..) [ctor, assoc]`                                               | parse-and-decline; declaration-position only, no `@` sigil inside the block                                                               |
+| parameterized observation      | `ap(x: a): b`                                                       | parse-and-decline                                                                                                                         |
+| grade-prefixed observation     | `1 next: F(Unit)`                                                   | parse-and-decline                                                                                                                         |
+| with-view match                | `case xs with length(xs) { .. }`                                    | parse-and-decline                                                                                                                         |
+| mutual-recursion block         | `rec { def ..; def .. }`                                            | parse-and-decline                                                                                                                         |
+| operator-fixity declaration    | `op infixl 6 "++" ;`                                                | parse-and-decline; wiring seam unwired                                                                                                    |
+| copattern default arm          | `_ => e`                                                            | parse-and-decline                                                                                                                         |
+| reversible circuit former      | `oper f : (a : A) <-> (b : B)`                                      | parse-and-decline; the circuit surface check names the reversible-oper lane that owes its discipline                                      |
+| circuit block members          | `sign`, `oper`, and `rule` declarations with `node` / `feed` bodies | parsed and arrow-confirmed; parse-and-decline at lowering                                                                                 |
+| instantiation-slot residents   | `f[m<]`, `f[x = e]`, `f[size = e]`, `f[cost = e]`, `f[tail]`        | parsed by the grammar; **declined by name** by the recursion-surface scope pass (see [[recursion]])                                       |
 
 ## The PBG-only kinds registry
 

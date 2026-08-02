@@ -549,8 +549,16 @@ impl Token
 /// The single-byte operators are handled by [`punct_len`] directly. `#`, `$`,
 /// `/`, `"`, and `'` lead mode-shifting lexemes (comments, shebang, shell
 /// starts, strings, characters) and are dispatched before this table. `~>` is
-/// the W4d rewrite-rule arrow (`rule lhs ~> rhs`, a `data` / `codata` 2-cell
-/// member); a lone `~` remains an [`Lexeme::Unknown`] stray byte.
+/// the **retired** rewrite-face arrow: the block-form ruling makes `==>` the
+/// face former at every position, and `~>` stays in this table only so a stale
+/// spelling munches as one tile and earns the elaborator's migration decline
+/// (`gandr_surface_engine::desc_elab`) instead of splintering into a parse
+/// repair that names bytes rather than the respelling. A lone `~` remains an
+/// [`Lexeme::Unknown`] stray byte, so `~~>` — the ratified but unlanded
+/// directed former on types — still scans as a stray `~` followed by `~>`,
+/// exactly as it did before the migration; landing it stays the one table
+/// entry inserted ahead of `~>`
+/// (`docs/gandr/spec/surface-language/directed-family.md`).
 ///
 /// The four leading entries are the circuit-cell **arrow grid** (the ruled
 /// block form, `docs/gandr/spec/surface-language/circuit-cells.md` §"The block
@@ -2053,8 +2061,8 @@ mod tests
                 (Lexeme::LowerWord, "b".to_owned()),
             ]
         );
-        // `~>` (the rewrite-rule arrow) munches as one tile; a lone `~` stays
-        // an unknown stray byte.
+        // `~>` (the retired rewrite-face arrow) munches as one tile; a lone `~`
+        // stays an unknown stray byte.
         assert_eq!(
             tiles(SourceSlice::from("a~>b"), &label(SourceSlice::from("a~>b"))),
             vec![
@@ -2120,6 +2128,45 @@ mod tests
                 (Lexeme::Punct, "-".to_owned()),
                 (Lexeme::Punct, "-".to_owned()),
                 (Lexeme::LowerWord, "b".to_owned()),
+            ]
+        );
+    }
+    #[test]
+    fn the_face_migration_leaves_the_directed_type_former_run_alone()
+    {
+        // `~~>` is the ratified directed former on types, unlanded in this
+        // table. Retiring `~>` as the rewrite-face former must not disturb how
+        // that byte run scans, because the two are one glyph apart and the
+        // whole point of the ruling was to dissolve that near-collision rather
+        // than manage it. The run still scans as a stray `~` followed by `~>`,
+        // so landing `~~>` remains the single entry inserted ahead of `~>` that
+        // `directed-family.md` records — the migration foreclosed nothing.
+        assert_eq!(
+            tiles(
+                SourceSlice::from("A ~~> B"),
+                &label(SourceSlice::from("A ~~> B"))
+            ),
+            vec![
+                (Lexeme::UpperWord, "A".to_owned()),
+                (Lexeme::Unknown, "~".to_owned()),
+                (Lexeme::Punct, "~>".to_owned()),
+                (Lexeme::UpperWord, "B".to_owned()),
+            ]
+        );
+        // And the ruled face arrow does not reach into it: `==>` beside `~~>`
+        // in one source keeps both readings.
+        assert_eq!(
+            tiles(
+                SourceSlice::from("a ==> b ~~> c"),
+                &label(SourceSlice::from("a ==> b ~~> c"))
+            ),
+            vec![
+                (Lexeme::LowerWord, "a".to_owned()),
+                (Lexeme::Punct, "==>".to_owned()),
+                (Lexeme::LowerWord, "b".to_owned()),
+                (Lexeme::Unknown, "~".to_owned()),
+                (Lexeme::Punct, "~>".to_owned()),
+                (Lexeme::LowerWord, "c".to_owned()),
             ]
         );
     }

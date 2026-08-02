@@ -14,8 +14,8 @@ data NatAdd {
   Zero,
   Succ(n: NatAdd),
   op add(m: NatAdd, n: NatAdd) -> NatAdd,
-  rule add(Zero, n) ~> n,
-  rule add(Succ(m), n) ~> Succ(add(m, n))
+  rule add(Zero, n) ==> n,
+  rule add(Succ(m), n) ==> Succ(add(m, n))
 }
 
 //@ mode: desc

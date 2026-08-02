@@ -168,7 +168,7 @@ fn declarations(
     data.adaptations.push(Adaptation::new(
         RuleName("data_declaration"),
         SurfaceForm("rule_member"),
-        AdaptationReason("reserved parse-and-decline: a `rule lhs ~> rhs` 2-cell member is inlined in the data block, first-token-discriminated by the `rule` keyword"),
+        AdaptationReason("reserved parse-and-decline: a `rule lhs ==> rhs` 2-cell member is inlined in the data block, first-token-discriminated by the `rule` keyword; the retired `~>` face arrow stays admissible so a stale spelling reaches the elaborator's migration decline instead of a parse repair"),
     ));
     data.adaptations.push(Adaptation::new(
         RuleName("data_declaration"),
@@ -209,7 +209,7 @@ fn declarations(
     codata.adaptations.push(Adaptation::new(
         RuleName("codata_declaration"),
         SurfaceForm("rule_member"),
-        AdaptationReason("reserved parse-and-decline: a `rule lhs ~> rhs` 2-cell member is inlined in the codata block, first-token-discriminated by the `rule` keyword"),
+        AdaptationReason("reserved parse-and-decline: a `rule lhs ==> rhs` 2-cell member is inlined in the codata block, first-token-discriminated by the `rule` keyword; the retired `~>` face arrow stays admissible so a stale spelling reaches the elaborator's migration decline instead of a parse repair"),
     ));
     out.push(codata);
 
@@ -412,14 +412,29 @@ fn data_member() -> Regex
             params(),
             opt(seq([t(TileLabel("->")), op_result()])),
         ]),
-        // reserved `rule lhs ~> rhs` 2-cell member.
+        // reserved `rule lhs ==> rhs` 2-cell member.
         seq([
             t(TileLabel("rule")),
             h(Sort::Expression),
-            t(TileLabel("~>")),
+            rule_face_arrow(),
             h(Sort::Expression),
         ]),
     ])
+}
+
+/// Build the rewrite-face arrow of a `rule` member: the ruled `==>`, or the
+/// retired `~>` kept admissible for its migration decline.
+///
+/// The block-form ruling (`docs/gandr/spec/surface-language/circuit-cells.md`
+/// §"The block form, ruled") makes `==>` the rewrite-face former at every
+/// position and retires `~>`. Retiring it from the grammar outright would turn
+/// a stale face into a parse repair, which names a token rather than the
+/// respelling; admitting it here keeps the member's shape whole so the stage-0
+/// elaborator declines it by name and points at `==>`
+/// (`gandr_surface_engine::desc_elab`).
+fn rule_face_arrow() -> Regex
+{
+    alt([t(TileLabel("==>")), t(TileLabel("~>"))])
 }
 
 /// Build the reserved grade prefix, narrowed to `{ number, ω }` (R5).
@@ -476,7 +491,7 @@ fn codata_member() -> Regex
         seq([
             t(TileLabel("rule")),
             h(Sort::Expression),
-            t(TileLabel("~>")),
+            rule_face_arrow(),
             h(Sort::Expression),
         ]),
     ])

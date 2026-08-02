@@ -210,7 +210,7 @@ def name(x: A, y: B) -> B' { t }
 def rec fact(n: Integer) -> F Integer { … }
 
 data Maybe(a) { None, Some(x: a) }
-data Nat { Zero, Succ(n: Nat), op add(m: Nat, n: Nat) -> Nat, rule add(Zero, n) ~> n }
+data Nat { Zero, Succ(n: Nat), op add(m: Nat, n: Nat) -> Nat, rule add(Zero, n) ==> n }
 
 codata Stream(a) { head: a, tail: Stream(a) }
 

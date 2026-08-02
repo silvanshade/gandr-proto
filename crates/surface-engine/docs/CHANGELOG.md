@@ -2,6 +2,12 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-02 — Decline the retired rule-face arrow with its respelling
+
+* `current`: `desc_elab`'s `rule` member reads the ruled `==>` face arrow (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled").
+  A member spelling its face with the retired `~>` is declined as an `ElabDiagnostic` located at the arrow itself, naming the respelling — the grammar keeps `~>` admissible in that slot precisely so this decline exists instead of a parse repair.
+* `current`: The decline is not a synonym: the member contributes no `CellFace`, so a stale face reaches neither the description table nor the cell store, and the rest of the declaration still elaborates.
+
 ## 2026-08-02 — Confirm circuit arrows against the kind they belong to
 
 * `current`: New `circuit` module — the surface check the ruled circuit block form's redundancy needs (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled").
