@@ -422,6 +422,11 @@ The surrogate is well-founded rather than representation-dependent for the rulin
   Two different things are called "the trace" one layer apart, and conflating them would silently withdraw an import gandr depends on.
 * **It does not answer the derivation dimension.** The metatheory records that what the wheel axis buys one dimension up is _cyclic derivation_ — the completion loop's fixpoints — and a cycle in the rewrite relation is not a delay-guarded loop in a diagram.
   This ruling is about wheels in the **term** dimension; the derivation dimension is a separate question and nothing here decides it.
+  > **Ruled (owner, 2026-08-02): cyclic derivations are declined, with a reversal condition.** Stated in the certificate layer's own vocabulary: a certificate is a replayed path and replay-equivalence replays recorded paths, so a derivation that returns to its own start has no replayable representative — no finite record distinguishes its fixpoint from its unrolling.
+  > The interaction with the engine is named rather than implied: the completion budget already declines-and-reports on an exhausted worklist, and the reduction order is plain node count, not substitution-stable — so no well-founded measure exists on which a returning derivation could be admitted as terminating evidence, and a fixpoint the completion loop encounters reports through the budget path instead of becoming a cyclic certificate.
+  > The refusal is at representation, not at phenomenon.
+  > The reversal condition: a consumer that needs the fixpoint as an **object** — a certificate whose meaning is the closure itself rather than any finite replay — with the concrete candidate being certificate composition at the completion boundary; if it arrives, the treatment is a new certificate kind with its own identity discipline, never a cycle admitted into replay-equivalence.
+  > The obligation this creates for replay-equivalence is recorded where the certificate algebra is specified ([[../metatheory#The certificate algebra]]).
 
 **The reversal condition, stated so it is checkable.** The decline reopens if a construction gandr needs requires sliding or yanking as an **equation** rather than as a convenience — the concrete candidate being the certificate layer itself, if composing two certificates ever turns out to demand rotating a cell around a loop.
 It does **not** reopen merely because a program wants a loop; that is what the delay guard is for.
@@ -848,6 +853,9 @@ Check the one gap that would sink it, in three steps.
   **After the cut it stops being a check and becomes a consequence.** The cut-open form is acyclic, rewriting keeps it inside the monogamous acyclic fragment, and re-closure adds only delay edges — so every directed cycle of the re-closed body contains a delayed port automatically, and the guard is preserved by every step rather than re-established after each one.
   **What does need a rule is a step that changes the delay set**, because the cut is determined by that set and the cut ends are the interface: a rule adding or removing a delay moves the boundary between interface and loop object, which is an application of feedback itself rather than a rewrite with interfaces [@katis-sabadini-walters-2002-feedback, def 2.4 and prop 2.5].
   Such a rule is therefore not a cut-open rewriting step at all, and the engine owes it either a separate treatment or a refusal with a diagnostic.
+  > **Ruled (owner, 2026-08-02): refusal.** A rule that adds, removes, or moves a delay is a program edit rather than a rewrite — under the asymmetric-typed placement it is a **type** change — and it is refused with a diagnostic naming the moved boundary, landing when the wheel rung first makes such a rule writable ([[#circuit-terms-rung-09]]).
+  > The second-rewrite-relation treatment is declined with it: a whole relation with its own metatheory, for a use gandr does not have.
+  > The reversal condition: a demonstrated retiming-shaped optimization need that cannot be expressed as an elaboration-time program transformation.
 
 **And settle the seam question alongside it, because the two share a target.** Rewriting the cut-open form is sound with no trace axiom, feedback being an operation on hom-sets; what the cut costs is that no rule whose left-hand side spans a delayed port can match at all ([[#Wheels, and which structure the cell layer takes]]).
 Decide whether the proposed criterion — the seam is **the point** for a law that would cross or erase a tick, and a **price** for a law internal to one tick — is checkable as stated, namely by whether the rule's left-hand side factors through the guard.
@@ -870,6 +878,33 @@ The collapse of the notes above: every placement-invariant answer stands as writ
 What the spike recorded as the fork's stake is thereby realized rather than mooted, and the delay former's name stays provisional per the ruling.
 
 **Small**, and it shares its shape with [[#circuit-terms-spike-07|circuit-terms-spike-07]]: both ask whether a local independence test survives a global path condition, so running them together is cheaper than running either alone.
+
+## The execution ladder
+
+> **Ratified (owner, 2026-08-02).** The order the lane executes in, restated against the four axes after the multi-out ladder lapsed at the rescope.
+> The retired multi-out-rung numbers stay unused, and this numbering is fresh, per the reference discipline.
+> Each rung names what it needs and what it unblocks; the tracker's beads are filed against these anchors, and execution status lives in the tracker rather than here.
+> The derivation dimension of the wheel axis is deliberately outside this ladder: it is ruled declined at [[#Wheels, and which structure the cell layer takes]] and reopens only by its recorded reversal condition.
+
+1. **circuit-terms-rung-01** — **the cong2 corpus witness**: the reconvergence axis at dimension 2, alphabet-neutral by design, on the term-shaped store.
+   Needs nothing outside its own sub-ladder (grammar, port fold, boundary check, elaboration, graduation, shift witness); unblocks the grammar for rung-02, the rule-member graduation gate, and the shift guard's surface consumer.
+2. **circuit-terms-rung-02** — **the rewrite-face respelling**: the landed description-rule syntax and the corpus retire the old face arrow for the ruled one.
+   Needs rung-01's grammar half; unblocks a uniform face spelling while the corpus is still small.
+3. **circuit-terms-rung-03** — **mint `theory-circuit-algebras`** at the ruled narrowed boundary ([[#Matching, normalization, and the crate boundary]]).
+   Needs the alphabet and crate rulings, both taken; unblocks rungs 04 and 05.
+4. **circuit-terms-rung-04** — **diagram normal form**: the canonical linearization behind the `Rigid` device, what content addressing interns on.
+   Needs rung-03; unblocks content addressing at the circuit rung and the canonicalization consumption route for the spider theorem.
+5. **circuit-terms-rung-05** — **embedding-based matching behind the decided guard** ([[#circuit-terms-question-15]]).
+   Needs rung-03; unblocks rungs 06 through 08 — nothing circuit-shaped matches without it.
+6. **circuit-terms-rung-06** — **the tag-declared IL consumer arity**: the multi-output middle's intermediate-language half, owed independently of this arc.
+   Needs nothing; unblocks rung-07 end to end.
+7. **circuit-terms-rung-07** — **grow the alphabet in place, multi-output first** ([[#circuit-terms-question-01]]): the first axis through the whole language.
+   The left-connectedness discharge stops being free at this rung and the strengthened guard is what carries.
+   Needs rungs 05 and 06.
+8. **circuit-terms-rung-08** — **disconnection**: lands after the declined device mapping's replacement direction reports ([[#circuit-terms-question-16]]), and carries the recorded route cost — a disconnected left-hand side forces path joinability, so the cheap-route claim gets its condition stated at this rung.
+   Needs rung-07 and the disconnection independence story.
+9. **circuit-terms-rung-09** — **wheels in the term dimension**: the delay former's spelling resolution, cut-open matching inside the recorded fences, the delay-path extension, and the delay-set refusal diagnostic ([[#circuit-terms-spike-08]]).
+   Needs the delay placement and delay-set rulings, both taken; unblocks the first stateful corpus witness.
 
 ## Findings that route to other tracks
 
