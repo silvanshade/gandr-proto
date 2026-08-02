@@ -2,6 +2,7 @@
 
 What remains on the Rust side, beyond the phase table in [[../implementation|the implementation track]].
 The phase plan itself is `PLAN.html` plus the tracker; this file carries the standing constraints and residuals a phase author must not rediscover.
+The **reference** feature ordering — what each feature presupposes, and the acceptance criterion that says when it is done — is separate and does not expire with a plan: [[feature-staging]].
 
 ## The anticipation register
 

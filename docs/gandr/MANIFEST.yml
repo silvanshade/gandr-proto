@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 09d750cb878f51bba990c001e22533c276abec7e79123056ce0c14ad3c694927
+    b3: c351996a4a5fb86753501a17a7a9f34352ef7672615ab614c90146a0e7849261
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -84,7 +84,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: d5387c4e751007825a8bafbecd36e0b5da6897b76350d82d5341a2a8c30d1079
+    b3: 467c24174423853ee3b0cec62a22e3752fb9e92be4f39136449b1a8643edb30e
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
@@ -215,5 +215,10 @@ nodes:
   - path: spec/implementation/inspection-protocol.md
     role: subdocument
     b3: fdb426103590622c47a52653308385e84e7efa55b4233ddb2603271bae4f62f9
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/feature-staging.md
+    role: subdocument
+    b3: cb048822c378308980140fee72ca6ccfb61e9b7a10a77c05339bec50dd1678dd
     edges:
       - { rel: registered-under, to: spec/implementation.md }
