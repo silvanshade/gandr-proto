@@ -77,7 +77,7 @@ The one genuine construction the equipment join rests on.
 Generalizes a bespoke device; the only concrete lead for the _form_ of a canonical linearization.
 
 **Two concrete candidate shapes are now on the table, and they bracket the family** (2026-08-01): for one syntax over unrooted trees, orienting its cut equation one way makes normal forms **corolla decompositions** — pick a vertex and recurse into the components its removal leaves — and orienting it the other way makes them **edge decompositions** — pick an edge and recurse into the two components its removal leaves, which is the spanning-tree traversal this spike went looking for; the source exhibits both and observes that they are the two extremes of a mixed style [@obradovic-2017-thesis, sec. 2.4.2].
-The same source is a caution as well as a lead: its rewriting system is **non-confluent** at exactly the cut symmetry, with all three of its normal forms denoting one tree, so a decomposition shape is a canonical-form _candidate_ and owes its own confluence argument.
+The same source is a caution as well as a lead: its rewriting system is **non-confluent** at exactly the cut symmetry — a redex and both its reducts denote one tree — and its worked example exhibits **five** distinct normal forms for a single tree, so a decomposition shape is a canonical-form _candidate_ and owes its own confluence argument.
 
 ### meta-spike-12
 
