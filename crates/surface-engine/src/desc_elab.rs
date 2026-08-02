@@ -29,18 +29,10 @@
 //!   first-order fragment (proposal §8's `desc-higher-order-field`, pinning
 //!   V2).
 
-use std::sync::OnceLock;
-
 use gandr_core_checker::boundary::GradeBound;
 use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::grade::Grade;
-use gandr_surface_grammar::Pbg;
-use gandr_surface_grammar::built_in;
-use gandr_surface_syntax::Cst;
-use gandr_surface_syntax::Material;
-use gandr_surface_syntax::MoldPayload;
 use gandr_surface_syntax::NodeId;
-use gandr_surface_syntax::TextRange;
 use gandr_theory_levitation::Attr;
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::BridgeArity;
@@ -58,16 +50,18 @@ use gandr_theory_levitation::SortRef;
 use gandr_theory_levitation::SurfaceSpan;
 use gandr_theory_levitation::ValueTypeRef;
 use gandr_theory_levitation::boundary::NominalSerial;
-use gandr_theory_levitation::boundary::SurfaceByteOffset;
 use gandr_theory_levitation::check_desc;
 use gandr_theory_levitation::wellformed::derive_cell_var_meta;
 
 use crate::boundary::MatchDecision;
-use crate::boundary::NodeText;
 use crate::boundary::PipelineSource;
-use crate::boundary::SourceRange;
 use crate::boundary::TileSpelling;
 use crate::boundary::TypeName;
+use crate::cst_read::Cursor;
+use crate::cst_read::Reader;
+use crate::cst_read::empty_surface_span;
+use crate::cst_read::grammar;
+use crate::cst_read::split_at_top_level;
 use crate::lower::node_kinds;
 use crate::synnode::SynTree;
 
@@ -148,7 +142,7 @@ where
             | node_kinds::CODATA_DECLARATION => DeclPolarity::Codata,
             | _ => continue,
         };
-        let reader = Reader { pbg, cst };
+        let reader = Reader::new(pbg, cst);
         if let Some(desc) = reader.declaration(
             item.cst_node(),
             polarity,
@@ -168,30 +162,6 @@ where
     elab
 }
 
-/// The process-wide cached built-in grammar, for resolving the CST's `MoldId`s
-/// to tile labels and sorts.
-///
-/// `built_in` is deterministic and fingerprint-pinned, so the ids in a
-/// [`SynTree::parse`] CST resolve against this instance's table (both are the
-/// same checked artifact).
-fn grammar() -> Option<&'static Pbg>
-{
-    /// The cached grammar (or [`None`] if the checked artifact fails to build —
-    /// unreachable once a parse has succeeded).
-    static GRAMMAR: OnceLock<Option<Pbg>> = OnceLock::new();
-    GRAMMAR.get_or_init(|| built_in().ok()).as_ref()
-}
-
-/// A borrowing reader over one parse's CST, resolving tile labels through the
-/// grammar.
-struct Reader<'tree>
-{
-    /// The grammar the CST's `MoldId`s index.
-    pbg: &'tree Pbg,
-    /// The concrete syntax tree.
-    cst: &'tree Cst,
-}
-
 /// The three parallel member lists of a declaration table under elaboration:
 /// one member run appends into the constructor, observation (operation), or
 /// cell list by its lead label, and the lists grow together across the block.
@@ -205,111 +175,8 @@ struct MemberLists<'lists>
     cells: &'lists mut Vec<CellFace>,
 }
 
-/// The empty provenance span used when a CST lookup misses unexpectedly, or
-/// when a decline belongs to a description member that carries no span.
-pub(crate) fn empty_surface_span() -> SurfaceSpan
-{
-    SurfaceSpan::new(SurfaceByteOffset::from(0), SurfaceByteOffset::from(0))
-}
-
-/// Convert a syntax text range into a host byte range.
-fn source_range(range: TextRange) -> SourceRange
-{
-    let start = usize::try_from(u32::from(range.start())).unwrap_or(0);
-    let end = usize::try_from(u32::from(range.end())).unwrap_or(start);
-    SourceRange(start .. end)
-}
-
 impl<'tree> Reader<'tree>
 {
-    /// The significant (non-space) children of `id`, in source order.
-    fn sig_children(
-        &self,
-        id: NodeId,
-    ) -> Vec<NodeId>
-    {
-        let Ok(children) = self.cst.children(id)
-        else {
-            return Vec::new();
-        };
-        children
-            .iter()
-            .copied()
-            .filter(|&child| {
-                self.cst
-                    .node(child)
-                    .is_ok_and(|view| !matches!(view.material(), Material::Space))
-            })
-            .collect()
-    }
-
-    /// The tile label of `id`, or [`None`] when `id` is not a tile.
-    fn label(
-        &self,
-        id: NodeId,
-    ) -> Option<TileSpelling>
-    {
-        match {
-            let present = self.cst.node(id).ok()?;
-            core::convert::identity(present)
-        }
-        .payload()
-        {
-            | MoldPayload::Tile(mold) => {
-                self.pbg.mold(mold).ok().map(|def| TileSpelling(def.label))
-            },
-            | MoldPayload::Grout { .. } | MoldPayload::Space => None,
-        }
-    }
-
-    /// Whether `id` is a Meld (a grouped sub-node, e.g. a compound type or rule
-    /// expression) rather than a tile.
-    fn is_meld(
-        &self,
-        id: NodeId,
-    ) -> MatchDecision
-    {
-        MatchDecision(
-            self.label(id).map(|label| label.0).is_none() && !self.sig_children(id).is_empty(),
-        )
-    }
-
-    /// The source text `id` covers.
-    fn text(
-        &self,
-        id: NodeId,
-    ) -> NodeText<'tree>
-    {
-        NodeText(
-            self.cst
-                .node(id)
-                .ok()
-                .and_then(|view| {
-                    let range = view.range();
-                    self.cst.source().as_ref().get(source_range(range).0)
-                })
-                .unwrap_or(""),
-        )
-    }
-
-    /// The half-open byte span `id` covers.
-    fn span(
-        &self,
-        id: NodeId,
-    ) -> SurfaceSpan
-    {
-        self.cst.node(id).map_or_else(
-            |_error| empty_surface_span(),
-            |view| {
-                let range = source_range(view.range());
-                SurfaceSpan::new(
-                    SurfaceByteOffset::from(range.start),
-                    SurfaceByteOffset::from(range.end),
-                )
-            },
-        )
-    }
-
     /// Read one datatype declaration node into a [`DataDesc`], appending any
     /// elaboration decline to `elab`.
     fn declaration(
@@ -327,7 +194,7 @@ impl<'tree> Reader<'tree>
         let name_id = cursor.bump()?;
         let name = self.text(name_id).0.to_owned();
         let params = self.type_params(&mut cursor);
-        if !cursor.eat("{").0 {
+        if !cursor.eat(TileSpelling("{")).0 {
             return None;
         }
         let member_region = cursor.until_close_brace();
@@ -339,7 +206,7 @@ impl<'tree> Reader<'tree>
             ops: &mut ops,
             cells: &mut cells,
         };
-        for member in split_members(self, &member_region) {
+        for member in split_at_top_level(self, &member_region, TileSpelling(",")) {
             self.member(
                 &member,
                 TypeName::from(name.as_str()),
@@ -367,7 +234,7 @@ impl<'tree> Reader<'tree>
     ) -> Vec<ParamDesc>
     {
         let mut params = Vec::new();
-        if !cursor.eat("(").0 {
+        if !cursor.eat(TileSpelling("(")).0 {
             return params;
         }
         while let Some(id) = cursor.peek() {
@@ -441,7 +308,7 @@ impl<'tree> Reader<'tree>
         let fields = self.field_list(&mut cursor, type_name, elab);
         let code = Code::product_of(fields);
         // Optional GADT result annotation `: Result`.
-        let result = if cursor.eat(":").0 {
+        let result = if cursor.eat(TileSpelling(":")).0 {
             cursor.bump().map(|id| self.text(id).0.to_owned().into())
         }
         else {
@@ -461,7 +328,7 @@ impl<'tree> Reader<'tree>
     ) -> Vec<Code>
     {
         let mut fields = Vec::new();
-        if !cursor.eat("(").0 {
+        if !cursor.eat(TileSpelling("(")).0 {
             return fields;
         }
         loop {
@@ -517,7 +384,7 @@ impl<'tree> Reader<'tree>
         };
         // The field name, then `:`.
         cursor.bump()?;
-        if !cursor.eat(":").0 {
+        if !cursor.eat(TileSpelling(":")).0 {
             return None;
         }
         let type_id = cursor.bump()?;
@@ -629,7 +496,7 @@ impl<'tree> Reader<'tree>
         cursor: &mut Cursor<'_, 'tree>,
     ) -> Attrs
     {
-        if !cursor.eat("[").0 {
+        if !cursor.eat(TileSpelling("[")).0 {
             return Attrs::empty();
         }
         let mut markers = Vec::new();
@@ -663,7 +530,7 @@ impl<'tree> Reader<'tree>
         let name_id = cursor.bump()?;
         let name = self.text(name_id).0.to_owned();
         let inputs = self.op_params(&mut cursor);
-        let outputs = if cursor.eat("->").0 {
+        let outputs = if cursor.eat(TileSpelling("->")).0 {
             self.op_result(&mut cursor)
         }
         else {
@@ -684,7 +551,7 @@ impl<'tree> Reader<'tree>
     ) -> Vec<SortRef>
     {
         let mut ports = Vec::new();
-        if !cursor.eat("(").0 {
+        if !cursor.eat(TileSpelling("(")).0 {
             return ports;
         }
         while let Some(id) = cursor.peek() {
@@ -718,7 +585,7 @@ impl<'tree> Reader<'tree>
         let name_id = cursor.peek()?;
         let name = self.text(name_id).0.to_owned();
         cursor.bump();
-        if !cursor.eat(":").0 {
+        if !cursor.eat(TileSpelling(":")).0 {
             return None;
         }
         let type_id = cursor.bump()?;
@@ -849,7 +716,7 @@ impl<'tree> Reader<'tree>
             == Some("(")
         {
             let inputs = self.op_params(&mut cursor);
-            let outputs = if cursor.eat(":").0 {
+            let outputs = if cursor.eat(TileSpelling(":")).0 {
                 cursor
                     .bump()
                     .map(|id| vec![SortRef::new(name.clone(), self.text(id).0)])
@@ -865,7 +732,7 @@ impl<'tree> Reader<'tree>
             ));
             return;
         }
-        if !cursor.eat(":").0 {
+        if !cursor.eat(TileSpelling(":")).0 {
             return;
         }
         let Some(type_id) = cursor.bump()
@@ -874,84 +741,6 @@ impl<'tree> Reader<'tree>
         };
         let code = self.field_type_code(type_id, type_name, grade, elab);
         ctors.push(CtorDesc::new(name, code, None, Attrs::empty()));
-    }
-}
-
-/// A cursor over a run of significant CST children.
-struct Cursor<'run, 'tree>
-{
-    /// The reader resolving tile labels.
-    reader: &'run Reader<'tree>,
-    /// The run being scanned.
-    run: &'run [NodeId],
-    /// The current position into `run`.
-    pos: usize,
-}
-
-impl<'run, 'tree> Cursor<'run, 'tree>
-{
-    /// A cursor at the start of `run`.
-    fn new(
-        reader: &'run Reader<'tree>,
-        run: &'run [NodeId],
-    ) -> Self
-    {
-        Self {
-            reader,
-            run,
-            pos: 0,
-        }
-    }
-
-    /// The node at the cursor, without advancing.
-    fn peek(&self) -> Option<NodeId>
-    {
-        self.run.get(self.pos).copied()
-    }
-
-    /// Advance past and return the node at the cursor.
-    fn bump(&mut self) -> Option<NodeId>
-    {
-        let id = self.run.get(self.pos).copied();
-        if id.is_some() {
-            self.pos = self.pos.saturating_add(1);
-        }
-        id
-    }
-
-    /// Advance past the node at the cursor when its label is `label`, returning
-    /// whether it matched.
-    fn eat(
-        &mut self,
-        label: impl Into<TileSpelling>,
-    ) -> MatchDecision
-    {
-        let label = label.into();
-        if self
-            .peek()
-            .and_then(|id| self.reader.label(id))
-            .is_some_and(|actual| actual == label)
-        {
-            self.bump();
-            MatchDecision(true)
-        }
-        else {
-            MatchDecision(false)
-        }
-    }
-
-    /// The remaining run up to (and consuming) the closing `}` — i.e. the
-    /// member region of a declaration body.
-    fn until_close_brace(&mut self) -> Vec<NodeId>
-    {
-        let mut region = Vec::new();
-        while let Some(id) = self.bump() {
-            if self.reader.label(id).map(|label| label.0) == Some("}") {
-                break;
-            }
-            region.push(id);
-        }
-        region
     }
 }
 
@@ -980,39 +769,4 @@ fn bridge_arity(
         dest.push(u32::try_from(index).unwrap_or(u32::MAX));
     }
     BridgeArity::new(inputs, factors, source, dest, outputs)
-}
-
-/// Split a declaration's member region into per-member runs at bracket-depth-
-/// zero commas (a field / parameter comma inside `( … )` or `[ … ]` stays
-/// within its member).
-fn split_members(
-    reader: &Reader<'_>,
-    region: &[NodeId],
-) -> Vec<Vec<NodeId>>
-{
-    let mut members: Vec<Vec<NodeId>> = Vec::new();
-    let mut current: Vec<NodeId> = Vec::new();
-    let mut depth: u32 = 0;
-    for &id in region {
-        match reader.label(id).map(|label| label.0) {
-            | Some("(" | "[") => {
-                depth = depth.saturating_add(1);
-                current.push(id);
-            },
-            | Some(")" | "]") => {
-                depth = depth.saturating_sub(1);
-                current.push(id);
-            },
-            | Some(",") if depth == 0 => {
-                if !current.is_empty() {
-                    members.push(core::mem::take(&mut current));
-                }
-            },
-            | _ => current.push(id),
-        }
-    }
-    if !current.is_empty() {
-        members.push(current);
-    }
-    members
 }

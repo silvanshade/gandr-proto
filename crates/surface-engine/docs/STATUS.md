@@ -17,6 +17,9 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
   + `run` drives a one-shot source program through lowering, linking, prelude checking, and the host seam.
   + `edit`, `footprint`, and `checkpoint` provide edit reconstruction and dependency-validated incremental re-typing.
   + `boundary` owns the crate's typed scalar and string boundary wrappers.
+  + `cst_read` reads a committed CST as a flat tile run — the `Reader` / `Cursor` and the depth-aware member split that `desc_elab` and `circuit` both walk declarations with.
+  + `circuit` is the ruled circuit block form's surface check: it confirms every arrow against the kind of the thing it belongs to (a declaration's from its kind keyword, a body line's from the applied head's) and declines the reserved reversible glyph `<->`.
+    It reads arrows and names only; the port/name fold, the back-edge sweep, and lowering are elsewhere or later.
 * Dependency re-point:
   + Seven predecessor project edges map one-to-one: `gandr-desc` → `gandr-theory-levitation`, `gandr-grammar` → `gandr-surface-grammar`, `gandr-nominal` → `gandr-theory-nominal-automata`, `gandr-order-maintenance` → `gandr-theory-orders`, `gandr-parser` → `gandr-surface-parser`, `gandr-recursion` → `gandr-theory-recursion`, and `gandr-syntax` → `gandr-surface-syntax`.
   + The predecessor's eighth edge, `gandr-core`, splits by authority: `gandr-core-checker` owns syntax, typing, diagnostics, marks, native primitive definitions, and the canonical host signatures beside the host seam; `gandr-core-sequent` owns L-machine evaluation and consumes the checker-owned `Eval` outcome.

@@ -2,6 +2,17 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-02 — Confirm circuit arrows against the kind they belong to
+
+* `current`: New `circuit` module — the surface check the ruled circuit block form's redundancy needs (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled").
+  `check_circuit_surface` confirms every arrow against the kind of the thing it belongs to: a declaration's arrow against its kind keyword, a rewrite-sorted binder's against the rule it binds, a `node` line's against the **applied head's** kind, and a `feed` line's against the wire it is.
+  A row disagreement is a named, located diagnostic; the reserved `<->` declines naming the reversible-oper lane.
+* `current`: The check deliberately stops at arrows and names.
+  It does not fold the port/name sets, sweep node-only wiring for cycles owing a `feed`, or lower anything — circuit members stay parse-and-decline at lowering.
+  An applied head the environment does not know is skipped rather than guessed: that is a name-resolution question, and answering it here would report an error the program does not have.
+* `current`: New `cst_read` module extracted from `desc_elab` — the flat-tile-run `Reader` / `Cursor` and the depth-aware member split that both the levitation stage-0 elaborator and the circuit check walk declarations with.
+  The extraction is behaviour-preserving for descriptions: brace depth is now counted, which is inert for a `data` / `codata` block (its brace-bearing sub-forms sit at sort holes and reach the run as Melds) and load-bearing for a `sign` block (whose members' fillers are flat).
+
 ## 2026-07-21 — Port the complete surface engine from wyrd (F3)
 
 * `current`: Landed `gandr-surface-engine`, the complete CST-to-core front-end engine (rung F3 of `docs/research/front-end-port-staging.md` §9), ported from the wyrd `gandr-pipeline` crate.

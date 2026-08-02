@@ -39,8 +39,8 @@ use gandr_theory_computads::elaborate_data_desc;
 use gandr_theory_levitation::DataDesc;
 
 use crate::boundary::DeclineReason;
+use crate::cst_read::empty_surface_span;
 use crate::desc_elab::ElabDiagnostic;
-use crate::desc_elab::empty_surface_span;
 
 /// The cell-layer elaboration of a source's descriptions: one store per
 /// description, plus every decline as a located diagnostic.

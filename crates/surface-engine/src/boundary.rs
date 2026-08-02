@@ -296,6 +296,10 @@ semantic_borrowed_str!(
     /// Borrowed codata observation name.
     pub struct ObservationName;
 );
+semantic_borrowed_str!(
+    /// Borrowed circuit member, declaration, or binder name.
+    pub struct CircuitName;
+);
 semantic_copy!(
     /// Whether a codata observation is declared in the active registry.
     pub struct ObservationPresence(bool);

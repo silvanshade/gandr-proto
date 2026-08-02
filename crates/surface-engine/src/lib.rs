@@ -78,6 +78,8 @@ pub mod boundary;
     )
 )]
 pub mod checkpoint;
+pub mod circuit;
+pub(crate) mod cst_read;
 pub mod desc_cells;
 pub mod desc_elab;
 #[cfg_attr(

@@ -11,6 +11,8 @@ mod acceptance;
 #[cfg(test)]
 mod attributes;
 #[cfg(test)]
+mod circuit;
+#[cfg(test)]
 mod desc_cells;
 #[cfg(test)]
 mod desc_elab;
