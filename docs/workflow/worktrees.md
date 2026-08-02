@@ -21,7 +21,7 @@
   Parked pending their prerequisites: `adr-guard` (ADRs land on `main` only, core H5 — returns when `docs/adr/` exists) and `core-pin` (`mise run core:check`, the read-only vendored core at its pin — returns when the agentic-dev core is vendored at `.agents/core`).
 * `[post-merge]`: `beads-pull` in the primary — with the shared per-machine database this is cross-machine freshness only; the merged branch's beads were already visible locally the moment they were written.
 
-Contributor notes live in the sibling `wyrd-notes` repository (a separate local git repo beside this one), so worktree lifecycle operations cannot strand them — the historical in-repo gitignored `notes/` and its `notes-guard` gate are retired.
+Contributor notes live in the sibling notes repository, named `../<repo-name>-notes` beside the primary checkout (here `gandr-notes`; earlier sessions used the predecessor's `wyrd-notes`, now holding a pointer), so worktree lifecycle operations cannot strand them — the historical in-repo gitignored `notes/` and its `notes-guard` gate are retired.
 
 ## Mutating sub-agents: the Worktrunk-owned lane
 
