@@ -182,6 +182,27 @@ Those are all preferences for directed, non-invertible structure with a decision
 **Characterizing something more finely than the literature does is a result, not a liberty.** Where we can show a structure is skew-monoidal, or lax where the literature says strong, or relative-monadic where it says monadic, that is a sharper statement and it should be taken.
 Record what the finer characterization buys, so a later reader does not "simplify" it back.
 
+### A presentation is a characterization, and its completeness is arity-scoped
+
+**Where a structure is named by generators and relations, write the presentation down and prove it, exactly as for any other characterization.** A presentation is not a description of what some laws resemble; it is the claim that the relations listed **generate every relation there is**.
+Naming one and listing some of its relations is the "naming them is not doing it" failure in the form that is hardest to see, because the partial list keeps working for a while.
+
+**And it keeps working for a reason that must be checked rather than assumed: a presentation can be complete at one arity and incomplete one step up, because the missing relation has no instance at the smaller arity.** That is what makes this failure quiet — the check passes at the size it was run at, and nothing about the small case hints that a relation is absent.
+
+**So the trigger is arity, and it is cheap.** When a consumer needs the structure at a **larger arity than the presentation was checked at**, re-derive the standard presentation for the arity now in play and compare it against what is proved, _before_ proving anything new over it.
+
+`Gandr.Shape.Graft`'s exchange is the worked example, and it cost a ladder.
+The involution and the braid relation genuinely **are** the symmetric group's presentation on a three-layer tower: three layers give two adjacent transpositions, there is no non-adjacent pair, so the commutation relation has no instance and its absence is invisible.
+Four layers admit the first non-adjacent pair.
+The relation was never stated, so the four-layer coherence could only be discharged as bespoke work — and each further arity was then reached by writing another fixed-arity record with its own routes and its own coherence, until the ladder was measured and found to gain a **family** rather than a rung at the fifth.
+Stating the third relation retired the whole ladder at once: one structure indexed by the list of layers, three relations, and every coherence above them a word equation derived by chaining those three at any arity.
+
+**The second tell from that episode is worth recognising on its own, because it was read backwards.** A coherence whose cases are discharged by the coherence **below** it is a **derived law, not a generator**.
+That is evidence to state the presentation and stop, not evidence that the ladder is cheap to keep climbing — deriving instances one arity at a time is precisely what a presentation exists to make unnecessary.
+Measuring a rung as inexpensive answers "what does this rung cost", which is the wrong question once the rung is known to be derivable.
+
+The naming half of this rule is the [terminology guard](#terminology-follows-the-ladder-and-a-name-may-not-assert-an-unchecked-correspondence) below: a presented structure's name asserts completeness, so the arity at which that was checked belongs in the module header beside the name.
+
 ### The machinery inventory is open, and demand-driven
 
 The category-theory layer is not a fixed list to be completed once.
@@ -421,6 +442,8 @@ Three guards, and the third is the one that has already cost something here:
 * Where a source's structure is _more general_ than ours, take the name and **state the restriction** rather than inventing a diminutive.
 * **A name is a claim.** Adopt it where the correspondence is _proved_; mark it explicitly as a candidate where it is conjectured; and never let a name assert a correspondence nobody has checked.
   The disambiguation recorded below under the circuit carrier's layer letter is the worked example of what the third guard is for: two available words, both ambiguous, and the ambiguities running in opposite directions.
+  **A structure named by a presentation carries a fourth obligation**, because such a name asserts that the listed relations are _all_ of them: say **at which arity** the presentation was checked, in the module header beside the name, and re-check it when a consumer exceeds that arity.
+  See [§"A presentation is a characterization, and its completeness is arity-scoped"](#a-presentation-is-a-characterization-and-its-completeness-is-arity-scoped) for why the gap is invisible from below, and for what it has already cost here.
 
 ## Namespacing, the layer letters, and the structure dress
 

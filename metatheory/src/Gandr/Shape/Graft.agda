@@ -147,6 +147,23 @@
 -- at any arity, with no new structure. `tower-coh⁴` is the four-layer one and is
 -- five steps: commute a far pair, braid, braid a layer up, commute back.
 --
+-- AT WHICH ARITY THE PRESENTATION IS CHECKED, since naming a presentation claims
+-- the relations are ALL of them and that claim is arity-scoped. All three are
+-- stated and proved over a tower carrying an ARBITRARY tail, and the third is
+-- stated against an arbitrary action two layers up, so what is proved holds at
+-- every arity rather than at the arity a consumer happened to want. That is the
+-- difference from the ladder this replaced, whose relations were complete at
+-- three layers and silently incomplete at four — three layers admit no
+-- non-adjacent pair, so the missing relation had no instance to fail at.
+--
+-- WHAT IS NOT MECHANIZED, and must not be read into the word "presentation".
+-- That these relations HOLD is proved here. That they GENERATE every relation
+-- of the symmetric group is Coxeter's theorem, and it is used as a guide for
+-- finding a chain, not as a decision procedure: each coherence is still
+-- exhibited as an explicit word chain, and a normal form for the words is not
+-- built. Building one is what would make a coherence hold by computation, and
+-- nothing so far has needed it.
+--
 -- An earlier revision called the three-way relation a hexagon; it is not one,
 -- since a hexagon is the braiding against an associator and there is no tensor
 -- here to associate. And an earlier revision reached each arity by writing the
