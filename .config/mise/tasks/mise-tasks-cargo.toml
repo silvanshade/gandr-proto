@@ -10,7 +10,7 @@ cargo build --workspace --exclude gandr-workflow-dylint --all-targets --features
 """
 
 ["cargo:clippy"]
-description = "Run clippy linter"
+description = "Run clippy linter (workspace by default; pass package names to scope)"
 run = """
 RUSTUP_TOOLCHAIN="$RUSTUP_TOOLCHAIN_NIGHTLY"
 export RUSTUP_TOOLCHAIN
@@ -19,11 +19,23 @@ export RUSTUP_TOOLCHAIN
 # std:: import sites in gandr-workflow-gates that the manifest wall's other
 # toolchains accept; the lane-scoped allowance is the sanctioned residual of
 # the dylint-driven pin rollback (docs/workflow/rust.md "Toolchain upgrades").
-cargo clippy --workspace --all-targets --features=full -- -D warnings -A clippy::std_instead_of_core
+#
+# Trailing task arguments are package names: bare runs lint the whole workspace
+# (the merge-wall scope), while `mise run cargo:clippy gandr-theory-computads`
+# lints only the named packages for fast per-module iteration.
+clippy_scope() {
+  if [ "$#" -eq 0 ]; then
+    set -- --workspace
+  else
+    set -- $(for package in "$@"; do printf -- '--package %s ' "$package"; done)
+  fi
+  cargo clippy "$@" --all-targets --features=full -- -D warnings -A clippy::std_instead_of_core
+}
+clippy_scope
 """
 
 ["cargo:dylint:local"]
-description = "Run project-local Dylint rules across covered workspace targets"
+description = "Run project-local Dylint rules (workspace by default; pass package names to scope)"
 depends = ["toolchain:materialize"]
 env = { CARGO_TARGET_DIR = "{{ config_root }}/target/dylint-local", DYLINT_RUSTFLAGS = "-D warnings -A clippy::std_instead_of_core" }
 run = """
@@ -32,14 +44,25 @@ run = """
 CARGO_INCREMENTAL=0
 export CARGO_INCREMENTAL
 
-
-cargo dylint \
-  --lib gandr_workflow_dylint \
-  --no-deps \
-  -- \
-  --workspace \
-  --all-targets \
-  --features=full
+# Trailing task arguments are package names: bare runs check the whole
+# workspace (the merge-wall scope), while
+# `mise run cargo:dylint:local gandr-theory-computads` checks only the named
+# packages for fast per-module iteration.
+dylint_scope() {
+  if [ "$#" -eq 0 ]; then
+    set -- --workspace
+  else
+    set -- $(for package in "$@"; do printf -- '--package %s ' "$package"; done)
+  fi
+  cargo dylint \
+    --lib gandr_workflow_dylint \
+    --no-deps \
+    -- \
+    "$@" \
+    --all-targets \
+    --features=full
+}
+dylint_scope
 """
 
 ["cargo:dylint"]
