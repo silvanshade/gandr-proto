@@ -1,0 +1,23 @@
+// A declared `op` is what lets a `rule` become a cell.
+//
+// The description layer records an operation's arity as a bridge diagram; the
+// cell layer reads that arity to decide whether it can hold the operation at
+// all. `add` reads two inputs and produces one result, which is exactly the
+// shape a cut against the operation frame `add(n; $ret)` can carry — so both
+// rules below elaborate.
+//
+// What lands in the store is more than the two rules. Every constructor also
+// contributes its return-side frame's defining cell (`Succ⁻(β)` reduces to
+// `Succ(v)` handed to `β`), which is what makes the second rule's flattened
+// right-hand side reduce. Four cells: two frames and two rules.
+data NatAdd {
+  Zero,
+  Succ(n: NatAdd),
+  op add(m: NatAdd, n: NatAdd) -> NatAdd,
+  rule add(Zero, n) ~> n,
+  rule add(Succ(m), n) ~> Succ(add(m, n))
+}
+
+//@ mode: desc
+//@ expect-desc-cells: 2
+//@ expect-desc-store-cells: 4

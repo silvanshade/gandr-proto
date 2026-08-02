@@ -1,0 +1,5 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/desc/many-out-op-declined.gandr
+; sexp-b3sum: 491c3891403c8fc056b463525b786879a7c5dd090ded3ebf8cc31149d7d82bf6
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 0

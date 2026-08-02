@@ -237,6 +237,7 @@ path = "crates/surface-syntax"
 
 # Fusion by Squier completion over the command IL (tracelet 3-cell certificates).
 # consumers:
+# - gandr-surface-engine
 # - gandr-theory-virtual-doctrines
 [workspace.dependencies.gandr-theory-computads]
 path = "crates/theory-computads"

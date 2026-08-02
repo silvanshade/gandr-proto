@@ -377,6 +377,11 @@ semantic_borrowed_str!(
     /// Borrowed machine-frame role name in a diagnostic context chain.
     pub struct ContextRole;
 );
+semantic_borrowed_str!(
+    /// Borrowed prose explaining why the cell layer declined a description
+    /// member.
+    pub struct DeclineReason;
+);
 
 semantic_copy!(
     /// Levenshtein edit distance between two attribute spellings.
