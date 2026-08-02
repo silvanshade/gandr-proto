@@ -180,21 +180,64 @@
 -- the same measure for the same reason: the fused case recurses on a matching
 -- that `match-unhit` produced rather than on a subterm.
 --
+-- `match-insert-insert` and `match-insert-cap` complete that table's other two
+-- entries, and the second of them is FREE. Two threaded wires commute, and the
+-- arity rule predicts its cost exactly — a wire, a wire, and the head they
+-- meet, so the braid, spent once per side of the matching. A threaded wire past
+-- a threaded cut reads as a fresh four-layer debt and owes nothing: it is
+-- `match-cap-insert` instantiated where its own right-hand side puts the
+-- arguments, with the involution undoing the reindexing twice. So a member of
+-- this family is free whenever the permutation it asks for is the INVERSE of
+-- one already spent, and the arity rule bounds the cost of a fresh statement
+-- rather than of every statement.
+--
 -- WHAT REMAINS OPEN, stated where a reader meets it. Associativity of
 -- `match-comp` is a module parameter twice over — `match-remove-comp` and
 -- `match-unhit-comp`, discharged at `Ob = ⊥` for satisfiability only. The cut
--- half of the route to them is the two lemmas above; the WIRE half is not
--- written, and it is not symmetric with the cut half. `match-comp-cut` closes
--- because a cut leaves the second wiring's sources alone, so the composite
--- looks up the same source the operand did. Threading a WIRE moves the
--- lookup: the composite's leading source sits at
--- `Exchange.outer (insert-swap spot c)` where the operand's sat at `spot`, so
--- the two sides consult the second wiring at two DIFFERENT positions. What
--- closes that gap is not another coherence but two more construction-level
--- statements in the family `match-cap-insert` belongs to — what `match-remove`
--- sees of a threaded wire, and of a threaded cut, at a position APART from the
--- one threaded. Neither is written. This is the fact recorded as "removing two
--- different sources in either order", located precisely rather than estimated.
+-- half of the route to them is the two lemmas above; the WIRE half is
+-- instrumented but not closed. `match-comp-cut` closes because a cut leaves the
+-- second wiring's sources alone, so the composite looks up the same source the
+-- operand did. Threading a WIRE moves the lookup: the composite's leading
+-- source sits at `Exchange.outer (insert-swap spot c)` where the operand's sat
+-- at `spot`, so the two sides consult the second wiring at two DIFFERENT
+-- positions. What closes that gap is not another coherence but two
+-- construction-level statements in the family `match-cap-insert` belongs to —
+-- what a lookup sees of a threading at a position APART from the one threaded.
+-- This is the fact recorded as "removing two different sources in either
+-- order", located precisely rather than estimated.
+--
+-- ONE OF THE TWO IS WRITTEN. `match-remove-insert-apart` and
+-- `match-unhit-insert-apart` say it for a threaded WIRE, on both lookups, and
+-- they cost only the table above: rebuild the wiring from the lookup's own
+-- value, commute the threading past the rebuild, read the answer back through
+-- the round trip. `unhit-thread` and `removal-thread` are what "thread a wire
+-- through what a lookup left" is, and `unhit-tail` turns out to BE the first of
+-- them at the head rather than a separate device. The inverse lookup's half was
+-- not claimed symmetric with the removal's; on this step it is, and it is the
+-- same `match-insert-insert` twice.
+--
+-- WHAT IS NOT WRITTEN IS THE SAME STATEMENT FOR A THREADED CUT, and it is
+-- LOCATED AT A FORK rather than merely unwritten. Removing a source from a
+-- wiring that caps ELSEWHERE has to say which of the two ports it met, so the
+-- statement splits on `insert-view`, and the two routes past that split cost
+-- differently:
+--
+--   * REBUILD, as the wire's half does. The rebuild turns the lookup's capped
+--     branch into a second `match-cap`, so the identity it lands on is two
+--     threaded cuts commuting — a cut, a cut, and the head they meet, FIVE.
+--     Measured rather than assumed: that fifth rung is not the fourth re-used.
+--     Its bases are a four-layer coherence for a DIFFERENT permutation — two
+--     adjacent PAIRS traded, not the reversal `tower⁴-lo`/`tower⁴-hi` perform —
+--     so the ladder gains a family rather than a rung.
+--   * DIRECT INDUCTION, mirroring `match-remove`'s own. This stays at the
+--     four-layer coherence the arity rule predicts, and pays instead in view
+--     algebra: two positions read past a third compare as they did before, and
+--     a position compared against one read past a third needs the two verdicts
+--     composed. Neither is written and neither is a tower coherence.
+--
+-- Both are more than the estimate that no further coherence was owed on this
+-- route, and that estimate is withdrawn here. The choice between them is the
+-- open design question the exchange's own section already names.
 --
 -- AND THE ARITY OF SUCH A DEBT IS NOT ARBITRARY, which is worth knowing before
 -- reaching for heavier machinery: it is the number of positions the operations
@@ -204,7 +247,12 @@
 -- in them at all. So `cap-swap` is a cut plus an underlying cap, three; the
 -- residual above is a cut plus a wire plus an underlying cap, four; and
 -- whiskering and merging contribute nothing to this ladder however large their
--- blocks. A fifth layer needs two cuts to commute, which nothing here asks for.
+-- blocks. A fifth layer needs two cuts to commute — which the residual's
+-- rebuild route DOES ask for, and its direct route does not.
+--
+-- The rule bounds a FRESH statement's cost and not every statement's, which
+-- `match-insert-cap` is the standing counterexample to: read fresh it is four,
+-- and it is free.
 --
 -- `merge-apart` — the merger's INCIDENCE theorem, and the general form of what
 -- `two-points` could previously only exhibit. `verts-merge` says both operands'
@@ -1401,6 +1449,42 @@ module _ {ℓ} {Ob : Set ℓ} where
       (tail (Exchange.outer (insert-swap j ins)))
       (cap (Exchange.inner (insert-swap j ins)) body)
 
+  -- Threading a WIRE through whatever a removal left: a new source at `q` and
+  -- a new sink at `s`, joined to each other. `removal-recap` is the same for a
+  -- cut applied at the head; this is `match-insert`'s counterpart one level up,
+  -- and it is what says where a removal lands when the matching it was read off
+  -- had a wire threaded through it somewhere else.
+  --
+  -- Both branches reindex, and they reindex on OPPOSITE sides: a strand that
+  -- ran through has its sink pushed past the new one, while a capped pair sits
+  -- entirely on the source side and has its partner pushed past `q` instead.
+  removal-thread
+    : ∀ {v x Γ Γˣ Θ Θˣ}
+    → Insert Ob x Γ Γˣ
+    → Insert Ob x Θ Θˣ
+    → Removal v Γ Θ
+    → Removal v Γˣ Θˣ
+  removal-thread q s (through spot body) =
+    through
+      (Exchange.outer (insert-swap s spot))
+      (match-insert q (Exchange.inner (insert-swap s spot)) body)
+  removal-thread q s (capped ins body) =
+    capped
+      (Exchange.outer (insert-swap q ins))
+      (match-insert (Exchange.inner (insert-swap q ins)) s body)
+
+  -- and `removal-tail` IS that operation with the new source at the front,
+  -- proved rather than observed: the reindexing on either branch computes away
+  -- once the position is `head`, so the block lifting is the special case and
+  -- not a second device to keep in step with this one.
+  removal-thread-head
+    : ∀ {v x Γ Θ Θˣ}
+    → (s : Insert Ob x Θ Θˣ)
+    → (r : Removal v Γ Θ)
+    → removal-thread head s r ≡ removal-tail s r
+  removal-thread-head s (through spot body) = refl
+  removal-thread-head s (capped ins body) = refl
+
   match-remove
     : ∀ {x Γ Δ Θ}
     → Insert Ob x Γ Δ
@@ -1493,6 +1577,30 @@ module _ {ℓ} {Ob : Set ℓ} where
         (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k p))))
         (Exchange.inner (insert-swap k p))
         body)
+
+  -- And threading a WIRE through what an inverse lookup left, which is to
+  -- `unhit-recap` what `removal-thread` is to `removal-recap`. `unhit-tail` is
+  -- this operation at the head — `unhit-thread head j` and `unhit-tail j` are
+  -- the same function — so the block operation is the special case rather than
+  -- a separate device.
+  unhit-thread
+    : ∀ {v x Γ Γˣ Δ Δˣ}
+    → Insert Ob x Γ Γˣ
+    → Insert Ob x Δ Δˣ
+    → Unhit v Γ Δ
+    → Unhit v Γˣ Δˣ
+  unhit-thread i j (unhit p t) =
+    unhit
+      (Exchange.outer (insert-swap i p))
+      (match-insert (Exchange.inner (insert-swap i p)) j t)
+
+  -- and that identification, proved rather than observed
+  unhit-thread-head
+    : ∀ {v x Γ Δ Δˣ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (u : Unhit v Γ Δ)
+    → unhit-thread head j u ≡ unhit-tail j u
+  unhit-thread-head j (unhit p t) = refl
 
   match-unhit
     : ∀ {y Γ Δ Δˣ}
@@ -1833,6 +1941,181 @@ module _ {ℓ} {Ob : Set ℓ} where
             (insert-swap (tail i) (Exchange.outer (insert-swap (tail k) (tail p)))))
           (Exchange.inner (insert-swap (tail k) (tail p)))
           (cap c t))
+    ∎
+
+  -- TWO THREADED WIRES COMMUTE, which is the same table's other entry and the
+  -- cheapest of the three: no cut is in play, so the arity is a wire plus a
+  -- wire plus the head they meet — three — and the coherence is the braid,
+  -- spent once on each side of the matching. The two ends reindex
+  -- independently, `insert-swap j c` on the sources and `insert-swap s σ` on
+  -- the sinks, which is why one statement covers both.
+  match-insert-insert
+    : ∀ {x w Δ Δˣ Δ′ rest rest₂ Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (c : Insert Ob w Δ′ Δ)
+    → (s : Insert Ob x rest Θ)
+    → (σ : Insert Ob w rest₂ rest)
+    → (β : Match Ob Δ′ rest₂)
+    → match-insert j s (match-insert c σ β)
+      ≡ match-insert
+          (Exchange.outer (insert-swap j c))
+          (Exchange.outer (insert-swap s σ))
+          (match-insert
+            (Exchange.inner (insert-swap j c))
+            (Exchange.inner (insert-swap s σ))
+            β)
+  match-insert-insert head c s σ β =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ Exchange.outer e ∷ match-insert c (Exchange.inner e) β ]· exchange _ s σ
+    ≈·⁻¹⟨ insert-swap-invol s σ ⟩
+      match-insert
+        (Exchange.outer (insert-swap head c))
+        (Exchange.outer (insert-swap s σ))
+        (match-insert
+          (Exchange.inner (insert-swap head c))
+          (Exchange.inner (insert-swap s σ))
+          β)
+    ∎
+  match-insert-insert (tail j) head s σ β = refl
+  match-insert-insert (tail j) (tail c) s σ (f ∷ β) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ Tower.peak (tower-lo s σ f) ∷ m ]·
+        match-insert
+          j
+          (Exchange.inner (insert-swap s (Exchange.outer (insert-swap σ f))))
+          (match-insert c (Exchange.inner (insert-swap σ f)) β)
+    ≈·⟨ match-insert-insert
+          j
+          c
+          (Exchange.inner (insert-swap s (Exchange.outer (insert-swap σ f))))
+          (Exchange.inner (insert-swap σ f))
+          β ⟩
+      [ T ↦ Tower.peak T
+              ∷ match-insert
+                  (Exchange.outer (insert-swap j c))
+                  (Tower.step T)
+                  (match-insert (Exchange.inner (insert-swap j c)) (Tower.base T) β) ]·
+        tower-lo s σ f
+    ≈·⟨ insert-swap-braid s σ f ⟩
+      match-insert
+        (Exchange.outer (insert-swap (tail j) (tail c)))
+        (Exchange.outer (insert-swap s σ))
+        (match-insert
+          (Exchange.inner (insert-swap (tail j) (tail c)))
+          (Exchange.inner (insert-swap s σ))
+          (f ∷ β))
+    ∎
+  match-insert-insert (tail j) (tail c) s σ (cap f β) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ cap (Tower.peak (tower-lo j c f)) m ]·
+        match-insert
+          (Exchange.inner (insert-swap j (Exchange.outer (insert-swap c f))))
+          s
+          (match-insert (Exchange.inner (insert-swap c f)) σ β)
+    ≈·⟨ match-insert-insert
+          (Exchange.inner (insert-swap j (Exchange.outer (insert-swap c f))))
+          (Exchange.inner (insert-swap c f))
+          s
+          σ
+          β ⟩
+      [ T ↦ cap
+              (Tower.peak T)
+              (match-insert
+                (Tower.step T)
+                (Exchange.outer (insert-swap s σ))
+                (match-insert (Tower.base T) (Exchange.inner (insert-swap s σ)) β)) ]·
+        tower-lo j c f
+    ≈·⟨ insert-swap-braid j c f ⟩
+      match-insert
+        (Exchange.outer (insert-swap (tail j) (tail c)))
+        (Exchange.outer (insert-swap s σ))
+        (match-insert
+          (Exchange.inner (insert-swap (tail j) (tail c)))
+          (Exchange.inner (insert-swap s σ))
+          (cap f β))
+    ∎
+
+  -- AND THE SAME COMMUTATION READ FROM THE WIRE'S SIDE, which costs NOTHING.
+  -- `match-cap-insert` states it with the cut applied last; this states it with
+  -- the wire applied last, and the two are the same equation at reindexed
+  -- positions: instantiate `match-cap-insert` where this one's right-hand side
+  -- puts its arguments, and the exchange's INVOLUTION undoes the reindexing,
+  -- once for the cut's pair and once for the wire against the cut's outer port.
+  --
+  -- That is worth naming because the arity rule does NOT predict it. Read as a
+  -- fresh statement this is a cut plus a wire plus a head — four — and it would
+  -- owe the four-layer coherence a second time. It owes nothing, because the
+  -- reordering it asks for is the one `match-cap-insert` already performed,
+  -- taken backwards. A member of this family is free whenever its permutation
+  -- is the inverse of one already spent.
+  match-insert-cap
+    : ∀ {x w u Δ Δˣ Δ′ Δ″ rest Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (c : Insert Ob w Δ′ Δ)
+    → (ι : Insert Ob u Δ″ Δ′)
+    → (s : Insert Ob x rest Θ)
+    → (β : Match Ob Δ″ rest)
+    → match-insert j s (match-cap c ι β)
+      ≡ match-cap
+          (Exchange.outer (insert-swap j c))
+          (Exchange.outer
+            (insert-swap (Exchange.inner (insert-swap j c)) ι))
+          (match-insert
+            (Exchange.inner
+              (insert-swap (Exchange.inner (insert-swap j c)) ι))
+            s
+            β)
+  match-insert-cap j c ι s β =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ match-insert (Exchange.outer e) s (match-cap (Exchange.inner e) ι β) ]·
+        exchange _ j c
+    ≈·⁻¹⟨ insert-swap-invol j c ⟩
+      [ e ↦ match-insert
+              (Exchange.outer
+                (insert-swap (Exchange.outer (insert-swap j c)) (Exchange.outer e)))
+              s
+              (match-cap
+                (Exchange.inner
+                  (insert-swap (Exchange.outer (insert-swap j c)) (Exchange.outer e)))
+                (Exchange.inner e)
+                β) ]·
+        exchange _ (Exchange.inner (insert-swap j c)) ι
+    ≈·⁻¹⟨ insert-swap-invol (Exchange.inner (insert-swap j c)) ι ⟩
+      match-insert
+        (Exchange.outer
+          (insert-swap
+            (Exchange.outer (insert-swap j c))
+            (Exchange.outer
+              (insert-swap
+                (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+                (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))))))
+        s
+        (match-cap
+          (Exchange.inner
+            (insert-swap
+              (Exchange.outer (insert-swap j c))
+              (Exchange.outer
+                (insert-swap
+                  (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+                  (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))))))
+          (Exchange.inner
+            (insert-swap
+              (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+              (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))))
+          β)
+    ≈⁻¹⟨ match-cap-insert
+           (Exchange.outer (insert-swap j c))
+           (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+           (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+           s
+           β ⟩
+      match-cap
+        (Exchange.outer (insert-swap j c))
+        (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+        (match-insert
+          (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+          s
+          β)
     ∎
 
   -- ── AND WHAT THE INVERSE LOOKUP SEES OF A CUT ──────────────────────────────
@@ -2208,6 +2491,145 @@ module _ {ℓ} {Ob : Set ℓ} where
       ≈·⟨ match-unhit-recover j m (unhit p t) eq ⟩
         cap c m
       ∎
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- WHAT A LOOKUP SEES OF A THREADED WIRE, AT A POSITION APART FROM THE ONE
+  -- THREADED. This is the instrument the composition laws' wire half runs on,
+  -- and it is where the views above are spent: the lookup is a recursion and
+  -- no lemma reaches past it, so the matching is REBUILT from the lookup's own
+  -- value, the threading is commuted past the rebuild — which is a fact about
+  -- constructions and computes — and the round trip reads the answer back.
+  --
+  -- The two rebuild lemmas below are that middle step, and each is one of the
+  -- commutation table's entries applied backwards. Nothing here is new work:
+  -- `match-insert-insert` carries the through branch and `match-insert-cap` the
+  -- capped one, and the second of those was free.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- Threading a wire and rebuilding commute, on both of a removal's branches.
+  thread-recover
+    : ∀ {x w Δ Δˣ Δ′ rest Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (c : Insert Ob w Δ′ Δ)
+    → (s : Insert Ob x rest Θ)
+    → (r : Removal w Δ′ rest)
+    → removal→match
+        (Exchange.outer (insert-swap j c))
+        (removal-thread (Exchange.inner (insert-swap j c)) s r)
+      ≡ match-insert j s (removal→match c r)
+  thread-recover j c s (through σ β) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-insert
+        (Exchange.outer (insert-swap j c))
+        (Exchange.outer (insert-swap s σ))
+        (match-insert
+          (Exchange.inner (insert-swap j c))
+          (Exchange.inner (insert-swap s σ))
+          β)
+    ≈⁻¹⟨ match-insert-insert j c s σ β ⟩
+      match-insert j s (match-insert c σ β)
+    ∎
+  thread-recover j c s (capped ι β) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-cap
+        (Exchange.outer (insert-swap j c))
+        (Exchange.outer (insert-swap (Exchange.inner (insert-swap j c)) ι))
+        (match-insert
+          (Exchange.inner (insert-swap (Exchange.inner (insert-swap j c)) ι))
+          s
+          β)
+    ≈⁻¹⟨ match-insert-cap j c ι s β ⟩
+      match-insert j s (match-cap c ι β)
+    ∎
+
+  -- Removing a source from a wiring that has a wire threaded through it
+  -- ELSEWHERE is removing it from the wiring underneath and threading the wire
+  -- through the removal. This is the fact recorded as "removing two different
+  -- sources in either order", at the shape composition actually asks for it.
+  match-remove-insert-apart
+    : ∀ {x w Δ Δˣ Δ′ rest Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (c : Insert Ob w Δ′ Δ)
+    → (s : Insert Ob x rest Θ)
+    → (t : Match Ob Δ rest)
+    → match-remove (Exchange.outer (insert-swap j c)) (match-insert j s t)
+      ≡ removal-thread (Exchange.inner (insert-swap j c)) s (match-remove c t)
+  match-remove-insert-apart j c s t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ match-remove (Exchange.outer (insert-swap j c)) (match-insert j s m) ]· t
+    ≈·⁻¹⟨ match-remove-recover c t (match-remove c t) refl ⟩
+      [ m ↦ match-remove (Exchange.outer (insert-swap j c)) m ]·
+        match-insert j s (removal→match c (match-remove c t))
+    ≈·⁻¹⟨ thread-recover j c s (match-remove c t) ⟩
+      match-remove
+        (Exchange.outer (insert-swap j c))
+        (removal→match
+          (Exchange.outer (insert-swap j c))
+          (removal-thread
+            (Exchange.inner (insert-swap j c))
+            s
+            (match-remove c t)))
+    ≈⟨ match-remove-roundtrip
+         (Exchange.outer (insert-swap j c))
+         (removal-thread (Exchange.inner (insert-swap j c)) s (match-remove c t)) ⟩
+      removal-thread (Exchange.inner (insert-swap j c)) s (match-remove c t)
+    ∎
+
+  -- The same for the inverse lookup, and it is the SAME instrument: the
+  -- `Unhit` rebuild is a single `match-insert`, so its commutation is
+  -- `match-insert-insert` again rather than a second entry of the table. The
+  -- mirror was not claimed symmetric with the removal's; on this step it is.
+  thread-unhit-recover
+    : ∀ {x u Γ Γˣ Δ′ Δ″ mid}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ′ mid)
+    → (ι : Insert Ob u Δ″ Δ′)
+    → (u₀ : Unhit u Γ Δ″)
+    → unhit→match
+        (Exchange.outer (insert-swap j ι))
+        (unhit-thread i (Exchange.inner (insert-swap j ι)) u₀)
+      ≡ match-insert i j (unhit→match ι u₀)
+  thread-unhit-recover i j ι (unhit p b) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-insert
+        (Exchange.outer (insert-swap i p))
+        (Exchange.outer (insert-swap j ι))
+        (match-insert
+          (Exchange.inner (insert-swap i p))
+          (Exchange.inner (insert-swap j ι))
+          b)
+    ≈⁻¹⟨ match-insert-insert i p j ι b ⟩
+      match-insert i j (match-insert p ι b)
+    ∎
+
+  -- Tracing a sink back through a wiring that has a wire threaded through it
+  -- elsewhere is tracing it back through the wiring underneath and threading
+  -- the wire through the result.
+  match-unhit-insert-apart
+    : ∀ {x u Γ Γˣ Δ′ Δ″ mid}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ′ mid)
+    → (ι : Insert Ob u Δ″ Δ′)
+    → (b : Match Ob Γ Δ′)
+    → match-unhit (Exchange.outer (insert-swap j ι)) (match-insert i j b)
+      ≡ unhit-thread i (Exchange.inner (insert-swap j ι)) (match-unhit ι b)
+  match-unhit-insert-apart i j ι b =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ match-unhit (Exchange.outer (insert-swap j ι)) (match-insert i j m) ]· b
+    ≈·⁻¹⟨ match-unhit-recover ι b (match-unhit ι b) refl ⟩
+      [ m ↦ match-unhit (Exchange.outer (insert-swap j ι)) m ]·
+        match-insert i j (unhit→match ι (match-unhit ι b))
+    ≈·⁻¹⟨ thread-unhit-recover i j ι (match-unhit ι b) ⟩
+      match-unhit
+        (Exchange.outer (insert-swap j ι))
+        (unhit→match
+          (Exchange.outer (insert-swap j ι))
+          (unhit-thread i (Exchange.inner (insert-swap j ι)) (match-unhit ι b)))
+    ≈⟨ match-unhit-roundtrip
+         (Exchange.outer (insert-swap j ι))
+         (unhit-thread i (Exchange.inner (insert-swap j ι)) (match-unhit ι b)) ⟩
+      unhit-thread i (Exchange.inner (insert-swap j ι)) (match-unhit ι b)
+    ∎
 
   -- Removing a sink from the identity hands back the position it was given,
   -- and leaves the identity on what remains.
