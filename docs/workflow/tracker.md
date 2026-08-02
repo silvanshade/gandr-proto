@@ -141,10 +141,14 @@ An owner should be able to answer from the comment alone, without session histor
 
 ### Answering, and what an agent may not do
 
-**The owner answers with a comment** on the same bead, leading with the same identifier.
+**The owner answers with a comment** on the same bead, leading with `<queue-bead-id>-answer-NN`, where `NN` is the number of the question it answers (owner usage, 2026-08-02).
+A distinct `answer` word rather than a repeated `question` one is what makes a ruling greppable on its own and keeps a quoted answer from reading as a restatement of the question.
 
 **An agent never writes the owner's answer**, never records a ruling the owner did not give, and never converts silence into consent.
 An unanswered question stays unanswered; if the work cannot proceed without it, that is a blocked bead, not a licence to decide.
+
+**Record the ruling, not the option label.** An answer that selects an option often sharpens it in the same breath, and the sharpening is the load-bearing part: "option b" plus "and its value is X, not Y" changes what the work _is_, not merely when it happens.
+The bead that executes a ruling carries the owner's framing; the option letter is provenance.
 
 ### Closeout
 
