@@ -16,6 +16,7 @@ The database syncs **out-of-band from git** to DoltHub [`silvanshade/gandr-beads
 * **pull before relying on reads** — `bd dolt pull` at session start and before triage (the `wt` `beads-pull` hooks and the `SessionStart` hook mechanize this); this guards **cross-machine** staleness, not worktree-to-worktree staleness;
 * trust the remote over a local clone when they disagree;
 * **expect a rejected push, and do not escalate** — see below;
+* **read remotes with `bd dolt remote list`** — `bd dolt show` reports `Remotes: (none)` even when `origin` is configured and pushes are arriving (`gandr-mib`);
 * **server lifecycle is owner-controlled** — agents never run `bd dolt stop`/`start` or restart the Dolt server unprompted: a mid-session kill is what forked per-worktree clones and double-recorded a closeout on 2026-07-22 (`gandr-fid.15`).
 
 ### A rejected push is contention, not breakage
