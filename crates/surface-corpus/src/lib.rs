@@ -11,7 +11,9 @@
 //!   grammar does not yet produce (`data` / `codata`, `def rec` + copatterns,
 //!   `for` / `while` / `loop` / `break` / `continue`, `import`, string
 //!   interpolation, and the reserved operation / rule / grade / GADT /
-//!   attribute / fixity slots). The surface tree is **firewalled from
+//!   attribute / fixity slots), plus the ruled circuit block form (`sign`
+//!   blocks, the four-glyph arrow grid, two-sided ports, and the `node` /
+//!   `feed` body statements). The surface tree is **firewalled from
 //!   execution**: this harness ([`check_case`], the corpus walker) runs the
 //!   model and pathological trees only, so surface fixtures never lower or
 //!   evaluate. Their gate is the PBG parser's zero-obligation corpus sweep
