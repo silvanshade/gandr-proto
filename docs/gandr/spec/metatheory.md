@@ -30,6 +30,38 @@ These names replace the letter-number codes of the retired consolidated proposal
 | **interchange is a witness**                    | exchanging two independent things is never an equation unless you accept losing information; invertibility of the witness is the design dial, and the strength splits by layer                | [[#Interchange, by layer]]                          |
 | **no primitive without priced trusted surface** | the admissibility criterion for any ambient primitive is its trusted-surface cost, not its geometry and not merely its computability                                                          | [[#The ambient-primitive policy]]                   |
 | **the decidability ceiling**                    | the word problem for structures of this genre is undecidable in general; beyond a named tractability fence, per-instance certificates are the mathematically maximal offer                    | [[#The ambient-primitive policy]]                   |
+| **the representation is not the theory**        | gandr's stored form is a chosen section of a quotient; a property of one is not a property of the other, in either direction — the single most repeated error in this corpus's history        | [[#The representation is not the theory]]           |
+
+## The representation is not the theory
+
+**This is a reading rule, and it is stated first because it is the error this corpus has made more often than any other.** Every entry in the tombstone ledger below was written by someone who knew the design and still made it.
+
+gandr's stored form is an **ordered, skeletal, planar representation**; the theory it represents is **symmetric**.
+`Rigid` is the section between them, and `canon-sound` is what makes the section faithful.
+That is the content of _ordering is a section, never a planarization of the theory_ — but stated that way it reads as a restriction on what gandr may adopt, and **the rule is symmetric in a way the slogan is not**.
+
+> **A property of the representation is not a property of the theory.
+> A property of the theory is not a property of the representation.
+> Neither transfers by default, and both transfer along the section when the section is faithful.**
+
+The two directions of the error, each with its standing instances.
+
+* **Attributing a representation property to the theory.** "Σ-freeness is the single load-bearing criterion" — true of the ordered representation by construction, **false of the rung constitutively**.
+  "Rigidity means the objects have trivial automorphisms" — false at every rung above one-in/one-out; **rigidity is a property of the representation**.
+  "The ordered representation is warranted on the carrier side by supplying a cartesian arity" — re-based, because the construction's existence needs no cartesian arity at all and what the ordering buys is decidability.
+  "The cell shape must be simply connected" as a **substrate** restriction — it restricts the `Cell` record, whose operations are typed at `Shape`, are total, and do not preserve it.
+* **Refusing an import because the theory lacks a property the representation has, or the reverse.** This is the direction the corpus states least well and pays for most. gandr's theory is symmetric, so a **planar** theorem looks barred — but the merger already _is_ a planar tensor, the base being the free monoid on the colours, and canonicalization is the passage to multisets that makes the convolution symmetric.
+  A planar theorem therefore lands exactly where gandr's order already lives, consumed **through** the section rather than refused ([[implementation/circuit-terms#The design questions|circuit-terms-question-21]]).
+  The same shape holds for **skeletality**: the published coherence proof for categorified cyclic operads is carried out non-skeletally and then transported to the skeletal presentation along the equivalence — the section discipline, worked, at an adjacent rung [@obradovic-2017-thesis, app.
+  A].
+
+**The reading test, to be applied before any decline that mentions ordering, planarity, skeletality, rigidity, or Σ-freeness.** Name the layer the property is stated at; name the layer gandr needs it at; then ask whether the section connects them.
+If it does, the import is a **representation-layer** consumption and the cost is one more `canon-sound` obligation.
+If it does not, say which leg fails, because "gandr is symmetric and that is planar" is not a reason — it is the error.
+
+**What the rule does not license.** The section runs one way for free: results at the quotient reach the representation through it.
+Making the **theory** planar, skeletal or ordered is a different move and stays refused — the bracket-vanishing oracle needs symmetry over disjoint primitives, and the corpus's warning that substituting the planar quotient "would read as a strengthening while narrowing what `cells_equal` accepts" is about exactly that.
+The distinction is the whole rule: **consume at the representation, never promote to the theory.**
 
 ## The placement thesis
 
