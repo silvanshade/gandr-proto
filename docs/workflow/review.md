@@ -206,6 +206,7 @@ A reviewer handed the rationale ratifies its frame, and the frame is what was wr
 ## The owner-decision queue
 
 > Adopted (owner, 2026-08-02), after compressed in-chat decision batches proved hard to answer: items were hard to tell apart, hard to answer individually, and easy to lose.
+> The binding statement is `AGENTS.md` §"The owner-decision queue" — the practice is global, not review-specific; this section carries the discipline.
 
 Decisions, sign-offs, and adjudications the owner must take are collected in a **standing queue document in the contributor notes repository**, not posed as compressed inline batches in session chat.
 The queue's discipline:
