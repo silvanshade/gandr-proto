@@ -474,7 +474,10 @@ fn render_face(cell: &crate::cell::CellFace) -> String
 }
 
 /// Render a [`crate::FreeTerm`] to the inspection notation.
-fn render_free_term(term: &crate::cell::FreeTerm) -> String
+///
+/// Shared with [`crate::wellformed`], whose boundary diagnostics quote the two
+/// terms they compare in the same notation the description IR renders them in.
+pub(crate) fn render_free_term(term: &crate::cell::FreeTerm) -> String
 {
     enum TermFrame<'term>
     {

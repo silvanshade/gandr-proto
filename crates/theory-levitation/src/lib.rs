@@ -43,6 +43,18 @@
 //! yet) — the field ships now so the sequent-era refinement is an *update*, not
 //! a migration (addendum §A).
 //!
+//! # Circuit rules (`circuit`)
+//!
+//! A [`CircuitRule`] is a 2-cell member whose boundary pair is **derived from a
+//! wiring** rather than written: its body is a list of port-named frame and
+//! redex applications, and the source boundary is that diagram with every redex
+//! replaced by its source, the target boundary with every redex replaced by its
+//! target ([`derive_boundaries`]). The declared sphere stays the declaration's:
+//! [`check_desc`] checks the derived pair against it, so a mis-glued boundary
+//! fails at the decl table
+//! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Frame and
+//! redex").
+//!
 //! # Multi-out arities (`arity`)
 //!
 //! A multi-output operation is presented by the **bridge diagram**
@@ -96,10 +108,13 @@
 //!   with a decoded [`SignatureContext`] (the "dependent Σ over the signature",
 //!   addendum §4.1). Additive — [`CellFace`] is reused whole, not rewritten.
 
+extern crate alloc;
+
 pub mod arity;
 pub mod boundary;
 pub mod builtin;
 pub mod cell;
+pub mod circuit;
 pub mod code;
 pub mod decode;
 pub mod desc;
@@ -149,6 +164,17 @@ pub use crate::cell::CellFace;
 pub use crate::cell::CellVarMeta;
 pub use crate::cell::FreeTerm;
 pub use crate::cell::Variance;
+pub use crate::circuit::BoundaryReading;
+pub use crate::circuit::CircuitBody;
+pub use crate::circuit::CircuitDerivationError;
+pub use crate::circuit::CircuitFrame;
+pub use crate::circuit::CircuitNode;
+pub use crate::circuit::CircuitRedex;
+pub use crate::circuit::CircuitRule;
+pub use crate::circuit::DerivedBoundaries;
+pub use crate::circuit::FrameHead;
+pub use crate::circuit::derive_boundaries;
+pub use crate::circuit::derive_boundary;
 pub use crate::code::AtomSort;
 pub use crate::code::Attr;
 pub use crate::code::Attrs;
@@ -177,4 +203,5 @@ pub use crate::intern::CodeInterner;
 pub use crate::typed_cell::SignatureContext;
 pub use crate::typed_cell::TypedCellFace;
 pub use crate::wellformed::WfDiagnostic;
+pub use crate::wellformed::WfKind;
 pub use crate::wellformed::check_desc;

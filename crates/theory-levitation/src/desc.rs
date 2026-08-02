@@ -15,6 +15,7 @@ use crate::boundary::NominalSerial;
 use crate::boundary::RecursiveStatus;
 use crate::boundary::SurfaceByteOffset;
 use crate::cell::CellFace;
+use crate::circuit::CircuitRule;
 use crate::code::Attrs;
 use crate::code::Code;
 use crate::code::Name;
@@ -214,9 +215,11 @@ impl OpDesc
 ///
 /// `id` keys interning; `params` are the graded/attributed parameters; `ctors`
 /// are the constructors (the σ tag), each with a first-order [`Code`]; `ops`
-/// and `cells` are the reserved operations and 2-cell faces; `polarity` selects
-/// the μ or ν decoder (V6); `attrs` is the datatype's own attribute Σ. There is
-/// **no parallel structure**: `DataDesc` *is* the decl table (proposal §3).
+/// and `cells` are the reserved operations and 2-cell faces; `circuits` are the
+/// 2-cell members whose boundaries are derived from a wiring; `polarity`
+/// selects the μ or ν decoder (V6); `attrs` is the datatype's own attribute Σ.
+/// There is **no parallel structure**: `DataDesc` *is* the decl table
+/// (proposal §3).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct DataDesc
 {
@@ -230,6 +233,10 @@ pub struct DataDesc
     pub ops: Box<[OpDesc]>,
     /// The reserved 2-cell faces (V3).
     pub cells: Box<[CellFace]>,
+    /// The reserved **circuit rule** members: a declared sphere with the wiring
+    /// that must derive it ([`CircuitRule`]). The declaration table checks the
+    /// derived pair against the declared sphere ([`crate::check_desc`]).
+    pub circuits: Box<[CircuitRule]>,
     /// The declared polarity — `Data` (μ) or `Codata` (ν) (V6).
     pub polarity: DeclPolarity,
     /// The datatype's own attribute Σ.
@@ -268,8 +275,29 @@ impl DataDesc
             ctors: ctors.into(),
             ops: ops.into(),
             cells: cells.into(),
+            circuits: Box::default(),
             polarity,
             attrs,
+        }
+    }
+
+    /// The same description carrying `circuits` as its circuit rule members.
+    ///
+    /// Circuit rules are added through this builder rather than through
+    /// [`DataDesc::new`] so that every existing caller keeps the empty default:
+    /// a description with no derived-boundary member is exactly what it was.
+    #[inline]
+    #[must_use]
+    pub fn with_circuits<Ci>(
+        self,
+        circuits: Ci,
+    ) -> Self
+    where
+        Ci: Into<Box<[CircuitRule]>>,
+    {
+        Self {
+            circuits: circuits.into(),
+            ..self
         }
     }
 

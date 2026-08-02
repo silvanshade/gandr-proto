@@ -9,6 +9,10 @@
 //! * a **cell face** may mention only in-signature symbols (constructor / op
 //!   names of this datatype), and its right-hand side may not introduce a
 //!   variable absent from its left-hand side (`desc-illformed-cell`);
+//! * a **circuit rule**'s wiring must derive the boundary pair its declaration
+//!   fixes — the sphere is checked against, never inferred from, the filler
+//!   (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Frame and
+//!   redex");
 //! * a **bridge arity**'s three maps must compose (`desc-arity-mismatch`);
 //! * a symbol may not **declare derived metadata**: the per-variable variance /
 //!   linearity of a cell face is *derived* ([`derive_cell_var_meta`]), so an
@@ -28,10 +32,14 @@ use crate::cell::CellFace;
 use crate::cell::CellVarMeta;
 use crate::cell::FreeTerm;
 use crate::cell::Variance;
+use crate::circuit::CircuitDerivationError;
+use crate::circuit::CircuitRule;
+use crate::circuit::derive_boundaries;
 use crate::code::Attrs;
 use crate::code::Name;
 use crate::desc::DataDesc;
 use crate::desc::SurfaceSpan;
+use crate::generic::render_free_term;
 
 /// The reserved-derived metadata marker names an attribute Σ may **not**
 /// declare: they name the [`CellVarMeta`] fields, which are *derived* from the
@@ -53,6 +61,12 @@ pub enum WfKind
     ArityDoesNotCompose,
     /// A symbol declares derived per-variable metadata (variance / linearity).
     DeclaresDerivedMetadata,
+    /// A circuit rule's wiring derives a boundary its declared sphere does not
+    /// fix.
+    DerivedBoundaryMismatch,
+    /// A circuit rule's wiring reaches a port from itself, so no boundary term
+    /// unfolds from it.
+    CyclicCircuitWiring,
 }
 
 /// One well-formedness **diagnostic** — an inspectable failure with a message
@@ -94,13 +108,15 @@ impl WfDiagnostic
 /// - requires: none.
 /// - ensures: returns every failure of the §"well-formedness" rules, in a
 ///   deterministic order (attribute declines, then per-cell checks, then
-///   per-arity checks); an empty result witnesses a well-formed description.
+///   per-arity checks, then per-circuit-rule checks); an empty result witnesses
+///   a well-formed description.
 /// - fails: never; total on any (even mis-built) description.
 ///
 /// # Adequacy
 /// - hypothesis: L3 — a clean description passes; an out-of-signature cell, a
-///   non-composing arity, and a reserved-derived attribute each surface exactly
-///   their diagnostic.
+///   non-composing arity, a reserved-derived attribute, and a circuit rule
+///   whose wiring derives a boundary its sphere does not fix each surface
+///   exactly their diagnostic.
 /// - witness: `wellformed::tests::*`.
 #[inline]
 #[must_use]
@@ -151,7 +167,73 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
         check_arity(&op.arity, op.name.as_ref().into(), &mut diagnostics);
     }
 
+    // Circuit rules: the wiring derives the sphere the declaration fixes.
+    for rule in &desc.circuits {
+        check_circuit_rule(rule, &mut diagnostics);
+    }
+
     diagnostics
+}
+
+/// Check one circuit rule: the boundary pair its wiring derives is the pair its
+/// **declared sphere** fixes.
+///
+/// The sphere is the declaration's, and the check runs in that direction only:
+/// a derived pair never becomes the sphere, so a mis-glued boundary is a
+/// declaration-table failure with the sphere as the diagnostic rather than a
+/// silently re-indexed cell downstream
+/// (`docs/gandr/spec/surface-language/higher-cells.md`, section "Sphere-typed
+/// boundaries").
+///
+/// The face's own variable discipline is deliberately **not** re-run here. A
+/// circuit rule's variables are bound by its declared port telescope, not by
+/// its source boundary, so the [`WfKind::UnboundRhsVariable`] rule — which
+/// reads a rule's variables off its left-hand side — does not transfer: a
+/// congruence rule's target names the rewrite-sorted ports' endpoints, which
+/// its source cannot bind. Port linearity and disjointness are the surface
+/// name-set fold's.
+fn check_circuit_rule(
+    rule: &CircuitRule,
+    diagnostics: &mut Vec<WfDiagnostic>,
+)
+{
+    let derived = match derive_boundaries(&rule.body) {
+        | Ok(derived) => derived,
+        | Err(CircuitDerivationError::CyclicWiring(port)) => {
+            diagnostics.push(WfDiagnostic::new(
+                WfKind::CyclicCircuitWiring,
+                format!(
+                    "circuit rule `{}`'s wiring reaches port `{port}` from itself, so no boundary \
+                     term unfolds from it",
+                    rule.name
+                )
+                .into(),
+                Some(rule.sphere.provenance),
+            ));
+            return;
+        },
+    };
+    let mismatches = [
+        ("source", &derived.source, &rule.sphere.lhs),
+        ("target", &derived.target, &rule.sphere.rhs),
+    ];
+    for (side, derived, declared) in mismatches {
+        if derived == declared {
+            continue;
+        }
+        diagnostics.push(WfDiagnostic::new(
+            WfKind::DerivedBoundaryMismatch,
+            format!(
+                "circuit rule `{}`'s wiring derives the {side} boundary `{}`, but its declared \
+                 sphere fixes `{}`",
+                rule.name,
+                render_free_term(derived),
+                render_free_term(declared)
+            )
+            .into(),
+            Some(rule.sphere.provenance),
+        ));
+    }
 }
 
 /// Append a `DeclaresDerivedMetadata` diagnostic for each reserved-derived
@@ -353,6 +435,11 @@ mod tests
     use super::*;
     use crate::arity::SortRef;
     use crate::cell::CellFace;
+    use crate::circuit::CircuitBody;
+    use crate::circuit::CircuitFrame;
+    use crate::circuit::CircuitNode;
+    use crate::circuit::CircuitRedex;
+    use crate::circuit::FrameHead;
     use crate::code::Attr;
     use crate::code::Attrs;
     use crate::code::Code;
@@ -437,6 +524,148 @@ mod tests
                 .any(|diag| diag.kind == WfKind::ArityDoesNotCompose),
             "a non-composing arity is declined"
         );
+    }
+    #[test]
+    fn the_congruence_circuit_rule_checks_against_its_sphere()
+    {
+        // The `cong2` block: `add(x, y)` derived as the source, `add(x′, y′)`
+        // as the target, against the sphere its declaration fixes.
+        let rule = CircuitRule::new(
+            "cong2",
+            congruence_sphere(FreeTerm::op("add", [
+                FreeTerm::var("x\u{2032}"),
+                FreeTerm::var("y\u{2032}"),
+            ])),
+            congruence_body(),
+        );
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        assert!(
+            check_desc(&desc).is_empty(),
+            "the derived pair is the pair the declared sphere fixes"
+        );
+    }
+    #[test]
+    fn a_boundary_mismatched_circuit_rule_is_declined()
+    {
+        // The same wiring under a sphere whose target is `add(x′, y)`: the
+        // second redex is glued in the declaration but not in the body.
+        let rule = CircuitRule::new(
+            "cong2",
+            congruence_sphere(FreeTerm::op("add", [
+                FreeTerm::var("x\u{2032}"),
+                FreeTerm::var("y"),
+            ])),
+            congruence_body(),
+        );
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        let diagnostics = check_desc(&desc);
+        let mismatch = diagnostics
+            .iter()
+            .find(|diag| diag.kind == WfKind::DerivedBoundaryMismatch)
+            .expect("the mismatched target is declined");
+        let message = mismatch.message.as_ref();
+        assert!(
+            message.contains("cong2") && message.contains("target"),
+            "the diagnostic names the rule and the mismatched side: {message}"
+        );
+        assert!(
+            message.contains("add(x\u{2032}, y\u{2032})") && message.contains("add(x\u{2032}, y)"),
+            "the diagnostic names both the derived and the declared boundary: {message}"
+        );
+        assert_eq!(
+            1,
+            diagnostics
+                .iter()
+                .filter(|diag| diag.kind == WfKind::DerivedBoundaryMismatch)
+                .count(),
+            "the matching source boundary raises nothing"
+        );
+    }
+    #[test]
+    fn a_cyclic_circuit_wiring_is_declined()
+    {
+        // `node : add(b, b) --> (a); node : add(a, a) --> (b);` — no boundary
+        // term unfolds, so the rule is refused before any comparison.
+        let body = CircuitBody::new(
+            [
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("add".into()),
+                    [FreeTerm::var("b"), FreeTerm::var("b")],
+                    "a",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("add".into()),
+                    [FreeTerm::var("a"), FreeTerm::var("a")],
+                    "b",
+                )),
+            ],
+            "a",
+        );
+        let rule = CircuitRule::new("loop", congruence_sphere(FreeTerm::var("a")), body);
+        let desc = nat_with(Vec::new(), vec![add_op()], Attrs::empty()).with_circuits(vec![rule]);
+        let diagnostics = check_desc(&desc);
+        let cyclic = diagnostics
+            .iter()
+            .find(|diag| diag.kind == WfKind::CyclicCircuitWiring)
+            .expect("a cyclic wiring is declined");
+        assert!(
+            cyclic.message.as_ref().contains('a'),
+            "the diagnostic names the port reached from itself"
+        );
+        assert!(
+            !diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::DerivedBoundaryMismatch),
+            "no boundary comparison is reported for a wiring that derives nothing"
+        );
+    }
+    /// The `cong2` wiring: two disjoint redexes whiskered into one `add` frame.
+    fn congruence_body() -> CircuitBody
+    {
+        CircuitBody::new(
+            [
+                CircuitNode::Redex(CircuitRedex::new(
+                    "p",
+                    FreeTerm::var("x"),
+                    FreeTerm::var("x\u{2032}"),
+                    "x\u{2032}",
+                )),
+                CircuitNode::Redex(CircuitRedex::new(
+                    "q",
+                    FreeTerm::var("y"),
+                    FreeTerm::var("y\u{2032}"),
+                    "y\u{2032}",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("add".into()),
+                    [FreeTerm::var("x\u{2032}"), FreeTerm::var("y\u{2032}")],
+                    "z",
+                )),
+            ],
+            "z",
+        )
+    }
+    /// A sphere whose source is `add(x, y)` and whose target is `target`.
+    fn congruence_sphere(target: FreeTerm) -> CellFace
+    {
+        CellFace::new(
+            FreeTerm::op("add", [FreeTerm::var("x"), FreeTerm::var("y")]),
+            target,
+            Vec::new(),
+            SurfaceSpan::new(0.into(), 1.into()),
+        )
+    }
+    /// The `add : (Nat, Nat) --> Nat` operation the congruence frame applies.
+    fn add_op() -> OpDesc
+    {
+        OpDesc::new(
+            "add",
+            BridgeArity::single_output(
+                [SortRef::new("m", "Nat"), SortRef::new("n", "Nat")],
+                SortRef::new("q", "Nat"),
+            ),
+            Attrs::empty(),
+        )
     }
     #[test]
     fn declaring_derived_metadata_is_declined()
