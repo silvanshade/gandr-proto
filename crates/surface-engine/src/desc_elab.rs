@@ -61,6 +61,8 @@ use crate::boundary::MatchDecision;
 use crate::boundary::PipelineSource;
 use crate::boundary::TileSpelling;
 use crate::boundary::TypeName;
+use crate::circuit::desc as circuit_desc;
+use crate::circuit::shape::Shape;
 use crate::cst_read::Cursor;
 use crate::cst_read::Reader;
 use crate::cst_read::empty_surface_span;
@@ -147,32 +149,89 @@ where
         return DescElab::default();
     };
     let cst = tree.cst();
+    let reader = Reader::new(pbg, cst);
+    let shape = Shape { reader: &reader };
     let mut elab = DescElab::default();
     let mut serial: u64 = 0;
+    let mut circuit_forms = CircuitFormPresence(false);
     for item in tree.root().named_children() {
+        // The circuit block form's two item leads take the circuit route: a
+        // `sign` block is a declaration table of its own, and a top-level
+        // `oper` / `rule` is a singleton one.
+        let circuit = match item.kind() {
+            | node_kinds::SIGN_DECLARATION => {
+                circuit_forms = CircuitFormPresence(true);
+                circuit_desc::sign_desc(
+                    shape,
+                    item.cst_node(),
+                    NominalSerial::from(serial),
+                    &mut elab.diagnostics,
+                )
+            },
+            | node_kinds::CIRCUIT_DECLARATION => {
+                circuit_forms = CircuitFormPresence(true);
+                circuit_desc::circuit_declaration_desc(
+                    shape,
+                    item.cst_node(),
+                    NominalSerial::from(serial),
+                    &mut elab.diagnostics,
+                )
+            },
+            | _ => None,
+        };
+        if let Some(desc) = circuit {
+            check_and_push(desc, &mut elab, &mut serial);
+            continue;
+        }
         let polarity = match item.kind() {
             | node_kinds::DATA_DECLARATION => DeclPolarity::Data,
             | node_kinds::CODATA_DECLARATION => DeclPolarity::Codata,
             | _ => continue,
         };
-        let reader = Reader::new(pbg, cst);
         if let Some(desc) = reader.declaration(
             item.cst_node(),
             polarity,
             NominalSerial::from(serial),
             &mut elab,
         ) {
-            for diagnostic in check_desc(&desc) {
-                elab.diagnostics.push(ElabDiagnostic::new(
-                    String::from(diagnostic.message),
-                    diagnostic.span.unwrap_or_else(empty_surface_span),
-                ));
-            }
-            elab.descs.push(desc);
-            serial = serial.saturating_add(1);
+            check_and_push(desc, &mut elab, &mut serial);
         }
     }
+    // The circuit surface check is the *other* reading of the same blocks — the
+    // arrow-kind confirmation and the name-set fold that binds a body's
+    // internal wires — and this is its production caller. It runs once over the
+    // whole parse rather than per item, because the arrow confirmation resolves
+    // applied heads against a file-level scope, and only when a circuit form is
+    // present so no other program pays for it.
+    if circuit_forms.0 {
+        let items = reader.sig_children(cst.root());
+        elab.diagnostics
+            .extend(crate::circuit::check_over(&reader, &items).diagnostics);
+    }
     elab
+}
+
+/// Whether a source carries any circuit block form, so the surface check runs
+/// exactly when there is something for it to read.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct CircuitFormPresence(bool);
+
+/// Run the declaration table over one elaborated description, then record it.
+fn check_and_push(
+    desc: DataDesc,
+    elab: &mut DescElab,
+    serial: &mut u64,
+)
+{
+    for diagnostic in check_desc(&desc) {
+        elab.diagnostics.push(ElabDiagnostic::new(
+            String::from(diagnostic.message),
+            diagnostic.span.unwrap_or_else(empty_surface_span),
+        ));
+    }
+    elab.descs.push(desc);
+    *serial = serial.saturating_add(1);
 }
 
 /// The three parallel member lists of a declaration table under elaboration:
@@ -671,7 +730,7 @@ impl<'tree> Reader<'tree>
 
     /// Read an expression node into a [`FreeTerm`]: an application
     /// `head(args)`, a bare constructor (nullary), or a variable.
-    fn free_term(
+    pub(crate) fn free_term(
         &self,
         id: NodeId,
     ) -> FreeTerm
@@ -782,7 +841,7 @@ impl<'tree> Reader<'tree>
 /// Build a bridge arity for an operation from its input and output ports: one
 /// monomial per output, each reading all inputs (a well-formed Π-layer shape;
 /// §4.2). A single (or absent) output uses [`BridgeArity::single_output`].
-fn bridge_arity(
+pub(crate) fn bridge_arity(
     inputs: Vec<SortRef>,
     outputs: Vec<SortRef>,
 ) -> BridgeArity
