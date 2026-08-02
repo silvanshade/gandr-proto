@@ -33,25 +33,17 @@
 -- ── WHAT THE INSTANCE COST, WHICH IS THE POINT OF WRITING IT ────────────────
 -- Six of the nine fields were already proved and sat unassembled; `mon-λ` and
 -- `mon-ρ` are the unit laws of the listing algebra. The ninth, `mon-α`, is
--- ASSOCIATIVITY OF `match-comp`, which is not proved — it had been named as
--- residue once and then appeared on no list until the record refused to
--- typecheck without it. It is a parameter of the module below, per the
--- build-the-residual rule: the assumption is in the signature, not in a comment
--- and not as a postulate.
+-- ASSOCIATIVITY OF `match-comp`, and it is what this instance cost: it had been
+-- named as residue once and then appeared on no list until the record refused
+-- to typecheck without it.
 --
--- **The parameter is satisfiable**, and `WIRING⊥` at the bottom of this file is
--- the witness that says so — the empty colour set, where the profile is unique
--- and the only wiring is the empty one. That discharges the vacuity risk a
--- parameterized module carries and NOTHING ELSE: it is a degenerate instance
--- and is no evidence at all for the general case.
---
--- **What the general discharge now costs is stated rather than estimated.**
--- `Gandr.Shape.Graft` proves associativity from exactly two commutation laws —
--- that removing a source from a composite is removing it from the first wiring
--- and composing that removal with the second, and that tracing a sink back
--- through a composite is tracing it back through the second and then the
--- first. The reduction is machine-checked; the two laws are open. When they
--- land, this parameter comes off and `WIRING` is unconditional.
+-- **It is now proved and the module is unconditional.** While it was open it was
+-- a PARAMETER here, per the build-the-residual rule — the assumption in the
+-- signature, not in a comment and not as a postulate — with a degenerate
+-- instance at the empty colour set beside it to rule out the vacuity a
+-- parameterized module risks. Both are retired: `Gandr.Shape.Graft` reduced
+-- associativity to two commutation laws on the listing algebra and then proved
+-- them, so `match-comp-assoc` is imported here like any other lemma.
 --
 -- ── ONE CORRESPONDENCE, RECORDED AS A CANDIDATE ─────────────────────────────
 -- The arc's analysis reads this category as the DOWNWARD BRAUER CATEGORY of the
@@ -96,7 +88,7 @@ open import Gandr.Shape.Graft
   using (match-comp)
   using (match-comp-idnˡ)
   using (match-comp-idnʳ)
-  using (match-comp-assoc-⊥)
+  using (match-comp-assoc)
 
 open import Data.Empty.Polymorphic
   using (⊥)
@@ -111,20 +103,10 @@ open import Relation.Binary.PropositionalEquality
   using (cong₂)
 
 ------------------------------------------------------------------------------
--- The wiring category, over the one law the listing algebra still owes.
+-- The wiring category, over the listing algebra's own laws.
 ------------------------------------------------------------------------------
 
-module _ {ℓ} (Ob : Set ℓ)
-  -- ASSOCIATIVITY OF THE WIRING COMPOSITION — the record's `mon-α`, and the
-  -- module's only assumption. Stated as the plain equation the listing algebra
-  -- will prove rather than in the carrier's vocabulary, because at this address
-  -- the two are the same type on the nose: the 2-cells of `homs°` ARE `_≡_`.
-  (match-comp-assoc : ∀ {Γ Δ Θ Ξ}
-    → (m : Match Ob Γ Δ)
-    → (n : Match Ob Δ Θ)
-    → (o : Match Ob Θ Ξ)
-    → match-comp (match-comp m n) o ≡ match-comp m (match-comp n o))
-  where
+module _ {ℓ} (Ob : Set ℓ) where
 
   -- THE WIRING CATEGORY. Profiles, wirings, and the listing algebra's own unit
   -- and composition — nothing is constructed here that was not already proved,
@@ -151,8 +133,8 @@ module _ {ℓ} (Ob : Set ℓ)
   -- the two unit laws, h-level free, proved on the listing algebra
   WIRING .mon-λ m = match-comp-idnˡ m
   WIRING .mon-ρ m = match-comp-idnʳ m
-  -- and associativity, which is the assumption. The field takes its two outer
-  -- wirings before the middle one.
+  -- and associativity, proved there too. The field takes its two outer wirings
+  -- before the middle one.
   WIRING .mon-α m o n = match-comp-assoc m n o
 
   -- THE REGION, STATED IN A SIGNATURE RATHER THAN LEFT TO BE DISCOVERED: this
@@ -172,18 +154,3 @@ module _ {ℓ} (Ob : Set ℓ)
     : Everywhere Category (𝔾.homs° (List Ob) (Match Ob))
     → ⊥
   WIRING-not-everywhere = ℂ.homs°-not-everywhere (idn-match [])
-
-------------------------------------------------------------------------------
--- The assumption is satisfiable, and this is the whole of what that shows.
-------------------------------------------------------------------------------
-
--- The degenerate wiring category: the empty colour set, where there is one
--- profile and one wiring. Named so the discharge is a definition the gate
--- checks rather than a remark in this header.
---
--- The associativity it supplies is `Gandr.Shape.Graft.match-comp-assoc-⊥` and
--- is not re-proved here: that module owns the theorem and its own two
--- commutation laws, and a second proof of the same fact would be
--- definitionally equal to the first and so invisible to the gate.
-WIRING⊥ : ∀ {ℓ} → Category (𝔾.homs° (List (⊥ {ℓ})) (Match ⊥))
-WIRING⊥ = WIRING ⊥ match-comp-assoc-⊥
