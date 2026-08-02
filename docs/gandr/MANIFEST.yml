@@ -79,7 +79,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/exact-reals.md
     role: subdocument
-    b3: 65af60be6e9b2df579c1290093316422b915e753cd70da3bc7e25fb6cbbf2806
+    b3: abdbd89676037bca9fac30a32a8e00172fce24b01cdd1395ad8ef56eecfab213
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/roadmap.md

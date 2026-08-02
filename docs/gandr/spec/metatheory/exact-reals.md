@@ -140,6 +140,8 @@ crates/gandr-exact/
 ```
 
 * The crate does not depend on the gandr parser or frozen core; an adapter in the runtime/shell layer translates between gandr values and the closed plan format.
+* **The bignum substrate is `num-bigint`**, vetted for this purpose and shared with the arbitrary-precision `Int`/`Nat` item rather than chosen separately here — the two land behind the same feature and must agree on their integer carrier.
+  The Marshall prototype is a design fossil to read, never a port target; the distinction is recorded here because a substrate choice left implicit is the kind that gets re-litigated when the tail phase starts.
 * A separate replay-checker crate is split only when the certificate grammar is stable and independently useful.
 * `validate.rs` and `certificate.rs` have deliberately different authority:
   + `validate.rs` rejects malformed untrusted plans, checkpoints, and certificate encodings;
