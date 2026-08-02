@@ -28,19 +28,19 @@ Four constructions, in the order they depend on one another.
 None of them exists in the tree, and none is a re-presentation of something gandr already has.
 
 * **An asynchronous structure on the store transition graph**, whose tiles are the licensed shift commutations.
-  This is the pairing everything else stands on, and it is the one with a checkable debt attached ([[#The tile pairing, and the two axioms everything gates on]]).
+  This is the pairing everything else stands on, and it is the one with a checkable debt attached ([[#The tile pairing, and the three axioms everything gates on]]).
 * **Footprints as a polarized, term-derived datum on cell applications** — the triple of cells rewritten, cells and wires matched but preserved, and internal wires freshly bound — with independence defined from that datum rather than declared on the alphabet ([[#Footprints are polarized, and that is what licenses more]]).
-* **A template**, an internal opcategory in the cospan bicategory of the store ambient [@mellies-stefanesco-2020-csl, thm 1.1, def 2.1].
-  This forces the largest new commitment in the whole programme, because the template's two-player split is a distinction gandr's certificates do not currently draw ([[#The environment polarity a template forces]]).
-* **Certificates re-presented as cobordisms** over that template, with composition by pushout followed by relabel [ibid., eqns 18, 22] — in a virtual variant, because gandr's composition declines where the source's is total ([[#Certificates as cobordisms, in a virtual variant]]).
+* **A template** $T = (T[0], T[1], η, μ)$ — an internal opcategory in the cospan bicategory of the store ambient, equivalently a monad (a Bénabou polyad in the indexed case) there [@mellies-stefanesco-2020-csl, thm 1.1, def 2.1].
+  This forces the largest new commitment in the whole programme, because the inclusion $T[0] ⊆ T[1]$ is a distinction gandr's certificates do not currently draw ([[#The environment polarity a template forces]]).
+* **Certificates re-presented as cobordisms** over that template — the double category written $"Cob"(T)$ in the source — with composition by pushout followed by relabel along $μ$ [ibid., eqns 18, 22], in a virtual variant, because gandr's composition declines where the source's is total ([[#Certificates as cobordisms, in a virtual variant]]).
 
-## The tile pairing, and the two axioms everything gates on
+## The tile pairing, and the three axioms everything gates on
 
-**The single most decision-relevant pairing is the tile, and it is exact in both directions.**
+**The single most decision-relevant pairing is the tile, and it comes with a checkable debt.** The correspondence marks the pairing **exact** in both directions; the axioms it would be exact under, and the index it would be exact at, are both open below.
 
 | source object                           | statement                                                                                             | gandr counterpart                                                        |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| the asynchronous-graph permutation tile | [@mellies-stefanesco-2020-csl, sec 3.1], with the axioms at [@mellies-2021-template-games, sec III-A] | the landed shift-equivalence witness (`gandr-theory-computads`, `shift`) |
+| the asynchronous-graph permutation tile | [@mellies-stefanesco-2020-csl, sec 3.1], with the axioms at [@mellies-2021-template-games, sec III-A] | the earned shift-equivalence witness (`gandr-theory-computads`, `shift`) |
 | path equivalence modulo tiles           | [@mellies-stefanesco-2020-csl, sec 3.1]                                                               | the shift quotient on certificates                                       |
 
 **What a tile is quantified over has to be fixed before an axiom check means anything, and the source's choice is not the obvious one.** A **square** is a pair of length-2 paths sharing **both** a source and a target, and the tile relation is a set of such squares [@mellies-2021-template-games, sec III-A, eqn 35].
@@ -89,7 +89,7 @@ The spike's two halves are the two cheapest facts the adoption decision needs.
 
 **Three conditions on how the axiom half is run, each of which changes what a verdict means.**
 
-* **Fix the index first.** The source's tile relation is indexed by edges with parallel edges permitted, and gandr's witness is enumerated per position pair and cell pair; a verdict states which indexing it is about ([[#template-games-question-06]]).
+* **Fix the index first.** The source's tile relation is indexed by edges with parallel edges permitted, and gandr's is derived from a peak term and an ordered pair of cell-and-position applications; a verdict states which indexing it is about ([[#template-games-question-06]]).
 * **Test both sweeps of the cube.** The property is a biconditional, so a procedure that checks one direction has not checked the axiom.
 * **Restate symmetry at the square level.** The inherited by-construction argument is about ordered pairs; the axiom is about squares, and the shared-target half is the part the argument does not obviously give.
 
@@ -125,12 +125,12 @@ Two occurrences of the same instruction at different addresses are independent h
 **The polarized match image is gandr's footprint, and it is the only candidate that reproduces the asymmetry.** The four candidates the read ranked, and what separates them, are two axes: polarized versus flat, and shallow versus closed along connectivity.
 The source is polarized and shallow.
 
-| candidate                                                               | verdict                                                                                                                                                                                                                                                                        |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **the polarized match image** — rewritten against matched-but-preserved | **the fit.** The only candidate reproducing the read/write asymmetry, which is the source's content rather than its packaging; gandr already ships the polarization substrate as per-metavariable variance metadata                                                            |
-| the plain match image (the support)                                     | corresponds only in the degenerate case where every access is a write. This is what the decided guard's first two conjuncts test today, and it is strictly weaker: it refuses commutations the polarized reading licenses                                                      |
-| a port set or boundary interface                                        | **wrong level, instructively so.** Footprints range over the machine's addresses, not over the transition's own interface; reading a port set as the footprint makes "shares a wire" mean "dependent", when a wire two applications only read is a permitted read/read overlap |
-| the wiring-read support, closed along wires                             | **not the source's notion at any point.** Footprints are shallow and nothing takes a transitive closure; a closure-shaped footprint makes nearly every pair dependent in a connected diagram                                                                                   |
+| candidate                                                               | verdict                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **the polarized match image** — rewritten against matched-but-preserved | **the fit.** The only candidate reproducing the read/write asymmetry, which is the source's content rather than its packaging; gandr already ships the polarization substrate as per-metavariable variance metadata ([[../metatheory#Interchange, by layer]])                                                                                                                                 |
+| the plain match image (the support)                                     | corresponds only in the degenerate case where every access is a write. This is what the decided guard's first two conjuncts test today, and **it is the Mazurkiewicz trace-monoid reading the corpus already records** ([[../metatheory#The certificate algebra]]) — **coarsest-safe**, and strictly weaker: it refuses commutations the polarized reading licenses                           |
+| a port set or boundary interface                                        | **wrong level, instructively so.** Footprints range over the machine's addresses, not over the transition's own interface; reading a port set as the footprint makes "shares a wire" mean "dependent", when a wire two applications only read is a permitted read/read overlap. **That is the disconnection axis's characteristic error, and the source's polarization is what rules it out** |
+| the wiring-read support, closed along wires                             | **not the source's notion at any point.** Footprints are shallow and nothing takes a transitive closure; a closure-shaped footprint makes nearly every pair dependent in a connected diagram                                                                                                                                                                                                  |
 
 **Component by component, the mapping is uneven and the unevenness is informative.** The read and write sets map to the polarized match image.
 The allocation set — plain disjointness there — maps **plausibly** to internal-wire freshness, which the corpus witness plan already carries as the internal-wire binder.
@@ -172,7 +172,7 @@ Each source object is paired against its gandr counterpart and marked **exact**,
 
 | source object                                                                       | statement                                                                                    | gandr counterpart                                                                         | mark                                                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| asynchronous-graph permutation tile                                                 | [@mellies-stefanesco-2020-csl, sec 3.1]; axioms at [@mellies-2021-template-games, sec III-A] | the landed shift-equivalence witness                                                      | **exact**                                                                                                                                                                                                                                |
+| asynchronous-graph permutation tile                                                 | [@mellies-stefanesco-2020-csl, sec 3.1]; axioms at [@mellies-2021-template-games, sec III-A] | the earned shift-equivalence witness                                                      | **exact**                                                                                                                                                                                                                                |
 | path equivalence modulo tiles                                                       | [@mellies-stefanesco-2020-csl, sec 3.1]                                                      | the shift quotient on certificates                                                        | **exact**                                                                                                                                                                                                                                |
 | a cobordism, as support with input and output boundaries and a template labelling   | [ibid., eqn 21]                                                                              | a tracelet or certificate: input boundary, output boundary, derivation as support         | **plausible**, and the best structural pairing in the read                                                                                                                                                                               |
 | composition as pushout followed by relabel                                          | [ibid., eqns 18, 22]                                                                         | certificate composition                                                                   | **plausible**; the relabel step is unmatched — the template's multiplication records which side performed each half, and gandr erases nothing because it never drew the distinction                                                      |
@@ -222,7 +222,7 @@ That is [[#template-games-rung-01]].
 
 ## The environment polarity a template forces
 
-**A template is an internal opcategory in the cospan bicategory over the store ambient** [@mellies-stefanesco-2020-csl, thm 1.1, def 2.1, sec 2.2], and its content for gandr is one inclusion: the template's object of ambient steps sits inside its object of all steps [ibid., sec 3.3].
+**A template $T = (T[0], T[1], η, μ)$ is an internal opcategory in the cospan bicategory over the store ambient** [@mellies-stefanesco-2020-csl, thm 1.1, def 2.1, sec 2.2], and its content for gandr is one inclusion, $T[0] ⊆ T[1]$: the object of ambient steps sits inside the object of all steps [ibid., sec 3.3].
 
 **That inclusion is the split between "steps the ambient may perform" and "steps this certificate performs", and gandr certificates are closed-world today.** A gandr certificate records a derivation against an append-only store; nothing in it distinguishes a step the certificate is responsible for from a step the environment took while the certificate was in flight, because the environment is not represented at all.
 
@@ -234,7 +234,7 @@ The design question is [[#template-games-question-02]].
 
 ## Certificates as cobordisms, in a virtual variant
 
-**A certificate would be re-presented as a cobordism over the template**: a support with an input boundary, an output boundary, and a labelling into the template [@mellies-stefanesco-2020-csl, eqn 21], with composition by pushout followed by relabel along the template's multiplication [ibid., eqns 18, 22].
+**A certificate would be re-presented as a cobordism over the template** — an object of the double category the source writes $"Cob"(T)$: a support with an input boundary, an output boundary, and a labelling into the template [@mellies-stefanesco-2020-csl, eqn 21], with composition by pushout followed by relabel along the template's multiplication $μ$ [ibid., eqns 18, 22].
 
 **The pairing is plausible and it is the best structural one the read found**, because gandr's tracelets already have exactly that shape: a derivation with two boundaries, meaningful only against the store it was minted against.
 
@@ -243,7 +243,7 @@ A double category whose horizontal composition declines is a **virtual** double 
 
 **The virtual variant's coherence is in neither source.** Nothing in the read supplies the coherence conditions a virtual variant of that construction would satisfy, so the variant is a construction gandr owes rather than one it imports; the obligation is [[#template-games-rung-04]] and the open question is [[#template-games-question-04]].
 
-**One unmatched step is worth naming, because it is a place gandr has less structure rather than more.** The relabel along the template's multiplication records **which side performed each half** of a composite. gandr composition erases nothing at that step — not because it is careful, but because it never made the distinction, which is the same absence the environment polarity names from the other direction.
+**One unmatched step is worth naming, because it is a place gandr has less structure rather than more.** The relabel along $μ : T[2] → T[1]$ records **which side performed each half** of a composite. gandr composition erases nothing at that step — not because it is careful, but because it never made the distinction, which is the same absence the environment polarity names from the other direction.
 
 ## The proof-scope of the derived Hoare inequality
 
@@ -252,11 +252,17 @@ A double category whose horizontal composition declines is a **virtual** double 
 The interchange-strength decision records concurrent separation logic as the level at which interchange is a **non-invertible lax coercion**, with the Hoare inequality **derived rather than postulated** [[../metatheory#Interchange, by layer]].
 
 **That claim is correct, and the read verified what it rests on.** It rests on the lax-monoidal structure of the cobordism double category [@mellies-stefanesco-2020-csl, thm 4.4] — a colimit commuting with a limit up to a non-reversible coercion — and that statement is **unconditional**.
-The statement carries no proof in the source text and is asserted from lax-monoidality of the cobordism construction together with the Day and Street theory of symmetric pseudomonoids, which is a reading grade rather than a defect, and it is marked here because the corpus leans on it.
+The statement carries no proof in the source text and is asserted from lax-monoidality of the cobordism construction together with the Day and Street theory of symmetric pseudomonoids — an import this corpus holds **locator-pending**, with no bibliography key ([[#Source and confidence]]) — which is a reading grade rather than a defect, and it is marked here because the corpus leans on it.
 
-**What is conditional is a different derivation, for a different composition, and the corpus does not currently claim it.** The Hoare inequality for the **generalized** composition is derived only under a hypothesis relating the filling of a parallel pair to the parallel pair of fillings [ibid., prop 5.1], and that hypothesis is verified in the source's appendix B for the **code** templates only.
+**What is conditional is a different derivation, for a different composition, and the corpus does not currently claim it.** The Hoare inequality for the **generalized** composition is derived only under a hypothesis on the filling system [ibid., prop 5.1], and the direction of that hypothesis is the whole of its content.
 
-**The source states explicitly that the hypothesis is not necessarily satisfied for the template of separated states** [ibid., sec 5], with the reason given: a two-player separated state decomposes into a three-player one in several ways.
+```text
+fill(l ∥ l', m ∥ m')  ⟶  fill(l, m) ∥ fill(l', m')
+```
+
+**The hypothesis is verified in the source's appendix B for the code templates only** — the two the source calls $S$ and $L$.
+
+**The source states explicitly that the hypothesis is not necessarily satisfied for the template it calls $"Sep"$, the template of separated states** [ibid., sec 5], with the reason given: a two-player separated state decomposes into a three-player one in several ways.
 
 **So the scope is: unconditional for the lax-monoidal half, verified for the code templates, and explicitly not established for the proof template through the filling system.** A later pass that leans harder on the derivation — for instance one that wants the inequality for a generalized composition rather than for the laxator — inherits the hypothesis and owes its verification.
 The disposition is [[#template-games-question-05]].
@@ -285,10 +291,10 @@ This rung covers the first; the second rides [[#template-games-rung-02]].
 
 ### template-games-rung-02
 
-**The tile set is deterministic and satisfies the cube property** [@mellies-2021-template-games, sec III-A, eqns 35, 36].
+**The tile set satisfies the three asynchronous-graph axioms at the level they quantify over** [@mellies-2021-template-games, sec III-A, eqns 35, 36].
 
-Symmetry is argued by construction but not yet at the level the axiom quantifies over, so it is restated rather than assumed ([[#The tile pairing, and the two axioms everything gates on]]).
-The two unproved axioms are decidable questions about the landed shift witness and the cheapest real experiment in the programme — which is why they are also the gate ([[#template-games-spike-01]]).
+**The rung is three obligations rather than two, and the third is a restatement rather than a proof.** Determinism and the cube property are wholly unproved for gandr; symmetry is argued by construction but not at the level the axiom quantifies over, so it is restated at the square level rather than inherited ([[#The tile pairing, and the three axioms everything gates on]]).
+All three are decidable questions about the landed shift witness and the cheapest real experiment in the programme — which is why they are also the gate ([[#template-games-spike-01]]).
 
 **What it would newly warrant.**
 
@@ -336,7 +342,8 @@ The corpus currently holds that row on the deadlock argument and on the general 
 
 **The prize: an asynchronous-soundness analogue.**
 
-A comparison map from the certified layer to the operational layer that is both a 1-fibration and a 2-fibration, after the source's soundness theorem and its two halves [@mellies-stefanesco-2020-csl, thm 10.1, thm 10.5, thm 10.6].
+A comparison map from the certified layer to the operational layer that is both a 1-fibration and a 2-fibration, after the source's soundness theorem [@mellies-stefanesco-2020-csl, thm 10.1] and its first half [ibid., thm 10.5].
+**Its second half is the excluded one**: data-race freedom [ibid., thm 10.6] has no gandr statement to be about, so the analogue is the fibration structure and never the pair ([[#Where the fit fails]]).
 
 **What it would newly warrant — and this is the reason the whole direction was pursued.**
 
@@ -346,7 +353,7 @@ A comparison map from the certified layer to the operational layer that is both 
 * **A stated frame property.** "A certificate valid over a sub-store stays valid in a larger store with the enlargement inert" is structurally free in gandr's carrier today; the value of the import is that it becomes a **provable property of a semantic model** rather than an artifact of how matching is implemented — which is what matters at the moment the store grows disconnection and multi-output.
 
 **Grade, and it is the sharpest cost in the programme.** The source's soundness theorem is proved by induction over a **proof system**, and gandr has no proof system in that sense — so this rung is a **re-derivation, not a citation**.
-Three of the lemmas it would follow were read for shape and not verified line by line [ibid., lem 10.2, lem 10.9, lem 10.10, lem E.2], one is asserted without proof in the source [ibid., lem 10.8], and the soundness theorem itself is **attributed to earlier work and re-proved axiomatically** in the source read, so this source is not the primary source for the theorem.
+Four of the lemmas it would follow were read for shape and not verified line by line [ibid., lem 10.2, lem 10.9, lem 10.10, lem E.2], one is asserted without proof in the source [ibid., lem 10.8], and the soundness theorem itself is **attributed to earlier work and re-proved axiomatically** in the source read, so this source is not the primary source for the theorem.
 That earlier work has no bibliography key yet and was not chased.
 
 ## Open questions, with dispositions
@@ -415,7 +422,8 @@ Explicitly, so that nothing here is later read as a partial adoption of the whol
 * **Data-race freedom and the stateless model**, because gandr has no race notion and the second half of the soundness theorem therefore has no gandr statement to be about [ibid., thm 10.6].
 * **The error monad** [ibid., sec 6], because gandr's three-valued verdict discipline is a different and already-recorded device: a declined check leaves a certificate stuck rather than refuted.
 * **Multiplicative-additive linear logic and star-autonomy** [@mellies-2021-template-games, thm 1, thm 4], because gandr is not building a linear-logic model.
-* **Higher-order concurrent separation logic and its descendants**, which are the sources' own future work and not a gandr direction.
+* **Higher-order concurrent separation logic and its descendants — Iris and FCSL**, which the sources name as their own future work and which are not a gandr direction.
+  Neither is cited at a statement here, and neither has a bibliography key.
 
 **One further exclusion is a decline rather than a scope cut, and it is recorded so it is not re-proposed.** The lock component of the footprint has no gandr counterpart, and that is not a gap: filling it would mean inventing a shared-resource notion in order to import machinery whose payoff is a race theory gandr does not want.
 
@@ -436,7 +444,8 @@ The substrate [@mellies-2021-template-games] was read twice at different depths,
 
 * **The asynchronous-graph axioms and the Gray-tensor content are read in full at theorem grade**, body plus appendices, with the axiom statements, the finite-completeness chain, and the sesquicategory and 2-category presentations taken at their own numbers [@mellies-2021-template-games, sec III-A, eqns 35, 36; prop 4, prop 6, appendix A; prop 7, prop 8, appendices D-A and D-B].
   No verdict of the earlier pass is contradicted by that read.
-* **Everything else in the substrate was read at substrate grade** for the machinery the primary stands on: sec I, secs III-V, and the statements of the numbered propositions and theorems, with the proofs of none of them.
+* **Everything else in the substrate was read at substrate grade** for the machinery the primary stands on: sec I and secs III-V, plus the statements of prop 1-8, thm 1-4, and def 1-3, with the proofs of none of them.
+  The material that pass did not reach line by line is sec VI (the comodule construction and thm 2), sec VII (the template as a monad in comodules, def 5), and appendices A-E — of which appendices A and D have since been read as arguments at the theorem-grade pass above.
 
 **What was read but not verified line by line, in the primary.**
 
@@ -454,10 +463,10 @@ The finite-limit argument of appendix A, including the proof that gives the equa
 **Imported results were not chased.** Three of them bear on claims above, so they are named rather than gestured at, and each is **locator-pending**: none has a bibliography key yet, and this document cites none of them at a statement.
 
 * **Lack and Sobociński on adhesive categories**, which is where the primary's adhesivity hypotheses come from.
-* **Day and Street on symmetric pseudomonoids in a monoidal bicategory**, which supplies the complete definition the lax-monoidal statement is asserted from [@mellies-stefanesco-2020-csl, thm 4.4].
+* **Day and Street on symmetric pseudomonoids in a monoidal bicategory**, at their sec 3, which supplies the complete definition the lax-monoidal statement is asserted from [@mellies-stefanesco-2020-csl, thm 4.4].
 * **The earlier Melliès and Stefanesco asynchronous-soundness paper**, and this one matters most: the soundness theorem [ibid., thm 10.1] is **attributed to that earlier work and re-proved axiomatically** in the source read here, so the source read here is **not** the theorem's original home, and [[#template-games-rung-06]] would be re-deriving a statement whose primary source the corpus does not yet hold.
 
-Also unchased, and named for completeness: Bénabou for the polyad definition, Garner for lax double functors, Mulry and Johnstone for the smash-product lifting, Bourke and Gurski for the Gray characterization, and Melliès' own earlier template-games papers.
+Also unchased, and named with the locator the primary gives so each can be resolved inside it: Bénabou for the polyad definition at his def 5.5.1, Garner for lax double functors, Mulry at his lem 2.20 together with Johnstone for the smash-product lifting, Bourke and Gurski for the Gray characterization, and Melliès' own earlier template-games papers.
 
 **gandr-side facts not verified, two of them load-bearing.**
 
@@ -465,7 +474,10 @@ Also unchased, and named for completeness: Bénabou for the polyad definition, G
 * **Whether the store-transition ambient gandr would need is adhesive.** Satisfiability was **inferred** from the corpus's own record that labelled directed hypergraphs are a presheaf topos; it was not proved that gandr's certificate supports can be presented in that ambient, and the argument fails if they must be computads — [[#template-games-rung-01]].
 * **The three-conjunct guard was read from the shift module's own documentation rather than from its body.** Verified against the tree at write time for this document: `gandr-theory-computads`'s `shift` module exists and documents the three conjuncts and their order, `derive_shift_equivalence` is its constructor, `ShiftObstruction` is the typed refusal, the overlap conjunct is asked of the cell pair through `overlaps_between`, and the convexity conjunct is carried as a `ConvexityDischarge` datum whose two inhabitants are the left-connected-over-acyclic-target discharge and the re-check-required refusal.
   **What is verified is the interface and its documented contract, not that the body decides what the documentation says it decides.**
-* **No bibliography key beyond the two named sources was checked by the read.** The keys cited in this document were checked against `bibliography.yml` at write time.
+* **No bibliography key beyond the three cited sources was checked by the read.** The keys cited in this document were checked against `bibliography.yml` at write time.
+
+**A third source is cited once, at one statement, and it carries its own grade.** The concession that the coherent-congruence line supplies no correctness criterion [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8] was read for that concession only.
+**That source is not read at theorem grade for this document**, and nothing here rests on any other statement of it.
 
 **No recorded corpus claim was contradicted by either source.** Both interchange-strength characterizations at [[../metatheory#Interchange, by layer]] check out: the Gray and invertible level against the substrate's own deadlock-and-diagonals passage and its Gray-tensor statements [@mellies-2021-template-games, sec I, def 1, thm 4], and the lax level against the primary's lax-monoidal statement and its concluding section [@mellies-stefanesco-2020-csl, thm 4.4].
 The one sharpening the read produced is the filling-system scope carried at [[#The proof-scope of the derived Hoare inequality]].

@@ -19,12 +19,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 12392022ba3f205dee01648faa95a0bbf69871335e47723d7938cd1764c1b91a
+    b3: 1746ce0d47dd5d92b4deeca4aa55acca5478a861b26aebf6a3004d371a7d5f96
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 680409be03e80016beeeb2582e17bb6ea0d799fb753f93252ba4b215adb39444
+    b3: 3e257dd1487fb0a40cfd453160f43eda3fac53a36db8d19835dad45a2ede390f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -144,12 +144,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: ffd9c0068d551fee5640128ee49c09ede5d56c612c537bbc9d8c9c15b521b135
+    b3: cac5f3ab8b6e4d443900d119eb9379a91a5b0b3b525a8cd235003cdd05cc8a32
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 43770f01f06053031ba09ea810bc45412ca99e8eee677ef648d9cf06902eccf9
+    b3: 2f4d8c20b6c16af1caaadbbfa30ad6c385a111e011e0fd2a6886205ec31a9583
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
