@@ -107,6 +107,52 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
   Keep `notes`, `description`, `design`, and `acceptance_criteria` compact: standing directions plus a short pointer at most.
   Field updates REPLACE content and can clobber prior context; comments append safely.
 
+## The owner-decision queue
+
+> Adopted (owner, 2026-08-02) after compressed in-chat decision batches proved hard to answer: items were hard to tell apart, hard to answer individually, and easy to lose.
+> Re-homed onto the tracker the same day, for the reason below.
+
+Decisions, sign-offs, and adjudications the owner must take are **queued on the tracker**, not posed as inline batches in chat and not collected in a shared document.
+
+**Why the tracker rather than a queue document, stated once so it is not re-litigated.** A shared queue document has a single mutable identifier space, a single file, and no query surface, so every concurrent writer is a collision waiting to happen — and the first one arrived within a day of adoption, when two sessions independently minted the same `owner-q-016` for unrelated questions.
+The tracker already answers all three: bead identifiers are allocated centrally and cannot collide, comments append instead of conflicting, and one label makes the whole open queue a single query.
+This is the same failure the reference discipline exists to prevent, met from the tooling side: **a colliding identifier is worse than none, because it reads as precise**.
+
+### Where a queue lives
+
+* **A bead that needs decisions gets a queue bead as its child** (`bd create … --parent <bead>`), so the queue's identifier is a suffix of the work it serves and the link is structural rather than remembered.
+* **An epic gets one queue bead for the whole epic**, never one per child.
+  A question raised while working a child goes on the epic's queue bead, and names the child it concerns.
+* The queue bead's type is `decision` and it carries the **`human`** label, so `bd list --label human --status open` is the standing view of everything waiting on the owner.
+  `human` marks _awaiting the owner_ and is what separates a queue bead from an ordinary `decision` bead an agent will research and record.
+* Title it `<scope>: decision queue for <topic>` so it reads as a container rather than as a decision someone is about to take.
+
+### Posing a question
+
+**One question is one comment**, and it opens with its identifier.
+
+**The identifier is `<queue-bead-id>-question-NN`**, zero-padded, numbered within that bead, and stable: retiring a question leaves its number unused rather than renumbering the rest.
+
+**The prefix is always the hosting queue bead's own identifier — never the identifier of a bead the question is about.** A question may concern another bead entirely, or half of one and half of another; it still takes the prefix of the bead it _lives on_, and its body names whatever else it concerns.
+That is what makes the identifier self-locating: `gandr-fid.14.7-question-03` is in `gandr-fid.14.7`, always, and a reader who meets it in a commit message or another bead knows exactly where to look.
+
+**Each question is self-contained**, to the same standard as a bead's own reconstruction test: the context, a plain-terms explanation, a **concrete statement of what the decision changes**, the options, and the agent's recommendation with its reason.
+An owner should be able to answer from the comment alone, without session history.
+
+### Answering, and what an agent may not do
+
+**The owner answers with a comment** on the same bead, leading with the same identifier.
+
+**An agent never writes the owner's answer**, never records a ruling the owner did not give, and never converts silence into consent.
+An unanswered question stays unanswered; if the work cannot proceed without it, that is a blocked bead, not a licence to decide.
+
+### Closeout
+
+* The **ruling of record lands in the authoritative artifact** — the corpus document, the decision record, the code, or the owning bead's standing contract — never only in the comment stream.
+* A follow-up comment records the execution and names where the ruling landed, so the queue bead reads as an audit trail rather than a second source of truth.
+* A child bead's queue closes when its parent's decisions are taken and executed; an **epic's queue bead lives as long as the epic** and closes with it.
+* The comment stream may be cited, but citing it never substitutes for the ruling's home.
+
 ## Feature landing and residual closeout
 
 The base rule still governs: close a bead only when its full recorded scope is done and verified; make residual scope epic-shaped; file follow-ups `discovered-from` the parent; sweep related memory before closing. gandr adds one **feature-landing workflow** so executable evidence, manual work, mutation campaigns, and other residuals cannot drift into separate conventions.

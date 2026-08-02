@@ -203,19 +203,13 @@ A reviewer handed the rationale ratifies its frame, and the frame is what was wr
 
 **One standing lens, cheap enough to run without an agent:** _is this a fact about us, or a fact about the machinery?_ It fires on both instances above and on all three historical ones.
 
-## The owner-decision queue
+## Where a sign-off request goes
 
-> Adopted (owner, 2026-08-02), after compressed in-chat decision batches proved hard to answer: items were hard to tell apart, hard to answer individually, and easy to lose.
-> The binding statement is `AGENTS.md` §"The owner-decision queue" — the practice is global, not review-specific; this section carries the discipline.
+This document generates most of the project's owner decisions — a refutation needs sign-off, a decline needs the owner to see the option, an adversarial pass needs asking before it runs.
+None of them is posed as a compressed inline batch in chat.
 
-Decisions, sign-offs, and adjudications the owner must take are collected in a **standing queue document in the contributor notes repository**, not posed as compressed inline batches in session chat.
-The queue's discipline:
-
-* one item per decision, under a stable prefixed identifier (`owner-q-NNN`); numbers are never reused or renumbered, per the reference discipline;
-* each item is self-contained — the context, a plain-terms explanation, a concrete example showing what the decision changes, the options, and the coordinator's recommendation with its reason;
-* the owner answers by identifier, inline in the document, in a reply document, or in chat;
-* a resolved item moves to a rulings-of-record table carrying the ruling, its execution state, and the commit or tracker item that executes it — and the ruling of record itself always lands in the authoritative project artifact, never only in the queue;
-* the queue is contributor-concern and lives outside the project tree, so nothing tracked may cite it; citations go to the artifacts the rulings land in.
+Every one goes on the **owner-decision queue**, which lives on the tracker: a queue bead per topic, one comment per question, answered by comment.
+The mechanism, the identifier rule, and the closeout discipline are [`tracker.md`](tracker.md) §"The owner-decision queue"; the binding statement is `AGENTS.md` §"The owner-decision queue".
 
 ## A recalled citation that turns out to be on-target is still unverified
 

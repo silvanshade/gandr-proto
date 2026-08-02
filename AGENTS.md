@@ -78,9 +78,11 @@ That is the normal case, not an unlucky one.
 
 ## The owner-decision queue
 
-Decisions, sign-offs, and adjudications the owner must take are **queued, not posed inline**: one self-contained item per decision in the standing queue document in the contributor notes repository, under a stable `owner-q-NNN` identifier, with context, a concrete example, options, and a recommendation.
-The owner answers by identifier; every ruling of record lands in the authoritative project artifact — corpus, tracker, or code — never only in the queue, and nothing tracked cites the queue itself.
-The full discipline is [`docs/workflow/review.md`](docs/workflow/review.md) §"The owner-decision queue".
+Decisions, sign-offs, and adjudications the owner must take are **queued on the tracker, not posed inline and not collected in a document**.
+A bead needing decisions gets a **queue bead** as its child; an epic gets **one** queue bead for the whole epic rather than one per child.
+Each question is a single comment identified `<queue-bead-id>-question-NN` — the prefix is always the hosting queue bead's own id, never the id of a bead the question is merely about — and the owner answers by comment under the same identifier.
+Every ruling of record lands in the authoritative project artifact; the comment stream is the deliberation record, never the ruling's home.
+The full discipline is [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"The owner-decision queue".
 
 ## Work tracking
 
