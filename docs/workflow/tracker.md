@@ -9,12 +9,37 @@
 
 Issues live in **one shared Dolt database per machine** (beads, prefix `gandr-`): the primary checkout and every worktree resolve the same database through the git common directory, so worktrees carry **no gitignored `.beads` state of their own** (the `wt` copy-ignored step excludes `.beads/**`; topology record: `gandr-fid.15`).
 A bead written from any checkout is immediately visible in all of them — no pull between worktrees.
+That immediacy is about **visibility**, and it does not extend to the remote: because every checkout advances the same branch, worktrees still contend with each other when pushing.
 The database syncs **out-of-band from git** to DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) (the `origin` Dolt remote), the only off-machine copy:
 
 * **push after every write** — `bd dolt push` immediately after `bd create`/`update`/`dep`/`close`;
 * **pull before relying on reads** — `bd dolt pull` at session start and before triage (the `wt` `beads-pull` hooks and the `SessionStart` hook mechanize this); this guards **cross-machine** staleness, not worktree-to-worktree staleness;
 * trust the remote over a local clone when they disagree;
+* **expect a rejected push, and do not escalate** — see below;
 * **server lifecycle is owner-controlled** — agents never run `bd dolt stop`/`start` or restart the Dolt server unprompted: a mid-session kill is what forked per-worktree clones and double-recorded a closeout on 2026-07-22 (`gandr-fid.15`).
+
+### A rejected push is contention, not breakage
+
+The shared database has **one branch and many writers**: every checkout, and every agent working in one, commits to the same branch, and any of them may push first.
+So "updates were rejected because the tip of your current branch is behind" is the **ordinary outcome of concurrency**, not a symptom of a broken topology.
+Measured 2026-08-02: 367 tracker commits in one day, with two sessions' commits interleaved four times inside a twelve-second window.
+
+The remedy is three steps, and the middle one is the one that gets skipped:
+
+```text
+bd dolt pull      # take the other writer's commits
+bd dolt commit    # commit your own pending working-set change
+bd dolt push
+```
+
+Two things about that sequence are worth knowing before they are met.
+
+**"Pull complete" followed by a still-rejected push is a normal pair, not a contradiction.** Under active contention another writer can land between your pull and your push; repeat the sequence rather than concluding the pull failed.
+
+**`bd dolt commit` is not redundant.** Most `bd` writes commit as they go, but a write can leave a change in the working set, and a push only ever pushes commits — so a push can be rejected while the work sits uncommitted and invisible to it.
+
+**Do not reach for the conflict-repair recipe for this.** That recipe (`gandr-fid.15`) exists for genuine merge conflicts, is a graph-wide operation, and is owner territory requiring a backup first.
+Contention is not conflict; treating one as the other is how a routine race becomes an incident.
 
 **Topology invariant** (check when in doubt): `bd dolt status` from every checkout reports the **same** PID/port/data-dir (the primary checkout's `.beads/dolt`), and a probe bead created in one checkout is instantly visible from another without any pull.
 A worktree whose `.beads` holds gitignored database state (`dolt/`, `embeddeddolt/`, `metadata.json`, `dolt-server.*`) is misconfigured: prove nothing local-only exists vs `origin/main`, then quarantine that state (recipe in `gandr-fid.15`).
