@@ -1,0 +1,22 @@
+// The port discipline, reached through lowering rather than through a test.
+// `m` is produced twice -- once by the redex line and once by the frame line --
+// so two distinct ports arrived under one spelling, and the name-set fold
+// refuses the merge. The wire already has that endpoint.
+//
+// The fold is a surface check, so its verdict reaches the user beside the
+// declaration table's: this example asserts both that the shared name is named
+// and that the block still reads into a description, because a wiring error and
+// an ill-formed declaration are different failures.
+sign Shared {
+  sort Nat : Type
+  oper f : (a : Nat) --> (b : Nat)
+
+  rule twice : (rule p : Nat ==> Nat, data x : Nat) ==> (o : Nat) {
+    node : p(x) ==> (m);
+    node : f(x) --> (m);
+  }
+}
+
+//@ mode: desc
+//@ expect-desc-decline: the port name `m` is produced
+//@ expect-desc-decline: produced exactly once and consumed exactly once

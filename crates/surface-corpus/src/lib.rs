@@ -13,19 +13,26 @@
 //!   interpolation, and the reserved operation / rule / grade / GADT /
 //!   attribute / fixity slots), plus the ruled circuit block form (`sign`
 //!   blocks, the four-glyph arrow grid, two-sided ports, and the `node` /
-//!   `feed` body statements) and its port discipline — the internal wires the
-//!   name-set fold binds, and the shared port names it refuses. The surface
-//!   tree is **firewalled from execution**: this harness ([`check_case`], the
-//!   corpus walker) runs the model and pathological trees only, so surface
-//!   fixtures never lower or evaluate. Their gate is the PBG parser's
-//!   zero-obligation corpus sweep (`gandr-parser`
-//!   `acceptance::corpus_molds_to_zero_obligations`), which reads all three
-//!   trees; the surface tree carries no `//@` directives. A surface fixture
-//!   that is deliberately ill-formed **after** parsing — the shared-port
-//!   refutations — lives here rather than in [`PATHOLOGICAL_DIR`], because the
-//!   walker that reads that tree lowers what it finds and circuit members are
-//!   parse-and-decline at lowering; its own gate is the named crate test that
-//!   reads it.
+//!   `feed` body statements) in the shapes that have **not** graduated — the
+//!   reserved `<->` glyph, the `feed` wheel, the many-out node, an `oper`
+//!   member's filler, and a `rule` member with no filler — plus the port
+//!   discipline's own fixtures. The surface tree is **firewalled from
+//!   execution**: this harness ([`check_case`], the corpus walker) runs the
+//!   model and pathological trees only, so surface fixtures never lower or
+//!   evaluate. Their gate is the PBG parser's zero-obligation corpus sweep
+//!   (`gandr-parser` `acceptance::corpus_molds_to_zero_obligations`), which
+//!   reads all three trees; the surface tree carries no `//@` directives. A
+//!   surface fixture that is deliberately ill-formed **after** parsing — the
+//!   shared-port refutations — lives here rather than in [`PATHOLOGICAL_DIR`],
+//!   because the walker that reads that tree lowers what it finds and those
+//!   fixtures' shapes have not graduated; its own gate is the named crate test
+//!   that reads it.
+//!
+//! The ruled circuit **rule block** itself has graduated and is runnable: the
+//! model witness is `examples/model/circuit/circuit-rule-block.gandr` and its
+//! five declines — the many-out node, the wheel, the two-redex composite, the
+//! cyclic wiring, and the shared port — are under
+//! `examples/pathological/circuit/`.
 //!
 //! Each model / pathological example declares how to run itself and what to
 //! expect through `//@` directives, and [`check_case`] runs one example
@@ -63,6 +70,8 @@
 //! | `expect-desc-cells` | integer | elaborated descriptions carry this many cell faces in total |
 //! | `expect-desc-store-cells` | integer | cell-layer elaboration puts this many cells in the stores |
 //! | `expect-desc-cell-decline` | substring | some cell-layer decline message contains it |
+//! | `expect-desc-decline` | substring | some stage-0 / declaration-table diagnostic contains it |
+//! | `expect-desc-composites` | integer | the cell layer built this many whiskered composites |
 //! | `expect-desc-unit-consumers` | `clean` | generic equality and serialization separate two unit constructors |
 //! | `requires-feature` | `regex` / `ffi` | skip the example unless the named corpus feature is enabled |
 //!
@@ -107,6 +116,7 @@ use gandr_runtime_host::ShellOutcome;
 use gandr_surface_engine::boundary::PipelineSource;
 use gandr_surface_engine::desc_cells::DescCells;
 use gandr_surface_engine::desc_cells::elaborate_desc_cells;
+use gandr_surface_engine::desc_elab::ElabDiagnostic;
 use gandr_surface_engine::desc_elab::elaborate_data_descs;
 use gandr_surface_engine::lower::lower_source;
 use gandr_surface_engine::lower::node_kinds;
@@ -352,6 +362,22 @@ pub enum Expect
         /// The expected total stored-cell count.
         usize,
     ),
+    /// `expect-desc-decline: s` — some stage-0 elaboration or declaration-table
+    /// diagnostic contains `s`.
+    ///
+    /// Its presence also *licenses* the diagnostics: a `desc`-mode example
+    /// carrying one is asserting a decline, so the harness stops treating any
+    /// diagnostic as an outright failure and checks the substrings instead.
+    DescDecline(
+        /// The substring some diagnostic must contain.
+        String,
+    ),
+    /// `expect-desc-composites: n` — the cell layer built exactly `n` whiskered
+    /// composites, one per admitted circuit rule member.
+    DescComposites(
+        /// The expected composite count.
+        usize,
+    ),
     /// `expect-desc-cell-decline: s` — some cell-layer decline message contains
     /// `s` (the honest-limits half of the description → cells wire).
     DescCellDecline(
@@ -517,6 +543,12 @@ where
                 expects.push(Expect::DescStoreCells(count));
             },
             | "expect-desc-cell-decline" => expects.push(Expect::DescCellDecline(value.to_owned())),
+            | "expect-desc-decline" => expects.push(Expect::DescDecline(value.to_owned())),
+            | "expect-desc-composites" => {
+                expects.push(Expect::DescComposites(
+                    value.parse::<usize>().map_err(|error| error.to_string())?,
+                ));
+            },
             | "expect-desc-unit-consumers" => {
                 if value != "clean" {
                     return Err(format!(
@@ -791,6 +823,8 @@ fn session_failure(
         | Expect::DescCells(_)
         | Expect::DescStoreCells(_)
         | Expect::DescCellDecline(_)
+        | Expect::DescDecline(_)
+        | Expect::DescComposites(_)
         | Expect::DescUnitConsumers => Some("directive is not valid in session mode".to_owned()),
     }
 }
@@ -1282,7 +1316,13 @@ fn check_desc(
 ) -> Vec<String>
 {
     let elaborated = elaborate_data_descs(source);
-    if !elaborated.diagnostics.is_empty() {
+    // An example asserting a decline has said so with `expect-desc-decline`;
+    // without one, any diagnostic is an outright failure, which is what keeps a
+    // model example honest about elaborating cleanly.
+    let asserts_decline = expects
+        .iter()
+        .any(|expect| matches!(*expect, Expect::DescDecline(_)));
+    if !elaborated.diagnostics.is_empty() && !asserts_decline {
         let messages: Vec<&str> = elaborated
             .diagnostics
             .iter()
@@ -1357,10 +1397,50 @@ fn check_desc(
                     ))
                 }
             },
+            | Expect::DescDecline(ref needle) => {
+                let found = elaborated
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.message.contains(needle));
+                if found {
+                    None
+                }
+                else {
+                    Some(format!(
+                        "expected an elaboration decline containing `{needle}`; got {}",
+                        elab_decline_summary(&elaborated.diagnostics)
+                    ))
+                }
+            },
+            | Expect::DescComposites(expected) => {
+                let actual = cells.composites.len();
+                if actual == expected {
+                    None
+                }
+                else {
+                    Some(format!(
+                        "expected {expected} whiskered composite(s); got {actual}"
+                    ))
+                }
+            },
             | Expect::DescUnitConsumers => desc_unit_consumer_failure(&elaborated.descs),
             | _ => Some("directive is not valid in desc mode".to_owned()),
         })
         .collect()
+}
+
+/// A one-line summary of a stage-0 elaboration's diagnostics (for failure
+/// messages).
+fn elab_decline_summary(diagnostics: &[ElabDiagnostic]) -> String
+{
+    if diagnostics.is_empty() {
+        return "(none)".to_owned();
+    }
+    diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.message.as_str())
+        .collect::<Vec<&str>>()
+        .join(" | ")
 }
 
 /// A one-line summary of a cell-layer elaboration's declines (for failure

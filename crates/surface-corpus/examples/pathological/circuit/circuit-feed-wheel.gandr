@@ -1,0 +1,20 @@
+// A wheel. `feed` is the only cycle-forming statement, and it is exactly what a
+// stateful stream needs -- but a wheel-bearing body derives no boundary pair,
+// so a legitimately delay-guarded cycle is refused by the same guard that
+// refuses an unguarded one. Separating the two is owed with the `feed`
+// statement's own elaboration, and the decline says so instead of pretending
+// the wire is not there.
+sign Wheel {
+  sort Nat : Type
+  oper zip : (s : Nat, t : Nat) --> (u : Nat)
+
+  rule spin : (data stream : Nat) ==> (out : Nat) {
+    node : zip(stream, state) --> (out);
+    feed : (out) --> (state);
+  }
+}
+
+//@ mode: desc
+//@ expect-desc-decline: carries a `feed` back-edge
+//@ expect-desc-decline: wheel-bearing body derives no boundary pair
+//@ expect-desc-composites: 0

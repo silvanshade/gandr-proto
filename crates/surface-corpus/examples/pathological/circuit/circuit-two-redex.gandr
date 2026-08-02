@@ -1,0 +1,34 @@
+// The congruence cell with TWO disjoint redexes -- the shape a term syntax
+// cannot write, because a term has one root. It reads into the declaration
+// table cleanly: the wiring derives `add(x, y) ==> add(x′, y′)` and the sphere
+// check is satisfied.
+//
+// What it does not have is a single whiskered composite. `p` sits at position
+// [0] and `q` at position [1], and those positions are INCOMPARABLE, so the two
+// readings -- fire `p` first, or fire `q` first -- are two sequentializations
+// that only an earned shift-equivalence witness may identify. The guards ledger
+// licenses horizontal composition exactly on disjoint positions where the two
+// readings are shift-equal, and never any earlier or any wider. So the cell
+// layer declines, carrying both occurrences and their positions.
+sign Nat {
+  sort Nat : Type
+  oper add : (Nat, Nat) --> Nat
+
+  rule cong2 : (
+    rule p : Nat ==> Nat,
+    rule q : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (x′);
+    node : q(y) ==> (y′);
+    node : add(x′, y′) --> (z);
+  }
+}
+
+//@ mode: desc
+//@ expect-desc-cell-decline: unfolds to 2 redex occurrences
+//@ expect-desc-cell-decline: `p` at [0], `q` at [1]
+//@ expect-desc-cell-decline: shift-equivalence witness
+//@ expect-desc-composites: 0
+//@ expect-desc-store-cells: 0

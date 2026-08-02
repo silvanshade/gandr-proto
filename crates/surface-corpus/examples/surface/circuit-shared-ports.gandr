@@ -4,8 +4,10 @@
 //
 // GRADUATION: the spellings are ruled at
 // docs/gandr/spec/surface-language/circuit-cells.md, "The block form, ruled".
-// Circuit members are parse-and-decline at lowering and graduate to accepted
-// behind the gate under gandr-ng9.1.5. Parse-only; never lowered.
+// The ruled circuit rule block has since graduated (the runnable witness is
+// examples/model/circuit/circuit-rule-block.gandr); this fixture stays
+// parse-only because the shapes it exercises -- the `feed` wheel, the many-out
+// node, an `oper` member's filler -- have not. Parse-only; never lowered.
 //
 // Every declaration below is SYNTACTICALLY well-formed, and that is the point:
 // the parser's zero-obligation gate accepts the whole file, and each block is

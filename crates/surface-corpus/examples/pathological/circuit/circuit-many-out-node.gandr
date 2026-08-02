@@ -1,0 +1,18 @@
+// A many-out node. The ruled grammar writes one -- `zip(s, t) --> (u, v)` is in
+// the ruling's own worked example -- and the derivation cannot hold it: the
+// boundaries it produces land on the term-shaped store, and a term has one
+// root. So the block parses, and lowering declines it by name, pointing at the
+// cell-alphabet question rather than admitting a narrowed reading.
+sign Wide {
+  sort Nat : Type
+  oper tee : (a : Nat) --> (b : Nat, c : Nat)
+
+  rule split : (data x : Nat) ==> (z : Nat) {
+    node : tee(x) --> (z, w);
+  }
+}
+
+//@ mode: desc
+//@ expect-desc-decline: binds 2 output ports
+//@ expect-desc-decline: cell-alphabet question (gandr-ui9)
+//@ expect-desc-composites: 0

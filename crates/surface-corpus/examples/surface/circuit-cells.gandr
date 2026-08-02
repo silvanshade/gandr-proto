@@ -2,10 +2,15 @@
 // four-glyph arrow grid, two-sided named ports, and the `node` / `feed` body
 // statements (parse-only fixture).
 //
-// GRADUATION: the block form's SPELLINGS are ruled
-// (docs/gandr/spec/surface-language/circuit-cells.md, "The block form,
-// ruled"); its semantics are not. Circuit members are parse-and-decline at
-// lowering and graduate to accepted behind the gate under gandr-ng9.1.5.
+// GRADUATION: the ruled circuit RULE BLOCK has graduated -- a well-formed
+// single-redex block lowers to its whiskered composite behind the cell layer's
+// admission gate, and the runnable witness is
+// examples/model/circuit/circuit-rule-block.gandr with its five declines under
+// examples/pathological/circuit/. What stays here is what has NOT graduated:
+// the reserved `<->` glyph (the reversible-oper lane), the `feed` wheel and the
+// many-out node (both the cell-alphabet question, gandr-ui9), an `oper`
+// member's filler (the 1-cell definition form), and a `rule` member with no
+// filler (the sphere-typed declaration table, the higher-cells lane).
 // Parse-only; never lowered.
 //
 // The arrow grid, in one line: the shaft carries the kind-class and the head

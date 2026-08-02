@@ -1,0 +1,55 @@
+// A circuit rule writes no `lhs ==> rhs` pair, because its **wiring**
+// determines one. That is the whole point of the block form: a rewrite that
+// happens inside a context is a diagram, and the diagram *is* the rewrite.
+//
+// Read the block below as a picture. `x` and `y` come in on the left; `p` is a
+// rewrite the rule is parameterized by; the `node` lines say what is wired to
+// what; `z` goes out on the right. Two boundary terms fall out of that one
+// picture, by resolving the declared output port `z` twice:
+//
+//   source reading:  z |-> add(x′, y) |-> add(x, y)     // p replaced by its source
+//   target reading:  z |-> add(x′, y) |-> add(x′, y)    // p replaced by its target
+//
+// so the rule is `add(x, y) ==> add(x′, y)`, and nobody wrote that down.
+//
+// Every arrow reports the kind of the thing it belongs to, and that redundancy
+// is deliberate. `add(x′, y) --> (z)` carries the circuit former because `add`
+// is an `oper`; `p(x) ==> (x′)` carries the rewrite face because `p` is a
+// `rule`. So a reader sees redex against frame locally, and a disagreement is a
+// named error rather than a silent reinterpretation.
+//
+// Wire names are the discipline: each is produced exactly once and consumed
+// exactly once. `x′` is written in no port list, so it is an *internal wire* --
+// implicit, computed by the name-set fold, never declared. Misspell it and you
+// get a linearity failure, not a silent fresh name.
+sign Nat {
+  sort Nat : Type
+  data Zero : Nat
+  data Succ : Nat --> Nat
+  oper add : (Nat, Nat) --> Nat
+
+  rule cong1 : (
+    rule p : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (x′);
+    node : add(x′, y) --> (z);
+  }
+}
+
+// What the description table holds for the block above: two constructors, one
+// operation, and one circuit member carrying its rewrite-sorted telescope and
+// the sphere its wiring derived.
+//@ mode: desc
+//@ expect-desc-render: data Nat { Zero = 1 : Nat, Succ = Nat : Nat }; op add/2->1; circuit cong1(p : Nat) add(x, y) ~> add(x′, y)
+
+// The cell layer admits it: two frame-defining cells (one per constructor) plus
+// the rule's own cell, which entered through the same admission seam a written
+// `rule` member passes.
+//@ expect-desc-store-cells: 3
+
+// And the block denotes one whiskered composite -- the redex sitting inside the
+// frame, which is what a congruence *is*: the free coherence of parallel
+// composition, with one side degenerate.
+//@ expect-desc-composites: 1
