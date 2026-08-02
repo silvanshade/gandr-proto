@@ -56,6 +56,12 @@
 //!   (`docs/gandr/spec/implementation/circuit-terms.md`,
 //!   `circuit-terms-spike-07`) and carrying the convexity conjunct's discharge
 //!   as a certificate rather than a recomputed sweep.
+//! - [`footprint`] — a **prototype** polarized independence test beside the
+//!   shift guard, consumed by nothing: a transition's match image split into
+//!   rewritten, matched-but-preserved, and framed addresses, with independence
+//!   defined from the split rather than from the alphabet. It exists to measure
+//!   where a polarized reading licenses commutations the guard's
+//!   incomparable-positions conjunct refuses, and it never replaces the guard.
 //! - [`compose`] — two-mode certificate composition (§4.3, ADR-69 D3):
 //!   [`compose::compose_invertible`] (the unconditional coherence lane) and
 //!   [`compose::compose_directed`] (gated by variable-flow acyclicity across
@@ -95,6 +101,7 @@ pub mod cell;
 pub mod completion;
 pub mod compose;
 pub mod elaborate;
+pub mod footprint;
 pub mod linearity;
 pub mod overlap;
 pub mod pattern;
@@ -148,6 +155,11 @@ pub use crate::elaborate::OpElaborateError;
 pub use crate::elaborate::OpFrame;
 pub use crate::elaborate::elaborate_data_desc;
 pub use crate::elaborate::elaborate_rule;
+pub use crate::footprint::FootprintIndependence;
+pub use crate::footprint::FootprintObstruction;
+pub use crate::footprint::MatchFootprint;
+pub use crate::footprint::footprint_independence;
+pub use crate::footprint::match_footprint;
 pub use crate::linearity::NonLinearPattern;
 pub use crate::linearity::admit_linear_cell;
 pub use crate::linearity::copied_hole;
