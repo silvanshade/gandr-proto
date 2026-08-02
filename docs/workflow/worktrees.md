@@ -50,6 +50,13 @@ Before spawning any sub-agent:
 
 Realized failure (2026-07-12): a boundary-analysis sub-agent ran grep/Read over a codegraph-indexed tree because the brief dropped the routing and the agent type had no MCP exposure; the gap surfaced only after the report landed.
 
+## Conflict reuse is disabled: `rerere` replays the wrong resolution silently
+
+`rerere.enabled` is set `false` in this repository's config, and the decision is deliberate (owner, 2026-08-02).
+The recurring conflict here is the docs manifest's hash lines, and the correct resolution is always **recomputation over the merged file** — a value no recorded resolution can supply, because the right hash differs every time.
+With reuse on, a recorded resolution replayed silently across later rebases and dropped a registered entry and an edge; three repair commits exist from that one recording.
+Resolve manifest conflicts by recomputing, never by replay, and leave the setting off — re-enabling it reintroduces a silent-corruption path the gates only catch when the drift checker happens to run.
+
 ## End-of-work lifecycle: no branch or worktree left in an unclear state
 
 Work routinely finishes while its branch and worktree linger, and nobody can later tell whether they hold anything unlanded (owner rule, 2026-07-19).
