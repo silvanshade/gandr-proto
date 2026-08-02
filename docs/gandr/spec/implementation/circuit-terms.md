@@ -138,8 +138,17 @@ Getting it per type, on the types that genuinely have the structure, is a strict
 > So the bead count and gandr's circle count are the same invariant, arrived at independently, and a per-type supply must compare **(m, n, j)** rather than (m, n).
 > This sharpens [[#circuit-terms-spike-05|circuit-terms-spike-05]] from "is the collapse checkable" to "is the bead count computable on gandr's representation" — and on the carrier it plainly is, since it is the `ℕ` the code already carries.
 >
-> **A planarity hazard travels with that citation and is the same one the corpus already carries once.** The general theorem is proved for **planar** connected diagrams, and planarity is what buys the generality: it is how the result reaches **noncommutative** algebras and **asymmetric** Frobenius forms. gandr cannot take that trade, because the parallel direction stays symmetric and ordering it "would be a silent catastrophe".
-> The useful consequence is that the corpus's commutativity requirement for a fan-in monoid now has a structural reason rather than only an intuition: **commutativity is the price of keeping the parallel direction symmetric**, and the named alternative — drop commutativity, adopt planarity — is declined for a reason already on the books ([[../metatheory#The certificate algebra]]).
+> **A planarity condition travels with that citation, and it is a condition rather than a bar.** The general theorem is proved for **planar** connected diagrams, and planarity is what buys the generality: it is how the result reaches **noncommutative** algebras and **asymmetric** Frobenius forms.
+> A first reading says gandr must refuse it, because the parallel direction stays symmetric and ordering it "would be a silent catastrophe".
+> **That reading is too quick, and the corpus refutes it two sections away**: the merger already **is** a planar tensor — the base is the free monoid on the colours, which is not commutative — and canonicalization is precisely "the passage from lists to multisets at the objects, which is what makes the Day convolution symmetric" ([[../metatheory#Interchange, by layer]]).
+> So gandr does not run a symmetric representation.
+> It runs a **planar representation with symmetry recovered at the quotient**, and `canon-sound` is the bridge.
+>
+> **The opposition is therefore not symmetric-versus-planar but _at which layer the order lives_**, which is the corpus's standing pattern rather than a new one: ordering is a section, never a planarization of the theory.
+> A planar theorem is consumable at the representation layer through exactly that section — the shape being a canonical boundary permutation composed with the standard form, with the permutation canonicalized the way `Rigid`'s recipe already canonicalizes construction terms (permutations outermost, ordered monomials, unique minimal representative).
+> What that would cost is one more `canon-sound` instance and the **monomial-to-monomial check**, which the Frobenius relations satisfy on their face — they equate single diagrams, not sums — and which the corpus requires be checked before anything leans on it.
+> What it is **not** licensed to do is make the theory planar; the bracket oracle's symmetry is over **disjoint** primitives, and whether that direction separates cleanly from the within-component order the spider theorem uses is unestablished.
+> Recorded as [[#circuit-terms-question-21|circuit-terms-question-21]], because the reason to want it is concrete: `append` on a `Pipe` is the aggregation section's own motivating example and it is **not commutative**.
 
 **That row now has a construction rather than a hope, and it is the literature's own worked case.** A per-type supply of Frobenius structure, expressed _inside_ a Frobenius-free symmetric monoidal theory, is a pair of generators $\{μ : 2 → 1, δ : 1 → 2\}$ on that type with the Frobenius equations oriented as rules — which is the theory of **Frobenius semi-algebras**, the first case study of the correspondence paper.
 Three facts transfer with it, each cited at its own statement:
@@ -579,6 +588,10 @@ Every one carries a disposition.
     They are not variants of one structure, and the choice decides whether a supplied type's fragment shrinks or grows under rewriting.
     **Carried, and it is a fork the supply table hid** by listing the two directions as independent rows.
     The coherent both-at-once structure is Hopf-Frobenius [@collins-2024-hopf-frobenius], whose "the conditions are minor" result is a **vector-space** statement resting on integrals, so it does not transfer to a combinatorial carrier and the fork stays a real decision.
+21. **circuit-terms-question-21** — **can the noncommutative, asymmetric spider theorem be consumed at the representation layer rather than refused?** The reason to want it is concrete: `append` on a `Pipe` is the aggregation section's own motivating example and it is **not** commutative, so the standing commutativity requirement may be excluding the case that motivated the feature.
+    The reason to think it possible is that gandr does not run a symmetric representation — the merger **is** a planar tensor, and canonicalization is already the passage that makes the convolution symmetric — so a planar theorem lands where gandr's order already lives, consumed through `canon-sound` rather than adopted into the theory.
+    **Carried**, with three things to establish in order: that the within-component order the spider theorem uses separates from the cross-component symmetry the bracket oracle needs; that the monomial-to-monomial condition holds for the Frobenius relations, which on their face it does since they equate diagrams rather than sums; and what the resulting `canon-sound` instance costs.
+    The failure mode to watch is the one the corpus names for the planar quotient generally: a substitution that "would read as a strengthening while narrowing what `cells_equal` accepts".
 
 ## Spikes
 

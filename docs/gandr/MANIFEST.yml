@@ -54,7 +54,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
     role: subdocument
-    b3: a58ea3715f0e07b876f75e1371d47b8d7f07bb83182e1d4e8b407e8c9dc4e919
+    b3: 484de4e6a37df86a090a77705ded673593936a2824abede56375a26e9838e2e6
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/carrier.md
@@ -139,7 +139,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: e38d121e40974a06c6e5a5b57e35eaa35fd151702e96bb55b90bd58f89d1f849
+    b3: 35e1dcd97d49764384a5d2d7637c8f4eff509276e7cff65be377274ca26641f2
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
