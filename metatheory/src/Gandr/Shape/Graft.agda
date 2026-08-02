@@ -236,36 +236,35 @@
 -- This is the fact recorded as "removing two different sources in either
 -- order", located precisely rather than estimated.
 --
--- ONE OF THE TWO IS WRITTEN. `match-remove-insert-apart` and
--- `match-unhit-insert-apart` say it for a threaded WIRE, on both lookups, and
--- they cost only the table above: rebuild the wiring from the lookup's own
--- value, commute the threading past the rebuild, read the answer back through
--- the round trip. `unhit-thread` and `removal-thread` are what "thread a wire
--- through what a lookup left" is, and `unhit-tail` turns out to BE the first of
--- them at the head rather than a separate device. The inverse lookup's half was
--- not claimed symmetric with the removal's; on this step it is, and it is the
--- same `match-insert-insert` twice.
+-- BOTH ARE WRITTEN NOW, and by ONE instrument. `match-remove-insert-apart` and
+-- `match-unhit-insert-apart` say it for a threaded WIRE, on both lookups;
+-- `match-remove-cut-apart` and `match-remove-cut-same` say it for a threaded
+-- CUT, split on the verdict of comparing the removed source with the cut's
+-- inner port. Every one of them is the same three steps — rebuild the wiring
+-- from the lookup's own value, commute the threading past the rebuild, read the
+-- answer back through the round trip — so each costs exactly one entry of the
+-- commutation table and nothing else.
 --
--- WHAT IS NOT WRITTEN IS THE SAME STATEMENT FOR A THREADED CUT, and it is
--- LOCATED AT A FORK rather than merely unwritten. Removing a source from a
--- wiring that caps ELSEWHERE has to say which of the two ports it met, so the
--- statement splits on `insert-view`, and the two routes past that split cost
--- differently:
+-- `removal-thread` and `unhit-thread` are what "thread a wire through what a
+-- lookup left" is, and `removal-recut` is the same for a cut; `removal-tail`
+-- and `unhit-tail` turn out to BE the first two at the head rather than
+-- separate devices. The inverse lookup's half was not claimed symmetric with
+-- the removal's; on this step it is, and it is `match-insert-insert` twice.
 --
---   * REBUILD, as the wire's half does. The rebuild turns the lookup's capped
---     branch into a second `match-cap`, so the identity it lands on is two
---     threaded cuts commuting — a cut, a cut, and the head they meet, FIVE.
---     Under the fixed-arity records that was a new rung AND a new permutation
---     family; under the presentation above it is one more word.
---   * DIRECT INDUCTION, mirroring `match-remove`'s own. This stays at four
---     layers and pays instead in view algebra: two positions read past a third
---     compare as they did before, and a position compared against one read past
---     a third needs the two verdicts composed. Neither is written and neither
---     is a tower coherence.
+-- WHAT THE CUT HALF COST, since it was the reason the presentation was taken.
+-- Its rebuild turns the lookup's capped branch into a second `match-cap`, so it
+-- lands on two threaded cuts commuting — a cut, a cut, and the head they meet,
+-- FIVE layers. Under the fixed-arity records that was a new rung AND a new
+-- permutation family. Under the presentation it is one more word:
+-- `tower-cycle-pair` says the pair exchange commutes with the cycle one height
+-- down, it is four applications of a single conjugation law, and that law is
+-- three relation steps. The alternative route — a direct induction staying at
+-- four layers and paying in view algebra instead — was not needed and is not
+-- written.
 --
--- The earlier estimate that no further coherence was owed on this route is
--- withdrawn. What the packaging changed is the first branch's price, and that
--- is the measurement the presentation was taken for.
+-- The earlier estimate that no further coherence was owed on this route was
+-- withdrawn and stays withdrawn: one was owed. What the packaging changed is
+-- what it cost to pay.
 --
 -- AND THE ARITY OF SUCH A DEBT IS NOT ARBITRARY, which is worth knowing before
 -- reaching for heavier machinery: it is the number of positions the operations
@@ -797,6 +796,119 @@ module _ {ℓ} {Ob : Set ℓ} where
       tower-swap₂ (tower-swap₁ (tower-swap (tower-swap₂ (tower-swap₁ t))))
     ∎
 
+  tower-swap₃
+    : ∀ {v w x y z xs ds dˣ}
+    → Tower (v ∷ w ∷ x ∷ y ∷ z ∷ xs) ds dˣ
+    → Tower (v ∷ w ∷ x ∷ z ∷ y ∷ xs) ds dˣ
+  tower-swap₃ = tower-cong tower-swap₂
+
+  -- the lifted relations this height needs
+  tower-swap-braid₂
+    : ∀ {v w x y z xs ds dˣ}
+    → (t : Tower (v ∷ w ∷ x ∷ y ∷ z ∷ xs) ds dˣ)
+    → tower-swap₂ (tower-swap₃ (tower-swap₂ t))
+      ≡ tower-swap₃ (tower-swap₂ (tower-swap₃ t))
+  tower-swap-braid₂ (i ◂ t) = cong (i ◂_) (tower-swap-braid₁ t)
+
+  -- MOVING THE BOTTOM LAYER TO THE TOP of a five-layer tower.
+  tower-cycle
+    : ∀ {a b c d e xs ds dˣ}
+    → Tower (a ∷ b ∷ c ∷ d ∷ e ∷ xs) ds dˣ
+    → Tower (b ∷ c ∷ d ∷ e ∷ a ∷ xs) ds dˣ
+  tower-cycle t = tower-swap₃ (tower-swap₂ (tower-swap₁ (tower-swap t)))
+
+  -- TRADING TWO ADJACENT PAIRS, which is what two cuts commuting asks of the
+  -- positions.
+  tower-pair
+    : ∀ {b c d e xs ds dˣ}
+    → Tower (b ∷ c ∷ d ∷ e ∷ xs) ds dˣ
+    → Tower (d ∷ e ∷ b ∷ c ∷ xs) ds dˣ
+  tower-pair t = tower-swap₁ (tower-swap₂ (tower-swap (tower-swap₁ t)))
+
+  -- CONJUGATING A GENERATOR BY THE CYCLE lowers its height by one.
+  tower-cycle-swap₁
+    : ∀ {a b c d e xs ds dˣ}
+    → (t : Tower (a ∷ b ∷ c ∷ d ∷ e ∷ xs) ds dˣ)
+    → tower-cycle (tower-swap₁ t) ≡ tower-swap (tower-cycle t)
+  tower-cycle-swap₁ t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ u ↦ tower-swap₃ (tower-swap₂ u) ]· tower-swap₁ (tower-swap (tower-swap₁ t))
+    ≈·⁻¹⟨ tower-swap-braid t ⟩
+      [ u ↦ tower-swap₃ u ]· tower-swap₂ (tower-swap (tower-swap₁ (tower-swap t)))
+    ≈·⁻¹⟨ tower-swap-far tower-swap (tower-swap₁ (tower-swap t)) ⟩
+      tower-swap₃ (tower-swap (tower-swap₂ (tower-swap₁ (tower-swap t))))
+    ≈⁻¹⟨ tower-swap-far tower-swap₁ (tower-swap₂ (tower-swap₁ (tower-swap t))) ⟩
+      tower-swap (tower-cycle t)
+    ∎
+
+  tower-swap-far₁
+    : ∀ {v x y xs ys ds dˣ}
+    → (f : ∀ {d} → Tower xs d dˣ → Tower ys d dˣ)
+    → (t : Tower (v ∷ x ∷ y ∷ xs) ds dˣ)
+    → tower-swap₁ (tower-cong (tower-cong (tower-cong f)) t)
+      ≡ tower-cong (tower-cong (tower-cong f)) (tower-swap₁ t)
+  tower-swap-far₁ f (i ◂ t) = cong (i ◂_) (tower-swap-far f t)
+
+  tower-cycle-swap₂
+    : ∀ {a b c d e xs ds dˣ}
+    → (t : Tower (a ∷ b ∷ c ∷ d ∷ e ∷ xs) ds dˣ)
+    → tower-cycle (tower-swap₂ t) ≡ tower-swap₁ (tower-cycle t)
+  tower-cycle-swap₂ t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ u ↦ tower-swap₃ (tower-swap₂ (tower-swap₁ u)) ]· tower-swap (tower-swap₂ t)
+    ≈·⟨ tower-swap-far tower-swap t ⟩
+      [ u ↦ tower-swap₃ u ]· tower-swap₂ (tower-swap₁ (tower-swap₂ (tower-swap t)))
+    ≈·⁻¹⟨ tower-swap-braid₁ (tower-swap t) ⟩
+      tower-swap₃ (tower-swap₁ (tower-swap₂ (tower-swap₁ (tower-swap t))))
+    ≈⁻¹⟨ tower-swap-far₁ tower-swap (tower-swap₂ (tower-swap₁ (tower-swap t))) ⟩
+      tower-swap₁ (tower-cycle t)
+    ∎
+
+  tower-cycle-swap₃
+    : ∀ {a b c d e xs ds dˣ}
+    → (t : Tower (a ∷ b ∷ c ∷ d ∷ e ∷ xs) ds dˣ)
+    → tower-cycle (tower-swap₃ t) ≡ tower-swap₂ (tower-cycle t)
+  tower-cycle-swap₃ t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ u ↦ tower-swap₃ (tower-swap₂ (tower-swap₁ u)) ]· tower-swap (tower-swap₃ t)
+    ≈·⟨ tower-swap-far tower-swap₁ t ⟩
+      [ u ↦ tower-swap₃ (tower-swap₂ u) ]· tower-swap₁ (tower-swap₃ (tower-swap t))
+    ≈·⟨ tower-swap-far₁ tower-swap (tower-swap t) ⟩
+      tower-swap₃ (tower-swap₂ (tower-swap₃ (tower-swap₁ (tower-swap t))))
+    ≈⁻¹⟨ tower-swap-braid₂ (tower-swap₁ (tower-swap t)) ⟩
+      tower-swap₂ (tower-cycle t)
+    ∎
+
+  tower-cong-pair
+    : ∀ {a b c d e xs ds dˣ}
+    → (t : Tower (a ∷ b ∷ c ∷ d ∷ e ∷ xs) ds dˣ)
+    → tower-cong tower-pair t
+      ≡ tower-swap₂ (tower-swap₃ (tower-swap₁ (tower-swap₂ t)))
+  tower-cong-pair (i ◂ t) = refl
+
+  -- THE PAIR EXCHANGE COMMUTES WITH THE CYCLE, one height down. This is the
+  -- whole of what two threaded cuts commuting asks of the positions.
+  tower-cycle-pair
+    : ∀ {a b c d e xs ds dˣ}
+    → (t : Tower (a ∷ b ∷ c ∷ d ∷ e ∷ xs) ds dˣ)
+    → tower-pair (tower-cycle t) ≡ tower-cycle (tower-cong tower-pair t)
+  tower-cycle-pair t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ u ↦ tower-swap₁ (tower-swap₂ (tower-swap u)) ]· tower-swap₁ (tower-cycle t)
+    ≈·⁻¹⟨ tower-cycle-swap₂ t ⟩
+      [ u ↦ tower-swap₁ (tower-swap₂ u) ]· tower-swap (tower-cycle (tower-swap₂ t))
+    ≈·⁻¹⟨ tower-cycle-swap₁ (tower-swap₂ t) ⟩
+      [ u ↦ tower-swap₁ u ]·
+        tower-swap₂ (tower-cycle (tower-swap₁ (tower-swap₂ t)))
+    ≈·⁻¹⟨ tower-cycle-swap₃ (tower-swap₁ (tower-swap₂ t)) ⟩
+      tower-swap₁ (tower-cycle (tower-swap₃ (tower-swap₁ (tower-swap₂ t))))
+    ≈⁻¹⟨ tower-cycle-swap₂ (tower-swap₃ (tower-swap₁ (tower-swap₂ t))) ⟩
+      [ u ↦ tower-cycle u ]·
+        tower-swap₂ (tower-swap₃ (tower-swap₁ (tower-swap₂ t)))
+    ≈·⁻¹⟨ tower-cong-pair t ⟩
+      tower-cycle (tower-cong tower-pair t)
+    ∎
+
   -- READING A TOWER OFF AT A FIXED HEIGHT. The records this replaced were
   -- carried for their PROJECTIONS, which a list-indexed family cannot have
   -- because the intermediate lists are existential. These are the projections
@@ -826,6 +938,19 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Tower (x ∷ y ∷ z ∷ w ∷ []) ds dˣ
     → A
   tower₄ f (a ◂ (b ◂ (c ◂ (d ◂ ⟨⟩)))) = f a b c d
+
+  tower₅
+    : ∀ {x y z w u ds dˣ} {A : Set ℓ}
+    → (∀ {d₁ d₂ d₃ d₄}
+       → Insert Ob x ds d₁
+       → Insert Ob y d₁ d₂
+       → Insert Ob z d₂ d₃
+       → Insert Ob w d₃ d₄
+       → Insert Ob u d₄ dˣ
+       → A)
+    → Tower (x ∷ y ∷ z ∷ w ∷ u ∷ []) ds dˣ
+    → A
+  tower₅ f (a ◂ (b ◂ (c ◂ (d ◂ (e ◂ ⟨⟩))))) = f a b c d e
 
   -- Threading one matched wire through a matching: a new source at `i`, a new
   -- sink at `j`, joined to each other, with every existing pair left alone.
@@ -1352,6 +1477,25 @@ module _ {ℓ} {Ob : Set ℓ} where
   ... | apart i₀ k₀ | refl =
     cong exchange-tail (insert-view-apart-swap i k i₀ k₀ v)
 
+  insert-view-apart-swapʳ
+    : ∀ {w u Δ Δ′ Δ″ C₀}
+    → (c : Insert Ob w Δ′ Δ)
+    → (ins : Insert Ob u Δ″ Δ)
+    → (c₀ : Insert Ob w C₀ Δ″)
+    → (ins₀ : Insert Ob u C₀ Δ′)
+    → insert-view c ins ≡ apart c₀ ins₀
+    → insert-swap ins c₀ ≡ exchange Δ′ c ins₀
+  insert-view-apart-swapʳ c ins c₀ ins₀ ev =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ insert-swap (Exchange.outer e) (Exchange.inner e) ]· exchange _ ins c₀
+    ≈·⁻¹⟨ insert-view-apart-swap c ins c₀ ins₀ ev ⟩
+      insert-swap
+        (Exchange.outer (insert-swap c ins₀))
+        (Exchange.inner (insert-swap c ins₀))
+    ≈⟨ insert-swap-invol c ins₀ ⟩
+      exchange _ c ins₀
+    ∎
+
   -- Whiskering a matching by a block of wires on the left. Each element of the
   -- block takes the position beside itself, which is one `head` per element and
   -- no permutation at all.
@@ -1468,6 +1612,23 @@ module _ {ℓ} {Ob : Set ℓ} where
     → removal-thread head s r ≡ removal-tail s r
   removal-thread-head s (through spot body) = refl
   removal-thread-head s (capped ins body) = refl
+
+  removal-recut
+    : ∀ {v x y Γ Γ˘ Γˣ Θ}
+    → Insert Ob x Γ˘ Γˣ
+    → Insert Ob y Γ Γ˘
+    → Removal v Γ Θ
+    → Removal v Γˣ Θ
+  removal-recut i k (through spot body) = through spot (match-cap i k body)
+  removal-recut i k (capped ins body) =
+    capped
+      (Exchange.outer (insert-swap i (Exchange.outer (insert-swap k ins))))
+      (match-cap
+        (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k ins))))
+        (Exchange.inner (insert-swap k ins))
+        body)
+
+  -- the apart verdict as an exchange, read from the other side
 
   match-remove
     : ∀ {x Γ Δ Θ}
@@ -2109,6 +2270,232 @@ module _ {ℓ} {Ob : Set ℓ} where
           β)
     ∎
 
+  -- AND TWO THREADED CUTS COMMUTE, which closes the table. Its coherence is
+  -- five layers — a cut, a cut, and the head they meet — and under the
+  -- presentation that is one more WORD rather than one more rung:
+  -- `tower-cycle-pair` is the whole of what it asks of the positions.
+  match-cap-cap
+    : ∀ {x₁ y₁ x₂ y₂ Γ Γ₁ Γ₂ Γ₃ Γ₄ Δ}
+    → (i₁ : Insert Ob x₁ Γ₃ Γ₄)
+    → (k₁ : Insert Ob y₁ Γ₂ Γ₃)
+    → (i₂ : Insert Ob x₂ Γ₁ Γ₂)
+    → (k₂ : Insert Ob y₂ Γ Γ₁)
+    → (β : Match Ob Γ Δ)
+    → match-cap i₁ k₁ (match-cap i₂ k₂ β)
+      ≡ tower₄
+          (λ a b c d → match-cap d c (match-cap b a β))
+          (tower-pair (k₂ ◂ i₂ ◂ k₁ ◂ i₁ ◂ ⟨⟩))
+  match-cap-cap head k₁ i₂ k₂ β =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ cap (Exchange.outer e) (match-cap (Exchange.inner e) k₂ β) ]·
+        exchange _ k₁ i₂
+    ≈·⁻¹⟨ insert-swap-invol k₁ i₂ ⟩
+      [ e ↦ cap
+              (Exchange.outer
+                (insert-swap (Exchange.outer (insert-swap k₁ i₂)) (Exchange.outer e)))
+              (match-cap
+                (Exchange.inner
+                  (insert-swap (Exchange.outer (insert-swap k₁ i₂)) (Exchange.outer e)))
+                (Exchange.inner e)
+                β) ]·
+        exchange _ (Exchange.inner (insert-swap k₁ i₂)) k₂
+    ≈·⁻¹⟨ insert-swap-invol (Exchange.inner (insert-swap k₁ i₂)) k₂ ⟩
+      tower₄
+        (λ a b c d → match-cap d c (match-cap b a β))
+        (tower-pair (k₂ ◂ i₂ ◂ k₁ ◂ head ◂ ⟨⟩))
+    ∎
+  match-cap-cap (tail i) head i₂ k₂ β =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ cap (Exchange.outer e) (match-cap (Exchange.inner e) k₂ β) ]·
+        exchange _ i i₂
+    ≈·⁻¹⟨ insert-swap-invol i i₂ ⟩
+      [ e ↦ cap
+              (Exchange.outer
+                (insert-swap (Exchange.outer (insert-swap i i₂)) (Exchange.outer e)))
+              (match-cap
+                (Exchange.inner
+                  (insert-swap (Exchange.outer (insert-swap i i₂)) (Exchange.outer e)))
+                (Exchange.inner e)
+                β) ]·
+        exchange _ (Exchange.inner (insert-swap i i₂)) k₂
+    ≈·⁻¹⟨ insert-swap-invol (Exchange.inner (insert-swap i i₂)) k₂ ⟩
+      tower₄
+        (λ a b c d → match-cap d c (match-cap b a β))
+        (tower-pair (k₂ ◂ i₂ ◂ head ◂ tail i ◂ ⟨⟩))
+    ∎
+  match-cap-cap (tail i) (tail k) head k₂ β = refl
+  match-cap-cap (tail i) (tail k) (tail i′) head β = refl
+  match-cap-cap (tail i) (tail k) (tail i′) (tail k′) (c ∷ t) =
+    cong (c ∷_) (match-cap-cap i k i′ k′ t)
+  match-cap-cap (tail i) (tail k) (tail i′) (tail k′) (cap c t) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ cap
+              (Exchange.outer
+                (insert-swap i
+                  (Exchange.outer
+                    (insert-swap k
+                      (Exchange.outer
+                        (insert-swap i′ (Exchange.outer (insert-swap k′ c))))))))
+              m ]·
+        match-cap
+          (Exchange.inner
+            (insert-swap i
+              (Exchange.outer
+                (insert-swap k
+                  (Exchange.outer
+                    (insert-swap i′ (Exchange.outer (insert-swap k′ c))))))))
+          (Exchange.inner
+            (insert-swap k
+              (Exchange.outer (insert-swap i′ (Exchange.outer (insert-swap k′ c))))))
+          (match-cap
+            (Exchange.inner (insert-swap i′ (Exchange.outer (insert-swap k′ c))))
+            (Exchange.inner (insert-swap k′ c))
+            t)
+    ≈·⟨ match-cap-cap
+          (Exchange.inner
+            (insert-swap i
+              (Exchange.outer
+                (insert-swap k
+                  (Exchange.outer
+                    (insert-swap i′ (Exchange.outer (insert-swap k′ c))))))))
+          (Exchange.inner
+            (insert-swap k
+              (Exchange.outer (insert-swap i′ (Exchange.outer (insert-swap k′ c))))))
+          (Exchange.inner (insert-swap i′ (Exchange.outer (insert-swap k′ c))))
+          (Exchange.inner (insert-swap k′ c))
+          t ⟩
+      [ T ↦ tower₅ (λ a b c′ d e → cap e (match-cap d c′ (match-cap b a t))) T ]·
+        tower-pair (tower-cycle (c ◂ k′ ◂ i′ ◂ k ◂ i ◂ ⟨⟩))
+    ≈·⟨ tower-cycle-pair (c ◂ k′ ◂ i′ ◂ k ◂ i ◂ ⟨⟩) ⟩
+      tower₄
+        (λ a b c′ d → match-cap d c′ (match-cap b a (cap c t)))
+        (tower-pair (tail k′ ◂ tail i′ ◂ tail k ◂ tail i ◂ ⟨⟩))
+    ∎
+
+  -- THE CONTRACTION SWAP `ζ_{x,y} = ζ_{y,x}`, as an equation. A cut does not
+  -- care which of its two ports is named first: capping `x` at the outer slot
+  -- to `y` at the inner one is the same TERM as capping `y` outer to `x`
+  -- inner, where "the same two slots, in the other order" is what
+  -- `insert-swap` computes.
+  --
+  -- The first two clauses are the content and hold by `refl`, because `Match`
+  -- presents a cut canonically — the capped pair is written once, at its
+  -- earlier port, so there is no second term to identify. That is the same
+  -- reason the pre-cap wiring had one term per bijection, and it means the
+  -- identification is discharged by the representation rather than imposed on
+  -- it.
+  --
+  -- IT HOLDS IN GENERAL, over any wiring. An earlier revision proved it only
+  -- where the wiring underneath was flow-through, because the remaining case —
+  -- a cut over a wiring that ALREADY caps — pushes the two new ports and the
+  -- existing cap's partner past each other in two orders whose intermediate
+  -- lists differ. That is `tower-swap-braid`, and with the symmetry stated as
+  -- a presentation the case is no longer a chase: it is one step over the braid
+  -- relation, under one `cong` over the recursion. The hypothesis is gone, and
+  -- what removed it was naming the structure rather than finding a trick.
+  cap-swap
+    : ∀ {x y Γ Γ˘ Γˣ Δ}
+    → (i : Insert Ob x Γ˘ Γˣ)
+    → (j : Insert Ob y Γ Γ˘)
+    → (m : Match Ob Γ Δ)
+    → match-cap i j m
+        ≡ match-cap
+            (Exchange.outer (insert-swap i j))
+            (Exchange.inner (insert-swap i j))
+            m
+  cap-swap head j m = refl
+  cap-swap (tail i) head m = refl
+  cap-swap (tail i) (tail j) (k ∷ m) = cong (k ∷_) (cap-swap i j m)
+  cap-swap (tail i) (tail j) (cap k m) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ c ↦ cap
+              (Exchange.outer (insert-swap i (Exchange.outer (insert-swap j k))))
+              c ]·
+        match-cap
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+          (Exchange.inner (insert-swap j k))
+          m
+    ≈·⟨ cap-swap
+          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
+          (Exchange.inner (insert-swap j k))
+          m ⟩
+      [ t ↦ tower₃ (λ a b c′ → cap c′ (match-cap b a m)) t ]·
+        tower-swap (tower-swap₁ (tower-swap (k ◂ j ◂ i ◂ ⟨⟩)))
+    ≈·⟨ tower-swap-braid (k ◂ j ◂ i ◂ ⟨⟩) ⟩
+      tower₃
+        (λ a b c′ → cap c′ (match-cap b a m))
+        (tower-swap₁ (tower-swap (tower-swap₁ (k ◂ j ◂ i ◂ ⟨⟩))))
+    ∎
+
+  -- re-applying a cut around a rebuild, with no hypothesis: the two branches
+  -- are the commutation table's cut-against-wire and cut-against-cut entries
+  recut-recover⋆
+    : ∀ {x u w Δ Δˣ Δ″ C₀ Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (ins : Insert Ob u Δ″ Δ)
+    → (c₀ : Insert Ob w C₀ Δ″)
+    → (r : Removal w C₀ Θ)
+    → removal→match
+        (Exchange.outer (insert-swap j (Exchange.outer (insert-swap ins c₀))))
+        (removal-recut
+          (Exchange.inner (insert-swap j (Exchange.outer (insert-swap ins c₀))))
+          (Exchange.inner (insert-swap ins c₀))
+          r)
+      ≡ match-cap j ins (removal→match c₀ r)
+  recut-recover⋆ j ins c₀ (through σ β) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-insert
+        (Exchange.outer (insert-swap j (Exchange.outer (insert-swap ins c₀))))
+        σ
+        (match-cap
+          (Exchange.inner (insert-swap j (Exchange.outer (insert-swap ins c₀))))
+          (Exchange.inner (insert-swap ins c₀))
+          β)
+    ≈⁻¹⟨ match-cap-insert j ins c₀ σ β ⟩
+      match-cap j ins (match-insert c₀ σ β)
+    ∎
+  recut-recover⋆ j ins c₀ (capped ι β) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      tower₄
+        (λ a b c d → match-cap d c (match-cap b a β))
+        (tower-pair (ι ◂ c₀ ◂ ins ◂ j ◂ ⟨⟩))
+    ≈⁻¹⟨ match-cap-cap j ins c₀ ι β ⟩
+      match-cap j ins (match-cap c₀ ι β)
+    ∎
+
+  recut-recover
+    : ∀ {x u w Δ Δˣ Δ′ Δ″ C₀ Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (ins : Insert Ob u Δ″ Δ)
+    → (c : Insert Ob w Δ′ Δ)
+    → (c₀ : Insert Ob w C₀ Δ″)
+    → (ins₀ : Insert Ob u C₀ Δ′)
+    → insert-view c ins ≡ apart c₀ ins₀
+    → (r : Removal w C₀ Θ)
+    → removal→match
+        (Exchange.outer (insert-swap j c))
+        (removal-recut (Exchange.inner (insert-swap j c)) ins₀ r)
+      ≡ match-cap j ins (removal→match c₀ r)
+  recut-recover j ins c c₀ ins₀ ev r =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ removal→match
+              (Exchange.outer (insert-swap j (Exchange.outer e)))
+              (removal-recut
+                (Exchange.inner (insert-swap j (Exchange.outer e)))
+                (Exchange.inner e)
+                r) ]·
+        exchange _ c ins₀
+    ≈·⁻¹⟨ insert-view-apart-swapʳ c ins c₀ ins₀ ev ⟩
+      removal→match
+        (Exchange.outer (insert-swap j (Exchange.outer (insert-swap ins c₀))))
+        (removal-recut
+          (Exchange.inner (insert-swap j (Exchange.outer (insert-swap ins c₀))))
+          (Exchange.inner (insert-swap ins c₀))
+          r)
+    ≈⟨ recut-recover⋆ j ins c₀ r ⟩
+      match-cap j ins (removal→match c₀ r)
+    ∎
+
   -- ── AND WHAT THE INVERSE LOOKUP SEES OF A CUT ──────────────────────────────
   --
   -- `match-unhit-cut` is `match-cap-insert`'s consumer and the reason it was
@@ -2621,6 +3008,66 @@ module _ {ℓ} {Ob : Set ℓ} where
          (Exchange.outer (insert-swap j ι))
          (unhit-thread i (Exchange.inner (insert-swap j ι)) (match-unhit ι b)) ⟩
       unhit-thread i (Exchange.inner (insert-swap j ι)) (match-unhit ι b)
+    ∎
+
+  -- REMOVING A SOURCE FROM A WIRING THAT CAPS ELSEWHERE, when the source is not
+  -- one of the cut's own two ports
+  match-remove-cut-apart
+    : ∀ {x u w Δ Δˣ Δ′ Δ″ C₀ Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (ins : Insert Ob u Δ″ Δ)
+    → (c : Insert Ob w Δ′ Δ)
+    → (c₀ : Insert Ob w C₀ Δ″)
+    → (ins₀ : Insert Ob u C₀ Δ′)
+    → insert-view c ins ≡ apart c₀ ins₀
+    → (t : Match Ob Δ″ Θ)
+    → match-remove (Exchange.outer (insert-swap j c)) (match-cap j ins t)
+      ≡ removal-recut (Exchange.inner (insert-swap j c)) ins₀ (match-remove c₀ t)
+  match-remove-cut-apart j ins c c₀ ins₀ ev t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ match-remove (Exchange.outer (insert-swap j c)) (match-cap j ins m) ]· t
+    ≈·⁻¹⟨ match-remove-recover c₀ t (match-remove c₀ t) refl ⟩
+      [ m ↦ match-remove (Exchange.outer (insert-swap j c)) m ]·
+        match-cap j ins (removal→match c₀ (match-remove c₀ t))
+    ≈·⁻¹⟨ recut-recover j ins c c₀ ins₀ ev (match-remove c₀ t) ⟩
+      match-remove
+        (Exchange.outer (insert-swap j c))
+        (removal→match
+          (Exchange.outer (insert-swap j c))
+          (removal-recut
+            (Exchange.inner (insert-swap j c))
+            ins₀
+            (match-remove c₀ t)))
+    ≈⟨ match-remove-roundtrip
+         (Exchange.outer (insert-swap j c))
+         (removal-recut (Exchange.inner (insert-swap j c)) ins₀ (match-remove c₀ t)) ⟩
+      removal-recut (Exchange.inner (insert-swap j c)) ins₀ (match-remove c₀ t)
+    ∎
+
+  -- and when it IS one of them: the cut leaves together with its partner, and
+  -- the partner is the cut's other port read in what remains
+  match-remove-cut-same
+    : ∀ {x w Δ Δˣ Δ′ Θ}
+    → (j : Insert Ob x Δ Δˣ)
+    → (c : Insert Ob w Δ′ Δ)
+    → (t : Match Ob Δ′ Θ)
+    → match-remove (Exchange.outer (insert-swap j c)) (match-cap j c t)
+      ≡ capped (Exchange.inner (insert-swap j c)) t
+  match-remove-cut-same j c t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ m ↦ match-remove (Exchange.outer (insert-swap j c)) m ]· match-cap j c t
+    ≈·⟨ cap-swap j c t ⟩
+      match-remove
+        (Exchange.outer (insert-swap j c))
+        (match-cap
+          (Exchange.outer (insert-swap j c))
+          (Exchange.inner (insert-swap j c))
+          t)
+    ≈⟨ match-remove-cut
+         (Exchange.outer (insert-swap j c))
+         (Exchange.inner (insert-swap j c))
+         t ⟩
+      capped (Exchange.inner (insert-swap j c)) t
     ∎
 
   -- Removing a sink from the identity hands back the position it was given,
@@ -5126,61 +5573,6 @@ module _ {ℓ} {Ob : Set ℓ} where
     → merge p q (idn A) T ≡ lwhisk p q T
   merge-idn nil nil T = refl
   merge-idn (cons p) (cons q) T = cong (wire-in head head) (merge-idn p q T)
-
-  -- THE CONTRACTION SWAP `ζ_{x,y} = ζ_{y,x}`, as an equation. A cut does not
-  -- care which of its two ports is named first: capping `x` at the outer slot
-  -- to `y` at the inner one is the same TERM as capping `y` outer to `x`
-  -- inner, where "the same two slots, in the other order" is what
-  -- `insert-swap` computes.
-  --
-  -- The first two clauses are the content and hold by `refl`, because `Match`
-  -- presents a cut canonically — the capped pair is written once, at its
-  -- earlier port, so there is no second term to identify. That is the same
-  -- reason the pre-cap wiring had one term per bijection, and it means the
-  -- identification is discharged by the representation rather than imposed on
-  -- it.
-  --
-  -- IT HOLDS IN GENERAL, over any wiring. An earlier revision proved it only
-  -- where the wiring underneath was flow-through, because the remaining case —
-  -- a cut over a wiring that ALREADY caps — pushes the two new ports and the
-  -- existing cap's partner past each other in two orders whose intermediate
-  -- lists differ. That is `tower-swap-braid`, and with the symmetry stated as
-  -- a presentation the case is no longer a chase: it is one step over the braid
-  -- relation, under one `cong` over the recursion. The hypothesis is gone, and
-  -- what removed it was naming the structure rather than finding a trick.
-  cap-swap
-    : ∀ {x y Γ Γ˘ Γˣ Δ}
-    → (i : Insert Ob x Γ˘ Γˣ)
-    → (j : Insert Ob y Γ Γ˘)
-    → (m : Match Ob Γ Δ)
-    → match-cap i j m
-        ≡ match-cap
-            (Exchange.outer (insert-swap i j))
-            (Exchange.inner (insert-swap i j))
-            m
-  cap-swap head j m = refl
-  cap-swap (tail i) head m = refl
-  cap-swap (tail i) (tail j) (k ∷ m) = cong (k ∷_) (cap-swap i j m)
-  cap-swap (tail i) (tail j) (cap k m) =
-    begin⟨ bundle (≡ˢ _) ⟩
-      [ c ↦ cap
-              (Exchange.outer (insert-swap i (Exchange.outer (insert-swap j k))))
-              c ]·
-        match-cap
-          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
-          (Exchange.inner (insert-swap j k))
-          m
-    ≈·⟨ cap-swap
-          (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
-          (Exchange.inner (insert-swap j k))
-          m ⟩
-      [ t ↦ tower₃ (λ a b c′ → cap c′ (match-cap b a m)) t ]·
-        tower-swap (tower-swap₁ (tower-swap (k ◂ j ◂ i ◂ ⟨⟩)))
-    ≈·⟨ tower-swap-braid (k ◂ j ◂ i ◂ ⟨⟩) ⟩
-      tower₃
-        (λ a b c′ → cap c′ (match-cap b a m))
-        (tower-swap₁ (tower-swap (tower-swap₁ (k ◂ j ◂ i ◂ ⟨⟩))))
-    ∎
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- THE UNIT LAWS, AND THE EXACT PRICE OF STATING THEM ON THE FUNCTION.
