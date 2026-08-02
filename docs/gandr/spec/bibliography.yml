@@ -1624,6 +1624,47 @@ smalltt:
   url: https://github.com/AndrasKovacs/smalltt
   note: not in library.bib; synthesized 2026-07-31 — read at pinned commit ea99b0f (2026-02-02) per [[impl-models-deep-read]]
 
+# ── The value-semantics line (update surface, in-place elision, access modes) ─
+
+racordon-shabalin-zheng-abrahams-saeta-2022-mutable-value-semantics:
+  type: article
+  title: Implementation Strategies for Mutable Value Semantics
+  author: ["Racordon, Dimitri", "Shabalin, Denys", "Zheng, Daniel", "Abrahams, Dave", "Saeta, Brennan"]
+  date: 2022
+  serial-number:
+    doi: "10.5381/jot.2022.21.2.a2"
+  parent:
+    type: periodical
+    title: Journal of Object Technology
+    volume: 21
+    issue: 2
+  note: the mutable-value-semantics discipline and its compilation strategy (stack allocation for fixed-size values, copy-on-write for dynamically sized containers)
+
+reinking-xie-de-moura-leijen-2021-perceus:
+  type: article
+  title: "Perceus: Garbage Free Reference Counting with Reuse"
+  author: ["Reinking, Alex", "Xie, Ningning", "de Moura, Leonardo", "Leijen, Daan"]
+  date: 2021
+  serial-number:
+    doi: "10.1145/3453483.3454032"
+  parent:
+    type: proceedings
+    title: Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI 2021)
+  note: precise reference counting with reuse analysis; the static-last-use precedent for in-place elision
+
+ullrich-de-moura-2019-immutable-beans:
+  type: article
+  title: "Counting Immutable Beans: Reference Counting Optimized for Purely Functional Programming"
+  author: ["Ullrich, Sebastian", "de Moura, Leonardo"]
+  date: 2019
+  serial-number:
+    doi: "10.1145/3412932.3412935"
+    arxiv: "1908.05647"
+  parent:
+    type: proceedings
+    title: Proceedings of the 31st Symposium on Implementation and Application of Functional Languages (IFL 2019)
+  note: borrowed references and inferred borrow annotations to minimize reference-count updates
+
 # --- the circuit-terms sweep (2026-08-01): diagrammatic rewriting, hypergraph
 # --- structure, semi-strictification, and the reversible-computing neighbours.
 # --- Identifiers below were read off each artifact's own front matter.

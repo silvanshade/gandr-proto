@@ -31,6 +31,10 @@ The boundary between metatheory and proof engineering requires judgement: conten
   Where an item genuinely needs an identifier, the identifier carries a topic prefix and a zero-padded number — `meta-spike-04`, `meta-question-19` — is anchored so it can be linked into, and is cited by that link.
   See [`docs/workflow/specs.md`](../../workflow/specs.md) for the rule and what a bare letter cost this corpus.
   Where a named decision is load-bearing it has a heading in the owning track document.
+* **`proposed/` is where a design with no implementation lives.** The corpus register is timeless: a document says what _is_ the case.
+  A design that nothing yet realizes cannot honour that register without either overstating itself or hedging every sentence, so each track may carry a `proposed/` subdirectory, and a document's presence there _is_ the statement that no crate or module realizes it.
+  A `proposed/` document still owes everything else the corpus owes — dispositions, citations by key, anchored identifiers, and the two-axis review — and it still names, precisely, which of its premises are built and which are not.
+  It graduates into the track proper when an implementation lands, at which point its as-built claims are verified against the tree like any other document's.
 * **Status.** The specs describe the current state and accepted directions.
   Historical narrative is out of scope except where a superseded claim must stay visibly superseded to prevent relitigation; those live in each track's `guards` or `hazards` sub-documents.
 * **Dispositions.** Every open item imported from a source — an open question, spike, obligation, falsifier, pending read — carries exactly one disposition where a reader meets it: carried; declined with a reversal condition (in `guards`); parked with a reason (in `roadmap`); or retired with a tombstone (in `guards`).

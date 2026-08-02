@@ -12,6 +12,7 @@ If the exhaustiveness claim is ever wrong, that is a defect in this document, no
 * [[surface-language/circuit-cells]] — the design sketch for full circuit-algebra cells: reconvergence, disconnection, and wheels at the surface, port-named interfaces with polarity, the wheel guard, holes as contexts, and the cost of each feature.
 * [[surface-language/higher-cells]] — the dimension-named `data`-block members in full: the `sort`/`cons`/`oper`/`rule`/`meta` ladder with the reserved `cell` tower, mandatory 2- and 3-cell names, the boundary language and its sphere typing, and the derived `Model(S)` signature-former with its flagship shapes.
 * [[surface-language/recursion]] — the (co)recursion surface: `def rec`/`rec { … }`, the instantiation slot with its direction sigils, the productivity ladder, loops, and the as-built scope rung.
+* [[surface-language/value-semantics]] — the update surface in full: functional record update, the list update operations, update by construction, the state-visibility red line, in-place execution as a runtime licence, and the four foreclosure rules that keep the mode calculus open.
 * [[surface-language/shell]] — the shell fragment: shell blocks and jobs, the embedded sub-grammar, the host escape, string interpolation, and the REPL split.
 * [[surface-language/roadmap]] — graduation rungs per reserved form, the pending lanes, and the deferred-with-reasons inventory.
 
@@ -121,7 +122,7 @@ fn(f: U (B -> F C)) {
 * **Ascription** — `(e : T)`, parenthesized only.
 * **Thunks** — `thunk { t }`, graded `thunk[r] { t }` (grade defaults to `ω`); **`force v`**.
 * **Lazy products** — `co { fst = t, snd = u }` with projection `t.fst`.
-* **Records** — `#{ℓ = v, …}` literals, `#{ℓ : T, …}` types, `r.ℓ` projection, `#{r | ℓ = v, …}` functional update.
+* **Records** — `#{ℓ = v, …}` literals, `#{ℓ : T, …}` types, `r.ℓ` projection, `#{r | ℓ = v, …}` functional update ([[value-semantics#Functional record update]]).
 * **Tuples and lists** — `(v, w)`; `[a, b, …]` (check-only: a bare inferred list needs an expected type).
 * **Sharing primitives** — `dup(v)`, `drop(v)` as ordinary computations.
 * **Worlds** — `hold v` (package at the current world), `leta x = v;` (modal elimination), `migrate[w] { t }`.
@@ -248,6 +249,21 @@ rec {
 The discipline in one paragraph: a **recursive scope** opened by `def rec` or `rec { … }`, and a **direction sigil** in the instantiation slot required at every recursive occurrence — the marked occurrence is the only reference to the fix-bound variable, an unmarked one is a hard error carrying the marked spelling as its suggestion, and outer bindings stay reachable by qualified path.
 The markers grow along the **productivity ladder** (scope evidence now; checked guardedness next; erased size applications at the sized rung), and corecursion is the same family — copattern-clause bodies, no `def corec`.
 The full design, the as-built scope pass, and the edge cases are [[surface-language/recursion]].
+
+## Value semantics — how a program says "a changed value"
+
+```text
+def r  = #{ x = 1, y = 2 };
+def r2 = #{ r | x = 9 };        // r STILL denotes #{x = 1, y = 2}
+def xs2 = list.set(xs, 1, 99);  // xs is untouched; xs2 is a new list
+```
+
+Every update produces a **new** value, and no binding a program already holds can observe a later change to it — the **state-visibility red line**, which holds structurally because the surface has no lvalue, no `:=`, no reference, and no aliasable cell.
+The whole mutation surface is three constructs: functional record update `#{ r | ℓ = v, … }`, the `list` module's update operations, and update-by-construction for declared data (match, then rebuild).
+
+Whether the runtime physically copies is a **separate question, answered below the surface**: where a base is provably unique at its update site, in-place mutation is an unobservable optimization.
+Access modes, references, and regions are deliberately absent, and four foreclosure rules keep them addable rather than retrofittable.
+The full treatment is [[surface-language/value-semantics]]; the calculus that would add them is a separate, not-yet-written design space.
 
 ## The shell fragment
 
