@@ -804,6 +804,13 @@ So the test the quotient asks for reads, as built, as **two `Pos` paths of which
 
 **The honest default is now stated positively rather than left pending.** The shift quotient is warranted on the fragment where no match can be made non-convex; that fragment is the whole cell store today, by either argument above; and after the alphabet change it is the sub-store whose left-hand sides stay strongly connected, with the convexity re-check standing in for the certificate everywhere else.
 
+**As built (2026-08-02): the guard has its first consumer, and it is a constructor rather than a fast path.** `gandr-theory-computads`'s `shift::derive_shift_equivalence` decides the three conjuncts in the order stated above and refuses the pair — a typed obstruction, never a panic and never a silent identity — when any fails; the convexity conjunct is carried as a datum naming its warrant, answered per store by the alphabet, instead of being recomputed; and the independence question is asked of the cell pair alone, through an `overlaps_between` extracted from the store-wide enumerator without changing what it reports.
+Two as-built facts arrived with it, and both bound where the guard bites.
+
+* **The quotient's extension over the sequent alphabet is still empty, and now for a stated reason rather than for want of a predicate.** A `CmdPat` is one cut whose children are a producer and a consumer, so a term has exactly one command position and no two applications can ever be incomparable; the guard is a specification the alphabet has not reached, and it becomes live the moment an alphabet nests commands — which is what a circuit-shaped body does.
+* **The overlap enumerator counts a metavariable position as a seam.** Over an alphabet whose every subterm is a command position, a cell whose right-hand side exposes a hole therefore overlaps every cell, so the trivial-overlap conjunct is strictly stricter than the critical-pair notion it is named after, which excludes variable positions.
+  That is the enumerator's gap to close and not the guard's to work around, and it is why a two-redex fixture needs ground right-hand sides today.
+
 ### circuit-terms-spike-08
 
 **Is the delay cut convexity-stable?** The wheel ruling is that the **cut-open form** of a delay-guarded cyclic body is an ma-cospan whose boundary carries the delays' cut ends, so cutting every delayed port turns a body $Γ → Δ$ into an acyclic $Γ + D → Δ + D$ that the whole correspondence covers.
