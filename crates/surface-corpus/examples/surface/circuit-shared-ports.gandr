@@ -1,0 +1,67 @@
+// The port discipline's refutations: circuit blocks that parse cleanly and are
+// refused by the name-set fold, whose only failure mode is non-disjointness —
+// a port name two distinct ports arrive under (parse-only fixture).
+//
+// GRADUATION: the spellings are ruled at
+// docs/gandr/spec/surface-language/circuit-cells.md, "The block form, ruled".
+// Circuit members are parse-and-decline at lowering and graduate to accepted
+// behind the gate under gandr-ng9.1.5. Parse-only; never lowered.
+//
+// Every declaration below is SYNTACTICALLY well-formed, and that is the point:
+// the parser's zero-obligation gate accepts the whole file, and each block is
+// refused by the circuit surface check with a diagnostic naming the shared
+// name. Wiring errors are named-port diagnostics, never arity mismatches. The
+// well-formed side is the sibling `circuit-internal-wires.gandr`.
+
+// A wire consumed twice. Monogamy admits no implicit duplication, so feeding
+// one name into both inputs of a frame shares the port name `x`; duplicating a
+// value needs a cell that says so.
+sign ConsumedTwice {
+  sort Nat : Type
+  oper add : (l : Nat, r : Nat) --> (sum : Nat)
+
+  rule doubled : (data x : Nat) ==> (z : Nat) {
+    node : add(x, x) --> (z);
+  }
+}
+
+// A wire produced twice. Two frame lines each name their output `m`, and the
+// second cannot take an endpoint the first already holds.
+sign ProducedTwice {
+  sort Nat : Type
+  oper f : (a : Nat) --> (b : Nat)
+  oper g : (a : Nat) --> (b : Nat)
+
+  oper collide : (i : Nat, j : Nat) --> (o : Nat) {
+    node : f(i) --> (m);
+    node : g(j) --> (m);
+  }
+}
+
+// Two redexes sharing a port name — the horizontal-composition fence read at
+// the parser. Two redexes in one body are disjoint exactly when they share no
+// port name, and `x` is in both, so this is the ill-formed grafting the named
+// side conditions exist to rule out.
+sign SharedRedexPort {
+  sort Nat : Type
+  oper add : (l : Nat, r : Nat) --> (sum : Nat)
+
+  rule overlap : (
+    rule p : Nat ==> Nat,
+    rule q : Nat ==> Nat,
+    data x : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (m);
+    node : q(x) ==> (n);
+    node : add(m, n) --> (z);
+  }
+}
+
+// A port's uses disagreeing in sort. One spelling names an input at `Nat` and
+// an output at `Bit`, which are two ports rather than one wire — the boundary
+// half of the attachment discipline, refused at the same merge as the rest.
+sign SortDisagreement {
+  sort Nat : Type
+  sort Bit : Type
+  oper narrow : (v : Nat) --> (v : Bit)
+}
