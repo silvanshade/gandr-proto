@@ -256,24 +256,25 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     );
     assert_eq!(clean, files.len(), "clean accounts for the whole corpus");
     assert_eq!(0, total, "the corpus carries zero total obligations");
-    // Model + pathological at 89 / 89 (54 base examples including the M1-lite
-    // module model + the three codata-MVP examples under `codata/` + the six
+    // Model + pathological at 90 / 90 (54 base examples including the M1-lite
+    // module model + the three codata-MVP examples under `codata/` + the seven
     // supporting inspection examples under `sequent/` and `desc/` — the fifth
-    // is the description → cell-store model witness and the sixth its
-    // pathological many-out counterpart — + the six identity examples under
+    // is the description → cell-store model witness, the sixth its
+    // pathological many-out counterpart, and the seventh the linearity-refusal
+    // pathological witness — + the six identity examples under
     // `identity/` — five model, one pathological K-rejection witness — + ten
     // declared-data examples under `data/` — five model and five pathological —
     // + eight module failure goldens + the type-associativity pathological
     // witness + the shell host-escape non-String failure witness).
     assert_eq!(
-        89, base_count,
-        "the model + pathological trees are 89 files (54 base + 3 codata + 6 inspection \
+        90, base_count,
+        "the model + pathological trees are 90 files (54 base + 3 codata + 7 inspection \
          + 6 identity + 10 declared-data + 8 module pathologies + 1 type-associativity \
          + 1 shell host escape)"
     );
     assert_eq!(
-        89, base_clean,
-        "all 89 model + pathological files mold clean"
+        90, base_clean,
+        "all 90 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

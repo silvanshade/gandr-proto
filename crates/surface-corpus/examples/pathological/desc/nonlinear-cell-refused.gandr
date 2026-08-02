@@ -1,0 +1,28 @@
+// A repeated hole on a rule's left-hand side: refused at the cell layer's
+// admission boundary, with the copy named.
+//
+// Cell patterns are linear (circuit-terms-question-17): a metavariable that
+// occurs twice on a left-hand side is a copy on a wire, and a copy needs a
+// comonoid the type may not have. `rule and(x, x) ~> x` — idempotence written
+// with a repeated hole — elaborates to a cut whose producer hole `x` occurs
+// twice, so the admission boundary refuses the cell, and the diagnostic names
+// the copy and the respelling: match through the copying cell, exactly as a
+// fan-in cell must name its monoid. A type supplying a cocommutative comonoid
+// may host the copy explicitly — the named later generalization
+// (circuit-terms-question-18), not a shape this store admits today.
+//
+// The refusal is decline-and-report, not abort: the linear companion rule
+// still lands. Three cells reach the store — the two constructor frames and
+// the linear rule — and the copying rule is the one decline.
+data Bit {
+  Off,
+  On,
+  op and(a: Bit, b: Bit) -> Bit,
+  rule and(x, y) ~> y,
+  rule and(x, x) ~> x
+}
+
+//@ mode: desc
+//@ expect-desc-cells: 2
+//@ expect-desc-store-cells: 3
+//@ expect-desc-cell-decline: the producer hole `x` occurs more than once

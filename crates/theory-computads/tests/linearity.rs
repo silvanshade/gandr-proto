@@ -3,22 +3,20 @@
 //! `docs/gandr/spec/implementation/circuit-terms.md` §"The design questions",
 //! `circuit-terms-question-17`; placement decided 2026-08-02).
 //!
-//! # Why these live here and not in the surface corpus
+//! # Why these live here, and what half is promoted
 //!
-//! These crate-level fixtures **mirror the intended surface corpus programs**
-//! `nonlinear-cell-refused.gandr` and `linear-cell-admitted.gandr`. The
-//! refusal is not reachable from a runnable `.gandr` file today, and the
-//! blocker is exact and single: surface `rule` members parse and are
-//! **declined** in the surface lowering (`gandr-surface-engine`'s
-//! `lower/codata.rs`), and neither `gandr-surface-engine` nor
-//! `gandr-surface-corpus` depends on this crate, so no description ever reaches
-//! [`gandr_theory_computads::elaborate_data_desc`] — the admission boundary the
-//! refusal lives at. Promoting these fixtures to `examples/pathological/` is
-//! the ADR-54 acceptance flip: wire the surface `rule` members through to this
-//! crate's elaborator, then the two programs below become runnable files with
-//! harness assertions on the diagnostic. Until then this is internal-only work
-//! under the internal-before-surface rule (`docs/workflow/corpus.md`), and the
-//! feature is **not user-writable**.
+//! These crate-level fixtures cover the refusal exhaustively at the boundary.
+//! The **description route is promoted**: the corpus program
+//! `examples/pathological/desc/nonlinear-cell-refused.gandr` reaches
+//! [`gandr_theory_computads::elaborate_data_desc`] through
+//! `gandr-surface-engine`'s description cell pass, and the harness asserts the
+//! diagnostic names the copy (`expect-desc-cell-decline`). What stays parked is
+//! the **surface `rule`-member route**: `rule` members of ordinary programs
+//! parse and are **declined** in the surface lowering (`gandr-surface-engine`'s
+//! `lower/codata.rs`), so the refusal is not reachable from the main lowering
+//! path; flipping that is the ADR-54 acceptance step, and the fixtures below
+//! remain the exhaustive coverage until it lands (`docs/workflow/corpus.md`,
+//! the internal-before-surface rule).
 //!
 //! # The fixtures
 //!
