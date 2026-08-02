@@ -94,7 +94,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
     role: subdocument
-    b3: db008ef4294ed7e4536be02ba79249080b2ffdb5bef36bc8ae79545655d54931
+    b3: 6e269e6ea68ca7e6eca8fefbb584bf53a9439ed74e61b41708de31c94225571e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md

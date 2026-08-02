@@ -88,11 +88,17 @@ The live keyword set (one table; a rename is a one-table change):
 | literals                           | `true`, `false`                                                                                                                                                        |
 | types                              | `forall`, `F`, `U`, `mu`, `end`                                                                                                                                        |
 | W4d/W4e growth                     | `data`, `codata`, `for`, `while`, `loop`, `break`, `continue`, `import`, `module`, `in`, `rec`, `op`, `rule`, `with`, `infix`, `infixl`, `infixr`, `prefix`, `postfix` |
+| circuit block form                 | `sign`, `oper` (globally reserved); `sort`, `node`, `feed` (contextual)                                                                                                |
 | reserved for proposals (not wired) | `handle`, `perform`, `reset`, `shift`, `quote`, `splice`                                                                                                               |
 
 * Reservation policy: a **small closed set of globally reserved keywords**, with fixity classes contextual; new keywords are swept against the corpus for identifier collisions first — the fold-in reserved thirteen (`data codata rec op rule for in while loop break continue with`) globally, collision-free.
 * `rec` was a legal identifier before its reservation — an accepted, intended source break (the explicit-marker decision); `codata` reserves as one whole keyword so it never lexes as `co` + `data`.
+* The circuit block form reserves exactly its two **item-position** leads, `sign` and `oper`: at a fresh top-level slot a lowercase word is otherwise an expression statement, so an unreserved form-first lead would tie its own tile against `identifier` at every declaration.
+  Its other leads stay contextual — the member keyword `sort` and the body statements `node` / `feed` are only ever `≐`-successors inside an open block, where `identifier` is inadmissible, so a program may still bind them as ordinary names.
 * The fixed term operator table: `||`, `&&`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `++`, `+`, `-`, `*` (binary, left-associative), unary `-`; comparison chains ride the comparison band.
+* The circuit arrow grid is four tiles and never more — `-->` / `<->` (circuit 1-cell formers) and `==>` / `<=>` (rewrite faces at every dimension) ([[circuit-cells#The block form, ruled]]).
+  Each strictly extends a live shorter tile (`->`, `<-`, `==`, `<=`), so all four sit ahead of their prefixes in the labeler's longest-first table; `=>` never competes (neither glyph prefixes the other), and `--` is not a comment lead here.
+  A word may carry trailing primes (`′`), the ruled form's spelling for a rewrite's target endpoint; ASCII `'` stays the shell single-quote opener.
 * The primitive type set: `Any`, `Boolean`, `Char`, `Integer`, `Never`, `String`, `Symbol`, `Unit`, `Unknown`, `Void`, and the sized atoms `u32`, `u64`, `i32`, `i64`, `f32`, `f64`.
 
 ## The adaptations registry
@@ -105,6 +111,8 @@ Every divergence from a sketched design is recorded in-code as an `Adaptation` r
 * **Operator-fixity declarations spelled `op <fixity> <level> "spelling" ;`** — designed fresh (no sketch existed), reusing the reserved `op` lead with a string-literal spelling so the labeler needs no user-operator token; the per-module wiring seam (`Pbg::extend`) is deliberately unwired.
 * **Loops reuse the block form**; **string interpolation lives only in expression-position strings**; **the shell subshell is spelled with square brackets** (POSIX parentheses stay free for the `$( E )` host escape); **braced parameter expansion `${name}` is a distinct labeler mode from interpolation `${E}`**; **spaced hole names `? name`** attach where an immediate-token rule could not hold.
 * Member forms are **first-token-discriminated by case** inside `data`/`codata` blocks: uppercase-led constructors versus lowercase-led `op`/`rule` keywords.
+* **The `oper` / `rule` circuit judgment is declared once** and shared by the `sign` member and the top-level declaration, and telescope binders are confined to the parameter side — a duplicated tail would clone the signature, the port lists, and the body statements into a second set of molds, widening the hottest menus (`identifier`, `(`, `:`) twice as far.
+* **The circuit arrow grid is admitted whole at every arrow position**, with the confirmation left to the checker: a body line's arrow comes from the applied head's kind, which is an environment fact no grammar sees, and a grammar restricted to the matching glyph would turn a nameable disagreement into a parse failure.
 
 ## The parse-and-decline semantics
 
@@ -113,28 +121,30 @@ Decline is never a parse failure — the form is grammatical; the decline is a t
 
 The complete reserved-slot inventory, as built:
 
-| form                           | shape                                                        | status                                                                                              |
-| ------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| operation member               | `op name(params) -> R` inside `data`                         | parse-and-decline                                                                                   |
-| multi-output result            | `op name(..) -> (o1: A, o2: B)`                              | parse-and-decline; the named-tuple result is **local to the op member**, never a general type form  |
-| directed rewrite member        | `rule lhs ~> rhs` inside `data` or `codata`                  | parse-and-decline (`~>` is a fixed token)                                                           |
-| grade-prefixed field           | `Cons(1 x: a)`                                               | parse-and-decline; grade tile restricted to `{ number, ω }`                                         |
-| generalized constructor result | `C(..) : Vec(..)`                                            | parse-and-decline                                                                                   |
-| per-symbol attribute slot      | `C(..) [ctor, assoc]`                                        | parse-and-decline; declaration-position only, no `@` sigil inside the block                         |
-| parameterized observation      | `ap(x: a): b`                                                | parse-and-decline                                                                                   |
-| grade-prefixed observation     | `1 next: F(Unit)`                                            | parse-and-decline                                                                                   |
-| with-view match                | `case xs with length(xs) { .. }`                             | parse-and-decline                                                                                   |
-| mutual-recursion block         | `rec { def ..; def .. }`                                     | parse-and-decline                                                                                   |
-| operator-fixity declaration    | `op infixl 6 "++" ;`                                         | parse-and-decline; wiring seam unwired                                                              |
-| copattern default arm          | `_ => e`                                                     | parse-and-decline                                                                                   |
-| instantiation-slot residents   | `f[m<]`, `f[x = e]`, `f[size = e]`, `f[cost = e]`, `f[tail]` | parsed by the grammar; **declined by name** by the recursion-surface scope pass (see [[recursion]]) |
+| form                           | shape                                                               | status                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| operation member               | `op name(params) -> R` inside `data`                                | parse-and-decline                                                                                    |
+| multi-output result            | `op name(..) -> (o1: A, o2: B)`                                     | parse-and-decline; the named-tuple result is **local to the op member**, never a general type form   |
+| directed rewrite member        | `rule lhs ~> rhs` inside `data` or `codata`                         | parse-and-decline (`~>` is a fixed token)                                                            |
+| grade-prefixed field           | `Cons(1 x: a)`                                                      | parse-and-decline; grade tile restricted to `{ number, ω }`                                          |
+| generalized constructor result | `C(..) : Vec(..)`                                                   | parse-and-decline                                                                                    |
+| per-symbol attribute slot      | `C(..) [ctor, assoc]`                                               | parse-and-decline; declaration-position only, no `@` sigil inside the block                          |
+| parameterized observation      | `ap(x: a): b`                                                       | parse-and-decline                                                                                    |
+| grade-prefixed observation     | `1 next: F(Unit)`                                                   | parse-and-decline                                                                                    |
+| with-view match                | `case xs with length(xs) { .. }`                                    | parse-and-decline                                                                                    |
+| mutual-recursion block         | `rec { def ..; def .. }`                                            | parse-and-decline                                                                                    |
+| operator-fixity declaration    | `op infixl 6 "++" ;`                                                | parse-and-decline; wiring seam unwired                                                               |
+| copattern default arm          | `_ => e`                                                            | parse-and-decline                                                                                    |
+| reversible circuit former      | `oper f : (a : A) <-> (b : B)`                                      | parse-and-decline; the circuit surface check names the reversible-oper lane that owes its discipline |
+| circuit block members          | `sign`, `oper`, and `rule` declarations with `node` / `feed` bodies | parsed and arrow-confirmed; parse-and-decline at lowering                                            |
+| instantiation-slot residents   | `f[m<]`, `f[x = e]`, `f[size = e]`, `f[cost = e]`, `f[tail]`        | parsed by the grammar; **declined by name** by the recursion-surface scope pass (see [[recursion]])  |
 
 ## The PBG-only kinds registry
 
-The constructs the parity grammar does not produce, registered as the parity exemption — ten construct kinds (new rule provenances) and nine member surfaces (adaptation surfaces):
+The constructs the parity grammar does not produce, registered as the parity exemption — twelve construct kinds (new rule provenances) and fourteen member surfaces (adaptation surfaces):
 
-* construct kinds: `break_expression`, `codata_declaration`, `continue_expression`, `data_declaration`, `for_expression`, `import_declaration`, `loop_expression`, `operator_declaration`, `rec_block`, `while_expression`;
-* member surfaces: `braced_variable_expansion`, `case_with_view`, `codata_observation`, `def_rec`, `grade_prefix`, `op_member`, `parameterized_observation`, `rule_member`, `string_interpolation`.
+* construct kinds: `break_expression`, `circuit_declaration`, `codata_declaration`, `continue_expression`, `data_declaration`, `for_expression`, `import_declaration`, `loop_expression`, `operator_declaration`, `rec_block`, `sign_declaration`, `while_expression`;
+* member surfaces: `braced_variable_expansion`, `case_with_view`, `circuit_body`, `circuit_member`, `circuit_signature`, `codata_observation`, `def_rec`, `feed_statement`, `grade_prefix`, `node_statement`, `op_member`, `parameterized_observation`, `rule_member`, `string_interpolation`.
 
 ## Performance and reuse discipline
 
@@ -145,6 +155,6 @@ The constructs the parity grammar does not produce, registered as the parity exe
 
 ## Source and confidence
 
-The machinery is as-built (high confidence): the pipeline, gates, taxonomy, bands, and registries are verified against the `surface-grammar` crate (`surface.rs`, `surface/term.rs`, `type_shell.rs`, `highlight.rs`) and the implementation track's surface-pipeline account.
+The machinery is as-built (high confidence): the pipeline, gates, taxonomy, bands, and registries are verified against the `surface-grammar` crate (`surface.rs`, `surface/term.rs`, `surface/type_shell.rs`, `surface/circuit.rs`, `highlight.rs`) and the implementation track's surface-pipeline account.
 The design rationale traces to the surface-syntax, operators, graph-core, and parser-interaction proposals and the syntax-inventory fold-in record; the manual's parser-core chapter restates it at reference depth.
 The one claim resting on a conjecture — the precedence-DAG generalization of the calculus's metatheory — is marked as such wherever it is load-bearing (the engineering gates and the tested conflict-freedom table hold regardless).
