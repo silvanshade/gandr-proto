@@ -52,6 +52,8 @@
 //! | `expect-sequent-render` | rendered command | focusing produces this exact bounded command rendering |
 //! | `expect-desc-render` | rendered description | stage-0 elaboration produces this exact description |
 //! | `expect-desc-cells` | integer | elaborated descriptions carry this many cell faces in total |
+//! | `expect-desc-store-cells` | integer | cell-layer elaboration puts this many cells in the stores |
+//! | `expect-desc-cell-decline` | substring | some cell-layer decline message contains it |
 //! | `expect-desc-unit-consumers` | `clean` | generic equality and serialization separate two unit constructors |
 //! | `requires-feature` | `regex` / `ffi` | skip the example unless the named corpus feature is enabled |
 //!
@@ -94,6 +96,8 @@ use gandr_core_sequent::pretty::render_command;
 use gandr_core_sequent::wellformed;
 use gandr_runtime_host::ShellOutcome;
 use gandr_surface_engine::boundary::PipelineSource;
+use gandr_surface_engine::desc_cells::DescCells;
+use gandr_surface_engine::desc_cells::elaborate_desc_cells;
 use gandr_surface_engine::desc_elab::elaborate_data_descs;
 use gandr_surface_engine::lower::lower_source;
 use gandr_surface_engine::lower::node_kinds;
@@ -218,8 +222,10 @@ pub enum Mode
     /// Lower and focus the file into the phase-L0 sequent command IL, then
     /// inspect its bounded rendering and well-formedness.
     Sequent,
-    /// Elaborate `data` / `codata` declarations into stage-0 descriptions and
-    /// run their host-side generic consumers.
+    /// Elaborate `data` / `codata` declarations into stage-0 descriptions, run
+    /// their host-side generic consumers, and elaborate those descriptions on
+    /// into the cell store
+    /// ([`gandr_surface_engine::desc_cells::elaborate_desc_cells`]).
     Desc,
 }
 
@@ -329,6 +335,19 @@ pub enum Expect
     DescCells(
         /// The expected total cell-face count.
         usize,
+    ),
+    /// `expect-desc-store-cells: n` — elaborating the descriptions into the
+    /// cell layer puts exactly `n` cells in the stores (a frame-defining cell
+    /// per declared constructor plus every admitted rule cell).
+    DescStoreCells(
+        /// The expected total stored-cell count.
+        usize,
+    ),
+    /// `expect-desc-cell-decline: s` — some cell-layer decline message contains
+    /// `s` (the honest-limits half of the description → cells wire).
+    DescCellDecline(
+        /// The required decline-message substring.
+        String,
     ),
     /// `expect-desc-unit-consumers: clean` — the first description's first two
     /// constructors are nullary and the generic equality/serialization
@@ -482,6 +501,13 @@ where
                     .map_err(|_ignored| format!("non-integer description cell count `{value}`"))?;
                 expects.push(Expect::DescCells(count));
             },
+            | "expect-desc-store-cells" => {
+                let count: usize = value
+                    .parse()
+                    .map_err(|_ignored| format!("non-integer stored cell count `{value}`"))?;
+                expects.push(Expect::DescStoreCells(count));
+            },
+            | "expect-desc-cell-decline" => expects.push(Expect::DescCellDecline(value.to_owned())),
             | "expect-desc-unit-consumers" => {
                 if value != "clean" {
                     return Err(format!(
@@ -754,6 +780,8 @@ fn session_failure(
         | Expect::SequentRender(_)
         | Expect::DescRender(_)
         | Expect::DescCells(_)
+        | Expect::DescStoreCells(_)
+        | Expect::DescCellDecline(_)
         | Expect::DescUnitConsumers => Some("directive is not valid in session mode".to_owned()),
     }
 }
@@ -1264,6 +1292,9 @@ fn check_desc(
         .iter()
         .map(|desc| String::from(serialize_desc(desc)))
         .collect();
+    // The second half of the stage-0 path: the descriptions elaborated into the
+    // content-addressed cell store, with the cell layer's own declines.
+    let cells = elaborate_desc_cells(&elaborated.descs);
     expects
         .iter()
         .filter_map(|expect| match *expect {
@@ -1289,10 +1320,53 @@ fn check_desc(
                     ))
                 }
             },
+            | Expect::DescStoreCells(expected) => {
+                let actual = cells.stores.iter().fold(0_usize, |total, store| {
+                    total.saturating_add(usize::from(store.len()))
+                });
+                if actual == expected {
+                    None
+                }
+                else {
+                    Some(format!(
+                        "expected {expected} elaborated cell(s) in the store(s); got {actual}"
+                    ))
+                }
+            },
+            | Expect::DescCellDecline(ref needle) => {
+                let found = cells
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.message.contains(needle));
+                if found {
+                    None
+                }
+                else {
+                    Some(format!(
+                        "expected a cell-layer decline containing `{needle}`; got {}",
+                        cell_decline_summary(&cells)
+                    ))
+                }
+            },
             | Expect::DescUnitConsumers => desc_unit_consumer_failure(&elaborated.descs),
             | _ => Some("directive is not valid in desc mode".to_owned()),
         })
         .collect()
+}
+
+/// A one-line summary of a cell-layer elaboration's declines (for failure
+/// messages).
+fn cell_decline_summary(cells: &DescCells) -> String
+{
+    if cells.diagnostics.is_empty() {
+        return "(none)".to_owned();
+    }
+    let messages: Vec<&str> = cells
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.message.as_str())
+        .collect();
+    messages.join(" | ")
 }
 
 /// Checks the stage-0 generic consumers on two nullary constructors.
@@ -1471,6 +1545,72 @@ mod tests
         assert!(
             parse_case("ret ()").unwrap_err().contains("at least one"),
             "an example with no expectation is rejected"
+        );
+        assert!(
+            parse_case(concat!(
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-store-cells: lots\n",
+                "data Bit { Off, On }"
+            ))
+            .unwrap_err()
+            .contains("non-integer stored cell count"),
+            "a non-integer stored cell count is rejected"
+        );
+    }
+
+    #[test]
+    fn desc_mode_reports_the_cell_layer_wire()
+    {
+        // The description → cell store wire, exercised through the harness: a
+        // declared single-output `op` lets its `rule` become a cell, and a
+        // many-out `op` is declined with an inspectable reason.
+        assert!(
+            check_case(concat!(
+                "data NatId { Zero, op id(x: NatId) -> NatId, rule id(Zero) ~> Zero }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-store-cells: 2\n"
+            ))
+            .is_empty(),
+            "one frame cell and one rule cell reach the store"
+        );
+        assert!(
+            check_case(concat!(
+                "data NatId { Zero, op id(x: NatId) -> NatId, rule id(Zero) ~> Zero }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-store-cells: 9\n"
+            ))
+            .iter()
+            .any(|failure| failure.contains("expected 9 elaborated cell(s)")),
+            "a wrong stored-cell count fails with the measured count"
+        );
+        assert!(
+            check_case(concat!(
+                "data NatId { Zero, op id(x: NatId) -> NatId }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-cell-decline: divmod\n"
+            ))
+            .iter()
+            .any(|failure| failure.contains("(none)")),
+            "a decline expectation against a clean elaboration reports no declines"
+        );
+        assert!(
+            check_case(concat!(
+                "data NatDiv { Zero, op divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }\n",
+                "//",
+                "@ mode: desc\n",
+                "//",
+                "@ expect-desc-cell-decline: many-out\n"
+            ))
+            .is_empty(),
+            "the many-out operation's decline is matched by substring"
         );
     }
 

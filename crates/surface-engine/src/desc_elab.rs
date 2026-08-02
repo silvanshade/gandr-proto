@@ -88,7 +88,7 @@ impl ElabDiagnostic
     /// A diagnostic with the given message and span.
     #[inline]
     #[must_use]
-    fn new(
+    pub(crate) fn new(
         message: String,
         span: SurfaceSpan,
     ) -> Self
@@ -205,8 +205,9 @@ struct MemberLists<'lists>
     cells: &'lists mut Vec<CellFace>,
 }
 
-/// The empty provenance span used when a CST lookup misses unexpectedly.
-fn empty_surface_span() -> SurfaceSpan
+/// The empty provenance span used when a CST lookup misses unexpectedly, or
+/// when a decline belongs to a description member that carries no span.
+pub(crate) fn empty_surface_span() -> SurfaceSpan
 {
     SurfaceSpan::new(SurfaceByteOffset::from(0), SurfaceByteOffset::from(0))
 }

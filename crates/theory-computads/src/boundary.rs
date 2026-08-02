@@ -107,6 +107,16 @@ copy_wrapper!(
     "Index of a surface 2-cell face declined during elaboration."
 );
 copy_wrapper!(
+    DeclinedOpIndex,
+    usize,
+    "Index of a declared operation declined during elaboration."
+);
+copy_wrapper!(
+    OperationInputCount,
+    usize,
+    "Number of input ports a declared operation reads."
+);
+copy_wrapper!(
     GroundPatternStatus,
     bool,
     "Whether a command pattern contains no metavariables."

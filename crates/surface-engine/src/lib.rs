@@ -78,6 +78,7 @@ pub mod boundary;
     )
 )]
 pub mod checkpoint;
+pub mod desc_cells;
 pub mod desc_elab;
 #[cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",

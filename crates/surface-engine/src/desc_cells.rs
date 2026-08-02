@@ -1,0 +1,179 @@
+//! The **description → cell layer** seam: stage-0 [`DataDesc`]s into the
+//! content-addressed cell store of `gandr-theory-computads`.
+//!
+//! [`desc_elab`](crate::desc_elab) stops at the declaration table — it reads a
+//! `data` / `codata` block into a [`DataDesc`] and runs
+//! [`gandr_theory_levitation::check_desc`] over it. This module carries that
+//! table one step further, to the artifact the fusion engines actually consume:
+//! [`gandr_theory_computads::elaborate_data_desc`] turns each description's
+//! constructors, `op` members, and `rule` faces into a
+//! [`CellStore`] plus the typed declines for everything the cell layer cannot
+//! hold.
+//!
+//! The two passes are deliberately separate rather than fused into
+//! [`elaborate_data_descs`]: a caller that only wants the description table (the
+//! generic consumers, the inspector) must not pay for cell elaboration, and the
+//! cell layer's declines answer a different question from stage-0
+//! well-formedness. A caller wanting both verdicts runs both passes and
+//! concatenates their diagnostics — which is what the corpus harness's `desc`
+//! mode does.
+//!
+//! # What the cell layer declines
+//!
+//! The command-pattern grammar's operation frame `f(p̄; c)` carries exactly one
+//! return continuation, so an `op` member's [`BridgeArity`] is admitted only in
+//! the degenerate one-monomial, one-output shape. A many-out `op divmod(m, n)
+//! -> (q, r)` is a **well-formed description** and an **unrepresentable cell**,
+//! and this module is where that pair of verdicts becomes two inspectable
+//! diagnostics rather than a silent narrowing.
+//!
+//! [`BridgeArity`]: gandr_theory_levitation::BridgeArity
+//! [`DataDesc`]: gandr_theory_levitation::DataDesc
+//! [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
+
+use gandr_theory_computads::CellStore;
+use gandr_theory_computads::DeclinedFaceIndex;
+use gandr_theory_computads::ElaborateError;
+use gandr_theory_computads::OpElaborateError;
+use gandr_theory_computads::elaborate_data_desc;
+use gandr_theory_levitation::DataDesc;
+
+use crate::boundary::DeclineReason;
+use crate::desc_elab::ElabDiagnostic;
+use crate::desc_elab::empty_surface_span;
+
+/// The cell-layer elaboration of a source's descriptions: one store per
+/// description, plus every decline as a located diagnostic.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DescCells
+{
+    /// The elaborated cell store of each description, in declaration order.
+    pub stores: Vec<CellStore>,
+    /// Every cell-layer decline, in description order, located at its surface
+    /// span where the description records one.
+    pub diagnostics: Vec<ElabDiagnostic>,
+}
+
+/// **Elaborate** each description into the cell store, collecting the stores
+/// and every cell-layer decline.
+///
+/// # Contract
+/// - requires: `descs` are stage-0 descriptions, typically from
+///   [`elaborate_data_descs`]; they need not be well-formed (this pass is
+///   independent of [`gandr_theory_levitation::check_desc`] and answers only
+///   the cell layer's question).
+/// - ensures: one [`CellStore`] per description, in the given order, each
+///   holding a frame-defining cell per declared constructor plus every admitted
+///   `rule` cell; one diagnostic per declined `op` member and per declined
+///   `rule` face, in description order and within a description, operations
+///   before faces.
+/// - provides: the seam between the description layer and the fusion engines —
+///   the first consumer of `gandr-theory-computads` outside that crate's own
+///   tests.
+/// - fails: never; total on any description.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — a description whose single-output `op` and `rule` produce
+///   cells is separated from one whose many-out `op` produces a decline by the
+///   store's cell count and by the presence of a diagnostic naming the
+///   operation.
+/// - witness: `gandr-surface-engine` `tests/desc_cells.rs`
+///   `a_declared_single_output_operation_lets_its_rule_become_a_cell`
+/// - witness: `gandr-surface-engine` `tests/desc_cells.rs`
+///   `a_many_out_operation_is_a_well_formed_description_and_an_unrepresentable_cell`
+///
+/// [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
+#[inline]
+#[must_use]
+pub fn elaborate_desc_cells(descs: &[DataDesc]) -> DescCells
+{
+    let mut cells = DescCells::default();
+    for desc in descs {
+        let elaborated = elaborate_data_desc(desc);
+        for &(index, error) in &elaborated.declined_ops {
+            let name = desc
+                .ops
+                .get(usize::from(index))
+                .map_or("<unknown>", |op| op.name.as_ref());
+            cells.diagnostics.push(ElabDiagnostic::new(
+                format!(
+                    "operation `{name}` of `{}` {}",
+                    desc.id.name.as_ref(),
+                    op_decline_reason(error).as_ref()
+                ),
+                empty_surface_span(),
+            ));
+        }
+        for &(index, ref error) in &elaborated.declined_faces {
+            cells
+                .diagnostics
+                .push(face_decline_diagnostic(desc, index, error));
+        }
+        cells.stores.push(elaborated.store);
+    }
+    cells
+}
+
+/// The human-readable reason an operation earned its cell-layer decline.
+fn op_decline_reason(error: OpElaborateError) -> DeclineReason<'static>
+{
+    DeclineReason(match error {
+        | OpElaborateError::NoOutput => {
+            "declares no output port, so its operation frame's return continuation would carry \
+             nothing"
+        },
+        | OpElaborateError::ManyOutput => {
+            "declares a many-out result: the cell layer's operation frame `f(p̄; c)` carries \
+             exactly one return continuation, so a multi-output arity has no frame in this \
+             grammar (proposal-levitation.md §4.2)"
+        },
+        | OpElaborateError::AggregatedOutput => {
+            "aggregates several monomials into one output port, which needs the commutative \
+             monoid the Σ-zone firewall keeps out of the Π-layer"
+        },
+    })
+}
+
+/// The located diagnostic a declined `rule` face earns.
+///
+/// The three fragment declines and the operation-gate decline carry static
+/// prose; the linearity refusal renders its own diagnostic, which names the
+/// copied hole and the respelling.
+fn face_decline_diagnostic(
+    desc: &DataDesc,
+    index: DeclinedFaceIndex,
+    error: &ElaborateError,
+) -> ElabDiagnostic
+{
+    let span = desc
+        .cells
+        .get(usize::from(index))
+        .map_or_else(empty_surface_span, |face| face.provenance);
+    let name = desc.id.name.as_ref();
+    let message = match *error {
+        | ElaborateError::LhsNotOperation => {
+            format!(
+                "rule of `{name}` does not rewrite an operation application on its left-hand side"
+            )
+        },
+        | ElaborateError::EmptyOperation => {
+            format!(
+                "rule of `{name}` applies an operation to no arguments, so there is no matched \
+                 producer to cut against"
+            )
+        },
+        | ElaborateError::UnsupportedShape => {
+            format!("rule of `{name}` has a term shape outside the supported flattening fragment")
+        },
+        | ElaborateError::UnrepresentableOperation => {
+            format!(
+                "rule of `{name}` applies an operation whose declared arity the cell layer declined"
+            )
+        },
+        | ElaborateError::NonLinear(ref refusal) => {
+            format!("rule of `{name}` is refused: {refusal}")
+        },
+    };
+    ElabDiagnostic::new(message, span)
+}

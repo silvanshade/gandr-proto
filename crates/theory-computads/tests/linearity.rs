@@ -94,7 +94,8 @@ mod tests
     /// The single refusal a description reports, with its face index.
     fn sole_refusal(desc: &DataDesc) -> (DeclinedFaceIndex, String)
     {
-        let (_store, declines) = elaborate_data_desc(desc);
+        let elaborated = elaborate_data_desc(desc);
+        let declines = elaborated.declined_faces;
         assert_eq!(1, declines.len(), "exactly one face is declined");
         let (index, error) = declines.into_iter().next().expect("the decline exists");
         let ElaborateError::NonLinear(refusal) = error
@@ -159,14 +160,15 @@ mod tests
             FreeTerm::op("and", [FreeTerm::var("x"), FreeTerm::var("y")]),
             FreeTerm::var("y"),
         )]);
-        let (store, declines) = elaborate_data_desc(&desc);
+        let elaborated = elaborate_data_desc(&desc);
         assert!(
-            declines.is_empty(),
-            "a linear rule is admitted: {declines:?}"
+            elaborated.declined_faces.is_empty(),
+            "a linear rule is admitted: {:?}",
+            elaborated.declined_faces
         );
         assert_eq!(
             CellCount::from(2_usize),
-            store.len(),
+            elaborated.store.len(),
             "the Off frame cell and the rule cell"
         );
     }
@@ -184,7 +186,8 @@ mod tests
                 FreeTerm::var("z"),
             ),
         ]);
-        let (store, declines) = elaborate_data_desc(&desc);
+        let elaborated = elaborate_data_desc(&desc);
+        let declines = &elaborated.declined_faces;
         assert_eq!(1, declines.len(), "only the copying face declines");
         let &(index, ref error) = declines.first().expect("the decline exists");
         assert_eq!(
@@ -202,7 +205,7 @@ mod tests
         );
         assert_eq!(
             CellCount::from(2_usize),
-            store.len(),
+            elaborated.store.len(),
             "the frame cell and the linear rule still land"
         );
     }
