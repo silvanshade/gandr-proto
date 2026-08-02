@@ -116,6 +116,7 @@ Local confluence of DPO-with-interfaces follows from joinability of all pre-crit
 What the engine does **not** have is the other half: the published decision requires termination, and gandr's completion has no termination argument — its reduction order is plain node count, not a substitution-stable order.
 Without Frobenius there are additionally two routes and gandr must pick one: **left-connected** systems (left-linear, ma-rules, strongly connected left-hand sides), where the notion of critical pair is unchanged and confluence of a terminating system is decidable [ibid., def 5.6, thm 5.3, cor 5.1]; or **path joinability**, which checks a critical pair under every maximal path relation via three formal path generators and is necessary as well as sufficient over the extended signature [ibid., def 5.7–5.10, thm 5.4, thm 5.5].
 The residual obligation is therefore **a termination argument and a route choice**, both of which belong to the engine and are recorded on the implementation lane rather than here.
+The route choice has since been taken for the **as-built** cell alphabet and re-opened by its growth — every expressible cell left-hand side is strongly connected, so the left-connected route is the one to take, its two remaining conjuncts are build items rather than research questions, and the multi-output and disconnection axes each break the verdict ([[../implementation/circuit-terms#The correspondence at gandr's own rung, at theorem grade]]) — while the termination argument stands open.
 
 ### meta-spike-15
 
