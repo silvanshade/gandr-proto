@@ -4115,9 +4115,16 @@ impl Lowerer<'_>
                     node_kinds::EXTERN_BLOCK
                         | node_kinds::CODATA_DECLARATION
                         | node_kinds::DATA_DECLARATION
+                        | node_kinds::SIGN_DECLARATION
+                        | node_kinds::CIRCUIT_DECLARATION
                 ) {
                     // Consumed by the pre-passes above (a `data` block is a
                     // declaration, not a runnable item; the lowering contract).
+                    // A `sign` block and a top-level circuit declaration are
+                    // declarations in the same sense: their route is the
+                    // description one ([`crate::circuit::desc`]), which reads
+                    // them into the declaration table, so term lowering sees a
+                    // declaration rather than an unsupported expression.
                     continue;
                 }
                 if child.kind() == node_kinds::DEF_SIGNATURE {

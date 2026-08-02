@@ -91,6 +91,10 @@ mod label
     /// `data` datatype-declaration lead tile (PBG surface; declared-data
     /// design).
     pub const DATA: TileSpelling = TileSpelling("data");
+    /// `sign` signature-block lead tile (the ruled circuit block form).
+    pub const SIGN: TileSpelling = TileSpelling("sign");
+    /// Circuit 1-cell member / top-level circuit declaration lead tile.
+    pub const OPER: TileSpelling = TileSpelling("oper");
     /// `module` declaration lead tile (PBG surface; `M1-lite module-root
     /// work`).
     pub const MODULE: TileSpelling = TileSpelling("module");
@@ -1189,6 +1193,17 @@ impl<'tree> SynNode<'tree>
             // pattern-matrix work).
             | Some(label::DATA) => node_kinds::DATA_DECLARATION,
             | Some(label::CODATA) => node_kinds::CODATA_DECLARATION,
+            // The ruled circuit block form's two item-position leads. They
+            // classify so the circuit lowering (`crate::circuit_desc`) can find
+            // them and so a form it does not carry names its construct in the
+            // decline, instead of holing under an empty kind. A `rule` member
+            // of a `data` block is a flat tile run rather than a Meld, so the
+            // `rule` lead cannot be confused with one; the Item sort is
+            // required anyway.
+            | Some(label::SIGN) if matches!(sort, Some(Sort::Item)) => node_kinds::SIGN_DECLARATION,
+            | Some(label::OPER | label::RULE) if matches!(sort, Some(Sort::Item)) => {
+                node_kinds::CIRCUIT_DECLARATION
+            },
             | Some(label::MODULE) => node_kinds::MODULE_DECLARATION,
             | Some(label::REC) => node_kinds::REC_BLOCK,
             | Some(label::VAL) => node_kinds::LET_STATEMENT,
