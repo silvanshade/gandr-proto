@@ -1665,6 +1665,210 @@ ullrich-de-moura-2019-immutable-beans:
     title: Proceedings of the 31st Symposium on Implementation and Application of Functional Languages (IFL 2019)
   note: borrowed references and inferred borrow annotations to minimize reference-count updates
 
+# ── The mode-calculus design space (modes, regions, capabilities, borrowing) ──
+# Identifiers verified against publisher or preprint records on 2026-08-02;
+# the works' claims were not re-read from the papers at that pass.
+
+lorenzen-white-dolan-eisenberg-lindley-2024-oxidizing:
+  type: article
+  title: Oxidizing OCaml with Modal Memory Management
+  author: ["Lorenzen, Anton", "White, Leo", "Dolan, Stephen", "Eisenberg, Richard A.", "Lindley, Sam"]
+  date: 2024
+  serial-number:
+    doi: "10.1145/3674642"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 8
+    issue: ICFP
+    page-range: 485-514
+  note: uniqueness, affinity, and locality as mode axes over an adjoint core
+
+tofte-talpin-1997-regions:
+  type: article
+  title: Region-Based Memory Management
+  author: ["Tofte, Mads", "Talpin, Jean-Pierre"]
+  date: 1997
+  serial-number:
+    doi: "10.1006/inco.1996.2613"
+  parent:
+    type: periodical
+    title: Information and Computation
+    volume: 132
+    issue: 2
+    page-range: 109-176
+
+boruch-gruszecki-odersky-lee-lhotak-brachthauser-2023-capturing:
+  type: article
+  title: Capturing Types
+  author:
+    [
+      "Boruch-Gruszecki, Aleksander",
+      "Odersky, Martin",
+      "Lee, Edward",
+      "Lhoták, Ondřej",
+      "Brachthäuser, Jonathan Immanuel",
+    ]
+  date: 2023
+  serial-number:
+    doi: "10.1145/3618003"
+  parent:
+    type: periodical
+    title: ACM Transactions on Programming Languages and Systems
+    volume: 45
+    issue: 4
+    page-range: "21:1-21:52"
+
+bao-wei-bracevac-jiang-he-rompf-2021-reachability:
+  type: article
+  title: "Reachability Types: Tracking Aliasing and Separation in Higher-Order Functional Programs"
+  author: ["Bao, Yuyan", "Wei, Guannan", "Bračevac, Oliver", "Jiang, Yuxuan", "He, Qiyang", "Rompf, Tiark"]
+  date: 2021
+  serial-number:
+    doi: "10.1145/3485516"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 5
+    issue: OOPSLA
+
+wei-bracevac-he-bao-rompf-2024-polymorphic-reachability:
+  type: article
+  title: "Polymorphic Reachability Types: Tracking Freshness, Aliasing, and Separation in Higher-Order Generic Programs"
+  author: ["Wei, Guannan", "Bračevac, Oliver", "He, Siyuan", "Bao, Yuyan", "Rompf, Tiark"]
+  date: 2024
+  serial-number:
+    doi: "10.1145/3632856"
+    arxiv: "2307.13844"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 8
+    issue: POPL
+    page-range: 393-424
+
+gao-parreaux-2025-invalidation-safety:
+  type: article
+  title: "A Lightweight Type-and-Effect System for Invalidation Safety: Tracking Permanent and Temporary Invalidation with Constraint-Based Subtype Inference"
+  author: ["Gao, Cunyuan", "Parreaux, Lionel"]
+  date: 2025
+  serial-number:
+    doi: "10.1145/3763144"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 9
+    issue: OOPSLA2
+  note: borrowing as temporary freezing over a Boolean-lattice effect domain, with aliasing unrestricted
+
+atkey-2018-qtt:
+  type: article
+  title: Syntax and Semantics of Quantitative Type Theory
+  author: ["Atkey, Robert"]
+  date: 2018
+  serial-number:
+    doi: "10.1145/3209108.3209189"
+  parent:
+    type: proceedings
+    title: Proceedings of the 33rd Annual ACM/IEEE Symposium on Logic in Computer Science (LICS 2018)
+    page-range: 56-65
+
+orchard-liepelt-eades-2019-graded:
+  type: article
+  title: Quantitative Program Reasoning with Graded Modal Types
+  author: ["Orchard, Dominic", "Liepelt, Vilem-Benjamin", "Eades III, Harley"]
+  date: 2019
+  serial-number:
+    doi: "10.1145/3341714"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 3
+    issue: ICFP
+    page-range: "110:1-110:30"
+  note: the Granule language
+
+bernardy-boespflug-newton-peytonjones-spiwack-2018-linear-haskell:
+  type: article
+  title: "Linear Haskell: Practical Linearity in a Higher-Order Polymorphic Language"
+  author: ["Bernardy, Jean-Philippe", "Boespflug, Mathieu", "Newton, Ryan R.", "Peyton Jones, Simon", "Spiwack, Arnaud"]
+  date: 2018
+  serial-number:
+    doi: "10.1145/3158093"
+    arxiv: "1710.09756"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 2
+    issue: POPL
+    page-range: "5:1-5:29"
+
+jung-jourdan-krebbers-dreyer-2018-rustbelt:
+  type: article
+  title: "RustBelt: Securing the Foundations of the Rust Programming Language"
+  author: ["Jung, Ralf", "Jourdan, Jacques-Henri", "Krebbers, Robbert", "Dreyer, Derek"]
+  date: 2018
+  serial-number:
+    doi: "10.1145/3158154"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 2
+    issue: POPL
+    page-range: "66:1-66:34"
+  note: the separation-logic metatheory that a surface type system alone cannot supply
+
+tang-lindley-2026-rows-capabilities:
+  type: article
+  title: Rows and Capabilities as Modal Effects
+  author: ["Tang, Wenhao", "Lindley, Sam"]
+  date: 2026
+  serial-number:
+    doi: "10.1145/3776674"
+    arxiv: "2507.10301"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 10
+    issue: POPL
+  note: rows and capabilities as two strategies of one modal frame, with translations both ways
+
+bao-rompf-2025-type-ability-effect:
+  type: article
+  title: "Type, Ability, and Effect Systems: Perspectives on Purity, Semantics, and Expressiveness"
+  author: ["Bao, Yuyan", "Rompf, Tiark"]
+  date: 2025
+  serial-number:
+    arxiv: "2510.07582"
+  note: preprint; the incomparability of minimal effect and capability systems
+
+gordon-2017-flow-sensitive-effects:
+  type: article
+  title: A Generic Approach to Flow-Sensitive Polymorphic Effects
+  author: ["Gordon, Colin S."]
+  date: 2017
+  serial-number:
+    doi: "10.4230/LIPIcs.ECOOP.2017.13"
+  parent:
+    type: proceedings
+    title: 31st European Conference on Object-Oriented Programming (ECOOP 2017)
+  note: effect quantales — a partial join-semilattice and partial monoid, not the complete sup-lattice of the rewriting literature
+
+gordon-2021-polymorphic-sequential-effects:
+  type: article
+  title: Polymorphic Iterable Sequential Effect Systems
+  author: ["Gordon, Colin S."]
+  date: 2021
+  serial-number:
+    doi: "10.1145/3450272"
+    arxiv: "1808.02010"
+  parent:
+    type: periodical
+    title: ACM Transactions on Programming Languages and Systems
+    volume: 43
+    issue: 1
+  note: the extended journal version of the effect-quantale line
+
 # --- the circuit-terms sweep (2026-08-01): diagrammatic rewriting, hypergraph
 # --- structure, semi-strictification, and the reversible-computing neighbours.
 # --- Identifiers below were read off each artifact's own front matter.

@@ -44,7 +44,7 @@ Each reserved form's graduation is gated on the semantics that owns it — **no 
 * **Display elision of inferable recursion markers** — a projection concern; unowned.
 * **`let` (unassigned) and `mut` (unreserved)** — keyword decisions owned by the dependent-rung and value-semantics passes respectively.
 * **The mode and reference calculus** — parked, with a **binding ordering constraint carried from its design record**: the mutable-value-semantics reading and the broader borrowing-literature reading land their adopt / inspire / reject verdicts **before** the calculus's own design pass begins, so the pass is written against settled verdicts rather than deriving them.
-  The four foreclosure rules that keep it addable are [[value-semantics#The four foreclosure rules]].
+  The design space, its sixteen open decisions, and the four foreclosure rules that keep it addable are [[proposed/modes-and-references]] and [[value-semantics#The four foreclosure rules]].
 * **Uniqueness-driven copy elision** — parked, and it is a _runtime_ item rather than a surface one, recorded here because [[value-semantics]] makes its own net verdict conditional on this work being scheduled.
   Its acceptance instrument already exists: the value-semantics stress examples fix the answers a copy-count reduction must not change.
 
@@ -60,7 +60,7 @@ The fold-in record's deferred class, each with its structural reason — these a
 * **extern member attributes `@unwind`/`@variadic`/`@repr(c)`** — the bare-`@` form conflicts with the `@[…]` block discipline; the extern-member attribute story is unfixed;
 * **angle-bracket generics `Result<Db>`** — rejected: `<`/`>` are comparison operators; `Name(args)` is the type-application form;
 * **row-open records `{ℓ : A | ρ}` and set operations `∪`** — need the polymorphism/solver lane; non-ASCII;
-* **references `ref`/`:=`, access modes** — a hard foreclosure of the current surface: no lvalue grammar; the foreclosure rules that keep the addition possible are [[value-semantics#The four foreclosure rules]];
+* **references `ref`/`:=`, access modes** — a hard foreclosure of the current surface: no lvalue grammar; the design space, its sixteen open decisions, and the foreclosure rules that keep the addition possible are [[proposed/modes-and-references]] and [[value-semantics#The four foreclosure rules]];
 * **kernel/metatheory notation** (effect-signature braces, effect rows, stratification arrows, multiparty arrows, term-merge) — not committed authored surface.
 
 ## Corpus obligations

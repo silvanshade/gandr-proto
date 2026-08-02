@@ -13,6 +13,7 @@ If the exhaustiveness claim is ever wrong, that is a defect in this document, no
 * [[surface-language/higher-cells]] — the dimension-named `data`-block members in full: the `sort`/`cons`/`oper`/`rule`/`meta` ladder with the reserved `cell` tower, mandatory 2- and 3-cell names, the boundary language and its sphere typing, and the derived `Model(S)` signature-former with its flagship shapes.
 * [[surface-language/recursion]] — the (co)recursion surface: `def rec`/`rec { … }`, the instantiation slot with its direction sigils, the productivity ladder, loops, and the as-built scope rung.
 * [[surface-language/value-semantics]] — the update surface in full: functional record update, the list update operations, update by construction, the state-visibility red line, in-place execution as a runtime licence, and the four foreclosure rules that keep the mode calculus open.
+* [[surface-language/proposed/modes-and-references]] — **proposed, nothing built**: the access-mode, reference, and region calculus — the sixteen-decision register, the per-problem comparison against the languages that have made those decisions, the foreign-interface consequences, and the literature the answers would come from.
 * [[surface-language/shell]] — the shell fragment: shell blocks and jobs, the embedded sub-grammar, the host escape, string interpolation, and the REPL split.
 * [[surface-language/roadmap]] — graduation rungs per reserved form, the pending lanes, and the deferred-with-reasons inventory.
 
@@ -263,7 +264,7 @@ The whole mutation surface is three constructs: functional record update `#{ r |
 
 Whether the runtime physically copies is a **separate question, answered below the surface**: where a base is provably unique at its update site, in-place mutation is an unobservable optimization.
 Access modes, references, and regions are deliberately absent, and four foreclosure rules keep them addable rather than retrofittable.
-The full treatment is [[surface-language/value-semantics]]; the calculus that would add them is a separate, not-yet-written design space.
+The full treatment is [[surface-language/value-semantics]]; the calculus that would add them is [[surface-language/proposed/modes-and-references]].
 
 ## The shell fragment
 

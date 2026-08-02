@@ -7,7 +7,7 @@ No binding a program already holds can observe a later change to it, because the
 Update is therefore not a mutation surface that has been made safe — it is a **copy-and-update surface whose safety is structural**, and the physical copy is a separate question answered below the surface.
 
 The forms are landed and exercised by the executable corpus.
-What stays open is the calculus that would let a program _say_ something about exclusivity — access modes, references, regions — and that lives in a mode and reference calculus that is not yet written, which this document is deliberately written not to foreclose.
+What stays open is the calculus that would let a program _say_ something about exclusivity — access modes, references, regions — and that lives in [[proposed/modes-and-references|the mode and reference calculus]], which this document is deliberately written not to foreclose.
 
 ## The design space, and where gandr sits
 
@@ -15,12 +15,12 @@ Four positions, ordered by how much each commits the type system.
 The ordering matters because the verdicts are not independent: reading down, each row asks the type system for strictly more, so the top row is the position that owes the least.
 Down is _more commitment_, not a chain of extensions — the bottom two are alternative heavy commitments rather than one refining the other.
 
-| model                              | how a program says it                                                                                                                                               | what the type system must carry                            | verdict                                                                          |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| **pure value semantics**           | functional update and construction; every value is a mathematical value                                                                                             | nothing new — the graded thunk `U_r B` already exists      | **adopted**, and it is what is built                                             |
-| **mutable value semantics**        | `inout` / `sink` access modes; in-place mutation that is _semantically_ value-in / value-out [@racordon-shabalin-zheng-abrahams-saeta-2022-mutable-value-semantics] | an exclusivity discipline on parameters                    | **inspires** the vocabulary; the mapping onto gandr's machinery is _not_ adopted |
-| **references and cells**           | `ref`, `:=`, aliasing                                                                                                                                               | a store, a region or lifetime discipline, aliasing control | **deferred** to the mode and reference calculus                                  |
-| **uniqueness or linear ownership** | uniqueness-typed or borrow-checked in-place update                                                                                                                  | a full borrow and capability calculus                      | **deferred** to the mode and reference calculus                                  |
+| model                              | how a program says it                                                                                                                                               | what the type system must carry                            | verdict                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **pure value semantics**           | functional update and construction; every value is a mathematical value                                                                                             | nothing new — the graded thunk `U_r B` already exists      | **adopted**, and it is what is built                                                                                            |
+| **mutable value semantics**        | `inout` / `sink` access modes; in-place mutation that is _semantically_ value-in / value-out [@racordon-shabalin-zheng-abrahams-saeta-2022-mutable-value-semantics] | an exclusivity discipline on parameters                    | **inspires** the vocabulary; the mapping onto gandr's machinery is explicitly _not_ adopted — [[proposed/modes-and-references]] |
+| **references and cells**           | `ref`, `:=`, aliasing                                                                                                                                               | a store, a region or lifetime discipline, aliasing control | **deferred** to [[proposed/modes-and-references]]                                                                               |
+| **uniqueness or linear ownership** | uniqueness-typed or borrow-checked in-place update                                                                                                                  | a full borrow and capability calculus                      | **deferred** to [[proposed/modes-and-references]]                                                                               |
 
 gandr takes the **top row as its surface** and treats the second row's payoff — in-place execution — as a **runtime** concern licensed by uniqueness, never a surface feature.
 The bottom two rows are a real design pass, not a transcription of somebody else's calculus, and this document does not touch them.
@@ -150,7 +150,7 @@ The two-realization differential that does exist is over the **checker**: a recu
 The red line's operational evidence is therefore the corpus assertions above, not a dual-evaluator oracle.
 
 The red line holds **unconditionally** at this rung, and it holds for a structural reason rather than by discipline: there is no construct in the language through which a change could become visible to a prior binding, so there is nothing to check.
-It is worth being precise about what would put it at risk — not a bug in update, but the _arrival_ of a reference calculus, which is why the mode and reference calculus must treat preserving this line as a constraint on itself rather than as an inherited guarantee.
+It is worth being precise about what would put it at risk — not a bug in update, but the _arrival_ of a reference calculus, which is why [[proposed/modes-and-references]] treats preserving this line as a constraint on itself rather than as an inherited guarantee.
 
 ## In-place execution is the runtime's business
 
@@ -300,7 +300,7 @@ The three precedents cited above are the candidate answers, and the corpus stres
 ### value-question-04
 
 **Exclusivity without a store — carried to the mode calculus.** Whether an exclusivity law can be extended to ordinary value parameters on gandr's substrate _without_ introducing a store, or whether `inout` inevitably pulls in references.
-This is the pivotal question for the shape of the whole calculus, and it belongs to the mode and reference calculus rather than here.
+This is the pivotal question for the shape of the whole calculus, and it is stated and pursued in [[proposed/modes-and-references]] rather than here.
 
 ### value-question-05
 

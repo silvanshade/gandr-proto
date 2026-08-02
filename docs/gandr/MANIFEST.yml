@@ -34,12 +34,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 4c047130247026b2391288de61ba6e5f4f75065f2c04eba889c283782e221bd2
+    b3: e2b1190f9f3bd6354e90c41c0b5af3744b4f0ab57af9b7e4e0553fb14132abf7
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 47f2578c8d7eee6539eb3b79943cc02b66617ad113d6c9421c2e4b69942f0c75
+    b3: 1e4211ec1de4091a9fd5210cdfd834f52bebbd3ff52d0cf80ffad61fa2d0bea8
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -129,7 +129,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: 77e686a6e9339ccad9ebba656813ccbe2793c068bb5cd2845089e66b884cc0f1
+    b3: 01b8131cd1d93838d6f5a80b7222cd593a18194298e657efed1306c107f9805d
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md
@@ -152,6 +152,11 @@ nodes:
       - { rel: registered-under, to: spec/proof-engineering.md }
   - path: spec/surface-language/value-semantics.md
     role: subdocument
-    b3: 51dbf2220ecf5c1fc1232119adab09cb6a45d398c2ff5cfcc0fe2538b773c8ef
+    b3: ed9247af35fafa47825676f6e45cb66ceaef0db1850b8a1c376fec5f2394739a
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/proposed/modes-and-references.md
+    role: subdocument
+    b3: 79d5b8e4da24a9e0e4f5469691f7b62bb955d712e6c2404da1afe99808e1fcbb
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
