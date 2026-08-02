@@ -6556,6 +6556,47 @@ chain-graft-agrees = refl
 chain-graft-apart : does (chain-grafted ≟ˢ corolla 𝟚 𝟙) ≡ false
 chain-graft-apart = refl
 
+-- AND THE CLAUSE THE CUT INTRODUCED, RUN. `match-comp`'s fused clause is the
+-- one that traces a strand BACK through the first wiring — it is why `match-comp`
+-- is well-founded rather than structural, and it is the clause the whole
+-- composition development above is about — so it is worth pinning at data.
+--
+-- Both checks compose a permutation with a wiring that CAPS two of the three
+-- sources it is given, and the answer is where the cut lands in the composite.
+-- Nothing is forced by the interface: `𝟛 ⟶ 𝟙` carries three matchings, and the
+-- two answers below are two different ones, so a fused clause that computed the
+-- wrong partner would have to agree with both.
+cut-then-wire : Match ⊤ (tt ∷ 𝟚) 𝟙
+cut-then-wire = cap head (head ∷ [])
+
+-- 0↦0, 1↦2, 2↦1 — so the cut's two ports arrive from sources 0 and 2
+swap-tail : Match ⊤ (tt ∷ 𝟚) (tt ∷ 𝟚)
+swap-tail = head ∷ tail head ∷ head ∷ []
+
+comp-fuse-tail : match-comp swap-tail cut-then-wire ≡ cap (tail head) (head ∷ [])
+comp-fuse-tail = refl
+
+-- 0↦1, 1↦0, 2↦2 — the same cut, now arriving from sources 0 and 1
+swap-head : Match ⊤ (tt ∷ 𝟚) (tt ∷ 𝟚)
+swap-head = tail head ∷ head ∷ head ∷ []
+
+comp-fuse-head : match-comp swap-head cut-then-wire ≡ cap head (head ∷ [])
+comp-fuse-head = refl
+
+-- A three-fold composite lands on the THIRD of that interface's matchings, so
+-- between them these checks reach every wiring `𝟛 ⟶ 𝟙` has. That the two
+-- bracketings AGREE is `match-comp-assoc`; what is pinned here is that the value
+-- they agree on is the right one, which no proof of the law can say.
+assoc-fuse-left
+  : match-comp (match-comp swap-head swap-tail) cut-then-wire
+    ≡ head ∷ cap head []
+assoc-fuse-left = refl
+
+assoc-fuse-right
+  : match-comp swap-head (match-comp swap-tail cut-then-wire)
+    ≡ head ∷ cap head []
+assoc-fuse-right = refl
+
 -- The unit laws, at concrete data, hold by `refl`: the witness comparison the
 -- general proof spends `UIP Ob` on computes away once the indices are closed
 -- lists. So the hypothesis buys exactly that comparison and nothing else.
