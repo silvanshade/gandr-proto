@@ -7,4 +7,6 @@ mod differential;
 #[cfg(test)]
 mod linearity;
 #[cfg(test)]
+mod shift;
+#[cfg(test)]
 mod toy_alphabet;

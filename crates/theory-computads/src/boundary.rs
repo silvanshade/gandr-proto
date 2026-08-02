@@ -147,6 +147,11 @@ copy_wrapper!(
     "Number of producer and consumer metavariable bindings."
 );
 copy_wrapper!(
+    ShiftReplay,
+    bool,
+    "Whether both sequentializations of a shift-equivalence witness replay to its join."
+);
+copy_wrapper!(
     SubstitutionEmptyStatus,
     bool,
     "Whether a substitution has no bindings."

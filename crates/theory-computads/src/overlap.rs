@@ -183,54 +183,104 @@ where
     let mut out = Vec::new();
     for (id_left, cell_left) in store.iter() {
         for (id_right, cell_right) in store.iter() {
-            let (renamed_lhs, renamed_rhs) = A::rename_apart(
-                (&cell_left.lhs, &cell_left.rhs),
-                (&cell_right.lhs, &cell_right.rhs),
-            );
-            let renamed = Cell::new(
-                renamed_lhs,
-                renamed_rhs,
-                cell_right.orient,
-                cell_right.provenance,
-            );
-            // Confluence: unify the two left-hand sides (skip the trivial
-            // self-overlap, whose reducts are identical by construction).
-            if id_left != id_right {
-                let mut unifier = A::Subst::default();
-                if bool::from(A::unify_cmd(&cell_left.lhs, &renamed.lhs, &mut unifier)) {
-                    let peak = A::apply_subst(&unifier, &cell_left.lhs);
-                    out.push(Overlap {
-                        left: id_left,
-                        right: id_right,
-                        kind: OverlapKind::Confluence,
-                        unifier,
-                        seam: A::root_position(),
-                        peak,
-                        right_renamed: renamed.clone(),
-                    });
-                }
-            }
-            // Composition: unify the left RHS (at each command position) with the
-            // right LHS.
-            for seam in A::command_positions(&cell_left.rhs) {
-                let Some(sub) = A::subterm_cmd_at(&cell_left.rhs, &seam)
-                else {
-                    continue;
-                };
-                let mut unifier = A::Subst::default();
-                if bool::from(A::unify_cmd(&sub, &renamed.lhs, &mut unifier)) {
-                    let peak = A::apply_subst(&unifier, &cell_left.lhs);
-                    out.push(Overlap {
-                        left: id_left,
-                        right: id_right,
-                        kind: OverlapKind::Composition,
-                        unifier,
-                        seam,
-                        peak,
-                        right_renamed: renamed.clone(),
-                    });
-                }
-            }
+            out.extend(overlaps_between(
+                (id_left, cell_left),
+                (id_right, cell_right),
+            ));
+        }
+    }
+    out
+}
+
+/// The overlap family of **one ordered cell pair** — the pair-keyed query
+/// [`enumerate_overlaps`] iterates, exposed on its own.
+///
+/// Independence is keyed by cell pair and is therefore cacheable, which is what
+/// lets a per-pair consumer ask about two cells without paying the quadratic
+/// store-wide sweep. [`crate::shift::derive_shift_equivalence`] is that
+/// consumer: its second conjunct is "this cell pair has trivial overlap", and
+/// trivial means *this family is empty*.
+///
+/// # Contract
+/// - requires: `left` and `right` are `(id, cell)` pairs the same store handed
+///   out, so the emitted [`Overlap::left`] / [`Overlap::right`] ids address the
+///   cells they name.
+/// - ensures: the confluence overlap of the two left-hand sides when they unify
+///   — suppressed when the two ids are equal, whose reducts are identical by
+///   construction — followed by one composition overlap per command seam of the
+///   left cell's right-hand side that unifies with the right cell's left-hand
+///   side, in the alphabet's own seam order. The family is the multi-sum, one
+///   entry per unifier, never collapsed.
+/// - provides: the same entries, in the same order, that [`enumerate_overlaps`]
+///   emits for this pair.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the extraction is behavior-preserving, so the
+///   store-wide family stays byte-identical and deterministic, and the pair
+///   query is separated from it by an empty family for a non-overlapping pair
+///   and a nonempty one for the composition pair.
+/// - witness: `overlap::tests::overlaps_are_a_deterministic_family`
+/// - witness: `overlap::tests::the_pair_query_agrees_with_the_store_wide_family`
+/// - witness: `shift::tests::the_cong2_cell_pair_has_trivial_overlap`
+#[inline]
+#[must_use]
+pub fn overlaps_between<A>(
+    left: (CellId, &Cell<A>),
+    right: (CellId, &Cell<A>),
+) -> Vec<Overlap<A>>
+where
+    A: CellAlphabet,
+{
+    let (id_left, cell_left) = left;
+    let (id_right, cell_right) = right;
+    let mut out = Vec::new();
+    let (renamed_lhs, renamed_rhs) = A::rename_apart(
+        (&cell_left.lhs, &cell_left.rhs),
+        (&cell_right.lhs, &cell_right.rhs),
+    );
+    let renamed = Cell::new(
+        renamed_lhs,
+        renamed_rhs,
+        cell_right.orient,
+        cell_right.provenance,
+    );
+    // Confluence: unify the two left-hand sides (skip the trivial
+    // self-overlap, whose reducts are identical by construction).
+    if id_left != id_right {
+        let mut unifier = A::Subst::default();
+        if bool::from(A::unify_cmd(&cell_left.lhs, &renamed.lhs, &mut unifier)) {
+            let peak = A::apply_subst(&unifier, &cell_left.lhs);
+            out.push(Overlap {
+                left: id_left,
+                right: id_right,
+                kind: OverlapKind::Confluence,
+                unifier,
+                seam: A::root_position(),
+                peak,
+                right_renamed: renamed.clone(),
+            });
+        }
+    }
+    // Composition: unify the left RHS (at each command position) with the
+    // right LHS.
+    for seam in A::command_positions(&cell_left.rhs) {
+        let Some(sub) = A::subterm_cmd_at(&cell_left.rhs, &seam)
+        else {
+            continue;
+        };
+        let mut unifier = A::Subst::default();
+        if bool::from(A::unify_cmd(&sub, &renamed.lhs, &mut unifier)) {
+            let peak = A::apply_subst(&unifier, &cell_left.lhs);
+            out.push(Overlap {
+                left: id_left,
+                right: id_right,
+                kind: OverlapKind::Composition,
+                unifier,
+                seam,
+                peak,
+                right_renamed: renamed.clone(),
+            });
         }
     }
     out
@@ -290,6 +340,35 @@ mod tests
         let first = enumerate_overlaps(&store);
         let second = enumerate_overlaps(&store);
         assert_eq!(first, second, "enumeration is deterministic");
+    }
+
+    #[test]
+    fn the_pair_query_agrees_with_the_store_wide_family()
+    {
+        // The pair-keyed query is the store-wide sweep's own inner step, so
+        // reassembling it pair by pair must reproduce the family exactly —
+        // including the suppressed confluence self-overlap.
+        let mut store = CellStore::new();
+        store.insert(frame_defining_cell(&Sym::new("Succ")));
+        store.insert(add_s());
+        let mut reassembled = Vec::new();
+        for (id_left, cell_left) in store.iter() {
+            for (id_right, cell_right) in store.iter() {
+                reassembled.extend(overlaps_between(
+                    (id_left, cell_left),
+                    (id_right, cell_right),
+                ));
+            }
+        }
+        assert_eq!(
+            enumerate_overlaps(&store),
+            reassembled,
+            "the pair query is the store-wide family, one ordered pair at a time"
+        );
+        assert!(
+            !reassembled.is_empty(),
+            "and the fixture is one that actually overlaps"
+        );
     }
 
     /// (add-S): ⟨Succ(m) | add(n; α)⟩ ~> ⟨m | add(n; Succ⁻(α))⟩.

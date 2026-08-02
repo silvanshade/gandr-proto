@@ -73,15 +73,53 @@ impl<A: CellAlphabet> Tracelet<A>
         store: &CellStore<A>,
     ) -> TraceletReplay
     {
-        let peak = A::skolemize(&self.overlap.peak);
-        let target = A::skolemize(&self.joins_at);
-        let ran_a = run_path(store, peak.clone(), &self.path_a);
-        let ran_b = run_path(store, peak, &self.path_b);
-        TraceletReplay::from(
-            matches!(ran_a, Some(ref t) if *t == target)
-                && matches!(ran_b, Some(ref t) if *t == target),
+        replay_from_peak(
+            store,
+            &self.overlap.peak,
+            &self.joins_at,
+            &self.path_a,
+            &self.path_b,
         )
     }
+}
+
+/// Replay **two recorded paths from one peak** against one join — the
+/// certificate-shaped check both [`Tracelet::replay`] and the shift-equivalence
+/// witness ([`crate::shift::ShiftEquivalence::replay`]) are the two readings
+/// of.
+///
+/// It is shared rather than duplicated because the object is the same in both
+/// places: a peak, two derivations out of it, and a term they must both reach.
+/// What differs is where the boundary comes from — an [`Overlap`] superposition
+/// for a tracelet, a pair of adjacent applications for a shift.
+///
+/// # Contract
+/// - ensures: positive iff, after skolemizing `peak` and `joins_at` to fresh
+///   constants, running each path by ground rewriting succeeds and lands on the
+///   skolemized `joins_at`; a step that no longer fires, a stale cell id, or a
+///   path landing elsewhere yields a negative.
+/// - provides: the "replayed, not trusted" discipline (ADR-69) for any two-path
+///   boundary.
+/// - panics: none.
+#[inline]
+pub(crate) fn replay_from_peak<A>(
+    store: &CellStore<A>,
+    peak: &A::Cmd,
+    joins_at: &A::Cmd,
+    path_a: &[CellApp<A>],
+    path_b: &[CellApp<A>],
+) -> TraceletReplay
+where
+    A: CellAlphabet,
+{
+    let peak = A::skolemize(peak);
+    let target = A::skolemize(joins_at);
+    let ran_a = run_path(store, peak.clone(), path_a);
+    let ran_b = run_path(store, peak, path_b);
+    TraceletReplay::from(
+        matches!(ran_a, Some(ref t) if *t == target)
+            && matches!(ran_b, Some(ref t) if *t == target),
+    )
 }
 
 /// Whether two tracelets are **replay-equivalent** — **the definition** of when

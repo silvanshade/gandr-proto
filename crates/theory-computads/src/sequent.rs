@@ -27,13 +27,18 @@ use alloc::vec::Vec;
 use gandr_core_sequent::il::Polarity;
 
 use crate::alphabet::CellAlphabet;
+use crate::alphabet::ConvexityDischarge;
+use crate::alphabet::PositionOrder;
 use crate::alphabet::SeamRole;
+use crate::alphabet::path_order;
 use crate::boundary::CellInvertibility;
 use crate::boundary::CellLinearity;
 use crate::boundary::FiringPermission;
+use crate::boundary::PositionStep;
 use crate::boundary::PrimeNameRef;
 use crate::boundary::SubstitutionDecision;
 use crate::cell::Cell;
+use crate::cell::CellStore;
 use crate::pattern::Cat;
 use crate::pattern::CmdPat;
 use crate::pattern::ConsPat;
@@ -655,6 +660,33 @@ impl CellAlphabet for SequentAlphabet
     fn root_position() -> Self::Pos
     {
         Pos::root()
+    }
+
+    #[inline]
+    fn position_order(
+        left: &Self::Pos,
+        right: &Self::Pos,
+    ) -> PositionOrder
+    {
+        path_order(
+            left.as_ref().iter().copied().map(PositionStep::from),
+            right.as_ref().iter().copied().map(PositionStep::from),
+        )
+    }
+
+    #[inline]
+    fn convexity_discharge(_store: &CellStore<Self>) -> ConvexityDischarge
+    {
+        // The store is not consulted, and that is the finding rather than a
+        // shortcut: every left-hand side this alphabet can express is a
+        // `CmdPat` — one cut whose consumer half is a linear spine with a
+        // single terminal — so strong connectedness is forced by the grammar,
+        // not by which cells happen to be present. Targets are command-pattern
+        // trees, hence acyclic. The re-check is therefore constant-true and is
+        // skipped rather than run (`circuit-terms-spike-07`). An alphabet that
+        // adds multi-output or disconnected left-hand sides breaks the forcing
+        // argument and must answer `ReCheckRequired`.
+        ConvexityDischarge::LeftConnectedOverAcyclicTarget
     }
 
     #[inline]

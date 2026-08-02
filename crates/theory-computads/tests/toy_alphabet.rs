@@ -9,6 +9,16 @@
 //! the enumerator finds a real composition overlap, the normalizer rewrites a
 //! ground term, and completion orients a divergence into a derived cell and
 //! certifies the resulting join — with the budgeted decline intact.
+//!
+//! It is also the **only** alphabet in the tree whose terms nest commands, so
+//! it is where anything about two applications in one term can be exercised at
+//! all; the shift-equivalence fixtures in `tests/shift.rs` build on it.
+
+pub use tests::Toy;
+pub use tests::ToyAlphabet;
+pub use tests::ToyNameRef;
+pub use tests::ToyPos;
+pub use tests::toy_cell;
 
 #[cfg(test)]
 mod tests
@@ -24,30 +34,34 @@ mod tests
     use gandr_theory_computads::CellStore;
     use gandr_theory_computads::CompletionBudget;
     use gandr_theory_computads::CompletionOutcome;
+    use gandr_theory_computads::ConvexityDischarge;
     use gandr_theory_computads::FiringPermission;
     use gandr_theory_computads::OverlapKind;
+    use gandr_theory_computads::PositionOrder;
+    use gandr_theory_computads::PositionStep;
     use gandr_theory_computads::SeamRole;
     use gandr_theory_computads::SubstitutionDecision;
     use gandr_theory_computads::complete;
     use gandr_theory_computads::derive_fused;
     use gandr_theory_computads::enumerate_overlaps;
     use gandr_theory_computads::normalize;
+    use gandr_theory_computads::path_order;
 
     extern crate alloc;
 
     /// The toy alphabet marker — a minimal single-sorted term language.
     #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-    struct ToyAlphabet;
+    pub struct ToyAlphabet;
 
     /// A borrowed toy variable name (the semantic boundary for `str`).
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug)]
-    struct ToyNameRef<'source>(&'source str);
+    pub struct ToyNameRef<'source>(pub &'source str);
 
     /// A toy metavariable name.
     #[repr(transparent)]
     #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-    struct ToyVar(Box<str>);
+    pub struct ToyVar(Box<str>);
 
     impl ToyVar
     {
@@ -66,7 +80,7 @@ mod tests
     /// A toy term — `Zero` / `Succ` / `Add` with metavariable and
     /// skolem-constant leaves.
     #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-    enum Toy
+    pub enum Toy
     {
         /// A metavariable leaf.
         Var(ToyVar),
@@ -83,19 +97,19 @@ mod tests
     impl Toy
     {
         /// A metavariable leaf from a name.
-        fn var(name: ToyNameRef<'_>) -> Self
+        pub fn var(name: ToyNameRef<'_>) -> Self
         {
             Self::Var(ToyVar::named(name))
         }
 
         /// A unary constructor application.
-        fn succ(arg: Self) -> Self
+        pub fn succ(arg: Self) -> Self
         {
             Self::Succ(Box::new(arg))
         }
 
         /// A binary operation application.
-        fn add(
+        pub fn add(
             lhs: Self,
             rhs: Self,
         ) -> Self
@@ -167,16 +181,16 @@ mod tests
     /// A toy position — a path of child indices (root is the empty path).
     #[repr(transparent)]
     #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
-    struct ToyPos(Box<[usize]>);
+    pub struct ToyPos(pub Box<[usize]>);
 
     /// A toy substitution — an ordered map from metavariables to terms.
     #[repr(transparent)]
     #[derive(Clone, Debug, Default, Eq, PartialEq)]
-    struct ToySubst(BTreeMap<ToyVar, Toy>);
+    pub struct ToySubst(BTreeMap<ToyVar, Toy>);
 
     /// The toy orientation tag.
     #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-    enum ToyOrient
+    pub enum ToyOrient
     {
         /// Given with the cell.
         Given,
@@ -186,7 +200,7 @@ mod tests
 
     /// The toy provenance tag.
     #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-    enum ToyProv
+    pub enum ToyProv
     {
         /// A rule cell.
         Rule,
@@ -196,7 +210,7 @@ mod tests
 
     /// The toy metadata — the toy alphabet tracks no per-variable data.
     #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-    struct ToyMeta;
+    pub struct ToyMeta;
 
     /// Collect `term`'s metavariables, left to right with repeats.
     ///
@@ -416,6 +430,26 @@ mod tests
             ToyPos::default()
         }
 
+        fn position_order(
+            left: &Self::Pos,
+            right: &Self::Pos,
+        ) -> PositionOrder
+        {
+            path_order(
+                left.0.iter().copied().map(PositionStep::from),
+                right.0.iter().copied().map(PositionStep::from),
+            )
+        }
+
+        fn convexity_discharge(_store: &CellStore<Self>) -> ConvexityDischarge
+        {
+            // A single-sorted first-order term language: left-hand sides are
+            // trees rooted at one operation, targets are trees, and a tree has
+            // no cross edges — so no match can be made non-convex and the
+            // re-check is constant-true, exactly as for the sequent alphabet.
+            ConvexityDischarge::LeftConnectedOverAcyclicTarget
+        }
+
         fn subterm_cmd_at(
             cmd: &Self::Cmd,
             pos: &Self::Pos,
@@ -600,7 +634,7 @@ mod tests
     /// # Contract
     /// - ensures: a `Given` / `Rule` cell with the two faces.
     /// - panics: none.
-    fn toy_cell(
+    pub fn toy_cell(
         lhs: Toy,
         rhs: Toy,
     ) -> Cell<ToyAlphabet>

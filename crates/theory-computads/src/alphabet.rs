@@ -83,7 +83,9 @@ use alloc::vec::Vec;
 
 use crate::boundary::CellInvertibility;
 use crate::boundary::FiringPermission;
+use crate::boundary::PositionStep;
 use crate::boundary::SubstitutionDecision;
+use crate::cell::CellStore;
 
 /// The **flow role** a metavariable hole contributes across a composed seam —
 /// the alphabet-neutral dinaturality vocabulary the directed composition gate
@@ -103,6 +105,106 @@ pub enum SeamRole
     /// Both directions — the dinaturality-shaped hole that closes a loop when
     /// shared across the seam.
     Both,
+}
+
+/// How two positions in one term relate.
+///
+/// This is the vocabulary the shift guard's **first conjunct** reads
+/// ([`crate::shift`]; the decided guard's "the positions are incomparable —
+/// neither position a prefix of the other").
+///
+/// An alphabet answers it through [`CellAlphabet::position_order`]. Only
+/// [`PositionOrder::Incomparable`] licenses a shift: it is the relation that
+/// makes the two applications address **disjoint subtrees**, which is what
+/// makes a term-shaped store free of the cross edges the convexity hazard is
+/// built out of.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum PositionOrder
+{
+    /// The same position — one application, not two.
+    Same,
+    /// The left position is a proper prefix of the right: the left addresses a
+    /// subtree strictly containing the right's.
+    Encloses,
+    /// The right position is a proper prefix of the left.
+    EnclosedBy,
+    /// Neither is a prefix of the other — the two address **disjoint**
+    /// subtrees.
+    Incomparable,
+}
+
+/// The **warrant** an alphabet's store carries for the shift guard's *third*
+/// conjunct — "each match image is still convex in the other's reduct"
+/// ([`crate::shift`]).
+///
+/// The conjunct is stated on a pair of applications in one term and would cost
+/// a directed reachability sweep per query. On a store certified
+/// **left-connected** over an **acyclic** target it is provably constant-true,
+/// so it is *skipped rather than run*, and the witness carries this datum as
+/// the name of the warrant it was skipped under. That certificate is the first
+/// inhabitant of the tractability witness the engine-metatheory contract owes:
+/// a record per tractability reason, never a documented assumption. The
+/// left-connectedness definition and its automatic-convexity theorem are cited
+/// at their statement numbers in
+/// `docs/gandr/spec/implementation/circuit-terms.md`,
+/// `circuit-terms-spike-07`.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ConvexityDischarge
+{
+    /// Discharged outright and never run: every left-hand side the alphabet can
+    /// express is strongly connected and every target is acyclic, so **no**
+    /// match can be made non-convex and the re-check is constant-true.
+    LeftConnectedOverAcyclicTarget,
+    /// Not discharged: the per-pair convexity re-check would have to be run,
+    /// and it is not built — so the shift is refused rather than assumed.
+    ReCheckRequired,
+}
+
+/// The **path order** of two child-index paths.
+///
+/// This is the shared implementation of [`CellAlphabet::position_order`] for
+/// every alphabet whose positions are paths of child indices — which every
+/// alphabet's are, by the [`CellAlphabet::Pos`] contract.
+///
+/// # Contract
+/// - requires: both iterators yield the position's child indices from the root
+///   outward.
+/// - ensures: [`PositionOrder::Same`] on equal paths;
+///   [`PositionOrder::Encloses`] when `left` is a proper prefix of `right`;
+///   [`PositionOrder::EnclosedBy`] when `right` is a proper prefix of `left`;
+///   [`PositionOrder::Incomparable`] at the first differing step, which is
+///   exactly when the two paths address disjoint subtrees.
+/// - provides: the first conjunct of the shift guard, in one pass over the
+///   shorter path.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the four outcomes are separated pointwise by an
+///   equal pair, a proper-prefix pair in each direction, and a pair diverging
+///   at a shared depth.
+/// - witness: `shift::tests::the_path_order_separates_its_four_outcomes`
+#[inline]
+#[must_use]
+pub fn path_order<Left, Right>(
+    left: Left,
+    right: Right,
+) -> PositionOrder
+where
+    Left: IntoIterator<Item = PositionStep>,
+    Right: IntoIterator<Item = PositionStep>,
+{
+    let mut right = right.into_iter();
+    for step in left {
+        match right.next() {
+            | None => return PositionOrder::EnclosedBy,
+            | Some(other) if other == step => {},
+            | Some(_) => return PositionOrder::Incomparable,
+        }
+    }
+    match right.next() {
+        | Some(_) => PositionOrder::Encloses,
+        | None => PositionOrder::Same,
+    }
 }
 
 /// The **cell alphabet** the engines quantify over — the pattern grammar, the
@@ -230,6 +332,51 @@ pub trait CellAlphabet: Copy + Default + Eq + Ord + core::hash::Hash + core::fmt
     ///   term.
     /// - panics: none.
     fn root_position() -> Self::Pos;
+
+    /// How two positions relate — whether one addresses a subtree containing
+    /// the other, or the two address **disjoint** subtrees.
+    ///
+    /// An alphabet whose positions are child-index paths (which every
+    /// alphabet's are, by the [`CellAlphabet::Pos`] contract) answers this with
+    /// [`path_order`].
+    ///
+    /// # Contract
+    /// - ensures: [`PositionOrder::Incomparable`] exactly when neither position
+    ///   is a prefix of the other, in which case the subterms they address are
+    ///   disjoint and neither survives inside the other; the relation is
+    ///   symmetric up to swapping [`PositionOrder::Encloses`] and
+    ///   [`PositionOrder::EnclosedBy`].
+    /// - provides: the first conjunct of the shift guard
+    ///   ([`crate::shift::derive_shift_equivalence`]).
+    /// - panics: none.
+    fn position_order(
+        left: &Self::Pos,
+        right: &Self::Pos,
+    ) -> PositionOrder;
+
+    /// The **convexity discharge** `store` certifies — the warrant the shift
+    /// guard's third conjunct is skipped under, or the refusal to skip it.
+    ///
+    /// This is a claim about the alphabet's grammar rather than a computation
+    /// over the store: an alphabet whose expressible left-hand sides are all
+    /// strongly connected, over targets that are all acyclic, forces every
+    /// match convex, so no rewrite can destroy a property no match is able to
+    /// fail. The store is supplied because a later alphabet — one whose
+    /// left-hand sides are *not* all strongly connected — must certify the
+    /// property of the cells actually present rather than of the grammar.
+    ///
+    /// # Contract
+    /// - requires: an implementor returns
+    ///   [`ConvexityDischarge::LeftConnectedOverAcyclicTarget`] only when every
+    ///   left-hand side in `store` is strongly connected and every target the
+    ///   engines rewrite is acyclic; otherwise
+    ///   [`ConvexityDischarge::ReCheckRequired`].
+    /// - ensures: the value is stable for a given store, so a witness carrying
+    ///   it names one warrant rather than a sampled one.
+    /// - provides: the third conjunct of the shift guard, as a datum instead of
+    ///   a per-query reachability sweep.
+    /// - panics: none.
+    fn convexity_discharge(store: &CellStore<Self>) -> ConvexityDischarge;
 
     /// The command subterm at `pos`, if the path addresses one.
     ///

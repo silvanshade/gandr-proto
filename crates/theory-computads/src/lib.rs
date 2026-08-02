@@ -50,6 +50,12 @@
 //! - [`tracelet`] — replayable 3-cell certificates and the derived fused cell
 //!   (§7.2, §7.3.4), with replay-equivalence as the identity criterion (ADR-69
 //!   D1).
+//! - [`shift`] — the **earned shift-equivalence witness**: two adjacent
+//!   applications at disjoint positions with trivial overlap are one composite
+//!   transformation, granted per pair against the decided guard
+//!   (`docs/gandr/spec/implementation/circuit-terms.md`,
+//!   `circuit-terms-spike-07`) and carrying the convexity conjunct's discharge
+//!   as a certificate rather than a recomputed sweep.
 //! - [`compose`] — two-mode certificate composition (§4.3, ADR-69 D3):
 //!   [`compose::compose_invertible`] (the unconditional coherence lane) and
 //!   [`compose::compose_directed`] (gated by variable-flow acyclicity across
@@ -94,11 +100,15 @@ pub mod overlap;
 pub mod pattern;
 pub mod rewrite;
 pub mod sequent;
+pub mod shift;
 pub mod subst;
 pub mod tracelet;
 
 pub use crate::alphabet::CellAlphabet;
+pub use crate::alphabet::ConvexityDischarge;
+pub use crate::alphabet::PositionOrder;
 pub use crate::alphabet::SeamRole;
+pub use crate::alphabet::path_order;
 pub use crate::boundary::CellCount;
 pub use crate::boundary::CellInvertibility;
 pub use crate::boundary::CellLinearity;
@@ -115,6 +125,7 @@ pub use crate::boundary::OperationInputCount;
 pub use crate::boundary::PatternSize;
 pub use crate::boundary::PositionRootStatus;
 pub use crate::boundary::PositionStep;
+pub use crate::boundary::ShiftReplay;
 pub use crate::boundary::SubstitutionBindingCount;
 pub use crate::boundary::SubstitutionDecision;
 pub use crate::boundary::SubstitutionEmptyStatus;
@@ -143,6 +154,7 @@ pub use crate::linearity::copied_hole;
 pub use crate::overlap::Overlap;
 pub use crate::overlap::OverlapKind;
 pub use crate::overlap::enumerate_overlaps;
+pub use crate::overlap::overlaps_between;
 pub use crate::pattern::Cat;
 pub use crate::pattern::CmdPat;
 pub use crate::pattern::ConsPat;
@@ -162,6 +174,9 @@ pub use crate::sequent::HoleName;
 pub use crate::sequent::Orientation;
 pub use crate::sequent::SequentAlphabet;
 pub use crate::sequent::frame_defining_cell;
+pub use crate::shift::ShiftEquivalence;
+pub use crate::shift::ShiftObstruction;
+pub use crate::shift::derive_shift_equivalence;
 pub use crate::subst::Subst;
 pub use crate::tracelet::Tracelet;
 pub use crate::tracelet::confluence_tracelet;
