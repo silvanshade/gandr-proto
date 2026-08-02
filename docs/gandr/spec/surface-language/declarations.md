@@ -114,6 +114,8 @@ extern "c" from "m" {
 * Members are opaque type declarations (`type Db;`) and bodiless function signatures; member **attributes** (`@unwind`, `@variadic`, `@repr(c)`) are deferred — the block accepts un-attributed members only.
 * A member call elaborates through the host-effect seam: `m.cos(x)` becomes `perform m.cos { p1 = x }`, with the reserved namespaces `fs`, `env`, `proc` riding the same member-call surface (`fs.read(p)`).
 * Boundary type conventions: `CStr` ↔ `String`, opaque handles ↔ `u64`, `Void` ↔ `Unit`; the sized scalar atoms (`u32` … `f64`) are primitive types.
+* The safety model behind the surface — the foreign call as an effect operation, loading as a capability, the library lifetime as a linear resource, abort-on-unwind, the full boundary mapping, and the two execution paths — is [[../implementation/foreign-interface]].
+  **The native handler does not exist in this tree**: the block declares and type-checks a boundary that nothing crosses yet.
 
 ## `import` declarations
 

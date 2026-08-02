@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: f55160a9f7ef11fede6c3a347d5dbae86d5e4689ea637359820e3c1be1631611
+    b3: e67fee7db8869ade69d5c2bc90e1af09853f8128a5b04c8c03a547bcfe249bcd
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -99,7 +99,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: b94438f21cb0d91b986bf08e3fec963d80daed49ded369d8eb7d584982ab9607
+    b3: 877992cbaebac5960be9f1dd0321c742439daad6430877f9f740119955eb48d2
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
@@ -160,3 +160,8 @@ nodes:
     b3: 79d5b8e4da24a9e0e4f5469691f7b62bb955d712e6c2404da1afe99808e1fcbb
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/implementation/foreign-interface.md
+    role: subdocument
+    b3: 53a0b2870fdb2df9b073f77c920a9fcc90f78503262a5f4c0fafe3e77ca951d5
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
