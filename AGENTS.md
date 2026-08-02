@@ -81,6 +81,8 @@ That is the normal case, not an unlucky one.
 Decisions, sign-offs, and adjudications the owner must take are **queued on the tracker, not posed inline and not collected in a document**.
 A bead needing decisions gets a **queue bead** as its child; an epic gets **one** queue bead for the whole epic rather than one per child.
 Each question is a single comment identified `<queue-bead-id>-question-NN` — the prefix is always the hosting queue bead's own id, never the id of a bead the question is merely about — and the owner answers by comment under the same identifier.
+**File the question before raising it, and never ask leave to file one**: a reply may point at a filed question, but hedging it as a candidate ("worth asking", "ripe if you want it") leaves it in a transcript, which is the one artifact here that nothing can search or cite.
+If a ruling nonetheless arrives without a filed question, file the question retroactively and record the ruling as an agent-authored transcription comment before the work proceeds.
 Every ruling of record lands in the authoritative project artifact; the comment stream is the deliberation record, never the ruling's home.
 The full discipline is [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"The owner-decision queue".
 

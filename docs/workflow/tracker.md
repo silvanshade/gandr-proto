@@ -145,6 +145,27 @@ This is the same failure the reference discipline exists to prevent, met from th
 
 **One question is one comment**, and it opens with its identifier.
 
+**File it before raising it, always.** The bead comment is written first; a reply may then point at it, summarize it, or list several at once.
+Chat is a pointer to the queue and is never the queue: an unfiled question exists only in a transcript, and a transcript is the one artifact in this project that nothing can search, cite, or hand to the next session.
+
+**A question does not become exempt by being framed as something less than a question.** "Worth asking at some point", "ripe to ask if you want them", "a decision that is arguably yours", "I did not file these unasked" — each of those reads as _not yet a question_ and therefore as outside the rule, which is exactly how an unfiled question survives long enough to be answered ambiently.
+The test is not how the item is framed; it is **whether an owner ruling would change what happens next**.
+If it would, it is a queue question, and it is filed before it is mentioned.
+
+**Filing costs one comment and asking permission to file costs a round trip.** An agent never needs leave to file a question, so proposing to file one instead of filing it is strictly worse for everyone: the owner reads the same text either way, and only one of the two readings leaves a record.
+
+### When a ruling arrives without a question
+
+It will happen anyway — an owner answers something in conversation, or an agent asks ambiently and gets a reply.
+**The ruling is valid; the record is what is missing**, and the repair is the same in both cases and is owed before the work proceeds.
+
+1. **File the question retroactively**, at the next free number, written as it should have been written — the context, what the decision changes, the options, and the recommendation the agent actually held.
+   Do not reverse-engineer it into whatever makes the given answer look inevitable.
+2. **Record the ruling in a separate comment, authored by the agent and marked as a transcription**, naming that the owner gave it in conversation and that the question was filed after the fact.
+   This is the one case where an agent's comment carries the owner's decision, and marking it is what keeps it distinguishable from the owner answering directly.
+   It does not license inferring a ruling that was never given: §"Answering, and what an agent may not do" is unchanged, and silence is still not consent.
+3. **Land the ruling in its authoritative artifact** as usual, and let the execution comment name where it landed.
+
 **The identifier is `<queue-bead-id>-question-NN`**, zero-padded, numbered within that bead, and stable: retiring a question leaves its number unused rather than renumbering the rest.
 
 **The prefix is always the hosting queue bead's own identifier — never the identifier of a bead the question is about.** A question may concern another bead entirely, or half of one and half of another; it still takes the prefix of the bead it _lives on_, and its body names whatever else it concerns.
