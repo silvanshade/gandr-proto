@@ -825,6 +825,7 @@ dilavore-defelice-roman-2022-monoidal-streams:
   parent:
     type: proceedings
     title: "Proceedings of the 37th Annual ACM/IEEE Symposium on Logic in Computer Science (LICS)"
+    page-range: 1-14
 
 hasegawa-1997-recursion-cyclic-sharing:
   type: article
