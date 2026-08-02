@@ -1293,9 +1293,13 @@ rossberg-2018-1ml:
   title: 1ML – Core and Modules United
   author: ["Rossberg, Andreas"]
   date: 2018
+  serial-number:
+    doi: "10.1017/S0956796818000205"
   parent:
     type: periodical
     title: Journal of Functional Programming
+    volume: 28
+    page-range: e22
 
 moon-blinn-porter-omar-2025-tylr:
   type: article
@@ -2471,3 +2475,87 @@ cowtan-2024-code-surgery:
     checked 2026-08-01 and routed out rather than folded; its gluing is colimits in chain
     complexes of F2-matrices, which is the linear ambient the corpus already declines imports
     from. Registered so the check is not repeated
+
+serrano-hage-peytonjones-vytiniotis-2020-quick-look:
+  type: article
+  title: A Quick Look at Impredicativity
+  author: ["Serrano, Alejandro", "Hage, Jurriaan", "Peyton Jones, Simon", "Vytiniotis, Dimitrios"]
+  date: 2020
+  serial-number:
+    doi: "10.1145/3408971"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 4
+    issue: ICFP
+    page-range: "89:1-89:29"
+
+rossberg-lebotlan-tack-brunklaus-smolka-2006-alice:
+  type: chapter
+  title: Alice Through the Looking Glass
+  author: ["Rossberg, Andreas", "Le Botlan, Didier", "Tack, Guido", "Brunklaus, Thorsten", "Smolka, Gert"]
+  date: 2006
+  publisher: Intellect
+  parent:
+    type: book
+    title: Trends in Functional Programming
+    volume: 5
+  note: >-
+    authors, title, book, volume, publisher and year confirmed 2026-08-02 against the authors' own
+    publication list; no DOI, ISBN, or page range was found for the volume, so the entry carries no
+    stable numeric identifier and every claim citing it says so at the claim
+
+blaudeau-remy-radanne-2024-transparency:
+  type: article
+  title: Fulfilling OCaml Modules with Transparency
+  author: ["Blaudeau, Clément", "Rémy, Didier", "Radanne, Gabriel"]
+  date: 2024
+  serial-number:
+    doi: "10.1145/3649818"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 8
+    issue: OOPSLA1
+    page-range: "101:1-101:29"
+
+murphy-crary-harper-2007-ml5:
+  type: chapter
+  title: Type-Safe Distributed Programming with ML5
+  author: ["Murphy VII, Tom", "Crary, Karl", "Harper, Robert"]
+  date: 2007
+  publisher: Springer
+  serial-number:
+    doi: "10.1007/978-3-540-78663-4_9"
+  parent:
+    type: proceedings
+    title: Trustworthy Global Computing
+    volume: 4912
+    page-range: 108-123
+
+white-bour-yallop-2015-modular-implicits:
+  type: article
+  title: Modular Implicits
+  author: ["White, Leo", "Bour, Frédéric", "Yallop, Jeremy"]
+  date: 2015
+  serial-number:
+    doi: "10.4204/EPTCS.198.2"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 198
+    page-range: 22-63
+
+balzer-pfenning-2017-manifest-sharing:
+  type: article
+  title: Manifest Sharing with Session Types
+  author: ["Balzer, Stephanie", "Pfenning, Frank"]
+  date: 2017
+  serial-number:
+    doi: "10.1145/3110281"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 1
+    issue: ICFP
+    page-range: "37:1-37:29"

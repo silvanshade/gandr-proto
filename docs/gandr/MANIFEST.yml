@@ -34,12 +34,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: e2b1190f9f3bd6354e90c41c0b5af3744b4f0ab57af9b7e4e0553fb14132abf7
+    b3: 28741a25ad36802bbcd48807e7b3ba7417112d0b52551e27b044404ccdb2d9ac
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 1e4211ec1de4091a9fd5210cdfd834f52bebbd3ff52d0cf80ffad61fa2d0bea8
+    b3: 95f3dca54d95ae3ae30f7cdb82bfca0c53b7f13a59ae28b63f57e1fdf062e571
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -99,7 +99,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: 877992cbaebac5960be9f1dd0321c742439daad6430877f9f740119955eb48d2
+    b3: 56383a986f11f26b3af0bf5cfc4b85fdde36afe6f43110f7db8773923c2ddeb7
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
@@ -129,7 +129,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: 01b8131cd1d93838d6f5a80b7222cd593a18194298e657efed1306c107f9805d
+    b3: bfab523c38564946ca52f6834d5d5a3b66287ccf2d6a795371e3b903ff627c65
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md
@@ -158,6 +158,11 @@ nodes:
   - path: spec/surface-language/proposed/modes-and-references.md
     role: subdocument
     b3: b22ec20d844a8bf648b71e822f17945b791a1ac692ac078fbe0284379146358e
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/proposed/modules.md
+    role: subdocument
+    b3: b24743042cd67b1cbcc84da0f926964570ad58614cafc66c1863aabf31123330
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md

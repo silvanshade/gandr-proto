@@ -136,7 +136,8 @@ module Parser {
 
 * As built (the M1-lite rung): checked-PBG module declarations with **optional record ascription** (`module M : #{ field: Type, … } { … }`), ordered member fields, and attribute-aware projection.
 * Module bodies lower to source-ordered, exactly-once bind chains returning **canonical records**; modules are **value-only** (member ascriptions do not constrain eager effect rows); nested paths route through record projection.
-* The full module family — structures, signatures, functors `fun (x:σ) ⇒ m`, ascription `:>` (sealing, generative), `pack`/`unpack`, `Package σ ≜ ∃β̄. U_r (F σ)` — is the modules design's staging (M1+), not the current rung; modules as their own primitive layer is the implementation track's phase commitment, and neither older reading (compile-time namespaces, nor modules-elaborating-to-records as the final story) is current.
+* The full module family — structures, signatures, functors `fun (x:σ) ⇒ m`, ascription `:>` (sealing, generative), `pack`/`unpack`, `Package σ ≜ ∃β̄. U_r (F σ)` — is [[proposed/modules|the module system's]] staging above the built rung, not the current rung; modules as their own primitive layer is the implementation track's phase commitment, and neither older reading (compile-time namespaces, nor modules-elaborating-to-records as the final story) is current.
+* A module **member** may carry a leading `@[…]` block in the grammar, but the lowering collects attributes for top-level items only, so a member's attributes parse and are then neither projected nor diagnosed; the module declaration itself takes no attribute block ([[proposed/modules#module-question-04]]).
 
 ## Operator-fixity declarations
 

@@ -33,8 +33,10 @@ Each reserved form's graduation is gated on the semantics that owns it — **no 
 * **Mixed-word interpolation** for the shell host escape (`"pre $( E ) post"`) — deferred; the standalone-word cut is what landed.
 * **Environment assignment** `FOO=bar cmd` — currently unmoldable; wanted working for the daily-driver rung.
 * **Typed package imports** — deferred past the module rung; `import` resolution is unwired today.
+  The binding constraint carried from the design record is that **resolution stays outside the trusted core** — a resolver supplies source and module data, the elaborator checks the declared signature — and that a hermetic fixture resolver with no network access is the acceptance instrument ([[proposed/modules#module-question-03]]).
 * **The computation-sort gradual-top spelling** — a named deferral from the module train.
-* **The full module family** (structures, signatures, functors, sealing, `pack`/`unpack`, `Package σ`) — the M1+ staging of the modules design, then modules as their own primitive layer (the implementation phase).
+* **The full module family** (structures, signatures, functors, sealing, `pack`/`unpack`, `Package σ`) — the staging above the built rung in [[proposed/modules#The staging ladder]], then modules as their own primitive layer (the implementation phase).
+  The two open surface questions it carries are the signature spelling ([[proposed/modules#module-question-01]]) and whether inferred impredicativity rides the implicit-search fuel ([[proposed/modules#module-question-02]]).
 * **Effects/control keywords** (`handle`, `perform`, `reset`, `shift`, `resume`, `stk`) — reserved, wired when the effects lane surfaces them; `quote`/`splice` ride the metaprogramming lane.
 * **`yield`/`await`** — keyword-only commitments gated on the handler-reification mechanism (generators/async as handler-to-codata reification).
 * **Labeled `break 'l`** — needs per-label atoms or named handlers; the `'` sigil collides with the character lexer.
