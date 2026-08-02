@@ -118,13 +118,16 @@ const EXPECTED_DYLINT_UI_TEST_COMMAND: &[&str] = &[
 ];
 
 /// Exact Clippy command for every lint-eligible workspace target, driver
-/// included (the Dylint driver is an in-workspace crate). The trailing
+/// included (the Dylint driver is an in-workspace crate). The `"$@"` scope
+/// hole takes the task's trailing package arguments and defaults to the whole
+/// workspace — the default is locked separately, so the merge wall's bare
+/// invocation keeps the enabled-workspace scope. The trailing
 /// `-A clippy::std_instead_of_core` is the lane-scoped residual of the
 /// nightly-2026-05-28 rollback (docs/workflow/rust.md "Toolchain upgrades").
 const EXPECTED_CLIPPY_WORKSPACE_COMMAND: &[&str] = &[
     "cargo",
     "clippy",
-    "--workspace",
+    "\"$@\"",
     "--all-targets",
     "--features=full",
     "--",
@@ -1325,6 +1328,10 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     let mise_tasks_cargo = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-cargo.toml"))?;
     let cargo_clippy = toml_table_at(&mise_tasks_cargo, ["cargo:clippy"])?;
     let cargo_clippy_script = toml_table_string(cargo_clippy, "run")?;
+    assert!(
+        cargo_clippy_script.0.contains("set -- --workspace"),
+        "cargo:clippy must default its package-scope hole to the whole workspace"
+    );
     let clippy_commands = parse_cargo_invocations(cargo_clippy_script);
     let [ref workspace_pass] = *clippy_commands.as_slice()
     else {
@@ -1365,6 +1372,10 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
         "strict project-local Dylint must deny every warning (the std_instead_of_core allowance is the documented nightly-2026-05-28 rollback residual)"
     );
     let cargo_dylint_local_script = toml_table_string(cargo_dylint_local, "run")?;
+    assert!(
+        cargo_dylint_local_script.0.contains("set -- --workspace"),
+        "cargo:dylint:local must default its package-scope hole to the whole workspace"
+    );
     let local_invocations = parse_dylint_invocations(cargo_dylint_local_script)?;
     let [ref custom_pass] = *local_invocations.as_slice()
     else {
@@ -1417,7 +1428,7 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     );
     assert_string_sequence(
         &custom_pass.cargo_args,
-        ["--workspace", "--all-targets", "--features=full"],
+        ["\"$@\"", "--all-targets", "--features=full"],
         "project-local Dylint pass package scope changed",
     );
 
