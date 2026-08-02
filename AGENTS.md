@@ -127,7 +127,8 @@ Before adding tracked content or a commit message, classify it:
 **Acid test:** would the content be wrong or useless for a contributor on different hardware?
 If so, it is contributor-concern.
 
-Store contributor-concern artifacts in a separate, versioned notes repository outside this tree; this repository has no in-repo `notes/` directory or stranded-notes guard.
+Store contributor-concern artifacts in the contributor notes repository — a separate git repository named `../<repo-name>-notes` beside the primary checkout (here `../gandr-notes`); this repository has no in-repo `notes/` directory or stranded-notes guard.
+If the notes repository does not exist, suggest creating it and initializing it as a git repository rather than inventing another location.
 Distill any project-relevant conclusion into the appropriate design or decision record, and leave contributor context in the notes location.
 
 Commit messages are enforced by `commitlint`; `.commitlintrc.mts` is authoritative.
