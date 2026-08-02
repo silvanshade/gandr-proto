@@ -3241,3 +3241,21 @@ atkey-johann-ghani-2012-refining:
   note: >-
     locator transcribed from the cosmology thesis's bibliography and verified against the LMCS
     and arXiv records at registration time
+
+ahrens-lafont-lamiaux-2025-2functoriality:
+  type: article
+  title: 2-Functoriality of Initial Semantics, and Applications
+  author: ["Ahrens, Benedikt", "Lafont, Ambroise", "Lamiaux, Thomas"]
+  date: 2025
+  serial-number:
+    doi: "10.1145/3747527"
+    arxiv: "2503.10863"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 9
+    issue: ICFP
+  note: >-
+    title and authorship verified from page 1 of the held PDF (the arXiv v2, byte-identical to the
+    managed copy); the PACMPL venue and DOI are verified by fetch during the sweep and are not
+    printed on the held artifact
