@@ -2723,3 +2723,503 @@ gambino-kock-2013-polynomial:
   note: >-
     locator transcribed from the cosmology thesis's bibliography and verified against the
     Cambridge Core record at registration time
+
+# ── The signature-generalization sweep — list rows read 2026-08-02 ────────────
+
+# row 1 — higher-order behavioural conformances via fibrations
+urbat-2026-conformances:
+  type: article
+  title: Higher-Order Behavioural Conformances via Fibrations
+  author: ["Urbat, Henning"]
+  date: 2026
+  serial-number:
+    doi: "10.1145/3776697"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 10
+    issue: POPL
+    page-range: "55:1-55:29"
+  note: >-
+    title, authorship, venue, and identifier read from page 1 of the held PDF
+
+# row 2 — higher-order bialgebraic semantics
+goncharov-milius-schroeder-tsampas-urbat-2026-higher-order-bialgebraic:
+  type: article
+  title: Higher-Order Bialgebraic Semantics
+  author: ["Goncharov, Sergey", "Milius, Stefan", "Schröder, Lutz", "Tsampas, Stelios", "Urbat, Henning"]
+  date: 2026
+  serial-number:
+    doi: "10.46298/jfp.17738"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming
+    volume: 36
+  note: >-
+    identity verified from page 1 of the held PDF; article 1, submitted April 2024, accepted
+    March 2026 as printed in the artifact's page-1 footer
+
+# row 3 — towards a higher-order bialgebraic denotational semantics
+goncharov-peressotti-tsampas-urbat-volpe-2026-denotational:
+  type: article
+  title: Towards a Higher-Order Bialgebraic Denotational Semantics
+  author: ["Goncharov, Sergey", "Peressotti, Marco", "Tsampas, Stelios", "Urbat, Henning", "Volpe, Stefano"]
+  date: 2026
+  serial-number:
+    arxiv: "2602.18295"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 10
+    issue: ICFP
+    page-range: "295:1-295:35"
+  note: >-
+    held artifact is arXiv v2 (30 Jun 2026) of the ICFP article, read from page 1; the ACM DOI is
+    not printed on the artifact and is therefore not recorded here
+
+# row 4 — abstract operational methods for call-by-push-value
+goncharov-tsampas-urbat-2025-cbpv:
+  type: article
+  title: Abstract Operational Methods for Call-by-Push-Value
+  author: ["Goncharov, Sergey", "Tsampas, Stelios", "Urbat, Henning"]
+  date: 2025
+  serial-number:
+    arxiv: "2410.17045"
+  note: >-
+    held artifact is arXiv v3 (23 Jan 2025), read from page 1; no venue is printed on the
+    artifact, so none is recorded
+
+# row 5 — a categorical framework for congruence of applicative bisimilarity
+hirschowitz-lafont-2022-applicative:
+  type: article
+  title: A Categorical Framework for Congruence of Applicative Bisimilarity in Higher-Order
+    Languages
+  author: ["Hirschowitz, Tom", "Lafont, Ambroise"]
+  date: 2022
+  serial-number:
+    doi: "10.46298/LMCS-18(3:37)2022"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 18
+    issue: 3
+    page-range: "37:1-37:72"
+  note: >-
+    title, authorship, venue, and identifier read from page 1 of the held PDF
+
+# row 6 — modules over monads and operational semantics
+hirschowitz-hirschowitz-lafont-2020-transition-monads:
+  type: article
+  title: Modules over Monads and Operational Semantics
+  author: ["Hirschowitz, André", "Hirschowitz, Tom", "Lafont, Ambroise"]
+  date: 2020
+  serial-number:
+    doi: "10.4230/LIPIcs.FSCD.2020.12"
+  parent:
+    type: proceedings
+    title: 5th International Conference on Formal Structures for Computation and Deduction
+      (FSCD 2020)
+    page-range: "12:1-12:23"
+  note: >-
+    title, authorship, venue, and identifier read from page 1 of the held PDF; HAL identifier
+    hal-02338144v3, read from the artifact's cover page
+
+# row 7 — cellular monads from positive GSOS specifications
+hirschowitz-2019-cellular:
+  type: article
+  title: Cellular Monads from Positive GSOS Specifications
+  author: ["Hirschowitz, Tom"]
+  date: 2019
+  serial-number:
+    doi: "10.4204/EPTCS.300.1"
+  parent:
+    type: proceedings
+    title: Combined Workshop on Expressiveness in Concurrency and Structural Operational
+      Semantics (EXPRESS/SOS 2019)
+    volume: 300
+    page-range: 1-18
+  note: >-
+    the PDF carries no document metadata; title and single authorship were read from page 1 of
+    the artifact
+
+# row 8 — towards a geometry for syntax
+sterling-2023-geometry:
+  type: article
+  title: Towards a Geometry for Syntax
+  author: ["Sterling, Jonathan"]
+  date: 2023-09-28
+  serial-number:
+    arxiv: "2307.09497"
+  note: >-
+    title, authorship, date, and arXiv identifier read from page 1 of the held PDF (v2); no DOI is
+    printed on the artifact. Self-described as expository: the results are not new, the
+    explanation is
+
+# row 9 — algebraic type theory, part 1: Martin-Löf algebras
+awodey-2025-mlalgebras:
+  type: article
+  title: "Algebraic Type Theory, Part 1: Martin-Löf Algebras"
+  author: ["Awodey, Steve"]
+  date: 2025
+  serial-number:
+    arxiv: "2505.10761"
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF (arXiv:2505.10761v1,
+    16 May 2025; the paper itself is dated 6 June 2025); no DOI or venue is printed on the
+    artifact
+
+# row 10 — definable and non-definable notions of structure
+swan-2022-definable:
+  type: article
+  title: Definable and Non-Definable Notions of Structure
+  author: ["Swan, Andrew W."]
+  date: 2022
+  serial-number:
+    arxiv: "2206.13643"
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF (arXiv:2206.13643v1,
+    27 June 2022); no DOI or venue is printed on the artifact
+
+# row 11 — sheaf semantics of termination-insensitive noninterference
+sterling-harper-2022-sheaf:
+  type: article
+  title: Sheaf Semantics of Termination-Insensitive Noninterference
+  author: ["Sterling, Jonathan", "Harper, Robert"]
+  date: 2022
+  serial-number:
+    doi: "10.4230/LIPIcs.FSCD.2022.15"
+    arxiv: "2204.09421"
+  parent:
+    type: proceedings
+    title: 7th International Conference on Formal Structures for Computation and Deduction (FSCD 2022)
+  note: >-
+    title, authorship, DOI, and arXiv identifier read from page 1 of the held PDF (extended version).
+    HAZARD: the computational-adequacy proof is corrected by a published erratum -- see
+    sterling-2023-sheaf-erratum; cite the adequacy results only together with it
+
+# row 11 companion — the erratum the row-11 note cites by key
+sterling-2023-sheaf-erratum:
+  type: misc
+  title: "Erratum: adequacy of Sheaf semantics of noninterference"
+  author: ["Sterling, Jonathan"]
+  date: 2023
+  url: http://www.jonmsterling.com/jms-005Z.xml
+  note: >-
+    transcribed from reference [30] of the held Niu-Sterling-Harper PDF, which describes the corrected
+    defect as a mismatch between the existential quantifier and the join of a family of Sigma-propositions
+    in the lifting of free algebras to formal approximation relations. NOT independently verified at the
+    URL by this reading -- verify locator before citation-bearing use
+
+# row 12 — reflections on existential types
+sterling-2022-existential:
+  type: article
+  title: Reflections on Existential Types
+  author: ["Sterling, Jonathan"]
+  date: 2022-10-04
+  serial-number:
+    arxiv: "2210.00758"
+  note: >-
+    title, authorship, date, and arXiv identifier read from page 1 of the held PDF (v1); no DOI printed
+    on the artifact
+
+# row 13 — towards univalent reference types
+sterling-gratzer-birkedal-2024-univalent-references:
+  type: article
+  title: "Towards Univalent Reference Types: The Impact of Univalence on Denotational Semantics"
+  author: ["Sterling, Jonathan", "Gratzer, Daniel", "Birkedal, Lars"]
+  date: 2024
+  serial-number:
+    doi: "10.4230/LIPIcs.CSL.2024.19"
+    arxiv: "2307.16608"
+  parent:
+    type: proceedings
+    title: 32nd EACSL Annual Conference on Computer Science Logic (CSL 2024)
+    volume: 288
+    page-range: "19:1-19:21"
+  note: >-
+    title, authorship, venue, article number, page range, DOI, and arXiv identifier read from page 1
+    of the held PDF
+
+# row 14 — cost-sensitive computational adequacy in synthetic domain theory
+niu-sterling-harper-2024-cost-adequacy:
+  type: article
+  title: Cost-Sensitive Computational Adequacy of Higher-Order Recursion in Synthetic Domain Theory
+  author: ["Niu, Yue", "Sterling, Jonathan", "Harper, Robert"]
+  date: 2024-12-15
+  serial-number:
+    doi: "10.46298/entics.14732"
+  parent:
+    type: periodical
+    title: Electronic Notes in Theoretical Informatics and Computer Science
+    volume: 4
+  note: >-
+    title, authorship, venue (ENTICS vol. 4, MFPS 2024), publication date, and DOI read from page 1 of
+    the held PDF
+
+# row 15 — reflexive graph lenses in univalent foundations
+sterling-2026-lenses:
+  type: article
+  title: Reflexive Graph Lenses in Univalent Foundations
+  author: ["Sterling, Jonathan"]
+  date: 2026
+  serial-number:
+    arxiv: "2404.07854"
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF (arXiv:2404.07854v2,
+    19 January 2026; the paper itself is dated 21 January 2026); no DOI or venue is printed on the
+    artifact
+
+# row 16 — Hofmann–Streicher lifting of fibred categories
+slattery-sterling-2026-hs-lifting:
+  type: article
+  title: Hofmann–Streicher Lifting of Fibred Categories
+  author: ["Slattery, Andrew", "Sterling, Jonathan"]
+  date: 2026
+  serial-number:
+    doi: "10.46298/LMCS-22(2:30)2026"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 22
+    issue: 2
+    page-range: "30:1-30:35"
+  note: >-
+    title, authorship, venue, page range, and DOI read from page 1 of the held PDF, which is the
+    extended version
+
+# row 17 — the synthetic Sierpiński cone
+bakke-sterling-williams-ye-2026-sierpinski:
+  type: article
+  title: The Synthetic Sierpinski Cone
+  author: ["Bakke, Fredrik", "Sterling, Jonathan", "Williams, Mark Damuni", "Ye, Lingyuan"]
+  date: 2026-05-01
+  serial-number:
+    arxiv: "2605.00773"
+  note: >-
+    title, authorship, date, and arXiv identifier read from page 1 of the held PDF (v1); no DOI printed
+    on the artifact. Title carries a diacritic on the artifact (Sierpinski)
+
+# row 18 — fuss-free cumulative universes
+sterbac-sterling-2026-fuss-free:
+  type: article
+  title: "Fuss-Free Cumulative Universes: Theory and Practice"
+  author: ["Sterbac, Raphaël", "Sterling, Jonathan"]
+  date: 2026
+  serial-number:
+    arxiv: "2607.11329"
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF (arXiv:2607.11329v1,
+    13 July 2026), which is the extended version with supplementary appendices; no DOI or venue is
+    printed on the artifact
+
+# row 19 — bidirectional elaborators à la carte
+slattery-sterling-2026-elaborators:
+  type: article
+  title: Bidirectional Elaborators a la Carte
+  author: ["Slattery, Andrew", "Sterling, Jonathan"]
+  date: 2026-07-13
+  serial-number:
+    arxiv: "2607.09564"
+  note: >-
+    title, authorship, date, and arXiv identifier read from page 1 of the held PDF (v2, extended version
+    with supplementary appendices); no venue or DOI printed on the artifact. Title carries a diacritic on
+    the artifact (a la carte)
+
+# row 20 — the natural display topos of coalgebras
+zwanziger-2023-display-topos:
+  type: thesis
+  title: The Natural Display Topos of Coalgebras
+  author: ["Zwanziger, Colin"]
+  date: 2023
+  organization: Carnegie Mellon University
+  serial-number:
+    doi: "10.48550/arXiv.2405.00498"
+    arxiv: "2405.00498"
+  note: >-
+    title, authorship, institution, and date read from the title page of the held PDF, which prints no
+    stable identifier; the arXiv identifier and its DOI were verified by external fetch, not read from
+    the artifact. Registrar decision, recorded rather than made silently: the date is the thesis year of
+    the form the library holds (CMU PhD thesis, May 2023); the alternative is the arXiv posting year,
+    2024
+
+# row 21 — algebraic models of dependent type theory
+newstead-2018-algebraic:
+  type: thesis
+  title: Algebraic Models of Dependent Type Theory
+  author: ["Newstead, Clive"]
+  date: 2018
+  organization: Carnegie Mellon University
+  serial-number:
+    arxiv: "2103.06155"
+  note: >-
+    title, authorship, institution, and both dates read from page 1 of the held PDF, which is the arXiv
+    posting 2103.06155v1 (10 March 2021) of the thesis submitted 20 August 2018. Registrar decision,
+    recorded rather than made silently: the date is the thesis year of the form the library holds; the
+    alternative is the arXiv posting year, 2021
+
+# row 22 — polymorphic higher-order termination
+czajka-kop-2019-polymorphic:
+  type: article
+  title: Polymorphic Higher-Order Termination
+  author: ["Czajka, Lukasz", "Kop, Cynthia"]
+  date: 2019
+  serial-number:
+    arxiv: "1904.09859"
+  parent:
+    type: proceedings
+    title: 4th International Conference on Formal Structures for Computation and Deduction (FSCD 2019)
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF; the artifact is a
+    pre-publication copy and its DOI line is an unfilled placeholder, so the FSCD 2019 DOI and page range
+    are NOT verified here and must be filled from the Dagstuhl record before this entry is cited with one
+    -- verify locator before citation-bearing use. Author surname carries a diacritic on the artifact
+    (Lukasz)
+
+# row 23 — formal metatheory of second-order abstract syntax
+fiore-szamozvancev-2022-formal-metatheory:
+  type: article
+  title: Formal Metatheory of Second-Order Abstract Syntax
+  author: ["Fiore, Marcelo", "Szamozvancev, Dmitrij"]
+  date: 2022-01
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3498715"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 6
+    issue: POPL
+    page-range: "53:1-53:29"
+  note: >-
+    title, authorship, venue, article number, and DOI read from page 1 of the held PDF
+
+# row 24 — monadic and higher-order structure
+arkor-2022-monadic:
+  type: thesis
+  title: Monadic and Higher-Order Structure
+  author: ["Arkor, Nathanael Amariah"]
+  date: 2022-03
+  organization: University of Cambridge
+  serial-number:
+    doi: "10.17863/CAM.86347"
+  note: >-
+    PhD dissertation, Department of Computer Science and Technology. Title, authorship, degree, and date
+    read from the title page of the held PDF; the DOI is not printed in the artifact and was verified
+    against the University of Cambridge Apollo repository record for this thesis. Chapter 4 and Sections
+    5.3, 5.4, 6.1.1 are declared in the preface to be joint work with Dylan McDermott
+
+# row 25 — a unified framework for initial semantics
+lamiaux-ahrens-2025-unified:
+  type: article
+  title: A Unified Framework for Initial Semantics
+  author: ["Lamiaux, Thomas", "Ahrens, Benedikt"]
+  date: 2025
+  serial-number:
+    doi: "10.48550/arXiv.2502.10811"
+    arxiv: "2502.10811"
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF and confirmed against
+    the arXiv abstract page; the arXiv record states this is a condensed version of arXiv:2401.09366
+    (lamiaux-ahrens-2024-approaches), which remains the comprehensive text
+
+# row 26 — modular specification of monads through higher-order presentations
+ahrens-hirschowitz-lafont-maggesi-2019-modular:
+  type: article
+  title: Modular Specification of Monads Through Higher-Order Presentations
+  author: ["Ahrens, Benedikt", "Hirschowitz, André", "Lafont, Ambroise", "Maggesi, Marco"]
+  date: 2019
+  publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+  serial-number:
+    doi: "10.4230/LIPIcs.FSCD.2019.6"
+    arxiv: "1903.00922"
+  parent:
+    type: proceedings
+    title: 4th International Conference on Formal Structures for Computation and Deduction (FSCD 2019)
+    volume: 131
+    page-range: "6:1-6:19"
+  note: >-
+    title and authorship read from page 1 of the held PDF, which is the arXiv preprint 1903.00922v1;
+    the FSCD 2019 venue, volume, page range, and DOI are taken from the reference lists of two other
+    held artifacts (lamiaux-ahrens-2025-unified ref. 6 and lafont-2019-signatures ref. Ahr+19b) and
+    were not read from the publisher record
+
+# row 27 — an introduction to different approaches to initial semantics
+lamiaux-ahrens-2024-approaches:
+  type: article
+  title: An Introduction to Different Approaches to Initial Semantics
+  author: ["Lamiaux, Thomas", "Ahrens, Benedikt"]
+  date: 2024
+  serial-number:
+    doi: "10.48550/arXiv.2401.09366"
+    arxiv: "2401.09366"
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF and confirmed against
+    the arXiv abstract page; no journal reference recorded at registration time; the comprehensive
+    version of lamiaux-ahrens-2025-unified and the only one carrying the worked multi-sorted
+    instance (section 9)
+
+# row 28 — signatures and models for syntax and operational semantics
+lafont-2019-signatures:
+  type: thesis
+  title: Signatures and Models for Syntax and Operational Semantics in the Presence of Variable Binding
+  author: ["Lafont, Ambroise"]
+  date: 2019
+  organization: École Nationale Supérieure Mines-Télécom Atlantique Bretagne Pays de la Loire
+  serial-number:
+    doi: "10.48550/arXiv.1910.09162"
+    arxiv: "1910.09162"
+  note: >-
+    title, author, institution, and defence date (Nantes, 2 December 2019) read from page 1 of the
+    held PDF; the arXiv identifier and its "Doctoral thesis" comment were verified against the arXiv
+    abstract page; no national thesis number was printed on the held artifact
+
+# row 29 — a framework for semiring-annotated type systems
+wood-2024-semiring:
+  type: thesis
+  title: A Framework for Semiring-Annotated Type Systems
+  author: ["Wood, James"]
+  date: 2024-07-03
+  organization: University of Strathclyde
+  note: >-
+    title, authorship, institution (Mathematically Structured Programming, Computer and Information
+    Sciences), and date read from the title page of the held PDF. A PhD thesis, not a paper. No DOI or
+    repository handle is printed on the artifact -- add the Strathprints handle before citing with a
+    locator; verify locator before citation-bearing use. The Agda development is referenced in the
+    artifact at https://github.com/laMudri/generic-lr/tree/thesis/src/
+
+# row 30 — complete algebraic semantics for second-order rewriting systems
+hamana-2022-second-order-rewriting:
+  type: article
+  title: Complete Algebraic Semantics for Second-Order Rewriting Systems Based on Abstract Syntax
+    with Variable Binding
+  author: ["Hamana, Makoto"]
+  date: 2022
+  serial-number:
+    doi: "10.1017/S0960129522000287"
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science
+  note: >-
+    title, authorship, and DOI read from page 1 of the held PDF, which prints the page range as 1-32
+    (online-first) and does not print a volume or issue; the paper is the reworked and extended version
+    of Hamana (2005), RTA'05, per its own Contributions paragraph
+
+# row 31 — modular abstract syntax trees (MAST)
+fiore-kammar-moser-staton-2025-mast:
+  type: article
+  title: "Modular Abstract Syntax Trees (MAST): Substitution Tensors with Second-Class Sorts"
+  author: ["Fiore, Marcelo P.", "Kammar, Ohad", "Moser, Georg", "Staton, Sam"]
+  date: 2025-12-15
+  serial-number:
+    doi: "10.46298/entics.16879"
+  parent:
+    type: periodical
+    title: Electronic Notes in Theoretical Informatics and Computer Science
+    volume: 5
+    page-range: "8:1-8:26"
+  note: >-
+    MFPS 41 (2025) proceedings. Title, authorship, venue, DOI, and dates read from page 1 of the held
+    PDF. The proofs of the bicategorical development and of the General Representation Thm 8.3 are NOT
+    in this article: they are in the accompanying technical report, arXiv:2511.03946, which the
+    article's own Sec. 1 states "is not published as part of this article". Cite Thm 8.3 from the
+    article and its proof from the report
