@@ -1,0 +1,5 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/circuit/circuit-two-redex.gandr
+; sexp-b3sum: 60ee0319e7176ce3ba4028c2be7b27d8764b12c0b1ce76ae39678f3f80e5ac69
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 0

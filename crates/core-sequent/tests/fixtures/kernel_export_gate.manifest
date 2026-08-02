@@ -1,7 +1,7 @@
 ; gandr kernel export exit-gate outcomes (B2.3 deliverable 1; GANDR_BLESS_KERNEL_EXPORT)
 ; generator: gandr-core-sequent kernel_export_gate (GANDR_BLESS_KERNEL_EXPORT=1)
 ; items: 27 (21 S1-eligible corpus + 6 kernel-native C5 goldens)
-; corpus-fixtures-b3sum: b35280584cc88504a5ada780171ea434f965aea2e68aeccac6b43618f34685f9
+; corpus-fixtures-b3sum: 6fdb0b3b9fee8e6eb2f1a7a60bbbc72b207a746e4b25a6dd8b6352d3195074ce
 ; columns: <source>\t<item-index>\t<size-bytes>\t<table-entries>\t<expanded-work>\t<artifact-work>\t<artifact-identity>
 model/01-first-computation.gandr	0	45	6	3	6	76f7a09424f12e3cc726b75dc3d20d61b8a03fccd8168510c9e85be369050198
 model/02-definitions.gandr	0	39	2	1	2	c26ce1bad8d4c84a3bbe053d5f6e817ba0bd764e028e0a46202dad9a9fd4f30e

@@ -1,0 +1,5 @@
+; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
+; source: pathological/circuit/circuit-cyclic-wiring.gandr
+; sexp-b3sum: d73c2e33183cd170e12500d8f20282e3627f6d0597d45706b250ab85b11bf812
+; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
+; items: 0

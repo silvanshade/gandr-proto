@@ -1,7 +1,7 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
 ; items: 160
-; corpus-fixtures-b3sum: b35280584cc88504a5ada780171ea434f965aea2e68aeccac6b43618f34685f9
+; corpus-fixtures-b3sum: 6fdb0b3b9fee8e6eb2f1a7a60bbbc72b207a746e4b25a6dd8b6352d3195074ce
 ; class declared-data: 8
 ; class effects-control: 11
 ; class eligible: 21
@@ -10,8 +10,8 @@
 ; class machine-numeric: 1
 ; class native: 7
 ; class not-typeable: 2
-; class open-free-name: 63
-; class structural-stock: 28
+; class open-free-name: 62
+; class structural-stock: 29
 ; columns: <source>\t<item-index>\t<class>
 model/01-first-computation.gandr	0	eligible
 model/02-definitions.gandr	0	eligible
@@ -78,7 +78,7 @@ model/26-env-guard-exit.gandr	0	effects-control
 model/27-paired-signatures.gandr	0	open-free-name
 model/27-paired-signatures.gandr	1	open-free-name
 model/27-paired-signatures.gandr	2	open-free-name
-model/28-regex-and-path-builtins.gandr	0	open-free-name
+model/28-regex-and-path-builtins.gandr	0	structural-stock
 model/28-regex-and-path-builtins.gandr	1	open-free-name
 model/28-regex-and-path-builtins.gandr	2	open-free-name
 model/28-regex-and-path-builtins.gandr	3	open-free-name
