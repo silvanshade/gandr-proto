@@ -1,5 +1,6 @@
 //! Built-in precedence-bounded grammar surface for Gandr tree-sitter nodes.
 
+pub mod circuit;
 #[cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
     allow(
@@ -223,16 +224,23 @@ pub const PBG_ONLY_KINDS: &[&str] = &[
     "data_declaration",
     "for_expression",
     "import_declaration",
+    "circuit_declaration",
     "loop_expression",
     "operator_declaration",
     "rec_block",
+    "sign_declaration",
     "while_expression",
     // reserved / folded / diverged member surfaces (adaptation surfaces)
     "braced_variable_expansion",
     "case_with_view",
+    "circuit_body",
+    "circuit_member",
+    "circuit_signature",
     "codata_observation",
     "def_rec",
+    "feed_statement",
     "grade_prefix",
+    "node_statement",
     "op_member",
     "parameterized_observation",
     "rule_member",
@@ -267,6 +275,8 @@ pub fn built_in() -> Result<Pbg, PbgError>
     rules.extend(term_rules);
     let type_shell_rules = type_shell::rules(&precs)?;
     rules.extend(type_shell_rules);
+    let circuit_rules = circuit::rules(&precs)?;
+    rules.extend(circuit_rules);
     Pbg::build_table(precs, rules)
 }
 

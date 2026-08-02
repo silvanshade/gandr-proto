@@ -1,0 +1,78 @@
+// The ruled circuit block form — `sign` blocks, kind-keyword members, the
+// four-glyph arrow grid, two-sided named ports, and the `node` / `feed` body
+// statements (parse-only fixture).
+//
+// GRADUATION: the block form's SPELLINGS are ruled
+// (docs/gandr/spec/surface-language/circuit-cells.md, "The block form,
+// ruled"); its semantics are not. Circuit members are parse-and-decline at
+// lowering and graduate to accepted behind the gate under gandr-ng9.1.5.
+// Parse-only; never lowered.
+//
+// The arrow grid, in one line: the shaft carries the kind-class and the head
+// carries directedness, so `-->` / `<->` are the circuit 1-cell formers and
+// `==>` / `<=>` the rewrite faces at every dimension. The term language's `->`
+// is untouched and disjoint.
+
+// The congruence cell — one diagram with two disjoint redexes, which is the
+// shape a term syntax cannot write because a term has one root.
+sign Nat {
+  sort Nat : Type
+  data Zero : Nat                      // sugar for: data Zero : () --> (_ : Nat)
+  data Succ : Nat --> Nat              // sugar for: data Succ : (_ : Nat) --> (_ : Nat)
+  oper add : (Nat, Nat) --> Nat
+
+  rule cong2 : (
+    rule p : Nat ==> Nat,
+    rule q : Nat ==> Nat,
+    data x : Nat,
+    data y : Nat
+  ) ==> (z : Nat) {
+    node : p(x) ==> (x′);
+    node : q(y) ==> (y′);
+    node : add(x′, y′) --> (z);
+  }
+}
+
+// The first stateful wheel: `zip`'s `next` feeds back, one step later, as its
+// own `state`. `feed` is the only statement that may close a cycle.
+oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
+  node : zip(stream, state) --> (next, out2);
+  feed : (next) --> (state);
+}
+
+// The sugar ladder written out: the same two declarations in the named-port
+// normal form the elaborator and the name-set fold see.
+sign NatDesugared {
+  sort Nat : Type
+  data Zero : () --> (_ : Nat)
+  data Succ : (_ : Nat) --> (_ : Nat)
+  oper add : (l : Nat, r : Nat) --> (sum : Nat)
+}
+
+// Occurrence labels, the empty interface, and the pinned-endpoint binder.
+sign Labelled {
+  sort Nat : Type
+  oper unit : () --> (out : Nat)
+  oper step : (i : Nat) --> (o : Nat)
+
+  rule twice : (rule p : x ==> x′, data x : Nat) ==> (o : Nat) {
+    node w1 : p(x) ==> (m);
+    node w2 : step(m) --> (o);
+  }
+}
+
+// The invertible rewrite face `<=>` — the certificate algebra's
+// unconditional-composition licence — beside the directed `==>`.
+sign Invertible {
+  sort Bit : Type
+  oper flip : (b : Bit) --> (c : Bit)
+  rule involutive : (b : Bit) <=> (c : Bit)
+}
+
+// RESERVED: `<->` on an oper is a semantic claim about the function (a
+// data-level iso), whose checking discipline the reversible lane owes. It
+// parses here and is declined until that lane lands.
+sign Reserved {
+  sort Bit : Type
+  oper negate : (b : Bit) <-> (c : Bit)
+}

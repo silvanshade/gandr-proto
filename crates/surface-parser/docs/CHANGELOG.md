@@ -2,6 +2,15 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-02 — Lex the ruled circuit arrow grid and the primed word
+
+* `current`: `label`'s `MULTI_PUNCT` table gains the four circuit arrow-grid glyphs (`-->`, `<->`, `==>`, `<=>`) ahead of the shorter tiles each strictly extends (`->`, `<-`, `==`, `<=`), so the grid glyph wins the maximal munch and every shorter tile keeps its own reading.
+  `=>` (the case arm) is untouched — neither glyph prefixes the other — and `--` is not a comment lead in this language, so `-->` disturbs no comment convention.
+* `current`: A word may now carry trailing primes (`′`, U+2032): `x′` is one word, a lone `′` stays an unknown byte, and ASCII `'` is deliberately still not a word byte (it opens a shell single-quoted run).
+  The primed variable is the ruled circuit form's own spelling for a rewrite's target endpoint.
+* `current`: `mold`'s keyword table reserves the two item-position circuit leads `sign` and `oper`.
+  The member lead `sort` and the body leads `node` / `feed` stay contextual — inadmissible at every lowercase-word slot outside an open circuit block — so a user program may still bind them as ordinary names.
+
 ## 2026-07-21 — Port the resumable melder push-machine + obligation taxonomy from wyrd (F2)
 
 * `current`: Landed `gandr-surface-parser`, the front-end's resumable push-machine melder plus obligation taxonomy (rung F2 of `docs/research/front-end-port-staging.md` §9), ported from the wyrd `gandr-parser` crate.

@@ -178,6 +178,97 @@ fn bind_statement_uses_run_keyword() -> Result<(), Box<dyn Error>>
     );
     Ok(())
 }
+/// The ruled circuit block form molds to a **zero-obligation** reading, over
+/// the worked examples the ruling records verbatim
+/// (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+/// ruled") plus one case per rung of the surface: the empty interface, the
+/// occurrence label, the pinned-endpoint binder, the invertible face, and the
+/// reserved glyph — which **parses** here and is declined downstream, not at
+/// the parser.
+#[test]
+fn circuit_block_form_molds_zero_obligation() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let cases: &[&str] = &[
+        // The congruence cell, verbatim from the ruling.
+        "sign Nat {\n  sort Nat : Type\n  data Zero : Nat\n  data Succ : Nat --> Nat\n  oper add \
+         : (Nat, Nat) --> Nat\n\n  rule cong2 : (\n    rule p : Nat ==> Nat,\n    rule q : Nat \
+         ==> Nat,\n    data x : Nat,\n    data y : Nat\n  ) ==> (z : Nat) {\n    node : p(x) ==> \
+         (x\u{2032});\n    node : q(y) ==> (y\u{2032});\n    node : add(x\u{2032}, y\u{2032}) --> \
+         (z);\n  }\n}\n",
+        // The first stateful wheel, verbatim from the ruling.
+        "oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {\n  node : \
+         zip(stream, state) --> (next, out2);\n  feed : (next) --> (state);\n}\n",
+        // The sugar ladder's named-port normal form, including `()` and `_`.
+        "sign N {\n  sort Nat : Type\n  data Zero : () --> (_ : Nat)\n  data Succ : (_ : Nat) --> \
+         (_ : Nat)\n}\n",
+        // Occurrence labels and the pinned-endpoint binder.
+        "sign L {\n  rule twice : (rule p : x ==> x\u{2032}, data x : Nat) ==> (o : Nat) {\n    \
+         node w1 : p(x) ==> (m);\n    node w2 : step(m) --> (o);\n  }\n}\n",
+        // The invertible face, and the reserved reversible glyph.
+        "sign I { rule involutive : (b : Bit) <=> (c : Bit) }",
+        "sign R { oper negate : (b : Bit) <-> (c : Bit) }",
+        // A top-level `rule` declaration beside the top-level `oper`.
+        "rule step : (x : Nat) ==> (y : Nat)",
+    ];
+    for &src in cases {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "circuit form {src:?} molds clean; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| (obligation.class, obligation.span))
+                .collect::<Vec<_>>()
+        );
+    }
+    Ok(())
+}
+
+/// The arrow grid does not disturb the shorter tiles it extends: a case arm's
+/// `=>`, a bind statement's `<-`, and the `<=` / `==` comparisons all still
+/// mold exactly as before. This is the parser half of the lexical check the
+/// ruling owes at landing; the labeler half is
+/// `gandr_surface_parser::label::tests::circuit_arrows_munch_past_the_shorter_tiles_they_extend`.
+#[test]
+fn circuit_arrows_leave_the_shorter_tiles_alone() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let unchanged: &[&str] = &[
+        "case x { A => 1, B => 2 }",
+        "run value <- action;",
+        "def le() -> F Boolean { ret a <= b }",
+        "def eq() -> F Boolean { ret a == b }",
+        "def arrow : A -> B;",
+    ];
+    for &src in unchanged {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "{src:?} is unaffected by the arrow grid; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+    // The grid glyph and the tile it extends are distinct melds, not one
+    // absorbing the other: a `-->` never appears where a `->` was written.
+    let term = parse(pbg, SourceSlice::from("def arrow : A -> B;"))?;
+    assert!(
+        find_meld_with_tile(term.cst(), term.cst().root(), TileText::from("-->")).is_none(),
+        "a term function arrow molds `->`, never the circuit former"
+    );
+    let circuit = parse(pbg, SourceSlice::from("oper f : (a : A) --> (b : B)"))?;
+    assert!(
+        find_meld_with_tile(circuit.cst(), circuit.cst().root(), TileText::from("->")).is_none(),
+        "a circuit interface molds `-->`, never the term function arrow"
+    );
+    Ok(())
+}
+
 /// The corpus gate, spanning **all three** committed
 /// corpus trees: `model/`, `pathological/`, and the W4d `surface/`
 /// fold-in fixtures. The candidate pre-filter and the

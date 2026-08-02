@@ -125,11 +125,19 @@ const KEYWORDS: &[&str] = &[
     // while the rest remain PBG-only/parity-exempt (`crate::PBG_ONLY_KINDS`).
     "data", "codata", "for", "while", "loop", "break", "continue", "import", "module", "in", "rec",
     "op", "rule", "with", "infix", "infixl", "infixr", "prefix", "postfix",
+    // The ruled circuit block form's leads (`crate::surface::circuit`). `sign`
+    // and `oper` are reserved words; `sort`, `node`, and `feed` are contextual
+    // keywords, so they highlight as keywords exactly where the circuit forms
+    // mold them and stay ordinary names everywhere else.
+    "sign", "sort", "oper", "node", "feed",
 ];
 
-/// The term operator tile forms captured by `highlights.scm`'s operator list.
+/// The term operator tile forms captured by `highlights.scm`'s operator list,
+/// plus the ruled circuit arrow grid (`-->` / `<->` / `==>` / `<=>`), which
+/// highlights as an operator like the term arrow it is disjoint from.
 const OPERATORS: &[&str] = &[
     "->", "<-", "=>", "==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "&&", "||", "|", "&", "/\\",
+    "-->", "<->", "==>", "<=>",
 ];
 
 /// The primitive-type tile forms captured as `type.builtin`.

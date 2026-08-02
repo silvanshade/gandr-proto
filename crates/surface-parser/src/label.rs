@@ -551,9 +551,29 @@ impl Token
 /// starts, strings, characters) and are dispatched before this table. `~>` is
 /// the W4d rewrite-rule arrow (`rule lhs ~> rhs`, a `data` / `codata` 2-cell
 /// member); a lone `~` remains an [`Lexeme::Unknown`] stray byte.
+///
+/// The four leading entries are the circuit-cell **arrow grid** (the ruled
+/// block form, `docs/gandr/spec/surface-language/circuit-cells.md` §"The block
+/// form, ruled"): the shaft carries the kind-class and the head carries
+/// directedness, so `-->` / `<->` are the circuit 1-cell formers and `==>` /
+/// `<=>` the rewrite faces at every dimension. Each is a strict extension of a
+/// live shorter tile, so all four sit ahead of their prefixes and the maximal
+/// munch is the grid glyph:
+///
+/// | grid glyph | shorter tile it extends | live use of the shorter tile      |
+/// | ---------- | ----------------------- | --------------------------------- |
+/// | `-->`      | `->`                    | the term-language function arrow  |
+/// | `<->`      | `<-`                    | the `run PAT <- E ;` bind arrow   |
+/// | `==>`      | `==`                    | the equality operator             |
+/// | `<=>`      | `<=`                    | the less-or-equal operator        |
+///
+/// `=>` (the case arm) is unaffected: it is not a prefix of `==>` and `==>` is
+/// not a prefix of it, so the two never compete. The `--` inside `-->` is not
+/// a comment lead in this language — the repo comments with `//` and `/* … */`
+/// — so no comment convention is disturbed.
 const MULTI_PUNCT: &[&str] = &[
-    "/\\", "~>", "->", "<-", "=>", "==", "!=", "<=", ">=", "++", "&&", "||", "|&", "<>", "<&",
-    ">&", ">>", "@[",
+    "-->", "<->", "==>", "<=>", "/\\", "~>", "->", "<-", "=>", "==", "!=", "<=", ">=", "++", "&&",
+    "||", "|&", "<>", "<&", ">&", ">>", "@[",
 ];
 
 /// UTF-8 bytes for U+00A0 NO-BREAK SPACE.
@@ -568,6 +588,8 @@ const THREE_BYTE_LAYOUT_PREFIX: u8 = 0xe2;
 const BYTE_ORDER_MARK_UTF8: [u8; 3] = [0xef, 0xbb, 0xbf];
 /// UTF-8 bytes for `ω` (U+03C9), gandr's grade punctuation.
 const OMEGA_GRADE_UTF8: [u8; 2] = [0xcf, 0x89];
+/// UTF-8 bytes for `′` (U+2032 PRIME), a word-continuing byte run.
+const PRIME_UTF8: [u8; 3] = [0xe2, 0x80, 0xb2];
 
 /// Label a UTF-8 source buffer into a total stream of lexemes.
 ///
@@ -1535,20 +1557,39 @@ fn scan_word_or_underscore(
     }
 }
 
-/// Advance over an identifier/constructor word `[A-Za-z0-9_]*` from its lead.
+/// Advance over an identifier/constructor word `[A-Za-z0-9_]*`, with any run of
+/// trailing primes (`′`), from its lead.
+///
+/// The prime is a **continuation only** — it never starts a word, so a stray
+/// `′` stays an [`Lexeme::Unknown`] byte and `x′` is one word rather than a
+/// word plus a stray. The primed variable is the ruled circuit block form's own
+/// spelling for a rewrite's target endpoint (`node : p(x) ==> (x′)`,
+/// `docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
+/// ruled"), and it is the mathematical convention the rest of the corpus writes
+/// in prose. ASCII `'` is deliberately **not** a word byte: it opens a shell
+/// single-quoted run, and a word-continuing apostrophe would make `'…'` depend
+/// on whether a word precedes it.
 fn scan_word(
     bytes: SourceBytes<'_>,
     pos: ByteOffset,
 ) -> ByteOffset
 {
     let mut cursor = pos.advance(ByteWidth::ONE);
-    while bytes
-        .byte(cursor)
-        .is_some_and(|byte| bool::from(byte.is_word_continue()))
-    {
-        cursor = cursor.advance(ByteWidth::ONE);
+    loop {
+        if bytes
+            .byte(cursor)
+            .is_some_and(|byte| bool::from(byte.is_word_continue()))
+        {
+            cursor = cursor.advance(ByteWidth::ONE);
+            continue;
+        }
+        let prime_end = cursor.advance(ByteWidth::THREE);
+        if bool::from(bytes.span_matches(cursor, prime_end, BytePattern(&PRIME_UTF8))) {
+            cursor = prime_end;
+            continue;
+        }
+        return cursor;
     }
-    cursor
 }
 
 /// Scan an operator/punctuation tile, or a stray byte as `Unknown`.
@@ -2022,6 +2063,93 @@ mod tests
         assert_eq!(
             tiles(SourceSlice::from("~"), &label(SourceSlice::from("~"))),
             vec![(Lexeme::Unknown, "~".to_owned())]
+        );
+    }
+    #[test]
+    fn circuit_arrows_munch_past_the_shorter_tiles_they_extend()
+    {
+        // The ruled arrow grid. Each glyph strictly extends a live shorter
+        // tile, so this is the lexical check the ruling owes at landing: the
+        // grid glyph wins the munch and the shorter tile keeps its own reading
+        // one character away.
+        for (src, arrow) in [
+            ("a-->b", "-->"),
+            ("a<->b", "<->"),
+            ("a==>b", "==>"),
+            ("a<=>b", "<=>"),
+        ] {
+            assert_eq!(
+                tiles(SourceSlice::from(src), &label(SourceSlice::from(src))),
+                vec![
+                    (Lexeme::LowerWord, "a".to_owned()),
+                    (Lexeme::Punct, arrow.to_owned()),
+                    (Lexeme::LowerWord, "b".to_owned()),
+                ],
+                "{src:?} munches {arrow:?} as one tile"
+            );
+        }
+        // The shorter tiles are untouched: the term arrow, the bind arrow, the
+        // case arm, and the two comparison operators each still lex alone.
+        for (src, shorter) in [
+            ("a->b", "->"),
+            ("a<-b", "<-"),
+            ("a=>b", "=>"),
+            ("a==b", "=="),
+            ("a<=b", "<="),
+        ] {
+            assert_eq!(
+                tiles(SourceSlice::from(src), &label(SourceSlice::from(src))),
+                vec![
+                    (Lexeme::LowerWord, "a".to_owned()),
+                    (Lexeme::Punct, shorter.to_owned()),
+                    (Lexeme::LowerWord, "b".to_owned()),
+                ],
+                "{src:?} still lexes {shorter:?}"
+            );
+        }
+        // `--` is not a comment lead in this language (the repo comments with
+        // `//`), so a doubled dash outside `-->` is two ordinary operators and
+        // the rest of the line is live source.
+        assert_eq!(
+            tiles(SourceSlice::from("a--b"), &label(SourceSlice::from("a--b"))),
+            vec![
+                (Lexeme::LowerWord, "a".to_owned()),
+                (Lexeme::Punct, "-".to_owned()),
+                (Lexeme::Punct, "-".to_owned()),
+                (Lexeme::LowerWord, "b".to_owned()),
+            ]
+        );
+    }
+    #[test]
+    fn a_primed_word_is_one_word_and_a_lone_prime_is_not()
+    {
+        // `x′` is the ruled circuit form's spelling for a rewrite's target
+        // endpoint: one word, not a word plus a stray byte.
+        assert_eq!(
+            tiles(SourceSlice::from("x′"), &label(SourceSlice::from("x′"))),
+            vec![(Lexeme::LowerWord, "x′".to_owned())]
+        );
+        // Primes accumulate, and an uppercase-led word takes them too.
+        assert_eq!(
+            tiles(
+                SourceSlice::from("Nat′′"),
+                &label(SourceSlice::from("Nat′′"))
+            ),
+            vec![(Lexeme::UpperWord, "Nat′′".to_owned())]
+        );
+        // A prime never *starts* a word.
+        assert_eq!(
+            tiles(SourceSlice::from("′"), &label(SourceSlice::from("′"))),
+            vec![(Lexeme::Unknown, "′".to_owned())]
+        );
+        // ASCII `'` stays the shell single-quote opener rather than a word
+        // byte, so a trailing apostrophe still ends the word.
+        assert_eq!(
+            tiles(SourceSlice::from("x'"), &label(SourceSlice::from("x'"))),
+            vec![
+                (Lexeme::LowerWord, "x".to_owned()),
+                (Lexeme::Punct, "'".to_owned()),
+            ]
         );
     }
     #[test]

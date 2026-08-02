@@ -13,6 +13,7 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
 * Modules — 9436 source lines across six modules:
   + `oblig` (the obligation taxonomy): the closed `Oblig` severity ladder, the `ObligationInstance` (class plus span), and the `Delta` per-class count array with lexicographic net-then-gross comparison from highest severity down.
   + `label` (the labeler): a hand-rolled total DFA over source bytes into lexical `Token`/`Lexeme` classes; no `logos`/`phf`/proc-macro, mirroring the tree-sitter lexical surface, with a byte the grammar has no tile for flowing the `UnmoldedTok` path rather than a lexer error.
+    Multi-byte operators munch longest-first, which is what keeps the ruled circuit arrow grid (`-->` / `<->` / `==>` / `<=>`) disjoint from the shorter tiles it extends; a word may carry trailing primes (`′`), and ASCII `'` deliberately stays the shell single-quote opener.
   + `mold` (the molder): resolves a token's candidate molds to the one the melder should push (`Molder`, `candidate_labels`), the deterministic disambiguation layer between the labeler and the melder.
   + `meld` (the melder): the resumable, first-order push machine (`MeldState`) — `push` (Shift / Reduce / Degrout) is primary and total, `commit` derives the batch, and `checkpoint`/`resume`/`finalize` complete the streaming surface.
   + `parse` (the batch entry): `parse` folds `push` over the labeled + molded stream and commits the batch `ParseResult`, recording trivia for losslessness.

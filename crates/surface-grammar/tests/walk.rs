@@ -55,8 +55,12 @@ mod contracts
     /// non-recursive def/signature member family; the distinct
     /// `run PAT <- E` computation bind; the `val PAT = E` value bind; and the
     /// dedicated instantiation sort for type arguments, direction sigils, named
-    /// measures, explicit residents, and `tail`.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x7b0c_4e6c_c16b_8608);
+    /// measures, explicit residents, and `tail`; and the ruled circuit block
+    /// form — the `sign` block with its `sort` / `data` / `oper` / `rule`
+    /// judgment members, the four-glyph arrow grid, the two-sided port lists
+    /// with parameter-side binders, and the top-level `oper` / `rule`
+    /// declaration with its `node` / `feed` body statements.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xbd0b_3e33_5961_a25a);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -79,8 +83,13 @@ mod contracts
     /// contribute one keyword mold in their 19 expanded statement contexts.
     /// The dedicated instantiation-sort forms add seven molds: two `<`
     /// occurrences and one each for `>`, `=`, `tail`, and the two
-    /// named-resident `identifier` occurrences.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1482);
+    /// named-resident `identifier` occurrences. The circuit block form adds
+    /// 238, dominated by the `comma1` clones of its port lists: the `oper` /
+    /// `rule` judgment is declared **once** and shared by the `sign` member and
+    /// the top-level declaration precisely to keep that number from doubling,
+    /// and the parameter-side binders are kept off the result side for the same
+    /// reason.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1720);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -99,28 +108,32 @@ mod contracts
         ("&", 3),
         ("&&", 2),
         ("'", 2),
-        ("(", 134),
-        (")", 137),
+        ("(", 148),
+        (")", 151),
         ("*", 2),
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 48),
+        (",", 62),
         ("-", 2),
+        ("-->", 13),
         ("->", 8),
         (".", 7),
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 82),
-        (";", 181),
+        (":", 114),
+        (";", 185),
         ("<", 4),
         ("<&", 1),
         ("<-", 19),
+        ("<->", 13),
         ("<=", 1),
+        ("<=>", 13),
         ("<>", 1),
         ("=", 50),
         ("==", 1),
+        ("==>", 13),
         ("=>", 8),
         (">", 3),
         (">&", 1),
@@ -142,7 +155,7 @@ mod contracts
         ("Void", 1),
         ("[", 9),
         ("]", 12),
-        ("_", 3),
+        ("_", 31),
         ("acquire", 19),
         ("as", 78),
         ("at", 1),
@@ -155,9 +168,9 @@ mod contracts
         ("co", 1),
         ("codata", 1),
         ("command_substitution_start", 1),
-        ("constructor", 5),
+        ("constructor", 6),
         ("continue", 1),
-        ("data", 1),
+        ("data", 8),
         ("def", 4),
         ("double_string_fragment", 1),
         ("drop", 1),
@@ -170,6 +183,7 @@ mod contracts
         ("f32", 1),
         ("f64", 1),
         ("false", 3),
+        ("feed", 2),
         ("file_descriptor", 1),
         ("fn", 1),
         ("for", 1),
@@ -185,7 +199,7 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 210),
+        ("identifier", 258),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -201,9 +215,11 @@ mod contracts
         ("mu", 1),
         ("negation", 1),
         ("newline", 1),
+        ("node", 2),
         ("number", 17),
         ("offer", 1),
         ("op", 3),
+        ("oper", 2),
         ("pipeline_operand", 2),
         ("postfix", 1),
         ("prefix", 1),
@@ -211,7 +227,7 @@ mod contracts
         ("recv", 19),
         ("release", 19),
         ("ret", 1),
-        ("rule", 4),
+        ("rule", 12),
         ("run", 19),
         ("select", 1),
         ("send", 1),
@@ -220,7 +236,9 @@ mod contracts
         ("shell_list", 1),
         ("shell_or", 2),
         ("shell_word", 1),
+        ("sign", 1),
         ("single_quoted_content", 1),
+        ("sort", 1),
         ("string_fragment", 7),
         ("subshell_close", 1),
         ("subshell_open", 1),
@@ -228,7 +246,7 @@ mod contracts
         ("thunk", 1),
         ("true", 3),
         ("type", 1),
-        ("type_identifier", 6),
+        ("type_identifier", 8),
         ("type_variable", 9),
         ("typed_number", 3),
         ("u32", 1),
@@ -237,11 +255,11 @@ mod contracts
         ("variable_name", 5),
         ("while", 1),
         ("with", 1),
-        ("{", 28),
+        ("{", 31),
         ("|", 4),
         ("|&", 1),
         ("||", 2),
-        ("}", 39),
+        ("}", 42),
         ("~>", 4),
         ("ω", 12),
     ];
@@ -651,6 +669,14 @@ mod contracts
         // single reachable mold each (the molder's sole-admissible fast path
         // for every shell word / fd token), and first-class holes keep
         // `hole_name` single-mold (the `?` hole's optional tail).
+        //
+        // The ruled circuit block form adds eight: the four arrow-grid glyphs
+        // (`-->` / `<->` / `==>` / `<=>`, each admissible at every arrow
+        // position because the confirmation is the checker's, not the
+        // grammar's), the contextual body leads `node` / `feed`, the item-lead
+        // `oper`, and `data` — which crosses from single- to multi-mold because
+        // a `sign` member and a parameter-telescope binder join the datatype
+        // declaration. `sign` and `sort` each stay single-mold.
         let pbg = built_in()?;
         let index = walk_index(&pbg)?;
         let reachable = reachable_molds(&pbg, &index);
@@ -663,7 +689,7 @@ mod contracts
 
         let multi = reachable.values().filter(|molds| molds.len() > 1).count();
         assert_eq!(
-            64,
+            72,
             multi,
             "reachable multi-mold labels (PBG {fingerprint:#018x})",
             fingerprint = BUILT_IN_FINGERPRINT.0

@@ -2,6 +2,15 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-02 — Land the ruled circuit block form in the checked surface
+
+* `current`: New `surface/circuit` submodule realising the ruled circuit block form (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled") — the `sign` block with `sort` / `data` / `oper` / `rule` judgment members, the four-glyph arrow grid (`-->` / `<->` circuit 1-cell formers, `==>` / `<=>` rewrite faces), arrow-separated two-sided port lists with parameter-side rewrite and data binders, and the top-level `oper` / `rule` declaration with its `node` / `feed` body statements.
+* `current`: The grammar admits **any** grid glyph at **every** arrow position by design: the ruling requires a disagreement to be a localized, nameable error, and a body line's arrow is confirmed against the applied head's kind — an environment fact no grammar sees.
+  Confirmation is `gandr-surface-engine`'s `circuit` pass.
+* `current`: Three new PBG-only provenances (`sign_declaration`, `circuit_declaration`) and five folded adaptation surfaces (`circuit_member`, `circuit_signature`, `circuit_body`, `node_statement`, `feed_statement`) join `PBG_ONLY_KINDS`; the highlighter's keyword and operator tables gain the five circuit leads and the four grid glyphs.
+* `current`: Mold-count effect, pinned in `tests/walk.rs` — declared molds 1482 → 1720, reachable multi-mold labels 64 → 72, fingerprint `0x7b0c_4e6c_c16b_8608` → `0xbd0b_3e33_5961_a25a`.
+  The `oper` / `rule` judgment is declared once and shared by the `sign` member and the top-level declaration, and the telescope binders are kept off the result side; both are cost decisions against the `identifier` / `(` / `:` menus, which a duplicated tail would have widened twice as far.
+
 ## 2026-07-21 — Restore the parser-coupled surface-acceptance contracts suite (F2)
 
 * `current`: Re-added `gandr-surface-parser` as a **dev-only** dependency (the deliberate parser↔grammar cycle-break — normal dep parser→grammar, dev dep grammar→parser) and restored the six parser-coupled surface-acceptance `contracts` tests parked at F1, now in `tests/contracts.rs` and wired into the `tests/surface.rs` aggregator.

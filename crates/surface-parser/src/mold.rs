@@ -255,12 +255,24 @@ fn source_slice(src: SourceText<'_>) -> SourceSlice<'_>
 /// `run` and `val` are reserved as the distinct leads of computation-result
 /// and value-binding statements; neither enters the ordinary identifier menu.
 /// The retired standalone `let` spelling is deliberately not reserved.
+///
+/// The ruled circuit block form reserves exactly its two **item-position**
+/// leads, `sign` and `oper`: at a fresh top-level slot a lowercase word is
+/// otherwise an expression statement, so an unreserved form-first lead would
+/// tie its own tile against `identifier` at every declaration. Its four other
+/// leads stay **contextual** — the member keywords `sort` (and the already-
+/// reserved `data` / `rule`) and the body statements `node` / `feed` are only
+/// ever `≐`-successors inside an open `sign` block or circuit body, where
+/// `identifier` is inadmissible, so the pre-filter drops the keyword mold at
+/// every other lowercase-word slot (the `hole_name` precedent above). A user
+/// program may therefore still bind `sort`, `node`, or `feed` as an ordinary
+/// name; `sign` and `oper` it may not.
 const KEYWORDS: &[&str] = &[
     "def", "val", "run", "leta", "as", "extern", "from", "type", "fn", "ret", "thunk", "force",
     "case", "if", "else", "co", "hold", "dup", "drop", "send", "recv", "close", "select", "offer",
     "fork", "acquire", "release", "migrate", "at", "true", "false", "forall", "mu", "end", "data",
     "codata", "rec", "op", "rule", "for", "in", "while", "loop", "break", "continue", "with",
-    "import", "module",
+    "import", "module", "sign", "oper",
 ];
 
 /// Return the grammar tile labels to enumerate for a labeled token.
