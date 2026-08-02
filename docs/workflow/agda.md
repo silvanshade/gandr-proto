@@ -591,6 +591,11 @@ Tags are lowercase throughout, since Unicode has no modifier capital S and a mix
 * Per-file `OPTIONS`: `--safe --without-K --hidden-argument-puns` on every module under `metatheory/src`, enforced by the Rust `source_policy` sweep (`options-policy` subcommand; exemptions are enumerated per flag with a justification).
   The without-K mandate is binding: neither UIP nor definitional proof-irrelevance may enter through any shortcut.
   **`--hidden-argument-puns` changes what a bare `{x}` pattern means, and the tree relies on it.** In a left-hand side `f {Γ} = …` binds the implicit **named** `Γ`, not the first implicit positionally — so `match-comp {Γ}` reaches `Γ` past the colours in front of it, while `match-comp {x = Γ}` would name the colour and fail.
+  Expressions are unaffected and stay positional, which is why a hidden argument supplied on the right is written out: `tail {y = w}`.
+  **It is a guard rather than a quirk, and the failure it guards against is silent.** Without the flag the same pattern binds the first implicit and merely renames it, so where two implicits share a type — `∀ {m n : Nat}`, and this tree's telescopes are full of them — `g {n} = n` means `m`, typechecks, and complains nowhere; measured on both settings, not assumed.
+  That is `AGENTS.md` §"Unambiguous reference — identifiers and citations" arriving inside a clause: the pattern reads as precise and is wrong.
+  **And it makes the naming uniformity load-bearing instead of conventional.** A pattern that selects by name survives reordering an implicit telescope, and neither a reader nor a generator has to model that order to emit or check one — which is worth more, not less, as more of the tree is machine-written.
+  A name that is not an implicit of the type is a `WrongHidingInLHS` error, so a wrong pun fails loudly where a wrong position does not.
   Write the pun and let the name do the selecting; read an existing one as named, never as positional.
 * `--guardedness` is need-based and **infective**: any module that transitively imports a coinductive carrier must carry it.
   Reasoning is such a need — `Gandr.Setoid` is over the ∞-graph carrier — and a `Set`-level module takes the flag rather than reason in a second vocabulary.
