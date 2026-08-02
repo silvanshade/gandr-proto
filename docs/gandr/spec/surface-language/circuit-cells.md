@@ -171,7 +171,11 @@ As built, the wiring and the two readings are `gandr-theory-levitation`'s `circu
 The in-signature rule binds unchanged — the declared sphere's terms and every frame head must name a constructor or operation of the datatype, while a redex head names a port of the rule's own telescope and is not a signature symbol.
 
 **What the sphere is _represented_ by there is narrower than the discipline, and the gap is the higher-cells lane's.** The declaration table carries a 2-cell member's sphere as its endpoint pair, and the comparison is term equality on that pair; the telescope-typed representation `Φ ▸ x ⇴ y` is what the sphere-typed declaration table would add ([[higher-cells#Sphere-typed boundaries]]), and it is owed there rather than here.
-The feature is also not user-writable at this rung: the wiring is built through the crate's own constructors, and the surface route arrives with the block form's lowering.
+**As built (2026-08-02): the surface route has arrived, and it writes no sphere.** A `sign` block lowers into the declaration table — `data` members to constructors, `oper` members to operations, and each block-bodied `rule` member to a `DataDesc::circuits` entry with its rewrite-sorted telescope and its wiring — and the cell layer admits the result through the same seam a written face passes.
+What the route cannot supply is the sphere, and the reason is this section's own: the ruled signature fixes the sphere's **sorts** and its interface, and a pinned binder names only that port's endpoints, never the whole diagram's, so nothing the declaration writes is a boundary pair.
+The route therefore supplies `CircuitRule::sphere` as the pair the wiring derives, and the consequence is that **the declaration table's derived-boundary comparison is a re-derivation agreement for a source-authored rule rather than a constraint the declaration imposes**.
+The direction this section protects is not violated — no derived pair is written into a sphere a declaration fixed, because there is no such sphere yet — but `WfKind::DerivedBoundaryMismatch` is unreachable from source until the explicit two-sided boundary spelling at [[#Open questions, dispositioned]] lands.
+The declaration-table refusals a source-authored rule **can** earn are the ones that read the declaration rather than the wiring: an out-of-signature frame head, a redex applying a rewrite the telescope does not declare, and a wiring that reaches a port from itself.
 
 **One discipline is in tension with the telescope, and the tension is recorded rather than settled.** A written rule's pattern variables are bound by its left-hand side ([[higher-cells#Named 2-cells and the identity discipline]]), so its right-hand side may introduce none of its own.
 A circuit rule's variables are bound by its **parameter telescope** instead: `x′` and `y′` are the endpoints of the rewrite-sorted ports `p` and `q`, so the sphere's target names them while its source cannot bind them.
@@ -188,7 +192,8 @@ Elaborating a rewrite-sorted port into the interface pair those endpoints come f
 * it admits no `feed` statement, so a **wheel-bearing body derives no boundary pair**: a legitimately delay-guarded cycle is refused by the same guard that refuses an unguarded one, and separating them is owed with the `feed` statement's own elaboration;
 * a port bound twice resolves through the first statement that binds it, which keeps the derivation total — binding a port twice is a port-linearity failure, and refusing it belongs to the name-set fold;
 * a wire consumed twice is unfolded twice, so **reconvergence is a shared subterm rather than a shared node**, and a body of `n` doubling frames derives a term of `2ⁿ` nodes.
-  That is the term-shaped store's own cost and the tree-shaped congruence target never pays it, but the check carries no budget, so the rung that admits bodies from source owes one.
+  That is the term-shaped store's own cost and the tree-shaped congruence target never pays it.
+  **The budget is built (owner-confirmed, 2026-08-02):** the derivation and the occurrence walk each run under a node ceiling and decline with the ceiling they hit, which is the completion engine's decline-and-report posture rather than a hang, and the ceiling is charged per reading in both traversals because they are two walks of one reconvergence.
 
 ## The sketch
 

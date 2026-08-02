@@ -838,6 +838,19 @@ Two as-built facts arrived with it, and both bound where the guard bites.
 * **The overlap enumerator counts a metavariable position as a seam.** Over an alphabet whose every subterm is a command position, a cell whose right-hand side exposes a hole therefore overlaps every cell, so the trivial-overlap conjunct is strictly stricter than the critical-pair notion it is named after, which excludes variable positions.
   That is the enumerator's gap to close and not the guard's to work around, and it is why a two-redex fixture needs ground right-hand sides today.
 
+**As built (2026-08-02): the guard's first _surface_ consumer was attempted and declined, and what blocks it is not the alphabet.** The ruled `cong2` block now lowers, so its two-redex body reaches the boundary-language elaboration and is refused a single whiskered composite, carrying both occurrences at positions `[0]` and `[1]`.
+Consuming `derive_shift_equivalence` there was attempted and is **not sound to wire today**, for three reasons in increasing depth; the third is the one that matters, and it relocates the question rather than deferring it.
+
+* **The guard is keyed by a cell pair, and `cong2`'s redexes are not cells.** `derive_shift_equivalence` resolves both applications through `CellStore::get` and asks `overlaps_between` about the two cells' faces, while `p` and `q` are **rewrite-sorted ports** — parameters of the rule, with no identity in any store and no left-hand side to superpose.
+  The overlap conjunct is not merely unanswered here; it is unasked, because there is no pair to ask about.
+* **The guard _exercises_ the pair, and `cong2`'s peak is open.** A pair that clears the three conjuncts must additionally fire in both orders (`rewrite_at`, ground matching), and the derived source boundary `add(x, y)` carries the telescope's variables, so nothing fires at it.
+* **`cong2` is a schema, so the question is not well-posed at its declaration.** Its two redexes are universally quantified over the rewrites that instantiate `p` and `q`, and shift-equivalence is a _per-pair_ licence; asking it at the declaration asks whether **every** instantiation commutes, which the per-pair constructor cannot decide.
+  Discharging that would need either a fence on which rewrites may instantiate a port — a change to the guard's own contract — or a schematic overlap notion over rewrite-sorted ports, which does not exist.
+  Neither is alphabet growth, which is why "supply an alphabet whose `Cmd`/`Pos` is the circuit composite" (the reading carried out of the elaboration rung) is necessary and **not** sufficient.
+
+**Where the witness does become well-posed is the instantiation site**, where `p` and `q` are concrete cells, the boundary is ground, and the pair is exactly the one the guard was built for.
+So the two-redex block stays parsed, checked, and declined with its precise diagnostic, and the horizontal composite is owed to whichever rung makes a circuit rule _applicable_ rather than to the one that made it writable.
+
 ### circuit-terms-spike-08
 
 **Is the delay cut convexity-stable?** The wheel ruling is that the **cut-open form** of a delay-guarded cyclic body is an ma-cospan whose boundary carries the delays' cut ends, so cutting every delayed port turns a body $Γ → Δ$ into an acyclic $Γ + D → Δ + D$ that the whole correspondence covers.
@@ -955,18 +968,18 @@ Each row is abstract-grade only; none has been read, and each is registered so t
 
 ## The corpus witness plan
 
-| witness                                                         | what it pins                                                                                        |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| a many-out `op` member that elaborates and runs                 | the Π-layer; the decline half is landed, the running half waits on the alphabet                     |
-| a bridge arity whose maps do not compose                        | the `WfKind::ArityDoesNotCompose` decline, at the declaration table                                 |
-| two disjoint redexes in one body                                | the declined-horizontal-composition guard, writable once bodies exist                               |
-| a fan-in cell whose target carries no commutative monoid        | the aggregation obligation, named at the declaration rather than implied by a picture               |
-| a fan-out cell whose source carries no cocommutative comonoid   | the dual obligation, which the retired asymmetry had hidden                                         |
-| a body with an unbound internal wire                            | the internal-wire binder, and the disjointness check shaped after `rwf`                             |
-| a wheel with no delay                                           | the wheel guard, which is a **new** guard and owes a witness once it exists                         |
-| a multi-consumer command the typed-IL checker admits or refuses | the tag-declared arity, replacing the hard-coded one                                                |
-| two disjoint redexes where applying one destroys the other      | the convexity hazard, and the guard [[#circuit-terms-spike-07]] decided: the convexity re-check     |
-| a match straddling a delay cut                                  | the cut-open-only matching fence, and the delay path extension [[#circuit-terms-spike-08]] selected |
+| witness                                                         | what it pins                                                                                                                  |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| a many-out `op` member that elaborates and runs                 | the Π-layer; the decline half is landed, the running half waits on the alphabet                                               |
+| a bridge arity whose maps do not compose                        | the `WfKind::ArityDoesNotCompose` decline, at the declaration table                                                           |
+| two disjoint redexes in one body                                | the declined-horizontal-composition guard — **written** (2026-08-02) as the corpus's `circuit-two-redex` pathological witness |
+| a fan-in cell whose target carries no commutative monoid        | the aggregation obligation, named at the declaration rather than implied by a picture                                         |
+| a fan-out cell whose source carries no cocommutative comonoid   | the dual obligation, which the retired asymmetry had hidden                                                                   |
+| a body with an unbound internal wire                            | the internal-wire binder, and the disjointness check shaped after `rwf`                                                       |
+| a wheel with no delay                                           | the wheel guard, which is a **new** guard and owes a witness once it exists                                                   |
+| a multi-consumer command the typed-IL checker admits or refuses | the tag-declared arity, replacing the hard-coded one                                                                          |
+| two disjoint redexes where applying one destroys the other      | the convexity hazard, and the guard [[#circuit-terms-spike-07]] decided: the convexity re-check                               |
+| a match straddling a delay cut                                  | the cut-open-only matching fence, and the delay path extension [[#circuit-terms-spike-08]] selected                           |
 
 Four of these are owed to the binding-guards inventory independently; this lane is where they stop being unwritable.
 
