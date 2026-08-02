@@ -50,6 +50,7 @@
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 
+use crate::boundary::CircuitNodeBudget;
 use crate::cell::CellFace;
 use crate::cell::FreeTerm;
 use crate::code::Name;
@@ -337,6 +338,19 @@ pub enum CircuitDerivationError
     /// unfolding it does not terminate in a term. A redex port bound to itself
     /// is **not** this case — that is the opaque endpoint, and it is a leaf.
     CyclicWiring(Name),
+    /// The unfolding reached the derivation's node ceiling, so the boundary is
+    /// declined rather than built.
+    ///
+    /// A wire consumed twice is unfolded twice, so a body of `n` doubling
+    /// frames derives a term of `2ⁿ` nodes. That is the term-shaped store's own
+    /// cost and the tree-shaped congruence target never pays it; the ceiling is
+    /// what makes a source-supplied body's blow-up a **defined decline**
+    /// carrying the ceiling it hit, rather than a hang.
+    NodeBudget
+    {
+        /// The ceiling the unfolding reached.
+        budget: CircuitNodeBudget,
+    },
 }
 
 /// Derive **both** boundaries of a circuit rule's wiring.
@@ -368,8 +382,32 @@ pub enum CircuitDerivationError
 #[inline]
 pub fn derive_boundaries(body: &CircuitBody) -> Result<DerivedBoundaries, CircuitDerivationError>
 {
-    let source = derive_boundary(body, BoundaryReading::Source)?;
-    let target = derive_boundary(body, BoundaryReading::Target)?;
+    derive_boundaries_within(body, CircuitNodeBudget::DEFAULT)
+}
+
+/// Derive both boundaries under an explicit node ceiling.
+///
+/// [`derive_boundaries`] is this at [`CircuitNodeBudget::DEFAULT`]. The ceiling
+/// is per reading rather than shared between the two, so the two readings of
+/// one body are bounded alike and neither can spend the other's allowance.
+///
+/// # Contract
+/// - requires: none.
+/// - ensures: as [`derive_boundaries`], within `budget` nodes per reading.
+/// - fails: as [`derive_boundaries`], plus
+///   [`CircuitDerivationError::NodeBudget`].
+/// - panics: none.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+#[inline]
+pub fn derive_boundaries_within(
+    body: &CircuitBody,
+    budget: CircuitNodeBudget,
+) -> Result<DerivedBoundaries, CircuitDerivationError>
+{
+    let source = derive_boundary_within(body, BoundaryReading::Source, budget)?;
+    let target = derive_boundary_within(body, BoundaryReading::Target, budget)?;
     Ok(DerivedBoundaries { source, target })
 }
 
@@ -413,6 +451,40 @@ pub fn derive_boundary(
     reading: BoundaryReading,
 ) -> Result<FreeTerm, CircuitDerivationError>
 {
+    derive_boundary_within(body, reading, CircuitNodeBudget::DEFAULT)
+}
+
+/// Derive one boundary under an explicit node ceiling.
+///
+/// [`derive_boundary`] is this at [`CircuitNodeBudget::DEFAULT`]. The ceiling
+/// counts the unfolding's **node visits** — a port resolved, a term node
+/// walked, or an application rebuilt — and every node the reading emits is one
+/// of those, so the ceiling bounds the derived term's size in the currency the
+/// reconvergence blow-up is measured in.
+///
+/// # Contract
+/// - requires: none.
+/// - ensures: as [`derive_boundary`], while the reading visits at most `budget`
+///   nodes.
+/// - fails: as [`derive_boundary`], plus [`CircuitDerivationError::NodeBudget`]
+///   carrying `budget` once the reading visits one node past it.
+/// - panics: none.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — one ceiling, so a body that stays under it and a
+///   body of doubling frames that passes it separate the predicate.
+/// - witness: `circuit::tests::a_doubling_body_declines_on_the_node_budget`
+/// - witness: `circuit::tests::a_body_within_the_node_budget_still_derives`
+#[inline]
+pub fn derive_boundary_within(
+    body: &CircuitBody,
+    reading: BoundaryReading,
+    budget: CircuitNodeBudget,
+) -> Result<FreeTerm, CircuitDerivationError>
+{
     /// The head an application is rebuilt under.
     enum AppShape<'body>
     {
@@ -440,10 +512,22 @@ pub fn derive_boundary(
         producers.entry(node.out()).or_insert(node);
     }
 
+    let ceiling = usize::from(budget);
+    let mut emitted: usize = 0;
     let mut path: BTreeSet<&Name> = BTreeSet::new();
     let mut results: Vec<FreeTerm> = Vec::new();
     let mut stack: Vec<Step<'_>> = vec![Step::Port(&body.out)];
     while let Some(step) = stack.pop() {
+        // Charge one node visit per resolution, term node, or rebuild. Every
+        // node the reading emits is charged, so the count bounds the derived
+        // term's size; the `Leave` bookkeeping step is not a visit and is not
+        // charged.
+        if matches!(step, Step::Port(_) | Step::Term(_) | Step::Finish(..)) {
+            emitted = emitted.saturating_add(1);
+            if emitted > ceiling {
+                return Err(CircuitDerivationError::NodeBudget { budget });
+            }
+        }
         match step {
             | Step::Port(port) => {
                 let Some(node) = producers.get(port).copied()
@@ -722,6 +806,75 @@ mod tests
             ]),
             derived.target,
             "and carries the redex's target term to both"
+        );
+    }
+
+    /// A chain of `n` doubling frames: each consumes the wire below it twice,
+    /// so the derived boundary has `2ⁿ` leaves.
+    fn doubling_body(levels: usize) -> CircuitBody
+    {
+        let mut nodes = Vec::new();
+        for level in 0 .. levels {
+            let below = if level == 0 {
+                Name::from("x")
+            }
+            else {
+                Name::from(alloc::format!("w{}", level.saturating_sub(1)))
+            };
+            nodes.push(CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op("add".into()),
+                [FreeTerm::Var(below.clone()), FreeTerm::Var(below)],
+                alloc::format!("w{level}"),
+            )));
+        }
+        CircuitBody::new(nodes, alloc::format!("w{}", levels.saturating_sub(1)))
+    }
+
+    #[test]
+    fn a_doubling_body_declines_on_the_node_budget()
+    {
+        // Twenty doubling frames derive a term of 2²⁰ leaves; the ceiling turns
+        // that into a defined decline naming the ceiling rather than a hang.
+        let body = doubling_body(20);
+        assert_eq!(
+            Err(CircuitDerivationError::NodeBudget {
+                budget: CircuitNodeBudget::DEFAULT
+            }),
+            derive_boundaries(&body),
+            "the derivation declines rather than unfolding 2²⁰ nodes"
+        );
+    }
+
+    #[test]
+    fn a_body_within_the_node_budget_still_derives()
+    {
+        // Five doubling frames derive 2⁵ leaves, comfortably under the ceiling,
+        // and the ceiling is not a cliff the ruled bodies sit near: the `cong2`
+        // block derives five nodes.
+        let body = doubling_body(5);
+        assert!(
+            derive_boundaries(&body).is_ok(),
+            "a body under the ceiling derives as before"
+        );
+        assert!(
+            derive_boundaries(&cong2_body()).is_ok(),
+            "the ruled congruence block is nowhere near the ceiling"
+        );
+    }
+
+    #[test]
+    fn the_node_budget_is_per_reading_and_explicit_when_a_caller_wants_one()
+    {
+        let body = doubling_body(8);
+        assert!(
+            derive_boundary_within(&body, BoundaryReading::Source, CircuitNodeBudget::from(16))
+                .is_err(),
+            "a tight ceiling declines the same body"
+        );
+        assert!(
+            derive_boundary_within(&body, BoundaryReading::Source, CircuitNodeBudget::DEFAULT)
+                .is_ok(),
+            "and the standing ceiling admits it"
         );
     }
 

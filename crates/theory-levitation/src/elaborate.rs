@@ -44,6 +44,7 @@
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 
+use crate::boundary::CircuitNodeBudget;
 use crate::boundary::PortArgumentCount;
 use crate::boundary::TermPositionIndex;
 use crate::cell::FreeTerm;
@@ -688,7 +689,10 @@ fn whisker_along(
 /// - fails: [`CircuitDerivationError::CyclicWiring`] on a port reachable from
 ///   itself other than as a redex's own opaque endpoint — the same guard the
 ///   derivation runs, so the walk stays total on a wiring the derivation
-///   refuses.
+///   refuses; [`CircuitDerivationError::NodeBudget`] on a wiring whose
+///   unfolding passes [`CircuitNodeBudget::DEFAULT`], which is the same ceiling
+///   the derivation runs under and is charged here too because this is a
+///   *second* traversal of the same reconvergence.
 /// - panics: none.
 fn redex_occurrences(body: &CircuitBody) -> Result<Vec<RedexOccurrence>, CircuitDerivationError>
 {
@@ -725,11 +729,25 @@ fn redex_occurrences(body: &CircuitBody) -> Result<Vec<RedexOccurrence>, Circuit
         producers.entry(node.out()).or_insert(node);
     }
 
+    let ceiling = usize::from(CircuitNodeBudget::DEFAULT);
+    let mut visited: usize = 0;
     let mut path: BTreeSet<&Name> = BTreeSet::new();
     let mut position: Vec<TermPositionIndex> = Vec::new();
     let mut occurrences: Vec<RedexOccurrence> = Vec::new();
     let mut stack: Vec<Walk<'_>> = vec![Walk::Port(&body.out)];
     while let Some(step) = stack.pop() {
+        // The same node-visit charge the derivation makes, for the same reason:
+        // this walk is a second traversal of one wiring and inherits its
+        // reconvergence cost, so it inherits its ceiling rather than running
+        // unbounded beside a bounded one.
+        if matches!(step, Walk::Port(_) | Walk::Term(_)) {
+            visited = visited.saturating_add(1);
+            if visited > ceiling {
+                return Err(CircuitDerivationError::NodeBudget {
+                    budget: CircuitNodeBudget::DEFAULT,
+                });
+            }
+        }
         match step {
             | Walk::Port(port) => {
                 let Some(node) = producers.get(port).copied()

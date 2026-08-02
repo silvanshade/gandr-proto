@@ -71,6 +71,8 @@ pub enum WfKind
     /// A circuit rule's redex line applies a rewrite its parameter telescope
     /// does not declare.
     UnknownRewritePort,
+    /// A circuit rule's wiring unfolds past the derivation's node ceiling.
+    CircuitDerivationBudget,
 }
 
 /// One well-formedness **diagnostic** — an inspectable failure with a message
@@ -275,6 +277,21 @@ fn check_circuit_rule(
                 format!(
                     "circuit rule `{}`'s wiring reaches port `{port}` from itself, so no boundary \
                      term unfolds from it",
+                    rule.name
+                )
+                .into(),
+                Some(rule.sphere.provenance),
+            ));
+            return;
+        },
+        | Err(CircuitDerivationError::NodeBudget { budget }) => {
+            diagnostics.push(WfDiagnostic::new(
+                WfKind::CircuitDerivationBudget,
+                format!(
+                    "circuit rule `{}`'s wiring unfolds past the derivation's node budget of \
+                     {budget}: a wire consumed twice is unfolded twice, so reconvergence is a \
+                     shared subterm on the term-shaped store and a body of doubling frames \
+                     derives an exponentially large boundary",
                     rule.name
                 )
                 .into(),

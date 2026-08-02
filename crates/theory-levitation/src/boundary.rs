@@ -132,6 +132,32 @@ copy_wrapper!(
     "Number of arguments a rewrite-sorted port's instantiation involves."
 );
 copy_wrapper!(
+    CircuitNodeBudget,
+    usize,
+    "Maximum number of boundary nodes one circuit derivation may unfold."
+);
+
+impl CircuitNodeBudget
+{
+    /// The standing ceiling a circuit derivation runs under.
+    ///
+    /// A wire consumed twice is unfolded twice, so reconvergence is a **shared
+    /// subterm** rather than a shared node on the term-shaped store and a body
+    /// of `n` doubling frames derives a term of `2ⁿ` nodes
+    /// (`docs/gandr/spec/surface-language/circuit-cells.md`, section "The
+    /// derived pair meets the sphere by checking, not by synthesis"). Bodies
+    /// reached the derivation only through the crate's own constructors until
+    /// the surface route landed; a ceiling is what turns a source-supplied
+    /// body's blow-up into a **defined decline** rather than a hang, which is
+    /// the completion engine's posture
+    /// (`gandr_theory_computads::CompletionBudget`).
+    ///
+    /// The number is a ceiling, not a measurement: it is far above any wiring a
+    /// reader would write — the ruled `cong2` block derives five nodes — and
+    /// far below where the unfolding stops being interactive.
+    pub const DEFAULT: Self = Self(4_096);
+}
+copy_wrapper!(
     RoundTripSampleCount,
     usize,
     "Number of code-isomorphism replay samples checked in one direction."
