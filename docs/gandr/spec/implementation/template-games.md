@@ -43,16 +43,36 @@ None of them exists in the tree, and none is a re-presentation of something gand
 | the asynchronous-graph permutation tile | [@mellies-stefanesco-2020-csl, sec 3.1], with the axioms at [@mellies-2021-template-games, sec III-A] | the landed shift-equivalence witness (`gandr-theory-computads`, `shift`) |
 | path equivalence modulo tiles           | [@mellies-stefanesco-2020-csl, sec 3.1]                                                               | the shift quotient on certificates                                       |
 
-**An asynchronous graph must satisfy three axioms, and gandr has one of them** [@mellies-2021-template-games, sec III-A].
+**What a tile is quantified over has to be fixed before an axiom check means anything, and the source's choice is not the obvious one.** A **square** is a pair of length-2 paths sharing **both** a source and a target, and the tile relation is a set of such squares [@mellies-2021-template-games, sec III-A, eqn 35].
 
-* **Symmetry** of the permutation tiles — **held by construction.** The shift witness takes its overlap conjunct per ordered pair in both orders, which is what the symmetry axiom asks for.
-* **Determinism** — two tiles out of the same corner with the same first leg have the same second leg — **neither claimed nor proved for gandr.**
-* **The cube property** — **neither claimed nor proved for gandr.**
+**The carrier permits parallel edges, deliberately, so the relation is indexed by edges and never by source-label-target triples** [ibid., sec I].
+The source declines the traditional at-most-one-transition-per-label simplification in as many words.
 
-**So the gate is these two axioms, and it is a hard one: nothing transfers at tile level before it is answered.** Every downstream result in the source consumes tiles; none produces one, so a tile-level statement borrowed before the axioms hold would be borrowed against a structure gandr has not been shown to have.
+**gandr's step identity is a different datum, and the pairing owes a re-index before an axiom check means anything.** As built, a gandr transition is a `CellApp` — a cell identifier together with a position — applied to a peak term, and the shift witness is derived from a peak plus an ordered pair of those (`gandr-theory-computads`, `shift`).
+So two applications of one cell at two positions in one term are distinct even when they reach the same target, which is the behaviour the source's edge indexing has and its triple indexing does not.
+**Whether that makes gandr's relation edge-indexed in the source's sense turns on whether the position counts as part of the label, and that is unsettled**, so a verdict has to say which indexing it was taken at ([[#template-games-question-06]]).
+
+**An asynchronous graph must satisfy three axioms, and gandr has none of them at the level the axioms quantify over** [@mellies-2021-template-games, sec III-A].
+
+* **Symmetry** — a tile between two length-2 paths is a tile in the other direction too.
+  **Argued for gandr but not at the axiom's level**: the shift witness takes its overlap conjunct per ordered pair in both orders, which argues the _relation_ is symmetric, whereas the axiom quantifies over **squares**.
+  The shared-target half is what the ordered-pair argument does not obviously give, so the claim is **restated at the square level by the spike rather than inherited**.
+* **Determinism** — for length-2 paths sharing both endpoints, a tile from one path to two others forces those two to coincide.
+  Note the quantifier: **all three paths share both endpoints**, and with symmetry this makes the relation a partial involution, so the residual of a step after an independent step is uniquely determined.
+  **Neither claimed nor proved for gandr.**
+* **The cube property** [ibid., sec III-A, eqn 36] — **and it is a biconditional, not a filling condition.** For two length-3 paths sharing both endpoints, the front-to-back sweep of tiles exists **if and only if** the back-to-front sweep does.
+  A decision procedure therefore tests **both** directions, and a witness refuting either direction refutes the axiom.
+  **Neither claimed nor proved for gandr.**
+
+**What determinism buys is not a coherence nicety, and stating the loss correctly is what makes the gate worth its cost.** Determinism is what makes the ambient category of asynchronous graphs **finitely complete**: products are componentwise, equalizers are the work [ibid., prop 4, sec III-C], and the cube property of an equalizer subgraph follows from determinism of the target [ibid., prop 6, appendix A].
+The chain runs: determinism, then tiles are inherited by equalizer subgraphs, then the ambient has all finite limits, then the template formalism — an internal category in a category with finite limits [ibid., sec I] — is available over asynchronous graphs **at all**.
+
+**So the concrete gandr consequence of a determinism failure is that sub-store restriction does not inherit tile structure** — which is exactly the operation the disconnection axis and the frame direction both need, and it is checkable on the same witness.
+
+**The gate is therefore these axioms, and it is a hard one: nothing transfers at tile level before it is answered.** Every downstream result in the source consumes tiles; none produces one, so a tile-level statement borrowed before the axioms hold would be borrowed against a structure gandr has not been shown to have.
 The gate's executing scope is [[#template-games-spike-01]], and no rung of [[#The theorems owed]] may be started against a tile-level premise until that spike reports.
 
-**This is also the cheapest experiment in the programme**, which is why it is the gate rather than a deferred obligation: both axioms are decidable questions about a landed artifact, not construction programmes, and a failure witness settles the direction as usefully as a proof.
+**This is also the cheapest experiment in the programme**, which is why it is the gate rather than a deferred obligation: the two unproved axioms are decidable questions about a landed artifact, not construction programmes, and a failure witness settles the direction as usefully as a proof.
 
 ## The gating spike
 
@@ -66,6 +86,14 @@ The spike's two halves are the two cheapest facts the adoption decision needs.
   If both hold, every tile-level transfer from this line is licensed; if either fails, the failure witness is the decision.
 * **The polarized-footprint prototype.** Decide whether the polarized independence test — rewritten versus matched-but-preserved, read off the match image — licenses a strictly larger commuting class than the incomparable-positions conjunct, **without weakening the decided guard**.
   The test is prototyped beside the guard's constructor and never in place of it.
+
+**Three conditions on how the axiom half is run, each of which changes what a verdict means.**
+
+* **Fix the index first.** The source's tile relation is indexed by edges with parallel edges permitted, and gandr's witness is enumerated per position pair and cell pair; a verdict states which indexing it is about ([[#template-games-question-06]]).
+* **Test both sweeps of the cube.** The property is a biconditional, so a procedure that checks one direction has not checked the axiom.
+* **Restate symmetry at the square level.** The inherited by-construction argument is about ordered pairs; the axiom is about squares, and the shared-target half is the part the argument does not obviously give.
+
+**A determinism refutation is reported with its consequence and not only as a failure**: what is lost is inheritance of tile structure under sub-store restriction, and therefore finite completeness of the ambient, and therefore the availability of the template formalism at all.
 
 **Scope fence.** The spike changes no guard, adopts no part of the line, and buys facts rather than structure.
 
@@ -250,19 +278,28 @@ Expected **free** by the presheaf-topos route the corpus already records for lab
 
 **What it would newly warrant.** The three central proofs of the soundness route become available at all: without an adhesive ambient, the strictness and fibration lemmas [@mellies-stefanesco-2020-csl, lem 10.2, lem 10.9] have no hypotheses to stand on, and [[#template-games-rung-06]] is unreachable.
 
+**Adhesivity is not the only ambient condition the apparatus needs, and the two are owed separately.** Adhesivity is what the soundness proofs consume; **finite completeness** is what makes the template formalism exist over asynchronous graphs at all, and that one is bought by determinism rather than by the presheaf route [@mellies-2021-template-games, prop 4, prop 6, appendix A].
+This rung covers the first; the second rides [[#template-games-rung-02]].
+
 **Grade.** Satisfiability is **inferred, not proved** — the read did not establish that gandr's certificate supports can be presented in that ambient.
 
 ### template-games-rung-02
 
-**The tile set is deterministic and satisfies the cube property** [@mellies-2021-template-games, sec III-A].
+**The tile set is deterministic and satisfies the cube property** [@mellies-2021-template-games, sec III-A, eqns 35, 36].
 
-Symmetry is already had by construction.
-These two are unproved for gandr, they are decidable questions about the landed shift witness, and they are the cheapest real experiment in the programme — which is why they are also the gate ([[#template-games-spike-01]]).
+Symmetry is argued by construction but not yet at the level the axiom quantifies over, so it is restated rather than assumed ([[#The tile pairing, and the two axioms everything gates on]]).
+The two unproved axioms are decidable questions about the landed shift witness and the cheapest real experiment in the programme — which is why they are also the gate ([[#template-games-spike-01]]).
 
-**What it would newly warrant.** Every tile-level transfer from this line, and nothing transfers without them.
-This rung is a precondition rather than a prize: it licenses the other five to be attempted.
+**What it would newly warrant.**
 
-**Grade.** **Not verified, and load-bearing.** Both properties are unproved for gandr and both are preconditions for any tile-level transfer.
+* **Every tile-level transfer from this line**, and nothing transfers without them.
+  This rung is a precondition rather than a prize: it licenses the other five to be attempted.
+* **Finite completeness of the ambient, and with it the existence of the template formalism** [ibid., prop 4, prop 6, appendix A] — which is what makes sub-store restriction inherit tile structure, the operation the disconnection axis and the frame direction both need.
+* **Interchange in the third dimension rather than mere whiskering.** Every asynchronous graph presents a sesquicategory whose 2-cells are permutation sequences [ibid., prop 7, appendix D-A]; it presents a **2-category** once 2-cells are reschedulings modulo the induced bijection on edge indices [ibid., prop 8, appendix D-B], and the cube property's two sweeps are what make that quotient class nonempty from either side.
+  **That last step is a reading of appendix D-B and not a statement the source makes**, since the source imposes all three axioms throughout.
+* **Standing beyond this epic.** The coherent-congruence line concedes that it supplies **no correctness criterion** for its congruences [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8], and these axioms are exactly the criterion it says it lacks — so a clean positive verdict is evidence for more than gandr's own quotient.
+
+**Grade.** **Not verified, and load-bearing.** Both properties are unproved for gandr and both are preconditions for any tile-level transfer; the axioms themselves are read at theorem grade in the original.
 
 ### template-games-rung-03
 
@@ -358,6 +395,17 @@ The corpus's existing virtual-honesty posture is the natural place to look first
 The **generalized** composition's inequality holds under a filling hypothesis verified for the code templates only, and the source states explicitly that the hypothesis is not necessarily satisfied for the separated-states template.
 The disposition is that the scope is recorded now, before anything leans on the conditional half; a pass that does lean on it inherits the hypothesis and owes its verification for whatever template gandr's proof layer becomes.
 
+### template-games-question-06
+
+**At which index is gandr's tile relation stated, and does the pairing survive the source's?**
+
+**Carried, and it is a precondition on the gate rather than a consequence of it.** The source's carrier permits parallel edges deliberately, so its tile relation is indexed by **edges** and never by source-label-target triples [@mellies-2021-template-games, sec I], while gandr's witness is derived from a peak term and an ordered pair of cell-and-position applications.
+Those need not be the same quantification, and an axiom verdict taken at the wrong one is a verdict about a different relation.
+The disposition is that the re-index is settled **before** the axiom half of [[#template-games-spike-01]] runs, and that any verdict names the indexing it was taken at.
+
+**What is established and what is not.** The gandr side is verified at the symbol: a step is a `CellApp` over a peak, so position is part of what individuates a transition (`gandr-theory-computads`, `shift` and `rewrite`).
+**What is not established is the translation** — whether the cell identifier alone is the source's label, with position part of the edge, or whether the pair is the label — and nothing here decides it.
+
 ## What stays out of scope
 
 Explicitly, so that nothing here is later read as a partial adoption of the whole.
@@ -384,19 +432,24 @@ Explicitly, so that nothing here is later read as a partial adoption of the whol
 **Both sources were read at theorem grade for the template/cobordism half on 2026-08-02, from copies held locally, with identity checked from page 1 for each.**
 
 The primary [@mellies-stefanesco-2020-csl] was read in full — fifty pages, body plus appendices.
-The substrate [@mellies-2021-template-games] was read for the machinery the primary stands on: sec I, secs III-V, and the statements of the numbered propositions and theorems.
+The substrate [@mellies-2021-template-games] was read twice at different depths, and the grades differ by material rather than by statement.
+
+* **The asynchronous-graph axioms and the Gray-tensor content are read in full at theorem grade**, body plus appendices, with the axiom statements, the finite-completeness chain, and the sesquicategory and 2-category presentations taken at their own numbers [@mellies-2021-template-games, sec III-A, eqns 35, 36; prop 4, prop 6, appendix A; prop 7, prop 8, appendices D-A and D-B].
+  No verdict of the earlier pass is contradicted by that read.
+* **Everything else in the substrate was read at substrate grade** for the machinery the primary stands on: sec I, secs III-V, and the statements of the numbered propositions and theorems, with the proofs of none of them.
 
 **What was read but not verified line by line, in the primary.**
 
 | statement                                                           | grade                                                                                                 |
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| thm 1.1, thm 1.2, thm 2.2, thm 4.4                                  | **carry no proof in the source text**; thm 4.4 is asserted from lax-monoidality plus Day-Street       |
+| thm 1.1, thm 1.2, thm 2.2, thm 4.4                                  | **carry no proof in the source text**; thm 4.4 is asserted from lax-monoidality plus Day and Street   |
 | lem 4.2, lem 10.8                                                   | **asserted without proof** in the source                                                              |
 | lem 10.2, lem 10.3, lem 10.7, lem 10.9, lem 10.10, lem E.2, lem E.5 | proofs read **for shape, not for correctness** — each is a diagram chase followed rather than checked |
 | appendix B's map construction                                       | read as a case analysis and **not checked**                                                           |
 
-**What was not read line by line, in the substrate** [@mellies-2021-template-games]: sec VI and its theorem, sec VII and its definition of the template as a monad, and the appendices.
-The statements of the numbered propositions, theorems, and definitions were read; **the proofs of none of them were**.
+**What is unverified in the substrate even at the theorem-grade pass** [@mellies-2021-template-games]: thm 1, thm 3, and thm 4 carry no proof in the text, and thm 3 is explicitly deferred to a recipe in a work that was not chased; thm 2 is called folklore by the author and is likewise unproved there.
+Appendix C's coreflexive-equalizer preservation proof was followed only for structure, and appendix B's coherence relations were **not** checked against an independent presentation of the Gray tensor.
+The finite-limit argument of appendix A, including the proof that gives the equalizer subgraph its cube property, and the reshuffling construction of appendix D were read as arguments and followed.
 
 **Imported results were not chased.** Three of them bear on claims above, so they are named rather than gestured at, and each is **locator-pending**: none has a bibliography key yet, and this document cites none of them at a statement.
 

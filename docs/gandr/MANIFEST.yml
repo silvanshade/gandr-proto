@@ -149,7 +149,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 72995c1077eefe5c55fd26fd96102bd2e0185051f36e0dd959c49054de53421c
+    b3: 43770f01f06053031ba09ea810bc45412ca99e8eee677ef648d9cf06902eccf9
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
