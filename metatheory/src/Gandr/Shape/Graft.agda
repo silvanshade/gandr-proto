@@ -133,27 +133,40 @@
 -- the three-way coherence of `insert-swap`, and that is now stated and proved
 -- as the listing algebra's own law — see the next paragraph.
 --
--- THE LISTING ALGEBRA IS SYMMETRIC, and saying so is what closed `cap-swap`.
--- `insert-swap-invol` says swapping two nested positions twice returns them,
--- and `insert-swap-braid` says a three-layer tower reversed low-high-low and
--- reversed high-low-high agree — the braid relation `σ₁σ₂σ₁ = σ₂σ₁σ₂`, which
--- with the involution is the SYMMETRIC group's presentation on a tower's two
--- generators. An earlier revision called the missing piece a hexagon; it is
--- not one, since a hexagon is the braiding against an associator and there is
--- no tensor here to associate. Naming the structure is what turned the open
--- case from a chase into one `cong`, and `Tower` — three insertions with their
--- intermediate lists as FIELDS — is what let the coherence be stated as a
--- homogeneous equation instead of a transport.
+-- THE LISTING ALGEBRA IS SYMMETRIC, and it says so ONCE. `Tower` is a tower of
+-- nested insertions indexed by the LIST of colours it puts in, so one structure
+-- serves every arity; `tower-swap` names its two lowest layers in the other
+-- order; and the whole of what the symmetry is, is that this generator satisfies
+-- the SYMMETRIC group's Coxeter presentation —
 --
--- `insert-swap-coh⁴` carries the same statement one layer up, for the four
--- nested insertions a cut over a wire over a cut presents. It adds NO
--- generator: both of its routes are reduced words for one permutation, so the
--- relation follows from the braid and from far-apart transpositions commuting.
--- Its cost is the finding: two of its four bases are `refl` and the other two
--- are one `cong` of `insert-swap-braid` ITSELF, so a rung of this ladder is
--- the rung below re-used rather than new work. That was measured against a
--- prediction that all four would be `refl`, and the deviation runs in the
--- cheap direction.
+--   `tower-swap-invol`  naming twice returns
+--   `tower-swap-braid`  the braid relation `σ₁σ₂σ₁ = σ₂σ₁σ₂` on three layers
+--   `tower-swap-far`    layers two apart do not interfere
+--
+-- Every coherence above them is a WORD EQUATION derived by chaining these three,
+-- at any arity, with no new structure. `tower-coh⁴` is the four-layer one and is
+-- five steps: commute a far pair, braid, braid a layer up, commute back.
+--
+-- An earlier revision called the three-way relation a hexagon; it is not one,
+-- since a hexagon is the braiding against an associator and there is no tensor
+-- here to associate. And an earlier revision reached each arity by writing the
+-- next fixed-arity RECORD with its own pair of routes and its own coherence.
+-- That ladder was measured and does not terminate cheaply — a fifth rung is
+-- owed by two cuts commuting, and its bases are a four-layer coherence for a
+-- permutation the fourth rung never performs, so the ladder gains a family
+-- rather than a rung. The presentation replaces it.
+--
+-- WHAT MADE THE PACKAGING POSSIBLE was already recorded here and not exploited:
+-- the action moves no ELEMENT, only the order in which the positions were named.
+-- So the layers are fixed in the final list and reordering them is a group
+-- acting on a tower's layers. Of the three relations, the first two are the
+-- fixed-arity rungs' own content migrated; the THIRD was never stated, and its
+-- absence is exactly why the four-layer coherence's bases had looked like new
+-- work rather than like far-apart transpositions commuting.
+--
+-- `Match` is NOT presented by permutations and that is not in question. What
+-- takes the permutation vocabulary is the POSITIONS, one level below the
+-- matchings.
 --
 -- AND THE TWO LOOKUPS ARE VIEWS OF THE TWO THREADINGS, which is the
 -- characterization the composition proofs run on. `match-remove i` is inverse
@@ -225,19 +238,17 @@
 --   * REBUILD, as the wire's half does. The rebuild turns the lookup's capped
 --     branch into a second `match-cap`, so the identity it lands on is two
 --     threaded cuts commuting — a cut, a cut, and the head they meet, FIVE.
---     Measured rather than assumed: that fifth rung is not the fourth re-used.
---     Its bases are a four-layer coherence for a DIFFERENT permutation — two
---     adjacent PAIRS traded, not the reversal `tower⁴-lo`/`tower⁴-hi` perform —
---     so the ladder gains a family rather than a rung.
---   * DIRECT INDUCTION, mirroring `match-remove`'s own. This stays at the
---     four-layer coherence the arity rule predicts, and pays instead in view
---     algebra: two positions read past a third compare as they did before, and
---     a position compared against one read past a third needs the two verdicts
---     composed. Neither is written and neither is a tower coherence.
+--     Under the fixed-arity records that was a new rung AND a new permutation
+--     family; under the presentation above it is one more word.
+--   * DIRECT INDUCTION, mirroring `match-remove`'s own. This stays at four
+--     layers and pays instead in view algebra: two positions read past a third
+--     compare as they did before, and a position compared against one read past
+--     a third needs the two verdicts composed. Neither is written and neither
+--     is a tower coherence.
 --
--- Both are more than the estimate that no further coherence was owed on this
--- route, and that estimate is withdrawn here. The choice between them is the
--- open design question the exchange's own section already names.
+-- The earlier estimate that no further coherence was owed on this route is
+-- withdrawn. What the packaging changed is the first branch's price, and that
+-- is the measurement the presentation was taken for.
 --
 -- AND THE ARITY OF SUCH A DEBT IS NOT ARBITRARY, which is worth knowing before
 -- reaching for heavier machinery: it is the number of positions the operations
@@ -247,12 +258,13 @@
 -- in them at all. So `cap-swap` is a cut plus an underlying cap, three; the
 -- residual above is a cut plus a wire plus an underlying cap, four; and
 -- whiskering and merging contribute nothing to this ladder however large their
--- blocks. A fifth layer needs two cuts to commute — which the residual's
--- rebuild route DOES ask for, and its direct route does not.
+-- blocks. A fifth layer needs two cuts to commute.
 --
--- The rule bounds a FRESH statement's cost and not every statement's, which
--- `match-insert-cap` is the standing counterexample to: read fresh it is four,
--- and it is free.
+-- What the arity now bounds is the LENGTH OF A WORD, not the cost of a new
+-- structure: since the presentation is complete, a statement at any arity is
+-- derived by chaining the same three relations. The rule also bounds a FRESH
+-- statement's cost and not every statement's, which `match-insert-cap` is the
+-- standing counterexample to: read fresh it is four, and it is free.
 --
 -- `merge-apart` — the merger's INCIDENCE theorem, and the general form of what
 -- `two-points` could previously only exhibit. `verts-merge` says both operands'
@@ -521,44 +533,16 @@ module _ {ℓ} {Ob : Set ℓ} where
   insert-swap (tail j) (tail k) = exchange-tail (insert-swap j k)
 
   -- ══════════════════════════════════════════════════════════════════════════
-  -- THE EXCHANGE'S OWN LAWS: THE LISTING ALGEBRA IS SYMMETRIC. What
-  -- `insert-swap` is, is a SYMMETRY on towers of nested insertions — the
-  -- symmetric group acting on a tower's LAYERS — and the two laws here are
-  -- that characterization rather than a description of it:
-  --
-  --   * `insert-swap-invol` — swapping twice returns the two positions it was
-  --     given. This is what separates a SYMMETRIC structure from a merely
-  --     braided one, and it is what lets `cap-swap` be an equation between the
-  --     two namings of ONE cut rather than a statement about an orbit.
-  --   * `insert-swap-braid` — the three-way coherence: three nested insertions
-  --     reversed by swapping low, high, low agree with the same three reversed
-  --     high, low, high.
-  --   * `insert-swap-coh⁴` — the same coherence one layer up, for the four
-  --     nested insertions a cut over a wire over a cut presents. It is NOT a
-  --     third generator: both routes are reduced words for one permutation, so
-  --     the relation follows from the braid and from far-apart transpositions
-  --     commuting, and the proof says exactly that — two of its four bases ARE
-  --     `insert-swap-braid`, under one `cong`, and the other two are `refl`.
-  --
-  -- WHAT THAT COSTS PER LAYER, since the ladder's finiteness is the question a
-  -- reader will have. A rung is one record, one reindexing, two plantings, two
-  -- routes, and a five-clause proof whose only content is the rung below. So
-  -- the arity of a coherence bounds its cost rather than compounding it, and
-  -- the bound on the arity is the section on `match-cap-insert` below.
+  -- THE EXCHANGE'S OWN LAW. What `insert-swap` is, is a SYMMETRY on towers of
+  -- nested insertions, and the next section is that characterization stated
+  -- once and for all arities. This one law comes first because it is the only
+  -- one an ordinary consumer of `insert-swap` needs, and because most of the
+  -- file's proofs spend it directly rather than through the action.
   --
   -- The three readings in the incidence section below — `swap-slotˡ`,
-  -- `swap-slotʳ`, `swap-past` — complete the picture from the other side: the
-  -- action moves no ELEMENT, only the order in which the positions were named.
-  --
-  -- ON THE NAME, because this coherence has been called a hexagon and it is
-  -- not one. A hexagon is the braiding against an ASSOCIATOR, and there is no
-  -- tensor here to associate: inserting is not a monoidal product on lists.
-  -- What the three-way coherence is, is the BRAID RELATION `σ₁σ₂σ₁ = σ₂σ₁σ₂` —
-  -- the Yang–Baxter equation — for the family `insert-swap`; and together with
-  -- the involution it is the SYMMETRIC group's presentation on the two
-  -- generators of a three-layer tower, not the braid group's. The obligation
-  -- has the shape the hexagon reading predicted, which is why establishing the
-  -- frame first was worth it; only the name was wrong.
+  -- `swap-slotʳ`, `swap-past` — say the same thing from the other side, and
+  -- they are what the packaging rests on: the action moves no ELEMENT, only the
+  -- order in which the positions were named.
   -- ══════════════════════════════════════════════════════════════════════════
 
   -- Swapping twice returns the two positions it was given. Stated over
@@ -578,270 +562,253 @@ module _ {ℓ} {Ob : Set ℓ} where
   insert-swap-invol (tail i) (tail j) =
     cong exchange-tail (insert-swap-invol i j)
 
-  -- Three nested insertions as ONE package. The two intermediate lists are
-  -- FIELDS rather than indices — `Exchange`'s device one dimension up — and
-  -- that is what makes two towers comparable by an ordinary equation: the
-  -- lists a reversal passes through are not determined by its inputs, so a
-  -- statement that pinned them as indices could not be homogeneous, and the
-  -- coherence below would need a transport before it could be stated at all.
-  record Tower (x y z : Ob) (ds dˣ : List Ob) : Set ℓ where
-    constructor tower
-    field
-      -- the list with the first element in
-      low : List Ob
-      -- and with the second one in as well
-      high : List Ob
-      -- the element that goes in first
-      base : Insert Ob x ds low
-      -- the one that goes in second
-      step : Insert Ob y low high
-      -- and the one that goes in last
-      peak : Insert Ob z high dˣ
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE ACTION, PACKAGED ONCE. A tower of nested insertions is indexed by the
+  -- LIST of colours it puts in, so one structure serves every arity; the
+  -- intermediate lists are constructor ARGUMENTS, which is `Exchange`'s device
+  -- carried up, and it is what makes two towers over the same three indices
+  -- comparable by an ordinary equation rather than through a transport.
+  --
+  -- WHAT THIS REPLACES, AND WHY IT WAS TAKEN. Three fixed-arity records with a
+  -- bespoke pair of routes and a bespoke coherence apiece stood here — two
+  -- layers, then three, then four — and each rung was reached by writing the
+  -- next record. The ladder was measured and does NOT terminate cheaply: a
+  -- fifth rung is owed by two cuts commuting, its bases are a FOUR-layer
+  -- coherence for a permutation the fourth rung never performs, and the ladder
+  -- would gain a family rather than a rung. So the action is packaged instead.
+  --
+  -- WHAT MAKES THE PACKAGING POSSIBLE is the observation the fixed-arity
+  -- sections already recorded and did not exploit: the action moves no ELEMENT,
+  -- only the order in which the positions were named. So the layers are
+  -- physically fixed in `dˣ` and reordering them is a SYMMETRIC GROUP acting on
+  -- a tower's layers — presented, as symmetric groups are, by adjacent
+  -- transpositions and three relations. `tower-swap` is the generator, and
+  --
+  --   * `tower-swap-invol` — naming twice returns;
+  --   * `tower-swap-braid` — the braid relation on three adjacent layers;
+  --   * `tower-swap-far`  — layers two apart do not interfere;
+  --
+  -- are the relations. Every coherence above them is a WORD EQUATION and is
+  -- derived by chaining these three, at any arity, with no new structure. The
+  -- four-layer coherence is `tower-coh⁴` below and is five steps; the fifth and
+  -- every later one is the same kind of chain.
+  --
+  -- The first two are the fixed-arity rungs' own content, migrated: the braid
+  -- is the same four-clause induction `insert-swap-braid` was. The THIRD was
+  -- never stated, and it is the one that makes the presentation complete —
+  -- it holds by `refl`, and its absence is why the fourth rung's bases looked
+  -- like new work.
+  --
+  -- ON THE NAME, because this coherence has been called a hexagon and it is
+  -- not one. A hexagon is the braiding against an ASSOCIATOR, and there is no
+  -- tensor here to associate: inserting is not a monoidal product on lists.
+  -- What the three-way relation is, is the braid relation `σ₁σ₂σ₁ = σ₂σ₁σ₂` —
+  -- the Yang–Baxter equation — for the family `insert-swap`; and together with
+  -- the involution and the far commutation it is the SYMMETRIC group's Coxeter
+  -- presentation, not the braid group's.
+  --
+  -- `Match` is NOT presented by permutations and that is not in question here.
+  -- What takes the permutation vocabulary is the POSITIONS, one level below the
+  -- matchings, which is where the redundancy a canonical presentation refuses
+  -- has to be paid for instead.
+  -- ══════════════════════════════════════════════════════════════════════════
 
-  -- Reindexing a tower past an element every list leads with: `exchange-tail`
-  -- one dimension up, and copatterns for the same reason — the reversals below
-  -- have to stay visible subterms of each other under `tail`.
+  infixr 5 _◂_
+
+  data Tower : List Ob → List Ob → List Ob → Set ℓ where
+    -- nothing put in, so the two ends are the same list
+    ⟨⟩
+      : ∀ {ds}
+      → Tower [] ds ds
+    -- one more colour put in below everything already there
+    _◂_
+      : ∀ {x xs ds d dˣ}
+      → Insert Ob x ds d
+      → Tower xs d dˣ
+      → Tower (x ∷ xs) ds dˣ
+
+  -- Reindexing past an element every list leads with, which is `exchange-tail`
+  -- at any arity at all.
   tower-tail
-    : ∀ {x y z w ds dˣ}
-    → Tower x y z ds dˣ
-    → Tower x y z (w ∷ ds) (w ∷ dˣ)
-  Tower.low (tower-tail {w} t) = w ∷ Tower.low t
-  Tower.high (tower-tail {w} t) = w ∷ Tower.high t
-  Tower.base (tower-tail t) = tail (Tower.base t)
-  Tower.step (tower-tail t) = tail (Tower.step t)
-  Tower.peak (tower-tail t) = tail (Tower.peak t)
+    : ∀ {v xs ds dˣ}
+    → Tower xs ds dˣ
+    → Tower xs (v ∷ ds) (v ∷ dˣ)
+  tower-tail ⟨⟩ = ⟨⟩
+  tower-tail (i ◂ t) = tail i ◂ tower-tail t
 
-  -- REVERSING A TOWER, LOW PAIR FIRST. `k` puts `z` in, then `j` puts `y` in,
-  -- then `i` puts `x` in; this hands back the same three positions with the
-  -- order of naming reversed, reached by swapping the low pair, then the high
-  -- pair, then the low pair again.
-  tower-lo
-    : ∀ {x y z ds d d˘ dˣ}
-    → (i : Insert Ob x d˘ dˣ)
-    → (j : Insert Ob y d d˘)
-    → (k : Insert Ob z ds d)
-    → Tower x y z ds dˣ
-  tower-lo {ds} {d˘} {dˣ} i j k =
-    tower
-      (Exchange.mid lo₃)
-      (Exchange.mid lo₂)
-      (Exchange.inner lo₃)
-      (Exchange.outer lo₃)
-      (Exchange.outer lo₂)
-    where
-      lo₁ : Exchange _ _ ds d˘
-      lo₁ = insert-swap j k
-      lo₂ : Exchange _ _ (Exchange.mid lo₁) dˣ
-      lo₂ = insert-swap i (Exchange.outer lo₁)
-      lo₃ : Exchange _ _ ds (Exchange.mid lo₂)
-      lo₃ = insert-swap (Exchange.inner lo₂) (Exchange.inner lo₁)
+  -- Stacking one tower on another along the graph of concatenation, so that a
+  -- statement proved about a FIXED number of layers reaches a tower with more
+  -- above them. Over `Append` rather than `_++_`, for the reason `merge` is:
+  -- no index has to unify against a computed list.
+  tower-graft
+    : ∀ {xs ys zs ds d dˣ}
+    → Append Ob xs ys zs
+    → Tower xs ds d
+    → Tower ys d dˣ
+    → Tower zs ds dˣ
+  tower-graft nil ⟨⟩ t = t
+  tower-graft (cons p) (i ◂ s) t = i ◂ tower-graft p s t
 
-  -- and the same reversal reached the other way round, swapping the high pair
-  -- first. The two routes are the two sides of the braid relation.
-  tower-hi
-    : ∀ {x y z ds d d˘ dˣ}
-    → (i : Insert Ob x d˘ dˣ)
-    → (j : Insert Ob y d d˘)
-    → (k : Insert Ob z ds d)
-    → Tower x y z ds dˣ
-  tower-hi {ds} {d} {dˣ} i j k =
-    tower
-      (Exchange.mid hi₂)
-      (Exchange.mid hi₃)
-      (Exchange.inner hi₂)
-      (Exchange.inner hi₃)
-      (Exchange.outer hi₃)
-    where
-      hi₁ : Exchange _ _ d dˣ
-      hi₁ = insert-swap i j
-      hi₂ : Exchange _ _ ds (Exchange.mid hi₁)
-      hi₂ = insert-swap (Exchange.inner hi₁) k
-      hi₃ : Exchange _ _ (Exchange.mid hi₂) dˣ
-      hi₃ = insert-swap (Exchange.outer hi₁) (Exchange.outer hi₂)
+  -- Acting on everything above the lowest layer, which is how a generator at
+  -- one height is read at the next. An application rather than a `with`, for
+  -- the file's standing reason.
+  tower-cong
+    : ∀ {x xs ys ds dˣ}
+    → (f : ∀ {d} → Tower xs d dˣ → Tower ys d dˣ)
+    → Tower (x ∷ xs) ds dˣ
+    → Tower (x ∷ ys) ds dˣ
+  tower-cong f (i ◂ t) = i ◂ f t
 
-  -- THE BRAID RELATION. The two reversals agree, layer for layer and list for
-  -- list. Three of the four cases hold by `refl` — the reversal is forced as
-  -- soon as any of the three positions is at the front — and the fourth is the
-  -- recursion under `tail`, so the whole coherence costs one `cong`.
+  -- THE GENERATOR: the two lowest layers named in the other order. This IS
+  -- `insert-swap`, read as an action rather than as a pair of positions.
+  tower-swap
+    : ∀ {x y xs ds dˣ}
+    → Tower (x ∷ y ∷ xs) ds dˣ
+    → Tower (y ∷ x ∷ xs) ds dˣ
+  tower-swap (i ◂ (j ◂ t)) =
+    Exchange.inner (insert-swap j i) ◂ (Exchange.outer (insert-swap j i) ◂ t)
+
+  -- and the same generator read one and two layers up
+  tower-swap₁
+    : ∀ {x y z xs ds dˣ}
+    → Tower (x ∷ y ∷ z ∷ xs) ds dˣ
+    → Tower (x ∷ z ∷ y ∷ xs) ds dˣ
+  tower-swap₁ = tower-cong tower-swap
+
+  tower-swap₂
+    : ∀ {w x y z xs ds dˣ}
+    → Tower (w ∷ x ∷ y ∷ z ∷ xs) ds dˣ
+    → Tower (w ∷ x ∷ z ∷ y ∷ xs) ds dˣ
+  tower-swap₂ = tower-cong tower-swap₁
+
+  -- RELATION ONE: naming twice returns. This is what separates a SYMMETRIC
+  -- structure from a merely braided one, and it is `insert-swap-invol` with the
+  -- tower carried along rather than a second statement.
+  tower-swap-invol
+    : ∀ {x y xs ds dˣ}
+    → (t : Tower (x ∷ y ∷ xs) ds dˣ)
+    → tower-swap (tower-swap t) ≡ t
+  tower-swap-invol (i ◂ (j ◂ t)) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ e ↦ Exchange.inner e ◂ (Exchange.outer e ◂ t) ]·
+        insert-swap
+          (Exchange.outer (insert-swap j i))
+          (Exchange.inner (insert-swap j i))
+    ≈·⟨ insert-swap-invol j i ⟩
+      i ◂ (j ◂ t)
+    ∎
+
+  -- RELATION TWO, at exactly three layers, which is where its induction lives:
+  -- three of the four cases hold by `refl` — the reordering is forced as soon
+  -- as any of the three positions is at the front — and the fourth is the
+  -- recursion under `tail`, so the whole relation costs one `cong`.
   --
   -- The `refl` at `(tail i) (tail j) head` is worth naming: it is eta for
-  -- `Exchange` doing the work, since the low route reaches the tower as an
-  -- `insert-swap` and the high route reaches it as an explicitly built
-  -- `exchange` of that same swap's three components.
-  insert-swap-braid
-    : ∀ {x y z ds d d˘ dˣ}
-    → (i : Insert Ob x d˘ dˣ)
-    → (j : Insert Ob y d d˘)
-    → (k : Insert Ob z ds d)
-    → tower-lo i j k ≡ tower-hi i j k
-  insert-swap-braid head j k = refl
-  insert-swap-braid (tail i) head k = refl
-  insert-swap-braid (tail i) (tail j) head = refl
-  insert-swap-braid (tail i) (tail j) (tail k) =
-    cong tower-tail (insert-swap-braid i j k)
+  -- `Exchange` doing the work, since one route reaches the tower as an
+  -- `insert-swap` and the other reaches it as that same swap's components put
+  -- back together.
+  tower-swap-braid⋆
+    : ∀ {x y z ds d₁ d₂ dˣ}
+    → (i : Insert Ob x ds d₁)
+    → (j : Insert Ob y d₁ d₂)
+    → (k : Insert Ob z d₂ dˣ)
+    → tower-swap (tower-swap₁ (tower-swap (i ◂ j ◂ k ◂ ⟨⟩)))
+      ≡ tower-swap₁ (tower-swap (tower-swap₁ (i ◂ j ◂ k ◂ ⟨⟩)))
+  tower-swap-braid⋆ i j head = refl
+  tower-swap-braid⋆ i head (tail k) = refl
+  tower-swap-braid⋆ head (tail j) (tail k) = refl
+  tower-swap-braid⋆ (tail i) (tail j) (tail k) =
+    cong tower-tail (tower-swap-braid⋆ i j k)
 
-  -- FOUR nested insertions as one package: `Tower` one layer up, and the same
-  -- device for the same reason — three intermediate lists as FIELDS, so that
-  -- two four-layer reorderings are compared by an ordinary equation rather
-  -- than through a transport. The layer count is what the superscript says and
-  -- it is all the superscript says.
-  record Tower⁴ (x y z w : Ob) (ds dˣ : List Ob) : Set ℓ where
-    constructor tower⁴
-    field
-      -- the list with the first element in
-      low : List Ob
-      -- with the second one in as well
-      mid : List Ob
-      -- and with the third
-      high : List Ob
-      -- the element that goes in first
-      base : Insert Ob x ds low
-      -- the one that goes in second
-      step : Insert Ob y low mid
-      -- the one that goes in third
-      rise : Insert Ob z mid high
-      -- and the one that goes in last
-      peak : Insert Ob w high dˣ
+  -- and with whatever else the tower carries above them
+  tower-swap-braid
+    : ∀ {x y z xs ds dˣ}
+    → (t : Tower (x ∷ y ∷ z ∷ xs) ds dˣ)
+    → tower-swap (tower-swap₁ (tower-swap t))
+      ≡ tower-swap₁ (tower-swap (tower-swap₁ t))
+  tower-swap-braid (i ◂ (j ◂ (k ◂ t))) =
+    cong
+      (λ u → tower-graft (cons (cons (cons nil))) u t)
+      (tower-swap-braid⋆ i j k)
 
-  -- Reindexing past an element every list leads with: `tower-tail` one layer
-  -- up, copatterns for the same reason.
-  tower⁴-tail
-    : ∀ {x y z w u ds dˣ}
-    → Tower⁴ x y z w ds dˣ
-    → Tower⁴ x y z w (u ∷ ds) (u ∷ dˣ)
-  Tower⁴.low (tower⁴-tail {u} t) = u ∷ Tower⁴.low t
-  Tower⁴.mid (tower⁴-tail {u} t) = u ∷ Tower⁴.mid t
-  Tower⁴.high (tower⁴-tail {u} t) = u ∷ Tower⁴.high t
-  Tower⁴.base (tower⁴-tail t) = tail (Tower⁴.base t)
-  Tower⁴.step (tower⁴-tail t) = tail (Tower⁴.step t)
-  Tower⁴.rise (tower⁴-tail t) = tail (Tower⁴.rise t)
-  Tower⁴.peak (tower⁴-tail t) = tail (Tower⁴.peak t)
+  -- the same relation read one layer up, which every word above three layers
+  -- needs and which costs one `cong`
+  tower-swap-braid₁
+    : ∀ {w x y z xs ds dˣ}
+    → (t : Tower (w ∷ x ∷ y ∷ z ∷ xs) ds dˣ)
+    → tower-swap₁ (tower-swap₂ (tower-swap₁ t))
+      ≡ tower-swap₂ (tower-swap₁ (tower-swap₂ t))
+  tower-swap-braid₁ (i ◂ t) = cong (i ◂_) (tower-swap-braid t)
 
-  -- REORDERING A FOUR-TOWER, LOWEST PAIR FIRST. `c` puts `w` in, then `p` puts
-  -- `z` in, then `k` puts `y` in, then `i` puts `x` in; this hands back the
-  -- same four positions in the order `y`, `x`, `z`, `w` — the cut's two ports
-  -- at the bottom in the other order, the wire and the underlying cap above
-  -- them — reached by carrying the base all the way to the peak and then the
-  -- new base to one below it.
-  tower⁴-lo
-    : ∀ {x y z w ds d₁ d₂ d₃ dˣ}
-    → (i : Insert Ob x d₃ dˣ)
-    → (k : Insert Ob y d₂ d₃)
-    → (p : Insert Ob z d₁ d₂)
-    → (c : Insert Ob w ds d₁)
-    → Tower⁴ y x z w ds dˣ
-  tower⁴-lo {ds} {d₂} {d₃} {dˣ} i k p c =
-    tower⁴
-      (Exchange.mid lo₄)
-      (Exchange.mid lo₅)
-      (Exchange.mid lo₃)
-      (Exchange.inner lo₄)
-      (Exchange.inner lo₅)
-      (Exchange.outer lo₅)
-      (Exchange.outer lo₃)
-    where
-      lo₁ : Exchange _ _ ds d₂
-      lo₁ = insert-swap p c
-      lo₂ : Exchange _ _ (Exchange.mid lo₁) d₃
-      lo₂ = insert-swap k (Exchange.outer lo₁)
-      lo₃ : Exchange _ _ (Exchange.mid lo₂) dˣ
-      lo₃ = insert-swap i (Exchange.outer lo₂)
-      lo₄ : Exchange _ _ ds (Exchange.mid lo₂)
-      lo₄ = insert-swap (Exchange.inner lo₂) (Exchange.inner lo₁)
-      lo₅ : Exchange _ _ (Exchange.mid lo₄) (Exchange.mid lo₃)
-      lo₅ = insert-swap (Exchange.inner lo₃) (Exchange.outer lo₄)
+  -- RELATION THREE: layers two apart do not interfere. Never stated while the
+  -- rungs were fixed-arity records, and it is the one that completes the
+  -- presentation — without it a four-layer coherence's bases read as new work
+  -- rather than as far-apart transpositions commuting.
+  tower-swap-far
+    : ∀ {x y xs ys ds dˣ}
+    → (f : ∀ {d} → Tower xs d dˣ → Tower ys d dˣ)
+    → (t : Tower (x ∷ y ∷ xs) ds dˣ)
+    → tower-swap (tower-cong (tower-cong f) t)
+      ≡ tower-cong (tower-cong f) (tower-swap t)
+  tower-swap-far f (i ◂ (j ◂ t)) = refl
 
-  -- and the same reordering reached by starting one pair higher: carry the
-  -- THIRD layer to the peak first, and the base after it. The two routes are
-  -- the two sides of the coherence below.
-  tower⁴-hi
-    : ∀ {x y z w ds d₁ d₂ d₃ dˣ}
-    → (i : Insert Ob x d₃ dˣ)
-    → (k : Insert Ob y d₂ d₃)
-    → (p : Insert Ob z d₁ d₂)
-    → (c : Insert Ob w ds d₁)
-    → Tower⁴ y x z w ds dˣ
-  tower⁴-hi {ds} {d₁} {d₃} {dˣ} i k p c =
-    tower⁴
-      (Exchange.mid hi₃)
-      (Exchange.mid hi₄)
-      (Exchange.mid hi₅)
-      (Exchange.inner hi₃)
-      (Exchange.inner hi₄)
-      (Exchange.inner hi₅)
-      (Exchange.outer hi₅)
-    where
-      hi₁ : Exchange _ _ d₁ d₃
-      hi₁ = insert-swap k p
-      hi₂ : Exchange _ _ (Exchange.mid hi₁) dˣ
-      hi₂ = insert-swap i (Exchange.outer hi₁)
-      hi₃ : Exchange _ _ ds (Exchange.mid hi₁)
-      hi₃ = insert-swap (Exchange.inner hi₁) c
-      hi₄ : Exchange _ _ (Exchange.mid hi₃) (Exchange.mid hi₂)
-      hi₄ = insert-swap (Exchange.inner hi₂) (Exchange.outer hi₃)
-      hi₅ : Exchange _ _ (Exchange.mid hi₄) dˣ
-      hi₅ = insert-swap (Exchange.outer hi₂) (Exchange.outer hi₄)
+  -- THE FOUR-LAYER COHERENCE, AS A WORD. This is what used to be a record, a
+  -- reindexing, two plantings, two routes and a five-clause induction. It is
+  -- now the observation that both reorderings are reduced words for one
+  -- permutation, and the chain IS that derivation, run in the group the three
+  -- relations present: commute a far pair, braid, braid one layer up, commute
+  -- the far pair back.
+  tower-coh⁴
+    : ∀ {w x y z xs ds dˣ}
+    → (t : Tower (w ∷ x ∷ y ∷ z ∷ xs) ds dˣ)
+    → tower-swap₁ (tower-swap (tower-swap₂ (tower-swap₁ (tower-swap t))))
+      ≡ tower-swap₂ (tower-swap₁ (tower-swap (tower-swap₂ (tower-swap₁ t))))
+  tower-coh⁴ t =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ u ↦ tower-swap₁ u ]·
+        tower-swap (tower-swap₂ (tower-swap₁ (tower-swap t)))
+    ≈·⟨ tower-swap-far tower-swap (tower-swap₁ (tower-swap t)) ⟩
+      [ u ↦ tower-swap₁ (tower-swap₂ u) ]·
+        tower-swap (tower-swap₁ (tower-swap t))
+    ≈·⟨ tower-swap-braid t ⟩
+      [ u ↦ u ]·
+        tower-swap₁ (tower-swap₂ (tower-swap₁ (tower-swap (tower-swap₁ t))))
+    ≈·⟨ tower-swap-braid₁ (tower-swap (tower-swap₁ t)) ⟩
+      [ u ↦ tower-swap₂ (tower-swap₁ u) ]·
+        tower-swap₂ (tower-swap (tower-swap₁ t))
+    ≈·⁻¹⟨ tower-swap-far tower-swap (tower-swap₁ t) ⟩
+      tower-swap₂ (tower-swap₁ (tower-swap (tower-swap₂ (tower-swap₁ t))))
+    ∎
 
-  -- A three-tower with a fourth layer planted at the `step` slot, at the front
-  -- of its list. This is what BOTH routes reduce to when the topmost insertion
-  -- is `head`, which is why the coherence's first base is the braid and not
-  -- `refl`: putting `x` at the front makes every swap that moves it forced,
-  -- and what is left over is the three-layer statement about the other three.
-  tower⁴-step
-    : ∀ {x y z w ds dˣ}
-    → Tower y z w ds dˣ
-    → Tower⁴ y x z w ds (x ∷ dˣ)
-  Tower⁴.low (tower⁴-step t) = Tower.low t
-  Tower⁴.mid (tower⁴-step {x} t) = x ∷ Tower.low t
-  Tower⁴.high (tower⁴-step {x} t) = x ∷ Tower.high t
-  Tower⁴.base (tower⁴-step t) = Tower.base t
-  Tower⁴.step (tower⁴-step t) = head
-  Tower⁴.rise (tower⁴-step t) = tail (Tower.step t)
-  Tower⁴.peak (tower⁴-step t) = tail (Tower.peak t)
+  -- READING A TOWER OFF AT A FIXED HEIGHT. The records this replaced were
+  -- carried for their PROJECTIONS, which a list-indexed family cannot have
+  -- because the intermediate lists are existential. These are the projections
+  -- as eliminators instead — one clause each, no coherence, and nothing about
+  -- them scales with arity, which is the whole difference from the ladder of
+  -- records: a statement at a new height wants one more of these and no new
+  -- structure and no new relation.
+  tower₃
+    : ∀ {x y z ds dˣ} {A : Set ℓ}
+    → (∀ {d₁ d₂}
+       → Insert Ob x ds d₁
+       → Insert Ob y d₁ d₂
+       → Insert Ob z d₂ dˣ
+       → A)
+    → Tower (x ∷ y ∷ z ∷ []) ds dˣ
+    → A
+  tower₃ f (a ◂ (b ◂ (c ◂ ⟨⟩))) = f a b c
 
-  -- and planted at the `base` slot instead, which is where the second layer
-  -- lands when IT is the one at the front
-  tower⁴-base
-    : ∀ {x y z w ds dˣ}
-    → Tower x z w ds dˣ
-    → Tower⁴ y x z w ds (y ∷ dˣ)
-  Tower⁴.low (tower⁴-base {y} {ds} t) = y ∷ ds
-  Tower⁴.mid (tower⁴-base {y} t) = y ∷ Tower.low t
-  Tower⁴.high (tower⁴-base {y} t) = y ∷ Tower.high t
-  Tower⁴.base (tower⁴-base t) = head
-  Tower⁴.step (tower⁴-base t) = tail (Tower.base t)
-  Tower⁴.rise (tower⁴-base t) = tail (Tower.step t)
-  Tower⁴.peak (tower⁴-base t) = tail (Tower.peak t)
-
-  -- THE FOUR-LAYER COHERENCE. The two reorderings agree, layer for layer and
-  -- list for list.
-  --
-  -- MEASURED, AND THE MEASUREMENT IS THE POINT. The prediction carried into
-  -- this proof was that its bases would be `refl`, as `insert-swap-braid`'s
-  -- three are. Two are; the other two are ONE `cong` of the braid itself, and
-  -- that is the better outcome rather than a worse one: it says a rung of this
-  -- ladder is not new work but the rung below re-used, so the cost of the
-  -- next layer — if anything ever asks for one — is one `cong` and not one
-  -- coherence chase.
-  --
-  -- The asymmetry between the bases is worth naming, because it looks like an
-  -- accident and is not. A base with one of the two UPPER positions at the
-  -- front leaves the other three to be reordered, which is the braid; a base
-  -- with one of the two LOWER positions at the front leaves both routes
-  -- computing the same term, so nothing is left to prove.
-  insert-swap-coh⁴
-    : ∀ {x y z w ds d₁ d₂ d₃ dˣ}
-    → (i : Insert Ob x d₃ dˣ)
-    → (k : Insert Ob y d₂ d₃)
-    → (p : Insert Ob z d₁ d₂)
-    → (c : Insert Ob w ds d₁)
-    → tower⁴-lo i k p c ≡ tower⁴-hi i k p c
-  insert-swap-coh⁴ head k p c = cong tower⁴-step (insert-swap-braid k p c)
-  insert-swap-coh⁴ (tail i) head p c = cong tower⁴-base (insert-swap-braid i p c)
-  insert-swap-coh⁴ (tail i) (tail k) head c = refl
-  insert-swap-coh⁴ (tail i) (tail k) (tail p) head = refl
-  insert-swap-coh⁴ (tail i) (tail k) (tail p) (tail c) =
-    cong tower⁴-tail (insert-swap-coh⁴ i k p c)
+  tower₄
+    : ∀ {x y z w ds dˣ} {A : Set ℓ}
+    → (∀ {d₁ d₂ d₃}
+       → Insert Ob x ds d₁
+       → Insert Ob y d₁ d₂
+       → Insert Ob z d₂ d₃
+       → Insert Ob w d₃ dˣ
+       → A)
+    → Tower (x ∷ y ∷ z ∷ w ∷ []) ds dˣ
+    → A
+  tower₄ f (a ◂ (b ◂ (c ◂ (d ◂ ⟨⟩)))) = f a b c d
 
   -- Threading one matched wire through a matching: a new source at `i`, a new
   -- sink at `j`, joined to each other, with every existing pair left alone.
@@ -1834,10 +1801,11 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- WHERE ITS ARITY COMES FROM, which is what bounds the coherence it needs.
   -- `match-cap` threads two positions and `match-insert` threads one, and the
   -- matching underneath contributes the head they meet. So the cut-meets-cut
-  -- clause has four nested insertions in play and needs the four-layer
-  -- coherence above — exactly as `cap-swap`, a cut against an underlying cap,
-  -- needed the three-layer one. Nothing here asks two cuts to commute, which
-  -- is what a fifth layer would take.
+  -- clause has four nested insertions in play and spends `tower-coh⁴` — exactly
+  -- as `cap-swap`, a cut against an underlying cap, spends the braid relation
+  -- itself. Since the presentation above is complete, the arity now bounds the
+  -- LENGTH of the word a clause spends and no longer the cost of reaching it:
+  -- two cuts commuting would be five layers and would be one more word.
   --
   -- The clauses divide the way the arity predicts. Where either of the cut's
   -- two ports is at the front the reindexing is undone by the INVOLUTION
@@ -1924,14 +1892,12 @@ module _ {ℓ} {Ob : Set ℓ} where
           (Exchange.inner (insert-swap p c))
           j
           t ⟩
-      [ T ↦ cap
-              (Tower⁴.peak T)
-              (match-insert
-                (Tower⁴.rise T)
-                j
-                (match-cap (Tower⁴.step T) (Tower⁴.base T) t)) ]·
-        tower⁴-lo i k p c
-    ≈·⟨ insert-swap-coh⁴ i k p c ⟩
+      [ T ↦ tower₄
+              (λ a b c′ d → cap d (match-insert c′ j (match-cap b a t)))
+              T ]·
+        tower-swap₁
+          (tower-swap (tower-swap₂ (tower-swap₁ (tower-swap (c ◂ p ◂ k ◂ i ◂ ⟨⟩)))))
+    ≈·⟨ tower-coh⁴ (c ◂ p ◂ k ◂ i ◂ ⟨⟩) ⟩
       match-insert
         (Exchange.outer
           (insert-swap (tail i) (Exchange.outer (insert-swap (tail k) (tail p)))))
@@ -1979,7 +1945,7 @@ module _ {ℓ} {Ob : Set ℓ} where
   match-insert-insert (tail j) head s σ β = refl
   match-insert-insert (tail j) (tail c) s σ (f ∷ β) =
     begin⟨ bundle (≡ˢ _) ⟩
-      [ m ↦ Tower.peak (tower-lo s σ f) ∷ m ]·
+      [ m ↦ Exchange.outer (insert-swap s (Exchange.outer (insert-swap σ f))) ∷ m ]·
         match-insert
           j
           (Exchange.inner (insert-swap s (Exchange.outer (insert-swap σ f))))
@@ -1990,13 +1956,16 @@ module _ {ℓ} {Ob : Set ℓ} where
           (Exchange.inner (insert-swap s (Exchange.outer (insert-swap σ f))))
           (Exchange.inner (insert-swap σ f))
           β ⟩
-      [ T ↦ Tower.peak T
-              ∷ match-insert
-                  (Exchange.outer (insert-swap j c))
-                  (Tower.step T)
-                  (match-insert (Exchange.inner (insert-swap j c)) (Tower.base T) β) ]·
-        tower-lo s σ f
-    ≈·⟨ insert-swap-braid s σ f ⟩
+      [ T ↦ tower₃
+              (λ a b c′ →
+                c′
+                  ∷ match-insert
+                      (Exchange.outer (insert-swap j c))
+                      b
+                      (match-insert (Exchange.inner (insert-swap j c)) a β))
+              T ]·
+        tower-swap (tower-swap₁ (tower-swap (f ◂ σ ◂ s ◂ ⟨⟩)))
+    ≈·⟨ tower-swap-braid (f ◂ σ ◂ s ◂ ⟨⟩) ⟩
       match-insert
         (Exchange.outer (insert-swap (tail j) (tail c)))
         (Exchange.outer (insert-swap s σ))
@@ -2007,7 +1976,9 @@ module _ {ℓ} {Ob : Set ℓ} where
     ∎
   match-insert-insert (tail j) (tail c) s σ (cap f β) =
     begin⟨ bundle (≡ˢ _) ⟩
-      [ m ↦ cap (Tower.peak (tower-lo j c f)) m ]·
+      [ m ↦ cap
+              (Exchange.outer (insert-swap j (Exchange.outer (insert-swap c f))))
+              m ]·
         match-insert
           (Exchange.inner (insert-swap j (Exchange.outer (insert-swap c f))))
           s
@@ -2018,14 +1989,17 @@ module _ {ℓ} {Ob : Set ℓ} where
           s
           σ
           β ⟩
-      [ T ↦ cap
-              (Tower.peak T)
-              (match-insert
-                (Tower.step T)
-                (Exchange.outer (insert-swap s σ))
-                (match-insert (Tower.base T) (Exchange.inner (insert-swap s σ)) β)) ]·
-        tower-lo j c f
-    ≈·⟨ insert-swap-braid j c f ⟩
+      [ T ↦ tower₃
+              (λ a b c′ →
+                cap
+                  c′
+                  (match-insert
+                    b
+                    (Exchange.outer (insert-swap s σ))
+                    (match-insert a (Exchange.inner (insert-swap s σ)) β)))
+              T ]·
+        tower-swap (tower-swap₁ (tower-swap (f ◂ c ◂ j ◂ ⟨⟩)))
+    ≈·⟨ tower-swap-braid (f ◂ c ◂ j ◂ ⟨⟩) ⟩
       match-insert
         (Exchange.outer (insert-swap (tail j) (tail c)))
         (Exchange.outer (insert-swap s σ))
@@ -2177,13 +2151,14 @@ module _ {ℓ} {Ob : Set ℓ} where
       ≡ unhit-recap (tail {y = w} i) (tail {y = w} k) (unhit-cap {w = w} c u)
   unhit-recap-cap i k c (unhit p body) =
     begin⟨ bundle (≡ˢ _) ⟩
-      [ T ↦ unhit
-              (tail (Tower⁴.peak T))
-              (cap
-                (Tower⁴.rise T)
-                (match-cap (Tower⁴.step T) (Tower⁴.base T) body)) ]·
-        tower⁴-hi i k c p
-    ≈·⁻¹⟨ insert-swap-coh⁴ i k c p ⟩
+      [ T ↦ tower₄
+              (λ a b c′ d →
+                unhit (tail d) (cap c′ (match-cap b a body)))
+              T ]·
+        tower-swap₂
+          (tower-swap₁
+            (tower-swap (tower-swap₂ (tower-swap₁ (p ◂ c ◂ k ◂ i ◂ ⟨⟩)))))
+    ≈·⁻¹⟨ tower-coh⁴ (p ◂ c ◂ k ◂ i ◂ ⟨⟩) ⟩
       unhit-recap (tail i) (tail k) (unhit-cap c (unhit p body))
     ∎
 
@@ -5152,11 +5127,10 @@ module _ {ℓ} {Ob : Set ℓ} where
   -- where the wiring underneath was flow-through, because the remaining case —
   -- a cut over a wiring that ALREADY caps — pushes the two new ports and the
   -- existing cap's partner past each other in two orders whose intermediate
-  -- lists differ. That is `insert-swap-braid`, and with the exchange's laws
-  -- stated as the listing algebra's symmetry the case is no longer a chase: it
-  -- is one `cong` over the braid, under one `cong` over the recursion. The
-  -- hypothesis is gone, and what removed it was naming the structure rather
-  -- than finding a trick.
+  -- lists differ. That is `tower-swap-braid`, and with the symmetry stated as
+  -- a presentation the case is no longer a chase: it is one step over the braid
+  -- relation, under one `cong` over the recursion. The hypothesis is gone, and
+  -- what removed it was naming the structure rather than finding a trick.
   cap-swap
     : ∀ {x y Γ Γ˘ Γˣ Δ}
     → (i : Insert Ob x Γ˘ Γˣ)
@@ -5172,7 +5146,9 @@ module _ {ℓ} {Ob : Set ℓ} where
   cap-swap (tail i) (tail j) (k ∷ m) = cong (k ∷_) (cap-swap i j m)
   cap-swap (tail i) (tail j) (cap k m) =
     begin⟨ bundle (≡ˢ _) ⟩
-      [ c ↦ cap (Tower.peak (tower-lo i j k)) c ]·
+      [ c ↦ cap
+              (Exchange.outer (insert-swap i (Exchange.outer (insert-swap j k))))
+              c ]·
         match-cap
           (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
           (Exchange.inner (insert-swap j k))
@@ -5181,14 +5157,12 @@ module _ {ℓ} {Ob : Set ℓ} where
           (Exchange.inner (insert-swap i (Exchange.outer (insert-swap j k))))
           (Exchange.inner (insert-swap j k))
           m ⟩
-      [ t ↦ cap (Tower.peak t) (match-cap (Tower.step t) (Tower.base t) m) ]· tower-lo i j k
-    ≈·⟨ insert-swap-braid i j k ⟩
-      cap
-        (Tower.peak (tower-hi i j k))
-        (match-cap
-          (Tower.step (tower-hi i j k))
-          (Tower.base (tower-hi i j k))
-          m)
+      [ t ↦ tower₃ (λ a b c′ → cap c′ (match-cap b a m)) t ]·
+        tower-swap (tower-swap₁ (tower-swap (k ◂ j ◂ i ◂ ⟨⟩)))
+    ≈·⟨ tower-swap-braid (k ◂ j ◂ i ◂ ⟨⟩) ⟩
+      tower₃
+        (λ a b c′ → cap c′ (match-cap b a m))
+        (tower-swap₁ (tower-swap (tower-swap₁ (k ◂ j ◂ i ◂ ⟨⟩))))
     ∎
 
 -- ════════════════════════════════════════════════════════════════════════════
