@@ -273,9 +273,40 @@ The cell layer's business is what the rewriting engine may assume, and that is w
 | what the diagram normal form owes | a canonical rotation, on top of everything `canon` already owes                                              | nothing new                                         |
 | what a wheel means operationally  | a fixpoint, computed                                                                                         | a stream: the same value one step later             |
 
-**The proposal of record is feedback, because it costs the rewriting theory nothing.** If every directed cycle in a body must contain at least one **delayed** port, then cutting every delayed port yields an acyclic diagram — removing an edge from every cycle leaves a directed acyclic graph, by definition.
+> **Ruled (owner, 2026-08-01): the cell layer takes feedback, and the trace is declined there.** The decline is **scoped to the cell layer and to it alone** — three fences follow — and it carries a reversal condition.
+
+**The decisive reason is not that matching gets easier; it is that three devices gandr already ships require the causal order to be a partial order, and a trace destroys it.**
+
+* The certificate normal form's **canonical schedule** is "earliest causal position, content-address tie-break".
+  A cycle has no earliest position, so on a traced diagram that schedule is not merely expensive — it is **undefined**.
+* The bracket oracle's **replay fuel is the causal critical path**, and a cycle has no critical path.
+* Normalization is deterministic by "outermost position, then store insertion order", which needs a well-founded position order to be a decision at all.
+
+Sliding is exactly the equation that moves a cell around a loop, and moving a cell around a loop is what makes those three ill-defined; yanking is the equation that erases a step, which would have to be absorbed into replay-equivalence.
+Under feedback neither is available, the delay is the tick boundary, and all three devices keep working unchanged.
+
+**The second reason is coherence with the track's own temporal reading.** Identity here is a construction in time over an unfinished substrate, and the storage discipline is bounded sensitivity of the address map under local edits.
+A delay is a temporal notion and a tick is a natural edit boundary; yanking is an atemporal statement — that a loop containing nothing _is_ nothing — and it is the one equation that erases a step from a record whose whole purpose is to have recorded the steps.
+
+**The third reason is that it costs the rewriting theory nothing.** If every directed cycle in a body must contain at least one **delayed** port, then cutting every delayed port yields an acyclic diagram — removing an edge from every cycle leaves a directed acyclic graph, by definition.
 A cyclic body $Γ → Δ$ with delayed ports $D$ becomes an acyclic body $Γ + D → Δ + D$, and **the cut points join the interface** — which is exactly the shape a double-pushout rewrite with interfaces already takes.
 So a delay-guarded wheel is not outside the monogamous acyclic fragment: it is an ma-cospan with its delays in the interface, and every result of the correspondence applies to it unchanged.
+
+**Three fences, because this decline is easy to over-read and each over-reading would be a real error.**
+
+* **It does not touch the carrier.** `Shape` still represents wheels, wheel-freeness is still a predicate the operations do not preserve, and every refuter stands.
+* **It does not touch the arity layer, and must not be read as declining _its_ trace.** `Arity.sub`'s two-sided closure is an operation on shapes with its circles counted; it is not an equation the engine may use.
+  The distinction is load-bearing beyond bookkeeping: the Int construction's licence — that a result about the compact-closed ambient reaches gandr **without a cup entering the carrier** — has as its hypothesis that the wiring category be **traced**, and that hypothesis is discharged by the arity ruling ([[../metatheory#The rung, identified]]).
+  Declining the trace at the cell layer leaves that hypothesis, and therefore that licence, untouched.
+  Two different things are called "the trace" one layer apart, and conflating them would silently withdraw an import gandr depends on.
+* **It does not answer the derivation dimension.** The metatheory records that what the wheel axis buys one dimension up is _cyclic derivation_ — the completion loop's fixpoints — and a cycle in the rewrite relation is not a delay-guarded loop in a diagram.
+  This ruling is about wheels in the **term** dimension; the derivation dimension is a separate question and nothing here decides it.
+
+**The reversal condition, stated so it is checkable.** The decline reopens if a construction gandr needs requires sliding or yanking as an **equation** rather than as a convenience — the concrete candidate being the certificate layer itself, if composing two certificates ever turns out to demand rotating a cell around a loop.
+It does **not** reopen merely because a program wants a loop; that is what the delay supply is for.
+
+**Two conditions on the ruling hardening, recorded because they are not yet met.** The feedback-category sources are in the register but have been read **only through an implementation of them, never in the original**, so the ruling currently rests on an unread locator and says so at the claim [@katis-sabadini-walters-2002-feedback] [@dilavore-defelice-roman-2022-monoidal-streams].
+And the delay supply has **no carrier of its own**: "this type supplies a delay" is at present derived from codata-ness and the guardedness discipline rather than declared, so whether it needs its own former is open and is the first thing its spike must answer.
 
 This is a **proposal and an inference, not a cited result**, and it has one gap that must close before anything leans on it.
 Convexity is a condition on paths **in the target**, and the target here is the cut-open diagram; a match convex in the cut-open form may cease to be convex once the delays are re-closed, because a path may run round the loop.
@@ -521,9 +552,10 @@ Every one carries a disposition.
 18. **circuit-terms-question-18** — **is the fan-out obligation carried as a per-type supply, and at which layer?** The fan-out/fan-in asymmetry did not survive this pass, so copy owes the same treatment as merge. gandr already prices duplication on the **value** side, with grades and with `dup`/`drop` as ordinary computations; what has no answer is what the obligation means at the **cell** layer, where a repeated hole is the thing that would have to carry it.
     **Carried as the named generalization of the linearity ruling above**, and it is the row that makes idempotence rules writable again on the types that genuinely support them.
     The sub-question to answer first is whether the cell-layer comonoid is a **new** supply or is read off the existing grade discipline, since a grade-ω binding already licenses duplication on the value side.
-19. **circuit-terms-question-19** — **does the cell layer take trace or feedback, and is the delay cut convexity-stable?** Restated 2026-08-01 from "what covers the wheel axis", which conflated three layers; the layer-by-layer account and the proposal are [[#Wheels, and which structure the cell layer takes]].
-    **Carried, with feedback proposed and the trace declined at this layer only** — the arity layer's closure is untouched, because it is an operation on shapes rather than an equation the engine may use.
-    The residual is not the choice but its warrant: whether cutting at the delays preserves convexity under re-closure, which is [[#circuit-terms-spike-08|circuit-terms-spike-08]].
+19. **circuit-terms-question-19** — **does the cell layer take trace or feedback?** Restated 2026-08-01 from "what covers the wheel axis", which conflated three layers.
+    **Ruled: feedback, with the trace declined at this layer only**, on three grounds — the causal order must stay a partial order for the canonical schedule, the bracket oracle's critical path and deterministic normalization to be defined at all; the temporal reading of identity; and the delay cut keeping the whole correspondence applicable.
+    The account, the three fences, the reversal condition and the two conditions on hardening are [[#Wheels, and which structure the cell layer takes]].
+    **What stays open is the warrant, not the choice**: whether cutting at the delays preserves convexity under re-closure ([[#circuit-terms-spike-08|circuit-terms-spike-08]]), and what carries the delay supply, which has no former of its own.
 
 ## Spikes
 

@@ -263,6 +263,9 @@ As built, the `Cell` record still demands simple connectivity — the dioperad f
 > `Cell` is a bundle of a shape with a proof, consumed by nothing outside its own witnesses (`corolla-cell`, `point-cell`, `chain-cell`, `gluing-cell`).
 > The restriction therefore stopped being structural when the operations were typed at `Shape`; what remains is a record definition and a bookkeeping item, not a constraint a consumer is fighting.
 > What each dropped restriction buys in the _derivation_ dimension is named there too: many-out is multi-conclusion derivation (the ratified term face), disconnection is **concurrency** (parallel independent rewriting arriving in the doctrine dimension), wheels are cyclic derivation (the completion loop's fixpoints).
+> **The wheel row is the one whose two dimensions have now come apart, and the split must be kept.** At the **term** dimension the cell layer takes feedback and declines the trace, so a program's loop is delay-guarded and the engine sees an acyclic diagram ([[implementation/circuit-terms#Wheels, and which structure the cell layer takes]]).
+> That ruling says nothing about this row: a cycle in the _rewrite relation_ is not a delay-guarded loop in a diagram, and no delay guard makes a completion loop terminate.
+> The derivation-dimension wheel is therefore an open question with no ruling against it, and reading the term-layer decline as covering it would be the error.
 
 ### Decoration — what belongs on the substrate
 
