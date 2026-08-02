@@ -139,7 +139,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: 8fd03a095d5dc1138f052a3f81cad5cf70c58f379108e51d6c84fa6d0e79c3ee
+    b3: 8662758f32a442f1bacd77f5b0814af6b0667554e1664d7a61eac8fd882b8691
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
