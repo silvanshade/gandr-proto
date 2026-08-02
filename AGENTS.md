@@ -9,7 +9,7 @@
 
 This file is a thin orientation adapter.
 Substantive process guidance belongs in the routed workflow documents; reference it instead of restating it here.
-The one deliberate exception is the reference discipline below, restated here because it binds on every entry path into this repository.
+There are two deliberate exceptions, both restated here because they bind on every entry path into this repository and on every artifact class in it: the reference discipline, and the rule that a description is never evidence.
 
 ## Unambiguous reference — identifiers and citations
 
@@ -34,12 +34,39 @@ A claim resting on an unverified locator says so at the claim.
 
 The full statement of the identifier rule, with the anchoring and linking conventions, is [`docs/workflow/specs.md`](docs/workflow/specs.md) §"Identifiers are informative, prefixed, and linkable — never a bare letter and a number"; the corpus's citation convention is [`docs/gandr/spec/README.md`](docs/gandr/spec/README.md).
 
+## Description is a hypothesis, not evidence
+
+**Any text describing an artifact is a guide to what to expect, and never proof of what is.** This binds on every describing surface in this tree without exception: Rust doc comments and rustdoc, Agda comments and module headers, per-crate status files, corpus example prose, the specification corpus, tracker items, and commit messages.
+Read it to know where to look and what shape to expect.
+**Then verify against the thing itself** — the definition, the rule, the test, the tree.
+
+**Why this earns its own section next to the reference rule above.** The two failures are opposites in how they announce themselves.
+A dangling reference is self-reporting: follow it, find nothing, and you know.
+**A description that is fluent and wrong reports nothing at all.** It reads as settled, it is quoted onward as settled, and detecting it costs exactly as much as opening the implementation — which is why nobody does, and why the error survives every reader until one happens to look.
+
+Three obligations follow, and the second and third are what stop the drift accumulating:
+
+* **Verify before relying.** Every as-built claim you write, and every claim you rest a decision on, is checked against the definition rather than the prose beside it.
+* **Report every conflict to the owner.** When the description and the artifact disagree, say so — in the response, not only in a tracker item.
+  Silence here is how a contradiction becomes load-bearing.
+* **Correct what is obviously wrong, and report every correction.** Fixing it silently is only half the job: an unreported correction leaves the owner unable to see the rate, and the rate is the thing that needs to come down.
+
+Route what you find by failure mode, because the two want different fixes: a reference that resolves to nothing goes to `gandr-mf8`; a statement that is wrong, stale, or ambiguous where the reference does resolve goes to `gandr-q5c`.
+
+The corpus-scoped form of the first obligation is [`docs/workflow/specs.md`](docs/workflow/specs.md) §"The per-document procedure" item 6 and [`docs/workflow/review.md`](docs/workflow/review.md) §"Absorption and reboot passes", which require an as-built claim to be verified at write time with its module named.
+This section is the general rule those instances specialize: it binds on every artifact, whether or not a document is being written, and it adds the reporting half.
+
+**This project has already paid for it.** `core-checker`'s `grade` module says its `Dup` and `Drop` rules are "Stage 2", meaning _which rules of the calculus they belong to_ — and a 2026-08-02 absorption read that as _not yet built_, wrote it into a landed specification document, and it survived to an independent review before anyone opened `checker.rs`, where both rules are implemented and `Dup` demonstrably enforces its grade sum.
+The prose was accurate about its own subject and wrong about the question being asked of it.
+That is the normal case, not an unlucky one.
+
 ## Working posture
 
 * **Surgical changes; structural evaluation first.** Make the task-scoped change without unrelated rewrites, but first ask whether the change should extract shared functionality, prune duplication, or draw a module boundary.
   Act when that remains in scope; otherwise file a tracker item.
   Surface the opportunity either way.
 * **Leave touched areas better.** Report undocumented engineering improvements and hazards; noticing and staying silent is the failure mode.
+  Descriptions that disagree with what they describe are the highest-frequency instance — see §"Description is a hypothesis, not evidence" for the routing and the reporting obligation.
 * **State uncertainty.** Say when current code or documentation does not prove a claim, and report unexpected harness, tool, or configuration failures immediately.
 * **A refutation is the most expensive claim available here, and it binds only with the owner's sign-off.** Before recording that something does not apply, is not needed, cannot be done, or is the wrong structure, read [`docs/workflow/review.md`](docs/workflow/review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — **whatever the task**, not only when reviewing.
   A wrong acceptance is loud and self-limiting; a wrong rejection is silent, compounding, and has been this project's recurring failure.
