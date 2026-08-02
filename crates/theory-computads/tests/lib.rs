@@ -5,4 +5,6 @@ mod composition;
 #[cfg(test)]
 mod differential;
 #[cfg(test)]
+mod linearity;
+#[cfg(test)]
 mod toy_alphabet;

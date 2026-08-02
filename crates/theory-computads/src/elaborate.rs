@@ -19,14 +19,26 @@
 //! with a nested operation — are **declined** with an [`ElaborateError`] rather
 //! than mis-elaborated, mirroring the honest-limits posture of §7.4.
 //!
+//! # The admission boundary
+//!
+//! This module is where cells **enter a store from a description**, so it is
+//! where the linearity ruling binds (owner ruling 2026-08-01, placement decided
+//! 2026-08-02): a rule whose left-hand side copies a hole is refused here, by
+//! [`crate::linearity::admit_linear_cell`], with a diagnostic naming the copy
+//! and the respelling. The refusal is deliberately *not* in
+//! [`crate::sequent::CellMeta::derive`] — non-linear command patterns remain
+//! constructible, because the multi-sum contract witnesses and unification
+//! goals are legitimate internal shapes; what the ruling governs is admission.
+//!
 //! # The ADR-54 acceptance path
 //!
 //! Elaborating a face into the store is precisely the "flip `rule` from
 //! parse-and-decline to accepted-behind-gate" of the L2 gate row (§9): this
 //! crate provides the acceptance target. Feeding surface `rule` members through
-//! the pipeline lowering (`gandr-pipeline`'s `codata.rs`, which still declines
-//! them) to reach here is a cross-crate wiring step left as a reported
-//! residual.
+//! the surface lowering (`gandr-surface-engine`'s `lower/codata.rs`, which
+//! still declines them) to reach here is a cross-crate wiring step left as a
+//! reported residual, and it is the exact blocker on promoting this crate's
+//! linearity-refusal fixtures to runnable corpus programs.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -39,6 +51,8 @@ use gandr_theory_levitation::FreeTerm;
 use crate::boundary::DeclinedFaceIndex;
 use crate::cell::Cell;
 use crate::cell::CellStore;
+use crate::linearity::NonLinearPattern;
+use crate::linearity::admit_linear_cell;
 use crate::pattern::CmdPat;
 use crate::pattern::ConsPat;
 use crate::pattern::MetaVar;
@@ -52,9 +66,10 @@ use crate::sequent::frame_defining_cell;
 /// `$`-prefix keeps it disjoint from every user pattern variable.
 const RETURN_CONT: &str = "$ret";
 
-/// Why a face could not be elaborated into a command cell
-/// (`proposal-sequent-kernel.md` §7.4, the declined shapes).
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+/// Why a face could not be elaborated into a command cell, or could not be
+/// admitted once elaborated (`proposal-sequent-kernel.md` §7.4, the declined
+/// shapes).
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ElaborateError
 {
     /// The rule's left-hand side is not an operation application (a `rule`
@@ -67,6 +82,19 @@ pub enum ElaborateError
     /// operation in producer position, or a multi-argument constructor
     /// wrapping an operation).
     UnsupportedShape,
+    /// The face elaborated, but its left-hand side copies a hole — refused at
+    /// the admission boundary, because cell patterns are linear (owner ruling,
+    /// 2026-08-01; [`crate::linearity`]).
+    NonLinear(NonLinearPattern),
+}
+
+impl From<NonLinearPattern> for ElaborateError
+{
+    #[inline]
+    fn from(refusal: NonLinearPattern) -> Self
+    {
+        Self::NonLinear(refusal)
+    }
 }
 
 /// Elaborate a whole datatype description's operations and rules into a store
@@ -74,30 +102,79 @@ pub enum ElaborateError
 ///
 /// # Contract
 /// - ensures: the returned store holds a [`frame_defining_cell`] for every
-///   declared constructor (so return-side `K⁻` frames reduce) plus every
-///   successfully-elaborated rule cell; the returned vector pairs each declined
-///   face (by index into `desc.cells`) with its [`ElaborateError`]. Never
-///   panics.
+///   declared constructor (so return-side `K⁻` frames reduce) plus every rule
+///   cell that both elaborated and passed the linearity admission boundary
+///   ([`admit_cell`]); the returned vector pairs each declined face (by index
+///   into `desc.cells`) with its [`ElaborateError`]. Never panics.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the two decline channels (fragment shape and
+///   admission) and the accepting path are separated by one whole description
+///   that elaborates cleanly and one whose rule copies a hole.
+/// - witness: `elaborate::tests::a_whole_description_elaborates_frame_and_rule_cells`
+/// - witness: `elaborate::tests::a_description_whose_rule_copies_a_hole_is_refused`
 #[inline]
 #[must_use]
 pub fn elaborate_data_desc(desc: &DataDesc)
 -> (CellStore, Vec<(DeclinedFaceIndex, ElaborateError)>)
 {
     let mut store = CellStore::new();
+    // Frame cells are generated here rather than read from a description, and
+    // are linear by construction (`v` and `beta` occur once each), so they do
+    // not pass the admission boundary — nothing user-authored reaches it.
     for ctor in &desc.ctors {
         store.insert(frame_defining_cell(&Sym::new(ctor.name.clone())));
     }
     let mut declines = Vec::new();
     for (index, face) in desc.cells.iter().enumerate() {
-        match elaborate_rule(face) {
-            | Ok(cell) => {
-                store.insert(cell);
-            },
-            | Err(error) => declines.push((DeclinedFaceIndex::from(index), error)),
+        let admitted = match elaborate_rule(face) {
+            | Ok(cell) => admit_cell(&mut store, cell),
+            | Err(error) => Err(error),
+        };
+        if let Err(error) = admitted {
+            declines.push((DeclinedFaceIndex::from(index), error));
         }
     }
     (store, declines)
+}
+
+/// Admit one elaborated cell into `store`, refusing a non-linear left-hand side
+/// at the boundary (owner ruling, 2026-08-01: cell patterns are linear).
+///
+/// This is the **single admission seam** for every cell a description
+/// contributes. The rule (`desc.cells`) path above calls it; any further
+/// description-sourced cell path admits through the same call rather than
+/// through a second copy of the check.
+///
+/// # Contract
+/// - ensures: `Ok(())` with `cell` inserted (deduplicated as
+///   [`CellStore::insert`] specifies) when its left-hand side copies no hole;
+///   otherwise `store` is left untouched.
+/// - fails: [`ElaborateError::NonLinear`], carrying the copied hole.
+/// - panics: none.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — one predicate, so the refused copy (store does
+///   not grow) and the admitted description separate it.
+/// - witness: `elaborate::tests::a_description_whose_rule_copies_a_hole_is_refused`
+/// - witness: `elaborate::tests::a_whole_description_elaborates_frame_and_rule_cells`
+#[inline]
+fn admit_cell(
+    store: &mut CellStore,
+    cell: Cell,
+) -> Result<(), ElaborateError>
+{
+    match admit_linear_cell(&cell) {
+        | Ok(()) => {
+            store.insert(cell);
+            Ok(())
+        },
+        | Err(refusal) => Err(ElaborateError::from(refusal)),
+    }
 }
 
 /// Elaborate one surface `rule` face into an oriented command cell
@@ -403,6 +480,54 @@ mod tests
             crate::boundary::CellCount::from(4_usize),
             store.len(),
             "two frame cells and two rule cells"
+        );
+    }
+
+    #[test]
+    fn a_description_whose_rule_copies_a_hole_is_refused()
+    {
+        use gandr_theory_levitation::Attrs;
+        use gandr_theory_levitation::Code;
+        use gandr_theory_levitation::CtorDesc;
+        use gandr_theory_levitation::DataDesc;
+        use gandr_theory_levitation::DeclPolarity;
+        use gandr_theory_levitation::NominalId;
+
+        // `rule and(x, x) ~> x` — the idempotence law written with a repeated
+        // hole. It elaborates to ⟨x | and(x; $ret)⟩ ~> ⟨x | $ret⟩, whose left
+        // side copies the producer hole `x`, so the admission boundary refuses
+        // it rather than letting it into the store.
+        let desc = DataDesc::new(
+            NominalId::new(0_u64.into(), "Bit"),
+            Vec::new(),
+            [CtorDesc::new("Off", Code::Unit, None, Attrs::empty())],
+            Vec::new(),
+            [face(
+                FreeTerm::op("and", [FreeTerm::var("x"), FreeTerm::var("x")]),
+                FreeTerm::var("x"),
+            )],
+            DeclPolarity::Data,
+            Attrs::empty(),
+        );
+        let (store, declines) = elaborate_data_desc(&desc);
+        assert_eq!(
+            crate::boundary::CellCount::from(1_usize),
+            store.len(),
+            "only the Off frame cell is admitted; the copying rule is not"
+        );
+        let &(index, ref error) = declines.first().expect("the face is declined");
+        assert_eq!(
+            DeclinedFaceIndex::from(0_usize),
+            index,
+            "the decline is reported against the face's index"
+        );
+        let ElaborateError::NonLinear(ref refusal) = *error
+        else {
+            panic!("the decline is the linearity refusal, not a fragment decline")
+        };
+        assert_eq!(
+            &*refusal.copied.name, "x",
+            "the diagnostic names the copied hole"
         );
     }
 
