@@ -86,6 +86,7 @@ Diagnostics are the monotone "what you still owe", goals and obligations togethe
 **The language-server adapter.** A thin protocol shim: every request is a projection of the document's parse tree, lowered form with its origin map, and report, through the span lens.
 The streaming checker is itself a session protocol and the adapter is one concrete client of it.
 Its first cut is diagnostics, hover, completion, and delegated formatting on a whole-file recheck, within the latency budget at script scale; incrementality is a transparent scaling lever behind the same report interface rather than a redesign.
+The adapter is only one of **two** channels, and the protocol that carries the other — the heavy interactive payload the editor protocol cannot subscribe to — is [[../inspection-protocol]].
 
 **The formatter.** It formats the **concrete syntax tree, never the core** — the core drops comments and re-inflates the verbosity the surface exists to hide.
 Idempotence and meaning-preservation under lower-after-parse are binding, and **error and hole regions are left byte-identical**, which is the same fidelity-over-best-effort posture the project's other formatters take.

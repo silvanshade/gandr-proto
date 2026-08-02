@@ -2671,6 +2671,24 @@ ahman-pretnar-2021-asynchronous-effects:
     transcribed from the contributor's reference register; the authorship, title, venue, and DOI were
     read from the register entry rather than recalled
 
+zhao-maroof-dukkipati-blinn-pan-omar-2024-total-type-error:
+  type: article
+  title: Total Type Error Localization and Recovery with Holes
+  author: ["Zhao, Eric", "Maroof, Raef", "Dukkipati, Anand", "Blinn, Andrew", "Pan, Zhiyi", "Omar, Cyrus"]
+  date: 2024-01-02
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3632910"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 8
+    issue: POPL
+    page-range: 2041-2068
+  note: >-
+    transcribed from the contributor's reference register; the authorship, title, venue, and DOI were
+    read from the register entry rather than recalled
+
 # ── The polymorphic-theory / signature-generalization line ───────────────────
 
 fiore-hamana-2013-multiversal:

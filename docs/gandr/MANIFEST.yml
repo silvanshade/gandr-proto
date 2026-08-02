@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 0c2d808b9539f102cd180d9bf489f54fa30d35096fbfa4d5738cd7ca7d1059dd
+    b3: 09d750cb878f51bba990c001e22533c276abec7e79123056ce0c14ad3c694927
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 2636ba7ef4ab19a541e762d67586b8c4b693d7ab0425c7b370ff33184cd48a77
+    b3: 40dd8e1b4f935091a90530eeb184d606cae0cd1f3783cd41980a6afd5a08387a
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -169,7 +169,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/interactive-surface.md
     role: subdocument
-    b3: e619f2fbd21acab00fc675da860732c144ead29e9ef42e70d5c965c476f6b32f
+    b3: cbb5be915b76af0dde3b1a7a8b413522a2cfdb2b4c0d7d63afeb3dc384a37ce4
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/recursion-former.md
@@ -210,5 +210,10 @@ nodes:
   - path: spec/implementation/proposed/packages.md
     role: subdocument
     b3: 313e3738dea78f41413058dfc631049d23b447fbda4fca965d9808e797491e8c
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/inspection-protocol.md
+    role: subdocument
+    b3: fdb426103590622c47a52653308385e84e7efa55b4233ddb2603271bae4f62f9
     edges:
       - { rel: registered-under, to: spec/implementation.md }
