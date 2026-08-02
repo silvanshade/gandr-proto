@@ -1335,14 +1335,23 @@ struct Wire<'tree>
 ///
 /// Both readings are the same failure — a spelling shared by two ports — and
 /// this only chooses which sentence explains it.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// The two sorts a disagreement is between travel with the reading rather than
+/// being read back off the uses, so the sentence that names them cannot be
+/// built for a pair that has none.
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum SharingReading
 {
     /// They stand on the same side of the wire, so the wire already has that
     /// endpoint.
     SamePolarity,
     /// They declare the name at different sorts, so they cannot be one port.
-    SortDisagreement,
+    SortDisagreement
+    {
+        /// The sort the use already in the fold declares.
+        standing: PortSortText,
+        /// The sort the arriving use declares.
+        arriving: PortSortText,
+    },
 }
 
 /// One refused merge: a port name two distinct ports arrived under.
@@ -1422,12 +1431,16 @@ impl<'tree> PortFold<'tree>
             && let Some(ref arriving) = entry.sort
             && standing != arriving
         {
+            let reading = SharingReading::SortDisagreement {
+                standing: standing.clone(),
+                arriving: arriving.clone(),
+            };
             let first = first.clone();
             self.shared.push(Shared {
                 name,
                 first,
                 second: entry,
-                reading: SharingReading::SortDisagreement,
+                reading,
             });
             return;
         }
@@ -1508,13 +1521,16 @@ fn shared_diagnostic(shared: &Shared<'_>) -> ElabDiagnostic
                 )
             }
         },
-        | SharingReading::SortDisagreement => format!(
+        | SharingReading::SortDisagreement {
+            ref standing,
+            ref arriving,
+        } => format!(
             "the port name `{}` is declared at `{}` by {} and at `{}` by {}: a port's uses must \
              agree in sort",
             shared.name.0,
-            sort_spelling(shared.first.sort.as_ref()),
+            standing.0,
             shared.first.site.describe(),
-            sort_spelling(shared.second.sort.as_ref()),
+            arriving.0,
             shared.second.site.describe()
         ),
     };
@@ -1537,13 +1553,6 @@ fn redex_fence(shared: &Shared<'_>) -> String
     else {
         String::new()
     }
-}
-
-/// A declared sort as a diagnostic spells it, or the empty spelling for a use
-/// that declares none.
-fn sort_spelling(sort: Option<&PortSortText>) -> String
-{
-    sort.map_or_else(String::new, |found| found.0.clone())
 }
 
 /// A located arrow-grid glyph inside a run of significant children.
