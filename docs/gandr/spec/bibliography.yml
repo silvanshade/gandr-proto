@@ -1286,6 +1286,14 @@ joram-veltri-2023-finite-bags:
     volume: 268
     page-range: "20:1-20:19"
 
+oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr:
+  type: report
+  title: "Layered and Object-Based Game Semantics (Extended Technical Report)"
+  author: ["Oliveira Vale, Arthur", "Melliès, Paul-André", "Shao, Zhong", "Koenig, Jérémie", "Stefanesco, Léo"]
+  date: 2022
+  organization: Yale University, Department of Computer Science
+  serial-number: "YALEU/DCS/TR-1559"
+
 oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered:
   type: article
   title: Layered and Object-Based Game Semantics
