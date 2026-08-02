@@ -16,19 +16,30 @@ The design and the build differ here more than anywhere else in the corpus, and 
 **Built, and verified against the tree at write time.**
 
 * **The two-zone context `Γ; Σ` exists.** `gandr-core-checker`'s `ctx` module carries the **intuitionistic zone** `Γ` — ordinary hypotheses, which may be used any number of times or not at all — as a binding stack, and the **linear zone** `Σ` (the `Sigma` type) — obligations that must be used exactly once — as a list of live obligations with `bind` and `consume` operations.
-  `Σ` admits **no weakening** (a bound obligation must be consumed before its scope closes) and **no contraction** (`consume` is single-shot), and those laws are **directly unit-tested** rather than merely asserted.
+  `Σ` admits **no contraction** — `consume` is single-shot and yields nothing on a second call, so that law is _enforced_ — and **no weakening**, which at this rung is **detectable rather than enforced**: a live obligation at scope close is observable, and the test that pins it asserts exactly that the zone is non-empty, but no code path rejects the close.
+  The distinction matters for every claim below that leans on "cannot be silently dropped".
+  The type is named `Sigma` in that module and is **not** the dependent-pair former of the same name in the checker's type module; the two are unrelated.
 * **`Σ` is vacuous at v0.** No typing rule populates it, because every obligation source it was designed to hold — session endpoints, held capabilities, acquired shared channels — is a deferred feature that does not exist in the checker.
   The zone's shape is committed now on the reasoning that retrofitting a context shape is expensive; its discipline is in force the moment a first obligation source lands.
   Until then, **a reified stack captures no obligations, and `resume`, `discard`, and duplication are unrestricted**.
 * **Grades exist and are sealed.** `gandr-core-checker`'s `grade` module carries a single concrete carrier over `ℕ ∪ {ω}`, representation-sealed behind a semiring signature (`ZERO`, `ONE`, `OMEGA`, `fin`, `leq`, `plus`, `times`).
-  Checking at the current stage uses **only the order** — `thunk_r t ⇓ U_s B` requires `s ⊑ r`, and `force v` requires `1 ⊑ r`; `Dup`/`Drop` and grade constraints, which additionally use `+` and `·`, are a later stage.
+  The order carries the two structural rules — `thunk_r t ⇓ U_s B` requires `s ⊑ r`, and `force v` requires `1 ⊑ r`, each checked **per site with no accumulator**, so a grade-`1` thunk forced twice along one path passes both checks independently.
+  `Dup` **is built and does use addition**: it reads its split grades off the expected returner-of-product type and enforces `r + s ⊑ grade`.
+  `Drop` **is built**, and its side condition `0 ⊑ r` is **not checked because it is vacuous on the default carrier** — zero is the bottom of the order there, so every graded thunk is droppable, which is a tree-verified form of the central finding below rather than a gap.
+  Multiplication and the grade-constraint form are genuinely unused outside the carrier module.
   There is **no per-assumption (binder) grading and no context scaling `r · Γ`**; a binder "carries" a grade only derivatively, as the grade of its bound value's thunk type.
+* **The graded operations have normative signatures**, and no other corpus document currently states them: `dup : U_{r+s} B → F (U_r B × U_s B)` and `drop : U_r B → F 1` under `0 ⊑ r`, with grade-contravariant subtyping — `U_r B <: U_s B'` needs `s ⊑ r`.
+  They belong to a type-system document that has not been migrated; they are recorded here so they are stated somewhere until it is.
 * **The reified stack `Stk(B, C)` is a value type** in `gandr-core-checker`'s `types` module — the evaluation context internalized as data.
 * **The runtime host has no capability model at all.** The seam is ambient and always-resume, with no grant, no allowlist, and no denial outcome ([[../../implementation#The runtime host]]); the design that would price it is [[../../implementation/capability-model]].
+* **The foreign boundary is the one place several of these decisions already have a home.** [[../../implementation/foreign-interface]] owns the boundary C-type mapping, the calling convention, linkage metadata, and the hidden-return-pointer slot, and links back to this document for the mode-facing half.
 
 **Designed, and not built.** Sessions (binary and multiparty), manifest sharing with acquire/release, worlds and the mobility judgment, the linear-zone obligations that would populate `Σ`, and the typed-unwinding rule under which abandoning a `Σ`-owning stack runs its recorded close, release, and drop obligations.
 
-**Neither designed nor built.** References, mutable cells, borrowing, regions, access modes, mode-bounded polymorphism, and any memory, layout, address, or ABI model whatsoever.
+**Neither designed nor built.** References, mutable cells, borrowing, regions, access modes, mode-bounded polymorphism, and any **internal** value-representation, layout, or address model.
+
+**One qualification, because the pre-reboot analysis's blanket "no ABI model at all" is no longer true of this corpus.** A **boundary** C-type model is built and small — an enumeration of the foreign argument and result shapes with a total mapping from surface types onto it that rejects every composite at lowering (`gandr-surface-engine`'s `ffi` and `lower` modules) — and calling convention, linkage metadata, the hidden-return-pointer slot, and the register-versus-memory classification are owned by [[../../implementation/foreign-interface]].
+What remains absent is the _internal_ model: gandr can still neither assert nor refute anything about where a value's bytes live.
 
 **Why this matters for every sentence that follows.** The pre-reboot analysis this document absorbs was written against the _specified_ substrate and repeatedly says gandr "already has" a property.
 Read every such statement as **the design has it, the build does not yet**, and check the built list above before relying on one.
@@ -72,6 +83,13 @@ This table is the **vocabulary** the calculus would speak; **none of these mappi
 | **initializing**      | definite assignment of an uninitialized slot  | the value-introduction discipline; gandr has no notion of an uninitialized slot to assign into, so this mode has nothing to land on today                                              |
 | **mode-generic**      | one operation written once over several modes | a mode sort with bounded quantification, which does not exist ([[#mode-decision-07]])                                                                                                  |
 
+A second language in the same family spells its modes differently and lands them differently, and the correspondence is the concrete thing an implementer of "access modes" would start from: its **owned** mode corresponds to a linear or graded resident, its **mutable** mode to a linear capability, and its **read** mode to a graded thunk delivering a returner.
+Its **reference** mode — the mode-polymorphic one — together with **last-use destruction** and **origins** are the genuinely missing pieces, and last-use destruction as a sound surface elaboration is **plausible but unproven and gap-dependent**: inserting a last use is sound only once a region or origin mechanism can prove the source outlives the borrow.
+
+Two gaps travel with that correspondence and are recorded so they are not rediscovered.
+**The affine tier is underspecified** — whether dropping a graded thunk, or reaching its last use, actually _runs_ anything is stated nowhere.
+And **a first-class borrow-as-value** would need the capture-set relaxation generalized from capturing a linear _name_ to capturing a value _origin_, which is a strictly larger change than the relaxation currently proposed.
+
 **A naming collision to avoid, because it would read as precise.** The consuming mode is spelled `sink` in the language that names these four, and **`sink` already means something else in this corpus**: a wiring datum — the partner every source is matched with, a flow-through wire in the circuit-algebra carrier.
 The two senses are unrelated and both are load-bearing.
 This document therefore says _consuming mode_ and never `sink`; if the calculus ever surfaces these modes, **the spelling is a decision, not an import**.
@@ -104,7 +122,7 @@ _Status:_ the division of labour is settled in the design; how a _borrow_ maps o
 _Recommendation:_ upgrade it to carry an effect row at minimum, and consider delivering a success-or-cleanup-error sum.
 _Status:_ **open**.
 
-This one is worth flagging as a recurring error source rather than a preference: the pre-reboot analysis's prose repeatedly wrote as though cleanup could await, perform effects, or issue a rollback, and its own adversarial pass had to correct that at four separate sites.
+This one is worth flagging as a recurring error source rather than a preference: the pre-reboot analysis's prose repeatedly wrote as though cleanup could await, perform effects, or issue a rollback, and its own adversarial pass had to correct that reading three times over, at three separate claims, plus once as a standing cross-cutting note.
 The empty row is what the design says; the effectful row is what everyone assumes it says.
 
 ### mode-decision-03
@@ -257,11 +275,12 @@ That is recorded as the sweep's judgement, not as a settled characterization of 
 
 ## The per-problem catalogue
 
-Eight problems where a mode calculus earns its keep, each with how the field handles it and where gandr stands.
+Eight problems where a mode calculus earns its keep, each with where gandr stands, and seven of the eight with a table of how the field handles it — the eighth's comparison rows live in the combined table further down rather than beside it.
 Soundness is one of _yes / partial / no / not applicable_; ergonomics one of _good / partial / workaround / poor / not applicable_.
 
-**A standing caveat on the language-mechanism tables.** The mechanism descriptions and their proposal, RFC, and issue numbers are **carried from the pre-reboot source and are unverified against the vendors at this pass**; where the source's own adversarial reviewer flagged a specific locator, that flag is retained inline.
-They are indicative of the design landscape, and should be re-checked before any of them is quoted as fact.
+**A standing caveat on the language-mechanism tables.** The mechanism descriptions are **carried from the pre-reboot source and unverified against the vendors at this pass**, and the source's own proposal, RFC, and issue numbers are **deliberately not reproduced** — a locator carried across two documents without being re-checked is exactly the reference that reads as precise and resolves to nothing.
+The tables are therefore indicative of the design landscape and **not citable**; restoring them, verified, is tracked work rather than a gap to be filled in passing.
+Four locators the source itself flagged as doubtful are worth knowing about even in their absence: a destructor-decorator spelling it marked unverified and version-dependent; a set of Swift evolution numbers of which two were high-confidence, one named an operator rather than a parameter modifier, and two were unverified; a claim about a standard library's short-string optimization that is genuinely implementation-dependent; and one proposal it judged over-formalized as "killed" where the direction was in fact discussed and declined.
 
 ### Asynchronous destruction
 
@@ -309,6 +328,7 @@ The protocol is a **linear obligation over a resource lent to a party the compil
 | Linear Haskell                   | linearity on arrows gives exactly-once submit and complete; the reference enforcement model, but garbage-collected and viscous            | yes            | poor           |
 
 **Where gandr sits.** The design expresses **both halves** natively: the exactly-once obligation is a binary session type on a linear endpoint, and abandonment runs typed unwind.
+**A placement correction from the source, because it bounds that sentence.** Completion-based I/O is named in the design record's _catalogue of deferred work_, not in the unwinding rule; the rule supplies the generic mechanism only, and no part of the design targets this problem.
 
 **One correction is load-bearing and must not be lost.** The tempting claim — that sending the buffer over a session endpoint _removes_ it from the program's linear zone, so the program structurally cannot alias or free it — is **false as the rules stand**: the send rule draws its payload from the **intuitionistic** zone, which admits contraction, so a value sent over a session is _not_ removed and _can_ still be aliased.
 The structural no-alias guarantee needs two things that do not exist: a **buffer-as-linear-capability type**, and transfer by **delegation**, which currently moves endpoints only.
@@ -347,13 +367,16 @@ First: a handler that simply omits to resume is a linearity error; **abandonment
 Second: the abandonment operation returns a _computation_, so unwind has computational structure, but it is under an **empty effect row** today ([[#mode-decision-02]]) — the "await budget" reading is the proposed upgrade, not the substrate.
 And the claim that all three completion-I/O ingredients are present is **overclaimed**: one is present (linearity), one is unspecified (the async cleanup row), and one is only sketched (ownership transfer).
 
+**And the mechanism the problem actually needs is peer notification, which the design does not have.** The mature account in the session-types literature is that an endpoint may be _cancelled_, that cancellation **propagates to the peer** rather than leaving it blocked forever, and that a peer which then communicates on a cancelled channel observes a raised exception. gandr's typed unwind is **control-side and local**: it runs the abandoning side's own close, release, and drop obligations, and **nothing states that it closes the peer's channel with a fidelity-respecting cancellation**.
+That gap is the difference between "no obligation is leaked here" and "no participant is left waiting", and only the first is claimed.
+
 **The state-corruption half is not solved.** Typed unwind runs _resource_ cleanup; it does not restore invariants or re-apply partial work.
 An owned partial-read buffer is lost on abandonment exactly as it is elsewhere.
 What gandr has structurally is the _distinction_ the calculus is about, which positions it to make "cancel-safe means captures no owned-across-suspend state" a **checked predicate** — but the reified stack carries no linear component and no owned-versus-borrowed annotation today; frames record context deltas operationally.
 **Recording captured-state ownership on the stack type is the unbuilt task, not an existing capability.**
 
 On delivery semantics, cancellation would be observed at perform points, so checkpoints are type-visible — the safest tier, with the checkpoints lifted into the type.
-The mechanism named for this (asynchronous effects and signals) is **attributed but has no typing rules in the design**: a planned mechanism, not settled substrate.
+The mechanism named for this — **asynchronous effects and signals, in the sense of Ahman and Pretnar's work on them** — is **attributed but has no typing rules in the design**: a planned mechanism, not settled substrate, and one this corpus carries no bibliography entry for.
 There is no shielded-section construct.
 
 The strongest form of the soundness claim — "stronger than every production language" — is an unimplemented specification measured against shipping systems, and is **overclaimed**.
@@ -375,6 +398,8 @@ The lifetime-structure half is industry-solved; the memory-safety half is open o
 | Trio, Kotlin, Java       | nurseries, coroutine scopes, structured task scopes; garbage collection removes the borrow-safety dimension                                 | not applicable | good           |
 
 **Where gandr sits.** The **lifetime-structure half** is in the design and is arguably richer than a nursery: a nursery is fork plus a session protocol, and the parent cannot complete its derivation without consuming the join endpoints.
+**One inherited guarantee is deliberately not inherited, and it is worth being exact about why.** In the linear-logic reading of sessions, fusing channel creation with parallel composition forces the well-typed process topology to be a **tree**, from which deadlock-freedom and global progress follow by construction — at the price that genuinely cyclic networks are not typable at all. gandr's fork **deliberately permits interleaving**, so it does **not** inherit that guarantee; what it has is fidelity and safety structurally, and deadlock-freedom only _within_ a single multiparty session, by projection coherence.
+Cross-session and shared-session deadlock-freedom is a reserved question with its hooks placed and its answer unchosen.
 The three named blockers of async structured concurrency map onto substrate features Rust lacks — silent forgetting is forbidden by linearity (the decisive advantage, and it **aligns with** ongoing leak-freedom and linear-types discussion rather than being that discussion); non-cooperative cancellation is answered by the one-shot stack plus typed unwind; and the need for a non-blocking executor is replaced by a static consumption obligation.
 
 **Two corrections, both load-bearing.** "The static consumption obligation replaces blocking join" is **overclaimed**: type-level consumption does not by itself guarantee at _runtime_ that a borrowing child stopped before the borrowed data was freed.
@@ -507,7 +532,7 @@ Remaining gaps: no mutable references, places, or storage; no region or lifetime
 
 A must-consume resource whose destructor may take parameters, may fail, and whose non-consumption is a compile error.
 
-The pattern is named after the languages that pushed a destructor past "runs and returns nothing".
+**The parameterized, fallible destructor is Vale's "Higher RAII", not Mojo's**, and the pre-reboot source conflated the two; Mojo's own destructor specifics were flagged uncertain there and are not relied on here.
 
 **Where gandr sits — its strongest adopted-design facet.** A must-consume resource is a linear entry, and forgetting it is a type error: the guarantee Rust cannot give (leaking is safe there) and C++ cannot give for a _checked_ must-explicitly-consume type — **noting that "a C++ destructor always runs" is true only for automatic-storage objects, not in general**.
 
@@ -543,14 +568,14 @@ The copy-by-default versus move-by-default mismatch is **side-stepped by refusin
 
 **What the field's ABI efforts teach**, each with the correction the source's own reviewer applied:
 
-* A richer-than-C ABI effort defines its own option and result types, because niche-optimized standard types cannot be reused across a stable boundary — and **leaves unresolved whether a non-trivial destructor runs and who frees**.
+* **crABI** (an unmerged Rust RFC) defines its own option and result types, because niche-optimized standard types cannot be reused across a stable boundary — and **leaves unresolved whether a non-trivial destructor runs and who frees**.
   The accurate statement is that it has a _manual_ free convention; it does not standardize _automatic_ destructor execution. gandr answers this better through ownership in the calling convention ([[#mode-decision-12]]).
-* A stable-ABI crate pins a C-based layout and recovers niche-optimized compact sums, at the documented cost of losing pattern matching and of compile time.
+* **`stabby`** pins a C-based layout and recovers niche-optimized compact sums, at the documented cost of losing pattern matching and of compile time.
   A compiler change degraded its vtable handling — **a _performance_ regression, not a soundness or layout break**; the fair characterization is the fragility of a stable ABI on an unfrozen substrate.
-* Extensible-vtable ABI evolution — adding fields and operations without breaking compiled consumers — is **a different crate's mechanism**, not that one's; the attribution matters, and the lesson maps onto gandr's module signatures with load-time matching.
+* Extensible-vtable ABI evolution — adding fields and operations without breaking compiled consumers — belongs to **`abi_stable`**, not to `stabby`, which the pre-reboot source had misattributed; the correction is worth nothing unless both crates are named, and the lesson maps onto gandr's module signatures with load-time matching.
 * The two efforts converge on the **two-representation discipline** of [[#mode-decision-11]].
-* The C++ bridging tools converge on **trivial versus opaque**: trivially relocatable types may cross by value, everything richer is opaque behind indirection.
-  One of them backs the trivial _claim_ with a generated compile-time assertion — **a real check, not an honour system**; the honour-system mechanism is the compiler attribute that is trusted without verification.
+* The C++ bridging tools — **cxx**, **autocxx**, and **crubit** — converge on **trivial versus opaque**: trivially relocatable types may cross by value, everything richer is opaque behind indirection.
+  **cxx** backs the trivial _claim_ with a generated C++ `static_assert` — **a real check, not an honour system**; the honour-system mechanism is the `trivial_abi` compiler attribute, which is trusted without verification.
   All of them punt on auto-bridging templates and generics.
 * **Trivial relocatability is not standardized in C++.** One proposal was voted into a working draft and then **removed**, over comments that relocation as specified could do more than a bitwise copy; a competing proposal was never in that draft, so it cannot have been removed from it.
   The durable lesson holds regardless: **byte-relocatability needs an explicit annotation and is not type-inferable even in C++**, so gandr should design its relocatability query as a **pluggable input**.
@@ -648,18 +673,25 @@ _Revisit_ if introspection into suspended jobs — the job-control surface — n
 
 ## A citation-hygiene guard
 
-**A widely-surfaced claim that a recent Rust release added linear types through a must-move trait is fabricated.** The release notes contain no such feature; must-move and linear types remain exploratory there.
+**A widely-surfaced claim that Rust 1.95 added linear types through a `MustMove` trait is fabricated.** The 1.95 and 1.96 release notes contain no such feature; must-move and linear types remain exploratory there.
+The version and the trait name are reproduced deliberately: a guard against a _specific_ fabricated claim only works if enough of the claim survives to be recognized on a second encounter.
 The guard generalizes past its instance: treat any "language X now has linear types" claim as unverified until the primary release record is read, because this class of claim is repeated confidently and is cheap to check.
 
 ## What this document does not carry
 
 The pre-reboot source ended with a **session-types and typed-concurrency literature survey** — binary and multiparty sessions, the linear-logic correspondence and its tree-topology restriction, deadlock-freedom for cyclic and shared topologies, affine and exceptional sessions with peer-propagating cancellation, and the context-free, dependent, and gradual extensions.
 That material is **parked with a reason, not dropped**: it belongs to the sessions-and-effects absorption rather than to the mode calculus, and splitting it here would leave it half-stated in two places.
-Two of its findings are load-bearing _for this document_ and are therefore carried above: that abandonment with **peer notification** is the mechanism the cancellation problem actually needs and that gandr's local unwind does not supply it, and that gandr's fork deliberately permits interleaving, so it does **not** inherit deadlock-freedom by construction.
+Two of its findings are load-bearing _for this document_, and both are carried where a reader meets the problem they bear on rather than here: peer-propagating cancellation, in the cancellation-safety section, and the tree-topology restriction gandr's fork declines to inherit, in the structured-concurrency section.
 
 ## Source and confidence
 
-Written against the pre-reboot mode-calculus state-of-the-art analysis in full — its decision register, its per-problem catalogue, its foreign-interface impact, its comparison dataset, its literature anchors, and its self-reference appendix — together with the value-semantics design record's access-mode sections and the grade-to-store-region design note.
+Written against four sources, named because a document with an undeclared source set cannot be fidelity-reviewed.
+
+1. The pre-reboot **mode-calculus state-of-the-art analysis** in full — its decision register, its per-problem catalogue, its foreign-interface impact, its comparison dataset, its literature anchors, and its self-reference appendix.
+2. The **value-semantics design record's** access-mode sections and boundary note.
+3. The **grade-to-store-region design note**, which supplies the finding that residency is justified by escape rather than by grade.
+4. A separate pre-reboot **capabilities, effects, and ownership-over-time literature sweep**, which is the source of the design-space camps section and of all three of its through-lines — the capability-and-effect duality and its non-dominance, the community scoping of the move off linearity, and the partial-versus-complete quantale false friend.
+   It is contributor-context material rather than a specification, and its conclusions are restated here rather than referenced.
 
 **A provenance fact the reader should know.** That analysis is not in the pre-reboot specification tree: it lived in a separate analysis directory that was deleted, and it is recoverable only from that project's history.
 The deleting change stated the material had been moved to a sibling notes repository; **it had not been**, and a filename sweep of that repository finds no trace of it.

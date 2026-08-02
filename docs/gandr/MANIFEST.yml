@@ -157,7 +157,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modes-and-references.md
     role: subdocument
-    b3: 79d5b8e4da24a9e0e4f5469691f7b62bb955d712e6c2404da1afe99808e1fcbb
+    b3: b22ec20d844a8bf648b71e822f17945b791a1ac692ac078fbe0284379146358e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md
