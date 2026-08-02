@@ -347,7 +347,55 @@ pub fn serialize_desc(desc: &DataDesc) -> SerializedDescText
         .map(|cell| format!("; rule {}", render_face(cell)))
         .collect::<Vec<String>>()
         .concat();
-    format!("{keyword} {}{params} {{{body}}}{ops}{cells}", desc.id.name).into()
+    let circuits = desc
+        .circuits
+        .iter()
+        .map(|rule| {
+            format!(
+                "; circuit {}{} {}",
+                rule.name,
+                render_telescope(&rule.ports),
+                render_face(&rule.sphere)
+            )
+        })
+        .collect::<Vec<String>>()
+        .concat();
+    format!(
+        "{keyword} {}{params} {{{body}}}{ops}{cells}{circuits}",
+        desc.id.name
+    )
+    .into()
+}
+
+/// Render a circuit rule's **parameter telescope** — its rewrite-sorted ports.
+///
+/// An empty telescope renders as nothing at all, so a description built before
+/// the telescope existed renders exactly as it did. A port renders at the form
+/// its declaration wrote: `p : Nat` for the sorted form, `p : a ~> b` for the
+/// pinned one, which is the same notation a face renders in.
+fn render_telescope(ports: &[crate::elaborate::RewritePort]) -> String
+{
+    if ports.is_empty() {
+        return String::new();
+    }
+    let rendered: Vec<String> = ports
+        .iter()
+        .map(|port| match port.face {
+            | crate::elaborate::PortFace::Sorted(ref sort) => {
+                format!("{} : {sort}", port.name)
+            },
+            | crate::elaborate::PortFace::Pinned {
+                ref source,
+                ref target,
+            } => format!(
+                "{} : {} ~> {}",
+                port.name,
+                render_free_term(source),
+                render_free_term(target)
+            ),
+        })
+        .collect();
+    format!("({})", rendered.join(", "))
 }
 
 /// Render a [`Code`] to the inspection notation.
@@ -684,6 +732,84 @@ mod tests
             "data Vec(a) { Nil = 1, Cons = (a × var) }",
             serialize_desc(&desc).as_ref(),
             "a right-nested product renders its factors"
+        );
+    }
+
+    #[test]
+    fn desc_inspection_renders_a_circuit_rule_and_its_telescope()
+    {
+        use crate::circuit::CircuitBody;
+        use crate::circuit::CircuitFrame;
+        use crate::circuit::CircuitNode;
+        use crate::circuit::CircuitRedex;
+        use crate::circuit::CircuitRule;
+        use crate::circuit::FrameHead;
+        use crate::elaborate::RewritePort;
+
+        let body = CircuitBody::new(
+            [
+                CircuitNode::Redex(CircuitRedex::new(
+                    "p",
+                    crate::cell::FreeTerm::var("x"),
+                    crate::cell::FreeTerm::var("x\u{2032}"),
+                    "x\u{2032}",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("add".into()),
+                    [
+                        crate::cell::FreeTerm::var("x\u{2032}"),
+                        crate::cell::FreeTerm::var("y"),
+                    ],
+                    "z",
+                )),
+            ],
+            "z",
+        );
+        let derived = crate::circuit::derive_boundaries(&body).expect("derives");
+        let rule = CircuitRule::new(
+            "cong1",
+            crate::cell::CellFace::new(
+                derived.source,
+                derived.target,
+                Vec::new(),
+                crate::desc::SurfaceSpan::new(0_usize.into(), 0_usize.into()),
+            ),
+            body,
+        )
+        .with_ports([RewritePort::sorted("p", "Nat")]);
+        let desc = DataDesc::new(
+            NominalId::new(0.into(), "Nat"),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            DeclPolarity::Data,
+            Attrs::empty(),
+        )
+        .with_circuits([rule]);
+        assert_eq!(
+            "data Nat {}; circuit cong1(p : Nat) add(x, y) ~> add(x\u{2032}, y)",
+            serialize_desc(&desc).as_ref(),
+            "a circuit member renders its telescope and its sphere"
+        );
+    }
+
+    #[test]
+    fn a_description_carrying_no_circuit_renders_exactly_as_before()
+    {
+        let desc = DataDesc::new(
+            NominalId::new(0.into(), "Bit"),
+            Vec::new(),
+            [CtorDesc::new("Off", Code::Unit, None, Attrs::empty())],
+            Vec::new(),
+            Vec::new(),
+            DeclPolarity::Data,
+            Attrs::empty(),
+        );
+        assert_eq!(
+            "data Bit { Off = 1 }",
+            serialize_desc(&desc).as_ref(),
+            "the circuit slot is invisible when it is empty"
         );
     }
 
