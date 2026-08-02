@@ -224,8 +224,8 @@
 -- WHAT REMAINS OPEN, stated where a reader meets it. Associativity of
 -- `match-comp` is a module parameter twice over — `match-remove-comp` and
 -- `match-unhit-comp`, discharged at `Ob = ⊥` for satisfiability only. The cut
--- half of the route to them is the two lemmas above; the WIRE half is
--- instrumented but not closed. `match-comp-cut` closes because a cut leaves the
+-- half of the route to them is the two lemmas above; the WIRE half is the two
+-- below it. `match-comp-cut` closes because a cut leaves the
 -- second wiring's sources alone, so the composite looks up the same source the
 -- operand did. Threading a WIRE moves the lookup: the composite's leading
 -- source sits at `Exchange.outer (insert-swap spot c)` where the operand's sat
@@ -266,22 +266,32 @@
 -- withdrawn and stays withdrawn: one was owed. What the packaging changed is
 -- what it cost to pay.
 --
--- WHAT IS LEFT IS ASSEMBLY, and half of it is done. Above the instruments the
--- route runs: `match-comp` against a threaded wire, then `match-remove-comp` by
--- rebuilding the FIRST factor — whose capped branch is `match-comp-cut`, already
--- proved, so only the through branch is owed. That branch rebuilds the SECOND
--- factor too, and splits in two:
+-- BOTH HALVES OF THE WIRE CASE ARE PROVED, and what is left above them is
+-- assembly. The route runs: `match-comp` against a threaded wire, then
+-- `match-remove-comp` by rebuilding the FIRST factor — whose capped branch is
+-- `match-comp-cut`, so only the through branch is owed, and that branch rebuilds
+-- the SECOND factor too and splits in two:
 --
---   * `match-comp-plug` — the second wiring carries the strand on to a sink.
---     Proved. It mirrors `match-comp`'s recursion, and past that it costs only
---     the wire apart-lemmas.
---   * the fused half — the second wiring CAPS the strand's sink to another of
---     its sources, which is then traced back through the first. Not written.
---     Its case tree is the one place where the removed source has to be compared
---     with the cut's inner port, so it consumes `match-remove-cut-apart` and
---     `match-remove-cut-same`, and its deepest branch rebuilds the first
---     wiring's tail from an inverse lookup to reach `match-unhit-insert-apart` a
---     second time. No coherence is owed on it and no instrument is missing.
+--   * `match-comp-plug` — the second wiring carries the strand on to a sink,
+--     and the composite is a wire threaded into it at the two operands' ends.
+--   * `match-comp-fuse` — the second wiring CAPS the strand's sink to another
+--     of its own sources, which is then traced back through the first, so two
+--     through strands fuse into one cap. Its case tree is the one place where a
+--     removed source is compared with a cut's inner port, so it is where
+--     `match-remove-cut-same` and `match-remove-cut-apart` are spent.
+--
+-- Both mirror `match-comp`'s own recursion and pay the same measure. NO
+-- COHERENCE IS OWED ON EITHER, and for the second that was a prediction and is
+-- now a measurement. Its deepest branch traces a sink back at a position TWO
+-- threadings have moved, and what supplies that is not a fact relating two
+-- lookups at different positions — it is the REBUILD used a second time, on the
+-- first factor's tail, from the very inverse lookup that produced it, so
+-- `match-unhit-insert-apart` reaches a position no lookup can be pushed past.
+-- `fuse-trace` is that step and it is the whole of the extra cost.
+--
+-- The one view lemma that half foresaw was owed and is written: `insert-view-sym`
+-- above, since `match-unhit` consults the view in the opposite argument order
+-- from `match-remove` and one verdict has to be read both ways.
 --
 -- `match-unhit-comp` is the second parameter and is not analysed to this depth;
 -- the same instruments are what it will use.
@@ -1497,6 +1507,7 @@ module _ {ℓ} {Ob : Set ℓ} where
   ... | apart i₀ k₀ | refl =
     cong exchange-tail (insert-view-apart-swap i k i₀ k₀ v)
 
+  -- the apart verdict as an exchange, read from the other side
   insert-view-apart-swapʳ
     : ∀ {w u Δ Δ′ Δ″ C₀}
     → (c : Insert Ob w Δ′ Δ)
@@ -1515,6 +1526,43 @@ module _ {ℓ} {Ob : Set ℓ} where
     ≈⟨ insert-swap-invol c ins₀ ⟩
       exchange _ c ins₀
     ∎
+
+  -- AND THE VERDICT DOES NOT CARE WHICH POSITION IS ASKED ABOUT FIRST. The two
+  -- lookups consult `insert-view` in OPPOSITE argument orders — `match-remove`
+  -- puts the position it is removing first and `match-unhit` puts the position
+  -- it is tracing back first — so a proof that meets both lookups at one pair
+  -- of positions needs one verdict read both ways. Nothing moves but the two
+  -- halves of an `apart`, which trade places.
+  --
+  -- The `tail` clause is the unfolding lemma the recursive clause's own `with`
+  -- would otherwise hide, and it is stated separately for that reason and no
+  -- other.
+  insert-view-tail
+    : ∀ {x y w A B C Δ}
+    → (i : Insert Ob x A Δ)
+    → (k : Insert Ob y B Δ)
+    → (i′ : Insert Ob x C B)
+    → (k′ : Insert Ob y C A)
+    → insert-view i k ≡ apart i′ k′
+    → insert-view (tail {y = w} i) (tail k) ≡ apart (tail i′) (tail k′)
+  insert-view-tail i k i′ k′ e with insert-view i k | e
+  ... | .(apart i′ k′) | refl = refl
+
+  insert-view-sym
+    : ∀ {x y A B C Δ}
+    → (i : Insert Ob x A Δ)
+    → (k : Insert Ob y B Δ)
+    → (i′ : Insert Ob x C B)
+    → (k′ : Insert Ob y C A)
+    → insert-view i k ≡ apart i′ k′
+    → insert-view k i ≡ apart k′ i′
+  insert-view-sym head head i′ k′ ()
+  insert-view-sym head (tail k) .head .k refl = refl
+  insert-view-sym (tail i) head .i .head refl = refl
+  insert-view-sym (tail i) (tail k) i′ k′ e with insert-view i k in v | e
+  ... | same | ()
+  ... | apart i₀ k₀ | refl =
+    insert-view-tail k i k₀ i₀ (insert-view-sym i k i₀ k₀ v)
 
   -- Whiskering a matching by a block of wires on the left. Each element of the
   -- block takes the position beside itself, which is one `head` per element and
@@ -1647,8 +1695,6 @@ module _ {ℓ} {Ob : Set ℓ} where
         (Exchange.inner (insert-swap i (Exchange.outer (insert-swap k ins))))
         (Exchange.inner (insert-swap k ins))
         body)
-
-  -- the apart verdict as an exchange, read from the other side
 
   match-remove
     : ∀ {x Γ Δ Θ}
@@ -5535,6 +5581,479 @@ module _ {ℓ} {Ob : Set ℓ} where
     → Unhit y Δ Θ
     → Unhit y Γ Θ
   unhit-comp m (unhit p′ body′) = unhit-post body′ (match-unhit p′ m)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- A WIRE THREADED INTO THE FIRST FACTOR MEETING A CUT IN THE SECOND, at the
+  -- position they share. This is the other half of the WIRE case, and it is
+  -- stated here rather than beside `match-comp-plug` because what the composite
+  -- does IS `removal-fuse`: the strand runs through the first wiring to the
+  -- sink `j`, the second wiring caps `j` to another of its own sources, and
+  -- that source is a sink of the first — so two through strands fuse into one
+  -- cap of the composite.
+  --
+  -- It mirrors `match-comp`'s own recursion, as `match-comp-plug` does. What it
+  -- costs beyond that is the CUT apart-lemmas: the composite consults the
+  -- second wiring one position past the threaded one, so the source it removes
+  -- has to be compared with the cut's inner port, and `match-remove-cut-same`
+  -- and `match-remove-cut-apart` are the two verdicts.
+  --
+  -- ITS DEEPEST BRANCH is the one that was predicted and not measured, so it is
+  -- worth saying what it turned out to need. There the second wiring caps a
+  -- source the first wiring has to trace BACK, and the position it traces back
+  -- at has moved twice — once by the threading, once by the cut's own
+  -- reindexing. What supplies it is not a coherence: it is the rebuild used a
+  -- second time, on the FIRST factor's tail this time, so that
+  -- `match-unhit-insert-apart` reaches a position no lookup could be pushed
+  -- past. `fuse-trace` is that step, and it is the whole of the extra cost.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- A cap of the first wiring is the composite's own and the fused answer
+  -- passes under it. What has to be said is that the two positions `unhit-cap`
+  -- names — the traced-back source pushed past the cap, and the cap pushed past
+  -- it — are read back by `match-cap` in the other order, which is the
+  -- exchange's involution and nothing else.
+  fuse-cap
+    : ∀ {w x z u Γ Γˣ xs Δ″ Θ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (k : Insert Ob z xs Γ)
+    → (β : Match Ob Δ″ Θ)
+    → (u₀ : Unhit u xs Δ″)
+    → removal→match (tail {y = w} i) (removal-fuse β (unhit-cap k u₀))
+      ≡ cap
+          (Exchange.outer (insert-swap i k))
+          (removal→match
+            (Exchange.inner (insert-swap i k))
+            (removal-fuse β u₀))
+  fuse-cap i k β (unhit p t) =
+    begin⟨ bundle (≡ˢ _) ⟩
+      [ M ↦ match-cap (tail i) (tail (Exchange.outer (insert-swap k p))) M ]·
+        match-comp (cap (Exchange.inner (insert-swap k p)) t) β
+    ≈·⟨ match-comp-cap (Exchange.inner (insert-swap k p)) t β ⟩
+      [ e ↦ cap
+              (Exchange.outer (insert-swap i (Exchange.outer e)))
+              (match-cap
+                (Exchange.inner (insert-swap i (Exchange.outer e)))
+                (Exchange.inner e)
+                (match-comp t β)) ]·
+        insert-swap
+          (Exchange.outer (insert-swap k p))
+          (Exchange.inner (insert-swap k p))
+    ≈·⟨ insert-swap-invol k p ⟩
+      cap
+        (Exchange.outer (insert-swap i k))
+        (match-cap (Exchange.inner (insert-swap i k)) p (match-comp t β))
+    ∎
+
+  -- WHAT THE FIRST WIRING SEES OF THE SINK THE SECOND ONE CAPPED. Both moves
+  -- the position made are met by the rebuild rather than by a coherence: the
+  -- outer one commutes the threading past the wiring, and the inner one
+  -- rebuilds the wiring's TAIL from the very inverse lookup that produced it.
+  -- So `match-unhit-insert-apart` is the whole instrument, spent twice, and the
+  -- second spending is what the fused half was written to test.
+  fuse-trace
+    : ∀ {x y u Γ Γˣ Γ₀ Γ₁ ys mid C₀ C₁}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x ys mid)
+    → (b : Match Ob Γ ys)
+    → (ι₀ : Insert Ob u C₀ ys)
+    → (ins : Insert Ob y C₁ C₀)
+    → (p₀ : Insert Ob u Γ₀ Γ)
+    → (m₀ : Match Ob Γ₀ C₀)
+    → match-unhit ι₀ b ≡ unhit p₀ m₀
+    → (p₁ : Insert Ob y Γ₁ Γ₀)
+    → (m₁ : Match Ob Γ₁ C₁)
+    → match-unhit ins m₀ ≡ unhit p₁ m₁
+    → match-unhit
+        (Exchange.outer (insert-swap j (Exchange.outer (insert-swap ι₀ ins))))
+        (match-insert i j b)
+      ≡ unhit-thread
+          i
+          (Exchange.inner (insert-swap j (Exchange.outer (insert-swap ι₀ ins))))
+          (unhit-thread p₀ (Exchange.inner (insert-swap ι₀ ins)) (unhit p₁ m₁))
+  fuse-trace i j b ι₀ ins p₀ m₀ eq₀ p₁ m₁ eq₁ =
+    begin⟨ bundle (≡ˢ _) ⟩
+      match-unhit
+        (Exchange.outer (insert-swap j (Exchange.outer (insert-swap ι₀ ins))))
+        (match-insert i j b)
+    ≈⟨ match-unhit-insert-apart i j (Exchange.outer (insert-swap ι₀ ins)) b ⟩
+      [ u ↦ unhit-thread
+              i
+              (Exchange.inner
+                (insert-swap j (Exchange.outer (insert-swap ι₀ ins))))
+              u ]·
+        match-unhit (Exchange.outer (insert-swap ι₀ ins)) b
+    ≈·⟨ (begin⟨ bundle (≡ˢ _) ⟩
+           [ n ↦ match-unhit (Exchange.outer (insert-swap ι₀ ins)) n ]· b
+         ≈·⁻¹⟨ match-unhit-recover ι₀ b (unhit p₀ m₀) eq₀ ⟩
+           match-unhit
+             (Exchange.outer (insert-swap ι₀ ins))
+             (match-insert p₀ ι₀ m₀)
+         ≈⟨ match-unhit-insert-apart p₀ ι₀ ins m₀ ⟩
+           [ u ↦ unhit-thread p₀ (Exchange.inner (insert-swap ι₀ ins)) u ]·
+             match-unhit ins m₀
+         ≈·⟨ eq₁ ⟩
+           unhit-thread p₀ (Exchange.inner (insert-swap ι₀ ins)) (unhit p₁ m₁)
+         ∎) ⟩
+      unhit-thread
+        i
+        (Exchange.inner (insert-swap j (Exchange.outer (insert-swap ι₀ ins))))
+        (unhit-thread p₀ (Exchange.inner (insert-swap ι₀ ins)) (unhit p₁ m₁))
+    ∎
+
+  mutual
+
+    match-comp-fuse-acc
+      : ∀ {x u Γ Γˣ Δ Δˣ Δ″ Θ}
+      → Acc _<_ (length Γˣ)
+      → (i : Insert Ob x Γ Γˣ)
+      → (j : Insert Ob x Δ Δˣ)
+      → (m : Match Ob Γ Δ)
+      → (ι : Insert Ob u Δ″ Δ)
+      → (β : Match Ob Δ″ Θ)
+      → match-comp (match-insert i j m) (match-cap j ι β)
+        ≡ removal→match i (removal-fuse β (match-unhit ι m))
+    match-comp-fuse-acc a head j m ι β =
+      fuse-head j m ι β (match-unhit ι m) refl
+    match-comp-fuse-acc a (tail i) j (c ∷ b) ι β =
+      fuse-∷ a i j c b ι β (insert-view c ι) refl
+    -- a cap of the first wiring is already the composite's, and the answer
+    -- passes under it
+    match-comp-fuse-acc (acc rec) (tail i) j (cap k b) ι β =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (cap
+            (Exchange.outer (insert-swap i k))
+            (match-insert (Exchange.inner (insert-swap i k)) j b))
+          (match-cap j ι β)
+      ≈⟨ match-comp-cap
+           (Exchange.outer (insert-swap i k))
+           (match-insert (Exchange.inner (insert-swap i k)) j b)
+           (match-cap j ι β) ⟩
+        [ M ↦ cap (Exchange.outer (insert-swap i k)) M ]·
+          match-comp
+            (match-insert (Exchange.inner (insert-swap i k)) j b)
+            (match-cap j ι β)
+      ≈·⟨ match-comp-fuse-acc
+            (rec (insert-shrink (Exchange.outer (insert-swap i k))))
+            (Exchange.inner (insert-swap i k))
+            j
+            b
+            ι
+            β ⟩
+        cap
+          (Exchange.outer (insert-swap i k))
+          (removal→match
+            (Exchange.inner (insert-swap i k))
+            (removal-fuse β (match-unhit ι b)))
+      ≈⁻¹⟨ fuse-cap i k β (match-unhit ι b) ⟩
+        removal→match (tail i) (removal-fuse β (match-unhit ι (cap k b)))
+      ∎
+
+    -- THE WIRE IS THE COMPOSITE'S LEADING SOURCE, so the cut it meets is the
+    -- composite's own head and the trace back is the wire's own position
+    fuse-head
+      : ∀ {x u Γ Δ Δˣ Δ″ Θ}
+      → (j : Insert Ob x Δ Δˣ)
+      → (m : Match Ob Γ Δ)
+      → (ι : Insert Ob u Δ″ Δ)
+      → (β : Match Ob Δ″ Θ)
+      → (u₀ : Unhit u Γ Δ″)
+      → match-unhit ι m ≡ u₀
+      → match-comp (match-insert head j m) (match-cap j ι β)
+        ≡ removal→match head (removal-fuse β (match-unhit ι m))
+    fuse-head j m ι β (unhit p m′) eq =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp (j ∷ m) (match-cap j ι β)
+      ≈⟨ match-comp-∷-capped j m (match-cap j ι β) ι β p m′
+           (match-remove-cut j ι β)
+           eq ⟩
+        [ U ↦ removal→match head (removal-fuse β U) ]· unhit p m′
+      ≈·⁻¹⟨ eq ⟩
+        removal→match head (removal-fuse β (match-unhit ι m))
+      ∎
+
+    -- and otherwise the composite's leading source is the first wiring's own,
+    -- looked up in the second one past the threaded position. Whether it meets
+    -- the cut is the verdict of comparing it with the cut's inner port, and
+    -- that verdict is taken as an ARGUMENT for the reason every scrutinee here
+    -- is: a `with` on it puts the goal past what the unfolding lemmas name.
+    fuse-∷
+      : ∀ {w x u Γ Γˣ ys Δ Δˣ Δ″ Θ}
+      → Acc _<_ (suc (length Γˣ))
+      → (i : Insert Ob x Γ Γˣ)
+      → (j : Insert Ob x Δ Δˣ)
+      → (c : Insert Ob w ys Δ)
+      → (b : Match Ob Γ ys)
+      → (ι : Insert Ob u Δ″ Δ)
+      → (β : Match Ob Δ″ Θ)
+      → (v : InsertView c ι)
+      → insert-view c ι ≡ v
+      → match-comp (match-insert (tail i) j (c ∷ b)) (match-cap j ι β)
+        ≡ removal→match (tail i) (removal-fuse β (match-unhit ι (c ∷ b)))
+    -- IT IS THE CUT'S OWN PORT: the strand is capped to the threaded wire, so
+    -- the composite caps its leading source to the source that wire came from
+    fuse-∷ a i j c b .c β same _ =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (Exchange.outer (insert-swap j c)
+            ∷ match-insert i (Exchange.inner (insert-swap j c)) b)
+          (match-cap j c β)
+      ≈⟨ match-comp-∷-capped
+           (Exchange.outer (insert-swap j c))
+           (match-insert i (Exchange.inner (insert-swap j c)) b)
+           (match-cap j c β)
+           (Exchange.inner (insert-swap j c))
+           β
+           i
+           b
+           (match-remove-cut-same j c β)
+           (match-unhit-insert i (Exchange.inner (insert-swap j c)) b) ⟩
+        [ U ↦ removal→match (tail i) (removal-fuse β U) ]· unhit head b
+      ≈·⁻¹⟨ match-unhit-∷-same c b ⟩
+        removal→match (tail i) (removal-fuse β (match-unhit c (c ∷ b)))
+      ∎
+    fuse-∷ a i j c b ι β (apart c₀ ι₀) ev =
+      fuse-apart a i j c b ι β c₀ ι₀ ev
+        (match-unhit ι₀ b) refl
+        (match-remove c₀ β) refl
+
+    -- IT IS NOT: the cut stands, the lookup happens inside it, and what the
+    -- second wiring does with the leading source is the whole of the rest
+    fuse-apart
+      : ∀ {w x u Γ Γˣ ys Δ Δˣ Δ″ C₀ Θ}
+      → Acc _<_ (suc (length Γˣ))
+      → (i : Insert Ob x Γ Γˣ)
+      → (j : Insert Ob x Δ Δˣ)
+      → (c : Insert Ob w ys Δ)
+      → (b : Match Ob Γ ys)
+      → (ι : Insert Ob u Δ″ Δ)
+      → (β : Match Ob Δ″ Θ)
+      → (c₀ : Insert Ob w C₀ Δ″)
+      → (ι₀ : Insert Ob u C₀ ys)
+      → insert-view c ι ≡ apart c₀ ι₀
+      → (u₀ : Unhit u Γ C₀)
+      → match-unhit ι₀ b ≡ u₀
+      → (r : Removal w C₀ Θ)
+      → match-remove c₀ β ≡ r
+      → match-comp (match-insert (tail i) j (c ∷ b)) (match-cap j ι β)
+        ≡ removal→match (tail i) (removal-fuse β (match-unhit ι (c ∷ b)))
+    -- it ran through, and the same question is asked one wiring along
+    fuse-apart (acc rec) i j c b ι β c₀ ι₀ ev (unhit p₀ m₀) eq₀
+        (through spot body) eqr =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (Exchange.outer (insert-swap j c)
+            ∷ match-insert i (Exchange.inner (insert-swap j c)) b)
+          (match-cap j ι β)
+      ≈⟨ match-comp-∷-through
+           (Exchange.outer (insert-swap j c))
+           (match-insert i (Exchange.inner (insert-swap j c)) b)
+           (match-cap j ι β)
+           spot
+           (match-cap (Exchange.inner (insert-swap j c)) ι₀ body)
+           (begin⟨ bundle (≡ˢ _) ⟩
+              match-remove (Exchange.outer (insert-swap j c)) (match-cap j ι β)
+            ≈⟨ match-remove-cut-apart j ι c c₀ ι₀ ev β ⟩
+              [ r ↦ removal-recut (Exchange.inner (insert-swap j c)) ι₀ r ]·
+                match-remove c₀ β
+            ≈·⟨ eqr ⟩
+              through spot (match-cap (Exchange.inner (insert-swap j c)) ι₀ body)
+            ∎) ⟩
+        [ M ↦ spot ∷ M ]·
+          match-comp
+            (match-insert i (Exchange.inner (insert-swap j c)) b)
+            (match-cap (Exchange.inner (insert-swap j c)) ι₀ body)
+      ≈·⟨ match-comp-fuse-acc
+            (rec (n<1+n _))
+            i
+            (Exchange.inner (insert-swap j c))
+            b
+            ι₀
+            body ⟩
+        [ U ↦ spot ∷ removal→match i (removal-fuse body U) ]· match-unhit ι₀ b
+      ≈·⟨ eq₀ ⟩
+        [ M ↦ match-cap (tail i) (tail p₀) M ]· (spot ∷ match-comp m₀ body)
+      ≈·⁻¹⟨ match-comp-∷-through c₀ m₀ β spot body eqr ⟩
+        [ U ↦ removal→match (tail i) (removal-fuse β U) ]·
+          unhit-tail c₀ (unhit p₀ m₀)
+      ≈·⁻¹⟨ (begin⟨ bundle (≡ˢ _) ⟩
+               match-unhit ι (c ∷ b)
+             ≈⟨ match-unhit-∷-apart ι c b ι₀ c₀
+                  (insert-view-sym c ι c₀ ι₀ ev) ⟩
+               [ U ↦ unhit-tail c₀ U ]· match-unhit ι₀ b
+             ≈·⟨ eq₀ ⟩
+               unhit-tail c₀ (unhit p₀ m₀)
+             ∎) ⟩
+        removal→match (tail i) (removal-fuse β (match-unhit ι (c ∷ b)))
+      ∎
+    fuse-apart a i j c b ι β c₀ ι₀ ev (unhit p₀ m₀) eq₀
+        (capped ins body) eqr =
+      fuse-apart-fuse a i j c b ι β c₀ ι₀ ev p₀ m₀ eq₀ ins body eqr
+        (match-unhit ins m₀) refl
+
+    -- or the second wiring capped it too, and BOTH of the composite's fused
+    -- sources have to be traced back through the first — the second of them at
+    -- a position two threadings have moved, which is `fuse-trace`
+    fuse-apart-fuse
+      : ∀ {w x y u Γ Γˣ Γ₀ ys Δ Δˣ Δ″ C₀ C₁ Θ}
+      → Acc _<_ (suc (length Γˣ))
+      → (i : Insert Ob x Γ Γˣ)
+      → (j : Insert Ob x Δ Δˣ)
+      → (c : Insert Ob w ys Δ)
+      → (b : Match Ob Γ ys)
+      → (ι : Insert Ob u Δ″ Δ)
+      → (β : Match Ob Δ″ Θ)
+      → (c₀ : Insert Ob w C₀ Δ″)
+      → (ι₀ : Insert Ob u C₀ ys)
+      → insert-view c ι ≡ apart c₀ ι₀
+      → (p₀ : Insert Ob u Γ₀ Γ)
+      → (m₀ : Match Ob Γ₀ C₀)
+      → match-unhit ι₀ b ≡ unhit p₀ m₀
+      → (ins : Insert Ob y C₁ C₀)
+      → (body : Match Ob C₁ Θ)
+      → match-remove c₀ β ≡ capped ins body
+      → (u₁ : Unhit y Γ₀ C₁)
+      → match-unhit ins m₀ ≡ u₁
+      → match-comp (match-insert (tail i) j (c ∷ b)) (match-cap j ι β)
+        ≡ removal→match (tail i) (removal-fuse β (match-unhit ι (c ∷ b)))
+    fuse-apart-fuse (acc rec) i j c b ι β c₀ ι₀ ev p₀ m₀ eq₀ ins body eqr
+        (unhit p₁ m₁) eq₁ =
+      begin⟨ bundle (≡ˢ _) ⟩
+        match-comp
+          (Exchange.outer (insert-swap j c)
+            ∷ match-insert i (Exchange.inner (insert-swap j c)) b)
+          (match-cap j ι β)
+      ≈⟨ match-comp-∷-capped
+           (Exchange.outer (insert-swap j c))
+           (match-insert i (Exchange.inner (insert-swap j c)) b)
+           (match-cap j ι β)
+           (Exchange.outer
+             (insert-swap
+               (Exchange.inner (insert-swap j c))
+               (Exchange.outer (insert-swap ι₀ ins))))
+           (match-cap
+             (Exchange.inner
+               (insert-swap
+                 (Exchange.inner (insert-swap j c))
+                 (Exchange.outer (insert-swap ι₀ ins))))
+             (Exchange.inner (insert-swap ι₀ ins))
+             body)
+           (Exchange.outer (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))
+           (match-insert
+             (Exchange.inner
+               (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))
+             (Exchange.inner
+               (insert-swap
+                 (Exchange.inner (insert-swap j c))
+                 (Exchange.outer (insert-swap ι₀ ins))))
+             (match-insert
+               (Exchange.inner (insert-swap p₀ p₁))
+               (Exchange.inner (insert-swap ι₀ ins))
+               m₁))
+           (begin⟨ bundle (≡ˢ _) ⟩
+              match-remove (Exchange.outer (insert-swap j c)) (match-cap j ι β)
+            ≈⟨ match-remove-cut-apart j ι c c₀ ι₀ ev β ⟩
+              [ r ↦ removal-recut (Exchange.inner (insert-swap j c)) ι₀ r ]·
+                match-remove c₀ β
+            ≈·⟨ eqr ⟩
+              capped
+                (Exchange.outer
+                  (insert-swap
+                    (Exchange.inner (insert-swap j c))
+                    (Exchange.outer (insert-swap ι₀ ins))))
+                (match-cap
+                  (Exchange.inner
+                    (insert-swap
+                      (Exchange.inner (insert-swap j c))
+                      (Exchange.outer (insert-swap ι₀ ins))))
+                  (Exchange.inner (insert-swap ι₀ ins))
+                  body)
+            ∎)
+           (fuse-trace i (Exchange.inner (insert-swap j c)) b ι₀ ins
+              p₀ m₀ eq₀ p₁ m₁ eq₁) ⟩
+        [ M ↦ cap
+                (Exchange.outer
+                  (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))
+                M ]·
+          match-comp
+            (match-insert
+              (Exchange.inner
+                (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))
+              (Exchange.inner
+                (insert-swap
+                  (Exchange.inner (insert-swap j c))
+                  (Exchange.outer (insert-swap ι₀ ins))))
+              (match-insert
+                (Exchange.inner (insert-swap p₀ p₁))
+                (Exchange.inner (insert-swap ι₀ ins))
+                m₁))
+            (match-cap
+              (Exchange.inner
+                (insert-swap
+                  (Exchange.inner (insert-swap j c))
+                  (Exchange.outer (insert-swap ι₀ ins))))
+              (Exchange.inner (insert-swap ι₀ ins))
+              body)
+      ≈·⟨ match-comp-fuse-acc
+            (rec
+              (insert-shrink
+                (Exchange.outer
+                  (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))))
+            (Exchange.inner
+              (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))
+            (Exchange.inner
+              (insert-swap
+                (Exchange.inner (insert-swap j c))
+                (Exchange.outer (insert-swap ι₀ ins))))
+            (match-insert
+              (Exchange.inner (insert-swap p₀ p₁))
+              (Exchange.inner (insert-swap ι₀ ins))
+              m₁)
+            (Exchange.inner (insert-swap ι₀ ins))
+            body ⟩
+        [ U ↦ cap
+                (Exchange.outer
+                  (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))
+                (removal→match
+                  (Exchange.inner
+                    (insert-swap i (Exchange.outer (insert-swap p₀ p₁))))
+                  (removal-fuse body U)) ]·
+          match-unhit
+            (Exchange.inner (insert-swap ι₀ ins))
+            (match-insert
+              (Exchange.inner (insert-swap p₀ p₁))
+              (Exchange.inner (insert-swap ι₀ ins))
+              m₁)
+      ≈·⟨ match-unhit-insert
+            (Exchange.inner (insert-swap p₀ p₁))
+            (Exchange.inner (insert-swap ι₀ ins))
+            m₁ ⟩
+        [ M ↦ match-cap (tail i) (tail p₀) M ]· cap p₁ (match-comp m₁ body)
+      ≈·⁻¹⟨ match-comp-∷-capped c₀ m₀ β ins body p₁ m₁ eqr eq₁ ⟩
+        [ U ↦ removal→match (tail i) (removal-fuse β U) ]·
+          unhit-tail c₀ (unhit p₀ m₀)
+      ≈·⁻¹⟨ (begin⟨ bundle (≡ˢ _) ⟩
+               match-unhit ι (c ∷ b)
+             ≈⟨ match-unhit-∷-apart ι c b ι₀ c₀
+                  (insert-view-sym c ι c₀ ι₀ ev) ⟩
+               [ U ↦ unhit-tail c₀ U ]· match-unhit ι₀ b
+             ≈·⟨ eq₀ ⟩
+               unhit-tail c₀ (unhit p₀ m₀)
+             ∎) ⟩
+        removal→match (tail i) (removal-fuse β (match-unhit ι (c ∷ b)))
+      ∎
+
+  -- and the theorem, at the witness the measure supplies
+  match-comp-fuse
+    : ∀ {x u Γ Γˣ Δ Δˣ Δ″ Θ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (m : Match Ob Γ Δ)
+    → (ι : Insert Ob u Δ″ Δ)
+    → (β : Match Ob Δ″ Θ)
+    → match-comp (match-insert i j m) (match-cap j ι β)
+      ≡ removal→match i (removal-fuse β (match-unhit ι m))
+  match-comp-fuse {Γˣ} = match-comp-fuse-acc (<-wellFounded (length Γˣ))
 
   -- ══════════════════════════════════════════════════════════════════════════
   -- ASSOCIATIVITY, OVER THE TWO COMMUTATION LAWS IT TURNS ON.
