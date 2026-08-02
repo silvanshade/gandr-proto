@@ -71,6 +71,8 @@
   Test-code relaxation is `clippy.toml` configuration, never attributes; benches are not test code for these options, so a `harness = false` bench takes a file-level `#![expect(...)]`.
   Fix the source or file a bead — never bury drift in a `// TODO` (`todo` is lint-denied).
 * **Diagnostics through aifix** ([scripting.md](scripting.md)); `mise run cargo:clippy` and `mise run cargo:dylint` are pass/fail gates, not diagnostic-enumeration interfaces.
+* **Iterate lints per touched crate; the wall runs the workspace.** `mise run cargo:clippy <package>…` and `mise run cargo:dylint:local <package>…` accept trailing package names and lint only the named crates on the pinned nightly; bare invocations keep the workspace scope the merge wall composes.
+  While writing or modifying a module, run the scoped form over exactly the affected crate or crates — agent briefs should say so — and rely on the wall's workspace sweep for the composed proof rather than re-running it per iteration.
 * **Project-local Dylint rules.** `mise run cargo:dylint` loads the immutable Trail of Bits v6.0.1 source pin plus `gandr-workflow-dylint`.
   The upstream inventory is exhaustive outside `Experimental` and `Testing` apart from three purposely-ignored lints: seven `General` lints (`non_local_effect_before_unhandled_error` ignored — its "handled" analysis false-positives against `Result`-consuming forms the wall accepts), all nine lints exported by `Supplementary`, and ten `Restriction` lints (`misleading_variable_name` ignored — its name/usage matching is too coarse to be useful; `non_topologically_sorted_functions` ignored — its single caller-before-callee order conflicts with deliberate top-down layouts and is unsatisfiable for shared test fixture helpers).
   Four isolated driver invocations cover project-local rules, ordinary upstream rules, `crate_wide_allow`, and warning-level `register_lints_warn`; `DYLINT_RUSTFLAGS="-D warnings"` makes every late-registered warning fatal.
@@ -79,7 +81,7 @@
   Primitive detection follows aliases and non-nominal structural/generic containers; a semantically named transparent wrapper is the boundary, with explicit utility traits.
   The sole signature exception is a method implementing a trait defined in an external crate.
   This rule proves only that a nominal transparent boundary exists; it does not validate field visibility, conversion traits, documentation, or the rest of the workspace Clippy contract.
-  After any `primitive_signature` remediation, run the package-scoped equivalent of `cargo:clippy` (`--all-targets --features=full -- -D warnings`) before removing that package from a strict-Dylint exclusion.
+  After any `primitive_signature` remediation, run the package-scoped `cargo:clippy` (`mise run cargo:clippy <package>`) before removing that package from a strict-Dylint exclusion.
   This scoped check is a diagnostic prerequisite, never unit-completion evidence: after the source and strict-lane wiring land together, do not complete or leave the remediation unit until the full `mise run gate:merge` wall passes.
   Project-local rules also enforce source-grounded recursive `# Termination` contracts and reject false `input recursion: none` claims.
   `mise run cargo:dylint:local` puts those contracts on the merge wall by running the project-local driver at `-D warnings` over every covered workspace target.

@@ -29,6 +29,8 @@ Run the **narrowest gate that proves your change** before any commit; the merge 
 | `mise run cargo:dylint`             | strict project-local plus pinned upstream rules across Dylint-covered workspace targets                                                       |
 | `mise run agda:check`               | metatheory strict root + OPTIONS policy sweep ([agda.md](agda.md))                                                                            |
 
+`cargo:clippy` and `cargo:dylint:local` accept trailing package names to scope a run to the crates a change touches (`mise run cargo:clippy gandr-theory-computads`); bare invocations keep the workspace scope the wall composes, so per-module iteration and the composed sweep share one task body ([rust.md](rust.md) §"Iterate lints per touched crate").
+
 The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles`, `test:options-policy`, coverage, no-panic, cargo-careful) exists as tasks but is not on the current merge wall; several return with the subject they check as the reboot ports it.
 
 ## The merge wall: `mise run gate:merge`
