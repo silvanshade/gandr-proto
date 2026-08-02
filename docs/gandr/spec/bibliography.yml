@@ -3255,10 +3255,12 @@ ahrens-lafont-lamiaux-2025-2functoriality:
     title: Proceedings of the ACM on Programming Languages
     volume: 9
     issue: ICFP
+    page-range: 643-674
   note: >-
     title and authorship verified from page 1 of the held PDF (the arXiv v2, byte-identical to the
     managed copy); the PACMPL venue and DOI are verified by fetch during the sweep and are not
-    printed on the held artifact
+    printed on the held artifact; the page range is corroborated by a second independent fetch (the
+    LMCS citing-documents record); the ACM article number remains unverified
 
 zeilberger-2008-unity-of-duality:
   type: article
@@ -3523,3 +3525,32 @@ danvy-nielsen-2001-defunctionalization:
     type: proceedings
     title: Proceedings of the 3rd ACM SIGPLAN International Conference on Principles and Practice of Declarative Programming
     page-range: 162-174
+
+zsido-2010-typed:
+  type: thesis
+  title: Typed Abstract Syntax
+  author: ["Zsidó, Julianna"]
+  date: 2010-06-21
+  organization: Université de Nice Sophia Antipolis
+  serial-number:
+    hal: "tel-00535944"
+  url: https://theses.hal.science/tel-00535944v1
+  note: >-
+    title, author as printed ("Julianna ZSIDÓ"), institution, doctoral school (Sciences Fondamentales et Appliquées), discipline (Mathématiques), supervisor (André Hirschowitz), and the defence date 21 June 2010 read from the thesis title page (PDF p. 2) of the acquired copy; the HAL identifier is transcribed from reference [43] of the held 2-functoriality artifact and confirmed on the deposit cover page (PDF p. 1, v1, submitted 14 November 2010); the HAL record carries no NNT and no DOI, and its author field spells the surname without the accent; 334 pages; language English; the statement cited by [@ahrens-lafont-lamiaux-2025-2functoriality] Thm. 8.7 as "Chapter 6" is Theorem 6.4.121, printed p. 94
+
+ahrens-2012-extended:
+  type: article
+  title: Extended Initiality for Typed Abstract Syntax
+  author: ["Ahrens, Benedikt"]
+  date: 2012-04-06
+  serial-number:
+    doi: "10.2168/LMCS-8(2:1)2012"
+    arxiv: "1107.4751"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 8
+    issue: "2:1"
+    page-range: 1-35
+  note: >-
+    title, sole authorship, affiliation, volume, issue, page range 1-35, submission date 13 July 2011 and publication date 6 April 2012 read from page 1 of the acquired PDF, which renders the issue as "(2:01)" while the resolving DOI and reference [4] of the held 2-functoriality artifact render it "(2:1)"; the DOI is transcribed from that reference list and resolves to the LMCS record https://lmcs.episciences.org/1193, from which the arXiv source identifier is verified by fetch; open access under the arXiv non-exclusive distribution licence; its Thm. 3.33 is subsumed by [@ahrens-lafont-lamiaux-2025-2functoriality] Prop. 8.15 with the converse failing at its Ex. 8.16, and its Sec. 5 carries a Coq formalization of the theorem instantiated at the signature of PCF
