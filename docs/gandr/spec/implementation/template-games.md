@@ -3,13 +3,15 @@
 This document owns gandr's adoption of the template-games programme: which objects gandr takes now, which half it defers and on what machinery, the single pairing the whole transfer turns on, the theorems the adoption owes, and the gate that holds every tile-level transfer until two decidable facts about the landed shift machinery are settled.
 
 It exists as its own component because the apparatus is **semantic-foundations technology rather than an importable presentation theorem**.
-Neither source contains a statement gandr can cite to discharge an obligation it already carries, so everything on offer is construction, and the constructions are heavy — which means what adoption buys has to be stated with its price attached, at a length the commissioning ruling cannot hold.
+Neither adopted-line source contains a statement gandr can cite to discharge an obligation it already carries, so everything on offer is construction, and the constructions are heavy — which means what adoption buys has to be stated with its price attached, at a length the commissioning ruling cannot hold.
 
 * Status: **an adopted direction whose constructions are unbuilt; the tile-level gate has reported positive at small-scope-exhaustive grade.** The apparatus was adopted 2026-08-02 on a theorem-grade read of both sources; every rung below is unbuilt, and tile-level transfers are licensed at the gate's own grade by [[#template-games-spike-01]].
   The separation-logic half of the same line is **deferred on machinery rather than adopted or declined**, and it is carried, with the requirements it places on that machinery, at [[proposed/separation-logic]].
 * **The read's confidence is carried and never upgraded.** Each claim about the sources names the statement it rests on; the statements the read took on structure rather than line by line, and the gandr-side facts it inferred rather than proved, are marked where they are used and collected at [[#Source and confidence]].
 * The ruling that commissioned the read is the device decline and its named replacement direction at [[circuit-terms#The design questions]], recorded there as `circuit-terms-question-16`; the interchange-strength decision the corpus already meets this line at is [[../metatheory#Interchange, by layer]].
   Both are linked rather than restated, and nothing here re-opens either.
+* **Two further sources are read against this line rather than adopted from it, and each is cited at its own statements.** The differential-linear-logic template model [@mellies-2019-template-games-dll] carries a span-composition hazard the cobordism route inherits, together with the localization that fixes it ([[#The span hazard the cobordism route inherits]]); the layered object-based line [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered], with the extended technical report that carries its concurrent proofs [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr], is read as a **third carrier** for the disconnection axis and for the quotient ([[#The layered line, read as a third carrier]]).
+  Neither is adopted; the second is argued against as a wholesale carrier and imitated only as a shape ([[#What stays out of scope]]).
 
 ## The adopted object, and the half that waits on the memory model
 
@@ -146,6 +148,10 @@ The source is polarized and shallow.
 The allocation set — plain disjointness there — maps **plausibly** to internal-wire freshness, which the corpus witness plan already carries as the internal-wire binder.
 The lock set has **no gandr counterpart whatsoever**, and that absence is not a gap to be filled: it is the load-bearing edge of the part that stays out whatever the memory model becomes ([[proposed/separation-logic#What stays out of scope regardless]]).
 
+**A third carrier corroborates the polarized direction, and the corroboration is a worked argument rather than an analogy.** The layered line's ticket-lock congruence licenses commutation by **read-passivity on a shared location**: its rules swap a read past an increment on the _same_ object and swap two reads of it, and the swaps are justified by preservation of the happens-before order rather than by disjointness of support [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 7.2].
+That is the licence the polarized footprint promises and the incomparable-positions conjunct refuses, obtained on a carrier that shares nothing with either source of this line ([[#The layered line, read as a third carrier]]).
+It is **evidence for the direction and not a contribution to [[#template-games-rung-03]]**: that source computes no footprint and derives no independence relation from an action's semantics ([[#Recorded absences]]).
+
 **The guard fence, stated so it cannot be read as a licence.** The polarized test is **prototyped beside the decided guard and never replaces it unproven**.
 The decided guard is the three-conjunct one recorded at [[circuit-terms#circuit-terms-spike-07]] — incomparable positions, trivial cell-pair overlap, and each match image still convex in the other's reduct — and a polarized independence test that licensed more without a proof that it licenses only what the guard would have licensed would be a silent weakening of a TCB-adjacent quotient.
 What the prototype may do is exhibit the larger class; what it may not do is decide a commutation the guard refuses.
@@ -230,6 +236,39 @@ The constraint is therefore normative for the adoption and not an implementation
 What it did **not** establish is that gandr's certificate supports can be presented in that ambient, and the argument fails outright if they must be computads.
 That is [[#template-games-rung-01]].
 
+## The ambient hypothesis is level-dependent
+
+**The two adopted-line sources sit at different interchange strengths, and they therefore require different ambient hypotheses; the obligation list as first drafted treated them as one substrate.** Adhesivity is the hypothesis of the **cospan-and-pushout** level — the primary's level, where the ambient of asynchronous graphs is adhesive because it is a presheaf category [@mellies-stefanesco-2020-csl, rmk 3.2] and horizontal composition is total because the ambient has pushouts [ibid., thm 1.2, thm 2.2].
+It is **not** the hypothesis the Gray level needs, and the substrate says so in its own words.
+
+**At the Gray level the ambient is monoidal and not cartesian, and the replacement hypothesis is named rather than gestured at.** Because the category of small 2-categories under the Gray tensor is monoidal rather than cartesian, the template formalism is upgraded from a category with finite limits to **a monoidal category with coreflexive equalizers, preserved componentwise by the tensor** [@mellies-2021-template-games, sec I].
+The replacement machinery is four statements, and the first of them is proved rather than assumed.
+
+* **The precondition holds for the Gray tensor**: it preserves coreflexive equalizers componentwise [ibid., prop 5, sec IV-B, eqn 41, appendix C].
+* **Horizontal composition becomes a limit rather than a colimit.** The horizontal composite of bicomodules is the **equalizer** of a coreflexive pair [ibid., sec VI-B, def 4], and the componentwise-preservation assumption is what makes that composition associative [ibid., thm 2].
+* **A template becomes a monad in a weak double category of comodules** rather than an internal opcategory in cospans: an internal category in the monoidal ambient is a monad in $"Comod"(S)$ [ibid., def 5, sec VII-A].
+* **The translation out of the asynchronous-graph world does not preserve cartesian products, and does preserve equalizers** [ibid., sec V-B] — which is the load-bearing sentence, because it is what makes the upgrade available at all.
+
+**So the ambient work is owed twice rather than once, and the two obligations are not substitutes.** Adhesivity and finite completeness buy the cospan-and-pushout formalism [@mellies-stefanesco-2020-csl, rmk 3.2] together with [@mellies-2021-template-games, prop 4]; coreflexive equalizers preserved componentwise buy the Gray one.
+This reshapes [[#template-games-rung-01]], [[#template-games-rung-04]], and [[#template-games-rung-05]], and it is recorded as a **level-dependence** rather than as a replacement: neither hypothesis corrects the other, and a rung that names one without naming its level has named half a precondition.
+
+**Grade.** Whether a store-transition ambient gandr would need has coreflexive equalizers preserved componentwise by whatever tensor gandr would put on it is **not established**.
+What is established is that this is the precondition the source uses, and proves, for its own ambient.
+
+## What the Gray level costs, and the reason behind a decision the corpus already took
+
+**The deadlock defect the corpus records is caused by a simultaneous-move 1-cell, not by strictness in the abstract.** The concurrent template's tensor is the **cartesian product** of the underlying categories [@mellies-2021-template-games, sec I, eqns 23, 24], and the two orders of playing one move on each side are identified there with the **diagonal map** of that product [ibid., eqns 26-28] — so the categorical interpretation believes, wrongly, that two strategies could resolve a deadlock by playing both moves synchronously.
+The Gray tensor's fix is a presentation fact: 1-cells are freely generated by the two families that move one side at a time, so **there is no diagonal to be resolved into**, and the two orders stay distinct 1-cells joined by an invertible commutation [ibid., appendix B, eqns 56, 57, 60, 61].
+
+**This is the semantic reason behind a decision the corpus states without one.** The boundary language declines two simultaneous rewrite arguments because that spelling denotes horizontal composition ([[../metatheory#Interchange, by layer]]); the simultaneous-move generator is exactly what fabricates the deadlock resolution, so the corpus's refusal and the Gray tensor's design are the same decision taken twice.
+Nothing here re-opens that ruling — this supplies its reason.
+
+**The price of the top interchange level is exactly stated, and it is smaller than it looks.** The comparison 2-functor from the Gray tensor to the cartesian product is **locally fully faithful** [ibid., sec IV-A, eqns 38, 39]: a 2-cell of the Gray tensor is exactly a pair of component 2-cells, so the whole price is extra 1-cells plus one invertible connecting 2-cell per pair, and **no new 2-cell data whatsoever**.
+Presented by generators and relations, the invertible interchanger costs **four relation families** — functoriality of the two one-sided injections, invertibility of the commutation, its naturality on both sides, and its coherence [ibid., appendix B, eqns 62-65] — and that is the complete obligation list if gandr ever presents its own interchange witness that way.
+
+**And the two adopted-line sources exhibit two strengths of one slot, which is what [[#template-games-rung-05]] has to name.** The comparison carrying the shuffle tensor to the Gray tensor is an **isomorphism** [ibid., sec V-B, sec VIII], while the same slot in the primary is a **non-invertible lax coercion** [@mellies-stefanesco-2020-csl, thm 4.4].
+That is the corpus's own interchange stratification exhibited inside a single programme ([[../metatheory#Interchange, by layer]]), and a laxator result that does not say which level it proves is a result about an unnamed structure.
+
 ## The environment polarity a template forces
 
 **A template $T = (T[0], T[1], η, μ)$ is an internal opcategory in the cospan bicategory over the store ambient** [@mellies-stefanesco-2020-csl, thm 1.1, def 2.1, sec 2.2], and its content for gandr is one inclusion, $T[0] ⊆ T[1]$: the object of ambient steps sits inside the object of all steps [ibid., sec 3.3].
@@ -255,6 +294,21 @@ A double category whose horizontal composition declines is a **virtual** double 
 
 **One unmatched step is worth naming, because it is a place gandr has less structure rather than more.** The relabel along $μ : T[2] → T[1]$ records **which side performed each half** of a composite. gandr composition erases nothing at that step — not because it is careful, but because it never made the distinction, which is the same absence the environment polarity names from the other direction.
 
+## The span hazard the cobordism route inherits
+
+**Composing spans by ordinary pullback does not preserve their 2-cells, and the source that records it calls the phenomenon troublesome and remarkable.** In the games bicategory of [@mellies-2019-template-games-dll, sec III-A] the 2-cells are **not preserved by pullbacks of spans**: a natural isomorphism between functors is not transported to a pair of reversible 2-cells in the span bicategory at all, but to a pair of **cospans of simulations**, through a cylinder category [ibid., sec III-B, eqns 26, 27].
+Certificates composed as spans over a store ambient would inherit exactly that, and the primary source of this line does not flag it.
+
+**The fix is a localization, and it is what prices the double-category rung.** Replace each hom-category by its **homotopy category**, localized at the weak equivalences, and compose by **homotopy pullbacks** [ibid., sec III-C, sec III-D, eqn 28].
+When the model structure is right proper the ordinary pullback along a fibration already computes the homotopy pullback [ibid., sec IV-A], which is why every structural map of that source's template carries a fibrancy or fibration condition.
+So the price of composing certificate spans **and keeping their 2-cells** is a fibrancy discipline on the template plus a localization at replay-equivalences.
+
+**The shape is already in gandr's carrier, which is what makes the hazard worth recording rather than merely noting.** Certificate identity is itself a localization at replay-equivalence — the identity forgets the derivation and keeps the boundary, and the corpus records it as strictly coarser than the induced-bijection quotient ([[../metatheory#The certificate algebra]]) — so the localization the fix asks for is not a new construction but an identity gandr already has.
+What follows for the obligation is that [[#template-games-rung-04]] must say **which** of two targets it means: the cobordism double category in a 1-category, or the same construction up to homotopy.
+
+**Grade, and this is the weakest transfer in the document.** The non-preservation is proved for spans in a 2-category; **whether gandr's certificate 2-cells live in a 2-categorical setting in the required sense is not established**, and if they are locally posetal or discrete the hazard is vacuous.
+It is therefore carried as a question rather than as a finding ([[#template-games-question-07]]).
+
 ## The proof-scope of the derived Hoare inequality
 
 **The corpus's claim stands, and this section exists to keep it scoped rather than to weaken it.**
@@ -279,12 +333,116 @@ The disposition is [[#template-games-question-05]].
 
 **The appendix B verification was read as a case analysis and was not checked**, so the "verified for the code templates" half is carried at the source's word.
 
+## The layered line, read as a third carrier
+
+**A third source is read against this line rather than adopted from it, and what earns it a place here is that its carrier is disjoint from both of this line's.** The layered object-based line models each layer as an object-based game over coherence spaces [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered], with the proofs of its concurrent fragment in its extended technical report [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr].
+It supplies no statement gandr can cite either.
+What it does supply is four decisions this line leaves open: what an object would have to be, whether that carrier could be adopted wholesale, where the quotient's cost actually falls, and whether a **disjoint** parallel product exists anywhere in the neighbourhood.
+
+**What the carrier buys is one hinge rather than three.** A regular map is determined by a linear map, hence by its action on one overlay event at a time, so a per-method table is the whole implementation [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, thm 2.7, ex 2.8]; a regular map **is** a coalgebra morphism between free coalgebras [ibid., sec 6.3], which is the hinge, because relaxing "free" to "concurrent object space" is precisely what later buys the parallel product; and composition is total and associative [ibid., def 2.9, def 5.2].
+
+**What it costs is four clauses of definitions rather than four design preferences.** The realization of an overlay event may not depend on where in the trace it occurs beyond what its own underlay segment records, and no overlay event may be realized by a non-contiguous underlay fragment [ibid., def 2.6]; a linear map may not identify two coherent inputs [ibid., def 2.3]; and **there is no parallel product at all before the quotient** — the category of regular maps has no tensor, which that source attributes rather than proves [ibid., sec 6].
+
+**Certified refinement does not bear on gandr's certificate composition, and the reason is the level rather than totality.** Certification there is a **property of a morphism over a total base** — a map of functorial refinement systems [ibid., def 3.14, def 3.16, def 5.3, sec 5.3] — and it composes by a bare existential chain with no side condition, at every one of its three levels [ibid., def 2.9, def 3.8, sec 6.5].
+In gandr the certificate **is** the morphism, and its composition is partial, acyclicity-gated, and declines with the cycle as its diagnostic ([[../metatheory#The certificate algebra]]).
+A refinement system's refinements compose whenever the base does, and gandr has no total base for them to sit over — so that framework can neither license nor shape the virtual variant [[#template-games-rung-04]] owes.
+
+**And the carrier is provably blind to the distinction gandr's third verdict is.** The functor from layers to regular maps is **full but not faithful**, and the source states the cause: two strategies differing only on partial behaviours have the same image, because the functor captures exactly the complete behaviours [ibid., prop 5.4, sec 5.3]. gandr's third verdict is declined-within-budget, which is a partial behaviour ([[../metatheory#The certificate algebra]]).
+**That is a reason against adopting the carrier rather than a cost of adopting it**, and it is recorded as such at [[#What stays out of scope]].
+
+**One transferable rule carries the source's own impossibility proof: an identification a map cannot make, a quotient of its source can.** For two interleavings of two independent increments there is **no linear map** sending both to one sequence, because the linear-map condition would force the two interleavings equal [ibid., sec 6, def 2.3], and the whole concurrent-object-space apparatus exists to route around that.
+The gandr consequence is a placement ruling rather than a hazard: replay-equivalence deliberately identifies two confluence certificates that join by different routes, so on this carrier that identification could not be the action of a map — it would have to be a congruence on the source, which is where the corpus already puts the shift quotient ([[../metatheory#The certificate algebra]]).
+
+## What an object would have to be, and which gandr datum could be one
+
+**That source's unit of sharing is an object, and it is four requirements rather than an intuition** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 2.1, def 3.1, sec 6, sec 7.1].
+An object is **named in the alphabet** before anything else happens; it carries an **operation interface**; its **state is encapsulated**, so no state appears in any move; and it is **used sequentially inside while being unconditionally independent outside** — a token of one object and a token of another are always coherent [ibid., sec 6] and [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, lem C.5].
+In one line: a **maximal unit of sequential dependence**, named statically, carrying an interface and hidden state.
+**The four requirements are the source's; compressing them into that line is the read's.**
+
+**The requirement has teeth, and they are the declined device mapping's teeth one level up.** Naming plus unconditional cross-coherence means **independence is declared on the alphabet**, which is verbatim the defect that closed the device mapping ([[circuit-terms#circuit-terms-question-16]]).
+So no gandr candidate counts until it is shown to escape that, and there are exactly two escape conditions — they are also the axes the ranking is taken on: the naming must be **read off the substrate** rather than declared, and the partition must be **stable** under the rewrites the certificate performs.
+
+| candidate                                      | verdict                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **the connected component of the store graph** | **the best fit, and the only candidate whose disjointness gandr proves rather than declares.** The merger's incidence theorem gives both directions, so a merge of two connected shapes has exactly two components and they are the operands ([[../metatheory#The carrier, as landed]]) — the source's unconditional cross-coherence, obtained structurally. It is named only **per certificate**, it has no operation vocabulary and no hidden state, and **stability fails**: a rewrite that connects two components fuses them |
+| a store region cut out by a hole or interface  | **the right shape for what an object _is_, and not a rival.** A region with a boundary interface has a signature and hidden wiring, and the corpus already carries the construction ([[../metatheory#Holes]]); but two regions sharing a boundary wire are not independent, so unconditional cross-coherence holds exactly at the empty-interface case — which is the row above. Adopt it as that row's description                                                                                                               |
+| a wire, port set, or boundary occurrence       | **right datum, wrong level: this is the footprint, not the object.** It has no operations and no state, and making a shared wire a shared object makes "shares a wire" mean "dependent", when a wire two applications only read is the permitted read/read overlap the polarized direction exists to license ([[#Footprints are polarized, and that is what licenses more]])                                                                                                                                                      |
+| a type — a palette colour, a sort              | **refuted, and already refuted in the corpus**: gandr's types are resources ([[circuit-terms#circuit-terms-question-16]]), and one cell application touches several colours at once, so no token is indexed by exactly one type and the naming requirement cannot even be stated                                                                                                                                                                                                                                                  |
+| a cell — a generator of the cell alphabet      | **a category error, and the same one already ruled on.** A cell is an **operation of a signature** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, def 3.1] — what a token is built from, not what tokens are indexed by — so making cells the objects would index every application by its rule and make two occurrences of one cell never independent, which is exactly the commutation the shift equivalence earns per pair                                                                                       |
+
+**No candidate wins both axes, so the recommendation is a composite, and it is carried as an open question rather than as a ruling** ([[#template-games-question-08]]): name objects **per certificate** off the start position's component decomposition, take the region reading as the description of what those objects are, and make "preserves the decomposition" a **certificate-level side condition** rather than a morphism.
+
+**A cross-cutting caution travels with all of it.** That source carries **two** indexings — one by **agent**, who executes an operation, and one by **object**, what is touched [ibid., sec 6, sec 7.1] — and its ticket-lock congruence needs both at once [ibid., sec 7.2]. gandr's parallel-replay direction is an **agent** axis and the disconnection axis is an **object** axis; merging them would repeat, on this source, the game-polarity-against-footprint-polarity collision this line fences off ([[#Recorded absences]]).
+
+## What the third carrier decides about the quotient
+
+**The quotient's two conditions cost gandr very differently, and only one of them is expensive.** A concurrent object space is the object space quotiented by a **coherent congruence** — an equivalence contained in the coherence relation and closed under two-sided contexts [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.3, def 6.2].
+
+* **Coherence is cheap, and arguably free.** Related traces are permutations of one another, so their first difference is a swapped pair of **distinct** operations, and two distinct operations are always coherent under the standard coherence relation [ibid., ex 2.2, sec 5.2].
+  **This is a reading and not a source claim** — the source never states it — and it depends on gandr's tokens being operation-and-result pairs, which the read did not check against gandr's own encoding.
+* **Congruence is the expensive half, and it lands on a fence the corpus already has.** Two-sided context closure demands that independence be a **context-free** property of the two adjacent tokens [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.1, prop C.2, prop C.3], and gandr's third guard conjunct — each match image still convex in the other's reduct — is store-dependent.
+  **The verdict is conditional and the condition is already recorded**: on today's alphabet that conjunct is discharged outright on a store certified left-connected over an acyclic target ([[circuit-terms#circuit-terms-question-15]]), so gandr's shift relation is context-free today and would be a congruence, and it stops being one at exactly the moment the alphabet change lifts that fence.
+  Same fence and same trigger as that entry, which is corroboration that the fence is load-bearing for more than the guard.
+  **That the demand is context-freeness is a reading of the proof's shape**, not a requirement the source states.
+
+**A behaviour there is a clique, and the clique is forced by determinism at the proof.** An object is a clique of the object space [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, def 2.4] and an object strategy's even-length plays are one [ibid., prop 5.5]; the mechanism is that in a deterministic strategy the largest common prefix of two even-length plays is even-length [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop B.6, lem B.1], with determinism the strategy condition [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, def 3.11(3)].
+**And that source's own nondeterminism section does not supply the accommodation**: a non-deterministic layer interface is a **set of deterministic** strategies, upward closed under the refinement order, with certification quantified over the set [ibid., def 4.1, def 4.2].
+That is **specification** nondeterminism — which deterministic object you turned out to have — and not branching within a run.
+The distinction is recorded because that section reads, from its title alone, like the accommodation gandr needs.
+
+**The conflict this creates survives at the level of the strategy and is refuted at the level of the single run.** The verdict on `gandr-9os.10` settled the gandr side: an individual certificate's **replay** takes no choices at all — the recorded step list is the control flow, with no tie-break, no index choice, and no fallback re-search — while the certificate **family** over a peak is genuinely nondeterministic, because the overlap enumerator emits one entry per unifier and never collapses them and the completion loop chooses.
+Determinism in the source is a property of a **strategy**, a set of plays [ibid., def 3.11(3)], which is exactly the level at which the conflict survives; the single-run reading is refuted.
+**What the surviving conflict actually names is that gandr has no canonical step list per boundary** — replay-equivalence identifies certificates with different step lists deliberately ([[../metatheory#The certificate algebra]]) — and that, rather than intra-run branching, is what a clique requirement would need.
+
+**Grade.** The replay half is **structural and exhaustive over the replay path, given a fixed store**, at the verdict's own grade and no stronger.
+It carries one named gap that is **not** nondeterminism: a recorded step names its cell by store index, so replay is a function of certificate and store rather than of certificate and cell multiset.
+That gap is recorded on `gandr-9os.10` rather than here, because it is a referential weakness of the certificate datum and not a fact about this line.
+
+## The disjoint parallel product the disconnection axis wanted
+
+**The disconnection axis has a shape to imitate after all, and it is the one thing this read found that the primary source cannot give.** The primary has **no disjoint parallel product** — its parallel product is a synchronizing pullback over a shared object ([[#Where the fit fails]]) — whereas the layered line has one: for two concurrent object spaces the tensor **is** a concurrent object space, that category is symmetric monoidal, and the certified category inherits the product through the interleaving morphism [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, eqn 9, prop 6.5, prop 6.6, sec 6.5].
+The proofs live in the technical report and were read there [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.4, lem C.5, cor C.6, prop C.7, prop C.8].
+
+**Its hypotheses are exact, and there are three of them plus nothing.**
+
+* **Disjoint alphabets with unconditional cross-coherence.** The carrier is the "with": tokens are the disjoint sum, and a token of one side is always coherent with a token of the other [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6] and [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, lem C.5].
+* **Independence between components defined by projection, not derived.** Two traces are related exactly when their projections are, so every swap of adjacent tokens from different components is in the tensored relation automatically — no side condition, no footprint, no test [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.4].
+* **Each component's relation is a coherent congruence on its own component** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.4].
+* **Nothing else** — no finiteness, no well-foundedness, no acyclicity, and no determinism beyond what the carrier already has.
+  The read checked those proofs for a smuggled hypothesis and found none.
+
+**One of those hypotheses is the single place this source's characteristic weakness is not gandr's.** Where the source **assumes** disjoint token sets with unconditional cross-coherence, gandr **proves** the corresponding fact: the merger's incidence theorem gives both directions, so a merge of two connected shapes has exactly two components and they are the operands — disconnection is what the substrate says rather than what the engine arranges ([[../metatheory#The carrier, as landed]]).
+The projection hypothesis survives too, and exactly where it is needed: across genuinely disconnected components the guard's third conjunct is vacuous, because an application confined to one component cannot create a directed path in the other and therefore cannot destroy the other's convexity.
+**That last step is an argument about gandr's convexity hazard rather than a claim about the source**, and the fence of the previous section bites only on the within-component relations.
+
+**The third hypothesis is an obligation this line already owes, arriving from the other side.** Each component's relation being a coherent congruence is the layered line's analogue of the asynchronous-graph axioms, and that line concedes it has **no correctness criterion** for its congruences [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8] — the concession [[#template-games-criterion-01]] records the shift-quotient axioms as answering.
+
+**And the caveat is the device mapping's objection recurring.** The tensored relation is defined on a **fixed** decomposition, and the certified concurrent category has no morphism whose source and target decompose differently, so **a rewrite that fuses two previously disconnected components has no image in the construction** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.4, prop C.7] together with [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.5].
+The product therefore licenses per-component independence only for **decomposition-preserving** certificates — the same certificate-level side condition the granularity ranking reaches from the other direction ([[#template-games-question-08]]).
+
+**What it would license, priced in three.**
+
+* **A stated theorem where the corpus has a design ruling.** For disjoint components the true-concurrency presentation and the interleaving-modulo-swap presentation are the same object, by an isomorphism of coalgebras [ibid., eqn 9] and [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr, prop C.7].
+  The corpus already rules that on polarized or disjoint boundaries sequential and parallel composition coincide ([[../metatheory#Interchange, by layer]]); this is that ruling as a theorem, on a third carrier, with its hypothesis named.
+* **The discriminating hypothesis of the interchange stratification is sharing, not strength.** The simultaneous-move presentation is a **theorem** for disjoint components here and a **defect** for interacting ones at the Gray level ([[#What the Gray level costs, and the reason behind a decision the corpus already took]]), and the difference is that disjoint tokens are unconditionally coherent, so nothing is left to deadlock.
+  That clause is what makes the corpus's stratification a stratification rather than a menu, and the corpus does not carry it.
+  **The comparison is the read's**: neither source compares itself to the other in those terms, and the layered documents never mention deadlock at all ([[#Recorded absences]]).
+* **A compositional certified product with a genuinely local proof obligation.** Certify each component's certificate against its own component in isolation and obtain the composite by the product — the shape the source demonstrates when a purely local sequential refinement condition discharges a concurrent global one [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 6.5, sec 7.1].
+  This is what [[circuit-terms#circuit-terms-question-16]] declined the device mapping for lacking, and what [[#Where the fit fails]] records the primary as not supplying.
+
+**Priced honestly, it is a shape to imitate and not a theorem to cite.** The carrier is coherence spaces where gandr's is a labelled directed hypergraph; the product inherits the missing correctness criterion; and it inherits the stability caveat above.
+Its own symmetric-monoidal statement is carried on its statement rather than on a proof, in either document ([[#Source and confidence]]).
+
 ## The theorems owed
 
 Six obligations.
 **None of them is quoted from the sources**: each is a gandr obligation that the sources' shape implies, and **none discharges an obligation gandr already carries** — the programme adds theorems before it removes any.
 
 Each carries what it would newly warrant, because an obligation with no stated payoff cannot be prioritized against the ones beside it.
+
+**The six are cited by link and never by ordinal, and their identifiers are the rung anchors below.** A reading of this line proposed minting them as `template-games-theorem-01` through `template-games-theorem-06` so that a mapping taken against them would survive being quoted elsewhere; the six already carry stable anchored identifiers — [[#template-games-rung-01]] through [[#template-games-rung-06]], in that order and with those numbers — so the proposal is satisfied by the anchors that exist rather than by a second name for each.
+**Nothing here carries two identifiers**, because a colliding reference reads as precise and is worse than no reference at all; anything citing the proposed names resolves them onto the rung anchors one for one, and the numbering is stable in both directions.
 
 ### template-games-rung-01
 
@@ -297,7 +455,12 @@ Expected **free** by the presheaf-topos route the corpus already records for lab
 **Adhesivity is not the only ambient condition the apparatus needs, and the two are owed separately.** Adhesivity is what the soundness proofs consume; **finite completeness** is what makes the template formalism exist over asynchronous graphs at all, and that one is bought by determinism rather than by the presheaf route [@mellies-2021-template-games, prop 4, prop 6, appendix A].
 This rung covers the first; the second rides [[#template-games-rung-02]].
 
+**And adhesivity is the hypothesis of one level rather than of the apparatus.** The Gray level wants a **monoidal, not cartesian** ambient with coreflexive equalizers preserved componentwise by the tensor, and horizontal composition by equalizer rather than by pushout ([[#The ambient hypothesis is level-dependent]]).
+So this rung is the **cospan-and-pushout** level's ambient obligation; the Gray level's is a second, separate obligation, and neither discharges the other.
+A verdict on this rung therefore names its level, and the reshaping is a statement of level-dependence rather than a substitution of one hypothesis for the other.
+
 **Grade.** Satisfiability is **inferred, not proved** — the read did not establish that gandr's certificate supports can be presented in that ambient.
+Nor was it established that the ambient gandr would need satisfies the **Gray** level's condition; what is established there is only that the condition is the one the source uses and proves for its own ambient.
 
 ### template-games-rung-02
 
@@ -313,6 +476,9 @@ All three are decidable questions about the landed shift witness and the cheapes
 * **Finite completeness of the ambient, and with it the existence of the template formalism** [ibid., prop 4, prop 6, appendix A] — which is what makes sub-store restriction inherit tile structure, the operation the disconnection axis and the frame direction both need.
 * **Interchange in the third dimension rather than mere whiskering.** Every asynchronous graph presents a sesquicategory whose 2-cells are permutation sequences [ibid., prop 7, appendix D-A]; it presents a **2-category** once 2-cells are reschedulings modulo the induced bijection on edge indices [ibid., prop 8, appendix D-B], and the cube property's two sweeps are what make that quotient class nonempty from either side.
   **That last step is a reading of appendix D-B and not a statement the source makes**, since the source imposes all three axioms throughout.
+* **A presentation by generators and relations, with exactly two relation families.** The 2-category is freely generated by the graph's vertices and edges in dimensions 0 and 1 and by one 2-cell per permutation tile in dimension 2, modulo two families of equations and no others [ibid., sec V-A, eqns 45, 46]: a tile followed by its symmetric inverse is the identity reshuffling, and two tile sequences realizing the same order reversal on three indices are equal.
+  That is the cleanest statement of what gandr's shift-equivalence 2-cells would present if the axioms hold.
+  **Which axiom underwrites which family is the same reading and carries the same mark**: symmetry is what makes the inverse tile exist for the first family and the cube property is what makes both sweeps available for the second, and the source states neither implication.
 * **Standing beyond this epic.** The coherent-congruence line concedes that it supplies **no correctness criterion** for its congruences [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8], and these axioms are exactly the criterion it says it lacks — so a clean positive verdict is evidence for more than gandr's own quotient.
   The verdict landed positive, and the record is [[#template-games-criterion-01]].
 
@@ -339,6 +505,9 @@ It does not come along.
 **What it would newly warrant.** A **strictly larger commuting class**: polarized footprint independence licenses commutation across read-only overlaps, which the incomparable-positions conjunct refuses.
 This is the only place the read found where the source lets gandr earn more than it does today, and it is the cheapest fragment to adopt because it touches the guard and nothing else.
 
+**Neither comparison source contributes to this rung, and both absences are verified rather than assumed** ([[#Recorded absences]]).
+What the layered line supplies instead is corroboration of the _direction_ from a third carrier — a worked concurrency argument licensing commutation by read-passivity on a shared location ([[#Footprints are polarized, and that is what licenses more]]) — which is evidence for the choice of datum and not a contribution to the theorem.
+
 **Grade.** The claim that the source's relation has no convexity analogue is a **structural** verdict — the source's transitions act on a flat partial map — and rests on the independence definition [@mellies-stefanesco-2020-csl, sec 3.2.1] rather than on an argument the source makes.
 
 ### template-games-rung-04
@@ -349,6 +518,12 @@ Virtual because gandr's composition declines and the source's construction requi
 
 **What it would newly warrant.** Certificates would have a semantic model rather than an operational description, which is the precondition for [[#template-games-rung-05]] and [[#template-games-rung-06]] being theorems about a model instead of observations about how matching is implemented.
 
+**The rung is level-dependent, and its failure mode differs by level.** At the cospan-and-pushout level horizontal composition is a pushout; at the Gray level it is the **equalizer of a coreflexive pair**, with the template a monad in a weak double category of comodules rather than an internal opcategory in cospans ([[#The ambient hypothesis is level-dependent]]).
+A limit that fails to exist is not a pushout that fails to exist, so **the virtual-variant argument has to be made once per level** rather than once for the apparatus.
+
+**And the rung names its target on a second axis as well.** Ordinary pullback composition of spans does not preserve their 2-cells, and the recorded fix is a localization at weak equivalences with composition by homotopy pullback ([[#The span hazard the cobordism route inherits]]) — so this rung states whether it targets the cobordism double category in a 1-category or the same construction up to homotopy.
+Whether that hazard applies to gandr's certificates at all is open ([[#template-games-question-07]]), and the naming obligation stands either way.
+
 **Grade.** **The variant's coherence is in neither source.** The totality requirement is read from statements that carry no proof in the text.
 
 ### template-games-rung-05
@@ -357,6 +532,9 @@ Virtual because gandr's composition declines and the source's construction requi
 
 **What it would newly warrant.** It turns the "certificate composition is structurally lax" row of the interchange stratification from a design ruling into a theorem ([[../metatheory#Interchange, by layer]]).
 The corpus currently holds that row on the deadlock argument and on the general failure of duoidal coherence; a laxator identified with the coercion would make it a property of a model.
+
+**The rung must name the level it proves, and the two sources price the same slot differently.** The comparison carrying the shuffle tensor to the Gray tensor is an **isomorphism** [@mellies-2021-template-games, sec V-B, sec VIII], while the same slot in the primary is a **non-invertible lax coercion** [@mellies-stefanesco-2020-csl, thm 4.4].
+So a laxator result that does not say which level it is about is a result about an unnamed structure ([[#What the Gray level costs, and the reason behind a decision the corpus already took]]), and the interchange stratification the rung would turn into a theorem is exactly the thing that distinguishes them ([[../metatheory#Interchange, by layer]]).
 
 **Grade.** The source's own lax-monoidal statement carries no proof in the text and is asserted from an imported, locator-pending definition [@mellies-stefanesco-2020-csl, thm 4.4]; the scope note at [[#The proof-scope of the derived Hoare inequality]] applies to anything built on it.
 
@@ -374,9 +552,54 @@ A comparison map from the certified layer to the operational layer that is both 
   The caveat travels with them: they are stated for the **synchronizing** product, so the disjoint case is a gandr obligation rather than an import ([[#Where the fit fails]]).
 * **A stated frame property.** "A certificate valid over a sub-store stays valid in a larger store with the enlargement inert" is structurally free in gandr's carrier today; the value of the import is that it becomes a **provable property of a semantic model** rather than an artifact of how matching is implemented — which is what matters at the moment the store grows disconnection and multi-output.
 
+**Neither comparison source contributes to this rung, and the absence was checked rather than assumed** ([[#Recorded absences]]): no fibration, no soundness statement, and no comparison map with either property occurs in the Gray substrate or anywhere in the layered line's two documents.
+The prize lives entirely in the primary, which is what makes this rung a re-derivation against a single source.
+
 **Grade, and it is the sharpest cost in the programme.** The source's soundness theorem is proved by induction over a **proof system**, and gandr has no proof system in that sense — so this rung is a **re-derivation, not a citation**.
 Four of the lemmas it would follow were read for shape and not verified line by line [ibid., lem 10.2, lem 10.9, lem 10.10, lem E.2], one is asserted without proof in the source [ibid., lem 10.8], and the soundness theorem itself is **attributed to earlier work and re-proved axiomatically** in the source read, so this source is not the primary source for the theorem.
 That earlier work has no bibliography key yet and was not chased.
+
+## Recorded absences
+
+**Each entry here is a verdict rather than an omission, and each is recorded so that no rung carries a false expectation.** The two comparison sources were searched for the material the obligation list would want from them; what follows is what is not there.
+
+**From the Gray substrate** [@mellies-2021-template-games], read in full.
+
+* **Nothing toward the fibration prize.** No fibration, soundness, or comparison statement occurs anywhere in it; the prize lives entirely in the primary [@mellies-stefanesco-2020-csl, thm 10.1, thm 10.5, thm 10.6], and [[#template-games-rung-06]] gains nothing here.
+* **Nothing direct toward footprints.** Footprints do not occur; the nearest machinery is the polarity-as-comonoid statement [@mellies-2021-template-games, prop 3] and the source and target maps on its four generators [ibid., eqn 22], which are about scheduling polarity.
+  Recorded as "no contribution" rather than left implied ([[#template-games-rung-03]]).
+
+**From the layered line** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered] and its technical report, by full-text search of both documents.
+
+* **Fibrations.** The word occurs in neither document; there is no soundness theorem, no lifting property, and no comparison map with one — the full-but-not-faithful functor [ibid., prop 5.4] is not a fibration.
+  [[#template-games-rung-06]] gains nothing.
+* **Footprints and derived independence.** The word does not occur.
+  Independence first appears as a **generating rule of a congruence** [ibid., sec 6.2] and is never computed from an action's semantics, which is the property [[#template-games-rung-03]] is about.
+  That rung gains nothing.
+* **The ambient hypothesis.** "Adhesive" does not occur, and there is no ambient category with limit or colimit hypotheses at all — the carrier is fixed and concrete.
+  [[#template-games-rung-01]] gains nothing, and the level-dependence recorded at [[#The ambient hypothesis is level-dependent]] is untouched by it.
+* **The asynchronous-graph axioms.** "Cube property" does not occur and there is no analogue of determinism of tiles; coherence plus context closure is what replaces them there ([[#What the third carrier decides about the quotient]]).
+  [[#template-games-rung-02]] gains nothing.
+* **Deadlock.** The word does not occur, so the reading of why the simultaneous-move identification is safe for disjoint components is the read's own and not that source's comparison ([[#The disjoint parallel product the disconnection axis wanted]]).
+
+**One absence is a fence rather than a gap, and it is re-affirmed rather than merely restated.** No polarity of any kind occurs in the layered line's object-based material; the only polarity in either of its documents is **game** polarity, in the technical report's game-semantics appendix, and the only polarity in the Gray substrate is the Player-and-Opponent polarity of moves and positions [@mellies-2021-template-games, sec VII].
+Game polarity and footprint polarity share a word and nothing else, and **nothing in this document identifies them**: the footprint polarization's only source is the primary [@mellies-stefanesco-2020-csl, sec 3.2.1].
+The collision would be worse than silence, because it would read as a pairing.
+
+**And one absence is a decline the read made of itself.** Nothing in this document claims the differential-linear-logic exponential bears on this line.
+The exponential-as-copy machinery, the linear-non-linear adjunction, and that source's differential soundness theorem [@mellies-2019-template-games-dll, sec VI] touch no rung — gandr is not building a linear-logic model, and multiplicative-additive linear logic is already out of scope ([[#What stays out of scope]]).
+This document cites that source only for the span hazard and its localization ([[#The span hazard the cobordism route inherits]]), and once for a cross-line input that is not this component's obligation ([[#Cross-line inputs, and where they belong]]).
+
+## Cross-line inputs, and where they belong
+
+**Two findings of this read bear on decisions taken elsewhere, and they are recorded here only so they are not lost with the read.** Neither is an obligation of this component, neither is cited by anything above, and both corroborate rulings already landed rather than re-opening them.
+
+* **Where copy and merge are the two adjoint avatars of one structure, the interaction law is bialgebra — forced, free, and pseudo.** In the differential-linear-logic template model the comonoid and the monoid on one carrier are the right and left adjoints of a single monoidal structure, so they carry a **bimonoid** rather than a Frobenius structure, up to invertible 2-cell, and the copy comonoid is symmetric rather than cocommutative [@mellies-2019-template-games-dll, sec I-B, sec I-D, eqn 5].
+  **It does not decide anything**, because gandr's carrier has no adjoint pairing to force the law; what it contributes is a published precedent with its **precondition named**, alongside the rewriting-cost argument the owner ruling already rests on ([[circuit-terms#circuit-terms-question-20]]).
+  **The transferable rule is the read's**: the source exhibits the mechanism additively and multiplicatively and never states it as a rule.
+* **A Gray comonoid structure on the free 2-category over a set is the same data as a polarity function to a two-element set** [@mellies-2021-template-games, prop 3, eqn 31].
+  That is a published instance of a comonoid **read off an existing two-valued predicate** rather than posited as a new former — an equivalence of data rather than an analogy, which is the shape of the ruling that a cell-layer copy obligation is read off the grade discipline ([[circuit-terms#circuit-terms-question-18]]).
+  Its force and its limit are the same fact: it is stated for the **free** structure on a set.
 
 ## Open questions, with dispositions
 
@@ -435,6 +658,26 @@ The disposition is that the re-index is settled **before** the axiom half of [[#
 **What is established and what is not.** The gandr side is verified at the symbol: a step is a `CellApp` over a peak, so position is part of what individuates a transition (`gandr-theory-computads`, `shift` and `rewrite`).
 **What is not established is the translation** — whether the cell identifier alone is the source's label, with position part of the edge, or whether the pair is the label — and nothing here decides it.
 
+### template-games-question-07
+
+**Does the span 2-cell hazard bite in gandr's setting, or is it vacuous there?**
+
+**Carried as a question rather than as a finding, because the transfer is the weakest one in this document.** Composing spans by ordinary pullback does not preserve 2-cells in a 2-category [@mellies-2019-template-games-dll, sec III-A, sec III-B], and certificates composed as spans over a store ambient would inherit that — **if** their 2-cells live in a 2-categorical setting in the required sense.
+Whether they do is unestablished, and if gandr's certificate 2-cells are locally posetal or discrete the hazard is vacuous and the localization price is not owed ([[#The span hazard the cobordism route inherits]]).
+
+**The disposition has two halves.** The hazard is not quoted as a gandr fact until the setting is settled; and [[#template-games-rung-04]] states which target it means — the cobordism double category in a 1-category, or the same construction up to homotopy — either way, because that naming obligation does not wait on this answer.
+
+### template-games-question-08
+
+**Does gandr name objects per certificate off the start position's component decomposition, and is decomposition-preservation a certificate-level side condition?**
+
+**Carried, with the composite recommendation preferred and neither half ruled.** The connected component is the only granularity candidate whose disjointness gandr **proves** rather than declares, and the region-and-splice reading is the only one that supplies an interface and hidden state, so the recommendation is to use the second as the description of the first ([[#What an object would have to be, and which gandr datum could be one]]).
+
+**Two things stop that from being a ruling, and both are cheap to settle in the wrong order.** A component decomposition would have to be computable at a certificate's start position, and the corpus records `Connected` as an undirected predicate on shapes without recording that a decomposition operation exists or is cheap — **unverified, and load-bearing for the whole proposal**.
+And a rewrite that fuses two components has no image in the construction that motivates the proposal, so "preserves the decomposition" would be a **certificate-level side condition** rather than a structural fact ([[#The disjoint parallel product the disconnection axis wanted]]).
+
+**The fence is that this question does not re-open [[#template-games-question-03]].** Naming objects per certificate is a granularity proposal inside gandr's existing carrier; whether gandr introduces a global ambient at all is the separate fork, and nothing here decides it.
+
 ## What stays out of scope
 
 Explicitly, so that nothing here is later read as a partial adoption of the whole.
@@ -448,6 +691,8 @@ Explicitly, so that nothing here is later read as a partial adoption of the whol
 * **Multiplicative-additive linear logic and star-autonomy** [@mellies-2021-template-games, thm 1, thm 4], because gandr is not building a linear-logic model.
 * **Higher-order concurrent separation logic and its descendants — Iris and FCSL**, which the sources name as their own future work and which are not a gandr direction.
   Neither is cited at a statement here, and neither has a bibliography key.
+* **The layered line's coherence-space carrier, as gandr's certificate carrier.** The functor from layers to regular maps is full but **not faithful**, and the cause is stated in the source: strategies differing only on partial behaviours have the same image [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, prop 5.4, sec 5.3]. gandr's declined-within-budget verdict is exactly such a partial behaviour, so adopting that carrier wholesale would **collapse the third verdict** rather than cost something to keep — a reason against the carrier and not a price of it.
+  **What is out of scope is the wholesale carrier and not the line**: its disjoint parallel product is imitated as a shape ([[#The disjoint parallel product the disconnection axis wanted]]), its concession about correctness criteria is cited at [[#template-games-criterion-01]], and its object granularity is the material of [[#template-games-question-08]].
 
 **One further exclusion is a decline rather than a scope cut, and it is recorded so it is not re-proposed.** The lock component of the footprint has no gandr counterpart, and that is not a gap: filling it would mean inventing a shared-resource notion in order to import machinery whose payoff is a race theory gandr does not want.
 It is a decline in the strong sense — the arrival of a heap does not revive it ([[proposed/separation-logic#What stays out of scope regardless]]).
@@ -458,11 +703,15 @@ It is a decline in the strong sense — the arrival of a heap does not revive it
 * **Nothing discharges an existing obligation.** The whole programme adds theorems before it removes any, and that is a property of the direction rather than of this scoping.
 * **The prize is a re-derivation, not a citation.** The soundness theorem is proved by induction over a proof system gandr does not have.
 * **Composition partiality forces a virtual variant whose coherence is in neither source**, so the target of the adoption is a construction rather than an import.
-* **Against all four, the direction is real.** The tile pairing is exact, the adhesivity precondition is satisfiable at the right layer, and the polarized fragment is a cheap experiment that either buys a strictly larger commuting class or settles the direction with a counterexample.
+* **The ambient hypothesis is level-dependent, so the ambient work is owed twice.** Adhesivity buys the cospan-and-pushout level and coreflexive equalizers preserved componentwise buy the Gray one, and neither discharges the other ([[#The ambient hypothesis is level-dependent]]).
+  The same level-dependence splits the double-category rung and the laxator rung, so three of the six obligations are owed per level rather than once.
+* **Against all five, the direction is real.** The tile pairing is exact, the adhesivity precondition is satisfiable at the right layer, and the polarized fragment is a cheap experiment that either buys a strictly larger commuting class or settles the direction with a counterexample.
 
 ## Source and confidence
 
-**Both sources were read at theorem grade for the template/cobordism half on 2026-08-02, from copies held locally, with identity checked from page 1 for each.**
+**Four sources are cited in this document, and the two adopted-line sources carry a different grade from the two read against them.**
+
+**Both adopted-line sources were read at theorem grade for the template/cobordism half on 2026-08-02, from copies held locally, with identity checked from page 1 for each.**
 
 The primary [@mellies-stefanesco-2020-csl] was read in full — fifty pages, body plus appendices.
 The substrate [@mellies-2021-template-games] was read twice at different depths, and the grades differ by material rather than by statement.
@@ -499,10 +748,22 @@ Also unchased, and named with the locator the primary gives so each can be resol
 * **Whether the store-transition ambient gandr would need is adhesive.** Satisfiability was **inferred** from the corpus's own record that labelled directed hypergraphs are a presheaf topos; it was not proved that gandr's certificate supports can be presented in that ambient, and the argument fails if they must be computads — [[#template-games-rung-01]].
 * **The three-conjunct guard was read from the shift module's own documentation rather than from its body.** Verified against the tree at write time for this document: `gandr-theory-computads`'s `shift` module exists and documents the three conjuncts and their order, `derive_shift_equivalence` is its constructor, `ShiftObstruction` is the typed refusal, the overlap conjunct is asked of the cell pair through `overlaps_between`, and the convexity conjunct is carried as a `ConvexityDischarge` datum whose two inhabitants are the left-connected-over-acyclic-target discharge and the re-check-required refusal.
   **What is verified is the interface and its documented contract, not that the body decides what the documentation says it decides.**
-* **No bibliography key beyond the three cited sources was checked by the read.** The keys cited in this document were checked against `bibliography.yml` at write time.
+* **No bibliography key beyond the four cited sources was checked by the read.** All four keys cited in this document were checked against `bibliography.yml` at write time, including the technical report's own key, which is a separate entry because the report is a separate artifact.
 
-**A third source is cited once, at one statement, and it carries its own grade.** This document cites [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered] at one statement — the concession that the coherent-congruence line supplies no correctness criterion [ibid., sec 8] — and nothing here rests on any other statement of it.
-The source's full read grade is split, and its record is [[proposed/separation-logic#Source and confidence]]: the concurrent-object-space and case-study material at theorem grade, the rest at triage grade; this document consumes only the concession, which the theorem-grade part covers.
+**The differential-linear-logic template model is cited for two things and read in full, and it carries almost no proofs of its own.** [@mellies-2019-template-games-dll] was read in full — cover, thirteen-page body, and its appendix — with identity checked from page 1.
+This document cites it for the span 2-cell hazard and its localization ([[#The span hazard the cobordism route inherits]]) and once as a cross-line input ([[#Cross-line inputs, and where they belong]]), and for nothing else.
+**Its properties A-F are assumptions rather than results, and its differential soundness theorem is stated with its proof only indicated**, so anything taken from that source is taken on its statements; the imported works behind those statements were not chased and none has a bibliography key.
 
-**No recorded corpus claim was contradicted by either source.** Both interchange-strength characterizations at [[../metatheory#Interchange, by layer]] check out: the Gray and invertible level against the substrate's own deadlock-and-diagonals passage and its Gray-tensor statements [@mellies-2021-template-games, sec I, def 1, thm 4], and the lax level against the primary's lax-monoidal statement and its concluding section [@mellies-stefanesco-2020-csl, thm 4.4].
-The one sharpening the read produced is the filling-system scope carried at [[#The proof-scope of the derived Hoare inequality]].
+**The layered line carries a split grade, and the split decides which of its statements this document may lean on.** [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered] was read at theorem grade across its object-based construction, its layered model, its nondeterminism section, its correspondence section, and its concurrent-object-space and case-study material, with identity checked from page 1; its extended technical report [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr] was acquired, identity-checked from page 1, and its appendix C read **in full with proofs** — which matters, because that appendix is the only place the parallel-product proofs exist, and the two documents are distinct artifacts, the report carrying appendices the conference version omits.
+Its appendix B was read for statements with two proofs followed, and its game-semantics appendix was read as statements only, without checking the report's own claim that the presentation is equivalent to the conference version's.
+
+**Three of that line's statements are taken on their statements rather than on proofs**, and each is flagged where it is used: the symmetric-monoidal statement for the concurrent category has **no proof in either document** — the isomorphism it rests on is proved and was read, and the remaining ingredient is cited to imported work that was not chased; the representation theorem for regular maps is attributed and unproved there; and the claim that the pre-quotient category has no tensor products is an attribution in a parenthesis.
+
+**Four claims about the layered line in this document are the read's reasoning rather than source statements, and each is marked at the claim**: that coherence is cheap for gandr because two distinct operations are always coherent; that congruence forces independence to be context-free; that the third guard conjunct is vacuous across components; and the whole of the sharing-not-strength reading of the interchange stratification.
+The one-line definition of an object is likewise a compression of the source's four requirements and not a definition the source gives.
+
+**Two further gandr-side facts are unverified and load-bearing for the layered material.** Whether gandr can compute a component decomposition at a certificate's start position cheaply, which the granularity recommendation assumes ([[#template-games-question-08]]); and whether gandr's certificate 2-cells live in the setting the span hazard needs ([[#template-games-question-07]]).
+**No gandr source code was read for the layered material**: its gandr-side statements are taken from the corpus as written, except for the replay determinism claim, which is carried at the grade of the verdict on `gandr-9os.10` — structural and exhaustive over the replay path, given a fixed store ([[#What the third carrier decides about the quotient]]).
+
+**No recorded corpus claim was contradicted by any of the four sources.** Both interchange-strength characterizations at [[../metatheory#Interchange, by layer]] check out: the Gray and invertible level against the substrate's own deadlock-and-diagonals passage and its Gray-tensor statements [@mellies-2021-template-games, sec I, def 1, thm 4], and the lax level against the primary's lax-monoidal statement and its concluding section [@mellies-stefanesco-2020-csl, thm 4.4].
+Three sharpenings were produced rather than corrections: the filling-system scope carried at [[#The proof-scope of the derived Hoare inequality]]; the level-dependence of the ambient hypothesis ([[#The ambient hypothesis is level-dependent]]), which refines an obligation rather than refuting a claim; and the discriminating hypothesis the interchange stratification does not carry ([[#The disjoint parallel product the disconnection axis wanted]]).
