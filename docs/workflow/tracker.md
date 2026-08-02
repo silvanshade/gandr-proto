@@ -120,6 +120,10 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
 * **Large text fields wedge the database** (owner-confirmed 2026-07-19; formerly a hazards-doc entry, now standing workflow guidance).
   Keep `notes`, `description`, `design`, and `acceptance_criteria` compact: standing directions plus a short pointer at most.
   Field updates REPLACE content and can clobber prior context; comments append safely.
+* **Tracker text is never hard-wrapped** (owner ruling, 2026-08-02).
+  `bd show` renders descriptions and comments inside its own fixed-width box and re-wraps every source line to that width, so text authored with hard line breaks at any other width double-wraps into stranded one-word fragments and becomes unreadable — the failure was observed across an entire bead's comment stream before the cause was found.
+  Write one line per paragraph and one line per list item, however long, with blank lines between blocks, and let the renderer do all the wrapping; this applies equally to text passed inline and via `--file`, and worker briefs must carry the rule.
+  A wide markdown table is unreadable in that box regardless of wrapping — in tracker text prefer one line per row (`row — verdict — grade` style) and keep real tables in corpus documents.
 
 ## The owner-decision queue
 
