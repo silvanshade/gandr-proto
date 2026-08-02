@@ -164,13 +164,15 @@ fn a_body_line_arrow_disagreeing_with_its_head_is_named()
 {
     // The redex/frame distinction, made locally visible and then written down
     // wrong: `add` is an oper, so its node line is a frame line and takes
-    // `-->`.
+    // `-->`. The two arguments are distinct wires because the port discipline
+    // admits no implicit duplication — `add(x, x)` would earn a second,
+    // unrelated diagnostic from the name-set fold.
     assert_sole_diagnostic(
         TestText(
             "sign S {
   oper add : (Nat, Nat) --> Nat
-  rule r : (data x : Nat) ==> (z : Nat) {
-    node : add(x, x) ==> (z);
+  rule r : (data x : Nat, data y : Nat) ==> (z : Nat) {
+    node : add(x, y) ==> (z);
   }
 }",
         ),

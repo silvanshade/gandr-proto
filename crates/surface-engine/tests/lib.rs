@@ -13,6 +13,8 @@ mod attributes;
 #[cfg(test)]
 mod circuit;
 #[cfg(test)]
+mod circuit_ports;
+#[cfg(test)]
 mod desc_cells;
 #[cfg(test)]
 mod desc_elab;
