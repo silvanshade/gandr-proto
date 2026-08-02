@@ -93,26 +93,28 @@ Grades bound how many times a thunk is forced; permissions divide ownership amon
 
 ### separation-logic-requirement-03
 
-**A state that splits three ways, with one component available as the frame.**
+**A state that splits with an owned role and a framed role.**
 
-_The construct._ The separated state and its three-way split [ibid., def 7.1], one component of which the Frame rule's interpretation consumes [ibid., sec 9.3].
+_The construct._ The separated state [ibid., def 7.1] — the Code's part, the per-lock resource map, and the Frame's part, with the source's own gloss at the definition naming the first as the memory owned by the Code and the third as the part owned by the Frame or the Environment [ibid., sec 7.1]; the Frame rule's interpretation consumes the split [ibid., sec 9.3].
 
-_What it requires._ Decomposability of the heap into distinguished roles rather than merely into disjoint pieces — and, from the apparatus side, the environment polarity a template forces, because the split between steps the ambient may perform and steps this certificate performs is what makes the frame component mean anything ([[../template-games#The environment polarity a template forces]]).
+_What gandr needs of it, and what it does not._ The triple's middle component is the lock-resource family, and this document cuts locks permanently ([[#What stays out of scope regardless]]), so the lock-free residue of the definition is a **two-role** split — owned against framed — and that residue, not the triple, is what this row asks the memory model to supply.
+The demand is decomposability of the heap into those two distinguished roles rather than merely into disjoint pieces — and, from the apparatus side, the environment polarity a template forces, because the split between steps the ambient may perform and steps this certificate performs is what makes the frame role mean anything ([[../template-games#The environment polarity a template forces]]).
 
 _What breaks without it._ The Frame rule has nothing to quantify over.
-A heap that splits into two parts with no role distinction supports disjointness but not framing, which is a weaker property than the one this half is imported for.
-
-_The reading is the read's and is marked._ That the third component is the frame is taken from how the Frame rule's interpretation consumes the split, not from a gloss the source supplies at the definition's own number.
+A heap that splits with no owned-against-framed role distinction supports disjointness but not framing, which is a weaker property than the one this half is imported for.
 
 ### separation-logic-requirement-04
 
 **A predicate domain over the heap, and the template formalism to index it by.**
 
-_The construct._ The predicate semantics and the predicate-indexed colouring, over the template the source writes for separated states.
+_The construct._ The predicate semantics and the predicate-indexed colouring, over the template the source writes for separated states — the predicate grammar and its satisfaction relation [ibid., sec 7.1], and the predicate indexing of the internal category [ibid., sec 7.3].
 
 _What it requires._ Two things from two different directions.
 From the memory model: a domain of assertions about heaps, closed under the separating conjunction, which requires rows 01 through 03 first.
 From the apparatus: the template formalism itself, whose availability over asynchronous graphs rides finite completeness of the ambient, which is bought by the tile axioms rather than by the presheaf route ([[../template-games#template-games-rung-02]]).
+
+_The concrete content, carried so the consuming lane can proceed without the source._ The grammar's separating fragment is `emp`, the separating conjunction `P ∗ Q`, the permissioned points-to `v ↦^p w`, and variable ownership `own_p(x)`; satisfaction of the separating conjunction is by state split — `σ ⊨ P ∗ Q` exactly when `σ = σ₁ ∗ σ₂` with `σ₁ ⊨ P` and `σ₂ ⊨ Q` [ibid., sec 7.1].
+And the rule this half is imported for, stated once: from `Γ ⊢ {P} C {Q}` infer `Γ ⊢ {P ∗ R} C {Q ∗ R}` [ibid., fig 1].
 
 _What weakens without the apparatus half._ The predicates can still be written, but they index nothing, so the logic has assertions and no model — which is the position the corpus would be in if the heap landed before the tile-level gate reported.
 
@@ -133,11 +135,11 @@ _The variant's coherence is in neither source_, so this row is a construction ga
 
 ### separation-logic-requirement-06
 
-**An allocation event, with freshness visible per transition.**
+**Allocation and deallocation events, with freshness visible per transition.**
 
-_The construct._ The `mem` component of the footprint quadruple, whose independence condition is plain disjointness [ibid., sec 3.2.1].
+_The construct._ The `mem` component of the footprint quadruple — the addresses a transition allocates or deallocates — whose independence condition is plain disjointness [ibid., sec 3.2.1].
 
-_What it requires._ A notion of freshly allocated address that a transition carries, so that two transitions can be compared on their allocation sets without consulting the rest of the state.
+_What it requires._ A notion of freshly allocated or deallocated address that a transition carries, so that two transitions can be compared on their allocation sets without consulting the rest of the state.
 
 _What breaks if addresses are recycled invisibly._ Plain disjointness stops being decidable per transition, and the conjunct has to be replaced by a reachability test over the heap — which is the connectivity-closed footprint the read ruled out at the wrong level, and which makes nearly every pair dependent in a connected structure ([[../template-games#Footprints are polarized, and that is what licenses more]]).
 
@@ -220,6 +222,8 @@ Deleting them does not leave a smaller theorem, which is why this is a cut rathe
 **Data-race freedom and the stateless model.** A race is **defined** by the tile mismatch between the machine-state model and the stateless one [ibid., sec 3.2.2], and the second half of the soundness theorem is that freedom [ibid., thm 10.6]. gandr has no race notion, so that half has no gandr statement to be about, and the prize the apparatus is adopted for is the first half and the fibration structure and never the pair.
 
 **The lock-indexed apparatus the Frame rule's interpretation is stated over.** The interpretation itself is deferred with the rest of the logic ([[#separation-logic-requirement-05]]); what is cut is the indexing it is stated against — the change-of-locks development and the appendix material that stands on it [ibid., sec 8, sec E.2] — together with the freely generated lock-graph bicategory that development introduces, whose at-most-one-invertible-2-cell choice the corpus already cites for a different purpose [ibid., sec 8].
+**That the interpretation survives the removal of its lock indexing is a structural reading, marked as such and load-bearing for this boundary**: the source states the interpretation in the cobordism double category of separated states parameterized by the lock context [ibid., sec 9.3], and it is this reading — instantiate at the empty lock context — that separates this cut from requirement-05's deferral.
+The lock-free instance is therefore a construction gandr owes alongside the virtual variant, and it shares the component document's open question ([[../template-games#template-games-question-04]]).
 
 **Sequential-consistency-shaped correctness criteria from the layered line.** That line concedes it supplies **no correctness criterion** for its coherent congruences, and the substitute it names is that any congruence which is a subrelation of the equivalence up to sequential consistency is coherent [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8].
 A criterion that rests on a sequential-consistency assumption is not a criterion gandr can take, because gandr's quotient is defined over a store with no such assumption to lean on; the criterion gandr wants is the asynchronous-graph axioms, which is the same concession read the other way ([[../template-games#template-games-rung-02]]).
@@ -231,10 +235,10 @@ The transferable content is the shape of the argument — an equational theory o
 
 **Written against the same two primary sources as [[../template-games]], plus one third source cited for two statements**, and every grade below is carried from the read rather than re-established here.
 
-The primary [@mellies-stefanesco-2020-csl] was read in full at theorem grade — fifty pages, body plus appendices — and the substrate [@mellies-2021-template-games] at the grades the component document records.
+The primary [@mellies-stefanesco-2020-csl] was read in full — fifty pages, body plus appendices — at theorem grade for the template/cobordism half, as the component document scopes it, and the substrate [@mellies-2021-template-games] at the grades the component document records.
 Nothing in this document rests on a statement of either source that the component document does not already carry at the same number.
 
-**The third source carries a split grade, and the split matters for which of its statements this document may lean on.** For [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered], the concurrent-object-space and case-study material was read at theorem grade — the coherent-congruence definitions, the concurrent object space, the disjoint tensor and its symmetric monoidal consequence, the protected-object construction, and the ticket-lock certification.
+**The third source carries a split grade, and the split matters for which of its statements this document may lean on.** For [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered], read in the extended-technical-report form the managed library holds [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered-tr], the concurrent-object-space and case-study material was read at theorem grade — the coherent-congruence definitions, the concurrent object space, the disjoint tensor and its symmetric monoidal consequence, the protected-object construction, and the ticket-lock certification.
 Everything else in that work is at triage grade, and the two statements this document cites [ibid., sec 7.1, sec 7.2, sec 8] fall inside the theorem-grade part.
 
 **What is verified against the tree at write time.** The buildable-now section's built rows only, at the named module and symbols: `gandr-theory-computads`'s `footprint` module and its `MatchFootprint`, `match_footprint`, `footprint_independence`, and `FootprintIndependence`; the guard constructor `derive_shift_equivalence` it sits beside; and the integration suite `footprint` whose four-cell comparison and hole-seam attribution are described above.
@@ -243,6 +247,7 @@ Everything else in that work is at triage grade, and the two statements this doc
 **What is not verified, and is load-bearing for the ledger.** No requirement row has been checked against an implementation, because there is no implementation to check it against: each row is derived from the source's definition at its own statement number and from the corpus's record of what gandr's carrier is.
 A row's "what breaks" clause is therefore a structural consequence of the definition rather than a failure anyone has exhibited, and where the consequence is a reading rather than a quoted lemma the row says so at the claim.
 
-**One reading is flagged rather than buried.** That cancellativity is what determines a frame from a whole and a part ([[#separation-logic-requirement-02]]) is a structural reading of the monoid conditions; the source asserts the conditions at the definition and does not derive their uses at a numbered statement this read can cite.
+**Two readings are flagged rather than buried.** That cancellativity is what determines a frame from a whole and a part ([[#separation-logic-requirement-02]]) is a structural reading of the monoid conditions; the source asserts the conditions at the definition and does not derive their uses at a numbered statement this read can cite.
+And that the Frame rule's interpretation survives the removal of its lock indexing ([[#What stays out of scope regardless]]) is the reading that places this document's boundary between the cut and the deferral; the lock-free instance is a construction gandr owes, not a statement the source makes.
 
 **No recorded corpus claim is contradicted by this document.** The fit facts, marks, and statement numbers are the component document's, unchanged; only the disposition of the separation-logic half differs, and that difference is the owner ruling this document exists to record.

@@ -24,7 +24,7 @@ Nothing the memory model becomes brings those back ([[#What stays out of scope]]
 **The import order is set by the carrier as it stands today, and it is an order rather than a verdict.** The separation product is defined by domain union with permission multiplication [@mellies-stefanesco-2020-csl, sec 7.1], so it presupposes that a state is a partial function from addresses to value-and-permission pairs over a partial cancellative commutative monoid. gandr's store is a directed hypergraph: there is no address set, no partial-map structure, and no permission monoid.
 Every statement about the separating conjunction — the separated-state definition [ibid., def 7.1], the predicate semantics, and the Frame rule — therefore waits on the heap and reference machinery gandr is committed to and has not yet built, and what each of them will require of that machinery is recorded at [[proposed/separation-logic#The requirements ledger]] so the build-out meets those requirements the first time.
 
-**Naming the candidate correctly matters, because the commissioning ruling named it the other way round.** The entry at [[circuit-terms#The design questions]] calls the replacement direction "the separation-logic line", and the read's verdict is that the separation logic is the part that arrives later, behind the apparatus that carries it.
+**Naming the candidate correctly matters, because the commissioning ruling named the line after the half that arrives last.** The entry at [[circuit-terms#The design questions]] calls the replacement direction "the separation-logic line", and the read's verdict is that the separation logic is the part that arrives later, behind the apparatus that carries it.
 The correction is recorded here rather than applied silently to that entry, because the entry's ruling — that the device mapping is declined and that this line is its replacement — stands unchanged; only the order in which the line's two halves arrive has moved.
 
 ## What adoption builds
@@ -173,7 +173,7 @@ What is genuinely new is the composite result downstream of it [ibid., thm 10.1,
 ## What the semantic model attaches to
 
 Each source object is paired against its gandr counterpart and marked **exact**, **plausible**, **forced**, or **absent**.
-"Forced" means the pairing can be made but only by adding structure gandr does not have; "absent" means there is no counterpart today, and the row says whether that is a cut or a deferral on machinery.
+"Forced" means the pairing can be made but only by adding structure gandr does not have; "absent" means there is no counterpart today, and the row says what kind of absence it is.
 
 | source object                                                                       | statement                                                                                    | gandr counterpart                                                                         | mark                                                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -484,8 +484,8 @@ Also unchased, and named with the locator the primary gives so each can be resol
   **What is verified is the interface and its documented contract, not that the body decides what the documentation says it decides.**
 * **No bibliography key beyond the three cited sources was checked by the read.** The keys cited in this document were checked against `bibliography.yml` at write time.
 
-**A third source is cited once, at one statement, and it carries its own grade.** The concession that the coherent-congruence line supplies no correctness criterion [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered, sec 8] was read for that concession only.
-**That source is not read at theorem grade for this document**, and nothing here rests on any other statement of it.
+**A third source is cited once, at one statement, and it carries its own grade.** This document cites [@oliveira-vale-mellies-shao-koenig-stefanesco-2022-layered] at one statement — the concession that the coherent-congruence line supplies no correctness criterion [ibid., sec 8] — and nothing here rests on any other statement of it.
+The source's full read grade is split, and its record is [[proposed/separation-logic#Source and confidence]]: the concurrent-object-space and case-study material at theorem grade, the rest at triage grade; this document consumes only the concession, which the theorem-grade part covers.
 
 **No recorded corpus claim was contradicted by either source.** Both interchange-strength characterizations at [[../metatheory#Interchange, by layer]] check out: the Gray and invertible level against the substrate's own deadlock-and-diagonals passage and its Gray-tensor statements [@mellies-2021-template-games, sec I, def 1, thm 4], and the lax level against the primary's lax-monoidal statement and its concluding section [@mellies-stefanesco-2020-csl, thm 4.4].
 The one sharpening the read produced is the filling-system scope carried at [[#The proof-scope of the derived Hoare inequality]].

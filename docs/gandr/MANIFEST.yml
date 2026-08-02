@@ -154,12 +154,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 59adeec06c072da31a16eaddd238f6071d5efbdbec7c488af706b41a48a235a0
+    b3: 1fda7de6e1c32ea4b3dbb63f7fa5912c08910fc4d0a09314123da52d441f64a0
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
-    b3: 618e06fe383fb274eb27613608ba0676232499286281a0acf0c3222869132108
+    b3: a1788545fe9510fae1951f93f0ec3e2411925abafb383f5ea1f334da90c5848e
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/ornaments.md
