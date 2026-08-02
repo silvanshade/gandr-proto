@@ -268,6 +268,19 @@ A port that ranges over rewrites is sorted by the **2-cell face at the level's o
 * **Hazard dissolved by the ruling**: the sketch's `~>` in type position sat one glyph from `~~>`, the directed former at the type level.
   With `~>` retired and `==>` the face former, the near-collision no longer exists; `Step(Nat, x, x′)` is no longer needed as an escape.
 
+**As built, and where the elaboration lives.** `gandr-theory-levitation`'s `elaborate` module carries the three pieces: a `RewritePort` in a rule's parameter telescope (`CircuitRule::ports`), the `InterfacePair` its declaration binds, and the whiskered composite a block elaborates to.
+The sorted form's two endpoints are variables the elaboration mints outside the surface's identifier lexis, so a body port cannot capture one; the pinned form's endpoints are the terms the declaration writes.
+Instantiating a port at a redex line binds the source's distinct pattern variables to the line's input wiring in first-occurrence order — the boundary language's own reading of `r(t₁, …, tₙ)` — and a target endpoint the source does not bind is the opaque endpoint, so it becomes the line's output port.
+The result is the redex the boundary derivation already consumes, which is what makes the port elaboration and [[#The derived pair meets the sphere by checking, not by synthesis]] meet at one type; a target naming endpoints neither the source nor the output port supplies is refused instead, because one redex line binds one output port.
+A redex head is checked against the telescope rather than against the signature, and only where a telescope is written: an empty one means the ports are not declared at that member, not that its heads are unknown.
+
+**The composite has exactly one active position, and that is the fact the next rung inherits.** Elaborating a body produces `here(t)` where it has no redex and `f(t̄, ρ, ū)` — one whisker per enclosing application — where it has one, so the redex sits at the argument-index path from the derived boundary's root, and that path addresses its source in the source boundary and its target in the target boundary.
+A body whose declared output port unfolds to **two or more** redex occurrences elaborates to nothing here, and the refusal carries every occurrence with its position, because the position order is what says which composite is owed: incomparable positions are the horizontal composite, licensed exactly on disjoint positions where the two readings are shift-equal and never any earlier or wider ([[../metatheory/guards#Horizontal-composition surface sugar]]), while comparable positions are the sequential composite the boundary language spells `ρ then ρ′`.
+Neither is built at this rung, and the refusal is bounded rather than a claim that either cannot be: what would flip the first is an earned shift-equivalence witness at the composite's own positions, and what would flip the second is the `then` construction, which is licensed already and merely unbuilt.
+Reconvergence is the case easiest to miss here: a wire consumed twice is unfolded twice, so one redex line reaching two argument slots is **two** occurrences of the same rewrite rather than one shared node.
+
+Neither the telescope nor the composite is surface-reachable at this rung — both are built through the crate's own constructors, and the route from source arrives with the block form's lowering.
+
 ## Reconvergence
 
 The dioperad fragment's actual boundary, and the one a term syntax hides most completely: a term has one root, so two paths that rejoin have no spelling.
