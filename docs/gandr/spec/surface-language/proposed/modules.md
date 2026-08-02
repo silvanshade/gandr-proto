@@ -541,7 +541,7 @@ The toolchain half is the import surface and its lowering, which belongs to the 
 **Does a module member take attributes?**
 
 The grammar admits a leading `@[…]` block on a module member — `gandr-surface-grammar`'s `module_member` rule includes it — but the lowering collects attributes **only** for top-level items, so a member's attribute block parses and then vanishes: it is neither projected into the report nor diagnosed.
-The module declaration itself takes no leading attribute block at all, which is why the manifest attribute schemas attach to a top-level definition today rather than to a unit root.
+The module declaration itself takes no leading attribute block at all, which is why the manifest attribute schemas attach to a top-level definition today rather than to a unit root ([[../attributes#What is built]]).
 
 _Disposition:_ **carried** — this is a gap in the built rung rather than a design question, and it is filed as a residual of this document's absorption.
 

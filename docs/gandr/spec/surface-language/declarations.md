@@ -56,6 +56,7 @@ def square(x: Integer) -> F Integer {
 * **Manifest attributes** — `@[package(#{ name = "acme/parser", version = "1.4.0" })]`, `@[dependency(#{…})]`, `@[toolchain(#{ gandr = ">=0.9" })]` — parse as attribute blocks with record payloads; their `module` host declaration is the module family's business.
 * **Per-symbol attribute slots** inside `data` blocks are a different, declaration-position form: `Add(l: Expr, r: Expr) [ctor, assoc, comm]` — no `@` sigil, reserved parse-and-decline.
 * The quotation payload `‹Eq, Show›` (a derive-style semantic tier) is deferred growth.
+* The layer behind the surface — the schema registry, the payload-typing path, attribute purity as locality, the hash-neutral side table and its inert/semantic tiers, and the report projection tooling reads attributes through — is [[attributes]].
 
 ## `data` declarations
 

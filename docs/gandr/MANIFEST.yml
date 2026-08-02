@@ -34,12 +34,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 28741a25ad36802bbcd48807e7b3ba7417112d0b52551e27b044404ccdb2d9ac
+    b3: 2b4884b32cd5cb18bf65ce8cf9a6157812df3565a9168dcd944e9fd1684a2135
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 95f3dca54d95ae3ae30f7cdb82bfca0c53b7f13a59ae28b63f57e1fdf062e571
+    b3: edc345a7ab6d64e3e7546abf7567589425446975479a2760c09ab1b881ca789d
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -99,7 +99,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: 56383a986f11f26b3af0bf5cfc4b85fdde36afe6f43110f7db8773923c2ddeb7
+    b3: 79c3bd261d608a5d4714cb338b26d0db94905556482ffc8395e581a0698a7c6d
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
@@ -122,6 +122,11 @@ nodes:
     b3: 7c62046c31351117666177e56cbfbdcc0c31f309414f968a657cf3fe050ad27b
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
+  - path: spec/surface-language/attributes.md
+    role: subdocument
+    b3: 60d1a2cf573e40b19678d62af700197d9e6e8b4ef88a5a1cf15f599ecde39d37
+    edges:
+      - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/directed-family.md
     role: subdocument
     b3: 07951b07b60e6c54fdb7ac1e5c7984e978dffe7649583ee88a985367d3ee5ece
@@ -129,7 +134,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: bfab523c38564946ca52f6834d5d5a3b66287ccf2d6a795371e3b903ff627c65
+    b3: cfee4e759476a0187199ff154621987cba7dc999839572a648f3de709097f1c3
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md
@@ -162,7 +167,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modules.md
     role: subdocument
-    b3: b24743042cd67b1cbcc84da0f926964570ad58614cafc66c1863aabf31123330
+    b3: 4633df742d1d29e6d26bb8ff6bc4e86e0f108c787b276ed3c4a9595ea16e057e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md

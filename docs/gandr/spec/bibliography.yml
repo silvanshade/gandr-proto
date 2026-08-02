@@ -2559,3 +2559,30 @@ balzer-pfenning-2017-manifest-sharing:
     volume: 1
     issue: ICFP
     page-range: "37:1-37:29"
+
+clavel-duran-eker-lincoln-martioliet-meseguer-talcott-2007-maude:
+  type: book
+  title: "All About Maude — A High-Performance Logical Framework: How to Specify, Program and Verify
+    Systems in Rewriting Logic"
+  author:
+    [
+      "Clavel, Manuel",
+      "Durán, Francisco",
+      "Eker, Steven",
+      "Lincoln, Patrick",
+      "Martí-Oliet, Narciso",
+      "Meseguer, José",
+      "Talcott, Carolyn",
+    ]
+  date: 2007
+  publisher: Springer
+  volume: 4350
+  serial-number:
+    doi: "10.1007/978-3-540-71999-1"
+  parent:
+    type: book
+    title: Lecture Notes in Computer Science
+  note: >-
+    authors, title, series volume and year confirmed 2026-08-02 from indexed citations; the DOI
+    resolves to a Springer book record whose page is behind an authorization redirect, so the
+    identifier-to-title binding is recorded as unverified
