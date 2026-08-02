@@ -386,6 +386,36 @@ sign Copy {
 }
 
 #[test]
+fn a_doubling_body_declines_on_the_derivation_node_budget()
+{
+    // Reconvergence written across lines, which is the shape the ruled grammar
+    // does admit: each level's wire is consumed by two frames whose outputs
+    // meet in one, so the derived boundary doubles per level. Twelve levels
+    // pass the derivation's ceiling, and the surface says so with the ceiling
+    // it hit instead of unfolding 2^12 nodes.
+    let mut source = String::from(
+        "sign Doubling {\n  sort Nat : Type\n  oper l : (a : Nat) --> (b : Nat)\n  oper r : (a          : Nat) --> (b : Nat)\n  oper add : (a : Nat, b : Nat) --> (c : Nat)\n  rule blow :          (data w0 : Nat) ==> (w12 : Nat) {\n",
+    );
+    for level in 1 ..= 12_u32 {
+        let below = level.saturating_sub(1);
+        source.push_str(&format!(
+            "    node : l(w{below}) --> (a{level});\n    node : r(w{below}) --> (b{level});\n                 node : add(a{level}, b{level}) --> (w{level});\n"
+        ));
+    }
+    source.push_str("  }\n}\n");
+    let reported: Vec<String> = elaborate_data_descs(source.as_str())
+        .diagnostics
+        .into_iter()
+        .map(|diagnostic| diagnostic.message)
+        .collect();
+    assert_names(&reported, &[
+        "circuit rule `blow`",
+        "past the derivation's node budget of 4096",
+        "reconvergence is a shared subterm",
+    ]);
+}
+
+#[test]
 fn an_oper_filler_stays_declined_and_names_its_own_rung()
 {
     let reported = messages(TestText(
