@@ -590,6 +590,8 @@ Tags are lowercase throughout, since Unicode has no modifier capital S and a mix
 
 * Per-file `OPTIONS`: `--safe --without-K --hidden-argument-puns` on every module under `metatheory/src`, enforced by the Rust `source_policy` sweep (`options-policy` subcommand; exemptions are enumerated per flag with a justification).
   The without-K mandate is binding: neither UIP nor definitional proof-irrelevance may enter through any shortcut.
+  **`--hidden-argument-puns` changes what a bare `{x}` pattern means, and the tree relies on it.** In a left-hand side `f {Γ} = …` binds the implicit **named** `Γ`, not the first implicit positionally — so `match-comp {Γ}` reaches `Γ` past the colours in front of it, while `match-comp {x = Γ}` would name the colour and fail.
+  Write the pun and let the name do the selecting; read an existing one as named, never as positional.
 * `--guardedness` is need-based and **infective**: any module that transitively imports a coinductive carrier must carry it.
   Reasoning is such a need — `Gandr.Setoid` is over the ∞-graph carrier — and a `Set`-level module takes the flag rather than reason in a second vocabulary.
   A module carrying the flag for that reason alone says so at the top of the file.
