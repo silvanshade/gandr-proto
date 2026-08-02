@@ -202,7 +202,10 @@ pub struct CellVarMeta
     /// The variance role, joined across both faces (`Mixed` when the hole spans
     /// producer and consumer positions).
     pub variance: CellVariance,
-    /// Whether the hole occurs exactly once in the left-hand side.
+    /// Whether `var`'s own `(name, category)` pair occurs exactly once in the
+    /// left-hand side. Counting per pair rather than per name is what keeps a
+    /// hole worn at two polarities linear: that is one occurrence at each
+    /// polarity — the dinaturality seam — and not a copy.
     pub linear: CellLinearity,
 }
 
@@ -239,15 +242,36 @@ impl CellMeta
     /// [`CellVariance::Mixed`] — the dinaturality case the composition gate
     /// (`compose_directed`, [`crate::compose`]) reads.
     ///
+    /// **Linearity is counted per `(name, category)` pair, variance per name.**
+    /// The two questions are different: variance asks which polarities a hole
+    /// is worn at, so it joins across them; linearity asks whether the hole
+    /// is *copied*, and a hole worn once as a producer and once as a
+    /// consumer is the seam, not a copy. Counting bare name occurrences
+    /// conflates them and reports the reachable `μ`/`μ̃` seam shape as
+    /// non-linear (`docs/gandr/spec/implementation/circuit-terms.md` §"The
+    /// design questions", `circuit-terms-question-17`; owner decision,
+    /// 2026-08-02). This derivation records; refusing a copy is a separate
+    /// admission boundary, and it is not this function's job.
+    ///
     /// # Contract
     /// - ensures: one [`CellVarMeta`] per distinct hole name, in left-to-right
     ///   first-occurrence order over `lhs` then `rhs`; `variance` is `Producer`
     ///   / `Consumer` / `Mixed` according to the categories the name is worn
-    ///   with across both faces; `linear` true iff the name occurs exactly once
-    ///   in `lhs` (the redex-side occurrence count matching consults); `var` is
-    ///   the first occurrence's [`MetaVar`] as the representative, `invertible`
+    ///   with across both faces; `linear` true iff the `(name, category)` pair
+    ///   of `var` occurs exactly once in `lhs` (the redex-side occurrence count
+    ///   matching consults, taken per pair rather than per name); `var` is the
+    ///   first occurrence's [`MetaVar`] as the representative, `invertible`
     ///   carried through verbatim.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L2 only — the variance join and the per-pair linearity
+    ///   count are separated by three shapes: an all-linear cell with a
+    ///   producer-only and a consumer-only hole, a same-polarity repeat, and a
+    ///   two-polarity seam that must come out `Mixed` **and** linear.
+    /// - witness: `sequent::tests::metadata_tracks_variance_and_linearity`
+    /// - witness: `sequent::tests::a_repeated_metavariable_is_nonlinear`
+    /// - witness: `sequent::tests::a_hole_at_both_polarities_is_a_linear_seam`
     #[inline]
     #[must_use]
     pub fn derive(
@@ -280,10 +304,12 @@ impl CellMeta
             else {
                 CellVariance::Producer
             };
+            // Per `(name, category)`, never per name: one hole worn at two
+            // polarities is the dinaturality seam, not a copy.
             let lhs_count = occurrences
                 .iter()
                 .take(lhs_occurrences)
-                .filter(|other| other.name == mv.name)
+                .filter(|other| other.name == mv.name && other.cat == mv.cat)
                 .count();
             vars.push(CellVarMeta {
                 var: mv.clone(),
@@ -795,7 +821,10 @@ mod tests
     #[test]
     fn a_repeated_metavariable_is_nonlinear()
     {
-        // ⟨Pair(x; x) | α⟩ — x occurs twice.
+        // ⟨Pair(x; x) | α⟩ — the producer hole `x` occurs twice at the SAME
+        // polarity: a genuine copy, which the derivation records as non-linear
+        // and the admission boundary refuses
+        // ([`crate::linearity::admit_linear_cell`]).
         let lhs = CmdPat::cut(
             Polarity::Positive,
             ProdPat::ctor("Pair", [ProdPat::meta("x"), ProdPat::meta("x")]),
@@ -808,11 +837,23 @@ mod tests
             .iter()
             .find(|v| &*v.var.name == "x")
             .expect("x present");
-        assert!(!bool::from(x.linear), "x occurs twice, so it is non-linear");
+        assert!(
+            !bool::from(x.linear),
+            "the producer x occurs twice, so it is non-linear"
+        );
+        let alpha = meta
+            .vars
+            .iter()
+            .find(|v| &*v.var.name == "alpha")
+            .expect("alpha present");
+        assert!(
+            bool::from(alpha.linear),
+            "alpha occurs once, so the copy does not spread to its neighbours"
+        );
     }
 
     #[test]
-    fn a_hole_at_both_polarities_is_mixed()
+    fn a_hole_at_both_polarities_is_a_linear_seam()
     {
         // ⟨r | seam(; r)⟩ — the name `r` is worn by a producer metavariable and a
         // consumer metavariable: one hole at two polarities, so the LIVE
@@ -820,6 +861,12 @@ mod tests
         // the composition gate reads). This never arises from the stage-0
         // elaborator, which keeps the categories disjoint — it is the reachable
         // shape `μ`/`μ̃` and cocase produce.
+        //
+        // It is a SEAM, not a copy: `r` occurs once at each polarity, so nothing
+        // is duplicated on a wire and the pattern stays linear. Counting bare
+        // name occurrences instead of `(name, category)` pairs reported it as
+        // non-linear, which would have made the admission boundary refuse the
+        // very shape the composition gate is built to read.
         let lhs = CmdPat::cut(
             Polarity::Positive,
             ProdPat::meta("r"),
@@ -835,6 +882,10 @@ mod tests
             CellVariance::Mixed,
             r.variance,
             "r spans a producer and a consumer position"
+        );
+        assert!(
+            bool::from(r.linear),
+            "one occurrence at each polarity is a seam, not a copy"
         );
     }
 
