@@ -269,6 +269,42 @@ fn circuit_arrows_leave_the_shorter_tiles_alone() -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
+/// The circuit form's **contextual** leads still bind as ordinary names.
+///
+/// Only the two item-position leads (`sign` and `oper`) reserve globally. The
+/// member keyword `sort` and the body statements `node` / `feed` are
+/// `≐`-successors of an open circuit block and inadmissible at every other
+/// lowercase-word slot, so the pre-filter drops their keyword mold there and a
+/// program may still bind them — which is the claim this test is here to keep
+/// honest, because reserving a fourth, fifth, or sixth word would be a silent
+/// source break.
+#[test]
+fn circuit_contextual_keywords_still_bind_as_names() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let binding: &[&str] = &[
+        "def sort = 1;",
+        "def node = 1;",
+        "def feed = 1;",
+        "def use() -> F Integer { val node = 1; ret node }",
+        "def project(sort: Integer) -> F Integer { ret sort }",
+        "def record = #{ node = 1, feed = 2 };",
+    ];
+    for &src in binding {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "{src:?} still binds a contextual circuit keyword; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| obligation.class)
+                .collect::<Vec<_>>()
+        );
+    }
+    Ok(())
+}
+
 /// The corpus gate, spanning **all three** committed
 /// corpus trees: `model/`, `pathological/`, and the W4d `surface/`
 /// fold-in fixtures. The candidate pre-filter and the
