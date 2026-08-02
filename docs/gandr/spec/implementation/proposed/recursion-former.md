@@ -27,8 +27,8 @@ This document is what that surface lowers **into**.
 **Designed, and not built.** Everything else here: the former itself, its checker and operational rules, its machine realization, the recursive-definition elaboration, the derived terminating eliminators, and every rung of the termination ladder past the budget.
 
 **One consequence of the two-stage split worth stating before the rules, because the source design could not have anticipated it.** The pre-reboot design had one core term language with graded thunks, so "which language does the former live in" was not a question.
-This tree has two — the checker's graded language and the kernel's erased one — and the former's self-reference is graded, so the former's home is a real decision rather than a formality.
-It is [[#recursion-former-question-06]] below.
+This tree has two — the checker's graded language and the kernel's erased one — and the former's self-reference is graded, so the former's home is a **genuine ambiguity this document inherits rather than a formality it neglected**.
+It is stated as one, with its readings, at [[#recursion-former-question-06]] below.
 
 ## The design space
 
@@ -360,9 +360,24 @@ Holes are expected to be orthogonal, and the machine already blames a computatio
 
 ### recursion-former-question-06
 
-**Which term language the former is added to.** The self-reference is graded, and this tree has a graded checker language above an erased certified one.
-Three readings are live: the former lives in the graded language and erases to nothing the certified stage can see, which cannot be right because the certified stage would then be unable to type a recursive program; the former lives in both, ungraded below, which asks what the certified stage checks in place of the grade; or grade erasure itself is what has to change.
-**Disposition: carried, and it blocks the former.** This is the question the pre-reboot design could not ask, it is not answerable from that design, and it is where the certified-stage change's cost actually is.
+**Which term language the former is added to — and this one is genuinely ambiguous rather than merely unanswered.**
+
+The former's self-reference is a **graded** thunk, and that grade is load-bearing: it is what distinguishes a recursion that may be entered an unbounded number of times from one that may not.
+This tree has **two** term languages, and the grade survives in only one of them — the checker's syntax carries a graded thunk in both its term and type vocabularies, while the certified stage's thunk type takes only the computation type, because grades are erased before that stage and survive only in the export format.
+
+Three readings, none of them currently coherent:
+
+| reading                                                | what it asks, and why it does not close                                                                                                                           |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **the graded language only**, erasing to nothing below | the certified stage would then be unable to type a recursive program at all, which cannot be the intent of a stage whose whole purpose is to re-derive everything |
+| **both languages**, ungraded below                     | what does the certified stage check _in place of_ the grade? The grade is the only thing distinguishing bounded from unbounded entry, and erasing it erases that  |
+| **grade erasure itself moves**                         | coherent, and the most expensive: erasure is a commitment of the two-stage split rather than a representation choice inside it                                    |
+
+**Disposition: carried as an inherited ambiguity, and recorded as one.** This is **migrated content**: the design it comes from was written against a single core term language with graded thunks, so the question could not arise there and no answer to it exists in the source.
+The ambiguity is a product of the migration meeting a tree the source predates, not an omission in either.
+
+**What is owed is reconciliation with the current direction**, not archaeology.
+Whoever schedules the former decides it, deliberately and with the two-stage split's own commitments in view; nothing here provisionally picks a reading, because a provisional pick reads as a decision to the next reader and this is exactly the kind of decision that should not be made by momentum.
 
 ## Source and confidence
 
@@ -372,6 +387,6 @@ The design descends from the pre-reboot recursion-and-iteration design record, a
 
 **Three claims in the source did not survive that verification and are recorded as changes rather than carried.** The reference evaluator the differential obligation was written against no longer exists, so the obligation is restated against frozen snapshots.
 The budget's two-place mirror was de-duplicated into one constant, so its synchronization obligation and the example that would have pinned it are retired.
-And the single graded core the source assumed is now two languages, which is [[#recursion-former-question-06]] and is the one place where absorbing the source raised a question instead of answering one.
+And the single graded core the source assumed is now two languages, which is [[#recursion-former-question-06]] — the one place where absorbing the source raised a question instead of answering one, recorded there as an inherited ambiguity owing reconciliation with the current direction rather than as an open item nobody reached.
 
 **The surface half of the source is not repeated here.** Its scope discipline, its call-site evidence markers, and its productivity ladder were superseded in presentation by a later design and live in [[../../surface-language/recursion|the (co)recursion surface]]; the loop desugarings are stated in both places because the surface owns their reading and this document owns their target.

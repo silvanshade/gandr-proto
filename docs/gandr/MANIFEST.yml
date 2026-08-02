@@ -99,7 +99,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/operators.md
     role: subdocument
-    b3: b84cdbbee91ac83b62b220a57d6291f5f58c4d94f6f289c1c62f5d50cabe912e
+    b3: b4b2789538f828be9abc843bf16304648290d282fcc5dacd8be0bd1932a1b3d9
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
@@ -164,7 +164,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/recursion-former.md
     role: subdocument
-    b3: ab2a2009a60693d6439977693027baabd9f70e1bb7db0e1260a29802eed6301c
+    b3: b6d7a1a3c29beca0670a521b8c5902972feb6494684397e21c770b12ccd22786
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
