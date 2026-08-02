@@ -4,7 +4,8 @@ The dimension-named `data`-block members in full, and the derived signature-form
 A block in shape position **presents a theory**; `Model(S)` is what any interpretation of that theory must supply — the laws as named 2-cells, the coherences between laws as named 3-cells, carried as typed fields rather than as comments.
 The block members and their reserved slots as landed today are [[declarations#data declarations]]; the grammar machinery every form here must clear is [[grammar]]; the carrier-side rulings this surface rests on are the [[../metatheory#Cellular data — descriptions, cells, and computads|metatheory track's cellular-data section]].
 
-* Status: **design pass, imported; nothing built.** The naming and declaration layers spend zero frozen core; `Model(S)` rides the stage-1 dependent era and is designed, not scoped, until then.
+* Status: **design pass, imported; nothing of this lane built.** The naming and declaration layers spend zero frozen core; `Model(S)` rides the stage-1 dependent era and is designed, not scoped, until then.
+  One neighbouring piece is landed and is marked where it appears: the declaration table checks a derived boundary pair against the sphere its declaration fixes ([[#Sphere-typed boundaries]]), for members no surface can yet write.
 * Everything user-facing here is new design surface. 3-cells exist in gandr today **only** as machine-derived confluence certificates — anonymous, replayed, machine-audience.
   [[#As-built impact]] states exactly what the tree does and does not carry, verified against it.
 * Code sketches are surface-shaped pseudocode; the keyword table is a one-table change under the reservation policy of [[grammar#The keyword and operator tables]].
@@ -148,8 +149,9 @@ After `rule` the second token is always an identifier and the third is always `:
 An instantiation `assoc(x, unit(), y)` inside a `meta` face then supplies terms for those variables **in declaration order**.
 The name is not a binder; it is a reference.
 
-**The one member kind this does not describe is the one whose declaration carries a telescope.** A circuit rule binds its variables in its **parameter list** — its ports, including the endpoints of rewrite-sorted ones — so its target boundary legitimately names variables its source does not bind, and the fresh-right-hand-side-variable rule that reads a rule's variables off its left-hand side does not apply to it ([[circuit-cells#The derived pair meets the sphere by checking, not by synthesis]]).
-That is a second binder, not a weakening of this one: where there is no telescope the left-hand side is still the binder, and the two never both bind a name.
+**The one member kind this sits in tension with is the one whose declaration carries a telescope.** A circuit rule binds its variables in its **parameter list** — its ports, including the endpoints of rewrite-sorted ones — so its target boundary names variables its source does not bind, and the fresh-right-hand-side-variable rule that reads a rule's variables off its left-hand side refuses the ruled congruence block if it is read as binding there ([[circuit-cells#The derived pair meets the sphere by checking, not by synthesis]]).
+The declaration table therefore does not run that rule against a circuit rule's boundary pair.
+**Whether this claim scopes the rule to left-hand-side binders or admits the telescope as a second binder is owed an owner ruling**; until then it is a claim about one member kind, not a weakening of the discipline stated here.
 
 ## Declared 3-cells: the `meta` member
 
@@ -243,8 +245,9 @@ Two payoffs and one growth seam:
 
 **A filler that _computes_ its boundaries is checked against its sphere, never allowed to fill it.** Not every 2-cell member writes its boundary pair: a circuit rule's wiring determines both — the source by replacing every redex with its source, the target by replacing every redex with its target ([[circuit-cells#The derived pair meets the sphere by checking, not by synthesis]]).
 
-**The sphere still comes from the declaration, and elaboration compares the computed pair against it.** That direction is what keeps the first payoff above true for derived boundaries: a sphere read off its own filler is parallel to that filler by construction, so "both composites are parallel" would become unfalsifiable exactly where a derived form makes it easiest to get wrong.
-The diagnostic stays the sphere's — it names the member, which of the two boundaries disagrees, the computed term, and the declared one — and a wiring that derives no term at all is refused before any comparison is reported.
+**The sphere still comes from the declaration, and elaboration compares the computed pair against it.** That direction is what keeps the first payoff above true for derived boundaries: an index read off the filler it indexes cannot disagree with that filler, so a computed pair allowed to fill the sphere would leave a mis-glued boundary typechecking as a cell at the wrong sphere — unfalsifiable exactly where a derived form makes it easiest to get wrong.
+The diagnostic stays the sphere's — it names the member, which of the two boundaries disagrees, the computed term, and the declared one — and a filler that computes no term at all is refused before any comparison is reported.
+As built, the comparison is an endpoint-pair equality at dimension 2 rather than a telescope index, and no surface reaches it: the members it checks are constructed through the declaration table's own API, so the sphere-typed representation and the surface route are both still owed.
 
 ## The `Model(S)` signature-former
 
