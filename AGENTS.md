@@ -76,6 +76,12 @@ That is the normal case, not an unlucky one.
 * **Gates prove structure, not meaning.** Substantial or publishable-stakes changes require an independent adversarial review before landing.
   Follow [`docs/workflow/review.md`](docs/workflow/review.md).
 
+## The owner-decision queue
+
+Decisions, sign-offs, and adjudications the owner must take are **queued, not posed inline**: one self-contained item per decision in the standing queue document in the contributor notes repository, under a stable `owner-q-NNN` identifier, with context, a concrete example, options, and a recommendation.
+The owner answers by identifier; every ruling of record lands in the authoritative project artifact — corpus, tracker, or code — never only in the queue, and nothing tracked cites the queue itself.
+The full discipline is [`docs/workflow/review.md`](docs/workflow/review.md) §"The owner-decision queue".
+
 ## Work tracking
 
 Beads is the issue tracker, with prefix `gandr-`.
