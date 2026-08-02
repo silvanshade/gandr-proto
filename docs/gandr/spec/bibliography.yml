@@ -1497,11 +1497,15 @@ keizer-basold-perez-2020-session-coalgebras:
 
 dagand-2013-cosmology:
   type: thesis
-  title: "A Cosmology of Datatypes: Re-usability and Type Preservation"
+  title: "A Cosmology of Datatypes: Reusability and Dependent Types"
   author: ["Dagand, Pierre-Évariste"]
   date: 2013
   organization: University of Strathclyde
-  note: not in library.bib; synthesized 2026-07-31 — verify locator before citation-bearing use
+  note: >-
+    title, authorship, year, and institution verified from page 1 of the held PDF (2026-08-02),
+    correcting a synthesized 2026-07-31 entry that recalled the subtitle as "Re-usability and
+    Type Preservation"; EThOS uk.bl.ethos.605921 transcribed from the research register
+    (docs/research/bibliography-v2.md row N-1b)
 
 caccamo-2003-formal-calculus:
   type: thesis
