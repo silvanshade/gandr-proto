@@ -34,6 +34,11 @@
 //! - [`elaborate`] — surface `rule` faces
 //!   ([`gandr_theory_levitation::CellFace`]) into cells (§7.1), the ADR-54
 //!   acceptance target.
+//! - [`linearity`] — the **cell-admission linearity boundary**: cell patterns
+//!   are linear (owner ruling, 2026-08-01), so a description whose rule copies
+//!   a hole is refused with a diagnostic naming the copy and the respelling.
+//!   The refusal runs where cells are *admitted*, never where patterns are
+//!   *constructed*.
 //! - [`rewrite`] — direct command-level rewriting with a budget and the
 //!   alphabet's firing discipline (the sequent η-polarity gate, §5).
 //! - [`overlap`] — the multi-sum overlap enumerator (§7.3.2): confluence
@@ -82,6 +87,7 @@ pub mod cell;
 pub mod completion;
 pub mod compose;
 pub mod elaborate;
+pub mod linearity;
 pub mod overlap;
 pub mod pattern;
 pub mod rewrite;
@@ -124,6 +130,9 @@ pub use crate::compose::compose_invertible;
 pub use crate::elaborate::ElaborateError;
 pub use crate::elaborate::elaborate_data_desc;
 pub use crate::elaborate::elaborate_rule;
+pub use crate::linearity::NonLinearPattern;
+pub use crate::linearity::admit_linear_cell;
+pub use crate::linearity::copied_hole;
 pub use crate::overlap::Overlap;
 pub use crate::overlap::OverlapKind;
 pub use crate::overlap::enumerate_overlaps;
