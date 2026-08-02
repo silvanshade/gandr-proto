@@ -203,6 +203,19 @@ A reviewer handed the rationale ratifies its frame, and the frame is what was wr
 
 **One standing lens, cheap enough to run without an agent:** _is this a fact about us, or a fact about the machinery?_ It fires on both instances above and on all three historical ones.
 
+## The owner-decision queue
+
+> Adopted (owner, 2026-08-02), after compressed in-chat decision batches proved hard to answer: items were hard to tell apart, hard to answer individually, and easy to lose.
+
+Decisions, sign-offs, and adjudications the owner must take are collected in a **standing queue document in the contributor notes repository**, not posed as compressed inline batches in session chat.
+The queue's discipline:
+
+* one item per decision, under a stable prefixed identifier (`owner-q-NNN`); numbers are never reused or renumbered, per the reference discipline;
+* each item is self-contained — the context, a plain-terms explanation, a concrete example showing what the decision changes, the options, and the coordinator's recommendation with its reason;
+* the owner answers by identifier, inline in the document, in a reply document, or in chat;
+* a resolved item moves to a rulings-of-record table carrying the ruling, its execution state, and the commit or tracker item that executes it — and the ruling of record itself always lands in the authoritative project artifact, never only in the queue;
+* the queue is contributor-concern and lives outside the project tree, so nothing tracked may cite it; citations go to the artifacts the rulings land in.
+
 ## A recalled citation that turns out to be on-target is still unverified
 
 The corpus discipline says to verify a source's **identity**, not merely its presence.
