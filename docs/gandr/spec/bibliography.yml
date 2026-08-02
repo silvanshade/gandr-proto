@@ -2190,3 +2190,38 @@ bonchi-dilavore-roman-2026-effectful-mealy:
   date: 2026
   serial-number:
     arxiv: "2410.10627"
+
+majid-rietsch-2021-planar-spider:
+  type: article
+  title: Planar Spider Theorem and Asymmetric Frobenius Algebras
+  author: ["Majid, Shahn", "Rietsch, Konstanze"]
+  date: 2021
+  serial-number:
+    arxiv: "2109.12106"
+  note: >-
+    read 2026-08-01 for cor 2.4 and the standard form; it is a PLANAR theorem, and the corpus's
+    standing planar-versus-symmetric ruling applies to it verbatim
+
+collins-2024-hopf-frobenius:
+  type: thesis
+  title: Hopf-Frobenius Algebras
+  author: ["Collins, Joseph"]
+  date: 2024
+  organization: University of Strathclyde
+  note: >-
+    abstract and chapter map read 2026-08-01; held copy is a draft. Its genericity result is a
+    statement about the category of vector spaces and rests on integrals and Larson-Sweedler, so
+    it does not transfer to a combinatorial carrier at Set
+
+cowtan-2024-code-surgery:
+  type: thesis
+  title: Homology, Hopf Algebras and Quantum Code Surgery
+  author: ["Cowtan, Alexander"]
+  date: 2024
+  organization: University of Oxford
+  serial-number:
+    arxiv: "2508.01496"
+  note: >-
+    checked 2026-08-01 and routed out rather than folded; its gluing is colimits in chain
+    complexes of F2-matrices, which is the linear ambient the corpus already declines imports
+    from. Registered so the check is not repeated
