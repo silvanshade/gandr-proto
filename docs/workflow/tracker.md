@@ -47,6 +47,12 @@ A worktree whose `.beads` holds gitignored database state (`dolt/`, `embeddeddol
 
 `.beads/*.jsonl` is a gitignored local-only export read by `bv`, never committed.
 
+**`bd` resolves its workspace from the working directory, and a shell's working directory outlives the command that set it.** A `cd` into another project's checkout — to read a source tree, to check a prior project's tracker — silently retargets **every later `bd` call in that shell** at that project's database.
+The symptom is not an error: it is `bd show <id>` reporting "no issue found" for a bead that plainly exists, which reads as data loss and invites exactly the wrong response.
+**Before believing a bead has vanished, check the working directory**, then re-run from the intended checkout.
+Disjoint id prefixes are what keep this from being worse than confusing: a `gandr-` id can never match in a `wyrd-` database, so a mistargeted write fails rather than landing somewhere unintended.
+That is a property of the prefixes, not a safeguard anyone designed, so do not lean on it — pass an absolute `cd` in the same command as the `bd` call when a session has been reading another tree.
+
 ## Filing and lifetime policy (anti-drift)
 
 The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never recurs.
@@ -88,7 +94,7 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
   Cite standards, repositories, issues, and other research sources with equivalent identifying detail and a resolvable locator; a corpus path or filename alone is not a research citation.
   Never leave the only citation in session context or a notes-repository report.
   Put references known at filing in the description.
-  References discovered later are the sole exception to the comment-only update rule: add them directly to the bead's standing body, normally in a compact `## References` section in `notes`, so the bead alone retains its canonical bibliography.
+  References discovered later are one of the two exceptions to the comment-only update rule (the other being a ledger bead, below): add them directly to the bead's standing body, normally in a compact `## References` section in `notes`, so the bead alone retains its canonical bibliography.
 
 ### Safe graph and field updates
 
