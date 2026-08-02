@@ -78,11 +78,16 @@ use alloc::vec::Vec;
 
 use gandr_core_sequent::il::Polarity;
 use gandr_theory_levitation::CellFace;
+use gandr_theory_levitation::CircuitElaborationError;
+use gandr_theory_levitation::CircuitRule;
 use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::OpDesc;
+use gandr_theory_levitation::WhiskeredCell;
+use gandr_theory_levitation::elaborate_body;
 
+use crate::boundary::DeclinedCircuitIndex;
 use crate::boundary::DeclinedFaceIndex;
 use crate::boundary::DeclinedOpIndex;
 use crate::boundary::OperationInputCount;
@@ -127,6 +132,15 @@ pub enum ElaborateError
     /// the admission boundary, because cell patterns are linear (owner ruling,
     /// 2026-08-01; [`crate::linearity`]).
     NonLinear(NonLinearPattern),
+    /// A **circuit rule**'s wiring denotes no single whiskered composite, so
+    /// the boundary-language object the member stands for does not exist and
+    /// its cell is not admitted on the strength of the derived pair alone.
+    ///
+    /// The distinction the variant keeps is the one the graduation rests on: a
+    /// circuit rule's cell is the derived pair, but what *licenses* it is the
+    /// composite the body makes, so a body with no composite is declined even
+    /// though its pair would elaborate.
+    NoCircuitComposite(CircuitElaborationError),
 }
 
 impl From<NonLinearPattern> for ElaborateError
@@ -193,6 +207,13 @@ pub struct DescElaboration
     pub declined_ops: Vec<(DeclinedOpIndex, OpElaborateError)>,
     /// Each declined face, by index into `desc.cells`, with its reason.
     pub declined_faces: Vec<(DeclinedFaceIndex, ElaborateError)>,
+    /// The **whiskered composite** each admitted circuit rule denotes, in
+    /// declaration order — the boundary-language object the member's filler
+    /// stands for, beside the cell its derived pair became.
+    pub composites: Vec<WhiskeredCell>,
+    /// Each declined circuit rule, by index into `desc.circuits`, with its
+    /// reason.
+    pub declined_circuits: Vec<(DeclinedCircuitIndex, ElaborateError)>,
 }
 
 /// Elaborate a whole datatype description's operations and rules into a store
@@ -268,12 +289,68 @@ pub fn elaborate_data_desc(desc: &DataDesc) -> DescElaboration
             declined_faces.push((DeclinedFaceIndex::from(index), error));
         }
     }
+    // The circuit rule members. Their route to the store is the same seam the
+    // written faces take — the operation gate, then `elaborate_rule`, then the
+    // linearity admission — with one condition ahead of it: a circuit rule's
+    // cell is licensed by the composite its wiring denotes, so a body that
+    // denotes none is declined before its derived pair is offered anywhere.
+    let mut composites = Vec::new();
+    let mut declined_circuits = Vec::new();
+    for (index, rule) in desc.circuits.iter().enumerate() {
+        match admit_circuit_rule(&mut store, rule, &unrepresentable) {
+            | Ok(composite) => composites.push(composite),
+            | Err(error) => declined_circuits.push((DeclinedCircuitIndex::from(index), error)),
+        }
+    }
     DescElaboration {
         store,
         ops,
         declined_ops,
         declined_faces,
+        composites,
+        declined_circuits,
     }
+}
+
+/// Admit one circuit rule: its composite, then its cell, through the same gate
+/// a written face passes.
+///
+/// # Contract
+/// - ensures: `Ok(composite)` with the rule's derived pair inserted as a cell
+///   when the body denotes one whiskered composite, the pair mentions no
+///   declined operation, the pair elaborates, and the cell's left-hand side
+///   copies no hole; otherwise `store` is left untouched.
+/// - provides: the ruled circuit block form's acceptance target — the
+///   boundary-language composite beside the store cell its boundaries became.
+/// - fails: [`ElaborateError::NoCircuitComposite`] when the wiring denotes no
+///   single composite; then exactly as a written face fails.
+/// - panics: none.
+///
+/// # Errors
+/// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L2 — the composite condition is decided before the face
+///   conditions, so a two-redex body (whose pair would elaborate cleanly) and a
+///   reconvergent body (whose composite exists and whose pair copies a hole)
+///   separate the two halves.
+/// - witness: `elaborate::tests::a_single_redex_circuit_rule_reaches_the_store`
+/// - witness: `elaborate::tests::a_two_redex_circuit_rule_is_declined_its_composite`
+/// - witness: `elaborate::tests::a_circuit_rule_whose_boundary_copies_a_hole_is_refused`
+#[inline]
+fn admit_circuit_rule(
+    store: &mut CellStore,
+    rule: &CircuitRule,
+    unrepresentable: &[&Name],
+) -> Result<WhiskeredCell, ElaborateError>
+{
+    let composite = elaborate_body(&rule.body).map_err(ElaborateError::NoCircuitComposite)?;
+    if let Some(error) = declined_operation(&rule.sphere, unrepresentable) {
+        return Err(error);
+    }
+    let cell = elaborate_rule(&rule.sphere)?;
+    admit_cell(store, cell)?;
+    Ok(composite)
 }
 
 /// Admit one declared operation into the cell layer's operation alphabet.
@@ -728,6 +805,244 @@ mod tests
         assert_eq!(
             &*refusal.copied.name, "x",
             "the diagnostic names the copied hole"
+        );
+    }
+
+    /// The single-redex congruence body `node : p(x) ==> (x′); node : add(x′,
+    /// y) --> (z);`, with its derived pair as the sphere the surface route
+    /// supplies.
+    fn cong1_rule() -> gandr_theory_levitation::CircuitRule
+    {
+        use gandr_theory_levitation::CircuitBody;
+        use gandr_theory_levitation::CircuitFrame;
+        use gandr_theory_levitation::CircuitNode;
+        use gandr_theory_levitation::CircuitRedex;
+        use gandr_theory_levitation::CircuitRule;
+        use gandr_theory_levitation::FrameHead;
+
+        let body = CircuitBody::new(
+            [
+                CircuitNode::Redex(CircuitRedex::new(
+                    "p",
+                    FreeTerm::var("x"),
+                    FreeTerm::var("x\u{2032}"),
+                    "x\u{2032}",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("add".into()),
+                    [FreeTerm::var("x\u{2032}"), FreeTerm::var("y")],
+                    "z",
+                )),
+            ],
+            "z",
+        );
+        let derived = gandr_theory_levitation::derive_boundaries(&body).expect("derives");
+        CircuitRule::new("cong1", face(derived.source, derived.target), body)
+    }
+
+    #[test]
+    fn a_single_redex_circuit_rule_reaches_the_store()
+    {
+        let desc = nat_with(
+            [op("add", [
+                SortRef::new("m", "Nat"),
+                SortRef::new("n", "Nat"),
+            ])],
+            [],
+        )
+        .with_circuits([cong1_rule()]);
+        let elaborated = elaborate_data_desc(&desc);
+        assert!(
+            elaborated.declined_circuits.is_empty(),
+            "the gate admits the rule: {:?}",
+            elaborated.declined_circuits
+        );
+        assert_eq!(
+            crate::boundary::CellCount::from(3_usize),
+            elaborated.store.len(),
+            "the rule's cell joins the two constructor frame cells"
+        );
+        let [ref composite] = *elaborated.composites
+        else {
+            panic!("one composite per admitted circuit rule");
+        };
+        assert_eq!(
+            Some(alloc::vec![0_usize.into()]),
+            composite.active_position(),
+            "the redex sits at `add`'s first argument"
+        );
+    }
+
+    #[test]
+    fn a_two_redex_circuit_rule_is_declined_its_composite()
+    {
+        use gandr_theory_levitation::CircuitBody;
+        use gandr_theory_levitation::CircuitFrame;
+        use gandr_theory_levitation::CircuitNode;
+        use gandr_theory_levitation::CircuitRedex;
+        use gandr_theory_levitation::CircuitRule;
+        use gandr_theory_levitation::FrameHead;
+
+        let body = CircuitBody::new(
+            [
+                CircuitNode::Redex(CircuitRedex::new(
+                    "p",
+                    FreeTerm::var("x"),
+                    FreeTerm::var("x\u{2032}"),
+                    "x\u{2032}",
+                )),
+                CircuitNode::Redex(CircuitRedex::new(
+                    "q",
+                    FreeTerm::var("y"),
+                    FreeTerm::var("y\u{2032}"),
+                    "y\u{2032}",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("add".into()),
+                    [FreeTerm::var("x\u{2032}"), FreeTerm::var("y\u{2032}")],
+                    "z",
+                )),
+            ],
+            "z",
+        );
+        let derived = gandr_theory_levitation::derive_boundaries(&body).expect("derives");
+        let rule = CircuitRule::new("cong2", face(derived.source, derived.target), body);
+        let desc = nat_with(
+            [op("add", [
+                SortRef::new("m", "Nat"),
+                SortRef::new("n", "Nat"),
+            ])],
+            [],
+        )
+        .with_circuits([rule]);
+        let elaborated = elaborate_data_desc(&desc);
+        assert!(
+            elaborated.composites.is_empty(),
+            "a declined body contributes no composite"
+        );
+        assert_eq!(
+            crate::boundary::CellCount::from(2_usize),
+            elaborated.store.len(),
+            "the rule's cell never enters the store"
+        );
+        let &(index, ref error) = elaborated
+            .declined_circuits
+            .first()
+            .expect("the circuit rule is declined");
+        assert_eq!(DeclinedCircuitIndex::from(0_usize), index, "by its index");
+        let ElaborateError::NoCircuitComposite(
+            gandr_theory_levitation::CircuitElaborationError::ManyRedexOccurrences {
+                ref occurrences,
+            },
+        ) = *error
+        else {
+            panic!("the decline is the composite refusal, not a face decline: {error:?}")
+        };
+        assert_eq!(2, occurrences.len(), "both occurrences are carried");
+    }
+
+    #[test]
+    fn a_circuit_rule_whose_boundary_copies_a_hole_is_refused()
+    {
+        use gandr_theory_levitation::CircuitBody;
+        use gandr_theory_levitation::CircuitFrame;
+        use gandr_theory_levitation::CircuitNode;
+        use gandr_theory_levitation::CircuitRule;
+        use gandr_theory_levitation::FrameHead;
+
+        // One interface wire feeding both arguments of one frame: the derived
+        // source is `add(x, x)`, and the single admission seam refuses the cell
+        // for copying a hole — the same refusal a written face earns, reached
+        // through the circuit route. The body is frames-only on purpose: a
+        // reconvergent *redex* is two occurrences of one rewrite, so it is
+        // declined a composite before the linearity seam is ever asked.
+        let body = CircuitBody::new(
+            [CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op("add".into()),
+                [FreeTerm::var("x"), FreeTerm::var("x")],
+                "z",
+            ))],
+            "z",
+        );
+        let derived = gandr_theory_levitation::derive_boundaries(&body).expect("derives");
+        let rule = CircuitRule::new("dup", face(derived.source, derived.target), body);
+        let desc = nat_with(
+            [op("add", [
+                SortRef::new("m", "Nat"),
+                SortRef::new("n", "Nat"),
+            ])],
+            [],
+        )
+        .with_circuits([rule]);
+        let elaborated = elaborate_data_desc(&desc);
+        assert_eq!(
+            crate::boundary::CellCount::from(2_usize),
+            elaborated.store.len(),
+            "the copying rule never enters the store"
+        );
+        let &(_index, ref error) = elaborated
+            .declined_circuits
+            .first()
+            .expect("the circuit rule is declined");
+        let ElaborateError::NonLinear(ref refusal) = *error
+        else {
+            panic!("the decline is the linearity refusal: {error:?}")
+        };
+        assert_eq!(
+            &*refusal.copied.name, "x",
+            "the diagnostic names the copied hole"
+        );
+    }
+
+    #[test]
+    fn a_circuit_rule_applying_a_declined_operation_is_declined_at_the_gate()
+    {
+        use gandr_theory_levitation::CircuitBody;
+        use gandr_theory_levitation::CircuitFrame;
+        use gandr_theory_levitation::CircuitNode;
+        use gandr_theory_levitation::CircuitRedex;
+        use gandr_theory_levitation::CircuitRule;
+        use gandr_theory_levitation::FrameHead;
+
+        let divmod = OpDesc::new(
+            "divmod",
+            BridgeArity::new(
+                [SortRef::new("m", "Nat"), SortRef::new("n", "Nat")],
+                [2u32, 2u32],
+                [0u32, 1u32, 0u32, 1u32],
+                [0u32, 1u32],
+                [SortRef::new("q", "Nat"), SortRef::new("r", "Nat")],
+            ),
+            Attrs::empty(),
+        );
+        let body = CircuitBody::new(
+            [
+                CircuitNode::Redex(CircuitRedex::new(
+                    "p",
+                    FreeTerm::var("x"),
+                    FreeTerm::var("w"),
+                    "w",
+                )),
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("divmod".into()),
+                    [FreeTerm::var("w"), FreeTerm::var("y")],
+                    "z",
+                )),
+            ],
+            "z",
+        );
+        let derived = gandr_theory_levitation::derive_boundaries(&body).expect("derives");
+        let rule = CircuitRule::new("over", face(derived.source, derived.target), body);
+        let desc = nat_with([divmod], []).with_circuits([rule]);
+        let elaborated = elaborate_data_desc(&desc);
+        let &(_index, ref error) = elaborated
+            .declined_circuits
+            .first()
+            .expect("the circuit rule is declined");
+        assert_eq!(
+            ElaborateError::UnrepresentableOperation,
+            *error,
+            "the operation gate binds where the block applies a declined operation"
         );
     }
 

@@ -123,6 +123,7 @@ pub use crate::boundary::CellStoreEmptyStatus;
 pub use crate::boundary::CompletionCellBudget;
 pub use crate::boundary::CompletionStatus;
 pub use crate::boundary::CompletionStepBudget;
+pub use crate::boundary::DeclinedCircuitIndex;
 pub use crate::boundary::DeclinedFaceIndex;
 pub use crate::boundary::DeclinedOpIndex;
 pub use crate::boundary::FiringPermission;

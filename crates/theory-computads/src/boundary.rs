@@ -112,6 +112,11 @@ copy_wrapper!(
     "Index of a declared operation declined during elaboration."
 );
 copy_wrapper!(
+    DeclinedCircuitIndex,
+    usize,
+    "Index of a circuit rule member declined during elaboration."
+);
+copy_wrapper!(
     OperationInputCount,
     usize,
     "Number of input ports a declared operation reads."

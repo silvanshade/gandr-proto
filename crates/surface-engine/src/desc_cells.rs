@@ -32,11 +32,17 @@
 //! [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
 
 use gandr_theory_computads::CellStore;
+use gandr_theory_computads::DeclinedCircuitIndex;
 use gandr_theory_computads::DeclinedFaceIndex;
 use gandr_theory_computads::ElaborateError;
 use gandr_theory_computads::OpElaborateError;
 use gandr_theory_computads::elaborate_data_desc;
+use gandr_theory_levitation::CircuitDerivationError;
+use gandr_theory_levitation::CircuitElaborationError;
 use gandr_theory_levitation::DataDesc;
+use gandr_theory_levitation::RedexOccurrence;
+use gandr_theory_levitation::TermPositionIndex;
+use gandr_theory_levitation::WhiskeredCell;
 
 use crate::boundary::DeclineReason;
 use crate::cst_read::empty_surface_span;
@@ -49,6 +55,10 @@ pub struct DescCells
 {
     /// The elaborated cell store of each description, in declaration order.
     pub stores: Vec<CellStore>,
+    /// The **whiskered composite** each admitted circuit rule denotes, in
+    /// description order — the boundary-language object a ruled circuit block
+    /// lowers to, beside the cell its derived boundaries became.
+    pub composites: Vec<WhiskeredCell>,
     /// Every cell-layer decline, in description order, located at its surface
     /// span where the description records one.
     pub diagnostics: Vec<ElabDiagnostic>,
@@ -110,6 +120,12 @@ pub fn elaborate_desc_cells(descs: &[DataDesc]) -> DescCells
                 .diagnostics
                 .push(face_decline_diagnostic(desc, index, error));
         }
+        for &(index, ref error) in &elaborated.declined_circuits {
+            cells
+                .diagnostics
+                .push(circuit_decline_diagnostic(desc, index, error));
+        }
+        cells.composites.extend(elaborated.composites);
         cells.stores.push(elaborated.store);
     }
     cells
@@ -133,6 +149,114 @@ fn op_decline_reason(error: OpElaborateError) -> DeclineReason<'static>
              monoid the Σ-zone firewall keeps out of the Π-layer"
         },
     })
+}
+
+/// The located diagnostic a declined **circuit rule** member earns.
+///
+/// The composite refusals render here rather than through a `Display` on the
+/// theory type, following [`ElaborateError::NonLinear`]'s precedent: the
+/// boundary-language refusal is structured data, and the sentence that reads it
+/// is the surface's.
+fn circuit_decline_diagnostic(
+    desc: &DataDesc,
+    index: DeclinedCircuitIndex,
+    error: &ElaborateError,
+) -> ElabDiagnostic
+{
+    let rule = desc.circuits.get(usize::from(index));
+    let span = rule.map_or_else(empty_surface_span, |rule| rule.sphere.provenance);
+    let name = rule.map_or("<unknown>", |rule| rule.name.as_ref());
+    let message = match *error {
+        | ElaborateError::NoCircuitComposite(ref refusal) => {
+            format!("circuit rule `{name}` {}", composite_refusal(refusal))
+        },
+        | ElaborateError::NonLinear(ref refusal) => {
+            format!("circuit rule `{name}` is refused: {refusal}")
+        },
+        | ElaborateError::LhsNotOperation => format!(
+            "circuit rule `{name}`'s derived source boundary is not an operation application, so \
+             there is no redex for the cell layer to cut against"
+        ),
+        | ElaborateError::EmptyOperation => format!(
+            "circuit rule `{name}`'s derived source boundary applies an operation to no \
+             arguments, so there is no matched producer to cut against"
+        ),
+        | ElaborateError::UnsupportedShape => format!(
+            "circuit rule `{name}`'s derived boundaries have a term shape outside the supported \
+             flattening fragment"
+        ),
+        | ElaborateError::UnrepresentableOperation => format!(
+            "circuit rule `{name}`'s derived boundaries apply an operation whose declared arity \
+             the cell layer declined"
+        ),
+    };
+    ElabDiagnostic::new(message, span)
+}
+
+/// The sentence a boundary-language refusal reads as.
+fn composite_refusal(error: &CircuitElaborationError) -> String
+{
+    match *error {
+        | CircuitElaborationError::Derivation(CircuitDerivationError::CyclicWiring(ref port)) => {
+            format!(
+                "has a wiring that reaches port `{port}` from itself, so it denotes no composite"
+            )
+        },
+        | CircuitElaborationError::Derivation(CircuitDerivationError::NodeBudget { budget }) => {
+            format!(
+                "has a wiring that unfolds past the derivation's node budget of {budget}, so its \
+                 composite is declined rather than built"
+            )
+        },
+        | CircuitElaborationError::ManyRedexOccurrences { ref occurrences } => {
+            format!(
+                "has a body whose declared output port unfolds to {} redex occurrences ({}), so \
+                 it denotes no single whiskered composite: two occurrences at incomparable \
+                 positions are the horizontal composite an earned shift-equivalence witness \
+                 licenses, and two at comparable positions are the sequential composition the \
+                 boundary language spells `then`",
+                occurrences.len(),
+                render_occurrences(occurrences)
+            )
+        },
+        | CircuitElaborationError::PositionOffBoundary {
+            ref rewrite,
+            ref position,
+        } => format!(
+            "has an occurrence of `{rewrite}` at {} that its derived boundary does not address",
+            render_position(position)
+        ),
+    }
+}
+
+/// Every occurrence, as `` `name` at [i, j] ``, in the order the reading
+/// reached them.
+fn render_occurrences(occurrences: &[RedexOccurrence]) -> String
+{
+    occurrences
+        .iter()
+        .map(|occurrence| {
+            format!(
+                "`{}` at {}",
+                occurrence.rewrite,
+                render_position(&occurrence.position)
+            )
+        })
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+/// A position path, as `[i, j]`.
+fn render_position(position: &[TermPositionIndex]) -> String
+{
+    format!(
+        "[{}]",
+        position
+            .iter()
+            .map(|index| usize::from(*index).to_string())
+            .collect::<Vec<String>>()
+            .join(", ")
+    )
 }
 
 /// The located diagnostic a declined `rule` face earns.
@@ -173,6 +297,10 @@ fn face_decline_diagnostic(
         },
         | ElaborateError::NonLinear(ref refusal) => {
             format!("rule of `{name}` is refused: {refusal}")
+        },
+        // A written face has no wiring, so it can never be refused a composite.
+        | ElaborateError::NoCircuitComposite(_) => {
+            format!("rule of `{name}` is refused a boundary-language composite it never had")
         },
     };
     ElabDiagnostic::new(message, span)
