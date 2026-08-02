@@ -3483,3 +3483,43 @@ zhao-oliveira-schrijvers-2019-worklist:
     volume: 3
     issue: ICFP
     page-range: 1-29
+
+ager-biernacki-danvy-midtgaard-2003-functional-correspondence:
+  type: article
+  title: A Functional Correspondence between Evaluators and Abstract Machines
+  author: ["Ager, Mads Sig", "Biernacki, Dariusz", "Danvy, Olivier", "Midtgaard, Jan"]
+  date: 2003-08-27
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/888251.888254"
+  parent:
+    type: proceedings
+    title: Proceedings of the 5th ACM SIGPLAN International Conference on Principles and Practice of Declarative Programming
+    page-range: 8-19
+
+reynolds-1972-definitional-interpreters:
+  type: article
+  title: Definitional Interpreters for Higher-Order Programming Languages
+  author: ["Reynolds, John C."]
+  date: 1972
+  publisher: ACM Press
+  volume: 2
+  serial-number:
+    doi: "10.1145/800194.805852"
+  parent:
+    type: proceedings
+    title: Proceedings of the ACM Annual Conference
+    page-range: 717-740
+
+danvy-nielsen-2001-defunctionalization:
+  type: article
+  title: Defunctionalization at Work
+  author: ["Danvy, Olivier", "Nielsen, Lasse R."]
+  date: 2001-09-05
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/773184.773202"
+  parent:
+    type: proceedings
+    title: Proceedings of the 3rd ACM SIGPLAN International Conference on Principles and Practice of Declarative Programming
+    page-range: 162-174

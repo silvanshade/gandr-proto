@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 1e642dc7c227f8953a7f753401713e06614157033f0b910bb73c3408046979f8
+    b3: 0201940a258fc0ee57d97f3ce427b842f5b63111e06a0cbbc0ba600dd9777fc9
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: c0cb00184344180c99cf2a0fe3acfbc68cdd0879c8fe966b5530aa1d1e19ef84
+    b3: 359119bff5a537cd8c04be1ecfe90954bef53fc21eb3efc03c598d173301c2cd
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -87,9 +87,14 @@ nodes:
     b3: 894f55b33edd531caa59e1380284ed0f3eec8a20287324c8afbc11faf3791cce
     edges:
       - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/typing-machine.md
+    role: subdocument
+    b3: 45a5f49ee264bd832ebb346ba3c91dc3144e695af3a1ee3b332f19489e3801f5
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: eb5e3297d4fd79035ceb99efb4c546f17b6fe6af6fb322cdc33e0efb32f73825
+    b3: acb0371a1019d0cbec431650fcdf14ba51785af2c540a0d6e2f9d86b4f8ea9e5
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
