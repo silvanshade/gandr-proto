@@ -2688,3 +2688,20 @@ fiore-hamana-2013-multiversal:
   note: >-
     title and authorship verified from page 1 of the held PDF; venue, page range, and DOI verified
     against the LICS 2013 archive listing at registration time
+
+gambino-kock-2013-polynomial:
+  type: article
+  title: Polynomial Functors and Polynomial Monads
+  author: ["Gambino, Nicola", "Kock, Joachim"]
+  date: 2013
+  serial-number:
+    doi: "10.1017/S0305004112000394"
+  parent:
+    type: periodical
+    title: Mathematical Proceedings of the Cambridge Philosophical Society
+    volume: 154
+    issue: 1
+    page-range: 153-192
+  note: >-
+    locator transcribed from the cosmology thesis's bibliography and verified against the
+    Cambridge Core record at registration time

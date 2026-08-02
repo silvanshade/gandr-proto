@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 4e4c3c552f9e5f377e5b4a6095492bb12fd9f70ce426b14248c13f42a98b4309
+    b3: 0c2d808b9539f102cd180d9bf489f54fa30d35096fbfa4d5738cd7ca7d1059dd
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 52d2c5ff27fb86e66df6ebb4cf248b6cde4cd7401303e27612b933b17148409f
+    b3: 2636ba7ef4ab19a541e762d67586b8c4b693d7ab0425c7b370ff33184cd48a77
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -160,6 +160,11 @@ nodes:
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
     b3: 618e06fe383fb274eb27613608ba0676232499286281a0acf0c3222869132108
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/ornaments.md
+    role: subdocument
+    b3: df5d999de9ffa5e03cf75207574dbab9b42d1947ba6997d5bca179092611c1a1
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/interactive-surface.md
