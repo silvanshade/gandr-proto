@@ -143,7 +143,7 @@ As built it is a flat, global `const` table shared by the entity and manifest vo
 | `dependency` | `#{ name : String, alias : String, constraint : String }` | repeatable | inert |
 | `toolchain`  | `#{ gandr : String }`                                     | single     | inert |
 
-The last six are the manifest vocabulary, and the reason they live in the entity registry rather than beside a manifest parser is the whole point of the layer: a manifest is not a file format, it is typed data on a declaration.
+The last six are the manifest vocabulary, and the reason they live in the entity registry rather than beside a manifest parser is the whole point of the layer: a manifest is not a file format, it is typed data on a declaration ([[../implementation/proposed/packages#The manifest]]).
 
 User-declared attribute schemas are the growth path, and they reopen the namespacing question ([[#attr-question-01]]).
 
@@ -268,6 +268,7 @@ Each of these is a hook this design must not foreclose, and most are consumers o
 * **Modules and packaging** — module and package metadata is typed attribute data on a unit's root declaration, and the manifest **consumes** the attachment mechanism rather than inventing a format.
   A package coordinate is an inert attribute, and the content-addressed cache hashes the unit's _syntax_, so inert package metadata is hash-neutral and the manifest does not perturb the address.
   The manifest's intended host — a module root that takes a leading attribute block — does not exist, so the schemas validate on a top-level definition as the unit-root stand-in ([[proposed/modules#module-question-04]]).
+  The manifest's own design, its field-role taxonomy, and the content-address boundary that routes identity-bearing participation around this layer are [[../implementation/proposed/packages#The manifest]].
 * **Build configuration** — build-target configuration is attribute data on a build target: the same typed-schema mechanism, a different entity, a different registry, so packaging and build configuration do not collide.
 * **Readable errors** — the attribute diagnostics render through the same adapter as every other diagnostic, and attribute provenance rides the origin and elaboration-kind machinery.
 * **The foreign interface** — an `extern` block's link target, capability, and abort-on-unwind policy change what type-checks and how a symbol is bound, so they are **semantic** attributes: modeled as syntax and hash-participating.

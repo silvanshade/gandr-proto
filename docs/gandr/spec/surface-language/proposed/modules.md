@@ -30,7 +30,7 @@ The gap between the two is wide, and it is the first thing to carry away.
 Sessions, manifest sharing, and worlds — the three features the distribution story is assembled out of — are themselves designed and unbuilt, as [[modes-and-references#The substrate, and what is actually built]] records.
 
 **Neither designed nor built here.** Resolution of any kind: no package identity, no lockfile, no cache, no fetch.
-The toolchain half of that question — package identity, resolution, the cache, distribution — is a separate design area with its own record; the language half is what an import _elaborates to_, which is the module value described here.
+The toolchain half of that question — package identity, resolution, the cache, distribution — is [[../../implementation/proposed/packages]]; the language half is what an import _elaborates to_, which is the module value described here.
 
 **The phase commitment, which is stronger than what is built.** The implementation track commits to **modules as their own primitive layer** rather than as sugar ([[../../implementation#The build-out at a glance]]), and records the historical two-way conflict — modules as compile-time namespaces against modules elaborating to canonical records — as superseded, with neither old reading citable as current ([[../../implementation/roadmap#Decisions of record pinned for their phases]]).
 So the record lowering above is **the current rung's mechanism, not the design's destination**: the destination is a primitive module former in the kernel IL with coercive matching, sealing with export replay, generative functors, and the package existential.
@@ -233,7 +233,7 @@ The body's static type is governed by the _expected_ `σ`, and a mismatch raises
 
 **The word "package" carries a second, unrelated sense**, and the collision is worth naming once here rather than discovering it later.
 `Package σ` is a _first-class module value_, packed and unpacked within a program.
-The build and distribution unit — the addressable artifact a build resolves, fetches, verifies, and links — is a toolchain construct with its own design record.
+The build and distribution unit — the addressable artifact a build resolves, fetches, verifies, and links — is a toolchain construct with its own design record, [[../../implementation/proposed/packages]].
 Where this document says "package" unqualified it means the first-class module value.
 
 ## Implicit resolution
@@ -534,7 +534,7 @@ The design constraint recorded with the deferred typed-import work is that **res
 Package identity, path and error diagnostics, and deterministic hermetic resolution are to be specified **before** any network or registry behaviour, and the acceptance instrument is a fixture resolver that imports a package as a typed module with no network access.
 
 _Disposition:_ **carried** — the constraint is adopted and its answer is unwritten.
-The toolchain half is the import surface and its lowering, which belongs to the package and build-manager design record; the language half is the ascription rule of [[#The typing rules]].
+The toolchain half is [[../../implementation/proposed/packages#The import surface and its lowering]]; the language half is the ascription rule of [[#The typing rules]].
 
 ### module-question-04
 

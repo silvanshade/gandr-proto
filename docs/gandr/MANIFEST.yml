@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: e67fee7db8869ade69d5c2bc90e1af09853f8128a5b04c8c03a547bcfe249bcd
+    b3: 219d25076a6a67c4dcb241f7284fad33ded742f322b2981c877dee68b984e631
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -124,7 +124,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/attributes.md
     role: subdocument
-    b3: 60d1a2cf573e40b19678d62af700197d9e6e8b4ef88a5a1cf15f599ecde39d37
+    b3: f990cf2c686584517297a9d43831bdadf292f206fc040a8a87b3251ef1fc6cba
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/directed-family.md
@@ -134,7 +134,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: cfee4e759476a0187199ff154621987cba7dc999839572a648f3de709097f1c3
+    b3: fe6c145b208df441ff4a3adef74dd49b99448e468a8982c6600f2eefd3192cab
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md
@@ -167,11 +167,16 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modules.md
     role: subdocument
-    b3: 4633df742d1d29e6d26bb8ff6bc4e86e0f108c787b276ed3c4a9595ea16e057e
+    b3: 854cb423c7c19e76c108c9495079df24f59cfdbfb9ede08513b82542fa33adc0
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md
     role: subdocument
     b3: e70f9f8f3f9232162eafd576a6dae0a92de88f7f4add934240924b5f0a33b398
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/packages.md
+    role: subdocument
+    b3: 313e3738dea78f41413058dfc631049d23b447fbda4fca965d9808e797491e8c
     edges:
       - { rel: registered-under, to: spec/implementation.md }

@@ -34,6 +34,7 @@ Each reserved form's graduation is gated on the semantics that owns it — **no 
 * **Environment assignment** `FOO=bar cmd` — currently unmoldable; wanted working for the daily-driver rung.
 * **Typed package imports** — deferred past the module rung; `import` resolution is unwired today.
   The binding constraint carried from the design record is that **resolution stays outside the trusted core** — a resolver supplies source and module data, the elaborator checks the declared signature — and that a hermetic fixture resolver with no network access is the acceptance instrument ([[proposed/modules#module-question-03]]).
+  The toolchain half — content-addressed identity, the cache, the lock record, distribution, and the manifest — is [[../implementation/proposed/packages]].
 * **The computation-sort gradual-top spelling** — a named deferral from the module train.
 * **The full module family** (structures, signatures, functors, sealing, `pack`/`unpack`, `Package σ`) — the staging above the built rung in [[proposed/modules#The staging ladder]], then modules as their own primitive layer (the implementation phase).
   The two open surface questions it carries are the signature spelling ([[proposed/modules#module-question-01]]) and whether inferred impredicativity rides the implicit-search fuel ([[proposed/modules#module-question-02]]).
