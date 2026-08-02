@@ -809,10 +809,16 @@ mod tests
         );
     }
 
+    /// How many doubling frames a generated body stacks.
+    #[repr(transparent)]
+    #[derive(Clone, Copy)]
+    struct DoublingLevels(usize);
+
     /// A chain of `n` doubling frames: each consumes the wire below it twice,
     /// so the derived boundary has `2ⁿ` leaves.
-    fn doubling_body(levels: usize) -> CircuitBody
+    fn doubling_body(levels: DoublingLevels) -> CircuitBody
     {
+        let levels = levels.0;
         let mut nodes = Vec::new();
         for level in 0 .. levels {
             let below = if level == 0 {
@@ -835,7 +841,7 @@ mod tests
     {
         // Twenty doubling frames derive a term of 2²⁰ leaves; the ceiling turns
         // that into a defined decline naming the ceiling rather than a hang.
-        let body = doubling_body(20);
+        let body = doubling_body(DoublingLevels(20));
         assert_eq!(
             Err(CircuitDerivationError::NodeBudget {
                 budget: CircuitNodeBudget::DEFAULT
@@ -851,7 +857,7 @@ mod tests
         // Five doubling frames derive 2⁵ leaves, comfortably under the ceiling,
         // and the ceiling is not a cliff the ruled bodies sit near: the `cong2`
         // block derives five nodes.
-        let body = doubling_body(5);
+        let body = doubling_body(DoublingLevels(5));
         assert!(
             derive_boundaries(&body).is_ok(),
             "a body under the ceiling derives as before"
@@ -865,7 +871,7 @@ mod tests
     #[test]
     fn the_node_budget_is_per_reading_and_explicit_when_a_caller_wants_one()
     {
-        let body = doubling_body(8);
+        let body = doubling_body(DoublingLevels(8));
         assert!(
             derive_boundary_within(&body, BoundaryReading::Source, CircuitNodeBudget::from(16))
                 .is_err(),

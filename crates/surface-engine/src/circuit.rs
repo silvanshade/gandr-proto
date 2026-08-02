@@ -92,11 +92,11 @@
 //! is a name-resolution question, and answering it here would report the wrong
 //! error.
 //!
-//! Nothing here lowers, either — the description route ([`desc`]) does that,
-//! and it is where a circuit rule member stopped being parse-and-decline. The
-//! two passes read one shape, and that reading is [`shape`]'s so it cannot
-//! drift between them: this pass reports what the source got wrong, and that
-//! one says what the source means.
+//! Nothing here lowers, either — the description route (this module's `desc`
+//! child) does that, and it is where a circuit rule member stopped being
+//! parse-and-decline. The two passes read one shape, and that reading is the
+//! `shape` child's so it cannot drift between them: this pass reports what the
+//! source got wrong, and that one says what the source means.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
@@ -122,8 +122,8 @@ use crate::cst_read::grammar;
 use crate::desc_elab::ElabDiagnostic;
 use crate::synnode::SynTree;
 
-pub mod desc;
-pub mod shape;
+pub(crate) mod desc;
+pub(crate) mod shape;
 
 /// The circuit surface check's verdict: every decline the source earned, in
 /// source order, and every internal wire the name-set fold bound.
@@ -282,7 +282,9 @@ where
 /// The public entry point parses for itself; a pass that has already parsed —
 /// the description route ([`desc`]) — calls this instead, so one parse answers
 /// both questions and the two readings cannot come from two trees.
-pub(crate) fn check_over(
+#[inline]
+#[must_use]
+pub fn check_over(
     reader: &Reader<'_>,
     items: &[NodeId],
 ) -> CircuitSurface

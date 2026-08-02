@@ -105,6 +105,7 @@ use gandr_theory_levitation::wellformed::derive_cell_var_meta;
 use crate::boundary::CircuitName;
 use crate::boundary::MatchDecision;
 use crate::boundary::TileSpelling;
+use crate::boundary::TypeName;
 use crate::circuit::shape::CircuitKind;
 use crate::circuit::shape::KindEnv;
 use crate::circuit::shape::MEMBER_LEADS;
@@ -142,7 +143,7 @@ const ALPHABET_QUESTION: &str = "gandr-ui9";
 ///   `a_many_out_node_declines_naming_the_cell_alphabet_question`
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
 ///   `a_feed_statement_declines_naming_the_wheel_obligation`
-pub(crate) fn sign_desc(
+pub fn sign_desc(
     shape: Shape<'_, '_>,
     node: NodeId,
     serial: NominalSerial,
@@ -172,7 +173,7 @@ pub(crate) fn sign_desc(
 /// telescope; it is deliberately *not* enough for a frame head to resolve,
 /// which is why a top-level rule applying an undeclared frame earns the
 /// out-of-signature refusal rather than silence.
-pub(crate) fn circuit_declaration_desc(
+pub fn circuit_declaration_desc(
     shape: Shape<'_, '_>,
     node: NodeId,
     serial: NominalSerial,
@@ -261,7 +262,13 @@ fn ctor_member(
     let (inputs, output) = signature_ports(shape, run);
     let fields: Vec<Code> = inputs
         .iter()
-        .map(|port| Code::field(sort_ref(port.sort.as_str()), Grade::ONE, Attrs::empty()))
+        .map(|port| {
+            Code::field(
+                sort_ref(TypeName(port.sort.as_str())),
+                Grade::ONE,
+                Attrs::empty(),
+            )
+        })
         .collect();
     CtorDesc::new(
         name.0.to_owned(),
@@ -613,6 +620,7 @@ fn wire_names(
 /// body port written with the same letters — the same guarantee
 /// [`gandr_theory_levitation::RewritePort::interface`] rests on for its
 /// endpoint variables.
+#[repr(transparent)]
 #[derive(Debug, Default)]
 struct FreshWire
 {
@@ -736,11 +744,11 @@ impl Decline
 /// resolved type — resolved equality is elaboration's, not the surface's — so
 /// the reference is the primitive the spelling names, or a nullary constructor
 /// application over it.
-fn sort_ref(sort: &str) -> ValueTypeRef
+fn sort_ref(sort: TypeName<'_>) -> ValueTypeRef
 {
-    PrimTy::from_label(NameRef::from(sort)).map_or_else(
+    PrimTy::from_label(NameRef::from(sort.0)).map_or_else(
         || ValueTypeRef::Ctor {
-            head: sort.into(),
+            head: sort.0.into(),
             args: Box::default(),
         },
         ValueTypeRef::Prim,
@@ -876,7 +884,7 @@ impl Shape<'_, '_>
     /// longer run is spelled out and read as a variable, which is the honest
     /// reading of a shape this route does not otherwise parse.
     fn free_term_run(
-        &self,
+        self,
         run: &[NodeId],
     ) -> FreeTerm
     {

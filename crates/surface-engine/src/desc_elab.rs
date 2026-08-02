@@ -152,7 +152,7 @@ where
     let reader = Reader::new(pbg, cst);
     let shape = Shape { reader: &reader };
     let mut elab = DescElab::default();
-    let mut serial: u64 = 0;
+    let mut serial = NominalSerial::from(0_u64);
     let mut circuit_forms = CircuitFormPresence(false);
     for item in tree.root().named_children() {
         // The circuit block form's two item leads take the circuit route: a
@@ -161,19 +161,14 @@ where
         let circuit = match item.kind() {
             | node_kinds::SIGN_DECLARATION => {
                 circuit_forms = CircuitFormPresence(true);
-                circuit_desc::sign_desc(
-                    shape,
-                    item.cst_node(),
-                    NominalSerial::from(serial),
-                    &mut elab.diagnostics,
-                )
+                circuit_desc::sign_desc(shape, item.cst_node(), serial, &mut elab.diagnostics)
             },
             | node_kinds::CIRCUIT_DECLARATION => {
                 circuit_forms = CircuitFormPresence(true);
                 circuit_desc::circuit_declaration_desc(
                     shape,
                     item.cst_node(),
-                    NominalSerial::from(serial),
+                    serial,
                     &mut elab.diagnostics,
                 )
             },
@@ -188,12 +183,7 @@ where
             | node_kinds::CODATA_DECLARATION => DeclPolarity::Codata,
             | _ => continue,
         };
-        if let Some(desc) = reader.declaration(
-            item.cst_node(),
-            polarity,
-            NominalSerial::from(serial),
-            &mut elab,
-        ) {
+        if let Some(desc) = reader.declaration(item.cst_node(), polarity, serial, &mut elab) {
             check_and_push(desc, &mut elab, &mut serial);
         }
     }
@@ -221,7 +211,7 @@ struct CircuitFormPresence(bool);
 fn check_and_push(
     desc: DataDesc,
     elab: &mut DescElab,
-    serial: &mut u64,
+    serial: &mut NominalSerial,
 )
 {
     for diagnostic in check_desc(&desc) {
@@ -231,7 +221,7 @@ fn check_and_push(
         ));
     }
     elab.descs.push(desc);
-    *serial = serial.saturating_add(1);
+    *serial = NominalSerial::from(u64::from(*serial).saturating_add(1));
 }
 
 /// The three parallel member lists of a declaration table under elaboration:

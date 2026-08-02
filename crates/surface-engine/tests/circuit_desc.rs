@@ -4,6 +4,8 @@
 //! well-formed rule block reaches the cell layer behind the gate), and each
 //! decline with its own diagnostic.
 
+use core::fmt::Write as _;
+
 use gandr_surface_engine::boundary::PipelineSource;
 use gandr_surface_engine::circuit::check_circuit_surface;
 use gandr_surface_engine::desc_cells::elaborate_desc_cells;
@@ -70,12 +72,14 @@ fn messages(source: TestText<'_>) -> Vec<String>
 #[track_caller]
 fn assert_names(
     messages: &[String],
-    fragments: &[&str],
+    fragments: &[TestText<'_>],
 ) -> String
 {
-    let found = messages
-        .iter()
-        .find(|message| fragments.iter().all(|fragment| message.contains(fragment)));
+    let found = messages.iter().find(|message| {
+        fragments
+            .iter()
+            .all(|fragment| message.contains(fragment.0))
+    });
     match found {
         | Some(message) => message.clone(),
         | None => panic!("no diagnostic names {fragments:?}; got {messages:#?}"),
@@ -173,9 +177,9 @@ sign Shared {
     );
     let reported = messages(shared);
     assert_names(&reported, &[
-        "the port name `m`",
-        "produced",
-        "produced exactly once and consumed exactly once",
+        TestText("the port name `m`"),
+        TestText("produced"),
+        TestText("produced exactly once and consumed exactly once"),
     ]);
     let standalone: Vec<String> = check_circuit_surface(shared.0)
         .diagnostics
@@ -205,9 +209,9 @@ sign Wide {
 ",
     ));
     assert_names(&reported, &[
-        "circuit rule `split`",
-        "applying `tee` binds 2 output ports",
-        "cell-alphabet question (gandr-ui9)",
+        TestText("circuit rule `split`"),
+        TestText("applying `tee` binds 2 output ports"),
+        TestText("cell-alphabet question (gandr-ui9)"),
     ]);
 }
 
@@ -227,9 +231,9 @@ sign WideFace {
 ",
     ));
     assert_names(&reported, &[
-        "circuit rule `pair` declares 2 output ports",
-        "a term has one root",
-        "cell-alphabet question (gandr-ui9)",
+        TestText("circuit rule `pair` declares 2 output ports"),
+        TestText("a term has one root"),
+        TestText("cell-alphabet question (gandr-ui9)"),
     ]);
 }
 
@@ -250,8 +254,8 @@ sign Wheel {
 ",
     ));
     assert_names(&reported, &[
-        "circuit rule `spin` carries a `feed` back-edge",
-        "wheel-bearing body derives no boundary pair",
+        TestText("circuit rule `spin` carries a `feed` back-edge"),
+        TestText("wheel-bearing body derives no boundary pair"),
     ]);
 }
 
@@ -271,12 +275,12 @@ fn a_two_redex_body_declines_with_both_occurrences()
         .map(|diagnostic| diagnostic.message)
         .collect();
     assert_names(&reported, &[
-        "circuit rule `cong2`",
-        "unfolds to 2 redex occurrences",
-        "`p` at [0]",
-        "`q` at [1]",
-        "incomparable",
-        "shift-equivalence witness",
+        TestText("circuit rule `cong2`"),
+        TestText("unfolds to 2 redex occurrences"),
+        TestText("`p` at [0]"),
+        TestText("`q` at [1]"),
+        TestText("incomparable"),
+        TestText("shift-equivalence witness"),
     ]);
     assert!(
         cells.composites.is_empty(),
@@ -298,9 +302,9 @@ sign Stray {
 ",
     ));
     assert_names(&reported, &[
-        "circuit rule `stray`",
-        "frame applies symbol `mystery`",
-        "not in the datatype's signature",
+        TestText("circuit rule `stray`"),
+        TestText("frame applies symbol `mystery`"),
+        TestText("not in the datatype's signature"),
     ]);
 }
 
@@ -344,9 +348,9 @@ sign Loop {
 ",
     ));
     assert_names(&reported, &[
-        "circuit rule `spin`",
-        "reaches port",
-        "from itself",
+        TestText("circuit rule `spin`"),
+        TestText("reaches port"),
+        TestText("from itself"),
     ]);
 }
 
@@ -398,9 +402,12 @@ fn a_doubling_body_declines_on_the_derivation_node_budget()
     );
     for level in 1 ..= 12_u32 {
         let below = level.saturating_sub(1);
-        source.push_str(&format!(
-            "    node : l(w{below}) --> (a{level});\n    node : r(w{below}) --> (b{level});\n                 node : add(a{level}, b{level}) --> (w{level});\n"
-        ));
+        write!(
+            source,
+            "    node : l(w{below}) --> (a{level});\n    node : r(w{below}) --> (b{level});\n    \
+             node : add(a{level}, b{level}) --> (w{level});\n"
+        )
+        .expect("writing to a String does not fail");
     }
     source.push_str("  }\n}\n");
     let reported: Vec<String> = elaborate_data_descs(source.as_str())
@@ -409,9 +416,9 @@ fn a_doubling_body_declines_on_the_derivation_node_budget()
         .map(|diagnostic| diagnostic.message)
         .collect();
     assert_names(&reported, &[
-        "circuit rule `blow`",
-        "past the derivation's node budget of 4096",
-        "reconvergence is a shared subterm",
+        TestText("circuit rule `blow`"),
+        TestText("past the derivation's node budget of 4096"),
+        TestText("reconvergence is a shared subterm"),
     ]);
 }
 
@@ -431,8 +438,8 @@ sign Pipe {
 ",
     ));
     assert_names(&reported, &[
-        "the filler of `oper pipeline`",
-        "defines a circuit 1-cell",
+        TestText("the filler of `oper pipeline`"),
+        TestText("defines a circuit 1-cell"),
     ]);
 }
 

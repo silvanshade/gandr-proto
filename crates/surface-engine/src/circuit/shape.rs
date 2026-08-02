@@ -2,8 +2,8 @@
 //! kinds, the arrow grid, the kind environment, and the run scanning every pass
 //! over a circuit declaration does.
 //!
-//! Two passes read the same shape and must not drift: the surface check
-//! ([`super`], arrow-kind confirmation and the name-set fold) and the
+//! Two passes read the same shape and must not drift: the surface check (the
+//! parent module's arrow-kind confirmation and name-set fold) and the
 //! description route ([`super::desc`], the lowering into
 //! [`gandr_theory_levitation::DataDesc`]). A block's shape is one reading —
 //! where its `:` sits, which run is its signature, which is its filler, what a
@@ -273,6 +273,7 @@ pub struct DeclaredPort<'tree>
 /// Copyable and stateless — it is a reader plus the ruled form's grammar,
 /// nothing else — so a pass holds one and asks it questions rather than
 /// threading a cursor.
+#[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct Shape<'run, 'tree>
 {
@@ -285,7 +286,7 @@ impl<'tree> Shape<'_, 'tree>
     /// The declared name and kind of a keyword-led judgment run
     /// (`kw name : …`), or [`None`] when the run is not one.
     pub fn judgment_head(
-        &self,
+        self,
         run: &[NodeId],
     ) -> Option<(CircuitName<'tree>, CircuitKind)>
     {
@@ -297,10 +298,10 @@ impl<'tree> Shape<'_, 'tree>
     }
 
     /// The part of a judgment run after its top-level `:`.
-    pub fn after_colon<'run>(
-        &self,
-        run: &'run [NodeId],
-    ) -> Option<&'run [NodeId]>
+    pub fn after_colon(
+        self,
+        run: &[NodeId],
+    ) -> Option<&[NodeId]>
     {
         let colon = self.find_at_top_level(run, TileSpelling(":"))?;
         run.get(colon.0.saturating_add(1) ..)
@@ -321,10 +322,10 @@ impl<'tree> Shape<'_, 'tree>
     /// - provides: the boundary between a declaration's sphere and its filler.
     /// - fails: never.
     /// - panics: none.
-    pub fn split_body<'run>(
-        &self,
-        tail: &'run [NodeId],
-    ) -> (&'run [NodeId], Option<&'run [NodeId]>)
+    pub fn split_body(
+        self,
+        tail: &[NodeId],
+    ) -> (&[NodeId], Option<&[NodeId]>)
     {
         let Some(brace) = self.find_at_top_level(tail, TileSpelling("{"))
         else {
@@ -346,11 +347,11 @@ impl<'tree> Shape<'_, 'tree>
     /// A bare-sort parameter side has no group, and a bare-sort *result* side
     /// must not be mistaken for one, which is what the `before` bound rules
     /// out.
-    pub fn parameter_interior<'run>(
-        &self,
-        signature: &'run [NodeId],
+    pub fn parameter_interior(
+        self,
+        signature: &[NodeId],
         before: Option<RunIndex>,
-    ) -> Option<&'run [NodeId]>
+    ) -> Option<&[NodeId]>
     {
         let open = self.find_at_top_level(signature, TileSpelling("("))?;
         if before.is_some_and(|arrow| open.0 >= arrow.0) {
@@ -361,10 +362,10 @@ impl<'tree> Shape<'_, 'tree>
 
     /// The interior of the signature's **result** list — the first top-level
     /// `( … )` group past its arrow.
-    pub fn result_interior<'run>(
-        &self,
-        signature: &'run [NodeId],
-    ) -> Option<&'run [NodeId]>
+    pub fn result_interior(
+        self,
+        signature: &[NodeId],
+    ) -> Option<&[NodeId]>
     {
         let found = self.find_arrow_at_top_level(signature)?;
         let result = signature.get(found.index.0.saturating_add(1) ..)?;
@@ -378,10 +379,10 @@ impl<'tree> Shape<'_, 'tree>
     /// a scan that started inside the group would return a *nested* group's
     /// closer and silently truncate the interior — dropping every entry after
     /// the nesting, and with it every port and binder those entries carry.
-    pub fn group_interior<'run>(
-        &self,
-        run: &'run [NodeId],
-    ) -> Option<&'run [NodeId]>
+    pub fn group_interior(
+        self,
+        run: &[NodeId],
+    ) -> Option<&[NodeId]>
     {
         let open = self.find_at_top_level(run, TileSpelling("("))?;
         let group = run.get(open.0 ..)?;
@@ -391,7 +392,7 @@ impl<'tree> Shape<'_, 'tree>
 
     /// The head a `node` line applies: the name just past the statement's `:`.
     pub fn applied_head(
-        &self,
+        self,
         statement: &[NodeId],
     ) -> Option<CircuitName<'tree>>
     {
@@ -404,7 +405,7 @@ impl<'tree> Shape<'_, 'tree>
     /// The occurrence label a body statement carries between its keyword and
     /// its `:`, when it carries one.
     pub fn occurrence_label(
-        &self,
+        self,
         statement: &[NodeId],
     ) -> Option<CircuitName<'tree>>
     {
@@ -420,7 +421,7 @@ impl<'tree> Shape<'_, 'tree>
     /// The wire name a port-name node spells, or [`None`] for the `_` that
     /// mints a fresh one.
     pub fn port_name(
-        &self,
+        self,
         id: NodeId,
     ) -> Option<CircuitName<'tree>>
     {
@@ -441,7 +442,7 @@ impl<'tree> Shape<'_, 'tree>
     /// nothing, so contributing no use is exactly right. Only a named port
     /// and a `data` binder name a wire.
     pub fn declared_port(
-        &self,
+        self,
         entry: &[NodeId],
     ) -> Option<DeclaredPort<'tree>>
     {
@@ -480,7 +481,7 @@ impl<'tree> Shape<'_, 'tree>
     /// `Stream( Nat )` the same sort; resolved equality is elaboration's,
     /// not this pass's.
     pub fn sort_text(
-        &self,
+        self,
         entry: &[NodeId],
     ) -> Option<PortSortText>
     {
@@ -491,7 +492,7 @@ impl<'tree> Shape<'_, 'tree>
     /// The spelling of a whole run, with whitespace elided, or [`None`] when it
     /// is empty.
     pub fn run_text(
-        &self,
+        self,
         run: &[NodeId],
     ) -> Option<PortSortText>
     {
@@ -511,7 +512,7 @@ impl<'tree> Shape<'_, 'tree>
 
     /// The index of the first top-level occurrence of `label` in `run`.
     pub fn find_at_top_level(
-        &self,
+        self,
         run: &[NodeId],
         label: TileSpelling,
     ) -> Option<RunIndex>
@@ -524,7 +525,7 @@ impl<'tree> Shape<'_, 'tree>
 
     /// The first top-level arrow glyph in `run`, located.
     pub fn find_arrow_at_top_level(
-        &self,
+        self,
         run: &[NodeId],
     ) -> Option<FoundArrow>
     {
@@ -546,7 +547,7 @@ impl<'tree> Shape<'_, 'tree>
     /// *outer* depth — which is what lets a caller find the `(` that opens a
     /// parameter list and the `)` that closes it in the same scan.
     fn scan_top_level(
-        &self,
+        self,
         run: &[NodeId],
         probe: impl Fn(TileSpelling) -> Option<TopLevelHit>,
     ) -> Option<(RunIndex, TopLevelHit)>
@@ -574,7 +575,7 @@ impl<'tree> Shape<'_, 'tree>
 
     /// Split a run into its comma-separated entries at bracket depth zero.
     pub fn comma_entries(
-        &self,
+        self,
         run: &[NodeId],
     ) -> Vec<Vec<NodeId>>
     {
@@ -583,7 +584,7 @@ impl<'tree> Shape<'_, 'tree>
 
     /// Split a filler interior into its `;`-separated statements.
     pub fn statements(
-        &self,
+        self,
         interior: &[NodeId],
     ) -> Vec<Vec<NodeId>>
     {
