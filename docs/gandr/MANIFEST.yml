@@ -219,6 +219,6 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/feature-staging.md
     role: subdocument
-    b3: cb048822c378308980140fee72ca6ccfb61e9b7a10a77c05339bec50dd1678dd
+    b3: 63c8ac6f88bc3ffe8da36b250c4380a7578b062eb3acb83cc22557a20cc601ae
     edges:
       - { rel: registered-under, to: spec/implementation.md }

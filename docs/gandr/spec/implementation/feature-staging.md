@@ -363,8 +363,11 @@ The source pairs each component with the published work that grounds it — sixt
 **Roughly twenty of those works are already in [[../bibliography|the corpus bibliography]]**, cited by the documents that own their areas.
 The remainder concentrates in areas this corpus has **no document for yet** — sessions, sharing, multiparty protocols, worlds, and the module system — which is also why they are absent: nothing has yet needed them, and the corpus reference rule forbids an entry that nothing cites.
 
-**So the map is carried but not yet transferred**, and where it goes is an open owner decision rather than an oversight.
-Its disposition is **carried**, and the transfer is scheduled rather than done.
+**So the map is carried and routed by component rather than transferred in bulk.** Each work is minted into the bibliography by the corpus document that owns its area, at the moment that document makes the claim the work grounds — which is where the corpus's own reference convention puts a citation anyway.
+Until a work's destination document exists, its row is held in the tracker rather than in the bibliography.
+
+Its disposition is therefore **carried**, with the transfer **distributed rather than scheduled as one pass**.
+One consequence is worth stating because it decides how a later reader should treat a row: the held rows are the pre-reboot record's own metadata, transcribed and **not verified**, so minting one means checking it against the contributor's reference register first and correcting it in place, never copying the held text.
 
 ## Source and confidence
 
