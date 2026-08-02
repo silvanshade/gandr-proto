@@ -293,13 +293,35 @@ The cell layer's business is what the rewriting engine may assume, and that is w
 
 **The choice is trace versus feedback, and it is a choice about which equations the engine may use.**
 
-|                                   | **traced**                                                                                                   | **feedback** — the adopted tier                     |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| yanking, $"Tr"(σ) = "id"$         | holds — a bare loop collapses to a wire                                                                      | **fails** — a bare loop is a delay, not an identity |
-| sliding (dinaturality)            | holds — a cell may be rotated freely around the loop                                                         | **fails** — the loop has a distinguished cut point  |
-| what matching becomes             | matching **modulo rotation**: a cyclic pattern has no first position, so the engine matches in a cyclic word | matching on a **directed acyclic graph**, unchanged |
-| what the diagram normal form owes | a canonical rotation, on top of everything `canon` already owes                                              | nothing new                                         |
-| what a wheel means operationally  | a fixpoint, computed                                                                                         | a stream: the same value one step later             |
+|                                   | **traced**                                                                                                   | **feedback** — the adopted tier                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| yanking, $"Tr"(σ) = "id"$         | holds — a bare loop collapses to a wire                                                                      | **fails** — a bare loop is a delay, not an identity                                                             |
+| sliding (dinaturality)            | holds **unguarded** — a cell may be rotated freely around the loop                                           | holds only **across the guard**, or only for isomorphisms — either way the loop keeps a distinguished cut point |
+| what matching becomes             | matching **modulo rotation**: a cyclic pattern has no first position, so the engine matches in a cyclic word | matching on a **directed acyclic graph**, unchanged                                                             |
+| what the diagram normal form owes | a canonical rotation, on top of everything `canon` already owes                                              | nothing new                                                                                                     |
+| what a wheel means operationally  | a fixpoint, computed                                                                                         | a stream: the same value one step later                                                                         |
+
+**The two entry-tier sources axiomatize feedback differently, and the difference is exactly where sliding sits**, so the correspondence with the trace axioms is given at their own numbered statements rather than by the trace names alone [@katis-sabadini-walters-2002-feedback, def 2.2] [@dilavore-defelice-roman-2022-monoidal-streams, def 3.1].
+
+| the trace axiom                               | Katis–Sabadini–Walters, Def 2.2                                                    | Di Lavore–de Felice–Román, Def 3.1                                                      |
+| --------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| naturality in the source (left tightening)    | **(i) naturality** — kept                                                          | **(A1) tightening** — kept, both sides in one axiom                                     |
+| naturality in the target (right tightening)   | **(ii) naturality** — kept                                                         | **(A1) tightening** — kept                                                              |
+| dinaturality in the loop object (**sliding**) | **(iii) weak naturality** — kept **only when the mediating map is an isomorphism** | **(A5) sliding** — kept in full, but the moved morphism appears **guarded** on one side |
+| vanishing at the unit                         | **(iv) vanishing** — kept                                                          | **(A2) vanishing** — kept                                                               |
+| vanishing at a tensor                         | **(v) vanishing** — kept                                                           | **(A3) joining** — kept                                                                 |
+| superposing (strength)                        | **(vi) superposing** — kept                                                        | **(A4) strength** — kept                                                                |
+| **yanking**                                   | **absent**                                                                         | **absent**                                                                              |
+
+**Yanking is the only axiom that separates the two tiers, and that is a published result rather than a reading of one.** The free traced monoidal category on a category with feedback is the quotient obtained by adding **yanking alone**, and full sliding then _follows_ from the weak form in the presence of the remaining axioms [@katis-sabadini-walters-2002-feedback, prop 2.7].
+The monoidal-streams line states the same boundary from the other side: a traced monoidal category is a feedback monoidal category guarded by the identity functor in which the loop over the symmetry is the identity [@dilavore-defelice-roman-2022-monoidal-streams, rmk 3.2].
+
+**So the cell layer declines one axiom and not two**, and the corpus's earlier accounting — feedback drops yanking _and_ sliding — was right about the consequence and wrong about the structure.
+Sliding without yanking is consistent and is what the monoidal-streams axiomatization takes; yanking without sliding is not available at all.
+The guard is what keeps a distinguished cut point even where sliding holds in full, because the moved morphism is delayed on one side of the equation and not on the other.
+
+**And the decline is reversible by construction, which is what makes its reversal condition cheap to honour.** Recovering the trace is a quotient of the feedback category rather than a different theory, so a construction that later needs the equations does not need the layer rebuilt around them.
+The fixpoint reading is not lost either, and this is the point most easily mistaken for a cost: a **fixed-point semantics** of a category with feedback is defined as a monoidal functor to a compact closed category taking feedback to trace, so "a wheel is a computed fixpoint" is available as a _semantics of_ the feedback syntax rather than as the alternative to it [@katis-sabadini-walters-2002-feedback, def 2.8].
 
 > **Ruled (owner, 2026-08-01): the cell layer takes feedback, and the trace is declined there.** The decline is **scoped to the cell layer and to it alone** — three fences follow — and it carries a reversal condition.
 
@@ -310,47 +332,83 @@ The cell layer's business is what the rewriting engine may assume, and that is w
 > A cyclic diagram does not by itself make the causal order among rewrites cyclic, so the **bracket oracle's critical path is not broken by a trace and that bullet is withdrawn**.
 > What survives is narrower and sound.
 
-* **Deterministic normalization does break, and it is the load-bearing one.** Normalization is deterministic by "outermost position, then store insertion order", and _outermost_ presupposes a well-founded order on positions.
-  Sliding moves a cell arbitrarily far around a loop, so a cyclic diagram has no outermost position and the strategy stops being a decision at all.
-* **The canonical schedule is weakened, not destroyed.** Its "earliest causal position" is causal order among rewrites, which survives a trace; but _position_ is position in the diagram, and under sliding it is defined only **up to rotation**.
+* **Deterministic normalization is the load-bearing one, and what sliding takes from it is a representative rather than the order.** Normalization is deterministic by "outermost position, then store insertion order", and _outermost_ presupposes a well-founded order on positions.
+  Sliding moves a cell arbitrarily far around a loop, so no position is well-founded in the **closed** diagram — and a canonical rotation is what would restore one, at which point "outermost" is a decision again.
+* **The canonical schedule pays the same coin at lower strength.** Its "earliest causal position" is causal order among rewrites, which survives a trace; but _position_ is position in the diagram, and under sliding it is defined only **up to rotation**.
   So the schedule needs a canonical rotation it does not have — one more `canon` obligation, not an undefined notion.
-* **Yanking is a cost independent of sliding.** It erases a step, so replay-equivalence would owe closure under an equation that deletes one from a record whose purpose is to have recorded it.
+* **Those two are therefore one fact at two strengths, and the corpus's currency for a quotiented notion is a `canon` obligation.** Sliding quotients the position order rather than destroying it, which is a real price and not an impossibility — and that is what makes the decline a choice rather than a forced move.
+* **Yanking is a distinct cost, though not an independent axiom.** It erases a step, so replay-equivalence would owe closure under an equation that deletes one from a record whose purpose is to have recorded it.
+  Because full sliding follows from yanking, this price cannot be declined separately from the one above; taking the trace takes both [@katis-sabadini-walters-2002-feedback, prop 2.7].
 
-Under feedback none of that arises: the delay is the tick boundary, position is well-founded, and the schedule needs no rotation.
-The decline therefore rests on one device breaking and two paying, which is still decisive against a structure gandr has no use for — but it is a smaller claim than the one first written, and the difference is the kind that matters.
+Under feedback none of that arises: the delay is the tick boundary, position is well-founded in the cut-open representative, and the schedule needs no rotation.
+The decline therefore rests on **three devices paying, two of them in the same coin** — a canonical rotation — which is still decisive against a structure gandr has no use for, but it is a smaller claim than the one first written, and the difference is the kind that matters.
 
 **The second reason is coherence with the track's own temporal reading.** Identity here is a construction in time over an unfinished substrate, and the storage discipline is bounded sensitivity of the address map under local edits.
 A delay is a temporal notion and a tick is a natural edit boundary; yanking is an atemporal statement — that a loop containing nothing _is_ nothing — and it is the one equation that erases a step from a record whose whole purpose is to have recorded the steps.
 
-**The third reason is that it costs the rewriting theory nothing.** If every directed cycle in a body must contain at least one **delayed** port, then cutting every delayed port yields an acyclic diagram — removing an edge from every cycle leaves a directed acyclic graph, by definition.
-A cyclic body $Γ → Δ$ with delayed ports $D$ becomes an acyclic body $Γ + D → Δ + D$, and **the cut points join the interface** — which is exactly the shape a double-pushout rewrite with interfaces already takes.
-So a delay-guarded wheel is not outside the monogamous acyclic fragment: it is an ma-cospan with its delays in the interface, and every result of the correspondence applies to it unchanged.
+**The third reason is that the cut-open form is what the free construction already computes with, and rewriting it is sound with no trace axiom at all.** If every directed cycle in a body must contain at least one **delayed** port, then cutting every delayed port yields an acyclic diagram — removing an edge from every cycle leaves a directed acyclic graph, by definition.
+A cyclic body $Γ → Δ$ with delayed ports $D$ cuts open to an acyclic body $Γ + D → Δ + D$, and **the cut points join the interface** — which is exactly the shape a double-pushout rewrite with interfaces already takes.
+
+**The identification is of the cut-open form, and naming the right object is the whole of it.** A delay-guarded wheel is a cyclic hypergraph and is therefore not an ma-cospan; its **cut-open form** is the ma-cospan, and the delays' cut ends are that cospan's boundary.
+Re-closing the delays leaves the fragment again.
+This is [[../metatheory#The representation is not the theory|the reading rule]] applied one layer over — the acyclic presentation is a representation of the wheel, not the wheel — and every result of the correspondence applies to the presentation.
+
+**That presentation is not a gandr device but the published normal form of the free feedback category, which is the strongest form this warrant could take.** An arrow of $"Circ"(C)$ from $A$ to $B$ **is** a pair $(α, U)$ with $α : A ⊗ U → B ⊗ U$ an arrow of the underlying monoidal category, taken up to isomorphism of the loop object $U$; feedback is $"fbk"_U (α, V) = (α, U ⊗ V)$, which moves the boundary between interface and loop object and leaves $α$ untouched; and $"Circ"(C)$ is the free category with feedback on $C$ [@katis-sabadini-walters-2002-feedback, def 2.4, prop 2.5 and prop 2.6].
+The monoidal-streams line gives the guarded form of the same datum: a stateful morphism is a pair $(S, f)$ with $f : F S ⊗ X → S ⊗ Y$, the hom-set is the coend over the loop object of those morphisms, and that construction is the free feedback monoidal category over the guard [@dilavore-defelice-roman-2022-monoidal-streams, def 3.3, def 3.4 and thm 3.5].
+**Cutting at the delays is therefore not an approximation of the theory; it is a representative of it** — and the axiom licensing every delayed port to be cut at once rather than one at a time is vanishing at a tensor, which is (v) in the one axiomatization and joining (A3) in the other.
+
+**The soundness of rewriting the cut-open form and re-closing needs no trace axiom, and it is worth naming which fact carries it.** Feedback is defined as an **operation on hom-sets**, so equal cut-open morphisms have equal closures by congruence for a function — in **any** feedback category, with nothing about sliding or yanking invoked [@katis-sabadini-walters-2002-feedback, def 2.2] [@dilavore-defelice-roman-2022-monoidal-streams, def 3.1].
+That is why declining those two equations costs the re-closure argument nothing.
+
+**What the cut does cost is matching completeness, and the earlier claim that it costs the rewriting theory nothing was false as stated.** The cut removes a wire, so no rule whose left-hand side spans a delayed port can ever match the cut-open form: a delay-guarded loop carries a **permanently unmatchable seam**.
+The correspondence's completeness half is an iff for rewriting the **cut-open** term [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 35 and thm 39], so completeness is inherited exactly there and not across the seam.
+And congruence runs one way only — feedback is not injective, since $"Circ"$ identifies cut-open forms up to isomorphism of the loop object and the monoidal-streams hom-set identifies them up to dinaturality in it — so a rewriting theory complete on cut-open forms is complete on closed ones only up to that quotient.
+
+**Whether the seam is a price or the point depends on the law, and the criterion is stateable.** A delay is a tick boundary under the temporal reading of identity, and the equations that cross or erase a tick are exactly sliding and yanking, which this ruling declines: for those the seam is **the point**, and a law rewriting across it would reintroduce precisely what the decline was for.
+For a law internal to one tick that merely happens to span a delayed port, the seam is a **price** — a real loss in matching completeness, paid to keep the tick.
+The criterion separating the two — whether the rule's left-hand side factors through the guard — is this corpus's proposal rather than a cited result, and it is what [[#circuit-terms-spike-08|circuit-terms-spike-08]] should settle alongside convexity.
 
 **Three fences, because this decline is easy to over-read and each over-reading would be a real error.**
 
 * **It does not touch the carrier.** `Shape` still represents wheels, wheel-freeness is still a predicate the operations do not preserve, and every refuter stands.
 * **It does not touch the arity layer, and must not be read as declining _its_ trace.** `Arity.sub`'s two-sided closure is an operation on shapes with its circles counted; it is not an equation the engine may use.
-  The distinction is load-bearing beyond bookkeeping: the Int construction's licence — that a result about the compact-closed ambient reaches gandr **without a cup entering the carrier** — has as its hypothesis that the wiring category be **traced**, and that hypothesis is discharged by the arity ruling ([[../metatheory#The rung, identified]]).
+  The distinction is load-bearing beyond bookkeeping: the Int construction's licence — that a result about the compact-closed ambient reaches gandr **without a cup entering the carrier** — has as its hypothesis that the wiring category be **traced**, and that hypothesis is **answered by the arity ruling's decision, with the build still owed**: the closure is ruled and partly built, and no trace axiom is yet proved in the carrier ([[../metatheory#The rung, identified]]).
   Declining the trace at the cell layer leaves that hypothesis, and therefore that licence, untouched.
   Two different things are called "the trace" one layer apart, and conflating them would silently withdraw an import gandr depends on.
 * **It does not answer the derivation dimension.** The metatheory records that what the wheel axis buys one dimension up is _cyclic derivation_ — the completion loop's fixpoints — and a cycle in the rewrite relation is not a delay-guarded loop in a diagram.
   This ruling is about wheels in the **term** dimension; the derivation dimension is a separate question and nothing here decides it.
 
 **The reversal condition, stated so it is checkable.** The decline reopens if a construction gandr needs requires sliding or yanking as an **equation** rather than as a convenience — the concrete candidate being the certificate layer itself, if composing two certificates ever turns out to demand rotating a cell around a loop.
-It does **not** reopen merely because a program wants a loop; that is what the delay supply is for.
+It does **not** reopen merely because a program wants a loop; that is what the delay guard is for.
 
-**Two conditions on the ruling hardening, recorded because they are not yet met.** The feedback-category sources are in the register but have been read **only through an implementation of them, never in the original**, so the ruling currently rests on an unread locator and says so at the claim [@katis-sabadini-walters-2002-feedback] [@dilavore-defelice-roman-2022-monoidal-streams].
-And the delay supply has **no carrier of its own**: "this type supplies a delay" is at present derived from codata-ness and the guardedness discipline rather than declared, so whether it needs its own former is open and is the first thing its spike must answer.
+**Both conditions on the ruling hardening are now met, and what the reading changed is recorded rather than absorbed silently.** The feedback-category sources are read **in the original**, at the numbered statements cited above, and the axiom accounting is theirs rather than a reconstruction from a downstream implementation [@katis-sabadini-walters-2002-feedback] [@dilavore-defelice-roman-2022-monoidal-streams].
+Two things moved: the decline is of **one** axiom rather than two, since full sliding follows from yanking; and the delay cut is not merely compatible with the published axioms but is their free construction's own normal form.
+Nothing the ruling turns on moved, which is the outcome worth stating explicitly — a reading that confirms is as reportable as one that does not.
 
-This is a **proposal and an inference, not a cited result**, and it has one gap that must close before anything leans on it.
+**What remains a proposal and an inference rather than a cited result is the convexity behaviour of the cut**, and it has one gap that must close before anything leans on it.
 Convexity is a condition on paths **in the target**, and the target here is the cut-open diagram; a match convex in the cut-open form may cease to be convex once the delays are re-closed, because a path may run round the loop.
 That is the same phenomenon as the disjoint-redex blocking above, and it is what [[#circuit-terms-spike-08|circuit-terms-spike-08]] asks.
 
-**The per-type reading of the wheel axis is a delay supply, not a Frobenius one**, and saying why keeps the supply table honest.
+**The per-type reading of the wheel axis is about a delay, not about Frobenius**, and saying why keeps the supply table honest — the answer below is that the wheel axis adds no row to that table at all.
 The tempting analogy — fan-in is a commutative monoid, so a wheel is a Frobenius structure — **does not work**: the trace is bought by compact closure, compact closure comes from **(co)unital** Frobenius, and the unit is precisely what the nonunital rung omits.
 A nonunital Frobenius supply therefore gives no loop at all, and a unital one is a cup by another name.
-What a feedback structure needs is far weaker, and gandr already has its vocabulary: a **delay** on the type.
-So a type supplies the ability to be fed back exactly when it supplies a delay — the productivity discipline the (co)recursion surface already runs, promoted from a checking rule to a supply — and a program closing a loop on a type without one is refused at the declaration, which is the refuter the wheel guard owes.
+What a feedback structure needs is far weaker, and gandr already has its vocabulary: a **delay**.
+
+**The delay is carried by the feedback binder, not by a row in the supply table, and the source settles which.** The monoidal-streams type theory adds a delay operator on types — extended to contexts pointwise — together with two formation rules: a delay rule taking a term in a context to the delayed term in the delayed context, and a feedback rule that binds the fed-back variable **at the delayed type in the premise** while the body produces it undelayed [@dilavore-defelice-roman-2022-monoidal-streams, sec. 8.2].
+The waiting combinator is then derived from feedback rather than assumed.
+
+**That guard is total on types, which is exactly why "this type supplies a delay" cannot be the discriminator.** Every type has a delayed form, so a supply keyed by type would hold everywhere and the wheel guard would become unfalsifiable — the failure mode this document already names for an ambient supply, arriving by a different route.
+What discriminates is not the type but **how the fed-back occurrence is used**, and that is a condition on the binder.
+
+**So the carrier already exists and needs no new former: it is the guardedness discipline of the (co)recursion surface, read at the binder instead of at the declaration.** The `>` sigil already obliges a marked call to sit under at least one copattern observation ([[../surface-language/recursion#The productivity ladder]]), and one observation is one tick; the feedback binder's rule is the same condition on the fed-back port's occurrence in the body.
+The productivity discipline is therefore **not** promoted to a supply — it stays a checking rule and acquires one more site.
+
+**The refuter the wheel guard owes is writable and fails at that rule.** A body closing a loop whose fed-back port occurs **bare**, not under an observation of its type, parses — the grammar admits the occurrence exactly as it admits an escaping self-reference — and the guardedness rung refuses it with a diagnostic naming the missing observation.
+The corpus witness "a wheel with no delay" is satisfiable with no supply machinery at all; what it waits on is the binder.
+The one true reading of "the type supplies it" survives as a consequence rather than a mechanism: a type that is not codata has no observation to sit under, so it cannot host a fed-back port.
+
+> **Recommendation to the owner, not a decision taken here.** Whether gandr's surface gains a first-class delay type former, as the monoidal-streams type theory has, is new syntax and therefore the owner's call.
+> The source needs one because its context operation is defined type-wise; gandr's guardedness check is a side condition on observation depth and needs no type to name it, so the cheaper route is available and is what the paragraphs above assume.
 
 ### The closest Agda encoding forks from gandr exactly here
 
@@ -587,9 +645,11 @@ Every one carries a disposition.
     **Carried as the named generalization of the linearity ruling above**, and it is the row that makes idempotence rules writable again on the types that genuinely support them.
     The sub-question to answer first is whether the cell-layer comonoid is a **new** supply or is read off the existing grade discipline, since a grade-ω binding already licenses duplication on the value side.
 19. **circuit-terms-question-19** — **does the cell layer take trace or feedback?** Restated 2026-08-01 from "what covers the wheel axis", which conflated three layers.
-    **Ruled: feedback, with the trace declined at this layer only**, on three grounds — deterministic normalization needs a well-founded position order that sliding destroys, while the canonical schedule pays a rotation and yanking pays an equation that erases a step; the temporal reading of identity; and the delay cut keeping the whole correspondence applicable.
-    The account, the three fences, the reversal condition and the two conditions on hardening are [[#Wheels, and which structure the cell layer takes]].
-    **What stays open is the warrant, not the choice**: whether cutting at the delays preserves convexity under re-closure ([[#circuit-terms-spike-08|circuit-terms-spike-08]]), and what carries the delay supply, which has no former of its own.
+    **Ruled: feedback, with the trace declined at this layer only**, on three grounds — position order, the temporal reading of identity, and the delay cut keeping the correspondence applicable to the cut-open form.
+    The account, the three fences and the reversal condition are [[#Wheels, and which structure the cell layer takes]].
+    **The ruling is hardened against both sources in the original**, and the reading moved two things without disturbing the choice: the decline is of **one** axiom, yanking, since full sliding follows from it [@katis-sabadini-walters-2002-feedback, prop 2.7]; and the delay cut is the free feedback category's own normal form rather than an inference about it.
+    **The delay question is answered and needs no former of its own**: the guard is total on types, so what carries "a delay is present" is the feedback **binder's** typing rule, discharged by the guardedness discipline the (co)recursion surface already runs.
+    **What stays open is the warrant, not the choice**: whether cutting at the delays preserves convexity under re-closure, and whether the unmatchable seam the cut leaves is a price or the point per law ([[#circuit-terms-spike-08|circuit-terms-spike-08]]).
 20. **circuit-terms-question-20** — **when a type supplies both fan-in and fan-out, which interaction law comes with them?** The two canonical answers over the same generators are **Frobenius**, under which connected diagrams contract to a standard form, and **bialgebra**, under which they expand — the correspondence paper's bialgebra case study needs a five-component lexicographic order to terminate, because one of its rules increases the hyperedge count.
     They are not variants of one structure, and the choice decides whether a supplied type's fragment shrinks or grows under rewriting.
     **Carried, and it is a fork the supply table hid** by listing the two directions as independent rows.
@@ -652,12 +712,15 @@ The honest default until it runs is that the shift quotient is warranted only on
 
 ### circuit-terms-spike-08
 
-**Is the delay cut convexity-stable?** The wheel proposal is that a delay-guarded cyclic body is an ma-cospan with its delays in the interface, so cutting every delayed port turns a body $Γ → Δ$ into an acyclic $Γ + D → Δ + D$ that the whole correspondence covers.
+**Is the delay cut convexity-stable?** The wheel ruling is that the **cut-open form** of a delay-guarded cyclic body is an ma-cospan whose boundary carries the delays' cut ends, so cutting every delayed port turns a body $Γ → Δ$ into an acyclic $Γ + D → Δ + D$ that the whole correspondence covers.
 Check the one gap that would sink it, in three steps.
 
 * Take a body with one delayed back-edge and a match convex in the cut-open form; re-close the delay and check whether a path now runs from an output of the match to an input of it.
 * If it can, decide whether the repair is a convexity condition stated on the **re-closed** diagram (which the engine would then have to compute at match time) or a restriction on where a delay may sit relative to a redex.
 * Either way, state whether the guard — every directed cycle contains a delayed port — stays a linear-time back-edge check, since that cheapness is most of the proposal's appeal.
+
+**And settle the seam question alongside it, because the two share a target.** Rewriting the cut-open form is sound with no trace axiom, feedback being an operation on hom-sets; what the cut costs is that no rule whose left-hand side spans a delayed port can match at all ([[#Wheels, and which structure the cell layer takes]]).
+Decide whether the proposed criterion — the seam is **the point** for a law that would cross or erase a tick, and a **price** for a law internal to one tick — is checkable as stated, namely by whether the rule's left-hand side factors through the guard.
 
 **Small**, and it shares its shape with [[#circuit-terms-spike-07|circuit-terms-spike-07]]: both ask whether a local independence test survives a global path condition, so running them together is cheaper than running either alone.
 
@@ -714,6 +777,8 @@ Four of these are owed to the binding-guards inventory independently; this lane 
   The load-bearing negative claims — that no construction site emits more than one consumer, that the machine reads only the first, and that the description table's operations are never read — were checked at their sites.
 * **The hypergraph-rewriting results are now read at theorem grade** and are cited at their own numbered statements: the monogamous-acyclic characterisation, boundary-complement uniqueness, the sound-and-complete convex correspondence including its coloured form, the Frobenius-semi-algebra termination proof and the disjoint-but-blocking counterexample [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii]; local confluence for DPO with interfaces, its computability conditions and decidability corollary, the left-connected route, and the path-joinability route with its converse [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii].
   The premonoidal and trace-theory results are likewise cited at their statements.
+* **The feedback-category sources are read in the original rather than through an implementation of them**, and are cited at their own numbered statements: the feedback axioms and the free `Circ` construction with its universal property, the quotient by yanking that yields the free traced category, and fixed-point semantics [@katis-sabadini-walters-2002-feedback]; the guarded feedback axioms, the stateful-morphism construction and its freeness, the trace boundary, and the type theory's delay and feedback rules [@dilavore-defelice-roman-2022-monoidal-streams].
+  Neither was held in the research library when the ruling was written, which is why it stood on an implementation's reading until now.
 * **The remaining literature findings come from a triage sweep, not from close readings**, and are marked accordingly: abstracts and section maps, with targeted section-level reads for the supply, ancilla-scope, and reversible-term-rewriting results.
   Anything a rung depends on is filed as a spike rather than treated as established.
 * **Two claims of an earlier revision did not survive and are corrected in place rather than dropped**: that fan-out is free while fan-in is not (contradicted by gandr's own monogamous carrier, by `dup`/`drop` on the surface, and by the monogamy condition of the correspondence), and that the mono-left-leg condition is what buys uniqueness at gandr's rung (superseded by boundary complements, which are unique unconditionally).
