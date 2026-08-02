@@ -410,10 +410,10 @@ oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
 and the ill-formed one, which is now a **type** error rather than an analysis refusal:
 
 ```text
-oper zip' : (stream : Stream(Nat), state : Stream(Nat)) --> (next : Stream(Nat), out2 : Stream(Nat))
+oper zip′ : (stream : Stream(Nat), state : Stream(Nat)) --> (next : Stream(Nat), out2 : Stream(Nat))
 
 oper diverge : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
-  node : zip'(stream, state) --> (next, out2);
+  node : zip′(stream, state) --> (next, out2);
   feed : (next) --> (state);      // declined: state : Stream(Nat), expected Stream(Nat).d
 }
 ```
