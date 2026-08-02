@@ -80,6 +80,7 @@ The recursive checker and the defunctionalized machine are property-tested for s
 The differential proves the two agree, not that either is correct — a shared soundness bug leaves them agreeing on the wrong answer — which is why the suite is supplemented by directed coherence oracles relating the two _modes_, a declared-companion gate on every biased oracle, and a standing adversarial pass before substantial checker changes.
 
 **The frozen core's grammar, as built.** Value types: unit, eager products, sums, graded thunks `U_r B`, and the gradual `Unknown`, with the value-model ladder's literals, lists, and records; computation types: the returner `F A`, arrows, lazy products (`With`), and `Unknown`; unions, intersections, and the world modality are designed formers outside the current build.
+This section describes the built fragment; the rules it realizes, and the rules of every feature outside it, are [[implementation/type-system]].
 Terms follow the bidirectional discipline: introductions check, eliminations infer, one subsumption mediates.
 The dependent formers that have landed, each with its guard:
 
@@ -192,6 +193,7 @@ Stated in code and easy to drop in a naive read of the design docs: completion's
 
 ## Sub-documents
 
+* [[implementation/type-system]] — the checked language's rules in full: the four judgments over four context zones, the grade semiring, the call-by-push-value core, polarity-sorted unions and intersections, explicit polymorphism and kinding, binary and multiparty sessions, manifest sharing, worlds and capability-gated migration, and the constraint language with its worklist solver — with the built fragment marked as built at each feature.
 * [[implementation/roadmap]] — the remaining build-out in detail, the anticipation register, the engine↔metatheory statement contract, and the stale-documentation repairs owed.
 * [[implementation/performance-architecture]] — the normalizer and evaluator performance programme: the four measured implementations, the gluing split, and the adopted unfolding recipes.
 * [[implementation/capability-model]] — the runtime host's grant model: capabilities threaded through handler install and resume, the driver-boundary check point, and denial as a third outcome.

@@ -3259,3 +3259,227 @@ ahrens-lafont-lamiaux-2025-2functoriality:
     title and authorship verified from page 1 of the held PDF (the arXiv v2, byte-identical to the
     managed copy); the PACMPL venue and DOI are verified by fetch during the sweep and are not
     printed on the held artifact
+
+zeilberger-2008-unity-of-duality:
+  type: article
+  title: On the Unity of Duality
+  author: ["Zeilberger, Noam"]
+  date: 2008-04
+  serial-number:
+    doi: "10.1016/j.apal.2008.01.001"
+  parent:
+    type: periodical
+    title: Annals of Pure and Applied Logic
+    volume: 153
+    issue: 1-3
+    page-range: 66-96
+
+dunfield-pfenning-2004-tridirectional:
+  type: article
+  title: Tridirectional Typechecking
+  author: ["Dunfield, Jana", "Pfenning, Frank"]
+  date: 2004-01
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/964001.964025"
+  parent:
+    type: proceedings
+    title: Proceedings of the 31st ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages
+    page-range: 281-292
+
+oliveira-shi-alpuim-2016-disjoint-intersection:
+  type: article
+  title: Disjoint Intersection Types
+  author: ["Oliveira, Bruno C. d. S.", "Shi, Zhiyuan", "Alpuim, João"]
+  date: 2016-09-04
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/2951913.2951945"
+  parent:
+    type: proceedings
+    title: Proceedings of the 21st ACM SIGPLAN International Conference on Functional Programming
+    page-range: 364-377
+
+gay-hole-2005-session-subtyping:
+  type: article
+  title: Subtyping for Session Types in the Pi Calculus
+  author: ["Gay, Simon", "Hole, Malcolm"]
+  date: 2005-11
+  serial-number:
+    doi: "10.1007/s00236-005-0177-z"
+  parent:
+    type: periodical
+    title: Acta Informatica
+    volume: 42
+    issue: 2-3
+    page-range: 191-225
+
+honda-yoshida-carbone-2008-multiparty:
+  type: article
+  title: Multiparty Asynchronous Session Types
+  author: ["Honda, Kohei", "Yoshida, Nobuko", "Carbone, Marco"]
+  date: 2008-01-07
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/1328438.1328472"
+  parent:
+    type: proceedings
+    title: Proceedings of the 35th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages
+    page-range: 273-284
+
+scalas-yoshida-2019-less-is-more:
+  type: article
+  title: "Less Is More: Multiparty Session Types Revisited"
+  author: ["Scalas, Alceste", "Yoshida, Nobuko"]
+  date: 2019-01-02
+  serial-number:
+    doi: "10.1145/3290343"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 3
+    issue: POPL
+    page-range: 1-29
+
+balzer-toninho-pfenning-2019-manifest-deadlock-freedom:
+  type: chapter
+  title: Manifest Deadlock-Freedom for Shared Session Types
+  author: ["Balzer, Stephanie", "Toninho, Bernardo", "Pfenning, Frank"]
+  date: 2019
+  publisher: Springer International Publishing
+  serial-number:
+    doi: "10.1007/978-3-030-17184-1_22"
+  parent:
+    type: proceedings
+    title: Programming Languages and Systems
+    page-range: 611-639
+
+pfenning-davies-2001-judgmental-modal:
+  type: article
+  title: A Judgmental Reconstruction of Modal Logic
+  author: ["Pfenning, Frank", "Davies, Rowan"]
+  date: 2001-08
+  serial-number:
+    doi: "10.1017/s0960129501003322"
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science
+    volume: 11
+    issue: 4
+    page-range: 511-540
+
+petricek-orchard-mycroft-2014-coeffects:
+  type: article
+  title: "Coeffects: A Calculus of Context-Dependent Computation"
+  author: ["Petricek, Tomas", "Orchard, Dominic", "Mycroft, Alan"]
+  date: 2014-08-19
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/2628136.2628160"
+  parent:
+    type: proceedings
+    title: Proceedings of the 19th ACM SIGPLAN International Conference on Functional Programming
+    page-range: 123-135
+
+torczon-suarez-acevedo-agrawal-velez-ginorio-weirich-2024-effects-coeffects-cbpv:
+  type: article
+  title: Effects and Coeffects in Call-by-Push-Value
+  author: ["Torczon, Cassia", "Suárez Acevedo, Emmanuel", "Agrawal, Shubh", "Velez-Ginorio, Joey", "Weirich, Stephanie"]
+  date: 2024-10-08
+  serial-number:
+    doi: "10.1145/3689750"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 8
+    issue: OOPSLA2
+    page-range: 1108-1134
+
+reed-pierce-2010-fuzz:
+  type: article
+  title: "Distance Makes the Types Grow Stronger: A Calculus for Differential Privacy"
+  author: ["Reed, Jason", "Pierce, Benjamin C."]
+  date: 2010-09-27
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/1863543.1863568"
+  parent:
+    type: proceedings
+    title: Proceedings of the 15th ACM SIGPLAN International Conference on Functional Programming
+    page-range: 157-168
+
+dolan-mycroft-2017-mlsub:
+  type: article
+  title: Polymorphism, Subtyping, and Type Inference in MLsub
+  author: ["Dolan, Stephen", "Mycroft, Alan"]
+  date: 2017-01
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/3009837.3009882"
+  parent:
+    type: proceedings
+    title: Proceedings of the 44th ACM SIGPLAN Symposium on Principles of Programming Languages
+    page-range: 60-72
+
+parreaux-2020-simple-essence:
+  type: article
+  title: "The Simple Essence of Algebraic Subtyping: Principal Type Inference with Subtyping Made Easy (Functional Pearl)"
+  author: ["Parreaux, Lionel"]
+  date: 2020-08-02
+  serial-number:
+    doi: "10.1145/3409006"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 4
+    issue: ICFP
+    page-range: 1-28
+
+parreaux-chau-2022-mlstruct:
+  type: article
+  title: "MLstruct: Principal Type Inference in a Boolean Algebra of Structural Types"
+  author: ["Parreaux, Lionel", "Chau, Chun Yin"]
+  date: 2022-10-31
+  serial-number:
+    doi: "10.1145/3563304"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 6
+    issue: OOPSLA2
+    page-range: 449-478
+
+gratzer-kavvos-nuyts-birkedal-2021-multimodal:
+  type: article
+  title: Multimodal Dependent Type Theory
+  author: ["Gratzer, Daniel", "Kavvos, G. A.", "Nuyts, Andreas", "Birkedal, Lars"]
+  date: 2021-07-28
+  serial-number:
+    doi: "10.46298/lmcs-17(3:11)2021"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 17
+    issue: 3
+
+dunfield-krishnaswami-2013-bidirectional-higher-rank:
+  type: article
+  title: Complete and Easy Bidirectional Typechecking for Higher-Rank Polymorphism
+  author: ["Dunfield, Jana", "Krishnaswami, Neelakantan R."]
+  date: 2013
+  serial-number:
+    arxiv: "1306.6032"
+
+zhao-oliveira-schrijvers-2019-worklist:
+  type: article
+  title: A Mechanical Formalization of Higher-Ranked Polymorphic Type Inference
+  author: ["Zhao, Jinxu", "Oliveira, Bruno C. d. S.", "Schrijvers, Tom"]
+  date: 2019-07-26
+  serial-number:
+    doi: "10.1145/3341716"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 3
+    issue: ICFP
+    page-range: 1-29

@@ -28,13 +28,14 @@ The design and the build differ here more than anywhere else in the corpus, and 
   `Drop` **is built**, and its side condition `0 ⊑ r` is **not checked because it is vacuous on the default carrier** — zero is the bottom of the order there, so every graded thunk is droppable, which is a tree-verified form of the central finding below rather than a gap.
   Multiplication and the grade-constraint form are genuinely unused outside the carrier module.
   There is **no per-assumption (binder) grading and no context scaling `r · Γ`**; a binder "carries" a grade only derivatively, as the grade of its bound value's thunk type.
-* **The graded operations have normative signatures**, and no other corpus document currently states them: `dup : U_{r+s} B → F (U_r B × U_s B)` and `drop : U_r B → F 1` under `0 ⊑ r`, with grade-contravariant subtyping — `U_r B <: U_s B'` needs `s ⊑ r`.
-  They belong to a type-system document that has not been migrated; they are recorded here so they are stated somewhere until it is.
+* **The graded operations have normative signatures**: `dup : U_{r+s} B → F (U_r B × U_s B)` and `drop : U_r B → F 1` under `0 ⊑ r`, with grade-contravariant subtyping — `U_r B <: U_s B'` needs `s ⊑ r`.
+  They belong to the type system proper and are stated there, with the rules they come from and the two places the build diverges from them: [[../../implementation/type-system#Grades]].
 * **The reified stack `Stk(B, C)` is a value type** in `gandr-core-checker`'s `types` module — the evaluation context internalized as data.
 * **The runtime host has no capability model at all.** The seam is ambient and always-resume, with no grant, no allowlist, and no denial outcome ([[../../implementation#The runtime host]]); the design that would price it is [[../../implementation/capability-model]].
 * **The foreign boundary is the one place several of these decisions already have a home.** [[../../implementation/foreign-interface]] owns the boundary C-type mapping, the calling convention, linkage metadata, and the hidden-return-pointer slot, and links back to this document for the mode-facing half.
 
 **Designed, and not built.** Sessions (binary and multiparty), manifest sharing with acquire/release, worlds and the mobility judgment, the linear-zone obligations that would populate `Σ`, and the typed-unwinding rule under which abandoning a `Σ`-owning stack runs its recorded close, release, and drop obligations.
+The rules for all but the last are specified in [[../../implementation/type-system]], which is also where the mobility judgment's clauses are stated normatively rather than in the prose form this document uses.
 
 **Neither designed nor built.** References, mutable cells, borrowing, regions, access modes, mode-bounded polymorphism, and any **internal** value-representation, layout, or address model.
 

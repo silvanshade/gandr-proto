@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: c351996a4a5fb86753501a17a7a9f34352ef7672615ab614c90146a0e7849261
+    b3: 1e642dc7c227f8953a7f753401713e06614157033f0b910bb73c3408046979f8
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 6e48fe32a650c37e6a335b3aadb9f01dd9acdbd9d2d3793d744a5885bf2d9017
+    b3: c0cb00184344180c99cf2a0fe3acfbc68cdd0879c8fe966b5530aa1d1e19ef84
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -82,9 +82,14 @@ nodes:
     b3: abdbd89676037bca9fac30a32a8e00172fce24b01cdd1395ad8ef56eecfab213
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
+  - path: spec/implementation/type-system.md
+    role: subdocument
+    b3: 894f55b33edd531caa59e1380284ed0f3eec8a20287324c8afbc11faf3791cce
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: 467c24174423853ee3b0cec62a22e3752fb9e92be4f39136449b1a8643edb30e
+    b3: eb5e3297d4fd79035ceb99efb4c546f17b6fe6af6fb322cdc33e0efb32f73825
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
@@ -194,12 +199,12 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modes-and-references.md
     role: subdocument
-    b3: b22ec20d844a8bf648b71e822f17945b791a1ac692ac078fbe0284379146358e
+    b3: c4c668beca1fb87d6062d693f46976503a127564dd8010af43db4239c1099b64
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modules.md
     role: subdocument
-    b3: 854cb423c7c19e76c108c9495079df24f59cfdbfb9ede08513b82542fa33adc0
+    b3: 36481afa2b7f086b194bebe9a580a6207a9ed12702d6c7eef42b4b04a2e869c4
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md

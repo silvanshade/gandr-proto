@@ -360,7 +360,7 @@ One sealing construct plus the lifting law gives both functor flavours:
 ∃b. (fun (x : σ₁) ⇒ m) : (σ₁ → σ₂[b x])  -- applicative: β a function of the argument
 ```
 
-**This is the one place the kinding system genuinely needs higher kinds** `κ → κ′`, and it is why the design's core kinding rules — which are not yet part of this corpus — carry a kind-application rule at all.
+**This is the one place the kinding system genuinely needs higher kinds** `κ → κ′`, and it is why the core kinding rules — [[../../implementation/type-system#Kinds]] — carry a kind-application rule at all.
 Every other use of higher kinds in the design is convenience; this one is load-bearing, because the skolem `b` has nowhere else to live.
 
 ## What the typing machine owes
