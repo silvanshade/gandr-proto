@@ -31,9 +31,11 @@
 //! - [`cell`] — the [`cell::Cell`] (`lhs ~> rhs`, orientation, provenance,
 //!   derived metadata) and the content-addressed [`cell::CellStore`], generic
 //!   over the alphabet.
-//! - [`elaborate`] — surface `rule` faces
-//!   ([`gandr_theory_levitation::CellFace`]) into cells (§7.1), the ADR-54
-//!   acceptance target.
+//! - [`elaborate`] — a whole [`gandr_theory_levitation::DataDesc`] into cells
+//!   (§7.1), the ADR-54 acceptance target: surface `rule` faces
+//!   ([`gandr_theory_levitation::CellFace`]) become cells, and the declared
+//!   `op` members' [`gandr_theory_levitation::BridgeArity`]s decide which of
+//!   them the single-continuation grammar admits.
 //! - [`rewrite`] — direct command-level rewriting with a budget and the
 //!   alphabet's firing discipline (the sequent η-polarity gate, §5).
 //! - [`overlap`] — the multi-sum overlap enumerator (§7.3.2): confluence
@@ -99,9 +101,11 @@ pub use crate::boundary::CompletionCellBudget;
 pub use crate::boundary::CompletionStatus;
 pub use crate::boundary::CompletionStepBudget;
 pub use crate::boundary::DeclinedFaceIndex;
+pub use crate::boundary::DeclinedOpIndex;
 pub use crate::boundary::FiringPermission;
 pub use crate::boundary::GroundPatternStatus;
 pub use crate::boundary::NormalizationBudget;
+pub use crate::boundary::OperationInputCount;
 pub use crate::boundary::PatternSize;
 pub use crate::boundary::PositionRootStatus;
 pub use crate::boundary::PositionStep;
@@ -121,7 +125,10 @@ pub use crate::completion::complete;
 pub use crate::compose::CompositionObstruction;
 pub use crate::compose::compose_directed;
 pub use crate::compose::compose_invertible;
+pub use crate::elaborate::DescElaboration;
 pub use crate::elaborate::ElaborateError;
+pub use crate::elaborate::OpElaborateError;
+pub use crate::elaborate::OpFrame;
 pub use crate::elaborate::elaborate_data_desc;
 pub use crate::elaborate::elaborate_rule;
 pub use crate::overlap::Overlap;
