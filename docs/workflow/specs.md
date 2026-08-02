@@ -124,6 +124,16 @@ So the hazard is the abbreviation standing before a capitalised token, which in 
 * **Where the punctuation introduces or separates, use a colon.** `Note:`, `Caveat:`, `Definition B.2:` — a colon is never a sentence end, so nothing has to be disambiguated and nothing depends on what follows.
 * **Where the period only abbreviates a locator, drop it.** The corpus already reads `Prop 5.13`, `Thm 4.10`, `Def 3.1.1`; keep locators in that form and the capital after them stops mattering.
 
+### Two more formatter rules that rewrite structure rather than reporting it
+
+Both were hit authoring the 2026-08-02 absorptions, both cost a round trip, and both are invisible in the source you wrote.
+
+**A paragraph that follows a table and contains a `|` is read as an orphaned table row.** The pipe does not have to be a table pipe — a wikilink alias is enough, so `[[#some-anchor|some-anchor]]` in the first paragraph after a table trips `MD075` and the formatter refuses the file.
+The fix is in the link, not the table: drop a redundant alias (an anchor whose display text repeats the anchor needs none), or escape the pipe.
+
+**Heading levels are increment-enforced, and the formatter silently corrects rather than failing.** `MD001` forbids skipping a level, so a block of identifier headings under a `##` section must be `###` — writing `####` there does not error, it gets rewritten to `###` on the next format, and a reviewer reading the pre-format text will report a nesting problem that no longer exists.
+Check the post-format file before acting on any structural finding about headings.
+
 **And one neighbouring trap, because it fires on the same edit and reports somewhere else entirely.** `§` is reserved for _corpus_ anchors: `docs:reference-integrity` reads `§N.N` as a section reference and fails it as dangling when no corpus document defines it.
 An external source's own sections are written out — "appendix B.11", "Example 3.6" — and the gate then leaves them alone.
 
