@@ -123,6 +123,9 @@ impl CircuitFrame
 /// application — the interface pair a rewrite-sorted port carries. An
 /// **opaque** target (the unpinned port form `rule p : Nat ==> Nat`, whose
 /// target no term names) is written as the output port itself.
+///
+/// Both are terms over the body's ports, not leaves: their variable leaves
+/// resolve through the wiring like any other port occurrence.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CircuitRedex
 {
@@ -346,13 +349,15 @@ pub fn derive_boundaries(body: &CircuitBody) -> Result<DerivedBoundaries, Circui
 /// - requires: none.
 /// - ensures: the declared output port is unfolded through the nodes that bind
 ///   the ports it reaches, with every redex replaced by the boundary `reading`
-///   selects; a port no node binds, and a port a redex binds to itself, are
+///   selects and that boundary's own variable leaves resolved in turn; a port
+///   no node binds, and a port a redex binds to itself under this reading, are
 ///   boundary variables.
 /// - provides: one endpoint candidate for the declared sphere.
 /// - fails: [`CircuitDerivationError::CyclicWiring`] when a port is reachable
 ///   from itself other than as a redex's own opaque endpoint.
-/// - panics: none; the result stack is drained with saturating arithmetic and a
-///   degenerate empty wiring yields its own output port as a variable.
+/// - panics: none; the result stack is drained with saturating arithmetic, and
+///   the final pop's fallback is unreachable by construction — an empty wiring
+///   already resolves its declared output port as an unbound one.
 /// - intension: a port bound by two nodes resolves through the **first** node
 ///   that binds it, in source order; binding a port twice is a port-linearity
 ///   failure the surface's name-set fold refuses, and this order keeps the
@@ -368,6 +373,7 @@ pub fn derive_boundaries(body: &CircuitBody) -> Result<DerivedBoundaries, Circui
 ///   `add(x′, y′)`), and the cycle guard is distinguished by the two-node
 ///   cycle.
 /// - witness: `circuit::tests::the_congruence_wiring_derives_its_boundary_pair`
+/// - witness: `circuit::tests::a_redex_boundary_resolves_its_own_port_leaves`
 /// - witness: `circuit::tests::an_unbound_port_stays_a_boundary_variable`
 /// - witness: `circuit::tests::a_reconvergent_wire_is_unfolded_at_each_consumption`
 /// - witness: `circuit::tests::a_wiring_that_closes_a_cycle_derives_nothing`
@@ -579,6 +585,41 @@ mod tests
             ]),
             derived.target,
             "the target reading substitutes the pinned rewrite's target term"
+        );
+    }
+
+    #[test]
+    fn a_redex_boundary_resolves_its_own_port_leaves()
+    {
+        // `p : f(a) ==> h(a)` fired at a port `a` the wiring binds to `g(u)`:
+        // the rewrite's boundary terms are not leaves, their variables resolve
+        // through the wiring like any other port.
+        let body = CircuitBody::new(
+            [
+                CircuitNode::Frame(CircuitFrame::new(
+                    FrameHead::Op("g".into()),
+                    [FreeTerm::var("u")],
+                    "a",
+                )),
+                CircuitNode::Redex(CircuitRedex::new(
+                    "p",
+                    FreeTerm::op("f", [FreeTerm::var("a")]),
+                    FreeTerm::op("h", [FreeTerm::var("a")]),
+                    "z",
+                )),
+            ],
+            "z",
+        );
+        let derived = derive_boundaries(&body).expect("the wiring is acyclic");
+        assert_eq!(
+            FreeTerm::op("f", [FreeTerm::op("g", [FreeTerm::var("u")])]),
+            derived.source,
+            "the source boundary's own variable leaf resolves through the wiring"
+        );
+        assert_eq!(
+            FreeTerm::op("h", [FreeTerm::op("g", [FreeTerm::var("u")])]),
+            derived.target,
+            "and so does the target boundary's"
         );
     }
 

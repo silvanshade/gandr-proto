@@ -33,6 +33,7 @@ use crate::cell::CellVarMeta;
 use crate::cell::FreeTerm;
 use crate::cell::Variance;
 use crate::circuit::CircuitDerivationError;
+use crate::circuit::CircuitNode;
 use crate::circuit::CircuitRule;
 use crate::circuit::derive_boundaries;
 use crate::code::Attrs;
@@ -169,7 +170,7 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
 
     // Circuit rules: the wiring derives the sphere the declaration fixes.
     for rule in &desc.circuits {
-        check_circuit_rule(rule, &mut diagnostics);
+        check_circuit_rule(rule, &signature, &mut diagnostics);
     }
 
     diagnostics
@@ -185,18 +186,59 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
 /// (`docs/gandr/spec/surface-language/higher-cells.md`, section "Sphere-typed
 /// boundaries").
 ///
-/// The face's own variable discipline is deliberately **not** re-run here. A
-/// circuit rule's variables are bound by its declared port telescope, not by
-/// its source boundary, so the [`WfKind::UnboundRhsVariable`] rule — which
-/// reads a rule's variables off its left-hand side — does not transfer: a
-/// congruence rule's target names the rewrite-sorted ports' endpoints, which
-/// its source cannot bind. Port linearity and disjointness are the surface
-/// name-set fold's.
+/// The in-signature rule binds here exactly as it does for a written face: the
+/// declared sphere's terms and every frame head must name a constructor or
+/// operation of this datatype. A redex head is **not** checked against the
+/// signature — it names a rewrite-sorted port of the rule's own telescope, not
+/// a signature symbol.
+///
+/// The one rule deliberately **not** re-run is
+/// [`WfKind::UnboundRhsVariable`], which reads a rule's variables off its
+/// left-hand side: a circuit rule's variables are bound by its port telescope,
+/// so a congruence rule's target names the rewrite-sorted ports' endpoints and
+/// its source cannot bind them. Whether that rule is scoped to left-hand-side
+/// binders or the telescope becomes a second binder is owed an owner ruling;
+/// what is implemented is the narrower reading, without which the ruled
+/// congruence block is refused. Port linearity and disjointness are the
+/// surface name-set fold's.
 fn check_circuit_rule(
     rule: &CircuitRule,
+    signature: &[Name],
     diagnostics: &mut Vec<WfDiagnostic>,
 )
 {
+    check_free_term_symbols(
+        &rule.sphere.lhs,
+        signature,
+        rule.sphere.provenance,
+        diagnostics,
+    );
+    check_free_term_symbols(
+        &rule.sphere.rhs,
+        signature,
+        rule.sphere.provenance,
+        diagnostics,
+    );
+    for node in &rule.body.nodes {
+        let CircuitNode::Frame(ref frame) = *node
+        else {
+            continue;
+        };
+        if signature.contains(frame.head.name()) {
+            continue;
+        }
+        diagnostics.push(WfDiagnostic::new(
+            WfKind::OutOfSignatureCell,
+            format!(
+                "circuit rule `{}`'s frame applies symbol `{}` not in the datatype's signature",
+                rule.name,
+                frame.head.name()
+            )
+            .into(),
+            Some(rule.sphere.provenance),
+        ));
+    }
+
     let derived = match derive_boundaries(&rule.body) {
         | Ok(derived) => derived,
         | Err(CircuitDerivationError::CyclicWiring(port)) => {
@@ -221,14 +263,24 @@ fn check_circuit_rule(
         if derived == declared {
             continue;
         }
+        let derived = render_free_term(derived);
+        let declared = render_free_term(declared);
+        // The inspection notation renders a constructor application and an
+        // operation application alike, so two unequal terms can render the
+        // same; say which axis they differ on rather than printing one term
+        // twice.
+        let alphabets = if derived == declared {
+            ", differing only in whether a head is a constructor or an operation"
+        }
+        else {
+            ""
+        };
         diagnostics.push(WfDiagnostic::new(
             WfKind::DerivedBoundaryMismatch,
             format!(
-                "circuit rule `{}`'s wiring derives the {side} boundary `{}`, but its declared \
-                 sphere fixes `{}`",
-                rule.name,
-                render_free_term(derived),
-                render_free_term(declared)
+                "circuit rule `{}`'s wiring derives the {side} boundary `{derived}`, but its \
+                 declared sphere fixes `{declared}`{alphabets}",
+                rule.name
             )
             .into(),
             Some(rule.sphere.provenance),
@@ -579,6 +631,91 @@ mod tests
                 .filter(|diag| diag.kind == WfKind::DerivedBoundaryMismatch)
                 .count(),
             "the matching source boundary raises nothing"
+        );
+    }
+    #[test]
+    fn an_out_of_signature_circuit_frame_is_declined()
+    {
+        // The frame applies `frobnicate`, which `Nat` does not declare; the
+        // redex heads `p` and `q` are ports and are not signature symbols.
+        let body = CircuitBody::new(
+            [CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Op("frobnicate".into()),
+                [FreeTerm::var("x")],
+                "z",
+            ))],
+            "z",
+        );
+        let rule = CircuitRule::new(
+            "bogus",
+            CellFace::new(
+                FreeTerm::op("frobnicate", [FreeTerm::var("x")]),
+                FreeTerm::op("frobnicate", [FreeTerm::var("x")]),
+                Vec::new(),
+                SurfaceSpan::new(0.into(), 1.into()),
+            ),
+            body,
+        );
+        let desc = nat_with(Vec::new(), Vec::new(), Attrs::empty()).with_circuits(vec![rule]);
+        let diagnostics = check_desc(&desc);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::OutOfSignatureCell
+                    && diag
+                        .message
+                        .as_ref()
+                        .contains("frame applies symbol `frobnicate`")),
+            "an out-of-signature frame head is declined"
+        );
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::OutOfSignatureCell
+                    && diag.message.as_ref().contains("cell rule mentions symbol")),
+            "and so is the declared sphere that names it"
+        );
+        assert!(
+            !diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::DerivedBoundaryMismatch),
+            "the wiring still derives the sphere it was declared at"
+        );
+    }
+    #[test]
+    fn a_head_alphabet_mismatch_says_which_axis_it_differs_on()
+    {
+        // The frame's head is the constructor `Succ`; the declared sphere puts
+        // the operation `Succ` there. The inspection notation renders both as
+        // `Succ(n)`, so the diagnostic has to name the axis itself.
+        let body = CircuitBody::new(
+            [CircuitNode::Frame(CircuitFrame::new(
+                FrameHead::Ctor("Succ".into()),
+                [FreeTerm::var("n")],
+                "z",
+            ))],
+            "z",
+        );
+        let sphere = CellFace::new(
+            FreeTerm::op("Succ", [FreeTerm::var("n")]),
+            FreeTerm::op("Succ", [FreeTerm::var("n")]),
+            Vec::new(),
+            SurfaceSpan::new(0.into(), 1.into()),
+        );
+        let rule = CircuitRule::new("alphabets", sphere, body);
+        let desc = nat_with(Vec::new(), Vec::new(), Attrs::empty()).with_circuits(vec![rule]);
+        let diagnostics = check_desc(&desc);
+        let mismatch = diagnostics
+            .iter()
+            .find(|diag| diag.kind == WfKind::DerivedBoundaryMismatch)
+            .expect("the head alphabets disagree");
+        assert!(
+            mismatch
+                .message
+                .as_ref()
+                .contains("differing only in whether a head is a constructor or an operation"),
+            "the diagnostic names the axis two identical renderings hide: {}",
+            mismatch.message
         );
     }
     #[test]
