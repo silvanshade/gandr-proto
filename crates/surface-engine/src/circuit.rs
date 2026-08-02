@@ -61,7 +61,7 @@
 //! * **Port linearity.** Two uses at the same polarity are two distinct ports:
 //!   the wire already has that endpoint. This is the published attachment
 //!   discipline's target-face-must-be-unused side condition
-//!   [@curien-hothanh-mimram-2019-opetopes].
+//!   \[@curien-hothanh-mimram-2019-opetopes\].
 //! * **Boundary agreement.** Two uses that declare the name at different sorts
 //!   are two distinct ports sharing a spelling — the same discipline's
 //!   boundaries-must-agree side condition. Agreement is compared on the sort's
