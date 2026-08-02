@@ -8,6 +8,7 @@ If the exhaustiveness claim is ever wrong, that is a defect in this document, no
 
 * [[surface-language/grammar]] — the grammar machinery: the PBG, precedence DAGs, the molder/melder pipeline, the obligation taxonomy, the build-time gates, the adaptations registry, and the complete parse-and-decline inventory.
 * [[surface-language/declarations]] — the declaration forms in full: the `def` family, `val`/`run`, attributes, `data`/`codata`, `extern`, `import`, `module`, operator declarations, and the elaboration behaviors.
+* [[surface-language/operators]] — the operator and notation architecture: capture and resolution separated, the named precedence graph and why it is not a number line, the cross-language catalog and the feasibility split, the ambiguity policy, lowering and the origin record, tier ownership, and what the parser substitution retired.
 * [[surface-language/attributes]] — the entity-attribute layer in full: the `@[…]` marker and its two positions, the sigil decision and its reversal target, the typed-schema registry and the diagnostics, attribute purity as locality, the hash-neutral side table with its inert and semantic tiers, the report projection, and the consumers the one layer serves.
 * [[surface-language/directed-family]] — the directed identity family's surface: `Flow(A, x, y)` spelled `A ~~> B` at the type level, the diagonal intro `diag`, the shared `walk` under the motive-covariance side condition, the shared `then`, and `ua-dir` with what it buys a program.
 * [[surface-language/circuit-cells]] — the design sketch for full circuit-algebra cells: reconvergence, disconnection, and wheels at the surface, port-named interfaces with polarity, the wheel guard, holes as contexts, and the cost of each feature.
@@ -145,7 +146,7 @@ def answer_service() -> F Integer {
 ```
 
 * **Loops** — `for x in e { … }`, `while c { … }`, `loop { … }`, `break`, `continue` — sugar over a native fold or `fix`, with `break`/`continue` as effect operations ([[recursion#Loops, and the break/continue discipline]]).
-* **Operators** — the fixed infix table `|| && == != < <= > >= ++ + - *` and unary `-`; resolution is deterministic and type-independent against the active operator table; user-declared operators ride the reserved declaration form ([[declarations#Operator-fixity declarations]]).
+* **Operators** — the fixed infix table `|| && == != < <= > >= ++ + - *` and unary `-`; resolution is deterministic and type-independent against the active operator table; user-declared operators ride the reserved declaration form ([[declarations#Operator-fixity declarations]]), and the architecture behind both is [[surface-language/operators]].
 * **The instantiation slot** — `e[ι₁, …, ιₙ]` with residents `T` (type argument), `<`/`>` (the recursion direction sigils), `m<` (named measure), `x = e` (explicit instantiation), `size = e`, `cost = e`, `tail` — the full design is [[recursion#The instantiation slot]].
 * **Extern and host calls** — `m.op(a)` member-call form, elaborating to `perform m.op { p1 = a }`; the reserved namespaces `fs`, `env`, `proc` ride the same surface ([[declarations#extern blocks]]).
 * **Shell blocks** — `#!{ … }` and everything in [[surface-language/shell]].

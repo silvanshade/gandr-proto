@@ -149,7 +149,8 @@ op infixl 6 "++" ;
 
 * Reserved parse-and-decline: fixity classes (`infixl`, `infixr`, `infix`, `prefix`, `postfix`) are contextual tiles, not reserved keywords; the spelling is a string literal, so the labeler never tokenizes a user operator.
 * The declaration mutates the **operator table as data** (fixity, associativity, precedence group, DAG edges) — never the grammar; the per-module wiring seam is deliberately unwired.
-* Operators themselves are resolved deterministically and type-independently against the active table: `x * y` lowers to `((force mul) x) y` in CBPV form; sections `(_ op y)` are decided extension growth; **open alphabetic mixfix is structurally rejected** (the parser could not find the region's boundaries without consulting declarations — an Operator Form violation).
+* Operators themselves are resolved deterministically and type-independently against the active table: `x * y` lowers to `((force mul) x) y` in CBPV form; sections `(_ op y)` are decided extension growth; **open alphabetic mixfix is structurally rejected** — an open mixfix form exposes two adjacent sort holes, which is an Operator Form violation and fails at grammar build.
+* The architecture this declaration serves — the capture-and-resolution split, the named precedence graph, the cross-language catalog, the ambiguity policy, and the tier ownership question — is [[operators]].
 
 ## Elaboration behaviors, collected
 

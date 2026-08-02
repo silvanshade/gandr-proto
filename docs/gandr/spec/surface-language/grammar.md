@@ -11,6 +11,7 @@ The normative parser is **not BNF, PEG, tree-sitter, or GF**: a checked **preced
 * A **mold** is a zipper into the grammar, interned to a compact `MoldId(u32)`: `{ label, rctx, prec, sort }`, where `rctx` is the regex-context zipper.
   Molds are deterministic and fingerprint-scoped: ids are assigned in canonical table order at grammar build; the mold table folds into the grammar's fingerprint; **a CST records the fingerprint of the grammar that produced it**, so mold ids never migrate silently across grammar revisions.
 * The **precedence DAG** is a named graph, not a number line: named precedence groups, edges for binds-tighter, per-group associativity, a precomputed reachability closure, and a fingerprint; strict precedence is reachability, and incomparable pairs are honored — an ambiguous mix is an error, never a guess.
+  The choice of a graph over a number line, its literature grounding, and what it buys over the integer-level systems are [[operators#The precedence model is a named graph, not a number line]].
 * The pipeline:
 
 ```text
@@ -111,6 +112,7 @@ Every divergence from a sketched design is recorded in-code as an `Adaptation` r
 * **Grade prefixes restricted to `{ number, ω }`** — the bare-identifier grade spelling is dropped, because a graded field `Cons(1 x: a)` must stay first-token-distinct from an ungraded field named `n`.
 * **One `{` with an interior alternative** for `def rec` bodies (copattern clauses versus statement body), so two brace-led branches never share a context.
 * **Operator-fixity declarations spelled `op <fixity> <level> "spelling" ;`** — designed fresh (no sketch existed), reusing the reserved `op` lead with a string-literal spelling so the labeler needs no user-operator token; the per-module wiring seam (`Pbg::extend`) is deliberately unwired.
+  What wiring that seam costs, and the architecture the declaration serves, are [[operators]].
 * **Loops reuse the block form**; **string interpolation lives only in expression-position strings**; **the shell subshell is spelled with square brackets** (POSIX parentheses stay free for the `$( E )` host escape); **braced parameter expansion `${name}` is a distinct labeler mode from interpolation `${E}`**; **spaced hole names `? name`** attach where an immediate-token rule could not hold.
 * Member forms are **first-token-discriminated by case** inside `data`/`codata` blocks: uppercase-led constructors versus lowercase-led `op`/`rule` keywords.
 * **The `oper` / `rule` circuit judgment is declared once** and shared by the `sign` member and the top-level declaration, and telescope binders are confined to the parameter side — a duplicated tail would clone the signature, the port lists, and the body statements into a second set of molds, widening the hottest menus (`identifier`, `(`, `:`) twice as far.

@@ -2606,3 +2606,33 @@ clavel-duran-eker-lincoln-martioliet-meseguer-talcott-2007-maude:
     authors, title, series volume and year confirmed 2026-08-02 from indexed citations; the DOI
     resolves to a Springer book record whose page is behind an authorization redirect, so the
     identifier-to-title binding is recorded as unverified
+
+# ── The operator and notation line (precedence graphs, hygiene) ───────────────
+
+danielsson-norell-2011-mixfix:
+  type: article
+  title: Parsing Mixfix Operators
+  author: ["Danielsson, Nils Anders", "Norell, Ulf"]
+  date: 2011
+  publisher: Springer
+  serial-number:
+    doi: "10.1007/978-3-642-24452-0_5"
+    isbn: "978-3-642-24452-0"
+  parent:
+    type: proceedings
+    title: Implementation and Application of Functional Languages
+    page-range: 80-99
+
+flatt-2016-binding-sets-of-scopes:
+  type: article
+  title: Binding as Sets of Scopes
+  author: ["Flatt, Matthew"]
+  date: 2016-01-11
+  publisher: ACM
+  serial-number:
+    doi: "10.1145/2837614.2837620"
+  parent:
+    type: proceedings
+    title: Proceedings of the 43rd Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming
+      Languages
+    page-range: 705-717
