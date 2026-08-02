@@ -1,7 +1,8 @@
 # The shell fragment
 
 The shell face of the surface: shell blocks and jobs, the embedded shell sub-grammar, the host escape, string interpolation, and the REPL split.
-The interactive-usage surface it serves (REPL, history, completions, LSP, formatter) and the host-effect seam (`Exec`/`Fs`/`Proc`/`Env`) are the [[../implementation#The runtime host|implementation track]]; the deferred semantic shell DSL (job control, byte-stream sessions, worlds) is the late-schedule design lane.
+The interactive-usage surface it serves — the loop, history, completion, the language-server adapter, the formatter — is [[../implementation/proposed/interactive-surface]], and the host-effect seam it runs through is [[../implementation#The runtime host|the implementation track's]].
+The deferred semantic shell DSL (job control, byte-stream sessions, worlds) is designed direction; its typed reading is below.
 
 ## Shell blocks and jobs
 
@@ -74,11 +75,37 @@ The driver's two faces are decided:
 ## The POSIX-to-typed mapping, and the deferred DSL
 
 The shell fragment is the embedding surface; the semantic shell language is a separate, later design.
-The mapping of record sketches the direction: a pipe is a forked byte-stream protocol (`Pipe = μX. ⊕{chunk: !Bytes.X, eof: end}`), job control is one-shot stacks, terminal capability is a located capability, and the fragment graduates into the real handler as the linear-Σ runtime, the process model, and worlds land.
+
+**That design is not a shell-shaped bolt-on: it is an effect signature, session protocols, and the control operators, with no shell-specific typing rules at all.** Every row below is an **elaboration** rather than a primitive, which is the whole claim — POSIX is being read as an instance of machinery the calculus already needs.
+
+| POSIX construct           | typed reading                                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| process, `exec`           | a shell effect operation spawning a computation at a job world, with the three standard streams as endpoints in the linear zone        |
+| pipe `p \| q`             | a **fork** of a byte-stream session `Pipe = μX. ⊕{ chunk: !Bytes.X, eof: end }` — one side holds the sending end, the other its dual   |
+| redirection `> f`, `2>&1` | **endpoint delegation** — rebinding which channel a job's stream names refer to                                                        |
+| exit status               | a returner over unit-or-exit-code; abort-on-error is a **handler policy** on the failure operation, not a mode flag                    |
+| signal                    | an **asynchronous effect** delivered as an interrupt [@ahman-pretnar-2021-asynchronous-effects]; a trap is an installed handler clause |
+| suspension                | **capture the job's stack** — a `shift` at the job delimiter, yielding a linear stack value that owns the job's linear zone            |
+| jobs table, `bg`, `fg`    | a registry of captured linear stacks: foreground is resume **with** the terminal capability, background is resume **without** it       |
+| job-control groups        | capability-scoped — the terminal is a linear capability, and only the foreground job holds it                                          |
+| subshell                  | a child world, or a plain fork where no isolation is needed                                                                            |
+| remote execution          | migration of the shell computation to another world — remote execution **is** the worlds feature rather than an addition to it         |
+| word expansion, globbing  | macro-phase computation: expansion happens before the job's runtime phase, exactly as in real shells                                   |
+
+Two observations are what make the mapping more than a curiosity.
+
+**Job control literally is first-class one-shot stacks.** Suspend is capture; foreground and background are resume with and without a capability; a terminated job holding open pipes is exactly the unwind-obligation discipline the linear zone already owes.
+The shell is the **motivating application** for first-class stacks, not a beneficiary of them.
+
+**Every shell footgun lands on a static discipline.** A dangling pipe becomes a linear-zone obligation, a signal-unsafe trap becomes handler typing, a double foreground becomes a linear capability, and a remote-execution data race becomes mobility.
+The interactive payoff follows: a derivation surface that shows a pipeline's session protocol advancing, a suspended job as an inspectable stack value, and a trap as a handler frame is a genuinely novel way to **teach** POSIX, not merely to run it.
+
+The fragment graduates into the real handler as the linear-zone runtime, the process model, and worlds land.
 What is true **today**, marked as such: the host operation families `Exec`/`Fs`/`Proc`/`Env` run through the preserved host-effect seam; pipelines at the REPL parse but are **declined past the parse** with a named diagnostic; the surface `m.op(a)` member-call elaborates to `perform m.op { … }`.
 
 ## Source and confidence
 
 The fragment as built is verified against the grammar crate's shell rules and the W4e fold-in record (braced parameter as a distinct mode, double-quoted words as one atom, bracketed subshells, fd redirections, the coverage table of folded versus deferred POSIX forms) — high confidence.
-The REPL split is the driver-split decision of record (bare `gandr` = shell-REPL, `gandr tui` = programming environment); the host-escape bounds are the landed standalone-word cut; the usage-surface and effects proposals carry the REPL/typed-mapping design at full depth, and the manual's effects chapter restates the typed reading.
+The REPL split is the driver-split decision of record (bare `gandr` = shell-REPL, `gandr tui` = programming environment), and the host-escape bounds are the landed standalone-word cut.
+The POSIX-to-typed mapping above is designed direction throughout, absorbed here in full; the interactive surface it serves is carried at depth in [[../implementation/proposed/interactive-surface]].
 The deferred semantic DSL (job control, byte-stream sessions, the `Shell` handler) is designed direction, marked wherever mentioned.

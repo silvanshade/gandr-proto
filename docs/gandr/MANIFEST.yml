@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 32c848239fc2910fac728c48857158ce80985c56c5ae8763793dc3107bd2ba89
+    b3: 4e4c3c552f9e5f377e5b4a6095492bb12fd9f70ce426b14248c13f42a98b4309
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 9905b0816a2b019cb210647d88fdd7b02e251ee8eeb4b88007919fff1d94abbc
+    b3: 1db57727e1c35ed4a8567dd29b41faced7337e6b9af34c4c430795721a16b34c
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -114,7 +114,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/shell.md
     role: subdocument
-    b3: 611c6456ade9ff4ab6faa6d724d6d890783ab2c89da8ffd71d5ab6e0970a0435
+    b3: 442377c36d97182f1f4c5a9b66de73c36016ec9e0a9104c4e363f407644fd79e
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
@@ -160,6 +160,11 @@ nodes:
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
     b3: 618e06fe383fb274eb27613608ba0676232499286281a0acf0c3222869132108
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/interactive-surface.md
+    role: subdocument
+    b3: e619f2fbd21acab00fc675da860732c144ead29e9ef42e70d5c965c476f6b32f
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/recursion-former.md
