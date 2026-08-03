@@ -94,7 +94,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: acb0371a1019d0cbec431650fcdf14ba51785af2c540a0d6e2f9d86b4f8ea9e5
+    b3: 2d19a97900e6e30145b14c9d0efd14c44fb5549dfc6fe6f61969212a71f33d58
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
