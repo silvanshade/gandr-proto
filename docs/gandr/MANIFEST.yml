@@ -119,7 +119,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
     role: subdocument
-    b3: c9741952f6a9acbc4b3a841d3522b8157b88d77c1675560cab91453223a9cd3c
+    b3: 720d12f8618fa9678963f8ddda0919a68771ef3bc94b17c957c84e23ab7b1df1
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/shell.md
