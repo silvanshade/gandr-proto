@@ -1392,7 +1392,49 @@ bergner-rezk-2013-comparison:
   title: Comparison of model structures on (∞,n)-categories
   author: ["Bergner, Julia E.", "Rezk, Charles"]
   date: 2013
-  note: not in library.bib; verify locator before citation-bearing use
+  note: >-
+    DEFECTIVE — no work with this title was located, and the elegance definition
+    this key is cited for is in Bergner–Rezk, "Reedy Categories and the
+    Θ-Construction" instead. Slated for retirement rather than repointing; both
+    citing sites move to a correct key. Do not add citations against this key.
+
+hackney-robertson-yau-2018-factorizations:
+  type: article
+  title: On Factorizations of Graphical Maps
+  author: ["Hackney, Philip", "Robertson, Marcy", "Yau, Donald"]
+  date: 2018
+  serial-number:
+    doi: "10.4310/HHA.2018.v20.n2.a11"
+    arxiv: "1705.08546"
+  parent:
+    type: periodical
+    title: Homology, Homotopy and Applications
+    volume: 20
+    issue: 2
+    page-range: 217-238
+  note: >-
+    Locator and publication data taken from a research pass, not yet checked
+    against the artifact; the held preprint carries a stale journal template
+    naming a different volume, year, and a placeholder editor, so its front
+    matter must not be transcribed. Theorem numbers cited from it are arXiv v2
+    numbers and may drift against the published text.
+
+awodey-cavallo-coquand-riehl-sattler-2026-equivariant:
+  type: article
+  title: The Equivariant Model Structure on Cartesian Cubical Sets
+  author: ["Awodey, Steve", "Cavallo, Evan", "Coquand, Thierry", "Riehl, Emily", "Sattler, Christian"]
+  date: 2026
+  serial-number:
+    doi: "10.1016/j.aim.2026.110965"
+    arxiv: "2406.18497"
+  parent:
+    type: periodical
+    title: Advances in Mathematics
+    volume: 495
+    page-range: "110965"
+  note: >-
+    Locator and publication data taken from a research pass, not yet checked
+    against the artifact.
 
 schonlank-nuyts-devriese-facett:
   type: article

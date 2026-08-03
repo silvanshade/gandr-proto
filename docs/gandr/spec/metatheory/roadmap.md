@@ -33,10 +33,17 @@ Remaining: the named offset transforms (the right injection's shift, the project
 
 ### meta-spike-04
 
-**Is gandr's pattern _analytic_?** Check the two conditions (strict Segal morphism to pointed finite sets; conservative interior) with underlying-legs as the candidate functor.
+**Is gandr's pattern _analytic_?** Check the two conditions — a **strict Segal morphism** to pointed finite sets, and **conservativity on the inert subcategory** — with underlying-legs as the candidate functor.
 **½ day.**
 
 Settles whether arity approximation applies — whether circuit algebras at `Set` are determined by arity-≤k data, a truncation result more useful than raw finiteness.
+
+**EXECUTED 2026-08-02, and its disposition is an open owner decision** (`gandr-hpck`): the verdict reposes the spike rather than answering it, so the question above is recorded as asked and is not the question to run.
+
+**Two defects in this entry's statement of the conditions are corrected here rather than carried.** The published form is [@barkan-2022-arity, def 3.1], cited against the held arXiv v4 throughout.
+_Conservative **interior**_ was a mis-expansion of the source's superscript, which abbreviates **inert** — a map of pointed finite sets with singleton fibres [ibid., def 1.7] — so the condition is that an inert morphism whose underlying map of pointed finite sets is an isomorphism is itself an isomorphism.
+The word _interior_ occurs once in that paper, of a manifold's interior, and never in this sense.
+And _strict Segal morphism_ is **undefined at source**: the phrase occurs exactly twice, both times in use, against three defined grades (Segal, iso-Segal, strong Segal); the paper's own example asserts it by pointing at an earlier example that says **iso-Segal**, and the corollary consuming it needs the iso-Segal identification to go through, so that is the reading [ibid., def 2.24].
 
 ### meta-spike-05
 
@@ -47,11 +54,34 @@ If yes, the Morita-restriction failure, the elegance gate, and the coherence-con
 
 ### meta-spike-06
 
-**Is the graphical category _elegant_** (Bergner–Rezk [@bergner-rezk-2013-comparison])?
-**Unmeasured.**
+**Does the site carry the Reedy structure the staging consumes, and is that structure attributed?** **REFRAMED 2026-08-02**, after the earlier form — _is the graphical category elegant?_ — was executed and found **ill-formed**: elegance is a property of a **strict** Reedy category, in which identity maps are the only isomorphisms, and this site's objects carry the symmetric groups among their automorphisms, so the condition is _undefined_ here rather than false.
+The disposition of the reframing is an open owner decision (`gandr-hpck`); the questions below are the ones to run.
 
-The gate on univalence transfer to the diagram model.
-If elegance fails for the site but holds for its rigidified form, `Rigid` is load-bearing for transfer — the fourth appearance of one decision.
+**The mechanism is not missing, and the earlier alarm about it was misplaced.** Generalized Reedy _is_ the technology for categories with nontrivial automorphisms — equivariant latching and matching, with factorization unique only up to isomorphism — and it is already what [[../metatheory#The site, the strata, and the fuel are one object|the staging]] runs on.
+`Rigid.canon` is what turns that up-to-iso factorization into an actual function, which is the third of its four appearances.
+So the residual risk was never _is the site Reedy_ but **does the canonicalization stay computable**, and that failure mode is already carried as a falsifier: the generalized-Reedy factorization not being computable even with canonicalization, at which point strata and fuel decouple ([[../metatheory#What would falsify this]]).
+
+**What is genuinely owed is the instantiation, and the warrant for it lapsed rather than never existing.** The nerve route's original warrant was at the **properad** rung — a fully faithful nerve with strict Segal characterization, finite hom-sets from the finite-edge-set determination, and decidable morphism equality — and the generalized-Reedy structure came with it.
+Those attributions did not survive the move to the circuit-algebra rung, and what stands in their place is a citation of the _definition_ [@berger-moerdijk-2011-reedy], which is why a reader checking the claim finds no proof for this site.
+**This is the second recorded instance of a warrant lapsing silently at a rung change**; the first is [[#Open questions|meta-question-19]], and the pattern — a citation correct at the rung it was taken at, surviving verbatim into a document written at a higher rung — is worth a sweep of its own.
+
+Three questions, in order:
+
+1. **Follow the positive result in the factorization paper.** [@hackney-robertson-yau-2018-factorizations] gives the _wheeled_ graphical category a generalized Reedy structure, factorization unique up to isomorphism, after the modification its own second section introduces — and it is the same paper whose theorem 4.11 supplies the Eilenberg–Zilber _negative_ result, so both faces come from one read.
+   What is owed is a **bridge from that category to the nonunital circuit-algebra site**, not a theory from scratch; that bridge is the presentation obligation below, which now has a target.
+2. **Decide whether the general case is needed.** If the bridge does not go through for this site specifically, the question becomes whether a generalized-Reedy structure can be established for the site directly, or whether the staging should be re-based on a weaker structure that supplies degree, the two subcategories, and equivariant staging without the full package.
+   State which of the three the answer is; do not silently weaken.
+3. **Only then, the Eilenberg–Zilber question**, which is the well-formed replacement for elegance and is what the univalence _transfer_ of [[../metatheory#Univalence beyond the code universe — transfer, structures, repair|the third item]] wanted.
+   Note that the transfer is the **auxiliary** route: it makes the ambient diagram model behave, and is not the route by which gandr's own code universe is univalent.
+
+Two pieces of evidence to carry into all three.
+The published Eilenberg–Zilber negative at the wheeled rung runs through the **nodeless loop**, which neither the circuit-algebra formalism nor gandr's carrier can express, so it does not transfer on the nose; the sharp test is that paper's second, loop-free counterexample class.
+And symmetric-group automorphisms are demonstrably **not** per se an obstruction to univalence — a univalent model exists over presheaves on the cartesian cube category, which is generalized Reedy with exactly those automorphisms, at the price of an **equivariance condition on fibrations** [@awodey-cavallo-coquand-riehl-sattler-2026-equivariant].
+That price is the shape of price to expect here.
+
+**The `Rigid` branch is restated rather than retired.** `Rigid` supplies skeletality; equivalence to a _strict_ Reedy category needs the absence of nontrivial automorphisms, which is the other half.
+The device that supplies the missing half restricts **morphisms**: the total category of a crossed group over a strict base, for which the dendroidal category is a worked published instance, proved by the restriction functor's monadicity creating the absolute pushouts the third axiom needs.
+So the live question is whether this site is such a total category over a strict Eilenberg–Zilber planar base, with the ordered `Shape` carrier as the candidate — and even a yes does not descend the transfer for free, because presheaves on the total category are _equivariant_ presheaves on the base.
 
 ### meta-spike-07
 
