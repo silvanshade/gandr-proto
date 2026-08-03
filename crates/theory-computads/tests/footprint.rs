@@ -27,9 +27,9 @@
 //!   pair inside a carried frame
 //!   ([`a_redex_inside_a_carried_frame_is_licensed`]), and two pairs the
 //!   guard's *cell-keyed* overlap conjunct refuses although the *instance* is
-//!   disjoint — one on a real composition seam
+//!   disjoint — one whose overlap family also carries a real composition seam
 //!   ([`a_schematic_overlap_does_not_survive_as_an_instance_overlap`]) and one
-//!   on a metavariable seam
+//!   whose family is nothing but metavariable seams
 //!   ([`a_hole_seam_refusal_is_the_enumerator_gap_and_not_polarization`]);
 //! - **guard only** — asserted **empty** over the whole table
 //!   ([`the_guard_licenses_nothing_the_polarized_test_refuses`]), which is the
@@ -39,12 +39,32 @@
 //!
 //! # The caveat the measurement must carry
 //!
-//! Two of the guard's refusals above come from the overlap enumerator counting
-//! a **metavariable position** as a composition seam, which is recorded as the
-//! independence relation's own gap, not as polarization's win. The suite
-//! separates them: the hole-seam fixture asserts that the refusing overlap's
-//! seam addresses a bare metavariable in the left cell's right-hand side, so
-//! that row is attributed to the enumerator and not to the polarized reading.
+//! Both cell-keyed refusals above are *reported* at a **metavariable position**
+//! the overlap enumerator counts as a composition seam, which is recorded as
+//! the independence relation's own gap and is not polarization's win. Reported
+//! is not the same as caused, and the suite now pins the difference on both
+//! rows rather than narrating it: the hole-seam pair's **whole** overlap family
+//! is bare metavariables, so repairing the enumerator would stop the guard
+//! refusing it; the schematic pair's family also contains a genuine composition
+//! seam — add-S's right-hand side running into add-Z's left-hand side at a
+//! constructor position — so that refusal survives the repair and the row is
+//! cell-keying against instance-keying, exactly as its name says.
+//!
+//! **So one polarized-only row is attributable to the enumerator gap, not
+//! two.** The earlier reading of this suite counted both, because the
+//! schematic fixture asserted only the refusing overlap's *kind* while its
+//! prose described a different overlap of the same family.
+//!
+//! # What the suite pins besides the four cells
+//!
+//! Two invariants the comparison rests on, asserted over the fixture family
+//! rather than at one fixture: every footprint's three classes are pairwise
+//! disjoint, cover the match image exactly, and keep the alphabet's own
+//! enumeration order
+//! ([`every_footprint_partitions_exactly_the_addresses_its_redex_covers`]);
+//! and a pair colliding at several addresses reports the earliest one its scan
+//! reaches, so the verdict is a function of the input
+//! ([`a_pair_colliding_several_ways_reports_the_earliest_address_it_scans`]).
 //!
 //! Addresses in this carrier **move**, and the source's do not. A rule that
 //! relocates its hole instance therefore reports the vacated addresses as
@@ -62,6 +82,8 @@
 //! [`the_guard_licenses_nothing_the_polarized_test_refuses`]: tests::the_guard_licenses_nothing_the_polarized_test_refuses
 //! [`the_polarized_test_refuses_a_pair_that_does_not_commute`]: tests::the_polarized_test_refuses_a_pair_that_does_not_commute
 //! [`a_relocated_frame_is_refused_because_addresses_move`]: tests::a_relocated_frame_is_refused_because_addresses_move
+//! [`every_footprint_partitions_exactly_the_addresses_its_redex_covers`]: tests::every_footprint_partitions_exactly_the_addresses_its_redex_covers
+//! [`a_pair_colliding_several_ways_reports_the_earliest_address_it_scans`]: tests::a_pair_colliding_several_ways_reports_the_earliest_address_it_scans
 //! [`derive_shift_equivalence`]: gandr_theory_computads::derive_shift_equivalence
 //! [`CellApp`]: gandr_theory_computads::CellApp
 
@@ -81,6 +103,7 @@ mod tests
     use gandr_theory_computads::derive_shift_equivalence;
     use gandr_theory_computads::footprint_independence;
     use gandr_theory_computads::match_footprint;
+    use gandr_theory_computads::overlaps_between;
     use gandr_theory_computads::rewrite::rewrite_at;
 
     use crate::toy_alphabet::Toy;
@@ -650,7 +673,38 @@ mod tests
         assert_eq!(
             OverlapKind::Composition,
             overlap.kind,
-            "add-S's right-hand side runs into add-Z's left-hand side"
+            "the enumerator reports a composition seam for this pair"
+        );
+        // Attribution, pinned rather than narrated. The seam the guard refuses
+        // AT is add-Z's bare right-hand side, which is the recorded enumerator
+        // gap and would not survive its repair.
+        let zero_cell = store.get(zero_rule).expect("the zero rule is stored");
+        let succ_cell = store.get(succ_rule).expect("the succ rule is stored");
+        assert_eq!(zero_rule, overlap.left, "the reported seam is add-Z's");
+        assert_eq!(
+            Some(Toy::var(ToyNameRef("x"))),
+            ToyAlphabet::subterm_cmd_at(&zero_cell.rhs, &overlap.seam),
+            "and it addresses a bare metavariable, as the hole-seam row's does"
+        );
+        // What separates this row from the hole-seam one: the pair's family
+        // ALSO carries a genuine composition seam — add-S's right-hand side
+        // running into add-Z's left-hand side at a constructor position — so
+        // the guard refuses this pair on real grounds too, and the refusal
+        // survives an enumerator repair. Only the instance is disjoint.
+        let genuine = overlaps_between((succ_rule, succ_cell), (zero_rule, zero_cell))
+            .into_iter()
+            .find(|candidate| {
+                ToyAlphabet::subterm_cmd_at(&succ_cell.rhs, &candidate.seam)
+                    == Some(Toy::add(
+                        Toy::var(ToyNameRef("m")),
+                        Toy::var(ToyNameRef("n")),
+                    ))
+            })
+            .expect("add-S's right-hand side runs into add-Z's left-hand side");
+        assert_eq!(
+            OverlapKind::Composition,
+            genuine.kind,
+            "that seam is a composition overlap and not a critical pair"
         );
         assert_eq!(
             FootprintIndependence::Independent,
@@ -703,6 +757,25 @@ mod tests
             ToyAlphabet::subterm_cmd_at(&peel_cell.rhs, &overlap.seam),
             "the seam addresses a bare metavariable, which critical-pair theory excludes"
         );
+        // And this row's whole family is that gap, which is what separates it
+        // from the schematic row above: repair the enumerator and the guard
+        // stops refusing this pair, while the schematic pair stays refused.
+        let ground_cell = store.get(ground).expect("the ground cell is stored");
+        let mut family = overlaps_between((peel_rule, peel_cell), (ground, ground_cell));
+        family.extend(overlaps_between(
+            (ground, ground_cell),
+            (peel_rule, peel_cell),
+        ));
+        assert!(!family.is_empty(), "the enumerator does report the pair");
+        for candidate in &family {
+            assert_eq!(
+                Some(Toy::var(ToyNameRef("x"))),
+                store
+                    .get(candidate.left)
+                    .and_then(|cell| ToyAlphabet::subterm_cmd_at(&cell.rhs, &candidate.seam)),
+                "every seam in this pair's family is the bare metavariable"
+            );
+        }
         assert_eq!(
             FootprintIndependence::Independent,
             polarized(&store, &peak, &left, &right),
@@ -768,6 +841,104 @@ mod tests
             footprint_independence(&first, &second),
             "two rules rewriting one child collide there, read/read root notwithstanding"
         );
+    }
+
+    #[test]
+    fn a_pair_colliding_several_ways_reports_the_earliest_address_it_scans()
+    {
+        // The verdict's intension clause, pinned: collisions are searched in
+        // the left footprint's `written` order, which is the alphabet's own, so
+        // a pair colliding at every address of one match image names the first
+        // of them rather than an arbitrary one.
+        let mut store = CellStore::new();
+        let ground = store.insert(add_zz());
+        let peak = Toy::add(Toy::Zero, Toy::Zero);
+        let step = CellApp {
+            cell: ground,
+            at: at([]),
+        };
+        let footprint = match_footprint(&store, &peak, &step).expect("add-ZZ fires at the root");
+        assert_eq!(
+            alloc::vec![at([]), at([1]), at([0])],
+            footprint.written,
+            "a ground rule writes its whole match image, in the alphabet's own enumeration \
+             order — which is not left-to-right, and is exactly why the scan order is a \
+             declared projection rather than an assumption"
+        );
+        assert_eq!(
+            FootprintIndependence::WriteWrite { position: at([]) },
+            footprint_independence(&footprint, &footprint),
+            "and the collision reported is the earliest address of that scan"
+        );
+    }
+
+    #[test]
+    fn every_footprint_partitions_exactly_the_addresses_its_redex_covers()
+    {
+        // The datum's own shape claim, taken over the whole fixture family
+        // rather than at one fixture: the three classes are pairwise disjoint,
+        // they cover the match image exactly — the redex root and everything it
+        // encloses, and nothing above it — and each comes out in the alphabet's
+        // enumeration order, so two runs over one input agree entrywise.
+        for row in table() {
+            for step in [&row.left, &row.right] {
+                let footprint = match_footprint(&row.store, &row.peak, step)
+                    .expect("every step the differential table records is a transition");
+                assert_eq!(
+                    step.at, footprint.at,
+                    "the footprint is attached to the step that was fired"
+                );
+                let addresses = ToyAlphabet::command_positions(&row.peak);
+                let covered = addresses
+                    .iter()
+                    .filter(|position| {
+                        matches!(
+                            ToyAlphabet::position_order(&step.at, position),
+                            PositionOrder::Same | PositionOrder::Encloses
+                        )
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let mut classified = footprint.written.clone();
+                classified.extend(footprint.read.iter().cloned());
+                classified.extend(footprint.framed.iter().cloned());
+                let mut seen: Vec<ToyPos> = Vec::new();
+                for position in &classified {
+                    assert!(
+                        !seen.contains(position),
+                        "the three classes are disjoint, so {position:?} is classified once"
+                    );
+                    seen.push(position.clone());
+                }
+                assert_eq!(
+                    sorted(covered),
+                    sorted(classified),
+                    "the classes cover the match image exactly, at {:?}",
+                    step.at
+                );
+                for class in [&footprint.written, &footprint.read, &footprint.framed] {
+                    let enumerated = class
+                        .iter()
+                        .map(|position| {
+                            addresses.iter().position(|candidate| candidate == position)
+                        })
+                        .collect::<Option<Vec<_>>>()
+                        .expect("every classified address is one the alphabet enumerates");
+                    let ordered =
+                        enumerated
+                            .windows(2)
+                            .all(|pair| match (pair.first(), pair.get(1)) {
+                                | (Some(earlier), Some(later)) => earlier < later,
+                                | _ => true,
+                            });
+                    assert!(
+                        ordered,
+                        "each class keeps the alphabet's position order, at {:?}",
+                        step.at
+                    );
+                }
+            }
+        }
     }
 
     #[test]
