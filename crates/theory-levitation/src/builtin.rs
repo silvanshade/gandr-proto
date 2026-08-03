@@ -30,8 +30,8 @@ pub fn option_desc() -> DataDesc
         NominalId::new(0.into(), "Option"),
         [param("a".into())],
         [
-            nullary("None".into()),
-            CtorDesc::new("Some", param_field("a".into()), None, Attrs::empty()),
+            nullary("None".into(), "Option".into()),
+            CtorDesc::new("Some", param_field("a".into()), "Option", Attrs::empty()),
         ],
         Vec::new(),
         Vec::new(),
@@ -49,7 +49,10 @@ pub fn bool_desc() -> DataDesc
     DataDesc::new(
         NominalId::new(0.into(), "Boolean"),
         Vec::new(),
-        [nullary("False".into()), nullary("True".into())],
+        [
+            nullary("False".into(), "Boolean".into()),
+            nullary("True".into(), "Boolean".into()),
+        ],
         Vec::new(),
         Vec::new(),
         DeclPolarity::Data,
@@ -66,11 +69,11 @@ pub fn list_desc() -> DataDesc
         NominalId::new(0.into(), "List"),
         [param("a".into())],
         [
-            nullary("Nil".into()),
+            nullary("Nil".into(), "List".into()),
             CtorDesc::new(
                 "Cons",
-                Code::prod(param_field("a".into()), Code::Var),
-                None,
+                Code::prod(param_field("a".into()), Code::var("List")),
+                "List",
                 Attrs::empty(),
             ),
         ],
@@ -92,7 +95,7 @@ pub fn pair_desc() -> DataDesc
         [CtorDesc::new(
             "Pair",
             Code::prod(param_field("a".into()), param_field("b".into())),
-            None,
+            "Pair",
             Attrs::empty(),
         )],
         Vec::new(),
@@ -111,8 +114,8 @@ pub fn sum_desc() -> DataDesc
         NominalId::new(0.into(), "Sum"),
         [param("a".into()), param("b".into())],
         [
-            CtorDesc::new("Inl", param_field("a".into()), None, Attrs::empty()),
-            CtorDesc::new("Inr", param_field("b".into()), None, Attrs::empty()),
+            CtorDesc::new("Inl", param_field("a".into()), "Sum", Attrs::empty()),
+            CtorDesc::new("Inr", param_field("b".into()), "Sum", Attrs::empty()),
         ],
         Vec::new(),
         Vec::new(),
@@ -125,10 +128,14 @@ fn param(name: NameRef<'_>) -> ParamDesc
 {
     ParamDesc::new(name, Grade::ONE, Attrs::empty())
 }
-/// A nullary constructor of the given name (`1`).
-fn nullary(name: NameRef<'_>) -> CtorDesc
+/// A nullary constructor of the given name (`1`), targeting the result sort
+/// `of`.
+fn nullary(
+    name: NameRef<'_>,
+    of: NameRef<'_>,
+) -> CtorDesc
 {
-    CtorDesc::new(name, Code::Unit, None, Attrs::empty())
+    CtorDesc::new(name, Code::Unit, of, Attrs::empty())
 }
 /// A linear, unattributed field over a type parameter of the given name.
 fn param_field(name: NameRef<'_>) -> Code

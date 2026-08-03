@@ -40,9 +40,12 @@ sign Nat {
 
 // What the description table holds for the block above: two constructors, one
 // operation, and one circuit member carrying its rewrite-sorted telescope and
-// the sphere its wiring derived.
+// the sphere its wiring derived. `Succ`'s payload reads as a genuine
+// recursive occurrence at the declared sort (`var Nat`) — the sort-indexed
+// description universe — and the degenerate result sort stays implicit,
+// exactly as the surface leaves it unwritten.
 //@ mode: desc
-//@ expect-desc-render: data Nat { Zero = 1 : Nat, Succ = Nat : Nat }; op add/2->1; circuit cong1(p : Nat) add(x, y) ~> add(x′, y)
+//@ expect-desc-render: data Nat { Zero = 1, Succ = var Nat }; op add/2->1; circuit cong1(p : Nat) add(x, y) ~> add(x′, y)
 
 // The cell layer admits it: two frame-defining cells (one per constructor) plus
 // the rule's own cell, which entered through the same admission seam a written

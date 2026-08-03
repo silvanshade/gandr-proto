@@ -211,6 +211,7 @@ pub use crate::desc::DeclPolarity;
 pub use crate::desc::NominalId;
 pub use crate::desc::OpDesc;
 pub use crate::desc::ParamDesc;
+pub use crate::desc::SortDesc;
 pub use crate::desc::SurfaceSpan;
 pub use crate::elaborate::CircuitElaborationError;
 pub use crate::elaborate::InterfacePair;

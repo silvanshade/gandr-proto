@@ -62,9 +62,9 @@ pub fn rgb() -> DataDesc
         NominalId::new(2.into(), "RGB"),
         Vec::new(),
         [
-            nullary("R".into()),
-            nullary("G".into()),
-            nullary("B".into()),
+            nullary("R".into(), "RGB".into()),
+            nullary("G".into(), "RGB".into()),
+            nullary("B".into(), "RGB".into()),
         ],
         Vec::new(),
         Vec::new(),
@@ -72,10 +72,14 @@ pub fn rgb() -> DataDesc
         Attrs::empty(),
     )
 }
-/// A nullary constructor of the given name (payload code `1`).
-fn nullary(name: NameRef<'_>) -> CtorDesc
+/// A nullary constructor of the given name (payload code `1`), targeting the
+/// result sort `of`.
+fn nullary(
+    name: NameRef<'_>,
+    of: NameRef<'_>,
+) -> CtorDesc
 {
-    CtorDesc::new(name, Code::Unit, None, Attrs::empty())
+    CtorDesc::new(name, Code::Unit, of, Attrs::empty())
 }
 
 /// The two values of [`bool_sum`]: `MkBool(Inl ())` and `MkBool(Inr ())`.
@@ -170,7 +174,7 @@ pub fn bool_sum() -> DataDesc
         [CtorDesc::new(
             "MkBool",
             Code::sum(Code::Unit, Code::Unit),
-            None,
+            "BoolSum",
             Attrs::empty(),
         )],
         Vec::new(),
@@ -229,7 +233,7 @@ pub fn int_box() -> DataDesc
                 Grade::ONE,
                 Attrs::empty(),
             ),
-            None,
+            "IntBox",
             Attrs::empty(),
         )],
         Vec::new(),

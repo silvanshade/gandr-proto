@@ -90,11 +90,13 @@ use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::FrameHead;
 use gandr_theory_levitation::FreeTerm;
+use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NominalId;
 use gandr_theory_levitation::OpDesc;
 use gandr_theory_levitation::PortInstantiationError;
 use gandr_theory_levitation::PrimTy;
 use gandr_theory_levitation::RewritePort;
+use gandr_theory_levitation::SortDesc;
 use gandr_theory_levitation::SortRef;
 use gandr_theory_levitation::SurfaceSpan;
 use gandr_theory_levitation::ValueTypeRef;
@@ -208,6 +210,21 @@ fn block_desc(
             kinds.bind(member_name, kind);
         }
     }
+    // The declared sort set: every `sort` member, in declaration order; a
+    // block writing none declares the degenerate single sort named by the
+    // block itself (the `DataDesc::new` default).
+    let mut sorts: Vec<SortDesc> = Vec::new();
+    for member in members {
+        if let Some((member_name, CircuitKind::Sort)) = shape.judgment_head(member) {
+            sorts.push(SortDesc::new(member_name.0, DeclPolarity::Data));
+        }
+    }
+    let sort_names: Vec<String> = if sorts.is_empty() {
+        vec![name.clone()]
+    }
+    else {
+        sorts.iter().map(|sort| sort.name.to_string()).collect()
+    };
     let mut ctors: Vec<CtorDesc> = Vec::new();
     let mut ops: Vec<OpDesc> = Vec::new();
     let mut circuits: Vec<CircuitRule> = Vec::new();
@@ -217,11 +234,10 @@ fn block_desc(
             continue;
         };
         match kind {
-            // A colour declaration binds no description member: the datatype's
-            // identity is the block's own name.
+            // The sort members were collected above.
             | CircuitKind::Sort => {},
             | CircuitKind::Data => {
-                ctors.push(ctor_member(shape, member, member_name));
+                ctors.push(ctor_member(shape, member, member_name, &sort_names));
             },
             | CircuitKind::Oper => {
                 if let Some(op) = oper_member(shape, member, member_name, diagnostics) {
@@ -235,7 +251,7 @@ fn block_desc(
             },
         }
     }
-    DataDesc::new(
+    let desc = DataDesc::new(
         NominalId::new(serial, name),
         Vec::new(),
         ctors,
@@ -244,7 +260,13 @@ fn block_desc(
         DeclPolarity::Data,
         Attrs::empty(),
     )
-    .with_circuits(circuits)
+    .with_circuits(circuits);
+    if sorts.is_empty() {
+        desc
+    }
+    else {
+        desc.with_sorts(sorts)
+    }
 }
 
 /// Read a `data C : sig` member into a constructor descriptor.
@@ -252,28 +274,42 @@ fn block_desc(
 /// The sugar ladder is what fixes the field list: `data Zero : Nat` is `() -->
 /// (_ : Nat)` and `data Succ : Nat --> Nat` is `(_ : Nat) --> (_ : Nat)`, so a
 /// bare-sort side with no arrow declares the *result* and no fields, and the
-/// parameter side's ports are the payload.
+/// parameter side's ports are the payload. A port at a **declared sort** is a
+/// recursive occurrence ([`Code::Var`] at that sort — the sort-indexed
+/// universe's reading); any other port sort stays a symbolic field. The
+/// result-sort slot is the output port's sort, defaulting to the block's
+/// first sort for a member writing no output.
 fn ctor_member(
     shape: Shape<'_, '_>,
     run: &[NodeId],
     name: CircuitName<'_>,
+    sort_names: &[String],
 ) -> CtorDesc
 {
     let (inputs, output) = signature_ports(shape, run);
     let fields: Vec<Code> = inputs
         .iter()
         .map(|port| {
-            Code::field(
-                sort_ref(TypeName(port.sort.as_str())),
-                Grade::ONE,
-                Attrs::empty(),
-            )
+            if sort_names.contains(&port.sort) {
+                Code::var(port.sort.as_str())
+            }
+            else {
+                Code::field(
+                    sort_ref(TypeName(port.sort.as_str())),
+                    Grade::ONE,
+                    Attrs::empty(),
+                )
+            }
         })
         .collect();
+    let result: Name = output.map_or_else(
+        || sort_names.first().map_or("", String::as_str).into(),
+        |port| port.sort.into(),
+    );
     CtorDesc::new(
         name.0.to_owned(),
         Code::product_of(fields),
-        output.map(|port| port.sort.into()),
+        result,
         Attrs::empty(),
     )
 }

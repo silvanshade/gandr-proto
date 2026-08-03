@@ -60,16 +60,18 @@ impl SignatureContext
     /// code into its core value type (stage-1 large elimination,
     /// [`crate::decode()`]).
     ///
-    /// `self_ty` decodes any recursive occurrence ([`Code::Var`]) — the carrier
-    /// of the type being defined.
+    /// `self_sort` names the enclosing description's own sort, and `self_ty`
+    /// decodes a recursive occurrence ([`Code::Var`]) at that sort — the
+    /// carrier of the type being defined.
     ///
     /// # Contract
     /// - requires: `bindings` pairs each pattern variable with the first-order
     ///   field code it fills.
     /// - ensures: returns a context binding each variable to `decode(code,
-    ///   self_ty)`, in the given order.
+    ///   self_sort, self_ty)`, in the given order.
     /// - fails: the first [`DecodeError`] a field code raises (a deferred
-    ///   atom-abstraction or applied-named-type leaf).
+    ///   atom-abstraction or applied-named-type leaf, or a `var` at a foreign
+    ///   sort).
     /// - panics: never.
     ///
     /// # Errors
@@ -78,12 +80,13 @@ impl SignatureContext
     #[inline]
     pub fn from_field_codes(
         bindings: &[(Name, Code)],
+        self_sort: NameRef<'_>,
         self_ty: &ValueType,
     ) -> Result<Self, DecodeError>
     {
         let mut vars = Vec::with_capacity(bindings.len());
         for binding in bindings {
-            let decoded = decode(&binding.1, self_ty)?;
+            let decoded = decode(&binding.1, self_sort, self_ty)?;
             vars.push((binding.0.clone(), decoded));
         }
         Ok(Self { vars: vars.into() })
@@ -174,6 +177,7 @@ mod tests
     {
         let ctx = SignatureContext::from_field_codes(
             &[("x".into(), integer_field()), ("y".into(), Code::Unit)],
+            "Self".into(),
             &ValueType::atom("Self"),
         )
         .expect("first-order fields decode");
@@ -199,6 +203,7 @@ mod tests
             face.clone(),
             SignatureContext::from_field_codes(
                 &[("x".into(), integer_field())],
+                "Self".into(),
                 &ValueType::atom("Self"),
             )
             .expect("decodes"),
@@ -227,9 +232,12 @@ mod tests
     #[test]
     fn signature_context_propagates_decode_failure()
     {
-        let bind = Code::bind(crate::code::AtomSort::named("a"), Code::Var);
-        let result =
-            SignatureContext::from_field_codes(&[("x".into(), bind)], &ValueType::atom("Self"));
+        let bind = Code::bind(crate::code::AtomSort::named("a"), Code::var("Self"));
+        let result = SignatureContext::from_field_codes(
+            &[("x".into(), bind)],
+            "Self".into(),
+            &ValueType::atom("Self"),
+        );
         assert_eq!(
             Err(DecodeError::AtomAbstraction),
             result,

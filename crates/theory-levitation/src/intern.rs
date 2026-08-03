@@ -143,7 +143,7 @@ mod tests
         );
 
         // A distinct code gets a fresh id.
-        let other = interner.intern(Code::Var);
+        let other = interner.intern(Code::var("Nat"));
         assert_ne!(first, other, "a distinct code gets a distinct id");
         assert_eq!(
             InternedCodeCount::from(2),
@@ -157,7 +157,11 @@ mod tests
             Some(&field()),
             "id resolves to its code"
         );
-        assert_eq!(Some(&Code::Var), interner.get(other), "id resolves to var");
+        assert_eq!(
+            Some(&Code::var("Nat")),
+            interner.get(other),
+            "id resolves to var"
+        );
         assert_eq!(
             None,
             interner.get(CodeId::from(99)),

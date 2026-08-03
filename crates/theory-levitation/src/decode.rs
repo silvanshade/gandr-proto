@@ -29,14 +29,19 @@
 //! attribute decorations (they are read by the separate grade / attribute
 //! decoders, proposal §4.3); `decode` reads only the field's core value type.
 //!
-//! **The `var` carrier**: a recursive occurrence [`Code::Var`] decodes to the
+//! **The `var` carrier**: a recursive occurrence [`Code::Var`] names its
+//! target sort (the description universe's sort index), and it decodes to the
 //! caller-supplied `self_ty` — the value type standing for "the type being
-//! defined". Full recursive `μ⁺` unrolling is the deferred value-model rung
-//! (proposal §7: recursive declared data decodes *through* the `μ⁺` rung);
-//! until it lands, `decode` interprets `var` as the provided carrier (an opaque
-//! atom at the datatype's use site), keeping the fragment first-order and
-//! total.
+//! defined" — exactly when it names the decoded description's own sort. A
+//! `var` at any other sort is **outside the single-sort decode fragment**
+//! ([`DecodeError::ForeignSort`]): cross-sort recursion is representable in
+//! the sort-indexed universe but not decodable here. Full recursive `μ⁺`
+//! unrolling is the deferred value-model rung (proposal §7: recursive
+//! declared data decodes *through* the `μ⁺` rung); until it lands, `decode`
+//! interprets a self-sort `var` as the provided carrier (an opaque atom at
+//! the datatype's use site), keeping the fragment first-order and total.
 
+use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::types::ValueType;
 
 use crate::code::Code;
@@ -76,6 +81,15 @@ pub enum DecodeError
     /// frozen core carries no `Void` value type, so [`decode_desc`] declines it
     /// rather than manufacture an empty coproduct.
     Uninhabited,
+    /// A recursive occurrence [`Code::Var`] naming a sort **other than** the
+    /// decoded description's own: cross-sort recursion lies outside the
+    /// single-sort stage-1 decode fragment. Carries the foreign sort's name
+    /// for the diagnostic.
+    ForeignSort(Name),
+    /// A description declaring **several sorts**: the stage-1 μ decoder reads
+    /// the single-sort fragment only (a multi-sorted signature decodes
+    /// per-sort through a later, genuinely indexed decoder).
+    MultiSorted,
 }
 
 /// Decodes a whole tagged [`DataDesc`] (the μ decoder) into the coproduct over
@@ -97,8 +111,10 @@ pub enum DecodeError
 /// - ensures: returns `P₀` for one constructor, and the right-nested coproduct
 ///   `P₀ + (P₁ + …)` for several, where `Pᵢ = decode(ctorᵢ.code, self_ty)`.
 /// - fails: [`DecodeError::CodataNu`] for a `codata` polarity (ν decoder is a
-///   later lane); [`DecodeError::Uninhabited`] for zero constructors; any
-///   [`decode`] failure of a constructor's code.
+///   later lane); [`DecodeError::MultiSorted`] for a description declaring
+///   several sorts (the μ decoder reads the single-sort fragment only);
+///   [`DecodeError::Uninhabited`] for zero constructors; any [`decode`] failure
+///   of a constructor's code.
 /// - panics: never.
 ///
 /// # Adequacy
@@ -120,9 +136,13 @@ pub fn decode_desc(
     if matches!(desc.polarity, DeclPolarity::Codata) {
         return Err(DecodeError::CodataNu);
     }
+    let self_sort = match *desc.sorts {
+        | [ref sort] => sort.name.clone(),
+        | _ => return Err(DecodeError::MultiSorted),
+    };
     let mut summands: Vec<ValueType> = Vec::with_capacity(desc.ctors.len());
     for ctor in &desc.ctors {
-        let summand = decode(&ctor.code, self_ty)?;
+        let summand = decode(&ctor.code, NameRef::from(self_sort.as_ref()), self_ty)?;
         summands.push(summand);
     }
     let Some(last) = summands.pop()
@@ -137,20 +157,24 @@ pub fn decode_desc(
 /// Decodes a first-order [`Code`] into a core value type — the stage-1 large
 /// elimination (ADR-81 feature 3).
 ///
-/// `self_ty` is what a recursive occurrence [`Code::Var`] decodes to (the
-/// carrier of the type being defined). The grade and attribute decorations on a
+/// `self_sort` names the decoded description's own sort and `self_ty` is what
+/// a recursive occurrence [`Code::Var`] at that sort decodes to (the carrier
+/// of the type being defined); a `var` at any other sort is declined as
+/// [`DecodeError::ForeignSort`]. The grade and attribute decorations on a
 /// [`Code::Field`] are **erased** (V5).
 ///
 /// # Contract
 /// - requires: `code` is a first-order code (guaranteed by the [`Code`] type —
 ///   higher-order fields are unrepresentable).
 /// - ensures: returns the value type the code describes — `1` for
-///   [`Code::Unit`], `self_ty` for [`Code::Var`], `× / +` for [`Code::Prod`] /
-///   [`Code::Sum`] recursing into children, and the field's core value type for
-///   [`Code::Field`] (grade / attrs erased); the result is deterministic, so
-///   structurally-equal codes yield structurally-equal types.
+///   [`Code::Unit`], `self_ty` for a [`Code::Var`] naming `self_sort`, `× / +`
+///   for [`Code::Prod`] / [`Code::Sum`] recursing into children, and the
+///   field's core value type for [`Code::Field`] (grade / attrs erased); the
+///   result is deterministic, so structurally-equal codes yield
+///   structurally-equal types.
 /// - fails: [`DecodeError::AtomAbstraction`] for [`Code::Bind`];
-///   [`DecodeError::AppliedType`] for an applied named field reference.
+///   [`DecodeError::AppliedType`] for an applied named field reference;
+///   [`DecodeError::ForeignSort`] for a `var` outside `self_sort`.
 /// - panics: never.
 ///
 /// # Adequacy
@@ -169,6 +193,7 @@ pub fn decode_desc(
 #[inline]
 pub fn decode(
     code: &Code,
+    self_sort: NameRef<'_>,
     self_ty: &ValueType,
 ) -> Result<ValueType, DecodeError>
 {
@@ -185,7 +210,14 @@ pub fn decode(
         match frame {
             | DecodeFrame::Decode(node) => match *node {
                 | Code::Unit => decoded.push(ValueType::Unit),
-                | Code::Var => decoded.push(self_ty.clone()),
+                | Code::Var(ref sort) => {
+                    if sort.as_ref() == self_sort.as_ref() {
+                        decoded.push(self_ty.clone());
+                    }
+                    else {
+                        return Err(DecodeError::ForeignSort(sort.clone()));
+                    }
+                },
                 | Code::Prod(ref left, ref right) => {
                     stack.push(DecodeFrame::FinishProd);
                     stack.push(DecodeFrame::Decode(right));
@@ -277,23 +309,40 @@ mod tests
     {
         assert_eq!(
             Ok(ValueType::Unit),
-            decode(&Code::Unit, &carrier()),
+            decode(&Code::Unit, self_sort(), &carrier()),
             "1 ↦ 1"
         );
         assert_eq!(
-            decode(&Code::Var, &carrier()),
+            decode(&Code::var("Self"), self_sort(), &carrier()),
             Ok(carrier()),
-            "var ↦ the supplied carrier"
+            "a self-sort var ↦ the supplied carrier"
         );
         assert_eq!(
-            decode(&Code::prod(field(PrimTy::Integer), Code::Var), &carrier()),
+            decode(
+                &Code::prod(field(PrimTy::Integer), Code::var("Self")),
+                self_sort(),
+                &carrier()
+            ),
             Ok(ValueType::prod(ValueType::integer(), carrier())),
             "× ↦ core product, recursing"
         );
         assert_eq!(
-            decode(&Code::sum(Code::Unit, field(PrimTy::StringTy)), &carrier()),
+            decode(
+                &Code::sum(Code::Unit, field(PrimTy::StringTy)),
+                self_sort(),
+                &carrier()
+            ),
             Ok(ValueType::sum(ValueType::Unit, ValueType::string())),
             "σ (inline sum) ↦ core coproduct"
+        );
+    }
+    #[test]
+    fn decode_declines_a_foreign_sort_var()
+    {
+        assert_eq!(
+            Err(DecodeError::ForeignSort("Tree".into())),
+            decode(&Code::var("Tree"), self_sort(), &carrier()),
+            "cross-sort recursion is outside the single-sort decode fragment"
         );
     }
     #[test]
@@ -307,8 +356,8 @@ mod tests
             Attrs::new([crate::code::Attr::marker("boxed")]),
         );
         assert_eq!(
-            decode(&graded, &carrier()),
-            decode(&field(PrimTy::Integer), &carrier()),
+            decode(&graded, self_sort(), &carrier()),
+            decode(&field(PrimTy::Integer), self_sort(), &carrier()),
             "grade and attribute decorations are erased by the value decoder (V5)"
         );
     }
@@ -316,7 +365,7 @@ mod tests
     fn decode_boolean_retrofits_to_one_plus_one()
     {
         assert_eq!(
-            decode(&field(PrimTy::Boolean), &carrier()),
+            decode(&field(PrimTy::Boolean), self_sort(), &carrier()),
             Ok(ValueType::sum(ValueType::Unit, ValueType::Unit)),
             "Boolean retrofits to 1 + 1 (proposal §3)"
         );
@@ -326,7 +375,11 @@ mod tests
     {
         assert_eq!(
             Err(DecodeError::AtomAbstraction),
-            decode(&Code::bind(AtomSort::named("v"), Code::Var), &carrier()),
+            decode(
+                &Code::bind(AtomSort::named("v"), Code::var("Self")),
+                self_sort(),
+                &carrier()
+            ),
             "a bind field is outside the stage-1 decode fragment"
         );
         let applied = Code::field(
@@ -338,7 +391,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            decode(&applied, &carrier()),
+            decode(&applied, self_sort(), &carrier()),
             Err(DecodeError::AppliedType("Vec".into())),
             "an applied named type is deferred to the pipeline's Data seam"
         );
@@ -352,8 +405,8 @@ mod tests
             NominalId::new(0.into(), "Maybe"),
             Vec::new(),
             [
-                CtorDesc::new("None", Code::Unit, None, Attrs::empty()),
-                CtorDesc::new("Some", field(PrimTy::Integer), None, Attrs::empty()),
+                CtorDesc::new("None", Code::Unit, "Maybe", Attrs::empty()),
+                CtorDesc::new("Some", field(PrimTy::Integer), "Maybe", Attrs::empty()),
             ],
             Vec::new(),
             Vec::new(),
@@ -374,7 +427,7 @@ mod tests
             [CtorDesc::new(
                 "Wrap",
                 field(PrimTy::StringTy),
-                None,
+                "Wrap",
                 Attrs::empty(),
             )],
             Vec::new(),
@@ -411,7 +464,7 @@ mod tests
             [CtorDesc::new(
                 "Head",
                 field(PrimTy::Integer),
-                None,
+                "Stream",
                 Attrs::empty(),
             )],
             Vec::new(),
@@ -426,6 +479,29 @@ mod tests
         );
     }
     #[test]
+    fn decode_desc_declines_a_multi_sorted_signature()
+    {
+        use crate::desc::SortDesc;
+        let two_sorted = DataDesc::new(
+            NominalId::new(2.into(), "Pair"),
+            Vec::new(),
+            [CtorDesc::new("Mk", Code::Unit, "Pair", Attrs::empty())],
+            Vec::new(),
+            Vec::new(),
+            DeclPolarity::Data,
+            Attrs::empty(),
+        )
+        .with_sorts([
+            SortDesc::new("Pair", DeclPolarity::Data),
+            SortDesc::new("Other", DeclPolarity::Data),
+        ]);
+        assert_eq!(
+            Err(DecodeError::MultiSorted),
+            decode_desc(&two_sorted, &carrier()),
+            "the μ decoder reads the single-sort fragment only"
+        );
+    }
+    #[test]
     fn decode_respects_code_equality()
     {
         // Structurally-equal codes decode to structurally-equal types; a single
@@ -433,20 +509,20 @@ mod tests
         // decidable-equality-preserving property, proposal §3).
         let prod = Code::prod(field(PrimTy::Integer), field(PrimTy::StringTy));
         assert_eq!(
-            decode(&prod, &carrier()),
-            decode(&prod.clone(), &carrier()),
+            decode(&prod, self_sort(), &carrier()),
+            decode(&prod.clone(), self_sort(), &carrier()),
             "equal codes decode equally"
         );
         let sum = Code::sum(field(PrimTy::Integer), field(PrimTy::StringTy));
         assert_ne!(
-            decode(&prod, &carrier()),
-            decode(&sum, &carrier()),
+            decode(&prod, self_sort(), &carrier()),
+            decode(&sum, self_sort(), &carrier()),
             "× and σ decode distinctly"
         );
         let swapped = Code::prod(field(PrimTy::StringTy), field(PrimTy::Integer));
         assert_ne!(
-            decode(&prod, &carrier()),
-            decode(&swapped, &carrier()),
+            decode(&prod, self_sort(), &carrier()),
+            decode(&swapped, self_sort(), &carrier()),
             "factor order is observable"
         );
     }
@@ -455,6 +531,12 @@ mod tests
     fn carrier() -> ValueType
     {
         ValueType::atom("Self")
+    }
+    /// The self sort the direct `decode` tests decode under (the sort a
+    /// `var` must name to reach [`carrier`]).
+    fn self_sort() -> NameRef<'static>
+    {
+        "Self".into()
     }
     /// A leaf field of a primitive type (grade / attrs to be erased).
     fn field(prim: PrimTy) -> Code

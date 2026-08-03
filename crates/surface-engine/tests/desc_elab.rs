@@ -56,7 +56,7 @@ mod tests
             vec![
                 "data Color { Red = 1, Green = 1, Blue = 1 }".to_owned(),
                 "data Maybe(a) { None = 1, Some = a }".to_owned(),
-                "data Tree(a) { Leaf = 1, Node = (var × (a × var)) }".to_owned(),
+                "data Tree(a) { Leaf = 1, Node = (var Tree × (a × var Tree)) }".to_owned(),
                 "data Empty {}".to_owned(),
             ],
             "each declared datatype elaborates to its tagged description"
@@ -247,7 +247,7 @@ mod tests
         // `head: a` is a leaf observation; `tail: Stream(a)` is the recursive
         // one.
         assert_eq!(
-            "codata Stream(a) { head = a, tail = var }",
+            "codata Stream(a) { head = a, tail = var Stream }",
             serialize_desc(stream).as_ref(),
             "observations elaborate as constructor-shaped entries; `tail` recurses"
         );

@@ -46,6 +46,7 @@ use gandr_theory_levitation::CtorDesc;
 use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::FreeTerm;
+use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NominalId;
 use gandr_theory_levitation::OpDesc;
 use gandr_theory_levitation::ParamDesc;
@@ -369,12 +370,20 @@ impl<'tree> Reader<'tree>
         let name = self.text(name_id).0.to_owned();
         let fields = self.field_list(&mut cursor, type_name, elab);
         let code = Code::product_of(fields);
-        // Optional GADT result annotation `: Result`.
-        let result = if cursor.eat(TileSpelling(":")).0 {
-            cursor.bump().map(|id| self.text(id).0.to_owned().into())
+        // The result-sort slot: a generalized (GADT-style) annotation
+        // `: Result` populates it with the annotation's head; the unannotated
+        // constructor targets the block's own sort.
+        let result: Name = if cursor.eat(TileSpelling(":")).0 {
+            match cursor.bump() {
+                | Some(id) => self
+                    .type_head(id)
+                    .unwrap_or_else(|| self.text(id).0.to_owned())
+                    .into(),
+                | None => type_name.0.into(),
+            }
         }
         else {
-            None
+            type_name.0.into()
         };
         let attrs = self.attr_slot(&mut cursor);
         Some(CtorDesc::new(name, code, result, attrs))
@@ -475,7 +484,7 @@ impl<'tree> Reader<'tree>
             ));
         }
         if self.type_head(type_id).as_deref() == Some(type_name.0) {
-            return Code::Var;
+            return Code::var(type_name.0);
         }
         Code::field(self.type_ref(type_id), grade, Attrs::empty())
     }
@@ -824,7 +833,7 @@ impl<'tree> Reader<'tree>
             return;
         };
         let code = self.field_type_code(type_id, type_name, grade, elab);
-        ctors.push(CtorDesc::new(name, code, None, Attrs::empty()));
+        ctors.push(CtorDesc::new(name, code, type_name.0, Attrs::empty()));
     }
 }
 

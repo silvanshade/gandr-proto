@@ -37,6 +37,7 @@ use crate::circuit::CircuitNode;
 use crate::circuit::CircuitRule;
 use crate::circuit::derive_boundaries;
 use crate::code::Attrs;
+use crate::code::Code;
 use crate::code::Name;
 use crate::desc::DataDesc;
 use crate::desc::SurfaceSpan;
@@ -73,6 +74,18 @@ pub enum WfKind
     UnknownRewritePort,
     /// A circuit rule's wiring unfolds past the derivation's node ceiling.
     CircuitDerivationBudget,
+    /// Two declared sorts share one name, so the sort index is ambiguous.
+    DuplicateSortName,
+    /// A constructor's result sort names no declared sort of this signature.
+    UnknownResultSort,
+    /// A recursive occurrence ([`crate::Code::Var`]) names no declared sort of
+    /// this signature.
+    UnknownVarSort,
+    /// A declared sort's polarity disagrees with the declaration's polarity —
+    /// outside the polarity-homogeneous fragment this table admits (sorts of
+    /// differing polarity in one signature are ruled-in growth; internal
+    /// alternation is a separate universe-change decision).
+    SortPolarityDisagreement,
 }
 
 /// One well-formedness **diagnostic** — an inspectable failure with a message
@@ -113,23 +126,28 @@ impl WfDiagnostic
 /// # Contract
 /// - requires: none.
 /// - ensures: returns every failure of the §"well-formedness" rules, in a
-///   deterministic order (attribute declines, then per-cell checks, then
-///   per-arity checks, then per-circuit-rule checks); an empty result witnesses
-///   a well-formed description.
+///   deterministic order (sorting-discipline checks, then attribute declines,
+///   then per-cell checks, then per-arity checks, then per-circuit-rule
+///   checks); an empty result witnesses a well-formed description.
 /// - fails: never; total on any (even mis-built) description.
 ///
 /// # Adequacy
-/// - hypothesis: L3 — a clean description passes; an out-of-signature cell, a
-///   non-composing arity, a reserved-derived attribute, a circuit rule whose
-///   wiring derives a boundary its sphere does not fix, and a redex applying a
-///   rewrite the rule's telescope does not declare each surface exactly their
-///   diagnostic.
+/// - hypothesis: L3 — a clean description passes; a duplicate sort name, a
+///   foreign result or `var` sort, a sort polarity disagreeing with the
+///   declaration's, an out-of-signature cell, a non-composing arity, a
+///   reserved-derived attribute, a circuit rule whose wiring derives a boundary
+///   its sphere does not fix, and a redex applying a rewrite the rule's
+///   telescope does not declare each surface exactly their diagnostic.
 /// - witness: `wellformed::tests::*`.
 #[inline]
 #[must_use]
 pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
 {
     let mut diagnostics = Vec::new();
+
+    // The sorting discipline: the declared sort set is the description's
+    // index, and every indexed slot must resolve in it.
+    check_sorts(desc, &mut diagnostics);
 
     // Reserved-derived metadata: no attribute Σ may declare it (VDC §A golden).
     check_attrs(
@@ -180,6 +198,82 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
     }
 
     diagnostics
+}
+
+/// Check the **sorting discipline** over the declared sort set: sort names
+/// are distinct; every sort's polarity agrees with the declaration's (the
+/// polarity-homogeneous fragment — the polarity-specific obligations
+/// discharge in this discipline, the flag only names the fixpoint); every
+/// constructor's result sort is declared; and every recursive occurrence
+/// ([`crate::Code::Var`]) names a declared sort.
+fn check_sorts(
+    desc: &DataDesc,
+    diagnostics: &mut Vec<WfDiagnostic>,
+)
+{
+    for (index, sort) in desc.sorts.iter().enumerate() {
+        if desc
+            .sorts
+            .iter()
+            .take(index)
+            .any(|earlier| earlier.name == sort.name)
+        {
+            diagnostics.push(WfDiagnostic::new(
+                WfKind::DuplicateSortName,
+                format!("the sort `{}` is declared more than once", sort.name).into(),
+                None,
+            ));
+        }
+        if sort.polarity != desc.polarity {
+            diagnostics.push(WfDiagnostic::new(
+                WfKind::SortPolarityDisagreement,
+                format!(
+                    "the sort `{}` declares a polarity disagreeing with its declaration's",
+                    sort.name
+                )
+                .into(),
+                None,
+            ));
+        }
+    }
+    let declares = |name: &Name| desc.sorts.iter().any(|sort| sort.name == *name);
+    for ctor in &desc.ctors {
+        if !declares(&ctor.result) {
+            diagnostics.push(WfDiagnostic::new(
+                WfKind::UnknownResultSort,
+                format!(
+                    "the constructor `{}` targets the undeclared sort `{}`",
+                    ctor.name, ctor.result
+                )
+                .into(),
+                None,
+            ));
+        }
+        let mut stack = vec![&ctor.code];
+        while let Some(code) = stack.pop() {
+            match *code {
+                | Code::Var(ref sort) => {
+                    if !declares(sort) {
+                        diagnostics.push(WfDiagnostic::new(
+                            WfKind::UnknownVarSort,
+                            format!(
+                                "the constructor `{}` recurses at the undeclared sort `{}`",
+                                ctor.name, sort
+                            )
+                            .into(),
+                            None,
+                        ));
+                    }
+                },
+                | Code::Unit | Code::Field(..) => {},
+                | Code::Prod(ref left, ref right) | Code::Sum(ref left, ref right) => {
+                    stack.push(right);
+                    stack.push(left);
+                },
+                | Code::Bind(_, ref body) => stack.push(body),
+            }
+        }
+    }
 }
 
 /// Check one circuit rule: the boundary pair its wiring derives is the pair its
@@ -531,6 +625,7 @@ mod tests
 {
     use super::*;
     use crate::arity::SortRef;
+    use crate::boundary::MonomialCount;
     use crate::cell::CellFace;
     use crate::circuit::CircuitBody;
     use crate::circuit::CircuitFrame;
@@ -546,6 +641,157 @@ mod tests
     use crate::desc::OpDesc;
     use crate::elaborate::RewritePort;
 
+    #[test]
+    fn the_sorting_discipline_indexes_the_description()
+    {
+        use crate::desc::SortDesc;
+        // A clean two-sorted signature: `Even` and `Odd`, with a constructor
+        // targeting `Odd` and recursing at `Even`.
+        let two_sorted = DataDesc::new(
+            NominalId::new(0.into(), "Parity"),
+            Vec::new(),
+            [CtorDesc::new(
+                "SuccEven",
+                Code::var("Even"),
+                "Odd",
+                Attrs::empty(),
+            )],
+            Vec::new(),
+            Vec::new(),
+            DeclPolarity::Data,
+            Attrs::empty(),
+        )
+        .with_sorts([
+            SortDesc::new("Even", DeclPolarity::Data),
+            SortDesc::new("Odd", DeclPolarity::Data),
+        ]);
+        assert!(
+            check_desc(&two_sorted).is_empty(),
+            "a constructor may target and recurse at any declared sort"
+        );
+
+        // A duplicate sort name is ambiguous.
+        let duplicated = two_sorted.clone().with_sorts([
+            SortDesc::new("Even", DeclPolarity::Data),
+            SortDesc::new("Even", DeclPolarity::Data),
+        ]);
+        let diagnostics = check_desc(&duplicated);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::DuplicateSortName
+                    && diag.message.as_ref().contains("Even")),
+            "a duplicate sort name is declined"
+        );
+
+        // A result sort outside the declared set is foreign.
+        let foreign_result = two_sorted
+            .clone()
+            .with_sorts([SortDesc::new("Even", DeclPolarity::Data)]);
+        let diagnostics = check_desc(&foreign_result);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::UnknownResultSort
+                    && diag.message.as_ref().contains("Odd")),
+            "an undeclared result sort is declined"
+        );
+
+        // A recursive occurrence outside the declared set is foreign.
+        let foreign_var = two_sorted
+            .clone()
+            .with_sorts([SortDesc::new("Odd", DeclPolarity::Data)]);
+        let diagnostics = check_desc(&foreign_var);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::UnknownVarSort
+                    && diag.message.as_ref().contains("Even")),
+            "an undeclared var sort is declined"
+        );
+
+        // A sort polarity disagreeing with the declaration's is outside the
+        // polarity-homogeneous fragment.
+        let disagreeing = two_sorted.with_sorts([
+            SortDesc::new("Even", DeclPolarity::Codata),
+            SortDesc::new("Odd", DeclPolarity::Data),
+        ]);
+        let diagnostics = check_desc(&disagreeing);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diag| diag.kind == WfKind::SortPolarityDisagreement
+                    && diag.message.as_ref().contains("Even")),
+            "a heterogeneous sort polarity is declined at stage 0"
+        );
+    }
+    #[test]
+    fn the_constructor_layer_agrees_with_the_bridge_shape()
+    {
+        // `Cons = a × var List : List` reads as the single-output arity
+        // `(a, List) --> List` — the container view under which the
+        // constructor layer and `BridgeArity` carry one shape.
+        let cons = CtorDesc::new(
+            "Cons",
+            Code::prod(
+                Code::field(
+                    crate::code::ValueTypeRef::Param("a".into()),
+                    gandr_core_checker::grade::Grade::ONE,
+                    Attrs::empty(),
+                ),
+                Code::var("List"),
+            ),
+            "List",
+            Attrs::empty(),
+        );
+        let arity = cons.arity();
+        assert_eq!(
+            MonomialCount::from(1),
+            arity.monomials(),
+            "a product payload is one monomial"
+        );
+        assert_eq!(&[2u32], &*arity.factors, "the monomial has two factors");
+        assert_eq!(&[0u32, 1u32], &*arity.source, "factors read ports in order");
+        assert_eq!(&[0u32], &*arity.dest, "the monomial feeds the sole output");
+        assert_eq!(
+            Some("List"),
+            arity.outputs.first().map(|port| port.sort.as_ref()),
+            "the output port reads at the result sort"
+        );
+        let input_sorts: Vec<&str> = arity.inputs.iter().map(|port| port.sort.as_ref()).collect();
+        assert_eq!(
+            vec!["a", "List"],
+            input_sorts,
+            "input ports read at the leaf sorts in order"
+        );
+        check_arity(&arity, "Cons".into(), &mut Vec::new());
+
+        // An inline sum contributes one monomial per summand, both feeding
+        // the one output.
+        let mk = CtorDesc::new(
+            "MkBool",
+            Code::sum(Code::Unit, Code::Unit),
+            "BoolSum",
+            Attrs::empty(),
+        );
+        let arity = mk.arity();
+        assert_eq!(
+            MonomialCount::from(2),
+            arity.monomials(),
+            "an inline sum is one monomial per summand"
+        );
+        assert_eq!(
+            &[0u32, 0u32],
+            &*arity.dest,
+            "both monomials feed the output"
+        );
+        let mut diagnostics = Vec::new();
+        check_arity(&arity, "MkBool".into(), &mut diagnostics);
+        assert!(
+            diagnostics.is_empty(),
+            "the derived constructor arity composes"
+        );
+    }
     #[test]
     fn a_clean_description_passes()
     {
@@ -930,8 +1176,8 @@ mod tests
             NominalId::new(0.into(), "Nat"),
             Vec::new(),
             [
-                CtorDesc::new("Zero", Code::Unit, None, Attrs::empty()),
-                CtorDesc::new("Succ", Code::Var, None, attrs),
+                CtorDesc::new("Zero", Code::Unit, "Nat", Attrs::empty()),
+                CtorDesc::new("Succ", Code::var("Nat"), "Nat", attrs),
             ],
             ops,
             cells,

@@ -67,7 +67,7 @@ mod tests
         DataDesc::new(
             NominalId::new(0_u64.into(), "Bit"),
             Vec::new(),
-            [CtorDesc::new("Off", Code::Unit, None, Attrs::empty())],
+            [CtorDesc::new("Off", Code::Unit, "Bit", Attrs::empty())],
             Vec::new(),
             cells,
             DeclPolarity::Data,

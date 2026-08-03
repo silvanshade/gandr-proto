@@ -138,8 +138,8 @@ mod nat_fixture
             NominalId::new(0.into(), "Nat"),
             Vec::new(),
             [
-                CtorDesc::new("Zero", Code::Unit, None, Attrs::empty()),
-                CtorDesc::new("Succ", Code::Var, None, Attrs::empty()),
+                CtorDesc::new("Zero", Code::Unit, "Nat", Attrs::empty()),
+                CtorDesc::new("Succ", Code::var("Nat"), "Nat", Attrs::empty()),
             ],
             [
                 OpDesc::new("plus", plus_arity(), Attrs::empty()),
@@ -253,8 +253,8 @@ pub fn nat_from_names(
         NominalId::new(0.into(), "Nat"),
         Vec::new(),
         [
-            CtorDesc::new(names.zero.clone(), Code::Unit, None, Attrs::empty()),
-            CtorDesc::new(names.succ.clone(), Code::Var, None, Attrs::empty()),
+            CtorDesc::new(names.zero.clone(), Code::Unit, "Nat", Attrs::empty()),
+            CtorDesc::new(names.succ.clone(), Code::var("Nat"), "Nat", Attrs::empty()),
         ],
         [
             OpDesc::new(names.plus.clone(), plus_arity(), Attrs::empty()),

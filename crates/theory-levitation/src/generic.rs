@@ -142,7 +142,11 @@ fn payload_eq(
         while let Some((node, lhs, rhs)) = payloads.pop() {
             match (node, lhs, rhs) {
                 | (&Code::Unit, &Payload::Unit, &Payload::Unit) => {},
-                | (&Code::Var, &Payload::Rec(ref inner_left), &Payload::Rec(ref inner_right)) => {
+                | (
+                    &Code::Var(_),
+                    &Payload::Rec(ref inner_left),
+                    &Payload::Rec(ref inner_right),
+                ) => {
                     values.push((inner_left.as_ref(), inner_right.as_ref()));
                 },
                 | (
@@ -237,7 +241,9 @@ pub fn serialize_value(
                 }
             },
             | EncodeTask::Payload(code, payload) => match (code, payload) {
-                | (&Code::Var, &Payload::Rec(ref inner)) => stack.push(EncodeTask::Value(inner)),
+                | (&Code::Var(_), &Payload::Rec(ref inner)) => {
+                    stack.push(EncodeTask::Value(inner));
+                },
                 | (
                     &Code::Prod(ref code_left, ref code_right),
                     &Payload::Pair(ref first, ref second),
@@ -316,9 +322,14 @@ pub fn serialize_desc(desc: &DataDesc) -> SerializedDescText
         .iter()
         .map(|ctor| {
             let base = format!("{} = {}", ctor.name, render_code(&ctor.code));
-            match ctor.result {
-                | Some(ref result) => format!("{base} : {result}"),
-                | None => base,
+            // The degenerate result sort — the block's own name — stays
+            // implicit, exactly as the surface leaves it unwritten; a
+            // constructor targeting any other sort renders its slot.
+            if ctor.result == desc.id.name {
+                base
+            }
+            else {
+                format!("{base} : {}", ctor.result)
             }
         })
         .collect();
@@ -415,7 +426,7 @@ fn render_code(code: &Code) -> String
         match frame {
             | CodeFrame::Render(node) => match *node {
                 | Code::Unit => rendered.push("1".to_owned()),
-                | Code::Var => rendered.push("var".to_owned()),
+                | Code::Var(ref sort) => rendered.push(format!("var {sort}")),
                 | Code::Prod(ref left, ref right) => {
                     stack.push(CodeFrame::FinishProd);
                     stack.push(CodeFrame::Render(right));
@@ -646,11 +657,11 @@ mod tests
             NominalId::new(0.into(), "Maybe"),
             [crate::desc::ParamDesc::new("a", Grade::ONE, Attrs::empty())],
             [
-                CtorDesc::new("None", Code::Unit, None, Attrs::empty()),
+                CtorDesc::new("None", Code::Unit, "Maybe", Attrs::empty()),
                 CtorDesc::new(
                     "Some",
                     Code::field(ValueTypeRef::Param("a".into()), Grade::ONE, Attrs::empty()),
-                    None,
+                    "Maybe",
                     Attrs::empty(),
                 ),
             ],
@@ -695,8 +706,8 @@ mod tests
             NominalId::new(1.into(), "Nat"),
             Vec::new(),
             [
-                CtorDesc::new("Zero", Code::Unit, None, Attrs::empty()),
-                CtorDesc::new("Succ", Code::Var, None, Attrs::empty()),
+                CtorDesc::new("Zero", Code::Unit, "Nat", Attrs::empty()),
+                CtorDesc::new("Succ", Code::var("Nat"), "Nat", Attrs::empty()),
             ],
             Vec::new(),
             Vec::new(),
@@ -712,14 +723,14 @@ mod tests
             NominalId::new(0.into(), "Vec"),
             [crate::desc::ParamDesc::new("a", Grade::ONE, Attrs::empty())],
             [
-                CtorDesc::new("Nil", Code::Unit, None, Attrs::empty()),
+                CtorDesc::new("Nil", Code::Unit, "Vec", Attrs::empty()),
                 CtorDesc::new(
                     "Cons",
                     Code::prod(
                         Code::field(ValueTypeRef::Param("a".into()), Grade::ONE, Attrs::empty()),
-                        Code::Var,
+                        Code::var("Vec"),
                     ),
-                    None,
+                    "Vec",
                     Attrs::new([crate::code::Attr::marker("ctor")]),
                 ),
             ],
@@ -729,7 +740,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "data Vec(a) { Nil = 1, Cons = (a × var) }",
+            "data Vec(a) { Nil = 1, Cons = (a × var Vec) }",
             serialize_desc(&desc).as_ref(),
             "a right-nested product renders its factors"
         );
@@ -800,7 +811,7 @@ mod tests
         let desc = DataDesc::new(
             NominalId::new(0.into(), "Bit"),
             Vec::new(),
-            [CtorDesc::new("Off", Code::Unit, None, Attrs::empty())],
+            [CtorDesc::new("Off", Code::Unit, "Bit", Attrs::empty())],
             Vec::new(),
             Vec::new(),
             DeclPolarity::Data,
@@ -826,7 +837,7 @@ mod tests
                     Grade::ONE,
                     Attrs::empty(),
                 ),
-                None,
+                "Wrap",
                 Attrs::empty(),
             )],
             Vec::new(),

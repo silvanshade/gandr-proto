@@ -774,7 +774,7 @@ mod tests
         let desc = DataDesc::new(
             NominalId::new(0_u64.into(), "Bit"),
             Vec::new(),
-            [CtorDesc::new("Off", Code::Unit, None, Attrs::empty())],
+            [CtorDesc::new("Off", Code::Unit, "Bit", Attrs::empty())],
             Vec::new(),
             [face(
                 FreeTerm::op("and", [FreeTerm::var("x"), FreeTerm::var("x")]),
@@ -1223,8 +1223,8 @@ mod tests
             NominalId::new(0_u64.into(), "Nat"),
             Vec::new(),
             [
-                CtorDesc::new("Zero", Code::Unit, None, Attrs::empty()),
-                CtorDesc::new("Succ", Code::Var, None, Attrs::empty()),
+                CtorDesc::new("Zero", Code::Unit, "Nat", Attrs::empty()),
+                CtorDesc::new("Succ", Code::var("Nat"), "Nat", Attrs::empty()),
             ],
             ops,
             cells,

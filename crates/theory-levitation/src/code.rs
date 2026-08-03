@@ -351,8 +351,19 @@ pub enum Code
 {
     /// `1` — the unit code (a field-less / nullary payload).
     Unit,
-    /// `var` — a recursive occurrence of the datatype being described.
-    Var,
+    /// `var S` — a recursive occurrence of a declared **sort** of the
+    /// signature being described, carrying that sort's name.
+    ///
+    /// The sort argument is the **sort index** of the description universe
+    /// (the signature unification's universe move): a multi-sorted signature
+    /// is one description over a sort set, and a recursive occurrence names
+    /// which sort it targets. In the degenerate single-sort block the index is
+    /// the block's own name. The index is symbolic at stage 0 like every other
+    /// sort spelling; [`crate::check_desc`] checks membership against the
+    /// declared sort set, and the stage-1 value decoder accepts only the
+    /// decoded description's own sort (cross-sort recursion is outside the
+    /// single-sort decode fragment).
+    Var(Name),
     /// `A × B` — a product of two payloads (fields pair right-nested).
     Prod(Box<Self>, Box<Self>),
     /// `A + B` — an inline sum (σ). The primary tag σ of a declared datatype is
@@ -377,12 +388,15 @@ impl Code
         Self::Unit
     }
 
-    /// The recursive-occurrence code `var`.
+    /// The recursive-occurrence code `var S`, targeting the sort named
+    /// `sort`.
     #[inline]
     #[must_use]
-    pub const fn var() -> Self
+    pub fn var<S>(sort: S) -> Self
+    where
+        S: Into<Name>,
     {
-        Self::Var
+        Self::Var(sort.into())
     }
 
     /// The product code `left × right`.
@@ -475,7 +489,7 @@ impl Code
         let mut stack = vec![self];
         while let Some(code) = stack.pop() {
             match *code {
-                | Self::Var => return true.into(),
+                | Self::Var(_) => return true.into(),
                 | Self::Unit | Self::Field(..) => {},
                 | Self::Prod(ref left, ref right) | Self::Sum(ref left, ref right) => {
                     stack.push(right);
@@ -500,13 +514,13 @@ mod tests
     {
         assert_eq!(Code::Unit, Code::product_of(vec![]), "empty ↦ 1");
         assert_eq!(
-            Code::Var,
-            Code::product_of(vec![Code::Var]),
+            Code::var("Nat"),
+            Code::product_of(vec![Code::var("Nat")]),
             "singleton ↦ the field itself"
         );
         assert_eq!(
-            Code::product_of(vec![Code::Unit, Code::Var, some_code()]),
-            Code::prod(Code::Unit, Code::prod(Code::Var, some_code())),
+            Code::product_of(vec![Code::Unit, Code::var("Nat"), some_code()]),
+            Code::prod(Code::Unit, Code::prod(Code::var("Nat"), some_code())),
             "n-ary ↦ right-nested product"
         );
     }
@@ -516,24 +530,30 @@ mod tests
         // Reflexivity across the whole grammar.
         for code in [
             Code::Unit,
-            Code::Var,
-            Code::prod(Code::Var, Code::Unit),
+            Code::var("Nat"),
+            Code::prod(Code::var("Nat"), Code::Unit),
             Code::sum(Code::Unit, Code::Unit),
             some_code(),
-            Code::bind(AtomSort::named("x"), Code::Var),
+            Code::bind(AtomSort::named("x"), Code::var("Nat")),
         ] {
             assert_eq!(code.clone(), code, "equality is reflexive");
         }
         // Per-variant distinctness — one edit flips equality.
-        assert_ne!(Code::Unit, Code::Var, "1 ≠ var");
+        assert_ne!(Code::Unit, Code::var("Nat"), "1 ≠ var");
         assert_ne!(
-            Code::prod(Code::Var, Code::Unit),
-            Code::sum(Code::Var, Code::Unit),
+            Code::var("Nat"),
+            Code::var("Tree"),
+            "the sort index is significant — recursive occurrences of \
+             different sorts are different codes"
+        );
+        assert_ne!(
+            Code::prod(Code::var("Nat"), Code::Unit),
+            Code::sum(Code::var("Nat"), Code::Unit),
             "× ≠ σ at the same children"
         );
         assert_ne!(
-            Code::prod(Code::Var, Code::Unit),
-            Code::prod(Code::Unit, Code::Var),
+            Code::prod(Code::var("Nat"), Code::Unit),
+            Code::prod(Code::Unit, Code::var("Nat")),
             "factor order matters"
         );
         // A single decoration edit (grade) breaks equality.
@@ -565,16 +585,19 @@ mod tests
         );
         assert_eq!(
             None,
-            table.get(&Code::Var).copied(),
+            table.get(&Code::var("Nat")).copied(),
             "a distinct code misses"
         );
     }
     #[test]
     fn recursion_and_fragment_predicates_hold()
     {
-        assert!(bool::from(Code::Var.is_recursive()), "var is recursive");
         assert!(
-            bool::from(Code::prod(some_code(), Code::Var).is_recursive()),
+            bool::from(Code::var("Nat").is_recursive()),
+            "var is recursive"
+        );
+        assert!(
+            bool::from(Code::prod(some_code(), Code::var("Nat")).is_recursive()),
             "recursion under a product is detected"
         );
         assert!(
@@ -582,7 +605,7 @@ mod tests
             "a plain field is non-recursive"
         );
         assert!(
-            bool::from(Code::bind(AtomSort::named("x"), Code::Var).is_first_order()),
+            bool::from(Code::bind(AtomSort::named("x"), Code::var("Nat")).is_first_order()),
             "every code is first-order by construction"
         );
     }
