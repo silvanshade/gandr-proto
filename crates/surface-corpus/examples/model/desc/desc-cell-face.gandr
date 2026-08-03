@@ -7,7 +7,7 @@
 // the `DataDesc`; the future polygraph and CFVDC layers consume that same face.
 data NatTheory {
   Zero,
-  op id(x: NatTheory) -> NatTheory,
+  oper id(x: NatTheory) -> NatTheory,
   rule id(Zero) ==> Zero
 }
 

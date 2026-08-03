@@ -63,7 +63,7 @@ mod contracts
     /// The rule-face migration then made `==>` the description-rule face former
     /// beside the retired `~>`, which stays admissible only so a stale face
     /// reaches the elaborator's decline.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x483c_357b_641a_298e);
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x17f0_7f8d_0489_a2e2);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -95,7 +95,7 @@ mod contracts
     /// members' face arrow becomes a two-way alternation (`==>` ruled, `~>`
     /// retired-but-admissible), and each member family carries two copies of
     /// its arrow through `comma1`.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1724);
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1726);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -225,7 +225,7 @@ mod contracts
         ("number", 17),
         ("offer", 1),
         ("op", 3),
-        ("oper", 2),
+        ("oper", 4),
         ("pipeline_operand", 2),
         ("postfix", 1),
         ("prefix", 1),

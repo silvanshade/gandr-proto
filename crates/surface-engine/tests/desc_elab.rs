@@ -188,7 +188,7 @@ mod tests
         // otherwise-identical declaration, so what separates them is the arrow
         // and nothing else.
         let ruled = elaborate_data_descs(
-            "data NatFace { Zero, op id(x: NatFace) -> NatFace, rule id(Zero) ==> Zero }",
+            "data NatFace { Zero, oper id(x: NatFace) -> NatFace, rule id(Zero) ==> Zero }",
         );
         let face = ruled
             .descs
@@ -207,7 +207,7 @@ mod tests
         // diagnostic that names the respelling rather than a repair that names
         // a token.
         let retired = elaborate_data_descs(
-            "data NatFace { Zero, op id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }",
+            "data NatFace { Zero, oper id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }",
         );
         let stale = retired
             .descs
@@ -234,13 +234,42 @@ mod tests
             .iter()
             .find(|diagnostic| diagnostic.message.contains("`~>`"))
             .expect("the migration decline is located");
-        let source = "data NatFace { Zero, op id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }";
+        let source = "data NatFace { Zero, oper id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }";
         let start = usize::from(located.span.start);
         let end = usize::from(located.span.end);
         assert_eq!(
             Some("~>"),
             source.get(start .. end),
             "the decline's span covers the retired arrow"
+        );
+    }
+
+    #[test]
+    fn the_retired_op_member_lead_declines_with_its_respelling()
+    {
+        // The signature unification respells the operation member as `oper`
+        // (`op` is the operator-fixity declaration only). The retired lead
+        // still parses — the retired-`~>` precedent — so a stale program is
+        // told what to write rather than silently accepted.
+        let retired =
+            elaborate_data_descs("data NatRetired { Zero, op stale(x: NatRetired) -> NatRetired }");
+        let desc = retired
+            .descs
+            .iter()
+            .find(|desc| desc.id.name.as_ref() == "NatRetired")
+            .expect("NatRetired still elaborates around the declined member");
+        assert!(
+            desc.opers.is_empty(),
+            "the retired member is declined rather than admitted as a silent synonym"
+        );
+        assert!(
+            retired.diagnostics.iter().any(|diagnostic| {
+                diagnostic.message.contains("`op`")
+                    && diagnostic.message.contains("retired")
+                    && diagnostic.message.contains("`oper`")
+            }),
+            "the decline points at the respelling: {:?}",
+            retired.diagnostics
         );
     }
 

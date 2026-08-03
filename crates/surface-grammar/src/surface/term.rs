@@ -405,9 +405,12 @@ fn data_member() -> Regex
             opt(seq([t(TileLabel(":")), h(Sort::Type)])),
             opt(attr_slot()),
         ]),
-        // reserved `op name(params) -> R?` operation member.
+        // reserved `oper name(params) -> R?` operation member. The retired
+        // `op` lead still parses so the elaborator can decline it with the
+        // respelling (the retired-`~>` precedent); after the respell, `op` is
+        // the operator-fixity declaration only.
         seq([
-            t(TileLabel("op")),
+            alt([t(TileLabel("oper")), t(TileLabel("op"))]),
             t(TileLabel("identifier")),
             params(),
             opt(seq([t(TileLabel("->")), op_result()])),

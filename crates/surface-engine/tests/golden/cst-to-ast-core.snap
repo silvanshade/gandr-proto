@@ -85,23 +85,23 @@ term: Comp(
     ),
 )
 === origin ===
-[0] => 0..53 #74cec201db901107 [DefFunctionSugar]
-[0, 0] => 0..53 #74cec201db901107 [DefFunctionSugar]
-[0, 0, 0] => 40..51 #539e43f5114279c5 [BindHoist]
-[0, 0, 0, 0] => 45..50 #ebe73690486298a8 [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #ebe73690486298a8 [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #505308439843a2df [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #505308439843a2df [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #2da265e47cf42b60
-[0, 0, 0, 0, 1] => 49..50 #2da265e47cf42b60
-[0, 0, 0, 1] => 40..51 #539e43f5114279c5
-[0, 0, 0, 1, 0] => 44..51 #1b0b6d7bb850cbe1 [BindHoist]
-[1] => 55..99 #014f7b13fe4e255a
-[1, 0] => 65..97 #68c604cabc50fd76 [IfSugar]
-[1, 0, 0] => 68..72 #e22b43c00fffaf6a [BoolLiteral]
-[1, 0, 0, 0] => 68..72 #e22b43c00fffaf6a [BoolLiteral]
-[1, 0, 0, 0, 0] => 68..72 #e22b43c00fffaf6a [BoolLiteral]
-[1, 0, 1] => 75..80 #da235a4200657a58
-[1, 0, 1, 0] => 79..80 #2da265e47cf42b60
-[1, 0, 2] => 90..95 #d1772f1022835bd0
-[1, 0, 2, 0] => 94..95 #60335ad123dfc70c
+[0] => 0..53 #7d3571fe5757f9df [DefFunctionSugar]
+[0, 0] => 0..53 #7d3571fe5757f9df [DefFunctionSugar]
+[0, 0, 0] => 40..51 #f270fec2e1c0bef1 [BindHoist]
+[0, 0, 0, 0] => 45..50 #5fdb56acae0f42f9 [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #5fdb56acae0f42f9 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #1c56df63e0f6c8b1 [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #1c56df63e0f6c8b1 [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #1444ef8f8255de8a
+[0, 0, 0, 0, 1] => 49..50 #1444ef8f8255de8a
+[0, 0, 0, 1] => 40..51 #f270fec2e1c0bef1
+[0, 0, 0, 1, 0] => 44..51 #dd05147b23e859ce [BindHoist]
+[1] => 55..99 #49e7571ff934d630
+[1, 0] => 65..97 #24f2a7070ffd94c5 [IfSugar]
+[1, 0, 0] => 68..72 #164df21f12fa8674 [BoolLiteral]
+[1, 0, 0, 0] => 68..72 #164df21f12fa8674 [BoolLiteral]
+[1, 0, 0, 0, 0] => 68..72 #164df21f12fa8674 [BoolLiteral]
+[1, 0, 1] => 75..80 #2864dd0af28b976d
+[1, 0, 1, 0] => 79..80 #1444ef8f8255de8a
+[1, 0, 2] => 90..95 #3fdd34dcf871bd42
+[1, 0, 2, 0] => 94..95 #46d5d47c29415f06

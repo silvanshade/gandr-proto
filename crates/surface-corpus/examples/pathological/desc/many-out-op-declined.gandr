@@ -13,7 +13,7 @@
 //
 // Only `Zero`'s frame-defining cell reaches the store; `divmod` contributes
 // nothing until the cell alphabet grows to carry named-port interfaces.
-data NatDiv { Zero, op divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }
+data NatDiv { Zero, oper divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }
 
 //@ mode: desc
 //@ expect-desc-render: sign NatDiv { sort NatDiv : Type; data Zero : NatDiv; oper divmod : (m : NatDiv, n : NatDiv) --> (q : NatDiv, r : NatDiv) }

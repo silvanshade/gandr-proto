@@ -17,7 +17,7 @@
 data Bit {
   Off,
   On,
-  op and(a: Bit, b: Bit) -> Bit,
+  oper and(a: Bit, b: Bit) -> Bit,
   rule and(x, y) ==> y,
   rule and(x, x) ==> x
 }

@@ -334,10 +334,22 @@ impl<'tree> Reader<'tree>
             return;
         };
         match self.label(first).map(|label| label.0) {
-            | Some("op") => {
+            | Some("oper") => {
                 if let Some(op) = self.oper_member(run) {
                     lists.opers.push(op);
                 }
+            },
+            // The retired operation-member lead: after the respell, `oper` is
+            // the 1-cell member and `op` is the operator-fixity declaration
+            // only, so a stale member is told what to write rather than
+            // silently accepted (the retired-`~>` precedent).
+            | Some("op") => {
+                elab.diagnostics.push(ElabDiagnostic::new(
+                    "operation member lead `op` is retired; respell this member with `oper` \
+                     (`op` is the operator-fixity declaration)"
+                        .to_owned(),
+                    self.span(first),
+                ));
             },
             | Some("rule") => {
                 if let Some(cell) = self.rule_member(run, elab) {
