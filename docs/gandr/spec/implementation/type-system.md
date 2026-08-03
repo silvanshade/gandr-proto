@@ -696,6 +696,8 @@ Operationally, migration is a session exchange in disguise, and taking that seri
 This is what an implementation runs.
 The declarative relations above are specifications; the solver below is the decision procedure, and the two are related by the standing property that **reflexivity and transitivity are admissible properties of the system, never solver rules**.
 
+**Each constraint form below is decided by its own procedure, and the design that names those procedures as registrable _domains_ — and adds SMT-backed refinements as the first external one — is [[proposed/solver-interface]].** That design is not built; what the solver states here is the language it would plug into.
+
 ### The constraint language
 
 ```text
@@ -871,6 +873,8 @@ Its essence is the classical resource-hierarchy criterion made static: shared ch
    Acquire then emits one such constraint per currently-held rank, and the only state needed — the set of held channels — is already in `Σ`.
 3. Ranks should be **inferred**: collect the ordering constraints and topologically sort them; a cycle is reported as the potential deadlock, **with the cycle as the diagnostic**, which for an inspectable checker is a feature rather than a failure message.
 4. Since acquire and release are the only ports between the shared and linear zones, no other rule changes.
+
+The rank constraint is the first genuinely new domain in the registration design's adoption plan, for the reason that it is small enough to test the interface and closes this hook at the same time ([[proposed/solver-interface#solver-stage-02]]).
 
 ### type-extension-07
 

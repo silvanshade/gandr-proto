@@ -5099,3 +5099,124 @@ felleisen-1988-first-class-prompts:
     type: proceedings
     title: >-
       Proceedings of the 15th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages
+
+# ── The focusing-refinement and liquid-types line ─────────────────────────────
+# The first two entries are held locally and were read at this pass (title page, abstract,
+# contributions, corrections); note which artifact each held copy actually is, because the
+# held focusing-refinement copy is the preprint rather than the journal version of record.
+# The three liquid-types entries below them are transcribed from the bibliography of the
+# held thesis rather than from the works themselves, and only the first of the three is in
+# the contributor research register.
+
+economou-krishnaswami-dunfield-2023-focusing-refinement:
+  type: article
+  title: Focusing on Refinement Typing
+  author: ["Economou, Dimitrios J.", "Krishnaswami, Neel", "Dunfield, Jana"]
+  date: 2023-12
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3610408"
+    arxiv: "2209.13000"
+  parent:
+    type: periodical
+    title: ACM Transactions on Programming Languages and Systems
+    volume: 45
+    issue: 4
+    page-range: 1-62
+  note: >-
+    the copy held locally is the arXiv v2 preprint of 16 August 2023, not the journal version of
+    record, so a page or section locator taken from it is the preprint's
+
+economou-2024-modular-refinement:
+  type: thesis
+  title: Focusing on Modular Refinement Typing
+  author: ["Economou, Dimitrios James"]
+  date: 2024-09
+  organization: Queen's University
+  note: >-
+    doctoral thesis, School of Computing, Kingston, Ontario, Canada; submitted September 2024 and
+    copyright 2025. No DOI or repository handle appears in the document and none has been verified;
+    the metadata here is transcribed from the title page, which is more complete than the
+    contributor research register's entry. The copy held is a revision carrying its own corrections
+    section dated 1 May 2025, whose first item fixes a bug in the main completeness lemma, so a
+    claim resting on that result should be taken from this revision.
+
+rondon-kawaguchi-jhala-2008-liquid-types:
+  type: article
+  title: Liquid Types
+  author: ["Rondon, Patrick M.", "Kawaguchi, Ming", "Jhala, Ranjit"]
+  date: 2008-06
+  publisher: ACM Press
+  serial-number:
+    doi: "10.1145/1375581.1375602"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the 29th ACM SIGPLAN Conference on Programming Language Design and
+      Implementation
+    page-range: 159-169
+  note: >-
+    the second author's surname is spelled "Kawaguci" in the contributor research register, whose
+    entry was scraped from the publisher, and "Kawaguchi" in the held thesis's bibliography; the
+    published author list has not been checked against the paper itself, which is not held
+
+kawaguchi-rondon-jhala-2009-type-based-data-structures:
+  type: article
+  title: Type-Based Data Structure Verification
+  author: ["Kawaguchi, Ming", "Rondon, Patrick", "Jhala, Ranjit"]
+  date: 2009
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/1542476.1542510"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the 30th ACM SIGPLAN Conference on Programming Language Design and
+      Implementation
+    page-range: 304-315
+  note: >-
+    not held and not in the contributor research register; metadata transcribed from the
+    bibliography of the held thesis, which credits this work with recursive refinement of
+    algebraic data by measures
+
+vazou-seidel-jhala-vytiniotis-peytonjones-2014-refinement-haskell:
+  type: article
+  title: Refinement Types for Haskell
+  author: ["Vazou, Niki", "Seidel, Eric L.", "Jhala, Ranjit", "Vytiniotis, Dimitrios", "Peyton-Jones, Simon"]
+  date: 2014
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/2628136.2628161"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the 19th ACM SIGPLAN International Conference on Functional Programming
+    page-range: 269-282
+  note: >-
+    not held and not in the contributor research register; metadata transcribed from the
+    bibliography of the held thesis. The pre-reboot design record cited this work as "Vazou et al."
+    with no year or venue, which this entry resolves
+
+zhou-ferreira-hu-neykova-yoshida-2020-refinement-multiparty:
+  type: article
+  title: Statically Verified Refinements for Multiparty Protocols
+  author: ["Zhou, Fangyi", "Ferreira, Francisco", "Hu, Raymond", "Neykova, Rumyana", "Yoshida, Nobuko"]
+  date: 2020
+  serial-number:
+    arxiv: "2009.06541"
+  note: >-
+    preprint as registered; the pre-reboot design record names an OOPSLA 2020 venue for it, which
+    the contributor research register does not carry and this entry does not assert
+
+moura-bjorner-2008-z3:
+  type: article
+  title: "Z3: An Efficient SMT Solver"
+  author: ["de Moura, Leonardo", "Bjørner, Nikolaj"]
+  date: 2008
+  publisher: Springer Berlin Heidelberg
+  serial-number:
+    doi: "10.1007/978-3-540-78800-3_24"
+  parent:
+    type: proceedings
+    title: Tools and Algorithms for the Construction and Analysis of Systems
+    page-range: 337-340

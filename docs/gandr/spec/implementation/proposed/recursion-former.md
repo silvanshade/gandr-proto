@@ -271,9 +271,12 @@ The ladder past the budget, each rung designed-in and none in the cut:
 | **guarded corecursion**    | the direction sigils become checked claims: descent into an inductive argument, production under a copattern observation      | recursive lowering, and both checks total on the fragment                                  |
 | **a cost effect**          | a cost bound becomes a typed program, turning the budget from a runtime net into a static obligation                          | the effect layer, plus the design pass named below                                         |
 | **sized types**            | both sigils elaborate to erased size instantiations; the strict-descent and conversion-quotient clauses are design-pass-owned | a deliberate sized-types design pass (the ratified destination — owner ruling, 2026-08-02) |
-| **solver-assisted**        | measure and decreasing-argument checking through the solver interface                                                         | a surface for termination measures                                                         |
+| **solver-assisted**        | measure and decreasing-argument checking through a registered constraint domain                                               | a surface for termination measures                                                         |
 
 The guarded and sized rungs are **the surface track's ladder**, stated there with their go and no-go conditions ([[../../surface-language/recursion#The productivity ladder]]); they appear here because the former is what they eventually constrain.
+
+**The solver-assisted rung has a designed home and a candidate mechanism**, both in [[solver-interface]].
+The home is that document's refinement domain, whose measures are recursive predicates over inductive data; the candidate mechanism is that the published system behind it derives total correctness **for non-structurally recursive programs**, which is precisely the case this ladder's lower rungs cannot reach ([[solver-interface#The published foundation, and what it settles]]).
 
 **The cost-effect rung descends from a named line of work whose locator this corpus does not hold.** The pre-reboot design named the cost-as-effect calculus and its directed refinement — a step-counting effect and a directed inequality with a boundedness predicate — as the vehicle.
 That naming is carried; **no bibliography key is minted for it, because neither work is held here and a citation from recall is what the corpus's citation discipline exists to prevent.**

@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: b82bc26cc153e6b904445cbbd83748a2ad8e72ea7643fea433c3939374b8d73d
+    b3: 113bbfc753586c9c3ef0f55944bcb5ccd997468011cde4f74cb2e7e666f0b697
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 61c785b4006154b1da976a74b5d0e688020fec2cfc39745702b7c3a4c8c5d9ad
+    b3: 8e566f1b94fbb14d015ec4afff2ff309e2c4cd6769eb9d1a18af6e9a9cd6117d
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -84,7 +84,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/implementation/type-system.md
     role: subdocument
-    b3: 977a7a34d695d0fc19f4719f6dccbf44c30692ad001db33df4b8444f8d41ca50
+    b3: 7234efd36ebbcff3b14fa052a33c552ec427001636a6f90932ce7bdf4eceedf2
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/typing-machine.md
@@ -204,7 +204,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/recursion-former.md
     role: subdocument
-    b3: 5afa2a2177bbb766d327c6817d1e7cd515106498b27b9415940a223e92e5439a
+    b3: 0fee6538138e2728b1f5a5d8696077e90cc8f4e28b2af52a987d7ea862c57713
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/solver-interface.md
+    role: subdocument
+    b3: 77ac5d3daaa2bfd32cb2a5dab6d31cfba2bfe7353cd9eb4923c9afd30a923ef0
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
