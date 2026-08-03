@@ -4441,7 +4441,11 @@ chan-2021-sized-types-state:
     cites the agda/agda issue 2820 demonstration and names three candidate fixes with their costs
     (existential size quantification; a choice operator breaking canonicity; a limit operator likely
     breaking decidability). Registered as the survey backing the productivity ladder's sourced soundness
-    hedge in surface-language/recursion.md
+    hedge in surface-language/recursion.md. DISAMBIGUATION, so the defects are never cited without
+    numbers: issue 2820 (Equality is incompatible with sized types, opened 2017-10-27) and issue 3026
+    (Well-founded induction on Size is inconsistent, opened 2018-04-05 -- the sizes-with-accessibility
+    instance) are DISTINCT open defects, and issue 6002 (Proof of bottom with sized types, opened
+    2022-07-29) is a third; all three fetch-verified open 2026-08-02
 
 abel-pientka-2016-wellfounded-sized:
   type: article
@@ -4457,7 +4461,225 @@ abel-pientka-2016-wellfounded-sized:
   note: >-
     the extended journal version of [@abel-pientka-2013-wellfounded-copatterns], carrying the full kind
     and type rules and the complete strong-normalization proof the conference version omits. DOI
-    Crossref-verified by mixed-sweep-read-10 (2026-08-02); the artifact is NOT HELD in the managed
-    library -- acquire and page-1-verify before statement-level citation. Registered because the sized
-    design pass will need the full proof, and the consistency-gated soundness discipline this project's
-    productivity ladder adopts is proved here
+    Crossref-verified by mixed-sweep-read-10 (2026-08-02). ACQUIRED same day by the sized-pass research
+    (sized-pass-research-01 on gandr-7q47): the open author version, 59 pp., page-1-verified, fetched from
+    https://www.cse.chalmers.se/~abela/jfp15.pdf, rescue copy in the research unprocessed inbox --
+    statement numbers cited from that surface are the author version's. Registered because the sized
+    design pass needs the full proof: the consistency-gated soundness discipline this project's
+    productivity ladder adopts is proved here, measures are first-class over size tuples only, and its own
+    text leaves size erasure open (closed by [@abel-vezzosi-winterhalter-2017-nbe-sized]'s two-quantifier
+    discipline)
+# ── The sized-types design pass — research registrations 2026-08-02 (sized-pass-research-01 on gandr-7q47) ──
+
+abel-2012-inflationary-fixed-points:
+  type: article
+  title: "Type-Based Termination, Inflationary Fixed-Points, and Mixed Inductive-Coinductive Types"
+  author: ["Abel, Andreas"]
+  date: 2012
+  publisher: Open Publishing Association
+  serial-number:
+    doi: "10.4204/EPTCS.77.1"
+    arxiv: "1202.3496"
+  parent:
+    type: proceedings
+    title: "Proceedings 8th Workshop on Fixed Points in Computer Science (FICS 2012)"
+    volume: 77
+    page-range: 1-11
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. Title, sole author and the LMU Munich
+    affiliation page-1-read from an ACQUIRED open copy (arXiv:1202.3496v1, 11 pp.); DOI, container
+    "Electronic Proceedings in Theoretical Computer Science", volume 77 and pages 1-11 Crossref-verified
+    2026-08-02, published-online 2012-02-14, ISSN 2075-2180. The EPTCS 77 table of contents
+    (https://cgi.cse.unsw.edu.au/~eptcs/content.cgi?FICS2012) lists it as an INVITED PRESENTATION and
+    names the volume editors Dale Miller and Zoltán Ésik; the workshop was Tallinn, 24 March 2012, an
+    ETAPS satellite. THE TITLE IS "INFLATIONARY FIXED-POINTS", not "inflationary iteration" -- an earlier
+    gandr dispatch brief carried the latter and it is wrong. Contributes the uniformity claim for the
+    SIZE-ORDINAL sense of well-founded recursion (printed p. 8: bounded size quantification plus ordinal
+    lexicographic measures suffice for "all mixings thereof"), and the MiniAgda mixed stream-processor
+    coding with measure |i,j|. The Conclusions section is on printed p. 8 of the 11-page article. ACQUISITION PROVENANCE: https://arxiv.org/pdf/1202.3496v1; rescue copy in
+    the research unprocessed inbox
+
+abel-2010-miniagda:
+  type: article
+  title: "MiniAgda: Integrating Sized and Dependent Types"
+  author: ["Abel, Andreas"]
+  date: 2010
+  publisher: Open Publishing Association
+  serial-number:
+    doi: "10.4204/EPTCS.43.2"
+  parent:
+    type: proceedings
+    title: "Proceedings Workshop on Partiality and Recursion in Interactive Theorem Provers (PAR 2010)"
+    volume: 43
+    page-range: 14-28
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. Title and sole author page-1-read from an
+    ACQUIRED open copy (15 pp.). DOI, container EPTCS, volume 43 and pages 14-28 Crossref-verified
+    2026-08-02; the EPTCS 43 table of contents confirms the volume was published 2010-12-21 and edited by
+    Ana Bove, Ekaterina Komendantskaya and Milad Niqui. CITATION HAZARD, recorded deliberately: THE SAME
+    PAPER HAS A SECOND CROSSREF RECORD, 10.29007/322q, in EPiC Series in Computing volume 5; the FSCD 2026
+    paper cites that one and Chan-Li-Bowman cite this one. The held copy is the EPTCS surface. Contributes
+    the implementation record and the sentence "in case of Agda, the foetus termination checker [AA02]
+    with a recent extension to size-change termination" (printed p. 1). ACQUISITION PROVENANCE:
+    https://www.cse.chalmers.se/~abela/par10.pdf; rescue copy in the research unprocessed inbox
+
+abel-vezzosi-winterhalter-2017-nbe-sized:
+  type: article
+  title: Normalization by Evaluation for Sized Dependent Types
+  author: ["Abel, Andreas", "Vezzosi, Andrea", "Winterhalter, Théo"]
+  date: 2017
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3110277"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 1
+    issue: ICFP
+    page-range: 1-30
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. DOI Crossref-verified 2026-08-02 (PACMPL
+    vol. 1 issue ICFP, pages 1-30, published 2017-08-29, authors Andreas Abel, Andrea Vezzosi, Theo
+    Winterhalter). THE ACQUIRED ARTIFACT IS THE AUTHOR'S EXTENDED VERSION, 36 pp., whose page 1 prints the
+    title, the three authors with affiliations Gothenburg University / Chalmers / ENS Cachan, and a
+    PLACEHOLDER ACM reference "Article 1 (January 2017), 36 pages" with DOI 10.1145/nnnnnnn.nnnnnnn -- do
+    NOT cite article or page numbers from the acquired copy; the version of record is article 33. The
+    accent on "Théo" is taken from the published Crossref/ACM record; the acquired preprint prints "Theo".
+    Contributes the size-irrelevance answer the sized design pass needs: an IRRELEVANT size quantifier
+    forall alongside a shape-relevant Pi, with irrelevant size application ignored by judgmental equality,
+    decided by NbE, yielding decidable subtyping and bidirectional type checking. It also closes the gap
+    the JFP paper left open ("Exactly how to do this in a sound way is unclear at the moment"). Its Agda
+    demonstration runs under --experimental-irrelevance, which Agda's --safe rejects. ACQUISITION
+    PROVENANCE: https://www.cse.chalmers.se/~abela/icfp17-long.pdf; rescue copy in the research
+    unprocessed inbox
+
+chan-li-bowman-2023-sized-coq:
+  type: article
+  title: "Is Sized Typing for Coq Practical?"
+  author: ["Chan, Jonathan", "Li, Yufeng", "Bowman, William J."]
+  date: 2023
+  publisher: Cambridge University Press
+  serial-number:
+    doi: "10.1017/S0956796822000120"
+    arxiv: "1912.05601"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming
+    volume: 33
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. DOI Crossref-verified 2026-08-02: JFP vol.
+    33, ARTICLE NUMBER e1, published-print 2023, published-online 2023-01-24, CUP; Crossref carries no page
+    range and prints the authors in caps as JONATHAN CHAN, YUFENG LI, WILLIAM J. BOWMAN. THE ACQUIRED
+    ARTIFACT IS arXiv:1912.05601v4 (14 Dec 2021), 55 pp., whose page 1 carries the placeholder header
+    "JFP, 55 pages, 2021 ... doi:10.1017/xxxxx" and the affiliations UBC / Waterloo / UBC -- statement
+    numbers and pagination from the preprint MUST NOT be attributed to the version of record. Contributes
+    the negative result on inference-first sized typing (severe, algorithmically inherent compilation
+    slowdown; at least 5.5x on parts of the Coq standard library) and the recommendation of EXPLICIT size
+    quantification with elaborated implicits instead; also the observation, as of 2023, that Agda is the
+    only practical proof assistant shipping sized types. CIC^ has NO lexicographic measure construct.
+    ACQUISITION PROVENANCE: https://arxiv.org/pdf/1912.05601v4; rescue copy in the research unprocessed
+    inbox
+
+laarakker-otten-vandenberg-2026-large-sizes:
+  type: article
+  title: Constructing (Co)inductive Types via Large Sizes
+  author: ["Laarakker, Bastiaan", "Otten, Daniël", "van den Berg, Benno"]
+  date: 2026
+  serial-number:
+    arxiv: "2602.18921"
+  parent:
+    type: proceedings
+    title: "11th International Conference on Formal Structures for Computation and Deduction (FSCD 2026)"
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. Title and the three authors with
+    affiliations (LIACS Leiden; ILLC Amsterdam; ILLC Amsterdam) page-1-read from the ACQUIRED
+    arXiv:2602.18921v2, 35 pp., v1 2026-02-21 and v2 2026-04-30, primary category cs.LO. NO DOI AND NO
+    LIPIcs VOLUME NUMBER EXIST YET -- the PDF's document Subject metadata reads "LIPIcs, Vol., FSCD 2026"
+    with the volume field empty, and arXiv carries no journal-ref -- so this entry deliberately asserts
+    neither. THE FSCD 2026 ACCEPTANCE IS FETCH-VERIFIED against https://fscd2026.github.io/accepted/,
+    which prints "Bastiaan Laarakker, Daniël Otten and Benno van den Berg. Constructing (Co)inductive
+    Types via Large Sizes"; the conference is 20-23 July 2026, Lisbon. Keywords as printed: Sized Types,
+    Parametricity, Realisability, Impredicativity, Constructive Ordinals, (Co)inductive Types. Page 1
+    records that the paper is based on the first author's master thesis supervised by the second and
+    third. Contributes the only 2020s attack on the infinite-size defect: no largest size, a LARGE type of
+    sizes with PARAMETRIC quantifiers, consistency by an impredicative realisability model interpreting
+    sizes as an uncountable ordinal, and construction of both inductive and coinductive types (improving
+    on earlier work limited to finitely-branching inductives). It does NOT address lexicographic measures
+    and treats user-defined well-founded orderings as a rival family. UPDATE THIS ENTRY with the LIPIcs
+    volume, article number and DOI once the proceedings appear. ACQUISITION PROVENANCE:
+    https://arxiv.org/pdf/2602.18921v2; rescue copy in the research unprocessed inbox
+
+hyvernat-2025-size-change-mixed:
+  type: article
+  title: The Size-Change Principle for Mixed Inductive and Coinductive Types
+  author: ["Hyvernat, Pierre"]
+  date: 2025
+  serial-number:
+    doi: "10.46298/lmcs-21(3:20)2025"
+    arxiv: "2407.05715"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 21
+    issue: 3
+    page-range: "20:1-20:48"
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. DOI Crossref-verified 2026-08-02 (LMCS,
+    published-online 2025-09-03, publisher CCSD; Crossref renders the volume as the string "Volume 21,
+    Issue 3" and carries no page field). Title, sole author and the affiliation "Université Savoie Mont
+    Blanc, CNRS, LAMA, 73000 Chambéry, France" page-1-read from the ACQUIRED open copy, 48 pp., whose
+    page-1 header prints "Volume 21, Issue 3, 2025, pp. 20:1-20:48", Submitted Jul. 09, 2024, Published
+    Sep. 03, 2025. Contributes the soundness hazard for the SYNTACTIC half of any sized design that keeps
+    one: naive size-change is UNSOUND when inductive and coinductive types are nested, and the paper gives
+    the adaptation ("totality") that is sound. It engages sized types NOWHERE -- zero occurrences of
+    "sized type" or "Abel" in the full text -- and is registered as the rival mechanism, not as a sized
+    source. Companion to [@hyvernat-2025-totality-mixed], which develops the game/strategy semantics this
+    paper's size-change argument is stated against. ACQUISITION PROVENANCE: https://arxiv.org/pdf/2407.05715v4;
+    rescue copy in the research unprocessed inbox
+
+hyvernat-2025-totality-mixed:
+  type: article
+  title: Totality for Mixed Inductive and Coinductive Types
+  author: ["Hyvernat, Pierre"]
+  date: 2025
+  serial-number:
+    doi: "10.46298/lmcs-21(3:19)2025"
+    arxiv: "1901.07820"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 21
+    issue: 3
+    page-range: "19:1-19:24"
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. DOI Crossref-verified 2026-08-02 (LMCS,
+    published-online 2025-09-03, publisher CCSD). Title, sole author and the LAMA Chambéry affiliation
+    page-1-read from the ACQUIRED open copy, 24 pp., whose page-1 header prints "Volume 21, Issue 3, 2025,
+    pp. 19:1-19:24", Submitted Jan. 24, 2019, Published Sep. 03, 2025 -- a six-year gap between submission
+    and publication, which is why secondary sources may date it 2019. Contributes the language `chariot`
+    with nested inductive and coinductive datatypes, types interpreted as PARITY GAMES and correct values
+    as winning strategies, and a prototype totality checker. ACQUISITION PROVENANCE:
+    https://arxiv.org/pdf/1901.07820v8; rescue copy in the research unprocessed inbox
+
+xi-2002-dependent-termination:
+  type: article
+  title: Dependent Types for Program Termination Verification
+  author: ["Xi, Hongwei"]
+  date: 2002
+  publisher: Springer
+  serial-number:
+    doi: "10.1023/A:1019916231463"
+  parent:
+    type: periodical
+    title: Higher-Order and Symbolic Computation
+    volume: 15
+    issue: 1
+    page-range: 91-131
+  note: >-
+    registered from mixed-sweep-read-13; minted-this-session. DOI Crossref-verified 2026-08-02 (HOSC vol.
+    15 issue 1, pages 91-131, published-print 2002-03, Springer). THE ARTIFACT ITSELF IS UNREAD HERE --
+    this entry is registered on registry evidence only, as the provenance of the lexicographic-measure
+    NOTATION the sized line adopts. Abel-Pientka's JFP 2016 footnote 2 (printed p. 7) states "The notation
+    for termination measures is taken from Xi (2002)"; MiniAgda's own test/succeed/measures.ma header
+    credits "Hongwei Xi, LICS 2001", i.e. the conference surface of the same line, which is a DIFFERENT
+    artifact and gets no entry here. Verify against the artifact before any statement-level citation
