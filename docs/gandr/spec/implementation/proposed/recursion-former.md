@@ -265,13 +265,13 @@ Until a checked rung lands, a recursive definition is honestly a partial definit
 
 The ladder past the budget, each rung designed-in and none in the cut:
 
-| rung                       | what it checks                                                                                                           | what it needs first                                       |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| **structural termination** | derived terminating eliminators over declared data — recursion that cannot diverge because the eliminator is guarded     | declared data as convergent presentations                 |
-| **guarded corecursion**    | the direction sigils become checked claims: descent into an inductive argument, production under a copattern observation | recursive lowering, and both checks total on the fragment |
-| **a cost effect**          | a cost bound becomes a typed program, turning the budget from a runtime net into a static obligation                     | the effect layer, plus the design pass named below        |
-| **sized types**            | both sigils elaborate to erased size instantiations strictly below the ambient size                                      | a deliberate sized-types design pass                      |
-| **solver-assisted**        | measure and decreasing-argument checking through the solver interface                                                    | a surface for termination measures                        |
+| rung                       | what it checks                                                                                                                | what it needs first                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **structural termination** | derived terminating eliminators over declared data — recursion that cannot diverge because the eliminator is guarded          | declared data as convergent presentations                                                  |
+| **guarded corecursion**    | the direction sigils become checked claims: descent into an inductive argument, production under a copattern observation      | recursive lowering, and both checks total on the fragment                                  |
+| **a cost effect**          | a cost bound becomes a typed program, turning the budget from a runtime net into a static obligation                          | the effect layer, plus the design pass named below                                         |
+| **sized types**            | both sigils elaborate to erased size instantiations; the strict-descent and conversion-quotient clauses are design-pass-owned | a deliberate sized-types design pass (the ratified destination — owner ruling, 2026-08-02) |
+| **solver-assisted**        | measure and decreasing-argument checking through the solver interface                                                         | a surface for termination measures                                                         |
 
 The guarded and sized rungs are **the surface track's ladder**, stated there with their go and no-go conditions ([[../../surface-language/recursion#The productivity ladder]]); they appear here because the former is what they eventually constrain.
 

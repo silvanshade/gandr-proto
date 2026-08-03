@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 11b91b5efb3fe1ae705c4532c1dfebc7c3e8f6bd8d1c411c5b49e1f9a600a8e1
+    b3: 2535c13c86987f20e7b637442a4668248fe39ddfa526c1289029efb6d7e01c98
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -119,7 +119,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
     role: subdocument
-    b3: 73b6bcd18c1d2b296a7a06e01b0ff29e05587d7bcb353b67b7f5c4de6a43000e
+    b3: c9741952f6a9acbc4b3a841d3522b8157b88d77c1675560cab91453223a9cd3c
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/shell.md
@@ -184,7 +184,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/recursion-former.md
     role: subdocument
-    b3: b6d7a1a3c29beca0670a521b8c5902972feb6494684397e21c770b12ccd22786
+    b3: 5afa2a2177bbb766d327c6817d1e7cd515106498b27b9415940a223e92e5439a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md

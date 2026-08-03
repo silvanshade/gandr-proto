@@ -4426,3 +4426,38 @@ grotenhuis-otten-2025-cyclic-copatterns:
     dates the copattern-elaboration paper as "Abel, Cocqx 2020" (misspelling Cockx) where the held
     artifact is the ICFP 2018 version registered as [@cockx-abel-2018-copatterns], and it cites "Afshari,
     Leigh 2027", an in-press year -- verify that locator before citation-bearing use
+
+# mixed-sweep follow-through — the sized-types ratification's verified sources (2026-08-02)
+chan-2021-sized-types-state:
+  type: misc
+  title: The State of Sized Types
+  author: ["Chan, Jonathan"]
+  date: 2021-08-04
+  url: https://ionathan.ch/2021/08/04/sized-types.html
+  note: >-
+    fetch-verified 2026-08-02; the survey collecting the diagnosis of Agda's sized-types inconsistency:
+    the shipped infinite size satisfies the strict order it is meant to bound (all sizes are strictly
+    smaller than the infinite size, including itself), so well-founded induction on sizes collapses; it
+    cites the agda/agda issue 2820 demonstration and names three candidate fixes with their costs
+    (existential size quantification; a choice operator breaking canonicity; a limit operator likely
+    breaking decidability). Registered as the survey backing the productivity ladder's sourced soundness
+    hedge in surface-language/recursion.md
+
+abel-pientka-2016-wellfounded-sized:
+  type: article
+  title: Well-Founded Recursion with Copatterns and Sized Types
+  author: ["Abel, Andreas", "Pientka, Brigitte"]
+  date: 2016
+  serial-number:
+    doi: "10.1017/S0956796816000022"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming
+    volume: 26
+  note: >-
+    the extended journal version of [@abel-pientka-2013-wellfounded-copatterns], carrying the full kind
+    and type rules and the complete strong-normalization proof the conference version omits. DOI
+    Crossref-verified by mixed-sweep-read-10 (2026-08-02); the artifact is NOT HELD in the managed
+    library -- acquire and page-1-verify before statement-level citation. Registered because the sized
+    design pass will need the full proof, and the consistency-gated soundness discipline this project's
+    productivity ladder adopts is proved here
