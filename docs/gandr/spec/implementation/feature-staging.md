@@ -175,6 +175,7 @@ The original estimate was three to five weeks.
 ### stage-09
 
 **The incremental pipeline and the read-evaluate loop.** Syntax-tree diffing, dependency-validated checkpoints, hole-tolerant typing, and live feedback.
+The design in full, with a status per component, is [[incremental-pipeline]].
 
 | component   | scope                                                                                                               |
 | ----------- | ------------------------------------------------------------------------------------------------------------------- |

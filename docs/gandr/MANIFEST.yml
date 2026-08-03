@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 0201940a258fc0ee57d97f3ce427b842f5b63111e06a0cbbc0ba600dd9777fc9
+    b3: 460946692f51b589ed4322686ea4facb6288e748615bbd8e3c779fc8f0b0865f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 03abdf3e15d6ba9dccb767c18b524a2f714c49e89a84a957aee70b2afdb02812
+    b3: 158144387476205fcd8372ca1b141918087de17d44560a22902e4ae9e7f1cf5c
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -89,17 +89,22 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/typing-machine.md
     role: subdocument
-    b3: 45a5f49ee264bd832ebb346ba3c91dc3144e695af3a1ee3b332f19489e3801f5
+    b3: c8594df09024d87b9d0d3ca0a1b766aef74657778f0b79d4c46e5ef1e2201ca6
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/incremental-pipeline.md
+    role: subdocument
+    b3: 70ff97d0da69dee4690c311617f4b6de40d1b1f6cb0ca10f16938ddd7cb42741
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: 2d19a97900e6e30145b14c9d0efd14c44fb5549dfc6fe6f61969212a71f33d58
+    b3: e29c88f402be10b35b92a39e8e1006facbaa9eeaf96d9a125590443b6e7e7e9c
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
     role: subdocument
-    b3: a14ca6c90704066bd52dacca65d527c11cd9b746848c52422042e2501b1cc96a
+    b3: 5ad0391d4b0e70adcde2d6a09e6d7e4b518f57038d134e798868509718a5707a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
@@ -234,11 +239,11 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/inspection-protocol.md
     role: subdocument
-    b3: fdb426103590622c47a52653308385e84e7efa55b4233ddb2603271bae4f62f9
+    b3: 7c1f925fcf83f471798750d4af2681b17b823bc3567403097f083491b0f9fcac
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/feature-staging.md
     role: subdocument
-    b3: 63c8ac6f88bc3ffe8da36b250c4380a7578b062eb3acb83cc22557a20cc601ae
+    b3: 2d4fbe5e622ffa4b6592cb2170142ccc0054a16f0a5aa489eff7d0e71c09f356
     edges:
       - { rel: registered-under, to: spec/implementation.md }

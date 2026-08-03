@@ -387,7 +387,7 @@ The edit-script fixtures double as the bus integration tests, and the single-fil
 
 **A second localhost channel is real operational surface** that an editor-protocol-only tool simply does not have: discovery, lifecycle, coalescing and backpressure, and a security floor, because any local process of the user can reach the socket.
 
-**The streaming claim is true at the frame level and aspirational at the delta level.** Deltas depend on incremental machinery that does not exist, so until it does the bus re-sends whole frames.
+**The streaming claim is true at the frame level and aspirational at the delta level.** Deltas depend on incremental reuse **at node granularity**, and the reuse that exists is at the granularity of a top-level item ([[incremental-pipeline#Granularity: the item and the node]]), so until that moves the bus re-sends whole frames.
 
 **Session-typing the bus is speculative** until session types exist; the shape is cheap and the feature is not near-term.
 

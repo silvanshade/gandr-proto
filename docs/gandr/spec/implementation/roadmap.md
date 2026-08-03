@@ -49,7 +49,7 @@ Carried from the design basis in [[performance-architecture]], each landing with
 * **The CSL fibration property suite**: **landed** — the four right-lifting conditions (frame preservation; nominal identity and alias coherence; black-hole discipline under re-entry; write-back purity) are green proptest properties over the nominal memo-cell half of the heap (`crates/core-sequent/tests/csl_fibration.rs`); separating conjunction degenerates on the content-addressed half, so the nominal half carries the whole suite.
   **Provenance caveat:** no source for the phrase "the four right-lifting conditions" was found in any reachable record — the conditions are reconstructed from the heap's contract and recorded as such in the module docs; if a specific source was intended, replace the provenance section with the named citation.
 * **The engines' first external consumer**: nothing outside their own tests reaches `theory-computads` or `theory-virtual-doctrines`; the integration phase is a demo obligation, not construction.
-* **Incrementality lane**: the standing gate is incremental ≡ from-scratch on every landed increment.
+* **Incrementality lane**: the standing gate is incremental ≡ from-scratch on every landed increment, realized as the differential in [[incremental-pipeline#The differential gate]]; that document also carries the lane's remaining open items.
 * **Coverage floor seeding**: enforcement is per production file, and the floor table is currently unseeded.
 * **Storage**: persistent backend, deeper tree, and boundary-grinding hardening are declared deficits; wire compatibility is unclaimed.
 

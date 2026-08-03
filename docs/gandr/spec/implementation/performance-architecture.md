@@ -83,7 +83,7 @@ Each is a designed action whose home is a later phase; none is forgotten.
 * **Unfolding-face gluing and the hints table** — one design, landed together; the quote/unfold shared table is the deliverable.
 * **Smart unfolding on case progress** — needs the case-tree representation finalized first.
 * **Blocker-carrying values** — pre-conversion-checker; the stuck-value shape is designed before the solver consumes it.
-* **Transactional staging overlay** — the incremental lane's checkpoint mechanism; lands with it.
+* **Transactional staging overlay** — the incremental lane's checkpoint mechanism for _elaboration_; lands with it, and is a different mechanism from the typing checkpoint of [[incremental-pipeline#Checkpoints and the reuse rule]] despite the shared word.
 * **The intrusive cached word** (hash + flags + range + depth) — lands with the arena's node-layout change, not as a side table retrofit.
 * **jit≡eval fallback interop** — the backend phase's driver shape (compile-per-definition memoized, reference reducer in the loop).
 * **Frozen-meta boundaries per definition** — the incremental lane's staged-elaboration discipline.

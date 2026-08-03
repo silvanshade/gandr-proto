@@ -494,6 +494,8 @@ Each checkpoint additionally records its **dependency footprint**:
 
 This is what enables resumable typing, incremental re-checking, shareable state, and time-travel debugging.
 
+A third condition — that the checkpoint's program position lie in the region an edit left unchanged — belongs to the loop that drives this machine rather than to the machine, because it is a diff that establishes an unchanged region: [[incremental-pipeline#The soundness condition]] states all three together.
+
 **This mechanism is distinct from the transactional staging overlay on the normalizer arena** ([[performance-architecture#The machine cribs, ported to the L machine]]), which is the incremental lane's checkpoint mechanism for _elaboration_.
 The two are named alike and are not the same thing: one guards a speculative solver region by trail depth, the other folds arena writes on success.
 The incremental lane's standing gate — incremental equals from-scratch — is what would catch either being wrong.

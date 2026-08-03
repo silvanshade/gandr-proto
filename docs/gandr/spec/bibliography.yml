@@ -4683,3 +4683,182 @@ xi-2002-dependent-termination:
     for termination measures is taken from Xi (2002)"; MiniAgda's own test/succeed/measures.ma header
     credits "Hongwei Xi, LICS 2001", i.e. the conference surface of the same line, which is a DIFFERENT
     artifact and gets no entry here. Verify against the artifact before any statement-level citation
+
+# ── The incremental-pipeline line (marking, order maintenance, structure editors,
+# ── and the incremental-attribute ancestor) ──────────────────────────────────
+# Transcribed from the contributor research register on 2026-08-02, which holds each
+# work with the identifier recorded below; the identifiers were not independently
+# re-resolved at that pass and the works' claims were not re-read from the papers.
+
+omar-voysey-hilton-aldrich-hammer-2017-hazelnut:
+  type: article
+  title: "Hazelnut: A Bidirectionally Typed Structure Editor Calculus"
+  author: ["Omar, Cyrus", "Voysey, Ian", "Hilton, Michael", "Aldrich, Jonathan", "Hammer, Matthew A."]
+  date: 2017-01
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3009837.3009900"
+  parent:
+    type: proceedings
+    title: Proceedings of the 44th ACM SIGPLAN Symposium on Principles of Programming Languages
+    page-range: 86-99
+
+omar-voysey-chugh-hammer-2019-live-typed-holes:
+  type: article
+  title: Live Functional Programming with Typed Holes
+  author: ["Omar, Cyrus", "Voysey, Ian", "Chugh, Ravi", "Hammer, Matthew A."]
+  date: 2019-01-02
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3290327"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 3
+    issue: POPL
+    page-range: 1-32
+
+porter-kirisame-wei-panchekha-omar-2025-incremental-bidirectional:
+  type: article
+  title: Incremental Bidirectional Typing via Order Maintenance
+  author: ["Porter, Thomas J.", "Kirisame, Marisa", "Wei, Ivan", "Panchekha, Pavel", "Omar, Cyrus"]
+  date: 2025
+  serial-number:
+    arxiv: "2504.08946"
+  note: >-
+    preprint; the register holds no venue for it, so the entry carries the arXiv identifier alone
+
+prinz-blanchette-lampropoulos-2024-pantograph:
+  type: article
+  title: "Pantograph: A Fluid and Typed Structure Editor"
+  author: ["Prinz, Jacob", "Blanchette, Henry", "Lampropoulos, Leonidas"]
+  date: 2024
+  serial-number:
+    arxiv: "2411.16571"
+  note: >-
+    the preprint as held; the pre-reboot design record names a 2025 conference venue for it, which
+    the register does not carry and this entry does not assert
+
+adams-griffis-porter-satish-zhao-omar-2025-grove:
+  type: article
+  title: "Grove: A Bidirectionally Typed Collaborative Structure Editor Calculus"
+  author:
+    ["Adams, Michael D.", "Griffis, Eric", "Porter, Thomas J.", "Satish, Sundara Vishnu", "Zhao, Eric", "Omar, Cyrus"]
+  date: 2025-01-07
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3704909"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 9
+    issue: POPL
+    page-range: 2176-2204
+
+erdweg-bracevac-kuci-krebs-mezini-2015-cocontextual:
+  type: article
+  title: A Co-Contextual Formulation of Type Rules and Its Application to Incremental Type Checking
+  author: ["Erdweg, Sebastian", "Bračevac, Oliver", "Kuci, Edlira", "Krebs, Matthias", "Mezini, Mira"]
+  date: 2015-10-23
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/2814270.2814277"
+    isbn: "978-1-4503-3689-5"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the 2015 ACM SIGPLAN International Conference on Object-Oriented Programming,
+      Systems, Languages, and Applications
+    page-range: 880-897
+
+reps-teitelbaum-demers-1983-incremental-context-dependent:
+  type: article
+  title: Incremental Context-Dependent Analysis for Language-Based Editors
+  author: ["Reps, Thomas", "Teitelbaum, Tim", "Demers, Alan"]
+  date: 1983-07
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/2166.357218"
+  parent:
+    type: periodical
+    title: ACM Transactions on Programming Languages and Systems
+    volume: 5
+    issue: 3
+    page-range: 449-477
+
+bender-cole-demaine-farachcolton-zito-2002-maintaining-order:
+  type: chapter
+  title: Two Simplified Algorithms for Maintaining Order in a List
+  author: ["Bender, Michael A.", "Cole, Richard", "Demaine, Erik D.", "Farach-Colton, Martin", "Zito, Jack"]
+  date: 2002
+  publisher: Springer
+  serial-number:
+    doi: "10.1007/3-540-45749-6_17"
+    isbn: "978-3-540-45749-7"
+  parent:
+    type: proceedings
+    title: Algorithms — ESA 2002
+    page-range: 152-164
+
+kirisame-wang-panchekha-2025-spineless-traversal:
+  type: article
+  title: Spineless Traversal for Layout Invalidation
+  author: ["Kirisame, Marisa", "Wang, Tiezhi", "Panchekha, Pavel"]
+  date: 2025-06-10
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3729322"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 9
+    issue: PLDI
+    page-range: 1791-1813
+
+# ── The incremental-toolchain systems named as precedents by the pipeline ─────
+# Named as system precedents rather than read at a pinned revision for this document.
+
+rust-analyzer:
+  type: software
+  title: "rust-analyzer: an implementation of the Language Server Protocol for Rust"
+  organization: rust-analyzer contributors
+  url: https://github.com/rust-lang/rust-analyzer
+  note: >-
+    not in library.bib; synthesized 2026-08-02 — cited as a system precedent for keying an
+    incremental query on position-independent item identities, not read at a pinned revision
+
+salsa:
+  type: software
+  title: "Salsa: a generic framework for on-demand, incrementalized computation"
+  organization: Salsa contributors
+  url: https://github.com/salsa-rs/salsa
+  note: >-
+    not in library.bib; synthesized 2026-08-02 — cited as the demand-driven incremental-query
+    framework the language-server lineage rests on, not read at a pinned revision
+
+roslyn:
+  type: software
+  title: "Roslyn: the .NET compiler platform"
+  organization: Microsoft
+  url: https://github.com/dotnet/roslyn
+  note: >-
+    not in library.bib; synthesized 2026-08-02 — cited for the red-green syntax-tree design and its
+    absolute-position red layer, not read at a pinned revision
+
+rowan:
+  type: software
+  title: "rowan: a Rust library for lossless syntax trees"
+  organization: rust-analyzer contributors
+  url: https://github.com/rust-analyzer/rowan
+  note: >-
+    not in library.bib; synthesized 2026-08-02 — cited as the second implementation of the red-green
+    syntax-tree design, not read at a pinned revision
+
+llbuild2fx:
+  type: software
+  title: "llbuild2fx: a content-addressed incremental build engine"
+  organization: Apple
+  url: https://github.com/apple/swift-llbuild2
+  note: >-
+    not in library.bib; synthesized 2026-08-02 — named because the pipeline drops it by name while
+    keeping its model; not read at a pinned revision, and the locator is the enclosing repository
