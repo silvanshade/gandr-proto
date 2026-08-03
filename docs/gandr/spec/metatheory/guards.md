@@ -4,6 +4,12 @@ Declined halves with their reversal conditions, dissolved forks, withdrawn claim
 Everything here has been litigated at least once; a wrong rejection is silent and compounding, so each entry names the exact condition under which it may be revisited.
 The concordance at the end maps the retired records' letter-number codes to the current named anchors.
 
+> **A decline is evidence that a question was answered; an _absence_ is not.** This corpus was assembled by migrating a large pre-reboot record, and that migration has **not been exhaustively verified** — so a claim that reads as considered-and-rejected may instead be a gap where the supporting material did not make the crossing, and a citation that names a definition may be standing where a proof used to be.
+> Two instances are on the record and both were found by reading sources rather than prose: the strictness licence of [[roadmap#Open questions|meta-question-19]], correct at the rung it was taken at and silently inapplicable at the current one; and the generalized-Reedy attribution behind [[roadmap#meta-spike-06|meta-spike-06]], which was a named theorem at the properad rung and is now a citation of a definition.
+> **Before relying on any decline or absence in this corpus** — here or in any track document — check it against the pre-reboot record, which retains material the migration may have dropped.
+> The standing item is `gandr-njmt`; it carries the locations to check and is where recovered material is distilled back in.
+> This qualification is temporary by design and retires when that item closes.
+
 ## Declined, with reversal conditions
 
 ### The rectification question, reopened deliberately
