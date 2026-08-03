@@ -5056,7 +5056,7 @@ mangel-mellies-munch-maccagnoni-2026-hasegawa-thielecke:
   publisher: Association for Computing Machinery
   serial-number:
     doi: "10.1145/3776715"
-    arxiv: "2502.13033"
+    hal: "hal-05006242"
   parent:
     type: periodical
     title: Proceedings of the ACM on Programming Languages
@@ -5064,9 +5064,17 @@ mangel-mellies-munch-maccagnoni-2026-hasegawa-thielecke:
     issue: POPL
     page-range: 2112-2141
   note: >-
-    the register's entry is the extended version; the pre-reboot design record cited this work under
-    a single-author attribution and a repository deposit identifier, and the three-author attribution
-    and the venue identifier here are the register's
+    this entry is the PUBLISHED article; title, three-author list, venue, volume, issue, page range
+    and publication date verified 2026-08-02 against the Crossref record for the DOI, and the HAL
+    deposit verified through the HAL API to be the same work carrying the same DOI. **A second
+    artifact exists and is not this one**: arXiv:2502.13033 (v4, 2 December 2025) is an extended
+    version "with more illustrations and proofs", whose printed title ends "(extended version)" and
+    which is the copy held in the contributor register — so a page or proof number read from the
+    preprint does not resolve in the published article, and the two must not be cited as one. The
+    pre-reboot design record's locator for this work was the HAL identifier and it was CORRECT; what
+    was wrong there was the attribution, which grouped the work under a single author. Author
+    spelling follows the artifact's own title page and the HAL record ("Éléonore"); the Crossref
+    record prints "Éleonore"
 
 congard-munch-maccagnoni-douence-2025-linear-effects-exceptions:
   type: article

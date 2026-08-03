@@ -11,6 +11,9 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
   **Its Section 6, the problem of loops, is stable across that renumbering** — checked in the held v3, so the circuit-algebra combinatorics' citation of it resolves as written and needs no translation.
 * The unpublished Hackney–Robertson–Stoeckl ∞-props announcement (a fully faithful nerve for props, slide-deck only) is a **watch item**: cite nothing from it.
 * The pretype-theory technical report [@nuyts-2026-natpt] is v0.3 and in motion.
+* [@mangel-mellies-munch-maccagnoni-2026-hasegawa-thielecke] exists as **two artifacts that are easy to cite as one**, and the entry is the published article.
+  The preprint at arXiv:2502.13033 is an _extended version_ "with more illustrations and proofs", its printed title ends "(extended version)", and it is the copy the contributor register holds — so **a locator read from the preprint does not resolve in the published article**, and a claim resting on one of its proofs must say which artifact it read.
+  Both of the published article's identifiers name the same work: the publisher identifier and the repository deposit were checked against each other on 2026-08-02.
 
 ## Defects in the literature
 
@@ -54,6 +57,8 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
 2. **Two works by one author pair share an initial-matching key**: the source of the Σ-freeness lemmas cited in the rectification paper is _not_ the bipermutative monograph; resolve before citing either as the other.
 3. The Kaufmann–Ward and Bar-Natan–Dancso attributions in the naming note are recall-grade; verify before a citation-bearing surface.
 4. The Hasegawa–Thielecke attribution of the shifts-invertible-iff-thunkable-and-linear characterization is recall-grade.
+   **Still recall-grade, but now cheaply checkable:** [@mangel-mellies-munch-maccagnoni-2026-hasegawa-thielecke] entered this bibliography on 2026-08-02 as a verified primary that states the theorem it names, and its own statement is that **central and thunkable maps coincide** in a dialogue duploid — read from the artifact's abstract, and _not_ the same sentence as the characterization above.
+   Whoever clears this row compares the two rather than assuming the entry settles it.
 5. **The polygraph-mechanization datum has no locator yet**: the "one published mechanization of polygraphs in a proof assistant" cited in the coherence-economy section (HITs that do not compute are "not well-suited to intricate uses"; functoriality of the free construction unproved in the cubical setting; zero rewriting or coherence content) reaches this corpus through a scout report, not a held artifact.
    Name the work and give it an entry before the claim is quoted further; the pending sweep that reported the datum is the place to resolve it.
 

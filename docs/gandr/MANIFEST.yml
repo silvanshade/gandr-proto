@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: e34c55d82304f12ee6faf686a0b0fda1dce56b90d97aa949561c591993bd6601
+    b3: 61c785b4006154b1da976a74b5d0e688020fec2cfc39745702b7c3a4c8c5d9ad
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -54,7 +54,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
     role: subdocument
-    b3: bbf4b2187ed117a574002ae1bd8889100e26f39f708bf12505a3e526fd0b11ba
+    b3: aa8ab69c377b54aec303ea1131f39350fb458c09130524a1feab40def0c0ff75
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/carrier.md
