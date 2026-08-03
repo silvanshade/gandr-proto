@@ -75,6 +75,73 @@
 //!    not unsound — and it is the concrete shape of the debt an adoption would
 //!    take on: a residual map on positions, which [`CellApp`] has no room for.
 //!
+//! # The instantiation obligation, and the gate it fires on
+//!
+//! The shapes here are **generic in the cell alphabet**: an address is
+//! `A::Pos`, the alphabet's own position type, so a later carrier that
+//! addresses a heap instantiates [`MatchFootprint`] and
+//! [`FootprintIndependence`] rather than re-inventing them. Two alphabets
+//! instantiate them today — the sequent alphabet, where the position
+//! vocabulary degenerates to the redex root, and the toy alphabet the
+//! differential suite runs on — and **neither addresses a store**, so the heap
+//! side of the shape is interface only. That is a fact about what exists, not
+//! a judgement about the shape.
+//!
+//! **The gate is one condition, and it is not this module's to discharge.**
+//! The obligation fires when a `CellAlphabet` instance exists whose positions
+//! address a partial store — the addressed, partial heap of
+//! `docs/gandr/spec/implementation/proposed/separation-logic.md`,
+//! `separation-logic-requirement-01` — and whose transitions still report read
+//! against write as two sets rather than one (`separation-logic-requirement-07`
+//! there, which asks the heap interface not to lose the polarization this
+//! module computes). Until such an instance exists there is nothing to
+//! instantiate against, and instantiating early would fix the three modelling
+//! choices above at term positions for a carrier whose addresses do not behave
+//! like term positions.
+//!
+//! **What the instantiation owes when it fires** is those three choices,
+//! re-decided rather than inherited: whether the spine is in the footprint,
+//! whether the write test stays node-local, and — the one with a name — the
+//! residual map on positions that absolute addressing needs, since a heap
+//! address does not move where a term position does.
+//!
+//! # Two components this module does not have, and why each is machinery
+//!
+//! **Allocation (the `mem` conjunct) has no event to read off.** Its
+//! independence condition is plain disjointness of allocated addresses
+//! \[@mellies-stefanesco-2020-csl, §3.2.1\], which needs a per-transition
+//! freshness datum. gandr's candidate carrier is the internal-wire binder, and
+//! it does not exist: the circuit surface's cycle-closing statement is a
+//! parse-only grammar form whose back-edge rung is owed, and the circuit
+//! derivation in `gandr-theory-levitation` refuses wiring cycles outright
+//! rather than binding them. The gate is that binder landing with freshness
+//! visible per transition
+//! (`docs/gandr/spec/implementation/proposed/separation-logic.md`,
+//! `separation-logic-requirement-06`). The freshness this crate *does* have is
+//! a different thing and does not substitute: [`CellAlphabet::rename_apart`]
+//! and [`CellAlphabet::skolemize`] mint fresh **metavariable** names for
+//! unification hygiene between two cells, and neither records an address a
+//! firing brought into or out of existence.
+//!
+//! **A permission carrier is deliberately absent, and the split here is not
+//! one.** What this module computes is owned-against-framed **at one
+//! transition**: the footprint is what a firing touches and the frame is what
+//! it carries through. A permission divides ownership of one location among
+//! **simultaneous holders**, which is a different axis, needs a partial
+//! cancellative commutative monoid, and is decided by the mode and reference
+//! calculus's shared-borrow question — not here
+//! (`docs/gandr/spec/surface-language/proposed/modes-and-references.md`,
+//! `mode-decision-05`;
+//! `docs/gandr/spec/implementation/proposed/separation-logic.md`,
+//! `separation-logic-requirement-02`). Inventing one ahead of that decision
+//! would almost certainly re-spell the sealed grade semiring, which counts uses
+//! along a run and does not divide ownership.
+//!
+//! One name in this crate reads like a counterexample and is not:
+//! [`crate::boundary::FiringPermission`] says whether a cell's provenance
+//! permits it to fire at a target term — an η-polarity admissibility flag, with
+//! no relation to ownership or to a permission monoid.
+//!
 //! # Interaction with the metavariable-seam gap
 //!
 //! The overlap enumerator counts a **metavariable position** as a composition
@@ -233,10 +300,15 @@ pub enum FootprintIndependence<A: CellAlphabet = SequentAlphabet>
 ///   ground redex whose whole image is written, a rule whose matched root
 ///   survives and lands in `read`, and a rule whose hole instance lands in
 ///   `framed` while the sibling it matched lands in `written`; the two refusals
-///   are separated by an unstored identifier and a non-firing step.
+///   are separated by an unstored identifier and a non-firing step; the
+///   partition postcondition and the order projection are separated from all of
+///   them by a sweep over the differential fixture family, which fails on any
+///   address classified twice, left out of the match image, taken from above
+///   it, or emitted out of enumeration order.
 /// - witness: `footprint::tests::a_ground_redex_writes_its_whole_match_image`
 /// - witness: `footprint::tests::a_preserved_root_is_read_and_its_hole_is_framed`
 /// - witness: `footprint::tests::a_footprint_needs_a_transition_to_attach_to`
+/// - witness: `footprint::tests::every_footprint_partitions_exactly_the_addresses_its_redex_covers`
 #[inline]
 pub fn match_footprint<A>(
     store: &CellStore<A>,
@@ -312,10 +384,13 @@ where
 ///   write/write, and a pair whose inner application rewrites the outer's
 ///   matched-and-preserved skeleton collides read/write; the read/read case is
 ///   separated from all three by a pair whose *only* shared address is read by
-///   both, which is licensed.
+///   both, which is licensed; the scan-order projection is separated by a pair
+///   colliding at every address of one match image, which pins the earliest as
+///   the one reported.
 /// - witness: `footprint::tests::two_root_rules_sharing_only_a_read_node_are_independent`
 /// - witness: `footprint::tests::a_rule_that_destroys_a_node_another_only_reads_is_refused`
 /// - witness: `footprint::tests::two_rules_rewriting_one_child_collide_on_writes`
+/// - witness: `footprint::tests::a_pair_colliding_several_ways_reports_the_earliest_address_it_scans`
 #[inline]
 #[must_use]
 pub fn footprint_independence<A>(
