@@ -475,6 +475,15 @@ levy-cbpv:
   location: Dordrecht
   serial-number:
     doi: "10.1007/978-94-007-0954-6"
+  note: >-
+    the book is the version of record and is the source of the terminology this corpus uses; the
+    artifact held locally is the earlier doctoral thesis of the same title (Queen Mary and
+    Westfield College, University of London, 2001), verified from its title page. The thesis
+    supports the stack-judgment claim under different terminology: its section "Typing the
+    CK-Machine" gives typing rules for the evaluation contexts and forms a category whose objects
+    are computation types, but it calls those contexts **outsides** and reserves "stack" for the
+    machine level. A section or page locator taken from the held copy is the thesis's, not the
+    book's.
 
 mangel-mellies-munch-maccagnoni-2026-focalisation:
   type: article
