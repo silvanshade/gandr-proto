@@ -414,14 +414,17 @@ fn collect_port_leaves(
     leaves: &mut Vec<String>,
 )
 {
-    match *code {
-        | Code::Unit => {},
-        | Code::Var(ref sort) => leaves.push(sort.to_string()),
-        | Code::Prod(ref left, ref right) => {
-            collect_port_leaves(left, leaves);
-            collect_port_leaves(right, leaves);
-        },
-        | Code::Field(..) | Code::Sum(..) | Code::Bind(..) => leaves.push(render_code(code)),
+    let mut stack = vec![code];
+    while let Some(node) = stack.pop() {
+        match *node {
+            | Code::Unit => {},
+            | Code::Var(ref sort) => leaves.push(sort.to_string()),
+            | Code::Prod(ref left, ref right) => {
+                stack.push(right);
+                stack.push(left);
+            },
+            | Code::Field(..) | Code::Sum(..) | Code::Bind(..) => leaves.push(render_code(node)),
+        }
     }
 }
 
@@ -434,29 +437,33 @@ fn render_oper_member(oper: &OperDesc) -> String
     let inputs: Vec<String> = oper.arity.inputs.iter().map(render_port).collect();
     let outputs: Vec<String> = oper.arity.outputs.iter().map(render_port).collect();
     let outputs = match *oper.arity.outputs {
-        | [ref only] if port_is_anonymous(only) => outputs.concat(),
+        | [ref only] if authored_port_name(only).is_none() => outputs.concat(),
         | _ => format!("({})", outputs.join(", ")),
     };
     format!("oper {} : ({}) --> {outputs}", oper.name, inputs.join(", "))
 }
 
-/// Whether a port carries no authored name (an empty name, or one of the
-/// minted underscore-led placeholders the named-port normal form assigns to
-/// unnamed tuple entries).
-fn port_is_anonymous(port: &crate::arity::SortRef) -> bool
+/// The port's authored name, or [`None`] for an anonymous port (an empty
+/// name, or one of the minted underscore-led placeholders the named-port
+/// normal form assigns to unnamed tuple entries).
+fn authored_port_name(port: &crate::arity::SortRef) -> Option<&Name>
 {
-    port.name.as_ref().is_empty() || port.name.as_ref().starts_with('_')
+    let name = port.name.as_ref();
+    if name.is_empty() || name.starts_with('_') {
+        None
+    }
+    else {
+        Some(&port.name)
+    }
 }
 
 /// Render one named port (`m : Nat`), spelling the sort bare when the port
 /// carries no authored name.
 fn render_port(port: &crate::arity::SortRef) -> String
 {
-    if port_is_anonymous(port) {
-        port.sort.to_string()
-    }
-    else {
-        format!("{} : {}", port.name, port.sort)
+    match authored_port_name(port) {
+        | Some(name) => format!("{name} : {}", port.sort),
+        | None => port.sort.to_string(),
     }
 }
 

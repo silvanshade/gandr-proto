@@ -104,7 +104,7 @@
 //! `List`) as [`SignDesc`]s so the same generic programs cover builtins and
 //! declared data uniformly (proposal §3).
 //!
-//! # Stage 1: the decoder and typed cells (`decode`, `typed_cell`)
+//! # Stage 1: the decoder and typed cells (`decode`, `typed_rule`)
 //!
 //! The stage-1 dependent-core bill (ADR-81; proposal §6) moves the first meta
 //! function from Rust-as-unwritten-meta-theory into a written host function and
@@ -119,7 +119,7 @@
 //!   is the stage-1 capability the decoder will target once a dependent σ
 //!   *code* lands (the current fragment is non-dependent — see the
 //!   [`decode`](mod@decode) module docs).
-//! * [`typed_cell`] — the **typed 2-cell face**: a stage-0 [`RuleFace`] refined
+//! * [`typed_rule`] — the **typed 2-cell face**: a stage-0 [`RuleFace`] refined
 //!   with a decoded [`PatternContext`] (the "dependent Σ over the signature",
 //!   addendum §4.1). Additive — [`RuleFace`] is reused whole, not rewritten.
 

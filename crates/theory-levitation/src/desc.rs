@@ -260,42 +260,70 @@ impl CtorDesc
     #[must_use]
     pub fn arity(&self) -> BridgeArity
     {
-        fn monomials(code: &Code) -> Vec<Vec<Name>>
+        // The monomials the payload code denotes, each as its leaf-sort list,
+        // computed with an explicit worklist (the crate's no-input-recursion
+        // discipline): a walk frame pushes children, a finish frame combines
+        // the operand stack's top two monomial sets — cross-concatenation for
+        // a product, union for an inline sum.
+        enum MonomialFrame<'code>
         {
-            match *code {
-                | Code::Unit => vec![Vec::new()],
-                | Code::Var(ref sort) => vec![vec![sort.clone()]],
-                | Code::Field(ref vref, ..) => {
-                    let sort: Name = match *vref {
-                        | crate::code::ValueTypeRef::Param(ref name) => name.clone(),
-                        | crate::code::ValueTypeRef::Prim(prim) => prim.label().into(),
-                        | crate::code::ValueTypeRef::Ctor { ref head, .. } => head.clone(),
-                    };
-                    vec![vec![sort]]
+            Walk(&'code Code),
+            FinishProd,
+            FinishSum,
+        }
+
+        let mut stack = vec![MonomialFrame::Walk(&self.code)];
+        let mut operands: Vec<Vec<Vec<Name>>> = Vec::new();
+        while let Some(frame) = stack.pop() {
+            match frame {
+                | MonomialFrame::Walk(node) => match *node {
+                    | Code::Unit => operands.push(vec![Vec::new()]),
+                    | Code::Var(ref sort) => operands.push(vec![vec![sort.clone()]]),
+                    | Code::Field(ref vref, ..) => {
+                        let sort: Name = match *vref {
+                            | crate::code::ValueTypeRef::Param(ref name) => name.clone(),
+                            | crate::code::ValueTypeRef::Prim(prim) => prim.label().into(),
+                            | crate::code::ValueTypeRef::Ctor { ref head, .. } => head.clone(),
+                        };
+                        operands.push(vec![vec![sort]]);
+                    },
+                    | Code::Prod(ref left, ref right) => {
+                        stack.push(MonomialFrame::FinishProd);
+                        stack.push(MonomialFrame::Walk(right));
+                        stack.push(MonomialFrame::Walk(left));
+                    },
+                    | Code::Sum(ref left, ref right) => {
+                        stack.push(MonomialFrame::FinishSum);
+                        stack.push(MonomialFrame::Walk(right));
+                        stack.push(MonomialFrame::Walk(left));
+                    },
+                    | Code::Bind(_, ref body) => stack.push(MonomialFrame::Walk(body)),
                 },
-                | Code::Prod(ref left, ref right) => {
-                    let rights = monomials(right);
-                    monomials(left)
+                | MonomialFrame::FinishProd => {
+                    let rights = operands.pop().unwrap_or_default();
+                    let lefts = operands.pop().unwrap_or_default();
+                    let combined = lefts
                         .into_iter()
                         .flat_map(|left_monomial| {
                             rights.iter().map(move |right_monomial| {
-                                let mut combined = left_monomial.clone();
-                                combined.extend(right_monomial.iter().cloned());
-                                combined
+                                let mut joined = left_monomial.clone();
+                                joined.extend(right_monomial.iter().cloned());
+                                joined
                             })
                         })
-                        .collect()
+                        .collect();
+                    operands.push(combined);
                 },
-                | Code::Sum(ref left, ref right) => {
-                    let mut summands = monomials(left);
-                    summands.extend(monomials(right));
-                    summands
+                | MonomialFrame::FinishSum => {
+                    let rights = operands.pop().unwrap_or_default();
+                    let mut lefts = operands.pop().unwrap_or_default();
+                    lefts.extend(rights);
+                    operands.push(lefts);
                 },
-                | Code::Bind(_, ref body) => monomials(body),
             }
         }
 
-        let monomials = monomials(&self.code);
+        let monomials = operands.pop().unwrap_or_default();
         let mut inputs = Vec::new();
         let mut factors = Vec::new();
         let mut source = Vec::new();
