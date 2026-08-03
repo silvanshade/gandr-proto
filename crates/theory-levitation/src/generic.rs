@@ -27,7 +27,9 @@ use crate::boundary::SerializedValueBytes;
 use crate::code::Code;
 use crate::code::Name;
 use crate::code::ValueTypeRef;
+use crate::desc::CtorDesc;
 use crate::desc::DeclPolarity;
+use crate::desc::OperDesc;
 use crate::desc::SignDesc;
 
 /// Which side of an inline sum ([`Code::Sum`]) a value injects into.
@@ -285,13 +287,21 @@ pub fn serialize_value(
 }
 
 /// **Inspectable rendering** of a whole description to canonical text
-/// (proposal §8's `desc-inspect` payoff).
+/// (proposal §8's `desc-inspect` payoff), in the **ruled surface spelling**.
+///
+/// Every description renders as its `sign` normal form — the canonical block
+/// of the signature unification (gandr-ng9.18 ruling 5, subsuming the
+/// inspection-notation half of gandr-r38) — with judgment-style members, the
+/// declared sort set spelled first, polarity carried by the member keyword
+/// (`data` constructors, `codata` observations), and the arrow grid's `-->` /
+/// `==>` at every arrow position (`~>` never appears).
 ///
 /// The rendering is deterministic and structural — a testing/inspection
-/// notation, not a surface pretty-printer (that surface is owned elsewhere). It
-/// names the polarity, the datatype and its parameters, each constructor with
-/// its rendered [`Code`], and (when present) the reserved operations and 2-cell
-/// faces.
+/// notation, not a surface pretty-printer (that surface is owned elsewhere).
+/// Members join with `; ` so the whole description stays one line. A payload
+/// with no port spelling (an inline sum, an atom-abstraction) falls back to
+/// the code notation for that leaf, so the rendering stays total and
+/// faithful.
 ///
 /// # Contract
 /// - ensures: deterministic output for a given description; total — never
@@ -300,10 +310,6 @@ pub fn serialize_value(
 #[must_use]
 pub fn serialize_desc(desc: &SignDesc) -> SerializedDescText
 {
-    let keyword = match desc.polarity {
-        | DeclPolarity::Data => "data",
-        | DeclPolarity::Codata => "codata",
-    };
     let params: Vec<String> = desc
         .params
         .iter()
@@ -317,73 +323,149 @@ pub fn serialize_desc(desc: &SignDesc) -> SerializedDescText
     };
     // Built functionally (`format!` + `join`/`collect`) so the rendering is one
     // expression, with no discarded write result.
-    let ctor_parts: Vec<String> = desc
-        .ctors
-        .iter()
-        .map(|ctor| {
-            let base = format!("{} = {}", ctor.name, render_code(&ctor.code));
-            // The degenerate result sort — the block's own name — stays
-            // implicit, exactly as the surface leaves it unwritten; a
-            // constructor targeting any other sort renders its slot.
-            if ctor.result == desc.id.name {
-                base
-            }
-            else {
-                format!("{base} : {}", ctor.result)
-            }
-        })
-        .collect();
-    let body = if ctor_parts.is_empty() {
-        String::new()
+    let mut members: Vec<String> = Vec::new();
+    for sort in &desc.sorts {
+        members.push(format!("sort {} : Type", sort.name));
+    }
+    for ctor in &desc.ctors {
+        members.push(render_ctor_member(desc.polarity, ctor));
+    }
+    for oper in &desc.opers {
+        members.push(render_oper_member(oper));
+    }
+    for rule in &desc.rules {
+        members.push(format!("rule {}", render_face(rule)));
+    }
+    for rule in &desc.circuits {
+        let telescope = render_telescope(&rule.ports);
+        members.push(format!(
+            "rule {} : {telescope}{}{}",
+            rule.name,
+            if telescope.is_empty() { "" } else { " " },
+            render_face(&rule.sphere)
+        ));
+    }
+    if members.is_empty() {
+        format!("sign {}{params} {{}}", desc.id.name).into()
     }
     else {
-        format!(" {} ", ctor_parts.join(", "))
-    };
-    let opers = desc
-        .opers
-        .iter()
-        .map(|oper| {
-            format!(
-                "; op {}/{}->{}",
-                oper.name,
-                oper.arity.inputs.len(),
-                oper.arity.outputs.len()
-            )
-        })
-        .collect::<Vec<String>>()
-        .concat();
-    let rules = desc
-        .rules
-        .iter()
-        .map(|rule| format!("; rule {}", render_face(rule)))
-        .collect::<Vec<String>>()
-        .concat();
-    let circuits = desc
-        .circuits
-        .iter()
-        .map(|rule| {
-            format!(
-                "; circuit {}{} {}",
-                rule.name,
-                render_telescope(&rule.ports),
-                render_face(&rule.sphere)
-            )
-        })
-        .collect::<Vec<String>>()
-        .concat();
-    format!(
-        "{keyword} {}{params} {{{body}}}{opers}{rules}{circuits}",
-        desc.id.name
-    )
-    .into()
+        format!("sign {}{params} {{ {} }}", desc.id.name, members.join("; ")).into()
+    }
 }
 
-/// Render a circuit rule's **parameter telescope** — its rewrite-sorted ports.
+/// Render one constructor as its ruled judgment-style member.
 ///
-/// An empty telescope renders as nothing at all, so a description built before
-/// the telescope existed renders exactly as it did. A port renders at the form
-/// its declaration wrote: `p : Nat` for the sorted form, `p : a ~> b` for the
-/// pinned one, which is the same notation a face renders in.
+/// A `data` constructor reads payload-to-result (`data Succ : Nat --> Nat`,
+/// the sugar ladder's spelling; a nullary payload takes the bare-result form
+/// `data Zero : Nat`); a `codata` observation reads sort-to-payload
+/// (`codata head : Stream --> a`) — the direction *is* the polarity.
+///
+/// A port at a declared sort spells the sort name (the surface's implicit
+/// recursive occurrence); other leaves spell their decorated type, and a
+/// leaf with no port spelling falls back to the code notation.
+fn render_ctor_member(
+    polarity: DeclPolarity,
+    ctor: &CtorDesc,
+) -> String
+{
+    let mut leaves: Vec<String> = Vec::new();
+    collect_port_leaves(&ctor.code, &mut leaves);
+    match polarity {
+        | DeclPolarity::Data => match leaves.len() {
+            | 0 => format!("data {} : {}", ctor.name, ctor.result),
+            | 1 => format!(
+                "data {} : {} --> {}",
+                ctor.name,
+                leaves.concat(),
+                ctor.result
+            ),
+            | _ => format!(
+                "data {} : ({}) --> {}",
+                ctor.name,
+                leaves.join(", "),
+                ctor.result
+            ),
+        },
+        | DeclPolarity::Codata => match leaves.len() {
+            | 0 => format!("codata {} : {} --> ()", ctor.name, ctor.result),
+            | 1 => format!(
+                "codata {} : {} --> {}",
+                ctor.name,
+                ctor.result,
+                leaves.concat()
+            ),
+            | _ => format!(
+                "codata {} : {} --> ({})",
+                ctor.name,
+                ctor.result,
+                leaves.join(", ")
+            ),
+        },
+    }
+}
+
+/// Flatten a payload code's product spine into port-leaf spellings, in field
+/// order: a [`Code::Var`] leaf spells its sort, a [`Code::Field`] leaf its
+/// decorated type, [`Code::Unit`] contributes no port, and any other shape
+/// (an inline sum, an atom-abstraction) falls back to the code notation as
+/// one leaf.
+fn collect_port_leaves(
+    code: &Code,
+    leaves: &mut Vec<String>,
+)
+{
+    match *code {
+        | Code::Unit => {},
+        | Code::Var(ref sort) => leaves.push(sort.to_string()),
+        | Code::Prod(ref left, ref right) => {
+            collect_port_leaves(left, leaves);
+            collect_port_leaves(right, leaves);
+        },
+        | Code::Field(..) | Code::Sum(..) | Code::Bind(..) => leaves.push(render_code(code)),
+    }
+}
+
+/// Render one operation as its ruled judgment-style member, in the named-port
+/// normal form the elaborator sees (`oper add : (m : Nat, n : Nat) --> (q :
+/// Nat)`); a port with no name spells its sort bare, and a single unnamed
+/// output drops its parentheses.
+fn render_oper_member(oper: &OperDesc) -> String
+{
+    let inputs: Vec<String> = oper.arity.inputs.iter().map(render_port).collect();
+    let outputs: Vec<String> = oper.arity.outputs.iter().map(render_port).collect();
+    let outputs = match *oper.arity.outputs {
+        | [ref only] if port_is_anonymous(only) => outputs.concat(),
+        | _ => format!("({})", outputs.join(", ")),
+    };
+    format!("oper {} : ({}) --> {outputs}", oper.name, inputs.join(", "))
+}
+
+/// Whether a port carries no authored name (an empty name, or one of the
+/// minted underscore-led placeholders the named-port normal form assigns to
+/// unnamed tuple entries).
+fn port_is_anonymous(port: &crate::arity::SortRef) -> bool
+{
+    port.name.as_ref().is_empty() || port.name.as_ref().starts_with('_')
+}
+
+/// Render one named port (`m : Nat`), spelling the sort bare when the port
+/// carries no authored name.
+fn render_port(port: &crate::arity::SortRef) -> String
+{
+    if port_is_anonymous(port) {
+        port.sort.to_string()
+    }
+    else {
+        format!("{} : {}", port.name, port.sort)
+    }
+}
+
+/// Render a circuit rule's **parameter telescope** — its rewrite-sorted ports,
+/// each in the ruled binder spelling.
+///
+/// An empty telescope renders as nothing at all. A port renders at the form
+/// its declaration wrote: `rule p : Nat ==> Nat` for the sorted form, `rule p
+/// : x ==> x′` for the pinned one — the same `==>` a face renders with.
 fn render_telescope(ports: &[crate::elaborate::RewritePort]) -> String
 {
     if ports.is_empty() {
@@ -393,13 +475,13 @@ fn render_telescope(ports: &[crate::elaborate::RewritePort]) -> String
         .iter()
         .map(|port| match port.face {
             | crate::elaborate::PortFace::Sorted(ref sort) => {
-                format!("{} : {sort}", port.name)
+                format!("rule {} : {sort} ==> {sort}", port.name)
             },
             | crate::elaborate::PortFace::Pinned {
                 ref source,
                 ref target,
             } => format!(
-                "{} : {} ~> {}",
+                "rule {} : {} ==> {}",
                 port.name,
                 render_free_term(source),
                 render_free_term(target)
@@ -522,13 +604,14 @@ fn render_type_ref(ty: &ValueTypeRef) -> String
     rendered.pop().unwrap_or_default()
 }
 
-/// Render a [`crate::RuleFace`] to the inspection notation (`lhs ~> rhs`).
-fn render_face(cell: &crate::rule::RuleFace) -> String
+/// Render a [`crate::RuleFace`] to the inspection notation (`lhs ==> rhs` —
+/// the ruled rewrite-face former at every position; `~>` is retired).
+fn render_face(rule: &crate::rule::RuleFace) -> String
 {
     format!(
-        "{} ~> {}",
-        render_free_term(&cell.lhs),
-        render_free_term(&cell.rhs)
+        "{} ==> {}",
+        render_free_term(&rule.lhs),
+        render_free_term(&rule.rhs)
     )
 }
 
@@ -645,7 +728,7 @@ mod tests
     fn desc_inspection_renders_the_structure()
     {
         assert_eq!(
-            "data Maybe(a) { None = 1, Some = a }",
+            "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }",
             serialize_desc(&maybe_desc()).as_ref(),
             "the inspection notation names the polarity, parameters, and coded constructors"
         );
@@ -740,7 +823,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "data Vec(a) { Nil = 1, Cons = (a × var Vec) }",
+            "sign Vec(a) { sort Vec : Type; data Nil : Vec; data Cons : (a, Vec) --> Vec }",
             serialize_desc(&desc).as_ref(),
             "a right-nested product renders its factors"
         );
@@ -799,7 +882,7 @@ mod tests
         )
         .with_circuits([rule]);
         assert_eq!(
-            "data Nat {}; circuit cong1(p : Nat) add(x, y) ~> add(x\u{2032}, y)",
+            "sign Nat { sort Nat : Type; rule cong1 : (rule p : Nat ==> Nat) add(x, y) ==> add(x\u{2032}, y) }",
             serialize_desc(&desc).as_ref(),
             "a circuit member renders its telescope and its sphere"
         );
@@ -818,7 +901,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "data Bit { Off = 1 }",
+            "sign Bit { sort Bit : Type; data Off : Bit }",
             serialize_desc(&desc).as_ref(),
             "the circuit slot is invisible when it is empty"
         );
@@ -846,7 +929,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "data Wrap { Wrap = Integer }",
+            "sign Wrap { sort Wrap : Type; data Wrap : Integer --> Wrap }",
             serialize_desc(&desc).as_ref(),
             "a primitive field renders its spelling"
         );

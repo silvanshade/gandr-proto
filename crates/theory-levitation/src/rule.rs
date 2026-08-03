@@ -1,4 +1,4 @@
-//! 2-cell **faces** — a rewrite `lhs ~> rhs` as a pair of open terms in the
+//! 2-cell **faces** — a rewrite `lhs ==> rhs` as a pair of open terms in the
 //! free structure over a signature (proposal-levitation.md §4.1, V3; VDC
 //! addendum §A).
 //!
@@ -155,7 +155,7 @@ impl RuleVarMeta
     }
 }
 
-/// A **2-cell face** `lhs ~> rhs` — the surface-to-cell intermediary the
+/// A **2-cell face** `lhs ==> rhs` — the surface-to-cell intermediary the
 /// polygraph cell store elaborates through (proposal §4.1).
 ///
 /// The two [`FreeTerm`]s are open terms in `D⋆(V)`; `vars` is the derived
@@ -206,7 +206,7 @@ mod tests
     #[test]
     fn free_variables_are_collected_in_order_with_repeats()
     {
-        // `id(Zero) ~> Zero` has no variables; `f(x, g(x)) ~> x` has `x` thrice.
+        // `id(Zero) ==> Zero` has no variables; `f(x, g(x)) ==> x` has `x` thrice.
         let term = FreeTerm::op("f", [
             FreeTerm::var("x"),
             FreeTerm::ctor("g", [FreeTerm::var("x")]),

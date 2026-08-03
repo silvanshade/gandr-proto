@@ -32,7 +32,7 @@
 //!
 //! # 2-cell faces (`cell`)
 //!
-//! A rewrite `lhs ~> rhs` over a signature is a **pair of open terms in the
+//! A rewrite `lhs ==> rhs` over a signature is a **pair of open terms in the
 //! free structure over that signature** — elements of the free monad `D⋆(V)`
 //! (V3). Stage 0 stores them untyped-but-host-checked as [`FreeTerm`] pairs in
 //! a [`RuleFace`]; the typed encoding (a dependent Σ over the signature) is the

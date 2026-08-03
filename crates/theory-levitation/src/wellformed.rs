@@ -814,7 +814,7 @@ mod tests
     #[test]
     fn an_out_of_signature_cell_is_declined()
     {
-        // `bogus(x) ~> x`: `bogus` is not a constructor or op of `Nat`.
+        // `bogus(x) ==> x`: `bogus` is not a constructor or op of `Nat`.
         let face = RuleFace::new(
             FreeTerm::op("bogus", [FreeTerm::var("x")]),
             FreeTerm::var("x"),
@@ -833,7 +833,7 @@ mod tests
     #[test]
     fn a_fresh_right_hand_side_variable_is_declined()
     {
-        // `Succ(x) ~> y`: `y` is unbound.
+        // `Succ(x) ==> y`: `y` is unbound.
         let face = RuleFace::new(
             FreeTerm::ctor("Succ", [FreeTerm::var("x")]),
             FreeTerm::var("y"),

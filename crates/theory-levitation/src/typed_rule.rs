@@ -1,6 +1,6 @@
 //! Levitation **stage 1**: *typed* 2-cell faces (ADR-81; addendum §A/§4.1).
 //!
-//! Stage 0's [`RuleFace`] stores a rewrite `lhs ~> rhs` as an untyped pair of
+//! Stage 0's [`RuleFace`] stores a rewrite `lhs ==> rhs` as an untyped pair of
 //! [`crate::FreeTerm`]s with host-side well-formedness (`crate::check_desc`).
 //! The addendum sharpens the stage-1 refinement: the typed cell face is a
 //! **protype** of the reflected judgment layer, and a typed rule is a
@@ -192,7 +192,7 @@ mod tests
     #[test]
     fn typed_face_context_totality_tracks_declared_variables()
     {
-        // The stage-0 face `f(x) ~> x` declares the pattern variable `x`.
+        // The stage-0 face `f(x) ==> x` declares the pattern variable `x`.
         let face = RuleFace::new(
             FreeTerm::op("f", [FreeTerm::var("x")]),
             FreeTerm::var("x"),

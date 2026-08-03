@@ -1,5 +1,8 @@
-//! **Circuit rules** — 2-cells whose boundary pair is *derived from a wiring*
-//! instead of written as an `lhs ~> rhs` pair
+//! **Circuit rules** — 2-cells whose boundary pair is *derived from a
+//! wiring*.
+//!
+//! Instead of writing an `lhs ==> rhs` pair, a circuit rule derives both
+//! boundaries from its body
 //! (`docs/gandr/spec/surface-language/circuit-cells.md`, section "Frame and
 //! redex").
 //!

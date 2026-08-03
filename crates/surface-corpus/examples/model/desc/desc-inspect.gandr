@@ -9,4 +9,4 @@ data Traffic { Stop, Go, Wait }
 
 // The harness elaborates and renders the description deterministically:
 //@ mode: desc
-//@ expect-desc-render: data Traffic { Stop = 1, Go = 1, Wait = 1 }
+//@ expect-desc-render: sign Traffic { sort Traffic : Type; data Stop : Traffic; data Go : Traffic; data Wait : Traffic }

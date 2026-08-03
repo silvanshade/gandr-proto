@@ -23,6 +23,6 @@ data Bit {
 }
 
 //@ mode: desc
-//@ expect-desc-cells: 2
+//@ expect-desc-rules: 2
 //@ expect-desc-store-cells: 3
 //@ expect-desc-cell-decline: the producer hole `x` occurs more than once

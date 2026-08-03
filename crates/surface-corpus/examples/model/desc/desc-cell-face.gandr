@@ -12,4 +12,4 @@ data NatTheory {
 }
 
 //@ mode: desc
-//@ expect-desc-cells: 1
+//@ expect-desc-rules: 1

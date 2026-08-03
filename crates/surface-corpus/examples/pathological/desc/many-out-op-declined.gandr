@@ -16,6 +16,6 @@
 data NatDiv { Zero, op divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }
 
 //@ mode: desc
-//@ expect-desc-render: data NatDiv { Zero = 1 }; op divmod/2->2
+//@ expect-desc-render: sign NatDiv { sort NatDiv : Type; data Zero : NatDiv; oper divmod : (m : NatDiv, n : NatDiv) --> (q : NatDiv, r : NatDiv) }
 //@ expect-desc-store-cells: 1
 //@ expect-desc-cell-decline: operation `divmod` of `NatDiv` declares a many-out result

@@ -19,5 +19,5 @@ data NatAdd {
 }
 
 //@ mode: desc
-//@ expect-desc-cells: 2
+//@ expect-desc-rules: 2
 //@ expect-desc-store-cells: 4

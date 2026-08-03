@@ -67,7 +67,7 @@
 //! | `expect-ffi-error` | substring | the ffi run aborted at the foreign boundary with this error |
 //! | `expect-sequent-render` | rendered command | focusing produces this exact bounded command rendering |
 //! | `expect-desc-render` | rendered description | stage-0 elaboration produces this exact description |
-//! | `expect-desc-cells` | integer | elaborated descriptions carry this many cell faces in total |
+//! | `expect-desc-rules` | integer | elaborated descriptions carry this many rule faces in total |
 //! | `expect-desc-store-cells` | integer | cell-layer elaboration puts this many cells in the stores |
 //! | `expect-desc-cell-decline` | substring | some cell-layer decline message contains it |
 //! | `expect-desc-decline` | substring | some stage-0 / declaration-table diagnostic contains it |
@@ -349,10 +349,10 @@ pub enum Expect
         /// The expected inspectable description rendering.
         String,
     ),
-    /// `expect-desc-cells: n` — the elaborated descriptions carry exactly `n`
-    /// declared cell faces in total.
-    DescCells(
-        /// The expected total cell-face count.
+    /// `expect-desc-rules: n` — the elaborated descriptions carry exactly `n`
+    /// declared rule faces in total.
+    DescRules(
+        /// The expected total rule-face count.
         usize,
     ),
     /// `expect-desc-store-cells: n` — elaborating the descriptions into the
@@ -530,11 +530,11 @@ where
             | "expect-ffi-error" => expects.push(Expect::FfiError(value.to_owned())),
             | "expect-sequent-render" => expects.push(Expect::SequentRender(value.to_owned())),
             | "expect-desc-render" => expects.push(Expect::DescRender(value.to_owned())),
-            | "expect-desc-cells" => {
+            | "expect-desc-rules" => {
                 let count: usize = value
                     .parse()
                     .map_err(|_ignored| format!("non-integer description cell count `{value}`"))?;
-                expects.push(Expect::DescCells(count));
+                expects.push(Expect::DescRules(count));
             },
             | "expect-desc-store-cells" => {
                 let count: usize = value
@@ -820,7 +820,7 @@ fn session_failure(
         | Expect::FfiError(_)
         | Expect::SequentRender(_)
         | Expect::DescRender(_)
-        | Expect::DescCells(_)
+        | Expect::DescRules(_)
         | Expect::DescStoreCells(_)
         | Expect::DescCellDecline(_)
         | Expect::DescDecline(_)
@@ -1356,7 +1356,7 @@ fn check_desc(
                 "expected description `{expected}`; got {}",
                 rendered.join(" | ")
             )),
-            | Expect::DescCells(expected) => {
+            | Expect::DescRules(expected) => {
                 let actual = elaborated.descs.iter().fold(0_usize, |total, desc| {
                     total.saturating_add(desc.rules.len())
                 });
@@ -1365,7 +1365,7 @@ fn check_desc(
                 }
                 else {
                     Some(format!(
-                        "expected {expected} description cell face(s); got {actual}"
+                        "expected {expected} description rule face(s); got {actual}"
                     ))
                 }
             },

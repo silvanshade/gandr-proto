@@ -54,12 +54,18 @@ mod tests
         assert_eq!(
             rendered,
             vec![
-                "data Color { Red = 1, Green = 1, Blue = 1 }".to_owned(),
-                "data Maybe(a) { None = 1, Some = a }".to_owned(),
-                "data Tree(a) { Leaf = 1, Node = (var Tree × (a × var Tree)) }".to_owned(),
-                "data Empty {}".to_owned(),
+                "sign Color { sort Color : Type; data Red : Color; data Green : Color; data Blue \
+                 : Color }"
+                    .to_owned(),
+                "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }"
+                    .to_owned(),
+                "sign Tree(a) { sort Tree : Type; data Leaf : Tree; data Node : (Tree, a, Tree) \
+                 --> Tree }"
+                    .to_owned(),
+                "sign Empty { sort Empty : Type }".to_owned(),
             ],
-            "each declared datatype elaborates to its tagged description"
+            "each declared datatype elaborates to its tagged description, read back in the ruled \
+             sign normal form"
         );
     }
 
@@ -71,7 +77,7 @@ mod tests
         assert_eq!(1, elab.descs.len(), "one datatype");
         let maybe = &elab.descs[0];
         assert_eq!(
-            "data Maybe(a) { None = 1, Some = a }",
+            "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }",
             serialize_desc(maybe).as_ref(),
             "the description inspects as expected"
         );
@@ -109,7 +115,7 @@ mod tests
             "nominal ids expose the declared name"
         );
         assert_eq!(
-            "data Maybe(a) { None = 1, Some = a }",
+            "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }",
             rendered.as_ref(),
             "serialized descriptions remain comparable without unwrapping carriers"
         );
@@ -255,7 +261,7 @@ mod tests
         // `head: a` is a leaf observation; `tail: Stream(a)` is the recursive
         // one.
         assert_eq!(
-            "codata Stream(a) { head = a, tail = var Stream }",
+            "sign Stream(a) { sort Stream : Type; codata head : Stream --> a; codata tail : Stream --> Stream }",
             serialize_desc(stream).as_ref(),
             "observations elaborate as constructor-shaped entries; `tail` recurses"
         );

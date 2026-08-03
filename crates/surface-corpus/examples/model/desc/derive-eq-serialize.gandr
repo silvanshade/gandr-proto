@@ -9,5 +9,5 @@
 data Bit { Off, On }
 
 //@ mode: desc
-//@ expect-desc-render: data Bit { Off = 1, On = 1 }
+//@ expect-desc-render: sign Bit { sort Bit : Type; data Off : Bit; data On : Bit }
 //@ expect-desc-unit-consumers: clean
