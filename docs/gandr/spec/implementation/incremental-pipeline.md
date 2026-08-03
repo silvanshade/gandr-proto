@@ -350,7 +350,8 @@ Marks are carried in the report envelope that [[inspection-protocol#The lightwei
 
 ### pipeline-decision-02
 
-**Incremental bidirectional typing over an order-maintenance structure is adopted as an additive layer, with a gate.** The work re-types _marked_ programs under fine-grained edits using order-maintenance timestamp intervals and binding pointers, and reports a large aggregate speedup over from-scratch marking with its validity, convergence, and termination results mechanized [@porter-kirisame-wei-panchekha-omar-2025-incremental-bidirectional].
+**Incremental bidirectional typing over an order-maintenance structure is adopted as an additive layer, with a gate.** The work re-types _marked_ programs under fine-grained edits using order-maintenance structures and binding pointers, propagating updates as a small-step dynamics over the marked and annotated program; it proves its system **equivalent to naive re-analysis** in Agda alongside further metatheory, and reports a 275.96-fold speedup over from-scratch re-analysis on a stress test [@porter-kirisame-wei-panchekha-omar-2025-incremental-bidirectional].
+Those three facts are verified at the paper's abstract; the design record's own naming of the mechanized properties as validity, convergence, and termination is **not** confirmed there and is carried as the record's.
 Its order structure is borrowed from incremental page layout [@bender-cole-demaine-farachcolton-zito-2002-maintaining-order; @kirisame-wang-panchekha-2025-spineless-traversal].
 
 **What is taken:** the order-maintenance intervals, which give constant-time term containment and logarithmic lowest-binder lookup and are the order structure this pipeline otherwise lacks; the per-node layout of a dual type, a boolean mark, and a dirty bit; **binding pointers**, which replace the coarse path from a binder through the substitution to its downstream readers with a direct binder-to-occurrence edge, so a structural rebinding becomes atomic while type propagation stays coupled to the solver; and the unchanged-type optimization.
@@ -361,9 +362,10 @@ Its order structure is borrowed from incremental page layout [@bender-cole-demai
 It does not, and the reason is structural: **the ambient context is not in the footprint at all.** The footprint is solver-side, and contexts are threaded through frames.
 What is subsumed is the structural checkpoint-coverage logic and the coarse binder-to-substitution-to-reader invalidation path; constraint solving is excluded from that work **by construction**.
 
-**The gate, which is a soundness condition and not a scheduling note.** The dirty-frontier propagation engine's confluence and termination hold **only in the absence of a constraint store**.
-So it is sound over a characterized solver-free bidirectional-local fragment and must hand off to footprint invalidation at any solver-coupled step.
-Characterizing that fragment is the seam this decision depends on, and it is unbuilt.
+**The gate, which is a soundness condition and not a scheduling note — and which is _this project's_ inference rather than a caveat the paper states.** The system that work proves its results about is a **bidirectional type system with no constraint store**, so its metatheory is established in that setting and says nothing either way about a solver-coupled one.
+The conclusion drawn here is the conservative one: the dirty-frontier propagation engine is adopted as sound only over a characterized solver-free bidirectional-local fragment, and hands off to footprint invalidation at any solver-coupled step.
+**Attributing that restriction to the paper would be the error to avoid**, since it is a fact about where the results were proved rather than a limit the authors record.
+Characterizing the fragment is the seam this decision depends on, and it is unbuilt.
 
 **What is built of this decision:** the order-maintenance structure entire, as `gandr-theory-orders` — a payload-carrying total order over generation-checked handles with constant-time comparison, insertion amortized at the square of the logarithm, and a density cap that makes relabeling always succeed so capacity exhaustion is a typed error rather than a panic — plus the interval-containment query over it, and the engine's use of it to keep item identity stable across an edit.
 The two-level refinement to constant amortized insertion is deliberately deferred.
@@ -475,3 +477,4 @@ Written against four sources, named because a change with no declared source set
 * **High** — the loop's stages, the three validity conditions, the hole rules, the performance targets, and the literature dispositions, all transcribed from the design record rather than re-derived; and every as-built claim, each read from a definition rather than from a doc comment.
 * **Medium** — the two-directional divergence table, which is a comparison this document draws rather than one either side states.
 * **Marked at the claim** — the streaming-driver reference of [[#pipeline-decision-07]], whose primary source is access-blocked, and the ancestry of [[#pipeline-decision-08]], whose primary source has not been opened.
+* **Checked at the abstract only** — [[#pipeline-decision-02]]'s source, whose title, authorship, mechanization, speedup figure, and setting were read from its abstract on 2026-08-02, and whose body was not opened; the gate this document draws from that setting is marked in place as this project's inference rather than the paper's.

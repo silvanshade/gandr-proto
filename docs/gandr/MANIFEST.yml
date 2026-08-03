@@ -99,7 +99,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/incremental-pipeline.md
     role: subdocument
-    b3: 70ff97d0da69dee4690c311617f4b6de40d1b1f6cb0ca10f16938ddd7cb42741
+    b3: 99ef6ae3f704d42d7dc7a51cf9c0aba1800a13c37293923e7471434a1f949296
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
