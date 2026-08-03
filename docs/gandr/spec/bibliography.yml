@@ -2936,21 +2936,27 @@ sterling-harper-2022-sheaf:
     title: 7th International Conference on Formal Structures for Computation and Deduction (FSCD 2022)
   note: >-
     title, authorship, DOI, and arXiv identifier read from page 1 of the held PDF (extended version).
-    HAZARD: the computational-adequacy proof is corrected by a published erratum -- see
-    sterling-2023-sheaf-erratum; cite the adequacy results only together with it
+    HAZARD: the paper's computational-adequacy proof is undermined by a standing erratum -- see
+    sterling-2023-sheaf-erratum; per that erratum the defect is as-yet unfixed, so the adequacy results
+    currently have no standing proof and must not be cited as established
 
 # row 11 companion — the erratum the row-11 note cites by key
 sterling-2023-sheaf-erratum:
   type: misc
   title: "Erratum: adequacy of Sheaf semantics of noninterference"
   author: ["Sterling, Jonathan"]
-  date: 2023
-  url: http://www.jonmsterling.com/jms-005Z.xml
+  date: 2023-07-17
+  url: https://www.jonmsterling.com/005Z/
   note: >-
-    transcribed from reference [30] of the held Niu-Sterling-Harper PDF, which describes the corrected
-    defect as a mismatch between the existential quantifier and the join of a family of Sigma-propositions
-    in the lifting of free algebras to formal approximation relations. NOT independently verified at the
-    URL by this reading -- verify locator before citation-bearing use
+    locator fetch-verified 2026-08-02; the previously recorded form http://www.jonmsterling.com/jms-005Z.xml
+    redirects to the canonical Forester page recorded here (slug 005Z). The live page states the problem was
+    discovered in July 2023 by Yue Niu, that the proof that the logical relation on free algebras is
+    admissible is not correct, and that the defect is AS-YET UNFIXED -- the author believes a different
+    proof of adequacy exists but with a different structure. This is stronger than the description
+    transcribed earlier from reference [30] of the held Niu-Sterling-Harper PDF (a mismatch between the
+    existential quantifier and the join of a family of Sigma-propositions in the lifting of free algebras
+    to formal approximation relations): the adequacy theorem is currently unproven per the author, not
+    merely corrected
 
 # row 12 — reflections on existential types
 sterling-2022-existential:
@@ -3105,17 +3111,19 @@ czajka-kop-2019-polymorphic:
   title: Polymorphic Higher-Order Termination
   author: ["Czajka, Lukasz", "Kop, Cynthia"]
   date: 2019
+  page-range: "12:1-12:18"
   serial-number:
     arxiv: "1904.09859"
+    doi: "10.4230/LIPIcs.FSCD.2019.12"
   parent:
     type: proceedings
     title: 4th International Conference on Formal Structures for Computation and Deduction (FSCD 2019)
+    volume: 131
   note: >-
     title, authorship, and arXiv identifier read from page 1 of the held PDF; the artifact is a
-    pre-publication copy and its DOI line is an unfilled placeholder, so the FSCD 2019 DOI and page range
-    are NOT verified here and must be filled from the Dagstuhl record before this entry is cited with one
-    -- verify locator before citation-bearing use. Author surname carries a diacritic on the artifact
-    (Lukasz)
+    pre-publication copy whose DOI line is an unfilled placeholder. The FSCD 2019 DOI, LIPIcs volume,
+    and page range were fetch-verified against the Dagstuhl DROPS record for the DOI on 2026-08-02.
+    Author surname carries a diacritic on the artifact (Lukasz)
 
 # row 23 — formal metatheory of second-order abstract syntax
 fiore-szamozvancev-2022-formal-metatheory:
@@ -3222,11 +3230,15 @@ wood-2024-semiring:
   author: ["Wood, James"]
   date: 2024-07-03
   organization: University of Strathclyde
+  serial-number:
+    doi: "10.48730/pa0y-ct71"
+  url: https://stax.strath.ac.uk/concern/theses/tt44pn44w
   note: >-
     title, authorship, institution (Mathematically Structured Programming, Computer and Information
     Sciences), and date read from the title page of the held PDF. A PhD thesis, not a paper. No DOI or
-    repository handle is printed on the artifact -- add the Strathprints handle before citing with a
-    locator; verify locator before citation-bearing use. The Agda development is referenced in the
+    repository handle is printed on the artifact; the repository record was fetch-verified on 2026-08-02
+    at the university's STAX repository (not Strathprints, which the earlier note guessed): STAX id
+    tt44pn44w, thesis identifier T17017, DOI as recorded here. The Agda development is referenced in the
     artifact at https://github.com/laMudri/generic-lr/tree/thesis/src/
 
 # row 30 — complete algebraic semantics for second-order rewriting systems
