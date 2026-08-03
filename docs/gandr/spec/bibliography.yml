@@ -5220,3 +5220,17 @@ moura-bjorner-2008-z3:
     type: proceedings
     title: Tools and Algorithms for the Construction and Analysis of Systems
     page-range: 337-340
+
+# ── The graph substrate's third-party engine ──────────────────────────────────
+# A software dependency rather than a published work, cited because the substrate's
+# adoption, closure, and exit path are claims about it. Read at source level for the
+# visit-trait bounds the façade's adapter implements; the version is the one the
+# workspace pins and resolves.
+
+petgraph:
+  type: software
+  title: "petgraph: graph data structures and algorithms for Rust"
+  url: https://github.com/petgraph/petgraph
+  note: >-
+    not in library.bib; synthesized 2026-08-02 — the workspace pins 0.8 with default features off
+    and resolves 0.8.3, and the crate is named in exactly one crate manifest

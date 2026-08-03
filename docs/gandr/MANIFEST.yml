@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 113bbfc753586c9c3ef0f55944bcb5ccd997468011cde4f74cb2e7e666f0b697
+    b3: aee74469bfa2488088ae5eacb0a593f7a9ef1008c865a54907bcbbf72f8a3e64
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 8e566f1b94fbb14d015ec4afff2ff309e2c4cd6769eb9d1a18af6e9a9cd6117d
+    b3: 6610cb9725d8b3fce1deb906dc3215c5228b9f7039e423917988492cd4d08a3f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -99,7 +99,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/incremental-pipeline.md
     role: subdocument
-    b3: 99ef6ae3f704d42d7dc7a51cf9c0aba1800a13c37293923e7471434a1f949296
+    b3: 958eb419e8e062681b2643fca6361098bee826becf83f4e9f4c65c70312253ea
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
@@ -114,7 +114,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
     role: subdocument
-    b3: 1d0d71b25efac9265c67d257805637db863cb9caf4128737dc3b384eb0df7007
+    b3: c125c8251e45cdf9d797b661effc863489df6751683b264aaad3191598ef2794
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/operators.md
@@ -179,7 +179,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 74c9d3a3e5c8b482939201b79bb82a4ba67f2e154ff06bb51601fdaff6f138ec
+    b3: 6d08ff8777715f064f9931e9a42d394be300237c0b29694c1c5c7b8ece114772
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/separation-logic.md
@@ -205,6 +205,11 @@ nodes:
   - path: spec/implementation/proposed/recursion-former.md
     role: subdocument
     b3: 0fee6538138e2728b1f5a5d8696077e90cc8f4e28b2af52a987d7ea862c57713
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/graph-substrate.md
+    role: subdocument
+    b3: 217590aaa31e2ef97f12be33fdc9b9e1b1c6f60ef0363cc6964056ae3d69dd9a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/solver-interface.md

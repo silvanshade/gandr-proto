@@ -289,6 +289,7 @@ The design question is [[#template-games-question-02]].
 
 **What does not transfer is totality, and that is what forces the variant.** The source's construction requires pushouts in the ambient precisely so that horizontal composition is total [ibid., thm 1.2, thm 2.2], while gandr's certificate composition declines on the directed band when the acyclicity gate fails, carrying the variable-flow cycle as its diagnostic.
 A double category whose horizontal composition declines is a **virtual** double category, and the target of the adoption is therefore a virtual variant of the source's construction.
+**The gate itself is not bespoke to certificates**: it is one call into the shared graph substrate's cycle witness, the same implementation that rejects precedence cycles at grammar build ([[graph-substrate#The certificate and relations lanes]]).
 
 **The virtual variant's coherence is in neither source.** Nothing in the read supplies the coherence conditions a virtual variant of that construction would satisfy, so the variant is a construction gandr owes rather than one it imports; the obligation is [[#template-games-rung-04]] and the open question is [[#template-games-question-04]].
 

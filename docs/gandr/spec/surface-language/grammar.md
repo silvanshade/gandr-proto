@@ -12,6 +12,7 @@ The normative parser is **not BNF, PEG, tree-sitter, or GF**: a checked **preced
   Molds are deterministic and fingerprint-scoped: ids are assigned in canonical table order at grammar build; the mold table folds into the grammar's fingerprint; **a CST records the fingerprint of the grammar that produced it**, so mold ids never migrate silently across grammar revisions.
 * The **precedence DAG** is a named graph, not a number line: named precedence groups, edges for binds-tighter, per-group associativity, a precomputed reachability closure, and a fingerprint; strict precedence is reachability, and incomparable pairs are honored — an ambiguous mix is an error, never a guess.
   The choice of a graph over a number line, its literature grounding, and what it buys over the integer-level systems are [[operators#The precedence model is a named graph, not a number line]].
+  **The DAG and the walk relation are not parser-internal notions**: both are public artifacts of the shared graph substrate, which also carries the analysis justifying the generalization and the re-proof obligations it leaves open ([[../implementation/graph-substrate#The precedence DAG]]).
 * The pipeline:
 
 ```text

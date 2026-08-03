@@ -367,6 +367,9 @@ The conclusion drawn here is the conservative one: the dirty-frontier propagatio
 **Attributing that restriction to the paper would be the error to avoid**, since it is a fact about where the results were proved rather than a limit the authors record.
 Characterizing the fragment is the seam this decision depends on, and it is unbuilt.
 
+**The order-maintenance structure is deliberately its own crate rather than a member of the shared graph substrate**, because it is a specialized ancestry index rather than a relation over dense identifiers, and that boundary is recorded on the substrate's side too ([[graph-substrate#The boundary: what the substrate is not]]).
+This pipeline's own dependency graph — the footprints and the dirty frontier — is the substrate's business and is named there as a future client, not a current one.
+
 **What is built of this decision:** the order-maintenance structure entire, as `gandr-theory-orders` — a payload-carrying total order over generation-checked handles with constant-time comparison, insertion amortized at the square of the logarithm, and a density cap that makes relabeling always succeed so capacity exhaustion is a typed error rather than a panic — plus the interval-containment query over it, and the engine's use of it to keep item identity stable across an edit.
 The two-level refinement to constant amortized insertion is deliberately deferred.
 
