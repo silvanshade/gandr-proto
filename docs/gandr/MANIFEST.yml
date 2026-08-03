@@ -169,7 +169,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
-    b3: b72c7874dfecb4ef9e1d30d4b3efad008e5ea207db428603094ba4a886edf655
+    b3: 24e56b884683757d8ab0cadb67906b088a6001274dee3d7b9c0b398f65dc63e9
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/ornaments.md

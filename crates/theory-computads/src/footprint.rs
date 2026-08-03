@@ -384,9 +384,12 @@ where
 ///   write/write, and a pair whose inner application rewrites the outer's
 ///   matched-and-preserved skeleton collides read/write; the read/read case is
 ///   separated from all three by a pair whose *only* shared address is read by
-///   both, which is licensed; the scan-order projection is separated by a pair
-///   colliding at every address of one match image, which pins the earliest as
-///   the one reported.
+///   both, which is licensed; the scan-order projection is pinned by a pair
+///   colliding at every address of one match image, which fixes the enumeration
+///   order and that the reported address is the earliest in it — a self-paired
+///   root collision cannot separate scan order from a canonical order, so full
+///   separation is owed by a fixture whose earliest scanned collision is not
+///   the canonical minimum.
 /// - witness: `footprint::tests::two_root_rules_sharing_only_a_read_node_are_independent`
 /// - witness: `footprint::tests::a_rule_that_destroys_a_node_another_only_reads_is_refused`
 /// - witness: `footprint::tests::two_rules_rewriting_one_child_collide_on_writes`
