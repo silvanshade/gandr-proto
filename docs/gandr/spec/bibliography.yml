@@ -1338,15 +1338,25 @@ moon-blinn-porter-omar-2025-tylr:
 
 abbott-altenkirch-ghani-2005-containers:
   type: article
-  title: Categories of Containers
+  title: "Containers: Constructing Strictly Positive Types"
   author: ["Abbott, Michael", "Altenkirch, Thorsten", "Ghani, Neil"]
   date: 2005
+  page-range: 3-27
   serial-number:
     doi: "10.1016/j.tcs.2005.06.002"
   parent:
     type: periodical
     title: Theoretical Computer Science
     volume: 342
+    issue: 1
+  note: >-
+    corrected 2026-08-02: the entry previously printed the title "Categories of Containers", which is a
+    DIFFERENT paper by the same authors (FoSSaCS 2003, pp. 23-38, DOI 10.1007/3-540-36576-1_2) — the DOI,
+    venue, volume, and key year here always denoted the TCS journal paper, so the title is corrected to
+    match rather than the locator. The correction was found and Crossref-verified during the mixed
+    induction-coinduction sweep (gandr-ng9.20 read of the cofixpoint-combinator thesis, whose structural
+    licence cites this paper by corollary number). If the FoSSaCS 2003 paper is ever needed, register it
+    under its own key rather than widening this one
 
 ahman-chapman-uustalu-2016-directed-containers:
   type: article
@@ -2454,6 +2464,26 @@ spahn-2025-mendler-dialgebras:
   date: 2025
   serial-number:
     doi: "10.4230/LIPIcs.TYPES.2025.15"
+  parent:
+    type: proceedings
+    title: 31st International Conference on Types for Proofs and Programs (TYPES 2025)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    page-range: "15:1-15:24"
+  note: >-
+    completed from mixed-sweep-read-03's register block; author with ORCID mark and affiliation
+    (Department of Computer Science, Tallinn University of Technology, Estonia), the 2012 ACM Subject
+    Classification "Theory of computation -> Semantics and reasoning", the keywords (Mendler Algebra,
+    Dinatural Transformation, Structured Recursion Scheme, Grothendieck Fibration, Higher-Order
+    Abstract Syntax), the DOI, the CC-BY 4.0 licence and the whole proceedings footer -- editors
+    Fredrik Nordvall Forsberg and James McKinna, Article No. 15, pp. 15:1-15:24, LIPIcs, Schloss
+    Dagstuhl, Dagstuhl Publishing -- are page-1-read from the held PDF, 24 pages. THE LIPIcs VOLUME
+    NUMBER IS NOT PRINTED ON PAGE 1 of the held copy and is deliberately left unrecorded rather than
+    recalled; fetch it from Dagstuhl before this entry is cited with a volume. Editors are carried in
+    this note because the register has no editor key. Read at statement grade for printed 15:1-15:18
+    (sections 1-8) and 15:19-15:20 (references 1-35); references 36 onward and Appendices A, B and C
+    unread, so its reference [37] (cited in section 8 for inductive-inductive definitions) and
+    reference [47] (credited for Example 4's Yoneda-like statements) are BOTH UNRESOLVED and must not
+    be guessed
 
 hubers-ingle-marmaduke-morris-2025-extensible-recursive:
   type: article
@@ -3608,3 +3638,791 @@ ahrens-2012-extended:
     page-range: 1-35
   note: >-
     title, sole authorship, affiliation, volume, issue, page range 1-35, submission date 13 July 2011 and publication date 6 April 2012 read from page 1 of the acquired PDF, which renders the issue as "(2:01)" while the resolving DOI and reference [4] of the held 2-functoriality artifact render it "(2:1)"; the DOI is transcribed from that reference list and resolves to the LMCS record https://lmcs.episciences.org/1193, from which the arXiv source identifier is verified by fetch; open access under the arXiv non-exclusive distribution licence; its Thm. 3.33 is subsumed by [@ahrens-lafont-lamiaux-2025-2functoriality] Prop. 8.15 with the converse failing at its Ex. 8.16, and its Sec. 5 carries a Coq formalization of the theorem instantiated at the signature of PCF
+
+# ── The mixed induction-coinduction sweep — list rows read 2026-08-02 ─────────
+
+# mixed-sweep row 01 — coproducts of monads on Set
+adamek-milius-bowler-levy-2014-coproducts-monads:
+  type: article
+  title: Coproducts of Monads on Set
+  author: ["Adámek, Jiří", "Milius, Stefan", "Bowler, Nathan", "Levy, Paul B."]
+  date: 2014-09-11
+  serial-number:
+    arxiv: "1409.3804"
+  note: >-
+    registered from mixed-sweep-read-06's register block; title, authorship, affiliations, the venue
+    sentence and the arXiv stamp (arXiv:1409.3804v1 [cs.LO]) read from page 1 of the held PDF, 16 pages.
+    Page 1 prints "Presented at the conference '27th Annual Symposium on Logic in Computer Science (LICS
+    2012)'. The current version contains proofs of some of the results in the appendix." and NO publisher
+    DOI, so no LICS locator is recorded. Discrepancy carried rather than resolved silently: the arXiv
+    listing orders the authors alphabetically (Adámek, Bowler, Levy, Milius) while the page-1 affiliation
+    columns read left to right as recorded here -- the page-1 order governs. Registrar decision, recorded
+    rather than made silently: key and date are the held artifact's 2014, not the venue year 2012, so that
+    key and date do not disagree; rename before first citation if the corpus prefers venue-year keys
+
+# mixed-sweep row 02 — categorical programming with inductive and coinductive types
+vene-2000-categorical-programming:
+  type: thesis
+  title: Categorical Programming with Inductive and Coinductive Types
+  author: ["Vene, Varmo"]
+  date: 2000
+  organization: University of Tartu
+  parent:
+    type: book
+    title: Dissertationes Mathematicae Universitatis Tartuensis
+    volume: 23
+  note: >-
+    registered from mixed-sweep-read-03's register block; title, author, the series line
+    "DISSERTATIONES MATHEMATICAE UNIVERSITATIS TARTUENSIS" with number 23, and "TARTU 2000" read from
+    page 1 of the held PDF. Printed p. 3 adds the Faculty of Mathematics, University of Tartu; PhD
+    accepted 26 May 2000; public defence 3 September 2000; opponent Jeremy Gibbons (Oxford University
+    Computing Laboratory). NO ISBN, ISSN or DOI is printed on pages 1-9, so none is recorded. 118 pages;
+    chapters 5 and 6 read at statement grade in that read, chapters 1-4 and 7 unread, bibliography unread
+
+# mixed-sweep row 03 — primitive (co)recursion and course-of-value (co)iteration
+uustalu-vene-1999-primitive-corecursion:
+  type: article
+  title: "Primitive (Co)Recursion and Course-of-Value (Co)Iteration, Categorically"
+  author: ["Uustalu, Tarmo", "Vene, Varmo"]
+  date: 1999
+  parent:
+    type: periodical
+    title: Informatica
+    volume: 10
+    issue: 1
+    page-range: 5-26
+  note: >-
+    registered from mixed-sweep-read-03's register block; title, authorship, affiliations and the journal
+    line "INFORMATICA, 1999, Vol. 10, No. 1, 5-26" read from page 1 of the held PDF, which also prints
+    "(c) 1999 Institute of Mathematics and Informatics, Vilnius" and "Received: December 1998". NO DOI and
+    NO ISSN is printed on page 1, so none is recorded. Read in full (printed pp. 5-26); a Lithuanian
+    abstract is printed on p. 26 and the Estonian Science Foundation grant 2976 is acknowledged on p. 24.
+    The held filename lower-cases "(Co)recursion"/"(Co)iteration" against the printed title; cosmetic
+
+# mixed-sweep row 04 — representations of stream processors using nested fixed points
+hancock-pattinson-ghani-2009-stream-processors:
+  type: article
+  title: Representations of Stream Processors Using Nested Fixed Points
+  author: ["Hancock, Peter", "Pattinson, Dirk", "Ghani, Neil"]
+  date: 2009-09-15
+  serial-number:
+    doi: "10.2168/LMCS-5(3:9)2009"
+    arxiv: "0905.4813"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 5
+    issue: "3:9"
+    page-range: 1-17
+  note: >-
+    registered from mixed-sweep-read-05's register block; title, the three authors IN THIS ORDER,
+    affiliations (Nottingham / Imperial College London / Strathclyde), "Logical Methods in Computer
+    Science, Vol. 5 (3:9) 2009, pp. 1-17", "Submitted Jul. 14, 2008 / Published Sep. 15, 2009", the DOI
+    and the Creative Commons licence all read from page 1 of the held PDF; the LMCS record at
+    lmcs.episciences.org/713 was fetch-verified in the same read. Discrepancy carried rather than resolved
+    silently: that record lists the authors alphabetically as Ghani, Hancock, Pattinson and supplies arXiv
+    0905.4813v2, which is not printed on page 1 -- the page-1 order is used here. 1998 ACM classification
+    68P05, 68N18, 54C35 as printed; Hancock's work supported by EPSRC grant EP/C511964/1 as printed
+
+# mixed-sweep row 05 — generic fibrational induction
+ghani-johann-fumex-2012-generic-induction:
+  type: article
+  title: Generic Fibrational Induction
+  author: ["Ghani, Neil", "Johann, Patricia", "Fumex, Clément"]
+  date: 2012-06-19
+  serial-number:
+    doi: "10.2168/LMCS-8(2:12)2012"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 8
+    issue: "2:12"
+    page-range: 1-27
+  note: >-
+    registered from mixed-sweep-read-04's register block; title, authorship, affiliation, the journal line
+    "Logical Methods in Computer Science, Vol. 8 (2:12) 2012, pp. 1-27", the submitted/published dates
+    (7 January 2011 / 19 June 2012), the DOI and the CC BY-ND licence read from page 1 of the held PDF,
+    which sets title and author line in capitals. Page 1 also prints the starred footnote "This paper is
+    revised and significantly expanded version of [9]", i.e. of the CSL 2010 paper "Fibrational Induction
+    Rules for Initial Algebras", pp. 336-350, which is NOT registered; and "This research is partially
+    supported by EPSRC grant EP/C0608917/1". Distinguish from atkey-johann-ghani-2012-refining, a
+    different LMCS 2012 paper with an overlapping author set
+
+# mixed-sweep row 06 — type theory based on dependent inductive and coinductive types
+basold-geuvers-2016-dependent:
+  type: article
+  title: Type Theory based on Dependent Inductive and Coinductive Types
+  author: ["Basold, Henning", "Geuvers, Herman"]
+  date: 2016
+  serial-number:
+    doi: "10.1145/2933575.2934514"
+    arxiv: "1605.02206"
+  parent:
+    type: proceedings
+    title: Proceedings of the 31st Annual ACM/IEEE Symposium on Logic in Computer Science
+    page-range: 327-336
+  note: >-
+    registered from mixed-sweep-read-02's register block; title, authorship, affiliations, the arXiv
+    identifier, date and category read from page 1 of the held PDF -- NO VENUE IS PRINTED ON PAGE 1. The
+    venue, the page range 327-336 and the ACM DOI were FETCH-VERIFIED 2026-08-02 against the arXiv
+    abstract page (comments field "10 pages as to appear with small changes at LICS 2016 + 5 pages of
+    examples and proofs") and against Crossref for 10.1145/2933575.2934514, whose container title is the
+    one recorded here. The HELD ARTIFACT IS THE 15-PAGE PREPRINT (arXiv v1, submitted 7 May 2016) and its
+    statement numbers may not match the 10-page proceedings text -- check the numbering before citing a
+    statement against the ACM version
+
+# mixed-sweep row 07 — dependent inductive and coinductive types are fibrational dialgebras
+basold-2015-fibrational-dialgebras:
+  type: article
+  title: Dependent Inductive and Coinductive Types are Fibrational Dialgebras
+  author: ["Basold, Henning"]
+  date: 2015
+  serial-number:
+    doi: "10.4204/EPTCS.191.3"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 191
+    page-range: 3-17
+  note: >-
+    registered from mixed-sweep-read-02's register block; every locator field is page-1-read from the
+    held PDF's page-1 footer, "R. Matthes, M. Mio (Eds.): Fixed Points in Computer Science 2015 (FICS
+    2015), EPTCS 191, 2015, pp. 3-17, doi:10.4204/EPTCS.191.3", with the author's affiliations (Radboud
+    University, iCIS, Intelligent Systems; CWI, Amsterdam) and the CC-BY licence on page 1 proper. The
+    editors R. Matthes and M. Mio and the conference name FICS 2015 are carried here rather than in a
+    field because the register has no editor key. read-02's block dates the artifact September 2015; the
+    date field carries the year the footer prints. Cross-checked against Crossref (10.4204/eptcs.191.3)
+    and against row 06's own reference list, which cites it identically. THE HELD ARTIFACT IS THE
+    PUBLISHED VERSION; the PDF's page 1 is journal page 3, so cite journal pages
+
+# mixed-sweep row 08 — the new normal (cut elimination in coinductive calculi)
+komendantskaya-rozplokhas-basold-2020-new-normal:
+  type: article
+  title: "The New Normal: We Cannot Eliminate Cuts in Coinductive Calculi, But We Can Explore Them"
+  author: ["Komendantskaya, Ekaterina", "Rozplokhas, Dmitry", "Basold, Henning"]
+  date: 2020
+  serial-number:
+    doi: "10.1017/S1471068420000423"
+    arxiv: "2008.03714"
+  parent:
+    type: periodical
+    title: Theory and Practice of Logic Programming
+    volume: 20
+    issue: 6
+    page-range: 990-1005
+  note: >-
+    registered from mixed-sweep-read-02's register block; title, authorship, affiliations (Heriot-Watt,
+    JetBrains Research, Leiden), the arXiv identifier and the "Under consideration for publication in
+    Theory and Practice of Logic Programming" header read from page 1 of the held PDF; volume, issue,
+    page range, published DOI and issue date FETCH-VERIFIED 2026-08-02 against Crossref. TWO PAGE-1 TRAPS
+    recorded so a later transcription does not inherit them: (a) the printed line "submitted 1 January
+    2003; revised 1 January 2003; accepted 1 January 2003" is the TPLP class placeholder, NOT real dates;
+    (b) the arXiv comments field says "36th International Conference on Logic Programming (ICLP 2019) ...
+    September 2020", which is internally inconsistent (the 36th ICLP was 2020) -- the venue recorded here
+    follows the Crossref journal record, which places the paper in the ICLP 2020 special issue
+
+# mixed-sweep row 09 — enriching diagrams with algebraic operations
+villoria-basold-laarman-2024-enriching-diagrams:
+  type: article
+  title: Enriching Diagrams with Algebraic Operations
+  author: ["Villoria, Alejandro", "Basold, Henning", "Laarman, Alfons"]
+  date: 2024-01-29
+  serial-number:
+    arxiv: "2310.11288"
+  note: >-
+    registered from mixed-sweep-read-06's register block; title, authorship, the shared Leiden Institute
+    of Advanced Computer Science affiliation, the email domain liacs.leidenuniv.nl and the arXiv stamp
+    (arXiv:2310.11288v3 [cs.LO], 29 January 2024) read from page 1 of the held PDF, 30 pages. The artifact
+    is typeset in Springer LNCS style with the running head "Villoria et al." but prints NO venue, NO
+    proceedings title and NO publisher DOI on page 1: THE VENUE IS UNVERIFIED and must not be inferred
+    from the typesetting -- verify locator before citation-bearing use. Funding as printed in the
+    acknowledgements: European Union Grant Agreement 101080142 (EQUALITY); Estonian Research Council
+    project PRG 946
+
+# mixed-sweep row 10 — separation logic of generic resources via sheafeology
+vanstarkenburg-basold-ford-2025-sheafeology:
+  type: article
+  title: Separation Logic of Generic Resources via Sheafeology
+  author: ["van Starkenburg, Berend", "Basold, Henning", "Ford, Chase"]
+  date: 2025-08-03
+  serial-number:
+    arxiv: "2508.01866"
+  note: >-
+    registered from mixed-sweep-read-06's register block; title, authorship, affiliations (all Leiden
+    University, Leiden Institute of Advanced Computer Science), the author-contact block, CCS concepts
+    (Theory of computation -> Concurrency; Logic and verification; Separation logic; Program
+    verification), the additional key words (separation logic, internal fibration, sheaves, Day
+    convolution) and the arXiv stamp (arXiv:2508.01866v1 [cs.LO], 3 August 2025) read from page 1 of the
+    held PDF, 55 pages. The artifact is typeset in ACM article style but prints NO venue, NO ACM Reference
+    Format block and NO publisher DOI: THE VENUE IS UNVERIFIED -- verify locator before citation-bearing
+    use. Registrar decision, recorded rather than made silently: the surname is set "van Starkenburg,
+    Berend" in the register's surname-first form, while the key elides the tussenvoegsel
+
+# mixed-sweep row 11 — breaking the loop (recursive proofs for coinductive predicates)
+basold-2018-recursive-coinduction:
+  type: article
+  title: "Breaking the Loop: Recursive Proofs for Coinductive Predicates in Fibrations"
+  author: ["Basold, Henning"]
+  date: 2018-02-20
+  serial-number:
+    arxiv: "1802.07143"
+  note: >-
+    registered from mixed-sweep-read-04's register block; title, author, affiliation (CNRS, ENS de Lyon),
+    the date 20 February 2018 and the arXiv stamp (arXiv:1802.07143v1 [cs.LO]) read from page 1 of the
+    held PDF, 25 pages. PAGE 1 CARRIES NO JOURNAL, CONFERENCE OR PUBLISHER LINE, so no venue is recorded.
+    Registrar decision, recorded rather than made silently: page 1 sets the title on two lines and the
+    colon here is the register's rendering of that break. Standing caveat from the read, unverified that
+    session: a later arXiv version and/or a published venue may exist -- verify locator before
+    citation-bearing use, and revisit key and locator before this artifact warrants a landed decision
+
+# mixed-sweep row 12 — induction and coinduction schemes in category theory
+fumex-2012-induction-coinduction-schemes:
+  type: thesis
+  title: Induction and Coinduction Schemes in Category Theory
+  author: ["Fumex, Clément"]
+  date: 2012
+  organization: University of Strathclyde
+  note: >-
+    registered from mixed-sweep-read-03's register block; title, author, degree and institution read from
+    page 1 of the held PDF, which prints "Doctor of Philosophy / University of Strathclyde / 2nd
+    September, 2012". Page 2 records copyright under the UK Copyright Acts as qualified by the
+    University's Regulation 3.50; page 3 records supervisor Patricia Johann, second supervisor Neil Ghani,
+    the MSP group at Glasgow, and examiners Bart Jacobs and Conor McBride. NO DOI, ISBN or thesis number
+    is printed on pages 1-3. Registrar decision, recorded rather than made silently: read-03's block
+    transliterated the forename to "Clement" while stating that the printed source carries an acute accent
+    on the first e; the accented form is used here, matching the register's diacritic-preserving practice
+    and read-04's page-1 reading of the same author's name on row 05. 123 pages; chapter 4 and the opening
+    of chapter 5 read at statement grade, chapters 1-3, 6, 7 and the bibliography unread
+
+# mixed-sweep row 13 — mixed inductive-coinductive reasoning (the thesis)
+basold-2018-mixed:
+  type: thesis
+  title: "Mixed Inductive-Coinductive Reasoning: Types, Programs and Logic"
+  author: ["Basold, Henning"]
+  date: 2018
+  organization: Radboud Universiteit Nijmegen
+  serial-number:
+    isbn: "978-0-244-67206-5"
+  url: http://hdl.handle.net/2066/190323
+  note: >-
+    registered from mixed-sweep-read-01's register block; title, subtitle, authorship, defence date
+    (19 April 2018, 16:30), institution, supervision (promotoren Jan Rutten and Herman Geuvers;
+    copromotor Helle Hvid Hansen), ISBN 978-0-244-67206-5 and the Radboud Repository handle
+    hdl.handle.net/2066/190323 read from pages 1-3 of the held PDF (the publisher's version as hosted by
+    the Radboud Repository); NO DOI is printed anywhere in the front matter; licence CC BY-SA 4.0; typeset
+    with XeLaTeX, printed and published by Lulu; the research was carried out under iCIS, the CWI Formal
+    Methods Group and the research school IPA, supported by NWO grant 612.001.021. THE HANDLE WAS NOT
+    FETCH-VERIFIED and neither was the ISBN -- verify locator before citation-bearing use. Registrar
+    decision, recorded rather than made silently: the title page sets title and subtitle on separate lines
+    and the register joins them with a colon, while the held filename concatenates them without
+    punctuation. 342 PDF pages; printed body paginated to p. 275 with the bibliography following; the
+    printed-page-to-PDF-page offset is +11
+
+# mixed-sweep row 14 — indexed induction and coinduction, fibrationally
+ghani-johann-fumex-2013-indexed-coinduction:
+  type: article
+  title: Indexed Induction and Coinduction, Fibrationally
+  author: ["Ghani, Neil", "Johann, Patricia", "Fumex, Clément"]
+  date: 2013-08-28
+  serial-number:
+    doi: "10.2168/LMCS-9(3:6)2013"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 9
+    issue: "3:6"
+    page-range: 1-31
+  note: >-
+    registered from mixed-sweep-read-04's register block; title, authorship, affiliations (Strathclyde
+    for Ghani and Fumex, Appalachian State for Johann), the journal line "Logical Methods in Computer
+    Science, Vol. 9(3:6)2013, pp. 1-31", the submitted/published dates (25 February 2012 / 28 August
+    2013), the DOI and the CC BY-ND licence read from page 1 of the held PDF, which sets title and author
+    line in capitals. CITATION HAZARD recorded rather than left to a later transcription: p. 3 states this
+    is "a revised and expanded version of the conference paper [4]" with sections 6 and 7 entirely new,
+    and [4] is printed as "C. Fumex, N. Ghani, and P. Johann. Indexed Induction and Coinduction,
+    Fibrationally. Proceedings, Conference on Algebra and Coalgebra on Computer Science, pp. 176-191,
+    2011" -- the CALCO version puts Fumex first and the journal version puts Ghani first, so a key minted
+    from the conference version must not read as this one
+
+# mixed-sweep row 15 — a fibrational theory of first order differential structures
+capucci-cruttwell-ghani-zanasi-2024-fods:
+  type: article
+  title: A Fibrational Theory of First Order Differential Structures
+  author: ["Capucci, Matteo", "Cruttwell, Geoffrey S. H.", "Ghani, Neil", "Zanasi, Fabio"]
+  date: 2024-09-09
+  serial-number:
+    arxiv: "2409.05763"
+  note: >-
+    registered from mixed-sweep-read-06's register block; title, authorship, affiliations (Strathclyde;
+    Mount Allison; Strathclyde; University College London and University of Bologna, OLAS Team INRIA), the
+    keywords (Differentiation, Fibration, Differential Categories, Tangent Categories) and the arXiv stamp
+    (arXiv:2409.05763v1 [math.CT], 9 September 2024) read from page 1 of the held PDF, 34 pages.
+    MANDATORY WARNING carried from the read: page 1 prints a journal line "Mathematical Structures in
+    Computer Science (2023), 1-00" with "doi:10.1017/xxxxx", "© Cambridge University Press 2023" and
+    "(Received xx xxx xxx; revised xx xxx xxx; accepted xx xxx xxx)" -- the DOI, the page range, the dates
+    and the year are ALL UNFILLED TEMPLATE PLACEHOLDERS. The arXiv record for 2409.05763 carried no
+    journal reference when checked in that read. Record ONLY the arXiv identifier; do not record a
+    Cambridge DOI or the year 2023 for this artifact
+
+# mixed-sweep row 16 — higher dimensional trees, algebraically
+ghani-kurz-2007-higher-dimensional-trees:
+  type: article
+  title: Higher Dimensional Trees, Algebraically
+  author: ["Ghani, Neil", "Kurz, Alexander"]
+  date: 2007
+  publisher: Springer
+  serial-number:
+    doi: "10.1007/978-3-540-73859-6_16"
+  parent:
+    type: proceedings
+    title: Algebra and Coalgebra in Computer Science (CALCO 2007)
+    page-range: 226-241
+  note: >-
+    registered from mixed-sweep-read-06's register block, and the provenance is NOT the usual one. The
+    held PDF's page 1 is a SciSpace (formerly Typeset) COVER SHEET, not publisher front matter; the
+    paper's own title page is PDF PAGE 2 and carries the title, both authors, both affiliations
+    (Nottingham; Leicester) and the EPSRC EP/C014014/1 funding footnote ONLY -- no venue, no DOI, no page
+    range, no LNCS volume. Title and authorship are therefore read from the paper's own title page (PDF
+    p. 2); the DOI, the conference name and the date are read from the SciSpace cover sheet (PDF p. 1);
+    and the editors Till Mossakowski, Ugo Montanari and Magne Haveraaen, the publisher, the place (Berlin,
+    Heidelberg) and the page range 226-241 are transcribed from the reference list of the held
+    [@kidney-wu-2025-graph-coinduction], which corroborates the DOI exactly. THE LNCS VOLUME NUMBER
+    appears on neither surface and is deliberately left unrecorded rather than recalled. Known errors in
+    THIS artifact's own reference list, recorded so a later transcription does not inherit them: its ref
+    [9] gives MSCS issue 1 where the publisher record gives issue 2, and its ref [8] gives TCS volume 341
+    with author order Ghani-Abbott-Altenkirch where Crossref gives volume 342 and Abbott-Altenkirch-Ghani
+
+# mixed-sweep row 17 — formalising graph algorithms with coinduction
+kidney-wu-2025-graph-coinduction:
+  type: article
+  title: Formalising Graph Algorithms with Coinduction
+  author: ["Kidney, Donnacha Oisín", "Wu, Nicolas"]
+  date: 2025
+  serial-number:
+    doi: "10.1145/3704892"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 9
+    issue: POPL
+  note: >-
+    registered from mixed-sweep-read-06's register block; every field read from page 1 of the held PDF,
+    whose own ACM Reference Format block prints "Proc. ACM Program. Lang. 9, POPL, Article 56 (January
+    2025), 30 pages" with DOI 10.1145/3704892, ISSN line "ACM 2475-1421/2025/1-ART56", CC BY 4.0 and
+    "© 2025 Copyright held by the owner/author(s)". Authors both Imperial College London. CCS concepts as
+    printed: Theory of computation -> Logic and verification; Proof theory; Type theory; Graph algorithms
+    analysis; Data structures design and analysis. Additional key words: Cubical Agda, Coinduction,
+    Graphs, Algebraic Graphs. Formalisation as printed in section 1:
+    https://github.com/oisdk/formalising-graph-algorithms-with-coinduction. NO PAGE RANGE IS PRINTED --
+    the artifact gives article number 56 and a 30-page extent, and the "56:1-56:30" rendering used by
+    sibling PACMPL entries is a derivation this entry declines to make; the read did verify Lemma 4.1's
+    printed folio 56:17 by reading that page directly
+
+# mixed-sweep row 18 — syntax monads for the working formal metatheorist
+dunn-tannen-zdancewic-2023-syntax-monads:
+  type: article
+  title: Syntax Monads for the Working Formal Metatheorist
+  author: ["Dunn, Lawrence", "Tannen, Val", "Zdancewic, Steve"]
+  date: 2023
+  serial-number:
+    doi: "10.4204/EPTCS.397.7"
+    arxiv: "2312.08897"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 397
+    page-range: 98-117
+  note: >-
+    registered from mixed-sweep-read-07's register block; title, authors, affiliations, editors
+    (S. Staton and C. Vasilakopoulou, for Applied Category Theory 2023), volume, page range and DOI read
+    from page 1 of the held copy, 20 pages, CC BY as printed; the Coq artifact is at
+    https://github.com/dunnl/tealeaves per footnote 1, p. 99. The publisher record was independently
+    confirmed by resolving the EPTCS DOI on 2026-08-02, which redirects to arXiv:2312.08897v1 (submitted
+    14 December 2023) and renders the title identically. HAZARD as reported: the held PDF's metadata Title
+    field reads "Syntax Monads for the Working Metatheorist", omitting "Formal" -- the printed and
+    publisher forms govern. Superseded for most purposes by
+    [@dunn-tannen-zdancewic-2025-structured-monads], which the same authors describe on its page 3 as
+    adding sections 3.2, 3.4, 5.1, 5.2, 5.5 and 6
+
+# mixed-sweep row 19 — formalizing monoidal categories and actions for syntax with binders
+ahrens-matthes-wullaert-2023-formalizing-monoidal:
+  type: article
+  title: Formalizing Monoidal Categories and Actions for Syntax with Binders
+  author: ["Ahrens, Benedikt", "Matthes, Ralph", "Wullaert, Kobe"]
+  date: 2023
+  serial-number:
+    doi: "10.48550/arXiv.2307.16270"
+    arxiv: "2307.16270"
+  parent:
+    type: proceedings
+    title: CoqPL 2023 — The Ninth International Workshop on Coq for Programming Languages
+  note: >-
+    registered from mixed-sweep-read-07's register block; title, authors, affiliations and the arXiv stamp
+    (arXiv:2307.16270v2 [cs.PL], v2 dated 7 October 2023) read from page 1 of the held copy, 3 pages,
+    acmart 2023/03/30 v1.90, WHICH PRINTS NO VENUE. dblp indexes the work only as a CoRR record. The
+    CoqPL 2023 attribution was verified independently on 2026-08-02 against the workshop's own
+    accepted-papers listing at popl23.sigplan.org, which lists it as an accepted talk and gives the
+    workshop's full name, date (21 January 2023) and location (Boston Park Plaza, Boston, Massachusetts,
+    co-located with POPL 2023). The workshop publishes no page numbers and no DOI for it, so the arXiv
+    identifier is the stable locator
+
+# mixed-sweep row 20 — C-system of a module over a Jf-relative monad
+voevodsky-2016-csystem-relative-monad:
+  type: article
+  title: "C-system of a module over a $Jf$-relative monad"
+  author: ["Voevodsky, Vladimir"]
+  date: 2016
+  serial-number:
+    doi: "10.48550/arXiv.1602.00352"
+    arxiv: "1602.00352"
+  note: >-
+    registered from mixed-sweep-read-07's register block; title, sole author, affiliation (School of
+    Mathematics, Institute for Advanced Study, Princeton NJ), the page-1 date line "September 2015", the
+    arXiv stamp (arXiv:1602.00352v1 [math.LO], v1 submitted 1 February 2016) and the MSC 2000 classes
+    18D99 and 18C50 (footnote 1, page 1) read from page 1 of the held copy, 32 pages; subject classes, the
+    arXiv DOI and the relation to arXiv:1407.3394 (of which this is the second paper in a series) were
+    verified against the arXiv abstract page on 2026-08-02. NO VENUE: a dblp title search returned zero
+    hits on the same date, so no journal version is recorded. The arXiv record lists the MSC classes in
+    the order 18C50, 18D99. Registrar decision OWED, not made here: the title is transcribed exactly as
+    the read's block prints it, including the TeX math delimiters around "Jf", which a renderer will print
+    literally; the held file's name lower-cases the J
+
+# mixed-sweep row 21 — substitution for non-wellfounded syntax with binders
+matthes-wullaert-ahrens-2024-nonwellfounded:
+  type: article
+  title: Substitution for Non-Wellfounded Syntax with Binders through Monoidal Categories
+  author: ["Matthes, Ralph", "Wullaert, Kobe", "Ahrens, Benedikt"]
+  date: 2024
+  serial-number:
+    doi: "10.4230/LIPIcs.FSCD.2024.25"
+    isbn: "978-3-95977-323-2"
+    arxiv: "2308.05485"
+  parent:
+    type: proceedings
+    title: 9th International Conference on Formal Structures for Computation and Deduction (FSCD 2024)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    volume: 299
+    page-range: "25:1-25:22"
+  note: >-
+    registered from mixed-sweep-read-07's register block; title, authors, affiliations (IRIT Toulouse;
+    TU Delft; TU Delft and Birmingham), abstract, keywords (Non-wellfounded syntax, Substitution,
+    Monoidal categories, Actegories, Tensorial strength, Proof assistant Coq, UniMath library) and the
+    arXiv stamp (arXiv:2308.05485v3 [cs.PL], v3 dated 7 May 2024) read from page 1 of the held copy;
+    editor Jakob Rehof, conference dates 10-13 July 2024 in Tallinn, ISSN 1868-8969 as recorded in the
+    read. THE VENUE LOCATOR PRINTED IN THE ARTIFACT'S OWN REFERENCE [23] IS WRONG and must not be
+    transcribed: it gives pages 22:1-22:22 and doi:10.4230/LIPIcs.FSCD.2024.22 marked "To appear", and
+    that DOI resolves to Doré, Cavallo and Mörtberg, "Automating Boundary Filling in Cubical Agda",
+    LIPIcs 299, 22:1-22:18. The locator recorded here was verified on 2026-08-02 at the publisher's own
+    record page under 10.4230/LIPIcs.FSCD.2024.25 and cross-checked against dblp. THE HELD COPY IS THE
+    arXiv v3 EXTENDED VERSION, 27 pages, which states at p. 4 that Appendices B and D are absent from the
+    published conference version; the UniMath/Coq HTML documentation derives from commit 7432fee per its
+    Appendix E
+
+# mixed-sweep row 22 — nested inductive types in Lean and Rocq
+lamiaux-forster-sozeau-tabareau-2026-nested:
+  type: article
+  title: "Nested Inductive Types: Justified and Usable Nested Inductive Types in Lean and Rocq"
+  author: ["Lamiaux, Thomas", "Forster, Yannick", "Sozeau, Matthieu", "Tabareau, Nicolas"]
+  date: 2026-06-08
+  serial-number:
+    doi: "10.1145/3808322"
+    hal: "hal-05366368"
+  url: https://hal.science/hal-05366368v2
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 10
+    issue: PLDI
+  note: >-
+    registered from mixed-sweep-read-05's register block; title, subtitle, the four authors in this order
+    and their Nantes Université / Inria affiliations read from the BODY's page 1 (PDF p. 2) of the held
+    HAL deposit, which prints NO journal, volume, issue or year; article number 244 read from the running
+    heads ("244:2" onward); CC BY 4.0 as printed. The HAL cover page (PDF p. 1) prints "2025.
+    ⟨hal-05366368v2⟩", "HAL Id: hal-05366368" and "Preprint submitted on 2 Jun 2026". The published venue,
+    volume/issue, DOI and issue date are FETCH-VERIFIED from Crossref in that read and are consistent with
+    article number 244; THE HAL LANDING PAGE COULD NOT BE FETCHED (Anubis interstitial, "Access Denied"),
+    so HAL's own metadata is UNVERIFIED. The paper's self-citation [29] gives the artifact as Zenodo
+    doi:10.5281/zenodo.19643714 (resolves) with the author order Lamiaux, Sozeau, Tabareau, Forster and
+    the year 2026; the body's author order is used here. Registrar decision, recorded rather than made
+    silently: the date is the Crossref publication date 2026-06-08, not the HAL cover year 2025; both are
+    recorded above so the choice can be revisited
+
+# mixed-sweep row 23 — case study on displayed monoidal categories
+ahrens-matthes-wullaert-2022-displayed-monoidal:
+  type: misc
+  title: Case Study on Displayed Monoidal Categories
+  author: ["Ahrens, Benedikt", "Matthes, Ralph", "Wullaert, Kobe"]
+  date: 2022-06-21
+  url: https://types22.inria.fr/files/2022/06/TYPES_2022_paper_36.pdf
+  parent:
+    type: proceedings
+    title: 28th International Conference on Types for Proofs and Programs (TYPES 2022)
+  note: >-
+    registered from mixed-sweep-read-07's register block; title, authors and affiliations (TU Delft and
+    Birmingham; IRIT Toulouse; TU Delft) read from page 1 of the held copy, 3 pages, easychair.cls-3.4,
+    WHICH PRINTS NO VENUE, NO DATE AND NO IDENTIFIER; the PDF creation timestamp is 18 May 2022. Venue,
+    date (short talk, Tuesday 21 June 2022, Nantes, conference 20-23 June 2022), session and the
+    submission identifier 36 were verified on 2026-08-02 against the TYPES 2022 programme page at
+    types22.inria.fr. THIS IS GREY LITERATURE -- a refereed short-talk abstract with NO publisher record,
+    NO DOI, and no dblp index (title search returned zero hits, 2026-08-02); the durable locator is the
+    conference-hosted PDF recorded above, with slides at
+    https://types22.inria.fr/files/2022/06/TYPES_2022_slides_36.pdf. Formalization "2.1kloc" in UniMath,
+    files under https://github.com/UniMath/UniMath/blob/1580dab0/UniMath/CategoryTheory/Monoidal per its
+    footnote 1
+
+# mixed-sweep row 24 — structured monads for generic first-order syntax metatheory
+dunn-tannen-zdancewic-2025-structured-monads:
+  type: article
+  title: Structured Monads for Generic First-Order Syntax Metatheory
+  author: ["Dunn, Lawrence", "Tannen, Val", "Zdancewic, Steve"]
+  date: 2025
+  serial-number:
+    doi: "10.1007/s10817-025-09731-y"
+  parent:
+    type: periodical
+    title: Journal of Automated Reasoning
+    volume: 69
+    issue: 3
+  note: >-
+    registered from mixed-sweep-read-07's register block; title, authors, the shared affiliation
+    (Computer and Information Science, University of Pennsylvania), the received/accepted/published dates
+    (18 May 2024 / 27 May 2025 / online 11 August 2025), the volume-and-article rendering "(2025) 69:22",
+    the DOI and the keywords (Metatheory, Syntax, Monads, Variable binding, Coq) read from page 1 of the
+    held copy, 41 pages, "© The Author(s) 2025"; volume 69, issue 3 and article number 22 confirmed
+    against dblp on 2026-08-02. NO PAGE RANGE IS PRINTED -- article number 22 and a 41-page extent are
+    what the artifact gives, and no NN:1-NN:MM rendering is derived here. Journal successor of
+    [@dunn-tannen-zdancewic-2023-syntax-monads]; page 3 of the held copy identifies sections 3.2, 3.4,
+    5.1, 5.2, 5.5 and 6 as new, describing itself as "a revised and expanded version of an earlier
+    conference paper [27]". The Coq framework is Tealeaves
+
+# mixed-sweep row 25 — implementing a category-theoretic framework for typed abstract syntax
+ahrens-matthes-mortberg-2022-implementing:
+  type: article
+  title: Implementing a Category-Theoretic Framework for Typed Abstract Syntax
+  author: ["Ahrens, Benedikt", "Matthes, Ralph", "Mörtberg, Anders"]
+  date: 2022
+  serial-number:
+    doi: "10.1145/3497775.3503678"
+    arxiv: "2112.06984"
+  parent:
+    type: proceedings
+    title: "CPP '22: 11th ACM SIGPLAN International Conference on Certified Programs and Proofs"
+    page-range: 307-323
+  note: >-
+    registered from mixed-sweep-read-07's register block; title, authors, affiliations (TU Delft and
+    Birmingham; IRIT Toulouse; Stockholm), abstract, keywords (typed abstract syntax, monad, signature,
+    formalization, computer-checked proof) and the arXiv stamp (arXiv:2112.06984v1 [cs.PL], 13 December
+    2021) read from page 1 of the HELD COPY, WHICH IS THE PREPRINT (17 pages) AND PRINTS NO VENUE. The
+    CPP '22 venue (Philadelphia, 17-18 January 2022, editors Andrei Popescu and Steve Zdancewic), the page
+    range 307-323 and the DOI are attested identically in the reference lists of three independently held
+    artifacts -- [@matthes-wullaert-ahrens-2024-nonwellfounded] ref. [5],
+    [@ahrens-matthes-wullaert-2023-formalizing-monoidal] ref. [2] and
+    [@ahrens-matthes-wullaert-2022-displayed-monoidal] ref. [3] -- and were confirmed against dblp on
+    2026-08-02, which records both the CPP entry and the CoRR entry abs/2112.06984. THE ACM DIGITAL
+    LIBRARY PAGE RETURNED HTTP 403 TO THE READ'S FETCH AND WAS NOT READ. Formalization integrated into
+    UniMath, HTML documentation derived from commit c26d11bef0b4d4c226ca854d8de340d684c2a10a per page 2;
+    funding printed on page 14: Vetenskapsrådet 2019-04545, NSF DMS-1128155 with CMU 1150129-338510, and
+    CoqHoTT ERC 637339
+
+# mixed-sweep row 26 — Mendler dialgebras of mixed variance: ALREADY REGISTERED at
+#                      bibliography.yml:2418-2424. See the EDIT block at the foot of this file.
+
+# mixed-sweep row 27 — wellfounded recursion with copatterns
+abel-pientka-2013-wellfounded-copatterns:
+  type: article
+  title: "Wellfounded Recursion with Copatterns: A Unified Approach to Termination and Productivity"
+  author: ["Abel, Andreas", "Pientka, Brigitte"]
+  date: 2013
+  publisher: ACM Press
+  serial-number:
+    doi: "10.1145/2500365.2500591"
+  parent:
+    type: proceedings
+    title: Proceedings of the Eighteenth ACM SIGPLAN International Conference on Functional Programming
+    page-range: 185-196
+  note: >-
+    registered from mixed-sweep-read-08's register block; page 1 prints the title "Wellfounded Recursion
+    with Copatterns" with the subtitle line "A Unified Approach to Termination and Productivity", and the
+    single-line rendering used here is the customary one, corroborated by row 28's reference list.
+    Authors, affiliations (LMU Munich; McGill), the venue line "ICFP '13, September 25-27, 2013, Boston,
+    MA, USA", the rights line "Copyright is held by the owner/author(s). Publication rights licensed to
+    ACM." and the keywords (Recursion, Coinduction, Pattern matching, Productivity, Strong normalization,
+    Type-based termination) are page-1-read from the held PDF, 12 pages. Pages 185-196 read from the
+    artifact's OWN printed folios (185 on the first page, 196 on the twelfth) and corroborated by row 28's
+    reference list; the full proceedings title recorded here, its editors Greg Morrisett and Tarmo
+    Uustalu, and the publisher ACM Press ALL come from ROW 28'S REFERENCE LIST, not from row 27's own
+    page 1, whose only venue line is the ICFP '13 conference line quoted above. The page-1 ISBN string is
+    "ACM 978-1-4503-2326-0/13/09" -- the ACM price/date suffix makes it unfit for a bare isbn field, so it
+    is recorded here verbatim instead. The extended version named in the artifact's own reference list is
+    a DIFFERENT surface of the same work and gets no register entry unless acquired; do not mix statement
+    numbers across the two
+
+# mixed-sweep row 28 — elaborating dependent (co)pattern matching: ALREADY REGISTERED as
+#                      cockx-abel-2018-copatterns at bibliography.yml:1471; read-08 re-verified every
+#                      field against page 1 and reports "All register fields check". No entry drafted.
+
+# mixed-sweep row 29 — a cofixpoint combinator for mixed recursive-corecursive functions
+limperg-2017-cofixpoint:
+  type: thesis
+  title: A Cofixpoint Combinator for Mixed Recursive-Corecursive Functions
+  author: ["Limperg, Jannis"]
+  date: 2017
+  organization: University of Freiburg
+  note: >-
+    registered from mixed-sweep-read-10's register block; page 1 prints, verbatim, the title, "Jannis
+    Limperg", "University of Freiburg", "Department of Computer Science", "Chair of Programming
+    Languages", "Adviser: Peter Thiemann" and "Submitted 10 May 2017"; 38 pages. NO VENUE and NO DOCUMENT
+    IDENTIFIER is printed anywhere -- no DOI, no arXiv id, no ISBN, no report number -- so this entry
+    deliberately asserts none. Page 38 is an "Erklärung" identifying the work as an "Abschlussarbeit";
+    THE DEGREE LEVEL IS NOT PRINTED IN THE DOCUMENT AND MUST NOT BE SUPPLIED FROM MEMORY. The only durable
+    identifier in the artifact is the companion software DOI in its reference [28], p. 34:
+    10.5281/zenodo.573022 version 0.0.1, which the read verified resolves to the Zenodo software record
+    "JLimperg/well-founded-corecursion: 0.0.1", published 8 May 2017; it identifies a DIFFERENT artifact
+    (the Agda library) and belongs in its own key if the register ever cites the mechanisation directly
+
+# ── The same sweep — acquisitions outside the owner's list ────────────────────
+
+# mixed-sweep acquisition — constructing universes for generic programming
+morris-2007-universes:
+  type: thesis
+  title: Constructing Universes for Generic Programming
+  author: ["Morris, Peter W. J."]
+  date: 2007-11
+  organization: University of Nottingham
+  url: https://ethos.bl.uk/concern/thesis_or_dissertations/519405
+  note: >-
+    registered from mixed-sweep-read-05's register block; title, author as printed ("Peter W. J. Morris,
+    BSc."), awarding institution, degree and the month "November 2007" read from the title page (PDF p. 1)
+    of an ACQUIRED copy, 146 pages, A4, PDF CreationDate 2007-11-07. ACQUISITION PROVENANCE: page-1-read
+    of the Internet Archive capture
+    https://web.archive.org/web/20090902033015if_/http://www.cs.nott.ac.uk/~pwm/thesis.pdf (2009-09-02) of
+    the author's former page, which is dead; rescue copy in the research unprocessed inbox. EThOS
+    identifier uk.bl.ethos.519405 and the 2007 award year are FETCH-VERIFIED from the live EThOS record,
+    which states "EThOS does not have a link to a university copy of this thesis", corroborated by DBLP
+    key phd/ethos/Morris07 (access "closed"). NO Nottingham institutional-repository record was locatable
+    (eprints.nottingham.ac.uk redirects to repository.nottingham.ac.uk which returns 405); NO DOI, NO
+    handle. Registrar decision, recorded rather than made silently: the EThOS identifier is carried in
+    this note per the register's only EThOS precedent ([@dagand-2013-cosmology]); read-05 proposed it as a
+    serial-number sub-key instead. ERRATA in the acquired copy: Figure 6.2 (printed p. 102) duplicates the
+    vs code former and omits vz, and the generic equality on printed p. 103 writes "gEq ay bx" where
+    "gEq ay by" is meant
+
+# mixed-sweep acquisition — exploring the regular tree types
+morris-altenkirch-mcbride-2004-regular-tree-types:
+  type: article
+  title: Exploring the Regular Tree Types
+  author: ["Morris, Peter", "Altenkirch, Thorsten", "McBride, Conor"]
+  date: 2006
+  publisher: Springer
+  serial-number:
+    doi: "10.1007/11617990_16"
+    isbn: "978-3-540-31428-8"
+  parent:
+    type: proceedings
+    title: Types for Proofs and Programs (TYPES 2004)
+    page-range: 252-267
+  note: >-
+    registered from mixed-sweep-read-05's register block; title and the three authors IN THIS ORDER read
+    from page 1 of an ACQUIRED OPEN AUTHOR PREPRINT (16 pp., PDF CreationDate 2006-09-25) that prints the
+    Nottingham affiliation and NO venue, volume, page range or DOI. ACQUISITION PROVENANCE: page-1-read;
+    source URL http://strictlypositive.org/regular.pdf; rescue copy in the research unprocessed inbox; the
+    Springer paywall was not needed. The DOI resolves (200, link.springer.com, paywalled) and Crossref
+    confirms title, author order, container "Lecture Notes in Computer Science / Types for Proofs and
+    Programs", pages 252-267, published-print 2006 and ISBN 978-3-540-31428-8. The publisher field
+    records Springer on that evidence (the DOI resolving at link.springer.com and the Crossref LNCS
+    container), NOT on anything printed on the acquired preprint's page 1. CROSSREF CARRIES NO VOLUME
+    NUMBER: "LNCS 3839" is transcribed from the sweep's dispatch brief, is consistent with that ISBN, and
+    is NOT verified against a printed volume page -- it is therefore recorded only in this note, and the
+    register has no series key in which to place "Lecture Notes in Computer Science". YEAR DISCREPANCY the
+    register must carry: the event is TYPES 2004, the LNCS proceedings imprint is 2006, and secondary
+    sources (including [@dagand-2013-cosmology] printed p. 253) cite it as 2004; the key says 2004 and the
+    date field says 2006
+
+# mixed-sweep acquisition — inductive and coinductive components of corecursive functions
+bertot-komendantskaya-2008-separation:
+  type: article
+  title: Inductive and Coinductive Components of Corecursive Functions in Coq
+  author: ["Bertot, Yves", "Komendantskaya, Ekaterina"]
+  date: 2008
+  serial-number:
+    doi: "10.1016/j.entcs.2008.05.018"
+    arxiv: "0807.1524"
+    hal: "inria-00277075"
+  parent:
+    type: periodical
+    title: Electronic Notes in Theoretical Computer Science
+    volume: 203
+    issue: 5
+    page-range: 25-47
+  note: >-
+    registered from mixed-sweep-read-11's register block; title and both authors read from page 1 of the
+    read artifact, with the affiliation "Project MARELLE, INRIA Sophia Antipolis, France" and the emails
+    yves.bertot@inria.fr and ekaterina.komendantskaya@inria.fr. PAGE 1 PRINTS NO IDENTIFIERS AT ALL --
+    no DOI, no ISSN, no volume, no pagination -- because the held copy is the preprint with the ENTCS
+    macro placeholders unfilled; the string "©2018 Published by Elsevier Science B. V." on page 1 is the
+    unfilled macro default and MUST NOT be read as a date. Every identifier above therefore comes from
+    external registries, each verified in that read: DOI 10.1016/j.entcs.2008.05.018 via Crossref
+    (returning the exact title, both authors, container, volume 203, issue 5, pages 25-47); arXiv
+    0807.1524 via the arXiv API; HAL inria-00277075 via the HAL API (v2, submitted 2008-07-09). Elsevier
+    PII S1571066108003320. Venue CMCS 2008 from the artifact's arXiv comments field, "Dans Coalgebraic
+    Methods in Computer Science (2008)". THE HELD COPY IS THE PREPRINT and its pagination 1-22 differs
+    from the version of record 25-47, so cite journal pages only from the published version. ACQUISITION
+    PROVENANCE: fetched from https://arxiv.org/pdf/0807.1524v1 on 2026-08-02 after the publisher path
+    failed (the DOI redirects to ScienceDirect, which returns HTTP 403 for both the article page and the
+    /pdf endpoint that OpenAlex and Semantic Scholar name as the gold-OA locator) and the HAL copy proved
+    to be behind an Anubis proof-of-work gate; rescue copy in the research unprocessed inbox
+
+# mixed-sweep acquisition — formalising inductive and coinductive containers
+damato-altenkirch-ljungstrom-2025-containers:
+  type: article
+  title: Formalising Inductive and Coinductive Containers
+  author: ["Damato, Stefania", "Altenkirch, Thorsten", "Ljungström, Axel"]
+  date: 2025
+  serial-number:
+    doi: "10.4230/LIPIcs.ITP.2025.17"
+    arxiv: "2409.02603"
+  parent:
+    type: proceedings
+    title: 16th International Conference on Interactive Theorem Proving (ITP 2025)
+    publisher: Schloss Dagstuhl – Leibniz-Zentrum für Informatik
+    volume: 352
+    page-range: "17:1-17:20"
+  note: >-
+    registered from mixed-sweep-read-12's register block; title and the three authors with affiliations
+    (Nottingham; Nottingham; Stockholm) read from page 1 of the held PDF, whose left-margin stamp reads
+    "arXiv:2409.02603v5 [cs.LO] 4 Jul 2025" -- THE ONLY IDENTIFIER PRINTED ON PAGE 1, which carries NO
+    venue block and NO DOI despite the LIPIcs styling. Keywords as printed: type theory, container,
+    initial algebra, terminal coalgebra, Cubical Agda; ACM classification Theory of computation -> Type
+    theory. The venue, editors (Yannick Forster and Chantal Keller), volume, article number and page range
+    were RESOLVED EXTERNALLY on 2026-08-02 against the arXiv abstract listing (comments field "17 pages
+    main text. To appear at ITP 2025"), dblp, and the CSL record served for the DOI. THE HELD VERSION IS
+    v5, the latest of five (v1 2024-09-04 through v5 2025-07-04), 19 pages, and every statement number
+    cited from it in the sweep is v5's. The accompanying Cubical Agda formalisation has its OWN artifact
+    DOI 10.4230/artifacts.24710 -- cite it separately for code-level claims, since what is machine-checked
+    is weaker than the paper's Definition 10 (existence, commutation and uniqueness of the unfold map, but
+    NOT contractibility of the algebra or coalgebra hom-type)
+
+# ── The same sweep — owner-pointed surface ────────────────────────────────────
+
+# mixed-sweep owner-pointed — matching (co)patterns with cyclic proofs (TYPES 2025 abstract)
+grotenhuis-otten-2025-cyclic-copatterns:
+  type: misc
+  title: Matching (Co)patterns with Cyclic Proofs
+  author: ["Grotenhuis, Lide", "Otten, Daniël"]
+  date: 2025
+  url: https://msp.cis.strath.ac.uk/types2025/abstracts/TYPES2025_paper56.pdf
+  parent:
+    type: proceedings
+    title: 31st International Conference on Types for Proofs and Programs (TYPES 2025)
+  note: >-
+    registered from mixed-sweep-read-09's register block (the coordinator's own read); title and
+    authorship read from page 1 of the FETCHED two-page extended abstract and confirmed against the title
+    slide of the owner-supplied deck, with the affiliation University of Amsterdam printed for both
+    authors on abstract page 1. The work is a TYPES 2025 talk with a two-page extended abstract; NO DOI IS
+    PRINTED and the abstract PDF hosted by the conference is the durable locator. Rescue copies of both
+    surfaces are in the research unprocessed inbox. THE DECK IS A PRESENTATION SURFACE OF THE SAME WORK
+    and gets no separate register entry; statements from either surface are triage grade only. HAZARDS
+    reported by that read against the deck's literature slide, recorded so they are not inherited: it
+    dates the copattern-elaboration paper as "Abel, Cocqx 2020" (misspelling Cockx) where the held
+    artifact is the ICFP 2018 version registered as [@cockx-abel-2018-copatterns], and it cites "Afshari,
+    Leigh 2027", an in-press year -- verify that locator before citation-bearing use

@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 20d445d7d744bc205bad5b54c3ec5072d5616e7627d35700c0a8ae963a8489cc
+    b3: 11b91b5efb3fe1ae705c4532c1dfebc7c3e8f6bd8d1c411c5b49e1f9a600a8e1
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
