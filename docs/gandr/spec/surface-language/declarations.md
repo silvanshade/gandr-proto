@@ -67,24 +67,28 @@ data Void {}
 data Nat {
   Zero,
   Succ(n: Nat),
-  op add(m: Nat, n: Nat) -> Nat,        // reserved
+  oper add(m: Nat, n: Nat) -> Nat,      // reserved
   rule add(Zero, n)    ==> n,           // reserved
   rule add(Succ(m), n) ==> Succ(add(m, n)),
 }
 ```
 
+* **A `data` block is the polarity-carrying sugar over a single-sort signature** (the signature unification's ruling 2): the block desugars to the degenerate `sign` normal form — one declared sort named by the block, each constructor an individual `data` member targeting it — and the constructor-block form is sugar for those individual members.
+  The canonical block, the desugaring table, and the sorting discipline the sugar's polarity survives into are [[signatures]].
 * Parameters are type variables in parentheses; recursion needs nothing new — `Tree(a)` inside a field is an ordinary type application.
 * Members are first-token-discriminated by case: uppercase-led **constructors** (nullary or field-tuple) versus lowercase-led reserved members.
 * Declared data is **generative-nominal**: the declaration mints a fresh nominal identity, so two `data Boolean` declarations in different modules are different types; type-level self-reference needs no marker (see [[recursion#Type-level self-reference]]).
 * The reserved members, all parse-and-decline:
-  + `op name(params) -> R` — an **operation** member, with a multi-output tuple result form `-> (o1: A, o2: B)` kept local to it;
+  + `oper name(params) -> R` — an **operation** member, with a multi-output tuple result form `-> (o1: A, o2: B)` kept local to it.
+    The member respelled from `op` under the signature unification (`oper` is the 1-cell member shared with the sign block's judgment form; `op` is the operator-fixity declaration only), and the retired `op` lead still parses so the elaborator declines it with the respelling hint rather than silently accepting a synonym — the same migration device as the retired `~>` below;
   + `rule lhs ==> rhs` — a **directed rewrite** member, the user 2-cell: it elaborates (when its rung lands) to an oriented command cell on the rule's cut seam, never to an unverified equation — the anti-pragma discipline.
     The face former was respelled from `~>` to `==>` by the block-form ruling ([[circuit-cells#The block form, ruled]]), which makes `==>` the rewrite face at every position; `~>` still parses in this slot and the stage-0 elaborator declines it with the respelling, so a stale program is told what to write rather than silently accepted;
   + a **grade prefix** on a field — `Some(1 x: a)` — grade tile restricted to `{ number, ω }`;
   + a **generalized constructor result** — `Cons(x: a, xs: Vec(a)) : Vec(a)`;
   + a **per-symbol attribute slot** — `[ctor, assoc]`.
-* A `meta name: ρ ~>> ρ′` coherence member (a 3-cell, higher-rule form) **does not exist yet** — named here so its absence is visible, per the keyword-ladder lineage (`sort`/`cons`/`oper`/`rule`/`meta`).
-  The whole ladder — the respell, mandatory 2- and 3-cell names, the `meta` boundary language, the reserved `cell` tower, and the `Model(S)` signature-former the members exist to feed — is [[higher-cells]]; the `rule` member above is its dimension-2 rung as landed, and its anonymity is precisely what the respell fixes.
+* A declared **3-cell member** (a coherence between rewrite composites) **does not exist yet** — named here so its absence is visible.
+  Under the ruled arrow grid a 3-cell needs no new member kind or arrow: a `rule` between rule-sorted endpoints _is_ a 3-cell, with dimension read off the endpoints ([[circuit-cells#The block form, ruled]]).
+  The higher-dimensional design — mandatory 2- and 3-cell names, the boundary language for composites, the reserved `cell` tower, and the `Model(S)` signature-former the members exist to feed — is [[higher-cells]]; the `rule` member above is its dimension-2 rung as landed, and its anonymity is precisely what that lane's naming rung fixes.
 
 ## `codata` declarations
 
@@ -97,6 +101,7 @@ codata Iter(a) { next: F(Option(#{item: a, rest: Iter(a)})) }
 codata Fun(a, b) { ap(x: a): b }     // reserved parameterized observation
 ```
 
+* **A `codata` block is the other polarity's sugar over a single-sort signature** (the signature unification's ruling 2): it desugars to the degenerate `sign` normal form with one ν-sort and one `codata` member per observation, reading sort-to-payload — the judgment direction _is_ the polarity ([[signatures#The desugarings]]).
 * `codata` reserves as one whole keyword (never `co` + `data`); `co { … }` stays the lazy-product expression.
 * Members are lowercase-led **observation declarations** `π : ResultType` — the dual of field-tuple constructors (named observation, result type).
 * Reserved member forms: the **parameterized observation** `ap(x: a): b` (functions-as-codata), the **grade-prefixed observation** `1 next: F(Unit)`, and the **`rule` 2-cell member** shared with `data`.

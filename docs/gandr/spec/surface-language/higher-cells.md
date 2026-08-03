@@ -1,8 +1,8 @@
 # Higher cells — named 2-cells, declared 3-cells, and shape signatures
 
-The dimension-named `data`-block members in full, and the derived signature-former they exist to feed.
-A block in shape position **presents a theory**; `Model(S)` is what any interpretation of that theory must supply — the laws as named 2-cells, the coherences between laws as named 3-cells, carried as typed fields rather than as comments.
-The block members and their reserved slots as landed today are [[declarations#data declarations]]; the grammar machinery every form here must clear is [[grammar]]; the carrier-side rulings this surface rests on are the [[../metatheory#Cellular data — descriptions, cells, and computads|metatheory track's cellular-data section]].
+The dimension-named signature members in full, and the derived signature-former they exist to feed.
+A `sign` block **presents a theory**; `Model(S)` is what any interpretation of that theory must supply — the laws as named 2-cells, the coherences between laws as named 3-cells, carried as typed fields rather than as comments.
+The canonical block form and its member spellings are ruled at [[circuit-cells#The block form, ruled]] and the sugar relationship to `data`/`codata` blocks at [[signatures]]; the members and reserved slots as landed today are [[declarations#data declarations]]; the grammar machinery every form here must clear is [[grammar]]; the carrier-side rulings this surface rests on are the [[../metatheory#Cellular data — descriptions, cells, and computads|metatheory track's cellular-data section]].
 
 * Status: **design pass, imported; nothing of this lane built.** The naming and declaration layers spend zero frozen core; `Model(S)` rides the stage-1 dependent era and is designed, not scoped, until then.
   One neighbouring piece is landed and is marked where it appears: the declaration table checks a derived boundary pair against the sphere its declaration fixes ([[#Sphere-typed boundaries]]), for members no surface can yet write.
@@ -14,7 +14,7 @@ The block members and their reserved slots as landed today are [[declarations#da
 
 The customer, stated first because every section below serves it:
 
-* A **shape** is a `data` block read as a presentation: sorts, operations, laws, and coherences between laws.
+* A **shape** is a `sign` block read as a presentation: sorts, operations, laws, and coherences between laws.
 * A **model** is a module ascribed to `Model(S)`: it supplies a carrier, the operations, a proof-relevant witness per law, and a proof-relevant witness per coherence.
 * The pentagon is therefore written **once**, in the shape, and is thereafter an obligation on every interpretation — and, for the free model of a convergent presentation, one the machine discharges from its own completion certificate.
 
@@ -42,21 +42,21 @@ In that slice a 3-cell is never something a user states: it is the machine's wit
   Laws-as-fields at dimension 2 immediately raises the dimension-3 question, what relates the laws, and that is the first place a user-written 3-cell is load-bearing.
 
 **The gap this fills in the sibling library's own encoding.** The internal-univalence library's `Category` record deliberately carries **no** pentagon or triangle field.
-Its coherence-of-laws lives in a generic polygraph filler restricted to generator-free boundaries and discharged by Squier acyclicity — the library's one open hole. gandr's `meta` cells are the complementary move: **per-law, named, asked-for coherence fields** in the shape, with the machine's completion certificates available to _discharge_ them for free models rather than a generic filler assumed for all.
+Its coherence-of-laws lives in a generic polygraph filler restricted to generator-free boundaries and discharged by Squier acyclicity — the library's one open hole. gandr's declared coherence rules are the complementary move: **per-law, named, asked-for coherence fields** in the shape, with the machine's completion certificates available to _discharge_ them for free models rather than a generic filler assumed for all.
 Declared in the signature, derivable for the initial model — that division is the design.
 
 ## The design space, dispositioned
 
 **What a 3-cell declaration is:**
 
-| model                                  | a `meta` is…                                                               | disposition                                                                                                              |
+| model                                  | a declared 3-cell is…                                                      | disposition                                                                                                              |
 | -------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | machine-only certificate (status quo)  | a completion-emitted tracelet                                              | **carried**, unchanged — but no longer the only 3-cell                                                                   |
 | asserted equation between rules        | `rule₁ ≡ rule₂` as a checker axiom                                         | **declined**; reversal condition: a proof-irrelevant reading of identity is adopted, which the identity ban list forbids |
 | declared cell, replay-checked boundary | a named 3-cell whose two faces are rewrite composites, validated by replay | **carried** — the adopted reading; same species as a tracelet, distinct provenance, author-asserted peak                 |
 | auto-adjoined filler                   | a filler between any two parallel composites                               | **declined**; no reversal condition — it entails uniqueness of identity proofs without K (see [[#The filler ban]])       |
 
-**What a `data` block presents when it sits in a signature:**
+**What a `sign` block presents when it sits in shape position:**
 
 | model                          | the record's fields are…                            | disposition                                                                          |
 | ------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -66,60 +66,39 @@ Declared in the signature, derivable for the initial model — that division is 
 
 The block is the single source of truth for both readings, which is the anti-retrofit property: adding a law to the shape simultaneously extends the free model's theory **and** every instance's obligations.
 
-## The keyword ladder
+## The member ladder, aligned to the ruled form
 
-Block members are respelled so every member kind is keyword-led and names its dimension:
+The ruled block form ([[circuit-cells#The block form, ruled]]) already gives every member kind a lowercase lead keyword that names its dimension, in judgment style:
 
 ```text
-data <Name> (params)? {
-  sort <S>(indices)?          -- 0-cell: a sort (shape position)
-  cons <C>(fields)? (: T)?    -- 1-cell: constructor (value generator)
-  oper <f>(params) -> R       -- 1-cell: operation (defined symbol)
-  rule <name>: lhs ~> rhs     -- 2-cell: named directed rewrite
-  meta <name>: ρ ~>> ρ′       -- 3-cell: named coherence between rewrite composites
-  cell …                      -- reserved: dimension ≥ 4 (parse-and-decline)
+sign <Name> {
+  sort <S> : Type              -- 0-cell: a declared sort
+  data <C> : sig               -- 1-cell: constructor (value generator)
+  oper <f> : sig               -- 1-cell: operation (defined symbol)
+  rule <name> : lhs ==> rhs    -- 2-cell: named directed rewrite
+  rule <name> : ρ ==> ρ′       -- 3-cell: the same member kind at rule-sorted endpoints
+  cell …                       -- reserved: the dimension ≥ 4 tower (parse-and-decline)
 }
 ```
 
-* **`cons` prefixes constructors** — `cons Succ(n: Nat)`.
-  The landed parser discriminates constructors from lowercase members _by case_, on the uppercase-led head.
-  The keyword form trades that trick for uniformity: five lowercase lead keywords, first-token-discriminated against each other, with the uppercase-head rule retained as a lint rather than as the parser's discriminator.
-  This is a deliberate ergonomic spend — one more token per constructor — bought back by never needing case conventions to parse, and by making the dimension ladder legible in the source.
-* **`oper` replaces `op`** as the 1-cell member.
-  This dissolves a real as-built wart: today `op` is deliberately _shared_ between the data-member operation and the operator-fixity declaration.
-  After the respell, `op` is fixity-only and `oper` is the 1-cell, and no shared-keyword caveat is needed anywhere.
+This section's earlier draft proposed its own five-keyword respell (`cons` for constructors, a fresh `meta` member for 3-cells, a fresh `~>>` arrow); the ruled form **supersedes that draft**, and the deltas are worth recording because each dissolves a problem the draft had to argue around:
+
+* **`data` is the constructor member's keyword, not `cons`.** The draft's motivation — keyword-led members instead of the parser's uppercase-head case trick — is fully served by the ruled judgment style, without minting a new keyword.
+  The internal description table deliberately does **not** follow this spelling (its field stays `ctors`): mirroring `data` inward would reintroduce exactly the block-versus-member ambiguity the surface's context resolves (gandr-ng9.18 ruling 4's one exception).
+* **`oper` replaced `op`** as the 1-cell member — landed, in both the sign block's judgment form and the data-block sugar's applied form, with the retired `op` lead parse-and-declined by respelling hint; `op` is the operator-fixity declaration only, and no shared-keyword caveat is needed anywhere.
 * **`sort` completes dimension 0**, and it behaves differently in the two block positions.
-  In **shape position** a block may declare several sorts, including indexed ones — `sort Hom(dom: Ob, cod: Ob)` — because a presentation is generally multi-sorted.
-  In **generative position**, where a top-level `data` block is used as a type, the block's own name remains the unique implicit sort exactly as today, and explicit `sort` members are reserved-declined at first.
-* **`rule` and `meta` names are mandatory.** `~>` is unchanged; `~>>` is new.
+  In **shape position** a block may declare several sorts, including indexed ones — `sort Hom(dom: Ob, cod: Ob)` — because a presentation is generally multi-sorted (as landed, `sort` members are recorded into the declared sort set; indexed sorts remain reserved).
+  In **generative position** — a `data`/`codata` block used as a type — the block's own name remains the unique implicit sort, exactly the degenerate desugaring of [[signatures#The desugarings]].
+* **There is no `meta` member and no third arrow.** A 3-cell is a `rule` between rule-sorted endpoints, with dimension read off the endpoints rather than off the glyph — see [[#Declared 3-cells are rules one dimension up]] for how this dissolves the draft's arrow question rather than answering it.
+* **`rule` names are mandatory** in the ruled judgment form (`rule <name> : …`), which is the naming rung this lane owes.
 
-The surface track already names this ladder as its lineage and names `meta` as absent, so the respell graduates a recorded slot rather than inventing one: see [[declarations#data declarations]].
-
-**The migration this implies.** `op` and `rule` members parse today, so the respell is a breaking change to a shipped-if-declined surface.
-The migration is a decline-with-hint, and it is pinned by a pathological corpus example rather than left to a release note:
-
-```text
-data Nat {
-  Zero,
-  Succ(n: Nat),
-  op add(m: Nat, n: Nat) -> Nat,       -- today: parses, declined
-  rule add(Zero, n) ~> n,              -- today: parses, declined; anonymous
-}
-
-data Nat {                             -- after the respell
-  cons Zero,
-  cons Succ(n: Nat),
-  oper add(m: Nat, n: Nat) -> Nat,
-  rule addZero: add(Zero, n) ~> n,     -- named; the name is the migration
-}
-```
-
-The decline a reader meets is on the old form's missing name — "`rule` requires a name; write `rule <name>: …`" — which is cheap but real, and it touches every existing `rule` member.
+**The migration this implies.** The landed data-block `rule` member is still the anonymous `rule lhs ==> rhs`; the ruled judgment form adds the mandatory name.
+The migration is a decline-with-hint on the old form's missing name — "`rule` requires a name; write `rule <name> : …`" — pinned by a pathological corpus example when the naming rung lands, exactly as the `op`-to-`oper` and `~>`-to-`==>` respells were pinned when theirs did.
 
 ## Named 2-cells and the identity discipline
 
 ```text
-rule assoc: comp(comp(f, g), h) ~> comp(f, comp(g, h)),
+rule assoc : comp(comp(f, g), h) ==> comp(f, comp(g, h))
 ```
 
 The name closes a real gap: as-built, rules are **anonymous end to end**.
@@ -127,7 +106,7 @@ The engine's cell faces carry a source span, not a name, and engine cells are id
 
 Names buy four things, in order of force:
 
-* **referability** — a `meta` boundary must cite the 2-cells it composes, and cannot cite an anonymous one;
+* **referability** — a 3-cell rule’s boundary must cite the 2-cells it composes, and cannot cite an anonymous one;
 * **model fields** — `Model(S)` needs a field name per rule, and a signature cannot name a field after a store index;
 * **diagnostics and inspection** — "declined at `assoc`" beats "declined at cell #3";
 * **named loose-arrow generators** on the reflection face, which gives the query surface user vocabulary.
@@ -145,38 +124,33 @@ Mandatory naming also keeps the grammar honest.
 After `rule` the second token is always an identifier and the third is always `:`, so no lookahead is needed to tell a name from an lhs term — the discriminating-tile discipline the landed `def` factoring already uses.
 
 **A consequence for the boundary language, stated because it is easy to get backwards.** A rule's **pattern variables are bound by its lhs**, not by a parameter list on the name.
-`rule assoc: comp(comp(f, g), h) ~> comp(f, comp(g, h))` binds `f`, `g`, `h` by their occurrence in the lhs.
-An instantiation `assoc(x, unit(), y)` inside a `meta` face then supplies terms for those variables **in declaration order**.
+`rule assoc : comp(comp(f, g), h) ==> comp(f, comp(g, h))` binds `f`, `g`, `h` by their occurrence in the lhs.
+An instantiation `assoc(x, unit(), y)` inside a 3-cell face then supplies terms for those variables **in declaration order**.
 The name is not a binder; it is a reference.
 
 **The one member kind this sits in tension with is the one whose declaration carries a telescope.** A circuit rule binds its variables in its **parameter list** — its ports, including the endpoints of rewrite-sorted ones — so its target boundary names variables its source does not bind, and the fresh-right-hand-side-variable rule that reads a rule's variables off its left-hand side refuses the ruled congruence block if it is read as binding there ([[circuit-cells#The derived pair meets the sphere by checking, not by synthesis]]).
 The declaration table therefore does not run that rule against a circuit rule's boundary pair.
 **Whether this claim scopes the rule to left-hand-side binders or admits the telescope as a second binder is owed an owner ruling**; until then it is a claim about one member kind, not a weakening of the discipline stated here.
 
-## Declared 3-cells: the `meta` member
+## Declared 3-cells are rules one dimension up
 
 ```text
-meta triangle: (assoc(f, id(b), g) then comp(f, unitL(g))) ~>> comp(unitR(f), g),
+rule triangle : (assoc(f, id(b), g) then comp(f, unitL(g))) ==> comp(unitR(f), g)
 ```
 
-A `meta` declares a named 3-cell between two **parallel rewrite composites**: both faces must start at the same term and end at the same term, checked at elaboration.
+A declared 3-cell is a named cell between two **parallel rewrite composites**: both faces must start at the same term and end at the same term, checked at elaboration.
+Under the ruled arrow grid it needs **no new member kind and no new arrow**: it is a `rule` whose endpoints are rule-sorted — "dimension is read from the endpoints, never from the arrow" ([[circuit-cells#The block form, ruled]]) — so the member kind this section once minted (`meta`) and the glyph it once argued for (`~>>`) are both superseded, and this document records why the argument's own criteria are what the grid satisfies.
 
-**The keyword.** `meta` is a rule _about_ rules.
-The alternatives and why each was set aside: `cohr` is not a word; `sync`, `glue`, and `weld` each imply a mechanism this cell does not have; `coh` is the right word at the wrong length, and it would collide with the operation name in CaTT-adjacent work, where `coh` is the coherence former itself.
+**The keyword question dissolves.** The earlier draft weighed `meta` against `cohr`, `sync`, `glue`, `weld`, and `coh` (the last colliding with CaTT-adjacent work, where `coh` is the coherence former itself).
+The ruled form needs none of them: a rule _about_ rules is spelled `rule`, and what distinguishes it is its endpoints' sort — the same device that lets a rule binder appear in a rule's parameter list (a cell parameterized by rewrites) with no further vocabulary.
 
-**The arrow is `~>>`.** `~~>` is already the ratified spelling of the directed transformation type `A ~~> B`, so reusing it would overload one token across two unrelated judgments — a type former and a 3-cell face.
-`~>>` is fresh, echoes `~>` one dimension up, and appears only inside `meta` members, so it clashes with none of `~>`, `->`, `~~>`, or `=>`.
-
-It carries one lexing obligation, and it is a **scanner** change, not a grammar one.
-`~>>` must be matched **before** `~>`, or the labeler commits to `~>` and leaves a stray `>`.
-The labeler's multi-byte punctuation table is declared "longest first for maximal munch" and matched first-match-wins (`crates/surface-parser/src/label.rs`, `MULTI_PUNCT`), so the whole change is one entry inserted ahead of `"~>"` in that table.
-The molder cannot repair a wrong choice here — it disambiguates over **labeled** tokens, and a token already lexed as `~>` can never be re-read as `~>>` — so the obligation-minimum discipline of [[grammar#The parsing calculus]] does not apply to this decision.
-
-The spelling stays provisional under the keyword-table posture; **the member kind and its arrow shape are the commitment**, the glyph is not.
+**The arrow question is answered by the draft's own collision analysis, one level up.** The draft's constraints were real: `~~>` is the ratified directed-transformation type former and must not be overloaded across two judgments; a fresh glyph must clash with none of the live arrows; and any tilde-led two-glyph pair (`~>` / `~>>`) carries a maximal-munch scanner obligation (`crates/surface-parser/src/label.rs`, `MULTI_PUNCT`, matched longest-first) that the molder cannot repair after the fact.
+The grid satisfies every one of those constraints with **fewer** tokens rather than a new one: `~>` is retired outright, so no tilde-led rewrite arrow exists at any dimension, `~~>` loses its near-neighbour instead of gaining a second one, the scanner obligation lapses with the pair that created it, and `==>` at every dimension leaves the reader's dimension question to the endpoints and the checker's arrow-kind confirmation — three independent spellings of each fact, per the block-form ruling.
+What the draft protected — that a 3-cell face is never confusable with a type former or a 2-cell face — is thereby carried by structure rather than by glyph inventory, which is the strictly stronger position.
 
 ## The boundary language
 
-`meta` faces need a term language for _composites of named 2-cells_.
+3-cell rule faces need a term language for _composites of named 2-cells_.
 It is deliberately tiny — four constructions, each with an existing engine or prelude realization:
 
 ```text
@@ -204,7 +178,7 @@ A face's interpretation is a fold sending the boundary language into exactly the
 **One active position per application node.** `f(ρ₁, ρ₂)` — two simultaneous rewrite arguments — is **declined**.
 
 * It denotes **horizontal composition**, whose two sequential readings agree only _up to interchange_, and adjudicating that silently is exactly the coherence smuggling this design refuses.
-* Write the two whiskers in sequence instead; the interchange cell, where one is needed, is itself a `meta`.
+* Write the two whiskers in sequence instead; the interchange cell, where one is needed, is itself a declared 3-cell rule.
 * The **principled future semantics already exists and is fenced**: accept exactly on **disjoint positions**, where the two readings are shift-equal, because the certificate algebra's shift-equivalence quotient is earned per pair by a trivial-overlap witness rather than imposed.
   Do not accept it any earlier and do not accept it any wider — the ruling and its reversal condition are [[../metatheory/guards#Horizontal-composition surface sugar]], and the interchange stratification behind it is [[../metatheory#Interchange, by layer]].
 * The trigger that would reopen it is precise: **a construction that makes disjointness structural rather than analytic**, so that "these two redexes are disjoint" is a check the parser performs rather than a proof the reader supplies.
@@ -219,7 +193,7 @@ What is new is surface syntax and author-supplied instantiations.
 * so the boundary language spends no new sort, and its cost falls entirely on the mold checks and size budgets, which are the binding gate.
 
 One collision rides with it, and it is the same kind of finding as the `Step` one below: **`then` is not a reserved keyword today, and it is separately a ratified-but-unlanded identity-family spelling** (composition).
-Using it as an infix inside `meta` faces puts one name on two jobs.
+Using it as an infix inside 3-cell faces puts one name on two jobs.
 It joins the keyword-collision sweep before the boundary language lands.
 
 ## Sphere-typed boundaries
@@ -232,15 +206,15 @@ Boundaries are represented and checked as **globular telescopes**, the sibling l
 ```
 
 A `rule` lives at the sphere `⋆ ▸ lhs ⇴ rhs` over its sort.
-A `meta` lives at `(⋆ ▸ s ⇴ t) ▸ ρ ⇴ ρ′`.
+A 3-cell rule lives at `(⋆ ▸ s ⇴ t) ▸ ρ ⇴ ρ′`.
 
 Two payoffs and one growth seam:
 
-* **Globularity becomes judgmental.** A `meta`'s faces carry their shared endpoints in the type index, so "both composites are parallel" stops being a side condition re-checked downstream.
+* **Globularity becomes judgmental.** A 3-cell rule's faces carry their shared endpoints in the type index, so "both composites are parallel" stops being a side condition re-checked downstream.
   Mis-glued boundaries fail to typecheck at the declaration table — once, at elaboration, with the sphere as the diagnostic.
 * **Model typing becomes one recursion.** Interpret spheres by dimension: `⟦⋆⟧` is the sort's carrier, and `⟦Φ ▸ x ⇴ y⟧ = Path(⟦Φ⟧, ⟦x⟧, ⟦y⟧)`.
   A model's field for a cell at sphere `Φ` is an element of `⟦Φ⟧`, quantified over the cell's variable context.
-  The `meta` clause of `Model(S)` is then **not a special case at all** — it is the `rule` clause one dimension up.
+  The 3-cell clause of `Model(S)` is then **not a special case at all** — it is literally the `rule` clause one dimension up, which the ruled one-member-kind spelling makes plain.
 * **The recursion is dimension-generic.** The reserved tower therefore extends the declaration table and `Model` with no new clause; only surface syntax and the boundary language would have to grow.
 
 **A filler that _computes_ its boundaries is checked against its sphere, never allowed to fill it.** Not every 2-cell member writes its boundary pair: a circuit rule's wiring determines both — the source by replacing every redex with its source, the target by replacing every redex with its target ([[circuit-cells#The derived pair meets the sphere by checking, not by synthesis]]).
@@ -259,9 +233,9 @@ Its clauses, by dimension, with `Γ_c` the cell's variable context:
 | member of `S`                                | field of `Model(S)`                                                             |
 | -------------------------------------------- | ------------------------------------------------------------------------------- |
 | `sort X(Δ)`                                  | `type X : Δ → Type` — an abstract type member; indexed sorts need type families |
-| `cons C(x̄: T̄) : X` / `oper f(x̄: T̄) -> X`     | `val C : U_ω (T̄ → F X)` — an operation of the algebra                           |
-| `rule r: l ~> t` at sort `X`                 | `val r : U_ω (Π Γ_r → F Path(X, ⟦l⟧, ⟦t⟧))`                                     |
-| `meta m: ρ ~>> ρ′` over `r`-faces at `l ⇴ t` | `val m : U_ω (Π Γ_m → F Path(Path(X, ⟦l⟧, ⟦t⟧), ⟦ρ⟧, ⟦ρ′⟧))`                    |
+| `data C : T̄ --> X` / `oper f : T̄ --> X`      | `val C : U_ω (T̄ → F X)` — an operation of the algebra                           |
+| `rule r : l ==> t` at sort `X`               | `val r : U_ω (Π Γ_r → F Path(X, ⟦l⟧, ⟦t⟧))`                                     |
+| `rule m : ρ ==> ρ′` at rule-sorted endpoints | `val m : U_ω (Π Γ_m → F Path(Path(X, ⟦l⟧, ⟦t⟧), ⟦ρ⟧, ⟦ρ′⟧))`                    |
 
 Function fields are computations under thunks because the core is call-by-push-value [@levy-cbpv].
 `⟦ρ⟧` is the boundary language's model reading — a `then`/`cong`/`here` composite of _the rule fields themselves_, definable precisely because rules are named fields.
@@ -275,7 +249,7 @@ Three honest notes on what this costs.
   `Model` therefore currently interprets every rule under the **invertible overlay** — semantically, the invertibility flag of the certificate algebra.
   When the directed family lands ([[../metatheory/directed-univalence]]), an orientation-respecting `Model` variant becomes possible, and it is a genuinely interesting one (lax and directed models).
   It is recorded as growth, not scoped.
-* **The dependent-era gate is real, and shortcutting it is a named dead-end.** Rule and meta fields quantify over their contexts, sort members are type-valued, and meta fields have `Path`-typed endpoints.
+* **The dependent-era gate is real, and shortcutting it is a named dead-end.** Rule fields at both dimensions quantify over their contexts, sort members are type-valued, and 3-cell fields have `Path`-typed endpoints.
   Shipping `Model` early via ad-hoc non-dependent encodings — law fields at closed instances only — would freeze a crippled field shape that instances then depend on.
   The design lands now; the implementation rides the era.
 
@@ -284,19 +258,19 @@ Three honest notes on what this costs.
 **The near-term flagship: the weak monoid.** Single-sorted, so no type families are needed and no indexed sorts appear.
 
 ```text
-data MonoidShape {
-  sort M,
-  oper unit() -> M,
-  oper mul(x: M, y: M) -> M,
+sign MonoidShape {
+  sort M : Type
+  oper unit : () --> M
+  oper mul : (x : M, y : M) --> M
 
-  rule unitL: mul(unit(), x) ~> x,
-  rule unitR: mul(x, unit()) ~> x,
-  rule assoc: mul(mul(x, y), z) ~> mul(x, mul(y, z)),
+  rule unitL : mul(unit(), x) ==> x
+  rule unitR : mul(x, unit()) ==> x
+  rule assoc : mul(mul(x, y), z) ==> mul(x, mul(y, z))
 
-  meta triangle: (assoc(x, unit(), y) then mul(x, unitL(y)))
-             ~>> mul(unitR(x), y),
-  meta pentagon: (assoc(mul(w, x), y, z) then assoc(w, x, mul(y, z)))
-             ~>> (mul(assoc(w, x, y), z) then assoc(w, mul(x, y), z) then mul(w, assoc(x, y, z))),
+  rule triangle : (assoc(x, unit(), y) then mul(x, unitL(y)))
+              ==> mul(unitR(x), y)
+  rule pentagon : (assoc(mul(w, x), y, z) then assoc(w, x, mul(y, z)))
+              ==> (mul(assoc(w, x, y), z) then assoc(w, mul(x, y), z) then mul(w, assoc(x, y, z)))
 }
 ```
 
@@ -323,21 +297,21 @@ An instance is a module: `natAdd : Model(MonoidShape)` supplies `M = Nat`, the o
 **The stage-1 flagship: the weak category.** This adds one indexed sort, which is what pushes it an era out.
 
 ```text
-data CatShape {
-  sort Ob,
-  sort Hom(dom: Ob, cod: Ob),
+sign CatShape {
+  sort Ob : Type
+  sort Hom(dom: Ob, cod: Ob) : Type
 
-  oper id(a: Ob) -> Hom(a, a),
-  oper comp(f: Hom(a, b), g: Hom(b, c)) -> Hom(a, c),
+  oper id : (a : Ob) --> Hom(a, a)
+  oper comp : (f : Hom(a, b), g : Hom(b, c)) --> Hom(a, c)
 
-  rule unitL: comp(id(a), f) ~> f,
-  rule unitR: comp(f, id(b)) ~> f,
-  rule assoc: comp(comp(f, g), h) ~> comp(f, comp(g, h)),
+  rule unitL : comp(id(a), f) ==> f
+  rule unitR : comp(f, id(b)) ==> f
+  rule assoc : comp(comp(f, g), h) ==> comp(f, comp(g, h))
 
-  meta triangle: (assoc(f, id(b), g) then comp(f, unitL(g)))
-             ~>> comp(unitR(f), g),
-  meta pentagon: (assoc(comp(f, g), h, k) then assoc(f, g, comp(h, k)))
-             ~>> (comp(assoc(f, g, h), k) then assoc(f, comp(g, h), k) then comp(f, assoc(g, h, k))),
+  rule triangle : (assoc(f, id(b), g) then comp(f, unitL(g)))
+              ==> comp(unitR(f), g)
+  rule pentagon : (assoc(comp(f, g), h, k) then assoc(f, g, comp(h, k)))
+              ==> (comp(assoc(f, g, h), k) then assoc(f, comp(g, h), k) then comp(f, assoc(g, h, k)))
 }
 ```
 
@@ -357,7 +331,7 @@ The type-class target — program with this like a Haskell class, at Agda-grade 
 
 **Grades and erasure** compose exactly as identity evidence does.
 The expected idiom is coherence cells at grade `0` in runtime-relevant instances: erased by the phase discipline, fully proof-relevant to the theory.
-A dictionary whose `meta` fields are 0-graded costs nothing at runtime; a program that transports along a coherence pays its fuel bill like any certificate replay.
+A dictionary whose coherence fields are 0-graded costs nothing at runtime; a program that transports along a coherence pays its fuel bill like any certificate replay.
 "The cost of coherence is a measured number" extends from univalent transport to type-class law use with no new mechanism.
 
 ## The globular-carrier reading
@@ -399,15 +373,15 @@ No claim is made that `PathGlob` is _constructible_ before the stage-1 era: it n
 
 ## The dimension policy
 
-User syntax stops at `meta`, dimension 3, for reasons of substance rather than budget.
+User syntax stops at dimension 3, for reasons of substance rather than budget.
 
 * **Dimension 3 is where user content becomes load-bearing.** A convergent presentation's coherence is generated by its critical-pair 3-cells: dimension 3 is the homotopy-basis dimension.
   For the classical weak structures, the named 3-cells _are_ the whole basis — pentagon and triangle generate all higher coherence [@maclane-2010-cwm] — so the finite block is not a truncation apology.
-* **Each dimension needs a boundary language one dimension down.** `meta` needed composites of 2-cells.
-  Dimension-4 cells would need composites of 3-cells: whiskering of metas, and interchange among them.
+* **Each dimension needs a boundary language one dimension down.** dimension 3 needed composites of 2-cells.
+  Dimension-4 cells would need composites of 3-cells: whiskering of 3-cells, and interchange among them.
   That is a real language-design bill with no near-term customer.
 * **The tower is reserved, not refused.** A `cell` member production parses and declines with "higher cells reserved", pinned by a pathological corpus example — the same anti-retrofit device already used for `op` and `rule` themselves.
-  The recorded growth theory is the CaTT line [@finster-mimram-2017-catt]: contexts-as-computads with a single dimension-generic coherence former, whose restriction to dimension ≤ 3 with author-asserted boundaries is exactly `rule`/`meta`.
+  The recorded growth theory is the CaTT line [@finster-mimram-2017-catt]: contexts-as-computads with a single dimension-generic coherence former, whose restriction to dimension ≤ 3 with author-asserted boundaries is exactly the rule ladder at dimensions 2 and 3.
 
 **Two fences the tower must respect, stated here because they bound what a later pass may assume.**
 
@@ -426,7 +400,8 @@ A surface design that wants many-in/many-out cells at dimension 1 — the circui
 
 ### Declaration-table extension
 
-The description layer gains four things: a `name` on `CellFace`; a `MetaFace { name, src, tgt }` whose sphere-indexed boundary carries composite terms over named cells; `DataDesc.sorts` for shape blocks; and `DataDesc.metas` beside the existing `cells`.
+The description layer gains three things beyond what the signature unification already landed: a `name` on `RuleFace`; a sphere-indexed 3-cell member whose boundary carries composite terms over named cells (the same `rules` slot one dimension up, per the ruled one-member-kind reading — no separate 3-cell list is minted); and the shape-position reading of the declared sort set.
+The sort set itself (`SignDesc.sorts`) landed with the unification's sort index, so what remains here is its shape-position semantics, not its representation.
 
 This **extends the levitation anti-retrofit checklist**.
 Its "2-cell faces" item generalizes to _faces at every dimension_, and the description-universe gap it flags now explicitly includes 3-cell faces and the composite language.
@@ -434,7 +409,7 @@ Same honesty as then: the description shape leaves room, and the typed-descripti
 
 ### Boundary checking by replay
 
-A `meta`'s two faces elaborate to engine rewrite paths.
+A 3-cell rule's two faces elaborate to engine rewrite paths.
 Elaboration checks three things, in order:
 
 1. each rule instantiation **matches** its named cell's pattern, by the engine's one-sided matcher;
@@ -445,7 +420,7 @@ The as-built home for this is direct.
 Populate a tracelet with author-supplied paths and an **asserted** peak, then validate by the existing replay check.
 Today every peak is derived by overlap enumeration, so **author-asserted boundaries are the one genuinely new engine behaviour** this lane introduces.
 Boundary checking is replay, never a trusted assertion.
-Directed composition through a `meta` face inherits the acyclicity gate unchanged, declining with the cycle as the diagnostic.
+Directed composition through a 3-cell face inherits the acyclicity gate unchanged, declining with the cycle as the diagnostic.
 
 **A wiring residual becomes load-bearing.** As-built, surface `rule` members are captured into the description table but **never reach the completion engine**: the surface engine does not depend on that crate, and the face-to-cell elaboration is library-complete with no pipeline caller.
 Replay checking _requires_ that wire.
@@ -453,11 +428,11 @@ Landing it is this lane's first implementation obligation, and it is independent
 
 ### Discharge by completion
 
-User metas and machine tracelets are both 3-cells; **provenance separates them**, one dimension up from the existing cell-provenance discipline.
+User coherence rules and machine tracelets are both 3-cells; **provenance separates them**, one dimension up from the existing cell-provenance discipline.
 They interact in one valuable direction:
 
 * for the **generative** reading of a convergent block, completion _derives_ confluence 3-cells;
-* so a declared `meta` whose boundary the completion certificate already fills is **discharged** — the free model's field is supplied by the machine, and the user wrote the pentagon once, in the shape, for every other model.
+* so a declared coherence rule whose boundary the completion certificate already fills is **discharged** — the free model's field is supplied by the machine, and the user wrote the pentagon once, in the shape, for every other model.
 
 This is the Squier-degenerate slice showing up exactly where it was promised: for free models of convergent presentations, coherence computes — now with a user-visible field it computes _into_.
 
@@ -471,7 +446,7 @@ The sibling library demonstrates, in a compile-only module, that adjoining a fil
 
 > **The machine never adjoins a 3-cell the user did not declare or completion did not certify.**
 
-`meta` cells are hypotheses of the shape — fields a model must fill — or certificates of the engine, replay-validated.
+Declared coherence rules are hypotheses of the shape — fields a model must fill — or certificates of the engine, replay-validated.
 They are never ambient truncation.
 
 This is the identity ban list extended one dimension.
@@ -480,27 +455,27 @@ This is the identity ban list extended one dimension.
 The corpus pins this with a pathological example — a surface attempt to _request_ an ambient filler between two parallel composites, which declines:
 
 ```text
-data MonoidShape {
-  sort M,
-  oper unit() -> M,
-  oper mul(x: M, y: M) -> M,
-  rule unitL: mul(unit(), x) ~> x,
-  rule assoc: mul(mul(x, y), z) ~> mul(x, mul(y, z)),
+sign MonoidShape {
+  sort M : Type
+  oper unit : () --> M
+  oper mul : (x : M, y : M) --> M
+  rule unitL : mul(unit(), x) ==> x
+  rule assoc : mul(mul(x, y), z) ==> mul(x, mul(y, z))
 
-  meta anyFiller: _ ~>> _,       -- declined: a `meta` states its two faces.
+  rule anyFiller : _ ==> _       -- declined: a 3-cell rule states its two faces.
                                  -- "fill whatever is parallel here" is the
                                  -- blanket filler, and it entails UIP without K.
 }
 ```
 
-The contrast with a legal `meta` is the whole discipline in one line: `meta triangle: (assoc(…) then …) ~>> …` **names both composites**, so the machine replays a boundary the author asserted; `meta anyFiller: _ ~>> _` asks the machine to invent one.
+The contrast with a legal 3-cell rule is the whole discipline in one line: `rule triangle : (assoc(…) then …) ==> …` **names both composites**, so the machine replays a boundary the author asserted; `rule anyFiller : _ ==> _` asks the machine to invent one.
 
 ### The reflection face
 
 Named cells enrich the reflection face without changing its theory.
 
 * Named rules become **named loose-arrow generators**, so the query surface gains user vocabulary.
-* Declared metas enter as proterms beside the certificate-embedded engine derivations already there, with the invertible-certificate surface unchanged.
+* Declared coherence rules enter as proterms beside the certificate-embedded engine derivations already there, with the invertible-certificate surface unchanged.
 * Names carry **no** semantic payload on the face: variance and linearity metadata stay derived, and replay-equivalence stays the identity.
 
 One direction is recorded for the reflected layer, noted rather than scoped.
@@ -509,26 +484,25 @@ The 2-dimensional fragment separately has a theorem-backed home as a **cartesian
 
 ## As-built impact
 
-Verified against this tree at the time of writing, symbol by symbol.
-The design record's map was stated against an earlier commit; re-checked here, **every row of it holds**, and the rows below add what it did not carry rather than correcting it.
+Verified against this tree at the time of writing, symbol by symbol, and **re-verified after the signature unification landed** (the sort index, the vocabulary rename, the ruled inspection notation, and the `oper` respell) — several rows below record work that lane completed rather than work this one still owes.
 
-| component                                          | as built today                                                                                                                                                                                                                                                                                                                 | change this lane needs                                                                                                                                   |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `surface-grammar` (`src/surface/term.rs`)          | `data_member()` offers three alternatives: an uppercase-led constructor, `op name(params) -> R?`, and `rule <expr> ~> <expr>` with **no name slot**; `codata_member()` carries the same `rule` alternative; `op` is shared with the fixity declaration                                                                         | `oper`/`cons`/`sort` tiles, a mandatory `rule` name plus `:`, a new `meta` member, a reserved `cell` member; fixity `op` untouched                       |
-| `surface-parser` (`src/mold.rs`, `src/label.rs`)   | `KEYWORDS` contains `op`, `rule`, `data`, `codata`, and **none** of `sort`, `cons`, `oper`, `meta`, `cell`; `MULTI_PUNCT` carries `~>` and is matched longest-first                                                                                                                                                            | **five** new keywords in `KEYWORDS` (`cell` included — H1 must lex it to decline it); `~>>` inserted ahead of `~>` in `MULTI_PUNCT`                      |
-| `surface-engine` (`src/desc_elab.rs`)              | `rule` members already elaborate: the dispatch builds a face from lhs, rhs, derived variable metadata, and a span, and pushes it onto the description's cell list                                                                                                                                                              | capture names; elaborate `meta` faces from the composite language; handle `sort` members                                                                 |
-| `surface-engine` ↔ `theory-computads`              | **no dependency exists**; the face-to-cell elaboration is exported and library-complete with **no pipeline caller**                                                                                                                                                                                                            | **the load-bearing wire**                                                                                                                                |
-| `theory-levitation` (`src/cell.rs`, `src/desc.rs`) | `DataDesc { id, params, ctors, ops, cells, circuits, polarity, attrs }` _is_ the declaration table; `CellFace { lhs, rhs, vars, provenance }` carries a **source span, not a name**; `circuits` carries the derived-boundary members, whose computed pair `check_desc` compares against the declared sphere (`src/circuit.rs`) | `CellFace.name`; a `MetaFace { name, src, tgt }` with sphere-indexed boundary; `DataDesc.sorts` and `DataDesc.metas`                                     |
-| `theory-computads`                                 | `Tracelet { overlap, path_a, path_b, joins_at }` with `Tracelet::replay`; a content-addressed `CellStore` with `CellProvenance`; two-mode composition with the acyclicity gate, declining with the cycle as diagnostic; budgeted completion in `completion.rs`, peaks derived by overlap enumeration                           | a name registry beside `CellStore`; author-populated tracelets validated by the existing replay; a `SurfaceMeta` provenance beside `DerivedByCompletion` |
-| `core-checker`                                     | `ValueType::Path` with both endpoints, `Value::Here`, and `Comp::Walk { scrut, motive, base }` are all present; `CompType::Arrow` is **non-dependent**; `ValueType::Universe` is carried with **no formation rule** in `checker.rs`; `subtype.rs` states stage 1 has **no unification variables**                              | **nothing** at the naming and declaration rungs; the stage-1 era later supplies Π, universe formation, and compound `Path` endpoints                     |
-| modules lowering                                   | modules lower to record values with signature ascription; members are `def`-only over flat registries                                                                                                                                                                                                                          | later rungs: type members in signatures, local `data` in module bodies, `Model(S)` as a σ-former, `implicit module`                                      |
+| component                                          | as built today                                                                                                                                                                                                                                                                                                                                        | change this lane needs                                                                                                                                   |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `surface-grammar` (`src/surface/term.rs`)          | `data_member()` offers an uppercase-led constructor, `oper name(params) -> R?` (with the retired `op` lead parse-and-declined), and `rule <expr> ==> <expr>` with **no name slot** (the retired `~>` parse-and-declined); `codata_member()` carries the same `rule` alternative; the `sign` block parses `sort`/`data`/`oper`/`rule` judgment members | a mandatory `rule` name plus `:` in the data-block sugar, and a reserved `cell` member                                                                   |
+| `surface-parser` (`src/mold.rs`, `src/label.rs`)   | `KEYWORDS` contains `op`, `oper`, `rule`, `data`, `codata`, and `sign`; `sort`/`node`/`feed` are deliberately contextual; `cell` is **not** reserved; `MULTI_PUNCT` carries the arrow grid (`-->`, `<->`, `==>`, `<=>`) longest-first, with `~>` still lexed so its decline can name the respelling                                                   | the `cell` keyword (H1 must lex it to decline it)                                                                                                        |
+| `surface-engine` (`src/desc_elab.rs`)              | `rule` members elaborate: the dispatch builds a face from lhs, rhs, derived variable metadata, and a span, and pushes it onto the description's rule list; the retired `op` and `~>` spellings decline with their respellings                                                                                                                         | capture names; elaborate 3-cell faces from the composite language                                                                                        |
+| `surface-engine` ↔ `theory-computads`              | **the wire exists**: `desc_cells.rs` drives `elaborate_data_desc` for every description, and the cell layer's declines surface as located diagnostics                                                                                                                                                                                                 | author-asserted boundaries through the same wire                                                                                                         |
+| `theory-levitation` (`src/rule.rs`, `src/desc.rs`) | `SignDesc { id, sorts, params, ctors, opers, rules, circuits, polarity, attrs }` _is_ the declaration table, sort-indexed; `RuleFace { lhs, rhs, vars, provenance }` carries a **source span, not a name**; `circuits` carries the derived-boundary members, whose computed pair `check_desc` compares against the declared sphere (`src/circuit.rs`) | `RuleFace.name`; the sphere-indexed 3-cell boundary                                                                                                      |
+| `theory-computads`                                 | `Tracelet { overlap, path_a, path_b, joins_at }` with `Tracelet::replay`; a content-addressed `CellStore` with `CellProvenance`; two-mode composition with the acyclicity gate, declining with the cycle as diagnostic; budgeted completion in `completion.rs`, peaks derived by overlap enumeration                                                  | a name registry beside `CellStore`; author-populated tracelets validated by the existing replay; a `SurfaceMeta` provenance beside `DerivedByCompletion` |
+| `core-checker`                                     | `ValueType::Path` with both endpoints, `Value::Here`, and `Comp::Walk { scrut, motive, base }` are all present; `CompType::Arrow` is **non-dependent**; `ValueType::Universe` is carried with **no formation rule** in `checker.rs`; `subtype.rs` states stage 1 has **no unification variables**                                                     | **nothing** at the naming and declaration rungs; the stage-1 era later supplies Π, universe formation, and compound `Path` endpoints                     |
+| modules lowering                                   | modules lower to record values with signature ascription; members are `def`-only over flat registries                                                                                                                                                                                                                                                 | later rungs: type members in signatures, local `data` in module bodies, `Model(S)` as a σ-former, `implicit module`                                      |
 
-**The H2 rung's hardest-looking half already has a landed bridge, unwired.** `theory-levitation` carries `decode_desc` (descriptions to core types) and `SignatureContext`/`TypedCellFace` (a 2-cell's variable context decoded to core `ValueType`s), all library-complete with **zero callers outside the crate**.
-`Model`'s `rule` clause is close to literally `TypedCellFace` plus `ValueType::Path` — so the dependent-era gate is on Π and universe formation, not on the description-to-core decoding, which exists.
+**The H2 rung's hardest-looking half already has a landed bridge, unwired.** `theory-levitation` carries `decode_desc` (descriptions to core types) and `PatternContext`/`TypedRuleFace` (a 2-cell's variable context decoded to core `ValueType`s), all library-complete with **zero callers outside the crate**.
+`Model`'s `rule` clause is close to literally `TypedRuleFace` plus `ValueType::Path` — so the dependent-era gate is on Π and universe formation, not on the description-to-core decoding, which exists.
 
 Three further as-built facts the design record did not carry:
 
-* **`codata` blocks also parse `rule` members.** The respelled ladder and the `meta` member must state their behaviour in codata position, or decline there explicitly.
+* **`codata` blocks also parse `rule` members.** The aligned ladder and the 3-cell member must state their behaviour in codata position, or decline there explicitly.
   This document declines to guess and records it as an open question below.
 * **Reserving `cell` is a source break** of exactly the kind `rec` was — an accepted, intended one, but it belongs in the migration story beside the anonymous-`rule` decline, not discovered at landing.
 * **`Step` is taken by the abstract machine.** It is the successor-state outcome of the small-step driver (`machine.rs`).
@@ -537,14 +511,14 @@ Three further as-built facts the design record did not carry:
 
 ## Staging
 
-| rung   | content                                                                                                                                              | gate                                                                                                     |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **H0** | respelled keyword ladder; mandatory rule names; declaration-table names. Zero frozen core.                                                           | grammar budgets and the mold checks                                                                      |
-| **H1** | `meta` members: boundary language, sphere-typed declaration table, replay validation; the computads wire; the reserved `cell` pin. Zero frozen core. | H0, and the wire                                                                                         |
-| **H2** | `Model(S)` for single-sorted shapes — the monoid flagship; rule and meta fields as `Path` and iterated `Path`                                        | the stage-1 dependent era: Π, universe formation, compound `Path` endpoints, plus context decoding wired |
-| **H3** | indexed sorts and type families; the category flagship; local `data` in modules; module type members                                                 | H2 and the modules lane                                                                                  |
-| **H4** | `implicit module` instances; type-class ergonomics                                                                                                   | the modules implicit lane                                                                                |
-| **H∞** | reserved: the `cell` tower, `Model∞` over globular carriers, `PathGlob`, directed models                                                             | owner-sequenced; each an addition by construction                                                        |
+| rung   | content                                                                                                                                                       | gate                                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **H0** | mandatory rule names; declaration-table names (the member-ladder alignment itself landed with the signature unification). Zero frozen core.                   | grammar budgets and the mold checks                                                                      |
+| **H1** | 3-cell rule members: boundary language, sphere-typed declaration table, replay validation through the landed wire; the reserved `cell` pin. Zero frozen core. | H0                                                                                                       |
+| **H2** | `Model(S)` for single-sorted shapes — the monoid flagship; rule fields at both dimensions as `Path` and iterated `Path`                                       | the stage-1 dependent era: Π, universe formation, compound `Path` endpoints, plus context decoding wired |
+| **H3** | indexed sorts and type families; the category flagship; local `data` in modules; module type members                                                          | H2 and the modules lane                                                                                  |
+| **H4** | `implicit module` instances; type-class ergonomics                                                                                                            | the modules implicit lane                                                                                |
+| **H∞** | reserved: the `cell` tower, `Model∞` over globular carriers, `PathGlob`, directed models                                                                      | owner-sequenced; each an addition by construction                                                        |
 
 Every rung is an addition over the previous — names over anonymous cells, declared 3-cells over machine 3-cells, interpretation over declaration, general carriers over the identity carrier.
 
@@ -554,13 +528,13 @@ That half is designed now and staged behind the stage-1 bill, exactly as identit
 
 ## The corpus witness plan
 
-**Model examples**, literate: a monoid shape with every dimension named; an explicit `Model(MonoidShape)` instance at H2; a generative convergent block whose declared `meta` completion discharges; a `meta` citing rules by name, where the diagnostics show the names.
+**Model examples**, literate: a monoid shape with every dimension named; an explicit `Model(MonoidShape)` instance at H2; a generative convergent block whose declared coherence rule completion discharges; a 3-cell rule citing 2-cells by name, where the diagnostics show the names.
 
 **Pathological pins**, one per guarded degeneracy:
 
 | witness                                                | what it pins                                                                |
 | ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| non-parallel `meta` faces                              | the sphere diagnostic is the golden                                         |
+| non-parallel 3-cell faces                              | the sphere diagnostic is the golden                                         |
 | parallel but non-replaying composite                   | rejection at replay, not at assertion                                       |
 | an unnamed `rule`                                      | the migration decline, with a rename hint                                   |
 | duplicate rule **name**                                | the name discipline                                                         |
@@ -575,19 +549,19 @@ The last two are the corpus witnesses this lane owes the binding-guards inventor
 
 The design record left eight; verifying it against the tree raised two more.
 
-| #   | question                                                                                                                                                            | disposition                                                                                                                                                                                                                                                                                                                          |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | should a replay-equivalent but _structurally distinct_ face under a second name be declined, warned, or allowed?                                                    | **carried.** The structural case is settled — declined; this residual is the name-versus-content boundary, cheapest settled before the declaration table hardens                                                                                                                                                                     |
-| 2   | the `~>>` spelling; `~=>` and `==>` carry different collision profiles                                                                                              | **carried as provisional** under the keyword-table posture: the member kind and its arrow shape are the commitment, the glyph is not                                                                                                                                                                                                 |
-| 3   | `sort` members in generative blocks — does the implicit-sort rule survive multi-sorted generative data?                                                             | **declined at first**, with the reversal condition that multi-sorted generative data gets its own design pass. Named as a scoped asymmetry that must not silently widen                                                                                                                                                              |
-| 4   | directed models — does `Model` gain an orientation-aware mode, and what replaces `cong` there, given whiskering without inversion?                                  | **parked** on the directed family ([[../metatheory/directed-univalence]]); the design records the seam, not the answer                                                                                                                                                                                                               |
-| 5   | shape identity — does a shape block mint a nominal id, or is a shape purely structural description data?                                                            | **carried.** It couples to content-addressing; the nominal reading is what an implicit-resolution key would want                                                                                                                                                                                                                     |
-| 6   | horizontal-composition sugar — accept `f(ρ₁, ρ₂)` once an interchange discipline is fixed, or decline permanently?                                                  | **declined with its reversal condition already recorded** in [[../metatheory/guards#Horizontal-composition surface sugar]]: acceptance is licensed exactly on disjoint positions. The trigger is a construction making disjointness structural rather than analytic; this question and that construction's design must move together |
-| 7   | instance coherence beyond canonicity — is anything owed for _definitional_ coherence between instances met through different paths?                                 | **carried, and honestly fenced**: per-world canonicity avoids the global-uniqueness question rather than answering it                                                                                                                                                                                                                |
-| 8   | the `Model` spelling — `Model`, `Alg`, or a postfix form                                                                                                            | **parked** with the keyword table                                                                                                                                                                                                                                                                                                    |
-| 9   | _(raised by verification)_ what do the respelled ladder and the `meta` member mean in **codata** position, given that `codata` blocks already parse `rule` members? | **carried, and newly visible.** The design record did not consider codata blocks; declining there is a legitimate answer but must be a decision, not an omission                                                                                                                                                                     |
-| 10  | _(raised by verification)_ `Step` as a directed-family former name collides with the abstract machine's successor-state outcome                                     | **carried**; a rename decision is owed before a third `Step` appears, on the same footing as the existing two-`Rigid` collision. Note it is **not** a collision with the identity family's reserved `Step` spelling — a directed former of that name cashes the reservation rather than clashing with it                             |
-| 11  | _(raised by verification)_ `then` is used as the boundary language's infix **and** is a ratified identity-family spelling, and is reserved as neither               | **carried**, into the keyword-collision sweep, before the boundary language lands                                                                                                                                                                                                                                                    |
+| #   | question                                                                                                                                                          | disposition                                                                                                                                                                                                                                                                                                                          |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | should a replay-equivalent but _structurally distinct_ face under a second name be declined, warned, or allowed?                                                  | **carried.** The structural case is settled — declined; this residual is the name-versus-content boundary, cheapest settled before the declaration table hardens                                                                                                                                                                     |
+| 2   | the `~>>` spelling; `~=>` and `==>` carry different collision profiles                                                                                            | **retired, superseded by the arrow grid**: `==>` is the rewrite face at every dimension with dimension read off the endpoints, so no 3-cell glyph exists to choose — the collision analysis that motivated this question is re-derived against the grid at [[#Declared 3-cells are rules one dimension up]]                          |
+| 3   | `sort` members in generative blocks — does the implicit-sort rule survive multi-sorted generative data?                                                           | **declined at first**, with the reversal condition that multi-sorted generative data gets its own design pass. Named as a scoped asymmetry that must not silently widen                                                                                                                                                              |
+| 4   | directed models — does `Model` gain an orientation-aware mode, and what replaces `cong` there, given whiskering without inversion?                                | **parked** on the directed family ([[../metatheory/directed-univalence]]); the design records the seam, not the answer                                                                                                                                                                                                               |
+| 5   | shape identity — does a shape block mint a nominal id, or is a shape purely structural description data?                                                          | **carried.** It couples to content-addressing; the nominal reading is what an implicit-resolution key would want                                                                                                                                                                                                                     |
+| 6   | horizontal-composition sugar — accept `f(ρ₁, ρ₂)` once an interchange discipline is fixed, or decline permanently?                                                | **declined with its reversal condition already recorded** in [[../metatheory/guards#Horizontal-composition surface sugar]]: acceptance is licensed exactly on disjoint positions. The trigger is a construction making disjointness structural rather than analytic; this question and that construction's design must move together |
+| 7   | instance coherence beyond canonicity — is anything owed for _definitional_ coherence between instances met through different paths?                               | **carried, and honestly fenced**: per-world canonicity avoids the global-uniqueness question rather than answering it                                                                                                                                                                                                                |
+| 8   | the `Model` spelling — `Model`, `Alg`, or a postfix form                                                                                                          | **parked** with the keyword table                                                                                                                                                                                                                                                                                                    |
+| 9   | _(raised by verification)_ what do the aligned ladder and the 3-cell member mean in **codata** position, given that `codata` blocks already parse `rule` members? | **carried, and newly visible.** The design record did not consider codata blocks; declining there is a legitimate answer but must be a decision, not an omission                                                                                                                                                                     |
+| 10  | _(raised by verification)_ `Step` as a directed-family former name collides with the abstract machine's successor-state outcome                                   | **carried**; a rename decision is owed before a third `Step` appears, on the same footing as the existing two-`Rigid` collision. Note it is **not** a collision with the identity family's reserved `Step` spelling — a directed former of that name cashes the reservation rather than clashing with it                             |
+| 11  | _(raised by verification)_ `then` is used as the boundary language's infix **and** is a ratified identity-family spelling, and is reserved as neither             | **carried**, into the keyword-collision sweep, before the boundary language lands                                                                                                                                                                                                                                                    |
 
 Five items the design record raised in passing, dispositioned so none vanishes:
 
@@ -610,5 +584,7 @@ Five items the design record raised in passing, dispositioned so none vanishes:
 * This document was adversarially reviewed against the record on both axes before landing.
   That pass found three real defects, all fixed here: a lexing claim contradicted by `label.rs` (`~>>` is a maximal-munch scanner entry, exactly as the record said, not an obligation-ordering matter); a dropped grammar-budget analysis; and a dropped as-built bridge (`decode_desc`/`TypedCellFace`) that is the most actionable architecture fact in the record.
   It also caught two "corrections" this document had attributed to the record which the record never claimed — the source of those was an intermediate summary, and the misattribution is withdrawn above.
+* **This document was aligned to the ruled block form under the signature unification** (gandr-ng9.18 ruling 6): the member ladder now cites [[circuit-cells#The block form, ruled]] rather than proposing its own respell, the superseded `cons`/`meta`/`~>>` draft is recorded with its supersession rationale rather than deleted, the 3-cell-arrow argument is re-derived against the arrow grid rather than mechanically respelled, and the as-built table was re-verified against the post-unification tree.
+  The `Model(S)` clauses, the boundary language, the sphere discipline, the filler ban, and the dimension policy are carried unchanged in substance — the alignment moved spellings and their justifications, never the semantics.
 * The sibling library's filler demonstration, sphere device, and record-tower precedent are absorbed as design shape under the standing no-vendoring gate.
-  The division of labour between its generic filler and gandr's named metas is a live conversation, not a settled comparison.
+  The division of labour between its generic filler and gandr's named coherence rules is a live conversation, not a settled comparison.
