@@ -7,7 +7,7 @@
 //! Every translator here maps real [`gandr_theory_levitation::DescValue`]s,
 //! every round-trip is judged by the landed
 //! [`gandr_theory_levitation::generic_eq`], and every description is
-//! a real [`gandr_theory_levitation::DataDesc`]. There is **no new production
+//! a real [`gandr_theory_levitation::SignDesc`]. There is **no new production
 //! machinery** (design note §4.3 U3.0b: "rendered with zero new machinery"): a
 //! [`CodeIso`] is a thin certificate wrapper over the stage-0 generic programs,
 //! exactly as the `vdc_dictionary` suite's `Cell` is a thin wrapper over the
@@ -38,13 +38,13 @@
 use alloc::rc::Rc;
 use core::fmt;
 
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DescValue;
 use gandr_theory_levitation::MonomorphicStatus;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::ReplayEquivalence;
 use gandr_theory_levitation::RoundTripSampleCount;
 use gandr_theory_levitation::RoundTripStatus;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::generic_eq;
 
 /// A **description-driven value translator**: one direction of a [`CodeIso`],
@@ -62,7 +62,7 @@ pub type Translate = Rc<dyn Fn(&DescValue) -> DescValue>;
 
 /// A **`CodeIso` certificate**: a paired pair of description-driven value
 /// translators (`forward` / `backward`) between two monomorphic
-/// [`DataDesc`]s, whose evidence is the replay of its round trips
+/// [`SignDesc`]s, whose evidence is the replay of its round trips
 /// (design note §4.3 U3.0a; ADR-69).
 ///
 /// The certificate is *data*: it carries a provenance `label`, the two boundary
@@ -75,9 +75,9 @@ pub struct CodeIso
     /// A provenance label for inspection (`negation`, `Boolean ⨟ BoolSum`, …).
     label: Name,
     /// The monomorphic source description the forward translator reads.
-    source: DataDesc,
+    source: SignDesc,
     /// The monomorphic target description the forward translator writes.
-    target: DataDesc,
+    target: SignDesc,
     /// The forward translator `source → target`.
     forward: Translate,
     /// The backward translator `target → source`.
@@ -107,8 +107,8 @@ impl CodeIso
     /// translators.
     pub fn new<L>(
         label: L,
-        source: DataDesc,
-        target: DataDesc,
+        source: SignDesc,
+        target: SignDesc,
         forward: Translate,
         backward: Translate,
     ) -> Self
@@ -128,7 +128,7 @@ impl CodeIso
     /// translators are the identity on values.
     pub fn identity<L>(
         label: L,
-        desc: DataDesc,
+        desc: SignDesc,
     ) -> Self
     where
         L: Into<Name>,
@@ -145,13 +145,13 @@ impl CodeIso
     }
 
     /// The monomorphic source description.
-    pub fn source(&self) -> &DataDesc
+    pub fn source(&self) -> &SignDesc
     {
         &self.source
     }
 
     /// The monomorphic target description.
-    pub fn target(&self) -> &DataDesc
+    pub fn target(&self) -> &SignDesc
     {
         &self.target
     }

@@ -5,7 +5,7 @@
 //! Stage 0 keeps `decode` host-side as unwritten meta-theory; **stage 1 writes
 //! it**: [`decode`] interprets a first-order [`Code`] into a core
 //! [`gandr_core_checker::types::ValueType`], and [`decode_desc`] interprets a
-//! whole tagged [`DataDesc`] (the μ decoder, [`DeclPolarity::Data`]) into the
+//! whole tagged [`SignDesc`] (the μ decoder, [`DeclPolarity::Data`]) into the
 //! coproduct over its constructors. This is the single non-negotiable
 //! *dependent* capability the simply-typed checker lacked — a function *from
 //! data into the universe of types* — realized here as a total host function
@@ -48,8 +48,8 @@ use crate::code::Code;
 use crate::code::Name;
 use crate::code::PrimTy;
 use crate::code::ValueTypeRef;
-use crate::desc::DataDesc;
 use crate::desc::DeclPolarity;
+use crate::desc::SignDesc;
 
 /// Why a first-order code (or a whole description) cannot be decoded into a
 /// core value type — the honest boundary of the stage-1 decode fragment.
@@ -92,7 +92,7 @@ pub enum DecodeError
     MultiSorted,
 }
 
-/// Decodes a whole tagged [`DataDesc`] (the μ decoder) into the coproduct over
+/// Decodes a whole tagged [`SignDesc`] (the μ decoder) into the coproduct over
 /// its constructors — the stage-1 reading of the σ tag as a finite choice
 /// (ADR-81 feature 3; proposal §3, §5).
 ///
@@ -129,7 +129,7 @@ pub enum DecodeError
 /// Returns [`DecodeError`] — see the variants and the contract.
 #[inline]
 pub fn decode_desc(
-    desc: &DataDesc,
+    desc: &SignDesc,
     self_ty: &ValueType,
 ) -> Result<ValueType, DecodeError>
 {
@@ -401,7 +401,7 @@ mod tests
     {
         // `data Maybe(a) { None | Some(a) }` — the µ decoder reads the two-tag σ
         // as the coproduct `1 + a` (None's nullary payload, Some's parameter).
-        let maybe = DataDesc::new(
+        let maybe = SignDesc::new(
             NominalId::new(0.into(), "Maybe"),
             Vec::new(),
             [
@@ -421,7 +421,7 @@ mod tests
 
         // A single-constructor datatype decodes to its lone payload (no coproduct
         // wrapper) — the degenerate tag.
-        let wrapper = DataDesc::new(
+        let wrapper = SignDesc::new(
             NominalId::new(1.into(), "Wrap"),
             Vec::new(),
             [CtorDesc::new(
@@ -444,7 +444,7 @@ mod tests
     #[test]
     fn decode_desc_declines_codata_and_the_uninhabited()
     {
-        let void = DataDesc::new(
+        let void = SignDesc::new(
             NominalId::new(0.into(), "Void"),
             Vec::new(),
             Vec::new(),
@@ -458,7 +458,7 @@ mod tests
             decode_desc(&void, &carrier()),
             "an uninhabited datatype has no core coproduct"
         );
-        let stream = DataDesc::new(
+        let stream = SignDesc::new(
             NominalId::new(1.into(), "Stream"),
             Vec::new(),
             [CtorDesc::new(
@@ -482,7 +482,7 @@ mod tests
     fn decode_desc_declines_a_multi_sorted_signature()
     {
         use crate::desc::SortDesc;
-        let two_sorted = DataDesc::new(
+        let two_sorted = SignDesc::new(
             NominalId::new(2.into(), "Pair"),
             Vec::new(),
             [CtorDesc::new("Mk", Code::Unit, "Pair", Attrs::empty())],

@@ -15,7 +15,6 @@ use gandr_core_checker::grade::Grade;
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::Code;
 use gandr_theory_levitation::CtorDesc;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::DescValue;
 use gandr_theory_levitation::NameRef;
@@ -23,6 +22,7 @@ use gandr_theory_levitation::NominalId;
 use gandr_theory_levitation::Payload;
 use gandr_theory_levitation::PrimTy;
 use gandr_theory_levitation::Side;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::ValueTypeRef;
 use gandr_theory_levitation::builtin::bool_desc;
 
@@ -56,9 +56,9 @@ pub fn rgb_rotate() -> CodeIso
 /// A three-constructor monomorphic enum (`RGB { R = 1, G = 1, B = 1 }`) — the
 /// carrier for a non-involutive auto-iso ([`rgb_rotate`]), so composition and
 /// inverse have real content beyond the self-inverse Boolean cases.
-pub fn rgb() -> DataDesc
+pub fn rgb() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(2.into(), "RGB"),
         Vec::new(),
         [
@@ -157,7 +157,7 @@ pub fn bool_bridge() -> CodeIso
 }
 /// The declared **two-constructor `Boolean`** (`False = 1`, `True = 1`) — the
 /// landed retrofit, reused verbatim as one side of the flagship instance.
-pub fn bool_two_ctor() -> DataDesc
+pub fn bool_two_ctor() -> SignDesc
 {
     bool_desc()
 }
@@ -166,9 +166,9 @@ pub fn bool_two_ctor() -> DataDesc
 /// constructor whose payload is the inline sum. The other side of the flagship
 /// inter-code instance: structurally distinct codes describing the same
 /// two-element value space (design note §4.2).
-pub fn bool_sum() -> DataDesc
+pub fn bool_sum() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(1.into(), "BoolSum"),
         Vec::new(),
         [CtorDesc::new(
@@ -221,9 +221,9 @@ pub fn rgb_values() -> Vec<DescValue>
 /// one constructor, the structural (constructor-permuting) auto-iso group is
 /// trivial, so any nontrivial auto-iso must move the leaf. The carrier for the
 /// [`leaf_shift`] witness.
-pub fn int_box() -> DataDesc
+pub fn int_box() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(3.into(), "IntBox"),
         Vec::new(),
         [CtorDesc::new(

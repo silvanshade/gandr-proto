@@ -132,7 +132,7 @@ pub enum Orientation
 pub enum CellProvenance
 {
     /// Elaborated from a surface `rule lhs ~> rhs` (a
-    /// [`gandr_theory_levitation::CellFace`]).
+    /// [`gandr_theory_levitation::RuleFace`]).
     SurfaceRule,
     /// The μ/μ̃ critical pair — the fundamental strategy cell (§5).
     MuMuTilde,

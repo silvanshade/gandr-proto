@@ -126,9 +126,9 @@ use gandr_surface_engine::session::ItemOutcome;
 use gandr_surface_engine::session::Session;
 use gandr_surface_engine::synnode::SynTree;
 use gandr_theory_levitation::Code;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DescValue;
 use gandr_theory_levitation::Payload;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::generic_eq;
 use gandr_theory_levitation::serialize_desc;
 use gandr_theory_levitation::serialize_value;
@@ -1358,7 +1358,7 @@ fn check_desc(
             )),
             | Expect::DescCells(expected) => {
                 let actual = elaborated.descs.iter().fold(0_usize, |total, desc| {
-                    total.saturating_add(desc.cells.len())
+                    total.saturating_add(desc.rules.len())
                 });
                 if actual == expected {
                     None
@@ -1459,7 +1459,7 @@ fn cell_decline_summary(cells: &DescCells) -> String
 }
 
 /// Checks the stage-0 generic consumers on two nullary constructors.
-fn desc_unit_consumer_failure(descs: &[DataDesc]) -> Option<String>
+fn desc_unit_consumer_failure(descs: &[SignDesc]) -> Option<String>
 {
     let Some(desc) = descs.first()
     else {

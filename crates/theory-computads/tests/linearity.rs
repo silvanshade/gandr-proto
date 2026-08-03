@@ -49,22 +49,22 @@ mod tests
     use gandr_theory_computads::ElaborateError;
     use gandr_theory_computads::elaborate_data_desc;
     use gandr_theory_levitation::Attrs;
-    use gandr_theory_levitation::CellFace;
     use gandr_theory_levitation::Code;
     use gandr_theory_levitation::CtorDesc;
-    use gandr_theory_levitation::DataDesc;
     use gandr_theory_levitation::DeclPolarity;
     use gandr_theory_levitation::FreeTerm;
     use gandr_theory_levitation::NominalId;
+    use gandr_theory_levitation::RuleFace;
+    use gandr_theory_levitation::SignDesc;
     use gandr_theory_levitation::SurfaceSpan;
 
     /// The intended gandr program, as a description: a one-constructor `Bit`
     /// carrying the given rule members.
-    fn bit_theory<C>(cells: C) -> DataDesc
+    fn bit_theory<C>(cells: C) -> SignDesc
     where
-        C: Into<Box<[CellFace]>>,
+        C: Into<Box<[RuleFace]>>,
     {
-        DataDesc::new(
+        SignDesc::new(
             NominalId::new(0_u64.into(), "Bit"),
             Vec::new(),
             [CtorDesc::new("Off", Code::Unit, "Bit", Attrs::empty())],
@@ -79,9 +79,9 @@ mod tests
     fn rule(
         lhs: FreeTerm,
         rhs: FreeTerm,
-    ) -> CellFace
+    ) -> RuleFace
     {
-        CellFace::new(
+        RuleFace::new(
             lhs,
             rhs,
             Vec::new(),
@@ -90,7 +90,7 @@ mod tests
     }
 
     /// The single refusal a description reports, with its face index.
-    fn sole_refusal(desc: &DataDesc) -> (DeclinedFaceIndex, String)
+    fn sole_refusal(desc: &SignDesc) -> (DeclinedFaceIndex, String)
     {
         let elaborated = elaborate_data_desc(desc);
         let declines = elaborated.declined_faces;

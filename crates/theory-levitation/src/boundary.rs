@@ -199,7 +199,7 @@ bool_wrapper!(
     "Whether a description or code mentions a recursive occurrence."
 );
 bool_wrapper!(
-    CellVariableLinearity,
+    RuleVariableLinearity,
     "Whether a cell-pattern variable occurs exactly once in the left-hand side."
 );
 bool_wrapper!(

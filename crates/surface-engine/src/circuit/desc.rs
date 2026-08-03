@@ -4,7 +4,7 @@
 //!
 //! This is the acceptance flip. A `sign` block used to reach the lowerer as an
 //! unsupported form and hole; it now reads into a
-//! [`gandr_theory_levitation::DataDesc`] whose `circuits` the declaration table
+//! [`gandr_theory_levitation::SignDesc`] whose `circuits` the declaration table
 //! checks ([`gandr_theory_levitation::check_desc`]) and whose cells the cell
 //! layer admits through its single admission seam
 //! ([`gandr_theory_computads::elaborate_data_desc`]). Nothing here decides
@@ -23,7 +23,7 @@
 //!
 //! A **`rule` member with no filler** declares a rewrite face between *sorts*
 //! (`rule involutive : (b : Bit) <=> (c : Bit)`), and the declaration table has
-//! no slot for a term-free sphere: a [`gandr_theory_levitation::CellFace`]
+//! no slot for a term-free sphere: a [`gandr_theory_levitation::RuleFace`]
 //! carries two terms, and the sphere-typed representation `Φ ▸ x ⇴ y` is the
 //! higher-cells lane's (`docs/gandr/spec/surface-language/higher-cells.md`,
 //! section "Sphere-typed boundaries"). Such a member is therefore carried by no
@@ -78,7 +78,6 @@ use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::grade::Grade;
 use gandr_surface_syntax::NodeId;
 use gandr_theory_levitation::Attrs;
-use gandr_theory_levitation::CellFace;
 use gandr_theory_levitation::CircuitBody;
 use gandr_theory_levitation::CircuitDerivationError;
 use gandr_theory_levitation::CircuitFrame;
@@ -86,16 +85,17 @@ use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::CircuitRule;
 use gandr_theory_levitation::Code;
 use gandr_theory_levitation::CtorDesc;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::FrameHead;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NominalId;
-use gandr_theory_levitation::OpDesc;
+use gandr_theory_levitation::OperDesc;
 use gandr_theory_levitation::PortInstantiationError;
 use gandr_theory_levitation::PrimTy;
 use gandr_theory_levitation::RewritePort;
+use gandr_theory_levitation::RuleFace;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::SortDesc;
 use gandr_theory_levitation::SortRef;
 use gandr_theory_levitation::SurfaceSpan;
@@ -150,7 +150,7 @@ pub fn sign_desc(
     node: NodeId,
     serial: NominalSerial,
     diagnostics: &mut Vec<ElabDiagnostic>,
-) -> Option<DataDesc>
+) -> Option<SignDesc>
 {
     let children = shape.reader.sig_children(node);
     let mut cursor = Cursor::new(shape.reader, &children);
@@ -180,7 +180,7 @@ pub fn circuit_declaration_desc(
     node: NodeId,
     serial: NominalSerial,
     diagnostics: &mut Vec<ElabDiagnostic>,
-) -> Option<DataDesc>
+) -> Option<SignDesc>
 {
     let children = shape.reader.sig_children(node);
     let (name, _kind) = shape.judgment_head(&children)?;
@@ -200,7 +200,7 @@ fn block_desc(
     name: String,
     serial: NominalSerial,
     diagnostics: &mut Vec<ElabDiagnostic>,
-) -> DataDesc
+) -> SignDesc
 {
     // Every member's kind is collected before any body is read, so a body may
     // apply a head its block declares later (the surface check's own order).
@@ -212,7 +212,7 @@ fn block_desc(
     }
     // The declared sort set: every `sort` member, in declaration order; a
     // block writing none declares the degenerate single sort named by the
-    // block itself (the `DataDesc::new` default).
+    // block itself (the `SignDesc::new` default).
     let mut sorts: Vec<SortDesc> = Vec::new();
     for member in members {
         if let Some((member_name, CircuitKind::Sort)) = shape.judgment_head(member) {
@@ -226,7 +226,7 @@ fn block_desc(
         sorts.iter().map(|sort| sort.name.to_string()).collect()
     };
     let mut ctors: Vec<CtorDesc> = Vec::new();
-    let mut ops: Vec<OpDesc> = Vec::new();
+    let mut ops: Vec<OperDesc> = Vec::new();
     let mut circuits: Vec<CircuitRule> = Vec::new();
     for member in members {
         let Some((member_name, kind)) = shape.judgment_head(member)
@@ -251,7 +251,7 @@ fn block_desc(
             },
         }
     }
-    let desc = DataDesc::new(
+    let desc = SignDesc::new(
         NominalId::new(serial, name),
         Vec::new(),
         ctors,
@@ -321,7 +321,7 @@ fn oper_member(
     run: &[NodeId],
     name: CircuitName<'_>,
     diagnostics: &mut Vec<ElabDiagnostic>,
-) -> Option<OpDesc>
+) -> Option<OperDesc>
 {
     if has_filler(shape, run).0 {
         diagnostics.push(ElabDiagnostic::new(
@@ -344,7 +344,7 @@ fn oper_member(
         .into_iter()
         .map(|port| SortRef::new(port.name, port.sort))
         .collect::<Vec<SortRef>>();
-    Some(OpDesc::new(
+    Some(OperDesc::new(
         name.0.to_owned(),
         crate::desc_elab::bridge_arity(inputs, outputs),
         Attrs::empty(),
@@ -429,10 +429,10 @@ fn face(
     source: FreeTerm,
     target: FreeTerm,
     span: SurfaceSpan,
-) -> CellFace
+) -> RuleFace
 {
     let vars = derive_cell_var_meta(&source);
-    CellFace::new(source, target, vars, span)
+    RuleFace::new(source, target, vars, span)
 }
 
 /// Read the parameter telescope's **rewrite-sorted** binders, keyed by name.

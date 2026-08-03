@@ -13,17 +13,17 @@ use alloc::rc::Rc;
 
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::BridgeArity;
-use gandr_theory_levitation::CellFace;
 use gandr_theory_levitation::Code;
 use gandr_theory_levitation::CtorDesc;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NameRef;
 use gandr_theory_levitation::NominalId;
 use gandr_theory_levitation::NumeralCount;
-use gandr_theory_levitation::OpDesc;
+use gandr_theory_levitation::OperDesc;
+use gandr_theory_levitation::RuleFace;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::SortRef;
 use gandr_theory_levitation::SurfaceSpan;
 use gandr_theory_levitation::wellformed::derive_cell_var_meta;
@@ -115,7 +115,7 @@ mod nat_fixture
     /// The `Nat` description: `Zero`, `Succ`, operations `plus` / `double`, and
     /// the three rewrite rules. Passes [`gandr_theory_levitation::check_desc`]
     /// cleanly.
-    pub fn nat_desc() -> DataDesc
+    pub fn nat_desc() -> SignDesc
     {
         let cells = vec![
             // plus(Zero, n) ~> n
@@ -134,7 +134,7 @@ mod nat_fixture
                 FreeTerm::op("plus", [var("n".into()), var("n".into())]),
             ),
         ];
-        DataDesc::new(
+        SignDesc::new(
             NominalId::new(0.into(), "Nat"),
             Vec::new(),
             [
@@ -142,8 +142,8 @@ mod nat_fixture
                 CtorDesc::new("Succ", Code::var("Nat"), "Nat", Attrs::empty()),
             ],
             [
-                OpDesc::new("plus", plus_arity(), Attrs::empty()),
-                OpDesc::new("double", double_arity(), Attrs::empty()),
+                OperDesc::new("plus", plus_arity(), Attrs::empty()),
+                OperDesc::new("double", double_arity(), Attrs::empty()),
             ],
             cells,
             DeclPolarity::Data,
@@ -157,7 +157,7 @@ pub use nat_fixture::nat_sig;
 /// A small bank of **real-structure faces** over a named `Nat` signature —
 /// covering a ctor rule, an op rule, a nested op rule, and a variable-only
 /// rewrite — for the restriction functoriality proptests (Law 3(a)).
-pub fn sample_faces(names: &NatNames) -> Vec<CellFace>
+pub fn sample_faces(names: &NatNames) -> Vec<RuleFace>
 {
     let zero_t = FreeTerm::ctor(names.zero.clone(), Vec::new());
     let succ_m = FreeTerm::ctor(names.succ.clone(), [var("m".into())]);
@@ -189,10 +189,10 @@ pub fn sample_faces(names: &NatNames) -> Vec<CellFace>
 pub fn face(
     lhs: FreeTerm,
     rhs: FreeTerm,
-) -> CellFace
+) -> RuleFace
 {
     let vars = derive_cell_var_meta(&lhs);
-    CellFace::new(lhs, rhs, vars, SurfaceSpan::new(0.into(), 1.into()))
+    RuleFace::new(lhs, rhs, vars, SurfaceSpan::new(0.into(), 1.into()))
 }
 /// A variable term.
 pub fn var(name: NameRef<'_>) -> FreeTerm
@@ -246,10 +246,10 @@ pub fn nat_obj(names: &NatNames) -> SigObj
 /// connected by a valid renaming.
 pub fn nat_from_names(
     names: &NatNames,
-    cells: Vec<CellFace>,
-) -> DataDesc
+    cells: Vec<RuleFace>,
+) -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(0.into(), "Nat"),
         Vec::new(),
         [
@@ -257,8 +257,8 @@ pub fn nat_from_names(
             CtorDesc::new(names.succ.clone(), Code::var("Nat"), "Nat", Attrs::empty()),
         ],
         [
-            OpDesc::new(names.plus.clone(), plus_arity(), Attrs::empty()),
-            OpDesc::new(names.double.clone(), double_arity(), Attrs::empty()),
+            OperDesc::new(names.plus.clone(), plus_arity(), Attrs::empty()),
+            OperDesc::new(names.double.clone(), double_arity(), Attrs::empty()),
         ],
         cells,
         DeclPolarity::Data,

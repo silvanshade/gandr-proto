@@ -22,7 +22,7 @@
 //! # MVP boundaries (declared-data design Decisions 6/7)
 //!
 //! * **Non-recursive.** A recursive datatype (a constructor field whose type is
-//!   the type being declared) is declined off `DataDesc::is_recursive` until
+//!   the type being declared) is declined off `SignDesc::is_recursive` until
 //!   the value-level `μ⁺` rung lands.
 //! * **Field discipline.** A constructor application under a `D(ā)` ascription
 //!   checks each payload field against its declared type instantiated at `ā`

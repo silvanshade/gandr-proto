@@ -1,7 +1,7 @@
 //! **Elaboration** of surface `rule` 2-cell faces into command cells
 //! (`proposal-sequent-kernel.md` §7.1, "what a `rule` becomes").
 //!
-//! A [`gandr_theory_levitation::CellFace`] is a rewrite `lhs ~> rhs` over
+//! A [`gandr_theory_levitation::RuleFace`] is a rewrite `lhs ~> rhs` over
 //! [`FreeTerm`]s (the reserved `op`/`rule` productions of ADR-54, carried as
 //! data by `gandr-theory-levitation`). [`elaborate_rule`] turns it into an
 //! oriented [`Cell`] whose left side is a **cut between the matched producer
@@ -22,7 +22,7 @@
 //! # The operation alphabet a description supplies
 //!
 //! A description also declares **operations**
-//! ([`gandr_theory_levitation::OpDesc`], `DataDesc::ops`), each with a
+//! ([`gandr_theory_levitation::OperDesc`], `SignDesc::ops`), each with a
 //! multi-out [`BridgeArity`]. Those arities decide what the cell layer can
 //! hold, so [`elaborate_data_desc`] reads them before it reads the faces:
 //!
@@ -77,13 +77,13 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use gandr_core_sequent::il::Polarity;
-use gandr_theory_levitation::CellFace;
 use gandr_theory_levitation::CircuitElaborationError;
 use gandr_theory_levitation::CircuitRule;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
-use gandr_theory_levitation::OpDesc;
+use gandr_theory_levitation::OperDesc;
+use gandr_theory_levitation::RuleFace;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::WhiskeredCell;
 use gandr_theory_levitation::elaborate_body;
 
@@ -202,10 +202,10 @@ pub struct DescElaboration
     /// constructor plus every admitted rule cell.
     pub store: CellStore,
     /// The operations the cell layer admits, in declaration order.
-    pub ops: Vec<OpFrame>,
-    /// Each declined operation, by index into `desc.ops`, with its reason.
-    pub declined_ops: Vec<(DeclinedOpIndex, OpElaborateError)>,
-    /// Each declined face, by index into `desc.cells`, with its reason.
+    pub opers: Vec<OpFrame>,
+    /// Each declined operation, by index into `desc.opers`, with its reason.
+    pub declined_opers: Vec<(DeclinedOpIndex, OpElaborateError)>,
+    /// Each declined face, by index into `desc.rules`, with its reason.
     pub declined_faces: Vec<(DeclinedFaceIndex, ElaborateError)>,
     /// The **whiskered composite** each admitted circuit rule denotes, in
     /// declaration order — the boundary-language object the member's filler
@@ -224,9 +224,9 @@ pub struct DescElaboration
 ///   constructor (so return-side `K⁻` frames reduce) plus every rule cell that
 ///   passed the operation gate, elaborated, and passed the linearity admission
 ///   boundary ([`admit_cell`]); `ops` holds one [`OpFrame`] per operation of
-///   `desc.ops` the cell layer admits and `declined_ops` the rest, both in
+///   `desc.opers` the cell layer admits and `declined_opers` the rest, both in
 ///   declaration order; `declined_faces` pairs each declined face (by index
-///   into `desc.cells`) with its [`ElaborateError`]. A face applying a declined
+///   into `desc.rules`) with its [`ElaborateError`]. A face applying a declined
 ///   operation is itself declined
 ///   ([`ElaborateError::UnrepresentableOperation`]) and never reaches the
 ///   store.
@@ -249,7 +249,7 @@ pub struct DescElaboration
 /// - witness: `elaborate::tests::a_description_whose_rule_copies_a_hole_is_refused`
 #[inline]
 #[must_use]
-pub fn elaborate_data_desc(desc: &DataDesc) -> DescElaboration
+pub fn elaborate_data_desc(desc: &SignDesc) -> DescElaboration
 {
     let mut store = CellStore::new();
     // Frame cells are generated here rather than read from a description, and
@@ -258,22 +258,22 @@ pub fn elaborate_data_desc(desc: &DataDesc) -> DescElaboration
     for ctor in &desc.ctors {
         store.insert(frame_defining_cell(&Sym::new(ctor.name.clone())));
     }
-    let mut ops = Vec::with_capacity(desc.ops.len());
-    let mut declined_ops = Vec::new();
+    let mut opers = Vec::with_capacity(desc.opers.len());
+    let mut declined_opers = Vec::new();
     // The names of the operations no cell may mention, gathered while the
     // operation pass runs so the face pass can consult them.
     let mut unrepresentable: Vec<&Name> = Vec::new();
-    for (index, op) in desc.ops.iter().enumerate() {
+    for (index, op) in desc.opers.iter().enumerate() {
         match admit_op(op) {
-            | Ok(frame) => ops.push(frame),
+            | Ok(frame) => opers.push(frame),
             | Err(error) => {
                 unrepresentable.push(&op.name);
-                declined_ops.push((DeclinedOpIndex::from(index), error));
+                declined_opers.push((DeclinedOpIndex::from(index), error));
             },
         }
     }
     let mut declined_faces = Vec::new();
-    for (index, face) in desc.cells.iter().enumerate() {
+    for (index, face) in desc.rules.iter().enumerate() {
         // The admission gate: every reason a face may not become a cell is
         // decided here — the operation gate before `elaborate_rule` shapes it,
         // and the linearity admission (`admit_cell`) before the cell enters the
@@ -304,8 +304,8 @@ pub fn elaborate_data_desc(desc: &DataDesc) -> DescElaboration
     }
     DescElaboration {
         store,
-        ops,
-        declined_ops,
+        opers,
+        declined_opers,
         declined_faces,
         composites,
         declined_circuits,
@@ -368,7 +368,7 @@ fn admit_circuit_rule(
 /// # Errors
 /// See the `- fails:` clause above.
 #[inline]
-fn admit_op(op: &OpDesc) -> Result<OpFrame, OpElaborateError>
+fn admit_op(op: &OperDesc) -> Result<OpFrame, OpElaborateError>
 {
     match op.arity.outputs.len() {
         | 1 => {},
@@ -394,7 +394,7 @@ fn admit_op(op: &OpDesc) -> Result<OpFrame, OpElaborateError>
 /// - panics: none.
 #[inline]
 fn declined_operation(
-    face: &CellFace,
+    face: &RuleFace,
     declined: &[&Name],
 ) -> Option<ElaborateError>
 {
@@ -418,7 +418,7 @@ fn declined_operation(
 /// at the boundary (owner ruling, 2026-08-01: cell patterns are linear).
 ///
 /// This is the **single admission seam** for every cell a description
-/// contributes. The rule (`desc.cells`) path above calls it; any further
+/// contributes. The rule (`desc.rules`) path above calls it; any further
 /// description-sourced cell path admits through the same call rather than
 /// through a second copy of the check.
 ///
@@ -468,7 +468,7 @@ fn admit_cell(
 /// # Errors
 /// See the `- fails:` clause above.
 #[inline]
-pub fn elaborate_rule(face: &CellFace) -> Result<Cell, ElaborateError>
+pub fn elaborate_rule(face: &RuleFace) -> Result<Cell, ElaborateError>
 {
     let cont = ConsPat::Meta(MetaVar::consumer(RETURN_CONT));
     let lhs = elaborate_operation_cut(&face.lhs, cont.clone())?;
@@ -746,7 +746,7 @@ mod tests
             "both rules are in the supported fragment"
         );
         assert!(
-            elaborated.declined_ops.is_empty(),
+            elaborated.declined_opers.is_empty(),
             "a single-output `add` is admitted"
         );
         // Two frame cells (Zero⁻, Succ⁻) plus the two rule cells.
@@ -763,15 +763,15 @@ mod tests
         use gandr_theory_levitation::Attrs;
         use gandr_theory_levitation::Code;
         use gandr_theory_levitation::CtorDesc;
-        use gandr_theory_levitation::DataDesc;
         use gandr_theory_levitation::DeclPolarity;
         use gandr_theory_levitation::NominalId;
+        use gandr_theory_levitation::SignDesc;
 
         // `rule and(x, x) ~> x` — the idempotence law written with a repeated
         // hole. It elaborates to ⟨x | and(x; $ret)⟩ ~> ⟨x | $ret⟩, whose left
         // side copies the producer hole `x`, so the admission boundary refuses
         // it rather than letting it into the store.
-        let desc = DataDesc::new(
+        let desc = SignDesc::new(
             NominalId::new(0_u64.into(), "Bit"),
             Vec::new(),
             [CtorDesc::new("Off", Code::Unit, "Bit", Attrs::empty())],
@@ -1004,7 +1004,7 @@ mod tests
         use gandr_theory_levitation::CircuitRule;
         use gandr_theory_levitation::FrameHead;
 
-        let divmod = OpDesc::new(
+        let divmod = OperDesc::new(
             "divmod",
             BridgeArity::new(
                 [SortRef::new("m", "Nat"), SortRef::new("n", "Nat")],
@@ -1062,7 +1062,7 @@ mod tests
                 op: Sym::new("add"),
                 inputs: OperationInputCount::from(2_usize),
             }],
-            elaborated.ops,
+            elaborated.opers,
             "the admitted operation carries its symbol and its declared |A|"
         );
     }
@@ -1072,7 +1072,7 @@ mod tests
     {
         // `op divmod(m, n) -> (q, r)` — two output ports, so two monomials, and
         // an operation frame has exactly one return continuation.
-        let divmod = OpDesc::new(
+        let divmod = OperDesc::new(
             "divmod",
             BridgeArity::new(
                 [SortRef::new("m", "Nat"), SortRef::new("n", "Nat")],
@@ -1090,10 +1090,10 @@ mod tests
         let elaborated = elaborate_data_desc(&desc);
         assert_eq!(
             vec![(DeclinedOpIndex::from(0_usize), OpElaborateError::ManyOutput)],
-            elaborated.declined_ops,
+            elaborated.declined_opers,
             "a many-out arity has no operation frame in this grammar"
         );
-        assert!(elaborated.ops.is_empty(), "nothing was admitted");
+        assert!(elaborated.opers.is_empty(), "nothing was admitted");
         assert_eq!(
             vec![(
                 DeclinedFaceIndex::from(0_usize),
@@ -1113,7 +1113,7 @@ mod tests
     fn an_aggregating_arity_and_an_outputless_one_are_declined_apart()
     {
         // One output port fed by two monomials: the Σ-layer's monoid obligation.
-        let aggregated = OpDesc::new(
+        let aggregated = OperDesc::new(
             "merge",
             BridgeArity::new(
                 [SortRef::new("p", "Nat"), SortRef::new("q", "Nat")],
@@ -1124,7 +1124,7 @@ mod tests
             ),
             Attrs::empty(),
         );
-        let outputless = OpDesc::new(
+        let outputless = OperDesc::new(
             "sink",
             BridgeArity::new([SortRef::new("p", "Nat")], [], [], [], []),
             Attrs::empty(),
@@ -1138,7 +1138,7 @@ mod tests
                 ),
                 (DeclinedOpIndex::from(1_usize), OpElaborateError::NoOutput),
             ],
-            elaborated.declined_ops,
+            elaborated.declined_opers,
             "the Σ-aggregating and the outputless arity decline for their own reasons"
         );
     }
@@ -1151,7 +1151,7 @@ mod tests
         let desc = nat_with(
             [
                 op("id", [SortRef::new("x", "Nat")]),
-                OpDesc::new(
+                OperDesc::new(
                     "divmod",
                     BridgeArity::new(
                         [SortRef::new("m", "Nat")],
@@ -1183,9 +1183,9 @@ mod tests
     fn face(
         lhs: FreeTerm,
         rhs: FreeTerm,
-    ) -> CellFace
+    ) -> RuleFace
     {
-        CellFace::new(
+        RuleFace::new(
             lhs,
             rhs,
             Vec::new(),
@@ -1197,12 +1197,12 @@ mod tests
     fn op<N, I>(
         name: N,
         inputs: I,
-    ) -> OpDesc
+    ) -> OperDesc
     where
         N: Into<gandr_theory_levitation::Name>,
         I: Into<Box<[SortRef]>>,
     {
-        OpDesc::new(
+        OperDesc::new(
             name.into(),
             BridgeArity::single_output(inputs, SortRef::new("out", "Nat")),
             Attrs::empty(),
@@ -1214,12 +1214,12 @@ mod tests
     fn nat_with<O, C>(
         ops: O,
         cells: C,
-    ) -> DataDesc
+    ) -> SignDesc
     where
-        O: Into<Box<[OpDesc]>>,
-        C: Into<Box<[CellFace]>>,
+        O: Into<Box<[OperDesc]>>,
+        C: Into<Box<[RuleFace]>>,
     {
-        DataDesc::new(
+        SignDesc::new(
             NominalId::new(0_u64.into(), "Nat"),
             Vec::new(),
             [

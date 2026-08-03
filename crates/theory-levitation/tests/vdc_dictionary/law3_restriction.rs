@@ -2,7 +2,7 @@
 //! §3 item 3).
 //!
 //! * (a) real-structure face-level splitness on the landed
-//!   [`gandr_theory_levitation::CellFace`] type;
+//!   [`gandr_theory_levitation::RuleFace`] type;
 //! * (b) the four Def 3.2.6 protype-level equalities, structural, holding by
 //!   the split representation (Lemma 3.2.8's tuple construction realized);
 //! * (c) fibrationality — a framed cell factors data-identically through its
@@ -16,9 +16,9 @@ mod law3
 {
     use alloc::rc::Rc;
 
-    use gandr_theory_levitation::CellFace;
     use gandr_theory_levitation::FreeTerm;
     use gandr_theory_levitation::NameRef;
+    use gandr_theory_levitation::RuleFace;
     use gandr_theory_levitation::check_desc;
     use gandr_theory_levitation::wellformed::WfKind;
     use proptest::prelude::*;
@@ -73,7 +73,7 @@ mod law3
             ta in tag(), tb in tag(), tc in tag(), idx in 0_usize .. 4
         ) {
             let (a, b, c) = (nat_names(ta.into()), nat_names(tb.into()), nat_names(tc.into()));
-            let face_c: CellFace = sample_faces(&c)[idx].clone();
+            let face_c: RuleFace = sample_faces(&c)[idx].clone();
 
             let identity = SigMorphism::identity(&nat_obj(&c));
             prop_assert!(apply_face(&identity, 0.into(), &face_c) == face_c, "id acts trivially");
@@ -226,7 +226,7 @@ mod law3
             tb in tag(), tc in tag(), idx in 0_usize .. 4
         ) {
             let (b, c) = (nat_names(tb.into()), nat_names(tc.into()));
-            let face_c: CellFace = sample_faces(&c)[idx].clone();
+            let face_c: RuleFace = sample_faces(&c)[idx].clone();
             let s = renaming(&b, &c); // B → C
             let mapped = apply_face(&s, 0.into(), &face_c);
             prop_assert_eq!(
@@ -338,7 +338,7 @@ mod law3
         assert!(
             check_desc(&desc)
                 .iter()
-                .any(|diagnostic| diagnostic.kind == WfKind::OutOfSignatureCell),
+                .any(|diagnostic| diagnostic.kind == WfKind::OutOfSignatureRule),
             "a cross-signature symbol is rejected: well-formedness is homogeneous"
         );
     }

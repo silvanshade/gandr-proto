@@ -15,7 +15,7 @@
 //! every consumer transported ([`gandr_theory_levitation::generic_eq`],
 //! [`gandr_theory_levitation::serialize_value`],
 //! [`gandr_theory_levitation::CodeInterner`]) is the shipped one, and every
-//! description is a real [`gandr_theory_levitation::DataDesc`] (the flagship
+//! description is a real [`gandr_theory_levitation::SignDesc`] (the flagship
 //! `Boolean` side is the landed [`gandr_theory_levitation::builtin::bool_desc`]
 //! retrofit). The [`harness::CodeIso`] certificate itself is the **stand-in**:
 //! it is `ProtypeIso`'s shape (Nasu §3.2.3; ADR-68/69) instantiated at

@@ -47,7 +47,6 @@ use alloc::collections::BTreeSet;
 use crate::boundary::CircuitNodeBudget;
 use crate::boundary::PortArgumentCount;
 use crate::boundary::TermPositionIndex;
-use crate::cell::FreeTerm;
 use crate::circuit::CircuitBody;
 use crate::circuit::CircuitDerivationError;
 use crate::circuit::CircuitNode;
@@ -56,6 +55,7 @@ use crate::circuit::DerivedBoundaries;
 use crate::circuit::FrameHead;
 use crate::circuit::derive_boundaries;
 use crate::code::Name;
+use crate::rule::FreeTerm;
 
 /// The **face** a rewrite-sorted port is declared at — what its declaration
 /// writes between the two arrowheads.

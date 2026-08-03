@@ -1,6 +1,6 @@
 //! Levitation **stage 1**: *typed* 2-cell faces (ADR-81; addendum §A/§4.1).
 //!
-//! Stage 0's [`CellFace`] stores a rewrite `lhs ~> rhs` as an untyped pair of
+//! Stage 0's [`RuleFace`] stores a rewrite `lhs ~> rhs` as an untyped pair of
 //! [`crate::FreeTerm`]s with host-side well-formedness (`crate::check_desc`).
 //! The addendum sharpens the stage-1 refinement: the typed cell face is a
 //! **protype** of the reflected judgment layer, and a typed rule is a
@@ -13,8 +13,8 @@
 //! "dependent Σ over the signature" V3 named: the signature context is the Σ
 //! head, the two `D⋆` terms the tail.
 //!
-//! Everything here is **additive** — the stage-0 [`CellFace`] and
-//! [`CellVarMeta`](crate::cell::CellVarMeta) are reused whole, never rewritten
+//! Everything here is **additive** — the stage-0 [`RuleFace`] and
+//! [`RuleVarMeta`](crate::rule::RuleVarMeta) are reused whole, never rewritten
 //! (a sibling lane owns `cell.rs`). A typed face *wraps* a stage-0 face;
 //! nothing about the stage-0 encoding changes.
 
@@ -22,11 +22,11 @@ use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::types::ValueType;
 
 use crate::boundary::ContextTotality;
-use crate::cell::CellFace;
 use crate::code::Code;
 use crate::code::Name;
 use crate::decode::DecodeError;
 use crate::decode::decode;
+use crate::rule::RuleFace;
 
 /// A **signature context** for a cell face (addendum §4.1): each pattern
 /// variable paired with the core value type it ranges over — the Σ head of the
@@ -37,14 +37,14 @@ use crate::decode::decode;
 /// layer into the core type universe.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[repr(transparent)]
-pub struct SignatureContext
+pub struct PatternContext
 {
     /// The pattern variables and their decoded core value types, in declaration
     /// order.
     pub vars: Box<[(Name, ValueType)]>,
 }
 
-impl SignatureContext
+impl PatternContext
 {
     /// A context from explicit `{variable, decoded type}` bindings.
     #[inline]
@@ -108,43 +108,43 @@ impl SignatureContext
     }
 }
 
-/// A **typed 2-cell face** (stage 1; addendum §4.1) — a stage-0 [`CellFace`]
-/// refined with a decoded [`SignatureContext`].
+/// A **typed 2-cell face** (stage 1; addendum §4.1) — a stage-0 [`RuleFace`]
+/// refined with a decoded [`PatternContext`].
 ///
 /// The "protype" of the reflected judgment layer; a typed rule is its
-/// "proterm". **Additive**: the stage-0 [`CellFace`] is reused whole (the
-/// untyped `D⋆` term pair, its derived [`crate::CellVarMeta`], and its
+/// "proterm". **Additive**: the stage-0 [`RuleFace`] is reused whole (the
+/// untyped `D⋆` term pair, its derived [`crate::RuleVarMeta`], and its
 /// provenance), never rewritten.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct TypedCellFace
+pub struct TypedRuleFace
 {
     /// The stage-0 face (the untyped `D⋆` term pair, reused whole).
-    pub face: CellFace,
+    pub face: RuleFace,
     /// The decoded signature context typing the face's pattern variables.
-    pub context: SignatureContext,
+    pub context: PatternContext,
 }
 
-impl TypedCellFace
+impl TypedRuleFace
 {
     /// A typed face from a stage-0 face and its decoded signature context.
     #[inline]
     #[must_use]
     pub fn new(
-        face: CellFace,
-        context: SignatureContext,
+        face: RuleFace,
+        context: PatternContext,
     ) -> Self
     {
         Self { face, context }
     }
 
     /// Whether **every** pattern variable the stage-0 face declares (its
-    /// derived [`crate::CellVarMeta`] list) is typed by the context — the
+    /// derived [`crate::RuleVarMeta`] list) is typed by the context — the
     /// stage-1 well-typedness link (each `D⋆` pattern variable is decoded to a
     /// core type).
     ///
     /// # Contract
     /// - ensures: `true` iff every `self.face.vars[i].var` has a
-    ///   [`SignatureContext::type_of`] entry.
+    ///   [`PatternContext::type_of`] entry.
     /// - panics: never.
     #[inline]
     #[must_use]
@@ -164,18 +164,18 @@ mod tests
     use gandr_core_checker::grade::Grade;
 
     use super::*;
-    use crate::cell::CellVarMeta;
-    use crate::cell::FreeTerm;
-    use crate::cell::Variance;
     use crate::code::Attrs;
     use crate::code::PrimTy;
     use crate::code::ValueTypeRef;
     use crate::desc::SurfaceSpan;
+    use crate::rule::FreeTerm;
+    use crate::rule::RuleVarMeta;
+    use crate::rule::Variance;
 
     #[test]
     fn signature_context_decodes_field_codes()
     {
-        let ctx = SignatureContext::from_field_codes(
+        let ctx = PatternContext::from_field_codes(
             &[("x".into(), integer_field()), ("y".into(), Code::Unit)],
             "Self".into(),
             &ValueType::atom("Self"),
@@ -193,15 +193,15 @@ mod tests
     fn typed_face_context_totality_tracks_declared_variables()
     {
         // The stage-0 face `f(x) ~> x` declares the pattern variable `x`.
-        let face = CellFace::new(
+        let face = RuleFace::new(
             FreeTerm::op("f", [FreeTerm::var("x")]),
             FreeTerm::var("x"),
-            [CellVarMeta::new("x", Variance::Producer, true.into())],
+            [RuleVarMeta::new("x", Variance::Producer, true.into())],
             SurfaceSpan::new(0.into(), 4.into()),
         );
-        let typed = TypedCellFace::new(
+        let typed = TypedRuleFace::new(
             face.clone(),
-            SignatureContext::from_field_codes(
+            PatternContext::from_field_codes(
                 &[("x".into(), integer_field())],
                 "Self".into(),
                 &ValueType::atom("Self"),
@@ -214,7 +214,7 @@ mod tests
         );
 
         // A context missing `x` is not total.
-        let untyped = TypedCellFace::new(face, SignatureContext::new(Vec::new()));
+        let untyped = TypedRuleFace::new(face, PatternContext::new(Vec::new()));
         assert!(
             !bool::from(untyped.is_context_total()),
             "a variable with no decoded type breaks totality"
@@ -233,7 +233,7 @@ mod tests
     fn signature_context_propagates_decode_failure()
     {
         let bind = Code::bind(crate::code::AtomSort::named("a"), Code::var("Self"));
-        let result = SignatureContext::from_field_codes(
+        let result = PatternContext::from_field_codes(
             &[("x".into(), bind)],
             "Self".into(),
             &ValueType::atom("Self"),

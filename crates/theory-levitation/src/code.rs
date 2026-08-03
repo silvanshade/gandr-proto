@@ -2,7 +2,7 @@
 //! decorations (proposal-levitation.md §3–§4.3).
 //!
 //! A [`Code`] describes one constructor's payload. The tag σ over constructors
-//! lives at the [`crate::DataDesc`] level (the tagged description, V2); the
+//! lives at the [`crate::SignDesc`] level (the tagged description, V2); the
 //! [`Code::Sum`] former additionally represents an inline sum so retrofitted
 //! builtins like `Boolean = 1 + 1` are one code (see [`crate::builtin`]). The
 //! fragment is deliberately first-order — no function-typed fields — **because
@@ -367,7 +367,7 @@ pub enum Code
     /// `A × B` — a product of two payloads (fields pair right-nested).
     Prod(Box<Self>, Box<Self>),
     /// `A + B` — an inline sum (σ). The primary tag σ of a declared datatype is
-    /// its constructor enumeration ([`crate::DataDesc::ctors`]); this former
+    /// its constructor enumeration ([`crate::SignDesc::ctors`]); this former
     /// represents an *inline* sum, used to retrofit builtin sums.
     Sum(Box<Self>, Box<Self>),
     /// A **non-recursive leaf field** of a core value type, carrying its grade

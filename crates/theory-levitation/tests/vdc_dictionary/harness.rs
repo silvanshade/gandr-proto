@@ -5,8 +5,8 @@
 //!
 //! Objects, tight arrows, and restriction are built **directly on the landed
 //! stage-0 structures** of `gandr-theory-levitation`: a [`SigObj`] is a tuple
-//! of real [`DataDesc`]s, a tight arrow renames real ctor / op symbols,
-//! restriction recomputes real [`CellFace`]s through the real
+//! of real [`SignDesc`]s, a tight arrow renames real ctor / op symbols,
+//! restriction recomputes real [`RuleFace`]s through the real
 //! [`derive_cell_var_meta`]. The derivation / cell machinery ([`Cell`],
 //! [`replay`], [`graft`]), by contrast, is a **test-side stand-in**:
 //! `gandr-polygraph` does not exist yet (it is the L2 lane), so the multi-ary
@@ -30,9 +30,7 @@ use alloc::rc::Rc;
 
 use gandr_theory_levitation::BridgeArity;
 use gandr_theory_levitation::CellEquivalence;
-use gandr_theory_levitation::CellFace;
 use gandr_theory_levitation::Code;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DescriptorFactorCount;
 use gandr_theory_levitation::DescriptorFactorIndex;
 use gandr_theory_levitation::DiagnosticMessage;
@@ -43,6 +41,8 @@ use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NameRef;
 use gandr_theory_levitation::PatternMatch;
 use gandr_theory_levitation::RewriteDepth;
+use gandr_theory_levitation::RuleFace;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::SymbolPresence;
 use gandr_theory_levitation::TermPositionIndex;
 use gandr_theory_levitation::wellformed::derive_cell_var_meta;
@@ -52,23 +52,23 @@ use gandr_theory_levitation::wellformed::derive_cell_var_meta;
 // ======================================================================
 
 /// A **VDC object**: a finite product of described signatures (proposal §2,
-/// "objects = a `DataDesc` or a finite product of them").
+/// "objects = a `SignDesc` or a finite product of them").
 ///
 /// The empty tuple is the terminal object `⊤`; the chosen binary product is
 /// factor concatenation ([`SigObj::product`]). Object identity is structural
-/// equality on the underlying [`DataDesc`]s.
+/// equality on the underlying [`SignDesc`]s.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SigObj
 {
     /// The signature factors, left to right.
-    pub factors: Vec<DataDesc>,
+    pub factors: Vec<SignDesc>,
 }
 
 impl SigObj
 {
     /// A one-factor object over a single description.
-    pub fn single(desc: DataDesc) -> Self
+    pub fn single(desc: SignDesc) -> Self
     {
         Self {
             factors: vec![desc],
@@ -136,7 +136,7 @@ pub struct SigMorphism
 }
 
 /// The identity renaming on a description (every symbol to itself).
-fn identity_map(desc: &DataDesc) -> BTreeMap<Name, Name>
+fn identity_map(desc: &SignDesc) -> BTreeMap<Name, Name>
 {
     symbol_names(desc)
         .into_iter()
@@ -203,13 +203,13 @@ pub fn check_morphism(morphism: &SigMorphism) -> Vec<MorphismError>
 }
 /// The ctor and op names of a description, in declaration order (ctors then
 /// ops) — the symbols a factor's renaming must cover.
-pub fn symbol_names(desc: &DataDesc) -> Vec<Name>
+pub fn symbol_names(desc: &SignDesc) -> Vec<Name>
 {
     let mut names: Vec<Name> = Vec::new();
     for ctor in &desc.ctors {
         names.push(ctor.name.clone());
     }
-    for op in &desc.ops {
+    for op in &desc.opers {
         names.push(op.name.clone());
     }
     names
@@ -360,8 +360,8 @@ pub struct MorphismError
 /// Check one `target_symbol ↦ source_symbol` mapping for kind and payload
 /// identity.
 fn check_symbol_mapping(
-    target: &DataDesc,
-    source: &DataDesc,
+    target: &SignDesc,
+    source: &SignDesc,
     target_symbol: &Name,
     source_symbol: &Name,
     factor: DescriptorFactorIndex,
@@ -416,7 +416,7 @@ fn check_symbol_mapping(
 
 /// Look up a constructor's payload code by name.
 fn ctor_code<'desc>(
-    desc: &'desc DataDesc,
+    desc: &'desc SignDesc,
     name: NameRef<'_>,
 ) -> Option<&'desc Code>
 {
@@ -429,39 +429,39 @@ fn ctor_code<'desc>(
 
 /// Whether a name is an operation of a description.
 fn is_op(
-    desc: &DataDesc,
+    desc: &SignDesc,
     name: NameRef<'_>,
 ) -> SymbolPresence
 {
     let name = name.as_ref();
-    desc.ops.iter().any(|op| op.name.as_ref() == name).into()
+    desc.opers.iter().any(|op| op.name.as_ref() == name).into()
 }
 /// Look up an operation's bridge arity by name.
 fn op_arity<'desc>(
-    desc: &'desc DataDesc,
+    desc: &'desc SignDesc,
     name: NameRef<'_>,
 ) -> Option<&'desc BridgeArity>
 {
     let name = name.as_ref();
-    desc.ops
+    desc.opers
         .iter()
         .find(|op| op.name.as_ref() == name)
         .map(|op| &op.arity)
 }
 
-/// The **face action** of a tight arrow: map both terms of a [`CellFace`]
+/// The **face action** of a tight arrow: map both terms of a [`RuleFace`]
 /// through [`apply_term`] and recompute the per-variable metadata with the real
 /// [`derive_cell_var_meta`] (proposal §2, restriction = pattern substitution).
 pub fn apply_face(
     morphism: &SigMorphism,
     tgt_factor: DescriptorFactorIndex,
-    face: &CellFace,
-) -> CellFace
+    face: &RuleFace,
+) -> RuleFace
 {
     let lhs = apply_term(morphism, tgt_factor, &face.lhs);
     let rhs = apply_term(morphism, tgt_factor, &face.rhs);
     let vars = derive_cell_var_meta(&lhs);
-    CellFace::new(lhs, rhs, vars, face.provenance)
+    RuleFace::new(lhs, rhs, vars, face.provenance)
 }
 /// Replay path induction on a **saturated** middle: transport the left endpoint
 /// along the absorbed path so it meets the right, then fire the base cell.
@@ -475,7 +475,7 @@ pub fn replay_path_ind_saturated(
     left_input: &LooseInstance,
     saturated: &SaturatedInstance,
     right_input: &LooseInstance,
-    cells: &[CellFace],
+    cells: &[RuleFace],
 ) -> Option<LooseInstance>
 {
     // The absorbed path transports the left endpoint; the worked example simply
@@ -536,8 +536,8 @@ pub fn right_endpoint(
                 return None;
             };
             let first_factor = sig.factors.first()?;
-            let cells = &first_factor.cells;
-            apply_path(start, steps, cells)?
+            let rules = &first_factor.rules;
+            apply_path(start, steps, rules)?
         },
     };
     Some(apply_term(&factor.right, 0.into(), &raw))
@@ -689,7 +689,7 @@ mod rewrite_support
     pub fn apply_path(
         start: &FreeTerm,
         steps: &[RewriteStep],
-        cells: &[CellFace],
+        cells: &[RuleFace],
     ) -> Option<FreeTerm>
     {
         let mut current = start.clone();
@@ -706,7 +706,7 @@ mod rewrite_support
     pub(super) fn rewrite_with_face(
         term: &FreeTerm,
         position: &[TermPositionIndex],
-        face: &CellFace,
+        face: &RuleFace,
     ) -> Option<(BTreeMap<Name, FreeTerm>, FreeTerm)>
     {
         let subterm = subterm_at(term, position)?;
@@ -783,7 +783,7 @@ fn rename_term(
 /// path (`refl`). Each entry pairs the step list with the reached term.
 pub fn enumerate_paths(
     start: &FreeTerm,
-    cells: &[CellFace],
+    cells: &[RuleFace],
     max_depth: RewriteDepth,
 ) -> Vec<(Vec<RewriteStep>, FreeTerm)>
 {
@@ -808,7 +808,7 @@ pub fn enumerate_paths(
 /// every cell (index order), the rewrite steps that fire.
 pub fn one_step_rewrites(
     term: &FreeTerm,
-    cells: &[CellFace],
+    cells: &[RuleFace],
 ) -> Vec<(RewriteStep, FreeTerm)>
 {
     let mut out: Vec<(RewriteStep, FreeTerm)> = Vec::new();
@@ -851,7 +851,7 @@ fn positions(term: &FreeTerm) -> Vec<Vec<TermPositionIndex>>
 // ======================================================================
 
 /// A **named relation interface** `R : I ⇸ J`: a set of generating
-/// [`CellFace`]s between two objects (proposal §2; the named-relation
+/// [`RuleFace`]s between two objects (proposal §2; the named-relation
 /// granularity settling §10.1 for F0).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Relation
@@ -863,7 +863,7 @@ pub struct Relation
     /// The target object `J`.
     pub tgt: SigObj,
     /// The generating faces.
-    pub gens: Vec<CellFace>,
+    pub gens: Vec<RuleFace>,
 }
 
 /// The **base** of a formal restriction: a named relation, or the

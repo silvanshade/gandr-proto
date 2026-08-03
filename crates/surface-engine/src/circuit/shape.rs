@@ -5,7 +5,7 @@
 //! Two passes read the same shape and must not drift: the surface check (the
 //! parent module's arrow-kind confirmation and name-set fold) and the
 //! description route ([`super::desc`], the lowering into
-//! [`gandr_theory_levitation::DataDesc`]). A block's shape is one reading —
+//! [`gandr_theory_levitation::SignDesc`]). A block's shape is one reading —
 //! where its `:` sits, which run is its signature, which is its filler, what a
 //! parameter entry declares — so that reading lives here and both passes take
 //! it from one place rather than reimplementing it against the same tiles.

@@ -3,7 +3,7 @@
 //!
 //! This is the thin adapter between the parser's flat CST and the description
 //! layer: it reads a parsed [`node_kinds::DATA_DECLARATION`] /
-//! [`node_kinds::CODATA_DECLARATION`] and builds a [`DataDesc`], then runs
+//! [`node_kinds::CODATA_DECLARATION`] and builds a [`SignDesc`], then runs
 //! [`gandr_theory_levitation::check_desc`] over it. The bulk of the description
 //! model and generic consumers live in `gandr-theory-levitation`; this module
 //! provides the classification and conversion bridge consumed by the data and
@@ -22,8 +22,8 @@
 //!   [`gandr_theory_levitation::Code`] (fields fold right-nested; a
 //!   self-referential field type is [`Code::Var`]);
 //! * `op` members and parameterized observations →
-//!   [`gandr_theory_levitation::OpDesc`] with a bridge arity;
-//! * `rule` members → [`gandr_theory_levitation::CellFace`] with derived
+//!   [`gandr_theory_levitation::OperDesc`] with a bridge arity;
+//! * `rule` members → [`gandr_theory_levitation::RuleFace`] with derived
 //!   per-variable metadata, the face written `lhs ==> rhs`;
 //! * a **function-typed field** is declined at elaboration — it is outside the
 //!   first-order fragment (proposal §8's `desc-higher-order-field`, pinning
@@ -40,17 +40,17 @@ use gandr_surface_syntax::NodeId;
 use gandr_theory_levitation::Attr;
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::BridgeArity;
-use gandr_theory_levitation::CellFace;
 use gandr_theory_levitation::Code;
 use gandr_theory_levitation::CtorDesc;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NominalId;
-use gandr_theory_levitation::OpDesc;
+use gandr_theory_levitation::OperDesc;
 use gandr_theory_levitation::ParamDesc;
 use gandr_theory_levitation::PrimTy;
+use gandr_theory_levitation::RuleFace;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::SortRef;
 use gandr_theory_levitation::SurfaceSpan;
 use gandr_theory_levitation::ValueTypeRef;
@@ -113,7 +113,7 @@ impl ElabDiagnostic
 pub struct DescElab
 {
     /// The elaborated descriptions, one per `data` / `codata` declaration.
-    pub descs: Vec<DataDesc>,
+    pub descs: Vec<SignDesc>,
     /// The diagnostics: elaboration declines plus every well-formedness
     /// failure.
     pub diagnostics: Vec<ElabDiagnostic>,
@@ -123,7 +123,7 @@ pub struct DescElab
 ///
 /// # Contract
 /// - requires: `source` parses (an unparseable source yields an empty result).
-/// - ensures: returns one [`DataDesc`] per datatype declaration, in source
+/// - ensures: returns one [`SignDesc`] per datatype declaration, in source
 ///   order, plus every elaboration decline and well-formedness diagnostic;
 ///   non-declaration items are ignored (the elaborator reads only the
 ///   description surface).
@@ -210,7 +210,7 @@ struct CircuitFormPresence(bool);
 
 /// Run the declaration table over one elaborated description, then record it.
 fn check_and_push(
-    desc: DataDesc,
+    desc: SignDesc,
     elab: &mut DescElab,
     serial: &mut NominalSerial,
 )
@@ -226,21 +226,21 @@ fn check_and_push(
 }
 
 /// The three parallel member lists of a declaration table under elaboration:
-/// one member run appends into the constructor, observation (operation), or
-/// cell list by its lead label, and the lists grow together across the block.
+/// one member run appends into the constructor, operation, or rule-face list
+/// by its lead label, and the lists grow together across the block.
 struct MemberLists<'lists>
 {
     /// The constructor descriptors accumulated so far.
     ctors: &'lists mut Vec<CtorDesc>,
-    /// The observation (operation) descriptors accumulated so far.
-    ops: &'lists mut Vec<OpDesc>,
-    /// The cell faces accumulated so far.
-    cells: &'lists mut Vec<CellFace>,
+    /// The operation descriptors accumulated so far.
+    opers: &'lists mut Vec<OperDesc>,
+    /// The rule faces accumulated so far.
+    rules: &'lists mut Vec<RuleFace>,
 }
 
 impl<'tree> Reader<'tree>
 {
-    /// Read one datatype declaration node into a [`DataDesc`], appending any
+    /// Read one datatype declaration node into a [`SignDesc`], appending any
     /// elaboration decline to `elab`.
     fn declaration(
         &self,
@@ -248,7 +248,7 @@ impl<'tree> Reader<'tree>
         polarity: DeclPolarity,
         serial: NominalSerial,
         elab: &mut DescElab,
-    ) -> Option<DataDesc>
+    ) -> Option<SignDesc>
     {
         let children = self.sig_children(node);
         let mut cursor = Cursor::new(self, &children);
@@ -262,12 +262,12 @@ impl<'tree> Reader<'tree>
         }
         let member_region = cursor.until_close_brace();
         let mut ctors: Vec<CtorDesc> = Vec::new();
-        let mut ops: Vec<OpDesc> = Vec::new();
-        let mut cells: Vec<CellFace> = Vec::new();
+        let mut opers: Vec<OperDesc> = Vec::new();
+        let mut rules: Vec<RuleFace> = Vec::new();
         let mut lists = MemberLists {
             ctors: &mut ctors,
-            ops: &mut ops,
-            cells: &mut cells,
+            opers: &mut opers,
+            rules: &mut rules,
         };
         for member in split_at_top_level(self, &member_region, TileSpelling(",")) {
             self.member(
@@ -278,12 +278,12 @@ impl<'tree> Reader<'tree>
                 elab,
             );
         }
-        Some(DataDesc::new(
+        Some(SignDesc::new(
             NominalId::new(serial, name),
             params,
             ctors,
-            ops,
-            cells,
+            opers,
+            rules,
             polarity,
             Attrs::empty(),
         ))
@@ -335,13 +335,13 @@ impl<'tree> Reader<'tree>
         };
         match self.label(first).map(|label| label.0) {
             | Some("op") => {
-                if let Some(op) = self.op_member(run) {
-                    lists.ops.push(op);
+                if let Some(op) = self.oper_member(run) {
+                    lists.opers.push(op);
                 }
             },
             | Some("rule") => {
                 if let Some(cell) = self.rule_member(run, elab) {
-                    lists.cells.push(cell);
+                    lists.rules.push(cell);
                 }
             },
             | Some("constructor") => {
@@ -351,7 +351,7 @@ impl<'tree> Reader<'tree>
             },
             // A lowercase-led member of a `codata` block: an observation.
             | _ if matches!(polarity, DeclPolarity::Codata) => {
-                self.observation_member(run, type_name, lists.ctors, lists.ops, elab);
+                self.observation_member(run, type_name, lists.ctors, lists.opers, elab);
             },
             | _ => {},
         }
@@ -590,11 +590,11 @@ impl<'tree> Reader<'tree>
     }
 
     /// Elaborate an `op name ( params ) ( -> Result )?` member into an
-    /// [`OpDesc`].
-    fn op_member(
+    /// [`OperDesc`].
+    fn oper_member(
         &self,
         run: &[NodeId],
-    ) -> Option<OpDesc>
+    ) -> Option<OperDesc>
     {
         let mut cursor = Cursor::new(self, run);
         cursor.bump(); // `op`
@@ -607,7 +607,7 @@ impl<'tree> Reader<'tree>
         else {
             Vec::new()
         };
-        Some(OpDesc::new(
+        Some(OperDesc::new(
             name,
             bridge_arity(inputs, outputs),
             Attrs::empty(),
@@ -683,7 +683,7 @@ impl<'tree> Reader<'tree>
             .unwrap_or_default()
     }
 
-    /// Elaborate a `rule lhs ==> rhs` member into a [`CellFace`] with derived
+    /// Elaborate a `rule lhs ==> rhs` member into a [`RuleFace`] with derived
     /// per-variable metadata, declining the retired `~>` spelling by name.
     ///
     /// The block-form ruling
@@ -696,7 +696,7 @@ impl<'tree> Reader<'tree>
         &self,
         run: &[NodeId],
         elab: &mut DescElab,
-    ) -> Option<CellFace>
+    ) -> Option<RuleFace>
     {
         // `rule <lhs> ==> <rhs>`: the lhs is the single expression node after
         // the `rule` lead; the rhs is the single node after the face arrow.
@@ -724,7 +724,7 @@ impl<'tree> Reader<'tree>
         let rhs = self.free_term(rhs_id);
         let vars = derive_cell_var_meta(&lhs);
         let span = SurfaceSpan::new(self.span(lead).start, self.span(rhs_id).end);
-        Some(CellFace::new(lhs, rhs, vars, span))
+        Some(RuleFace::new(lhs, rhs, vars, span))
     }
 
     /// Read an expression node into a [`FreeTerm`]: an application
@@ -774,7 +774,7 @@ impl<'tree> Reader<'tree>
         run: &[NodeId],
         type_name: TypeName<'_>,
         ctors: &mut Vec<CtorDesc>,
-        ops: &mut Vec<OpDesc>,
+        opers: &mut Vec<OperDesc>,
         elab: &mut DescElab,
     )
     {
@@ -818,7 +818,7 @@ impl<'tree> Reader<'tree>
             else {
                 Vec::new()
             };
-            ops.push(OpDesc::new(
+            opers.push(OperDesc::new(
                 name,
                 bridge_arity(inputs, outputs),
                 Attrs::empty(),

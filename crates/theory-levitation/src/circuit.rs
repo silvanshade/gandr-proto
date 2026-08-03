@@ -51,10 +51,10 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 
 use crate::boundary::CircuitNodeBudget;
-use crate::cell::CellFace;
-use crate::cell::FreeTerm;
 use crate::code::Name;
 use crate::elaborate::RewritePort;
+use crate::rule::FreeTerm;
+use crate::rule::RuleFace;
 
 /// Which alphabet a frame's head is declared in — the member kind the ruled
 /// block form reads the frame's arrow off.
@@ -227,7 +227,7 @@ impl CircuitBody
 /// A **circuit rule** member — the sphere its declaration fixes, and the wiring
 /// that must derive it.
 ///
-/// The `name` is the member's own; when [`CellFace`] grows the name slot the
+/// The `name` is the member's own; when [`RuleFace`] grows the name slot the
 /// higher-cells lane reserves, this field folds into [`CircuitRule::sphere`]
 /// rather than staying a second place a rule is named.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -237,7 +237,7 @@ pub struct CircuitRule
     pub name: Name,
     /// The **declared sphere**: the boundary pair the member's declaration
     /// fixes, carried at dimension 2 as the face's `lhs ⇴ rhs`.
-    pub sphere: CellFace,
+    pub sphere: RuleFace,
     /// The **rewrite-sorted ports** of the rule's parameter telescope — the
     /// binders a redex line applies by name ([`RewritePort`]).
     ///
@@ -261,7 +261,7 @@ impl CircuitRule
     #[must_use]
     pub fn new<N>(
         name: N,
-        sphere: CellFace,
+        sphere: RuleFace,
         body: CircuitBody,
     ) -> Self
     where
@@ -914,7 +914,7 @@ mod tests
     #[test]
     fn the_declared_sphere_is_carried_beside_the_wiring()
     {
-        let sphere = CellFace::new(
+        let sphere = RuleFace::new(
             FreeTerm::op("add", [FreeTerm::var("x"), FreeTerm::var("y")]),
             FreeTerm::op("add", [
                 FreeTerm::var("x\u{2032}"),

@@ -22,9 +22,9 @@ mod u30b
 {
     use gandr_theory_levitation::CodeId;
     use gandr_theory_levitation::CodeInterner;
-    use gandr_theory_levitation::DataDesc;
     use gandr_theory_levitation::DescValue;
     use gandr_theory_levitation::InternedCodeCount;
+    use gandr_theory_levitation::SignDesc;
     use gandr_theory_levitation::generic_eq;
     use gandr_theory_levitation::serialize_value;
     use proptest::prelude::*;
@@ -85,7 +85,7 @@ mod u30b
     }
     /// The four named certificates with their boundary descriptions and the
     /// finite source-value space to transport.
-    fn transportable() -> Vec<(CodeIso, DataDesc, DataDesc, Vec<DescValue>)>
+    fn transportable() -> Vec<(CodeIso, SignDesc, SignDesc, Vec<DescValue>)>
     {
         vec![
             (
@@ -162,7 +162,7 @@ mod u30b
     /// declaration order, against a shared interner.
     fn intern_ctor_codes(
         interner: &mut CodeInterner,
-        desc: &DataDesc,
+        desc: &SignDesc,
     ) -> Vec<CodeId>
     {
         desc.ctors

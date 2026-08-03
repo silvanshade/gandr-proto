@@ -1,11 +1,11 @@
-//! The tagged **description table** — `DataDesc` *is* the decl table (ADR-54
+//! The tagged **description table** — `SignDesc` *is* the decl table (ADR-54
 //! §5; proposal-levitation.md §3).
 //!
-//! A [`DataDesc`] bundles the minted [`NominalId`], the declared
+//! A [`SignDesc`] bundles the minted [`NominalId`], the declared
 //! [`SortDesc`] sort set (the description universe's index), the
 //! graded/attributed [`ParamDesc`]s and [`CtorDesc`]s (the σ tag over
 //! constructors, each with a first-order [`crate::Code`] and a result sort),
-//! the reserved [`OpDesc`] operations and [`crate::CellFace`] 2-cells, and
+//! the reserved [`OperDesc`] operations and [`crate::RuleFace`] 2-cells, and
 //! the [`DeclPolarity`] (V6). Every one of ADR-54 §5's five flagged extension
 //! points is a field here, so the anti-retrofit checklist is satisfied by
 //! construction (proposal §3).
@@ -16,11 +16,11 @@ use crate::arity::BridgeArity;
 use crate::boundary::NominalSerial;
 use crate::boundary::RecursiveStatus;
 use crate::boundary::SurfaceByteOffset;
-use crate::cell::CellFace;
 use crate::circuit::CircuitRule;
 use crate::code::Attrs;
 use crate::code::Code;
 use crate::code::Name;
+use crate::rule::RuleFace;
 
 /// The minted **0-cell identity** of a datatype (ADR-54 §3.4; ADR-50's "third
 /// identity discipline" keys interning on it).
@@ -321,7 +321,7 @@ impl CtorDesc
 /// A reserved **operation** member (`op f(…) -> R`) — its name, multi-out
 /// [`BridgeArity`], and attribute Σ (proposal §3–§4.2).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct OpDesc
+pub struct OperDesc
 {
     /// The operation's name.
     pub name: Name,
@@ -331,7 +331,7 @@ pub struct OpDesc
     pub attrs: Attrs,
 }
 
-impl OpDesc
+impl OperDesc
 {
     /// An operation with the given name, arity, and attribute Σ.
     #[inline]
@@ -363,9 +363,9 @@ impl OpDesc
 /// 2-cell faces; `circuits` are the 2-cell members whose boundaries are
 /// derived from a wiring; `polarity` selects the μ or ν decoder (V6); `attrs`
 /// is the datatype's own attribute Σ. There is **no parallel structure**:
-/// `DataDesc` *is* the decl table (proposal §3).
+/// `SignDesc` *is* the decl table (proposal §3).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct DataDesc
+pub struct SignDesc
 {
     /// The minted 0-cell identity (ADR-54 §3.4).
     pub id: NominalId,
@@ -379,9 +379,9 @@ pub struct DataDesc
     /// The constructors — the σ tag over the code grammar (the 1-cells).
     pub ctors: Box<[CtorDesc]>,
     /// The reserved operations (ADR-54 §3.1).
-    pub ops: Box<[OpDesc]>,
-    /// The reserved 2-cell faces (V3).
-    pub cells: Box<[CellFace]>,
+    pub opers: Box<[OperDesc]>,
+    /// The reserved 2-cell rule faces (V3).
+    pub rules: Box<[RuleFace]>,
     /// The reserved **circuit rule** members: a declared sphere with the wiring
     /// that must derive it ([`CircuitRule`]). The declaration table checks the
     /// derived pair against the declared sphere ([`crate::check_desc`]).
@@ -400,14 +400,14 @@ pub struct DataDesc
     pub attrs: Attrs,
 }
 
-impl DataDesc
+impl SignDesc
 {
     /// A description from its minted id, parts, and polarity.
     ///
     /// The sort set defaults to the **degenerate single sort** — one entry
     /// named by the declaration itself, at the declaration's polarity (the
     /// `data` / `codata` sugar's reading). A multi-sorted sign block replaces
-    /// it through [`DataDesc::with_sorts`].
+    /// it through [`SignDesc::with_sorts`].
     ///
     /// The constructor performs **no** well-formedness checking (an ill-formed
     /// description is representable so it can be *rejected with a diagnostic*
@@ -416,20 +416,20 @@ impl DataDesc
     /// [`crate::check_desc`].
     #[inline]
     #[must_use]
-    pub fn new<Pa, Ct, Op, Ce>(
+    pub fn new<Pa, Ct, Op, Ru>(
         id: NominalId,
         params: Pa,
         ctors: Ct,
-        ops: Op,
-        cells: Ce,
+        opers: Op,
+        rules: Ru,
         polarity: DeclPolarity,
         attrs: Attrs,
     ) -> Self
     where
         Pa: Into<Box<[ParamDesc]>>,
         Ct: Into<Box<[CtorDesc]>>,
-        Op: Into<Box<[OpDesc]>>,
-        Ce: Into<Box<[CellFace]>>,
+        Op: Into<Box<[OperDesc]>>,
+        Ru: Into<Box<[RuleFace]>>,
     {
         let sorts = Box::from([SortDesc::new(id.name.clone(), polarity)]);
         Self {
@@ -437,8 +437,8 @@ impl DataDesc
             sorts,
             params: params.into(),
             ctors: ctors.into(),
-            ops: ops.into(),
-            cells: cells.into(),
+            opers: opers.into(),
+            rules: rules.into(),
             circuits: Box::default(),
             polarity,
             attrs,
@@ -448,7 +448,7 @@ impl DataDesc
     /// The same description carrying `sorts` as its declared sort set.
     ///
     /// The sign block's `sort` members land here; every existing caller keeps
-    /// the degenerate default [`DataDesc::new`] supplies.
+    /// the degenerate default [`SignDesc::new`] supplies.
     #[inline]
     #[must_use]
     pub fn with_sorts<So>(
@@ -467,7 +467,7 @@ impl DataDesc
     /// The same description carrying `circuits` as its circuit rule members.
     ///
     /// Circuit rules are added through this builder rather than through
-    /// [`DataDesc::new`] so that every existing caller keeps the empty default:
+    /// [`SignDesc::new`] so that every existing caller keeps the empty default:
     /// a description with no derived-boundary member is exactly what it was.
     #[inline]
     #[must_use]

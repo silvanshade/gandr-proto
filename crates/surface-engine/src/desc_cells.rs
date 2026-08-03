@@ -1,8 +1,8 @@
-//! The **description → cell layer** seam: stage-0 [`DataDesc`]s into the
+//! The **description → cell layer** seam: stage-0 [`SignDesc`]s into the
 //! content-addressed cell store of `gandr-theory-computads`.
 //!
 //! [`desc_elab`](crate::desc_elab) stops at the declaration table — it reads a
-//! `data` / `codata` block into a [`DataDesc`] and runs
+//! `data` / `codata` block into a [`SignDesc`] and runs
 //! [`gandr_theory_levitation::check_desc`] over it. This module carries that
 //! table one step further, to the artifact the fusion engines actually consume:
 //! [`gandr_theory_computads::elaborate_data_desc`] turns each description's
@@ -28,7 +28,7 @@
 //! diagnostics rather than a silent narrowing.
 //!
 //! [`BridgeArity`]: gandr_theory_levitation::BridgeArity
-//! [`DataDesc`]: gandr_theory_levitation::DataDesc
+//! [`SignDesc`]: gandr_theory_levitation::SignDesc
 //! [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
 
 use gandr_theory_computads::CellStore;
@@ -39,8 +39,8 @@ use gandr_theory_computads::OpElaborateError;
 use gandr_theory_computads::elaborate_data_desc;
 use gandr_theory_levitation::CircuitDerivationError;
 use gandr_theory_levitation::CircuitElaborationError;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::RedexOccurrence;
+use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::TermPositionIndex;
 use gandr_theory_levitation::WhiskeredCell;
 
@@ -96,14 +96,14 @@ pub struct DescCells
 /// [`elaborate_data_descs`]: crate::desc_elab::elaborate_data_descs
 #[inline]
 #[must_use]
-pub fn elaborate_desc_cells(descs: &[DataDesc]) -> DescCells
+pub fn elaborate_desc_cells(descs: &[SignDesc]) -> DescCells
 {
     let mut cells = DescCells::default();
     for desc in descs {
         let elaborated = elaborate_data_desc(desc);
-        for &(index, error) in &elaborated.declined_ops {
+        for &(index, error) in &elaborated.declined_opers {
             let name = desc
-                .ops
+                .opers
                 .get(usize::from(index))
                 .map_or("<unknown>", |op| op.name.as_ref());
             cells.diagnostics.push(ElabDiagnostic::new(
@@ -158,7 +158,7 @@ fn op_decline_reason(error: OpElaborateError) -> DeclineReason<'static>
 /// boundary-language refusal is structured data, and the sentence that reads it
 /// is the surface's.
 fn circuit_decline_diagnostic(
-    desc: &DataDesc,
+    desc: &SignDesc,
     index: DeclinedCircuitIndex,
     error: &ElaborateError,
 ) -> ElabDiagnostic
@@ -265,13 +265,13 @@ fn render_position(position: &[TermPositionIndex]) -> String
 /// prose; the linearity refusal renders its own diagnostic, which names the
 /// copied hole and the respelling.
 fn face_decline_diagnostic(
-    desc: &DataDesc,
+    desc: &SignDesc,
     index: DeclinedFaceIndex,
     error: &ElaborateError,
 ) -> ElabDiagnostic
 {
     let span = desc
-        .cells
+        .rules
         .get(usize::from(index))
         .map_or_else(empty_surface_span, |face| face.provenance);
     let name = desc.id.name.as_ref();

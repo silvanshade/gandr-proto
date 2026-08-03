@@ -35,10 +35,10 @@
 //! A rewrite `lhs ~> rhs` over a signature is a **pair of open terms in the
 //! free structure over that signature** — elements of the free monad `D⋆(V)`
 //! (V3). Stage 0 stores them untyped-but-host-checked as [`FreeTerm`] pairs in
-//! a [`CellFace`]; the typed encoding (a dependent Σ over the signature) is the
+//! a [`RuleFace`]; the typed encoding (a dependent Σ over the signature) is the
 //! stage-1 refinement and changes only the *checking*, never the encoding
-//! (proposal §4.1). The VDC delta: each [`CellFace`] carries derived
-//! [`CellVarMeta`] per pattern variable, whose [`Variance`] is the constant
+//! (proposal §4.1). The VDC delta: each [`RuleFace`] carries derived
+//! [`RuleVarMeta`] per pattern variable, whose [`Variance`] is the constant
 //! [`Variance::Producer`] at stage 0 (no consumer-argument operations exist
 //! yet) — the field ships now so the sequent-era refinement is an *update*, not
 //! a migration (addendum §A).
@@ -81,7 +81,7 @@
 //!
 //! # The description table and polarity (`desc`)
 //!
-//! [`DataDesc`] *is* the decl table (ADR-54 §5): the minted [`NominalId`], the
+//! [`SignDesc`] *is* the decl table (ADR-54 §5): the minted [`NominalId`], the
 //! graded/attributed parameters and constructors, the reserved operations and
 //! 2-cell faces, and the [`DeclPolarity`] (`Data` μ-decoded | `Codata`
 //! ν-decoded, V6). The ν decoder itself is a later lane; only the
@@ -96,12 +96,12 @@
 //!   [`Code`];
 //! * [`serialize_value`] — a canonical, deterministic wire encoding of a
 //!   [`DescValue`] guided by a [`Code`];
-//! * [`serialize_desc`] — the inspectable-IR rendering of a whole [`DataDesc`];
+//! * [`serialize_desc`] — the inspectable-IR rendering of a whole [`SignDesc`];
 //! * [`CodeInterner`] — content-addressed interning keyed on decidable code
 //!   equality.
 //!
 //! [`builtin`] retrofits primitive formers (`Bool`, pairs, sums, `Option`,
-//! `List`) as [`DataDesc`]s so the same generic programs cover builtins and
+//! `List`) as [`SignDesc`]s so the same generic programs cover builtins and
 //! declared data uniformly (proposal §3).
 //!
 //! # Stage 1: the decoder and typed cells (`decode`, `typed_cell`)
@@ -119,16 +119,15 @@
 //!   is the stage-1 capability the decoder will target once a dependent σ
 //!   *code* lands (the current fragment is non-dependent — see the
 //!   [`decode`](mod@decode) module docs).
-//! * [`typed_cell`] — the **typed 2-cell face**: a stage-0 [`CellFace`] refined
-//!   with a decoded [`SignatureContext`] (the "dependent Σ over the signature",
-//!   addendum §4.1). Additive — [`CellFace`] is reused whole, not rewritten.
+//! * [`typed_cell`] — the **typed 2-cell face**: a stage-0 [`RuleFace`] refined
+//!   with a decoded [`PatternContext`] (the "dependent Σ over the signature",
+//!   addendum §4.1). Additive — [`RuleFace`] is reused whole, not rewritten.
 
 extern crate alloc;
 
 pub mod arity;
 pub mod boundary;
 pub mod builtin;
-pub mod cell;
 pub mod circuit;
 pub mod code;
 pub mod decode;
@@ -136,7 +135,8 @@ pub mod desc;
 pub mod elaborate;
 pub mod generic;
 pub mod intern;
-pub mod typed_cell;
+pub mod rule;
+pub mod typed_rule;
 pub mod wellformed;
 
 pub use gandr_core_checker::boundary::ConstructorTag;
@@ -148,7 +148,6 @@ pub use crate::arity::SortRef;
 pub use crate::boundary::AttributeEmptiness;
 pub use crate::boundary::AttributePresence;
 pub use crate::boundary::CellEquivalence;
-pub use crate::boundary::CellVariableLinearity;
 pub use crate::boundary::CircuitNodeBudget;
 pub use crate::boundary::ContextTotality;
 pub use crate::boundary::DescriptorFactorCount;
@@ -172,16 +171,13 @@ pub use crate::boundary::ReplayEquivalence;
 pub use crate::boundary::RewriteDepth;
 pub use crate::boundary::RoundTripSampleCount;
 pub use crate::boundary::RoundTripStatus;
+pub use crate::boundary::RuleVariableLinearity;
 pub use crate::boundary::SerializedDescText;
 pub use crate::boundary::SerializedValueBytes;
 pub use crate::boundary::SurfaceByteOffset;
 pub use crate::boundary::SymbolNameMatchCount;
 pub use crate::boundary::SymbolPresence;
 pub use crate::boundary::TermPositionIndex;
-pub use crate::cell::CellFace;
-pub use crate::cell::CellVarMeta;
-pub use crate::cell::FreeTerm;
-pub use crate::cell::Variance;
 pub use crate::circuit::BoundaryReading;
 pub use crate::circuit::CircuitBody;
 pub use crate::circuit::CircuitDerivationError;
@@ -206,11 +202,11 @@ pub use crate::decode::DecodeError;
 pub use crate::decode::decode;
 pub use crate::decode::decode_desc;
 pub use crate::desc::CtorDesc;
-pub use crate::desc::DataDesc;
 pub use crate::desc::DeclPolarity;
 pub use crate::desc::NominalId;
-pub use crate::desc::OpDesc;
+pub use crate::desc::OperDesc;
 pub use crate::desc::ParamDesc;
+pub use crate::desc::SignDesc;
 pub use crate::desc::SortDesc;
 pub use crate::desc::SurfaceSpan;
 pub use crate::elaborate::CircuitElaborationError;
@@ -229,8 +225,12 @@ pub use crate::generic::serialize_desc;
 pub use crate::generic::serialize_value;
 pub use crate::intern::CodeId;
 pub use crate::intern::CodeInterner;
-pub use crate::typed_cell::SignatureContext;
-pub use crate::typed_cell::TypedCellFace;
+pub use crate::rule::FreeTerm;
+pub use crate::rule::RuleFace;
+pub use crate::rule::RuleVarMeta;
+pub use crate::rule::Variance;
+pub use crate::typed_rule::PatternContext;
+pub use crate::typed_rule::TypedRuleFace;
 pub use crate::wellformed::WfDiagnostic;
 pub use crate::wellformed::WfKind;
 pub use crate::wellformed::check_desc;

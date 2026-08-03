@@ -3,7 +3,7 @@
 //!
 //! These functions are the real consumers that keep the decl table from being
 //! "a beautiful decl table nobody decodes": each is one Rust program driven by
-//! a [`DataDesc`] / [`Code`], covering declared data and retrofitted builtins
+//! a [`SignDesc`] / [`Code`], covering declared data and retrofitted builtins
 //! ([`crate::builtin`]) uniformly.
 //!
 //! * [`generic_eq`] — structural equality of two [`DescValue`]s, guided by the
@@ -16,7 +16,7 @@
 //! A [`DescValue`] is a *generic* value of a described datatype: a constructor
 //! tag plus a [`Payload`] shaped by that constructor's [`Code`]. Recursive
 //! occurrences ([`Code::Var`]) nest a whole [`DescValue`] (tagged again), which
-//! is why the generic programs are driven by the [`DataDesc`] (the σ tag), not
+//! is why the generic programs are driven by the [`SignDesc`] (the σ tag), not
 //! a bare [`Code`].
 
 use gandr_core_checker::boundary::ConstructorTag;
@@ -27,8 +27,8 @@ use crate::boundary::SerializedValueBytes;
 use crate::code::Code;
 use crate::code::Name;
 use crate::code::ValueTypeRef;
-use crate::desc::DataDesc;
 use crate::desc::DeclPolarity;
+use crate::desc::SignDesc;
 
 /// Which side of an inline sum ([`Code::Sum`]) a value injects into.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -67,11 +67,11 @@ pub enum Payload
 }
 
 /// A **generic value** of a described datatype: a constructor tag (an index
-/// into [`DataDesc::ctors`]) plus its [`Payload`].
+/// into [`SignDesc::ctors`]) plus its [`Payload`].
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct DescValue
 {
-    /// The constructor index into [`DataDesc::ctors`].
+    /// The constructor index into [`SignDesc::ctors`].
     pub ctor: ConstructorTag,
     /// The constructor's payload, shaped by that constructor's code.
     pub payload: Payload,
@@ -110,7 +110,7 @@ impl DescValue
 #[inline]
 #[must_use]
 pub fn generic_eq(
-    desc: &DataDesc,
+    desc: &SignDesc,
     left: &DescValue,
     right: &DescValue,
 ) -> GenericEquality
@@ -129,7 +129,7 @@ pub fn generic_eq(
 /// Structural equality of two payloads guided by a [`Code`] (the recursion of
 /// [`generic_eq`]).
 fn payload_eq(
-    desc: &DataDesc,
+    desc: &SignDesc,
     code: &Code,
     left: &Payload,
     right: &Payload,
@@ -219,7 +219,7 @@ fn payload_eq(
 #[inline]
 #[must_use]
 pub fn serialize_value(
-    desc: &DataDesc,
+    desc: &SignDesc,
     value: &DescValue,
 ) -> SerializedValueBytes
 {
@@ -298,7 +298,7 @@ pub fn serialize_value(
 ///   panics.
 #[inline]
 #[must_use]
-pub fn serialize_desc(desc: &DataDesc) -> SerializedDescText
+pub fn serialize_desc(desc: &SignDesc) -> SerializedDescText
 {
     let keyword = match desc.polarity {
         | DeclPolarity::Data => "data",
@@ -339,23 +339,23 @@ pub fn serialize_desc(desc: &DataDesc) -> SerializedDescText
     else {
         format!(" {} ", ctor_parts.join(", "))
     };
-    let ops = desc
-        .ops
+    let opers = desc
+        .opers
         .iter()
-        .map(|op| {
+        .map(|oper| {
             format!(
                 "; op {}/{}->{}",
-                op.name,
-                op.arity.inputs.len(),
-                op.arity.outputs.len()
+                oper.name,
+                oper.arity.inputs.len(),
+                oper.arity.outputs.len()
             )
         })
         .collect::<Vec<String>>()
         .concat();
-    let cells = desc
-        .cells
+    let rules = desc
+        .rules
         .iter()
-        .map(|cell| format!("; rule {}", render_face(cell)))
+        .map(|rule| format!("; rule {}", render_face(rule)))
         .collect::<Vec<String>>()
         .concat();
     let circuits = desc
@@ -372,7 +372,7 @@ pub fn serialize_desc(desc: &DataDesc) -> SerializedDescText
         .collect::<Vec<String>>()
         .concat();
     format!(
-        "{keyword} {}{params} {{{body}}}{ops}{cells}{circuits}",
+        "{keyword} {}{params} {{{body}}}{opers}{rules}{circuits}",
         desc.id.name
     )
     .into()
@@ -522,8 +522,8 @@ fn render_type_ref(ty: &ValueTypeRef) -> String
     rendered.pop().unwrap_or_default()
 }
 
-/// Render a [`crate::CellFace`] to the inspection notation (`lhs ~> rhs`).
-fn render_face(cell: &crate::cell::CellFace) -> String
+/// Render a [`crate::RuleFace`] to the inspection notation (`lhs ~> rhs`).
+fn render_face(cell: &crate::rule::RuleFace) -> String
 {
     format!(
         "{} ~> {}",
@@ -536,11 +536,11 @@ fn render_face(cell: &crate::cell::CellFace) -> String
 ///
 /// Shared with [`crate::wellformed`], whose boundary diagnostics quote the two
 /// terms they compare in the same notation the description IR renders them in.
-pub(crate) fn render_free_term(term: &crate::cell::FreeTerm) -> String
+pub(crate) fn render_free_term(term: &crate::rule::FreeTerm) -> String
 {
     enum TermFrame<'term>
     {
-        Render(&'term crate::cell::FreeTerm),
+        Render(&'term crate::rule::FreeTerm),
         FinishApp(&'term Name, usize),
     }
 
@@ -549,17 +549,17 @@ pub(crate) fn render_free_term(term: &crate::cell::FreeTerm) -> String
     while let Some(frame) = stack.pop() {
         match frame {
             | TermFrame::Render(node) => match *node {
-                | crate::cell::FreeTerm::Var(ref name) => {
+                | crate::rule::FreeTerm::Var(ref name) => {
                     rendered.push(name.to_string());
                 },
-                | crate::cell::FreeTerm::Ctor(ref name, ref args)
-                | crate::cell::FreeTerm::Op(ref name, ref args)
+                | crate::rule::FreeTerm::Ctor(ref name, ref args)
+                | crate::rule::FreeTerm::Op(ref name, ref args)
                     if args.is_empty() =>
                 {
                     rendered.push(name.to_string());
                 },
-                | crate::cell::FreeTerm::Ctor(ref name, ref args)
-                | crate::cell::FreeTerm::Op(ref name, ref args) => {
+                | crate::rule::FreeTerm::Ctor(ref name, ref args)
+                | crate::rule::FreeTerm::Op(ref name, ref args) => {
                     stack.push(TermFrame::FinishApp(name, args.len()));
                     for arg in args.iter().rev() {
                         stack.push(TermFrame::Render(arg));
@@ -651,9 +651,9 @@ mod tests
         );
     }
     /// The `Maybe(a)` description: `None = 1`, `Some = field a`.
-    fn maybe_desc() -> DataDesc
+    fn maybe_desc() -> SignDesc
     {
-        DataDesc::new(
+        SignDesc::new(
             NominalId::new(0.into(), "Maybe"),
             [crate::desc::ParamDesc::new("a", Grade::ONE, Attrs::empty())],
             [
@@ -700,9 +700,9 @@ mod tests
         );
     }
     /// A `Nat`-like recursive description: `Zero = 1`, `Succ = var`.
-    fn nat_desc() -> DataDesc
+    fn nat_desc() -> SignDesc
     {
-        DataDesc::new(
+        SignDesc::new(
             NominalId::new(1.into(), "Nat"),
             Vec::new(),
             [
@@ -719,7 +719,7 @@ mod tests
     #[test]
     fn desc_inspection_renders_graded_and_attributed_fields()
     {
-        let desc = DataDesc::new(
+        let desc = SignDesc::new(
             NominalId::new(0.into(), "Vec"),
             [crate::desc::ParamDesc::new("a", Grade::ONE, Attrs::empty())],
             [
@@ -761,15 +761,15 @@ mod tests
             [
                 CircuitNode::Redex(CircuitRedex::new(
                     "p",
-                    crate::cell::FreeTerm::var("x"),
-                    crate::cell::FreeTerm::var("x\u{2032}"),
+                    crate::rule::FreeTerm::var("x"),
+                    crate::rule::FreeTerm::var("x\u{2032}"),
                     "x\u{2032}",
                 )),
                 CircuitNode::Frame(CircuitFrame::new(
                     FrameHead::Op("add".into()),
                     [
-                        crate::cell::FreeTerm::var("x\u{2032}"),
-                        crate::cell::FreeTerm::var("y"),
+                        crate::rule::FreeTerm::var("x\u{2032}"),
+                        crate::rule::FreeTerm::var("y"),
                     ],
                     "z",
                 )),
@@ -779,7 +779,7 @@ mod tests
         let derived = crate::circuit::derive_boundaries(&body).expect("derives");
         let rule = CircuitRule::new(
             "cong1",
-            crate::cell::CellFace::new(
+            crate::rule::RuleFace::new(
                 derived.source,
                 derived.target,
                 Vec::new(),
@@ -788,7 +788,7 @@ mod tests
             body,
         )
         .with_ports([RewritePort::sorted("p", "Nat")]);
-        let desc = DataDesc::new(
+        let desc = SignDesc::new(
             NominalId::new(0.into(), "Nat"),
             Vec::new(),
             Vec::new(),
@@ -808,7 +808,7 @@ mod tests
     #[test]
     fn a_description_carrying_no_circuit_renders_exactly_as_before()
     {
-        let desc = DataDesc::new(
+        let desc = SignDesc::new(
             NominalId::new(0.into(), "Bit"),
             Vec::new(),
             [CtorDesc::new("Off", Code::Unit, "Bit", Attrs::empty())],
@@ -827,7 +827,7 @@ mod tests
     #[test]
     fn desc_inspection_renders_primitive_fields()
     {
-        let desc = DataDesc::new(
+        let desc = SignDesc::new(
             NominalId::new(0.into(), "Wrap"),
             Vec::new(),
             [CtorDesc::new(

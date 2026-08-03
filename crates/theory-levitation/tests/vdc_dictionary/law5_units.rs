@@ -53,7 +53,7 @@ mod law5
     fn saturation_makes_the_non_refl_value_defined_and_beta_compatible()
     {
         let desc = nat_desc();
-        let cells = &desc.cells;
+        let cells = &desc.rules;
         let base = base_cell(var("p0.x".into()));
         let a = gen_x(nat(1.into()));
         let b = gen_x(nat(2.into()));
@@ -121,7 +121,7 @@ mod law5
     fn path_induction_declines_on_a_non_empty_path()
     {
         let desc = nat_desc();
-        let cells = &desc.cells;
+        let cells = &desc.rules;
         let start = FreeTerm::op("plus", [succ(zero()), zero()]);
         let paths = enumerate_paths(&start, cells, 3.into());
         let (steps, _end) = paths
@@ -222,7 +222,7 @@ mod law5
     fn path_formation_is_real_and_deterministic()
     {
         let desc = nat_desc();
-        let cells = &desc.cells;
+        let cells = &desc.rules;
         // plus(Succ(Zero), Zero) reduces to Succ(Zero) in two steps.
         let start = FreeTerm::op("plus", [succ(zero()), zero()]);
         let paths = enumerate_paths(&start, cells, 3.into());

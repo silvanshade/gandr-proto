@@ -45,11 +45,11 @@ use gandr_theory_computads::CellStore;
 use gandr_theory_computads::Tracelet;
 use gandr_theory_computads::compose_invertible;
 use gandr_theory_computads::replay_equivalent;
-use gandr_theory_levitation::DataDesc;
 use gandr_theory_levitation::FreeTerm;
 use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NameRef;
 use gandr_theory_levitation::NominalId;
+use gandr_theory_levitation::SignDesc;
 
 use crate::boundary::DerivationReplay;
 use crate::boundary::DescTableEmptyStatus;
@@ -608,7 +608,7 @@ fn elaborations_replay_equivalent(
 /// A **description registry** — the signature namespace the reflection reads
 /// (`proposal-vdc-reflection.md` §5.1, the `DescTable` of `CellStoreVdc`).
 ///
-/// A thin owned map from [`NominalId`] to [`DataDesc`]:
+/// A thin owned map from [`NominalId`] to [`SignDesc`]:
 /// `gandr-theory-levitation` mints descriptions but keeps no table, so the
 /// reflection layer organizes them into the object namespace the [`Vdc`]
 /// instance resolves signatures against.
@@ -617,7 +617,7 @@ fn elaborations_replay_equivalent(
 pub struct DescTable
 {
     /// The descriptions, in insertion order.
-    descs: Vec<DataDesc>,
+    descs: Vec<SignDesc>,
 }
 
 impl DescTable
@@ -640,7 +640,7 @@ impl DescTable
     #[inline]
     pub fn insert(
         &mut self,
-        desc: DataDesc,
+        desc: SignDesc,
     ) -> SignatureRef
     {
         let id = desc.id.clone();
@@ -659,7 +659,7 @@ impl DescTable
     pub fn get(
         &self,
         id: &NominalId,
-    ) -> Option<&DataDesc>
+    ) -> Option<&SignDesc>
     {
         self.descs.iter().find(|desc| desc.id == *id)
     }

@@ -22,7 +22,7 @@
 //! repeated metavariable. What the ruling governs is which cells a description
 //! may put **into a store** — so the refusal is invoked from the elaboration
 //! path ([`crate::elaborate`]), on the cells a
-//! [`gandr_theory_levitation::DataDesc`] contributes, and nowhere deeper.
+//! [`gandr_theory_levitation::SignDesc`] contributes, and nowhere deeper.
 //!
 //! # A hole at two polarities is a seam, not a copy
 //!

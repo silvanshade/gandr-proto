@@ -2,7 +2,7 @@
 //! primitive formers get retrofitted descriptions so generic operations cover
 //! builtins and declared data uniformly").
 //!
-//! Each function returns a [`DataDesc`] for a builtin, so the generic programs
+//! Each function returns a [`SignDesc`] for a builtin, so the generic programs
 //! of [`crate::generic`] — equality, serialization, inspection — and the
 //! [`crate::CodeInterner`] apply to `Boolean`, `Option`, `Pair`, sums, and
 //! `List` exactly as they apply to a declared datatype. The retrofits use the
@@ -16,17 +16,17 @@ use crate::code::Attrs;
 use crate::code::Code;
 use crate::code::ValueTypeRef;
 use crate::desc::CtorDesc;
-use crate::desc::DataDesc;
 use crate::desc::DeclPolarity;
 use crate::desc::NominalId;
 use crate::desc::ParamDesc;
+use crate::desc::SignDesc;
 
 /// The retrofit description of **`Option(a)`** — `None = 1`, `Some = a`.
 #[inline]
 #[must_use]
-pub fn option_desc() -> DataDesc
+pub fn option_desc() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(0.into(), "Option"),
         [param("a".into())],
         [
@@ -44,9 +44,9 @@ pub fn option_desc() -> DataDesc
 /// constructors `False` and `True` (proposal §5's `Boolean` retrofit target).
 #[inline]
 #[must_use]
-pub fn bool_desc() -> DataDesc
+pub fn bool_desc() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(0.into(), "Boolean"),
         Vec::new(),
         [
@@ -63,9 +63,9 @@ pub fn bool_desc() -> DataDesc
 /// `Cons = a × var` (recursive through [`Code::Var`]).
 #[inline]
 #[must_use]
-pub fn list_desc() -> DataDesc
+pub fn list_desc() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(0.into(), "List"),
         [param("a".into())],
         [
@@ -87,9 +87,9 @@ pub fn list_desc() -> DataDesc
 /// payload is `a × b`.
 #[inline]
 #[must_use]
-pub fn pair_desc() -> DataDesc
+pub fn pair_desc() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(0.into(), "Pair"),
         [param("a".into()), param("b".into())],
         [CtorDesc::new(
@@ -108,9 +108,9 @@ pub fn pair_desc() -> DataDesc
 /// `Inr = b` (the tagged form mirroring gandr's `Inl` / `Inr`).
 #[inline]
 #[must_use]
-pub fn sum_desc() -> DataDesc
+pub fn sum_desc() -> SignDesc
 {
-    DataDesc::new(
+    SignDesc::new(
         NominalId::new(0.into(), "Sum"),
         [param("a".into()), param("b".into())],
         [

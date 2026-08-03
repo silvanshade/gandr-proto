@@ -1,5 +1,5 @@
 //! End-to-end **description → cell layer** tests: parse a `data` block,
-//! elaborate it to a `gandr_theory_levitation::DataDesc`, then elaborate that
+//! elaborate it to a `gandr_theory_levitation::SignDesc`, then elaborate that
 //! description into the `gandr-theory-computads` cell store.
 //!
 //! These exercise the whole wire the description layer's `op` members travel:
@@ -36,8 +36,8 @@ mod tests
             elab.diagnostics
         );
         let desc = elab.descs.first().expect("NatAdd elaborated");
-        assert_eq!(1, desc.ops.len(), "one declared operation");
-        assert_eq!(2, desc.cells.len(), "two declared 2-cell faces");
+        assert_eq!(1, desc.opers.len(), "one declared operation");
+        assert_eq!(2, desc.rules.len(), "two declared 2-cell faces");
 
         let cells = elaborate_desc_cells(&elab.descs);
         assert!(
@@ -63,7 +63,7 @@ mod tests
         // compose (one monomial per output port, each reading every input).
         assert_eq!(
             2,
-            desc.ops
+            desc.opers
                 .first()
                 .expect("divmod elaborated")
                 .arity

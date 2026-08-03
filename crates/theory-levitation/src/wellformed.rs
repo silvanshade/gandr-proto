@@ -1,7 +1,7 @@
 //! **Host-side well-formedness** — the stage-0 stand-in for stage-1 typing
 //! (proposal-levitation.md §3, §8; VDC addendum §A).
 //!
-//! Stage 0 has no typed decoder, so a [`DataDesc`]'s invariants are checked by
+//! Stage 0 has no typed decoder, so a [`SignDesc`]'s invariants are checked by
 //! this Rust pass, which produces **inspectable diagnostics** (proposal §3).
 //! The checks discharge the pathological goldens of proposal §8 and the VDC
 //! declined-declaration golden (addendum §A/§C):
@@ -21,17 +21,13 @@
 //!
 //! The higher-order-field decline (`desc-higher-order-field`, proposal §8) is
 //! not represented here because [`crate::Code`] *cannot encode* a higher-order
-//! field — that decline lands at elaboration, before a `DataDesc` exists.
+//! field — that decline lands at elaboration, before a `SignDesc` exists.
 
 use gandr_core_checker::boundary::NameRef;
 use gandr_core_checker::boundary::StringText;
 
 use crate::arity::BridgeArity;
 use crate::boundary::DiagnosticMessage;
-use crate::cell::CellFace;
-use crate::cell::CellVarMeta;
-use crate::cell::FreeTerm;
-use crate::cell::Variance;
 use crate::circuit::CircuitDerivationError;
 use crate::circuit::CircuitNode;
 use crate::circuit::CircuitRule;
@@ -39,12 +35,16 @@ use crate::circuit::derive_boundaries;
 use crate::code::Attrs;
 use crate::code::Code;
 use crate::code::Name;
-use crate::desc::DataDesc;
+use crate::desc::SignDesc;
 use crate::desc::SurfaceSpan;
 use crate::generic::render_free_term;
+use crate::rule::FreeTerm;
+use crate::rule::RuleFace;
+use crate::rule::RuleVarMeta;
+use crate::rule::Variance;
 
 /// The reserved-derived metadata marker names an attribute Σ may **not**
-/// declare: they name the [`CellVarMeta`] fields, which are *derived* from the
+/// declare: they name the [`RuleVarMeta`] fields, which are *derived* from the
 /// faces, never declared (VDC addendum §A).
 pub const RESERVED_DERIVED_MARKERS: [&str; 3] = ["variance", "linear", "linearity"];
 
@@ -55,7 +55,7 @@ pub enum WfKind
 {
     /// A cell face mentions a constructor / operation not in this datatype's
     /// signature.
-    OutOfSignatureCell,
+    OutOfSignatureRule,
     /// A cell face's right-hand side introduces a variable absent from its
     /// left-hand side.
     UnboundRhsVariable,
@@ -141,7 +141,7 @@ impl WfDiagnostic
 /// - witness: `wellformed::tests::*`.
 #[inline]
 #[must_use]
-pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
+pub fn check_desc(desc: &SignDesc) -> Vec<WfDiagnostic>
 {
     let mut diagnostics = Vec::new();
 
@@ -172,7 +172,7 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
             &mut diagnostics,
         );
     }
-    for op in &desc.ops {
+    for op in &desc.opers {
         check_attrs(
             &op.attrs,
             &op.name,
@@ -183,12 +183,12 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
 
     // Cell faces: in-signature symbols and no fresh right-hand-side variable.
     let signature = signature_names(desc);
-    for cell in &desc.cells {
-        check_cell(cell, &signature, &mut diagnostics);
+    for rule in &desc.rules {
+        check_rule_face(rule, &signature, &mut diagnostics);
     }
 
     // Bridge arities: the three maps compose.
-    for op in &desc.ops {
+    for op in &desc.opers {
         check_arity(&op.arity, op.name.as_ref().into(), &mut diagnostics);
     }
 
@@ -207,7 +207,7 @@ pub fn check_desc(desc: &DataDesc) -> Vec<WfDiagnostic>
 /// constructor's result sort is declared; and every recursive occurrence
 /// ([`crate::Code::Var`]) names a declared sort.
 fn check_sorts(
-    desc: &DataDesc,
+    desc: &SignDesc,
     diagnostics: &mut Vec<WfDiagnostic>,
 )
 {
@@ -329,7 +329,7 @@ fn check_circuit_rule(
                     continue;
                 }
                 diagnostics.push(WfDiagnostic::new(
-                    WfKind::OutOfSignatureCell,
+                    WfKind::OutOfSignatureRule,
                     format!(
                         "circuit rule `{}`'s frame applies symbol `{}` not in the datatype's \
                          signature",
@@ -455,13 +455,13 @@ fn check_attrs(
 
 /// The set of in-signature symbol names: every constructor and operation of
 /// `desc`.
-fn signature_names(desc: &DataDesc) -> Vec<Name>
+fn signature_names(desc: &SignDesc) -> Vec<Name>
 {
     let mut names: Vec<Name> = Vec::new();
     for ctor in &desc.ctors {
         names.push(ctor.name.clone());
     }
-    for op in &desc.ops {
+    for op in &desc.opers {
         names.push(op.name.clone());
     }
     names
@@ -469,8 +469,8 @@ fn signature_names(desc: &DataDesc) -> Vec<Name>
 
 /// Check one cell face: every applied symbol is in-signature and the
 /// right-hand side introduces no fresh variable.
-fn check_cell(
-    cell: &CellFace,
+fn check_rule_face(
+    cell: &RuleFace,
     signature: &[Name],
     diagnostics: &mut Vec<WfDiagnostic>,
 )
@@ -495,7 +495,7 @@ fn check_cell(
     }
 }
 
-/// Append an `OutOfSignatureCell` diagnostic for each applied symbol of `term`
+/// Append an `OutOfSignatureRule` diagnostic for each applied symbol of `term`
 /// not present in `signature`.
 fn check_free_term_symbols(
     term: &FreeTerm,
@@ -511,7 +511,7 @@ fn check_free_term_symbols(
             | FreeTerm::Ctor(ref name, ref args) | FreeTerm::Op(ref name, ref args) => {
                 if !signature.contains(name) {
                     diagnostics.push(WfDiagnostic::new(
-                        WfKind::OutOfSignatureCell,
+                        WfKind::OutOfSignatureRule,
                         format!(
                             "cell rule mentions symbol `{name}` not in the datatype's signature"
                         )
@@ -585,33 +585,33 @@ fn check_arity(
     }
 }
 
-/// **Derive** the per-variable [`CellVarMeta`] for a face's left-hand-side
+/// **Derive** the per-variable [`RuleVarMeta`] for a face's left-hand-side
 /// variables (VDC addendum §A).
 ///
 /// Each variable's variance is the stage-0 constant [`Variance::Producer`], and
 /// its linearity is whether it occurs exactly once in the left-hand side.
 ///
 /// This is the derivation the elaborator runs to populate
-/// [`CellFace::vars`](crate::CellFace); the metadata is derived here, never
+/// [`RuleFace::vars`](crate::RuleFace); the metadata is derived here, never
 /// declared (a surface attempt to declare it is declined by [`check_desc`]).
 ///
 /// # Contract
-/// - ensures: one [`CellVarMeta`] per *distinct* left-hand-side variable, in
+/// - ensures: one [`RuleVarMeta`] per *distinct* left-hand-side variable, in
 ///   first-occurrence order; `linear` is `true` exactly when the variable
 ///   occurs once.
 /// - fails: never.
 #[inline]
 #[must_use]
-pub fn derive_cell_var_meta(lhs: &FreeTerm) -> Vec<CellVarMeta>
+pub fn derive_cell_var_meta(lhs: &FreeTerm) -> Vec<RuleVarMeta>
 {
     let occurrences = lhs.collect_vars();
-    let mut meta: Vec<CellVarMeta> = Vec::new();
+    let mut meta: Vec<RuleVarMeta> = Vec::new();
     for var in &occurrences {
         if meta.iter().any(|existing| existing.var == *var) {
             continue;
         }
         let count = occurrences.iter().filter(|&other| other == var).count();
-        meta.push(CellVarMeta::new(
+        meta.push(RuleVarMeta::new(
             var.clone(),
             Variance::Producer,
             (count == 1).into(),
@@ -626,7 +626,6 @@ mod tests
     use super::*;
     use crate::arity::SortRef;
     use crate::boundary::MonomialCount;
-    use crate::cell::CellFace;
     use crate::circuit::CircuitBody;
     use crate::circuit::CircuitFrame;
     use crate::circuit::CircuitNode;
@@ -638,8 +637,9 @@ mod tests
     use crate::desc::CtorDesc;
     use crate::desc::DeclPolarity;
     use crate::desc::NominalId;
-    use crate::desc::OpDesc;
+    use crate::desc::OperDesc;
     use crate::elaborate::RewritePort;
+    use crate::rule::RuleFace;
 
     #[test]
     fn the_sorting_discipline_indexes_the_description()
@@ -647,7 +647,7 @@ mod tests
         use crate::desc::SortDesc;
         // A clean two-sorted signature: `Even` and `Odd`, with a constructor
         // targeting `Odd` and recursing at `Even`.
-        let two_sorted = DataDesc::new(
+        let two_sorted = SignDesc::new(
             NominalId::new(0.into(), "Parity"),
             Vec::new(),
             [CtorDesc::new(
@@ -795,13 +795,13 @@ mod tests
     #[test]
     fn a_clean_description_passes()
     {
-        let face = CellFace::new(
+        let face = RuleFace::new(
             FreeTerm::op("id", [FreeTerm::ctor("Zero", Vec::new())]),
             FreeTerm::ctor("Zero", Vec::new()),
             Vec::new(),
             SurfaceSpan::new(0.into(), 1.into()),
         );
-        let op = OpDesc::new(
+        let op = OperDesc::new(
             "id",
             BridgeArity::single_output([SortRef::new("m", "Nat")], SortRef::new("q", "Nat")),
             Attrs::empty(),
@@ -815,7 +815,7 @@ mod tests
     fn an_out_of_signature_cell_is_declined()
     {
         // `bogus(x) ~> x`: `bogus` is not a constructor or op of `Nat`.
-        let face = CellFace::new(
+        let face = RuleFace::new(
             FreeTerm::op("bogus", [FreeTerm::var("x")]),
             FreeTerm::var("x"),
             Vec::new(),
@@ -825,7 +825,7 @@ mod tests
         assert!(
             diagnostics
                 .iter()
-                .any(|diag| diag.kind == WfKind::OutOfSignatureCell
+                .any(|diag| diag.kind == WfKind::OutOfSignatureRule
                     && diag.message.as_ref().contains("bogus")),
             "an out-of-signature symbol is declined"
         );
@@ -834,7 +834,7 @@ mod tests
     fn a_fresh_right_hand_side_variable_is_declined()
     {
         // `Succ(x) ~> y`: `y` is unbound.
-        let face = CellFace::new(
+        let face = RuleFace::new(
             FreeTerm::ctor("Succ", [FreeTerm::var("x")]),
             FreeTerm::var("y"),
             Vec::new(),
@@ -860,7 +860,7 @@ mod tests
             [5u32],
             Vec::new(),
         );
-        let op = OpDesc::new("bad", arity, Attrs::empty());
+        let op = OperDesc::new("bad", arity, Attrs::empty());
         let diagnostics = check_desc(&nat_with(Vec::new(), vec![op], Attrs::empty()));
         assert!(
             diagnostics
@@ -940,7 +940,7 @@ mod tests
         );
         let rule = CircuitRule::new(
             "bogus",
-            CellFace::new(
+            RuleFace::new(
                 FreeTerm::op("frobnicate", [FreeTerm::var("x")]),
                 FreeTerm::op("frobnicate", [FreeTerm::var("x")]),
                 Vec::new(),
@@ -953,7 +953,7 @@ mod tests
         assert!(
             diagnostics
                 .iter()
-                .any(|diag| diag.kind == WfKind::OutOfSignatureCell
+                .any(|diag| diag.kind == WfKind::OutOfSignatureRule
                     && diag
                         .message
                         .as_ref()
@@ -963,7 +963,7 @@ mod tests
         assert!(
             diagnostics
                 .iter()
-                .any(|diag| diag.kind == WfKind::OutOfSignatureCell
+                .any(|diag| diag.kind == WfKind::OutOfSignatureRule
                     && diag.message.as_ref().contains("cell rule mentions symbol")),
             "and so is the declared sphere that names it"
         );
@@ -988,7 +988,7 @@ mod tests
             ))],
             "z",
         );
-        let sphere = CellFace::new(
+        let sphere = RuleFace::new(
             FreeTerm::op("Succ", [FreeTerm::var("n")]),
             FreeTerm::op("Succ", [FreeTerm::var("n")]),
             Vec::new(),
@@ -1129,9 +1129,9 @@ mod tests
         )
     }
     /// A sphere whose source is `add(x, y)` and whose target is `target`.
-    fn congruence_sphere(target: FreeTerm) -> CellFace
+    fn congruence_sphere(target: FreeTerm) -> RuleFace
     {
-        CellFace::new(
+        RuleFace::new(
             FreeTerm::op("add", [FreeTerm::var("x"), FreeTerm::var("y")]),
             target,
             Vec::new(),
@@ -1139,9 +1139,9 @@ mod tests
         )
     }
     /// The `add : (Nat, Nat) --> Nat` operation the congruence frame applies.
-    fn add_op() -> OpDesc
+    fn add_op() -> OperDesc
     {
-        OpDesc::new(
+        OperDesc::new(
             "add",
             BridgeArity::single_output(
                 [SortRef::new("m", "Nat"), SortRef::new("n", "Nat")],
@@ -1167,12 +1167,12 @@ mod tests
     }
     /// A minimal `Nat`-like description with the given cells / ops / attrs.
     fn nat_with(
-        cells: Vec<CellFace>,
-        ops: Vec<OpDesc>,
+        cells: Vec<RuleFace>,
+        ops: Vec<OperDesc>,
         attrs: Attrs,
-    ) -> DataDesc
+    ) -> SignDesc
     {
-        DataDesc::new(
+        SignDesc::new(
             NominalId::new(0.into(), "Nat"),
             Vec::new(),
             [

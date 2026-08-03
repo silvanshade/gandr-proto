@@ -2,14 +2,14 @@
 //! free structure over a signature (proposal-levitation.md §4.1, V3; VDC
 //! addendum §A).
 //!
-//! A [`CellFace`] stores the two [`FreeTerm`]s untyped, with host-side
+//! A [`RuleFace`] stores the two [`FreeTerm`]s untyped, with host-side
 //! well-formedness ([`crate::check_desc`]) standing in for stage-1 typing;
 //! nothing about the encoding changes when checking moves into the checker
-//! (proposal §4.1). Each face carries derived [`CellVarMeta`] per pattern
+//! (proposal §4.1). Each face carries derived [`RuleVarMeta`] per pattern
 //! variable — the VDC delta — whose [`Variance`] is the constant
 //! [`Variance::Producer`] at stage 0.
 
-use crate::boundary::CellVariableLinearity;
+use crate::boundary::RuleVariableLinearity;
 use crate::code::Name;
 use crate::desc::SurfaceSpan;
 
@@ -124,17 +124,17 @@ pub enum Variance
 /// surface attempt to *declare* it is declined (the declined-declaration
 /// golden, addendum §A/§C).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct CellVarMeta
+pub struct RuleVarMeta
 {
     /// The pattern variable's name.
     pub var: Name,
     /// The variance role (the stage-0 constant [`Variance::Producer`]).
     pub variance: Variance,
     /// Whether the variable occurs exactly once in the left-hand side (linear).
-    pub linear: CellVariableLinearity,
+    pub linear: RuleVariableLinearity,
 }
 
-impl CellVarMeta
+impl RuleVarMeta
 {
     /// Metadata for a variable with an explicit variance and linearity.
     #[inline]
@@ -142,7 +142,7 @@ impl CellVarMeta
     pub fn new<N>(
         var: N,
         variance: Variance,
-        linear: CellVariableLinearity,
+        linear: RuleVariableLinearity,
     ) -> Self
     where
         N: Into<Name>,
@@ -159,22 +159,22 @@ impl CellVarMeta
 /// polygraph cell store elaborates through (proposal §4.1).
 ///
 /// The two [`FreeTerm`]s are open terms in `D⋆(V)`; `vars` is the derived
-/// [`CellVarMeta`] per left-hand-side pattern variable (VDC delta);
+/// [`RuleVarMeta`] per left-hand-side pattern variable (VDC delta);
 /// `provenance` is the surface span the rule was read from.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct CellFace
+pub struct RuleFace
 {
     /// The rewrite's left-hand side.
     pub lhs: FreeTerm,
     /// The rewrite's right-hand side.
     pub rhs: FreeTerm,
-    /// Derived per-variable metadata (the VDC field; see [`CellVarMeta`]).
-    pub vars: Box<[CellVarMeta]>,
+    /// Derived per-variable metadata (the VDC field; see [`RuleVarMeta`]).
+    pub vars: Box<[RuleVarMeta]>,
     /// The surface span this face was read from.
     pub provenance: SurfaceSpan,
 }
 
-impl CellFace
+impl RuleFace
 {
     /// A face over two terms with derived variable metadata and a provenance
     /// span.
@@ -187,7 +187,7 @@ impl CellFace
         provenance: SurfaceSpan,
     ) -> Self
     where
-        V: Into<Box<[CellVarMeta]>>,
+        V: Into<Box<[RuleVarMeta]>>,
     {
         Self {
             lhs,

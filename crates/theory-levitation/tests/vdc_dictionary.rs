@@ -8,10 +8,10 @@
 //! ## Real structure vs the F0 stand-in
 //!
 //! Objects ([`harness::SigObj`] over real
-//! [`gandr_theory_levitation::DataDesc`]s), tight arrows (renamings of real
+//! [`gandr_theory_levitation::SignDesc`]s), tight arrows (renamings of real
 //! ctor / op symbols, checked against real [`gandr_theory_levitation::Code`] /
 //! `BridgeArity`), and restriction (recomputing real
-//! [`gandr_theory_levitation::CellFace`]s through the real
+//! [`gandr_theory_levitation::RuleFace`]s through the real
 //! [`gandr_theory_levitation::wellformed::derive_cell_var_meta`] and validated
 //! by the real [`gandr_theory_levitation::check_desc`]) are built **directly on
 //! the landed crate**. The multi-ary **cell / derivation machinery**
@@ -28,7 +28,7 @@
 //! | --- | --- | --- | --- | --- |
 //! | **1 — tight category** | PASS | strict (structural) | none | `law1::*` (composition assoc/unit, contravariant action functoriality, product β + terminal uniqueness, diagonal, `check_morphism` accept/reject) |
 //! | **2 — multicategorical cells** | PASS | up-to-replay (on the F0 stand-in L2's `Tracelet` inherits) | none; symbolic `graft` is partial (unital + linear single-clause chain) — other shapes decline and defer to replay-level composition | `law2::*` (grafting unital, associative, `replay(graft) = replay∘replay`, unsupported-shape decline) |
-//! | **3 — restriction** | PASS | (a) strict on the real `CellFace`; (b) four Def 3.2.6 equalities strict **by construction** (Lemma 3.2.8's tuple form realized); (c) split fibrationality free from the representation; (d) strict, real-structure | none | `law3::*` (split face action, `α[id#id]`, `α[s#t][s′#t′]=α[s∘s′#t∘t′]`, `⊤[s#t]=⊤`, `(α∧β)[s#t]` distribution, globular factorization, variance invariance, well-formedness preservation, boundary reads) |
+//! | **3 — restriction** | PASS | (a) strict on the real `RuleFace`; (b) four Def 3.2.6 equalities strict **by construction** (Lemma 3.2.8's tuple form realized); (c) split fibrationality free from the representation; (d) strict, real-structure | none | `law3::*` (split face action, `α[id#id]`, `α[s#t][s′#t′]=α[s∘s′#t∘t′]`, `⊤[s#t]=⊤`, `(α∧β)[s#t]` distribution, globular factorization, variance invariance, well-formedness preservation, boundary reads) |
 //! | **4 — cartesian** | PASS | β / pairing up-to-replay; local `⊤`/`∧` strict via 3(b) | none; the pairing-uniqueness spot-check is **bounded to `Pair`-shaped ρ** (recorded honestly) | `law4::*` (projection/pairing bijection, uniqueness spot-check, unique cell into `⊤`, products preserved by restriction) |
 //! | **5 — units (path induction)** | **PARTIAL** | β holds (strict on `refl`); the unit universal property's **bijectivity is not total** | **`PathInd` declines on a non-empty path**: the base cell's shared middle variable requires the chain endpoints to meet, so a path between them cannot be absorbed by any generating instance. The obligation: **instances must be closed under path action — a saturation invariant on the future cell store (instances-as-modules over the rewrite-path relation).** The saturation probe shows this invariant is *sufficient*, not merely necessary. | `law5::*` (real path formation, β on `refl`, non-empty decline, saturation probe, distinctness) |
 //!
@@ -44,7 +44,7 @@
 //!   matcher, substitution, rewriter, and bounded path search are supplied
 //!   test-side ([`harness`]). An F2 / L2 obligation. Witness:
 //!   `law3::matching_and_substitution_are_supplied_test_side`.
-//! * **H2** — [`gandr_theory_levitation::CellFace`] /
+//! * **H2** — [`gandr_theory_levitation::RuleFace`] /
 //!   [`gandr_theory_levitation::check_desc`] is **single-signature
 //!   (homogeneous)**: heterogeneous loose arrows (`I ≠ J`) have no
 //!   well-formedness support, and the `UnboundRhsVariable` rule (rhs vars ⊆ lhs
@@ -67,7 +67,7 @@
 //! associative (Law 1); `⊤[s#t]=⊤` because the empty `∧`-tuple has no factors
 //! to restrict; and `(α∧β)[s#t]=α[s#t]∧β[s#t]` because restriction maps over
 //! the tuple. Law 3(a) carries the **real-structure content**: the face action
-//! is split on the landed [`gandr_theory_levitation::CellFace`] type itself.
+//! is split on the landed [`gandr_theory_levitation::RuleFace`] type itself.
 
 mod fixtures;
 mod harness;

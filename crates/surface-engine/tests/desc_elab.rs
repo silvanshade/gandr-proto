@@ -2,7 +2,7 @@
 //! record).
 //!
 //! These drive the whole path — parse a `data` / `codata` block, elaborate it
-//! to a `gandr_theory_levitation::DataDesc`, then run the generic consumers
+//! to a `gandr_theory_levitation::SignDesc`, then run the generic consumers
 //! over the result — on the real surface corpus fixtures, plus the pathological
 //! declines.
 
@@ -130,16 +130,24 @@ mod tests
             .iter()
             .find(|desc| desc.id.name.as_ref() == "NatOp")
             .expect("NatOp elaborated");
-        assert_eq!(1, nat_op.ops.len(), "NatOp has one operation");
-        assert_eq!("add", nat_op.ops[0].name.as_ref(), "the operation is `add`");
-        assert_eq!(2, nat_op.ops[0].arity.inputs.len(), "add reads two inputs");
+        assert_eq!(1, nat_op.opers.len(), "NatOp has one operation");
+        assert_eq!(
+            "add",
+            nat_op.opers[0].name.as_ref(),
+            "the operation is `add`"
+        );
+        assert_eq!(
+            2,
+            nat_op.opers[0].arity.inputs.len(),
+            "add reads two inputs"
+        );
 
         let nat_rule = elab
             .descs
             .iter()
             .find(|desc| desc.id.name.as_ref() == "NatRule")
             .expect("NatRule elaborated");
-        assert_eq!(1, nat_rule.cells.len(), "NatRule has one 2-cell face");
+        assert_eq!(1, nat_rule.rules.len(), "NatRule has one 2-cell face");
 
         let nat_div = elab
             .descs
@@ -148,7 +156,7 @@ mod tests
             .expect("NatDiv elaborated");
         assert_eq!(
             2,
-            nat_div.ops[0].arity.outputs.len(),
+            nat_div.opers[0].arity.outputs.len(),
             "divmod has a two-port result tuple (the Π-layer)"
         );
 
@@ -181,7 +189,7 @@ mod tests
             .iter()
             .find(|desc| desc.id.name.as_ref() == "NatFace")
             .expect("NatFace elaborated");
-        assert_eq!(1, face.cells.len(), "the ruled `==>` face becomes a cell");
+        assert_eq!(1, face.rules.len(), "the ruled `==>` face becomes a cell");
         assert!(
             ruled.diagnostics.is_empty(),
             "the ruled face earns no decline: {:?}",
@@ -201,7 +209,7 @@ mod tests
             .find(|desc| desc.id.name.as_ref() == "NatFace")
             .expect("NatFace still elaborates around the declined member");
         assert!(
-            stale.cells.is_empty(),
+            stale.rules.is_empty(),
             "the retired face is declined rather than admitted as a silent synonym"
         );
         assert!(

@@ -101,7 +101,7 @@ fn a_ruled_sign_block_lowers_its_members_into_a_description()
     };
     assert_eq!("Nat", desc.id.name.as_ref(), "the block's own name");
     assert_eq!(2, desc.ctors.len(), "one constructor per `data` member");
-    assert_eq!(1, desc.ops.len(), "one operation per `oper` member");
+    assert_eq!(1, desc.opers.len(), "one operation per `oper` member");
     assert_eq!(
         1,
         desc.circuits.len(),

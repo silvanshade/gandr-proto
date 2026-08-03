@@ -31,9 +31,9 @@
 //! - [`cell`] — the [`cell::Cell`] (`lhs ~> rhs`, orientation, provenance,
 //!   derived metadata) and the content-addressed [`cell::CellStore`], generic
 //!   over the alphabet.
-//! - [`elaborate`] — a whole [`gandr_theory_levitation::DataDesc`] into cells
+//! - [`elaborate`] — a whole [`gandr_theory_levitation::SignDesc`] into cells
 //!   (§7.1), the ADR-54 acceptance target: surface `rule` faces
-//!   ([`gandr_theory_levitation::CellFace`]) become cells, and the declared
+//!   ([`gandr_theory_levitation::RuleFace`]) become cells, and the declared
 //!   `op` members' [`gandr_theory_levitation::BridgeArity`]s decide which of
 //!   them the single-continuation grammar admits.
 //! - [`linearity`] — the **cell-admission linearity boundary**: cell patterns
