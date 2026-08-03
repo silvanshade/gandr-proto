@@ -22,6 +22,7 @@ The design and the build differ here more than anywhere else in the corpus, and 
 * **`Σ` is vacuous at v0.** No typing rule populates it, because every obligation source it was designed to hold — session endpoints, held capabilities, acquired shared channels — is a deferred feature that does not exist in the checker.
   The zone's shape is committed now on the reasoning that retrofitting a context shape is expensive; its discipline is in force the moment a first obligation source lands.
   Until then, **a reified stack captures no obligations, and `resume`, `discard`, and duplication are unrestricted**.
+  The rules that would bind once it is populated — one-shot capture, abandonment running the recorded unwind obligations, and multi-shot only for an empty captured zone — are [[../../implementation/effects-and-control#One-shot linearity, and what it resolves]].
 * **Grades exist and are sealed.** `gandr-core-checker`'s `grade` module carries a single concrete carrier over `ℕ ∪ {ω}`, representation-sealed behind a semiring signature (`ZERO`, `ONE`, `OMEGA`, `fin`, `leq`, `plus`, `times`).
   The order carries the two structural rules — `thunk_r t ⇓ U_s B` requires `s ⊑ r`, and `force v` requires `1 ⊑ r`, each checked **per site with no accumulator**, so a grade-`1` thunk forced twice along one path passes both checks independently.
   `Dup` **is built and does use addition**: it reads its split grades off the expected returner-of-product type and enforces `r + s ⊑ grade`.

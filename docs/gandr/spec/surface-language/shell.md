@@ -101,6 +101,7 @@ The shell is the **motivating application** for first-class stacks, not a benefi
 The interactive payoff follows: a derivation surface that shows a pipeline's session protocol advancing, a suspended job as an inspectable stack value, and a trap as a handler frame is a genuinely novel way to **teach** POSIX, not merely to run it.
 
 The fragment graduates into the real handler as the linear-zone runtime, the process model, and worlds land.
+The calculus every row above elaborates into — the operation and handle rules, the stack judgment, and the one-shot linearity that makes a terminated job's obligations a typing matter — is [[../implementation/effects-and-control]].
 What is true **today**, marked as such: the host operation families `Exec`/`Fs`/`Proc`/`Env` run through the preserved host-effect seam; pipelines at the REPL parse but are **declined past the parse** with a named diagnostic; the surface `m.op(a)` member-call elaborates to `perform m.op { … }`.
 
 ## Source and confidence

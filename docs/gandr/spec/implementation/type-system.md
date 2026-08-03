@@ -809,7 +809,7 @@ It is the rule-level companion to [[feature-staging]], which fixes the build ord
 | `+evidence`   | none — an erasible sublanguage erasing to the non-dependent core                                         | an evidence phase                                        | decided direction              |
 | `full`        | all of the above                                                                                         | the full judgment                                        | —                              |
 
-The module layer's own rules are [[../surface-language/proposed/modules]]; the effect and control block's surface is [[../surface-language/shell]] and its runtime seam is [[../implementation#The runtime host]].
+The module layer's own rules are [[../surface-language/proposed/modules]]; the effect and control block's own rules — the operation and handle rules, the stack judgment, the control operators, and the linearity discipline behind those two status cells — are [[effects-and-control]], its surface is [[../surface-language/shell]], and its runtime seam is [[../implementation#The runtime host]].
 
 **Two decided directions extend this system without changing any rule above, and both are recorded with their construction obligations in [[feature-staging#The decided directions as construction milestones]].** The first is an in-language, phase-separated **erasible-evidence** layer reaching toward full dependent types, which **erases** to this non-dependent core.
 The second is a unifying semantic model — the wheeled, polarity-sorted, graded nominal structure — which consolidates the adjunction, the grades, and the sessions this document already carries.

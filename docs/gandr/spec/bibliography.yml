@@ -4862,3 +4862,232 @@ llbuild2fx:
   note: >-
     not in library.bib; synthesized 2026-08-02 — named because the pipeline drops it by name while
     keeping its model; not read at a pinned revision, and the locator is the enclosing repository
+
+# ── The effects, handlers, and delimited-control line ─────────────────────────
+# Transcribed from the contributor research register on 2026-08-02, which holds each
+# work with the identifier recorded below; the identifiers were not independently
+# re-resolved at that pass and the works' claims were not re-read from the papers.
+
+plotkin-power-2002-notions-of-computation:
+  type: chapter
+  title: Notions of Computation Determine Monads
+  author: ["Plotkin, Gordon", "Power, John"]
+  date: 2002
+  publisher: Springer
+  serial-number:
+    doi: "10.1007/3-540-45931-6_24"
+    isbn: "978-3-540-45931-6"
+  parent:
+    type: proceedings
+    title: Foundations of Software Science and Computation Structures
+    page-range: 342-356
+
+plotkin-pretnar-2013-handling-algebraic-effects:
+  type: article
+  title: Handling Algebraic Effects
+  author: ["Plotkin, Gordon D.", "Pretnar, Matija"]
+  date: 2013-12-17
+  serial-number:
+    doi: "10.2168/lmcs-9(4:23)2013"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 9
+    issue: "4:23"
+
+pretnar-2015-algebraic-effects-tutorial:
+  type: article
+  title: "An Introduction to Algebraic Effects and Handlers: invited tutorial paper"
+  author: ["Pretnar, Matija"]
+  date: 2015-12
+  publisher: Elsevier
+  serial-number:
+    doi: "10.1016/j.entcs.2015.12.003"
+  parent:
+    type: periodical
+    title: Electronic Notes in Theoretical Computer Science
+    volume: 319
+    page-range: 19-35
+
+bauer-pretnar-2015-programming-algebraic-effects:
+  type: article
+  title: Programming with Algebraic Effects and Handlers
+  author: ["Bauer, Andrej", "Pretnar, Matija"]
+  date: 2015-01
+  publisher: Elsevier
+  serial-number:
+    doi: "10.1016/j.jlamp.2014.02.001"
+  parent:
+    type: periodical
+    title: Journal of Logical and Algebraic Methods in Programming
+    volume: 84
+    issue: 1
+    page-range: 108-123
+
+leijen-2014-koka-row-effects:
+  type: article
+  title: "Koka: Programming with Row Polymorphic Effect Types"
+  author: ["Leijen, Daan"]
+  date: 2014-06-05
+  serial-number:
+    doi: "10.4204/eptcs.153.8"
+    arxiv: "1406.2061"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 153
+    page-range: 100-126
+
+lindley-mcbride-mclaughlin-2017-frank:
+  type: article
+  title: Do Be Do Be Do
+  author: ["Lindley, Sam", "McBride, Conor", "McLaughlin, Craig"]
+  date: 2017-01
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3009837.3009897"
+  parent:
+    type: proceedings
+    title: Proceedings of the 44th ACM SIGPLAN Symposium on Principles of Programming Languages
+    page-range: 500-514
+
+forster-kammar-lindley-pretnar-2017-expressive-power:
+  type: article
+  title: "On the Expressive Power of User-Defined Effects: effect handlers, monadic reflection, delimited control"
+  author: ["Forster, Yannick", "Kammar, Ohad", "Lindley, Sam", "Pretnar, Matija"]
+  date: 2017-08-29
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3110257"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 1
+    issue: ICFP
+    page-range: 1-29
+
+hillerstrom-lindley-atkey-2020-generalised-continuations:
+  type: article
+  title: Effect Handlers via Generalised Continuations
+  author: ["Hillerström, Daniel", "Lindley, Sam", "Atkey, Robert"]
+  date: 2020
+  publisher: Cambridge University Press
+  serial-number:
+    doi: "10.1017/s0956796820000040"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming
+    volume: 30
+    page-range: e5
+
+danvy-filinski-1990-abstracting-control:
+  type: article
+  title: Abstracting Control
+  author: ["Danvy, Olivier", "Filinski, Andrzej"]
+  date: 1990-05
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/91556.91622"
+  parent:
+    type: proceedings
+    title: Proceedings of the 1990 ACM Conference on LISP and Functional Programming
+    page-range: 151-160
+
+materzok-biernacki-2011-subtyping-delimited:
+  type: article
+  title: Subtyping Delimited Continuations
+  author: ["Materzok, Marek", "Biernacki, Dariusz"]
+  date: 2011-09-19
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/2034773.2034786"
+  parent:
+    type: proceedings
+    title: Proceedings of the 16th ACM SIGPLAN International Conference on Functional Programming
+    page-range: 81-93
+
+bruggeman-waddell-dybvig-1996-one-shot-continuations:
+  type: article
+  title: Representing Control in the Presence of One-Shot Continuations
+  author: ["Bruggeman, Carl", "Waddell, Oscar", "Dybvig, R. Kent"]
+  date: 1996-05
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/231379.231395"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the ACM SIGPLAN 1996 Conference on Programming Language Design and
+      Implementation
+    page-range: 99-107
+
+munch-maccagnoni-2014-involutive-negation:
+  type: article
+  title: Formulae-as-Types for an Involutive Negation
+  author: ["Munch-Maccagnoni, Guillaume"]
+  date: 2014-07-14
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/2603088.2603156"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the Joint Meeting of the Twenty-Third EACSL Annual Conference on Computer
+      Science Logic and the Twenty-Ninth Annual ACM/IEEE Symposium on Logic in Computer Science
+    page-range: 1-10
+
+curien-fiore-munch-maccagnoni-2016-effects-and-resources:
+  type: article
+  title: "A Theory of Effects and Resources: adjunction models and polarised calculi"
+  author: ["Curien, Pierre-Louis", "Fiore, Marcelo", "Munch-Maccagnoni, Guillaume"]
+  date: 2016-01
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/2837614.2837652"
+  parent:
+    type: proceedings
+    title: Proceedings of the 43rd ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages
+
+mangel-mellies-munch-maccagnoni-2026-hasegawa-thielecke:
+  type: article
+  title: Classical Notions of Computation and the Hasegawa-Thielecke Theorem
+  author: ["Mangel, Éléonore", "Melliès, Paul-André", "Munch-Maccagnoni, Guillaume"]
+  date: 2026-01-08
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3776715"
+    arxiv: "2502.13033"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 10
+    issue: POPL
+    page-range: 2112-2141
+  note: >-
+    the register's entry is the extended version; the pre-reboot design record cited this work under
+    a single-author attribution and a repository deposit identifier, and the three-author attribution
+    and the venue identifier here are the register's
+
+congard-munch-maccagnoni-douence-2025-linear-effects-exceptions:
+  type: article
+  title: "Linear Effects, Exceptions, and Resource Safety: a Curry-Howard correspondence for destructors"
+  author: ["Congard, Sidney", "Munch-Maccagnoni, Guillaume", "Douence, Rémi"]
+  date: 2025
+  serial-number:
+    arxiv: "2510.23517"
+  note: >-
+    preprint as held; the pre-reboot design record names a 2026 conference venue for it, which the
+    register does not carry and this entry does not assert
+
+felleisen-1988-first-class-prompts:
+  type: article
+  title: The Theory and Practice of First-Class Prompts
+  author: ["Felleisen, Matthias"]
+  date: 1988
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/73560.73576"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the 15th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages
