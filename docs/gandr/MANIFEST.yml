@@ -182,6 +182,11 @@ nodes:
     b3: cbb5be915b76af0dde3b1a7a8b413522a2cfdb2b4c0d7d63afeb3dc384a37ce4
     edges:
       - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/sized-types.md
+    role: subdocument
+    b3: 33746acfd5e652108391599fe80d310c67bfc4eba21c38219549600517b3bf7c
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/recursion-former.md
     role: subdocument
     b3: 5afa2a2177bbb766d327c6817d1e7cd515106498b27b9415940a223e92e5439a
