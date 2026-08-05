@@ -69,4 +69,4 @@ create.require-description: true
 dolt.auto-commit: on
 export.auto: false
 export.git-add: false
-sync.remote: "https://www.dolthub.com/repositories/silvanshade/gandr-beads"
+# sync.remote: "https://www.dolthub.com/repositories/silvanshade/gandr-beads"
