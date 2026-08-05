@@ -70,3 +70,6 @@ dolt.auto-commit: on
 export.auto: false
 export.git-add: false
 # sync.remote: "https://www.dolthub.com/repositories/silvanshade/gandr-beads"
+
+sync:
+    remote: "git+https://github.com/silvanshade/gandr.git"
