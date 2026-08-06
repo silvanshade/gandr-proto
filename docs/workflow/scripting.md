@@ -1,7 +1,6 @@
 # Workflow: project tooling and diagnostics
 
 > Read when: changing the project-local gate driver, a shared-core script call, a tooling regression surface, or compiler/linter diagnostic handling.
-> Base discipline: `.agents/core/core/WORKFLOW.md` §"Scripting".
 >
 > **Legacy scripts:** the existing `scripts/` tree is obsolete and migration-bound.
 > Do not add new scripts.
@@ -29,8 +28,7 @@ The legacy helpers, each reached through its named `mise` task or `prek` hook, n
 * `scripts/commitlint-range.nu` and `scripts/check-signed-commits.nu` — the pre-push range checks;
 * `scripts/lib/git.nu`, `scripts/lib/push-range.nu` — shared helpers.
 
-The vendored agentic-dev core is a separate ownership domain that is **not yet vendored in the reboot**: `.agents/core` does not exist, so its shared-core calls (`core:check`, `core-init`, the Worktrunk ADR guard) are parked and re-grow with the core.
-Until then, the checks that would delegate to the core run as the legacy helpers above.
+The retired shared-core delegation (`core:check`, `core-init`, the Worktrunk ADR guard) is gone with the core itself; the checks that once delegated there run as the legacy helpers above.
 Do not revive retired project gate scripts, and do not fold a typed helper into the Rust crate ad hoc — graduate one into `gandr-workflow-gates` only when it becomes gate policy.
 
 ## One typed CLI, domain-owned modules

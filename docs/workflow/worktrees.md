@@ -1,15 +1,14 @@
 # Workflow: worktrees, merging, and agent isolation
 
 > Read when: creating or removing a worktree, merging a branch, launching a mutating sub-agent, or debugging a `wt` hook.
-> Base lifecycle (`wt switch --create` / `wt merge --no-squash main` / `wt remove`, the squash gotcha, hook approvals, governance-docs-on-main): `.agents/core/core/WORKFLOW.md` §"Worktrees and merging".
-> This file is the gandr delta.
+> The base lifecycle: `wt switch --create` opens a lane, `wt merge --no-squash main` lands it — a bare `wt merge` squashes, which this rebase-only history refuses — and `wt remove` disposes of it.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Layout and trust
 
 * **Worktree location.** Worktrees live under one per-repo sibling directory (`../gandr-worktrees/<branch>`) via the `worktree-path` template in your **user** worktrunk config — never nested inside the repo (a nested worktree pulls the main `mise.toml` in as a duplicate parent layer and shows up as untracked content in main's tree).
 * **Trust.** Require mise v2026.7.5+; trust the main checkout once and let linked worktrees inherit it.
-  Never bootstrap trust from Worktrunk or agent preflight hooks (core H15).
+  Never bootstrap trust from Worktrunk or agent preflight hooks.
   Snapshot harnesses keep native CoW/reflink isolation and trust their stable root once in global mise config (OMP: `{{ env.HOME }}/.omp/wt`).
 * **Fresh worktree setup.** Run `mise run setup` before the first commit — it installs the node dependencies the treefmt pre-commit and commitlint push-range hooks need, plus the pinned Rust toolchains (the old `--no-verify` bypass is obsolete and agent briefs must never instruct it).
 
@@ -18,14 +17,14 @@
 * `[[pre-start]]`: `copy-ignored` (fail-open ignored-state reflink; excludes `.beads/**` — the shared-tracker topology guard, [tracker.md](tracker.md) §"Source of truth and sync" — plus `target/**` and friends) and `beads-pull` (`bd dolt pull || true` — cross-machine freshness of the shared database; worktree-to-worktree visibility needs no pull).
   The template's `mise setup` and submodule init/warmup pre-start steps are parked while the reboot bootstraps — they reference state this repo does not have yet and re-grow with the pieces they serve.
 * **`[pre-merge]` is the local wall** — any non-zero exit aborts the merge: `mise run gate:merge` (the composed merge check, [ci.md](ci.md)) and `beads` (`bd dolt pull && bd dolt push` — make the branch's beads durable on DoltHub once gates are green; pull-then-push self-heals the race with other pushers).
-  Parked pending their prerequisites: `adr-guard` (ADRs land on `main` only, core H5 — returns when `docs/adr/` exists) and `core-pin` (`mise run core:check`, the read-only vendored core at its pin — returns when the agentic-dev core is vendored at `.agents/core`).
+  Parked pending its prerequisite: `adr-guard` (ADRs land on `main` only — returns when `docs/adr/` exists).
 * `[post-merge]`: `beads-pull` in the primary — with the shared per-machine database this is cross-machine freshness only; the merged branch's beads were already visible locally the moment they were written.
 
-Contributor notes live in the sibling notes repository, named `../<repo-name>-notes` beside the primary checkout (here `gandr-notes`; earlier sessions used the predecessor's `wyrd-notes`, now holding a pointer), so worktree lifecycle operations cannot strand them — the historical in-repo gitignored `notes/` and its `notes-guard` gate are retired.
+Contributor notes live outside this tree in each contributor's private workspace (`AGENTS.md` §"Commits and publishable history"), so worktree lifecycle operations cannot strand them — the historical sibling notes repositories and the in-repo gitignored `notes/` with its `notes-guard` gate are all retired.
 
 ## Mutating sub-agents: the Worktrunk-owned lane
 
-A sub-agent with Bash/git access shares the live working tree unless given its own path — a stray `git checkout`/formatter/merge can revert uncommitted work (core H7; realized in the predecessor project during the record-rung adversarial pass).
+A sub-agent with Bash/git access shares the live working tree unless given its own path — a stray `git checkout`/formatter/merge can revert uncommitted work (realized in the predecessor project during the record-rung adversarial pass).
 The lane:
 
 1. the orchestrator **commits visible state first**;
@@ -34,7 +33,7 @@ The lane:
 4. the agent commits only on its assigned branch;
 5. the orchestrator integrates with `wt merge --no-squash <target>`.
 
-A harness that cannot target the path keeps its native isolation backend and stable globally trusted root; it never emulates Worktrunk hooks or runs `mise trust` as preflight (core H15).
+A harness that cannot target the path keeps its native isolation backend and stable globally trusted root; it never emulates Worktrunk hooks or runs `mise trust` as preflight.
 Read-only no-command agents may share a tree.
 Hooks are user-preapproved with `wt config approvals add`; agents never pass blanket `--yes`.
 
@@ -74,6 +73,6 @@ Realized instance (2026-07-19): 36 stale worktrees and 44 dead branches had accu
 
 ## ADRs and governance docs
 
-The governance-doc carve-out (`.agents/core/core/WORKFLOW.md` §"Governance docs land on main") covers gandr's `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/{WORKFLOW,KNOWLEDGE,HAZARDS}.md`, the `docs/workflow/` sub-files, and `docs/adr/` — these land on `main` directly, one commit each.
+The governance-doc carve-out covers gandr's `AGENTS.md`, `CLAUDE.md`, `docs/WORKFLOW.md`, the `docs/workflow/` sub-files, and `docs/adr/` once it exists — these land on `main` directly, one commit each.
 ADRs are per-decision files (`docs/adr/NNNN-slug.md`), so parallel branches no longer collide on content or manifest hash; the residual risk is a **number race** (two branches minting the same next number), which is why record-on-main-first stands as policy.
 `docs/adr/` does not exist yet — the reboot bootstrap mints no new ADRs (owner direction, `gandr-fcw`; decisions live in the approved `PLAN.html` and the wayfinder tracker until a decision log is deliberately re-introduced) — so the `adr-guard` `[pre-merge]` gate is parked and re-arms with the directory.

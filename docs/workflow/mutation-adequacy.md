@@ -1,8 +1,7 @@
 # Workflow: mutation adequacy — the adequacy ladder
 
 > Read when: writing `# Adequacy` blocks or their tests, triaging mutation survivors, or scheduling a mutation campaign.
-> Decisions: ADR-71 (adequacy discipline), ADR-72 (killability as an API-adequacy law).
-> Containment/safety for actually running mutants: `docs/HAZARDS.md`; scheduling: [ci.md](ci.md).
+> Containment/safety for actually running mutants: the contained `mise run mutants:*` task definitions; scheduling: [ci.md](ci.md).
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 The vocabulary, first: a **mutant** is a program variant produced by one small mechanical change (cargo-mutants replaces a function body with a default value, deletes a unary operator, or swaps a binary operator).
@@ -46,7 +45,7 @@ A surviving mutant falsifies exactly one item's hypothesis:
 | equivalent (semantic)        | no valid input + declared observation separates the programs, and no domain law requires it     | an exact exclusion with rationale; never a manufactured test                  |
 | accepted-noncontractual      | changes only undeclared representation/intension with no principled choice to contract          | an exact exclusion rationale; never a test-only accessor                      |
 
-**Killability is an API-adequacy law (ADR-72).** For every viable mutation class that changes a domain-significant result on a valid input, the public surface MUST provide a semantic observation that can separate correct from mutated.
+**Killability is an API-adequacy law.** For every viable mutation class that changes a domain-significant result on a valid input, the public surface MUST provide a semantic observation that can separate correct from mutated.
 Apply at the mutation **class**: derive the distinguishing input independently of the current API; ask whether a domain law chooses one behavior in principle; strengthen the oracle if an observation exists; refine design/`# Contract`/API first if not; otherwise record the equivalence/noncontractual rationale.
 Never expose raw private state, add a test-only accessor, or promote an arbitrary choice to improve a score; impactful API refinements follow the normal design/ADR discipline.
 
@@ -61,7 +60,7 @@ Prefer the strongest rung that can carry a decision surface; the hypothesis stat
 | **L2 agreement** | differential vs a naive reference; pinned conformance goldens; corpus stage-boundary artifacts | any divergence on any generated input                       |
 | **L3 pointwise** | boundary inputs + exact-variant/value assertions                                               | the residue: tie-breaks, guard arms, boundary comparisons   |
 
-Binding rules (ADR-71 D3–D6):
+Binding rules:
 
 * **External oracle.** An L1/L2 oracle must be external to the mutated code (a naive reference, a replay checker, a pinned golden).
   Self-agreement is blind to any mutant shifting both runs identically; such surfaces take a pinned external golden.
@@ -71,7 +70,7 @@ Binding rules (ADR-71 D3–D6):
   `is_err()`-only checks do not witness; `#[should_panic]` is disqualified (it passes on _any_ panic and rewards the mutant).
 * **Boundary-biased inputs.** For dense decision surfaces, one boundary-biased property test over scattered unit cases; finite classes enumerated exhaustively (a shared combinator home is a tracked follow-up).
 * **Design for adequacy.** Prefer the API shape that returns evidence — mutants become self-incriminating and trust concentrates in small validators, where the L3 rigor is spent.
-* **Per-file coverage floors.** Crate-level coverage judgment is banned (`docs/HAZARDS.md`).
+* **Per-file coverage floors.** Crate-level coverage judgment is banned ([ci.md](ci.md) §"Parked: the push tier and scheduled campaigns").
 
 ## From contract to tests — how to read the blocks
 
@@ -97,5 +96,5 @@ Gates, staged: **G0** — every `- witness:` path resolves and `# Adequacy` is p
 Per-file floors are a further staged gate.
 
 Scope: mandatory for new or substantially refactored production Rust; existing survivor hotspots stay in the triage lane — no blanket retrofit.
-ADR-71 D8's metric: at the first sweep after `gandr-graph` lands, new-crate survival < 5% (baseline 30.8%) with every survivor classified — else the reversal triggers fire.
+The adopted metric: at the first sweep after `gandr-graph` lands, new-crate survival < 5% (baseline 30.8%) with every survivor classified — else the reversal triggers fire.
 The campaign bead owns that experiment; the metric is never an acceptance condition for the implementation bead.

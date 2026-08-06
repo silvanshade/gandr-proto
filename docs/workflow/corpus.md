@@ -1,7 +1,7 @@
 # Workflow: the executable example corpus (surface-corpus)
 
 > Read when: landing a language feature, or adding or editing corpus examples.
-> Decisions: ADR-52 and ADR-84 (ADR-84 supersedes ADR-52 Decision B's timing rule and Decision C's two-tree cardinality while preserving the model/pathological separation).
+> The landing rule below supersedes the earlier separate timing and two-tree-cardinality rules while preserving the model/pathological separation.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 `crates/surface-corpus` is the **executable example corpus** — real gandr programs exercising the implemented language surface end-to-end (parse → lower → check → eval over the `gandr-surface-engine` session seam, plus the mode-specific inspection harnesses: `sequent` for L0 command faces, `desc` for stage-0 descriptions) and the integration tie-point across the crates.

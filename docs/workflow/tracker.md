@@ -1,8 +1,7 @@
 # Workflow: issue tracking (beads)
 
 > Read when: creating, closing, or triaging beads; wiring dependencies; auditing tracker state.
-> Base discipline: `.agents/core/core/WORKFLOW.md` §"Issue tracking".
-> This file is the gandr delta.
+> This file is the full statement of the tracker discipline.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
 ## Source of truth and sync
@@ -119,11 +118,11 @@ Two boundaries keep it that way.
 * **What makes a bead a ledger bead, so this does not become a licence to amend anything.** It says so in its own description, it is a register rather than a task, and its rows are maintained by _other_ work rather than by progress on itself.
   The specification absorption ledger (`gandr-fid.11`) is the standing instance: one row per pre-reboot source, updated by whichever absorption touches that source.
   Everything else keeps the comment-only rule, and "this bead accumulates state" is not on its own a reason to claim the exception — most beads accumulate state, which is what comments are for.
-* Beads cite corpus paths (`docs/gandr/spec/…`, `docs/adr/…`) so an agent lands with context.
-* Every doc-drift finding files a bead (`docs/KNOWLEDGE.md` phase 1) — drift produces work items, not silent warnings.
+* Beads cite corpus paths (`docs/gandr/spec/…`) so an agent lands with context.
+* Every doc-drift finding files a bead — drift produces work items, not silent warnings.
 * Dependencies via `bd dep add <child> <parent>`; **after any dep change regenerate the passive export** (`bd export -o .beads/issues.jsonl`) so `bv` sees the edge — it reads the export, not Dolt.
   Trust `bd show`/`bd blocked` over `bv` when they disagree.
-* `bd list` hides closed issues — use `--all` / `bd show <id>` when auditing done-ness (core/HAZARDS.md H3).
+* `bd list` hides closed issues — use `--all` / `bd show <id>` when auditing done-ness.
   JSON listing commands paginate; pass `-n 0` (or use `bd export`) for complete sets.
 * **Large text fields wedge the database** (owner-confirmed 2026-07-19; formerly a hazards-doc entry, now standing workflow guidance).
   Keep `notes`, `description`, `design`, and `acceptance_criteria` compact: standing directions plus a short pointer at most.
@@ -213,7 +212,7 @@ Passing narrower gates (build, scoped clippy, nextest) is not sufficient: the me
 
 ### Demonstrability lands with the feature
 
-* **Surfaced language feature.** The implementing change includes runnable `gandr-corpus` model **and** pathological examples, harness assertions, and coverage-map registration ([corpus.md](corpus.md); `ADR-84`).
+* **Surfaced language feature.** The implementing change includes runnable `gandr-corpus` model **and** pathological examples, harness assertions, and coverage-map registration ([corpus.md](corpus.md)).
   These examples are landing evidence, never residual work.
   A syntax-first change includes its parse-gated `surface/` witness.
   The semantics-graduation change promotes that witness to runnable `model/`, adds runnable pathological coverage, harness assertions, and coverage-map registration in that same change.
@@ -277,5 +276,5 @@ And it is not retroactive: the audit trail is append-only, so writes already mad
 ### Closure metadata
 
 Bead closures also carry agent attribution as structured metadata, stamped at close via `bd update --set-metadata`: `model=<model-id>`, `runner=<runner>`, `agent_tokens=<n>`.
-Unstamped closures surface as "unattributed" in the metrics report (`mise run metrics:agents`, lands with the code tooling), so coverage gaps stay visible.
+A metrics report over these stamps is planned with the code tooling and does not exist yet; until it lands, the stamps are the record and nothing surfaces the gaps.
 The actor rule above and this metadata answer different questions — _who acted_ against _what ran_ — and both are recorded.

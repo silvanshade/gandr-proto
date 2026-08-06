@@ -1,7 +1,6 @@
 # Workflow: documentation discipline
 
 > Read when: adding or restructuring documentation, or authoring math-dense Markdown.
-> Base statement: `.agents/core/core/WORKFLOW.md` §"Documentation economy".
 > Corpus trust machinery (MANIFEST/BLAKE3 registration, edge vocabulary, authority): `docs/gandr/MANIFEST.yml` + [specs.md](specs.md), enforced by the `docs:manifest-drift` gate.
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
@@ -19,8 +18,8 @@ Every `docs/gandr/spec/` and `docs/research/` change carries a mandatory fidelit
 * **Fidelity overrides economy** for load-bearing content: never truncate or lossily summarize it — reorganize (chunk, relocate intact, archive) instead.
   When uncertain whether content is load-bearing, treat it as load-bearing.
   For spec absorption the bar is **superset-transfer**: the source is the floor, never the ceiling, and the acceptance test is that an implementer could build the component without opening the source tree ([specs.md](specs.md)).
-* **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the sibling `wyrd-notes` repository (a separate local git repo beside this one), never in the tracked tree.
-  What a survey _decides_ gets distilled into an ADR; the survey itself does not move into `docs/`.
+* **Research/analysis surveys, session plans, handoffs, and adversary reports are contributor-concern**: they live in the contributor's private workspace, never in the tracked tree (`AGENTS.md` §"Commits and publishable history").
+  What a survey _decides_ gets distilled into the design record; the survey itself does not move into `docs/`.
 
 Per-crate `crates/*/docs/STATUS.xml` is the lean tier, off the design-corpus main-path and unregistered in the MANIFEST.
 Legacy `STATUS.md` migrates opportunistically.
@@ -71,22 +70,14 @@ Where wyrd ADR content is load-bearing, **inline the applicable content restated
 If provenance matters, a distilled prose line ("adapted from the wyrd interpreter-architecture record") suffices; the wyrd tree stays readable as source-material history through the checkout, and `docs/research/crate-port-map.md` carries the wyrd→reboot reconciliation.
 Landed research records that already carry `ADR-NN` citations are historical documents — sync them opportunistically when touched; do not mass-rewrite them.
 
-A proposal file is always in exactly one state, named in its status banner, and it moves — stale ACTIVE banners were a principal drift source:
+Landed proposal files still carry the retired lifecycle banners (**Active** / **Adopted** / **Implemented** / **Dormant**); the model is superseded by the status-attributed class model above and is not authored to.
+Three of its obligations survive it and still bind on any banner met in place: amend the banner with an as-built note at each implementation landing; absorption never deletes, moves, or truncates the spec, and where a chapter and the corpus disagree, the corpus is correct; and a dormant file is marked with a reader caution or deleted outright when re-derivable — prefer forgetting.
 
-* **Active** — being designed or decided; cites its bead and intended ADR.
-* **Adopted** — its decision face (ADR) landed; the banner names the ADR and the proposal becomes the design record behind it.
-  **Amend the banner with an as-built note at each implementation landing** — a proposal whose content has shipped must say so.
-  The manual presents adopted-but-unbuilt designs compactly (Part IV, decided directions); the exhaustive treatment waits for construction.
-* **Implemented** — the surface is built: the manual **absorbs the enduring content exhaustively** — the owning chapter presents it and the proposal's banner gains a `> **Manual:** …` pointer line, while the file stays in place as the authoritative design record (absorption never deletes, moves, or truncates the spec; where a chapter and the corpus disagree, the corpus is correct).
-  Crate-scoped proposals may instead move to the owning crate's `docs/` (precedent: the TUI proposal); purely historical ones are marked as such.
-  Either way the proposal stops being a to-do: its endgame is implementation plus absorption into the manual, the durable user-facing home.
-* **Dormant / retired** — no activity and no owner: mark dormant with a reader caution (precedent: skuld), or delete outright when the content is re-derivable — prefer forgetting.
-
-Research surveys never enter `docs/` at all: distill what was _decided_ into an ADR and keep the survey in the notes repo.
+Research surveys never enter `docs/` at all: distill what was _decided_ into the design record and keep the survey in the contributor workspace.
 
 ## Formatters and linters are best-effort
 
-A formatter/linter must never be satisfied at the cost of an artifact's **fidelity**; relax or scope the tool (raise the limit, disable the rule, exclude the path), never alter content to appease it (`.agents/core/core/WORKFLOW.md` §"Formatters…" + core/HAZARDS.md H8).
+A formatter/linter must never be satisfied at the cost of an artifact's **fidelity**; relax or scope the tool (raise the limit, disable the rule, exclude the path), never alter content to appease it .
 Hand-authored corpus docs (`docs/gandr/`) follow the formatter by default; the content-mutating `typos` and `sizelint` run tree-wide with targeted fidelity excludes (`*.typ`, `*.agda`, `*.agda-lib` in `treefmt.toml`, mirrored in `typos.toml` so standalone editor/CLI runs are safe).
 
 ## Authoring math- and symbol-dense Markdown

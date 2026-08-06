@@ -7,9 +7,11 @@
 
 ## The conventions
 
+### Design and representation
+
 * **Keep crates boring and explicit.** One job per crate, a flat data path (parser → CST → lowering → core IR → checker/machine).
   Prefer a clean cutover over a compatibility shim; no aliases or dead paths unless an accepted ADR requires them.
-  General/reusable machinery gets its own crate (precedents: `gandr-theory-orders`, `gandr-theory-nominal-automata`) — a design pass owes the crate/module-boundary judgement, not only the edits (modularity-first, `.agents/core/core/PRINCIPLES.md` §"Working posture").
+  General/reusable machinery gets its own crate (precedents: `gandr-theory-orders`, `gandr-theory-nominal-automata`) — a design pass owes the crate/module-boundary judgement, not only the edits (modularity-first, `AGENTS.md` §"Working posture").
 * **Crate naming follows the category schema; consult the rename table before minting any crate (owner rule, 2026-07-21).** Directory = `<category>-<name>`, package = `gandr-<directory>`.
   Categories as built: `core-*` (the frozen CBPV core: checker + sequent IL), `kernel-*` (the certified TCB and its substrate), `theory-*` (reusable metatheory machinery), `surface-*` (language surface: syntax, grammar, parsing, lowering/engine, corpus, render, editor faces), `runtime-*` (host effects, codecs, FFI), `storage-*` (the CAS tier), `workflow-*` (repo tooling and gates).
   The wyrd→reboot rename table in `docs/research/crate-port-map.md` §"Naming authority" is the per-crate authority: ports and new crates consult it FIRST; a crate not listed derives its name from the schema and adds a table row in the same change.
@@ -28,6 +30,9 @@
 * **Prefer first-order representations.** Represent continuations, callbacks, control states, and work items as explicit data plus an interpreter or state machine; defunctionalize higher-order machinery where practical.
   First-order data keeps execution inspectable, serializable, persistable, cacheable, testable, and resumable.
   Use opaque closures or dynamic dispatch only when those properties do not matter and the higher-order form materially improves the design.
+
+### Types and signatures
+
 * **Single-field structs are transparent.** Every named or tuple struct with exactly one field must carry `#[repr(transparent)]`.
   An exception requires a concrete layout, ABI, or soundness reason documented in the item's `# Contract`; convenience or omission is not an exception.
 * **Crate-defined signatures preserve semantic information.** A function or method defined by a workspace crate must not accept or return a bare primitive value (`bool`, `char`, numeric primitives, or `str`; see the [Rust primitive overview](https://doc.rust-lang.org/rust-by-example/primitives.html)), whether directly or beneath references, pointers, tuples, arrays, slices, or configured generic containers before reaching a nominal type boundary.
@@ -37,6 +42,9 @@
   Wrappers prevent semantically distinct values from becoming interchangeable and preserve meaning for humans and agents.
 * **Lifetimes name semantic roles.** Use relationship-bearing names such as `'source`, `'arena`, or `'world`; never alphabetical or positional names such as `'a` or `'b`.
   Carry the same name through related struct, impl, trait, and associated-type signatures so the borrowing relationship remains traceable.
+
+### Totality and style
+
 * **Partial functions are banned.** Never index or slice; use `.get(..)`, `split_first`, iteration.
   Never `unwrap`/`expect` on a fallible value in shipping code — return a typed error.
   `unwrap_used`, `expect_used`, `unwrap_in_result`, `get_unwrap`, `panic!`, `unreachable!`, `todo!`, `unimplemented!`, `exit`, integer `/`, and bare overflowing arithmetic are all lint-denied.
@@ -55,12 +63,15 @@
   Where an item's own name is uninformative, qualify through an informative module path instead (`effect::host::EXEC`, not `sig::EXEC`); if no informative path exists, reorganize the module hierarchy rather than minting an alias.
 * **No `as` conversions.** Never cast with `as` (`as_conversions` is denied): it truncates, wraps, and changes signedness silently.
   Convert through the value's total API — `uN::from`/`uN::try_from` with the error consumed, or serialize the source width and take the bytes needed (`value.to_be_bytes()`, then pick the lanes).
-* **No unbounded recursion in the interpreter (ADR-47).** Rust has no guaranteed TCO, so recursion whose depth scales with unbounded input (list length, term/AST depth, environment size) is a latent stack overflow on real data.
+* **No unbounded recursion in the interpreter.** Rust has no guaranteed TCO, so recursion whose depth scales with unbounded input (list length, term/AST depth, environment size) is a latent stack overflow on real data.
   Across the interpreter use an explicit worklist / heap frame-stack / iterative loop; new input-scaled recursion is a review-blocking finding.
   Recursion bounded by a fixed small static structure is fine.
   The Agda metatheory is the specification oracle, not an implementation blueprint — the Rust is its _iterative shadow_; a divergence in shape is expected, only a divergence in result is a bug (the differentials compare answers, not call graphs).
 * **Arithmetic is checked, never bare.** `saturating_*` for monotone counters/depths, `checked_*` where overflow must surface (the grade semiring clamps finite overflow to `ω`), `wrapping_*` only for hashing.
   `arithmetic_side_effects` is denied workspace-wide.
+
+### Lints and enforcement
+
 * **Test code lives under the same wall; the only sanctioned test relaxation is `clippy.toml` configuration.** The repo `clippy.toml` enables clippy's native `allow-*-in-tests` options (`dbg`, `expect`, `indexing-slicing`, `panic`, `print`, `unwrap`), which relax exactly those lints inside test code (`#[cfg(test)]` modules and `tests/` targets) without any source attribute.
   Attribute-based test relaxations — a crate-level `#![cfg_attr(test, allow(...))]` or a per-file `#![allow(...)]` test wall — are prohibited (owner directive, 2026-07-30, superseding the 2026-07-23 crate-level relaxation rule): they leak across items, creep in scope, and bury drift.
   Every lint without a clippy.toml in-tests option — notably `arithmetic_side_effects` — binds tests exactly as production: restructure the test or use checked/saturating arithmetic rather than suppressing.
@@ -103,10 +114,6 @@ A bump is its own reviewed change: bump the pin, materialize, run the full merge
   **Revisit on the next major toolchain bump:** if the newer clippy agrees with the manifest wall on those paths — or the sites are rewritten to a form both toolchains accept — remove the lane flag.
   The residual exists because the pin is held at `nightly-2026-05-28` by the upstream Dylint examples (their `clippy_utils` pin tracks that nightly); it unblocks when Dylint upstream moves past the window.
 
-### Writing tests
-
-Standing patterns for test code collect here as they are established (owner direction, 2026-07-30; no entries yet).
-
 ### Dylint adoption and residual ledger
 
 The 2026-07-17 restoration re-enabled the Rust workspace and removed phased package allowlists from the canonical lint tasks, while retaining two explicit Dylint exclusions:
@@ -127,6 +134,8 @@ The rollout established these durable findings and actions:
    Recursion over caller-owned input must become an explicit bounded worklist; documentation alone cannot relabel it as non-recursive.
 3. **Mutation-before-error paths are architectural evidence.** Preserve the isolated upstream non-local-effect pass and investigate its `gandr-core-checker` lib-test panic; never disable the lint globally.
 4. **Future rules should encode cross-module invariants.** Tracked follow-up candidates: checker/machine constructor parity, atomic force-state transitions, subprocess-boundary policy, and nominal-id replay provenance; semantic-wrapper escape prevention is tracked by `gandr-3da`.
+
+### Dependencies and the workspace
 
 * **Dependencies.** Use the `find-best-rust-crates` skill before adding a nontrivial crate, but treat external implementations as design references rather than automatic dependencies.
   Machinery that is load-bearing for the core or certified-kernel boundary — including recursion/control runtimes, graph representations and algorithms, proof-state machinery, and semantic normalization — stays gandr-owned even when reimplementation costs more.
@@ -156,7 +165,7 @@ The rollout established these durable findings and actions:
 
 ## Documentation by contract
 
-Every nontrivial item (public or private — `missing_docs_in_private_items` is denied) carries a one-line summary plus a `# Contract` rustdoc block; fallible functions also carry `# Errors`; nontrivial items in new or substantially-refactored code also carry `# Adequacy` (ADR-71).
+Every nontrivial item (public or private — `missing_docs_in_private_items` is denied) carries a one-line summary plus a `# Contract` rustdoc block; fallible functions also carry `# Errors`; nontrivial items in new or substantially-refactored code also carry `# Adequacy` ([mutation-adequacy.md](mutation-adequacy.md)).
 
 `mise run cargo:doc-check` is the merge-wall gate for this section: it runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so an intra-doc link that does not resolve — or a redundant explicit link target — fails the wall rather than accreting as silent rustdoc debt.
 An in-scope item links by its bare name (`` [`Value`] ``); a cross-module item uses a reference-style link — the short label `` [`TermArena`] `` in the prose with its path collected once as a definition at the end of the doc block (`` [`TermArena`]: crate::TermArena ``) — rather than repeating the full crate-root re-export or module path inline at every occurrence.
@@ -183,7 +192,7 @@ An in-scope item links by its bare name (`` [`Value`] ``); a cross-module item u
   Write `- panics: none.` explicitly — the absence of a panic is a contract.
   An `unsafe` item adds `- unsafe invariants:`, the rustdoc `# Safety` section, and `// SAFETY:` comments (`undocumented_unsafe_blocks` is denied).
 * `- intension:` states properties of _how_ the computation proceeds (enumeration/tie-break order, traversal strategy, cost, determinism, trace shape) — only those the item **promises**, each observable through a **declared semantic projection** the API exposes.
-  Intensional tests assert only declared projections; extensional clauses never reference intensional observations (ADR-71 D4, the calf noninterference discipline).
+  Intensional tests assert only declared projections; extensional clauses never reference intensional observations (the calf noninterference discipline, [mutation-adequacy.md](mutation-adequacy.md)).
 * `# Errors` (clippy pedantic) coexists with `# Contract`: `- fails:` is the design-level statement, `# Errors` the per-variant enumeration.
 * `# Termination` is mandatory on every directly or mutually recursive function or method.
   Use the fixed grammar below; each field needs a concrete explanation, not an assertion that termination is obvious:

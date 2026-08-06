@@ -1,12 +1,11 @@
 # Workflow: adversarial review and research verdicts
 
 > Read when: preparing a substantial change for landing, running or interpreting an adversarial pass, closing a research-question task — **or before recording that anything does not apply, is not needed, or cannot be done.** That last trigger is not scoped to review work: §"Declining is a claim too" and §"Refutations bind only with owner sign-off" are standing rules for every task in this tree, and a refutation binds only with the owner's sign-off.
-> Base practice: `.agents/core/core/WORKFLOW.md` §"Adversarial review of substantial changes".
 
 ## When and how
 
 The gates catch **structural** faults (formatting, hash drift, dangling references), not **semantic** ones — a change can pass every gate while quietly distorting a claim or missing an instance nobody thought to grep for.
-So any substantial or publishable-stakes change (an absorption, a multi-document edit, a curation pass, anything touching the corpus) gets an **independent adversarial review before landing/pushing and before bead closeout**: This is gandr's timing override of the shared core's “before committing” shorthand: an immutable checkpoint may exist solely as isolated-review input, but it is not landed or pushed.
+So any substantial or publishable-stakes change (an absorption, a multi-document edit, a curation pass, anything touching the corpus) gets an **independent adversarial review before landing/pushing and before bead closeout**: An immutable checkpoint may exist solely as isolated-review input, but it is not landed or pushed.
 
 * **Independent** — a reviewer separate from the author, given the changed files (and the source they derive from), not the author's rationale.
 * **Adversarial** — prompted to find faults: "what is wrong, missing, or distorted here?"
@@ -17,7 +16,7 @@ So any substantial or publishable-stakes change (an absorption, a multi-document
 Scale to the change: a one-line fix needs only the gates; a cross-cutting corpus pass earns several lenses.
 Triage findings like drift findings: fix should-fix in the same change, file the rest as beads — never silent; surviving findings are residuals, folded into the consolidated closeout bead ([tracker.md](tracker.md) §“Feature landing and residual closeout”).
 
-**Isolation.** Mutating review agents run only through the Worktrunk-owned lane ([worktrees.md](worktrees.md) §"Mutating sub-agents") — a Bash-capable agent sharing the live tree has corrupted uncommitted work before (core H7).
+**Isolation.** Mutating review agents run only through the Worktrunk-owned lane ([worktrees.md](worktrees.md) §"Mutating sub-agents") — a Bash-capable agent sharing the live tree has corrupted uncommitted work before.
 An immutable checkpoint commit is the normal input to an isolated reviewer; a strictly read-only reviewer may inspect uncommitted state.
 For governance docs already on `main`, reviewers stay read-only and the orchestrator applies fixes on `main` before push.
 
@@ -72,7 +71,7 @@ The adversary is never the final say.
 Even a literature impossibility proof gets its applicability checked (does its hypothesis hold for _our_ object?) before binding.
 When reporting, present challenges as things to engineer around, bracketed — never leading with the adversarial conclusion as settled.
 
-**Every adversary pass writes a human-inspectable report artifact** — reasoning, citations, severity, each finding's binding-vs-challenged disposition — under `adversary/` in the project's sibling notes repository; the deliverable cites it briefly, never inlines it.
+**Every adversary pass writes a human-inspectable report artifact** — reasoning, citations, severity, each finding's binding-vs-challenged disposition — kept in the reviewing contributor's private workspace outside this tree, citable from the owning bead — for the maintainer, as an `ss-` identifier ([tracker.md](tracker.md)); the deliverable cites it briefly, never inlines it.
 The point is auditability: a later reader sees _why_ a branch was challenged.
 
 ## Declining is a claim too — the counterfactual test
@@ -193,10 +192,11 @@ It fires on:
 
 * **closeout, before handoff** — the consolidated pass over what the session is about to leave behind;
 * **every reversal** of a landed finding, decision, or characterization;
-* **every first-time characterization claim** — "X **is** a Y" — because a name is a claim ([agda.md](agda.md) §"Terminology follows the ladder"), and a naming claim fails in precisely the way a reversal does.
+* **every first-time characterization claim** — "X **is** a Y" — because a name is a claim ([agda-design.md](agda-design.md) §"Terminology follows the ladder"), and a naming claim fails in precisely the way a reversal does.
   A reversal-only trigger misses these: one of the two instances above was a naming claim, not a reversal.
 
 **Ask the owner before running one.** The pass costs real budget, and the owner may already know the answer.
+That consent rule is this pass's alone — the landing review of §"When and how" fires on its own trigger and needs no asking; the two are different instruments, not one rule stated twice.
 
 **Give the reviewer the code and the primary source — never the author's write-up.** This is the "independent" bullet above, and it is not a formality: both instances above are invisible in the author's summary and visible in the Agda signatures plus one section of the source.
 A reviewer handed the rationale ratifies its frame, and the frame is what was wrong.

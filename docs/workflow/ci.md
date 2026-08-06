@@ -37,22 +37,19 @@ The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles
 
 `.config/wt.toml` `[pre-merge]` is the merge wall — any non-zero exit aborts `wt merge`:
 
-* **`gate:merge`** — the composed merge check, ordered: `toolchain:pin-check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `cargo:build`, `cargo:clippy`, `cargo:dylint:local`, `cargo:doc-check`, `cargo:nextest`, `treefmt:check`.
-  The cheap drift/docs checks fail fast up front; `toolchain:pin-check` (restored per `gandr-wvd.20`, 2026-07-24) holds its fcw.13 first position.
-  `cargo:dylint:local` loads `gandr-workflow-dylint` over the full covered scope at `-D warnings`; the 575 primitive-boundary and transparent-representation findings in the 2026-07-24 census were remediated under `gandr-vp8`.
-  Every workspace member is covered with no exclusions: `gandr-workflow-gates` and the driver itself joined the covered scope 2026-07-30 when `gandr-0ze` and `gandr-3yh` closed.
-  The full upstream Dylint inventory remains on-demand and in the parked push tier.
-  `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently; it documents the whole workspace including the nightly-only `gandr-workflow-dylint` driver (like `cargo:clippy`) and so carries no `--exclude` set.
-  It sits between `cargo:dylint:local` and `cargo:nextest` because it is a compile-class static check whose failures are cheap and localized, and grouping it with the other static analyzers surfaces doc breakage before the more expensive test run.
+* **`gate:merge`** — the composed merge check; the `mise.toml` task body is authoritative for the membership and its order, so this file does not restate the list only for the two to drift.
+  The shape: the cheap drift/docs checks fail fast up front (with `toolchain:pin-check` first), the compile-class static analyzers run before the test sweep, and `treefmt:check` closes.
+  `cargo:dylint:local` loads `gandr-workflow-dylint` over every workspace member at `-D warnings`, with no exclusions; the full upstream Dylint inventory remains on-demand and in the parked push tier.
+  `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently.
   This is the deterministic set a normal diff can realistically break.
   Parked entries return with their prerequisites: `grammar:test` (returns with the tree-sitter grammar port).
-* **`beads`** (`bd dolt pull && bd dolt push`) — makes the branch's beads durable on DoltHub **before** the merge removes the worktree's Dolt clone; pull-then-push self-heals the sibling-push race ([tracker.md](tracker.md); `core/HAZARDS.md` H2).
-* Parked pre-merge hooks: `adr-guard` (returns when `docs/adr/` exists) and `core-pin` (`mise run core:check`, returns when the agentic-dev core is vendored at `.agents/core`).
+* **`beads`** (`bd dolt pull && bd dolt push`) — makes the branch's beads durable on DoltHub **before** the merge removes the worktree's Dolt clone; pull-then-push self-heals the sibling-push race ([tracker.md](tracker.md)).
+* Parked pre-merge hook: `adr-guard` (returns when `docs/adr/` exists).
   See [worktrees.md](worktrees.md).
 
 Every commit additionally passes the `prek` **pre-commit** hooks — `treefmt:check`, `docs:conflict-markers`, `docs:manifest-drift`, `docs:reference-integrity`, `no-machine-local-paths`, `cargo:fmt-check` — and the **commit-msg** `commitlint` hook.
-`prek install` arms these once per clone in the primary checkout (`core/HAZARDS.md` H4).
-One commitlint gotcha recurs: any commit-body line **beginning** `word:` is parsed as a git trailer, so a sentence or wrapped line that opens with e.g. `D1:` trips `footer-leading-blank` against the `Co-Authored-By` footer — keep colon-suffixed tokens off line starts in commit bodies.
+`prek install` arms these once per clone in the primary checkout.
+The old footer-misparse gotcha — a body line beginning `word:` read as a trailer — is retired: commitlint here replaces the stock `footer-leading-blank` with a trailer-aware rule keyed on real trailer tokens, so prose never trips it and a trailer still needs its leading blank line.
 
 ## Parked: the push tier and scheduled campaigns
 
@@ -61,11 +58,11 @@ These are **parked** during the reboot and return at go-public; they are recorde
 * **Push tier** — `cargo run -p gandr-workflow-gates -- workflow push` (the fixed push plan in `crates/workflow-gates`) is parked as a `prek` pre-push hook because it invokes tasks not yet in place (`core:check`, `grammar:test`, `cargo:dylint`, `wrkflw`).
   The live pre-push hooks are `commitlint` over the push range (`scripts/commitlint-range.nu`) and the signed-commits check (`scripts/check-signed-commits.nu`).
   A push is deliberately an **arc-boundary event**: push after a full arc of work has merged, never per-commit — but no remote exists yet, so pushes wait on go-public.
-* **Coverage** is judged **per production file**, never by an aggregate crate percentage (the 94%-crate/72%-file incident; `ADR-71`).
+* **Coverage** is judged **per production file**, never by an aggregate crate percentage (the 94%-crate/72%-file incident).
   `mise run coverage:check` compares each tracked production file against its recorded per-file floor and rejects any that fall below; the ratchet raises floors after a genuine improvement.
   Enforcement is off the wall while the port leaves rewritten crates below their floors and the floor table is unseeded; the coverage restoration pass re-arms it.
 * **Scheduled campaigns** (mutation and fuzz sweeps) belong on a clock, not the landing path — and the clock is the hosted `scheduled-campaigns.yml`, which does not exist yet.
   Moving a campaign off a gate without landing it on a schedule is a coverage regression wearing a speedup's clothes, so the campaigns stay defined but dormant until the hosted schedule returns.
-  + **Mutation testing** — `mise run mutants:*` only; every run is contained in an ephemeral microVM (`docs/HAZARDS.md` owns the safety story).
+  + **Mutation testing** — `mise run mutants:*` only; every run is contained in an ephemeral microVM, and the `mutants:*` task definitions own the containment story.
     Discipline: [mutation-adequacy.md](mutation-adequacy.md).
   + **Fuzzing** — `fuzz/` is an independent AFL++ workspace; deterministic seed replay via `mise run fuzz:rust-smoke`, unbounded per-target via `mise run fuzz:<target>`.
