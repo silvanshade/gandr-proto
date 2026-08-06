@@ -96,6 +96,14 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
   Put references known at filing in the description.
   References discovered later are one of the two exceptions to the comment-only update rule (the other being a ledger bead, below): add them directly to the bead's standing body, normally in a compact `## References` section in `notes`, so the bead alone retains its canonical bibliography.
 
+### The `ss-` identifier is the one permitted reference to the maintainer's private research context
+
+A bead may cite an identifier with the `ss-` prefix: a work item in the maintainer's private research tracker, where much of this project's design context lives (owner ruling, 2026-08-06).
+The identifier is deliberately the **only** permitted form of that reference: it locates precisely for the maintainer, it is opaque to everyone else — no path, no document name, no topology — and it is not relative to any machine, so it acts as a firewall between provenance and dependence.
+Two boundaries keep it that way.
+**Tracked content never carries it** — code, tests, documentation, and commit messages name no `ss-` identifiers and no other reference to that private context, and load-bearing design context is restated in this repository's own artifacts; a bead whose task cannot be reconstructed without resolving an `ss-` reference fails the reconstruction test above.
+**It is provenance, never a dependency** — cite it for where a design came from, not in place of stating what the design is.
+
 ### Safe graph and field updates
 
 * **Back up before graph-wide operations.** Before bulk triage, normalization, relabeling, dependency rewrites, or any other graph-wide mutation, create and sync a Dolt-native `bd backup` to a durable location outside the project tree.
