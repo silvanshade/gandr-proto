@@ -53,9 +53,6 @@ Three obligations follow, and the second and third are what stop the drift accum
 
 Route what you find by failure mode, because the two want different fixes: a reference that resolves to nothing goes to `gandr-mf8`; a statement that is wrong, stale, or ambiguous where the reference does resolve goes to `gandr-q5c`.
 
-The corpus-scoped form of the first obligation is [`docs/workflow/specs.md`](docs/workflow/specs.md) §"The per-document procedure" item 6 and [`docs/workflow/review.md`](docs/workflow/review.md) §"Absorption and reboot passes", which require an as-built claim to be verified at write time with its module named.
-This section is the general rule those instances specialize: it binds on every artifact, whether or not a document is being written, and it adds the reporting half.
-
 **This project has already paid for it.** `core-checker`'s `grade` module says its `Dup` and `Drop` rules are "Stage 2", meaning _which rules of the calculus they belong to_ — and a 2026-08-02 absorption read that as _not yet built_, wrote it into a landed specification document, and it survived to an independent review before anyone opened `checker.rs`, where both rules are implemented and `Dup` demonstrably enforces its grade sum.
 The prose was accurate about its own subject and wrong about the question being asked of it.
 That is the normal case, not an unlucky one.
@@ -76,15 +73,23 @@ That is the normal case, not an unlucky one.
 * **Gates prove structure, not meaning.** Substantial or publishable-stakes changes require an independent adversarial review before landing.
   Follow [`docs/workflow/review.md`](docs/workflow/review.md).
 
+## Dispatched work
+
+Work here often arrives **dispatched from the maintainer's private research workspace**: a brief naming the design context, the target bead, and the landing path.
+
+* **This repository's contract binds on everything done here, whatever the launch point.** A brief supplements the routed workflow documents; it never replaces them.
+* **Read the brief's design context first**, before writing anything, and treat it as the reference discipline treats any source: verify as-built claims against this tree, never against the brief's prose alone.
+* **The only reference to that private context this repository admits is an `ss-` bead identifier, cited in a bead** ([`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"The `ss-` identifier is the one permitted reference to the maintainer's private research context").
+  Tracked content — code, tests, documentation, commit messages — carries no such reference, and every landing must stand on its own: a contributor without access to that workspace must be able to understand it from this repository alone.
+* Dispatched work lands through this repository's own worktree lifecycle and merge wall, exactly as native work does.
+
 ## The owner-decision queue
 
-Decisions, sign-offs, and adjudications the owner must take are **queued on the tracker, not posed inline and not collected in a document**.
-A bead needing decisions gets a **queue bead** as its child; an epic gets **one** queue bead for the whole epic rather than one per child.
-Each question is a single comment identified `<queue-bead-id>-question-NN` — the prefix is always the hosting queue bead's own id, never the id of a bead the question is merely about — and the owner answers by comment under the same identifier.
-**File the question before raising it, and never ask leave to file one**: a reply may point at a filed question, but hedging it as a candidate ("worth asking", "ripe if you want it") leaves it in a transcript, which is the one artifact here that nothing can search or cite.
+Decisions, sign-offs, and adjudications the owner must take are **queued on the tracker, not posed inline and not collected in a document**: a queue bead per topic, one self-contained question per comment identified `<queue-bead-id>-question-NN`, answered by comment under the matching `-answer-NN`.
+**File the question before raising it, and never ask leave to file one** — an unfiled question exists only in a transcript, which nothing can search or cite.
 If a ruling nonetheless arrives without a filed question, file the question retroactively and record the ruling as an agent-authored transcription comment before the work proceeds.
 Every ruling of record lands in the authoritative project artifact; the comment stream is the deliberation record, never the ruling's home.
-The full discipline is [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"The owner-decision queue".
+The full discipline, including the identifier and numbering rules, is [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"The owner-decision queue".
 
 ## Work tracking
 
@@ -113,7 +118,7 @@ Follow [`docs/workflow/worktrees.md`](docs/workflow/worktrees.md) for the comple
 [`docs/workflow/ci.md`](docs/workflow/ci.md) owns the current gate inventory and merge wall.
 
 * Run the narrowest gate that proves the change before committing.
-* `mise run gate:merge` is part of “done and verified,” not a substitute for exercising the changed behavior.
+* `mise run gate:merge` is part of "done and verified," not a substitute for exercising the changed behavior.
 * Scale independent review to the change.
   One-line fixes need the gates; substantial, cross-cutting, corpus, and publishable-stakes changes follow [`docs/workflow/review.md`](docs/workflow/review.md).
 
@@ -131,9 +136,9 @@ Before adding tracked content or a commit message, classify it:
 **Acid test:** would the content be wrong or useless for a contributor on different hardware?
 If so, it is contributor-concern.
 
-Store contributor-concern artifacts in the contributor notes repository — a separate git repository named `../<repo-name>-notes` beside the primary checkout (here `../gandr-notes`); this repository has no in-repo `notes/` directory or stranded-notes guard.
-If the notes repository does not exist, suggest creating it and initializing it as a git repository rather than inventing another location.
-Distill any project-relevant conclusion into the appropriate design or decision record, and leave contributor context in the notes location.
+Contributor-concern artifacts live **outside this tree**, in the contributor's own private workspace.
+The maintainer's is the private research workspace whose work items may be cited from beads as `ss-` identifiers ([`docs/workflow/tracker.md`](docs/workflow/tracker.md)); session plans, handoffs, research digests, and adversary reports go there, and any project-relevant conclusion is distilled into the appropriate design or decision record here.
+The historical sibling notes repositories (`../gandr-notes`, and `../wyrd-notes` before it) are read-only archives, not destinations for new material.
 
 Commit messages are enforced by `commitlint`; `.commitlintrc.mts` is authoritative.
 
@@ -146,9 +151,8 @@ Commit messages are enforced by `commitlint`; `.commitlintrc.mts` is authoritati
 * **One agent, one name, every surface.** The name an agent signs a commit with is the name it acts under everywhere an author or actor is recorded — tracker writes above all.
   It is the registry entry's name part, byte-for-byte, without the address: `Claude Opus 5 (1M context)`, never a shortened, harness, or session variant.
   The mechanics for the tracker are [`docs/workflow/tracker.md`](docs/workflow/tracker.md) §"Agent-attribution metadata".
-* **Never begin a body line with `word:`.** The parser reads any such line as the start of the footer, so the prose above it stops being the body and `footer-leading-blank` rejects the message.
-  This bites on ordinary sentences — `Note: …`, `Caveat: …`, `Exception: …` — and the error names the footer rather than the line that caused it, so it reads as unrelated.
-  Reword (`One caveat is that …`) or move the colon off the line start.
+* A body line may begin with a colon-suffixed word.
+  The stock rule that misread such prose as a footer is replaced by a trailer-aware rule keyed on real trailer tokens, so a trailer still needs its leading blank line and ordinary prose no longer trips it.
 * Inspect `.commitlintrc.mts` before inventing a type, scope, or trailer.
 
 The `no-machine-local-paths` hook and commitlint are lexical backstops; classification remains the rule.
@@ -185,7 +189,7 @@ The `no-machine-local-paths` hook and commitlint are lexical backstops; classifi
 Fresh sessions are preferred for significant work, and re-orienting later has real cost.
 Finish cheap follow-through while the context is loaded: one-line documentation repairs, hazard records, and small tracker updates should not force a later session to re-orient.
 Defer only genuinely significant work.
-If a “small” follow-up starts requiring real building, land the cheap increment and record the remainder.
+If a "small" follow-up starts requiring real building, land the cheap increment and record the remainder.
 
 A finished task leaves durable state: tracker items updated and synchronized, decisions in the authoritative project record, working-tree changes committed to publishable standard, and stale memory revised.
 

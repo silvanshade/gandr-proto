@@ -1,7 +1,8 @@
 # Workflow
 
 How work moves through this project, for humans and agents.
-This is the **routing layer**: the base operating doctrine lives in the shared core (`.agents/core/core/{PRINCIPLES,WORKFLOW,HAZARDS,PUBLISHABLE-HISTORY}.md`), and the gandr-specific depth lives in task-scoped sub-workflow files under `docs/workflow/`.
+This is the **routing layer**: `AGENTS.md` carries what binds on every entry path, and the depth lives in task-scoped sub-workflow files under `docs/workflow/`.
+Every rule is stated in this repository — a pointer to a tree that is not checked out here is a rule nobody reads.
 
 > **Do not read every sub-workflow up front.** Each one names the tasks it serves; load the one your task matches, when it matches.
 > This file plus `AGENTS.md` is enough orientation for most work.
@@ -14,14 +15,15 @@ This is the **routing layer**: the base operating doctrine lives in the shared c
 
 * **Code**: local `main` only — no git remote is configured during the reboot bootstrap; once the gandr remote lands, `main` receives **signed** pushes only.
 * **Work**: beads (prefix `gandr-`) in a local Dolt database syncing out-of-band from git to DoltHub — push after every write, pull before reads ([workflow/tracker.md](workflow/tracker.md)).
-* **Design**: `docs/gandr/` is authoritative over every other document (`docs/KNOWLEDGE.md` §Authority); during the reboot bootstrap decisions live in the approved `PLAN.html` and the `gandr-fcw` wayfinder tracker — the per-file `docs/adr/` log is deferred until a decision log is deliberately re-introduced (owner direction, `gandr-fcw`).
-* **Contributor notes** (session plans, handoffs, research digests, adversary reports): the sibling `wyrd-notes` repository — a separate local git repo beside this one, never part of this tree.
+* **Design**: `docs/gandr/` is authoritative over every other document in this tree; during the reboot bootstrap decisions live in the approved `PLAN.html` and the `gandr-fcw` wayfinder tracker — the per-file `docs/adr/` log is deferred until a decision log is deliberately re-introduced (owner direction, `gandr-fcw`).
+  Deep design context also arrives **dispatched** from the maintainer's private research workspace (`AGENTS.md` §"Dispatched work"); what this repository relies on is restated here, and beads may cite that context as `ss-` identifiers.
+* **Contributor notes** (session plans, handoffs, research digests, adversary reports): each contributor's own private workspace, outside this tree (`AGENTS.md` §"Commits and publishable history").
 
 ## The sub-workflow files
 
 | Read                                                             | When your task involves                                                                                                                   |
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [workflow/tracker.md](workflow/tracker.md)                       | creating/closing/triaging beads, dependency edges, tracker audits                                                                         |
+| [workflow/tracker.md](workflow/tracker.md)                       | creating/closing/triaging beads, dependency edges, tracker audits, the owner-decision queue                                               |
 | [workflow/beads-graph-sweep.xml](workflow/beads-graph-sweep.xml) | graph-wide bead classification, normalization, redundancy, citation sweeps                                                                |
 | [workflow/worktrees.md](workflow/worktrees.md)                   | worktree lifecycle, merging, `wt` hooks, mutating sub-agents, governance docs                                                             |
 | [workflow/ci.md](workflow/ci.md)                                 | choosing gates, the local merge wall, coverage, fuzzing, the parked CI surface                                                            |
@@ -29,7 +31,8 @@ This is the **routing layer**: the base operating doctrine lives in the shared c
 | [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)   | adequacy hypotheses, survivor triage, mutation campaigns                                                                                  |
 | [workflow/soundness.md](workflow/soundness.md)                   | checker/machine/subtype/effect/grade changes, coherence oracles                                                                           |
 | [workflow/corpus.md](workflow/corpus.md)                         | surface-corpus examples, the feature landing rule                                                                                         |
-| [workflow/agda.md](workflow/agda.md)                             | anything under `metatheory/`                                                                                                              |
+| [workflow/agda.md](workflow/agda.md)                             | the metatheory lane: layout, flags, gates, dependencies, solvers, the done-rule                                                           |
+| [workflow/agda-design.md](workflow/agda-design.md)               | designing Agda structures: representation, characterization, reasoning style, namespacing                                                 |
 | [workflow/scripting.md](workflow/scripting.md)                   | project scripts (Nushell/TS), reading diagnostics (aifix)                                                                                 |
 | [workflow/review.md](workflow/review.md)                         | adversarial review, interpreting adversary findings, research outlooks — **and, standing for every task, declining or refuting anything** |
 | [workflow/specs.md](workflow/specs.md)                           | authoring/editing the `docs/gandr/spec` corpus, re-absorptions, doc fidelity                                                              |
@@ -51,24 +54,24 @@ Adding a doc under `docs/gandr/` registers it in `docs/gandr/MANIFEST.yml` with 
 
 ## Standing principles (the short forms)
 
-* **Modularity-first**: before modifying, evaluate structure — extract on touch, act or schedule, always surface (`.agents/core/core/PRINCIPLES.md` §"Working posture"; precedents in [workflow/rust.md](workflow/rust.md)).
+* **Modularity-first**: before modifying, evaluate structure — extract on touch, act or schedule, always surface (`AGENTS.md` §"Working posture"; precedents in [workflow/rust.md](workflow/rust.md)).
 * **Formatters and linters are best-effort**: never satisfy a tool at the cost of artifact fidelity ([workflow/docs.md](workflow/docs.md)).
 * **External research artifacts are reference-only**: read and cite published work; never vendor, port, or depend on companion artifacts, regardless of license.
   Agda dependencies additionally need maintainer sign-off first ([workflow/agda.md](workflow/agda.md)).
 * **Graduation principle (dogfood the stack)**: when a major component ships, evaluate it as a replacement for the ad-hoc tooling that preceded it and file beads for the graduations it enables — the project's own layers are the intended substrate for the tooling around the project, so interim tooling keeps its formats substrate-agnostic.
 * **Adversarial review before substantial landings**; findings are challenged-not-refuted unless factual ([workflow/review.md](workflow/review.md)).
-* **Documentation economy — prefer forgetting over hoarding**: accumulation is a named project killer; distill decisions into ADRs, keep surveys and session context in the notes repo ([workflow/docs.md](workflow/docs.md)).
+* **Documentation economy — prefer forgetting over hoarding**: accumulation is a named project killer; keep surveys and session context out of the tree ([workflow/docs.md](workflow/docs.md)).
   Economy governs **which documents exist**, never the fidelity of load-bearing content: spreading out, explaining, and linking is the sanctioned response to density — dropping is not (`gandr-fid.0`).
 * **Documentation authoring gets a mandatory fidelity review**: every `docs/gandr/spec/` / `docs/research/` change is adversarially diffed against its declared source set for dropped content, not just checked for correctness ([workflow/review.md](workflow/review.md) §"Documentation fidelity review").
 
 ## Where things are decided
 
-| Question                           | Answer lives in                                                            |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| What is the design?                | `docs/gandr/` (authoritative)                                              |
-| Why was it decided?                | `gandr-fcw` wayfinder tracker + `PLAN.html` (reboot; `docs/adr/` deferred) |
-| What's next, in what order?        | `docs/gandr/VISION.md` §6                                                  |
-| How are docs kept trustworthy?     | `docs/KNOWLEDGE.md`                                                        |
-| What work is open right now?       | `bv --robot-triage`                                                        |
-| What can go wrong (failure modes)? | `docs/HAZARDS.md` + `.agents/core/core/HAZARDS.md`                         |
-| How does work move through here?   | this document + `docs/workflow/`                                           |
+| Question                           | Answer lives in                                                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| What is the design?                | `docs/gandr/` (authoritative)                                                                                                                  |
+| Why was it decided?                | `gandr-fcw` wayfinder tracker + `PLAN.html` (reboot; `docs/adr/` deferred)                                                                     |
+| What's next, in what order?        | `docs/gandr/VISION.md` §6                                                                                                                      |
+| How are docs kept trustworthy?     | `docs/gandr/MANIFEST.yml` + the docs gates ([workflow/ci.md](workflow/ci.md)) + the fidelity review ([workflow/review.md](workflow/review.md)) |
+| What work is open right now?       | `bv --robot-triage`                                                                                                                            |
+| What can go wrong (failure modes)? | the hazards recorded inline in the workflow file that owns each surface                                                                        |
+| How does work move through here?   | this document + `docs/workflow/`                                                                                                               |
