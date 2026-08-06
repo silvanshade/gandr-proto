@@ -6,8 +6,8 @@ import { type Plugin, type Rule, RuleConfigSeverity, type UserConfig } from "@co
 // Human co-authors (any other host) are unconstrained beyond a valid shape. New
 // models/variants require an explicit entry here — strict by design, to keep
 // agent attribution uniform across the publishable history. Agent attribution
-// itself is project-concern (honest provenance); extend the registry upstream
-// in agentic-dev, not per consumer.
+// itself is project-concern (honest provenance); extend the registry here,
+// with owner authorization.
 const AGENT_EMAIL_HOSTS: readonly string[] = ["anthropic.com", "moonshot.ai", "openai.com"];
 
 const CANONICAL_AGENT_TRAILERS: readonly string[] = [
@@ -48,7 +48,7 @@ const coAuthoredByCanonical: Rule = (parsed) => {
 
 // A session-link trailer (`Claude-Session:` and casing/provider variants) is
 // agent-harness forensics — contributor-concern, never project-concern — so it
-// must never reach the publishable history (core/PUBLISHABLE-HISTORY.md).
+// must never reach the publishable history (AGENTS.md §"Commits and publishable history").
 const SESSION_TRAILER_LINE = /^(?:claude|gpt|codex)-session:/i;
 
 // Custom rule: reject any session-link trailer.
@@ -60,10 +60,54 @@ const noSessionTrailer: Rule = (parsed) => {
   return [false, `session-link trailers are contributor-concern and must not appear in commit messages:\n${offending}`];
 };
 
+// ── Trailer detection that does not misfire on prose ─────────────────────────
+// conventional-commits-parser decides where the body ends with
+//   /^\s*(?:BREAKING CHANGE|[\w-]+)(?::\s+).+/i
+// so ANY line beginning `word:` starts the footer. That is not configurable: the
+// regex is derived inside the parser from `issuePrefixes` alone. The consequence
+// is that ordinary prose — and, worse, ordinary line WRAPPING that happens to put
+// a colon-suffixed word first — silently reclassifies the rest of the body as
+// footer, and the built-in `footer-leading-blank` then fails while naming a line
+// the author never wrote. Diagnosing it costs several attempts every time.
+//
+// Replace that rule with one keyed to trailers that are actually trailers.
+const TRAILER_TOKENS: readonly string[] = [
+  "BREAKING CHANGE",
+  "BREAKING-CHANGE",
+  "Acked-by",
+  "Cc",
+  "Closes",
+  "Co-Authored-By",
+  "Fixes",
+  "Refs",
+  "Reported-by",
+  "Reviewed-by",
+  "Signed-off-by",
+  "Tested-by",
+];
+
+const TRAILER_LINE = new RegExp(`^(?:${TRAILER_TOKENS.join("|")}):[ \\t]`, "i");
+
+// Custom rule: the first real trailer must be preceded by a blank line.
+const trailerLeadingBlank: Rule = (parsed) => {
+  const raw = parsed.raw ?? [parsed.header, parsed.body, parsed.footer].filter(Boolean).join("\n");
+  const lines = raw.split("\n");
+  const first = lines.findIndex((line) => TRAILER_LINE.test(line.trimEnd()));
+  // No trailer, or a trailer on the header line itself, is not this rule's concern.
+  if (first <= 0) return [true, ""];
+  if ((lines[first - 1] ?? "").trim() === "") return [true, ""];
+  return [
+    false,
+    `the trailer block must be preceded by a blank line; found "${(lines[first] ?? "").trim()}" ` +
+      `directly after "${(lines[first - 1] ?? "").trim()}"`,
+  ];
+};
+
 const agenticDevPlugin: Plugin = {
   rules: {
     "co-authored-by-canonical": coAuthoredByCanonical,
     "no-session-trailer": noSessionTrailer,
+    "trailer-leading-blank": trailerLeadingBlank,
   },
 };
 
@@ -125,7 +169,12 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
       // subject standalone promoted from warning to error.
       "body-leading-blank": [RuleConfigSeverity.Error, "always"],
       "body-max-line-length": [RuleConfigSeverity.Error, "always", 100],
-      "footer-leading-blank": [RuleConfigSeverity.Error, "always"],
+
+      // Superseded by `trailer-leading-blank`, which does not misfire on prose:
+      // the parser reads any `word:` line as the footer's start, so the stock
+      // rule rejects messages while naming a line the author never wrote.
+      "footer-leading-blank": [RuleConfigSeverity.Disabled, "always"],
+      "trailer-leading-blank": [RuleConfigSeverity.Error, "always"],
 
       // Type: a required, lower-case conventional type (config-conventional enum).
       "type-empty": [RuleConfigSeverity.Error, "never"],
@@ -146,13 +195,8 @@ export function makeConfig(scopes: readonly string[]): UserConfig {
 }
 
 // ── gandr consumer config ────────────────────────────────────────────────────
-// NOTE (inlined agentic-dev base): everything above this section is the
-// agentic-dev core base fragment (normally imported from
-// `./.agents/core/fragments/commitlintrc.base.mts`), inlined here because the
-// vendored `.agents/core` submodule is not wired into the reboot yet. When the
-// core is re-vendored, restore the import and keep only this consumer section —
-// and reconcile the closed-vocabulary override below (gandr deliberately
-// narrows the base's additive CORE_SCOPES union; upstream the narrowing).
+// Everything above this section began as a shared base fragment; it is owned
+// here outright now, and rule changes are made in place.
 
 // Fixed scope vocabulary — CLOSED and deliberately small (owner, 2026-07-21).
 // Scopes are broad areas, never per-crate labels: the seven crate-category

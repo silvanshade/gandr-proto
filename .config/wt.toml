@@ -84,4 +84,11 @@ exclude = [
   "fuzz/artifacts/**",
   "coverage/**",
   "packages/tree-sitter-gandr/node_modules/**",
+  # rumdl caches per file and does not invalidate on configuration change, and a
+  # copied cache is warm against the SOURCE tree's file set — measured 2026-08-06:
+  # a copied cache reported MD057 "does not exist" against a link target created
+  # after the cache warmed, and only --no-cache told the truth. A bare path, not
+  # a glob: git collapses the wholly-ignored directory into the single entry
+  # ".rumdl_cache", which a "/**" glob cannot match.
+  ".rumdl_cache",
 ]
