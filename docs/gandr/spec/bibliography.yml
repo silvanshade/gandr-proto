@@ -5576,3 +5576,35 @@ dowek-hardin-kirchner-2003-theorem-proving-modulo:
   note: >-
     not in library.bib; synthesized 2026-08-07 — locator from the absorption sweep's
     verified-metadata record; the work itself is unread here
+
+# ── Pterodactyl absorption: the theory layer ──────────────────────────────────
+# The coercion register's precedents and the telescope-as-schema connection.
+
+dreyer-2007-modular-type-classes:
+  type: chapter
+  title: Modular Type Classes
+  author: ["Dreyer, Derek", "Harper, Robert", "Chakravarty, Manuel M. T.", "Keller, Gabriele"]
+  date: 2007
+  page-range: "63-70"
+  serial-number:
+    doi: "10.1145/1190216.1190229"
+    isbn: "978-1-59593-575-5"
+  parent:
+    type: proceedings
+    title: Proceedings of the 34th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '07)
+  note: metadata from library.bib (Dreyer-2007-modular_type_classes), held PDF
+
+kaposi-2020-signatures:
+  type: article
+  title: Signatures and Induction Principles for Higher Inductive-Inductive Types
+  author: ["Kaposi, Ambrus", "Kovács, András"]
+  date: 2020
+  serial-number:
+    doi: "10.23638/LMCS-16(1:10)2020"
+    arxiv: "1902.00297"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 16
+    issue: 1
+  note: metadata from library.bib (Kaposi-2020-signatures_induction_principles_higher_inductiveinductive_types), held PDF

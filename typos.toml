@@ -133,6 +133,9 @@ Corelations = "Corelations"
 # citation keys and prose in the elaborator-line documents (H8-class).
 explicits = "explicits"
 Explicits = "Explicits"
+# "HoTTEST" — the Homotopy Type Theory Electronic Seminar Talks; typos reads
+# it as a misspelling of TEST and rewrites the seminar name in prose.
+HoTTEST = "HoTTEST"
 
 [default.extend-identifiers]
 CertiCoq = "CertiCoq"
