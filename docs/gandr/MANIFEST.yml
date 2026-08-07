@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 00d51c13db392d06188e9845e3468b0387bcdba0f51e0304bbb124ff6e4eb0af
+    b3: a0de573e7c2a7e1581016d33d053defa37b0fdd87ad145e5720597c7af2b5383
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -230,6 +230,11 @@ nodes:
   - path: spec/implementation/proposed/fuss-free-universes.md
     role: subdocument
     b3: b4c3b5ea5b925d3e25d6e8cdfa3c6bca314efa9f554bf15ab84f4bdad23da670
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/pattern-unifier.md
+    role: subdocument
+    b3: 0f1b228edcb2becc75c76800afcb5dbf708d10b47dfb1fb8959d3db359848b97
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md

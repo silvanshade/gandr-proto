@@ -2645,6 +2645,7 @@ white-bour-yallop-2015-modular-implicits:
   date: 2015
   serial-number:
     doi: "10.4204/EPTCS.198.2"
+    arxiv: "1512.01895"
   parent:
     type: periodical
     title: Electronic Proceedings in Theoretical Computer Science
@@ -5247,15 +5248,6 @@ petgraph:
 # ── Pterodactyl absorption: the elaborator discipline ─────────────────────────
 # Precedents for the three-scheduler rule, the universe layer, and the unifier.
 
-white-bour-yallop-2015-modular-implicits:
-  type: article
-  title: Modular Implicits
-  author: ["White, Leo", "Bour, Frédéric", "Yallop, Jeremy"]
-  date: 2015
-  serial-number:
-    doi: "10.4204/EPTCS.198.2"
-    arxiv: "1512.01895"
-
 vivien-remy-scherer-2026-modular-explicits:
   type: misc
   title: On the Design and Implementation of Modular Explicits
@@ -5417,13 +5409,15 @@ allais-boutillier-mcbride-2013-neutral-terms:
   title: "New Equations for Neutral Terms: A Sound and Complete Decision Procedure, Formalized"
   author: ["Allais, Guillaume", "Boutillier, Pierre", "McBride, Conor"]
   date: 2013-06-17
+  url: http://arxiv.org/abs/1304.0809
   serial-number:
     doi: "10.48550/arXiv.1304.0809"
     arxiv: "1304.0809"
   note: >-
-    metadata copied from the contributor research register, which holds the PDF; cited for the
-    decision-procedure lineage for neutral-term equality, via the design record — not re-read
-    for this citation
+    metadata from library.bib
+    (Allais-2013-new_equations_neutral_terms_sound_complete_decision_procedure_formalized), held
+    PDF; cited for the decision-procedure lineage for neutral-term equality via the design
+    record — not re-read for this citation
 
 corbyn-kammar-valliappan-yallop-2022-nbe-free-extensions:
   type: misc
@@ -5445,3 +5439,140 @@ mcbride-2012-crude-stratification:
     held as a PDF in the contributor research register (filed there under 2022); the slides print
     no date, and 2012 is the year the citing design record assigns. The URL was fetch-verified
     2026-08-07 (HTTP 200, application/pdf)
+    not in library.bib; synthesized 2026-08-07 — public worklog forest, read 2026-08-06; individual
+    trees are cited inline by their stable forest anchors (e.g. tree 01JQ)
+
+# ── The unifier's fragment and its theory backend ────────────────────────────
+
+abel-pientka-2011-dynamic-pattern-unification:
+  type: article
+  title: Higher-Order Dynamic Pattern Unification for Dependent Types and Records
+  author: ["Abel, Andreas", "Pientka, Brigitte"]
+  date: 2011
+  serial-number:
+    isbn: "978-3-642-21690-9"
+  parent:
+    type: proceedings
+    title: Proceedings of the 10th International Conference on Typed Lambda Calculi and Applications (TLCA 2011)
+    publisher: Springer-Verlag
+    page-range: 10-26
+  note: >-
+    metadata from library.bib
+    (Abel-2011-higherorder_dynamic_pattern_unification_dependent_types_records), held PDF
+
+richter-bohler-2026-pattern-matching-unification:
+  type: misc
+  title: "Extended Abstract: From Pattern Unification towards Pattern Matching Unification"
+  author: ["Richter, David", "Böhler, Timon"]
+  date: 2026
+  url: http://arxiv.org/abs/2607.18455
+  serial-number:
+    doi: "10.48550/arXiv.2607.18455"
+    arxiv: "2607.18455"
+  note: >-
+    extended abstract, preprint; metadata from library.bib
+    (Richter-2026-extended_abstract_pattern_unification_pattern_matching_unification), held PDF
+
+behr-krivine-2021-conditions-compositionality:
+  type: article
+  title: Compositionality of Rewriting Rules with Conditions
+  author: ["Behr, Nicolas", "Krivine, Jean"]
+  date: 2021
+  serial-number:
+    doi: "10.32408/compositionality-3-2"
+    arxiv: "1904.09322"
+  parent:
+    type: periodical
+    title: Compositionality
+    volume: 3
+    issue: 2
+  note: metadata from library.bib (Behr-2021-compositionality_rewriting_rules_conditions), held PDF
+
+behr-harmer-krivine-2021-nonlinear-concurrency:
+  type: article
+  title: Concurrency Theorems for Non-linear Rewriting Theories
+  author: ["Behr, Nicolas", "Harmer, Russ", "Krivine, Jean"]
+  date: 2021
+  serial-number:
+    doi: "10.48550/arXiv.2105.02842"
+    arxiv: "2105.02842"
+  note: >-
+    preprint; metadata from library.bib
+    (Behr-2021-concurrency_theorems_nonlinear_rewriting_theories), held PDF
+
+behr-heckel-saadat-2020-graph-overlaps-z3:
+  type: article
+  title: "Efficient Computation of Graph Overlaps for Rule Composition: Theory and Z3 Prototyping"
+  author: ["Behr, Nicolas", "Heckel, Reiko", "Ghaffari Saadat, Maryam"]
+  date: 2020
+  serial-number:
+    doi: "10.4204/EPTCS.330.8"
+    arxiv: "2003.11010"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 330
+    page-range: 126-144
+  note: >-
+    metadata from library.bib
+    (Behr-2020-efficient_computation_graph_overlaps_rule_composition_theory_z3_prototyping), held PDF
+
+hewer-2024-types-extra-structure:
+  type: thesis
+  title: "Types with Extra Structure: Predicates, Equations, Composition"
+  author: ["Hewer, Brandon"]
+  date: 2024
+  note: >-
+    metadata from library.bib (Hewer-2024-types_extra_structure_predicates_equations_composition),
+    held PDF; no DOI or arXiv identifier recorded in the register
+
+cockx-tabareau-winterhalter-2021-taming-rew:
+  type: article
+  title: "The Taming of the Rew: A Type Theory with Computational Assumptions"
+  author: ["Cockx, Jesper", "Tabareau, Nicolas", "Winterhalter, Théo"]
+  date: 2021
+  serial-number:
+    doi: "10.1145/3434341"
+    hal: "hal-02901011"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 5
+    issue: POPL
+    page-range: "60:1-60:29"
+  note: >-
+    metadata from library.bib (Cockx-2021-taming_rew_type_theory_computational_assumptions), held
+    PDF; HAL identifier per the absorption sweep's verified-locator record
+
+escobar-sasse-meseguer-2012-variant-narrowing:
+  type: article
+  title: Folding Variant Narrowing and Optimal Variant Termination
+  author: ["Escobar, Santiago", "Sasse, Ralf", "Meseguer, José"]
+  date: 2012
+  serial-number:
+    doi: "10.1016/j.jlap.2012.01.002"
+  parent:
+    type: periodical
+    title: Journal of Logic and Algebraic Programming
+    volume: 81
+    issue: 7-8
+  note: >-
+    not in library.bib; synthesized 2026-08-07 — locator from the absorption sweep's
+    verified-metadata record; the work itself is unread here
+
+dowek-hardin-kirchner-2003-theorem-proving-modulo:
+  type: article
+  title: Theorem Proving Modulo
+  author: ["Dowek, Gilles", "Hardin, Thérèse", "Kirchner, Claude"]
+  date: 2003
+  serial-number:
+    doi: "10.1023/A:1027357912519"
+  parent:
+    type: periodical
+    title: Journal of Automated Reasoning
+    volume: 31
+    issue: 1
+    page-range: 33-72
+  note: >-
+    not in library.bib; synthesized 2026-08-07 — locator from the absorption sweep's
+    verified-metadata record; the work itself is unread here
