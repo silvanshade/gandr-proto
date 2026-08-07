@@ -1,5 +1,12 @@
 # Theories and extension
 
+> **Held (owner ruling, 2026-08-07).** The `theory`/`extend` surface does not proceed as designed.
+> The unresolved question is import visibility: an `extend` occurring in one module against a theory declared in another is an effect with no name, so a client imports the extending module for its effect — resolution then depends on which effects are in scope, and potentially on import order, where the property this project requires is order-free resolution with ambiguity a type error.
+> The settings the design comes from dissolve the question by construction (cumulative whole-theory imports with a canonical interpretation registry; an ordered global declaration chain); this project's selective-import module boundary is where it bites.
+> Theories-as-telescopes ride the module layer's record rung, so only the retroactive-extension sugar is deferred.
+> Reversal condition: a design under which an extension is a named, importable entity — or an order-free coherence regime for extension visibility — with ambiguity a type error.
+> This document is retained as the design record; do not begin `extend` implementation work from it.
+
 **Proposed.
 No theory layer exists in this tree: no `theory` or `extend` declaration form, no refinement operator, no coercion preorder register, and no elaborator to host them.** What exists is the machinery this design reconciles with and rides: the module layer's record rung and its proposed full ladder ([[modules]]), the ordered, rollback-carrying declaration substrate of the incremental pipeline ([[../../implementation/incremental-pipeline]]), the `sign` block and its description table ([[../signatures]]), the `Model(S)` shape-signature design ([[../higher-cells]]), and the three-scheduler elaborator rule that owns where coercions may live ([[../../implementation/proposed/elaboration-schedulers]]).
 

@@ -269,7 +269,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/theories.md
     role: subdocument
-    b3: 844348d4be76eb4d62258f5d8b8c60dc26ceacb42d2e2fc6b314c0116782721a
+    b3: 770533b7943674885bc5335d46dd731d99023d7f010cf78b6a14290b88669c6b
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md
