@@ -127,6 +127,12 @@ corelation = "corelation"
 Corelation = "Corelation"
 corelations = "corelations"
 Corelations = "Corelations"
+# "explicits" — the plural in the modular-implicits/modular-explicits vocabulary
+# (White–Bour–Yallop; Vivien–Rémy–Scherer, "On the Design and Implementation of
+# Modular Explicits"); typos rewrites it to "explicit", which silently broke
+# citation keys and prose in the elaborator-line documents (H8-class).
+explicits = "explicits"
+Explicits = "Explicits"
 
 [default.extend-identifiers]
 CertiCoq = "CertiCoq"

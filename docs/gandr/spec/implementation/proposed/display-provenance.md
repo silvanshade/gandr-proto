@@ -69,7 +69,7 @@ Nothing in this layer is a typing fact; the kernel's conversion is untouched, an
 
 ## The forward judgement
 
-A surface pattern is elaborated _against a core-language input_, not merely scoped [@sterling-2025-pterodactyl-worklog].
+A surface pattern is elaborated _against a core-language input_, not merely scoped [@sterling-2026-pterodactyl-worklog].
 The judgement form, with core term $M : A$ as input, surface pattern $p$ as subject, and a dubbing sequence $cal(D)$ as output:
 
 $$ Gamma tack M : A triangle.l p arrow.squiggly cal(D) $$
@@ -85,7 +85,7 @@ Two properties are the design, and both are stated rather than assumed.
 * **A name may dub a complex term.** The core label under a user name may be η-expanded, or a projection of a bound variable, and the surface must not syntactically distinguish these from variables.
   This is what makes the table a _dub table_ rather than a renaming context, and it is the whole reason the inverse direction has content.
 * **The judgement refines an elaboration discipline, it does not invent one.** It is the low-level, name-distinguishing form of the elaboration whose figure-level presentation abstracts internal and user names away — the elaboration-of-definitions discipline of [@dagand-mcbride-2012-elaborating], with the naming made explicit and judgemental.
-  The claim here is lineage, read from the source's own account of what it refines [@sterling-2025-pterodactyl-worklog]; the older system's relabelling algorithm is declined wholesale ([[#The two declines]]).
+  The claim here is lineage, read from the source's own account of what it refines [@sterling-2026-pterodactyl-worklog]; the older system's relabelling algorithm is declined wholesale ([[#The two declines]]).
 
 Dubbings are **emitted against canonical forms**: the $M$ bound to a name is interned at canonical form at emission, which is what the inverse map's population rule keys on.
 
@@ -124,7 +124,7 @@ def uncurry(f : A -> B -> C) : (A × B) -> C
 ### The residual case is a bounded search, not a lookup
 
 One shape escapes the index, and the source design's account of it is exact: a core term **definitionally but not canonically equal** to any dubbed term.
-The `swap` example is the minimal case [@sterling-2025-pterodactyl-worklog]:
+The `swap` example is the minimal case [@sterling-2026-pterodactyl-worklog]:
 
 ```text
 def swap (u : A × B) : B × A
@@ -178,7 +178,7 @@ It is a property the design inherits from those two commitments, not a mechanism
 
 **The `swap` pair-η case.** Elaborate the `swap` clause above; display a goal that mentions `u`.
 Expected: `u` prints as `(x, y)` under the recorded dubbings of its projections, by exactly one memoised residual probe whose result is thereafter a lookup.
-This is the case the source design leaves open [@sterling-2025-pterodactyl-worklog], and it is named here as the layer's first acceptance test so the open case is the thing demonstrated, not the thing avoided.
+This is the case the source design leaves open [@sterling-2026-pterodactyl-worklog], and it is named here as the layer's first acceptance test so the open case is the thing demonstrated, not the thing avoided.
 
 ### display-test-02
 
@@ -210,7 +210,7 @@ Both are the source design's own, adopted with its reasons, and both are recorde
 
 * **Dubbings in the typing context — declined on architecture, no reversal condition filed.** The context is kernel data and stays minimal; naming is elaboration metadata.
   The delta that would change this is a demonstrated need for the kernel itself to print, which the renderer firewall ([[#display-rule-04]]) is designed to prevent; the decline therefore rests on architecture, not on cost.
-* **The Epigram-1 relabelling algorithm — declined wholesale.** That algorithm abstracts the expected left-hand side, walks the user pattern accumulating a relabelling, and rebinds; the source records it as complicated, error-prone, and probably η-disrespecting [@sterling-2025-pterodactyl-worklog].
+* **The Epigram-1 relabelling algorithm — declined wholesale.** That algorithm abstracts the expected left-hand side, walks the user pattern accumulating a relabelling, and rebinds; the source records it as complicated, error-prone, and probably η-disrespecting [@sterling-2026-pterodactyl-worklog].
   The judgement form of [[#The forward judgement]] replaces it whole: deconstruct the core input against the surface pattern, respecting its judgemental equality, until the dot-pattern, identifier, and wildcard base cases.
   Nothing of the older algorithm is retained, so there is no residual to disposition.
 
@@ -242,14 +242,14 @@ Whether the provenance register moves onto content keys outright, or keeps node 
 
 ### display-question-05
 
-**One judgement instance per injective constructor, or a consolidated rule.** The source notes the annoyance of implementing the deconstruction structure for every definitionally injective constructor, mirroring the term-formation rules, and flags consolidation as tempting but possibly unwise [@sterling-2025-pterodactyl-worklog].
+**One judgement instance per injective constructor, or a consolidated rule.** The source notes the annoyance of implementing the deconstruction structure for every definitionally injective constructor, mirroring the term-formation rules, and flags consolidation as tempting but possibly unwise [@sterling-2026-pterodactyl-worklog].
 **Disposition: carried**, with the source's hesitation recorded as the design's own.
 
 ## Source and confidence
 
 Written against four sources, named because a change with no declared source set cannot be fidelity-reviewed.
 
-1. **The Pterodactyl worklog, trees 01KK and 01KL** [@sterling-2025-pterodactyl-worklog] — the forward judgement form and its three base cases, the dub-table ambition, the memoised definitional-equality floor and the author's dissatisfaction with it, the `swap` and `uncurry` examples, the pattern-unification hope, and both declines — read from the live pages at this pass (2026-08-07).
+1. **The Pterodactyl worklog, trees 01KK and 01KL** [@sterling-2026-pterodactyl-worklog] — the forward judgement form and its three base cases, the dub-table ambition, the memoised definitional-equality floor and the author's dissatisfaction with it, the `swap` and `uncurry` examples, the pattern-unification hope, and both declines — read from the live pages at this pass (2026-08-07).
 2. **The tree**, for every as-built claim: `gandr-surface-render-remote`'s `wire` and `present` modules (the firewall); `gandr-core-checker`'s `machine`, `intern`, and `origin`-adjacent modules; `gandr-surface-engine`'s `origin` and `lower::codata` modules; `gandr-kernel-core`'s `export` module; `gandr-theory-computads`'s tracelet machinery.
 3. **The corpus documents linked at each claim** — the inspection protocol, the typing machine, the incremental pipeline's differential gate, the metatheory track's certificate algebra and polarity-sorted η discipline, the surface track's declarations and signatures rulings, and the feature-staging constraints — each read at the linked section rather than restated from memory.
 4. **The Epigram-line literature** [@mcbride-mckinna-2004-view-left] [@dagand-mcbride-2012-elaborating] [@mcbride-1999-thesis] [@brady-2005-practical-implementation], cited from the register with its abstracts and the source design's account of the connection; the works' bodies were not re-read at this pass.

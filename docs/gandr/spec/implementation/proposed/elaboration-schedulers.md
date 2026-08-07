@@ -73,7 +73,7 @@ graph LR
 
 ## The `cast` form
 
-The ergonomics are the modular-explicit cost model [@vivien-remy-scherer-2026-modular-explicit]: **the shape is inferred, the act is explicit** — the user writes one keyword and never the types.
+The ergonomics are the modular-explicits cost model [@vivien-remy-scherer-2026-modular-explicits]: **the shape is inferred, the act is explicit** — the user writes one keyword and never the types.
 
 * **Typing.** In checking mode against an expected type $B$, `cast M` elaborates $M$ in inference mode at $A$, then asks the coercion resolver for the canonical map $\alpha : A triangle.small.r B$ in the coercion preorder; the elaborated term applies that map.
   The resolver's witness is elaboration evidence, checked and replayed like every other elaboration step — no opaque verdict enters the trusted base.
@@ -86,7 +86,7 @@ The ergonomics are the modular-explicit cost model [@vivien-remy-scherer-2026-mo
 **Modular implicits** [@white-bour-yallop-2015-modular-implicits] is already the shape of gandr's instance discipline, and it is what makes the middle row of the scheduler table safe: type-directed resolution elaborating to ordinary first-class functor applications, deterministic under per-world canonicity.
 The scheduling argument applies to it directly — an instance search that silently fired a coercion would reintroduce exactly the order-sensitivity — which is what [[#sched-rule-03]] forbids.
 
-**Modular explicit** [@vivien-remy-scherer-2026-modular-explicit] supply the evidence that the explicit-act discipline is livable at scale: shape inference with an explicit act is precisely the `cast` form's cost model, and their elaboration of the explicit shorthand through ordinary mechanisms — rather than a side channel — is the template for cast sites surviving into the derivation.
+**Modular explicits** [@vivien-remy-scherer-2026-modular-explicits] supply the evidence that the explicit-act discipline is livable at scale: shape inference with an explicit act is precisely the `cast` form's cost model, and their elaboration of the explicit shorthand through ordinary mechanisms — rather than a side channel — is the template for cast sites surviving into the derivation.
 
 **Polarity-scoped implicit arguments** [@liesnikov-binder-suberkrub-2025-polarity] are the design most at risk without the rule: implicit arguments at constructor and observation boundaries are exactly where an elaborator is tempted to fuse unification with wrap/unwrap conversions at a polarity boundary.
 Under the rule, these implicits are solved by the unifier alone, and any conversion the boundary needs is a `cast`. gandr's polarity discipline helps rather than hurts here: introduction and elimination forms already do not silently convert, so a coercion crossing a polarity boundary is suspicious on independent grounds, and the `cast` site marks exactly that crossing.
@@ -131,11 +131,11 @@ Written against four sources, named because a change with no declared source set
 1. The **design record for the absorption**: the Pterodactyl worklog's disentanglement tree [@sterling-2026-pterodactyl-worklog, tree 01JQ] and the ratified rulings that bind this document (no combined solver, no kernel coercions, no coercions through positive types, no second hidden identity type, no kernel change for the universe layer), restated here in full so the document stands alone.
 2. **The tree**, for every as-built claim: `gandr-core-checker`'s `machine` and `checker` modules (the two realizations and their agreement testing) and `kernel-strata` (the level oracle's canonical joins and written-lifts discipline).
 3. The **corpus documents that carry this design's premises** — the typing machine's solver separation, the module layer's implicit-resolution specification, the trusted-base record, the directed-family coercion posture, and the circuit-terms coercion question — which this document links rather than restates.
-4. The **published literature**: modular implicits [@white-bour-yallop-2015-modular-implicits], modular explicit [@vivien-remy-scherer-2026-modular-explicit], the polarity implicits account [@liesnikov-binder-suberkrub-2025-polarity], and Sakaguchi's thesis [@sakaguchi-2023-refinement-extension] for the insert-and-close precedent.
+4. The **published literature**: modular implicits [@white-bour-yallop-2015-modular-implicits], modular explicits [@vivien-remy-scherer-2026-modular-explicits], the polarity implicits account [@liesnikov-binder-suberkrub-2025-polarity], and Sakaguchi's thesis [@sakaguchi-2023-refinement-extension] for the insert-and-close precedent.
 
 **Confidence, by class.**
 
 * **High** — the rule itself, the scheduling argument, and the four kernel boundaries, which restate ratified rulings rather than derive new ones.
 * **High** — the as-built statements, each verified against the named module or document at write time.
-* **Medium** — the modular-explicit ergonomics mapping, read from the paper's account rather than from experience with the system.
+* **Medium** — the modular-explicits ergonomics mapping, read from the paper's account rather than from experience with the system.
 * **Marked at the claim** — the cells facet, recorded as a candidate mechanism with its contract explicitly out of scope.

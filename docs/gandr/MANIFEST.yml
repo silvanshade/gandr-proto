@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: b675446358db6eb2ef34224c874159b860d772c03d12e1bd1e2e436fcb8dd0a4
+    b3: c5ce9b618520c8c2efcb1335e5cdc2f6a96a41c7aa7f16deebcbee6aae42aeac
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -219,12 +219,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/elaboration-schedulers.md
     role: subdocument
-    b3: 7a8c75d604710c52799383c8845639d242fcdc7eb7ace4f16bb070cbc979fecf
+    b3: 304fc11da5c0af0bf375a398be49767eeab0b728565beb88611eb57af9be37c5
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/display-provenance.md
     role: subdocument
-    b3: bcdc2bb478bc879a0517a8d04def376f1e2d3b2d32e546b48d7a60fb7400084c
+    b3: f25c0bfc4511a23174fc0292099a54439681a0c0fa45c6d94415588012e534c5
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/fuss-free-universes.md
