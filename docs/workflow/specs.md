@@ -4,6 +4,13 @@
 > Base practice: `docs/gandr/spec/README.md` (the corpus's own conventions), [review.md](review.md) §"Documentation fidelity review" (the mandatory review) and §"Absorption and reboot passes" (the migration discipline), [docs.md](docs.md) (the economy posture).
 > **Standing rule, whatever the task:** before recording that something does not apply, is not needed, or cannot be done, read [review.md](review.md) §"Declining is a claim too" and §"Refutations bind only with owner sign-off" — a refutation binds only with the owner's sign-off.
 
+## The corpus is migrating out — no new specification documents
+
+**Owner direction, 2026-08-07, bannered in `docs/gandr/spec/README.md`: do not add new specification documents to this corpus, and prefer editing over growing what is here.** The corpus's deep structure — design, reasoning, open questions, specifications in motion — is moving to the maintainer's research workspace, which is now its primary home; this repository keeps code, tests, and outward-facing user documentation.
+What this repository still receives from a design is a **thin decision record** stating the outcome and what it binds — never a new corpus document.
+Dispatched work follows the same rule by default: a dispatch into this repository builds.
+Everything below continues to govern edits to the existing corpus while the migration runs.
+
 ## The priority order
 
 1. **Technical precision and exhaustive detail** — implementation details, normative signatures, proof obligations, theorem numbers, gate conditions — are the single most important content to retain across these documents.
