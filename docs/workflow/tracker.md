@@ -62,7 +62,9 @@ The 2026-07-12 triage deleted ~600 of 845 beads; these rules exist so that never
   Residual seams discovered during work go into the owning topic bead (a `bd comment` or a description line), not as new dangling beads, unless immediately schedulable.
 * **Research expires.** A research question gets one bead whose deliverable is a decision (adopt/defer, recorded as an ADR); when the pass completes, the bead closes and residual leads go to the single project watchlist bead.
   A lead not promoted to a decision by the next triage sweep is deleted — it can be re-asked if it ever matters again.
-* **Triage sweep cadence.** At each sweep (weekly obligation): active beads pruned toward ≤20; off-trajectory items older than a week deleted or folded into topic beads; closed beads older than ~2 weeks purged; deferred topic beads reviewed for reactivation.
+* **Triage sweep cadence.** At each sweep (weekly obligation): active beads pruned toward ≤20; off-trajectory items older than a week deleted or folded into topic beads; deferred topic beads reviewed for reactivation.
+* **Closed beads are never purged** (owner ruling, 2026-08-07, retiring the former purge-after-~2-weeks clause).
+  Closeout comments, question/answer identifiers, and commit-hash maps are cited from documents and other beads, and a purge orphans every citation; the accumulation problem the purge aimed at belongs to the pruning of _open_ beads above.
 * **Epics need children or a close date.** An epic with no active children is either done (close it) or a label (fold it into a topic bead).
 
 ## Conventions
