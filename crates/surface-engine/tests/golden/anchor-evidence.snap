@@ -99,25 +99,25 @@ term: Value(
     ),
 )
 === origin ===
-[0] => 0..53 #02d5a9f1d6e7c790 [DefFunctionSugar]
-[0, 0] => 0..53 #02d5a9f1d6e7c790 [DefFunctionSugar]
-[0, 0, 0] => 40..51 #140701e2399a47bb [BindHoist]
-[0, 0, 0, 0] => 45..50 #23fc4d07766383e1 [OperatorElab]
-[0, 0, 0, 0, 0] => 45..50 #23fc4d07766383e1 [OperatorElab]
-[0, 0, 0, 0, 0, 0] => 47..48 #505307439843a12c [OperatorElab]
-[0, 0, 0, 0, 0, 0, 0] => 47..48 #505307439843a12c [OperatorElab]
-[0, 0, 0, 0, 0, 1] => 45..46 #1444ef8f8255de8a
-[0, 0, 0, 0, 1] => 49..50 #46d5d57c294160b9
-[0, 0, 0, 1] => 40..51 #140701e2399a47bb
-[0, 0, 0, 1, 0] => 44..51 #8bbe20cb2638cfac [BindHoist]
-[1] => 54..107 #7b46a44abcdf4c6d [DefFunctionSugar]
-[1, 0] => 54..107 #7b46a44abcdf4c6d [DefFunctionSugar]
-[1, 0, 0] => 94..105 #d9eb6965493225ee [BindHoist]
-[1, 0, 0, 0] => 99..104 #3bd2229e4b0aea3d [OperatorElab]
-[1, 0, 0, 0, 0] => 99..104 #3bd2229e4b0aea3d [OperatorElab]
-[1, 0, 0, 0, 0, 0] => 101..102 #1c56df63e0f6c8b1 [OperatorElab]
-[1, 0, 0, 0, 0, 0, 0] => 101..102 #1c56df63e0f6c8b1 [OperatorElab]
-[1, 0, 0, 0, 0, 1] => 99..100 #1444f08f8255e03d
-[1, 0, 0, 0, 1] => 103..104 #1444f08f8255e03d
-[1, 0, 0, 1] => 94..105 #d9eb6965493225ee
-[1, 0, 0, 1, 0] => 98..105 #b468db840c55f75f [BindHoist]
+[0] => 0..53 #63af7b3b1db837ea [DefFunctionSugar]
+[0, 0] => 0..53 #63af7b3b1db837ea [DefFunctionSugar]
+[0, 0, 0] => 40..51 #2d7f2323dc25ecaa [BindHoist]
+[0, 0, 0, 0] => 45..50 #0e6e09e0b8244ac5 [OperatorElab]
+[0, 0, 0, 0, 0] => 45..50 #0e6e09e0b8244ac5 [OperatorElab]
+[0, 0, 0, 0, 0, 0] => 47..48 #1694c88f01a30204 [OperatorElab]
+[0, 0, 0, 0, 0, 0, 0] => 47..48 #1694c88f01a30204 [OperatorElab]
+[0, 0, 0, 0, 0, 1] => 45..46 #da8630daebb465e2
+[0, 0, 0, 0, 1] => 49..50 #0d17a6c792a0dcc1
+[0, 0, 0, 1] => 40..51 #2d7f2323dc25ecaa
+[0, 0, 0, 1, 0] => 44..51 #3d7997f79f84b8fc [BindHoist]
+[1] => 54..107 #58fa97031df82771 [DefFunctionSugar]
+[1, 0] => 54..107 #58fa97031df82771 [DefFunctionSugar]
+[1, 0, 0] => 94..105 #1d618548c0aa6281 [BindHoist]
+[1, 0, 0, 0] => 99..104 #bd86a8e5859b02a7 [OperatorElab]
+[1, 0, 0, 0, 0] => 99..104 #bd86a8e5859b02a7 [OperatorElab]
+[1, 0, 0, 0, 0, 0] => 101..102 #e298c0af4a565fe9 [OperatorElab]
+[1, 0, 0, 0, 0, 0, 0] => 101..102 #e298c0af4a565fe9 [OperatorElab]
+[1, 0, 0, 0, 0, 1] => 99..100 #da8631daebb46795
+[1, 0, 0, 0, 1] => 103..104 #da8631daebb46795
+[1, 0, 0, 1] => 94..105 #1d618548c0aa6281
+[1, 0, 0, 1, 0] => 98..105 #f1868ec0a6ba845d [BindHoist]
