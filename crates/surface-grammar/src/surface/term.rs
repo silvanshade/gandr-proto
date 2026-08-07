@@ -148,12 +148,14 @@ fn declarations(
     // (binders) --> Result` whose result head is the family applied to the
     // parameter variables. Members are first-token-discriminated by case
     // (uppercase-led constructors versus the lowercase-led reserved `oper` /
-    // `rule` members) and need no separators; the comma stays admissible
-    // between members only so the RETIRED shapes still parse whole: the
-    // Haskell-style head `data Maybe(a)` (bare parameters, no head
+    // `rule` members) and are terminated by `;`, with the retired comma
+    // separator admissible between members so the RETIRED shapes still parse
+    // whole: the Haskell-style head `data Maybe(a)` (bare parameters, no head
     // annotation) and the field-tuple member `Ctor(x: A)` reach the stage-0
     // elaborator, which declines them with the respelling hint (the
-    // retired-`~>` precedent) rather than the parser repairing a token.
+    // retired-`~>` precedent) rather than the parser repairing a token. An
+    // unseparated member list is deliberately not admitted; the mis-parse
+    // mechanism is documented on `member_list`.
     let mut data = r(
         RuleName("data_declaration"),
         Provenance("data_declaration"),
