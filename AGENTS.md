@@ -2,8 +2,9 @@
 
 ## Start here
 
-* `PLAN.html` — the approved reboot roadmap and current project wayfinder.
-* `docs/gandr/spec/README.md` — the entry point to the language specification corpus (overview, metatheory, implementation, proof-engineering tracks).
+* **The buildout wayfinder is the tracker's programme epic `gandr-e08j`** (repo: unify the buildout path around the absorption programme): the current wave, the lane adjacencies, and the triage state live there.
+* `PLAN.html` — the approved reboot roadmap, retained as a historical record; it is no longer the current wayfinder.
+* `docs/gandr/spec/README.md` — the language specification corpus, **which is migrating out of this repository** (its banner carries the rule: do not add specification documents).
 * `docs/WORKFLOW.md` — the workflow routing layer.
   Read it first, then open only the task-scoped file it points to under `docs/workflow/`.
 
