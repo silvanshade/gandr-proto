@@ -177,9 +177,10 @@ mod tests
         // The generic consumers apply to `Boolean` exactly as to declared data.
         let boolean = bool_desc();
         assert_eq!(
-            "sign Boolean { sort Boolean : Type; data False : Boolean; data True : Boolean }",
+            "sign Boolean { sort Boolean : Type }",
             serialize_desc(&boolean).as_ref(),
-            "the builtin renders through the same inspection notation"
+            "the builtin renders through the same inspection notation — sorts, operations, \
+             and rules; constructors carry no member spelling"
         );
         let truth = DescValue::new(1.into(), Payload::Unit);
         let falsity = DescValue::new(0.into(), Payload::Unit);

@@ -96,7 +96,8 @@
 //!   [`Code`];
 //! * [`serialize_value`] — a canonical, deterministic wire encoding of a
 //!   [`DescValue`] guided by a [`Code`];
-//! * [`serialize_desc`] — the inspectable-IR rendering of a whole [`SignDesc`];
+//! * [`serialize_desc`] — the inspectable-IR rendering of a [`SignDesc`]'s
+//!   `sign` normal form;
 //! * [`CodeInterner`] — content-addressed interning keyed on decidable code
 //!   equality.
 //!

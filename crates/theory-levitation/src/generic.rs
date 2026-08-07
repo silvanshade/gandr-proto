@@ -10,8 +10,8 @@
 //!   description (the derive-style structural-eq payoff);
 //! * [`serialize_value`] — a canonical, deterministic byte encoding of a
 //!   [`DescValue`], guided by the description (the wire-serialization payoff);
-//! * [`serialize_desc`] — a canonical textual rendering of the whole
-//!   description (the inspectable-IR payoff).
+//! * [`serialize_desc`] — a canonical textual rendering of the description's
+//!   `sign` normal form (the inspectable-IR payoff).
 //!
 //! A [`DescValue`] is a *generic* value of a described datatype: a constructor
 //! tag plus a [`Payload`] shaped by that constructor's [`Code`]. Recursive
@@ -26,9 +26,6 @@ use crate::boundary::SerializedDescText;
 use crate::boundary::SerializedValueBytes;
 use crate::code::Code;
 use crate::code::Name;
-use crate::code::ValueTypeRef;
-use crate::desc::CtorDesc;
-use crate::desc::DeclPolarity;
 use crate::desc::OperDesc;
 use crate::desc::SignDesc;
 
@@ -286,22 +283,23 @@ pub fn serialize_value(
     out.into()
 }
 
-/// **Inspectable rendering** of a whole description to canonical text
-/// (proposal §8's `desc-inspect` payoff), in the **ruled surface spelling**.
+/// **Inspectable rendering** of a description's `sign` normal form to
+/// canonical text (proposal §8's `desc-inspect` payoff), in the **ruled
+/// surface spelling**.
 ///
 /// Every description renders as its `sign` normal form — the canonical block
 /// of the signature unification (gandr-ng9.18 ruling 5, subsuming the
-/// inspection-notation half of gandr-r38) — with judgment-style members, the
-/// declared sort set spelled first, polarity carried by the member keyword
-/// (`data` constructors, `codata` observations), and the arrow grid's `-->` /
-/// `==>` at every arrow position (`~>` never appears).
+/// inspection-notation half of gandr-r38) — with the declared sort set spelled
+/// first and the arrow grid's `-->` / `==>` at every arrow position (`~>`
+/// never appears). The normal form's members are sorts, operations, and rules
+/// only: the item-level `data` / `codata` member is retired (a family is
+/// declared once, whole, as a nested generator block), so constructor and
+/// observation descriptors have no member spelling here and the render omits
+/// them.
 ///
 /// The rendering is deterministic and structural — a testing/inspection
 /// notation, not a surface pretty-printer (that surface is owned elsewhere).
-/// Members join with `; ` so the whole description stays one line. A payload
-/// with no port spelling (an inline sum, an atom-abstraction) falls back to
-/// the code notation for that leaf, so the rendering stays total and
-/// faithful.
+/// Members join with `; ` so the whole description stays one line.
 ///
 /// # Contract
 /// - ensures: deterministic output for a given description; total — never
@@ -327,9 +325,12 @@ pub fn serialize_desc(desc: &SignDesc) -> SerializedDescText
     for sort in &desc.sorts {
         members.push(format!("sort {} : Type", sort.name));
     }
-    for ctor in &desc.ctors {
-        members.push(render_ctor_member(desc.polarity, ctor));
-    }
+    // Constructor and observation descriptors are NOT rendered: the item-level
+    // `data` / `codata` member is retired from the `sign` normal form — a
+    // family is declared once, whole, as a nested generator block, and a
+    // `sign` block presents sorts, operations, and rules only — so the sign
+    // render carries no member spelling for them. The descriptors themselves
+    // are unchanged and remain inspectable through `desc.ctors`.
     for oper in &desc.opers {
         members.push(render_oper_member(oper));
     }
@@ -350,81 +351,6 @@ pub fn serialize_desc(desc: &SignDesc) -> SerializedDescText
     }
     else {
         format!("sign {}{params} {{ {} }}", desc.id.name, members.join("; ")).into()
-    }
-}
-
-/// Render one constructor as its ruled judgment-style member.
-///
-/// A `data` constructor reads payload-to-result (`data Succ : Nat --> Nat`,
-/// the sugar ladder's spelling; a nullary payload takes the bare-result form
-/// `data Zero : Nat`); a `codata` observation reads sort-to-payload
-/// (`codata head : Stream --> a`) — the direction *is* the polarity.
-///
-/// A port at a declared sort spells the sort name (the surface's implicit
-/// recursive occurrence); other leaves spell their decorated type, and a
-/// leaf with no port spelling falls back to the code notation.
-fn render_ctor_member(
-    polarity: DeclPolarity,
-    ctor: &CtorDesc,
-) -> String
-{
-    let mut leaves: Vec<String> = Vec::new();
-    collect_port_leaves(&ctor.code, &mut leaves);
-    match polarity {
-        | DeclPolarity::Data => match leaves.len() {
-            | 0 => format!("data {} : {}", ctor.name, ctor.result),
-            | 1 => format!(
-                "data {} : {} --> {}",
-                ctor.name,
-                leaves.concat(),
-                ctor.result
-            ),
-            | _ => format!(
-                "data {} : ({}) --> {}",
-                ctor.name,
-                leaves.join(", "),
-                ctor.result
-            ),
-        },
-        | DeclPolarity::Codata => match leaves.len() {
-            | 0 => format!("codata {} : {} --> ()", ctor.name, ctor.result),
-            | 1 => format!(
-                "codata {} : {} --> {}",
-                ctor.name,
-                ctor.result,
-                leaves.concat()
-            ),
-            | _ => format!(
-                "codata {} : {} --> ({})",
-                ctor.name,
-                ctor.result,
-                leaves.join(", ")
-            ),
-        },
-    }
-}
-
-/// Flatten a payload code's product spine into port-leaf spellings, in field
-/// order: a [`Code::Var`] leaf spells its sort, a [`Code::Field`] leaf its
-/// decorated type, [`Code::Unit`] contributes no port, and any other shape
-/// (an inline sum, an atom-abstraction) falls back to the code notation as
-/// one leaf.
-fn collect_port_leaves(
-    code: &Code,
-    leaves: &mut Vec<String>,
-)
-{
-    let mut stack = vec![code];
-    while let Some(node) = stack.pop() {
-        match *node {
-            | Code::Unit => {},
-            | Code::Var(ref sort) => leaves.push(sort.to_string()),
-            | Code::Prod(ref left, ref right) => {
-                stack.push(right);
-                stack.push(left);
-            },
-            | Code::Field(..) | Code::Sum(..) | Code::Bind(..) => leaves.push(render_code(node)),
-        }
     }
 }
 
@@ -498,119 +424,6 @@ fn render_telescope(ports: &[crate::elaborate::RewritePort]) -> String
     format!("({})", rendered.join(", "))
 }
 
-/// Render a [`Code`] to the inspection notation.
-fn render_code(code: &Code) -> String
-{
-    enum CodeFrame<'code>
-    {
-        Render(&'code Code),
-        FinishProd,
-        FinishSum,
-        FinishBind(&'code Name),
-    }
-
-    let mut stack = vec![CodeFrame::Render(code)];
-    let mut rendered = Vec::new();
-    while let Some(frame) = stack.pop() {
-        match frame {
-            | CodeFrame::Render(node) => match *node {
-                | Code::Unit => rendered.push("1".to_owned()),
-                | Code::Var(ref sort) => rendered.push(format!("var {sort}")),
-                | Code::Prod(ref left, ref right) => {
-                    stack.push(CodeFrame::FinishProd);
-                    stack.push(CodeFrame::Render(right));
-                    stack.push(CodeFrame::Render(left));
-                },
-                | Code::Sum(ref left, ref right) => {
-                    stack.push(CodeFrame::FinishSum);
-                    stack.push(CodeFrame::Render(right));
-                    stack.push(CodeFrame::Render(left));
-                },
-                | Code::Field(ref ty, ref grade, ref attrs) => {
-                    let base = render_type_ref(ty);
-                    let rendered_field = if *grade == gandr_core_checker::grade::Grade::ONE {
-                        base
-                    }
-                    else {
-                        format!("{grade:?} {base}")
-                    };
-                    if bool::from(attrs.is_empty()) {
-                        rendered.push(rendered_field);
-                    }
-                    else {
-                        let markers: Vec<String> = attrs
-                            .markers
-                            .iter()
-                            .map(|attr| attr.name.to_string())
-                            .collect();
-                        rendered.push(format!("{rendered_field} [{}]", markers.join(", ")));
-                    }
-                },
-                | Code::Bind(ref sort, ref body) => {
-                    stack.push(CodeFrame::FinishBind(&sort.name));
-                    stack.push(CodeFrame::Render(body));
-                },
-            },
-            | CodeFrame::FinishProd => {
-                let right = rendered.pop().unwrap_or_default();
-                let left = rendered.pop().unwrap_or_default();
-                rendered.push(format!("({left} × {right})"));
-            },
-            | CodeFrame::FinishSum => {
-                let right = rendered.pop().unwrap_or_default();
-                let left = rendered.pop().unwrap_or_default();
-                rendered.push(format!("({left} + {right})"));
-            },
-            | CodeFrame::FinishBind(sort) => {
-                let body = rendered.pop().unwrap_or_default();
-                rendered.push(format!("⟨{sort}⟩{body}"));
-            },
-        }
-    }
-    rendered.pop().unwrap_or_default()
-}
-
-/// Render a [`ValueTypeRef`] to the inspection notation.
-fn render_type_ref(ty: &ValueTypeRef) -> String
-{
-    enum TypeFrame<'ty>
-    {
-        Render(&'ty ValueTypeRef),
-        FinishCtor(&'ty Name, usize),
-    }
-
-    let mut stack = vec![TypeFrame::Render(ty)];
-    let mut rendered = Vec::new();
-    while let Some(frame) = stack.pop() {
-        match frame {
-            | TypeFrame::Render(node) => match *node {
-                | ValueTypeRef::Param(ref name) => rendered.push(name.to_string()),
-                | ValueTypeRef::Prim(prim) => {
-                    rendered.push(prim.label().as_ref().to_owned());
-                },
-                | ValueTypeRef::Ctor { ref head, ref args } if args.is_empty() => {
-                    rendered.push(head.to_string());
-                },
-                | ValueTypeRef::Ctor { ref head, ref args } => {
-                    stack.push(TypeFrame::FinishCtor(head, args.len()));
-                    for arg in args.iter().rev() {
-                        stack.push(TypeFrame::Render(arg));
-                    }
-                },
-            },
-            | TypeFrame::FinishCtor(head, arity) => {
-                let mut args = Vec::with_capacity(arity);
-                for _ in 0 .. arity {
-                    args.push(rendered.pop().unwrap_or_default());
-                }
-                args.reverse();
-                rendered.push(format!("{head}({})", args.join(", ")));
-            },
-        }
-    }
-    rendered.pop().unwrap_or_default()
-}
-
 /// Render a [`crate::RuleFace`] to the inspection notation (`lhs ==> rhs` —
 /// the ruled rewrite-face former at every position; `~>` is retired).
 fn render_face(rule: &crate::rule::RuleFace) -> String
@@ -677,7 +490,9 @@ mod tests
     use super::*;
     use crate::code::Attrs;
     use crate::code::PrimTy;
+    use crate::code::ValueTypeRef;
     use crate::desc::CtorDesc;
+    use crate::desc::DeclPolarity;
     use crate::desc::NominalId;
 
     #[test]
@@ -735,9 +550,10 @@ mod tests
     fn desc_inspection_renders_the_structure()
     {
         assert_eq!(
-            "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }",
+            "sign Maybe(a) { sort Maybe : Type }",
             serialize_desc(&maybe_desc()).as_ref(),
-            "the inspection notation names the polarity, parameters, and coded constructors"
+            "the inspection notation names the parameters and the sort set; constructors have \
+             no item-level member spelling in the sign normal form"
         );
     }
     /// The `Maybe(a)` description: `None = 1`, `Some = field a`.
@@ -807,7 +623,7 @@ mod tests
     }
 
     #[test]
-    fn desc_inspection_renders_graded_and_attributed_fields()
+    fn desc_inspection_omits_constructor_members()
     {
         let desc = SignDesc::new(
             NominalId::new(0.into(), "Vec"),
@@ -830,9 +646,10 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "sign Vec(a) { sort Vec : Type; data Nil : Vec; data Cons : (a, Vec) --> Vec }",
+            "sign Vec(a) { sort Vec : Type }",
             serialize_desc(&desc).as_ref(),
-            "a right-nested product renders its factors"
+            "constructors — graded, attributed, or right-nested — carry no member spelling: \
+             the item-level `data` member is retired from the sign normal form"
         );
     }
 
@@ -908,14 +725,15 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "sign Bit { sort Bit : Type; data Off : Bit }",
+            "sign Bit { sort Bit : Type }",
             serialize_desc(&desc).as_ref(),
-            "the circuit slot is invisible when it is empty"
+            "the circuit slot is invisible when it is empty, and the lone constructor has no \
+             member spelling"
         );
     }
 
     #[test]
-    fn desc_inspection_renders_primitive_fields()
+    fn desc_inspection_omits_a_primitive_field_constructor()
     {
         let desc = SignDesc::new(
             NominalId::new(0.into(), "Wrap"),
@@ -936,9 +754,9 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "sign Wrap { sort Wrap : Type; data Wrap : Integer --> Wrap }",
+            "sign Wrap { sort Wrap : Type }",
             serialize_desc(&desc).as_ref(),
-            "a primitive field renders its spelling"
+            "a primitive-field constructor renders no member spelling either"
         );
     }
 }
