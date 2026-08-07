@@ -2,6 +2,19 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-07 — The nested generator block is the one `data` form; the Haskell-style form stays admissible for its decline
+
+* `current`: The `data` declaration's head now binds the family's parameters **once** as typed binders `(a : Type, …)` and carries the index arity as the head annotation `: Idx -> Type` (`: Type` when unindexed), and every generator member is a judgment `Ctor : (binders) --> Result ;` (bare-side rungs: `Nil : Vec(a, 0) ;`, `Some : a --> Maybe(a) ;`).
+  The generator's telescope is kept LOCAL to the member (the `op_result` precedent), and its `:` lead discriminates against the retired field-tuple tail one tile after the constructor name.
+  Three folded adaptation surfaces join `PBG_ONLY_KINDS`: `data_generator`, `constructor_block_member`, `bare_type_params`.
+* `current`: The retired shapes stay **admissible** rather than deleted: the bare-parameter head `data Maybe(a)`, the head without an annotation, the field-tuple member `Ctor(x: A)`, and the comma member separator all still parse whole so `gandr-surface-engine`'s stage-0 elaborator declines them and names the respelling (the retired-`~>` precedent).
+  The decline, not the grammar, is what refuses the old form — it is never a silent synonym.
+* `current`: The `codata` block takes the same head discipline (`codata Stream(a : Type) : Type`); its observation members are unchanged (observations are not generators).
+* `current`: Members are terminated by `;` (the surface's declaration terminator), with `,` admissible between members for the retired spelling.
+  An **unseparated** member list was tried and is deliberately not admitted: a member ends in a sort hole (the generator's signature, the observation's payload), the walk's `≐`-relation crosses the hole to whatever may follow the member, and at the fill position the next member's lead mold (`constructor`, `identifier`) outranks the hole's own content in the molder's local key — `Nil : Vec` read as a member `Nil` plus a nullary member `Vec`, a clean parse of the wrong tree the zero-obligation gate cannot see.
+  The `sign` block's unseparated list is exempt because its leads are reserved keywords, never hole-content candidates.
+* `current`: Mold-count effect, pinned in `tests/walk.rs` — declared molds 1726 → 1782 (the typed head binder, the head annotation, the generator's local telescope + `-->` signature, and the `;` member terminator beside the admissible `,`), reachable multi-mold labels unchanged at 72, fingerprint `0x17f0_7f8d_0489_a2e2` → `0xfa35_0169_cdda_acb1`.
+
 ## 2026-08-02 — Migrate the description-rule face arrow from `~>` to `==>`
 
 * `current`: The `data` / `codata` `rule` member's face arrow is now the ruled `==>` (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled" retires `~>` and makes `==>` the rewrite-face former at every position).

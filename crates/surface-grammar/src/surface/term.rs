@@ -141,11 +141,19 @@ fn declarations(
     let s = Sort::Item;
 
     // --- `data` datatype declaration ---------
-    // A data block's members are inlined constructors (uppercase-led), reserved
-    // `op` operations, and reserved `rule` 2-cells (lowercase-led), so a member
-    // is first-token-discriminated by case; the
-    // `ident : Type` constructor fields are inline, never a standalone rule that
-    // would give `identifier` a spurious form-first Type/Item mold.
+    // THE one data-declaration form is the nested generator block: the family
+    // head binds its parameters once — each a typed binder `a : Type` — and
+    // declares its index arity as the head annotation `: Idx -> Type` (`:
+    // Type` when unindexed); every generator member is a judgment `Ctor :
+    // (binders) --> Result` whose result head is the family applied to the
+    // parameter variables. Members are first-token-discriminated by case
+    // (uppercase-led constructors versus the lowercase-led reserved `oper` /
+    // `rule` members) and need no separators; the comma stays admissible
+    // between members only so the RETIRED shapes still parse whole: the
+    // Haskell-style head `data Maybe(a)` (bare parameters, no head
+    // annotation) and the field-tuple member `Ctor(x: A)` reach the stage-0
+    // elaborator, which declines them with the respelling hint (the
+    // retired-`~>` precedent) rather than the parser repairing a token.
     let mut data = r(
         RuleName("data_declaration"),
         Provenance("data_declaration"),
@@ -154,12 +162,28 @@ fn declarations(
         seq([
             t(TileLabel("data")),
             t(TileLabel("type_identifier")),
-            opt(type_params()),
+            opt(head_params()),
+            opt(seq([t(TileLabel(":")), h(Sort::Type)])),
             t(TileLabel("{")),
-            opt(comma1(data_member())),
+            opt(member_list(data_member())),
             t(TileLabel("}")),
         ]),
     );
+    data.adaptations.push(Adaptation::new(
+        RuleName("data_declaration"),
+        SurfaceForm("data_generator"),
+        AdaptationReason("the generator member `Ctor : (binders) --> Result` is inlined in the data block: its telescope `( name : Type, … )` is kept LOCAL to the member so a named binder list never becomes a standalone `(`-opened form competing with the parenthesized type at every type slot (the `op_result` precedent), and its `:` lead discriminates against the retired field-tuple tail one tile after the constructor name"),
+    ));
+    data.adaptations.push(Adaptation::new(
+        RuleName("data_declaration"),
+        SurfaceForm("constructor_block_member"),
+        AdaptationReason("retired parse-and-decline: the Haskell-style constructor member `Ctor(fields?) (: Result)?` stays admissible as the constructor-led member's second tail so a stale declaration reaches the elaborator's retirement decline with the respelling hint instead of a parse repair; the tail discriminates on `(` vs `:` immediately after the constructor name"),
+    ));
+    data.adaptations.push(Adaptation::new(
+        RuleName("data_declaration"),
+        SurfaceForm("bare_type_params"),
+        AdaptationReason("retired parse-and-decline: the bare head parameter `(a)` — no `: Type` binder annotation — stays admissible in the head's parameter list so a stale head reaches the elaborator's retirement decline; the typed binder and the bare spelling share the `type_variable` lead and discriminate on the following `:`"),
+    ));
     data.adaptations.push(Adaptation::new(
         RuleName("data_declaration"),
         SurfaceForm("op_member"),
@@ -178,10 +202,15 @@ fn declarations(
     out.push(data);
 
     // --- `codata` datatype declaration -------
-    // Mirrors `data`; the members are lowercase-led observations (`head: a`)
-    // plus the reserved `rule` 2-cell. `codata` reserves as one whole keyword
-    // so it never lexes as `co` + `data`. Observations are inline (the
-    // `ident : Type` shape, like the constructor field, never a standalone rule).
+    // The other polarity's block over the SAME head discipline: parameters
+    // are typed binders bound once at the head and the head carries the
+    // annotation (`codata Stream(a : Type) : Type`). The members are
+    // lowercase-led observations (`head: a`) plus the reserved `rule` 2-cell —
+    // observations are not generators, so no result-head discipline applies to
+    // them. `codata` reserves as one whole keyword so it never lexes as `co` +
+    // `data`. Observations are inline (the `ident : Type` shape, like the
+    // constructor field, never a standalone rule). The retired bare-parameter
+    // head stays admissible for the elaborator's decline, as on `data`.
     let mut codata = r(
         RuleName("codata_declaration"),
         Provenance("codata_declaration"),
@@ -190,12 +219,18 @@ fn declarations(
         seq([
             t(TileLabel("codata")),
             t(TileLabel("type_identifier")),
-            opt(type_params()),
+            opt(head_params()),
+            opt(seq([t(TileLabel(":")), h(Sort::Type)])),
             t(TileLabel("{")),
-            opt(comma1(codata_member())),
+            opt(member_list(codata_member())),
             t(TileLabel("}")),
         ]),
     );
+    codata.adaptations.push(Adaptation::new(
+        RuleName("codata_declaration"),
+        SurfaceForm("bare_type_params"),
+        AdaptationReason("retired parse-and-decline: the bare head parameter `(a)` — no `: Type` binder annotation — stays admissible in the head's parameter list so a stale head reaches the elaborator's retirement decline, exactly as on the `data` block"),
+    ));
     codata.adaptations.push(Adaptation::new(
         RuleName("codata_declaration"),
         SurfaceForm("codata_observation"),
@@ -378,32 +413,54 @@ fn copattern_clause() -> Regex
     ])
 }
 
-/// Build an inline datatype parameter list `( a, b, … )` over type variables.
-fn type_params() -> Regex
+/// Build an inline datatype head parameter list `( a : Type, b : Type, … )`.
+///
+/// Parameters are bound **once** at the family head, each as a typed binder.
+/// The binder's `: Type` annotation is optional in the grammar so the retired
+/// bare-parameter head `data Maybe(a)` still parses whole and reaches the
+/// stage-0 elaborator's retirement decline with the respelling hint (the
+/// retired-`~>` precedent); the elaborator requires every entry typed.
+fn head_params() -> Regex
 {
     seq([
         t(TileLabel("(")),
-        comma1(t(TileLabel("type_variable"))),
+        comma1(seq([
+            t(TileLabel("type_variable")),
+            opt(seq([t(TileLabel(":")), h(Sort::Type)])),
+        ])),
         t(TileLabel(")")),
     ])
 }
 
-/// Build an inline `data` member: a constructor (with reserved field grades,
-/// GADT result, and per-symbol attribute slot), a reserved `op` operation, or
-/// a reserved `rule` 2-cell.
+/// Build an inline `data` member: a **generator** judgment (the one form), the
+/// retired field-tuple constructor (admissible for the elaborator's decline),
+/// a reserved `op` operation, or a reserved `rule` 2-cell.
+///
+/// The constructor-led tails share the `constructor` tile and discriminate one
+/// tile later: `:` leads the generator judgment, anything else the retired
+/// field-tuple tail — so the choice is locally decidable exactly as the `def`
+/// family's factored tails are.
 fn data_member() -> Regex
 {
     alt([
-        // constructor member `Ctor(fields?) (: Result)? [attrs]?`.
         seq([
             t(TileLabel("constructor")),
-            opt(seq([
-                t(TileLabel("(")),
-                comma1(ctor_field()),
-                t(TileLabel(")")),
-            ])),
-            opt(seq([t(TileLabel(":")), h(Sort::Type)])),
-            opt(attr_slot()),
+            alt([
+                // generator judgment `Ctor : Side (--> Result)? [attrs]?` —
+                // THE one constructor-declaration form.
+                seq([t(TileLabel(":")), generator_signature(), opt(attr_slot())]),
+                // retired `Ctor(fields?) (: Result)? [attrs]?`, kept admissible
+                // so the elaborator's decline names the respelling.
+                seq([
+                    opt(seq([
+                        t(TileLabel("(")),
+                        comma1(ctor_field()),
+                        t(TileLabel(")")),
+                    ])),
+                    opt(seq([t(TileLabel(":")), h(Sort::Type)])),
+                    opt(attr_slot()),
+                ]),
+            ]),
         ]),
         // reserved `oper name(params) -> R?` operation member. The retired
         // `op` lead still parses so the elaborator can decline it with the
@@ -422,6 +479,36 @@ fn data_member() -> Regex
             rule_face_arrow(),
             h(Sort::Expression),
         ]),
+    ])
+}
+
+/// Build a generator's signature: a **side** — the bare result sort, a bare
+/// single-field sort, or a parenthesized binder telescope — optionally
+/// followed by `-->` and the result head.
+///
+/// The ladder mirrors the circuit signature's: no arrow means the side IS the
+/// result (`Nil : Vec(a, 0)` declares no fields); an arrow makes the side the
+/// telescope and the post-arrow type the result (`Cons : (n : Nat, x : a) -->
+/// Vec(a, n)`). Every generator's result head is checked against the family by
+/// the elaborator — head uniformity is a structural property of this form, not
+/// a grammar fact, because the result is an ordinary type hole.
+fn generator_signature() -> Regex
+{
+    seq([
+        alt([h(Sort::Type), generator_telescope()]),
+        opt(seq([t(TileLabel("-->")), h(Sort::Type)])),
+    ])
+}
+
+/// Build a generator's parenthesized telescope `( entry, … )`: named binders
+/// (with the reserved grade prefix) or bare-sort ports, the same sugar ladder
+/// the circuit parameter side climbs.
+fn generator_telescope() -> Regex
+{
+    seq([
+        t(TileLabel("(")),
+        comma1(alt([ctor_field(), h(Sort::Type)])),
+        t(TileLabel(")")),
     ])
 }
 
@@ -1641,6 +1728,39 @@ fn t(label: TileLabel) -> Regex
 fn comma1(element: Regex) -> Regex
 {
     seq([element.clone(), repeat(seq([t(TileLabel(",")), element]))])
+}
+
+/// Build a block member list: every member is **terminated** by `;` (the
+/// ruled spelling, the surface's declaration terminator) or followed by `,`
+/// (the retired constructor-block separator, kept admissible so a stale
+/// declaration parses whole and reaches the elaborator's migration decline).
+///
+/// An unseparated list is NOT admitted, and the reason is a fact about the
+/// machinery: a member ends in a sort hole (the generator's signature, the
+/// observation's payload), the walk's `≐`-relation crosses a hole to whatever
+/// may follow the member, and at the hole's fill position the next member's
+/// lead mold (`constructor`, `identifier`) then outranks the hole's own
+/// content in the molder's local key — `Nil : Vec` reads as a member `Nil`
+/// whose signature is missing plus a nullary member `Vec`, a clean parse of
+/// the wrong tree. Keyword-led lists (the `sign` block) are exempt: their
+/// leads are reserved words, never hole-content candidates. A mandatory
+/// separator restores the discrimination: after the hole only `;`, `,`, or
+/// `}` is admissible, none of which competes with hole content.
+fn member_list(element: Regex) -> Regex
+{
+    let first = element.clone();
+    seq([
+        first,
+        repeat(seq([member_sep(), element])),
+        opt(member_sep()),
+    ])
+}
+
+/// Build one member separator: the ruled `;` terminator, or the retired `,`
+/// separator admitted for the migration decline.
+fn member_sep() -> Regex
+{
+    alt([t(TileLabel(";")), t(TileLabel(","))])
 }
 
 /// Build one checked module body member.

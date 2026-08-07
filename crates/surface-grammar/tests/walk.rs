@@ -62,8 +62,14 @@ mod contracts
     /// declaration with its `node` / `feed` body statements.
     /// The rule-face migration then made `==>` the description-rule face former
     /// beside the retired `~>`, which stays admissible only so a stale face
-    /// reaches the elaborator's decline.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x17f0_7f8d_0489_a2e2);
+    /// reaches the elaborator's decline. The nested generator-block form then
+    /// gave the `data` / `codata` heads typed parameter binders and the
+    /// `: Idx -> Type` annotation, and the generator member its local
+    /// telescope + `-->` signature — while the retired Haskell-style head
+    /// (bare parameters, no annotation) and the field-tuple member stay
+    /// admissible so a stale declaration reaches the elaborator's retirement
+    /// decline with the respelling hint.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xfa35_0169_cdda_acb1);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -91,11 +97,17 @@ mod contracts
     /// `rule` judgment is declared **once** and shared by the `sign` member and
     /// the top-level declaration precisely to keep that number from doubling,
     /// and the parameter-side binders are kept off the result side for the same
-    /// reason. The rule-face migration adds four: the `data` and `codata`
+    /// The rule-face migration adds four: the `data` and `codata`
     /// members' face arrow becomes a two-way alternation (`==>` ruled, `~>`
     /// retired-but-admissible), and each member family carries two copies of
-    /// its arrow through `comma1`.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1726);
+    /// its arrow through `comma1`. The nested generator-block form adds
+    /// fifty: the typed head-parameter binder (its `:` and Type hole, per
+    /// `comma1` clone and per block kind), the head's `: Idx -> Type`
+    /// annotation, the generator member's local telescope and `-->`
+    /// signature, and the member-list's optional migration comma — the
+    /// retired bare-parameter and field-tuple tails ride the same
+    /// alternations rather than adding rules of their own.
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1782);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -114,22 +126,22 @@ mod contracts
         ("&", 3),
         ("&&", 2),
         ("'", 2),
-        ("(", 148),
-        (")", 151),
+        ("(", 154),
+        (")", 157),
         ("*", 2),
         ("*/", 1),
         ("+", 3),
         ("++", 1),
-        (",", 62),
+        (",", 68),
         ("-", 2),
-        ("-->", 13),
+        ("-->", 15),
         ("->", 8),
         (".", 7),
         ("..", 3),
         ("/*", 1),
         ("/\\", 1),
-        (":", 114),
-        (";", 185),
+        (":", 126),
+        (";", 189),
         ("<", 4),
         ("<&", 1),
         ("<-", 19),
@@ -159,8 +171,8 @@ mod contracts
         ("Unit", 1),
         ("Unknown", 1),
         ("Void", 1),
-        ("[", 9),
-        ("]", 12),
+        ("[", 11),
+        ("]", 14),
         ("_", 31),
         ("acquire", 19),
         ("as", 78),
@@ -205,7 +217,7 @@ mod contracts
         ("hole_name", 1),
         ("i32", 1),
         ("i64", 1),
-        ("identifier", 258),
+        ("identifier", 266),
         ("if", 2),
         ("import", 1),
         ("in", 1),
@@ -222,7 +234,7 @@ mod contracts
         ("negation", 1),
         ("newline", 1),
         ("node", 2),
-        ("number", 17),
+        ("number", 21),
         ("offer", 1),
         ("op", 3),
         ("oper", 4),
@@ -267,7 +279,7 @@ mod contracts
         ("||", 2),
         ("}", 42),
         ("~>", 4),
-        ("ω", 12),
+        ("ω", 16),
     ];
 
     #[test]
