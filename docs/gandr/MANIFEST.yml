@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: c5ce9b618520c8c2efcb1335e5cdc2f6a96a41c7aa7f16deebcbee6aae42aeac
+    b3: 4c0bf64c4839a0d9e54351dbab983493e9d6014f1c331eb1264600640d3d2cec
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
