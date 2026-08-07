@@ -225,7 +225,7 @@ Every open item the source leaves carries exactly one disposition here.
 
 ### display-question-02
 
-**Boiling the dubbings down.** The source's hope that nested-pattern-unification-style machinery could reduce the dub table to something the inverse needs no search over at all.
+**Boiling the dubbings down.** The source's hope that nested-pattern-unification-style machinery could reduce the dub table to something the inverse needs no search over at all, with the pattern-matching-unification boundary account recorded as the direction's present literature [@richter-bohler-2026-pattern-matching-unification].
 **Disposition: carried as an open direction, explicitly not claimed** — the present design takes the floor solution with a shrunk domain and an amortised cost, and any pattern-unification refinement lands behind [[#display-test-01]] continuing to pass.
 
 ### display-question-03

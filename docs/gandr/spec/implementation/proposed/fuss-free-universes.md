@@ -23,7 +23,7 @@ And it **draws the boundary with explicit polymorphism by example**: smallness a
 
 **Designed, and not built.** Everything else here: the smallness judgement and its rules, large-by-default elaboration, lift insertion at checked sites, displacement shunting, the rung ladder itself, and every diagnostic this document describes.
 
-**One as-built refusal is load-bearing for the whole design, and is worth stating precisely.** The kernel crate's own documentation lists what it refuses to hold: level inference, unification, **generalization**, and **displacement**, alongside cumulativity, `imax`, `Prop`, and constants in declared constraints.
+**One as-built refusal is load-bearing for the whole design, and is worth stating precisely.** `gandr-kernel-strata`'s own documentation lists what it refuses to hold: level inference, unification, **generalization**, and **displacement**, alongside cumulativity, `imax`, `Prop`, and constants in declared constraints.
 So none of the three rungs is a kernel feature in waiting — rung 2's displacement and rung 3's generalization are refused by name in the trusted base, which is exactly what makes this an elaborator layer rather than a kernel extension.
 The kernel changes nothing.
 

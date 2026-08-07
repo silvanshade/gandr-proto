@@ -219,22 +219,22 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/elaboration-schedulers.md
     role: subdocument
-    b3: 304fc11da5c0af0bf375a398be49767eeab0b728565beb88611eb57af9be37c5
+    b3: 8034f1ff472c4ed14c19a0dfe5b51266ffeb586e92923bcebef0c4173e2cfef8
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/display-provenance.md
     role: subdocument
-    b3: f25c0bfc4511a23174fc0292099a54439681a0c0fa45c6d94415588012e534c5
+    b3: 2a7949a053407d43549bd8da80f1cefad18296f3f3bef19e5c04c269b998af45
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/fuss-free-universes.md
     role: subdocument
-    b3: b4c3b5ea5b925d3e25d6e8cdfa3c6bca314efa9f554bf15ab84f4bdad23da670
+    b3: 5a57402ef0b131bc8a4eb5e05dc66dc11833329fc243692f947904b0e2de2d36
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/pattern-unifier.md
     role: subdocument
-    b3: 0f1b228edcb2becc75c76800afcb5dbf708d10b47dfb1fb8959d3db359848b97
+    b3: 883f3a9a41f99c24906c4243cbd5aac07763498595d33217747d3a17012729a2
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/strengthening.md
@@ -269,7 +269,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/theories.md
     role: subdocument
-    b3: 770533b7943674885bc5335d46dd731d99023d7f010cf78b6a14290b88669c6b
+    b3: b653cb9504d8d3657dae9d492bee4c9339c6957b69f21133e5a53c25b18bf1a6
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md

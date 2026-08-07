@@ -44,7 +44,7 @@ The elaborator treats the following as three distinct schedulers with disjoint c
 ### sched-rule-02
 
 **The unifier emits most general unifiers, in a predictable fragment only.** Outside the fragment it postpones — it never guesses.
-Completeness within a well-defined fragment is the shadow property of reliability: a solver that sometimes finds non-general solutions is user-visible unreliability even when every answer it gives is correct.
+Completeness within a well-defined fragment is the shadow property of reliability [@sterling-2026-pterodactyl-worklog, tree 01IK]: a solver that sometimes finds non-general solutions is user-visible unreliability even when every answer it gives is correct.
 The fragment of record is nested pattern unification — Miller's pattern fragment extended to record/Σ structure, respecting η-equivalence and definitional singletons natively [@kovacs-2023-nested-pattern-unification] — and its precise statement is the unifier specification's contract; this rule fixes only what the unifier may be asked for: no non-general solutions, and no coercion discharge, ever.
 
 ### sched-rule-03

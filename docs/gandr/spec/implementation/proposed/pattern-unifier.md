@@ -139,7 +139,7 @@ Two pieces of supporting literature frame the consult-not-black-box half:
   It is the precedent that "decide by normalization against a free extension" is a buildable, mechanizable shape rather than a hope, and it is already the decision-procedure style gandr's level algebra sits in.
 * **Hewer's thesis, types with extra structure** — predicates, equations, and composition carried on types [@hewer-2024-types-extra-structure] — the type-former-side account of equations riding on structure, which is the shape a declared rule layer presents to a unifier.
 
-A later worklog gesture at observational-type-theory-flavoured handling of postponed problems, attributed there to Kovács [@sterling-2026-pterodactyl-worklog], is recorded as a **gesture**: the specific tree anchor is not verified here, and the claim rests on that locator being supplied before it is cited further ([[#Open dispositions]]).
+A worklog gesture at observational-type-theory-flavoured handling of postponed problems, attributed there to Kovács, is recorded as a **gesture**: the anchor is the disentanglement tree, which reports the proposal without developing it [@sterling-2026-pterodactyl-worklog, tree 01JQ], so the gesture is cited as a direction, never as a design ([[#Open dispositions]]).
 
 ### What this posture is not
 
@@ -175,7 +175,7 @@ Each item below arrived open from the adopted direction and carries exactly one 
 * **The conditions-transport lemma for fused cells** — carried.
   The obligation is functoriality of side-condition transport (grades, polarity, sphere-typed boundaries) under fusion, in the shift/transport shape of the conditions template [@behr-krivine-2021-conditions-compositionality]; until it is discharged, every fusion the unifier's backend performs carries the obligation with it, and [[#unifier-rule-03]]'s normalization claim is conditional on it.
 * **The postponed-problem surface** — parked.
-  What the user _sees_ of a postponed constraint (the worklog's OTT-flavoured gesture, attributed to Kovács [@sterling-2026-pterodactyl-worklog]) is a display-layer design question with an unverified anchor; it is revisited when the postponed-constraint surface is designed, and nothing in the contract depends on it.
+  What the user _sees_ of a postponed constraint (the worklog's OTT-flavoured gesture, attributed to Kovács [@sterling-2026-pterodactyl-worklog, tree 01JQ]) is a display-layer design question whose anchor reports the gesture without developing it; it is revisited when the postponed-constraint surface is designed, and nothing in the contract depends on it.
 * **An external solver for the grade semiring** — declined, with a reversal condition.
   The price is named: an external solver is a trust expansion, and it is not taken ([[#unifier-rule-04]]).
   The reversal condition is a demonstrated inability to decide the semiring's fragment internally with checkable evidence; if that is ever demonstrated, the priced candidate is re-priced, not silently adopted.
@@ -196,4 +196,4 @@ Written against four sources, named because a change with no declared source set
 * **High** — the fragment statement, the interface reconciliation, and the six rules, which restate the ratified direction and existing corpus contracts rather than derive new ones.
 * **High** — the as-built statements, each verified against the named module or document at write time, including the distinction between the engines' first-order `unify_cmd` and this document's higher-order domain.
 * **Medium** — the reading of the solver's shared-substitution scheduling onto the nonlinear-concurrency template: a template application, not a proved theorem, and recorded as such.
-* **Marked at the claim** — the OTT-flavoured postponed-problems gesture, whose tree anchor is unverified; and the two related-work entries not held in the research library (variant narrowing, deduction modulo), synthesized from sweep-verified locators with the works unread here.
+* **Marked at the claim** — the OTT-flavoured postponed-problems gesture, whose anchor reports the proposal without developing it; and the two related-work entries not held in the research library (variant narrowing, deduction modulo), synthesized from sweep-verified locators with the works unread here.
