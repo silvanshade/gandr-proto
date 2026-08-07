@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: bf021effc125927dbcb072d61f6a8f2fb694fc6f46fd9c03606ff8860b12fb28
+    b3: 717b4d6fed0d5a66dced6645d7bcc74bdfa208f2d07878d2a001ff5f18314a67
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -220,6 +220,11 @@ nodes:
   - path: spec/implementation/proposed/elaboration-schedulers.md
     role: subdocument
     b3: 7a8c75d604710c52799383c8845639d242fcdc7eb7ace4f16bb070cbc979fecf
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/display-provenance.md
+    role: subdocument
+    b3: bcdc2bb478bc879a0517a8d04def376f1e2d3b2d32e546b48d7a60fb7400084c
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md

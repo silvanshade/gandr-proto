@@ -5297,3 +5297,75 @@ sterling-2026-pterodactyl-worklog:
   note: >-
     not in library.bib; synthesized 2026-08-07 — public worklog forest, read 2026-08-06; individual
     trees are cited inline by their stable forest anchors (e.g. tree 01JQ)
+
+# ── The display-provenance line (pattern elaboration, dubbing, labelled types) ──
+# Registered for the display-provenance design document. The three Epigram-line works are
+# transcribed from library.bib, which holds each PDF; the worklog entry is synthesized and
+# its locators were fetch-verified at registration.
+
+mcbride-mckinna-2004-view-left:
+  type: article
+  title: The View from the Left
+  author: ["McBride, Conor", "McKinna, James"]
+  date: 2004
+  publisher: Cambridge University Press
+  serial-number:
+    doi: "10.1017/S0956796803004829"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming 14(1)
+    page-range: 69-111
+  note: >-
+    transcribed from library.bib (key Mcbride-2004-view_left), which holds the PDF; title,
+    authorship, venue, volume, issue, pages, and DOI are the register entry's, not re-read
+    from the artifact at this pass
+
+dagand-mcbride-2012-elaborating:
+  type: article
+  title: Elaborating Inductive Definitions
+  author: ["Dagand, Pierre-Évariste", "McBride, Conor"]
+  date: 2012
+  serial-number:
+    arxiv: "1210.6390"
+    doi: "10.48550/arXiv.1210.6390"
+  note: >-
+    transcribed from library.bib (key Dagand-2012-elaborating_inductive_definitions), which
+    holds the PDF; the arXiv identifier and its DOI form are the register entry's, not
+    re-read from the artifact at this pass
+
+mcbride-1999-thesis:
+  type: thesis
+  title: Dependently Typed Functional Programs and Their Proofs
+  author: ["McBride, Conor"]
+  date: 1999
+  organization: University of Edinburgh
+  note: >-
+    transcribed from library.bib (key
+    McBride-1999-dependently_typed_functional_programs_their_proofs), which holds the PDF;
+    year and institution are the register entry's, not re-read from the artifact at this pass
+
+brady-2005-practical-implementation:
+  type: thesis
+  title: Practical Implementation of a Dependently Typed Functional Programming Language
+  author: ["Brady, Edwin"]
+  date: 2005
+  organization: University of Durham
+  url: https://etheses.durham.ac.uk/2800/
+  note: >-
+    the held copy's register entry (library.bib key
+    Brady-year????-practical_implementation_dependently_typed_functional_programming_language)
+    records no year; the year and the Durham E-Theses locator were verified against the
+    repository record on 2026-08-07
+
+sterling-2025-pterodactyl-worklog:
+  type: misc
+  title: Project Pterodactyl worklog
+  author: ["Sterling, Jonathan"]
+  date: 2025
+  url: https://www.jonmsterling.com/019E/
+  note: >-
+    not in library.bib; synthesized 2026-08-07. A Forester worklog rooted at tree 019E
+    ("Project Pterodactyl", dated 2025-02-28); the two trees this corpus cites are 01KK
+    ("Patterns and dubbing", dated 2026-03-10) and 01KL ("Higher-order pattern unification
+    and…patterns", dated 2026-03-15). All three locators fetch-verified 2026-08-07, and the
+    two trees' content was read from the live pages at that pass
