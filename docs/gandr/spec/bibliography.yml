@@ -5243,3 +5243,57 @@ petgraph:
   note: >-
     not in library.bib; synthesized 2026-08-02 — the workspace pins 0.8 with default features off
     and resolves 0.8.3, and the crate is named in exactly one crate manifest
+
+# ── Pterodactyl absorption: the elaborator discipline ─────────────────────────
+# Precedents for the three-scheduler rule, the universe layer, and the unifier.
+
+white-bour-yallop-2015-modular-implicits:
+  type: article
+  title: Modular Implicits
+  author: ["White, Leo", "Bour, Frédéric", "Yallop, Jeremy"]
+  date: 2015
+  serial-number:
+    doi: "10.4204/EPTCS.198.2"
+    arxiv: "1512.01895"
+
+vivien-remy-scherer-2026-modular-explicits:
+  type: misc
+  title: On the Design and Implementation of Modular Explicits
+  author: ["Vivien, Samuel", "Rémy, Didier", "Scherer, Gabriel"]
+  date: 2026
+  url: https://hal.science/hal-05428136
+  serial-number:
+    hal: "hal-05428136"
+  note: >-
+    JFLA 2026 (37es Journées Francophones des Langages Applicatifs, Oberbronn); metadata from
+    library.bib (Vivien-2026-design_implementation_modular_explicits), held PDF
+
+sakaguchi-2023-refinement-extension:
+  type: thesis
+  title: >-
+    Refinement and Extension of Mathematical Structures in Proof Assistants Based on Dependent
+    Type Theory
+  author: ["Sakaguchi, Kazuhiko"]
+  date: 2023
+  organization: University of Tsukuba
+  note: metadata from library.bib (Sakaguchi-2023-...); no DOI or arXiv identifier recorded in the register
+
+kovacs-2023-nested-pattern-unification:
+  type: misc
+  title: Nested Pattern Unification
+  author: ["Kovács, András"]
+  date: 2023
+  url: https://andraskovacs.github.io/pdfs/wits23prez.pdf
+  note: >-
+    WITS 2023 presentation (with Rafaël Bocquet); metadata from library.bib
+    (Kovács-2023-nested_pattern_unification-slides-WITS), held PDF
+
+sterling-2026-pterodactyl-worklog:
+  type: misc
+  title: Project Pterodactyl worklog (foret forest 019E and related trees)
+  author: ["Sterling, Jon"]
+  date: 2026
+  url: https://www.jonmsterling.com/019E/
+  note: >-
+    not in library.bib; synthesized 2026-08-07 — public worklog forest, read 2026-08-06; individual
+    trees are cited inline by their stable forest anchors (e.g. tree 01JQ)

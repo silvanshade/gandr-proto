@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 42894edf19e2f1ea1f9550336adf994d5243e092e52bf707794bf7c363cebdff
+    b3: bf021effc125927dbcb072d61f6a8f2fb694fc6f46fd9c03606ff8860b12fb28
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -215,6 +215,11 @@ nodes:
   - path: spec/implementation/proposed/solver-interface.md
     role: subdocument
     b3: 77ac5d3daaa2bfd32cb2a5dab6d31cfba2bfe7353cd9eb4923c9afd30a923ef0
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/elaboration-schedulers.md
+    role: subdocument
+    b3: 7a8c75d604710c52799383c8845639d242fcdc7eb7ace4f16bb070cbc979fecf
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
