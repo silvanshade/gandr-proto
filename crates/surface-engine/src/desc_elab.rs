@@ -13,10 +13,19 @@
 //! a declaration's members are inline tiles under one Meld, with only compound
 //! field types and rule expressions nesting into sub-Melds. The reader is
 //! therefore a small cursor over the declaration's significant children,
-//! splitting members at bracket-depth-zero commas.
+//! splitting members at their `;` terminators (with the retired `,` separator
+//! admissible, so a stale declaration parses whole and reaches the migration
+//! declines below).
 //!
 //! # What stage 0 elaborates
 //!
+//! * the **nested generator block** — THE one data-declaration form: the family
+//!   head binds its parameters once as typed binders `(a : Type, …)` and
+//!   carries the index arity `: Idx -> Type` (`: Type` when unindexed), and
+//!   every generator member is a judgment `Ctor : (binders) --> Result` whose
+//!   result head is the family applied to the parameter variables in order —
+//!   **head uniformity**, checked here (an instantiated head is declined:
+//!   instantiation is uninferable);
 //! * constructors (`data`) and observations (`codata`) →
 //!   [`gandr_theory_levitation::CtorDesc`] with a first-order
 //!   [`gandr_theory_levitation::Code`] (fields fold right-nested; a
@@ -28,6 +37,13 @@
 //! * a **function-typed field** is declined at elaboration — it is outside the
 //!   first-order fragment (proposal §8's `desc-higher-order-field`, pinning
 //!   V2);
+//! * the **retired head** — bare parameters `data Maybe(a)`, or the head
+//!   without its annotation — declines the whole declaration with the
+//!   respelling hint; the grammar keeps both admissible precisely so this
+//!   decline can name the respelling;
+//! * the **retired field-tuple constructor member** `Ctor(fields?)` declines
+//!   with the generator-judgment respelling; a constructor-led member of a
+//!   `codata` block declines (observations are lowercase-led);
 //! * a `rule` member spelling its face with the **retired** `~>` is declined at
 //!   elaboration and told the respelling — the block-form ruling made `==>` the
 //!   face former at every position, and the grammar keeps `~>` admissible in
@@ -64,10 +80,14 @@ use crate::boundary::TileSpelling;
 use crate::boundary::TypeName;
 use crate::circuit::desc as circuit_desc;
 use crate::circuit::shape::Shape;
+use crate::cst_read::BracketLabel;
 use crate::cst_read::Cursor;
 use crate::cst_read::Reader;
 use crate::cst_read::empty_surface_span;
 use crate::cst_read::grammar;
+use crate::cst_read::is_closer;
+use crate::cst_read::is_opener;
+use crate::cst_read::member_runs;
 use crate::cst_read::split_at_top_level;
 use crate::lower::node_kinds;
 use crate::synnode::SynTree;
@@ -225,6 +245,28 @@ fn check_and_push(
     *serial = NominalSerial::from(u64::from(*serial).saturating_add(1));
 }
 
+/// The index arity a family head's annotation declares — the count of `->`
+/// steps along the right spine of `: Idx -> Type` (`: Type` when unindexed,
+/// arity zero).
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct IndexArity(usize);
+
+/// One datatype declaration's head, as its generator members are checked
+/// against it: the parameters bound once at the head, and the index arity the
+/// head's annotation declares. The nested generator block makes the three
+/// side conditions of the separation argument structural — head uniformity
+/// (every generator's result head is the family applied to the parameter
+/// variables), one head per block, and family-wide positivity — and this is
+/// the record the uniformity check reads.
+struct FamilyHead
+{
+    /// The head's parameters, in binding order.
+    params: Vec<ParamDesc>,
+    /// The declared index arity.
+    indices: IndexArity,
+}
+
 /// The three parallel member lists of a declaration table under elaboration:
 /// one member run appends into the constructor, operation, or rule-face list
 /// by its lead label, and the lists grow together across the block.
@@ -242,6 +284,12 @@ impl<'tree> Reader<'tree>
 {
     /// Read one datatype declaration node into a [`SignDesc`], appending any
     /// elaboration decline to `elab`.
+    ///
+    /// The head is the nested generator block's: typed parameter binders plus
+    /// the mandatory index-arity annotation. A retired head — a bare
+    /// parameter, or the annotation missing — declines the WHOLE declaration
+    /// with the respelling hint (the family arity is unreadable without it,
+    /// so no member can be checked).
     fn declaration(
         &self,
         node: NodeId,
@@ -256,7 +304,10 @@ impl<'tree> Reader<'tree>
         cursor.bump();
         let name_id = cursor.bump()?;
         let name = self.text(name_id).0.to_owned();
-        let params = self.type_params(&mut cursor);
+        let family = TypeName::from(name.as_str());
+        let params = self.head_params(&mut cursor, family, elab)?;
+        let indices = self.head_annotation(&mut cursor, family, elab)?;
+        let head = FamilyHead { params, indices };
         if !cursor.eat(TileSpelling("{")).0 {
             return None;
         }
@@ -269,18 +320,12 @@ impl<'tree> Reader<'tree>
             opers: &mut opers,
             rules: &mut rules,
         };
-        for member in split_at_top_level(self, &member_region, TileSpelling(",")) {
-            self.member(
-                &member,
-                TypeName::from(name.as_str()),
-                polarity,
-                &mut lists,
-                elab,
-            );
+        for member in member_runs(self, &member_region) {
+            self.member(&member, family, &head, polarity, &mut lists, elab);
         }
         Some(SignDesc::new(
             NominalId::new(serial, name),
-            params,
+            head.params,
             ctors,
             opers,
             rules,
@@ -289,16 +334,20 @@ impl<'tree> Reader<'tree>
         ))
     }
 
-    /// Read the optional type-parameter list `( a, b, … )`, if the cursor is at
-    /// one.
-    fn type_params(
+    /// Read the family head's parameter list `( a : Type, … )`: every
+    /// parameter a **typed binder**. A bare parameter — the retired
+    /// `data Maybe(a)` head, kept admissible by the grammar for exactly this
+    /// decline — declines the whole declaration with the respelling hint.
+    fn head_params(
         &self,
         cursor: &mut Cursor<'_, 'tree>,
-    ) -> Vec<ParamDesc>
+        family: TypeName<'_>,
+        elab: &mut DescElab,
+    ) -> Option<Vec<ParamDesc>>
     {
         let mut params = Vec::new();
         if !cursor.eat(TileSpelling("(")).0 {
-            return params;
+            return Some(params);
         }
         while let Some(id) = cursor.peek() {
             match self.label(id).map(|label| label.0) {
@@ -310,12 +359,80 @@ impl<'tree> Reader<'tree>
                     cursor.bump();
                 },
                 | _ => {
-                    params.push(ParamDesc::new(self.text(id).0, Grade::ONE, Attrs::empty()));
-                    cursor.bump();
+                    let param_id = cursor.bump()?;
+                    let param = self.text(param_id).0;
+                    if !cursor.eat(TileSpelling(":")).0 {
+                        elab.diagnostics.push(ElabDiagnostic::new(
+                            format!(
+                                "the family `{family}`'s parameter `{param}` carries no type: \
+                                 the head binds every parameter as a typed binder and carries \
+                                 the index arity — respell it as `{family}({param} : Type, …) : \
+                                 Type {{ … }}` (`: Type` when unindexed, `: Idx -> Type` when \
+                                 indexed)",
+                                family = family.0
+                            ),
+                            self.span(param_id),
+                        ));
+                        return None;
+                    }
+                    // The binder's type node (a tile or a compound Meld).
+                    cursor.bump()?;
+                    params.push(ParamDesc::new(param, Grade::ONE, Attrs::empty()));
                 },
             }
         }
-        params
+        Some(params)
+    }
+
+    /// Read the family head's index-arity annotation `: Idx -> Type` (`:
+    /// Type` when unindexed). The annotation is **mandatory**: an unannotated
+    /// head — the retired spelling, kept admissible by the grammar for
+    /// exactly this decline — declines the whole declaration with the
+    /// respelling hint.
+    fn head_annotation(
+        &self,
+        cursor: &mut Cursor<'_, 'tree>,
+        family: TypeName<'_>,
+        elab: &mut DescElab,
+    ) -> Option<IndexArity>
+    {
+        if !cursor.eat(TileSpelling(":")).0 {
+            let span = cursor
+                .peek()
+                .map_or_else(empty_surface_span, |id| self.span(id));
+            elab.diagnostics.push(ElabDiagnostic::new(
+                format!(
+                    "the family `{family}`'s head carries no index-arity annotation: respell \
+                     it as `{family}(…) : Type {{ … }}` (`: Type` when unindexed, `: Idx -> \
+                     Type` when indexed)",
+                    family = family.0
+                ),
+                span,
+            ));
+            return None;
+        }
+        let annotation = cursor.bump()?;
+        Some(self.index_arity(annotation))
+    }
+
+    /// Count a head annotation's index arity: the `->` steps along its right
+    /// spine (`Nat -> Nat -> Type` indexes twice; `Type` is unindexed).
+    fn index_arity(
+        &self,
+        annotation: NodeId,
+    ) -> IndexArity
+    {
+        let mut arity = 0_usize;
+        let mut node = annotation;
+        while self.is_function_type(node).0 {
+            arity = arity.saturating_add(1);
+            let Some(next) = self.sig_children(node).last().copied()
+            else {
+                break;
+            };
+            node = next;
+        }
+        IndexArity(arity)
     }
 
     /// Elaborate one member run into the growing constructor / operation / cell
@@ -324,6 +441,7 @@ impl<'tree> Reader<'tree>
         &self,
         run: &[NodeId],
         type_name: TypeName<'_>,
+        head: &FamilyHead,
         polarity: DeclPolarity,
         lists: &mut MemberLists<'_>,
         elab: &mut DescElab,
@@ -357,8 +475,48 @@ impl<'tree> Reader<'tree>
                 }
             },
             | Some("constructor") => {
-                if let Some(ctor) = self.ctor_member(run, type_name, elab) {
-                    lists.ctors.push(ctor);
+                // A constructor-led member of a `codata` block has no reading:
+                // observations are lowercase-led, and generators belong to the
+                // `data` block.
+                if matches!(polarity, DeclPolarity::Codata) {
+                    elab.diagnostics.push(ElabDiagnostic::new(
+                        format!(
+                            "constructor member `{}` has no place in a `codata` block: a codata \
+                             block declares lowercase-led observations (`head : a`); \
+                             constructors are the generator members of a `data` block",
+                            self.text(first).0
+                        ),
+                        self.span(first),
+                    ));
+                    return;
+                }
+                // The generator judgment `Ctor : …` — THE one
+                // constructor-declaration form — discriminates against the
+                // retired field-tuple tail one tile after the constructor
+                // name.
+                if run
+                    .get(1)
+                    .and_then(|&id| self.label(id))
+                    .map(|label| label.0)
+                    == Some(":")
+                {
+                    if let Some(ctor) = self.generator_member(run, type_name, head, elab) {
+                        lists.ctors.push(ctor);
+                    }
+                }
+                else {
+                    elab.diagnostics.push(ElabDiagnostic::new(
+                        format!(
+                            "the constructor-block member `{}` is retired; respell it as a \
+                             generator judgment — `{} : Result` when it declares no fields, `{} \
+                             : (binders) --> Result` when it does — whose result head is the \
+                             family applied to its parameter variables",
+                            self.text(first).0,
+                            self.text(first).0,
+                            self.text(first).0
+                        ),
+                        self.span(first),
+                    ));
                 }
             },
             // A lowercase-led member of a `codata` block: an observation.
@@ -369,41 +527,90 @@ impl<'tree> Reader<'tree>
         }
     }
 
-    /// Elaborate a constructor member `C ( fields? ) ( : Result )? [ attrs ]?`.
-    fn ctor_member(
+    /// Elaborate a generator member `Ctor : Side ( --> Result )? [ attrs ]?` —
+    /// THE one constructor-declaration form of the nested generator block.
+    ///
+    /// The side ladder mirrors the circuit signature's: no arrow means the
+    /// side IS the result (`Nil : Vec(a, 0)` declares no fields); an arrow
+    /// makes the side the payload and the post-arrow type the result — a
+    /// parenthesized binder telescope (`Cons : (n : Nat, x : a) --> Vec(a, n)`)
+    /// or a bare single-field sort (`Succ : Nat --> Nat`).
+    ///
+    /// **Head uniformity is enforced here, executably**: the result head is
+    /// the family applied to the parameter variables in order, with the index
+    /// arguments admitted unread (index expressions are admitted syntactically
+    /// as far as the `Type` sort reaches; their semantics are the
+    /// arity-substitution lane's). A bare result head is exact only for an
+    /// unparameterized, unindexed family. A violation — a foreign head, the
+    /// wrong argument count, or an instantiated parameter — declines the
+    /// member: instantiation is uninferable.
+    fn generator_member(
         &self,
         run: &[NodeId],
         type_name: TypeName<'_>,
+        head: &FamilyHead,
         elab: &mut DescElab,
     ) -> Option<CtorDesc>
     {
         let mut cursor = Cursor::new(self, run);
         let name_id = cursor.bump()?;
         let name = self.text(name_id).0.to_owned();
-        let fields = self.field_list(&mut cursor, type_name, elab);
-        let code = Code::product_of(fields);
-        // The result-sort slot: a generalized (GADT-style) annotation
-        // `: Result` populates it with the annotation's head; the unannotated
-        // constructor targets the block's own sort.
-        let result: Name = if cursor.eat(TileSpelling(":")).0 {
+        // The `:` lead the dispatch matched on.
+        cursor.bump();
+        let (fields, result_id) = if cursor.eat(TileSpelling("(")).0 {
+            let fields = self.generator_telescope(&mut cursor, type_name, elab);
             match cursor.bump() {
-                | Some(id) => self
-                    .type_head(id)
-                    .unwrap_or_else(|| self.text(id).0.to_owned())
-                    .into(),
-                | None => type_name.0.into(),
+                | Some(arrow) if self.label(arrow).map(|label| label.0) == Some("-->") => {
+                    let result = cursor.bump()?;
+                    (fields, result)
+                },
+                | _ => {
+                    elab.diagnostics.push(ElabDiagnostic::new(
+                        format!(
+                            "generator `{name}` declares a binder telescope but no `-->` result: \
+                             the result head is the family `{type_name}` applied to its \
+                             parameter variables — write `{name} : (binders) --> {type_name}(…)`",
+                            type_name = type_name.0
+                        ),
+                        self.span(name_id),
+                    ));
+                    return None;
+                },
             }
         }
         else {
-            type_name.0.into()
+            let side = cursor.bump()?;
+            if cursor
+                .peek()
+                .and_then(|id| self.label(id).map(|label| label.0))
+                == Some("-->")
+            {
+                cursor.bump();
+                let result = cursor.bump()?;
+                let field = self.field_type_code(side, type_name, Grade::ONE, elab);
+                (vec![field], result)
+            }
+            else {
+                (Vec::new(), side)
+            }
         };
         let attrs = self.attr_slot(&mut cursor);
-        Some(CtorDesc::new(name, code, result, attrs))
+        self.check_result_uniformity(
+            result_id,
+            NameRef::from(name.as_str()),
+            type_name,
+            head,
+            elab,
+        )?;
+        let result: Name = type_name.0.into();
+        Some(CtorDesc::new(name, Code::product_of(fields), result, attrs))
     }
 
-    /// Read a constructor / observation field list `( [grade?] name : Type, …
-    /// )` into field codes.
-    fn field_list(
+    /// Read a generator's parenthesized telescope `( entry, … )` into field
+    /// codes: named binders `[grade?] name : Type` (the constructor-field
+    /// shape) or bare-sort ports, the same sugar ladder the circuit parameter
+    /// side climbs.
+    fn generator_telescope(
         &self,
         cursor: &mut Cursor<'_, 'tree>,
         type_name: TypeName<'_>,
@@ -411,33 +618,183 @@ impl<'tree> Reader<'tree>
     ) -> Vec<Code>
     {
         let mut fields = Vec::new();
-        if !cursor.eat(TileSpelling("(")).0 {
-            return fields;
+        let mut interior: Vec<NodeId> = Vec::new();
+        let mut depth: u32 = 0;
+        while let Some(id) = cursor.bump() {
+            let label = self.label(id).map(|label| label.0);
+            if depth == 0 && label == Some(")") {
+                break;
+            }
+            match label {
+                | Some(bracket) if is_opener(BracketLabel(bracket)).0 => {
+                    depth = depth.saturating_add(1);
+                },
+                | Some(bracket) if is_closer(BracketLabel(bracket)).0 => {
+                    depth = depth.saturating_sub(1);
+                },
+                | _ => {},
+            }
+            interior.push(id);
         }
-        loop {
-            match cursor
-                .peek()
-                .and_then(|id| self.label(id).map(|label| label.0))
-            {
-                | Some(")") => {
-                    cursor.bump();
-                    break;
-                },
-                | Some(",") => {
-                    cursor.bump();
-                },
-                | None if cursor.peek().is_none() => break,
-                | _ => {
-                    if let Some(code) = self.field(cursor, type_name, elab) {
-                        fields.push(code);
-                    }
-                    else {
-                        cursor.bump();
-                    }
-                },
+        for entry in split_at_top_level(self, &interior, TileSpelling(",")) {
+            // A bare-sort port is one type node; anything longer is the named
+            // binder `[grade?] name : Type`.
+            if let &[single] = entry.as_slice() {
+                fields.push(self.field_type_code(single, type_name, Grade::ONE, elab));
+            }
+            else {
+                let mut entry_cursor = Cursor::new(self, &entry);
+                if let Some(code) = self.field(&mut entry_cursor, type_name, elab) {
+                    fields.push(code);
+                }
             }
         }
         fields
+    }
+
+    /// Enforce head uniformity on one generator's result: the result head is
+    /// the family applied to the parameter variables in order, with the index
+    /// arguments admitted unread. A violation appends the decline and returns
+    /// [`None`].
+    fn check_result_uniformity(
+        &self,
+        result_id: NodeId,
+        ctor: NameRef<'_>,
+        family: TypeName<'_>,
+        head: &FamilyHead,
+        elab: &mut DescElab,
+    ) -> Option<()>
+    {
+        let ctor: &str = ctor.as_ref();
+        let family = family.0;
+        let expected = head.params.len().saturating_add(head.indices.0);
+        let decline = |message: String, elab: &mut DescElab| {
+            elab.diagnostics
+                .push(ElabDiagnostic::new(message, self.span(result_id)));
+        };
+        // A bare result head — the family name with no argument list — is
+        // exact only for an unparameterized, unindexed family.
+        if !self.is_meld(result_id).0 {
+            let text = self.text(result_id).0;
+            if text == family && expected == 0 {
+                return Some(());
+            }
+            if text == family {
+                decline(
+                    format!(
+                        "generator `{ctor}`'s bare result head takes no arguments, but the \
+                         family `{family}` takes {expected} ({} parameter(s) + {} index(es)) — \
+                         write the result as `{family}` applied to its parameter variables in \
+                         order",
+                        head.params.len(),
+                        head.indices.0
+                    ),
+                    elab,
+                );
+            }
+            else {
+                decline(
+                    format!(
+                        "generator `{ctor}`'s result head is `{text}`, not the family \
+                         `{family}`: every generator of `{family}` constructs `{family}`"
+                    ),
+                    elab,
+                );
+            }
+            return None;
+        }
+        let inner = self.sig_children(result_id);
+        let Some((&head_id, tail)) = inner.split_first()
+        else {
+            decline(
+                format!(
+                    "generator `{ctor}`'s result is not the family `{family}` applied to its \
+                     parameter variables"
+                ),
+                elab,
+            );
+            return None;
+        };
+        if self.text(head_id).0 != family {
+            decline(
+                format!(
+                    "generator `{ctor}`'s result head is `{}`, not the family `{family}`: \
+                     every generator of `{family}` constructs `{family}` — a generator of a \
+                     specialized family has no eliminator schema and no place in one \
+                     description",
+                    self.text(head_id).0
+                ),
+                elab,
+            );
+            return None;
+        }
+        let Some((&open_id, arg_region)) = tail.split_first()
+        else {
+            decline(
+                format!(
+                    "generator `{ctor}`'s result head is the family `{family}` but applies it \
+                     to nothing: the family takes {expected} argument(s) ({} parameter(s) + {} \
+                     index(es))",
+                    head.params.len(),
+                    head.indices.0
+                ),
+                elab,
+            );
+            return None;
+        };
+        if self.label(open_id).map(|label| label.0) != Some("(") {
+            decline(
+                format!(
+                    "generator `{ctor}`'s result is not the family `{family}` applied to its \
+                     parameter variables in order"
+                ),
+                elab,
+            );
+            return None;
+        }
+        let arg_region = match arg_region.split_last() {
+            | Some((close, args)) if self.label(*close).map(|label| label.0) == Some(")") => args,
+            | _ => arg_region,
+        };
+        let args = split_at_top_level(self, arg_region, TileSpelling(","));
+        if args.len() != expected {
+            decline(
+                format!(
+                    "generator `{ctor}`'s result head takes {} argument(s); the family \
+                     `{family}` takes {expected} ({} parameter(s) + {} index(es))",
+                    args.len(),
+                    head.params.len(),
+                    head.indices.0
+                ),
+                elab,
+            );
+            return None;
+        }
+        // The parameter arguments are the parameter VARIABLES in binding
+        // order, never instantiations; the index arguments that follow are
+        // admitted unread.
+        for (arg, param) in args.iter().zip(head.params.iter()) {
+            let is_variable = match arg.as_slice() {
+                | &[arg_id] => {
+                    self.label(arg_id).map(|label| label.0) == Some("type_variable")
+                        && self.text(arg_id).0 == param.name.as_ref()
+                },
+                | _ => false,
+            };
+            if !is_variable {
+                decline(
+                    format!(
+                        "generator `{ctor}`'s result instantiates parameter `{}`; instantiation \
+                         is uninferable — the result head applies the family `{family}` to its \
+                         parameter variables in order",
+                        param.name
+                    ),
+                    elab,
+                );
+                return None;
+            }
+        }
+        Some(())
     }
 
     /// Read one field `[grade?] name : Type` into a field code (or a

@@ -21,6 +21,7 @@ mod tests
 {
     use gandr_core_checker::boundary::ConstructorTag;
     use gandr_surface_engine::desc_elab::elaborate_data_descs;
+    use gandr_theory_levitation::Code;
     use gandr_theory_levitation::DeclPolarity;
     use gandr_theory_levitation::DescValue;
     use gandr_theory_levitation::Payload;
@@ -54,18 +55,70 @@ mod tests
         assert_eq!(
             rendered,
             vec![
-                "sign Color { sort Color : Type; data Red : Color; data Green : Color; data Blue \
-                 : Color }"
-                    .to_owned(),
-                "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }"
-                    .to_owned(),
-                "sign Tree(a) { sort Tree : Type; data Leaf : Tree; data Node : (Tree, a, Tree) \
-                 --> Tree }"
-                    .to_owned(),
+                "sign Color { sort Color : Type }".to_owned(),
+                "sign Maybe(a) { sort Maybe : Type }".to_owned(),
+                "sign Tree(a) { sort Tree : Type }".to_owned(),
+                "sign Vec(a) { sort Vec : Type }".to_owned(),
                 "sign Empty { sort Empty : Type }".to_owned(),
             ],
-            "each declared datatype elaborates to its tagged description, read back in the ruled \
-             sign normal form"
+            "each declared datatype elaborates, read back in the ruled sign normal form — \
+             sorts, operations, and rules; constructors have no item-level member spelling"
+        );
+        // The constructors the render no longer spells live on the
+        // descriptions themselves, in declaration (tag) order.
+        let ctor_names: Vec<Vec<&str>> = elab
+            .descs
+            .iter()
+            .map(|desc| desc.ctors.iter().map(|ctor| ctor.name.as_ref()).collect())
+            .collect();
+        assert_eq!(
+            ctor_names,
+            vec![
+                vec!["Red", "Green", "Blue"],
+                vec!["None", "Some"],
+                vec!["Leaf", "Node"],
+                vec!["Nil", "Cons"],
+                vec![],
+            ],
+            "generator members elaborate to constructor descriptors in tag order"
+        );
+        // The indexed family: its parameter is bound once at the head, and the
+        // recursive field reads as a `var` occurrence of the family sort.
+        let vec = &elab.descs[3];
+        assert_eq!(1, vec.params.len(), "the head binds `a` once");
+        assert!(
+            bool::from(vec.is_recursive()),
+            "`Cons`'s `xs : Vec(a, n)` field is a recursive occurrence"
+        );
+    }
+
+    #[test]
+    fn the_generator_ladder_elaborates_bare_sides_and_telescopes()
+    {
+        // The three side rungs of one family: the bare result (`Zero : Nat`
+        // declares no fields), the bare single-field sort (`Succ : Nat -->
+        // Nat`), and the parenthesized binder telescope.
+        let elab = elaborate_data_descs(
+            "data Nat : Type { Zero : Nat; Succ : Nat --> Nat; Pred : (n : Nat) --> Nat; }",
+        );
+        assert!(
+            elab.diagnostics.is_empty(),
+            "the ladder elaborates cleanly: {:?}",
+            elab.diagnostics
+        );
+        let nat = &elab.descs[0];
+        assert_eq!(3, nat.ctors.len(), "one constructor per generator");
+        assert!(
+            matches!(nat.ctors[0].code, Code::Unit),
+            "a bare result declares no fields"
+        );
+        assert!(
+            matches!(nat.ctors[1].code, Code::Var(_)),
+            "a bare single-field side at the family sort is a recursive occurrence"
+        );
+        assert!(
+            matches!(nat.ctors[2].code, Code::Var(_)),
+            "a telescope binder at the family sort is a recursive occurrence"
         );
     }
 
@@ -73,13 +126,20 @@ mod tests
     fn a_declared_datatype_drives_the_generic_consumer_end_to_end()
     {
         // Parse → elaborate → consume, on a real corpus declaration.
-        let elab = elaborate_data_descs("data Maybe(a) { None, Some(x: a) }");
+        let elab = elaborate_data_descs(
+            "data Maybe(a : Type) : Type { None : Maybe(a); Some : (x : a) --> Maybe(a); }",
+        );
+        assert!(
+            elab.diagnostics.is_empty(),
+            "the nested generator block elaborates cleanly: {:?}",
+            elab.diagnostics
+        );
         assert_eq!(1, elab.descs.len(), "one datatype");
         let maybe = &elab.descs[0];
         assert_eq!(
-            "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }",
+            "sign Maybe(a) { sort Maybe : Type }",
             serialize_desc(maybe).as_ref(),
-            "the description inspects as expected"
+            "the description inspects as its sign normal form"
         );
 
         // The generic structural equality (driven by the elaborated
@@ -104,7 +164,9 @@ mod tests
     #[test]
     fn description_wrapper_boundaries_stay_observable_to_pipeline_consumers()
     {
-        let elab = elaborate_data_descs("data Maybe(a) { None, Some(x: a) }");
+        let elab = elaborate_data_descs(
+            "data Maybe(a : Type) : Type { None : Maybe(a); Some : (x : a) --> Maybe(a); }",
+        );
         let maybe = &elab.descs[0];
         let rendered = serialize_desc(maybe);
         let none = DescValue::new(ConstructorTag::from(0), Payload::Unit);
@@ -115,7 +177,7 @@ mod tests
             "nominal ids expose the declared name"
         );
         assert_eq!(
-            "sign Maybe(a) { sort Maybe : Type; data None : Maybe; data Some : a --> Maybe }",
+            "sign Maybe(a) { sort Maybe : Type }",
             rendered.as_ref(),
             "serialized descriptions remain comparable without unwrapping carriers"
         );
@@ -188,7 +250,8 @@ mod tests
         // otherwise-identical declaration, so what separates them is the arrow
         // and nothing else.
         let ruled = elaborate_data_descs(
-            "data NatFace { Zero, oper id(x: NatFace) -> NatFace, rule id(Zero) ==> Zero }",
+            "data NatFace : Type { Zero : NatFace; oper id(x : NatFace) -> NatFace; rule \
+             id(Zero) ==> Zero; }",
         );
         let face = ruled
             .descs
@@ -207,7 +270,8 @@ mod tests
         // diagnostic that names the respelling rather than a repair that names
         // a token.
         let retired = elaborate_data_descs(
-            "data NatFace { Zero, oper id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }",
+            "data NatFace : Type { Zero : NatFace; oper id(x : NatFace) -> NatFace; rule \
+             id(Zero) ~> Zero; }",
         );
         let stale = retired
             .descs
@@ -234,7 +298,8 @@ mod tests
             .iter()
             .find(|diagnostic| diagnostic.message.contains("`~>`"))
             .expect("the migration decline is located");
-        let source = "data NatFace { Zero, oper id(x: NatFace) -> NatFace, rule id(Zero) ~> Zero }";
+        let source = "data NatFace : Type { Zero : NatFace; oper id(x : NatFace) -> NatFace; \
+                      rule id(Zero) ~> Zero; }";
         let start = usize::from(located.span.start);
         let end = usize::from(located.span.end);
         assert_eq!(
@@ -251,8 +316,10 @@ mod tests
         // (`op` is the operator-fixity declaration only). The retired lead
         // still parses — the retired-`~>` precedent — so a stale program is
         // told what to write rather than silently accepted.
-        let retired =
-            elaborate_data_descs("data NatRetired { Zero, op stale(x: NatRetired) -> NatRetired }");
+        let retired = elaborate_data_descs(
+            "data NatRetired : Type { Zero : NatRetired; op stale(x : NatRetired) -> NatRetired; \
+             }",
+        );
         let desc = retired
             .descs
             .iter()
@@ -287,12 +354,22 @@ mod tests
             stream.polarity,
             "a codata block elaborates with Codata polarity"
         );
-        // `head: a` is a leaf observation; `tail: Stream(a)` is the recursive
-        // one.
+        // `head : a` is a leaf observation; `tail : Stream(a)` is the
+        // recursive one. Both elaborate as constructor-shaped entries; the
+        // sign normal form gives them no member spelling.
         assert_eq!(
-            "sign Stream(a) { sort Stream : Type; codata head : Stream --> a; codata tail : Stream --> Stream }",
+            "sign Stream(a) { sort Stream : Type }",
             serialize_desc(stream).as_ref(),
-            "observations elaborate as constructor-shaped entries; `tail` recurses"
+            "the sign normal form carries the sort set only"
+        );
+        assert_eq!(
+            2,
+            stream.ctors.len(),
+            "observations elaborate as constructor-shaped entries"
+        );
+        assert!(
+            bool::from(stream.is_recursive()),
+            "`tail : Stream(a)` recurses"
         );
     }
 
@@ -301,7 +378,8 @@ mod tests
     {
         // A function-typed field is outside the first-order fragment (proposal
         // §8's `desc-higher-order-field`, pinning V2).
-        let elab = elaborate_data_descs("data Cell(a) { Mk(get: a -> a) }");
+        let elab =
+            elaborate_data_descs("data Cell(a : Type) : Type { Mk : (get : a -> a) --> Cell(a); }");
         assert!(
             elab.diagnostics
                 .iter()
@@ -323,6 +401,157 @@ mod tests
                 .any(|diag| diag.message.contains("derived metadata")
                     && diag.message.contains("variance")),
             "declaring derived variance metadata is declined: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_bare_parameter_head_declines_the_whole_declaration_with_its_respelling()
+    {
+        // The retired `data Maybe(a)` head: the grammar keeps the bare
+        // parameter admissible so this decline can name the respelling.
+        let elab = elaborate_data_descs("data Maybe(a) { None : Maybe(a); }");
+        assert!(
+            elab.descs.is_empty(),
+            "a retired head elaborates no description: {:?}",
+            elab.descs
+        );
+        assert!(
+            elab.diagnostics.iter().any(|diag| {
+                diag.message.contains("carries no type")
+                    && diag.message.contains("Maybe(a : Type, …) : Type")
+            }),
+            "the decline names the typed-binder respelling: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_missing_head_annotation_declines_the_whole_declaration_with_its_respelling()
+    {
+        // The retired unannotated head: the index arity is unreadable without
+        // the annotation, so no member can be checked and the whole
+        // declaration declines.
+        let elab = elaborate_data_descs("data Color { Red : Color; }");
+        assert!(
+            elab.descs.is_empty(),
+            "an unannotated head elaborates no description: {:?}",
+            elab.descs
+        );
+        assert!(
+            elab.diagnostics.iter().any(|diag| {
+                diag.message.contains("no index-arity annotation")
+                    && diag.message.contains("`Color(…) : Type { … }`")
+            }),
+            "the decline names the annotation respelling: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn the_retired_field_tuple_member_declines_with_the_generator_respelling()
+    {
+        // A valid nested head over retired members: the members decline
+        // individually, and the block elaborates around them.
+        let elab = elaborate_data_descs("data Maybe(a : Type) : Type { None, Some(x : a) }");
+        let maybe = elab
+            .descs
+            .iter()
+            .find(|desc| desc.id.name.as_ref() == "Maybe")
+            .expect("Maybe still elaborates around the declined members");
+        assert!(
+            maybe.ctors.is_empty(),
+            "retired members are declined rather than admitted"
+        );
+        let declines = elab
+            .diagnostics
+            .iter()
+            .filter(|diag| {
+                diag.message.contains("is retired") && diag.message.contains("--> Result")
+            })
+            .count();
+        assert_eq!(
+            2, declines,
+            "both retired members decline with the generator respelling: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn an_instantiated_result_head_declines_as_uninferable()
+    {
+        // Head uniformity, enforced executably: `Bad(Integer)` instantiates
+        // the parameter, which no eliminator schema can consume.
+        let elab = elaborate_data_descs("data Bad(a : Type) : Type { Mk : Bad(Integer); }");
+        let bad = elab
+            .descs
+            .iter()
+            .find(|desc| desc.id.name.as_ref() == "Bad")
+            .expect("Bad elaborates around the declined member");
+        assert!(
+            bad.ctors.is_empty(),
+            "the violating generator contributes no constructor"
+        );
+        assert!(
+            elab.diagnostics.iter().any(|diag| {
+                diag.message.contains("instantiates parameter `a`")
+                    && diag.message.contains("instantiation is uninferable")
+            }),
+            "an instantiated head declines: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_result_head_of_the_wrong_arity_declines()
+    {
+        let elab = elaborate_data_descs("data Bad : Type { Mk : Bad(0); }");
+        assert!(
+            elab.diagnostics.iter().any(|diag| {
+                diag.message.contains("takes 1 argument(s)")
+                    && diag.message.contains("`Bad` takes 0")
+            }),
+            "a wrong-arity head declines with both counts: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_bare_result_head_over_a_parameterized_family_declines()
+    {
+        let elab = elaborate_data_descs("data Bad(a : Type) : Type { Mk : Bad; }");
+        assert!(
+            elab.diagnostics
+                .iter()
+                .any(|diag| diag.message.contains("bare result head takes no arguments")),
+            "a bare head over a parameterized family declines: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_foreign_result_head_declines()
+    {
+        let elab = elaborate_data_descs("data Bad : Type { Mk : Other; }");
+        assert!(
+            elab.diagnostics.iter().any(|diag| {
+                diag.message.contains("result head is `Other`")
+                    && diag.message.contains("not the family `Bad`")
+            }),
+            "a foreign head declines: {:?}",
+            elab.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_constructor_led_member_of_a_codata_block_declines()
+    {
+        let elab = elaborate_data_descs("codata Boxed : Type { Mk : Boxed; }");
+        assert!(
+            elab.diagnostics
+                .iter()
+                .any(|diag| diag.message.contains("has no place in a `codata` block")),
+            "a constructor-led member declines in a codata block: {:?}",
             elab.diagnostics
         );
     }

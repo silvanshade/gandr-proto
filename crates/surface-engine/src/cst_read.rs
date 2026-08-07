@@ -307,6 +307,56 @@ pub fn is_closer(label: BracketLabel<'_>) -> MatchDecision
     MatchDecision(matches!(label.0, ")" | "]" | "}"))
 }
 
+/// Split a block's member region into per-member runs at bracket-depth-zero
+/// member separators: the ruled `;` terminator, or the retired `,` separator
+/// kept admissible so a stale declaration parses whole and reaches the
+/// elaborator's migration decline (the retired-`~>` precedent).
+///
+/// Depth counts brackets exactly as [`split_at_top_level`] does, so a
+/// separator nested inside a telescope, an attribute slot, or a nested body
+/// stays within its member; a member's own terminator and a trailing
+/// terminator yield no empty runs.
+///
+/// # Contract
+/// - requires: `region` is a run of significant children of one block, with
+///   balanced brackets (the melder's commit guarantees this).
+/// - ensures: returns the members in source order, each WITHOUT its terminator.
+/// - provides: the member split the nested generator block's reader takes.
+/// - fails: never; an unbalanced region simply splits at the depths it has.
+/// - panics: none.
+pub fn member_runs(
+    reader: &Reader<'_>,
+    region: &[NodeId],
+) -> Vec<Vec<NodeId>>
+{
+    let mut members: Vec<Vec<NodeId>> = Vec::new();
+    let mut current: Vec<NodeId> = Vec::new();
+    let mut depth: u32 = 0;
+    for &id in region {
+        let label = reader.label(id);
+        if depth == 0 && matches!(label.map(|label| label.0), Some(";" | ",")) {
+            if !current.is_empty() {
+                members.push(core::mem::take(&mut current));
+            }
+            continue;
+        }
+        match label.map(|label| label.0) {
+            | Some(bracket) if is_opener(BracketLabel(bracket)).0 => {
+                depth = depth.saturating_add(1);
+            },
+            | Some(bracket) if is_closer(BracketLabel(bracket)).0 => {
+                depth = depth.saturating_sub(1);
+            },
+            | _ => {},
+        }
+        current.push(id);
+    }
+    if !current.is_empty() {
+        members.push(current);
+    }
+    members
+}
+
 /// Split a member region into per-member runs at bracket-depth-zero
 /// occurrences of `separator`.
 ///

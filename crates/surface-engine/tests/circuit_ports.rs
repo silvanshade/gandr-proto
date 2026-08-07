@@ -453,7 +453,7 @@ fn an_unnamed_port_mints_a_fresh_wire_and_collides_with_nothing()
     assert_eq!(
         Vec::<String>::new(),
         messages(TestText(
-            "sign S { sort Nat : Type data Succ : Nat --> Nat oper add : (Nat, Nat) --> Nat }"
+            "sign S { sort Nat : Type oper add : (Nat, Nat) --> Nat }"
         ))
     );
 }
@@ -480,7 +480,9 @@ fn a_boundary_without_a_filler_wires_nothing_but_still_has_ports()
 #[test]
 fn a_non_circuit_source_folds_nothing()
 {
-    let verdict = check_circuit_surface("def greeting = \"hi\";\ndata Bool { True, False }\n");
+    let verdict = check_circuit_surface(
+        "def greeting = \"hi\";\ndata Bool : Type { True : Bool; False : Bool; }\n",
+    );
     assert_eq!(CircuitSurface::default(), verdict);
 }
 

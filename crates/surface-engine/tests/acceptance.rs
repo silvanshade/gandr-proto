@@ -496,7 +496,7 @@ mod tests
         fn module_ascription_resolves_declared_data_types()
         {
             let lowered = lower_source(
-                "data Maybe(a) { None, Some(x: a) }\n\
+                "data Maybe(a : Type) : Type { None : Maybe(a); Some : (x : a) --> Maybe(a); }\n\
              module M : #{ value: Maybe(Integer) } {\n\
                def value = (Some(1) : Maybe(Integer));\n\
              }"

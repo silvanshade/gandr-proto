@@ -16,13 +16,19 @@ use gandr_theory_levitation::PortFace;
 use crate::common::TestText;
 
 /// The congruence cell of the ruling, minus one redex: the single-redex block
-/// this rung graduates, whose composite is one whiskering.
+/// this rung graduates, whose composite is one whiskering. The family is
+/// declared once, whole, as a nested generator block (the item-level `data`
+/// member is retired from `sign` blocks); the `sign` block presents the sort,
+/// the operation, and the rule.
 const CONG1: TestText<'static> = TestText(
     "\
+data Nat : Type {
+  Zero : Nat;
+  Succ : (n : Nat) --> Nat;
+}
+
 sign Nat {
   sort Nat : Type
-  data Zero : Nat
-  data Succ : Nat --> Nat
   oper add : (Nat, Nat) --> Nat
 
   rule cong1 : (
@@ -95,12 +101,20 @@ fn a_ruled_sign_block_lowers_its_members_into_a_description()
         "a well-formed block declines nothing: {:#?}",
         elab.diagnostics
     );
-    let [ref desc] = *elab.descs
+    let [ref data, ref desc] = *elab.descs
     else {
-        panic!("one description per sign block; got {}", elab.descs.len());
+        panic!(
+            "one description per declaration — the nested block and the sign block; got {}",
+            elab.descs.len()
+        );
     };
+    assert_eq!("Nat", data.id.name.as_ref(), "the family's own name");
+    assert_eq!(
+        2,
+        data.ctors.len(),
+        "one constructor per generator of the nested block"
+    );
     assert_eq!("Nat", desc.id.name.as_ref(), "the block's own name");
-    assert_eq!(2, desc.ctors.len(), "one constructor per `data` member");
     assert_eq!(1, desc.opers.len(), "one operation per `oper` member");
     assert_eq!(
         1,
@@ -137,15 +151,14 @@ fn a_single_redex_block_reaches_the_cell_layer_behind_the_gate()
         "the gate admits a well-formed block: {:#?}",
         cells.diagnostics
     );
-    let [ref store] = *cells.stores
-    else {
-        panic!("one store per description");
-    };
-    // Two frame-defining cells (one per constructor) plus the rule's own cell.
+    // Two frame-defining cells from the nested block's constructors (one
+    // store) plus the sign block rule's own cell (the other).
+    let total: usize = cells.stores.iter().fold(0_usize, |count, store| {
+        count.saturating_add(usize::from(store.len()))
+    });
     assert_eq!(
-        3,
-        usize::from(store.len()),
-        "the rule's cell joins the constructors' frame cells"
+        3, total,
+        "the rule's cell joins the constructors' frame cells across the two stores"
     );
     let [ref composite] = *cells.composites
     else {
@@ -156,6 +169,29 @@ fn a_single_redex_block_reaches_the_cell_layer_behind_the_gate()
         composite.active_position(),
         "the redex sits at `add`'s first argument"
     );
+}
+
+#[test]
+fn an_item_level_data_member_declines_with_the_nested_block_respelling()
+{
+    // The retired member: a `sign` block presents sorts, operations, and
+    // rules only, so a stale `data` member is declined with the nested
+    // generator block's respelling (the grammar keeps it admissible for
+    // exactly this decline).
+    let reported = messages(TestText(
+        "\
+sign Stale {
+  sort Nat : Type
+  data Zero : Nat
+  oper add : (Nat, Nat) --> Nat
+}
+",
+    ));
+    assert_names(&reported, &[
+        TestText("the item-level `data Zero` member is retired"),
+        TestText("nested generator block"),
+        TestText("data S : Type { Zero : S;"),
+    ]);
 }
 
 #[test]

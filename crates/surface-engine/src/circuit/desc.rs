@@ -16,10 +16,19 @@
 //! | member                   | becomes                                          |
 //! | ------------------------ | ------------------------------------------------ |
 //! | `sort S : Type`          | nothing — the colour is the block's own identity |
-//! | `data C : sig`           | a constructor of the description                 |
+//! | `data C : sig`           | a decline — the item-level member is retired     |
 //! | `oper f : sig`           | an operation, with its two port lists as arity   |
 //! | `rule r : sphere { … }`  | a [`CircuitRule`] — the graduated form           |
 //! | `rule r : sphere`        | nothing — see below                              |
+//!
+//! The **`data` member's** retirement is the nested generator block's ruling:
+//! a family is declared once, whole, with its parameters bound at the head and
+//! every generator's result head the family applied to the parameter
+//! variables — never as per-constructor members of a `sign` block — so this
+//! route declines the member with the respelling hint rather than reading a
+//! constructor from it. The grammar keeps the member admissible precisely so
+//! the decline can name the respelling (the retired-`~>` precedent), and a
+//! rule telescope's `data x : Nat` binders are a different slot, unaffected.
 //!
 //! A **`rule` member with no filler** declares a rewrite face between *sorts*
 //! (`rule involutive : (b : Bit) <=> (c : Bit)`), and the declaration table has
@@ -74,8 +83,6 @@
 //!   language spells `ρ then ρ′` and has no former for yet
 //!   ([`gandr_theory_levitation::CircuitElaborationError::ManyRedexOccurrences`]).
 
-use gandr_core_checker::boundary::NameRef;
-use gandr_core_checker::grade::Grade;
 use gandr_surface_syntax::NodeId;
 use gandr_theory_levitation::Attrs;
 use gandr_theory_levitation::CircuitBody;
@@ -83,23 +90,19 @@ use gandr_theory_levitation::CircuitDerivationError;
 use gandr_theory_levitation::CircuitFrame;
 use gandr_theory_levitation::CircuitNode;
 use gandr_theory_levitation::CircuitRule;
-use gandr_theory_levitation::Code;
 use gandr_theory_levitation::CtorDesc;
 use gandr_theory_levitation::DeclPolarity;
 use gandr_theory_levitation::FrameHead;
 use gandr_theory_levitation::FreeTerm;
-use gandr_theory_levitation::Name;
 use gandr_theory_levitation::NominalId;
 use gandr_theory_levitation::OperDesc;
 use gandr_theory_levitation::PortInstantiationError;
-use gandr_theory_levitation::PrimTy;
 use gandr_theory_levitation::RewritePort;
 use gandr_theory_levitation::RuleFace;
 use gandr_theory_levitation::SignDesc;
 use gandr_theory_levitation::SortDesc;
 use gandr_theory_levitation::SortRef;
 use gandr_theory_levitation::SurfaceSpan;
-use gandr_theory_levitation::ValueTypeRef;
 use gandr_theory_levitation::boundary::NominalSerial;
 use gandr_theory_levitation::derive_boundaries;
 use gandr_theory_levitation::wellformed::derive_cell_var_meta;
@@ -107,7 +110,6 @@ use gandr_theory_levitation::wellformed::derive_cell_var_meta;
 use crate::boundary::CircuitName;
 use crate::boundary::MatchDecision;
 use crate::boundary::TileSpelling;
-use crate::boundary::TypeName;
 use crate::circuit::shape::CircuitKind;
 use crate::circuit::shape::KindEnv;
 use crate::circuit::shape::MEMBER_LEADS;
@@ -125,10 +127,11 @@ const ALPHABET_QUESTION: &str = "gandr-ui9";
 /// # Contract
 /// - requires: `node` is a `sign` block's Meld, from a parse `shape` reads.
 /// - ensures: `Some(desc)` for a block whose header reads (`sign`, a name, and
-///   an opening brace); the description carries one constructor per `data`
-///   member, one operation per `oper` member, and one [`CircuitRule`] per
-///   block-bodied `rule` member the route admits; every member it does not
-///   carry appends a diagnostic naming the member and the lane that owes it.
+///   an opening brace); the description carries one operation per `oper` member
+///   and one [`CircuitRule`] per block-bodied `rule` member the route admits;
+///   every member it does not carry appends a diagnostic naming the member and
+///   the lane that owes it — the retired item-level `data` member included,
+///   declined with the nested generator block's respelling.
 /// - provides: the acceptance flip's surface half — the declaration table entry
 ///   a parsed circuit block denotes.
 /// - fails: never; a member the route cannot read contributes a diagnostic and
@@ -137,10 +140,12 @@ const ALPHABET_QUESTION: &str = "gandr-ui9";
 ///
 /// # Adequacy
 /// - hypothesis: L3 — the four member families are separated by what each
-///   contributes (a constructor, an operation, a circuit rule, nothing), and
-///   the decline channels are separated by the member each names.
+///   contributes (a retirement decline, an operation, a circuit rule, nothing),
+///   and the decline channels are separated by the member each names.
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
 ///   `a_ruled_sign_block_lowers_its_members_into_a_description`
+/// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
+///   `an_item_level_data_member_declines_with_the_nested_block_respelling`
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
 ///   `a_many_out_node_declines_naming_the_cell_alphabet_question`
 /// - witness: `gandr-surface-engine` `tests/circuit_desc.rs`
@@ -219,13 +224,9 @@ fn block_desc(
             sorts.push(SortDesc::new(member_name.0, DeclPolarity::Data));
         }
     }
-    let sort_names: Vec<String> = if sorts.is_empty() {
-        vec![name.clone()]
-    }
-    else {
-        sorts.iter().map(|sort| sort.name.to_string()).collect()
-    };
-    let mut ctors: Vec<CtorDesc> = Vec::new();
+    // Constructors never accumulate: the item-level `data` member is retired,
+    // so the constructor list stays empty and the arm below declines.
+    let ctors: Vec<CtorDesc> = Vec::new();
     let mut ops: Vec<OperDesc> = Vec::new();
     let mut circuits: Vec<CircuitRule> = Vec::new();
     for member in members {
@@ -237,7 +238,23 @@ fn block_desc(
             // The sort members were collected above.
             | CircuitKind::Sort => {},
             | CircuitKind::Data => {
-                ctors.push(ctor_member(shape, member, member_name, &sort_names));
+                // The item-level `data` member is RETIRED: a family is
+                // declared once, whole, as a nested generator block, and a
+                // `sign` block presents sorts, operations, and rules only.
+                // The grammar keeps the member admissible so a stale block
+                // reaches this decline with the respelling hint (the
+                // retired-`~>` precedent); a rule telescope's `data x : Nat`
+                // binders are a different slot and stay.
+                diagnostics.push(ElabDiagnostic::new(
+                    format!(
+                        "the item-level `data {}` member is retired: declare the family once, \
+                         whole, as a nested generator block `data S : Type {{ {} : S; … }}` \
+                         whose every result head is the family applied to its parameter \
+                         variables — a `sign` block presents sorts, operations, and rules only",
+                        member_name.0, member_name.0
+                    ),
+                    run_span(shape, member),
+                ));
             },
             | CircuitKind::Oper => {
                 if let Some(op) = oper_member(shape, member, member_name, diagnostics) {
@@ -267,51 +284,6 @@ fn block_desc(
     else {
         desc.with_sorts(sorts)
     }
-}
-
-/// Read a `data C : sig` member into a constructor descriptor.
-///
-/// The sugar ladder is what fixes the field list: `data Zero : Nat` is `() -->
-/// (_ : Nat)` and `data Succ : Nat --> Nat` is `(_ : Nat) --> (_ : Nat)`, so a
-/// bare-sort side with no arrow declares the *result* and no fields, and the
-/// parameter side's ports are the payload. A port at a **declared sort** is a
-/// recursive occurrence ([`Code::Var`] at that sort — the sort-indexed
-/// universe's reading); any other port sort stays a symbolic field. The
-/// result-sort slot is the output port's sort, defaulting to the block's
-/// first sort for a member writing no output.
-fn ctor_member(
-    shape: Shape<'_, '_>,
-    run: &[NodeId],
-    name: CircuitName<'_>,
-    sort_names: &[String],
-) -> CtorDesc
-{
-    let (inputs, output) = signature_ports(shape, run);
-    let fields: Vec<Code> = inputs
-        .iter()
-        .map(|port| {
-            if sort_names.contains(&port.sort) {
-                Code::var(port.sort.as_str())
-            }
-            else {
-                Code::field(
-                    sort_ref(TypeName(port.sort.as_str())),
-                    Grade::ONE,
-                    Attrs::empty(),
-                )
-            }
-        })
-        .collect();
-    let result: Name = output.map_or_else(
-        || sort_names.first().map_or("", String::as_str).into(),
-        |port| port.sort.into(),
-    );
-    CtorDesc::new(
-        name.0.to_owned(),
-        Code::product_of(fields),
-        result,
-        Attrs::empty(),
-    )
 }
 
 /// Read an `oper f : sig` member into an operation descriptor, declining a
@@ -772,23 +744,6 @@ impl Decline
             ),
         }
     }
-}
-
-/// The value-type reference a port's sort spelling denotes.
-///
-/// A circuit port's sort reaches this route as a spelling rather than as a
-/// resolved type — resolved equality is elaboration's, not the surface's — so
-/// the reference is the primitive the spelling names, or a nullary constructor
-/// application over it.
-fn sort_ref(sort: TypeName<'_>) -> ValueTypeRef
-{
-    PrimTy::from_label(NameRef::from(sort.0)).map_or_else(
-        || ValueTypeRef::Ctor {
-            head: sort.0.into(),
-            args: Box::default(),
-        },
-        ValueTypeRef::Prim,
-    )
 }
 
 /// One entry of a signature's port list, as the description layer needs it.

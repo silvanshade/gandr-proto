@@ -1,22 +1,37 @@
-// W4d surface fold-in — reserved `data` operation and 2-cell members.
+// W4d surface fold-in — reserved `data` operation and 2-cell members (the
+// elaborated fixture).
 //
-// GRADUATION: these members parse now so the datatype block never needs
-// re-parsing when their semantics land, but they are parse-and-decline today.
-// `oper` operations and `rule` rewrites graduate with the equational-theory
-// work (equational / operator theories). Parse-only; never lowered.
+// The operation and rule members ride the nested generator block unchanged:
+// `oper` operations and `rule` rewrites graduate under their own rungs. The
+// signature unification respelled the operation member from `op` to `oper`
+// (`op` is the operator-fixity declaration only), and the retired lead still
+// parses so a stale program is declined with the respelling rather than
+// silently accepted — the retired-`~>` precedent.
 
-// Reserved `oper` operation member: `oper name(params) -> Result` (the
-// signature unification's member vocabulary; `op` is the operator-fixity
-// declaration only).
-data NatOp { Zero, Succ(n: NatOp), oper add(m: NatOp, n: NatOp) -> NatOp }
+// Reserved `oper` operation member: `oper name(params) -> Result`.
+data NatOp : Type {
+  Zero : NatOp;
+  Succ : (n : NatOp) --> NatOp;
+  oper add(m : NatOp, n : NatOp) -> NatOp;
+}
 
 // Reserved `rule` 2-cell member: `rule lhs ==> rhs` (a directed rewrite).
-data NatRule { Zero, Succ(n: NatRule), rule id(Zero) ==> Zero }
+data NatRule : Type {
+  Zero : NatRule;
+  Succ : (n : NatRule) --> NatRule;
+  rule id(Zero) ==> Zero;
+}
 
 // Reserved named multi-output result on an `oper` member.
-data NatDiv { Zero, oper divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }
+data NatDiv : Type {
+  Zero : NatDiv;
+  oper divmod(m : NatDiv, n : NatDiv) -> (q : NatDiv, r : NatDiv);
+}
 
 // The RETIRED `op` member lead still parses, so a stale program is declined
 // with the respelling rather than silently accepted or re-parsed (the
 // retired-`~>` precedent).
-data NatRetired { Zero, op stale(x: NatRetired) -> NatRetired }
+data NatRetired : Type {
+  Zero : NatRetired;
+  op stale(x : NatRetired) -> NatRetired;
+}

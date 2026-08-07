@@ -763,7 +763,7 @@ mod tests
         let lowered = lower_source(
             concat!(
                 "extern \"c\" from \"m\" {\n  def f(x: i64) -> i64;\n}\n",
-                "codata Point { x: Integer, y: Integer }\n",
+                "codata Point : Type { x : Integer; y : Integer; }\n",
                 "def answer = 42;\n",
                 "answer",
             )

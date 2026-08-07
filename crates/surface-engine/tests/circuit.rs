@@ -12,13 +12,12 @@ use crate::common::TestText;
 
 /// The congruence cell, verbatim from the ruling
 /// (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form,
-/// ruled").
+/// ruled"): a `sign` block presents sorts, operations, and rules — the
+/// item-level `data` member is retired, so no constructors stand here.
 const CONG2: TestText<'static> = TestText(
     "\
 sign Nat {
   sort Nat : Type
-  data Zero : Nat
-  data Succ : Nat --> Nat
   oper add : (Nat, Nat) --> Nat
 
   rule cong2 : (
@@ -84,11 +83,11 @@ fn assert_sole_diagnostic(
 #[test]
 fn the_ruled_worked_examples_confirm_every_arrow()
 {
-    // Both worked examples agree with themselves at every arrow: the `data` and
-    // `oper` members carry `-->`, the `rule` member and its rewrite binders
-    // carry `==>`, the redex lines carry `==>` because `p` and `q` are rules,
-    // the frame line carries `-->` because `add` is an oper, and the `feed`
-    // wire carries `-->`.
+    // Both worked examples agree with themselves at every arrow: the `oper`
+    // members carry `-->`, the `rule` member and its rewrite binders carry
+    // `==>`, the redex lines carry `==>` because `p` and `q` are rules, the
+    // frame line carries `-->` because `add` is an oper, and the `feed` wire
+    // carries `-->`.
     for source in [CONG2, ACCUMULATE] {
         assert_eq!(
             Vec::<String>::new(),
@@ -105,7 +104,7 @@ fn a_non_circuit_source_is_not_read_at_all()
     assert_eq!(
         Vec::<String>::new(),
         messages(TestText(
-            "def greeting = \"hi\";\ndata Bool { True, False }\n"
+            "def greeting = \"hi\";\ndata Bool : Type { True : Bool; False : Bool; }\n"
         ))
     );
 }
