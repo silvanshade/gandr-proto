@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 4c0bf64c4839a0d9e54351dbab983493e9d6014f1c331eb1264600640d3d2cec
+    b3: 35243a5a2508a2905c790f92aeb407031b6d55c0148f5f5b1fb6a5f3ea2f476f
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 3f5213591530129d3a8ce350883ffcf2a8a3684dea3a66811454144bd0519bb2
+    b3: f20022bf07adcb279dd387d4d0f5027c2febcb36318a291135c9c4c3d0897070
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -235,6 +235,11 @@ nodes:
   - path: spec/implementation/proposed/pattern-unifier.md
     role: subdocument
     b3: 0f1b228edcb2becc75c76800afcb5dbf708d10b47dfb1fb8959d3db359848b97
+    edges:
+      - { rel: registered-under, to: spec/implementation.md }
+  - path: spec/implementation/proposed/strengthening.md
+    role: subdocument
+    b3: f4aac4753f4197e30e5ccd60b5305250536b5032ede656e75401b4633163beb0
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
