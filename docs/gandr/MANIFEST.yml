@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: f20022bf07adcb279dd387d4d0f5027c2febcb36318a291135c9c4c3d0897070
+    b3: d16443c9a5a27a47e3ce2fcab8988b9af634310a1717c05056eba200ea61feb6
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -94,7 +94,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/effects-and-control.md
     role: subdocument
-    b3: ac233c2d1b6d147ab28c5c83ee26e7e66a13b3c7e87e7d14ac1fd12e3f0eb3a0
+    b3: 5d18d86644e886ece951c06e9d02b736390395e431bce7dffb742582e50b6090
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/incremental-pipeline.md

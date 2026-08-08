@@ -5109,6 +5109,65 @@ felleisen-1988-first-class-prompts:
     type: proceedings
     title: >-
       Proceedings of the 15th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages
+  note: >-
+    this work is **not held** and is **declined for acquisition** (owner ruling
+    gandr-fid.14.7-answer-11, 2026-08-08), so the metadata above is sound and unread: the entry was
+    transcribed from the research register and its identifier resolves, while the citing sentence in
+    implementation/effects-and-control.md has never been checked against the paper. The decline is
+    recorded so the state reads as closed rather than pending; obtaining the work and reading it
+    against that sentence reverses it. Do not substitute
+    [@danvy-filinski-1990-abstracting-control], which the same sentence already cites for a
+    different half of the claim
+
+# ── The two works read against locator-pending claims, 2026-08-08 ─────────────
+# Added executing owner ruling gandr-fid.14.7-answer-11: each replaces a claim carried by author
+# and subject only in implementation/effects-and-control.md. Both were verified from the held
+# artifact's own title page AND against the Crossref record for the DOI, and the claims naming them
+# were read against the papers rather than against the design record's attribution.
+
+selinger-2001-control-categories:
+  type: article
+  title: "Control Categories and Duality: on the Categorical Semantics of the Lambda-Mu Calculus"
+  author: ["Selinger, Peter"]
+  date: 2001
+  publisher: Cambridge University Press
+  serial-number:
+    doi: "10.1017/S096012950000311X"
+  parent:
+    type: periodical
+    title: Mathematical Structures in Computer Science
+    volume: 11
+    issue: 2
+    page-range: 207-260
+  note: >-
+    title, author, journal, volume, page range and year read from the held artifact's title page,
+    which also prints "Received 12 September 1998; revised 2 November 1999"; the issue number and
+    the DOI are from the Crossref record, since neither is printed on the artifact. Section 3.5
+    ("Classical features: excluded middle and double negation") is the section this corpus cites:
+    Lemma 3.9(2) gives the retraction, and Lemma 3.9(4)'s proof is the obstruction
+
+remy-1989-typechecking-records:
+  type: article
+  title: Typechecking records and variants in a natural extension of ML
+  author: ["Rémy, Didier"]
+  date: 1989
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/75277.75284"
+  parent:
+    type: proceedings
+    title: >-
+      Proceedings of the 16th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages
+    page-range: 77-88
+  note: >-
+    **the title above is the artifact's**, whose title page prints "Typechecking" as one word; the
+    ACM and Crossref records for the same DOI print "Type checking" with a space, so a search on
+    either spelling must be expected to find the other. Author affiliation on the title page is
+    INRIA Rocquencourt. This paper is the held companion of Rémy's INRIA research report *Type
+    inference for records in a natural extension of ML*, which carries the unification algorithm in
+    more detail and is **declined for acquisition** (owner ruling gandr-fid.14.7-answer-11,
+    2026-08-08); implementation/effects-and-control.md states precisely which half of its
+    row-unification claim this paper reaches and which half the report would
 
 # ── The focusing-refinement and liquid-types line ─────────────────────────────
 # The first two entries are held locally and were read at this pass (title page, abstract,

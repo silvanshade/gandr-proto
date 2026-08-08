@@ -82,7 +82,17 @@ The surface presentation is an **ambient ability** in the sense of the Frank lin
 Row equality constraints between two rows form **their own solver domain**, and the design's claim about it is specific and load-bearing: row unification in the standard style needs **no backtracking**.
 
 That matters because the solver's trail exists for the set-operation search, and a domain that never backtracks can be decided without touching it — so adding effects does not enlarge the search the checker performs.
-The row-unification algorithm the claim refers to is the classical one for extensible records, due to Rémy; **locator-pending** — the record names it by author and technique only, and no entry has been verified for it.
+
+The algorithm the claim refers to is the classical one for extensible records and variants, due to Rémy, and **the held paper carries the property by construction rather than by name** [@remy-1989-typechecking-records].
+Its section 2 makes record and variant types **kinded regular trees**, and unification on them ordinary first-order unification — "just the usual algorithm where the occur test has been removed" — returning a **most general unifier**.
+Milner's `W` then applies unchanged, with soundness, completeness, and **principal sort schemes** as that section's Theorems 1 to 3.
+A domain whose problems have principal solutions has no choice point, so there is nothing for a trail to record and nothing to revisit; that is the no-backtracking property, and it is **derived here rather than quoted, because the paper never uses the word**.
+
+**Two parts of the claim that paper does not reach, and the surviving mark covers exactly those two.** It does not present the row-unification algorithm itself — the field-by-field decomposition against a row variable — but delegates to the standard regular-tree procedure, recalling its results without proof and attributing most of them to Huet's thesis.
+And its results are proved for a **finite** label set only: its opening section says an extension to a denumerable set of labels "is suggested", and its closing section says kinded regular trees "could be extended" to finitely generated ones, with a unification theorem one "could prove" — which is the very extension the compact row form with a row variable needs, and the paper says plainly that the same unproved theorem is what would justify the compact form its own implementation already used.
+
+So the open row's no-backtracking property rests on the finite-label result plus the attribution, not on a read proof.
+The work that carries the algorithm in detail is Rémy's INRIA research report, which is **locator-pending and declined for acquisition** ([[#Works cited here that this corpus does not hold]]).
 
 ### How effects interact with everything else
 
@@ -205,7 +215,13 @@ With an abstract answer, the continuation negation is definable as a reified sta
 **But the full involution is not what this core delivers.** It delivers only the map _out of_ the double negation, making a type a retract of its own double negation rather than isomorphic to it.
 
 **The obstruction is the cartesian value layer's lack of a dualizing answer object, and it is _not_ one-shot linearity.** That distinction is the whole content of the paragraph: a reader who assumes the one-shot rule is what blocks the involution will look for the fix in the linearity discipline, where it is not.
-The classical results locating the obstruction are Thielecke's and Selinger's — **locator-pending**, named by author and subject only, since no entry for either has been verified for this document.
+**Selinger's control categories locate the obstruction exactly, and the location below is read from the paper rather than attributed to it** [@selinger-2001-control-categories, sec 3.5].
+Double-negation introduction `∂ᴀ : A → ⊥^(⊥^A)` and elimination `θᴀ` compose to `θᴀ ∘ ∂ᴀ = idᴀ` (Lemma 3.9(2)) — a type is a **retract** of its double negation, which is the map this core delivers and no more.
+And the obstruction is the next clause's proof: `∂ᴀ` is natural but **not in general central**, because if it were central then _every_ morphism would be central (Lemma 3.9(4)), collapsing the effectful layer altogether.
+
+**Centrality is the value layer's property, not the linearity discipline's**, which is why that paragraph's warning is the right one: nothing in a one-shot rule is what blocks the involution.
+
+Thielecke's thesis is the second classical result and it stays **locator-pending** — named by author and subject only, with no verified entry — and it is **declined for acquisition** ([[#Works cited here that this corpus does not hold]]).
 
 **The genuine involution belongs to a different negation.** An _inspectable_-stack negation, rather than the continuation type into falsity, is what makes negation involutive [@munch-maccagnoni-2014-involutive-negation], in the non-associative setting whose models are duploids [@munch-maccagnoni-duploids].
 The adjunctional unification behind the comparison is the classical extension of the Hasegawa-Thielecke theorem [@mangel-mellies-munch-maccagnoni-2026-hasegawa-thielecke], and the published adjunction model of effects _and_ resources locates this design's core as its cartesian corner [@curien-fiore-munch-maccagnoni-2016-effects-and-resources].
@@ -336,15 +352,35 @@ Recorded here because this is the document its landing would change.
 
 ## Source and confidence
 
-Written against four sources, named because a change with no declared source set cannot be fidelity-reviewed.
+Written against five sources, named because a change with no declared source set cannot be fidelity-reviewed.
 
 1. The **pre-reboot effects, control, and shell design record** in full — its provenance section, the effect grammar and both rules, the deep-versus-shallow disposition, the ambient-ability decision, the interaction table, the stack judgment and its internalization, the control operators and the answer-typing discipline, the location rule, the linearity rules with their deferred exceptional path, the involutive-negation placement, the shell mapping, the dynamics, the staging, and its reference list.
 2. **The tree**, for every as-built claim: `gandr-core-checker`'s `effect` module for the row carrier and the signature model, its `syntax` and `types` modules for the operation, handle, resume, reset, and shift nodes and the two type formers, and its `stack` module for the stack-typing judgment and its frames; and `gandr-core-sequent`'s intermediate language and machine for the dynamics, the handler consumer, the prompt, and the host seam.
 3. **[[type-system]]**, which declares the two type formers and carries the feature table whose effect and control rows this document is the content behind.
 4. The **corpus documents that already carry parts of this record** — the shell mapping, the mode and reference calculus's unwinding rules and open items, and the metatheory track's consumer-side reading of handlers — read against the record and linked from the claims they carry rather than restated.
+5. **Two of the cited papers themselves**, added at the 2026-08-08 revision and read against the claims that name them rather than taken from the design record's attribution: [@remy-1989-typechecking-records] for the row-unification claim, and [@selinger-2001-control-categories] for the double-negation obstruction.
 
 **Confidence, by class.**
 
 * **High** — the grammar, both rules, the stack judgment, the control operators, the linearity rules, the interaction table, and the staging, all transcribed from the design record rather than re-derived; and every as-built claim, each read from a definition rather than from a doc comment.
 * **Medium** — the correspondence drawn in [[#What replaced it, and why this is a supersession rather than a gap]] between the design's machine and the built one, which neither the record nor the crate states as a correspondence.
-* **Marked at the claim** — the row-unification algorithm and the two classical results locating the double-negation obstruction, each named by author and subject with no verified locator.
+* **Read against the work** — Selinger's location of the double-negation obstruction (his section 3.5, Lemma 3.9) and the no-backtracking property of row unification (Rémy's section 2 and its Theorems 1 to 3), each discharged from a held paper at the 2026-08-08 revision rather than left on the design record's attribution.
+* **Marked at the claim** — Thielecke's result, and the detail and denumerable-label case of the row-unification algorithm.
+  These are what survives the revision above: each is named by author and subject with no verified locator, and each rests on a work that is **declined for acquisition rather than unexamined** ([[#Works cited here that this corpus does not hold]]).
+
+### Works cited here that this corpus does not hold
+
+Three works this document leans on are **declined for acquisition**, which is a different state from _not yet looked at_, and recording the difference is the whole point of this section: a later reader should not re-open a search that has already been run and closed.
+The decline is an owner ruling — `gandr-fid.14.7-answer-11`, 2026-08-08 — taken on the ground that the works are old and not realistically obtainable.
+The same ruling fixed what happens to each claim left behind: re-ground it on held work where one exists, **having read the held work against the claim first**, and leave the rest marked permanently.
+
+| work                                                                                                | what rests on it here                                                            | disposition                                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Thielecke, _Categorical Structure of Continuation Passing Style_ (doctoral thesis, Edinburgh, 1997) | the second of the two classical results locating the double-negation obstruction | **locator-pending permanently.** No register entry: even the author, title, and year above are carried from a search rather than checked against the artifact, so nothing here is asserted |
+| Rémy, _Type inference for records in a natural extension of ML_ (INRIA research report)             | the detailed row-unification algorithm, and the denumerable-label case           | **narrowed.** The rest of the claim is re-grounded on the held companion paper [@remy-1989-typechecking-records], which reaches the finite-label case and no further                       |
+| Felleisen, _The Theory and Practice of First-Class Prompts_ (POPL 1988)                             | the sense of "prompt" the delimiter above is claimed to have                     | **cited, unread.** The register entry [@felleisen-1988-first-class-prompts] is sound and its identifier resolves, so the citation stands; what is unpaid is the content check              |
+
+**The Felleisen row is deliberately not re-grounded, and the temptation to do so is right there in the sentence.** [@danvy-filinski-1990-abstracting-control] is cited beside it and _is_ held — but it carries the answer-type discipline, not the prompt calculus, so pointing the prompt claim at it would make this document say less while looking like it says more.
+
+**Reversal is cheap and the condition is one line**: obtain the work, read it against the claim, and the mark comes off.
+Nothing above rests on the decline being correct — only on its being visible.
