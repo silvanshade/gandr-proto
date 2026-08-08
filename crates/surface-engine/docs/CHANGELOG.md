@@ -2,6 +2,15 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-08 — Give the source driver a path-shaped face
+
+* `current`: `run::run_source_file` reads a source file and runs it exactly as `run::run_source` runs source text, reporting the path in `run::RunFileError::Read` so a diagnostic can name the file even though the failure surfaced inside the read.
+  A source-level failure travels unchanged as `run::RunFileError::Run`.
+* `current`: This is the seam the `gandr <file>` script runner stands on.
+  The engine already owned the language-level source entry after the host-signature ruling pointed the crate edge engine → runtime, so the file face belongs beside it: the reverse placement — a source entry in `gandr-runtime-host` — is a dependency cycle, not a preference.
+* `current`: A `#!…` shebang line needs no stripping anywhere: it is grammar trivia (`node_kinds::EXTRAS`), so an executable script and its text run identically.
+* `current`: Tests — a new `run` suite pins the read failure, the source failure, the plain run, and the shebang line, covering an entry that previously had no direct test of its own.
+
 ## 2026-08-02 — Decline the retired rule-face arrow with its respelling
 
 * `current`: `desc_elab`'s `rule` member reads the ruled `==>` face arrow (`docs/gandr/spec/surface-language/circuit-cells.md` §"The block form, ruled").

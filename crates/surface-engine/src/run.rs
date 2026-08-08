@@ -6,6 +6,17 @@
 //! capability adapter — it owns the host seam and the canonical signatures,
 //! never the source pipeline — so the dependency points one way, engine →
 //! runtime, with no cycle.
+//!
+//! [`run_source_file`] is the script face of the same composition: it reads a
+//! path and hands the bytes to [`run_source`], reporting the path in its own
+//! error so a caller that never opened the file can still say which file
+//! failed. The script runner (`gandr <file>`) is its production consumer, and
+//! the shebang line a `#!/usr/bin/env gandr` script opens with is grammar
+//! trivia, so no caller strips it.
+
+use alloc::string::String;
+use std::path::Path;
+use std::path::PathBuf;
 
 use gandr_core_checker::checker;
 use gandr_core_checker::error::TypeError;
@@ -72,4 +83,64 @@ impl From<link::LinkError> for RunError
             | other => Self::Program(other),
         }
     }
+}
+
+/// Reads a source file and runs it exactly as [`run_source`] runs source text.
+///
+/// This is the seam the script runner (`gandr <file>`) stands on. The file is
+/// read whole — the lowerer consumes a complete source — and the path travels
+/// into [`RunFileError::Read`] so a diagnostic can name the file even though
+/// the failure surfaced inside the read.
+///
+/// # Errors
+///
+/// Returns [`RunFileError::Read`] when the file cannot be read or does not hold
+/// UTF-8, and [`RunFileError::Run`] when the source itself fails to lower,
+/// link, or type-check.
+///
+/// # Contract
+/// - requires: `path` names a readable UTF-8 gandr source file; a leading `#!…`
+///   shebang line is ordinary grammar trivia and needs no stripping.
+/// - ensures: on success the file's program has been run once under the same
+///   prelude and host-effect handler [`run_source`] installs.
+/// - provides: the path-shaped source entry point for script-running faces.
+/// - fails: an unreadable or non-UTF-8 file surfaces as [`RunFileError::Read`]
+///   carrying the path; every source-level failure surfaces as
+///   [`RunFileError::Run`] wrapping the [`RunError`] unchanged.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 only — the read failure, the source failure, and the
+///   successful run are separated by three inputs: an absent path, a file whose
+///   text has no runnable item, and a file whose program returns a value.
+/// - witness: `run::run_source_file_runs_a_script_file`
+/// - witness: `run::run_source_file_reports_the_path_of_an_absent_file`
+/// - witness: `run::run_source_file_surfaces_a_source_failure_unchanged`
+#[inline]
+pub fn run_source_file(path: &Path) -> Result<ShellOutcome, RunFileError>
+{
+    let source = std::fs::read_to_string(path).map_err(|source| RunFileError::Read {
+        path: path.to_path_buf(),
+        detail: source.to_string(),
+    })?;
+    let outcome = run_source(source.as_str())?;
+    Ok(outcome)
+}
+
+/// A failure running the source program held in a file.
+#[derive(Debug, thiserror::Error)]
+pub enum RunFileError
+{
+    /// The file could not be read as UTF-8 source text.
+    #[error("cannot read `{path}`: {detail}", path = path.display())]
+    Read
+    {
+        /// The path that could not be read.
+        path: PathBuf,
+        /// The underlying host error rendering.
+        detail: String,
+    },
+    /// The file was read, but its source failed before execution.
+    #[error(transparent)]
+    Run(#[from] RunError),
 }

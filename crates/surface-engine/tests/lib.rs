@@ -39,6 +39,8 @@ mod origin_identity;
 #[cfg(test)]
 mod proptest;
 #[cfg(test)]
+mod run;
+#[cfg(test)]
 mod session;
 #[cfg(test)]
 mod surface;

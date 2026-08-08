@@ -36,11 +36,12 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
   + the L machine intentionally erases checked `Value::Annot` wrappers from runtime payloads.
     The linker test still pins exactly one annotation before evaluation; non-empty record/list/operator session tests pin the erased runtime values;
   + the engine-owned `Prelude` wrapper preserves the predecessor type's unvalidated ordered bindings and later-name shadowing, pinned through the L-machine focus, then lends that exact slice to `run_comp_with_prelude`;
-  + the one-shot source driver `run::run_source` lives here — relocated from `gandr-runtime-host` — composing the engine's lowering, linking, and prelude checking with the runtime's host seam, so the runtime remains a source-free capability adapter;
+  + the one-shot source driver `run::run_source` lives here — relocated from `gandr-runtime-host` — composing the engine's lowering, linking, and prelude checking with the runtime's host seam, so the runtime remains a source-free capability adapter.
+    Its path-shaped face `run::run_source_file` lands beside it: the same composition over a file's bytes, reporting the path in `run::RunFileError::Read` and passing a source-level failure through unchanged, and it is the seam the `gandr <file>` script runner stands on;
   + `lower_source_total` is exercised directly by the acceptance, totality, diagnostics, attributes, and property suites.
     Stateful sessions call its seeded form and use the same `prelude_ctx` for typing.
 * O3 scrub: 108 direct wyrd tracker-ID occurrences and 126 numeric predecessor ADR citations were removed from the engine and the core/runtime host files changed by F3, replaced by current domain terms and, where a citation carried the design, the inlined substance; predecessor package names survive only where status/changelog records port provenance.
-* Tests — the surface-engine aggregator runs 323 tests under nextest with all features; the 33 runtime-host tests make the affected authority/evaluation validation 356 tests total.
+* Tests — the surface-engine aggregator runs 379 tests under nextest with all features (2026-08-08; 323 at the F3 landing, grown by the circuit-surface and script-face work since); the 33 runtime-host tests make the affected authority/evaluation validation 412 tests total.
   None are parked or ignored.
 * Feature posture: `default = []`; `codecs` enables the serde/JSON report surface; `regex` enables the matching primitive in both reboot core engines; `full = ["codecs", "regex"]`.
 
