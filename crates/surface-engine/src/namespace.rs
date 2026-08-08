@@ -6,7 +6,8 @@
 //! key:
 //!
 //! - [`path`] — hierarchical names as ordered segment lists;
-//! - [`trie`] — the ordered-map trie carrier from names to bindings.
+//! - [`trie`] — the ordered-map trie carrier from names to bindings;
+//! - [`event`] — the handler seam for the three elaboration-time events.
 //!
 //! # What this layer is not
 //!
@@ -19,9 +20,16 @@
 //! - **No operator-table or attribute-registry wiring.**
 //! - **Nothing kernel-side.** Paths never leave the elaboration layer.
 
+pub mod event;
 pub mod path;
 pub mod trie;
 
+pub use crate::namespace::event::EventKind;
+pub use crate::namespace::event::EventRejection;
+pub use crate::namespace::event::NamespaceEvent;
+pub use crate::namespace::event::NamespaceEventHandler;
+pub use crate::namespace::event::PermissiveHandler;
+pub use crate::namespace::event::RejectionReason;
 pub use crate::namespace::path::DottedName;
 pub use crate::namespace::path::NamePath;
 pub use crate::namespace::path::Segment;
