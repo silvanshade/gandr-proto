@@ -645,7 +645,8 @@ Every one carries a disposition.
 
 **Which datum is gandr's footprint, and does the polarized reading survive contact with the guard?**
 
-**Carried, with the polarized match image preferred and the guard fence binding.** The pair of cells the application rewrites and cells and wires it matches but preserves is the fit ([[#Footprints are polarized, and that is what licenses more]]), and the substrate exists as per-metavariable variance metadata.
+**Carried, with the polarized match image preferred and the guard fence binding.** The pair of cells the application rewrites and cells and wires it matches but preserves is the fit ([[#Footprints are polarized, and that is what licenses more]]), and a polarization substrate exists on cells as per-metavariable variance metadata.
+**What that substrate is evidence for is narrowed (owner ruling, 2026-08-08); the disposition itself is unchanged.** A variance-driven polarized reading is one design the substrate would support, and it is not the reading the prototype built, which consults no cell metadata and reads its three classes off the firing instance by grafting and probe perturbation instead ([[proposed/separation-logic#What can be built before the machinery lands]]).
 Two sub-questions travel with it and neither is answered here: whether the allocation component's counterpart really is internal-wire freshness (marked **plausible**, not established), and whether the polarized test's larger commuting class is a superset of the decided guard's rather than merely a different one.
 The fence is the disposition's operative half: the test is prototyped beside the guard and **never replaces it unproven**.
 The prototype is [[#template-games-spike-01]].

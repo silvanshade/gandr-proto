@@ -174,17 +174,17 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: c336876eacc4e1fdea399d1ed122c70baebf107c0f3f8961b2e9029a3bd48e51
+    b3: 85689570e686a52fba005b4447b92cb484239c3ddd67cc3d4d325e1d3d8c82f5
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 105dfa17a10fa3af9598d6459c7caed402ad36f890047d0ae01293c7e02023b6
+    b3: 47d87701052d34376d4d1bd269445e5d2f632349d306528d6693b66861c54c7b
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
-    b3: 24e56b884683757d8ab0cadb67906b088a6001274dee3d7b9c0b398f65dc63e9
+    b3: 16d9cbc820e4c81c9360ea4392763e666bddcf69cc9db0dd73781542002ed612
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/ornaments.md

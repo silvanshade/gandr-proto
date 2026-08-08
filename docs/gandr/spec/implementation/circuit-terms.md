@@ -21,12 +21,12 @@ A lane organized around "more than one return value" answers a closed question.
 
 So the lane is: **make computing with circuit-algebra terms work across the whole language.** Its axes, with the carrier status the metatheory track establishes:
 
-| axis              | on a diagram                                     | carrier                                                                                 | what the rest of the system lacks                          |
-| ----------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| **multi-output**  | one cell emits to several destinations           | expressible; the bridge diagram is its arity                                            | the term face, the machine, and the cell alphabet          |
-| **reconvergence** | two paths out of one cell rejoin at another      | expressible; excluded from a `Cell` only by simple connectivity                         | a term has one root, so a rejoin has no spelling           |
-| **disconnection** | two sub-diagrams with no wire between them       | expressible **and proved** — a merge of two connected shapes has exactly two components | the block grammar has one spine                            |
-| **wheels**        | an output feeds back, through cells, to an input | expressible; wheel-freeness is _derived_ from simple connectivity                       | no form closes a cycle, and no internal-wire binder exists |
+| axis              | on a diagram                                     | carrier                                                                                 | what the rest of the system lacks                                                                 |
+| ----------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **multi-output**  | one cell emits to several destinations           | expressible; the bridge diagram is its arity                                            | the term face, the machine, and the cell alphabet                                                 |
+| **reconvergence** | two paths out of one cell rejoin at another      | expressible; excluded from a `Cell` only by simple connectivity                         | a term has one root, so a rejoin has no spelling                                                  |
+| **disconnection** | two sub-diagrams with no wire between them       | expressible **and proved** — a merge of two connected shapes has exactly two components | the block grammar has one spine                                                                   |
+| **wheels**        | an output feeds back, through cells, to an input | expressible; wheel-freeness is _derived_ from simple connectivity                       | the `feed` statement spells the cycle but is parse-and-decline, so no internal-wire binder exists |
 
 Multi-output remains the entry point because it is the axis whose two ends are already built, and because the Π-layer half is free.
 It is not the destination.
