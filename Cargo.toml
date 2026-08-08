@@ -135,6 +135,7 @@ path = "crates/surface-driver"
 
 # Core CBPV bidirectional checker and defunctionalized typing machine.
 # consumers:
+# - gandr
 # - gandr-core-sequent
 # - gandr-runtime-host
 # - gandr-surface-corpus
@@ -170,6 +171,7 @@ path = "crates/kernel-strata"
 
 # Headless host-effect runtime (Exec/Fs/Proc/Env handlers) driven by the L machine.
 # consumers:
+# - gandr
 # - gandr-surface-corpus
 # - gandr-surface-engine
 [workspace.dependencies.gandr-runtime-host]
@@ -202,6 +204,7 @@ path = "crates/surface-corpus"
 
 # Surface lowering engine: CST-to-core lowering, origin tracking, sessions.
 # consumers:
+# - gandr
 # - gandr-core-sequent (dev)
 # - gandr-surface-corpus
 [workspace.dependencies.gandr-surface-engine]
