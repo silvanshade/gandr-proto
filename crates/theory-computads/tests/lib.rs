@@ -1,6 +1,8 @@
 //! Consolidated integration-test binary for `gandr-theory-computads`.
 
 #[cfg(test)]
+mod adversarial_alphabet;
+#[cfg(test)]
 mod asynchronous_axioms;
 #[cfg(test)]
 mod composition;

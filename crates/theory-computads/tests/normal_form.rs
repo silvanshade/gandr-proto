@@ -83,6 +83,37 @@
 //!   the certificate-level entry point's two negative directions: a refusal is
 //!   collapsed to a negative rather than to an acceptance, and the answer is a
 //!   conjunction over **both** legs.
+//! - [`two_interleaved_dependence_chains_layer_by_depth_and_not_by_position`]
+//!   is the shape a single dependence chain cannot reach: two chains side by
+//!   side, where a layering read off recorded *positions* rather than depths
+//!   would give two orders of one trace class two different schedules.
+//!
+//! # The fixtures that need an adversarial alphabet
+//!
+//! Four of the normal form's `- fails:` modes fire only when an alphabet gives
+//! an answer neither shipped alphabet can give, so their witnesses run over the
+//! deliberately-broken inhabitants in [`crate::adversarial_alphabet`]. Each of
+//! the four also asserts the same derivation over the honest toy alphabet, or
+//! the honest premise the lie replaces, so the refusal is attributable to the
+//! one lie rather than to the fixture.
+//!
+//! - [`an_alphabet_that_calls_nesting_incomparable_trips_the_kill_signal`] and
+//!   [`a_non_local_term_algebra_trips_the_kill_signal_at_the_join`] are the two
+//!   **kill-signal** arms, raised. The second is the sharper one: every
+//!   conjunct of the shift guard holds honestly there, and the pair still fails
+//!   to commute, because locality of the term algebra is a premise the guard
+//!   cannot read.
+//! - [`a_withheld_convexity_warrant_empties_the_shift_quotient`] makes the
+//!   guard's third conjunct observable end to end for the first time: with the
+//!   warrant withheld every pair is dependent and the quotient is empty.
+//! - [`two_primitives_sharing_a_content_address_are_refused_rather_than_merged`]
+//!   reaches the **collision** arm without a digest collision, by giving a cell
+//!   a field the digest cannot see.
+//! - [`the_metavariable_seam_is_what_keeps_a_diverging_nested_pair_dependent`]
+//!   asserts a reachability *premise* rather than a refusal, and is written to
+//!   fail when the premise changes: a nested pair that would diverge under a
+//!   transposition stays dependent only because the overlap enumerator counts a
+//!   metavariable position as a composition seam.
 //!
 //! [`a_shuffled_independent_schedule_has_one_normal_form`]: tests::a_shuffled_independent_schedule_has_one_normal_form
 //! [`every_nf_equal_pair_is_replay_equivalent`]: tests::every_nf_equal_pair_is_replay_equivalent
@@ -95,6 +126,12 @@
 //! [`a_derivation_from_a_different_peak_is_nf_distinct`]: tests::a_derivation_from_a_different_peak_is_nf_distinct
 //! [`a_certificate_that_does_not_replay_is_not_certified`]: tests::a_certificate_that_does_not_replay_is_not_certified
 //! [`a_tracelet_pair_agreeing_only_on_its_first_leg_is_not_certified`]: tests::a_tracelet_pair_agreeing_only_on_its_first_leg_is_not_certified
+//! [`two_interleaved_dependence_chains_layer_by_depth_and_not_by_position`]: tests::two_interleaved_dependence_chains_layer_by_depth_and_not_by_position
+//! [`an_alphabet_that_calls_nesting_incomparable_trips_the_kill_signal`]: tests::an_alphabet_that_calls_nesting_incomparable_trips_the_kill_signal
+//! [`a_non_local_term_algebra_trips_the_kill_signal_at_the_join`]: tests::a_non_local_term_algebra_trips_the_kill_signal_at_the_join
+//! [`a_withheld_convexity_warrant_empties_the_shift_quotient`]: tests::a_withheld_convexity_warrant_empties_the_shift_quotient
+//! [`two_primitives_sharing_a_content_address_are_refused_rather_than_merged`]: tests::two_primitives_sharing_a_content_address_are_refused_rather_than_merged
+//! [`the_metavariable_seam_is_what_keeps_a_diverging_nested_pair_dependent`]: tests::the_metavariable_seam_is_what_keeps_a_diverging_nested_pair_dependent
 
 #[cfg(test)]
 mod tests
@@ -102,11 +139,16 @@ mod tests
     use alloc::vec::Vec;
 
     use gandr_theory_computads::Cell;
+    use gandr_theory_computads::CellAlphabet;
     use gandr_theory_computads::CellApp;
     use gandr_theory_computads::CellId;
     use gandr_theory_computads::CellStore;
+    use gandr_theory_computads::ConvexityDischarge;
     use gandr_theory_computads::NormalFormObstruction;
     use gandr_theory_computads::Overlap;
+    use gandr_theory_computads::PositionOrder;
+    use gandr_theory_computads::PrimCert;
+    use gandr_theory_computads::PrimId;
     use gandr_theory_computads::PrimMultiplicity;
     use gandr_theory_computads::Tracelet;
     use gandr_theory_computads::nf_equal;
@@ -119,6 +161,13 @@ mod tests
     use gandr_theory_computads::tracelets_nf_equal;
     use proptest::prelude::*;
 
+    use crate::adversarial_alphabet::CollidingAddresses;
+    use crate::adversarial_alphabet::IncomparablePositions;
+    use crate::adversarial_alphabet::Lying;
+    use crate::adversarial_alphabet::NonLocalSplice;
+    use crate::adversarial_alphabet::WithheldConvexity;
+    use crate::adversarial_alphabet::lying_cell;
+    use crate::adversarial_alphabet::reoriented_lying_cell;
     use crate::toy_alphabet::Toy;
     use crate::toy_alphabet::ToyAlphabet;
     use crate::toy_alphabet::ToyNameRef;
@@ -227,11 +276,18 @@ mod tests
     }
 
     /// Run a recorded path from `start`, or fail the test naming the step.
-    fn run(
-        store: &CellStore<ToyAlphabet>,
-        start: &Toy,
-        path: &[CellApp<ToyAlphabet>],
-    ) -> Toy
+    ///
+    /// Generic over the alphabet so the adversarial inhabitants in
+    /// [`crate::adversarial_alphabet`] share it: the fixtures below run the
+    /// same recorded paths over a lying alphabet as over the toy one, and a
+    /// second copy of this loop would be a second chance to diverge.
+    fn run<A>(
+        store: &CellStore<A>,
+        start: &A::Cmd,
+        path: &[CellApp<A>],
+    ) -> A::Cmd
+    where
+        A: CellAlphabet,
     {
         let mut current = start.clone();
         for step in path {
@@ -308,12 +364,18 @@ mod tests
 
     /// Normalize a path over the spine fixture, or fail the test with the
     /// obstruction — which is how a kill-signal refusal surfaces.
-    fn normalized(
-        store: &CellStore<ToyAlphabet>,
-        peak: &Toy,
-        joins_at: &Toy,
-        path: &[CellApp<ToyAlphabet>],
-    ) -> TraceletNf<ToyAlphabet>
+    ///
+    /// Generic over the alphabet for the reason [`run`] is: the fixtures that
+    /// expect a normal form over an adversarial alphabet want the same "a
+    /// refusal here is the kill signal" failure message as the toy ones.
+    fn normalized<A>(
+        store: &CellStore<A>,
+        peak: &A::Cmd,
+        joins_at: &A::Cmd,
+        path: &[CellApp<A>],
+    ) -> TraceletNf<A>
+    where
+        A: CellAlphabet,
     {
         match normalize(store, peak, joins_at, path) {
             | Ok(normal) => normal,
@@ -773,6 +835,515 @@ mod tests
             bool::from(replay_equivalent(&left, &right, &store)),
             "and the replay oracle identifies the pair all the same, so the negative is the \
              under-approximation rather than a claim that they differ"
+        );
+    }
+
+    #[test]
+    fn two_interleaved_dependence_chains_layer_by_depth_and_not_by_position()
+    {
+        // TWO INTERLEAVED CHAINS, which is the shape a single chain cannot
+        // reach. `c` overlaps nothing, so dependence is position containment
+        // alone:
+        //
+        //   a @ [0,0] ── enclosed by ── x @ [0]
+        //   b @ [1,0] ── enclosed by ── y @ [1]
+        //
+        // and every cross pair — a/b, a/y, b/x, x/y — is incomparable, hence
+        // independent. So the dependence order is two two-element chains side
+        // by side, and the causal layering is `{a, b}` then `{x, y}`.
+        //
+        // What that separates: a recurrence taking the earlier step's POSITION
+        // INDEX in the recorded order instead of its depth is still a valid
+        // topological layering — it increases strictly along every dependence
+        // edge — so it fires, it reaches the join, and every single-chain
+        // fixture agrees with it. Here it does not: recorded feet-then-heads
+        // left to right it puts the left head at 1 and the right head at 2, and
+        // recorded right to left it puts them the other way round, so the two
+        // recorded orders of ONE trace class get two different schedules. The
+        // depth recurrence gives both the same one.
+        let mut store = CellStore::new();
+        let cell = store.insert(toy_cell(Toy::add(Toy::Zero, Toy::Zero), Toy::Zero));
+        let branch = Toy::add(Toy::add(Toy::Zero, Toy::Zero), Toy::Zero);
+        let peak = Toy::add(branch.clone(), branch);
+        let left_foot = CellApp {
+            cell,
+            at: at([0, 0]),
+        };
+        let left_head = CellApp { cell, at: at([0]) };
+        let right_foot = CellApp {
+            cell,
+            at: at([1, 0]),
+        };
+        let right_head = CellApp { cell, at: at([1]) };
+        // NON-VACUITY, on the dependence shape rather than on the addresses:
+        // the fixture is only two chains if these four answers hold.
+        assert_eq!(
+            PositionOrder::EnclosedBy,
+            ToyAlphabet::position_order(&left_foot.at, &left_head.at),
+            "the left head encloses the left foot, so the pair is dependent"
+        );
+        assert_eq!(
+            PositionOrder::EnclosedBy,
+            ToyAlphabet::position_order(&right_foot.at, &right_head.at),
+            "and the right head encloses the right foot"
+        );
+        assert_eq!(
+            PositionOrder::Incomparable,
+            ToyAlphabet::position_order(&left_foot.at, &right_foot.at),
+            "while the two chains' feet are disjoint"
+        );
+        assert_eq!(
+            PositionOrder::Incomparable,
+            ToyAlphabet::position_order(&left_head.at, &right_head.at),
+            "and so are their heads"
+        );
+        let recorded = alloc::vec![
+            left_foot.clone(),
+            right_foot.clone(),
+            left_head.clone(),
+            right_head.clone()
+        ];
+        let swapped = alloc::vec![right_foot, left_foot, right_head, left_head];
+        let join = run(&store, &peak, &recorded);
+        assert_eq!(
+            Toy::add(Toy::Zero, Toy::Zero),
+            join,
+            "the four steps collapse both branches"
+        );
+        assert_eq!(
+            join,
+            run(&store, &peak, &swapped),
+            "and the two recorded orders reach one term to begin with"
+        );
+        let recorded_nf = normalized(&store, &peak, &join, &recorded);
+        let swapped_nf = normalized(&store, &peak, &join, &swapped);
+        assert!(
+            bool::from(nf_equal(&recorded_nf, &swapped_nf)),
+            "the two recorded orders are one trace class, so they are one normal form"
+        );
+        // And the layering is asserted directly as well: layer zero is the two
+        // chain feet, layer one the two heads, each in ascending address order.
+        let stored = store.get(cell).expect("the cell is stored");
+        let mut feet = alloc::vec![
+            prim_address(stored, &at([0, 0])),
+            prim_address(stored, &at([1, 0]))
+        ];
+        feet.sort_unstable();
+        let mut heads = alloc::vec![
+            prim_address(stored, &at([0])),
+            prim_address(stored, &at([1]))
+        ];
+        heads.sort_unstable();
+        let expected: Vec<PrimId> = feet.into_iter().chain(heads).collect();
+        assert_eq!(
+            expected, recorded_nf.schedule,
+            "the schedule is layer zero then layer one, each ascending by content address"
+        );
+    }
+
+    #[test]
+    fn an_alphabet_that_calls_nesting_incomparable_trips_the_kill_signal()
+    {
+        // THE KILL SIGNAL, RAISED. This is the two-layer fixture verbatim, run
+        // over an alphabet whose `position_order` answers `Incomparable` for
+        // every pair. Nothing else changes: the cell is the same cell, the peak
+        // is the same peak, and the recorded path is the same derivation that
+        // normalizes cleanly over the toy alphabet.
+        //
+        // With the enclosing pair reported as commutable, all three
+        // applications land in layer zero and the canonical schedule is their
+        // content-address order — which does not put the ROOT application last.
+        // So the schedule reaches the root while a leaf is still unreduced and
+        // the root's redex does not exist yet. `normalize` replays that
+        // schedule, watches the step fail to fire, and refuses with the kill
+        // signal. This is the witness `ShiftedScheduleDoesNotFire` did not have.
+        let mut store: CellStore<Lying<IncomparablePositions>> = CellStore::new();
+        let c = store.insert(lying_cell(Toy::add(Toy::Zero, Toy::Zero), Toy::Zero));
+        let peak = Toy::add(
+            Toy::add(Toy::Zero, Toy::Zero),
+            Toy::add(Toy::Zero, Toy::Zero),
+        );
+        let left = CellApp {
+            cell: c,
+            at: at([0]),
+        };
+        let right = CellApp {
+            cell: c,
+            at: at([1]),
+        };
+        let root = CellApp {
+            cell: c,
+            at: at([]),
+        };
+        let recorded = alloc::vec![left, right, root.clone()];
+        let join = run(&store, &peak, &recorded);
+        assert_eq!(Toy::Zero, join, "the recorded order collapses the spine");
+        // NON-VACUITY. The refusal is `DoesNotFire` rather than
+        // `MissesTheJoin` only because the root application's content address
+        // sorts first, so the flattened layer-zero order leads with it. Were
+        // the digest ever retuned so that it sorted last, the canonical
+        // schedule would be a firing one and this fixture would stop reaching
+        // the arm — so the ordering is asserted rather than assumed.
+        let cell = store.get(c).expect("the cell is stored");
+        let root_address = prim_address(cell, &at([]));
+        let left_address = prim_address(cell, &at([0]));
+        let right_address = prim_address(cell, &at([1]));
+        assert!(
+            root_address < left_address.max(right_address),
+            "the fixture needs the root application NOT to come last in the flattened layer: \
+             {root_address:?} {left_address:?} {right_address:?}"
+        );
+        let refusal = normalize(&store, &peak, &join, &recorded)
+            .expect_err("the licensed transposition produces a schedule that cannot fire");
+        assert_eq!(
+            NormalFormObstruction::ShiftedScheduleDoesNotFire {
+                step: Box::new(root)
+            },
+            refusal,
+            "the kill signal names the canonical step that carried no redex"
+        );
+        // And the same derivation over the honest alphabet normalizes, so the
+        // refusal is attributable to the alphabet's one lie.
+        let mut honest = CellStore::new();
+        let honest_c = honest.insert(toy_cell(Toy::add(Toy::Zero, Toy::Zero), Toy::Zero));
+        let honest_path = alloc::vec![
+            CellApp {
+                cell: honest_c,
+                at: at([0]),
+            },
+            CellApp {
+                cell: honest_c,
+                at: at([1]),
+            },
+            CellApp {
+                cell: honest_c,
+                at: at([]),
+            },
+        ];
+        assert!(
+            normalize(&honest, &peak, &join, &honest_path).is_ok(),
+            "the honest alphabet keeps the enclosing application last and normalizes"
+        );
+    }
+
+    #[test]
+    fn a_non_local_term_algebra_trips_the_kill_signal_at_the_join()
+    {
+        // THE SECOND KILL SIGNAL, RAISED — and by a defect the guard cannot see
+        // even in principle. Here both guard premises hold honestly: the two
+        // positions are genuinely incomparable and the cell pair has genuinely
+        // trivial overlap, so the transposition is licensed for exactly the
+        // reasons the guard states. The alphabet's splice is what lies: a
+        // rewrite at `[i]` also resets `[1-i]`, so the two applications do not
+        // commute although nothing about positions or cell contents can say so.
+        //
+        // Both orders fire, and they reach different terms — which is what
+        // separates this arm from the one above. `normalize` replays the
+        // canonical schedule, reaches a term other than the recorded join, and
+        // refuses with `ShiftedScheduleMissesTheJoin`.
+        let mut store: CellStore<Lying<NonLocalSplice>> = CellStore::new();
+        let c = store.insert(lying_cell(Toy::add(Toy::Zero, Toy::Zero), Toy::Zero));
+        let peak = Toy::add(
+            Toy::add(Toy::Zero, Toy::Zero),
+            Toy::add(Toy::Zero, Toy::Zero),
+        );
+        let cell = store.get(c).expect("the cell is stored");
+        // NON-VACUITY, part one: the guard's own two premises really do hold.
+        assert_eq!(
+            PositionOrder::Incomparable,
+            <Lying<NonLocalSplice> as CellAlphabet>::position_order(&at([0]), &at([1])),
+            "the positions are honestly incomparable"
+        );
+        assert!(
+            overlaps_between((c, cell), (c, cell)).is_empty(),
+            "and the cell has honestly trivial overlap with itself"
+        );
+        let low = CellApp {
+            cell: c,
+            at: at([0]),
+        };
+        let high = CellApp {
+            cell: c,
+            at: at([1]),
+        };
+        // The canonical schedule of a one-layer factorization is its ascending
+        // content-address order, so recording the DESCENDING one makes the
+        // canonical schedule the transposition.
+        let (first, second) = if prim_address(cell, &low.at) < prim_address(cell, &high.at) {
+            (high, low)
+        }
+        else {
+            (low, high)
+        };
+        let recorded = alloc::vec![first, second];
+        let transposed: Vec<CellApp<Lying<NonLocalSplice>>> =
+            recorded.iter().rev().cloned().collect();
+        let join = run(&store, &peak, &recorded);
+        let elsewhere = run(&store, &peak, &transposed);
+        // NON-VACUITY, part two: the transposition really does diverge, and it
+        // really does fire — a non-firing transposition would reach the other
+        // kill-signal arm instead.
+        assert_ne!(
+            join, elsewhere,
+            "the two orders fire and reach different terms"
+        );
+        let refusal = normalize(&store, &peak, &join, &recorded)
+            .expect_err("the licensed transposition reaches a different join");
+        assert_eq!(
+            NormalFormObstruction::ShiftedScheduleMissesTheJoin {
+                reached: Box::new(elsewhere)
+            },
+            refusal,
+            "the kill signal carries the term the canonical schedule reached"
+        );
+    }
+
+    #[test]
+    fn a_withheld_convexity_warrant_empties_the_shift_quotient()
+    {
+        // THE THIRD CONJUNCT, END TO END. `convexity_discharge` is the
+        // alphabet's answer, and both shipped alphabets discharge it for every
+        // store — so nothing in the tree could previously tell whether
+        // `normalize` asks the alphabet at all, whether it layers under the
+        // answer it got, or whether the warrant it records is the one it used.
+        //
+        // Over an alphabet that withholds the warrant every pair is dependent,
+        // because the guard's third conjunct refuses and the normal form reads
+        // any refusal as dependence. So the quotient is empty: the canonical
+        // schedule is the recorded order, and two orders of a pairwise
+        // independent spine — which the toy alphabet identifies — stay apart.
+        let count = RedexCount(3);
+        let mut store: CellStore<Lying<WithheldConvexity>> = CellStore::new();
+        let f = store.insert(lying_cell(Toy::succ(Toy::Zero), Toy::Zero));
+        let peak = spine(count);
+        let recorded: Vec<CellApp<Lying<WithheldConvexity>>> = spine_positions(count)
+            .into_iter()
+            .map(|position| CellApp {
+                cell: f,
+                at: position,
+            })
+            .collect();
+        let reversed: Vec<CellApp<Lying<WithheldConvexity>>> =
+            recorded.iter().rev().cloned().collect();
+        let join = run(&store, &peak, &recorded);
+        assert_eq!(
+            join,
+            run(&store, &peak, &reversed),
+            "the spine's redexes commute semantically, whatever the warrant says"
+        );
+        let recorded_nf = normalized(&store, &peak, &join, &recorded);
+        let reversed_nf = normalized(&store, &peak, &join, &reversed);
+        assert_eq!(
+            ConvexityDischarge::ReCheckRequired,
+            recorded_nf.convexity,
+            "the normal form records the warrant it was actually taken under"
+        );
+        let cell = store.get(f).expect("the cell is stored");
+        let expected: Vec<PrimId> = recorded
+            .iter()
+            .map(|step| prim_address(cell, &step.at))
+            .collect();
+        assert_eq!(
+            expected, recorded_nf.schedule,
+            "with no warrant no transposition is licensed, so the schedule is the recorded order"
+        );
+        assert!(
+            !bool::from(nf_equal(&recorded_nf, &reversed_nf)),
+            "so the two orders are two normal forms — the quotient is empty here"
+        );
+        // The contrast: the identical spine over the honest alphabet, which
+        // discharges the conjunct, identifies exactly this pair.
+        let mut honest = CellStore::new();
+        let honest_f = honest.insert(f_cell());
+        let honest_recorded: Vec<CellApp<ToyAlphabet>> = spine_positions(count)
+            .into_iter()
+            .map(|position| CellApp {
+                cell: honest_f,
+                at: position,
+            })
+            .collect();
+        let honest_reversed: Vec<CellApp<ToyAlphabet>> =
+            honest_recorded.iter().rev().cloned().collect();
+        let honest_join = run(&honest, &peak, &honest_recorded);
+        let honest_nf = normalized(&honest, &peak, &honest_join, &honest_recorded);
+        let honest_reversed_nf = normalized(&honest, &peak, &honest_join, &honest_reversed);
+        assert_eq!(
+            ConvexityDischarge::LeftConnectedOverAcyclicTarget,
+            honest_nf.convexity,
+            "the toy alphabet discharges the conjunct"
+        );
+        assert!(
+            bool::from(nf_equal(&honest_nf, &honest_reversed_nf)),
+            "and with the warrant in hand the same two orders are one normal form"
+        );
+    }
+
+    #[test]
+    fn two_primitives_sharing_a_content_address_are_refused_rather_than_merged()
+    {
+        // THE COLLISION ARM, REACHED. The address is an ordering device and
+        // nowhere the identity witness, and this is the fixture that can tell:
+        // two structurally distinct cells whose difference the digest cannot see
+        // are two primitives under one key, and `normalize` declines the normal
+        // form instead of merging them.
+        //
+        // Reaching it needs an alphabet, not a fixture. Within one store a
+        // content has exactly one identifier, because `CellStore::insert`
+        // deduplicates on structural equality — so over both shipped alphabets
+        // two occurrences sharing an address share a primitive and the arm is
+        // dead. It stops being dead as soon as some field of a cell is outside
+        // the digest's reach, which `CollidingAddresses` arranges legally: the
+        // orientation tag hashes to nothing.
+        let mut store: CellStore<Lying<CollidingAddresses>> = CellStore::new();
+        let faces = (
+            Toy::add(Toy::Zero, Toy::var(ToyNameRef("x"))),
+            Toy::add(Toy::Zero, Toy::succ(Toy::var(ToyNameRef("x")))),
+        );
+        let given = store.insert(lying_cell(faces.0.clone(), faces.1.clone()));
+        let derived = store.insert(reoriented_lying_cell(faces.0, faces.1));
+        assert_ne!(
+            given, derived,
+            "the store holds the two orientations under two identifiers"
+        );
+        let first = CellApp {
+            cell: given,
+            at: at([]),
+        };
+        let second = CellApp {
+            cell: derived,
+            at: at([]),
+        };
+        let peak = Toy::add(Toy::Zero, Toy::Zero);
+        let recorded = alloc::vec![first.clone(), second.clone()];
+        let join = run(&store, &peak, &recorded);
+        assert_eq!(
+            Toy::add(Toy::Zero, Toy::succ(Toy::succ(Toy::Zero))),
+            join,
+            "each application wraps the second argument once more, so both fire and both move it"
+        );
+        // NON-VACUITY: the two occurrences really do share an address, and they
+        // really are two different primitives.
+        let given_cell = store.get(given).expect("the given cell is stored");
+        let derived_cell = store.get(derived).expect("the derived cell is stored");
+        let address = prim_address(given_cell, &at([]));
+        assert_eq!(
+            address,
+            prim_address(derived_cell, &at([])),
+            "the digest cannot see the orientation the two cells differ in"
+        );
+        assert_ne!(first, second, "and the two recorded steps are not one step");
+        let refusal = normalize(&store, &peak, &join, &recorded)
+            .expect_err("two primitives under one address are refused, never merged");
+        assert_eq!(
+            NormalFormObstruction::ContentAddressCollision {
+                address,
+                held: Box::new(PrimCert(first)),
+                offered: Box::new(PrimCert(second)),
+            },
+            refusal,
+            "the refusal names the shared address and both primitives"
+        );
+    }
+
+    #[test]
+    fn the_metavariable_seam_is_what_keeps_a_diverging_nested_pair_dependent()
+    {
+        // A REACHABILITY PREMISE, PINNED SO IT FAILS WHEN IT CHANGES. This
+        // fixture reaches no refusal, and that is what it asserts.
+        //
+        // `swap` and `peel` at nested positions both fire in either order and
+        // reach DIFFERENT terms, so an independence relation that licensed
+        // their transposition would hand `normalize` a firing, diverging
+        // canonical schedule. Over an alphabet that calls every position pair
+        // incomparable, the only conjunct left standing between the guard and
+        // that transposition is the overlap one — and it holds for a reason
+        // that is an over-approximation rather than a fact about these two
+        // cells: the enumerator treats a metavariable position in a right-hand
+        // side as a composition seam, and both cells expose a hole there.
+        //
+        // So `normalize` keeps the recorded order and returns a normal form.
+        // When the enumerator stops counting a bare hole as a seam, this pair
+        // becomes independent, the canonical schedule becomes the transposition,
+        // and the `Ok` below becomes `ShiftedScheduleMissesTheJoin` — at which
+        // point this fixture is the one to convert into that arm's witness over
+        // an honest term algebra.
+        let mut store: CellStore<Lying<IncomparablePositions>> = CellStore::new();
+        let swap = store.insert(lying_cell(
+            Toy::add(Toy::var(ToyNameRef("x")), Toy::var(ToyNameRef("y"))),
+            Toy::add(Toy::var(ToyNameRef("y")), Toy::var(ToyNameRef("x"))),
+        ));
+        let peel = store.insert(lying_cell(
+            Toy::succ(Toy::var(ToyNameRef("m"))),
+            Toy::var(ToyNameRef("m")),
+        ));
+        let peak = Toy::add(Toy::succ(Toy::Zero), Toy::succ(Toy::succ(Toy::Zero)));
+        let outer = CellApp {
+            cell: swap,
+            at: at([]),
+        };
+        let inner = CellApp {
+            cell: peel,
+            at: at([0]),
+        };
+        let swap_cell = store.get(swap).expect("swap is stored");
+        let peel_cell = store.get(peel).expect("peel is stored");
+        // NON-VACUITY, part one: the pair really would diverge under a
+        // transposition, in both directions of firing.
+        let forward = alloc::vec![outer.clone(), inner.clone()];
+        let backward = alloc::vec![inner, outer];
+        assert_ne!(
+            run(&store, &peak, &forward),
+            run(&store, &peak, &backward),
+            "the two orders fire and reach different terms"
+        );
+        // NON-VACUITY, part two: the position conjunct is neutralized, so the
+        // overlap conjunct is the whole of what keeps the pair dependent — and
+        // it answers because of the hole, not because these two cells interfere
+        // at a ground seam.
+        assert_eq!(
+            PositionOrder::Incomparable,
+            <Lying<IncomparablePositions> as CellAlphabet>::position_order(&at([]), &at([0])),
+            "this alphabet reports the nesting pair as commutable"
+        );
+        assert!(
+            !overlaps_between((swap, swap_cell), (peel, peel_cell)).is_empty(),
+            "and the enumerator answers a composition overlap at the swap's hole"
+        );
+        assert!(
+            !overlaps_between((peel, peel_cell), (swap, swap_cell)).is_empty(),
+            "in the other ordered direction too, at the peel's own hole"
+        );
+        let (descending, ascending) =
+            if prim_address(swap_cell, &at([])) < prim_address(peel_cell, &at([0])) {
+                (&backward, &forward)
+            }
+            else {
+                (&forward, &backward)
+            };
+        let join = run(&store, &peak, descending);
+        let normal = normalize(&store, &peak, &join, descending)
+            .expect("the overlapping pair keeps its recorded order, so the schedule replays");
+        let expected: Vec<PrimId> = descending
+            .iter()
+            .map(|step| {
+                let cell = store.get(step.cell).expect("the step names a stored cell");
+                prim_address(cell, &step.at)
+            })
+            .collect();
+        assert_eq!(
+            expected, normal.schedule,
+            "the recorded order survives, although the ascending address order is the other one"
+        );
+        assert_ne!(
+            expected,
+            ascending
+                .iter()
+                .map(|step| {
+                    let cell = store.get(step.cell).expect("the step names a stored cell");
+                    prim_address(cell, &step.at)
+                })
+                .collect::<Vec<PrimId>>(),
+            "and the two orders really are two different schedules"
         );
     }
 
