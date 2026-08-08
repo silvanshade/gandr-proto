@@ -432,7 +432,8 @@ At the circuit kit the surplus is the **vertex ordering**, and no interpretation
 The code relation carries its own three laws, which the presentation is what forced: it is the relation the laws are stated at and the relation the representation map lands in, so reflexivity alone does not suffice.
 All three are available heterogeneously and none of them is available homogeneously — the endpoints must stay distinct variables, or a constructor match has a reflexive equation to delete, which is the same wall that defers decidable equality on the linear carrier and not a second one.
 
-At the circuit kit, eight of the interface's thirteen fields are inhabited against the tree as it stands, and the five that are not all descend from one construction.
+At the circuit kit, ten of the interface's thirteen fields are inhabited against the tree as it stands, and the three that are not — the two unit laws and associativity — all descend from one construction, which is now built.
+An earlier revision of this sentence recorded eight of thirteen, from before the former and its interpretation law landed.
 The interpretation is the vertex family **indexed by the profile it spans**, which is what typing the substituted family requires — and it is derived rather than declared.
 A position with its profile read back by lookup and a position with its profile in the index are the same positions addressed two ways, so the refinement belongs to the **listing** and not to the shape: `Gandr.Shape.Graph.Occ` is the position family with its element carried, and the arity interpretation is its instance at the vertex listing.
 Neither addressing replaces the other, and the rule is stated where the generic family is defined: reasoning about **order**, or relating two positions of one listing, wants the bare position — reachability, adjacency, incidence, rank and connectivity are all of that kind, and profile indices there carry nothing — while **typing a datum at a position** is the one job that needs the element in the index.
@@ -485,9 +486,23 @@ Substitution reuses six of grafting's ten (`wire-in`, `match-insert`, `insert-sh
 Its four new ones are `match-close`, its shape-level lift past each published port block, the block iteration, and the `Closed` record.
 The four it does not need are grafting's own: `preplug`, `lwhisk`, `match-lwhisk`, and `match-comp` with its accumulator.
 
+> **As built, the estimate is low by two, and the excess is one structural fact rather than an oversight.** The former, its interpretation law and the incidence lemmas beneath it are landed in `Gandr.Arity.Universe.Circuit`; the reuse table above held exactly, and the four unneeded auxiliaries were unneeded.
+> What the estimate missed is that **the block iteration is two operations and not one**, because a vertex's two port blocks are crossed: the replacement's input legs lead the merged source interface while the ports the vertex published to the sinks sit behind the replacement's own output legs.
+> So the input block is closed by an iteration that walks each sink position past one further block (`close-cross`) and the output block, which by then leads both interfaces, by the plain iteration (`close-block`).
+> The crossed iteration's result interface is not determined by its inputs, so it is carried in a record on `Widened`'s and `Regroup`'s pattern (`Crossed`) — which is what keeps a computed list out of every index downstream of it.
+> Six new pieces, then, against the estimated four; the estimate of what would be _reused_ was exact.
+
+The build also located one foundation step, which the scoping had not looked for because nothing above it had ever met one.
+
+> **The closure meets a `--without-K` step nothing in the listing algebra had met before.** Every comparison the algebra already makes is between insertions of different colours — a removed source against a cut's inner port, a traced sink against a wiring's — so the view's same-slot verdict unifies two colour variables and deletes nothing.
+> The single-wire closure compares two positions a caller always supplies at **one** colour, and matching the same-slot verdict there would have to eliminate a reflexive equation on colours.
+> Generalizing the two colours and carrying their equation as a datum removes the deletion rather than paying an h-level condition for it, so the closure stays free of any hypothesis.
+> The unit laws are a separate question and are not settled: what they need is that the witness the closure rebuilt a node with is the witness the original node carried, and both natural formulations of _that_ are stuck on a reflexive list equation — the same condition `graft-idnˡ` and `graft-idnʳ` already take as parameters.
+
 **And the closure's degenerate case has no term in the carrier, which is what the scoping was for.** A vertex whose output is wired back to its own input is a legal shape; a bare wire of the same profile is a legal code; substituting the second at the first closes a circle with no vertex, no leg and one edge.
 `Gandr.Shape.Graph`'s carrier excludes exactly that object, deliberately and by name.
 Checked rather than argued: over closed interfaces, a shape with no vertex has no edge either (`Gandr.Arity.Universe.Circuit.no-circle`, with `selfloop` and `bare-wire` beside it).
+And the built former computes on exactly that pair: substituting the bare wire at the self-loop's vertex returns the empty wiring together with one circle, by `refl` (`selfloop-counted`), which is what stops the count from being a field the construction carries and never populates.
 
 > **The exclusion is of a _derivation_, and what the closure needs is an _adjunction_ of the object.** Deriving a circle would need a cup, which inhabits hom-sets that must stay empty; a circle consumes no port and produces none, so it disturbs neither the downward condition nor the finiteness that rests on it ([[#The rung, identified]]).
 > That distinction is the whole width of the repair, and the standing ruling against adding a cup to make an operation total is untouched by it.
@@ -518,7 +533,7 @@ What is true, and narrower, is that the open fragment is closed under **composit
 The trace is not a downward-category operation but the wheeled prop's, and it is what generates the count.
 `Shape` is untouched, and so are the incidence, `WheelFree`, `Acyclic`, the cell record and every refuter standing on them; `Pos`, `lab`, `one` and `one-elim` are unchanged because a circle carries no vertex; the unit code counts zero, the merger adds counts, and substitution adds what the closure returns.
 
-Two things the ruling owes, and one prediction it makes:
+Two things the ruling owes, and one prediction it makes — the two remain owed, and both are now stated as Agda types beside the former rather than only here:
 
 * **an agreement lemma** between the derived grafting and the built `graft`, without which `verts-graft`, the two unit laws and the merger's incidence theorems do not transfer, and the tree carries two compositions;
 * **the count law** — that the two sides of associativity close the same number of circles — which is the source's $k$ formula as an induction, and is the one place the count is paid for rather than carried;
