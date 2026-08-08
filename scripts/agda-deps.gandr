@@ -21,7 +21,16 @@
 //
 // The `metatheory/libraries` line is written for an ad-hoc `agda` invocation
 // outside the task surface; `mise run agda:check` passes the vendored `src`
-// directory with `-i` and does not read it.
+// directory with `-i` and does not read it. It is gitignored, and this script
+// rewrites it on every run.
+//
+// The two `printf` lines inside the block are CAPTURED, not relayed: a shell
+// block's output becomes the reply record and never reaches the terminal, so
+// nothing here is visible to a caller and neither is git's clone progress.
+// They are kept because they are the command's own log if it is ever run by
+// hand, and because they must stay byte-identical to the corpus copy. The
+// task's announcement line is what a caller actually sees; the capability gap
+// is tracked as bead gandr-czio.
 {
   run vendored <- #!{
 sh -c 'set -eu; vendor="$PWD/metatheory/vendor"; mkdir -p "$vendor"; stdlib="$vendor/agda-stdlib"; stdlib_lib="$stdlib/standard-library.agda-lib"; if [ ! -f "$stdlib_lib" ]; then printf "cloning agda-stdlib v2.4 ...\n"; git clone --depth 1 --branch v2.4 https://github.com/agda/agda-stdlib.git "$stdlib"; fi; printf "%s\n" "$stdlib_lib" > "$PWD/metatheory/libraries"; printf "agda deps ready: stdlib v2.4\n"';

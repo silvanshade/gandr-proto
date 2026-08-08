@@ -128,7 +128,8 @@ default-features = false
 version = "0.5.7"
 default-features = false
 
-# The gandr toolchain driver (REPL, script runner, subcommand namespace).
+# The gandr toolchain driver: the script runner, with the REPL and the
+# tui/lsp/mcp/fmt/build subcommand namespace deferred.
 # consumers: none (binary root)
 [workspace.dependencies.gandr]
 path = "crates/surface-driver"

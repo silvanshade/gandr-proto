@@ -17,8 +17,8 @@
 //!
 //! That leaves the binary's own `agda-deps` command (`main.rs`) as a second
 //! implementation of the same provisioning step with no task calling it.
-//! Whether it is retired or documented as a driver-independent fallback is an
-//! open owner decision, not a settled state.
+//! Whether it is retired or documented as a driver-independent fallback is
+//! filed for the owner as `gandr-wvd.24.7-question-02`, not a settled state.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;

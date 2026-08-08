@@ -12,7 +12,9 @@
 //! error so a caller that never opened the file can still say which file
 //! failed. The script runner (`gandr <file>`) is its production consumer, and
 //! the shebang line a `#!/usr/bin/env gandr` script opens with is grammar
-//! trivia, so no caller strips it.
+//! trivia, so no caller strips it. Trivia specifically at `#!/` — the labeler
+//! routes any other byte after `#!` into a shell block — so an interpreter
+//! line written with a space, `#! /usr/bin/env gandr`, is not a shebang here.
 
 use alloc::string::String;
 use std::path::Path;
@@ -99,8 +101,9 @@ impl From<link::LinkError> for RunError
 /// link, or type-check.
 ///
 /// # Contract
-/// - requires: `path` names a readable UTF-8 gandr source file; a leading `#!…`
-///   shebang line is ordinary grammar trivia and needs no stripping.
+/// - requires: `path` names a readable UTF-8 gandr source file; a leading
+///   `#!/…` shebang line is ordinary grammar trivia and needs no stripping. The
+///   `/` is load-bearing — `#!` followed by any other byte opens a shell block.
 /// - ensures: on success the file's program has been run once under the same
 ///   prelude and host-effect handler [`run_source`] installs.
 /// - provides: the path-shaped source entry point for script-running faces.
@@ -116,6 +119,7 @@ impl From<link::LinkError> for RunError
 /// - witness: `run::run_source_file_runs_a_script_file`
 /// - witness: `run::run_source_file_reports_the_path_of_an_absent_file`
 /// - witness: `run::run_source_file_surfaces_a_source_failure_unchanged`
+/// - witness: `run::run_source_file_accepts_an_executable_shebang_line`
 #[inline]
 pub fn run_source_file(path: &Path) -> Result<ShellOutcome, RunFileError>
 {

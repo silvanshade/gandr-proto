@@ -24,6 +24,7 @@ use std::process::ExitCode;
 use gandr_core_checker::outcome::Eval;
 use gandr_runtime_host::ShellOutcome;
 use gandr_surface_engine::run::RunFileError;
+use gandr_surface_engine::run::run_source_file;
 
 /// The exit status of a run whose program completed normally.
 const EXIT_COMPLETED: ExitStatus = ExitStatus(0_i64);
@@ -82,8 +83,20 @@ impl From<ExitStatus> for ExitCode
     ///   (`exit -1` leaves 255).
     /// - provides: the total status-to-`ExitCode` conversion the driver's exit
     ///   paths share.
-    /// - panics: none — the reduction is checked and the reduced value is
-    ///   always a byte.
+    /// - panics: none. Neither fallback below is reachable:
+    ///   `checked_rem_euclid` returns `None` only for a zero divisor or
+    ///   `i64::MIN % -1`, and the divisor here is the constant 256;
+    ///   `rem_euclid` with a positive divisor yields `0..256`, which
+    ///   `u8::try_from` always accepts. They are written as totals rather than
+    ///   as live failure modes.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — identity, negative wrap, and above-range wrap
+    ///   are separated by three exit codes a script can actually request: 7
+    ///   passes through, -1 becomes 255, and 300 becomes 44.
+    /// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
+    /// - witness: `cli::tests::a_negative_exit_code_wraps_the_way_a_shell_wraps_it`
+    /// - witness: `cli::tests::an_out_of_range_exit_code_is_reduced_to_a_byte`
     #[inline]
     fn from(value: ExitStatus) -> Self
     {
@@ -125,13 +138,16 @@ fn main() -> ExitCode
 
 /// Parse `arguments`, serve the request, and report the status to leave with.
 ///
-/// Diagnostics go to standard error and nothing else goes to standard output,
-/// so a script's own output reaches its consumer unmixed.
+/// An explicit help request is not an error, so [`USAGE`] goes to standard
+/// output when it was asked for and to standard error when it is a complaint
+/// about the command line. Nothing else the driver writes reaches standard
+/// output, so a script's own output reaches its consumer unmixed.
 ///
 /// # Contract
 /// - requires: `arguments` begins with the executable name.
-/// - ensures: a usage request prints [`USAGE`] and reports [`EXIT_COMPLETED`];
-///   a run request reports the status [`classify`] derives from the run.
+/// - ensures: a usage request prints [`USAGE`] to standard output and reports
+///   [`EXIT_COMPLETED`]; a run request reports the status [`classify`] derives
+///   from the run.
 /// - provides: the driver's complete argument-to-status behaviour, separated
 ///   from the process boundary so a test can drive it.
 /// - fails: a malformed command line prints [`USAGE`] to standard error and
@@ -154,17 +170,15 @@ where
 {
     match parse_request(arguments) {
         | Some(Request::Usage) => {
-            report(USAGE);
+            announce(USAGE);
             EXIT_COMPLETED
         },
-        | Some(Request::Run(path)) => {
-            match gandr_surface_engine::run::run_source_file(std::path::Path::new(&path)) {
-                | Ok(outcome) => classify(&outcome),
-                | Err(error) => {
-                    report(&refusal(&error));
-                    EXIT_REFUSED
-                },
-            }
+        | Some(Request::Run(path)) => match run_source_file(std::path::Path::new(&path)) {
+            | Ok(outcome) => classify(&outcome),
+            | Err(error) => {
+                report(&refusal(&error));
+                EXIT_REFUSED
+            },
         },
         | None => {
             report(USAGE);
@@ -178,20 +192,33 @@ where
 /// # Contract
 /// - requires: `arguments` begins with the executable name, which is skipped.
 /// - ensures: `Some(Request::Usage)` for exactly `--help` or `-h`, and
-///   `Some(Request::Run(path))` for exactly one non-flag operand.
+///   `Some(Request::Run(path))` for exactly one operand that is not one of
+///   those and does not begin with `-`.
 /// - provides: the closed accepted-command-line surface of the script-runner
-///   face; a deferred subcommand is not silently read as a path.
-/// - fails: returns `None` for no operand, more than one operand, or an operand
-///   that looks like a flag.
+///   face.
+/// - fails: returns `None` for no operand, for more than one argument, and for
+///   a UTF-8 argument that begins with `-` and is neither help spelling.
 /// - panics: none.
+/// - intension: the arity check runs BEFORE the help check, so `--help` with a
+///   trailing argument is a malformed command line rather than a help request.
+///   A bare `-` and a non-UTF-8 argument beginning with `-` are both taken as
+///   paths: there is no standard-input face for `-` to mean, and a path is not
+///   required to be UTF-8. A deferred face named WITHOUT a leading dash —
+///   `gandr tui` — is therefore read as a path and fails as a missing file, not
+///   as an unknown subcommand; that is honest only while no subcommand exists,
+///   and the first subcommand to land owes this function a real command table.
 ///
 /// # Adequacy
-/// - hypothesis: L3 only — the accepted forms and the four refusals are
-///   separated by the argument lists the CLI suite passes to the real binary.
+/// - hypothesis: L3 only — the accepted forms and the three refusal returns are
+///   separated by the argument lists the CLI suite passes to the real binary,
+///   with the bare-dash and deferred-subcommand paths pinned separately because
+///   the intension above is the surprising part.
 /// - witness: `cli::tests::no_argument_prints_usage_and_refuses`
 /// - witness: `cli::tests::a_second_operand_is_refused`
 /// - witness: `cli::tests::an_unknown_flag_is_refused`
 /// - witness: `cli::tests::help_prints_usage_and_leaves_successfully`
+/// - witness: `cli::tests::a_bare_dash_is_a_path_not_standard_input`
+/// - witness: `cli::tests::a_deferred_subcommand_name_is_read_as_a_path`
 fn parse_request<Arguments>(arguments: Arguments) -> Option<Request>
 where
     Arguments: IntoIterator<Item = OsString>,
@@ -266,6 +293,25 @@ fn classify(outcome: &ShellOutcome) -> ExitStatus
 fn refusal(error: &RunFileError) -> String
 {
     format!("gandr: {error}\n")
+}
+
+/// Write one line to standard output, dropping a write failure.
+///
+/// # Contract
+/// - ensures: `text` is written to standard output when standard output accepts
+///   it, and is discarded when it does not.
+/// - provides: the driver's only standard-output sink, used for output the
+///   caller asked for rather than for a complaint.
+/// - fails: a closed or full standard output is dropped rather than escalated,
+///   for the same reason [`report`] drops one.
+/// - panics: none.
+fn announce<'text, Text>(text: Text)
+where
+    Text: Into<DiagnosticText<'text>>,
+{
+    let mut stdout = std::io::stdout();
+    drop(stdout.write_all(text.into().0.as_bytes()));
+    drop(stdout.flush());
 }
 
 /// Write one diagnostic to standard error, dropping a write failure.

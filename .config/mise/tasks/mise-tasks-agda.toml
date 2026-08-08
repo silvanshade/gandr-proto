@@ -26,10 +26,17 @@ description = "Vendor the pinned agda-stdlib (v2.4, verified under Agda 2.8.0) i
 # the toolchain is for, and the script's `proc.exit` carries the shell's status
 # out as the task's status. The task body is the announcement only, because a
 # `#!{ … }` block captures its command's output rather than relaying it — a
-# clone can take minutes and would otherwise be silent.
+# clone can take minutes and would otherwise be silent, and neither the script's
+# own progress lines nor git's reach the terminal (bead gandr-czio).
+#
+# Two things the previous inline body did that this does not, recorded so they
+# are traded deliberately rather than lost: it distinguished warm from cold in
+# what it printed, which an announcement running before the guard cannot; and it
+# needed only `git` and `sh`, where this needs a `gandr` binary and so puts Agda
+# provisioning downstream of a working Rust build.
 run = '''
 set -eu
-echo "vendoring agda-stdlib v2.4 into metatheory/vendor (existing checkout left alone) ..."
+echo "provisioning agda-stdlib v2.4 into metatheory/vendor; an existing checkout is left alone, and a fresh clone runs several silent minutes ..."
 cargo run --quiet -p gandr -- scripts/agda-deps.gandr
 '''
 

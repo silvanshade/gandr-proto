@@ -1181,7 +1181,7 @@ fn agda_workspace_root(workspace_root: Option<&Path>) -> Result<PathBuf, GateErr
 ///   provisions, with typed Git argv and shared Git environment sanitization.
 ///   No task invokes it: `mise run agda:deps` runs the gandr script, and
 ///   whether this command is retired or kept as a driver-independent fallback
-///   is an open owner decision.
+///   is filed for the owner as `gandr-wvd.24.7-question-02`.
 /// - fails: returns typed filesystem, output, or Git status errors.
 /// - panics: none.
 /// - intension: skips Git when the `.agda-lib` file already exists; otherwise
@@ -1294,8 +1294,11 @@ fn write_agda_libraries_file(plan: &AgdaDependencyPlan) -> Result<(), GateError>
 ///
 /// # Contract
 /// - ensures: writes and flushes `agda deps ready: stdlib v2.4\n` to stdout.
-/// - provides: the same success marker `scripts/agda-deps.gandr` prints, so the
-///   two provisioning paths stay observably identical while both exist.
+/// - provides: the success marker this command's caller reads. The gandr script
+///   carries the same `printf` text, but a `#!{ … }` block lowers to the
+///   captured spawn mode, so the script's copy never reaches a terminal — the
+///   two provisioning paths agree on what they DO and differ on what a caller
+///   SEES, which is the gap `gandr-czio` tracks.
 /// - fails: returns a typed stdout write or flush error.
 /// - panics: none.
 ///

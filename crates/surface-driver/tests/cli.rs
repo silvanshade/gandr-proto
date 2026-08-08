@@ -178,10 +178,78 @@ mod tests
             ProcessStatus(Some(0_i32)),
             "asking for help is not an error"
         );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("usage: gandr <file>"),
+            "help was asked for, so it belongs on standard output; got {stdout}"
+        );
+        assert!(
+            output.stderr.is_empty(),
+            "a satisfied request writes no complaint; got {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    fn a_bare_dash_is_a_path_not_standard_input()
+    {
+        // There is no standard-input face for `-` to mean, so it is an ordinary
+        // (and almost certainly absent) filename. Pinned because the flag guard
+        // exempts it deliberately, and an exemption with no test reads as one.
+        let output = drive(["-"]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(2_i32)),
+            "a bare dash is a path, so it fails as a missing file"
+        );
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.contains("usage: gandr <file>"),
-            "help must print the usage text; got {stderr}"
+            stderr.contains("cannot read `-`"),
+            "the refusal must name the path it tried; got {stderr}"
+        );
+    }
+
+    #[test]
+    fn a_deferred_subcommand_name_is_read_as_a_path()
+    {
+        // `tui` carries no leading dash, so the flag guard does not see it and
+        // it is taken as a filename. Honest only while no subcommand exists;
+        // the first one to land must replace this with a real command table,
+        // and this case is what will fail when it does.
+        let output = drive(["tui"]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(2_i32)),
+            "a deferred face name is refused, though as a missing file"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("cannot read `tui`"),
+            "the refusal names it as a path, not as a subcommand; got {stderr}"
+        );
+    }
+
+    #[test]
+    fn a_negative_exit_code_wraps_the_way_a_shell_wraps_it()
+    {
+        let script = ScratchScript::write("exit-negative", "{ proc.exit(-1) }\n");
+        let output = drive([&script.path]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(255_i32)),
+            "`exit -1` leaves 255, as it does from a shell"
+        );
+    }
+
+    #[test]
+    fn an_out_of_range_exit_code_is_reduced_to_a_byte()
+    {
+        let script = ScratchScript::write("exit-wide", "{ proc.exit(300) }\n");
+        let output = drive([&script.path]);
+        assert_eq!(
+            status_of(&output),
+            ProcessStatus(Some(44_i32)),
+            "a code wider than a byte is reduced modulo 256"
         );
     }
 
