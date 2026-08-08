@@ -19,11 +19,13 @@
 // is untouched and disjoint.
 
 // The congruence cell — one diagram with two disjoint redexes, which is the
-// shape a term syntax cannot write because a term has one root.
+// shape a term syntax cannot write because a term has one root. A `sign`
+// block presents sorts, operations, and rules only: the item-level `data`
+// member is retired (a family is declared once, whole, as a nested generator
+// block — see `surface/data-declarations.gandr`), and a rule telescope's
+// `data x : Nat` binders are a different slot, unaffected.
 sign Nat {
   sort Nat : Type
-  data Zero : Nat                      // sugar for: data Zero : () --> (_ : Nat)
-  data Succ : Nat --> Nat              // sugar for: data Succ : (_ : Nat) --> (_ : Nat)
   oper add : (Nat, Nat) --> Nat
 
   rule cong2 : (
@@ -45,12 +47,11 @@ oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
   feed : (next) --> (state);
 }
 
-// The sugar ladder written out: the same two declarations in the named-port
-// normal form the elaborator and the name-set fold see.
+// The sugar ladder written out: the operation in the named-port normal form
+// the elaborator and the name-set fold see (unnamed tuple inputs mint fresh
+// names in order).
 sign NatDesugared {
   sort Nat : Type
-  data Zero : () --> (_ : Nat)
-  data Succ : (_ : Nat) --> (_ : Nat)
   oper add : (l : Nat, r : Nat) --> (sum : Nat)
 }
 

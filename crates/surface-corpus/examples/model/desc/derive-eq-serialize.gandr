@@ -6,8 +6,11 @@
 // receive distinct tag encodings. The harness constructs those described values
 // from this declaration, so the example checks the generic consumers rather
 // than duplicating them as datatype-specific code.
-data Bit { Off, On }
+data Bit : Type {
+  Off : Bit;
+  On : Bit;
+}
 
 //@ mode: desc
-//@ expect-desc-render: sign Bit { sort Bit : Type; data Off : Bit; data On : Bit }
+//@ expect-desc-render: sign Bit { sort Bit : Type }
 //@ expect-desc-unit-consumers: clean

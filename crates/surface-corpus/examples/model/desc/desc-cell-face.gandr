@@ -5,10 +5,10 @@
 // This does not run rewriting or completion. It demonstrates the stable seam:
 // surface `rule` -> an open `FreeTerm` pair with derived variable metadata in
 // the `DataDesc`; the future polygraph and CFVDC layers consume that same face.
-data NatTheory {
-  Zero,
-  oper id(x: NatTheory) -> NatTheory,
-  rule id(Zero) ==> Zero
+data NatTheory : Type {
+  Zero : NatTheory;
+  oper id(x : NatTheory) -> NatTheory;
+  rule id(Zero) ==> Zero;
 }
 
 //@ mode: desc

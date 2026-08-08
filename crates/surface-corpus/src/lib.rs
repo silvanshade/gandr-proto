@@ -1333,7 +1333,7 @@ fn check_desc(
             messages.join(" | ")
         )];
     }
-    if elaborated.descs.is_empty() {
+    if elaborated.descs.is_empty() && !asserts_decline {
         return vec!["the description example elaborated no declarations".to_owned()];
     }
     let rendered: Vec<String> = elaborated
@@ -1641,7 +1641,7 @@ mod tests
                 "@ mode: desc\n",
                 "//",
                 "@ expect-desc-store-cells: lots\n",
-                "data Bit { Off, On }"
+                "data Bit : Type { Off : Bit; On : Bit; }"
             ))
             .unwrap_err()
             .contains("non-integer stored cell count"),
@@ -1657,7 +1657,7 @@ mod tests
         // many-out `op` is declined with an inspectable reason.
         assert!(
             check_case(concat!(
-                "data NatId { Zero, oper id(x: NatId) -> NatId, rule id(Zero) ==> Zero }\n",
+                "data NatId : Type { Zero : NatId; oper id(x : NatId) -> NatId; rule id(Zero) ==> Zero; }\n",
                 "//",
                 "@ mode: desc\n",
                 "//",
@@ -1668,7 +1668,7 @@ mod tests
         );
         assert!(
             check_case(concat!(
-                "data NatId { Zero, oper id(x: NatId) -> NatId, rule id(Zero) ==> Zero }\n",
+                "data NatId : Type { Zero : NatId; oper id(x : NatId) -> NatId; rule id(Zero) ==> Zero; }\n",
                 "//",
                 "@ mode: desc\n",
                 "//",
@@ -1680,7 +1680,7 @@ mod tests
         );
         assert!(
             check_case(concat!(
-                "data NatId { Zero, oper id(x: NatId) -> NatId }\n",
+                "data NatId : Type { Zero : NatId; oper id(x : NatId) -> NatId; }\n",
                 "//",
                 "@ mode: desc\n",
                 "//",
@@ -1692,7 +1692,7 @@ mod tests
         );
         assert!(
             check_case(concat!(
-                "data NatDiv { Zero, oper divmod(m: NatDiv, n: NatDiv) -> (q: NatDiv, r: NatDiv) }\n",
+                "data NatDiv : Type { Zero : NatDiv; oper divmod(m : NatDiv, n : NatDiv) -> (q : NatDiv, r : NatDiv); }\n",
                 "//",
                 "@ mode: desc\n",
                 "//",

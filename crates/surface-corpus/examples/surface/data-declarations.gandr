@@ -1,23 +1,43 @@
 // W4d surface fold-in — `data` datatype declarations (parse-only fixture).
 //
-// GRADUATION: the concrete `data` surface enters the PBG grammar now
-// (wyrd-ku0f) so it never needs a later re-parse; the datatype SEMANTICS —
-// constructors as values, `case` elaboration, structural recursion — graduate
-// under wyrd-e0xy. This `surface/` tree is PBG-only (the committed tree-sitter
-// grammar does not produce these kinds) and firewalled from lowering / eval:
-// the parser's zero-obligation corpus gate is the only harness that reads it.
+// The nested generator block is THE one data-declaration form: the family head
+// binds its parameters once as typed binders and carries the index-arity
+// annotation (`: Type` when unindexed), and every generator member is a
+// judgment whose result head is the family applied to the parameter variables
+// in order. The retired Haskell-style spelling stays admissible in the
+// grammar only so the stage-0 elaborator can decline it with the respelling
+// (witnessed under `pathological/data/`).
 
-// A nullary-only enumeration (each member is a bare uppercase constructor).
-data Color { Red, Green, Blue }
+// A nullary-only enumeration (each member is a bare-result generator).
+data Color : Type {
+  Red : Color;
+  Green : Color;
+  Blue : Color;
+}
 
-// Parameterised constructors carry inline `name: Type` fields.
-data Maybe(a) { None, Some(x: a) }
+// Parameterised generators carry their fields as a local telescope; the
+// result head applies the family to the parameter variable.
+data Maybe(a : Type) : Type {
+  None : Maybe(a);
+  Some : (x : a) --> Maybe(a);
+}
 
 // Recursive datatypes need nothing new: a self-reference `Tree(a)` inside a
 // field is an ordinary type application.
-data Tree(a) { Leaf, Node(l: Tree(a), x: a, r: Tree(a)) }
+data Tree(a : Type) : Type {
+  Leaf : Tree(a);
+  Node : (l : Tree(a), x : a, r : Tree(a)) --> Tree(a);
+}
+
+// An indexed family: the head's `: Nat -> Type` declares the index arity, and
+// the index argument varies per generator — admitted unread at stage 0 (the
+// arity-substitution lane owns its semantics).
+data Vec(a : Type) : Nat -> Type {
+  Nil : Vec(a, 0);
+  Cons : (n : Nat, x : a, xs : Vec(a, n)) --> Vec(a, 1 + n);
+}
 
 // The empty (uninhabited) datatype. (Its name must be an ordinary
 // type-identifier: `Void` is a reserved primitive-type keyword, so a datatype
 // declaration uses a fresh name like `Empty`.)
-data Empty {}
+data Empty : Type {}

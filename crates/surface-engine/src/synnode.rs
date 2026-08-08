@@ -740,7 +740,7 @@ impl<'tree> SynNode<'tree>
             },
             | node_kinds::EXTERN_BLOCK => self.extern_members(),
             | node_kinds::CODATA_DECLARATION => {
-                self.comma_segments(self.brace_body(), node_kinds::CODATA_OBSERVATION)
+                self.member_segments(self.brace_body(), node_kinds::CODATA_OBSERVATION)
             },
             | node_kinds::MODULE_DECLARATION => self.module_members(),
             | node_kinds::REC_BLOCK => self.rec_members(),
@@ -1876,6 +1876,54 @@ impl<'tree> SynNode<'tree>
                 .get(index)
                 .is_some_and(|&node| self.tree.tile_label(node) == Some(label::COMMA));
             if is_comma {
+                if index > start {
+                    out.push(self.run(
+                        container,
+                        SignificantIndex(start),
+                        SignificantIndex(index),
+                        kind,
+                    ));
+                }
+                start = index.saturating_add(1);
+            }
+            index = index.saturating_add(1);
+        }
+        if start < body.end {
+            out.push(self.run(
+                container,
+                SignificantIndex(start),
+                SignificantIndex(body.end),
+                kind,
+            ));
+        }
+        out
+    }
+
+    /// The member-separated synthetic segments within `bounds`, each a node
+    /// of `kind`: members are terminated by the ruled `;` (the surface's
+    /// declaration terminator), with the retired `,` separator admitted so a
+    /// stale block still segments whole (the nested generator block's
+    /// migration posture; `case` arms and records keep
+    /// [`Self::comma_segments`]).
+    fn member_segments(
+        self,
+        bounds: Option<(NodeId, Span)>,
+        kind: SyntaxKind,
+    ) -> Vec<Self>
+    {
+        let Some((container, body)) = bounds
+        else {
+            return Vec::new();
+        };
+        let sig = self.tree.sig_children(container);
+        let mut out = Vec::new();
+        let mut start = body.start;
+        let mut index = body.start;
+        while index < body.end {
+            let is_separator = sig.get(index).is_some_and(|&node| {
+                matches!(self.tree.tile_label(node), Some(label::SEMI | label::COMMA))
+            });
+            if is_separator {
                 if index > start {
                     out.push(self.run(
                         container,

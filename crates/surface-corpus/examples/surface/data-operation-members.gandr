@@ -1,24 +1,29 @@
-// W4d surface fold-in — reserved `data` operation and 2-cell members.
+// W4d surface fold-in — reserved `data` operation and 2-cell members
+// (parse-only fixture).
 //
-// GRADUATION: these members PARSE now (wyrd-ku0f) so the datatype block never
-// needs re-parsing when their semantics land, but they are parse-and-decline
-// today. `oper` operations and `rule` rewrites graduate under wyrd-7xl7
-// (equational / operator theories). Parse-only; never lowered.
-//
-// The signature unification respelled the operation member from `op` to
-// `oper` (`op` is the operator-fixity declaration only), and the retired lead
-// still parses so a stale program is declined with the respelling rather
-// than silently accepted — the retired-`~>` precedent.
-//
-// The named multi-output result that once sat here has left this tree: it now
-// elaborates, so it runs as `pathological/desc/many-out-op-declined.gandr` —
-// well-formed as a description, and declined at the cell layer.
+// The operation and rule members ride the nested generator block unchanged:
+// `oper` operations and `rule` rewrites graduate under their own rungs. The
+// signature unification respelled the operation member from `op` to `oper`
+// (`op` is the operator-fixity declaration only), and the retired lead still
+// parses so a stale program is declined with the respelling rather than
+// silently accepted — the retired-`~>` precedent. Parse-only; never lowered.
 
 // Reserved `oper` operation member: `oper name(params) -> Result`.
-data NatOp { Zero, Succ(n: NatOp), oper add(m: NatOp, n: NatOp) -> NatOp }
+data NatOp : Type {
+  Zero : NatOp;
+  Succ : (n : NatOp) --> NatOp;
+  oper add(m : NatOp, n : NatOp) -> NatOp;
+}
 
 // Reserved `rule` 2-cell member: `rule lhs ==> rhs` (a directed rewrite).
-data NatRule { Zero, Succ(n: NatRule), rule id(Zero) ==> Zero }
+data NatRule : Type {
+  Zero : NatRule;
+  Succ : (n : NatRule) --> NatRule;
+  rule id(Zero) ==> Zero;
+}
 
 // The RETIRED `op` member lead — parses, declines with the respelling hint.
-data NatRetired { Zero, op stale(x: NatRetired) -> NatRetired }
+data NatRetired : Type {
+  Zero : NatRetired;
+  op stale(x : NatRetired) -> NatRetired;
+}

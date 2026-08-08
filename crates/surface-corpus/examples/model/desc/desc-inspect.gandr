@@ -5,8 +5,14 @@
 // Rust-side `DataDesc`: a tagged, first-order description whose nullary
 // constructors carry the unit code. This is supporting implementation surface,
 // not yet a dependent universe or generic programming inside gandr.
-data Traffic { Stop, Go, Wait }
+data Traffic : Type {
+  Stop : Traffic;
+  Go : Traffic;
+  Wait : Traffic;
+}
 
-// The harness elaborates and renders the description deterministically:
+// The harness elaborates and renders the description's sign normal form
+// deterministically: the declared sort set (constructors have no item-level
+// member spelling — a family is declared once, whole, by the nested block):
 //@ mode: desc
-//@ expect-desc-render: sign Traffic { sort Traffic : Type; data Stop : Traffic; data Go : Traffic; data Wait : Traffic }
+//@ expect-desc-render: sign Traffic { sort Traffic : Type }

@@ -1,0 +1,17 @@
+// Decline golden: an item-level `data` member of a `sign` block (ADR-52
+// Decision C: pathological tree, testing artifact).
+//
+// The item-level data member is retired: a family is declared once, whole, as
+// a nested generator block — never as per-constructor members of a `sign`
+// block, which presents sorts, operations, and rules only. The grammar keeps
+// the member admissible so the description route declines it with the nested
+// block's respelling. (The `data x : Nat` binders of a rule telescope are a
+// different slot and stay.)
+sign Stale {
+  sort Nat : Type
+  data Zero : Nat
+  oper add : (Nat, Nat) --> Nat
+}
+
+//@ mode: desc
+//@ expect-desc-decline: member is retired

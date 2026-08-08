@@ -7,7 +7,10 @@
 // -- and when the scrutinee IS that missing constructor (`None`), the hole is
 // reached at runtime and reported as a DEFINED halt (`Blame::Hole`), not a
 // panic. That runtime blame is the coverage gap made observable.
-data Maybe(a) { None, Some(x: a) }
+data Maybe(a : Type) : Type {
+  None : Maybe(a);
+  Some : (x : a) --> Maybe(a);
+}
 
 def unwrap() -> F Integer {
   case (None : Maybe(Integer)) {

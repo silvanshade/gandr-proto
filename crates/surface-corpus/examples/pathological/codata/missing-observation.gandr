@@ -12,7 +12,10 @@
 // that names the unanswered observation `depth`. (A future nominal codata type
 // would name the coverage gap more directly; the structural carrier is the
 // zero-frozen-core MVP.)
-codata Point { x: Integer, depth: Integer }
+codata Point : Type {
+  x : Integer;
+  depth : Integer;
+}
 
 def rec incomplete() -> Point {
   .x => 0

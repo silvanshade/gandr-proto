@@ -10,12 +10,12 @@
 // contributes its return-side frame's defining cell (`Succ⁻(β)` reduces to
 // `Succ(v)` handed to `β`), which is what makes the second rule's flattened
 // right-hand side reduce. Four cells: two frames and two rules.
-data NatAdd {
-  Zero,
-  Succ(n: NatAdd),
-  oper add(m: NatAdd, n: NatAdd) -> NatAdd,
-  rule add(Zero, n) ==> n,
-  rule add(Succ(m), n) ==> Succ(add(m, n))
+data NatAdd : Type {
+  Zero : NatAdd;
+  Succ : (n : NatAdd) --> NatAdd;
+  oper add(m : NatAdd, n : NatAdd) -> NatAdd;
+  rule add(Zero, n) ==> n;
+  rule add(Succ(m), n) ==> Succ(add(m, n));
 }
 
 //@ mode: desc

@@ -425,11 +425,11 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     let files = gandr_files(&examples);
     assert!(files.len() >= 50, "corpus is populated ({})", files.len());
 
-    // Per-tree accounting: model + pathological hold at 67 / 67 clean
-    // (53 + three codata-MVP examples + four supporting
-    // sequent/description inspection examples + six identity examples
-    // + one shell host-escape failure witness), and the surface tree must be
-    // non-empty and clean — the single gate spans all three trees.
+    // Per-tree accounting: model + pathological hold at 99 / 99 clean (the 96
+    // of the pre-migration corpus plus the three retirement-decline goldens
+    // the nested generator block adds under `data/` and `desc/`), and the
+    // surface tree must be non-empty and clean — the single gate spans all
+    // three trees.
     let mut clean = 0_usize;
     let mut total = 0_usize;
     let mut base_clean = 0_usize;
@@ -485,28 +485,30 @@ fn corpus_molds_to_zero_obligations() -> Result<(), Box<dyn Error>>
     );
     assert_eq!(clean, files.len(), "clean accounts for the whole corpus");
     assert_eq!(0, total, "the corpus carries zero total obligations");
-    // Model + pathological at 96 / 96 (54 base examples including the M1-lite
+    // Model + pathological at 99 / 99 (54 base examples including the M1-lite
     // module model + the three codata-MVP examples under `codata/` + the seven
     // supporting inspection examples under `sequent/` and `desc/` — the fifth
     // is the description → cell-store model witness, the sixth its
     // pathological many-out counterpart, and the seventh the linearity-refusal
     // pathological witness — + the six identity examples under
-    // `identity/` — five model, one pathological K-rejection witness — + ten
-    // declared-data examples under `data/` — five model and five pathological —
-    // + eight module failure goldens + the type-associativity pathological
-    // witness + the shell host-escape non-String failure witness + the six
-    // circuit examples under `circuit/` — the ruled rule-block model witness
-    // and its five declines: many-out node, wheel, two-redex composite,
-    // cyclic wiring, shared port).
+    // `identity/` — five model, one pathological K-rejection witness — +
+    // thirteen declared-data examples under `data/` — five model and eight
+    // pathological, the nested generator block's two retirement-decline
+    // goldens included — + the item-level data member's retirement golden
+    // under `desc/` + eight module failure goldens + the type-associativity
+    // pathological witness + the shell host-escape non-String failure witness
+    // + the six circuit examples under `circuit/` — the ruled rule-block
+    // model witness and its five declines: many-out node, wheel, two-redex
+    // composite, cyclic wiring, shared port).
     assert_eq!(
-        96, base_count,
-        "the model + pathological trees are 96 files (54 base + 3 codata + 7 inspection \
-         + 6 identity + 10 declared-data + 8 module pathologies + 1 type-associativity \
-         + 1 shell host escape + 6 circuit)"
+        99, base_count,
+        "the model + pathological trees are 99 files (54 base + 3 codata + 7 inspection \
+         + 6 identity + 13 declared-data + 1 item-level retirement + 8 module pathologies \
+         + 1 type-associativity + 1 shell host escape + 6 circuit)"
     );
     assert_eq!(
-        96, base_clean,
-        "all 96 model + pathological files mold clean"
+        99, base_clean,
+        "all 99 model + pathological files mold clean"
     );
     // The surface tree is populated and every fixture molds clean.
     assert!(surface_count > 0, "the surface tree is populated");

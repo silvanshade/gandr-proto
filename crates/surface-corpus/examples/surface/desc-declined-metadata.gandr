@@ -1,15 +1,16 @@
 // W4d surface fold-in — the levitation stage-0 declined-declaration golden.
 //
-// GRADUATION: this block PARSES now (wyrd-ku0f: a constructor attribute slot is
-// grammatical surface) but its levitation-stage-0 elaboration (wyrd-go7x;
-// crates/theory-levitation + surface-engine `desc_elab`) DECLINES it. The
-// per-variable variance / linearity of a 2-cell face is DERIVED from the faces, never
-// declared (proposal-levitation-addendum-vdc.md §A/§C), so an attribute slot
-// that names the reserved `variance` metadata is rejected with a host
-// well-formedness diagnostic — the inspectable golden. Parse-only here (the
-// PBG zero-obligation sweep is this tree's only gate); the decline itself is
-// witnessed by `surface-engine` `tests/desc_elab.rs`.
+// GRADUATION: this block PARSES (a per-symbol attribute slot is grammatical
+// surface on a generator member) but its levitation-stage-0 elaboration
+// DECLINES it. The per-variable variance / linearity of a 2-cell face is
+// DERIVED from the faces, never declared (proposal-levitation-addendum-vdc.md
+// §A/§C), so an attribute slot that names the reserved `variance` metadata is
+// rejected with a host well-formedness diagnostic — the inspectable golden.
+// Parse-only here (the PBG zero-obligation sweep is this tree's only gate);
+// the decline itself is witnessed by `surface-engine` `tests/desc_elab.rs`.
 
-// A datatype whose constructor tries to declare the reserved, derived
+// A datatype whose generator tries to declare the reserved, derived
 // `variance` metadata through an attribute slot.
-data Declared { Mk [variance] }
+data Declared : Type {
+  Mk : Declared [variance];
+}

@@ -1,16 +1,22 @@
 // A declared datatype and its constructors (ADR-80; ADR-54 §3).
 //
-// `data Maybe(a) { None, Some(x: a) }` mints a fresh generative-nominal type:
-// its two constructors build values, and `case` eliminates them by matching on
-// the constructor. Unlike the built-in `Inl`/`Inr` sum, the nominal identity is
-// the point -- a `Maybe` is not interchangeable with any structurally-identical
-// declaration.
+// The nested generator block `data Maybe(a : Type) : Type { None : Maybe(a);
+// Some : (x : a) --> Maybe(a); }` mints a fresh generative-nominal type: the
+// head binds the parameter once as a typed binder and declares the index
+// arity (`: Type` when unindexed), and every generator's result head is the
+// family applied to the parameter variable. Its two constructors build
+// values, and `case` eliminates them by matching on the constructor. Unlike
+// the built-in `Inl`/`Inr` sum, the nominal identity is the point -- a
+// `Maybe` is not interchangeable with any structurally-identical declaration.
 //
 // A constructor application `Some(3)` only *checks* (like an injection): from
 // `Some(3)` alone the type argument `a` is not inferable, so the value carries
 // a `: Maybe(Integer)` ascription. The `case` body's result type comes from the
 // function header's `-> F Integer`.
-data Maybe(a) { None, Some(x: a) }
+data Maybe(a : Type) : Type {
+  None : Maybe(a);
+  Some : (x : a) --> Maybe(a);
+}
 
 def unwrap_or_zero() -> F Integer {
   case (Some(3) : Maybe(Integer)) {

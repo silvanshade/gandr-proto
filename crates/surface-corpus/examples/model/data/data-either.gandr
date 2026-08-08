@@ -1,11 +1,14 @@
 // A two-parameter tagged result and its match (ADR-80; ADR-54 §3).
 //
-// `data Either(a, b) { Left(x: a), Right(y: b) }` is the tagged-result idiom: a
+// `data Either(a : Type, b : Type) : Type { … }` is the tagged-result idiom: a
 // value is either a `Left` carrying an `a` or a `Right` carrying a `b`. Each
 // constructor only *checks* (the other type parameter is not inferable from one
 // arm), so the value carries an `Either(Integer, String)` ascription. The match
 // binds the carried field in each arm.
-data Either(a, b) { Left(x: a), Right(y: b) }
+data Either(a : Type, b : Type) : Type {
+  Left : (x : a) --> Either(a, b);
+  Right : (y : b) --> Either(a, b);
+}
 
 def from_left() -> F Integer {
   case (Left(5) : Either(Integer, String)) {

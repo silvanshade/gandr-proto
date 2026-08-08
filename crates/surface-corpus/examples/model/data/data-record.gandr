@@ -1,13 +1,16 @@
 // A multi-field constructor and its positional destructure (ADR-80; ADR-54 §3).
 //
-// `data Color3 { RGB(r: Integer, g: Integer, b: Integer) }` declares one
-// constructor of three fields. A constructor application `RGB(10, 20, 30)`
-// builds the tagged value whose payload is the product of the three fields
-// (the arity growth path ADR-80 names, lifting the 0/1-field MVP cut); a `case`
-// arm `RGB(r, g, b)` destructures that product positionally, binding each
-// field. The field ascriptions are checked -- each of `10`, `20`, `30` against
-// the declared `Integer` field -- so a mismatched channel is rejected.
-data Color3 { RGB(r: Integer, g: Integer, b: Integer) }
+// `data Color3 : Type { RGB : (r : Integer, g : Integer, b : Integer) -->
+// Color3; }` declares one constructor of three fields. A constructor
+// application `RGB(10, 20, 30)` builds the tagged value whose payload is the
+// product of the three fields (the arity growth path ADR-80 names, lifting the
+// 0/1-field MVP cut); a `case` arm `RGB(r, g, b)` destructures that product
+// positionally, binding each field. The field ascriptions are checked -- each
+// of `10`, `20`, `30` against the declared `Integer` field -- so a mismatched
+// channel is rejected.
+data Color3 : Type {
+  RGB : (r : Integer, g : Integer, b : Integer) --> Color3;
+}
 
 def green_channel() -> F Integer {
   case (RGB(10, 20, 30) : Color3) {

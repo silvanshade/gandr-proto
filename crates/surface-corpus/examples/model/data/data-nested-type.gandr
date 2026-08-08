@@ -6,7 +6,10 @@
 // `Maybe` to its nominal handle at depth (not only at the top of the type), so
 // the list of constructor values checks against it: each element is a
 // `Maybe(Integer)`.
-data Maybe(a) { None, Some(x: a) }
+data Maybe(a : Type) : Type {
+  None : Maybe(a);
+  Some : (x : a) --> Maybe(a);
+}
 
 def sum_first() -> F Integer {
   run items <- ret ([Some(1), None, Some(3)] : List(Maybe(Integer)));

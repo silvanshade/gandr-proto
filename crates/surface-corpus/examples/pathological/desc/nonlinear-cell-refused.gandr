@@ -14,12 +14,12 @@
 // The refusal is decline-and-report, not abort: the linear companion rule
 // still lands. Three cells reach the store — the two constructor frames and
 // the linear rule — and the copying rule is the one decline.
-data Bit {
-  Off,
-  On,
-  oper and(a: Bit, b: Bit) -> Bit,
-  rule and(x, y) ==> y,
-  rule and(x, x) ==> x
+data Bit : Type {
+  Off : Bit;
+  On : Bit;
+  oper and(a : Bit, b : Bit) -> Bit;
+  rule and(x, y) ==> y;
+  rule and(x, x) ==> x;
 }
 
 //@ mode: desc

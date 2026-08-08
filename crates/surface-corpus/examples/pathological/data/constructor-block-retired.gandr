@@ -1,0 +1,16 @@
+// Decline golden: the retired constructor-block spelling (ADR-52 Decision C:
+// pathological tree, testing artifact).
+//
+// The Haskell/OCaml-style data declaration — bare head parameters, no head
+// annotation, field-tuple members — is RETIRED: the one form is the nested
+// generator block, whose head binds every parameter as a typed binder and
+// carries the index-arity annotation. The grammar keeps the old spelling
+// admissible so the stage-0 elaborator can decline it with the respelling
+// (the retired-`~>` precedent) rather than the parser repairing a token. The
+// head declines first — bare `a` carries no type — and the whole declaration
+// is skipped; with a valid head the retired members would decline
+// individually, each told its generator-judgment respelling.
+data Maybe(a) { None, Some(x: a) }
+
+//@ mode: desc
+//@ expect-desc-decline: carries no type

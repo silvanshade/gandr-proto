@@ -1,14 +1,22 @@
-// W4d surface fold-in — reserved `data` field / constructor decorations.
+// W4d surface fold-in — reserved `data` field / constructor decorations
+// (parse-only fixture).
 //
-// GRADUATION: field grades, GADT result annotations, and per-symbol attribute
-// slots PARSE now (wyrd-ku0f) so the datatype block never needs re-parsing when
-// their semantics land; they are parse-and-decline, graduating under wyrd-e0xy.
-// Parse-only; never lowered.
+// Field grades and per-symbol attribute slots PARSE on the generator member
+// so the datatype block never needs re-parsing when their semantics land;
+// they are parse-and-decline, graduating under their own rungs. Parse-only;
+// never lowered.
 
-// Reserved grade prefix on a field (`{ number, ω }`; R5-narrow — a bare `n`
-// grade is dropped so a graded field stays first-token-distinct).
-data Vec(a) { Nil, Cons(1 x: a, xs: Vec(a)) }
+// Reserved grade prefix on a telescope binder (`{ number, ω }`; R5-narrow — a
+// bare `n` grade is dropped so a graded field stays first-token-distinct).
+data Vec(a : Type) : Type {
+  Nil : Vec(a);
+  Cons : (1 x : a, xs : Vec(a)) --> Vec(a);
+}
 
-// Reserved GADT result annotation on a constructor, and a reserved per-symbol
-// attribute slot `[ … ]` (no `@` sigil inside the block).
-data Expr(a) { Lit(x: Integer) : Expr(a), Add(l: Expr(a), r: Expr(a)) [ctor, assoc] }
+// The generator judgment's `-->` result IS the ruled result annotation (the
+// retired suffix spelling is declined), and a reserved per-symbol attribute
+// slot `[ … ]` (no `@` sigil inside the block).
+data Expr(a : Type) : Type {
+  Lit : (x : Integer) --> Expr(a);
+  Add : (l : Expr(a), r : Expr(a)) --> Expr(a) [ctor, assoc];
+}

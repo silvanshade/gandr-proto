@@ -6,9 +6,14 @@
 // reserved (values ARE; computations DO -- and a codata value answers demands).
 //
 // `Point` declares two observations, `x` and `y`, each answering an `Integer`.
-// (An observation's result is a demand, so a value-typed `x: Integer` reads as
-// the computation `x: F Integer`.)
-codata Point { x: Integer, y: Integer }
+// The `codata` head takes the same discipline as `data`: typed parameter
+// binders (none here) plus the index-arity annotation (`: Type` when
+// unindexed). (An observation's result is a demand, so a value-typed
+// `x : Integer` reads as the computation `x : F Integer`.)
+codata Point : Type {
+  x : Integer;
+  y : Integer;
+}
 
 // A *copattern definition* introduces a `Point` by saying, clause by clause,
 // how it responds to each observation. The clauses lead with `.observation`,

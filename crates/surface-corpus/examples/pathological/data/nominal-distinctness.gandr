@@ -10,8 +10,12 @@
 //
 // (Constructor names avoid `C`/`F`: bare `F` collides with the `F` returner
 // type keyword, so the constructors are spelled `Cel` / `Fah`.)
-data Celsius { Cel(x: Integer) }
-data Fahrenheit { Fah(x: Integer) }
+data Celsius : Type {
+  Cel : (x : Integer) --> Celsius;
+}
+data Fahrenheit : Type {
+  Fah : (x : Integer) --> Fahrenheit;
+}
 
 (Cel(20) : Fahrenheit)
 

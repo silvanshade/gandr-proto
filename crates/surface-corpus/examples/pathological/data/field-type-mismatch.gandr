@@ -9,7 +9,10 @@
 // checked against its declared field type instantiated at the ascribed
 // arguments, exactly the soundness a tag-only rule cannot express. Without it
 // `Some("hello") : Maybe(Integer)` would wrongly type-check.
-data Maybe(a) { None, Some(x: a) }
+data Maybe(a : Type) : Type {
+  None : Maybe(a);
+  Some : (x : a) --> Maybe(a);
+}
 
 (Some("hello") : Maybe(Integer))
 

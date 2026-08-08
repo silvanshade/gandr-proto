@@ -1,12 +1,12 @@
 // Absurd match over an uninhabited datatype (ADR-80; ADR-54 §4.1).
 // (Pathological tree: testing artifact, not pedagogy -- ADR-52 Decision C.)
 //
-// `data Empty {}` declares a datatype with NO constructors, so no value of it
-// can ever be built. An empty `case v {}` is therefore total by "no constructor
-// to cover" -- the arm-less eliminator type-checks against any answer, with no
-// K-style equality appealed to. (The datatype is named `Empty` rather than
-// `Void`, which is a reserved primitive-type keyword.)
-data Empty {}
+// `data Empty : Type {}` declares a datatype with NO constructors, so no
+// value of it can ever be built. An empty `case v {}` is therefore total by
+// "no constructor to cover" -- the arm-less eliminator type-checks against any
+// answer, with no K-style equality appealed to. (The datatype is named `Empty`
+// rather than `Void`, which is a reserved primitive-type keyword.)
+data Empty : Type {}
 
 def absurd(v: Empty) -> F Integer {
   case v {}

@@ -7,8 +7,12 @@
 // demands. This only fires if the declared datatype is rewritten to its nominal
 // handle at DEPTH: a nested position that stayed structural (or holed) would
 // let the mixup pass. It is the depth analogue of `nominal-distinctness`.
-data Celsius { Cel(x: Integer) }
-data Fahrenheit { Fah(x: Integer) }
+data Celsius : Type {
+  Cel : (x : Integer) --> Celsius;
+}
+data Fahrenheit : Type {
+  Fah : (x : Integer) --> Fahrenheit;
+}
 
 ([Cel(20)] : List(Fahrenheit))
 

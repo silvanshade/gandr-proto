@@ -1,0 +1,15 @@
+// Decline golden: a generator whose result head instantiates a parameter
+// (ADR-52 Decision C: pathological tree, testing artifact).
+//
+// Head uniformity is structural in the nested generator block: every
+// generator's result head is the family applied to the parameter VARIABLES,
+// never to instantiations — a "constructor" of `Bad` at `Bad(Integer)` would
+// generate a *specialized* family, which has no eliminator schema and no
+// place in one description. Instantiation is uninferable, so the elaborator
+// declines the member by name; the block elaborates around it.
+data Bad(a : Type) : Type {
+  Mk : Bad(Integer);
+}
+
+//@ mode: desc
+//@ expect-desc-decline: instantiation is uninferable

@@ -22,10 +22,17 @@
 // exactly once. `x′` is written in no port list, so it is an *internal wire* --
 // implicit, computed by the name-set fold, never declared. Misspell it and you
 // get a linearity failure, not a silent fresh name.
+//
+// The family itself is declared once, whole, as a nested generator block: the
+// item-level `data` member is retired from `sign` blocks, so `Zero` and `Succ`
+// stand beside the sign, not inside it.
+data Nat : Type {
+  Zero : Nat;
+  Succ : (n : Nat) --> Nat;
+}
+
 sign Nat {
   sort Nat : Type
-  data Zero : Nat
-  data Succ : Nat --> Nat
   oper add : (Nat, Nat) --> Nat
 
   rule cong1 : (
@@ -38,13 +45,14 @@ sign Nat {
   }
 }
 
-// What the description table holds for the block above, read back in the
+// What the description table holds for the blocks above, read back in the
 // ruled surface spelling — the sign normal form of the signature
-// unification: the declared sort, judgment-style data and oper members with
-// the arrow grid, and the circuit member as a rule with its rewrite-sorted
-// telescope and the sphere its wiring derived.
+// unification: the declared sort, the judgment-style oper member with the
+// arrow grid, and the circuit member as a rule with its rewrite-sorted
+// telescope and the sphere its wiring derived. The nested block's generators
+// carry no item-level member spelling, so they do not appear here.
 //@ mode: desc
-//@ expect-desc-render: sign Nat { sort Nat : Type; data Zero : Nat; data Succ : Nat --> Nat; oper add : (Nat, Nat) --> Nat; rule cong1 : (rule p : Nat ==> Nat) add(x, y) ==> add(x′, y) }
+//@ expect-desc-render: sign Nat { sort Nat : Type; oper add : (Nat, Nat) --> Nat; rule cong1 : (rule p : Nat ==> Nat) add(x, y) ==> add(x′, y) }
 
 // The cell layer admits it: two frame-defining cells (one per constructor) plus
 // the rule's own cell, which entered through the same admission seam a written

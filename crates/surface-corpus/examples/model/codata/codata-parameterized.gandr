@@ -10,7 +10,9 @@
 // Note the observation body is a *computation* (`n + n`), delayed by the thunk:
 // the work happens only when the observation is demanded, not when the codata
 // value is built. This is the call-by-need laziness the negative half buys.
-codata Scaled { doubled: Integer }
+codata Scaled : Type {
+  doubled : Integer;
+}
 
 def rec scaled(n: Integer) -> Scaled {
   .doubled => n + n
