@@ -195,7 +195,7 @@ Off the wall but defined: coverage (judged per production file, never by crate a
 
 ## Honest limits, collected
 
-Stated in code and easy to drop in a naive read of the design docs: completion's completed-means-drained caveat and silent obstruction drops; cell equality's partiality (stuck is not reflexive); elaboration's unary-sequential ceiling; tracelets' store-relativity; the two-level tree and by-construction canonicality; the absent capability model; the nominal crate's absent automaton; the finite-discrete coincidence of ends and coends; and the two engine crates having **no consumer outside their own tests** — which is precisely the end-to-end integration phase's job.
+Stated in code and easy to drop in a naive read of the design docs: completion's completed-means-drained caveat and silent obstruction drops; cell equality's partiality (stuck is not reflexive); elaboration's unary-sequential ceiling; tracelets' store-relativity; the two-level tree and by-construction canonicality; the absent capability model; the nominal crate's absent automaton; the finite-discrete coincidence of ends and coends; and the engines' **rewriting machinery** having no consumer outside the two engine crates and their tests — `theory-virtual-doctrines` has no external consumer at all, and `theory-computads` is reached from outside only at the description→cell seam ([[implementation/roadmap]]) — which is precisely the end-to-end integration phase's job.
 
 ## Sub-documents
 

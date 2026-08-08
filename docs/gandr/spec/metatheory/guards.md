@@ -68,6 +68,10 @@ Until then, per-type set-ness by Hedberg and the grade discipline's runtime eras
 Decorating flags by names is formally possible and declined: sharing should become a **wire**; a name decoration would entrench the nominal encoding at exactly the point the design says should become structural.
 The nominal _type-theory_ aim (nullary parametricity as name abstraction) is a different thing and is adopted — the two are genuine alternatives for the binder story, and the open question is which, not whether.
 
+> **The revisit condition, recovered rather than composed** (`gandr-njmt`, 2026-08-08): the decoration criterion this decline comes from marks the names-and-binders row as **the one row it declined with an explicit revisit**, on the stated ground that this is the least-designed part of the system and **the verdict is provisional**.
+> That qualification is part of the decline and did not cross with it, so the entry read as settled here while its source recorded it as open.
+> The decline is revisited when the binder story is designed, and it does not harden into a refutation before then.
+
 ## Dissolved forks — do not re-litigate
 
 * **Planar versus groupoid** is not a fork: ordering is a section of the quotient, never a planarization; at the as-built layer there is no symmetry to give up, and at the design layer the question is settled by the identification-sorting test (presentation symmetry free; automorphism symmetry to canonicalization soundness).

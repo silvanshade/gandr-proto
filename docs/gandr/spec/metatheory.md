@@ -312,6 +312,7 @@ A decoration that is a **value on the shape's parts** — grading, genus, operat
 The placement test for any cell datum: does it assign values compatibly with graph substitution, and should the labelled objects inherit the substrate's theorems?
 Both yes: it is a decoration and belongs with the shape.
 Either no: it belongs to another layer — hole/linearity metadata to the matching layer, rewrite orientation to the computad layer, certificates to the certificate layer, and nominal sharing deliberately _not_ entrenched as a label because the accepted direction is that sharing should become a wire.
+That last row is the criterion's **only provisional verdict** — it is the least-designed part of the system and is declined with an explicit revisit, not settled ([[metatheory/guards#Nominal decoration]]).
 
 ### The naming hazard, kept where a reader meets it
 

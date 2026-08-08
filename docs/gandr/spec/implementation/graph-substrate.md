@@ -1,6 +1,6 @@
 # The graph substrate
 
-**Built, as `gandr-theory-graphs`, and consumed by three crates.** The substrate this document specifies is the one place in the workspace where graph structure over arena identifiers is turned into queryable relations, and it is the only crate permitted to depend on a third-party graph library.
+**Built, as `gandr-theory-graphs`, and consumed by two crates.** The substrate this document specifies is the one place in the workspace where graph structure over arena identifiers is turned into queryable relations, and it is the only crate permitted to depend on a third-party graph library.
 
 The design has one governing rule and one consequence.
 The rule: **identity lives in flat arenas that own their data, and relations live in one shared crate that owns none of it.** The consequence: no other crate implements graph search, reachability, cycle detection, or topological ordering again — including the ones that had independently begun to.
@@ -13,7 +13,9 @@ Reifying "a relation over identifiers" as one queryable artifact is the same mov
 **Built, and verified against the tree at write time.**
 
 * **The crate exists and is `gandr-theory-graphs`**, at `crates/theory-graphs`, in eight modules: the algorithm menu, partition refinement, the precedence DAG, the walk index, the private petgraph adapter, adjacency fingerprinting, the dense identifier types, and the crate root that owns the `EdgeSource` boundary.
-* **Three crates consume it today**: `gandr-surface-grammar`, `gandr-surface-parser`, and `gandr-theory-computads` — three of the six consumers the dependency rule below permits, with the module and incremental layers and the reflection face not yet among them.
+* **Two crates consume it today**: `gandr-surface-grammar` and `gandr-theory-computads` — two of the six consumers the dependency rule below permits, with the module and incremental layers and the reflection face not yet among them.
+  **The parser crate is deliberately not a third**, and the distinction between a lane and a crate is what makes this checkable: the grammar crate re-exports the precedence-DAG types, so `crates/surface-parser/Cargo.toml` carries no `gandr-theory-graphs` edge and says at the dependency why.
+  The parser _lane_ consumes the substrate; the parser _crate_ consumes the grammar crate.
 * **petgraph appears in exactly one manifest.** `crates/theory-graphs/Cargo.toml` is the only crate manifest naming it, and the workspace dependency table records that crate as its sole consumer.
 * **The adapter is crate-private.** The `view` module is `pub(crate)`, so no petgraph type reaches the public API — which is what makes the exit path below real rather than aspirational.
 * **The determinism harness is a binary plus a subprocess test**, not a convention: `gandr-theory-graphs-determinism` prints canonical row bytes for the graph foundation, the precedence DAG, and both partition-refinement results under an allocation perturbation controlled by an environment variable, and the harness compares runs across processes.
@@ -61,8 +63,9 @@ Nothing third-party.
 **The relation layer is this crate.** It owns the graph types over arena identifiers, the algorithm menu, the determinism policy and fingerprinting, and the two domain clients that are pure graph structure — the precedence DAG and the walk index — plus the variable-flow acyclicity gate's witness machinery.
 
 **The dependency rule is directional and is part of the design.** The kernel and syntax arenas never depend on this crate, because their arenas are the identity layer.
-The grammar, parser, polygraph, and reflection lanes consume it, and the module and incremental layers will.
+The grammar, parser, polygraph, and reflection lanes are the ones permitted to consume it, and the module and incremental layers will join them.
 The layout lane never does.
+**Permitted is not the same as consuming**, and the rule is stated over lanes rather than crates: a lane may reach the substrate through another lane's re-export, which is what the parser does today.
 
 ## The adoption, and the arena-view pattern
 

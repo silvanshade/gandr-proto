@@ -19,12 +19,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 666ad6bf0915873a73baf3f3e901a312472fb1cb4d53967f5373e0009d7972c5
+    b3: 65378a4adc896fd4d0f544cb4ecaffc8a831908ab62bae5b12f75c1722306407
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 93a25b1afd1702f47608ef9c152d80fb95d1504dc1edb63395f0cb491eb04201
+    b3: e09e386151910f60312e3c58182e20e136ccc501c5ca370020afad4d453c7086
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -49,7 +49,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
     role: subdocument
-    b3: cbb12d5e5e0fcc2f125bca46b9c5406f4a3ca6693d675f515449e7a30cde816b
+    b3: a7676218603799342d20f9a085b5249c3969cdebcf9dc916e783a13086dc15f4
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
@@ -104,7 +104,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: e7a8b6e5c058c8e9a5c385f38ec36d5cc79cb166891e157ad6c33a32cb26687a
+    b3: 4118a359ea52bb74baff30c2bf9b5fa8e38495806ff4fd929cbc5017b34e89a2
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
@@ -209,7 +209,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/graph-substrate.md
     role: subdocument
-    b3: 217590aaa31e2ef97f12be33fdc9b9e1b1c6f60ef0363cc6964056ae3d69dd9a
+    b3: 8326d708642c6beef2c9ca258e37692a13d8e1d01a42c65e68221e62ef1d884f
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/solver-interface.md
