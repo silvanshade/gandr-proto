@@ -150,6 +150,7 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
+use crate::interface::ComponentIndex;
 use crate::interface::Edge;
 use crate::interface::PartialBijection;
 use crate::interface::Seam;
@@ -650,35 +651,22 @@ fn reachable_from(
 /// - panics: none.
 /// - intension: components are discovered in generator position order and their
 ///   seeds emitted in that order, so the enumeration below is deterministic.
+///   The walk itself is [`Wiring::components`]'s, which promises exactly that
+///   order; this function reads a representative off each component rather than
+///   keeping a second walk that would have to agree with it.
 fn seeds_of(pattern: &Wiring) -> Vec<Seed>
 {
     let mut seeds: Vec<Seed> = Vec::new();
-    let mut visited: BTreeSet<Edge> = BTreeSet::new();
-    for index in 0 .. pattern.edge_count().0 {
-        let edge = Edge(index);
-        if visited.contains(&edge) {
+    let components = pattern.components();
+    for index in 0 .. components.count().0 {
+        let Some(members) = components.members(ComponentIndex(index))
+        else {
+            // Unreachable: `index` is below the component count, and
+            // `Wiring::components` promises a row for every index below it.
             continue;
-        }
-        seeds.push(Seed::Generator(edge));
-        let mut frontier: Vec<Edge> = alloc::vec![edge];
-        while let Some(current) = frontier.pop() {
-            if !visited.insert(current) {
-                continue;
-            }
-            let Some(generator) = pattern.generator(current)
-            else {
-                continue;
-            };
-            for wire in generator.sources.iter().copied() {
-                if let Some(neighbour) = pattern.producer_of(wire) {
-                    frontier.push(neighbour);
-                }
-            }
-            for wire in generator.targets.iter().copied() {
-                if let Some(neighbour) = pattern.consumer_of(wire) {
-                    frontier.push(neighbour);
-                }
-            }
+        };
+        if let Some(first) = members.first().copied() {
+            seeds.push(Seed::Generator(first));
         }
     }
     for index in 0 .. pattern.wire_count().0 {

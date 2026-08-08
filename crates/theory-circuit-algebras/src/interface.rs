@@ -116,6 +116,16 @@ pub struct EdgeCount(pub usize);
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PairCount(pub usize);
 
+/// Which weakly-connected component of a diagram a hyperedge belongs to.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ComponentIndex(pub usize);
+
+/// How many weakly-connected components a diagram's hyperedges fall into.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ComponentCount(pub usize);
+
 /// A generator's **name** — the box's label in the picture.
 #[repr(transparent)]
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -191,7 +201,14 @@ impl GeneratorLabel
 /// Port order is carried rather than quotiented: within-cell ordering costs
 /// nothing to adopt because no symmetry is present to give up
 /// (`circuit-terms-question-02`), and an embedding preserves it.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+///
+/// The derived order is lexicographic on `(label, sources, targets)` and is
+/// carried for one reason: it is the tie-break
+/// [`crate::normal_form::canonicalize`] takes when a diagram holds a component
+/// with no boundary port, where the canonical seed is chosen by minimizing the
+/// linearization it produces. The order is on the *record*, so it is an order
+/// on presentations and never a claim about diagrams.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Generator
 {
     /// The label this occurrence carries.
@@ -228,7 +245,10 @@ impl Generator
 ///
 /// Both lists are ordered and duplicate-free; the duplicate-free condition is
 /// the mono-leg half of monogamy, and [`Wiring::assemble`] enforces it.
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
+///
+/// The derived order is lexicographic on `(inputs, outputs)`, carried so that
+/// [`crate::normal_form::CanonicalDiagram`] can be a key an interner orders on.
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Interface
 {
     /// The ordered input ports — wires no generator produces.
@@ -760,6 +780,128 @@ impl Wiring
     {
         self.consumer.get(&wire).copied()
     }
+
+    /// The diagram's **weakly-connected components** over hyperedge adjacency.
+    ///
+    /// Two generators are adjacent when they share a wire — one produces it and
+    /// the other consumes it. The relation is the *undirected* one, so a
+    /// component is a piece of the picture with no wire leaving it, which is
+    /// what both consumers below mean by "component".
+    ///
+    /// This is the crate's one incidence-walk primitive over generators, and it
+    /// is shared deliberately: [`crate::matching`] takes one nondeterministic
+    /// seed per component, and [`crate::normal_form`] canonicalizes each
+    /// component with no boundary port by minimizing over its members. Two
+    /// hand-rolled walks that had to agree about what a component is are now
+    /// one walk with one contract.
+    ///
+    /// # Contract
+    /// - ensures: every hyperedge position `0 .. edge_count` appears in exactly
+    ///   one component; components are ordered by their lowest-positioned
+    ///   member and each component's members are in ascending position order; a
+    ///   diagram with no hyperedge has no component.
+    /// - provides: component membership as data, so a caller may both count
+    ///   components and enumerate one, which a representative alone cannot
+    ///   give.
+    /// - panics: none.
+    /// - intension: an explicit frontier over hyperedges, so the walk never
+    ///   recurses on diagram size; discovery runs in ascending position order,
+    ///   which is what makes the emitted order deterministic.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L1 evidence — the partition is validated against the
+    ///   diagram it came from (every position covered exactly once, membership
+    ///   closed under sharing a wire) rather than compared with a predicted
+    ///   answer; the L3 residue is the ordering promise and the shapes that
+    ///   separate the two adjacency directions, which are a producer-side-only
+    ///   join and a consumer-side-only join.
+    /// - witness: `interface::tests::the_components_partition_the_generators`
+    /// - witness: `interface::tests::a_component_joins_through_a_shared_wire_in_both_directions`
+    /// - witness: `interface::tests::a_port_free_generator_is_its_own_component`
+    #[inline]
+    #[must_use]
+    pub fn components(&self) -> Components
+    {
+        let mut assigned: BTreeSet<Edge> = BTreeSet::new();
+        let mut members: Vec<Box<[Edge]>> = Vec::new();
+        for index in 0 .. self.generators.len() {
+            let edge = Edge(index);
+            if assigned.contains(&edge) {
+                continue;
+            }
+            let mut component: BTreeSet<Edge> = BTreeSet::new();
+            let mut frontier: Vec<Edge> = alloc::vec![edge];
+            while let Some(current) = frontier.pop() {
+                if !component.insert(current) {
+                    continue;
+                }
+                assigned.insert(current);
+                let Some(generator) = self.generators.get(current.0)
+                else {
+                    // Unreachable: `current` is either `edge`, whose position is
+                    // below `generators.len()`, or a neighbour read out of the
+                    // incidence maps, whose entries are all generator positions
+                    // of this diagram. Kept as a total lookup rather than an
+                    // index, per the partial-function ban.
+                    continue;
+                };
+                for wire in &generator.sources {
+                    if let Some(neighbour) = self.producer.get(wire).copied() {
+                        frontier.push(neighbour);
+                    }
+                }
+                for wire in &generator.targets {
+                    if let Some(neighbour) = self.consumer.get(wire).copied() {
+                        frontier.push(neighbour);
+                    }
+                }
+            }
+            let mut row: Vec<Edge> = Vec::with_capacity(component.len());
+            for edge in component {
+                row.push(edge);
+            }
+            members.push(row.into_boxed_slice());
+        }
+        Components {
+            members: members.into_boxed_slice(),
+        }
+    }
+}
+
+/// A diagram's hyperedges, partitioned into weakly-connected components.
+///
+/// Built only by [`Wiring::components`], so a value of this type is a partition
+/// of exactly one diagram's hyperedge positions.
+#[repr(transparent)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct Components
+{
+    /// The members of each component, ordered as [`Wiring::components`]
+    /// promises.
+    members: Box<[Box<[Edge]>]>,
+}
+
+impl Components
+{
+    /// How many components the diagram's hyperedges fall into.
+    #[inline]
+    #[must_use]
+    pub fn count(&self) -> ComponentCount
+    {
+        ComponentCount(self.members.len())
+    }
+
+    /// The members of one component, in ascending position order.
+    #[inline]
+    #[must_use]
+    pub fn members(
+        &self,
+        component: ComponentIndex,
+    ) -> Option<&[Edge]>
+    {
+        let row = self.members.get(component.0)?;
+        Some(row)
+    }
 }
 
 /// The acyclicity sweep — Kahn's algorithm over generators, refusing the first
@@ -1187,6 +1329,157 @@ mod tests
             WiringObstruction::DirectedCycle { through: Edge(0) },
             refusal,
             "the refusal names a generator the cycle runs through"
+        );
+    }
+
+    #[test]
+    fn the_components_partition_the_generators()
+    {
+        // Validated against the diagram rather than against a predicted
+        // partition: every hyperedge position appears in exactly one component,
+        // and every member of a component shares a wire with another member
+        // unless the component is a singleton. Two joined generators and one
+        // separate pair make the partition non-trivial in both directions.
+        let wiring = Wiring::assemble(
+            WireCount(5),
+            alloc::vec![
+                Generator::new(value("f"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("g"), [Wire(2)], [Wire(3)]),
+                Generator::new(value("h"), [Wire(1)], [Wire(4)]),
+            ],
+            Interface::new([Wire(0), Wire(2)], [Wire(3), Wire(4)]),
+        )
+        .expect("two components, one of two generators and one of one");
+        let components = wiring.components();
+        assert_eq!(
+            ComponentCount(2),
+            components.count(),
+            "`f`–`h` share wire 1; `g` shares nothing"
+        );
+        let mut seen: BTreeSet<Edge> = BTreeSet::new();
+        for index in 0 .. components.count().0 {
+            let members = components
+                .members(ComponentIndex(index))
+                .expect("a component below the count has members");
+            assert!(
+                !members.is_empty(),
+                "no component is empty, so a count is never a promise about nothing"
+            );
+            let mut previous: Option<Edge> = None;
+            for member in members.iter().copied() {
+                assert!(
+                    seen.insert(member),
+                    "no hyperedge is placed in two components"
+                );
+                if let Some(previous) = previous {
+                    assert!(previous < member, "members are in ascending position order");
+                }
+                previous = Some(member);
+            }
+        }
+        assert_eq!(
+            wiring.edge_count().0,
+            seen.len(),
+            "and every hyperedge is placed in one"
+        );
+        assert_eq!(
+            Some(&[Edge(0), Edge(2)][..]),
+            components.members(ComponentIndex(0)),
+            "the first component is the one holding the lowest-positioned generator"
+        );
+        assert_eq!(
+            Some(&[Edge(1)][..]),
+            components.members(ComponentIndex(1)),
+            "and the second is the separate one"
+        );
+        assert_eq!(
+            None,
+            components.members(ComponentIndex(2)),
+            "a component index at the count names nothing"
+        );
+    }
+
+    #[test]
+    fn a_component_joins_through_a_shared_wire_in_both_directions()
+    {
+        // The walk reads producers of its sources AND consumers of its targets,
+        // and the two directions are separated pointwise. Seeding at position 0
+        // in each fixture makes exactly one direction load-bearing: in the first
+        // the seed reaches its neighbour forwards (its target's consumer), in
+        // the second backwards (its source's producer). Dropping either
+        // direction splits the component in one of the two.
+        let forwards = Wiring::assemble(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value("f"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("g"), [Wire(1)], [Wire(2)]),
+            ],
+            Interface::new([Wire(0)], [Wire(2)]),
+        )
+        .expect("the seed's target is the second generator's source");
+        assert_eq!(
+            ComponentCount(1),
+            forwards.components().count(),
+            "the consumer-of-a-target direction joins them"
+        );
+        let backwards = Wiring::assemble(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value("g"), [Wire(1)], [Wire(2)]),
+                Generator::new(value("f"), [Wire(0)], [Wire(1)]),
+            ],
+            Interface::new([Wire(0)], [Wire(2)]),
+        )
+        .expect("the same diagram with the generators listed the other way round");
+        assert_eq!(
+            ComponentCount(1),
+            backwards.components().count(),
+            "the producer-of-a-source direction joins them"
+        );
+    }
+
+    #[test]
+    fn a_port_free_generator_is_its_own_component()
+    {
+        // A generator with no ports is adjacent to nothing, so it is a singleton
+        // component — and it is the only shape that can be a component with no
+        // wire at all, which is why `crate::normal_form` handles it separately
+        // from a component whose wires simply never reach the boundary.
+        let wiring = Wiring::assemble(
+            WireCount(0),
+            alloc::vec![
+                Generator::new(value("a"), Vec::new(), Vec::new()),
+                Generator::new(value("a"), Vec::new(), Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("two port-free generators are a legitimate diagram");
+        let components = wiring.components();
+        assert_eq!(
+            ComponentCount(2),
+            components.count(),
+            "equal labels do not make one component"
+        );
+        assert_eq!(
+            Some(&[Edge(0)][..]),
+            components.members(ComponentIndex(0)),
+            "each is a singleton"
+        );
+        assert_eq!(
+            Some(&[Edge(1)][..]),
+            components.members(ComponentIndex(1)),
+            "in position order"
+        );
+        let empty = Wiring::assemble(
+            WireCount(0),
+            Vec::new(),
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("the empty diagram is a diagram");
+        assert_eq!(
+            ComponentCount(0),
+            empty.components().count(),
+            "and a diagram with no hyperedge has no component"
         );
     }
 

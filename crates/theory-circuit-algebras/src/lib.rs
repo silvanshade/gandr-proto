@@ -89,15 +89,19 @@
 //! that rung's tracker item, and the reversal condition is the first engine
 //! instantiation site.
 //!
-//! # Status: two homes filled, one still empty
+//! # Status: all three homes filled
 //!
 //! `circuit-terms-rung-03` minted the crate at the ruled boundary with its
-//! three module homes. `circuit-terms-rung-05` filled two of them: [`matching`]
-//! holds embedding-based matching with its convexity check, and [`interface`]
-//! holds the interface bookkeeping that matching consumes — the wire and
-//! hyperedge vocabulary, the validated monogamous acyclic diagram view, the
-//! seam datum, and the sequent alphabet's spine reading. [`normal_form`] is
-//! still empty and is `circuit-terms-rung-04`'s.
+//! three module homes, and the two rungs that fill them have both landed.
+//! `circuit-terms-rung-05` filled [`matching`] with embedding-based matching
+//! and its convexity check, and [`interface`] with the interface bookkeeping
+//! that matching consumes — the wire and hyperedge vocabulary, the validated
+//! monogamous acyclic diagram view, the seam datum, and the sequent alphabet's
+//! spine reading. `circuit-terms-rung-04` filled [`normal_form`] with the
+//! boundary-anchored canonical linearization, its checkable relabelling
+//! witness, and the diagram-equality decision, and added the crate's shared
+//! hyperedge-component walk to [`interface`] rather than taking a second
+//! shipped dependency for it.
 //!
 //! No engine code has moved: cells, overlaps, completion, tracelets, and the
 //! rewrite loop are still [`gandr_theory_computads`]'s, and nothing here
