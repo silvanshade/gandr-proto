@@ -1,6 +1,6 @@
 ; gandr pre-lowered corpus fixture (B1 phase; sequent-machines exit gate)
 ; source: pathological/data/nested-nominal-mismatch.gandr
-; b3sum: c86e53ac1226337558f10ddc3a593a34506a714393d70b11de4dbe5df370bc5c
+; b3sum: 5c8e6030c93a08e335fca2bd25934b87f85d4a8c18e29e5f30ed142e1aa90d32
 ; lowering: gandr_pipeline::lower::lower_source_total
 ; items: 1
 

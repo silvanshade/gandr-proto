@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: model/codata/codata-observations.gandr
-; sexp-b3sum: 3174478457a15e3b5b3f91a9420d8f0ea557e81d2f80111d61efa9faaba30d09
+; sexp-b3sum: 26a3599ef33111a93dd645835fc5a9015cbed1b69fd1d2199e5e4ffcde779bdb
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 2
 Ret(Record([("x", Thunk(Omega, Ret(Int(3)))), ("y", Thunk(Omega, Ret(Int(4))))]))

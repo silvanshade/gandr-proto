@@ -1,5 +1,5 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/desc/nonlinear-cell-refused.gandr
-; sexp-b3sum: abb3f5e4c4d0024e218128ec2b97aa2e5ae9f1b728ab4661fb85085c4964f5c1
+; sexp-b3sum: e0ea8c1338e4ef782fabe1470c665d72aac4347f040e43284c9b0d0ba6a997b6
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 0

@@ -1,7 +1,7 @@
 ; gandr S1-eligible corpus partition (B2.3 deliverable 3)
 ; generator: gandr-core-sequent kernel_corpus_partition (GANDR_BLESS_KERNEL_PARTITION=1)
 ; items: 160
-; corpus-fixtures-b3sum: 6fdb0b3b9fee8e6eb2f1a7a60bbbc72b207a746e4b25a6dd8b6352d3195074ce
+; corpus-fixtures-b3sum: 22f6d4a87115435269774e87c5b36126c571ec11e618bf293e4398802f361b26
 ; class declared-data: 8
 ; class effects-control: 11
 ; class eligible: 21

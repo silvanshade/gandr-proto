@@ -1,6 +1,6 @@
 ; gandr corpus outcome snapshot (B1 exit gate; L-machine oracle)
 ; source: pathological/data/non-exhaustive-match.gandr
-; sexp-b3sum: 72d42c4e0c23029deca734f151d65d6f8145a3ab6b64e3467fde9755743cf148
+; sexp-b3sum: 9592cab7a5ff8a798e0b774901f8d230b29046552805bbe572e9cbdbbaa7f3b7
 ; generator: gandr-core-sequent corpus_differential::bless_corpus_outcomes (GANDR_BLESS_CORPUS_OUTCOMES=1)
 ; items: 2
 Ret(Thunk(Omega, DataCase(Ctor { id: DataId { serial: TypeSerial(0), name: "" }, tag: 0, payload: Unit }, [("_", Hole(0)), ("x", Ret(Var("x")))])))
