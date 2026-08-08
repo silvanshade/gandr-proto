@@ -16,8 +16,8 @@
 //! by merkle content hash, not parser-carried addresses); should a parser
 //! return, it is external tooling and an ordinary implementor of [`ItemSource`]
 //! — this crate never depends on one. The real implementation is the surface
-//! lane's to supply (it owns lowering); until then [`ItemSource`] plus an
-//! in-tree test double (`tests/incremental.rs`) is the current consumer.
+//! lane's to supply, because it owns lowering; the in-tree test double in
+//! `tests/incremental.rs` drives the differential gate without one.
 //!
 //! # What crosses the seam
 //!
@@ -122,24 +122,49 @@ impl FromIterator<Item> for Program
 /// The checkpoint engine ([`crate::checkpoint`]) consumes only the [`Program`]
 /// this yields, so it depends on no concrete parser. [`Self::Revision`] is the
 /// front end's own revision representation — source text, an edit script, a
-/// structure-editor state — opaque to the engine. The surface lane supplies the
-/// real (lowering) implementor; the differential gate's test double is the
-/// current one.
+/// structure-editor state — opaque to the engine.
+///
+/// # Why the result is fallible
+///
+/// A *total* front end recovers every input-dependent failure into the program
+/// it returns: an out-of-fragment construct or an error region lowers to a hole
+/// rather than aborting (`incremental-pipeline.md` §7). Totality in that sense
+/// is a property of how the front end treats its **input**, and it leaves a
+/// residue that no input recovers from — the front end being unable to run at
+/// all, because its grammar, table, or parser is unavailable. Those failures do
+/// not name a region, so they cannot become one, and a seam that could not
+/// report them would force every implementor to swallow or panic on them.
+/// [`Self::Error`] is that residue, and an implementor that genuinely cannot
+/// fail names [`core::convert::Infallible`].
 pub trait ItemSource
 {
     /// The revision representation the front end reads. The engine never
     /// inspects it — only the [`Program`] produced from it.
     type Revision: ?Sized;
 
+    /// The failure a front end reports when it cannot produce items at all.
+    ///
+    /// This is the input-independent residue described on the trait, never an
+    /// input-dependent lowering failure: those recover into holes. A front end
+    /// with no such residue names [`core::convert::Infallible`].
+    type Error;
+
     /// Lowers one program revision to its ordered top-level items.
     ///
     /// # Contract
     /// - ensures: returns the revision's items in source order; a total front
-    ///   end never fails structurally (out-of-fragment regions lower to holes,
-    ///   `incremental-pipeline.md` §7).
+    ///   end recovers every input-dependent failure into a hole rather than an
+    ///   error (`incremental-pipeline.md` §7).
+    /// - fails: only where the front end cannot run at all — see
+    ///   [`Self::Error`].
     /// - panics: none required of an implementor.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Self::Error`] when the front end cannot produce items for any
+    /// input, never for a construct it merely cannot lower.
     fn items(
         &self,
         revision: &Self::Revision,
-    ) -> Program;
+    ) -> Result<Program, Self::Error>;
 }

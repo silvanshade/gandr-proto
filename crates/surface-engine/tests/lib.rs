@@ -43,6 +43,8 @@ mod proptest;
 #[cfg(test)]
 mod run;
 #[cfg(test)]
+mod seam;
+#[cfg(test)]
 mod session;
 #[cfg(test)]
 mod surface;

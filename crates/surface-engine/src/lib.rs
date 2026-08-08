@@ -33,6 +33,11 @@
 //!   `resume(base, edited) == checkpoint_source(edited)` (`tests/incremental`).
 //!   Edit-surviving item identity and the frontier order run on
 //!   [`gandr_theory_orders`] (§7 Porter disposition).
+//! - **The parser-agnostic item seam** ([`item_source`]): the melder-and-
+//!   lowering front end as an implementation of
+//!   [`gandr_core_checker::region::ItemSource`], so the core crate's
+//!   changed-region detector can be driven against real surface source without
+//!   depending on this crate or naming a parser.
 //! - **Edit-action reconstruction** ([`edit`]): the localized structured diff
 //!   of two lowerings — the Porter/Pantograph "edit-action" both consume but
 //!   leave out of scope (`incremental-pipeline.md` §7). A
@@ -128,6 +133,7 @@ pub mod goals;
     )
 )]
 pub mod host;
+pub mod item_source;
 pub mod link;
 pub mod lower;
 pub mod namespace;

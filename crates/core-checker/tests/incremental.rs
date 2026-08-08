@@ -74,21 +74,34 @@ mod tests
         body: Body,
     }
 
-    /// The in-tree test double for the parser-agnostic [`ItemSource`] seam —
-    /// the current consumer of the seam, standing in for the surface lane's
-    /// real lowering front end. Its revision is a statement slice.
+    /// The in-tree test double for the parser-agnostic [`ItemSource`] seam,
+    /// standing in for the surface lane's real lowering front end so this gate
+    /// runs without one. Its revision is a statement slice, and it has no
+    /// input-independent failure residue, so its error is
+    /// [`core::convert::Infallible`].
     struct ToySurface;
 
     impl ItemSource for ToySurface
     {
+        type Error = core::convert::Infallible;
         type Revision = [Stmt];
 
         fn items(
             &self,
             revision: &[Stmt],
-        ) -> Program
+        ) -> Result<Program, Self::Error>
         {
-            revision.iter().map(lower_stmt).collect()
+            Ok(revision.iter().map(lower_stmt).collect())
+        }
+    }
+
+    /// The toy front end's items for `revision`, with its uninhabited failure
+    /// residue discharged by a total match rather than an unwrap.
+    fn items_of(revision: &[Stmt]) -> Program
+    {
+        match ToySurface.items(revision) {
+            | Ok(program) => program,
+            | Err(never) => match never {},
         }
     }
 
@@ -129,9 +142,8 @@ mod tests
         edited: &[Stmt],
     ) -> Resume
     {
-        let source = ToySurface;
-        let base_program = source.items(base);
-        let edited_program = source.items(edited);
+        let base_program = items_of(base);
+        let edited_program = items_of(edited);
         let checkpoints = checkpoint_program(&base_program);
         let resumed = resume(&checkpoints, &edited_program);
         assert_eq!(
@@ -437,10 +449,9 @@ mod tests
             /// collisions, or dangling references.
             #[test]
             fn incremental_equals_from_scratch((statements, concrete) in program_and_edit()) {
-                let source = ToySurface;
-                let base = source.items(&statements);
+                let base = items_of(&statements);
                 let edited_statements = apply_edit(&statements, &concrete);
-                let edited = source.items(&edited_statements);
+                let edited = items_of(&edited_statements);
 
                 let checkpoints = checkpoint_program(&base);
                 let resumed = resume(&checkpoints, &edited);
