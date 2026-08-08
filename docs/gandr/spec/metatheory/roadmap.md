@@ -67,7 +67,7 @@ Those attributions did not survive the move to the circuit-algebra rung, and wha
 
 Three questions, in order:
 
-1. **Follow the positive result in the factorization paper.** [@hackney-robertson-yau-2018-factorizations] gives the _wheeled_ graphical category a generalized Reedy structure, factorization unique up to isomorphism, after the modification its own second section introduces — and it is the same paper whose theorem 4.11 supplies the Eilenberg–Zilber _negative_ result, so both faces come from one read.
+1. **Follow the positive result in the factorization paper.** [@hackney-robertson-yau-2018-factorizations, prop 3.7] gives the _wheeled_ graphical category a generalized Reedy structure, factorization unique up to isomorphism, after the modification its own second section introduces — and it is the same paper whose theorem 4.11 supplies the Eilenberg–Zilber _negative_ result, so both faces come from one read.
    What is owed is a **bridge from that category to the nonunital circuit-algebra site**, not a theory from scratch; that bridge is the presentation obligation below, which now has a target.
 2. **Decide whether the general case is needed.** If the bridge does not go through for this site specifically, the question becomes whether a generalized-Reedy structure can be established for the site directly, or whether the staging should be re-based on a weaker structure that supplies degree, the two subcategories, and equivariant staging without the full package.
    State which of the three the answer is; do not silently weaken.

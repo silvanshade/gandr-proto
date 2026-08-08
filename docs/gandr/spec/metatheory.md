@@ -123,7 +123,7 @@ record Rigid (A : Set) (_≈_ : A → A → Set) : Set where
 Completeness (`canon-resp`) is what makes ordered storage a _section_ rather than a strengthening; soundness is what stops distinct objects being conflated.
 The honest strength relation: every `Rigid` setoid is isomorphic in `SETOID` to a decidable-equality set (K-free, by Hedberg), and `Rigid` is _strictly stronger_ than admitting such an isomorphism, because it demands decidable propositional equality on the carrier itself — exactly what a content-addressed store has.
 
-Rigidity is a property of the **representation**, never of the objects: the graphical category's automorphism groups contain the symmetric groups on the legs, and it is only a _generalized_ Reedy category for exactly that reason.
+Rigidity is a property of the **representation**, never of the objects: the graphical category's automorphism groups contain the symmetric groups on the legs, which is why the Reedy structure the staging asks of it can only ever be a _generalized_ one — an instantiation still owed at gandr's site rather than a settled attribution ([[#The site, the strata, and the fuel are one object]]).
 `Rigid` is one design decision seen four times: it makes ordered storage sound, it makes the generalized-Reedy factorization an actual function rather than an existence statement, it is what the parallel-component multiset instance needs, and it is a candidate load-bearing ingredient for univalence transfer (the elegance question of [[#Stratified univalence]]).
 
 ## The operational substrate — the polarized sequent kernel
@@ -731,7 +731,7 @@ This identification is the first thing to test (its falsifier: a description nee
 
 ### The site, the strata, and the fuel are one object
 
-$Θ$ is a **generalized Reedy category** [@berger-moerdijk-2011-reedy] — generalized precisely because its objects have nontrivial automorphisms:
+The staging runs on $Θ$ being a **generalized Reedy category** — generalized precisely because its objects have nontrivial automorphisms:
 
 ```agda
 deg    : Θ.Obj → ℕ                                  -- Reedy degree
@@ -739,9 +739,15 @@ deg    : Θ.Obj → ℕ                                  -- Reedy degree
 factor : (f : G ⟶ H) → Σ[ K ] (Θ⁻ G K × Θ⁺ K H)     -- unique UP TO ISO
 ```
 
+> **That structure is consumed here and is not yet warranted at this site.** [@berger-moerdijk-2011-reedy] is the _definition_ of a generalized Reedy category, not a theorem about $Θ_(T^times, "Gr")$; the theorem that a graphical category satisfies it was taken against the **properadic** site and did not cross when the site changed, so a reader checking the attribution finds no proof for this one.
+> It is the same obligation [[#The nerve at the circuit rung|the nerve warrant]] already lists as owed under a different name — the presentation of $Θ_(T^times, "Gr")$ (degree, the two subcategories, factorization, decidable morphism equality) **is** this data — and the bridge to build it from, the two fallbacks if that bridge does not go through, and the Eilenberg–Zilber question behind them are [[metatheory/roadmap#meta-spike-06|meta-spike-06]].
+> Read every use of the structure below as conditional on that instantiation.
+
 Stratum $n$ is the shapes of degree at most $n$; the universe at stratum $n$ is the codes whose terms are supported there; **fuel is the degree** — a natural number decreasing along degree-lowering maps, so induction on it terminates structurally.
 "Unique up to iso, not up to unique iso" is where the automorphism groups sit, and it is exactly what `Rigid` discharges: canonicalization turns the factorization into an actual function.
 Reedy theory hands over the staged construction — a presheaf is built degree by degree through latching and matching objects with automorphism-equivariance at each stage; the per-degree new data is exactly the delooped automorphism groups [@haine-ramzi-steinebrunner-2025-reedy], with the classical bigluing results as the 1-categorical citation per that paper's own direction.
+**The delooping is groupoidal, and truncating it is what leaves the equivariance behind**: at `Set` the per-degree complement is the set of automorphism orbits _together with_ its group action, so the equivariance condition does not evaporate at gandr's rung — it lands on `canon-resp` and `canon-sound`, the same place the factorization's up-to-iso uniqueness lands.
+Two cautions travel with that citation and are recorded where a reader meets it: the source states its Reedy-∞ definition as a **proposal**, not as a property shown to hold of any graphical category, so it corroborates the shape of the staging and not the attribution the block above owes; and the classical antecedents it directs the 1-categorical citation to are named descriptively here because they have no register rows yet ([[metatheory/citation-hazards]]).
 **Staged certification is Reedy induction.** One structural caution for the mechanization: the graphical category is **not** closed under finite colimits — graph substitution is not "take a pushout", and only graph-of-graphs diagrams are guaranteed colimits — so the presentation work of [[metatheory/roadmap]] must not assume general colimits of shapes.
 
 ### Equivalence as finite, checkable data

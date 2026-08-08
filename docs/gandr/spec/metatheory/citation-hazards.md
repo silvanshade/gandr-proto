@@ -73,11 +73,16 @@ Each entry would otherwise be re-derived at the cost of an hour or a wrong citat
 * The rung/shape figure is the polynomial-monads paper's, not the graphs-hypergraphs paper's — the error propagated into session briefs once.
 * Two different Weber papers travel under one shorthand: the nerve theorem is the familial-2-functors paper; the weakly-cartesian content is the earlier generic-morphisms paper — and the familial entry in this bibliography is one of the four synthesized rows, so the conflation is live.
 * The tracelet paper's tracelet-abstraction definition is one printed page earlier than the page a register row recorded.
+* **A register key ending `-reedy` names a paper whose title is about fully faithful functors and pushouts** [@haine-ramzi-steinebrunner-2025-reedy]: the key records what the corpus cites it _for_, not what the work is about, and only its Reedy-extension section bears on gandr.
+  Two things must be read from that section rather than from the key: its Reedy-∞ definition is stated as a **proposal**, not shown to hold of any graphical category, so it cannot be cited as the attribution [[../metatheory#The site, the strata, and the fuel are one object|the staging]] owes; and its own remark directs the 1-categorical citation elsewhere, so the paper is the ∞-generalization and not the statement gandr consumes.
+  Keys are stable, so this is a reading instruction and not a rename.
 
 ## Register gaps
 
 * The **transformation-monoid / finite-set-category presentation** (the directed word problem's classical presentations) has no bibliography row and no formalized rewriting twin; the row must exist before the directed convergence pass can cite it.
   Candidate payers: the structural-focalization and skew-monoidal-sequent lines referenced by [@clarke-scherer-zeilberger-2026-bifibration].
+* The **classical bigluing antecedents** of the staged latching/matching construction have no rows, and the corpus currently names them descriptively — which is exactly the unnamed-work defect this document exists to prevent.
+  They are the 1-categorical statements the ∞-source's own remark directs its readers to, and they are what `Gandr.UA.Reedy` should cite rather than the ∞-generalization; the rows must exist, verified against their artifacts, before [[../metatheory#The site, the strata, and the fuel are one object|the staging's]] warrant is quoted further.
 * The Johnstone source for the unique-diagonal-filler condition, and the Dawson–Paré–Pronk free-adjoint line, are needed only if the tractability predicate or the zigzag construction becomes citation-bearing.
 * Four bibliography entries were synthesized rather than copied from the research library: the semirings/rig-groupoids paper, the pretype-theory report, the Cubical Agda paper, and the familial-2-functors paper.
   One has since been locator-verified (the familial entry, at TAC 18(22), Thm 4.10, p. 690); the other three still carry in-file verification notes.
