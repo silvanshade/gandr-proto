@@ -14,7 +14,8 @@
 
 ## Hooks (`.config/wt.toml`)
 
-* `[[pre-start]]`: `copy-ignored` (fail-open ignored-state reflink; excludes `.beads/**` — the shared-tracker topology guard, [tracker.md](tracker.md) §"Source of truth and sync" — plus `target/**` and friends) and `beads-pull` (`bd dolt pull || true` — cross-machine freshness of the shared database; worktree-to-worktree visibility needs no pull).
+* `[[pre-start]]`: `copy-ignored` (fail-open ignored-state reflink; excludes `.beads/` — the shared-tracker topology guard, [tracker.md](tracker.md) §"Source of truth and sync" — along with `fuzz/artifacts/`, `coverage/`, and `.rumdl_cache/`, while `target/` and `node_modules/` are copied on purpose for the warm cache) and `beads-pull` (`bd dolt pull || true` — cross-machine freshness of the shared database; worktree-to-worktree visibility needs no pull).
+  Each excluded directory is listed in **both** the `<dir>/` and `<dir>/**` forms, because the two match disjoint halves of git's ignored-entry enumeration and a single form silently stops matching when unrelated `.gitignore` structure changes; the derivation and the measurements are in the comment above `[step.copy-ignored]` in `.config/wt.toml`.
   The template's `mise setup` and submodule init/warmup pre-start steps are parked while the reboot bootstraps — they reference state this repo does not have yet and re-grow with the pieces they serve.
 * **`[pre-merge]` is the local wall** — any non-zero exit aborts the merge: `mise run gate:merge` (the composed merge check, [ci.md](ci.md)) and `beads` (`bd dolt pull && bd dolt push` — make the branch's beads durable on DoltHub once gates are green; pull-then-push self-heals the race with other pushers).
   Parked pending its prerequisite: `adr-guard` (ADRs land on `main` only — returns when `docs/adr/` exists).

@@ -5,15 +5,15 @@
 # NOTE: worktrunk honors [merge] and [remove] ONLY in user config
 # (~/.config/worktrunk/config.toml), NOT at project scope — so the default
 # `wt merge` SQUASHES. Pass `wt merge --no-squash` per invocation, or set
-# `[merge] squash = false` once in the user config (core/WORKFLOW.md
-# §"Worktrees and merging").
+# `[merge] squash = false` once in the user config
+# (docs/workflow/worktrees.md §"Hooks (`.config/wt.toml`)").
 #
 # Adding/changing a hook re-prompts worktrunk's approval: run
 # `wt config approvals add` once after wiring — never blanket `--yes`.
 #
 # Hook interactivity audit: lifecycle commands are non-interactive by
 # construction. Mise trust does not live here; mise v2026.7.5+ propagates
-# trust from the main checkout (core H15).
+# trust from the main checkout, so no hook needs to bootstrap it.
 
 # Pre-start is intentionally minimal while the gandr reboot bootstraps: the
 # remaining template steps (mise setup, submodule init/warmup) reference state
@@ -66,29 +66,76 @@ beads = "bd dolt pull && bd dolt push"
 [post-merge]
 beads-pull = "bd dolt pull"
 
-# Beads topology guard (gandr-fid.15): worktrees must NOT carry gitignored
-# .beads state. bd shares ONE database per machine via git common-directory
-# discovery; a copied .beads (Dolt data snapshot, metadata.json, stale
-# dolt-server port/pid files) shadows that discovery and forks per-worktree
-# clones — the 2026-07-22 double-recording incident. Excluding .beads/** also
-# subsumes the older H11 guard against copying stale passive jsonl exports.
+# EVERY directory below is listed TWICE, and that is the whole point of this
+# block's shape. `wt step copy-ignored` matches these patterns against GIT's
+# ignored-entry enumeration, which returns a wholly-ignored directory as one
+# collapsed entry with no trailing slash, and a directory git was forced to
+# descend into (a negation, or patterns naming only children) as the entries
+# inside it. The two pattern forms are NOT interchangeable — measured against
+# wt v0.71.0, 2026-08-08:
+#
+#   <dir>/    matches the collapsed entry "<dir>", and nothing under it
+#   <dir>/**  matches entries under "<dir>", and not "<dir>" itself
+#
+# Writing one form, chosen from how .gitignore happens to cover that directory
+# today, is the bug this list repairs (gandr-vibl): the exclusion becomes a
+# silent no-op when the enumeration comes back in the other shape, and it fails
+# in the direction of copying MORE. Nothing reports it. The doubled form is
+# correct under either shape, so an unrelated .gitignore edit can no longer
+# switch an exclusion off — which matters most for .beads, below.
+#
+#   .beads/  —  the correctness-critical entry (gandr-fid.15). Worktrees must
+#     NOT carry gitignored .beads state: bd shares ONE database per machine via
+#     git common-directory discovery, and a copied .beads (Dolt data snapshot,
+#     stale dolt-server port/pid files) shadows that discovery and forks
+#     per-worktree clones — the 2026-07-22 double-recording incident. It also
+#     subsumes the older guard against copying stale passive jsonl exports.
+#     Only ".beads/**" does the work today, because .beads holds TRACKED files
+#     (config.yaml, metadata.json, README.md) and so is always enumerated
+#     child-by-child; ".beads/" is what keeps the guard standing if that ever
+#     stops being true.
+#   fuzz/artifacts/  —  AFL++ crash artifacts. A crash the source worktree
+#     found is noise in a branch that never produced it; the seed corpora that
+#     DO belong to every worktree are tracked, so this step never sees them.
+#   coverage/  —  llvm-cov output. A copied report is warm against the SOURCE
+#     tree — the same failure mode as .rumdl_cache below — and `coverage:check`
+#     regenerates it.
+#   .rumdl_cache/  —  rumdl caches per file and does not invalidate on
+#     configuration change, so a copied cache is warm against the SOURCE tree's
+#     file set: measured 2026-08-06, a copied cache reported MD057 "does not
+#     exist" against a link target created after the cache warmed, and only
+#     --no-cache told the truth.
+#
+# Deliberately NOT excluded, so the reflink copy happens:
+#
+#   target/, fuzz/target/  —  a warm build cache is most of what this step is
+#     for, and a reflink costs no disk on APFS until something writes. Owner
+#     ruling, 2026-08-06.
+#   node_modules/  —  same reasoning, and it is relocatable: every symlink in
+#     it is relative and its .bin shims resolve through $basedir, so a copy
+#     runs the copy's own toolchain rather than the source worktree's.
+#
+# Four patterns were deleted rather than repaired (gandr-vibl), because each
+# names something that should be copied or nothing at all:
+#
+#   target/**  never matched: `target` at .gitignore:1 covers the directory
+#     itself, so git hands it over collapsed as the single entry "target".
+#   crates/tree-sitter/target/**  names a path absent from the tree, and its
+#     stated premise was false in both halves — the generic `target` rule
+#     carries no leading slash, so it is not root-anchored and already matches
+#     at every depth, and a nested `/**` pattern would not have matched a
+#     collapsed entry anyway.
+#   fuzz/target/**  also absent, and covered by the same build-cache ruling.
+#   packages/tree-sitter-gandr/node_modules/**  absent, and it never named the
+#     node_modules that is actually copied, which is the one at the repo root.
 [step.copy-ignored]
 exclude = [
+  ".beads/",
   ".beads/**",
-  "target/**",
-  # tree-sitter reference crate returns under crates/tree-sitter (not yet in the
-  # repo); the generic target/** above is root-anchored, so its nested target dir
-  # needs this explicit pattern — pre-retargeted ahead of the tree-sitter port.
-  "crates/tree-sitter/target/**",
-  "fuzz/target/**",
-  "fuzz/artifacts/**",
+  "coverage/",
   "coverage/**",
-  "packages/tree-sitter-gandr/node_modules/**",
-  # rumdl caches per file and does not invalidate on configuration change, and a
-  # copied cache is warm against the SOURCE tree's file set — measured 2026-08-06:
-  # a copied cache reported MD057 "does not exist" against a link target created
-  # after the cache warmed, and only --no-cache told the truth. A bare path, not
-  # a glob: git collapses the wholly-ignored directory into the single entry
-  # ".rumdl_cache", which a "/**" glob cannot match.
-  ".rumdl_cache",
+  "fuzz/artifacts/",
+  "fuzz/artifacts/**",
+  ".rumdl_cache/",
+  ".rumdl_cache/**",
 ]

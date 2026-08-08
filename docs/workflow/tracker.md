@@ -6,7 +6,7 @@
 
 ## Source of truth and sync
 
-Issues live in **one shared Dolt database per machine** (beads, prefix `gandr-`): the primary checkout and every worktree resolve the same database through the git common directory, so worktrees carry **no gitignored `.beads` state of their own** (the `wt` copy-ignored step excludes `.beads/**`; topology record: `gandr-fid.15`).
+Issues live in **one shared Dolt database per machine** (beads, prefix `gandr-`): the primary checkout and every worktree resolve the same database through the git common directory, so worktrees carry **no gitignored `.beads` state of their own** (the `wt` copy-ignored step excludes `.beads/` and `.beads/**`, both forms, for the reason recorded beside that config; topology record: `gandr-fid.15`).
 A bead written from any checkout is immediately visible in all of them — no pull between worktrees.
 That immediacy is about **visibility**, and it does not extend to the remote: because every checkout advances the same branch, worktrees still contend with each other when pushing.
 The database syncs **out-of-band from git** to DoltHub [`silvanshade/gandr-beads`](https://www.dolthub.com/repositories/silvanshade/gandr-beads) (the `origin` Dolt remote), the only off-machine copy:
