@@ -81,7 +81,12 @@ The nominal _type-theory_ aim (nullary parametricity as name abstraction) is a d
 * **The monad-composition placement** ("compose the derivation arity with the term arity") is interchange, on which the witness ruling has already ruled; its lax form at the certificate layer is settled, its strict form at the shape layer is the scheduled duoid equation, and the only named payoff of a genuinely composite doctrine-and-term monad (a nerve theorem for the doctrine itself, making _certificates_ univalent) is reachable by the universe-presentation route without it.
 * **`Web` as the many-to-many arity**: a web is a forest — many-in, one-out per component — the operad-of-trees arity; the properadic arity is a _graph_.
   Its surviving contribution is the witness discipline.
-* **Full multi-globularity** (many-to-many coboundaries at every dimension) overshoots: multi-arity is needed at exactly the base dimension; the trigger to revisit is a genuine (non-singleton) multi-sum family, which is measured and currently singleton.
+* **Full multi-globularity** (many-to-many coboundaries at every dimension) overshoots: multi-arity is needed at exactly the base dimension.
+  **Its revisit trigger was restated, and the old one can no longer fire** (`gandr-njmt`, 2026-08-08).
+  The old trigger was "a genuine (non-singleton) multi-sum family", measured and singleton — but the linearity ruling refuses the non-linear pattern that would produce the family, so watching for it is watching for a shape the admission boundary now prevents.
+  The live trigger is the **per-type comonoid generalization**: a type supplying a copy is where a genuine family could reappear, and landing that supply re-arms the watch.
+  Both are owner rulings, of 2026-08-01 and 2026-08-02 — [[../implementation/circuit-terms#The design questions|circuit-terms-question-17]] and [[../implementation/circuit-terms#The design questions|circuit-terms-question-18]] — and the restatement is written in the owning section, [[../metatheory#The compositional-rewriting axioms, measured]].
+  A dead trigger in this ledger is worse than none — the entry still reads as watched while nothing can ever trip it.
 
 ## Withdrawn claims — tombstones
 

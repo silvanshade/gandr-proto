@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 885a291c19e7aafff8c159db0ffb4b03f9016ce309e0d10ec7e6382f6132a545
+    b3: 9eac72afc4646e35aa7e6ddb13f801419754e011a0efd863de059958388dc976
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -49,7 +49,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
     role: subdocument
-    b3: a7676218603799342d20f9a085b5249c3969cdebcf9dc916e783a13086dc15f4
+    b3: 0d218707eeb1cb083dea72fceb6c89c07bec46fd441c13412a6af1b78c2e4195
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
@@ -174,7 +174,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: ec938e7b68fbe430f2177cad1f0ada1a8a4cf84237cfd6366948022174c6193b
+    b3: fb22ebb8c61eb26bdd721cf168b9209745f6b12395fe1df2cd71b346ffa78cff
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md

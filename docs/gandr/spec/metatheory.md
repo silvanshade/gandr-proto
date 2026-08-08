@@ -1038,7 +1038,12 @@ Parametricity-as-coherence-management now has five independent arrivals (cohesio
 8. **The coherence-debt arity law fails its scheduled test** — the interchange needs two cuts to commute, the ladder is not finite, and the four-tier policy's tier-2 coverage shrinks (the two other falsifiers of the law are in [[metatheory/roadmap]]).
 9. **The monomial-to-monomial condition fails** for the construction-term normal form — canonicalization soundness loses its published route and needs another.
 
-The retired falsifiers (real cells not simply connected; the term face needs PROP-style composition; rectification-admissibility; gandr's composition is not the Segal composition — subsumed by the presentation obligation of the graphical category) are dissolved by the full-rung substrate and its nerve warrant; they are tombstoned in [[metatheory/guards]] so they are not re-derived.
+Two earlier falsifiers are genuinely retired — real cells not simply connected, and the term face needing PROP-style composition — dissolved by the full-rung substrate and its nerve warrant, and tombstoned in [[metatheory/guards]] so they are not re-derived.
+
+> **Two more were listed with them and are not retired; the distinction is corrected here rather than left** (`gandr-njmt`, 2026-08-08).
+> **Rectification-admissibility** is moot only because the route that conditioned it lapsed, not because anything discharged it: the strictness warrant it served has no replacement and is open at [[metatheory/roadmap#Open questions|meta-question-19]], its decline recorded at [[metatheory/guards#The rectification question, reopened deliberately]] and no tombstone row written anywhere.
+> **gandr's composition not being the Segal composition** is subsumed by the presentation obligation of the graphical category, and that obligation is **owed and unwritten** — the second scheduled item of [[metatheory/roadmap#meta-spike-06]], restated at [[#The nerve at the circuit rung]].
+> Subsumed by a live obligation is not dissolved, and neither item is tombstoned; reading either as retired is exactly the absence-that-looks-like-a-decision this corpus is being swept for.
 
 ## Roadmap
 
