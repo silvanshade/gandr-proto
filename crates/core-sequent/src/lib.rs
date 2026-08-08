@@ -79,6 +79,7 @@ pub mod store;
 pub mod unfocus;
 
 pub use crate::check::CheckError;
+pub use crate::check::ConsumerArityHead;
 pub use crate::check::Frees;
 pub use crate::check::wellformed;
 pub use crate::focus::FocusError;

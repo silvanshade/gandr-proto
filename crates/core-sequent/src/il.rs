@@ -210,6 +210,7 @@ impl CtorTag
     ///   set and asserted exactly, and separated from the checker's other
     ///   arities by the distinct [`ConsumerArity`] carrier.
     /// - witness: `il::tests::tag_consumer_arities_are_declared`
+    /// - witness: `check::tests::constructor_consumer_arity_is_checked`
     #[inline]
     #[must_use]
     pub fn consumer_arity(&self) -> ConsumerArity
@@ -293,6 +294,7 @@ impl DtorTag
     ///   residue is the declared value itself, enumerated over the finite tag
     ///   set and asserted exactly.
     /// - witness: `il::tests::tag_consumer_arities_are_declared`
+    /// - witness: `check::tests::destructor_consumer_arity_is_checked`
     #[inline]
     #[must_use]
     pub fn consumer_arity(&self) -> ConsumerArity
@@ -351,6 +353,8 @@ impl PrimOp
     ///   pointwise residue is the declared value itself, asserted exactly over
     ///   the finite head set and cross-checked against what `𝓕` builds.
     /// - witness: `il::tests::tag_consumer_arities_are_declared`
+    /// - witness: `check::tests::prim_consumer_arity_is_checked`
+    /// - witness: `check::tests::focused_prim_commands_meet_the_declaration`
     #[inline]
     #[must_use]
     pub fn consumer_arity(self) -> ConsumerArity

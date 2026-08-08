@@ -17,9 +17,20 @@
 //! 3. **Focus** — a producer in argument position (`K(p̄; …)`, `D(p̄; …)`,
 //!    `prim(p̄; …)`) is a substitutable value `𝔭`, never a context capture
 //!    `μα.s`.
-//! 4. **Arity** — a constructor / destructor carries the argument count its tag
-//!    declares, and a destructor frame carries exactly one trailing return
-//!    continuation (§2.1).
+//! 4. **Arity** — a node carries the argument counts **its own head declares**
+//!    (§2.1). A constructor and a destructor frame carry the producer count of
+//!    [`CtorTag::producer_arity`] / [`DtorTag::producer_arity`]; a constructor,
+//!    a destructor frame, and a `prim` command carry the consumer count of
+//!    [`CtorTag::consumer_arity`] / [`DtorTag::consumer_arity`] /
+//!    [`PrimOp::consumer_arity`]. This walk reads those declarations and holds
+//!    no arity constant of its own, so a head admitting several return
+//!    continuations is admitted here without a change (the
+//!    intermediate-language half of the multi-output axis:
+//!    `docs/gandr/spec/implementation/circuit-terms.md`, the execution ladder's
+//!    `circuit-terms-rung-06`). A [`CommandNode::Jump`] is the one
+//!    argument-carrying command whose head is a definition name rather than a
+//!    tag, so neither count is decidable from the command alone and its
+//!    arguments are walked without being counted.
 //! 5. **Polarity** — a cut's `ε` is consistent with the producer's polarity (a
 //!    codata `cocase` is a negative cut; a literal / constructor / thunk /
 //!    boxed covalue is a positive cut; a variable or `μ` capture is
@@ -37,6 +48,7 @@ use alloc::vec::Vec;
 use gandr_core_checker::boundary::NameRef;
 
 use crate::boundary::CheckDepth;
+use crate::boundary::ConsumerArity;
 use crate::boundary::WellformedDecision;
 use crate::il::CommandArena;
 use crate::il::CommandId;
@@ -46,6 +58,7 @@ use crate::il::ConsumerNode;
 use crate::il::CtorTag;
 use crate::il::DtorTag;
 use crate::il::Polarity;
+use crate::il::PrimOp;
 use crate::il::ProducerId;
 use crate::il::ProducerNode;
 
@@ -84,6 +97,38 @@ impl Frees
     }
 }
 
+/// The head a consumer-arity violation was found at — the tag whose
+/// declaration the node's consumer list `c̄` failed to meet.
+///
+/// Naming the head is what makes the diagnostic actionable: the count the walk
+/// held the node to came from this tag, not from the walk.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConsumerArityHead
+{
+    /// A positive constructor `K(p̄; c̄)` ([`ProducerNode::Ctor`]).
+    Ctor(CtorTag),
+    /// A destructor frame `D(p̄; c̄)` ([`ConsumerNode::Dtor`]).
+    Dtor(DtorTag),
+    /// A native `prim(p̄; c̄)` command ([`CommandNode::Prim`]).
+    Prim(PrimOp),
+}
+
+impl core::fmt::Display for ConsumerArityHead
+{
+    #[inline]
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result
+    {
+        match *self {
+            | Self::Ctor(_) => f.write_str("constructor"),
+            | Self::Dtor(_) => f.write_str("destructor frame"),
+            | Self::Prim(_) => f.write_str("prim command"),
+        }
+    }
+}
+
 /// A well-formedness violation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CheckError
@@ -114,14 +159,15 @@ pub enum CheckError
         /// The argument count found.
         found: usize,
     },
-    /// A destructor frame did not carry exactly one trailing return
-    /// continuation.
-    DtorContinuation
+    /// A node's consumer list `c̄` did not match the arity its head declares.
+    ConsumerArity
     {
-        /// The offending tag.
-        tag: DtorTag,
-        /// The consumer-child count found (must be one).
-        found: usize,
+        /// The head whose declaration was violated.
+        head: ConsumerArityHead,
+        /// The consumer arity the head declares.
+        expected: ConsumerArity,
+        /// The consumer-child count found.
+        found: ConsumerArity,
     },
     /// A producer in argument position was a non-value (a `μ` context capture).
     NonValueArgument(ProducerId),
@@ -167,9 +213,14 @@ impl core::fmt::Display for CheckError
                 f,
                 "destructor arity mismatch: expected {expected} argument(s), found {found}"
             ),
-            | Self::DtorContinuation { found, .. } => write!(
+            | Self::ConsumerArity {
+                ref head,
+                expected,
+                found,
+            } => write!(
                 f,
-                "destructor frame must carry one return continuation, found {found}"
+                "consumer arity mismatch: the {head} tag declares {expected} consumer child(ren), \
+                 found {found}"
             ),
             | Self::NonValueArgument(id) => write!(
                 f,
@@ -410,7 +461,29 @@ impl Checker<'_>
                                 depth,
                             ));
                         },
-                        | CommandNode::Prim { ref ps, ref cs, .. }
+                        | CommandNode::Prim { op, ref ps, ref cs } => {
+                            let expected = op.consumer_arity();
+                            if let Some(found) = consumer_arity_mismatch(expected, cs) {
+                                return Err(CheckError::ConsumerArity {
+                                    head: ConsumerArityHead::Prim(op),
+                                    expected,
+                                    found,
+                                });
+                            }
+                            self.push_arguments(
+                                &mut stack,
+                                ps,
+                                cs,
+                                &work.bound_vars,
+                                &work.bound_covars,
+                                depth,
+                            )?;
+                        },
+                        // A jump's head is a definition name, not a tag: both
+                        // its counts belong to the named definition's
+                        // signature, which the L0 command carrier does not
+                        // retain, so nothing is decidable from the command
+                        // alone and the arguments are walked uncounted.
                         | CommandNode::Jump { ref ps, ref cs, .. } => {
                             self.push_arguments(
                                 &mut stack,
@@ -452,6 +525,14 @@ impl Checker<'_>
                                     tag: tag.clone(),
                                     expected: usize::from(expected),
                                     found: ps.len(),
+                                });
+                            }
+                            let expected = tag.consumer_arity();
+                            if let Some(found) = consumer_arity_mismatch(expected, cs) {
+                                return Err(CheckError::ConsumerArity {
+                                    head: ConsumerArityHead::Ctor(tag.clone()),
+                                    expected,
+                                    found,
                                 });
                             }
                             self.push_arguments(
@@ -526,10 +607,12 @@ impl Checker<'_>
                                     found: ps.len(),
                                 });
                             }
-                            if cs.len() != 1 {
-                                return Err(CheckError::DtorContinuation {
-                                    tag: tag.clone(),
-                                    found: cs.len(),
+                            let expected = tag.consumer_arity();
+                            if let Some(found) = consumer_arity_mismatch(expected, cs) {
+                                return Err(CheckError::ConsumerArity {
+                                    head: ConsumerArityHead::Dtor(tag.clone()),
+                                    expected,
+                                    found,
                                 });
                             }
                             self.push_arguments(
@@ -649,6 +732,42 @@ impl Checker<'_>
     }
 }
 
+/// The consumer-child count a node actually carries, when it disagrees with
+/// the arity its head declares.
+///
+/// The one place the walk compares a consumer list against a declaration, so
+/// every consumer-carrying head is held to the same rule: **exactly** the
+/// declared count, never at least it. Reporting the found count rather than a
+/// decision keeps the offending head's tag out of the happy path, where cloning
+/// it would cost an allocation on every well-formed node.
+///
+/// # Contract
+/// - requires: `declared` is the arity `cs`'s own head declares
+///   ([`CtorTag::consumer_arity`], [`DtorTag::consumer_arity`], or
+///   [`PrimOp::consumer_arity`]).
+/// - ensures: `None` exactly when `cs.len()` equals `declared`.
+/// - provides: the offending count, for the [`CheckError::ConsumerArity`] the
+///   caller raises against its own head.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L3 — the decision surface is one equality, so the boundary
+///   inputs are a list one short of the declaration, one long, and exactly
+///   equal, at a head declaring zero and at a head declaring one; the pair of
+///   declarations is what separates reading the declaration from a constant.
+/// - witness: `check::tests::consumer_arity_follows_the_head_not_a_constant`
+/// - witness: `check::tests::constructor_consumer_arity_is_checked`
+/// - witness: `check::tests::destructor_consumer_arity_is_checked`
+/// - witness: `check::tests::prim_consumer_arity_is_checked`
+fn consumer_arity_mismatch(
+    declared: ConsumerArity,
+    cs: &[ConsumerId],
+) -> Option<ConsumerArity>
+{
+    let found = ConsumerArity::from(cs.len());
+    (found != declared).then_some(found)
+}
+
 /// Increments the depth, reporting [`CheckError::DepthExceeded`] past the
 /// ceiling.
 fn descend(depth: CheckDepth) -> Result<CheckDepth, CheckError>
@@ -706,6 +825,10 @@ mod tests
 {
     use alloc::boxed::Box;
     use alloc::string::String;
+
+    use gandr_core_checker::prim::NativePrim;
+    use gandr_core_checker::syntax::Comp;
+    use gandr_core_checker::syntax::Value;
 
     use super::*;
     use crate::il::CommandNode;
@@ -898,5 +1021,248 @@ mod tests
             matches!(wellformed(&arena, cut), Err(CheckError::CtorArity { .. })),
             "a pair needs two arguments"
         );
+    }
+
+    /// Builds `⟨() |+ c⟩` and checks it, so a consumer under test is reached by
+    /// the walk in its ordinary position.
+    fn check_against_unit(
+        arena: &mut CommandArena,
+        consumer: ConsumerNode,
+    ) -> Result<Frees, CheckError>
+    {
+        let producer = arena
+            .alloc_producer(ProducerNode::Lit(Lit::Unit))
+            .expect("room");
+        let consumer = arena.alloc_consumer(consumer).expect("room");
+        let root = arena
+            .alloc_command(CommandNode::Cut {
+                pol: Polarity::Positive,
+                producer,
+                consumer,
+            })
+            .expect("room");
+        wellformed(arena, root)
+    }
+
+    /// Builds `⟨p |+ ★⟩` for a producer under test and checks it.
+    fn check_producer_against_top(
+        arena: &mut CommandArena,
+        producer: ProducerNode,
+    ) -> Result<Frees, CheckError>
+    {
+        let producer = arena.alloc_producer(producer).expect("room");
+        let consumer = arena.alloc_consumer(ConsumerNode::Top).expect("room");
+        let root = arena
+            .alloc_command(CommandNode::Cut {
+                pol: Polarity::Positive,
+                producer,
+                consumer,
+            })
+            .expect("room");
+        wellformed(arena, root)
+    }
+
+    /// Allocates a consumer list of the given length out of distinct terminal
+    /// consumers, so a consumer-arity test varies only the count.
+    fn tops(
+        arena: &mut CommandArena,
+        count: ConsumerArity,
+    ) -> Box<[ConsumerId]>
+    {
+        core::iter::repeat_with(|| arena.alloc_consumer(ConsumerNode::Top).expect("room"))
+            .take(usize::from(count))
+            .collect()
+    }
+
+    /// A constructor is held to the consumer arity its tag declares — zero —
+    /// so the multi-consumer constructor the walk used to admit silently is
+    /// refused, and the diagnostic names the head and both counts.
+    #[test]
+    fn constructor_consumer_arity_is_checked()
+    {
+        let mut arena = CommandArena::new();
+        let cs = tops(&mut arena, ConsumerArity::from(1_usize));
+        let outcome = check_producer_against_top(&mut arena, ProducerNode::Ctor {
+            tag: CtorTag::Nil,
+            ps: Box::from([]),
+            cs,
+        });
+        assert_eq!(
+            Err(CheckError::ConsumerArity {
+                head: ConsumerArityHead::Ctor(CtorTag::Nil),
+                expected: ConsumerArity::from(0_usize),
+                found: ConsumerArity::from(1_usize),
+            }),
+            outcome,
+            "a frozen-core constructor declares no consumer children"
+        );
+    }
+
+    /// A destructor frame is held to the consumer arity its tag declares — one
+    /// — in both directions: a frame with no return continuation and a frame
+    /// with two are each refused, with the exact counts reported.
+    #[test]
+    fn destructor_consumer_arity_is_checked()
+    {
+        let mut arena = CommandArena::new();
+        let outcome = check_against_unit(&mut arena, ConsumerNode::Dtor {
+            tag: DtorTag::Force,
+            ps: Box::from([]),
+            cs: Box::from([]),
+        });
+        assert_eq!(
+            Err(CheckError::ConsumerArity {
+                head: ConsumerArityHead::Dtor(DtorTag::Force),
+                expected: ConsumerArity::from(1_usize),
+                found: ConsumerArity::from(0_usize),
+            }),
+            outcome,
+            "a destructor frame without its return continuation is refused"
+        );
+
+        let cs = tops(&mut arena, ConsumerArity::from(2_usize));
+        let outcome = check_against_unit(&mut arena, ConsumerNode::Dtor {
+            tag: DtorTag::Force,
+            ps: Box::from([]),
+            cs,
+        });
+        assert_eq!(
+            Err(CheckError::ConsumerArity {
+                head: ConsumerArityHead::Dtor(DtorTag::Force),
+                expected: ConsumerArity::from(1_usize),
+                found: ConsumerArity::from(2_usize),
+            }),
+            outcome,
+            "a destructor frame with two return continuations is refused"
+        );
+    }
+
+    /// A `prim` command is held to the consumer arity its head declares — one —
+    /// which the walk did not police at all before the declaration existed.
+    #[test]
+    fn prim_consumer_arity_is_checked()
+    {
+        let mut arena = CommandArena::new();
+        let unit = arena
+            .alloc_producer(ProducerNode::Lit(Lit::Unit))
+            .expect("room");
+        let root = arena
+            .alloc_command(CommandNode::Prim {
+                op: PrimOp::Dup,
+                ps: Box::from([unit]),
+                cs: Box::from([]),
+            })
+            .expect("room");
+        assert_eq!(
+            Err(CheckError::ConsumerArity {
+                head: ConsumerArityHead::Prim(PrimOp::Dup),
+                expected: ConsumerArity::from(1_usize),
+                found: ConsumerArity::from(0_usize),
+            }),
+            wellformed(&arena, root),
+            "a prim command without its return continuation is refused"
+        );
+
+        let cs = tops(&mut arena, ConsumerArity::from(2_usize));
+        let root = arena
+            .alloc_command(CommandNode::Prim {
+                op: PrimOp::Drop,
+                ps: Box::from([unit]),
+                cs,
+            })
+            .expect("room");
+        assert_eq!(
+            Err(CheckError::ConsumerArity {
+                head: ConsumerArityHead::Prim(PrimOp::Drop),
+                expected: ConsumerArity::from(1_usize),
+                found: ConsumerArity::from(2_usize),
+            }),
+            wellformed(&arena, root),
+            "a multi-consumer prim command is refused while its head declares one"
+        );
+    }
+
+    /// The count comes from the head, not from the walk: **one** consumer child
+    /// is admitted at a destructor frame and refused at a constructor, and
+    /// **zero** is admitted at a constructor and refused at a destructor frame.
+    /// Replacing the declaration lookup with either constant therefore fails
+    /// half of this test.
+    #[test]
+    fn consumer_arity_follows_the_head_not_a_constant()
+    {
+        let mut arena = CommandArena::new();
+        let cs = tops(&mut arena, ConsumerArity::from(1_usize));
+        let admitted = check_against_unit(&mut arena, ConsumerNode::Dtor {
+            tag: DtorTag::Force,
+            ps: Box::from([]),
+            cs,
+        });
+        assert_eq!(
+            Ok(Frees::empty()),
+            admitted,
+            "one consumer child meets the destructor frame's declaration"
+        );
+
+        let admitted = check_producer_against_top(&mut arena, ProducerNode::Ctor {
+            tag: CtorTag::Nil,
+            ps: Box::from([]),
+            cs: Box::from([]),
+        });
+        assert_eq!(
+            Ok(Frees::empty()),
+            admitted,
+            "no consumer child meets the constructor's declaration"
+        );
+
+        let cs = tops(&mut arena, ConsumerArity::from(1_usize));
+        let refused = check_producer_against_top(&mut arena, ProducerNode::Ctor {
+            tag: CtorTag::Nil,
+            ps: Box::from([]),
+            cs,
+        });
+        assert!(
+            matches!(refused, Err(CheckError::ConsumerArity { .. })),
+            "the same one consumer child violates the constructor's declaration"
+        );
+
+        let refused = check_against_unit(&mut arena, ConsumerNode::Dtor {
+            tag: DtorTag::Force,
+            ps: Box::from([]),
+            cs: Box::from([]),
+        });
+        assert!(
+            matches!(refused, Err(CheckError::ConsumerArity { .. })),
+            "the same empty consumer list violates the destructor frame's declaration"
+        );
+    }
+
+    /// The declaration agrees with the builder: every `prim` command the
+    /// focusing translation emits carries exactly the consumer count its head
+    /// declares, so the declaration is true of `𝓕` and not merely
+    /// self-consistent.
+    #[test]
+    fn focused_prim_commands_meet_the_declaration()
+    {
+        let comps = [
+            Comp::dup(Value::Unit),
+            Comp::drop(Value::Unit),
+            Comp::native(NativePrim::Add),
+        ];
+        for comp in &comps {
+            let focused = crate::focus::focus_comp(comp).expect("focuses");
+            let command = focused
+                .arena()
+                .command(focused.root())
+                .expect("the root resolves");
+            let CommandNode::Prim { op, ref cs, .. } = *command
+            else {
+                panic!("focusing a structural or native op emits a prim command: {command:?}")
+            };
+            assert_eq!(
+                usize::from(op.consumer_arity()),
+                cs.len(),
+                "𝓕 builds the consumer count {op:?} declares"
+            );
+        }
     }
 }
