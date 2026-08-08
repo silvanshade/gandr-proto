@@ -301,7 +301,7 @@ A double category whose horizontal composition declines is a **virtual** double 
 ## The span hazard the cobordism route inherits
 
 **Composing spans by ordinary pullback does not preserve their 2-cells, and the source that records it calls the phenomenon troublesome and remarkable.** In the games bicategory of [@mellies-2019-template-games-dll, sec III-A] the 2-cells are **not preserved by pullbacks of spans**: a natural isomorphism between functors is not transported to a pair of reversible 2-cells in the span bicategory at all, but to a pair of **cospans of simulations**, through a cylinder category [ibid., sec III-B, eqns 26, 27].
-Certificates composed as spans over a store ambient would inherit exactly that, and the primary source of this line does not flag it.
+**An earlier revision of this section said that certificates composed as spans over a store ambient would inherit exactly that**; that sentence is corrected below rather than left standing, because the construction this document adopts is the span construction's dual and the primary's silence is a consequence of that rather than an oversight ([[#The verdict on the transfer, and the delta that would reverse it]]).
 
 **The fix is a localization, and it is what prices the double-category rung.** Replace each hom-category by its **homotopy category**, localized at the weak equivalences, and compose by **homotopy pullbacks** [ibid., sec III-C, sec III-D, eqn 28].
 When the model structure is right proper the ordinary pullback along a fibration already computes the homotopy pullback [ibid., sec IV-A], which is why every structural map of that source's template carries a fibrancy or fibration condition.
@@ -310,8 +310,39 @@ So the price of composing certificate spans **and keeping their 2-cells** is a f
 **The shape is already in gandr's carrier, which is what makes the hazard worth recording rather than merely noting.** Certificate identity is itself a localization at replay-equivalence — the identity forgets the derivation and keeps the boundary, and the corpus records it as strictly coarser than the induced-bijection quotient ([[../metatheory#The certificate algebra]]) — so the localization the fix asks for is not a new construction but an identity gandr already has.
 What follows for the obligation is that [[#template-games-rung-04]] must say **which** of two targets it means: the cobordism double category in a 1-category, or the same construction up to homotopy.
 
-**Grade, and this is the weakest transfer in the document.** The non-preservation is proved for spans in a 2-category; **whether gandr's certificate 2-cells live in a 2-categorical setting in the required sense is not established**, and if they are locally posetal or discrete the hazard is vacuous.
-It is therefore carried as a question rather than as a finding ([[#template-games-question-07]]).
+**Grade, and this was the weakest transfer in the document.** The non-preservation is proved for spans in a 2-category, and whether gandr's certificate 2-cells live in a 2-categorical setting in the required sense was not established when the transfer was recorded.
+That premise has since been checked against both sources and against the tree, and the check is the next section.
+
+## The verdict on the transfer, and the delta that would reverse it
+
+**The transfer as this document stated it does not hold, and the reason is a fact about the two sources rather than a fact about gandr.** The stated form is corrected here; a second, dual form of the hazard survives the correction, is **challenged rather than refuted**, and is handed to the owner with its delta ([[#template-games-question-07]]).
+
+**The hazard is a statement about the span construction, and the construction this document adopts is that construction's dual.** In the differential source a strategy $σ : A ⊸ B$ **is a span** $A ← S → B$ with a labelling $λ_σ : S → ⊙[1]$, and strategies compose by the **pullback** $S ×_B T$ [@mellies-2019-template-games-dll, sec II-B, eqns 19, 20, 21].
+In the primary a cobordism $σ : A ⊸ B$ **is a cospan** $A → S ← B$ with the same shape of labelling, and cobordisms compose by the **pushout** $S +_B T$ followed by the relabel along $μ$ [@mellies-stefanesco-2020-csl, eqns 21, 22, thm 1.2].
+**The primary states the relation between the two in as many words**, and it is a duality rather than a variation: both bicategories are constructed as a bicategory sliced above a formal monad living **either in the span bicategory, for games, or in the cospan bicategory, for cobordisms**, and the differential source's internal category is "dualized" into an internal opcategory of machine states here [ibid., sec 1.2].
+So "certificates composed as spans" named a shape the adoption does not take at the level this document commits to, and the dual statement — that pushouts of cospans fail to preserve 2-cells — is **not one either source makes**.
+
+**The hazard also needs an ambient that has 2-cells at all, and the source says so itself.** It is stated for "the important case $S = "Cat"$", where the ambient is a 2-category and not merely a category, and the source records in the next section that the phenomenon "remains invisible" in the construction of the games bicategory **because that construction relies only on the categorical structure of $S$** [@mellies-2019-template-games-dll, sec III-A, sec III-B].
+The cobordism construction's hypotheses are 1-categorical throughout — a category with pushouts, nothing more [@mellies-stefanesco-2020-csl, thm 1.2, thm 2.2] — so the same sentence applies to it unchanged.
+
+**The remaining reasons are facts about gandr rather than about the machinery, and they are marked as such because they cannot carry a refutation** (the premise-tagging rule of [`docs/workflow/review.md`](../../../workflow/review.md)).
+The ambient this document commits gandr to is the store-transition layer, whose adhesivity warrant is that it is a presheaf topos — a 1-categorical claim ([[#Cobordism supports are store-transition systems, not computads]]).
+The differential source introduces the localization **in order to interpret the exponential modality**, which this document excludes ([[#Recorded absences]]).
+And gandr's certificate layer has no third dimension for the hazard to be about, which the next paragraph states at the symbol.
+
+**The certificate layer was read at the symbol rather than from its documentation.** A certificate is a peak, two recorded paths out of it, and a join both reach (`gandr-theory-computads`, `tracelet`); composition is a **graft** of the two paths under the strict-equality seam "`a`'s join is `b`'s peak" — unconditional on the invertible lane and acyclicity-gated on the directed one (`gandr-theory-computads`, `compose`) — and **no operation anywhere in the tree composes certificates by a limit**.
+What sits between two certificates is not a morphism but a two-valued relation: replay-equivalence identifies every pair sharing a boundary that both replay, so the certificate layer as built is locally posetal in the strongest available sense, carrying **at most one certificate per boundary** up to its own identity.
+**The one place the tree does take pullbacks is a dimension below the certificates**: unification computes pattern pullbacks and cell intersection is componentwise — the tight and cell layers of the compositional-rewriting double-category suite (`gandr-theory-virtual-doctrines`, the crDC suite) — where certificates are the 2-cells _over_ the pullback and never its legs.
+
+**Naming where gandr's genuine 2-cells do live is what keeps this from being the claim that gandr has none.** Every asynchronous graph presents a 2-category whose 2-cells are reschedulings modulo the induced bijection on edge indices [@mellies-2021-template-games, prop 8, appendix D-B], and gandr's tile set satisfies the axioms at the grade [[#template-games-spike-01]] reports.
+Those 2-cells are exactly what certificate identity forgets: the corpus already records replay-equivalence as strictly coarser, forgetting the induced permutation and never comparing the two paths, with the coarse choice held as a design choice and not a theorem ([[../metatheory#The certificate algebra]]).
+**So the hazard is not vacuous for want of 2-cells in gandr.** It is unreachable because the layer that has them is not the layer where certificates compose, and the layer where they compose has quotiented them away — and over the shipped sequent alphabet the tile set's extension is empty besides, so the 2-cells are exhibited today only over the nesting alphabet the axiom suite fixes.
+
+**The delta is two changes and neither alone suffices.** Certificate composition would have to become a **limit** rather than the seam graft or the pushout — which is instantiated in shape at exactly one level of this programme, the Gray level, where the horizontal composite is the equalizer of a coreflexive pair ([[#The ambient hypothesis is level-dependent]]) — **and** certificate identity would have to become finer than replay-equivalence, at least as fine as the induced-bijection quotient the corpus declines, so that there are 2-cells for the limit to fail to preserve.
+A construction making only the first leaves nothing to preserve; one making only the second leaves no limit to fail.
+
+**The cost, and the kind of change each half is.** The first half is a **commitment** change, because it is the Gray level's ambient hypothesis and that ambient is owed separately from the adhesive one ([[#The ambient hypothesis is level-dependent]]); the second reverses a landed design ruling whose reversal condition the corpus already states.
+**What signing the challenge off would eliminate** is the localization price at the cospan-and-pushout level, which stops being owed; **what it would not touch** is [[#template-games-rung-04]]'s obligation to name its target level, which this document already records as standing either way.
 
 ## The proof-scope of the derived Hoare inequality
 
@@ -526,7 +557,7 @@ Virtual because gandr's composition declines and the source's construction requi
 A limit that fails to exist is not a pushout that fails to exist, so **the virtual-variant argument has to be made once per level** rather than once for the apparatus.
 
 **And the rung names its target on a second axis as well.** Ordinary pullback composition of spans does not preserve their 2-cells, and the recorded fix is a localization at weak equivalences with composition by homotopy pullback ([[#The span hazard the cobordism route inherits]]) — so this rung states whether it targets the cobordism double category in a 1-category or the same construction up to homotopy.
-Whether that hazard applies to gandr's certificates at all is open ([[#template-games-question-07]]), and the naming obligation stands either way.
+That hazard does not apply to this rung's cospan-and-pushout level, because it is a statement about spans composed by pullback and this level composes cospans by pushout; whether a dual of it applies at the Gray level is the challenge handed to the owner ([[#template-games-question-07]]), and the naming obligation stands either way.
 
 **Grade.** **The variant's coherence is in neither source.** The totality requirement is read from statements that carry no proof in the text.
 
@@ -666,10 +697,15 @@ The disposition is that the re-index is settled **before** the axiom half of [[#
 
 **Does the span 2-cell hazard bite in gandr's setting, or is it vacuous there?**
 
-**Carried as a question rather than as a finding, because the transfer is the weakest one in this document.** Composing spans by ordinary pullback does not preserve 2-cells in a 2-category [@mellies-2019-template-games-dll, sec III-A, sec III-B], and certificates composed as spans over a store ambient would inherit that — **if** their 2-cells live in a 2-categorical setting in the required sense.
-Whether they do is unestablished, and if gandr's certificate 2-cells are locally posetal or discrete the hazard is vacuous and the localization price is not owed ([[#The span hazard the cobordism route inherits]]).
+**Answered against the sources for the stated form, and challenged rather than refuted for the dual form; the second half needs owner sign-off and not a further read.** The verdict, its premises and its delta are at [[#The verdict on the transfer, and the delta that would reverse it]].
 
-**The disposition has two halves.** The hazard is not quoted as a gandr fact until the setting is settled; and [[#template-games-rung-04]] states which target it means — the cobordism double category in a 1-category, or the same construction up to homotopy — either way, because that naming obligation does not wait on this answer.
+**The stated form is settled on the machinery.** The non-preservation is a statement about spans composed by pullback in the games bicategory [@mellies-2019-template-games-dll, sec II-B, sec III-A], while this document's adoption target is the cobordism construction — cospans composed by pushout — and the primary itself names the two as slices above a formal monad in the span and the cospan bicategory respectively [@mellies-stefanesco-2020-csl, eqns 21, 22, thm 1.2, sec 1.2].
+The hazard's further hypothesis, an ambient carrying 2-cells, is one the source explicitly says the construction does without [@mellies-2019-template-games-dll, sec III-B].
+
+**The dual form is what is challenged, and it rests on premises about gandr rather than about the machinery**, so it is handed over rather than closed: gandr's ambient is committed 1-categorical, certificate composition is a seam graft with no limit in it, and certificate identity collapses each boundary's certificates to one.
+Neither source states a pushout analogue of the phenomenon, so nothing here is quoting one.
+
+**Three halves of the disposition, and the third is new.** The hazard is not quoted as a gandr fact in either form; [[#template-games-rung-04]] states which target it means — the cobordism double category in a 1-category, or the same construction up to homotopy — either way, because that naming obligation does not wait on this answer; and the **delta** is recorded so a later sweep re-opens the branch instead of re-deriving it, namely a limit-shaped composition at the Gray level together with a certificate identity finer than replay-equivalence.
 
 ### template-games-question-08
 
@@ -768,7 +804,8 @@ Its appendix B was read for statements with two proofs followed, and its game-se
 **Four claims about the layered line in this document are the read's reasoning rather than source statements, and each is marked at the claim**: that coherence is cheap for gandr because two distinct operations are always coherent; that congruence forces independence to be context-free; that the third guard conjunct is vacuous across components; and the whole of the sharing-not-strength reading of the interchange stratification.
 The one-line definition of an object is likewise a compression of the source's four requirements and not a definition the source gives.
 
-**Two further gandr-side facts are unverified and load-bearing for the layered material.** Whether gandr can compute a component decomposition at a certificate's start position cheaply, which the granularity recommendation assumes ([[#template-games-question-08]]); and whether gandr's certificate 2-cells live in the setting the span hazard needs ([[#template-games-question-07]]).
+**One further gandr-side fact is unverified and load-bearing for the layered material**: whether gandr can compute a component decomposition at a certificate's start position cheaply, which the granularity recommendation assumes ([[#template-games-question-08]]).
+A second one was carried here and is now discharged — whether gandr's certificate 2-cells live in the setting the span hazard needs — read at the symbol over the certificate, composition and virtual-double-category modules ([[#The verdict on the transfer, and the delta that would reverse it]]).
 **No gandr source code was read for the layered material**: its gandr-side statements are taken from the corpus as written, except for the replay determinism claim, which is carried at the grade of the verdict on `gandr-9os.10` — structural and exhaustive over the replay path, given a fixed store ([[#What the third carrier decides about the quotient]]).
 
 **No recorded corpus claim was contradicted by any of the four sources.** Both interchange-strength characterizations at [[../metatheory#Interchange, by layer]] check out: the Gray and invertible level against the substrate's own deadlock-and-diagonals passage and its Gray-tensor statements [@mellies-2021-template-games, sec I, def 1, thm 4], and the lax level against the primary's lax-monoidal statement and its concluding section [@mellies-stefanesco-2020-csl, thm 4.4].
