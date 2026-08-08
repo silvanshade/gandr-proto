@@ -144,6 +144,12 @@ impl<Data, Tag> Trie<Data, Tag>
     ///   insert is not a union.
     /// - provides: the primitive every namespace is built from.
     /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — one decision surface (whether a path was already
+    ///   bound), separated by the boundary pair fresh-path / repeat-path with
+    ///   the returned `Option` asserted as an exact value on each.
+    /// - witness: `trie::tests::inserting_returns_the_binding_it_displaced`
     #[inline]
     pub fn insert(
         &mut self,
@@ -301,8 +307,11 @@ impl<Data, Tag> Trie<Data, Tag>
     ///   collide only when their paths are equal and a namespace never shadows
     ///   another wholesale.
     /// - ensures: collisions are presented in ascending path order.
-    /// - fails: propagates `resolve`'s failure unchanged and leaves the
-    ///   remaining bindings of `later` unmerged.
+    /// - fails: propagates `resolve`'s failure unchanged. The merge is not
+    ///   atomic — every binding of `later` ordered before the refused path has
+    ///   already been merged and stays merged — but it is never destructive:
+    ///   the binding this namespace held at the refused path survives
+    ///   unchanged, so a declined collision loses nothing that was here.
     /// - panics: none.
     ///
     /// # Errors
@@ -310,15 +319,18 @@ impl<Data, Tag> Trie<Data, Tag>
     /// to settle.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 only — three decision surfaces (the collision test, the
-    ///   resolved binding's placement, and the early return), separated by the
-    ///   boundary inputs disjoint-namespaces, one-colliding-path with a
-    ///   resolver that picks each side in turn, and a declining resolver, each
-    ///   asserted as an exact binding set or an exact error value.
+    /// - hypothesis: L3 only — four decision surfaces (the collision test, the
+    ///   resolved binding's placement, the early return, and what the early
+    ///   return leaves behind), separated by the boundary inputs
+    ///   disjoint-namespaces, one-colliding-path with a resolver that picks
+    ///   each side in turn, and a declining resolver reached after an earlier
+    ///   non-colliding binding has merged, each asserted as an exact binding
+    ///   set or an exact error value.
     /// - witness: `trie::tests::union_of_disjoint_namespaces_merges_pointwise`
     /// - witness: `trie::tests::union_consults_the_resolver_on_a_collision`
     /// - witness: `trie::tests::union_reports_collisions_in_path_order`
     /// - witness: `trie::tests::union_propagates_a_declining_resolver`
+    /// - witness: `trie::tests::a_declined_collision_keeps_the_binding_it_found`
     #[inline]
     pub fn union_resolving<Resolve, Failure>(
         &mut self,
@@ -326,18 +338,22 @@ impl<Data, Tag> Trie<Data, Tag>
         resolve: &mut Resolve,
     ) -> Result<(), Failure>
     where
+        Data: Clone,
+        Tag: Clone,
         Resolve: FnMut(&NamePath, Collision<Data, Tag>) -> Result<Binding<Data, Tag>, Failure>,
     {
         for (path, latter) in later.entries {
-            match self.entries.remove(&path) {
-                | Some(former) => {
-                    let resolved = resolve(&path, Collision { former, latter })?;
-                    self.entries.insert(path, resolved);
-                },
-                | None => {
-                    self.entries.insert(path, latter);
-                },
-            }
+            let Some(former) = self.entries.get(&path)
+            else {
+                self.entries.insert(path, latter);
+                continue;
+            };
+            let collision = Collision {
+                former: former.clone(),
+                latter,
+            };
+            let resolved = resolve(&path, collision)?;
+            self.entries.insert(path, resolved);
         }
         Ok(())
     }
@@ -472,6 +488,27 @@ mod tests
             subject.get(&path("nat")).map(|binding| binding.data),
             Some(Payload(1)),
             "the shorter path resolves on its own"
+        );
+    }
+
+    #[test]
+    fn inserting_returns_the_binding_it_displaced()
+    {
+        let mut subject = namespace(&[entry("nat", Payload(1))]);
+        assert_eq!(
+            subject.insert(path("nat.plus"), Binding::new(Payload(2), ())),
+            None,
+            "a fresh path displaces nothing"
+        );
+        assert_eq!(
+            subject.insert(path("nat"), Binding::new(Payload(3), ())),
+            Some(Binding::new(Payload(1), ())),
+            "a repeat insert hands back exactly what it replaced"
+        );
+        assert_eq!(
+            listing(&subject),
+            expected(&[entry("nat", Payload(3)), entry("nat.plus", Payload(2))]),
+            "and the later binding is what the path now reaches"
         );
     }
 
@@ -664,6 +701,30 @@ mod tests
                 latter: Binding::new(Payload(2), ()),
             }),
             "the declining resolver's exact value reaches the caller"
+        );
+    }
+
+    #[test]
+    fn a_declined_collision_keeps_the_binding_it_found()
+    {
+        let mut subject = namespace(&[entry("m.b", Payload(1))]);
+        let outcome: Result<(), Collision<Payload, ()>> = subject.union_resolving(
+            namespace(&[entry("m.a", Payload(2)), entry("m.b", Payload(3))]),
+            &mut |_, collision| Err(collision),
+        );
+        assert_eq!(
+            outcome,
+            Err(Collision {
+                former: Binding::new(Payload(1), ()),
+                latter: Binding::new(Payload(3), ()),
+            }),
+            "the resolver declines the collision at `m.b`, and only that one"
+        );
+        assert_eq!(
+            listing(&subject),
+            expected(&[entry("m.a", Payload(2)), entry("m.b", Payload(1))]),
+            "the merge stops where it was refused, keeping what it had already merged and — the \
+             point of the case — never dropping the binding whose collision was refused"
         );
     }
 }

@@ -31,10 +31,17 @@
 //!
 //! **The emptiness check is deliberately a separate constructor**, and the
 //! derivations above are where that pays. Folding the check into the core
-//! relocation would make `only p` perform two not-found events with the wrong
-//! paths when the subtree at `p` is empty — once for `p` and once for the
-//! root. Keeping it separate lets each derived builder place exactly one check
-//! at exactly the path a user would want named in the diagnostic.
+//! relocation would make `only p` perform two not-found events when the subtree
+//! at `p` is empty — one for `p`, which is the one a user wants, and a second
+//! for the root, which names the whole namespace and is simply wrong. Keeping
+//! the check separate lets each derived builder place exactly one, at exactly
+//! the path a user would want named in the diagnostic.
+//!
+//! The split runs the other way too, and conflating the two directions is the
+//! failure this module is arranged to prevent: [`Modifier::Renaming`] is the
+//! **unchecked** core relocation, while [`Modifier::renaming`] is the checked
+//! builder the modifier language means by `renaming p p'`. A `renaming` built
+//! from the core constructor never reports a typo.
 //!
 //! # Three semantic decisions carry the weight
 //!
@@ -249,12 +256,17 @@ impl<Label> Modifier<Label>
     ///
     /// # Adequacy
     /// - hypothesis: L0 plus L3 — the equality with the general builder is
-    ///   asserted exactly, so any change to either side separates them, and the
-    ///   qualifying behaviour is witnessed on a two-level namespace.
+    ///   asserted exactly, so any change to either side separates them
+    ///   (including a change to the *unchecked* core constructor, which the
+    ///   equality would then reject), the qualifying behaviour is witnessed on
+    ///   a two-level namespace, and the emptiness check it inherits is
+    ///   witnessed on the empty namespace.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `as_name_is_renaming_to_the_alias`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `as_name_qualifies_every_imported_path`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `as_name_on_an_empty_import_performs_not_found`
     #[inline]
     #[must_use]
     pub fn alias_as(alias: Segment) -> Self
@@ -281,9 +293,13 @@ impl<Label> Modifier<Label>
     ///   interpreter — the derived builders add no interpretation.
     /// - fails: propagates a handler's [`EventRejection`] unchanged, abandoning
     ///   the run at the point that performed the event.
-    /// - intension: the interpreter is an explicit instruction stack over one
-    ///   current namespace, so its memory is proportional to the modifier's
-    ///   nesting depth and it never recurses; nothing about the traversal is
+    /// - intension: the interpreter never recurses — it is an explicit
+    ///   instruction stack whose height is bounded by the modifier's nesting
+    ///   depth. Its memory is not bounded by that depth alone: a suspended
+    ///   `union` frame retains a clone of the namespace its branches run on
+    ///   together with the accumulation so far, and a suspended `in` frame
+    ///   retains the bindings outside the subtree, so nested unions cost depth
+    ///   times namespace size in the worst case. Nothing about the traversal is
     ///   otherwise observable.
     /// - panics: none.
     ///
@@ -296,9 +312,12 @@ impl<Label> Modifier<Label>
     ///   design record's worked examples as an external oracle (selective
     ///   import, qualified import, the deep-patch union, re-export control,
     ///   typo resistance), and the residue is the per-constructor boundary set:
-    ///   the empty namespace for `assert-nonempty`, the root as both source and
-    ///   target of a relocation, the empty `seq` and empty `union`, and a
-    ///   nested `in` whose event path must carry the outer prefix.
+    ///   the empty namespace for `assert-nonempty`, the checked builder against
+    ///   the unchecked core constructor on an absent source, the root as both
+    ///   source and target of a relocation, the empty `seq` and empty `union`,
+    ///   a `union` whose first branch is not the identity, and a nested `in`
+    ///   whose not-found, shadow, and hook paths must each carry the outer
+    ///   prefix.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `only_keeps_the_named_subtree_and_drops_the_rest`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
@@ -310,7 +329,15 @@ impl<Label> Modifier<Label>
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `renaming_drops_whatever_was_at_the_target`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `the_checked_renaming_builder_performs_not_found_on_an_absent_source`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `the_core_relocation_performs_no_emptiness_check`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `a_rejecting_handler_refuses_a_missing_renaming_source`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `a_deep_patch_merges_instead_of_capturing`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `each_union_branch_runs_on_the_original_namespace`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `the_empty_sequence_is_the_identity`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
@@ -319,6 +346,10 @@ impl<Label> Modifier<Label>
     ///   `a_selection_that_matched_nothing_performs_not_found`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `a_nested_event_reports_the_accumulated_prefix`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `a_nested_shadow_reports_the_accumulated_prefix`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `a_nested_hook_reports_the_accumulated_prefix`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `a_hook_can_replace_the_namespace`
     #[inline]

@@ -28,15 +28,27 @@
 //!
 //! # The external design this absorbs
 //!
-//! The design is favonia's, implemented as the OCaml package *yuujinchou:
-//! hierarchical names and lexical scoping* (The `RedPRL` Development Team;
+//! The design is implemented as the OCaml package *yuujinchou: a library for
+//! hierarchical names and lexical scoping*, release 5.2.0 (The `RedPRL`
+//! Development Team, maintained by favonia; Apache-2.0 with LLVM-exception;
 //! `url:https://github.com/RedPRL/yuujinchou`, rendered documentation at
 //! `url:https://redprl.org/yuujinchou/yuujinchou/`). The semantics recorded in
-//! [`modifier`] were checked against that package's `src/Language.ml`,
-//! `src/Modifier.ml`, and `src/LanguageSigs.ml`. The code is not ported: this
-//! is a Rust reimplementation of the API design, and the two differ wherever
-//! Rust and OCaml differ — most visibly, algebraic effects become the
+//! [`modifier`] were checked against that release's `src/Language.ml`,
+//! `src/Modifier.ml`, and `src/LanguageSigs.ml`, and the rationale paraphrased
+//! below against its `docs/design.mld`. The code is not ported: this is a Rust
+//! reimplementation of the API design, and the two differ wherever Rust and
+//! OCaml differ — most visibly, algebraic effects become the
 //! [`event::NamespaceEventHandler`] trait.
+//!
+//! Two things the absorbed design carries that this layer deliberately does
+//! not, recorded so a later reader does not mistake the omission for an
+//! oversight. Its scope module threads an *export prefix* through the enclosing
+//! sections, so an event performed while merging the export namespace inside
+//! `section p` reports its path under `p`; here the prefixing happens once, at
+//! [`scope::Scope::end_section`], so such an event reports the unprefixed path.
+//! Its `include`/`import` operations take a modifier applied to the incoming
+//! namespace before the merge; here a caller composes [`modifier::Modifier`]'s
+//! `apply` with the merge instead. Neither changes which bindings result.
 //!
 //! # The `as name` clause, re-read
 //!

@@ -307,6 +307,65 @@ mod tests
     }
 
     #[test]
+    fn the_checked_renaming_builder_performs_not_found_on_an_absent_source()
+    {
+        let (outcome, events) =
+            permissive(&Modifier::renaming(path("nta"), path("natural")), arith());
+        assert_eq!(
+            events,
+            Vec::from([NamespaceEvent::NotFound { path: path("nta") }]),
+            "the public builder carries the emptiness check, so a mistyped source is reported at \
+             the path the user wrote"
+        );
+        assert_eq!(
+            listing(&outcome),
+            listing(&arith()),
+            "and relocating an empty subtree moves nothing"
+        );
+    }
+
+    #[test]
+    fn the_core_relocation_performs_no_emptiness_check()
+    {
+        let (outcome, events) = permissive(
+            &Modifier::Renaming {
+                source: path("nta"),
+                target: path("natural"),
+            },
+            arith(),
+        );
+        assert!(
+            events.is_empty(),
+            "the core constructor is the unchecked relocation — the check lives in the builder \
+             that wraps it, which is why the two are separate items"
+        );
+        assert_eq!(
+            listing(&outcome),
+            listing(&arith()),
+            "and it moves nothing either, silently"
+        );
+    }
+
+    #[test]
+    fn a_rejecting_handler_refuses_a_missing_renaming_source()
+    {
+        let mut handler = RejectingHandler;
+        let rejection = Modifier::renaming(path("nta"), path("natural"))
+            .apply(arith(), &mut handler)
+            .expect_err("this policy treats a typo as fatal");
+        assert_eq!(
+            rejection.kind(),
+            EventKind::NotFound,
+            "typo resistance reaches renaming, not only selection"
+        );
+        assert_eq!(
+            *rejection.path(),
+            path("nta"),
+            "and names the source the user wrote"
+        );
+    }
+
+    #[test]
     fn renaming_drops_whatever_was_at_the_target()
     {
         let subject = namespace(&[
@@ -348,6 +407,25 @@ mod tests
         assert!(
             events.is_empty(),
             "no two bindings landed on one path, so nothing was shadowed"
+        );
+    }
+
+    #[test]
+    fn each_union_branch_runs_on_the_original_namespace()
+    {
+        let modifier = Modifier::union(Vec::from([
+            Modifier::only(path("nat")),
+            Modifier::only(path("int")),
+        ]));
+        let (outcome, events) = permissive(&modifier, arith());
+        assert_eq!(
+            listing(&outcome),
+            listing(&arith()),
+            "both branches see the whole input, so selecting each half and unioning restores it"
+        );
+        assert!(
+            events.is_empty(),
+            "neither selection ran on the other's result, so neither matched nothing"
         );
     }
 
@@ -440,6 +518,47 @@ mod tests
     }
 
     #[test]
+    fn a_nested_shadow_reports_the_accumulated_prefix()
+    {
+        let subject = namespace(&[entry("nat.a.x", Payload(1)), entry("nat.x", Payload(2))]);
+        let modifier = Modifier::in_subtree(
+            path("nat"),
+            Modifier::union(Vec::from([
+                Modifier::id(),
+                Modifier::renaming(path("a"), NamePath::root()),
+            ])),
+        );
+        let (outcome, events) = permissive(&modifier, subject);
+        assert_eq!(
+            events,
+            Vec::from([NamespaceEvent::Shadow {
+                path: path("nat.x"),
+            }]),
+            "a collision inside `in nat` names the whole path, not the subtree-relative one"
+        );
+        assert_eq!(
+            listing(&outcome),
+            expected(&[entry("nat.a.x", Payload(1)), entry("nat.x", Payload(1))]),
+            "and the union still merges inside the subtree it ran on"
+        );
+    }
+
+    #[test]
+    fn a_nested_hook_reports_the_accumulated_prefix()
+    {
+        let modifier = Modifier::in_subtree(path("nat"), Modifier::hook(HookLabel::KeepEverything));
+        let (_, events) = permissive(&modifier, arith());
+        assert_eq!(
+            events,
+            Vec::from([NamespaceEvent::Hook {
+                path: path("nat"),
+                label: HookLabel::KeepEverything,
+            }]),
+            "a hook inside `in nat` is told the prefix it ran under"
+        );
+    }
+
+    #[test]
     fn a_hook_can_replace_the_namespace()
     {
         let mut handler = RewritingHandler;
@@ -489,6 +608,26 @@ mod tests
                 entry("parse.parser", Payload(2)),
             ]),
             "today's import clause is the one-constructor case of the general language"
+        );
+    }
+
+    #[test]
+    fn as_name_on_an_empty_import_performs_not_found()
+    {
+        let (outcome, events) =
+            permissive(&Modifier::alias_as(Segment::from("parse")), Trie::empty());
+        assert_eq!(
+            events,
+            Vec::from([NamespaceEvent::NotFound {
+                path: NamePath::root(),
+            }]),
+            "the desugaring inherits the checked builder's typo resistance: aliasing an empty \
+             import is reported at the root"
+        );
+        assert_eq!(
+            listing(&outcome),
+            expected(&[]),
+            "and qualifying nothing yields nothing"
         );
     }
 
@@ -569,17 +708,30 @@ mod tests
             .include_subtree(&NamePath::root(), arith(), &mut handler)
             .expect("nothing collides in an empty scope");
         scope
+            .import_subtree(
+                &NamePath::root(),
+                namespace(&[entry("borrowed", Payload(5))]),
+                &mut handler,
+            )
+            .expect("nothing collides with the included namespace");
+        scope
             .modify_export(&Modifier::except(path("nat")), &mut handler)
             .expect("the subtree exists");
         assert_eq!(
             listing(scope.visible()),
-            listing(&arith()),
+            expected(&[
+                entry("borrowed", Payload(5)),
+                entry("int.plus.assoc", Payload(3)),
+                entry("nat.plus.assoc", Payload(1)),
+                entry("nat.times.assoc", Payload(2)),
+            ]),
             "the visible namespace was not narrowed"
         );
         assert_eq!(
             listing(scope.export()),
             expected(&[entry("int.plus.assoc", Payload(3))]),
-            "the export namespace was"
+            "the export namespace was, and it was the export namespace the modifier read — the \
+             imported binding never reached it"
         );
     }
 
@@ -589,23 +741,135 @@ mod tests
         let mut scope: Scope<Payload, ()> = Scope::new();
         let mut handler = PermissiveHandler::<HookLabel>::new();
         scope
-            .import_subtree(&NamePath::root(), arith(), &mut handler)
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[entry("already.exported", Payload(4))]),
+                &mut handler,
+            )
             .expect("nothing collides in an empty scope");
+        scope
+            .import_subtree(&NamePath::root(), arith(), &mut handler)
+            .expect("nothing collides with the included namespace");
         scope
             .export_visible(&Modifier::only(path("nat")), &mut handler)
             .expect("the subtree exists");
         assert_eq!(
             listing(scope.visible()),
-            listing(&arith()),
+            expected(&[
+                entry("already.exported", Payload(4)),
+                entry("int.plus.assoc", Payload(3)),
+                entry("nat.plus.assoc", Payload(1)),
+                entry("nat.times.assoc", Payload(2)),
+            ]),
             "re-exporting does not narrow what resolves here"
         );
         assert_eq!(
             listing(scope.export()),
             expected(&[
+                entry("already.exported", Payload(4)),
                 entry("nat.plus.assoc", Payload(1)),
                 entry("nat.times.assoc", Payload(2)),
             ]),
-            "a unit chooses which of the things it can see it passes on"
+            "a unit chooses which of the things it can see it passes on, and the choice is merged \
+             into what it already exported rather than replacing it"
+        );
+    }
+
+    #[test]
+    fn include_merges_the_visible_namespace_before_the_export()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut permissive_handler = PermissiveHandler::<HookLabel>::new();
+        scope
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[entry("m.b", Payload(1))]),
+                &mut permissive_handler,
+            )
+            .expect("nothing collides in an empty scope");
+        let mut handler = RejectingHandler;
+        let outcome = scope.include_subtree(
+            &NamePath::root(),
+            namespace(&[entry("m.a", Payload(2)), entry("m.b", Payload(3))]),
+            &mut handler,
+        );
+        let ScopeError::Rejected(rejection) =
+            outcome.expect_err("the collision at `m.b` is refused")
+        else {
+            panic!("the failure is an event rejection, not a structural one");
+        };
+        assert_eq!(
+            (rejection.kind(), rejection.path().clone()),
+            (EventKind::Shadow, path("m.b")),
+            "and it is the collision, at the colliding path"
+        );
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[entry("m.b", Payload(1))]),
+            "the visible merge runs first, so a rejection there leaves the export namespace \
+             untouched"
+        );
+        assert_eq!(
+            listing(scope.visible()),
+            expected(&[entry("m.a", Payload(2)), entry("m.b", Payload(1))]),
+            "and the visible namespace keeps the bindings merged before the refused one — an \
+             include is not atomic"
+        );
+    }
+
+    #[test]
+    fn a_section_inherits_the_visible_namespace_and_exports_nothing_yet()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut handler = PermissiveHandler::<HookLabel>::new();
+        scope
+            .include_subtree(&NamePath::root(), arith(), &mut handler)
+            .expect("nothing collides in an empty scope");
+        scope.begin_section();
+        assert_eq!(
+            listing(scope.visible()),
+            listing(&arith()),
+            "the section can see what surrounds it"
+        );
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[]),
+            "and starts with nothing of its own to export, however much the parent exported"
+        );
+    }
+
+    #[test]
+    fn a_sections_closing_modifier_chooses_what_it_passes_on()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut handler = PermissiveHandler::<HookLabel>::new();
+        scope.begin_section();
+        scope
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[
+                    entry("public", Payload(1)),
+                    entry("scaffolding", Payload(2)),
+                ]),
+                &mut handler,
+            )
+            .expect("nothing collides inside a fresh section");
+        scope
+            .end_section(
+                &path("group"),
+                &Modifier::only(path("public")),
+                &mut handler,
+            )
+            .expect("a section is open and the selection matched");
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[entry("group.public", Payload(1))]),
+            "the closing modifier runs over the section's export before the prefixed include"
+        );
+        assert_eq!(
+            listing(scope.visible()),
+            expected(&[entry("group.public", Payload(1))]),
+            "and the same selection is what the parent can see"
         );
     }
 
