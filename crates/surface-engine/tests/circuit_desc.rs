@@ -28,8 +28,8 @@ data Nat : Type {
 }
 
 sign Nat {
-  sort Nat : Type
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
 
   rule cong1 : (
     rule p : Nat ==> Nat,
@@ -38,7 +38,7 @@ sign Nat {
   ) ==> (z : Nat) {
     node : p(x) ==> (x\u{2032});
     node : add(x\u{2032}, y) --> (z);
-  }
+  };
 }
 ",
 );
@@ -47,8 +47,8 @@ sign Nat {
 const CONG2: TestText<'static> = TestText(
     "\
 sign Nat {
-  sort Nat : Type
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
 
   rule cong2 : (
     rule p : Nat ==> Nat,
@@ -59,7 +59,7 @@ sign Nat {
     node : p(x) ==> (x\u{2032});
     node : q(y) ==> (y\u{2032});
     node : add(x\u{2032}, y\u{2032}) --> (z);
-  }
+  };
 }
 ",
 );
@@ -181,9 +181,9 @@ fn an_item_level_data_member_declines_with_the_nested_block_respelling()
     let reported = messages(TestText(
         "\
 sign Stale {
-  sort Nat : Type
-  data Zero : Nat
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  data Zero : Nat;
+  oper add : (Nat, Nat) --> Nat;
 }
 ",
     ));
@@ -200,14 +200,14 @@ fn the_name_set_fold_reaches_the_description_route_as_a_production_check()
     let shared = TestText(
         "\
 sign Shared {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
 
   rule twice : (rule p : Nat ==> Nat, data x : Nat) ==> (o : Nat) {
     node : p(x) ==> (m);
     node : f(x) --> (m);
-  }
+  };
 }
 ",
     );
@@ -235,12 +235,12 @@ fn a_many_out_node_declines_naming_the_cell_alphabet_question()
     let reported = messages(TestText(
         "\
 sign Wide {
-  sort Nat : Type
-  oper tee : (a : Nat) --> (b : Nat, c : Nat)
+  sort Nat : Type;
+  oper tee : (a : Nat) --> (b : Nat, c : Nat);
 
   rule split : (data x : Nat) ==> (z : Nat) {
     node : tee(x) --> (z, w);
-  }
+  };
 }
 ",
     ));
@@ -257,12 +257,12 @@ fn a_many_out_interface_declines_naming_the_cell_alphabet_question()
     let reported = messages(TestText(
         "\
 sign WideFace {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
 
   rule pair : (data x : Nat) ==> (y : Nat, z : Nat) {
     node : f(x) --> (y);
-  }
+  };
 }
 ",
     ));
@@ -279,13 +279,13 @@ fn a_feed_statement_declines_naming_the_wheel_obligation()
     let reported = messages(TestText(
         "\
 sign Wheel {
-  sort Nat : Type
-  oper zip : (s : Nat, t : Nat) --> (u : Nat)
+  sort Nat : Type;
+  oper zip : (s : Nat, t : Nat) --> (u : Nat);
 
   rule spin : (data stream : Nat) ==> (out : Nat) {
     node : zip(stream, state) --> (out);
     feed : (out) --> (state);
-  }
+  };
 }
 ",
     ));
@@ -330,10 +330,10 @@ fn an_out_of_signature_frame_head_earns_the_declaration_tables_refusal()
     let reported = messages(TestText(
         "\
 sign Stray {
-  sort Nat : Type
+  sort Nat : Type;
   rule stray : (data x : Nat) ==> (z : Nat) {
     node : mystery(x) --> (z);
-  }
+  };
 }
 ",
     ));
@@ -350,13 +350,13 @@ fn a_redex_applying_an_undeclared_rewrite_earns_its_own_refusal()
     let reported = messages(TestText(
         "\
 sign NoPort {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
 
   rule stray : (rule p : Nat ==> Nat, data x : Nat) ==> (z : Nat) {
     node : p(x) ==> (m);
     node : f(m) --> (z);
-  }
+  };
 }
 ",
     ));
@@ -372,14 +372,14 @@ fn a_wiring_that_closes_a_cycle_earns_the_declaration_tables_refusal()
     let reported = messages(TestText(
         "\
 sign Loop {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
 
   rule spin : (data x : Nat) ==> (z : Nat) {
     node : f(w) --> (z);
     node : g(z) --> (w);
-  }
+  };
 }
 ",
     ));
@@ -391,38 +391,64 @@ sign Loop {
 }
 
 #[test]
-fn a_repeated_argument_name_does_not_reach_the_route_at_all()
+fn a_repeated_argument_name_reaches_the_linearity_refusal()
 {
-    // The shape that would reach the admission seam's linearity refusal from
-    // source is an application consuming one wire twice, and the ruled grammar
-    // does not parse it cleanly today: the member is repaired into one opaque
-    // region, so nothing is offered to the declaration table. The refusal is
-    // still bound — `gandr-theory-computads`
+    // The shape that reaches the admission seam's linearity refusal from
+    // source is an application consuming one wire twice — `add(x, x)`. The
+    // sign block's members are `;`-terminated (gandr-ng9.14), so the source
+    // parses cleanly and the ruling's diagnostic is triggerable by a program:
+    // the wiring derives the boundary `add(x, x) ==> z`, whose left-hand side
+    // copies the hole `x`, and the cell layer's single admission seam refuses
+    // it, naming the copy and the respelling — the same refusal
+    // `gandr-theory-computads`
     // `elaborate::tests::a_circuit_rule_whose_boundary_copies_a_hole_is_refused`
-    // witnesses it at the seam — and this test pins that the surface route
-    // stays *silent* rather than admitting a mis-parsed block.
+    // witnesses on a hand-built description. The name-set fold's consumed-twice
+    // verdict rides alongside: a wiring error and an ill-formed cell are
+    // different failures, and both reach the user.
+    //
+    // (The block's `rule` member is named `copy2`: `dup` is a reserved
+    // surface keyword — `dup ( E )` — so a member named `dup` never reaches
+    // the route, which is the reservation working, not the hazard.)
     let elab = elaborate_data_descs(
         TestText(
             "\
 sign Copy {
-  sort Nat : Type
-  oper add : (l : Nat, r : Nat) --> (s : Nat)
-  rule dup : (data x : Nat) ==> (z : Nat) {
+  sort Nat : Type;
+  oper add : (l : Nat, r : Nat) --> (s : Nat);
+  rule copy2 : (data x : Nat) ==> (z : Nat) {
     node : add(x, x) --> (z);
-  }
+  };
 }
 ",
         )
         .0,
     );
-    let [ref desc] = *elab.descs
-    else {
-        panic!("the block still reads as a description");
-    };
-    assert!(
-        desc.circuits.is_empty(),
-        "a repaired member contributes no circuit rule"
-    );
+    let reported: Vec<String> = elab
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.message.clone())
+        .collect();
+    // The name-set fold's consumed-twice verdict: a wiring error, reported by
+    // the description route.
+    assert_names(&reported, &[
+        TestText("the port name `x`"),
+        TestText("consumed"),
+        TestText("produced exactly once and consumed exactly once"),
+    ]);
+    // And the ruling's own refusal, reached at the cell layer's admission
+    // seam: the wiring derives the boundary `add(x, x) ==> add(x, x)`, whose
+    // left-hand side copies the hole `x`.
+    let cells = elaborate_desc_cells(&elab.descs);
+    let cell_reported: Vec<String> = cells
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.message.clone())
+        .collect();
+    assert_names(&cell_reported, &[
+        TestText("non-linear cell pattern"),
+        TestText("hole `x` occurs more than once"),
+        TestText("cell patterns are linear"),
+    ]);
 }
 
 #[test]
@@ -434,7 +460,7 @@ fn a_doubling_body_declines_on_the_derivation_node_budget()
     // pass the derivation's ceiling, and the surface says so with the ceiling
     // it hit instead of unfolding 2^12 nodes.
     let mut source = String::from(
-        "sign Doubling {\n  sort Nat : Type\n  oper l : (a : Nat) --> (b : Nat)\n  oper r : (a          : Nat) --> (b : Nat)\n  oper add : (a : Nat, b : Nat) --> (c : Nat)\n  rule blow :          (data w0 : Nat) ==> (w12 : Nat) {\n",
+        "sign Doubling {\n  sort Nat : Type;\n  oper l : (a : Nat) --> (b : Nat);\n  oper r : (a          : Nat) --> (b : Nat);\n  oper add : (a : Nat, b : Nat) --> (c : Nat);\n  rule blow :          (data w0 : Nat) ==> (w12 : Nat) {\n",
     );
     for level in 1 ..= 12_u32 {
         let below = level.saturating_sub(1);
@@ -445,7 +471,7 @@ fn a_doubling_body_declines_on_the_derivation_node_budget()
         )
         .expect("writing to a String does not fail");
     }
-    source.push_str("  }\n}\n");
+    source.push_str("  };\n}\n");
     let reported: Vec<String> = elaborate_data_descs(source.as_str())
         .diagnostics
         .into_iter()
@@ -464,12 +490,12 @@ fn an_oper_filler_stays_declined_and_names_its_own_rung()
     let reported = messages(TestText(
         "\
 sign Pipe {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
 
   oper pipeline : (i : Nat) --> (o : Nat) {
     node : f(i) --> (o);
-  }
+  };
 }
 ",
     ));

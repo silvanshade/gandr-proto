@@ -68,8 +68,11 @@ mod contracts
     /// telescope + `-->` signature — while the retired Haskell-style head
     /// (bare parameters, no annotation) and the field-tuple member stay
     /// admissible so a stale declaration reaches the elaborator's retirement
-    /// decline with the respelling hint.
-    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0xfa35_0169_cdda_acb1);
+    /// decline with the respelling hint. The sign block's members then became
+    /// `;`-terminated (owner directive, gandr-ng9.14): the terminator is
+    /// load-bearing at sign item level, closing each member's trailing sort
+    /// hole before the next member's lead can cross it.
+    const BUILT_IN_FINGERPRINT: GrammarFingerprint = GrammarFingerprint(0x11ed_981d_95a5_1344);
 
     /// The pinned declared mold count of the built-in surface.
     ///
@@ -106,8 +109,10 @@ mod contracts
     /// annotation, the generator member's local telescope and `-->`
     /// signature, and the member-list's optional migration comma — the
     /// retired bare-parameter and field-tuple tails ride the same
-    /// alternations rather than adding rules of their own.
-    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1782);
+    /// alternations rather than adding rules of their own. The sign member
+    /// terminator adds one: the `;` tile after the inlined member family
+    /// (gandr-ng9.14).
+    const BUILT_IN_MOLD_COUNT: MoldCount = MoldCount(1783);
 
     /// The declared per-label candidate inventory, sorted and exact.
     ///
@@ -141,7 +146,7 @@ mod contracts
         ("/*", 1),
         ("/\\", 1),
         (":", 126),
-        (";", 189),
+        (";", 190),
         ("<", 4),
         ("<&", 1),
         ("<-", 19),

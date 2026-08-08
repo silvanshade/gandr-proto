@@ -95,12 +95,24 @@ pub fn rules(precs: &PrecTable) -> Result<Vec<Rule>, PbgError>
 
 /// Append the `sign` block declaration.
 ///
-/// `sign Nat { sort … data … oper … rule … }`. Members are **not** separated:
-/// each is keyword-led, so a member boundary is a fresh first-token
-/// discriminator and the previous member's trailing type hole closes against
-/// it. The member family is inlined (never a standalone rule) so `sort` /
-/// `data` / `oper` / `rule` never gain a form-first Item mold competing at a
-/// top-level slot.
+/// `sign Nat { sort … ; data … ; oper … ; rule … ; }`. Every member is
+/// **terminated** by `;` (the surface's declaration terminator), and the
+/// terminator is load-bearing, not admitted (owner directive, gandr-ng9.14):
+/// an unseparated member list is a clean parse of the WRONG tree — a member
+/// ends in a sort hole (the signature's bare-sort side), the walk's
+/// `≐`-relation crosses the hole, and at the fill position the next member's
+/// lead can collapse the whole member into one repaired region (the
+/// `add(x, x)` collapse that left the linearity refusal unreachable from
+/// source). The mandatory terminator restores the discrimination: after the
+/// hole only `;` is admissible, which never competes with hole content. The
+/// retired `,` is NOT admissible at this slot — unlike the nested `data` /
+/// `codata` generator lists ([`crate::surface::term`]'s `member_list`), where
+/// it stays so a stale declaration parses whole and reaches the elaborator's
+/// migration decline. The reopening condition for a terminator-free spelling
+/// is a molder key change: hole-fill must outrank `≐`-continuation. The
+/// member family is inlined (never a standalone rule) so `sort` / `data` /
+/// `oper` / `rule` never gain a form-first Item mold competing at a top-level
+/// slot.
 fn sign_declaration(
     out: &mut Vec<Rule>,
     p: Prec,
@@ -115,7 +127,7 @@ fn sign_declaration(
             t(TileLabel("sign")),
             t(TileLabel("type_identifier")),
             t(TileLabel("{")),
-            repeat(sign_member()),
+            repeat(seq([sign_member(), t(TileLabel(";"))])),
             t(TileLabel("}")),
         ]),
     );

@@ -17,8 +17,8 @@ use crate::common::TestText;
 const CONG2: TestText<'static> = TestText(
     "\
 sign Nat {
-  sort Nat : Type
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
 
   rule cong2 : (
     rule p : Nat ==> Nat,
@@ -29,7 +29,7 @@ sign Nat {
     node : p(x) ==> (x\u{2032});
     node : q(y) ==> (y\u{2032});
     node : add(x\u{2032}, y\u{2032}) --> (z);
-  }
+  };
 }
 ",
 );
@@ -116,7 +116,7 @@ fn a_declaration_arrow_disagreeing_with_its_kind_is_named()
     // is a disagreement — and the message says which name, which glyph, and
     // what to write instead.
     assert_sole_diagnostic(
-        TestText("sign S { oper add : (a : Nat, b : Nat) ==> (c : Nat) }"),
+        TestText("sign S { oper add : (a : Nat, b : Nat) ==> (c : Nat); }"),
         &[
             TestText("`oper add`"),
             TestText("a circuit 1-cell former"),
@@ -136,7 +136,7 @@ fn a_declaration_arrow_disagreeing_with_its_kind_is_named()
     ]);
     // A `data` constructor is a circuit 1-cell former too, and the bare-sort
     // sugar rung is checked exactly like the named-port one.
-    assert_sole_diagnostic(TestText("sign S { data Succ : Nat ==> Nat }"), &[
+    assert_sole_diagnostic(TestText("sign S { data Succ : Nat ==> Nat; }"), &[
         TestText("`data Succ`"),
         TestText("write `-->`"),
     ]);
@@ -149,7 +149,7 @@ fn a_rewrite_binder_arrow_disagreeing_with_its_kind_is_named()
     // sits, so its endpoints are joined by a face. The pinned-endpoint form is
     // the same binder with variable endpoints and is checked identically.
     assert_sole_diagnostic(
-        TestText("sign S { rule cong : (rule p : Nat --> Nat, data x : Nat) ==> (z : Nat) }"),
+        TestText("sign S { rule cong : (rule p : Nat --> Nat, data x : Nat) ==> (z : Nat); }"),
         &[
             TestText("the binder `rule p`"),
             TestText("`-->`"),
@@ -169,10 +169,10 @@ fn a_body_line_arrow_disagreeing_with_its_head_is_named()
     assert_sole_diagnostic(
         TestText(
             "sign S {
-  oper add : (Nat, Nat) --> Nat
+  oper add : (Nat, Nat) --> Nat;
   rule r : (data x : Nat, data y : Nat) ==> (z : Nat) {
     node : add(x, y) ==> (z);
-  }
+  };
 }",
         ),
         &[
@@ -189,7 +189,7 @@ fn a_body_line_arrow_disagreeing_with_its_head_is_named()
             "sign S {
   rule r : (rule p : Nat ==> Nat, data x : Nat) ==> (z : Nat) {
     node : p(x) --> (z);
-  }
+  };
 }",
         ),
         &[
@@ -241,7 +241,7 @@ fn the_reserved_reversible_glyph_declines_naming_its_lane()
     // declines, because a reversible oper is a semantic claim the reversible
     // lane owes a checking discipline for.
     assert_sole_diagnostic(
-        TestText("sign S { oper negate : (b : Bit) <-> (c : Bit) }"),
+        TestText("sign S { oper negate : (b : Bit) <-> (c : Bit); }"),
         &[
             TestText("`oper negate`"),
             TestText("reserved arrow `<->`"),
@@ -255,14 +255,14 @@ fn the_reserved_reversible_glyph_declines_naming_its_lane()
     assert_eq!(
         Vec::<String>::new(),
         messages(TestText(
-            "sign S { rule involutive : (b : Bit) <=> (c : Bit) }"
+            "sign S { rule involutive : (b : Bit) <=> (c : Bit); }"
         )),
         "the invertible face is a licence, not a reservation"
     );
     // A reserved glyph in the wrong row reports the row, not the reservation:
     // `<->` on a rule is in the wrong row before it is reserved, and one arrow
     // earns one diagnostic.
-    assert_sole_diagnostic(TestText("sign S { rule r : (b : Bit) <-> (c : Bit) }"), &[
+    assert_sole_diagnostic(TestText("sign S { rule r : (b : Bit) <-> (c : Bit); }"), &[
         TestText("`rule r`"),
         TestText("a rewrite face"),
         TestText("`<->`"),
@@ -272,10 +272,10 @@ fn the_reserved_reversible_glyph_declines_naming_its_lane()
     assert_sole_diagnostic(
         TestText(
             "sign S {
-  oper flip : (Bit) --> (Bit)
+  oper flip : (Bit) --> (Bit);
   oper twice : (b : Bit) --> (d : Bit) {
     node : flip(b) <-> (d);
-  }
+  };
 }",
         ),
         &[

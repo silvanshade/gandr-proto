@@ -592,21 +592,25 @@ impl<'tree> Shape<'_, 'tree>
     }
 }
 
-/// Split a member region into runs that each begin at a top-level occurrence of
-/// one of `leads`.
+/// Split a member region into runs that each begin at a top-level occurrence
+/// of one of `leads`.
 ///
-/// The ruled `sign` block separates its members with nothing at all: each is
-/// keyword-led, so the lead *is* the separator, and a lead deeper than the top
-/// level belongs to a parameter binder rather than a new member. Material
-/// before the first lead is dropped, because it belongs to no member.
+/// The ruled `sign` block terminates every member with `;` (owner directive,
+/// gandr-ng9.14: the terminator is load-bearing at the member level). A lead
+/// deeper than the top level belongs to a parameter binder rather than a new
+/// member, and material before the first lead is dropped, because it belongs
+/// to no member. Each run's trailing top-level `;` — the member's terminator
+/// — is stripped, so the invariants the consumers were written against hold
+/// unchanged: a body-carrying member's run ends at its body's `}`, and a
+/// boundary-only member's run ends at its signature.
 ///
 /// # Contract
 /// - requires: `region` is a `sign` block's member region, with balanced
 ///   brackets.
 /// - ensures: returns the member runs in source order, each starting at its
-///   lead keyword; a region with no lead yields no runs.
-/// - provides: the keyword-led member split the separator-free block form
-///   needs.
+///   lead keyword and stripped of its trailing `;` terminator when one molds; a
+///   region with no lead yields no runs.
+/// - provides: the keyword-led member split the terminated block form needs.
 /// - fails: never.
 /// - panics: none.
 pub fn split_before_leads(
@@ -637,6 +641,17 @@ pub fn split_before_leads(
     }
     if !current.is_empty() {
         members.push(current);
+    }
+    for member in &mut members {
+        // The member's terminator is the run's last tile when one molded (a
+        // repaired parse can lose it); no member form otherwise ends in `;`.
+        if member
+            .last()
+            .and_then(|&id| reader.label(id))
+            .is_some_and(|label| label.0 == ";")
+        {
+            member.pop();
+        }
     }
     members
 }

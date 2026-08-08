@@ -20,8 +20,8 @@ use crate::common::TestText;
 const CONG2: TestText<'static> = TestText(
     "\
 sign Cong {
-  sort Nat : Type
-  oper add : (l : Nat, r : Nat) --> (sum : Nat)
+  sort Nat : Type;
+  oper add : (l : Nat, r : Nat) --> (sum : Nat);
 
   rule cong2 : (
     rule p : Nat ==> Nat,
@@ -32,7 +32,7 @@ sign Cong {
     node : p(x) ==> (x\u{2032});
     node : q(y) ==> (y\u{2032});
     node : add(x\u{2032}, y\u{2032}) --> (z);
-  }
+  };
 }
 ",
 );
@@ -149,12 +149,12 @@ fn an_occurrence_label_names_the_face_a_wire_runs_between()
     // wire's two ends addressable when the same head is applied more than once.
     let bound = wires(TestText(
         "sign S {
-  sort Nat : Type
-  oper step : (i : Nat) --> (o : Nat)
+  sort Nat : Type;
+  oper step : (i : Nat) --> (o : Nat);
   rule twice : (rule p : x ==> x\u{2032}, data x : Nat) ==> (o : Nat) {
     node w1 : p(x) ==> (m);
     node w2 : step(m) --> (o);
-  }
+  };
 }",
     ));
     assert_eq!(
@@ -219,11 +219,11 @@ fn a_shared_port_name_is_refused_naming_the_name()
     assert_sole_diagnostic(
         TestText(
             "sign S {
-  sort Nat : Type
-  oper add : (l : Nat, r : Nat) --> (sum : Nat)
+  sort Nat : Type;
+  oper add : (l : Nat, r : Nat) --> (sum : Nat);
   rule doubled : (data x : Nat) ==> (z : Nat) {
     node : add(x, x) --> (z);
-  }
+  };
 }",
         ),
         &[
@@ -238,13 +238,13 @@ fn a_shared_port_name_is_refused_naming_the_name()
     assert_sole_diagnostic(
         TestText(
             "sign S {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
   oper collide : (i : Nat, j : Nat) --> (o : Nat) {
     node : f(i) --> (m);
     node : g(j) --> (m);
-  }
+  };
 }",
         ),
         &[
@@ -265,8 +265,8 @@ fn two_redexes_sharing_a_port_name_are_not_disjoint()
     assert_sole_diagnostic(
         TestText(
             "sign S {
-  sort Nat : Type
-  oper add : (l : Nat, r : Nat) --> (sum : Nat)
+  sort Nat : Type;
+  oper add : (l : Nat, r : Nat) --> (sum : Nat);
   rule overlap : (
     rule p : Nat ==> Nat,
     rule q : Nat ==> Nat,
@@ -275,7 +275,7 @@ fn two_redexes_sharing_a_port_name_are_not_disjoint()
     node : p(x) ==> (m);
     node : q(x) ==> (n);
     node : add(m, n) --> (z);
-  }
+  };
 }",
         ),
         &[
@@ -289,13 +289,13 @@ fn two_redexes_sharing_a_port_name_are_not_disjoint()
     // between two frame lines is refused without it.
     let frames = messages(TestText(
         "sign S {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
   oper both : (i : Nat) --> (o : Nat) {
     node : f(i) --> (m);
     node : g(i) --> (n);
-  }
+  };
 }",
     ));
     let Some(message) = frames.first()
@@ -316,7 +316,7 @@ fn a_ports_uses_must_agree_in_sort()
     // other sharing — and the diagnostic names the name and both sorts.
     assert_sole_diagnostic(
         TestText(
-            "sign S { sort Nat : Type sort Bit : Type oper narrow : (v : Nat) --> (v : Bit) }",
+            "sign S { sort Nat : Type; sort Bit : Type; oper narrow : (v : Nat) --> (v : Bit); }",
         ),
         &[
             TestText("the port name `v`"),
@@ -328,7 +328,7 @@ fn a_ports_uses_must_agree_in_sort()
     // Agreement is on the sort's spelling with whitespace elided, so the same
     // written type reached through different layout still agrees: a pass-through
     // wire is well-formed and is an interface port, never an internal one.
-    let through = TestText("sign S { sort Nat : Type oper id : (v : Nat) --> (v : Nat ) }");
+    let through = TestText("sign S { sort Nat : Type; oper id : (v : Nat) --> (v : Nat ); }");
     assert_eq!(Vec::<String>::new(), messages(through));
     assert_eq!(Vec::<String>::new(), wire_names(through));
 }
@@ -347,13 +347,13 @@ fn the_folds_only_failure_mode_is_non_disjointness()
         (
             "a misspelled wire leaves two unpaired names",
             "sign S {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
   oper typo : (i : Nat) --> (o : Nat) {
     node : f(i) --> (m);
     node : g(mm) --> (o);
-  }
+  };
 }",
         ),
         // An interface input nothing consumes and an interface output nothing
@@ -361,11 +361,11 @@ fn the_folds_only_failure_mode_is_non_disjointness()
         (
             "an interface port the body never wires",
             "sign S {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
   oper stranded : (i : Nat) --> (o : Nat) {
     node : f(u) --> (w);
-  }
+  };
 }",
         ),
         // A delay-free cycle written with `node` lines only. The ruling records
@@ -375,13 +375,13 @@ fn the_folds_only_failure_mode_is_non_disjointness()
         (
             "a node-only cycle that owes a feed",
             "sign S {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
   oper wheel : () --> () {
     node : f(a) --> (b);
     node : g(b) --> (a);
-  }
+  };
 }",
         ),
         // A head no declaration in scope names.
@@ -406,13 +406,13 @@ fn the_folds_only_failure_mode_is_non_disjointness()
         vec!["b".to_owned(), "a".to_owned()],
         wire_names(TestText(
             "sign S {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
   oper wheel : () --> () {
     node : f(a) --> (b);
     node : g(b) --> (a);
-  }
+  };
 }"
         ))
     );
@@ -422,13 +422,13 @@ fn the_folds_only_failure_mode_is_non_disjointness()
         Vec::<String>::new(),
         wire_names(TestText(
             "sign S {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
-  oper g : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
+  oper g : (a : Nat) --> (b : Nat);
   oper typo : (i : Nat) --> (o : Nat) {
     node : f(i) --> (m);
     node : g(mm) --> (o);
-  }
+  };
 }"
         ))
     );
@@ -453,7 +453,7 @@ fn an_unnamed_port_mints_a_fresh_wire_and_collides_with_nothing()
     assert_eq!(
         Vec::<String>::new(),
         messages(TestText(
-            "sign S { sort Nat : Type oper add : (Nat, Nat) --> Nat }"
+            "sign S { sort Nat : Type; oper add : (Nat, Nat) --> Nat; }"
         ))
     );
 }
@@ -465,11 +465,11 @@ fn a_boundary_without_a_filler_wires_nothing_but_still_has_ports()
     // internal wire — while its interface is still a port list, and two entries
     // of it sharing a spelling is the same failure it would be anywhere else.
     let boundary =
-        TestText("sign S { sort Nat : Type oper add : (l : Nat, r : Nat) --> (s : Nat) }");
+        TestText("sign S { sort Nat : Type; oper add : (l : Nat, r : Nat) --> (s : Nat); }");
     assert_eq!(Vec::<String>::new(), messages(boundary));
     assert_eq!(Vec::<String>::new(), wire_names(boundary));
     assert_sole_diagnostic(
-        TestText("sign S { sort Nat : Type oper add : (l : Nat, l : Nat) --> (s : Nat) }"),
+        TestText("sign S { sort Nat : Type; oper add : (l : Nat, l : Nat) --> (s : Nat); }"),
         &[
             TestText("the port name `l`"),
             TestText("produced twice by the head's input list"),

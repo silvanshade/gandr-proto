@@ -190,24 +190,25 @@ fn circuit_block_form_molds_zero_obligation() -> Result<(), Box<dyn Error>>
 {
     let pbg = built();
     let cases: &[&str] = &[
-        // The congruence cell, verbatim from the ruling.
-        "sign Nat {\n  sort Nat : Type\n  data Zero : Nat\n  data Succ : Nat --> Nat\n  oper add \
-         : (Nat, Nat) --> Nat\n\n  rule cong2 : (\n    rule p : Nat ==> Nat,\n    rule q : Nat \
+        // The congruence cell, verbatim from the ruling (members `;`-terminated,
+        // gandr-ng9.14).
+        "sign Nat {\n  sort Nat : Type;\n  data Zero : Nat;\n  data Succ : Nat --> Nat;\n  oper add \
+         : (Nat, Nat) --> Nat;\n\n  rule cong2 : (\n    rule p : Nat ==> Nat,\n    rule q : Nat \
          ==> Nat,\n    data x : Nat,\n    data y : Nat\n  ) ==> (z : Nat) {\n    node : p(x) ==> \
          (x\u{2032});\n    node : q(y) ==> (y\u{2032});\n    node : add(x\u{2032}, y\u{2032}) --> \
-         (z);\n  }\n}\n",
+         (z);\n  };\n}\n",
         // The first stateful wheel, verbatim from the ruling.
         "oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {\n  node : \
          zip(stream, state) --> (next, out2);\n  feed : (next) --> (state);\n}\n",
         // The sugar ladder's named-port normal form, including `()` and `_`.
-        "sign N {\n  sort Nat : Type\n  data Zero : () --> (_ : Nat)\n  data Succ : (_ : Nat) --> \
-         (_ : Nat)\n}\n",
+        "sign N {\n  sort Nat : Type;\n  data Zero : () --> (_ : Nat);\n  data Succ : (_ : Nat) --> \
+         (_ : Nat);\n}\n",
         // Occurrence labels and the pinned-endpoint binder.
         "sign L {\n  rule twice : (rule p : x ==> x\u{2032}, data x : Nat) ==> (o : Nat) {\n    \
-         node w1 : p(x) ==> (m);\n    node w2 : step(m) --> (o);\n  }\n}\n",
+         node w1 : p(x) ==> (m);\n    node w2 : step(m) --> (o);\n  };\n}\n",
         // The invertible face, and the reserved reversible glyph.
-        "sign I { rule involutive : (b : Bit) <=> (c : Bit) }",
-        "sign R { oper negate : (b : Bit) <-> (c : Bit) }",
+        "sign I { rule involutive : (b : Bit) <=> (c : Bit); }",
+        "sign R { oper negate : (b : Bit) <-> (c : Bit); }",
         // A top-level `rule` declaration beside the top-level `oper`.
         "rule step : (x : Nat) ==> (y : Nat)",
     ];
@@ -339,7 +340,7 @@ fn a_top_level_circuit_declaration_keeps_its_whole_signature() -> Result<(), Box
     let member = parse(
         pbg,
         SourceSlice::from(
-            "sign S { data Zero : Nat data Succ : Nat --> Nat oper add : (Nat, Nat) --> Nat }",
+            "sign S { data Zero : Nat; data Succ : Nat --> Nat; oper add : (Nat, Nat) --> Nat; }",
         ),
     )?;
     assert!(
@@ -387,10 +388,10 @@ fn circuit_contextual_keywords_still_bind_as_names() -> Result<(), Box<dyn Error
     // ports sit are past the member lead's slot, so a type variable spelled
     // `sort` molds as a type there.
     let inside: &[&str] = &[
-        "sign S { oper f : (a : sort) --> (b : Nat) sort Bit : Type }",
-        "sign S { rule r : (rule p : sort ==> other, data x : Nat) ==> (z : Nat) }",
-        "sign S { oper f : node --> Nat }",
-        "sign S { oper f : (a : feed) --> (b : Nat) }",
+        "sign S { oper f : (a : sort) --> (b : Nat); sort Bit : Type; }",
+        "sign S { rule r : (rule p : sort ==> other, data x : Nat) ==> (z : Nat); }",
+        "sign S { oper f : node --> Nat; }",
+        "sign S { oper f : (a : feed) --> (b : Nat); }",
     ];
     for &src in inside {
         let result = parse(pbg, SourceSlice::from(src))?;
@@ -404,6 +405,149 @@ fn circuit_contextual_keywords_still_bind_as_names() -> Result<(), Box<dyn Error
                 .collect::<Vec<_>>()
         );
     }
+    Ok(())
+}
+
+/// The gandr-ng9.14 headline hazard, parser half: an application repeating a
+/// port name — `add(x, x)` — molds clean, so the linearity refusal is
+/// reachable from source (the engine half is
+/// `gandr-surface-engine`'s
+/// `circuit_desc::a_repeated_argument_name_reaches_the_linearity_refusal`, and
+/// the corpus carries the witness under
+/// `pathological/circuit/circuit-repeated-port.gandr`). Every `sign` member
+/// is `;`-terminated (owner directive): after a member's trailing sort hole
+/// only `;` is admissible, which never competes with hole content, so the
+/// member can no longer collapse into one repaired region.
+#[test]
+fn a_repeated_port_name_application_molds_clean() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let cases: &[&str] = &[
+        // The headline shape: one wire consumed twice in a redex line.
+        "sign Copy {\n  sort Nat : Type;\n  oper add : (l : Nat, r : Nat) --> (s : Nat);\n  rule \
+         copy2 : (data x : Nat) ==> (z : Nat) {\n    node : add(x, x) --> (z);\n  };\n}\n",
+        // The same reading with distinct names, and the sugar ladder's
+        // unnamed-port rungs.
+        "sign Copy {\n  sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n  rule copy2 : (data x \
+         : Nat, data y : Nat) ==> (z : Nat) {\n    node : add(x, y) --> (z);\n  };\n}\n",
+        // A body-less rule member ahead of the closing brace.
+        "sign B {\n  sort Nat : Type;\n  oper add : (Nat, Nat) --> Nat;\n  rule copy2 : (data x : \
+         Nat) ==> (z : Nat);\n}\n",
+    ];
+    for &src in cases {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "repeated-name application {src:?} molds clean; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| (obligation.class, obligation.span))
+                .collect::<Vec<_>>()
+        );
+    }
+    // The terminator is load-bearing, not merely admitted: an unterminated
+    // member flags a repair rather than silently closing against the next
+    // member's lead.
+    let unterminated = parse(
+        pbg,
+        SourceSlice::from("sign S {\n  sort Nat : Type\n  sort T : Type;\n}\n"),
+    )?;
+    assert!(
+        !bool::from(unterminated.is_clean()),
+        "a member without its `;` terminator must flag a repair"
+    );
+    Ok(())
+}
+
+/// The second gandr-ng9.14 hazard: `sort S : Type ;` followed by a blank line
+/// loses nothing — the block molds to its intended form. The `;` closes the
+/// member's trailing sort hole decisively, so trailing trivia (a blank line,
+/// several, a comment, or the closing brace) can no longer break the parse.
+#[test]
+fn a_blank_line_after_a_terminated_member_molds_clean() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let cases: &[&str] = &[
+        "sign S {\n  sort S : Type;\n\n}\n",
+        "sign S {\n  sort S : Type;\n\n  sort T : Type;\n}\n",
+        "sign S {\n  sort S : Type;\n\n  oper f : (S) --> S;\n\n  rule r : (data x : S) ==> (z : \
+         S) {\n    node : f(x) --> (z);\n  };\n}\n",
+        "sign S {\n\n  sort S : Type;\n\n  // a comment between members\n\n  sort T : Type;\n\n}\n\n",
+    ];
+    for &src in cases {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "blank-line shape {src:?} molds clean; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| (obligation.class, obligation.span))
+                .collect::<Vec<_>>()
+        );
+    }
+    Ok(())
+}
+
+/// The third gandr-ng9.14 hazard: a `sign` block may be named with a
+/// primitive-type spelling (`sign Unknown`). The labeler's uppercase-word
+/// reservation is a disambiguation preference at slots where the reserved tile
+/// molds, never a ban on declaration names: at a slot that admits only
+/// `type_identifier` the molder falls back to the word's generic labels
+/// (`Molder::gather_reserved_fallback`).
+#[test]
+fn a_sign_block_may_be_named_with_a_primitive_type_spelling() -> Result<(), Box<dyn Error>>
+{
+    let pbg = built();
+    let cases: &[&str] = &[
+        "sign Unknown {\n  sort Nat : Type;\n}\n",
+        "sign Boolean {\n  sort Bit : Type;\n}\n",
+        "sign Any {\n  sort Nat : Type;\n}\n",
+    ];
+    for &src in cases {
+        let result = parse(pbg, SourceSlice::from(src))?;
+        assert!(
+            bool::from(result.is_clean()),
+            "primitive-named sign block {src:?} molds clean; obligations: {:?}",
+            result
+                .obligations()
+                .iter()
+                .map(|obligation| (obligation.class, obligation.span))
+                .collect::<Vec<_>>()
+        );
+    }
+    // The reservation still owns the type slots it disambiguates: `Unknown`
+    // in type position molds the primitive-type atom, never a spurious
+    // `type_identifier`.
+    let typed = parse(pbg, SourceSlice::from("def x : Unknown;"))?;
+    assert!(
+        bool::from(typed.is_clean()),
+        "the reserved spelling still molds at a type slot"
+    );
+    assert_eq!(
+        Some("Unknown".to_owned()),
+        mold_label_of(
+            pbg,
+            typed.cst(),
+            typed.cst().root(),
+            TileText::from("Unknown")
+        ),
+        "a type slot keeps the primitive-type atom"
+    );
+    // And the name slot of a primitive-named block reads the word as the
+    // generic class — the two readings of one spelling, separated by position.
+    let named = parse(pbg, SourceSlice::from("sign Unknown { sort Nat : Type; }"))?;
+    assert_eq!(
+        Some("type_identifier".to_owned()),
+        mold_label_of(
+            pbg,
+            named.cst(),
+            named.cst().root(),
+            TileText::from("Unknown")
+        ),
+        "a declaration-name slot falls back to the generic label"
+    );
     Ok(())
 }
 
@@ -1174,6 +1318,34 @@ fn descendant_tiles(
         }
     }
     out
+}
+/// The grammar mold label of the first descendant tile whose text is `text`.
+fn mold_label_of(
+    pbg: &Pbg,
+    cst: &Cst,
+    id: NodeId,
+    text: TileText<'_>,
+) -> Option<String>
+{
+    let text = <&str>::from(text);
+    let mut pending = vec![id];
+    while let Some(next) = pending.pop() {
+        let Ok(view) = cst.node(next)
+        else {
+            continue;
+        };
+        if view.kind() == NodeKind::Token
+            && view.material() == Material::Tile
+            && view.text().is_ok_and(|slice| slice.as_ref() == text)
+            && let gandr_surface_syntax::MoldPayload::Tile(mold) = view.payload()
+        {
+            return pbg.mold(mold).ok().map(|def| def.label.to_owned());
+        }
+        for child in view.children().unwrap_or(&[]).iter().rev() {
+            pending.push(*child);
+        }
+    }
+    None
 }
 /// Molded-tile prefixes of `src` (each non-space token, in order).
 fn push_prefix<'pbg>(

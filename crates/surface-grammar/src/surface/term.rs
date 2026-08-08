@@ -1744,10 +1744,13 @@ fn comma1(element: Regex) -> Regex
 /// lead mold (`constructor`, `identifier`) then outranks the hole's own
 /// content in the molder's local key — `Nil : Vec` reads as a member `Nil`
 /// whose signature is missing plus a nullary member `Vec`, a clean parse of
-/// the wrong tree. Keyword-led lists (the `sign` block) are exempt: their
-/// leads are reserved words, never hole-content candidates. A mandatory
-/// separator restores the discrimination: after the hole only `;`, `,`, or
-/// `}` is admissible, none of which competes with hole content.
+/// the wrong tree. The `sign` block's member list once claimed an exemption
+/// here — its leads are reserved words, never hole-content candidates — but
+/// the exemption was falsified by the member-collapse hazards the graduation
+/// rung surfaced, and the sign block now takes the same mandatory `;`
+/// terminator (owner directive, gandr-ng9.14; [`crate::surface::circuit`]).
+/// A mandatory separator restores the discrimination: after the hole only
+/// `;`, `,`, or `}` is admissible, none of which competes with hole content.
 fn member_list(element: Regex) -> Regex
 {
     let first = element.clone();

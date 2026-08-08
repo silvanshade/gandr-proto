@@ -2,6 +2,19 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-07 — The `sign` block's members are `;`-terminated; the terminator is load-bearing
+
+* `current`: Every `sign` member is now **terminated** by `;` (the surface's declaration terminator), and the terminator is load-bearing at the member level rather than merely admitted (owner directive, gandr-ng9.14).
+  The unseparated member list was the one remaining carrier of the wrong-tree mechanism recorded below for the data blocks: a member ends in a sort hole, the walk's `≐`-relation crosses it, and the next member's lead can collapse the whole member into one repaired region — the graduation rung's `add(x, x)` collapse (gandr-ng9.14, hazard 1), which left the cell layer's linearity refusal unreachable from source.
+  After the hole only `;` is admissible, and it never competes with hole content, so the discrimination is structural again; an unterminated member flags a repair naming the position.
+  The reopening condition for a terminator-free spelling is a molder key change: hole-fill must outrank `≐`-continuation.
+* `current`: The slot boundary is pinned: the retired `,` is NOT admissible at the `sign` block's member level — it stays admissible only inside the nested `data` / `codata` generator and observation lists (`member_list` in `surface/term.rs`), where it exists so a stale declaration parses whole and reaches the elaborator's migration decline.
+  Top-level `oper` / `rule` declarations are unchanged: they end in `)` or `}` by the forced-parenthesization discipline and carry no trailing hole.
+* `current`: The 2026-08-02 "recorded, not fixed" `sort` collision is **dissolved**: a member lead is admissible only after the terminator now, so `sign S { oper f : sort --> Nat; sort Bit : Type; }` molds the first `sort` as a `type_variable` (the bare-sort side it is) and the second as the member lead — the wrong regroup has no admissible reading left.
+* `current`: A `sign` block may be named with a primitive-type spelling (`sign Unknown`).
+  The labeler's uppercase-word reservation (`UPPER_KEYWORDS`) is a disambiguation preference at slots where the reserved tile molds; the molder falls back to the word's generic `constructor` / `type_identifier` labels when no reserved candidate is admissible at the live frontier (`Molder::gather_reserved_fallback` in `gandr-surface-parser`), so `def x : Unknown;` still molds the primitive-type atom while `sign Unknown { … }` molds the name slot.
+* `current`: Mold-count effect, pinned in `tests/walk.rs` — declared molds 1782 → 1783 (the member terminator `;`, one mold beside the inlined member family), reachable multi-mold labels unchanged at 72, fingerprint `0xfa35_0169_cdda_acb1` → `0x11ed_981d_95a5_1344`.
+
 ## 2026-08-07 — The nested generator block is the one `data` form; the Haskell-style form stays admissible for its decline
 
 * `current`: The `data` declaration's head now binds the family's parameters **once** as typed binders `(a : Type, …)` and carries the index arity as the head annotation `: Idx -> Type` (`: Type` when unindexed), and every generator member is a judgment `Ctor : (binders) --> Result ;` (bare-side rungs: `Nil : Vec(a, 0) ;`, `Some : a --> Maybe(a) ;`).

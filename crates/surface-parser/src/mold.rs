@@ -12,6 +12,11 @@
 //!   keywords) then `constructor` / `type_identifier`; punctuation is its exact
 //!   text. The candidate [`MoldId`]s are gathered into a sorted, de-duplicated
 //!   set — no hash-iteration or allocation-address order reaches the decision.
+//!   The uppercase-word reservation (`UPPER_KEYWORDS`) is a preference, not a
+//!   ban: when no reserved candidate is admissible at the live frontier (a
+//!   primitive-type spelling at a declaration-NAME slot, where only
+//!   `type_identifier` molds), the menu widens to the class's generic labels
+//!   (`Molder::gather_reserved_fallback`, gandr-ng9.14).
 //! * **Candidate pre-filter (§5.2).** [`MeldState::admits_at`] discards every
 //!   structurally-inadmissible candidate against a once-per-token
 //!   [`Frontier`](crate::Frontier) — a form-continuation tile with no matching
@@ -377,11 +382,13 @@ pub fn candidate_labels<'text>(
 /// The reserved uppercase words (grammar.js `KW` / primitive type names).
 ///
 /// A reserved uppercase word (a primitive type `Integer` / `String` / …, or the
-/// type keywords `F` / `U`) is never an ordinary `constructor` or
-/// `type_identifier`, so it molds only to its own tile — not the
-/// `constructor` / `type_identifier` menu that would leave `Integer` tied
-/// between the primitive-type atom and a spurious `type_identifier` reading at
-/// every type slot.
+/// type keywords `F` / `U`) PREFERS its own tile — the
+/// `constructor` / `type_identifier` menu would leave `Integer` tied between
+/// the primitive-type atom and a spurious `type_identifier` reading at every
+/// type slot. The reservation is a preference, not a ban: at a slot where the
+/// reserved tile is structurally inadmissible (a declaration's NAME position),
+/// [`Molder::gather_reserved_fallback`] re-admits the generic labels so the
+/// word can still name the declaration (`sign Unknown`; gandr-ng9.14).
 const UPPER_KEYWORDS: &[&str] = &[
     "Any", "Unknown", "Never", "Boolean", "Integer", "Char", "String", "Symbol", "Unit", "Void",
     "F", "U",
@@ -705,6 +712,80 @@ impl<'pbg> Molder<'pbg>
             // supplies the tile the melder pushes to flag the exact obligation.
             self.gather_menu(token, source, open, CandidateMenu::Declared);
         }
+        self.gather_reserved_fallback(state, token, source, open);
+    }
+
+    /// Widen a **reserved uppercase word**'s menu to its lexical class's
+    /// generic labels when its own tile cannot mold at this position.
+    ///
+    /// The `UPPER_KEYWORDS` reservation is a disambiguation preference, never
+    /// a ban on declaration names: at a type slot the reserved tile (`Unknown`
+    /// the primitive type) molds and the generic labels stay out, so the
+    /// primitive/type-identifier tie the reservation exists to prevent never
+    /// forms. But the reservation also fires at slots that admit ONLY
+    /// `constructor` / `type_identifier` — a `sign` block's name, a `sort`
+    /// member's colour, a `data` head — where the reserved tile is
+    /// structurally inadmissible, and there it repaired the whole declaration
+    /// (`sign Unknown` molded nothing; gandr-ng9.14). When no gathered
+    /// candidate is admissible at the live frontier, the molder re-gathers
+    /// with the class's generic labels appended; the reserved candidates stay
+    /// in the menu so the last-resort path still flags the exact obligation
+    /// when nothing admissible exists either way.
+    ///
+    /// # Contract
+    /// - requires: `token` came from the labeler over `source`; the reserved
+    ///   menu was already gathered into `self.candidates`.
+    /// - ensures: leaves `self.candidates` sorted and de-duplicated; widens it
+    ///   with the generic-label menus exactly when the token is a reserved
+    ///   uppercase word with no admissible candidate at the live frontier;
+    ///   otherwise leaves it unchanged.
+    /// - provides: the reservation-as-preference half of the candidate menu.
+    /// - fails: never.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 — the fallback fires exactly at the reservation's
+    ///   inadmissible slot (`sign Unknown` molds its name as `type_identifier`)
+    ///   and stays out where the reserved tile molds (`def x : Unknown;` keeps
+    ///   the primitive-type atom); a non-reserved word never reaches it (the
+    ///   corpus gate).
+    /// - witness: `acceptance::a_sign_block_may_be_named_with_a_primitive_type_spelling`
+    /// - witness: `acceptance::corpus_molds_to_zero_obligations`
+    fn gather_reserved_fallback<'src>(
+        &mut self,
+        state: &MeldState<'_>,
+        token: Token,
+        source: &'src SourceSlice<'src>,
+        open: Option<MoldId>,
+    )
+    {
+        if !matches!(token.lexeme, Lexeme::UpperWord) {
+            return;
+        }
+        let slice = token.text(source);
+        if !UPPER_KEYWORDS.contains(&AsRef::<str>::as_ref(&slice)) {
+            return;
+        }
+        let frontier = state.admissibility_frontier();
+        if self
+            .candidates
+            .iter()
+            .any(|&mold| bool::from(state.admits_at(mold, &frontier)))
+        {
+            return;
+        }
+        let reserved = core::mem::take(&mut self.candidates);
+        let generic = [
+            CandidateLabel::from("constructor"),
+            CandidateLabel::from("type_identifier"),
+        ];
+        self.gather_labels(&generic, open, CandidateMenu::Fresh);
+        if self.candidates.is_empty() {
+            self.gather_labels(&generic, open, CandidateMenu::Declared);
+        }
+        self.candidates.extend_from_slice(&reserved);
+        self.candidates.sort_unstable();
+        self.candidates.dedup();
     }
 
     /// Gather the candidate molds for `token`, from the fresh-slot menu plus
@@ -722,7 +803,32 @@ impl<'pbg> Molder<'pbg>
         let slice = token.text(source);
         let text = TokenText::from(AsRef::<str>::as_ref(&slice));
         let labels = candidate_labels(token.lexeme, text);
-        for &label in &labels {
+        self.gather_labels(&labels, open, menu);
+    }
+
+    /// Gather the candidate molds for `labels`, from the fresh-slot menu plus
+    /// the open form's `≐`-successors ([`CandidateMenu::Fresh`]) or the full
+    /// declared menu ([`CandidateMenu::Declared`]). The buffer is NOT cleared:
+    /// callers stage menus (the reserved-word fallback unions its widened
+    /// menu over the reserved one).
+    ///
+    /// # Contract
+    /// - requires: `labels` are candidate spellings for the current token.
+    /// - ensures: appends the labels' menu to `self.candidates`, then sorts and
+    ///   de-duplicates it (ascending [`MoldId`]; no hash-iteration or
+    ///   allocation order reaches the decision).
+    /// - provides: the shared gather step of [`Self::gather_menu`] and
+    ///   [`Self::gather_reserved_fallback`].
+    /// - fails: never.
+    /// - panics: none.
+    fn gather_labels(
+        &mut self,
+        labels: &[CandidateLabel<'_>],
+        open: Option<MoldId>,
+        menu: CandidateMenu,
+    )
+    {
+        for &label in labels {
             let Some(label) = self.candidate_label(label)
             else {
                 continue;
@@ -741,7 +847,7 @@ impl<'pbg> Molder<'pbg>
         if matches!(menu, CandidateMenu::Fresh)
             && let Some(open) = open
         {
-            self.push_form_successors(&labels, open);
+            self.push_form_successors(labels, open);
         }
         // Deterministic candidate order: ascending MoldId, de-duplicated. No
         // hash-iteration or allocation order reaches the decision.
