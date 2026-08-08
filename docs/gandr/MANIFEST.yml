@@ -19,12 +19,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: a4365ef99a1a35ca1468e33e0c68b0094fad70333d20d3fa201a5a00a71f9893
+    b3: 2da77b9b2f9ffe711f56582489e8af90747734543d046774af4d36ab336609b2
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: e09e386151910f60312e3c58182e20e136ccc501c5ca370020afad4d453c7086
+    b3: fd5bad4a7db7f054c46a58517d1202f41c75730820d36cf19b040ac1dff03353
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -44,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 82d559efece8cd0f81d13f32039ee2b6218d8d8dc251c400ff4fe65bba34e426
+    b3: 403d262e6666e54b49a4a583568b9c62f118fd3fbae610de05d3cc1a64576931
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -54,7 +54,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
     role: subdocument
-    b3: 4a27ec714b72c4e8852e634fce3012d97c1cd7951cf282160be1af37d4e36f12
+    b3: d93a9df13eb884845e4beb41974f834f62f5227845b79ed94704105911a5273b
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/carrier.md
@@ -104,7 +104,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: 4118a359ea52bb74baff30c2bf9b5fa8e38495806ff4fd929cbc5017b34e89a2
+    b3: b89f3db004c505dd68fe66ae516eb9d23f501d1079ef98a569d2c5a9ca37993d
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
@@ -149,7 +149,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
     role: subdocument
-    b3: b216dcdb9c12b1111d906ac5ad5b5f3330d756f1536f536b3c6ac27394fbcb32
+    b3: a4efac52ef388ecafadf0eb895f190f2570f514621abb115d7eb15a0422beafc
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/attributes.md
@@ -174,12 +174,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: 85689570e686a52fba005b4447b92cb484239c3ddd67cc3d4d325e1d3d8c82f5
+    b3: 57d399c514aca9ca84597ddd38452e8abef53ea0450a5a4e01a175dbf2e7a589
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
     role: subdocument
-    b3: 47d87701052d34376d4d1bd269445e5d2f632349d306528d6693b66861c54c7b
+    b3: fc2af4cfa6f98bcd877bb2d58f398dc26ebca361d1bc58227c1a5a66424bce59
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/separation-logic.md
