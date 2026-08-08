@@ -1101,6 +1101,7 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (occ-lookup)
     using (occ-inl)
     using (occ-inr)
+    using (swap-match)
     using (Vtx)
     using (verts)
     using (ins)
@@ -1139,6 +1140,10 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (match-unhit)
     using (insert-shift)
     using (merge)
+    -- and for the agreement lemma's series shape and its statement
+    using (append-regroup)
+    using (Regroup)
+    using (graft)
     -- the two lookups' result types, and the view the through case splits on
     using (Removal)
     using (through)
@@ -1700,3 +1705,161 @@ module Circuit {ℓ} {Ob : Set ℓ} where
   -- reason it is invisible to `Pos`
   pair : Pairing sub
   pair Y v w = pair-shape Y v w
+
+  -- ── WHAT THE CONSTRUCTION COMPUTES, PINNED ──────────────────────────────
+  --
+  -- A green gate is not proof of meaning, and the count is exactly the kind of
+  -- datum a construction can carry and never populate. These exercise it.
+
+  -- the family substituted at the self-loop's one vertex: the bare wire of
+  -- that vertex's profile, which is the code the count was introduced for
+  loop-plug
+    : (x : Ob)
+    → ∀ {c d}
+    → Vtxᶜ (selfloop x , 0) c d
+    → Cod c d
+  loop-plug x hit = bare-wire x , 0
+  loop-plug x (miss ())
+
+  -- THE COUNT IS NOT VACUOUS, and this is the whole of the reason `Cod` carries
+  -- a number. Substituting the bare wire at the self-loop's vertex leaves no
+  -- vertex, no leg and no edge — the configuration `no-circle` above refutes —
+  -- together with the circle that closed, counted. Discarding it would return
+  -- the empty wiring at zero, which is the same term the empty shape already
+  -- has, and nothing downstream could tell the two apart.
+  selfloop-counted
+    : (x : Ob)
+    → sub (selfloop x , 0) (loop-plug x) ≡ (wires no-wire , 1)
+  selfloop-counted x = refl
+
+  -- ── STEP FIVE: THE THREE LAWS, AND THE TWO OBLIGATIONS WITH THEM ────────
+  --
+  -- Stated as types, on the same terms as `Subst` and `Pairing` above: nothing
+  -- here is postulated, and each statement is what the next pass starts from.
+  -- NONE OF THE FIVE IS INHABITED IN THIS REVISION.
+  --
+  -- ONE THING ABOUT THEIR COST IS MEASURED RATHER THAN GUESSED, and it is
+  -- worth having before the next pass starts. `close-in` rebuilds each node it
+  -- pushes past over `append-graph`, so a unit law has to say that the witness
+  -- it rebuilt with is the one the original node carried. Both natural
+  -- formulations of that ingredient — `(p : Append Ob B Γ (B ++ Γ)) → p ≡
+  -- append-graph B Γ`, and uniqueness of two witnesses at one triple — are
+  -- STUCK under `--without-K`, on a reflexive `List Ob` equation the `nil`
+  -- clause would have to delete. That is the forced-index deletion the design
+  -- doctrine describes, and it is the same h-level condition `graft-idnˡ` and
+  -- `graft-idnʳ` already take as `UIP (List Ob)` parameters.
+  --
+  -- What is NOT measured, and must not be read into the above: whether the
+  -- unit laws themselves need that condition. A route that never compares two
+  -- witnesses at one triple would not, and neither probe rules one out.
+
+  -- the unit CODE, as the interface asks for it: the corolla with no circle
+  -- beside it. `unit` above is the SHAPE, and predates the count
+  unitᶜ : (A B : List Ob) → Cod A B
+  unitᶜ A B = unit A B , 0
+
+  oneᶜ : ∀ {A B} → Vtxᶜ (unitᶜ A B) A B
+  oneᶜ = one
+
+  -- LEFT UNIT. Substituting into the unit code is the substituted code.
+  Idl : Set ℓ
+  Idl =
+      ∀ {A B}
+    → (Y : ∀ {c d} → Vtxᶜ (unitᶜ A B) c d → Cod c d)
+    → sub (unitᶜ A B) Y ≡ Y oneᶜ
+
+  -- RIGHT UNIT. Substituting the unit at every position changes nothing.
+  Idr : Set ℓ
+  Idr =
+      ∀ {Γ Δ}
+    → (X : Cod Γ Δ)
+    → sub X (λ {c} {d} _ → unitᶜ c d) ≡ X
+
+  -- ASSOCIATIVITY, stated over `pair` exactly as the interface states it.
+  --
+  -- THE CODE IS NAMED AT THE USE SITE, and that is the count being invisible
+  -- to `Pairing` showing up as an elaboration fact rather than as a remark.
+  -- `Pairing`'s code argument is implicit and is meant to be recovered from
+  -- the substituted family's type — but that type mentions the code only
+  -- through `Vtxᶜ`, which reads the shape and drops the number, so the number
+  -- is a metavariable nothing constrains. Naming it is the whole of the cost.
+  Assoc : Set ℓ
+  Assoc =
+      ∀ {Γ Δ}
+    → (X : Cod Γ Δ)
+    → (Y : ∀ {c d} → Vtxᶜ X c d → Cod c d)
+    → (Z : ∀ {c d} → Vtxᶜ (sub X Y) c d → Cod c d)
+    → sub (sub X Y) Z
+      ≡ sub X (λ v → sub (Y v) (λ w → Z (pair {X = X} Y v w)))
+
+  -- AND THE COUNT LAW, which is associativity's SECOND projection read on its
+  -- own: both bracketings shut the same number of circles.
+  --
+  -- It is stated separately because it is the half that is not about shapes at
+  -- all, and because it is the half the source states directly: a Brauer
+  -- diagram is a pairing together with a count, and composition adds the two
+  -- counts plus the components the composition closes
+  -- [@raynor-2025-functorial, Def 3.4]. Here the third summand is what `plug`
+  -- returns, and the law says the two ways of bracketing a double substitution
+  -- agree on the sum.
+  CountLaw : Set ℓ
+  CountLaw =
+      ∀ {Γ Δ}
+    → (X : Cod Γ Δ)
+    → (Y : ∀ {c d} → Vtxᶜ X c d → Cod c d)
+    → (Z : ∀ {c d} → Vtxᶜ (sub X Y) c d → Cod c d)
+    → proj₂ (sub (sub X Y) Z)
+      ≡ proj₂ (sub X (λ v → sub (Y v) (λ w → Z (pair {X = X} Y v w))))
+
+  -- THE TWO-COROLLA SERIES SHAPE. Two vertices, the first's out-ports wired to
+  -- the second's in-ports, the input legs to the first and the second's
+  -- out-ports to the output legs. An ORDINARY term: two `node`s over one block
+  -- swap, needing no grafting to build, which is what makes the agreement
+  -- lemma below a statement about substitution rather than a restatement of
+  -- grafting.
+  --
+  -- The re-association is `append-regroup`'s, for the reason the merger needs
+  -- it: the second vertex publishes to the front of the FIRST vertex's
+  -- extended interface, and the wiring is stated over the other bracketing.
+  series : (Γ Δ Θ : List Ob) → Shape Ob Γ Θ
+  series Γ Δ Θ =
+    node Γ Δ (append-graph Δ Γ) (append-graph Γ Θ)
+      (node Δ Θ
+        (append-graph Θ (Δ ++ Γ))
+        (Regroup.front regrouped)
+        (wires
+          (swap-match
+            (append-graph Θ (Δ ++ Γ))
+            (Regroup.back regrouped))))
+    where
+      -- the second vertex's ports, published to the front of the whole sink
+      -- interface rather than of the first vertex's
+      regrouped : Regroup Δ (Δ ++ Γ) Θ (Γ ++ Θ)
+      regrouped = append-regroup (append-graph Δ Γ) (append-graph Γ Θ)
+
+  -- the family the series shape's two positions ask for
+  series-at
+    : ∀ {Γ Δ Θ}
+    → Shape Ob Γ Δ
+    → Shape Ob Δ Θ
+    → ∀ {c d}
+    → Vtxᶜ (series Γ Δ Θ , 0) c d
+    → Cod c d
+  series-at S T hit = S , 0
+  series-at S T (miss hit) = T , 0
+  series-at S T (miss (miss ()))
+
+  -- THE AGREEMENT LEMMA. Grafting IS substitution into the series shape.
+  --
+  -- It is what carries `verts-graft`, `graft-idnˡ`/`graft-idnʳ` and the
+  -- merger's incidence theorems across to the primitive former; without it the
+  -- tree carries two compositions and proves each fact twice. Expected on the
+  -- nose, because `Match` has one term per wiring and the closure therefore
+  -- subsumes `match-comp` exactly rather than up to anything — but that is an
+  -- induction, and it is not written.
+  Agreement : Set ℓ
+  Agreement =
+      ∀ {Γ Δ Θ}
+    → (S : Shape Ob Γ Δ)
+    → (T : Shape Ob Δ Θ)
+    → sub (series Γ Δ Θ , 0) (series-at S T) ≡ (graft S T , 0)
