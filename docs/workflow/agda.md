@@ -108,6 +108,8 @@ The test is ownership, not provenance: if we defined it and it knows nothing abo
 
 `agda:deps` vendors stdlib into the gitignored `metatheory/vendor/`, so `agda:check` passes `-i metatheory/vendor/agda-stdlib/src` and **a fresh checkout must run `agda:deps` before its first `agda:check`**.
 It stays a separate task rather than a gate dependency so a warm tree does not re-enter the fetch path on every run.
+The provisioning itself is `scripts/agda-deps.gandr`, run through the `gandr` script runner: the toolchain provisions its proof vehicle in the language the toolchain is for, and the script's `proc.exit` carries the shell's status out as the task's status.
+It is idempotent by its own guard, and it is silent while it works, because a shell block captures its command's output instead of relaying it (`gandr-czio`) — the task's announcement line is what tells you a clone is under way.
 
 ## Solvers
 
