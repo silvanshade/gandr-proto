@@ -2249,6 +2249,7 @@ open import Gandr.Shape.Graph
   using (𝟙)
   using (𝟚)
   using (_≟ˢ_)
+  using (_≟⊤_)
   -- the wiring constructors; the list constructors of the same names come from
   -- `Data.List` below and Agda disambiguates the two by type
   using (_∷_)
@@ -2262,6 +2263,7 @@ open import Relation.Nullary.Decidable
   using (does)
 
 open Circuit {Ob = ⊤}
+  using (Cod)
   using (_↝_)
   using (_≈ˢ_)
   using (swap)
@@ -2340,3 +2342,14 @@ open-pair-swap =
 -- permuting wires would fail here rather than in a reader's head.
 open-pair-edges : edges open-pair ≡ edges open-pair-swapped
 open-pair-edges = refl
+
+-- AND THE PARAMETERIZED PACKAGING IS INSTANTIATED, so it is not green and
+-- vacuous. `circuit-rigid` and the two derivations under it sit in a module
+-- taking decidable equality of colours; the unit colour set supplies it, and
+-- the code decision procedure that module builds COMPUTES here rather than
+-- merely typing — it separates the same pair `open-pair-apart` does, now at the
+-- codes rather than at the shapes.
+codes-decide
+  : does (Circuit._≟ᶜ_ {Ob = ⊤} _≟⊤_ (open-pair , zero) (open-pair-swapped , zero))
+    ≡ false
+codes-decide = refl
