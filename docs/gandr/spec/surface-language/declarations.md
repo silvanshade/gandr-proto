@@ -138,6 +138,19 @@ codata Fun(a : Type, b : Type) : Type { ap(x : a) : b; }     // reserved paramet
 * Elaboration of codata values: a copattern body elaborates through the `Cosplit` case-tree node to a **record of thunks** over the record former — observation `s.π` becomes `force(s.π)`; the CBPV-faithful negative n-ary product is the reserved upgrade.
 * The equality stance: (co)match equality is by unique label plus closure, **no η for codata** — undecidable, and recursive-record η breaks the elaborator's scope invariant.
 
+## Eliminators, decided (2026-08-07)
+
+**All pattern matching elaborates to eliminators, eliminator generation is a fold over `SignDesc` consuming the nested generator block, and the `match … by …` surface quantifies over any constant in motive–methods–target form — not only datatype eliminators.** The specification itself lives in the project's research vault (the corpus README's migration banner); what this repository binds is:
+
+* **The user never sees an eliminator.** Display-provenance is a day-one elaborator constraint, not a polish item: a refinement the display layer cannot display is one the elaborator may not emit ([[../../implementation/proposed/display-provenance|display-provenance]]).
+* **The four-tier elaboration policy is the standing answer to unification-steps-as-terms.** Don't generate (solve in the elaborator, record the solution); dissolve (the standard chains — singleton contraction, transport composition — discharged once at the doctrine level as fusion cells); decide (constructor-form targets collapse by the `walk` computation rule); generate the residue as derived cells that are replayable AND decomposable — specialisation chains compose canonically, and a left inverse is a decomposition with certificates, never a term computed.
+  Fiat reduction rules in the kernel are declined; the reopening delta is measured certificate-replay cost dominating the dependent-core elaboration wall.
+* **General recursion is carried by memo structures, not accessibility predicates**, typed against the polarity discipline: the definition is a value-side thunk, the memo structure is codata, and the guardedness/delay licence reads off the ν-sort in the sorting discipline.
+  There is no termination checker: termination evidence is ordinary data with a certificate, checked by replay, and the effect quarantine's fixed-point and step budgets are the same refusal.
+  Reopening delta: a demonstrated class of definitions whose termination evidence the memo discipline cannot express as ordinary data.
+* **The derived eliminators are the payoffs the surface exists for**: univalence as induction on equivalences, funext as induction on homotopies, restricted-motive quotient eliminators.
+* **The acceptance instance is the worked pasting derivation** — two identifications pasted, the four naive based-path-induction calls disposed through the tier ledger, the collapse demonstrated on constructor targets; its executable demonstration is owed to the dependent-core build lane, not to this record.
+
 ## `extern` blocks
 
 ```text

@@ -124,7 +124,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: 529330e9fc971a09248d7448e9e0b1c8dbe966f29aaaa5284f0be6d68867e3b8
+    b3: bd43e3b7fd97a7bbc5cb11e7f51d78b3f00d16e0cf5656bc88d7d4f8f1290cc9
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
