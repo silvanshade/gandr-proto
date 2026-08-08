@@ -11,8 +11,8 @@
 // readings are shift-equal, and never any earlier or any wider. So the cell
 // layer declines, carrying both occurrences and their positions.
 sign Nat {
-  sort Nat : Type
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
 
   rule cong2 : (
     rule p : Nat ==> Nat,
@@ -23,7 +23,7 @@ sign Nat {
     node : p(x) ==> (x′);
     node : q(y) ==> (y′);
     node : add(x′, y′) --> (z);
-  }
+  };
 }
 
 //@ mode: desc

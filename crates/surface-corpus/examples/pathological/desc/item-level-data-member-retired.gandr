@@ -8,9 +8,9 @@
 // block's respelling. (The `data x : Nat` binders of a rule telescope are a
 // different slot and stay.)
 sign Stale {
-  sort Nat : Type
-  data Zero : Nat
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  data Zero : Nat;
+  oper add : (Nat, Nat) --> Nat;
 }
 
 //@ mode: desc

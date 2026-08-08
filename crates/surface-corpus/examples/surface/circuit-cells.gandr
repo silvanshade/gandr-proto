@@ -1,6 +1,9 @@
 // The ruled circuit block form — `sign` blocks, kind-keyword members, the
 // four-glyph arrow grid, two-sided named ports, and the `node` / `feed` body
-// statements (parse-only fixture).
+// statements (parse-only fixture). Every `sign` member is terminated by `;`
+// (owner directive, gandr-ng9.14): the terminator is load-bearing at the sign
+// block's member level, where the retired `,` is NOT admissible — it stays so
+// only inside the nested `data` / `codata` generator lists.
 //
 // GRADUATION: the ruled circuit RULE BLOCK has graduated -- a well-formed
 // single-redex block lowers to its whiskered composite behind the cell layer's
@@ -25,8 +28,8 @@
 // block — see `surface/data-declarations.gandr`), and a rule telescope's
 // `data x : Nat` binders are a different slot, unaffected.
 sign Nat {
-  sort Nat : Type
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
 
   rule cong2 : (
     rule p : Nat ==> Nat,
@@ -37,7 +40,7 @@ sign Nat {
     node : p(x) ==> (x′);
     node : q(y) ==> (y′);
     node : add(x′, y′) --> (z);
-  }
+  };
 }
 
 // The first stateful wheel: `zip`'s `next` feeds back, one step later, as its
@@ -51,34 +54,34 @@ oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
 // the elaborator and the name-set fold see (unnamed tuple inputs mint fresh
 // names in order).
 sign NatDesugared {
-  sort Nat : Type
-  oper add : (l : Nat, r : Nat) --> (sum : Nat)
+  sort Nat : Type;
+  oper add : (l : Nat, r : Nat) --> (sum : Nat);
 }
 
 // Occurrence labels, the empty interface, and the pinned-endpoint binder.
 sign Labelled {
-  sort Nat : Type
-  oper unit : () --> (out : Nat)
-  oper step : (i : Nat) --> (o : Nat)
+  sort Nat : Type;
+  oper unit : () --> (out : Nat);
+  oper step : (i : Nat) --> (o : Nat);
 
   rule twice : (rule p : x ==> x′, data x : Nat) ==> (o : Nat) {
     node w1 : p(x) ==> (m);
     node w2 : step(m) --> (o);
-  }
+  };
 }
 
 // The invertible rewrite face `<=>` — the certificate algebra's
 // unconditional-composition licence — beside the directed `==>`.
 sign Invertible {
-  sort Bit : Type
-  oper flip : (b : Bit) --> (c : Bit)
-  rule involutive : (b : Bit) <=> (c : Bit)
+  sort Bit : Type;
+  oper flip : (b : Bit) --> (c : Bit);
+  rule involutive : (b : Bit) <=> (c : Bit);
 }
 
 // RESERVED: `<->` on an oper is a semantic claim about the function (a
 // data-level iso), whose checking discipline the reversible lane owes. It
 // parses here and is declined until that lane lands.
 sign Reserved {
-  sort Bit : Type
-  oper negate : (b : Bit) <-> (c : Bit)
+  sort Bit : Type;
+  oper negate : (b : Bit) <-> (c : Bit);
 }

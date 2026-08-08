@@ -12,5 +12,5 @@ data Bit : Type {
 }
 
 //@ mode: desc
-//@ expect-desc-render: sign Bit { sort Bit : Type }
+//@ expect-desc-render: sign Bit { sort Bit : Type; }
 //@ expect-desc-unit-consumers: clean

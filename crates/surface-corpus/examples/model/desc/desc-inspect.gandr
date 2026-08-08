@@ -15,4 +15,4 @@ data Traffic : Type {
 // deterministically: the declared sort set (constructors have no item-level
 // member spelling — a family is declared once, whole, by the nested block):
 //@ mode: desc
-//@ expect-desc-render: sign Traffic { sort Traffic : Type }
+//@ expect-desc-render: sign Traffic { sort Traffic : Type; }

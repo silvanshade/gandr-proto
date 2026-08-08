@@ -30,8 +30,9 @@
 //!
 //! The ruled circuit **rule block** itself has graduated and is runnable: the
 //! model witness is `examples/model/circuit/circuit-rule-block.gandr` and its
-//! five declines — the many-out node, the wheel, the two-redex composite, the
-//! cyclic wiring, and the shared port — are under
+//! six declines — the many-out node, the wheel, the two-redex composite, the
+//! cyclic wiring, the shared port, and the repeated port (the linearity
+//! refusal reached from source) — are under
 //! `examples/pathological/circuit/`.
 //!
 //! Each model / pathological example declares how to run itself and what to

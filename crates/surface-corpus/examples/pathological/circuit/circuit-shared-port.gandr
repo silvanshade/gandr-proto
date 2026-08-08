@@ -8,13 +8,13 @@
 // and that the block still reads into a description, because a wiring error and
 // an ill-formed declaration are different failures.
 sign Shared {
-  sort Nat : Type
-  oper f : (a : Nat) --> (b : Nat)
+  sort Nat : Type;
+  oper f : (a : Nat) --> (b : Nat);
 
   rule twice : (rule p : Nat ==> Nat, data x : Nat) ==> (o : Nat) {
     node : p(x) ==> (m);
     node : f(x) --> (m);
-  }
+  };
 }
 
 //@ mode: desc

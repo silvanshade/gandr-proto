@@ -4,12 +4,12 @@
 // root. So the block parses, and lowering declines it by name, pointing at the
 // cell-alphabet question rather than admitting a narrowed reading.
 sign Wide {
-  sort Nat : Type
-  oper tee : (a : Nat) --> (b : Nat, c : Nat)
+  sort Nat : Type;
+  oper tee : (a : Nat) --> (b : Nat, c : Nat);
 
   rule split : (data x : Nat) ==> (z : Nat) {
     node : tee(x) --> (z, w);
-  }
+  };
 }
 
 //@ mode: desc

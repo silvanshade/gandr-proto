@@ -32,8 +32,8 @@ data Nat : Type {
 }
 
 sign Nat {
-  sort Nat : Type
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
 
   rule cong1 : (
     rule p : Nat ==> Nat,
@@ -42,7 +42,7 @@ sign Nat {
   ) ==> (z : Nat) {
     node : p(x) ==> (x′);
     node : add(x′, y) --> (z);
-  }
+  };
 }
 
 // What the description table holds for the blocks above, read back in the
@@ -52,7 +52,7 @@ sign Nat {
 // telescope and the sphere its wiring derived. The nested block's generators
 // carry no item-level member spelling, so they do not appear here.
 //@ mode: desc
-//@ expect-desc-render: sign Nat { sort Nat : Type; oper add : (Nat, Nat) --> Nat; rule cong1 : (rule p : Nat ==> Nat) add(x, y) ==> add(x′, y) }
+//@ expect-desc-render: sign Nat { sort Nat : Type; oper add : (Nat, Nat) --> Nat; rule cong1 : (rule p : Nat ==> Nat) add(x, y) ==> add(x′, y); }
 
 // The cell layer admits it: two frame-defining cells (one per constructor) plus
 // the rule's own cell, which entered through the same admission seam a written

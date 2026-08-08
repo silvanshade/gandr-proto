@@ -1,0 +1,29 @@
+// The headline parser hazard of gandr-ng9.14, witnessed end to end: an
+// application repeating a port name -- `add(x, x)`, one wire consumed twice --
+// parses cleanly and reaches the linearity refusal from source. Before the
+// member terminator became load-bearing, this shape collapsed into one
+// repaired region at the parser and the ruling's diagnostic was unreachable
+// from any program, witnessed only by hand-built descriptions.
+//
+// Two different failures fire, and both reach the user. The name-set fold
+// refuses the WIRING: `x` is consumed twice by the frame line, and a wire
+// already has that endpoint. The cell layer's single admission seam refuses
+// the CELL: the wiring derives the boundary `add(x, x) ==> add(x, x)`, whose
+// left-hand side copies the hole `x`, and cell patterns are linear -- the
+// ttg ruling's own diagnostic, now triggerable by a program. A copy needs a
+// comonoid the type may not have; the respelling names the copy.
+sign Copy {
+  sort Nat : Type;
+  oper add : (l : Nat, r : Nat) --> (s : Nat);
+
+  rule copy2 : (data x : Nat) ==> (z : Nat) {
+    node : add(x, x) --> (z);
+  };
+}
+
+//@ mode: desc
+//@ expect-desc-decline: the port name `x` is consumed twice
+//@ expect-desc-decline: produced exactly once and consumed exactly once
+//@ expect-desc-cell-decline: non-linear cell pattern
+//@ expect-desc-cell-decline: the producer hole `x` occurs more than once
+//@ expect-desc-composites: 0
