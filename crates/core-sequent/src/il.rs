@@ -29,6 +29,29 @@
 //! L0 — the focusing translation emits [`ProducerNode::Cocase`] (the
 //! pre-closure-conversion form) instead, and closure conversion is a later
 //! in-IL rewrite.
+//!
+//! # Arity is declared at the tag, never at the reader
+//!
+//! Three node families carry an argument pair `(p̄; c̄)` whose shape is fixed
+//! by the head the node names: [`ProducerNode::Ctor`] by a [`CtorTag`],
+//! [`ConsumerNode::Dtor`] by a [`DtorTag`], and [`CommandNode::Prim`] by a
+//! [`PrimOp`]. Each of those three heads **declares** the counts its shape
+//! admits — [`CtorTag::producer_arity`] and [`DtorTag::producer_arity`] for
+//! `p̄`, and [`CtorTag::consumer_arity`], [`DtorTag::consumer_arity`] and
+//! [`PrimOp::consumer_arity`] for `c̄` — and [`crate::check`] holds a node to
+//! the declaration of its own head rather than to a constant of its own.
+//!
+//! The declarations are exhaustive matches with no wildcard arm, so a new tag
+//! variant does not compile until it states its shape; and a tag emitting to
+//! several destinations declares its own consumer count without the checker
+//! changing. This is the intermediate-language half of the multi-output axis
+//! (`docs/gandr/spec/implementation/circuit-terms.md`, the execution ladder's
+//! `circuit-terms-rung-06`).
+//!
+//! [`CommandNode::Jump`] carries a `c̄` too, but its head is a definition
+//! **name**, not a tag: its arity is fixed by the named top-level definition,
+//! whose table the L0 command carrier does not retain, so no count is decidable
+//! from the command alone and the checker records that rather than counting.
 
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -43,6 +66,7 @@ use gandr_core_checker::syntax::NodeId;
 use gandr_core_checker::syntax::NumLit;
 use gandr_core_checker::syntax::Side;
 
+use crate::boundary::ConsumerArity;
 use crate::boundary::SequentNodeCount;
 /// A producer's stable arena id.
 pub type ProducerId = NodeId<ProducerNode>;
@@ -164,14 +188,51 @@ impl CtorTag
             | Self::Record(ref labels) => labels.len().into(),
         }
     }
+
+    /// The number of consumer children this constructor takes (`c̄`).
+    ///
+    /// The §2.1 positive intro is written `K(p̄; c̄)`, so the consumer list is
+    /// part of a constructor's declared shape rather than an afterthought.
+    /// Every frozen-core constructor is data-only and declares **zero**
+    /// consumers; the declaration lives here so that a tag emitting to several
+    /// destinations states its own count and the checker needs no change.
+    ///
+    /// # Contract
+    /// - ensures: total, and equal to the `cs` length the focusing translation
+    ///   builds for this tag; the typed-IL checker holds a
+    ///   [`ProducerNode::Ctor`]'s `cs.len()` to it exactly.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L0 plus L3 — the match is exhaustive with no wildcard, so
+    ///   a new tag cannot compile without declaring a count; the pointwise
+    ///   residue is the declared value itself, enumerated over the finite tag
+    ///   set and asserted exactly, and separated from the checker's other
+    ///   arities by the distinct [`ConsumerArity`] carrier.
+    /// - witness: `il::tests::tag_consumer_arities_are_declared`
+    #[inline]
+    #[must_use]
+    pub fn consumer_arity(&self) -> ConsumerArity
+    {
+        match *self {
+            | Self::Pair
+            | Self::Inj(_)
+            | Self::Nil
+            | Self::Cons
+            | Self::Record(_)
+            | Self::Op { .. }
+            | Self::Here
+            | Self::Data(_) => 0_usize.into(),
+        }
+    }
 }
 
 /// A destructor / copattern-head tag `D` (`proposal-sequent-kernel.md` §2.1,
 /// negative elim and codata copatterns).
 ///
-/// A destructor frame's trailing consumer is its return continuation (§2.1), so
-/// every well-formed destructor the focusing translation builds carries exactly
-/// one consumer child.
+/// A destructor frame's trailing consumer is its return continuation (§2.1);
+/// the count is declared by [`Self::consumer_arity`] rather than assumed by
+/// the reader, and every frozen-core destructor declares one.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DtorTag
 {
@@ -200,7 +261,7 @@ impl DtorTag
     ///
     /// # Contract
     /// - ensures: total; the typed-IL checker asserts a `Dtor`'s `ps.len()`
-    ///   equals this and that it carries exactly one consumer child.
+    ///   equals this, and holds its `cs.len()` to [`Self::consumer_arity`].
     /// - panics: none.
     #[inline]
     #[must_use]
@@ -209,6 +270,37 @@ impl DtorTag
         match *self {
             | Self::Force | Self::Prj(_) | Self::RecordProj(_) => 0_usize.into(),
             | Self::Ap | Self::Resume => 1_usize.into(),
+        }
+    }
+
+    /// The number of consumer children this destructor frame takes (`c̄`).
+    ///
+    /// The trailing consumer of a destructor frame is its return continuation
+    /// (§2.1), so every frozen-core destructor declares exactly one. The
+    /// declaration replaces the checker-side constant the typed-IL walk used to
+    /// carry, so a frame returning to several continuations states that at its
+    /// own tag.
+    ///
+    /// # Contract
+    /// - ensures: total, and equal to the `cs` length the focusing translation
+    ///   builds for this tag; the typed-IL checker holds a
+    ///   [`ConsumerNode::Dtor`]'s `cs.len()` to it exactly.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L0 plus L3 — the match is exhaustive with no wildcard, so
+    ///   a new tag cannot compile without declaring a count; the pointwise
+    ///   residue is the declared value itself, enumerated over the finite tag
+    ///   set and asserted exactly.
+    /// - witness: `il::tests::tag_consumer_arities_are_declared`
+    #[inline]
+    #[must_use]
+    pub fn consumer_arity(&self) -> ConsumerArity
+    {
+        match *self {
+            | Self::Ap | Self::Force | Self::Prj(_) | Self::RecordProj(_) | Self::Resume => {
+                1_usize.into()
+            },
         }
     }
 }
@@ -227,6 +319,46 @@ pub enum PrimOp
     Dup,
     /// The grade structural op `drop` (Adaptation A-DROP: `Comp::Drop`).
     Drop,
+}
+
+impl PrimOp
+{
+    /// The number of consumer children a `prim` command headed by this
+    /// primitive takes (`c̄`, the return continuations).
+    ///
+    /// A `prim(p̄; c̄)` command carries its return continuations explicitly
+    /// (§4.1, §7.4), and every primitive the focusing translation emits returns
+    /// to exactly one — the continuation [`crate::machine`] `drive_prim` loads
+    /// before dispatching. The count is declared here, so a primitive returning
+    /// to several continuations states that at its own head.
+    ///
+    /// There is deliberately no companion producer-arity declaration: a
+    /// [`Self::Native`] command's `p̄` is the argument prefix the source
+    /// `Comp::Native` carried, which varies with partial application, so the
+    /// producer count is **not** fixed by the head the way the consumer count
+    /// is. [`gandr_core_checker::prim::NativePrim::arity`] is the builtin's
+    /// saturation arity as a function, not this command's argument count.
+    ///
+    /// # Contract
+    /// - ensures: total, and equal to the `cs` length the focusing translation
+    ///   builds for this head; the typed-IL checker holds a
+    ///   [`CommandNode::Prim`]'s `cs.len()` to it exactly.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L0 plus L3 — the match is exhaustive with no wildcard, so
+    ///   a new primitive cannot compile without declaring a count; the
+    ///   pointwise residue is the declared value itself, asserted exactly over
+    ///   the finite head set and cross-checked against what `𝓕` builds.
+    /// - witness: `il::tests::tag_consumer_arities_are_declared`
+    #[inline]
+    #[must_use]
+    pub fn consumer_arity(self) -> ConsumerArity
+    {
+        match self {
+            | Self::Native(_) | Self::Dup | Self::Drop => 1_usize.into(),
+        }
+    }
 }
 
 /// One copattern arm `D(x̄; ᾱ) ⇒ s` of a [`ProducerNode::Cocase`] (negative
@@ -314,9 +446,11 @@ pub enum ProducerNode
     {
         /// The constructor tag `K`.
         tag: CtorTag,
-        /// The producer arguments `p̄`.
+        /// The producer arguments `p̄`, counted by
+        /// [`CtorTag::producer_arity`].
         ps: Box<[ProducerId]>,
-        /// The consumer arguments `c̄` (empty for every frozen-core
+        /// The consumer arguments `c̄`, counted by
+        /// [`CtorTag::consumer_arity`] (zero for every frozen-core
         /// constructor).
         cs: Box<[ConsumerId]>,
     },
@@ -385,10 +519,12 @@ pub enum ConsumerNode
     {
         /// The destructor tag `D`.
         tag: DtorTag,
-        /// The producer arguments `p̄`.
+        /// The producer arguments `p̄`, counted by
+        /// [`DtorTag::producer_arity`].
         ps: Box<[ProducerId]>,
-        /// The consumer arguments `c̄` (the trailing return continuation,
-        /// exactly one for every frozen-core destructor).
+        /// The consumer arguments `c̄` — the trailing return continuations,
+        /// counted by [`DtorTag::consumer_arity`] (exactly one for every
+        /// frozen-core destructor).
         cs: Box<[ConsumerId]>,
     },
     /// A pattern match `case { K(x̄; ᾱ) ⇒ s, … }` — positive elim.
@@ -426,9 +562,11 @@ pub enum CommandNode
     {
         /// The primitive being invoked.
         op: PrimOp,
-        /// The producer arguments `p̄`.
+        /// The producer arguments `p̄`. Not fixed by `op`: a native's argument
+        /// prefix varies with partial application ([`PrimOp::consumer_arity`]).
         ps: Box<[ProducerId]>,
-        /// The consumer arguments `c̄` (the return continuations).
+        /// The consumer arguments `c̄` — the return continuations, counted by
+        /// [`PrimOp::consumer_arity`].
         cs: Box<[ConsumerId]>,
     },
     /// A top-level jump `f(p̄; c̄)` — no call stack (ADR-47).
@@ -436,13 +574,21 @@ pub enum CommandNode
     /// Present for grammar completeness (§2.2); the L0 focusing translation
     /// targets a single top-level computation and emits no jumps, so this
     /// is the seam the L1 machine's top-level-definition jumps land on.
+    ///
+    /// Its head is a definition **name**, not a tag, so neither its `p̄` nor
+    /// its `c̄` is tag-declared: both counts belong to the named definition's
+    /// signature, and the L0 command carrier retains no definition table to
+    /// resolve it against. The typed-IL checker therefore walks a jump's
+    /// arguments without counting them.
     Jump
     {
         /// The jumped-to definition's name.
         def: Name,
-        /// The producer arguments `p̄`.
+        /// The producer arguments `p̄`, counted by the named definition rather
+        /// than by a tag.
         ps: Box<[ProducerId]>,
-        /// The consumer arguments `c̄`.
+        /// The consumer arguments `c̄`, counted by the named definition rather
+        /// than by a tag.
         cs: Box<[ConsumerId]>,
     },
 }
@@ -629,6 +775,60 @@ mod tests
             usize::from(DtorTag::Resume.producer_arity()),
             "resume takes the reified computation"
         );
+    }
+
+    /// Every tag that heads a consumer-carrying node declares its consumer
+    /// arity, and the finite tag set is enumerated exhaustively so the declared
+    /// value is asserted per variant rather than sampled.
+    #[test]
+    fn tag_consumer_arities_are_declared()
+    {
+        let ctors = [
+            CtorTag::Pair,
+            CtorTag::Inj(Side::Fst),
+            CtorTag::Inj(Side::Snd),
+            CtorTag::Nil,
+            CtorTag::Cons,
+            CtorTag::Record(Box::from([String::from("a"), String::from("b")])),
+            CtorTag::Op {
+                sig: String::from("State"),
+                op: String::from("get"),
+            },
+            CtorTag::Here,
+            CtorTag::Data(0),
+        ];
+        for tag in &ctors {
+            assert_eq!(
+                0,
+                usize::from(tag.consumer_arity()),
+                "a frozen-core constructor is data-only: {tag:?}"
+            );
+        }
+
+        let dtors = [
+            DtorTag::Ap,
+            DtorTag::Force,
+            DtorTag::Prj(Side::Fst),
+            DtorTag::Prj(Side::Snd),
+            DtorTag::RecordProj(String::from("field")),
+            DtorTag::Resume,
+        ];
+        for tag in &dtors {
+            assert_eq!(
+                1,
+                usize::from(tag.consumer_arity()),
+                "a destructor frame returns to one continuation: {tag:?}"
+            );
+        }
+
+        let prims = [PrimOp::Dup, PrimOp::Drop, PrimOp::Native(NativePrim::Add)];
+        for &op in &prims {
+            assert_eq!(
+                1,
+                usize::from(op.consumer_arity()),
+                "a prim command returns to one continuation: {op:?}"
+            );
+        }
     }
 
     /// The arena allocates each family independently and reads nodes back by

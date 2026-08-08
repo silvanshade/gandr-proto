@@ -101,6 +101,13 @@ copy_wrapper!(
     u32,
     "Depth of the typed-IL well-formedness walk."
 );
+copy_wrapper!(
+    ConsumerArity,
+    usize,
+    "Number of consumer children `c̄` an IL tag declares, and the number a node \
+     headed by that tag carries. Distinct from a producer arity so the two \
+     cannot be exchanged."
+);
 copy_wrapper!(FrameHeight, usize, "Current L-machine frame-region height.");
 copy_wrapper!(FrameMark, usize, "Saved L-machine frame-region height.");
 copy_wrapper!(
