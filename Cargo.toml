@@ -19,6 +19,7 @@ members = [
   "crates/surface-parser",
   "crates/surface-render-remote",
   "crates/surface-syntax",
+  "crates/theory-circuit-algebras",
   "crates/theory-computads",
   "crates/theory-graphs",
   "crates/theory-levitation",
@@ -239,9 +240,16 @@ path = "crates/surface-render-remote"
 [workspace.dependencies.gandr-surface-syntax]
 path = "crates/surface-syntax"
 
+# Circuit-algebra machinery over the cell-alphabet seam (interface bookkeeping,
+# embedding matching, diagram normal form).
+# consumers: none (top of the circuit-terms lane)
+[workspace.dependencies.gandr-theory-circuit-algebras]
+path = "crates/theory-circuit-algebras"
+
 # Fusion by Squier completion over the command IL (tracelet 3-cell certificates).
 # consumers:
 # - gandr-surface-engine
+# - gandr-theory-circuit-algebras
 # - gandr-theory-virtual-doctrines
 [workspace.dependencies.gandr-theory-computads]
 path = "crates/theory-computads"

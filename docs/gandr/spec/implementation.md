@@ -39,7 +39,7 @@ Lanes: the substrate burst (closed), incrementality (in progress; standing gate:
 
 ## The crate map
 
-Twenty-four workspace members (twenty-five directories; the doc-class tool `workflow-docs` is parked), edition 2024, uniform feature scheme, in dependency tiers:
+Twenty-five workspace members (twenty-six directories; the doc-class tool `workflow-docs` is parked), edition 2024, uniform feature scheme, in dependency tiers:
 
 | tier     | crates                                                                                                                                                         |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,9 +48,12 @@ Twenty-four workspace members (twenty-five directories; the doc-class tool `work
 | 2        | `core-checker` (→ kernel-core, nominal-automata, orders), `storage-artifact` (→ kernel-core, chunker, prolly-trees), `surface-parser` (→ grammar, syntax)      |
 | 3        | `core-sequent` (→ checker; kernel-core, strata, artifact, prolly-trees dev-only), `theory-levitation` (→ checker)                                              |
 | 4        | `theory-computads` (→ sequent, graphs, levitation), `runtime-host` (→ checker, sequent)                                                                        |
-| 5        | `theory-virtual-doctrines` (→ computads, levitation; sequent dev-only), `surface-engine` (the pipeline hub)                                                    |
+| 5        | `theory-circuit-algebras` (→ computads), `theory-virtual-doctrines` (→ computads, levitation; sequent dev-only), `surface-engine` (the pipeline hub)           |
 | 6        | `surface-corpus` (the executable corpus harness)                                                                                                               |
 | off-tier | `workflow-gates`, `workflow-dylint`, `surface-driver` (a stub until the wrapped crates land)                                                                   |
+
+`theory-circuit-algebras` is the newest member and is a **boundary rather than machinery**: the circuit-terms ladder's rung-03 mints it with the three module homes its ruling names — interface bookkeeping, embedding-based matching with its convexity check, and diagram normal form — and nothing is built inside them yet.
+It is machinery **over** the `CellAlphabet` seam rather than an inhabitant of it, the engines stay in `theory-computads`, and the dependency direction is what makes the recorded matcher-seam consequence structural: a downward edge from `theory-computads` would be a dependency cycle ([[implementation/circuit-terms#Matching, normalization, and the crate boundary]]).
 
 ## The trusted base
 

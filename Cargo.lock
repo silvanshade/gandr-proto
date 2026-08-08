@@ -730,6 +730,13 @@ name = "gandr-surface-syntax"
 version = "0.0.0"
 
 [[package]]
+name = "gandr-theory-circuit-algebras"
+version = "0.0.0"
+dependencies = [
+ "gandr-theory-computads",
+]
+
+[[package]]
 name = "gandr-theory-computads"
 version = "0.0.0"
 dependencies = [

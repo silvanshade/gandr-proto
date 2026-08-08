@@ -19,7 +19,7 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 
 | Path                                     | Holds                                                                                                            |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `crates/`                                | the Rust workspace (24 members; domains and layering below)                                                      |
+| `crates/`                                | the Rust workspace (25 members; domains and layering below)                                                      |
 | `crates/*/docs/`                         | per-crate lean doc tier (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) where present — off the corpus main-path |
 | `docs/WORKFLOW.md` + `docs/workflow/`    | the workflow routing layer and its task-scoped sub-files                                                         |
 | `docs/research/`                         | landed research and design studies, incl. the wyrd→reboot [crate port map](docs/research/crate-port-map.md)      |
@@ -38,17 +38,17 @@ Referenced by guidance but not yet landed: `docs/adr/`, `docs/KNOWLEDGE.md` and 
 
 Crate names are domain-prefixed; the prefix is the domain.
 Roles are one-line condensations of each crate's `Cargo.toml` description, which stays the per-crate authority.
-Counting convention: a member is an active entry in the root `Cargo.toml` `workspace.members` list — 24 members over 25 `crates/` directories, the 25th being the parked doc-class tool `workflow-docs` (commented out of the workspace), which no domain row or tier counts.
+Counting convention: a member is an active entry in the root `Cargo.toml` `workspace.members` list — 25 members over 26 `crates/` directories, the 26th being the parked doc-class tool `workflow-docs` (commented out of the workspace), which no domain row or tier counts.
 
-| Domain       | Crates                                                                                                                                 | Role                                                                                                                                   |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `kernel-*`   | kernel-strata, kernel-core                                                                                                             | the certified trusted core: universe-level oracle; S1 term/type language and env                                                       |
-| `core-*`     | core-checker, core-sequent                                                                                                             | the checked language: CBPV typing machine; System-L IL, focusing, the L machine                                                        |
-| `theory-*`   | theory-nominal-automata, theory-orders, theory-graphs, theory-recursion, theory-levitation, theory-computads, theory-virtual-doctrines | semantic machinery: atoms, orders, graphs, recursion; descriptions; completion; VDC reflection                                         |
-| `storage-*`  | storage-chunker, storage-prolly-trees, storage-artifact                                                                                | untrusted content-addressed persistence: chunking, Merkle search tree, CAS export                                                      |
-| `runtime-*`  | runtime-host                                                                                                                           | headless host-effect runtime (Exec/Fs/Proc/Env) driven by the L machine                                                                |
-| `surface-*`  | surface-syntax, surface-render-remote, surface-grammar, surface-parser, surface-engine, surface-corpus, surface-driver                 | user-facing syntax and tools: CST + diffing, inspection wire protocol, grammar, parser, lowering engine, example corpus, driver (stub) |
-| `workflow-*` | workflow-gates, workflow-dylint                                                                                                        | project tooling: the gate battery, project-local Dylint lints (the doc-class tool `workflow-docs` is parked)                           |
+| Domain       | Crates                                                                                                                                                          | Role                                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kernel-*`   | kernel-strata, kernel-core                                                                                                                                      | the certified trusted core: universe-level oracle; S1 term/type language and env                                                                       |
+| `core-*`     | core-checker, core-sequent                                                                                                                                      | the checked language: CBPV typing machine; System-L IL, focusing, the L machine                                                                        |
+| `theory-*`   | theory-nominal-automata, theory-orders, theory-graphs, theory-recursion, theory-levitation, theory-computads, theory-circuit-algebras, theory-virtual-doctrines | semantic machinery: atoms, orders, graphs, recursion; descriptions; completion; the circuit-terms boundary (a home, not yet machinery); VDC reflection |
+| `storage-*`  | storage-chunker, storage-prolly-trees, storage-artifact                                                                                                         | untrusted content-addressed persistence: chunking, Merkle search tree, CAS export                                                                      |
+| `runtime-*`  | runtime-host                                                                                                                                                    | headless host-effect runtime (Exec/Fs/Proc/Env) driven by the L machine                                                                                |
+| `surface-*`  | surface-syntax, surface-render-remote, surface-grammar, surface-parser, surface-engine, surface-corpus, surface-driver                                          | user-facing syntax and tools: CST + diffing, inspection wire protocol, grammar, parser, lowering engine, example corpus, driver (stub)                 |
+| `workflow-*` | workflow-gates, workflow-dylint                                                                                                                                 | project tooling: the gate battery, project-local Dylint lints (the doc-class tool `workflow-docs` is parked)                                           |
 
 ## Package layering
 
@@ -68,7 +68,8 @@ tier 3   core-sequent → core-checker, kernel-core, kernel-strata, storage-arti
          theory-levitation → core-checker
 tier 4   theory-computads → core-sequent, theory-graphs, theory-levitation
          runtime-host → core-checker, core-sequent
-tier 5   theory-virtual-doctrines → core-sequent, theory-computads, theory-levitation
+tier 5   theory-circuit-algebras → theory-computads
+         theory-virtual-doctrines → core-sequent, theory-computads, theory-levitation
          surface-engine → core-checker, core-sequent, runtime-host, surface-grammar,
          surface-parser, surface-syntax, theory-levitation, theory-nominal-automata,
          theory-orders, theory-recursion
@@ -82,7 +83,8 @@ The rules the graph enforces:
 
 1. **The kernel trusts only itself.** `kernel-core` depends on `kernel-strata` and nothing else; no `kernel-*` crate may gain a dependency outside the domain.
 2. **Dependencies point inward.** Leaves stay leaves; no library crate may depend on `surface-driver` or on any `workflow-*` tooling crate (they sit off-tier by construction).
-3. **Theory substrate is self-contained.** The `theory-*` leaves (graphs, orders, nominal-automata, recursion) have zero workspace dependencies; the higher theory (levitation, computads, virtual-doctrines) stacks over `core-*`, never over `storage-*`, `runtime-*`, or `surface-*`.
+3. **Theory substrate is self-contained.** The `theory-*` leaves (graphs, orders, nominal-automata, recursion) have zero workspace dependencies; the higher theory (levitation, computads, circuit-algebras, virtual-doctrines) stacks over `core-*`, never over `storage-*`, `runtime-*`, or `surface-*`.
+   `theory-computads` owns the engines and never depends on `theory-circuit-algebras`: a matcher reaches completion by being supplied at the engine's instantiation site, and the reverse edge would be a dependency cycle ([docs/gandr/spec/implementation/circuit-terms.md](docs/gandr/spec/implementation/circuit-terms.md), `circuit-terms-question-12`).
 4. **Storage stays untrusted plumbing.** `storage-*` crates are content-addressed plumbing with proof machinery; the kernel never links them (`core-sequent` does, for persistence).
 5. **`fuzz/` is a separate workspace.** It path-deps ports-in-flight and keeps its own lint posture; the main workspace excludes it.
 
