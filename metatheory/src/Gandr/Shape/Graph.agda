@@ -1092,6 +1092,48 @@ module _ {ℓ} {Ob : Set ℓ} where
         (sym (swap-smap there id (split p e))))
 
   -- ══════════════════════════════════════════════════════════════════════════
+  -- THE BLOCK SWAP OVER A FIXED TAIL. `swap-match` exchanges two blocks that
+  -- are the WHOLE interface; this exchanges two blocks that sit in front of a
+  -- common remainder and leaves the remainder alone. `swap-match` is the case
+  -- where the remainder is empty, and this is the case a VERTEX TRANSPOSITION
+  -- asks for: two adjacent nodes publish their port blocks to the front of the
+  -- same interface, so exchanging the nodes exchanges exactly those two blocks
+  -- and touches nothing behind them.
+  --
+  -- Both concatenations are named by WITNESSES on both sides, so neither index
+  -- is a computed list: the sink side reads `B₂ ++ B₁ ++ Ξ` off `p₁` and `p₂`,
+  -- the source side reads `B₁ ++ B₂ ++ Ξ` off `r₂` and `r₁`, and the caller
+  -- supplies whichever pair it already holds.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- The identity matching between two witnesses of ONE concatenation. Neither
+  -- index is computed and no transport is taken: the witnesses are descended in
+  -- step and the common tail is matched by `idn-match`.
+  match-append
+    : ∀ {as ys r s}
+    → Append Ob as ys r
+    → Append Ob as ys s
+    → Match Ob r s
+  match-append nil nil = idn-match _
+  match-append (cons p) (cons q) = head ∷ match-append p q
+
+  -- THE SWAP ITSELF. Each source of the leading block takes the position its
+  -- own block occupies on the other side — `insert-mid`, exactly as in
+  -- `swap-match` — and when that block is exhausted what is left on both sides
+  -- is the second block over the shared tail, matched by `match-append`.
+  swap-blocks
+    : ∀ {B₁ B₂ Ξ Γ′ Γ″ Λ′ Λ″}
+    → Append Ob B₁ Ξ Γ′
+    → Append Ob B₂ Γ′ Γ″
+    → Append Ob B₂ Ξ Λ′
+    → Append Ob B₁ Λ′ Λ″
+    → Match Ob Λ″ Γ″
+  swap-blocks nil p₂ r₂ nil = match-append r₂ p₂
+  swap-blocks {B₂} (cons {ys = Ξ} {zs = Γ‴} p₁) p₂ r₂ (cons r₁) =
+    insert-mid (append-graph B₂ Γ‴) p₂
+      ∷ swap-blocks p₁ (append-graph B₂ Γ‴) r₂ r₁
+
+  -- ══════════════════════════════════════════════════════════════════════════
   -- INCIDENCE, DERIVED. An edge's source end is at a vertex's out-port or at
   -- an input leg; its sink end is at a vertex's in-port or at an output leg.
   -- Both are computed by tracing the edge outward through the node chain.
