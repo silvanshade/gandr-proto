@@ -130,6 +130,7 @@ pub mod goals;
 pub mod host;
 pub mod link;
 pub mod lower;
+pub mod namespace;
 pub mod origin;
 pub mod prelude;
 pub mod render;
