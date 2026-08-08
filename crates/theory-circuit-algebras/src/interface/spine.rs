@@ -178,6 +178,7 @@ pub enum SpineObstruction
 ///   are separated pointwise by a repeated producer hole and by a name worn at
 ///   both polarities.
 /// - witness: `interface::spine::tests::a_spine_reads_as_its_generators_and_ports`
+/// - witness: `interface::spine::tests::the_reading_declares_input_ports_in_first_occurrence_order`
 /// - witness: `interface::spine::tests::a_terminal_is_a_closed_generator_not_a_port`
 /// - witness: `interface::spine::tests::a_repeated_hole_is_refused_as_a_copy`
 /// - witness: `interface::spine::tests::a_hole_at_both_polarities_is_refused_as_owed`
@@ -251,6 +252,13 @@ impl Builder
     ///   occurrence, [`SpineObstruction::PolarityAmbiguousHole`] when the name
     ///   is already worn as a consumer.
     /// - panics: none.
+    /// - intension: the polarity arm here is **unreachable** for the reading as
+    ///   written and kept as the symmetric half of the refusal: [`read_spine`]
+    ///   reads the producer half first and a consumer spine declares its hole
+    ///   only at its terminal, so no consumer hole is on the table when a
+    ///   producer hole is declared. The reachable direction is
+    ///   [`Builder::declare_consumer_hole`]'s, and that is the one a test
+    ///   separates — no test separates this arm, deliberately.
     ///
     /// # Errors
     /// See the `- fails:` clause above.
@@ -283,6 +291,13 @@ impl Builder
     ///   occurrence, [`SpineObstruction::PolarityAmbiguousHole`] when the name
     ///   is already worn as a producer.
     /// - panics: none.
+    /// - intension: the repeated-hole arm here is **unreachable** while the
+    ///   consumer half is a linear spine — [`read_consumer`] returns at its
+    ///   first `ConsPat::Meta`, so this runs at most once per reading, and a
+    ///   frame's arguments are producers. It is the symmetric half of
+    ///   [`Builder::declare_producer_hole`]'s reachable repeated-hole refusal
+    ///   and is kept as the check a multi-output consumer half would need; no
+    ///   test separates it, deliberately.
     ///
     /// # Errors
     /// See the `- fails:` clause above.
@@ -502,6 +517,53 @@ mod tests
             2,
             generator.sources.len(),
             "which takes the arriving wire and its one argument"
+        );
+        assert_eq!(
+            Some(reading.cut()),
+            generator.sources.first().copied(),
+            "with the arriving wire FIRST, which is the reading this module states"
+        );
+    }
+
+    #[test]
+    fn the_reading_declares_input_ports_in_first_occurrence_order()
+    {
+        // `⟨Pair(x, y) | add(u, v; α)⟩`. The reading's stated port order is only
+        // observable once one node carries two producer holes: with one hole per
+        // node every traversal order agrees, so a reordering of either walk
+        // would be invisible.
+        let cmd = CmdPat::cut(
+            Polarity::Positive,
+            ProdPat::ctor("Pair", [ProdPat::meta("x"), ProdPat::meta("y")]),
+            ConsPat::op(
+                "add",
+                [ProdPat::meta("u"), ProdPat::meta("v")],
+                ConsPat::meta("alpha"),
+            ),
+        );
+        let reading = read_spine(&cmd).expect("the fixture is linear");
+        let wiring = reading.wiring();
+        assert_eq!(
+            alloc::vec![Wire(1), Wire(2), Wire(3), Wire(4)],
+            wiring.boundary().inputs.to_vec(),
+            "x, y, u, v — depth-first left-to-right, which is first-occurrence order"
+        );
+        assert_eq!(
+            alloc::vec![Wire(5)],
+            wiring.boundary().outputs.to_vec(),
+            "and the terminal covariable is the one output"
+        );
+        let head = wiring
+            .generator(
+                wiring
+                    .consumer_of(reading.cut())
+                    .expect("the spine head consumes the cut wire"),
+            )
+            .expect("the spine head is in the diagram");
+        assert_eq!(
+            alloc::vec![Wire(0), Wire(3), Wire(4)],
+            head.sources.to_vec(),
+            "the operation frame takes the arriving wire and then its arguments, in order"
         );
     }
 

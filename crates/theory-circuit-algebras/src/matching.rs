@@ -85,14 +85,35 @@
 //!
 //! > Let the pattern be strongly connected — a directed path from every input
 //! > port to every output port. Suppose a directed path leaves the image at an
-//! > image output and returns at an image input. An image input is the image of
-//! > a pattern input port and an image output the image of a pattern output
-//! > port, because an embedding preserves incidence and the image is exactly
-//! > the pattern's generators. Strong connectedness gives a directed path from
-//! > that input to that output *inside* the pattern, hence inside the image.
-//! > The two paths compose to a directed cycle in the target — which the target
-//! > cannot have, since [`Wiring::assemble`] refuses a cyclic diagram. So no
-//! > such path exists and the match is convex, with no sweep run.
+//! > image output and returns at an image input.
+//! >
+//! > **An image input is the image of a declared pattern input port.** Take its
+//! > preimage wire. If some pattern generator produced that wire, the generator
+//! > is in the image and — an embedding preserving incidence and port order —
+//! > it produces the image wire too, so the image wire's producer would be
+//! > inside the image and the wire would not be an image input at all. So the
+//! > preimage has no producer in the pattern; and [`Wiring::assemble`] refuses
+//! > an open wire the interface does not declare, so it is a wire of
+//! > `boundary().inputs` — which is what [`connectivity`] quantifies over.
+//! > Dually, an image output is the image of a declared pattern output port.
+//! > **Boundary honesty is therefore a premise of this argument, alongside
+//! > monogamy and acyclicity**, and it is an invariant of [`Wiring`] for the
+//! > same reason they are.
+//! >
+//! > Strong connectedness now gives a directed path from that input to that
+//! > output *inside* the pattern, hence inside the image. The two paths compose
+//! > to a directed cycle in the target — which the target cannot have, since
+//! > [`Wiring::assemble`] refuses a cyclic diagram. So no such path exists and
+//! > the match is convex, with no sweep run.
+//! >
+//! > Two degenerate shapes are covered rather than excluded. The condition
+//! > holds
+//! > vacuously when either boundary list is empty, and then the image has no
+//! > image input to return to, or no image output to leave from, by the two
+//! > readings above. And a pattern may be disconnected *as a graph* while still
+//! > strongly connected in this sense, when one of its components has no open
+//! > port at all; such a component contributes neither an image input nor an
+//! > image output, so no escape can begin or end in it.
 //!
 //! That is the automatic-convexity theorem's argument at gandr's own rung
 //! (§"The correspondence at gandr's own rung, at theorem grade", the thm 38
@@ -413,7 +434,11 @@ pub fn connectivity(pattern: &Wiring) -> Connectivity
 /// # Adequacy
 /// - hypothesis: L1 evidence — the warrant an embedding carries is validated
 ///   against the sweep's own verdict on the same inputs, which is what makes
-///   the discharge auditable rather than asserted.
+///   the discharge auditable rather than asserted; the differential covers the
+///   three shapes on which the discharge is granted for a reason other than
+///   one-connected-piece-with-ports-at-both-ends, because those are where the
+///   argument for it is most likely to be wrong — a component with no open
+///   port, and vacuity on either boundary leg.
 /// - witness: `matching::tests::the_discharge_and_the_sweep_agree_where_both_apply`
 #[inline]
 #[must_use]
@@ -429,8 +454,9 @@ pub fn convexity_warrant(pattern: &Wiring) -> ConvexityWarrant
 /// guard.
 ///
 /// # Contract
-/// - requires: both diagrams are monogamous and acyclic, which
+/// - requires: both diagrams are monogamous, boundary-honest and acyclic, which
 ///   [`Wiring::assemble`] has already established for any value of the type.
+///   All three are premises of the discharge, not two.
 /// - ensures: every admitted embedding is label-, arity-, incidence- and
 ///   port-order-preserving, injective on generators and on wires, and convex in
 ///   `target`; every structurally-complete candidate that is not convex appears
@@ -460,8 +486,19 @@ pub fn convexity_warrant(pattern: &Wiring) -> ConvexityWarrant
 /// - witness: `matching::tests::a_multi_root_pattern_embeds`
 /// - witness: `matching::tests::a_reconvergent_pattern_embeds`
 /// - witness: `matching::tests::a_disconnected_pattern_embeds_component_by_component`
+/// - witness: `matching::tests::an_arity_mismatch_under_one_label_is_not_an_embedding`
+/// - witness: `matching::tests::port_order_is_preserved_so_a_swapped_target_is_not_a_match`
+/// - witness: `matching::tests::two_components_never_claim_one_generator`
+/// - witness: `matching::tests::two_port_free_components_never_claim_one_generator`
+/// - witness: `matching::tests::a_disconnected_pattern_does_not_match_a_wire_that_joins_it`
+/// - witness: `matching::tests::a_cut_open_verdict_does_not_travel_to_the_re_closed_form`
+/// - witness: `matching::tests::the_embedding_matcher_agrees_with_the_one_sided_matcher_on_the_spine`
 /// - witness: `matching::tests::the_blocking_shape_is_refused_on_the_convexity_conjunct`
+/// - witness: `matching::tests::the_sweep_starts_from_every_image_output`
+/// - witness: `matching::tests::the_sweep_follows_a_path_through_more_than_one_outside_generator`
 /// - witness: `matching::tests::the_same_image_is_admitted_without_the_blocking_generator`
+/// - witness: `matching::tests::a_bare_wire_pattern_embeds_on_every_target_wire`
+/// - witness: `matching::tests::the_empty_pattern_embeds_exactly_once`
 /// - witness: `matching::tests::an_exhausted_budget_declines_rather_than_truncating`
 #[inline]
 pub fn embeddings(
@@ -1041,6 +1078,7 @@ mod tests
     use crate::interface::GeneratorLabel;
     use crate::interface::GeneratorSort;
     use crate::interface::Interface;
+    use crate::interface::PairCount;
     use crate::interface::WireCount;
     use crate::interface::WiringObstruction;
     use crate::interface::spine::SpineReading;
@@ -1574,6 +1612,179 @@ mod tests
     }
 
     #[test]
+    fn the_sweep_starts_from_every_image_output()
+    {
+        // The blocking shape again, with the target's generators listed in a
+        // different order so the escape runs from the image's SECOND output
+        // rather than its first: the image is {Edge(0), Edge(2)} and the exits
+        // are read in image order, so `a`'s dead-end output is tried before
+        // `b`'s escaping one. A sweep that stopped after one image output would
+        // admit this candidate — and admitting a non-convex match is the
+        // unsound direction, not the slow one.
+        let blocked_late = diagram(
+            WireCount(4),
+            alloc::vec![
+                Generator::new(value("a"), [Wire(2)], [Wire(3)]),
+                Generator::new(value("c"), [Wire(1)], [Wire(2)]),
+                Generator::new(value("b"), [Wire(0)], [Wire(1)]),
+            ],
+            Interface::new([Wire(0)], [Wire(3)]),
+        );
+        let matching = embeddings(&disconnected_pattern(), &blocked_late, budget())
+            .expect("the search fits the budget");
+        assert_eq!(
+            MatchCount(0),
+            matching.admitted_count(),
+            "the escape is found although it leaves from the later image output"
+        );
+        assert_eq!(
+            MatchCount(1),
+            matching.refused_count(),
+            "and the candidate is refused rather than admitted"
+        );
+        let refusal = matching.refused().first().expect("the refusal is recorded");
+        assert_eq!(
+            Wire(1),
+            refusal.escape(),
+            "the escape wire is the second image output, not the first"
+        );
+        assert_eq!(
+            Edge(1),
+            refusal.through(),
+            "running through the generator neither component covers"
+        );
+        assert_eq!(
+            Wire(2),
+            refusal.re_entry(),
+            "and re-entering on the other component's input"
+        );
+    }
+
+    #[test]
+    fn the_sweep_follows_a_path_through_more_than_one_outside_generator()
+    {
+        // Two intervening generators instead of one. The intermediate wire is
+        // not an image input, so a walk that only looked at the direct
+        // successors of the escape wire's consumer would find nothing and admit
+        // the candidate. Convexity is violated by the existence of a path of
+        // any length, so the walk has to be transitive.
+        let blocked_deep = diagram(
+            WireCount(5),
+            alloc::vec![
+                Generator::new(value("a"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("c0"), [Wire(1)], [Wire(2)]),
+                Generator::new(value("c1"), [Wire(2)], [Wire(3)]),
+                Generator::new(value("b"), [Wire(3)], [Wire(4)]),
+            ],
+            Interface::new([Wire(0)], [Wire(4)]),
+        );
+        let matching = embeddings(&disconnected_pattern(), &blocked_deep, budget())
+            .expect("the search fits the budget");
+        assert_eq!(
+            MatchCount(0),
+            matching.admitted_count(),
+            "a two-generator detour is still a detour"
+        );
+        let refusal = matching.refused().first().expect("the refusal is recorded");
+        assert_eq!(
+            Wire(1),
+            refusal.escape(),
+            "the path leaves on the first component's output"
+        );
+        assert_eq!(
+            Edge(2),
+            refusal.through(),
+            "and the generator named is the LAST one outside the image it runs \
+             through, which is what shows the walk was transitive"
+        );
+        assert_eq!(
+            Wire(3),
+            refusal.re_entry(),
+            "re-entering on the second component's input"
+        );
+    }
+
+    #[test]
+    fn a_bare_wire_pattern_embeds_on_every_target_wire()
+    {
+        // The identity pattern's case, which the module documents as seeded on
+        // the target's WIRES rather than on its generators. Every wire of the
+        // target is one embedding and nothing else is, so the count pins both
+        // completeness and the range: an image outside `wire_count` would be an
+        // embedding into a wire the target does not have.
+        let bare = diagram(
+            WireCount(1),
+            Vec::new(),
+            Interface::new([Wire(0)], [Wire(0)]),
+        );
+        let target = multi_output_target();
+        let matching = embeddings(&bare, &target, budget()).expect("the search fits the budget");
+        assert_eq!(
+            MatchCount(target.wire_count().0),
+            matching.admitted_count(),
+            "one embedding per target wire"
+        );
+        let mut landed: Vec<Wire> = Vec::new();
+        for embedding in matching.admitted() {
+            let image = embedding
+                .wires()
+                .image_of(Wire(0))
+                .expect("the bare wire is mapped");
+            assert!(
+                image.0 < target.wire_count().0,
+                "and never onto a wire the target does not declare"
+            );
+            assert!(
+                embedding.image().is_empty(),
+                "the generator image is empty, so convexity is vacuous"
+            );
+            landed.push(image);
+        }
+        assert_eq!(
+            alloc::vec![
+                Wire(0),
+                Wire(1),
+                Wire(2),
+                Wire(3),
+                Wire(4),
+                Wire(5),
+                Wire(6)
+            ],
+            landed,
+            "in target wire order, which is the declared enumeration order"
+        );
+    }
+
+    #[test]
+    fn the_empty_pattern_embeds_exactly_once()
+    {
+        // No generators and no wires: the empty map is the one embedding, and
+        // it is admitted rather than dropped for having nothing in it.
+        let empty = diagram(
+            WireCount(0),
+            Vec::new(),
+            Interface::new(Vec::new(), Vec::new()),
+        );
+        let matching = embeddings(&empty, &multi_output_target(), budget())
+            .expect("the search fits the budget");
+        assert_eq!(
+            MatchCount(1),
+            matching.admitted_count(),
+            "the empty pattern embeds once, by the empty map"
+        );
+        let embedding = matching
+            .admitted()
+            .first()
+            .expect("the admitted embedding is there");
+        assert!(embedding.image().is_empty(), "with an empty image");
+        assert_eq!(
+            PairCount(0),
+            embedding.wires().pair_count(),
+            "and an empty wire map"
+        );
+    }
+
+    #[test]
     fn the_same_image_is_admitted_without_the_blocking_generator()
     {
         // The twin of the blocking fixture, differing in exactly one generator.
@@ -1695,6 +1906,71 @@ mod tests
                 pattern: multi_root_pattern(),
                 target: multi_root_target(),
             },
+            // The three shapes on which the discharge is granted for a reason
+            // OTHER than "the pattern is one connected piece with ports at both
+            // ends" — which is where an argument about the discharge is most
+            // likely to be wrong, and where the sweep is therefore worth the
+            // most as an oracle.
+            //
+            // (i) Strongly connected by its declared boundary while being two
+            // components as a graph: `s → t` has no open port at all, so it
+            // contributes neither an image input nor an image output.
+            Against {
+                pattern: diagram(
+                    WireCount(3),
+                    alloc::vec![
+                        Generator::new(value("a"), [Wire(0)], [Wire(1)]),
+                        Generator::new(value("s"), Vec::new(), [Wire(2)]),
+                        Generator::new(value("t"), [Wire(2)], Vec::new()),
+                    ],
+                    Interface::new([Wire(0)], [Wire(1)]),
+                ),
+                target: diagram(
+                    WireCount(5),
+                    alloc::vec![
+                        Generator::new(value("e"), [Wire(0)], [Wire(1)]),
+                        Generator::new(value("a"), [Wire(1)], [Wire(2)]),
+                        Generator::new(value("s"), Vec::new(), [Wire(3)]),
+                        Generator::new(value("t"), [Wire(3)], Vec::new()),
+                        Generator::new(value("k"), [Wire(2)], [Wire(4)]),
+                    ],
+                    Interface::new([Wire(0)], [Wire(4)]),
+                ),
+            },
+            // (ii) Vacuous on the output side: a pattern with no open output has
+            // no image output for a path to leave from.
+            Against {
+                pattern: diagram(
+                    WireCount(1),
+                    alloc::vec![Generator::new(value("t"), [Wire(0)], Vec::new())],
+                    Interface::new([Wire(0)], Vec::new()),
+                ),
+                target: diagram(
+                    WireCount(2),
+                    alloc::vec![
+                        Generator::new(value("e"), [Wire(0)], [Wire(1)]),
+                        Generator::new(value("t"), [Wire(1)], Vec::new()),
+                    ],
+                    Interface::new([Wire(0)], Vec::new()),
+                ),
+            },
+            // (iii) Vacuous on the input side: a pattern with no open input has
+            // no image input for a path to return to.
+            Against {
+                pattern: diagram(
+                    WireCount(1),
+                    alloc::vec![Generator::new(value("s"), Vec::new(), [Wire(0)])],
+                    Interface::new(Vec::new(), [Wire(0)]),
+                ),
+                target: diagram(
+                    WireCount(2),
+                    alloc::vec![
+                        Generator::new(value("s"), Vec::new(), [Wire(0)]),
+                        Generator::new(value("k"), [Wire(0)], [Wire(1)]),
+                    ],
+                    Interface::new(Vec::new(), [Wire(1)]),
+                ),
+            },
         ];
         let mut total: usize = 0;
         for pair in &pairs {
@@ -1736,8 +2012,8 @@ mod tests
             }
         }
         assert_eq!(
-            3_usize, total,
-            "the comparison is not vacuous: the three matching pairs each contribute an \
+            6_usize, total,
+            "the comparison is not vacuous: six of the pairs each contribute one \
              occurrence, and the two crossed pairs agree on finding none"
         );
     }

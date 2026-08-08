@@ -459,8 +459,13 @@ pub enum WiringObstruction
         /// The wire that is out of range.
         wire: Wire,
     },
-    /// Two generators produce one wire — in-degree two, which is the combining
+    /// One wire is produced twice — in-degree two, which is the combining
     /// fan-in the monogamous fragment excludes.
+    ///
+    /// The two producers may be one generator naming the wire at two target
+    /// ports, in which case `first` and `second` are equal; a repeated port is
+    /// in-degree two just as two generators are, and it is refused here rather
+    /// than reaching the matcher.
     FanIn
     {
         /// The doubly-produced wire.
@@ -470,8 +475,11 @@ pub enum WiringObstruction
         /// The generator that produced it again.
         second: Edge,
     },
-    /// Two generators consume one wire — out-degree two, which is the copy the
+    /// One wire is consumed twice — out-degree two, which is the copy the
     /// monogamous fragment excludes and the linearity ruling refuses.
+    ///
+    /// As with [`WiringObstruction::FanIn`], the two consumers may be one
+    /// generator naming the wire at two source ports.
     FanOut
     {
         /// The doubly-consumed wire.
@@ -506,6 +514,13 @@ pub enum WiringObstruction
     },
     /// A wire no generator produces is not declared as an input, so the
     /// interface would silently lose a port.
+    ///
+    /// This refusal is load-bearing for [`crate::matching`]'s convexity
+    /// discharge and not only for the interface's honesty: the discharge's
+    /// argument reads an image input back as the image of a *declared* pattern
+    /// input port, and [`crate::matching::connectivity`] quantifies over the
+    /// declared list alone. An undeclared open wire would be an image input the
+    /// connectivity test never asked about.
     UndeclaredInput
     {
         /// The undeclared open wire.
@@ -580,16 +595,25 @@ impl Wiring
     /// - hypothesis: L1 evidence — an assembled wiring answers its own
     ///   incidence queries consistently with the generators it was given, and
     ///   each refusal arm is separated pointwise by a diagram failing only it:
-    ///   a doubly-produced wire, a doubly-consumed wire, a repeated port, an
-    ///   input with a producer, an undeclared open wire, and a two-generator
-    ///   cycle.
+    ///   an out-of-range wire named by a generator and one named by the
+    ///   boundary, a doubly-produced wire and a doubly-consumed wire (by two
+    ///   generators and by one generator repeating a port), a repeated port on
+    ///   either leg, an input with a producer and an output with a consumer, an
+    ///   undeclared open wire on either side, and a directed cycle through two
+    ///   generators and through one.
     /// - witness: `interface::tests::an_assembled_wiring_answers_its_incidence`
+    /// - witness: `interface::tests::the_wiring_refuses_an_out_of_range_generator_wire`
+    /// - witness: `interface::tests::the_wiring_refuses_an_out_of_range_boundary_wire`
     /// - witness: `interface::tests::the_wiring_refuses_a_fan_in`
     /// - witness: `interface::tests::the_wiring_refuses_a_fan_out`
+    /// - witness: `interface::tests::the_wiring_refuses_a_repeated_port_on_one_generator`
     /// - witness: `interface::tests::the_wiring_refuses_a_repeated_boundary_port`
     /// - witness: `interface::tests::the_wiring_refuses_a_produced_boundary_input`
+    /// - witness: `interface::tests::the_wiring_refuses_a_consumed_boundary_output`
     /// - witness: `interface::tests::the_wiring_refuses_an_undeclared_open_wire`
+    /// - witness: `interface::tests::the_wiring_refuses_an_undeclared_open_input`
     /// - witness: `interface::tests::the_wiring_refuses_a_directed_cycle`
+    /// - witness: `interface::tests::the_wiring_refuses_a_self_looping_generator`
     #[inline]
     pub fn assemble(
         wires: WireCount,
@@ -920,6 +944,109 @@ mod tests
     }
 
     #[test]
+    fn the_wiring_refuses_an_out_of_range_generator_wire()
+    {
+        // Both port lists are checked, because a range check on only one of
+        // them would leave the other able to name a wire the diagram does not
+        // declare — and `wire_count` is what the matcher enumerates seed images
+        // over, so an undeclared wire is one the search can never reach.
+        let bad_source = Wiring::assemble(
+            WireCount(1),
+            alloc::vec![Generator::new(value("f"), [Wire(5)], [Wire(0)])],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect_err("a source naming a wire the diagram does not declare is out of range");
+        assert_eq!(
+            WiringObstruction::UnknownWire {
+                wire: Wire(5),
+                at: Edge(0)
+            },
+            bad_source,
+            "the refusal names the out-of-range wire and the generator that named it"
+        );
+        let bad_target = Wiring::assemble(
+            WireCount(1),
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(5)])],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect_err("and so is a target naming one");
+        assert_eq!(
+            WiringObstruction::UnknownWire {
+                wire: Wire(5),
+                at: Edge(0)
+            },
+            bad_target,
+            "with the target side named the same way"
+        );
+    }
+
+    #[test]
+    fn the_wiring_refuses_an_out_of_range_boundary_wire()
+    {
+        let bad_input = Wiring::assemble(
+            WireCount(1),
+            Vec::new(),
+            Interface::new([Wire(3)], [Wire(0)]),
+        )
+        .expect_err("an input port outside the wire range is not a port of this diagram");
+        assert_eq!(
+            WiringObstruction::UnknownBoundaryWire { wire: Wire(3) },
+            bad_input,
+            "the refusal names the out-of-range input port"
+        );
+        let bad_output = Wiring::assemble(
+            WireCount(1),
+            Vec::new(),
+            Interface::new([Wire(0)], [Wire(3)]),
+        )
+        .expect_err("nor is an output port outside it");
+        assert_eq!(
+            WiringObstruction::UnknownBoundaryWire { wire: Wire(3) },
+            bad_output,
+            "and the output leg is checked as well as the input leg"
+        );
+    }
+
+    #[test]
+    fn the_wiring_refuses_a_repeated_port_on_one_generator()
+    {
+        // One generator naming a wire at two ports is in-degree or out-degree
+        // two just as two generators are. It is the shape the matcher's
+        // monogamy argument needs excluded, and the refusal reports the one
+        // generator as both producers.
+        let repeated_source = Wiring::assemble(
+            WireCount(2),
+            alloc::vec![Generator::new(value("f"), [Wire(0), Wire(0)], [Wire(1)])],
+            Interface::new([Wire(0)], [Wire(1)]),
+        )
+        .expect_err("a wire consumed at two ports of one generator is a copy");
+        assert_eq!(
+            WiringObstruction::FanOut {
+                wire: Wire(0),
+                first: Edge(0),
+                second: Edge(0)
+            },
+            repeated_source,
+            "the refusal names the one generator twice rather than inventing a second"
+        );
+        let repeated_target = Wiring::assemble(
+            WireCount(2),
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(1), Wire(1)])],
+            Interface::new([Wire(0)], [Wire(1)]),
+        )
+        .expect_err("and a wire produced at two of its ports is a fan-in");
+        assert_eq!(
+            WiringObstruction::FanIn {
+                wire: Wire(1),
+                first: Edge(0),
+                second: Edge(0)
+            },
+            repeated_target,
+            "reported the same way on the produced side"
+        );
+    }
+
+    #[test]
     fn the_wiring_refuses_a_repeated_boundary_port()
     {
         let refusal = Wiring::assemble(
@@ -932,6 +1059,17 @@ mod tests
             WiringObstruction::RepeatedBoundaryPort { wire: Wire(0) },
             refusal,
             "the refusal names the repeated port"
+        );
+        let on_the_output_leg = Wiring::assemble(
+            WireCount(1),
+            Vec::new(),
+            Interface::new([Wire(0)], [Wire(0), Wire(0)]),
+        )
+        .expect_err("both legs are mono, so the output leg is checked too");
+        assert_eq!(
+            WiringObstruction::RepeatedBoundaryPort { wire: Wire(0) },
+            on_the_output_leg,
+            "and the output leg's repeat is refused the same way"
         );
     }
 
@@ -955,6 +1093,25 @@ mod tests
     }
 
     #[test]
+    fn the_wiring_refuses_a_consumed_boundary_output()
+    {
+        let refusal = Wiring::assemble(
+            WireCount(2),
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(1)])],
+            Interface::new([Wire(0)], [Wire(0), Wire(1)]),
+        )
+        .expect_err("an output with a consumer is not an open port");
+        assert_eq!(
+            WiringObstruction::BoundaryOutputIsConsumed {
+                wire: Wire(0),
+                by: Edge(0)
+            },
+            refusal,
+            "the refusal names the port and the generator that consumes it"
+        );
+    }
+
+    #[test]
     fn the_wiring_refuses_an_undeclared_open_wire()
     {
         let refusal = Wiring::assemble(
@@ -967,6 +1124,50 @@ mod tests
             WiringObstruction::UndeclaredOutput { wire: Wire(1) },
             refusal,
             "the refusal names the wire the interface would have lost"
+        );
+    }
+
+    #[test]
+    fn the_wiring_refuses_an_undeclared_open_input()
+    {
+        // The input side of the same condition, and it carries more than
+        // interface honesty: `matching::connectivity` quantifies over the
+        // DECLARED input list, and the convexity discharge's argument reads an
+        // image input back as the image of a declared input port. An undeclared
+        // open input would be an image input no connectivity test asked about,
+        // so a pattern could earn the discharge and still admit a non-convex
+        // match. The refusal is what makes that argument's premise hold.
+        let refusal = Wiring::assemble(
+            WireCount(2),
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(1)])],
+            Interface::new(Vec::new(), [Wire(1)]),
+        )
+        .expect_err("an open input the interface does not declare is a lost port");
+        assert_eq!(
+            WiringObstruction::UndeclaredInput { wire: Wire(0) },
+            refusal,
+            "the refusal names the wire the interface would have lost"
+        );
+    }
+
+    #[test]
+    fn the_wiring_refuses_a_self_looping_generator()
+    {
+        // One generator consuming the wire it produces is a directed cycle of
+        // length one. It leaves exactly ONE generator unsettled, so a settled
+        // count compared with anything but equality would admit it — and
+        // acyclicity of the target is the second hypothesis the convexity
+        // discharge rests on, alongside the pattern's strong connectedness.
+        let refusal = Wiring::assemble(
+            WireCount(1),
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(0)])],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect_err("a self-loop leaves the acyclic fragment");
+        assert_eq!(
+            WiringObstruction::DirectedCycle { through: Edge(0) },
+            refusal,
+            "the refusal names the generator the one-step cycle runs through"
         );
     }
 

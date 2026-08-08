@@ -77,8 +77,17 @@
 //! rejects outright. A future consumer that wants completion over embedding
 //! matching therefore has exactly one shape available to it — pass the matcher
 //! in at the instantiation site — and that shape is the one the ruling asked
-//! for. Establishing the seam itself is not this rung's work; it is owed by the
-//! rung that builds the matcher (`circuit-terms-rung-05`).
+//! for.
+//!
+//! **The seam is not established, and the rung that built the matcher did not
+//! establish it.** `circuit-terms-rung-05` filled [`matching`] and left the
+//! seam owed: no engine instantiation site exists to supply a matcher at yet,
+//! and minting the supply point ahead of a consumer would fix its shape before
+//! anything needs it. So `gandr_theory_computads`'s
+//! `ConvexityDischarge::ReCheckRequired` still refuses a shift rather than
+//! consuming the sweep this crate now has. The obligation stays recorded on
+//! that rung's tracker item, and the reversal condition is the first engine
+//! instantiation site.
 //!
 //! # Status: two homes filled, one still empty
 //!

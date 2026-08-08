@@ -52,7 +52,8 @@ Twenty-five workspace members (twenty-six directories; the doc-class tool `workf
 | 6        | `surface-corpus` (the executable corpus harness)                                                                                                               |
 | off-tier | `workflow-gates`, `workflow-dylint`, `surface-driver` (a stub until the wrapped crates land)                                                                   |
 
-`theory-circuit-algebras` is the newest member and is a **boundary rather than machinery**: the circuit-terms ladder's rung-03 mints it with the three module homes its ruling names — interface bookkeeping, embedding-based matching with its convexity check, and diagram normal form — and nothing is built inside them yet.
+`theory-circuit-algebras` is the newest member, minted by the circuit-terms ladder's rung-03 with the three module homes its ruling names — interface bookkeeping, embedding-based matching with its convexity check, and diagram normal form.
+**Two of the three are built**: rung-05 filled `matching` (embeddings by wire-driven propagation, with the convexity conjunct as two computed routes) and `interface` (the wire and hyperedge vocabulary, the validated monogamous acyclic diagram view, the seam datum, and the sequent alphabet's spine reading); `normal_form` is still a home and is rung-04's.
 It is machinery **over** the `CellAlphabet` seam rather than an inhabitant of it, the engines stay in `theory-computads`, and the dependency direction is what makes the recorded matcher-seam consequence structural: a downward edge from `theory-computads` would be a dependency cycle ([[implementation/circuit-terms#Matching, normalization, and the crate boundary]]).
 
 ## The trusted base
