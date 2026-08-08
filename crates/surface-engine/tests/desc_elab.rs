@@ -55,11 +55,11 @@ mod tests
         assert_eq!(
             rendered,
             vec![
-                "sign Color { sort Color : Type }".to_owned(),
-                "sign Maybe(a) { sort Maybe : Type }".to_owned(),
-                "sign Tree(a) { sort Tree : Type }".to_owned(),
-                "sign Vec(a) { sort Vec : Type }".to_owned(),
-                "sign Empty { sort Empty : Type }".to_owned(),
+                "sign Color { sort Color : Type; }".to_owned(),
+                "sign Maybe(a) { sort Maybe : Type; }".to_owned(),
+                "sign Tree(a) { sort Tree : Type; }".to_owned(),
+                "sign Vec(a) { sort Vec : Type; }".to_owned(),
+                "sign Empty { sort Empty : Type; }".to_owned(),
             ],
             "each declared datatype elaborates, read back in the ruled sign normal form — \
              sorts, operations, and rules; constructors have no item-level member spelling"
@@ -137,7 +137,7 @@ mod tests
         assert_eq!(1, elab.descs.len(), "one datatype");
         let maybe = &elab.descs[0];
         assert_eq!(
-            "sign Maybe(a) { sort Maybe : Type }",
+            "sign Maybe(a) { sort Maybe : Type; }",
             serialize_desc(maybe).as_ref(),
             "the description inspects as its sign normal form"
         );
@@ -177,7 +177,7 @@ mod tests
             "nominal ids expose the declared name"
         );
         assert_eq!(
-            "sign Maybe(a) { sort Maybe : Type }",
+            "sign Maybe(a) { sort Maybe : Type; }",
             rendered.as_ref(),
             "serialized descriptions remain comparable without unwrapping carriers"
         );
@@ -358,7 +358,7 @@ mod tests
         // recursive one. Both elaborate as constructor-shaped entries; the
         // sign normal form gives them no member spelling.
         assert_eq!(
-            "sign Stream(a) { sort Stream : Type }",
+            "sign Stream(a) { sort Stream : Type; }",
             serialize_desc(stream).as_ref(),
             "the sign normal form carries the sort set only"
         );

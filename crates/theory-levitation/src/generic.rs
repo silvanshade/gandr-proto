@@ -299,7 +299,9 @@ pub fn serialize_value(
 ///
 /// The rendering is deterministic and structural — a testing/inspection
 /// notation, not a surface pretty-printer (that surface is owned elsewhere).
-/// Members join with `; ` so the whole description stays one line.
+/// Every member is terminated by `;` (the surface's member terminator,
+/// load-bearing at the sign block's member level since gandr-ng9.14), and the
+/// whole description stays one line.
 ///
 /// # Contract
 /// - ensures: deterministic output for a given description; total — never
@@ -350,7 +352,12 @@ pub fn serialize_desc(desc: &SignDesc) -> SerializedDescText
         format!("sign {}{params} {{}}", desc.id.name).into()
     }
     else {
-        format!("sign {}{params} {{ {} }}", desc.id.name, members.join("; ")).into()
+        format!(
+            "sign {}{params} {{ {}; }}",
+            desc.id.name,
+            members.join("; ")
+        )
+        .into()
     }
 }
 
@@ -550,7 +557,7 @@ mod tests
     fn desc_inspection_renders_the_structure()
     {
         assert_eq!(
-            "sign Maybe(a) { sort Maybe : Type }",
+            "sign Maybe(a) { sort Maybe : Type; }",
             serialize_desc(&maybe_desc()).as_ref(),
             "the inspection notation names the parameters and the sort set; constructors have \
              no item-level member spelling in the sign normal form"
@@ -646,7 +653,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "sign Vec(a) { sort Vec : Type }",
+            "sign Vec(a) { sort Vec : Type; }",
             serialize_desc(&desc).as_ref(),
             "constructors — graded, attributed, or right-nested — carry no member spelling: \
              the item-level `data` member is retired from the sign normal form"
@@ -706,7 +713,7 @@ mod tests
         )
         .with_circuits([rule]);
         assert_eq!(
-            "sign Nat { sort Nat : Type; rule cong1 : (rule p : Nat ==> Nat) add(x, y) ==> add(x\u{2032}, y) }",
+            "sign Nat { sort Nat : Type; rule cong1 : (rule p : Nat ==> Nat) add(x, y) ==> add(x\u{2032}, y); }",
             serialize_desc(&desc).as_ref(),
             "a circuit member renders its telescope and its sphere"
         );
@@ -725,7 +732,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "sign Bit { sort Bit : Type }",
+            "sign Bit { sort Bit : Type; }",
             serialize_desc(&desc).as_ref(),
             "the circuit slot is invisible when it is empty, and the lone constructor has no \
              member spelling"
@@ -754,7 +761,7 @@ mod tests
             Attrs::empty(),
         );
         assert_eq!(
-            "sign Wrap { sort Wrap : Type }",
+            "sign Wrap { sort Wrap : Type; }",
             serialize_desc(&desc).as_ref(),
             "a primitive-field constructor renders no member spelling either"
         );
