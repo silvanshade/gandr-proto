@@ -190,9 +190,11 @@
 -- over witnesses.
 --
 -- ── WHAT IS NOT HERE ────────────────────────────────────────────────────────
--- The circuit instance, which is the whole of the residual: `Subst` and the
--- four fields downstream of it, and the representation map, which at that rung
--- is `canon-sound`.
+-- The circuit instance's three LAWS, and the representation map, which at that
+-- rung is `canon-sound`. The former itself is here: `sub` and `pair` are built
+-- below, over the two-sided closure. An earlier revision of this paragraph
+-- recorded the whole of `Subst` and everything downstream of it as the
+-- residual.
 --
 -- Everything else of Definition 9's former half is inhabited at the linear kit,
 -- including the splitting half of `⟦Σ̂⟧` (`place-split`) — the published field
@@ -255,6 +257,7 @@ open import Relation.Binary.PropositionalEquality
   using (sym)
   using (trans)
   using (cong)
+  using (subst)
 
 -- The reasoning vocabulary, on `Gandr.Shape.Graft`'s terms: `bundle (≡ˢ _)` is
 -- the `Set`-level bundle, so a chain here reads as a chain over a hom-setoid.
@@ -958,11 +961,13 @@ module Refute where
 --   unit        `corolla`
 --   one         `top`
 --   one-elim    `corolla-elim` — proved
+--   sub         `sub` — built, over `plug` and the two block iterations
+--   pair        `pair` — built, and it is `verts-plug` read at a position
 --   ─────────   ───────────────────────────────────────────────────────────────
---   sub         OWED — `Subst` below
---   pair        owed, downstream of `sub`
---   idl idr     owed, downstream of `sub`
---   assoc       owed, downstream of `sub`
+--   idl idr     OWED — stated below, downstream of `sub`
+--   assoc       OWED — stated below, and it owes the count law with it
+--
+-- An earlier revision of this table recorded `sub` and `pair` as owed.
 --
 -- And the interpretation side of the OWED half is already built at the binary
 -- rung: `verts-graft`, `verts-merge`, `verts-lwhisk`, `verts-preplug`,
@@ -1094,6 +1099,8 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (miss)
     using (occ-ix)
     using (occ-lookup)
+    using (occ-inl)
+    using (occ-inr)
     using (Vtx)
     using (verts)
     using (ins)
@@ -1142,6 +1149,8 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (same)
     using (apart)
     using (insert-view)
+    -- and the incidence lemma the pairing is read off
+    using (verts-merge)
 
   -- THE INTERPRETATION, familially — and DERIVED rather than declared, which is
   -- the answer to whether the vertex family should be re-presented.
@@ -1538,3 +1547,156 @@ module Circuit {ℓ} {Ob : Set ℓ} where
       -- and its OUT-profile, which by then leads both interfaces
       outer : Cod Γ Δ
       outer = close-block p (Crossed.over inner) (Crossed.body inner)
+
+  -- ── STEP FOUR: `Subst` AND `Pairing` ────────────────────────────────────
+  --
+  -- The outer recursion is trivial at a wiring — `vtx-wires` above is that
+  -- fact — so substitution descends the node chain and plugs at each vertex.
+
+  -- Substitution at the shape level, where the outer code's own count is not
+  -- yet in play: the circles this returns are exactly the ones the plugging
+  -- shut, plus the ones the substituted codes carried.
+  subst-shape
+    : ∀ {Γ Δ}
+    → (X : Shape Ob Γ Δ)
+    → (∀ {c d} → Vtxᶠ X c d → Cod c d)
+    → Cod Γ Δ
+  subst-shape (wires m) Y = wires m , 0
+  subst-shape (node A B p q S) Y =
+    proj₁ plugged , proj₂ (Y hit) + proj₂ below + proj₂ plugged
+    where
+      -- what substitution does to the rest of the node chain
+      below : Cod _ _
+      below = subst-shape S (λ v → Y (miss v))
+      -- and the head vertex's replacement, plugged into it
+      plugged : Cod _ _
+      plugged = plug p q (proj₁ (Y hit)) (proj₁ below)
+
+  sub : Subst
+  sub (X , k) Y = proj₁ r , k + proj₂ r
+    where
+      -- the code's own circles ride through untouched: nothing the
+      -- substitution does can open one
+      r : Cod _ _
+      r = subst-shape X Y
+
+  -- ── WHAT THE CONSTRUCTION DOES TO THE VERTEX LISTING ────────────────────
+  --
+  -- `⟦Σ̂⟧`'s forward half is read off these: closing adds no vertex, so the
+  -- substituted shape's listing is the merger's, which `verts-merge` already
+  -- says is the concatenation.
+
+  verts-close-in
+    : ∀ {x Γ Γˣ Δ Δˣ}
+    → (i : Insert Ob x Γ Γˣ)
+    → (j : Insert Ob x Δ Δˣ)
+    → (S : Shape Ob Γˣ Δˣ)
+    → verts (proj₁ (close-in i j S)) ≡ verts S
+  verts-close-in i j (wires m) = refl
+  verts-close-in {Γ} {Δ} i j (node A B p q S) =
+    cong
+      (prof A B ∷_)
+      (verts-close-in
+        (insert-shift (append-graph B Γ) p i)
+        (insert-shift (append-graph A Δ) q j)
+        S)
+
+  verts-close-block
+    : ∀ {Ξ Γ Γˣ Δ Δˣ}
+    → (p : Append Ob Ξ Γ Γˣ)
+    → (q : Append Ob Ξ Δ Δˣ)
+    → (S : Shape Ob Γˣ Δˣ)
+    → verts (proj₁ (close-block p q S)) ≡ verts S
+  verts-close-block nil nil S = refl
+  verts-close-block (cons p) (cons q) S =
+    trans
+      (verts-close-block p q (proj₁ (close-in head head S)))
+      (verts-close-in head head S)
+
+  verts-close-cross
+    : ∀ {Ξ B Γ Γˣ Δ Δᵃ Δˣ}
+    → (p : Append Ob Ξ Γ Γˣ)
+    → (q : Append Ob Ξ Δ Δᵃ)
+    → (r : Append Ob B Δᵃ Δˣ)
+    → (S : Shape Ob Γˣ Δˣ)
+    → verts (Crossed.body (close-cross p q r S)) ≡ verts S
+  verts-close-cross nil nil r S = refl
+  verts-close-cross {B} (cons p) (cons q) r S =
+    trans
+      (verts-close-cross
+        p
+        q
+        (append-graph B _)
+        (proj₁ (close-in head (insert-shift (append-graph B _) r head) S)))
+      (verts-close-in head (insert-shift (append-graph B _) r head) S)
+
+  -- THE STATEMENT: plugging concatenates the listings, replacement first —
+  -- `verts-merge` with the closures shown to contribute nothing.
+  verts-plug
+    : ∀ {A B Γ Γ′ Δ Δ′}
+    → (p : Append Ob B Γ Γ′)
+    → (q : Append Ob A Δ Δ′)
+    → (V : Shape Ob A B)
+    → (S : Shape Ob Γ′ Δ′)
+    → verts (proj₁ (plug p q V S)) ≡ verts V ++ verts S
+  verts-plug {A} {B} {Γ} {Γ′} {Δ} {Δ′} p q V S =
+    begin⟨ bundle (≡ˢ _) ⟩
+      verts (proj₁ (plug p q V S))
+    ≈⟨ verts-close-block p (Crossed.over inner) (Crossed.body inner) ⟩
+      verts (Crossed.body inner)
+    ≈⟨ verts-close-cross
+         (append-graph A Γ′)
+         q
+         (append-graph B Δ′)
+         (merge (append-graph A Γ′) (append-graph B Δ′) V S)
+     ⟩
+      verts (merge (append-graph A Γ′) (append-graph B Δ′) V S)
+    ≈⟨ verts-merge (append-graph A Γ′) (append-graph B Δ′) V S ⟩
+      verts V ++ verts S
+    ∎
+    where
+      inner : Crossed Γ′ B Δ
+      inner =
+        close-cross
+          (append-graph A Γ′)
+          q
+          (append-graph B Δ′)
+          (merge (append-graph A Γ′) (append-graph B Δ′) V S)
+
+  -- `⟦Σ̂⟧`, at the shape level. A position of a substitution is an outer
+  -- position paired with an inner one, and the two clauses ARE the two
+  -- injections into the concatenation the listing became.
+  pair-shape
+    : ∀ {Γ Δ} {X : Shape Ob Γ Δ}
+    → (Y : ∀ {c d} → Vtxᶠ X c d → Cod c d)
+    → ∀ {c d e f}
+    → (v : Vtxᶠ X c d)
+    → Vtxᶠ (proj₁ (Y v)) e f
+    → Vtxᶠ (proj₁ (subst-shape X Y)) e f
+  pair-shape {X = node A B p q S} Y hit w =
+    subst
+      (λ l → Occ l (prof _ _))
+      (sym
+        (verts-plug
+          p
+          q
+          (proj₁ (Y hit))
+          (proj₁ (subst-shape S (λ v → Y (miss v))))))
+      (occ-inl w)
+  pair-shape {X = node A B p q S} Y (miss v) w =
+    subst
+      (λ l → Occ l (prof _ _))
+      (sym
+        (verts-plug
+          p
+          q
+          (proj₁ (Y hit))
+          (proj₁ (subst-shape S (λ u → Y (miss u))))))
+      (occ-inr
+        (verts (proj₁ (Y hit)))
+        (pair-shape (λ u → Y (miss u)) v w))
+
+  -- and at the code level, where the count is invisible to it for the same
+  -- reason it is invisible to `Pos`
+  pair : Pairing sub
+  pair Y v w = pair-shape Y v w

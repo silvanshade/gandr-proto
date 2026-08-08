@@ -432,6 +432,34 @@ ix-occ
 ix-occ (x ∷ xs) here = hit
 ix-occ (x ∷ xs) (there i) = miss (ix-occ xs i)
 
+-- THE TWO INJECTIONS INTO A CONCATENATION, at the occurrence addressing. An
+-- occurrence of the prefix and an occurrence of the suffix are each an
+-- occurrence of the concatenation, and neither moves the element it names.
+--
+-- They are here rather than beside their consumer because they are the same
+-- list-generic material as the rest of this section, and because both
+-- addressings want them: `Ix` has the same pair one interpretation down. The
+-- consumer that asked for them is an arity's PAIRING — a position of a
+-- substitution is a position of what was substituted or a position of the
+-- rest, and the vertex listings concatenate — so the element has to be in the
+-- index, which is what `Occ` is for.
+occ-inl
+  : ∀ {a} {A : Set a} {xs ys : List A} {z}
+  → Occ xs z
+  → Occ (xs ++ ys) z
+occ-inl hit = hit
+occ-inl (miss o) = miss (occ-inl o)
+
+-- The prefix is EXPLICIT here and implicit above, and the asymmetry is forced:
+-- an occurrence of the prefix determines it, while an occurrence of the suffix
+-- says nothing about what precedes it.
+occ-inr
+  : ∀ {a} {A : Set a} (xs : List A) {ys : List A} {z}
+  → Occ ys z
+  → Occ (xs ++ ys) z
+occ-inr [] o = o
+occ-inr (x ∷ xs) o = miss (occ-inr xs o)
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- SUM PLUMBING. Every incidence value below is a sum — a vertex or a leg — and
 -- the derived operations reindex one side at a time. These three facts are all
