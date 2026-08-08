@@ -5,13 +5,26 @@
 // standard library. It is written as ONE flat `sh -c` command because the
 // current shell-block lowerer accepts flat simple commands only -- the
 // honest MVP surface -- while still exercising the full production path:
-// source file -> lowering -> `run_program` -> the `Exec::exec` host handler.
+// source file -> `gandr <file>` -> lowering -> the L machine -> the
+// `Exec::exec` host handler.
 //
 // Reading it teaches the current shell-block contract:
 //   * `#!{ ... }` holds flat commands, `;`-terminated;
 //   * each command lowers to a `perform` of the host `Exec` effect;
+//   * the command's output is CAPTURED into the reply record, not relayed
+//     to the terminal -- a script computes over its command's output, and a
+//     caller watching a long clone sees nothing until it finishes;
 //   * idempotence lives in the script text itself (the `if [ ! -f ... ]`
 //     guard), not in hidden tool state.
+//
+// The block below is the whole of what this copy runs, and the real script
+// adds exactly one thing to it: the reply is BOUND and its status is
+// propagated with `proc.exit(vendored.exit_code)` (26-env-guard-exit), so a
+// failed clone leaves a failing process instead of a returned record nobody
+// reads. This copy stops short of that line because its lowering is a frozen
+// byte anchor for the kernel partition and export manifests -- the two files
+// are held to the same `sh -c` command by the driver's CLI suite, which is
+// where a drift between them is caught.
 //
 // This corpus copy is checked for LOWERING only: the real script clones a
 // git repository over the network, and corpus tests stay hermetic. Run the
