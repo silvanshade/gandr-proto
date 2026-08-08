@@ -215,7 +215,6 @@ open import Gandr.Arity.Path
   using (Path)
   using (here)
   using (then)
-  using (_++_)
   using (cat-graph)
   using (cat-fun)
   using (cat-assoc)
@@ -239,11 +238,14 @@ open import Data.Nat
   using (ℕ)
   using (zero)
   using (suc)
+  using (_+_)
 open import Data.Nat.Properties
   using (suc-injective)
 open import Data.Product
   using (_×_)
   using (_,_)
+  using (proj₁)
+  using (proj₂)
 open import Data.Unit
   using (⊤)
   using (tt)
@@ -341,6 +343,13 @@ record Arity o : Set (lsuc o) where
 ------------------------------------------------------------------------------
 
 module Linear {o} (Ob : Set o) (Step : Ob → Ob → Set o) where
+
+  -- PATH concatenation, imported HERE rather than at the top of the file
+  -- because the circuit instance below needs the LIST concatenation under the
+  -- same name. Per-module repackaging, on the tree's own rule for a
+  -- vocabulary that is local to one consumer.
+  open import Gandr.Arity.Path
+    using (_++_)
 
   -- the codes, abbreviated the way a consumer reads them
   Pth : Ob → Ob → Set o
@@ -987,7 +996,18 @@ module Refute where
 --     and its wiring clause closes a block of sources against a block of sinks
 --     — a two-sided closure, which is what creates a wheel. `graft` never needs
 --     one. That construction is the residual; it is scoped below as
---     `MatchClose` and `CloseIn`, and it is NOT built.
+--     `MatchClose` and `CloseIn`, and both are now BUILT — `match-close`,
+--     `close-in`, and the block iterations `close-block` and `close-cross`
+--     that carry them to a whole port block. An earlier revision of this
+--     paragraph recorded them as owed.
+--
+--     AND THE FINDING THE BUILD ADDED, which the scoping did not predict: the
+--     single-wire closure compares two positions a caller always supplies at
+--     ONE colour, which is the first comparison in the kit whose `same` case
+--     would have to delete a reflexive equation. Generalizing the two colours
+--     and carrying `x ≡ y` as a datum removes the deletion rather than paying
+--     an h-level condition for it, so the closure is `--without-K` at no cost
+--     — see `close-hit`.
 --
 -- ── AND THAT CLOSURE IS NOW SCOPED, WHICH MOVED THE QUESTION ────────────────
 -- The scoping was run to decide whether substitution is the primitive former or
@@ -1060,6 +1080,7 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (List)
     using ([])
     using (_∷_)
+    using (_++_)
   open import Gandr.Shape.Graph
     using (Shape)
     using (wires)
@@ -1086,9 +1107,41 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (Wire)
     using (flow)
     using (edges)
+    -- and for the construction: the concatenation graph the published port
+    -- blocks are threaded past
+    using (append-graph)
     -- the wiring constructors, renamed: `[]` and `_∷_` are the list
     -- constructors in this module
     renaming ([] to no-wire; _∷_ to _wired∷_)
+  -- THE AUXILIARIES THE CONSTRUCTION REUSES. Twelve are already built: six of
+  -- grafting's (`wire-in`, `match-insert`, `insert-shift`, `insert-swap`,
+  -- `match-remove`, `match-unhit`) and six of the merger's (`merge`,
+  -- `wires-in`, `append-regroup`, `insert-widen`, `cap-in`, `match-cap`). Six
+  -- of those are reached THROUGH the other six rather than named here —
+  -- `insert-swap` inside the two threadings, and `wire-in`, `cap-in`,
+  -- `wires-in`, `append-regroup` and `insert-widen` inside `merge` — so the
+  -- list below is what this module writes, not what the construction spends.
+  --
+  -- `preplug`, `lwhisk`, `match-lwhisk` and `match-comp` with its accumulator
+  -- are deliberately absent: composing two wirings is merging them and closing
+  -- the shared interface, which retires the kit's only well-founded recursion.
+  open import Gandr.Shape.Graft
+    using (match-insert)
+    using (match-cap)
+    using (match-remove)
+    using (match-unhit)
+    using (insert-shift)
+    using (merge)
+    -- the two lookups' result types, and the view the through case splits on
+    using (Removal)
+    using (through)
+    using (capped)
+    using (Unhit)
+    using (unhit)
+    using (InsertView)
+    using (same)
+    using (apart)
+    using (insert-view)
 
   -- THE INTERPRETATION, familially — and DERIVED rather than declared, which is
   -- the answer to whether the vertex family should be re-presented.
@@ -1283,3 +1336,205 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     → edges S ≡ (flow x ∷ [])
     → ⊥
   no-circle x (wires no-wire) refl ()
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- THE CONSTRUCTION. Each step inhabits one of the types declared above, so
+  -- the contract can be read without the construction and the construction
+  -- checked against the contract rather than against a paragraph.
+  --
+  -- The order is forced by what each step consumes: the wiring-level closure
+  -- has no shape in it; the shape-level lift is that closure pushed past each
+  -- published port block; the block iteration is the lift applied one wire at
+  -- a time; and substitution is the merger followed by the block iteration at
+  -- both of a vertex's port blocks.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- ── STEP ONE: THE SINGLE-WIRE CLOSURE AT THE WIRING ─────────────────────
+  --
+  -- `match-remove i` reads the closed source's partner and `match-unhit j` the
+  -- closed sink's hitter; the rebuild is one existing operation. THERE IS NO
+  -- RECURSION, which is the finding that retires `match-comp`.
+
+  -- The rebuild when the closed source ran THROUGH to a sink other than the
+  -- closed one: the source that hit the closed sink inherits that sink, so one
+  -- wire replaces two and nothing closes.
+  close-through
+    : ∀ {x Γ Δ Δ˘}
+    → Insert Ob x Δ˘ Δ
+    → Unhit x Γ Δ˘
+    → Closed Γ Δ
+  close-through s (unhit p t) = closed (match-insert p s t) 0
+
+  -- The rebuild when the closed source was already CUT to another source: the
+  -- source that hit the closed sink is cut to that one instead.
+  --
+  -- THIS CASE CANNOT CLOSE A CIRCLE, and the reason is that a source has
+  -- exactly one end: a source cut to `w` leaves `w` spent, so `w` does not hit
+  -- the closed sink and the two ends being joined are distinct.
+  close-cut
+    : ∀ {x y Γ Γ˘ Δ}
+    → Insert Ob y Γ˘ Γ
+    → Unhit x Γ˘ Δ
+    → Closed Γ Δ
+  close-cut c (unhit p t) = closed (match-cap c p t) 0
+
+  -- Which of the two the through case is, decided by comparing the sink the
+  -- closed source ran to against the sink being closed. The verdict is taken
+  -- as an ARGUMENT rather than as a `with`, on the module-wide rule: a `with`
+  -- here would put both right-hand sides in an auxiliary that no lemma about
+  -- the closure could name.
+  --
+  -- THE TWO COLOURS ARE GENERALIZED AND THEIR EQUATION IS CARRIED, and that is
+  -- forced by `--without-K` rather than chosen. Every comparison the listing
+  -- algebra already makes is between insertions of DIFFERENT colours — a
+  -- removed source against a cut's inner port, a traced sink against a
+  -- wiring's — so `same` unifies two colour variables and nothing is deleted.
+  -- This one compares two positions that a caller always supplies at ONE
+  -- colour, and matching `same` there would have to eliminate the reflexive
+  -- equation `x = x`. Generalizing the colours and taking `x ≡ y` as a datum
+  -- removes the deletion instead of paying an h-level condition for it: the
+  -- `same` branch never looks at the equation, and the `apart` branch consumes
+  -- it exactly where the two ends being joined have to agree.
+  close-hit
+    : ∀ {x y Γ Δ Δˣ Δ˘}
+    → {spot : Insert Ob x Δ˘ Δˣ}
+    → {j : Insert Ob y Δ Δˣ}
+    → x ≡ y
+    → InsertView spot j
+    → Match Ob Γ Δ˘
+    → Closed Γ Δ
+  -- the source ran to that very sink, so the strand closes on itself. THIS IS
+  -- THE CIRCLE, and what remains is the wiring underneath it untouched
+  close-hit e same body = closed body 1
+  close-hit refl (apart s j′) body = close-through s (match-unhit j′ body)
+
+  -- and the outer split, on what the closed source's own lookup returned
+  close-removal
+    : ∀ {x Γ Δ Δˣ}
+    → Insert Ob x Δ Δˣ
+    → Removal x Γ Δˣ
+    → Closed Γ Δ
+  close-removal j (through spot body) = close-hit refl (insert-view spot j) body
+  close-removal j (capped c body) = close-cut c (match-unhit j body)
+
+  match-close : MatchClose
+  match-close i j m = close-removal j (match-remove i m)
+
+  -- ── STEP TWO: THE SHAPE-LEVEL LIFT ──────────────────────────────────────
+  --
+  -- Pushing past each published port block exactly as `wire-in` does — one
+  -- `tail` per element via `insert-shift`, and no permutation. It lands in
+  -- `Cod` rather than in `Shape`, which is where the count enters.
+
+  close-in : CloseIn
+  close-in i j (wires m) = wires (Closed.wiring c) , Closed.loops c
+    where
+      -- the wiring-level closure, at the shape's own matching
+      c : Closed _ _
+      c = match-close i j m
+  close-in {Γ} {Δ} i j (node A B p q S) =
+      node A B (append-graph B Γ) (append-graph A Δ) (proj₁ r)
+    , proj₂ r
+    where
+      -- the same closure one vertex in, with both positions walked past the
+      -- ports that vertex publishes
+      r : Cod (B ++ Γ) (A ++ Δ)
+      r =
+        close-in
+          (insert-shift (append-graph B Γ) p i)
+          (insert-shift (append-graph A Δ) q j)
+          S
+
+  -- ── STEP THREE: THE BLOCK ITERATION, AND `plug` ─────────────────────────
+  --
+  -- One wire at a time, which is `lwhisk`'s and `wires-in`'s technique and the
+  -- reason no permutation enters here either.
+
+  -- Closing a whole block when both of its ends lead their interface.
+  close-block
+    : ∀ {Ξ Γ Γˣ Δ Δˣ}
+    → Append Ob Ξ Γ Γˣ
+    → Append Ob Ξ Δ Δˣ
+    → Shape Ob Γˣ Δˣ
+    → Cod Γ Δ
+  close-block nil nil S = S , 0
+  close-block (cons p) (cons q) S =
+    proj₁ rest , proj₂ step + proj₂ rest
+    where
+      -- the block's leading wire, closed at both interfaces' heads
+      step : Cod _ _
+      step = close-in head head S
+      -- and the rest of the block
+      rest : Cod _ _
+      rest = close-block p q (proj₁ step)
+
+  -- What a CROSSED block closure leaves. The sink block being closed sits
+  -- BEHIND another published block, so the interface the closure leaves is not
+  -- determined by its inputs; it is carried rather than computed, which is the
+  -- device `Widened` and `Regroup` already use for exactly this, and it is
+  -- what keeps a computed list out of every downstream index.
+  record Crossed (Γ B Δ : List Ob) : Set ℓ where
+    constructor crossed
+    field
+      -- the sinks the closure leaves
+      sinks : List Ob
+      -- with the crossing block still in front of them
+      over : Append Ob B Δ sinks
+      -- the shape over that interface
+      body : Shape Ob Γ sinks
+      -- and the circles the closure shut
+      loops : ℕ
+
+  -- Closing a block whose sources lead their interface against sinks that sit
+  -- behind one further published block. This is the vertex's INPUT block: the
+  -- replacement's input legs are at the front of the merged sources, while the
+  -- ports the vertex published to the sinks sit behind the replacement's own
+  -- output legs.
+  close-cross
+    : ∀ {Ξ B Γ Γˣ Δ Δᵃ Δˣ}
+    → Append Ob Ξ Γ Γˣ
+    → Append Ob Ξ Δ Δᵃ
+    → Append Ob B Δᵃ Δˣ
+    → Shape Ob Γˣ Δˣ
+    → Crossed Γ B Δ
+  close-cross nil nil r S = crossed _ r S 0
+  close-cross {B} (cons p) (cons q) r S =
+    crossed
+      (Crossed.sinks rest)
+      (Crossed.over rest)
+      (Crossed.body rest)
+      (proj₂ step + Crossed.loops rest)
+    where
+      -- the block's leading wire: its source leads the interface and its sink
+      -- is that same position walked past the crossing block
+      step : Cod _ _
+      step = close-in head (insert-shift (append-graph B _) r head) S
+      -- and the rest of the block, over the interface that leaves
+      rest : Crossed _ B _
+      rest = close-cross p q (append-graph B _) (proj₁ step)
+
+  -- SUBSTITUTING AT ONE VERTEX. Merge the replacement beside the rest —
+  -- `merge` places them disconnected, which `merge-apart` proves — then close
+  -- the vertex's two published port blocks against the replacement's legs.
+  -- `|A| + |B|` closures, and every circle any of them shuts is returned.
+  plug
+    : ∀ {A B Γ Γ′ Δ Δ′}
+    → Append Ob B Γ Γ′
+    → Append Ob A Δ Δ′
+    → Shape Ob A B
+    → Shape Ob Γ′ Δ′
+    → Cod Γ Δ
+  plug {A} {B} {Γ} {Γ′} {Δ} {Δ′} p q V S =
+    proj₁ outer , Crossed.loops inner + proj₂ outer
+    where
+      -- the vertex's IN-profile, closed against the replacement's input legs
+      inner : Crossed Γ′ B Δ
+      inner =
+        close-cross
+          (append-graph A Γ′)
+          q
+          (append-graph B Δ′)
+          (merge (append-graph A Γ′) (append-graph B Δ′) V S)
+      -- and its OUT-profile, which by then leads both interfaces
+      outer : Cod Γ Δ
+      outer = close-block p (Crossed.over inner) (Crossed.body inner)
