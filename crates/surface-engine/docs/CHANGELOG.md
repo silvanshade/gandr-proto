@@ -43,7 +43,7 @@ The format is hand-maintained and grows only with real changes; it is not auto-g
   No compatibility alias or legacy surface spelling remains.
 * `current`: Retargeted stage-0 elaboration to `gandr-theory-levitation`.
   Its `Attr`, `CellFace`, `check_desc`, and declaration-table API is source-compatible with the predecessor use sites, so the package rename is the complete delta.
-* `current`: Kept the canonical host signatures beside the representation-independent seam in `gandr-core-checker::host`.
+* `current`: Kept the canonical host signatures beside the representation-independent seam in `gandr-core-checker::effect::host`.
   `gandr-surface-engine::host` explicitly re-exports that API and adds source-level module metadata; the signature authority couples neither the engine nor the runtime, and the engine's only runtime edge is the host-capability adapter `run::run_source` composes.
 * `current`: Gained `run::run_source`, the one-shot source-program driver (lower → link → prelude-check → host-run) relocated from `gandr-runtime-host`.
   The engine owns the language-level source entry; the runtime stays the host-capability adapter it composes.

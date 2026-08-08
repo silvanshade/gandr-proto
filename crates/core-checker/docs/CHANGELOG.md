@@ -6,7 +6,7 @@ The format is hand-maintained and grows only with real changes; it is not auto-g
 
 ### Added
 
-* `host` now owns the canonical alloc-only `Exec` / `Fs` / `Proc` / `Env` signatures beside the representation-independent `HostOp` / `HostHandler` seam.
+* `effect::host` now owns the canonical alloc-only `Exec` / `Fs` / `Proc` / `Env` signatures beside the representation-independent `HostOp` / `HostHandler` seam.
   Surface lowering and the native runtime share one authority without taking a dependency on each other.
 * `kernel_bridge` (stage B2.3): the elaborator-side lowering from the checked core CBPV forms into the minimal certified kernel's closed S1 vocabulary (`gandr-kernel-core`, whose dependency this crate now takes — the permitted direction; the section-2 TCB wall forbids the reverse).
   A total, iterative worklist lowering (no host-stack recursion on term depth) that rejects every out-of-S1 node structurally with a precise `BridgeRejection` (holes/`Unknown`, effects/control, `Native`, declared data, the `List`/`Record`/`With`/`Prj` structural stock, `Sigma`/`Split`, the `Path`/`Here`/`Walk` identity fragment, the un-levelled universe, and machine-numeric literals/atoms), erases the operationally-transparent forms (`Annot` peeled; `dup`/`drop` lowered to their ungraded skeletons, C4), resolves names to de Bruijn indices or cross-declaration `Value::Constant` admission indices through a `BridgeContext`, and applies the value-polarity declaration convention (a computation definition enters as a thunk `U C`, B2.1 decision 3).

@@ -7,7 +7,7 @@ Implemented:
 * CBPV bidirectional checker and the defunctionalized typing machine (`checker`, `machine`, `control`).
 * The grade semiring carrier with overflow clamped to `ω` (`grade`) and the grade structural operations `dup` / `drop`.
 * The effect layer: effect-graded returners `F^ε`, the sealed effect-row carrier, and the `perform` / `handle` terms (A3.2 `+effects`, `effect`).
-* The host seam (`host`) owns the canonical `Exec` / `Fs` / `Proc` / `Env` signature builders and operation/field constants beside `HostOp` / `HostHandler`.
+* The host seam (`effect::host`) owns the canonical `Exec` / `Fs` / `Proc` / `Env` signature builders and operation/field constants beside `HostOp` / `HostHandler`.
   Surface lowering and the native runtime consume this alloc-only authority without depending on each other.
 * The control layer: first-class reified stacks `Stk(B, C)`, `resume`, and delimited `reset` / `shift`, with the two-zone context `Γ; Σ` (A3.3 `+control`, `stack`, `ctx`).
 * Subtyping — reflexive, but not transitive once `Unknown` participates (`subtype`).
