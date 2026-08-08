@@ -570,6 +570,11 @@ Nothing gandr needs rides on Σ-freeness of the rung: the nerve runs on arities,
 The cut's port symmetry is the first kind, absorbed three times — at the wiring, at the edge listing, at the incidence — in three different currencies, none of them canonicalization's; the merger swap is the second kind — it is **false on the nose** for the ordered carrier, as it must be, because the vertex order is representation content, and the identification of isomorphism _classes_ in the source is exactly what `Rigid.canon` owes.
 Apply this test to every identification the literature offers.
 
+**And the test has a third verdict the two above do not cover, found by building the identification rather than by reading the examples** (2026-08-08, `Gandr.Arity.Universe` §_Step six_).
+A merger swap at a **closed** pair — two components with no legs — differs only by the vertex order, and one vertex transposition relates the two terms; a merger swap at an **open** pair moves which interface legs reach which vertex as well, so the two terms differ by a permutation of the interface on top of the listing order.
+Whether the second is an identification `canon` owes turns on whether the equivalence `Rigid.canon` sections **fixes the interface pointwise**, which is an owner decision and is filed as one on the metatheory decision queue; the tree's open-case example is marked challenged pending it, and the closed-case example is unaffected.
+The reason to record the distinction here rather than only at the code: a reader applying the test to a published merger-swap identification has to know which of the two shapes it is, and the literature's statement is about isomorphism classes where the question does not arise.
+
 > **The parallel direction stays symmetric.** Within-cell order (ports, positions, arguments) is free — the as-built grammar has no symmetry to give up.
 > Ordering the parallel-component direction would be a silent catastrophe: the certificate normal form is a disjoint union of primitives under a **symmetric** monoidal structure; symmetry gives cocommutativity, cocommutativity gives the enveloping-algebra theorem, and that licenses the bracket-vanishing oracle of [[#The certificate algebra]].
 > The ordered-forest variant is monoidal but _not_ symmetric monoidal, and adopting it would break a theorem the engine depends on while looking like a strengthening.
@@ -583,6 +588,12 @@ They are different structures with one diagnosis in common — in both, the repr
 **`canon-sound` has a published shape and an external warrant.** The recipe is a normal form on the _construction term_ over the carrier's own two operations (merger and contraction): push permutations to the outermost operation, totally order the tree monomials, take the unique minimal one [@stoeckl-2024-koszul].
 It is not canonical graph labelling in the nauty sense.
 One condition carries it to `Set` and is checked before leaning: the defining relations must rewrite monomial-to-monomial rather than to sums.
+
+**Two of the recipe's three steps are discharged by the representation, and the condition is discharged by the ambient** (2026-08-08, measured while building the setoid the instance is over).
+A shape is a chain of vertex records over one wiring, so its construction term already carries the permutation **outermost** — the chain order is the permutation, sitting at the top of the term rather than distributed into the operands, which is what `verts-merge` proves by showing merging concatenates the listings first-operand-first — and the **tree monomial** is what is left when that order is forgotten, the vertex listing as a multiset together with the wiring.
+So the residual freedom is exactly the vertex order, and only the third step, the total order on shapes with the minimum over the orbit, is still a construction.
+The monomial-to-monomial condition holds because the defining relation is a binary relation on an inductive family in `Set`: both sides of every generator are single terms, and there is no free module for a sum to land in.
+Its consumable form is the **type** of the canonicalization — `canon` is an endomap of the carrier, so a relation rewriting to sums would make `Rigid` unstatable at this rung rather than merely unproved — which is why the condition is a precondition the signatures record and not a lemma the tree proves.
 The rigidify-then-transfer move itself is a published theorem (Koszulity transfers along the forgetful functor from groupoid-coloured to discrete-coloured modules), which is the best available warrant for the shape of gandr's whole representation discipline; and canonicity-under-a-tractability-fence (see [[#The ambient-primitive policy]]) is the external theorem behind `canon`'s existence.
 
 ## Representation — decidability, the arena, and the layout calculus
