@@ -44,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 668a74e28fcfaa2b09b7b1c73003f85d65c6b7213a227980d4ef3e726f7fb860
+    b3: b5db527d2e48fd126c0e54d1b7b005f4cc7c83093f2ebabaf2023eb52a5d4d82
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
