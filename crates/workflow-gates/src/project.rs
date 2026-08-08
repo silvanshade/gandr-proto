@@ -11,8 +11,14 @@
 //! `^git` scanner is vacuous after clean cutover because this crate's project
 //! operations call [`support::run_output`] with `sanitized_git = true` instead
 //! of embedding ad-hoc environment scrubbing. Second, `scripts/agda-deps.nu` is
-//! not reimplemented: the live task surface already runs `gandr --
-//! scripts/agda-deps.gandr`, making the Nushell bootstrap obsolete.
+//! not reimplemented in this module: `mise run agda:deps` runs
+//! `scripts/agda-deps.gandr` through the `gandr` script runner, which is what
+//! makes the Nushell bootstrap obsolete.
+//!
+//! That leaves the binary's own `agda-deps` command (`main.rs`) as a second
+//! implementation of the same provisioning step with no task calling it.
+//! Whether it is retired or documented as a driver-independent fallback is an
+//! open owner decision, not a settled state.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;

@@ -1177,8 +1177,11 @@ fn agda_workspace_root(workspace_root: Option<&Path>) -> Result<PathBuf, GateErr
 ///   `metatheory/` tree should receive the dependency checkout.
 /// - ensures: writes `metatheory/libraries` with the canonical standard-library
 ///   `.agda-lib` path and emits the stable ready line on success.
-/// - provides: a Rust-backed replacement for `scripts/agda-deps.gandr` with
-///   typed Git argv and shared Git environment sanitization.
+/// - provides: a Rust-backed second path to what `scripts/agda-deps.gandr`
+///   provisions, with typed Git argv and shared Git environment sanitization.
+///   No task invokes it: `mise run agda:deps` runs the gandr script, and
+///   whether this command is retired or kept as a driver-independent fallback
+///   is an open owner decision.
 /// - fails: returns typed filesystem, output, or Git status errors.
 /// - panics: none.
 /// - intension: skips Git when the `.agda-lib` file already exists; otherwise
@@ -1291,8 +1294,8 @@ fn write_agda_libraries_file(plan: &AgdaDependencyPlan) -> Result<(), GateError>
 ///
 /// # Contract
 /// - ensures: writes and flushes `agda deps ready: stdlib v2.4\n` to stdout.
-/// - provides: the legacy-visible success marker from
-///   `scripts/agda-deps.gandr`.
+/// - provides: the same success marker `scripts/agda-deps.gandr` prints, so the
+///   two provisioning paths stay observably identical while both exist.
 /// - fails: returns a typed stdout write or flush error.
 /// - panics: none.
 ///

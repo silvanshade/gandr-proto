@@ -26,20 +26,20 @@ use gandr_runtime_host::ShellOutcome;
 use gandr_surface_engine::run::RunFileError;
 
 /// The exit status of a run whose program completed normally.
-const EXIT_COMPLETED: ExitStatus = ExitStatus(0);
+const EXIT_COMPLETED: ExitStatus = ExitStatus(0_i64);
 
 /// The exit status of a run the machine or the host did not complete.
-const EXIT_FAILED: ExitStatus = ExitStatus(1);
+const EXIT_FAILED: ExitStatus = ExitStatus(1_i64);
 
 /// The exit status of a usage error or a source that never reached the machine.
-const EXIT_REFUSED: ExitStatus = ExitStatus(2);
+const EXIT_REFUSED: ExitStatus = ExitStatus(2_i64);
 
 /// The modulus a `proc.exit` code is reduced by before it leaves the process.
 ///
 /// A process exit status is one byte on every host this driver targets, so a
 /// script that exits with a wider integer is reduced the way a shell reduces
 /// one rather than being rejected after its effects have already happened.
-const EXIT_STATUS_MODULUS: i64 = 256;
+const EXIT_STATUS_MODULUS: i64 = 256_i64;
 
 /// What the driver accepts on the command line.
 const USAGE: &str = "usage: gandr <file>\n\nRuns one gandr source file. The REPL and the tui/lsp/mcp/fmt/build faces are deferred.\n";
@@ -48,6 +48,29 @@ const USAGE: &str = "usage: gandr <file>\n\nRuns one gandr source file. The REPL
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct ExitStatus(i64);
+
+/// One diagnostic line on its way to standard error.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct DiagnosticText<'text>(&'text str);
+
+impl<'text> From<&'text str> for DiagnosticText<'text>
+{
+    #[inline]
+    fn from(value: &'text str) -> Self
+    {
+        Self(value)
+    }
+}
+
+impl<'text> From<&'text String> for DiagnosticText<'text>
+{
+    #[inline]
+    fn from(value: &'text String) -> Self
+    {
+        Self(value.as_str())
+    }
+}
 
 impl From<ExitStatus> for ExitCode
 {
@@ -64,8 +87,11 @@ impl From<ExitStatus> for ExitCode
     #[inline]
     fn from(value: ExitStatus) -> Self
     {
-        let reduced = value.0.checked_rem_euclid(EXIT_STATUS_MODULUS).unwrap_or(1);
-        let byte = u8::try_from(reduced).unwrap_or(1);
+        let reduced = value
+            .0
+            .checked_rem_euclid(EXIT_STATUS_MODULUS)
+            .unwrap_or(1_i64);
+        let byte = u8::try_from(reduced).unwrap_or(1_u8);
         Self::from(byte)
     }
 }
@@ -175,7 +201,7 @@ where
     if operands.next().is_some() {
         return None;
     }
-    if first == OsString::from("--help") || first == OsString::from("-h") {
+    if first == *"--help" || first == *"-h" {
         return Some(Request::Usage);
     }
     let looks_like_a_flag = first
@@ -252,9 +278,11 @@ fn refusal(error: &RunFileError) -> String
 ///   the exit status still carries the outcome, and a driver that died trying
 ///   to complain would report the wrong one.
 /// - panics: none.
-fn report(text: &str)
+fn report<'text, Text>(text: Text)
+where
+    Text: Into<DiagnosticText<'text>>,
 {
     let mut stderr = std::io::stderr();
-    drop(stderr.write_all(text.as_bytes()));
+    drop(stderr.write_all(text.into().0.as_bytes()));
     drop(stderr.flush());
 }
