@@ -6786,8 +6786,21 @@ corollas-apart-verts =
 
 -- The same two corollas merged the other way round span the SAME interface —
 -- `𝟙 ++ 𝟚` and `𝟚 ++ 𝟙` are one list — and are a different shape. So
--- non-commutativity is not an artifact of the closed case above; it is the
--- vertex order, which is representation content everywhere.
+-- non-commutativity is not an artifact of the closed case above.
+--
+-- WHAT THE DIFFERENCE IS, HOWEVER, IS CHALLENGED (2026-08-08) and an earlier
+-- revision of this comment attributed it to the vertex order alone. Merging in
+-- the other order also moves WHICH INPUT LEGS reach which vertex — legs `0,1`
+-- lead to the `C(2;1)` vertex on one side and legs `1,2` on the other, which
+-- `merge-components` above keeps apart — so the pair differs by a permutation
+-- of the interface as well as by the listing order, and `merge-swap-apart`'s
+-- closed pair (no legs at all) is the one whose only difference is the order.
+-- Whether the identification `Gandr.Rigid` owes therefore covers this pair
+-- depends on whether the equivalence it sections fixes the interface pointwise;
+-- that is an owner decision and it is filed as one. Nothing here is edited on
+-- the challenge's strength, and the non-commutativity this example pins is
+-- unaffected either way. `Gandr.Arity.Universe` §*Step six* carries the
+-- transposition that reaches the closed pair and not this one.
 corollas-swapped : Shape ⊤ (tt ∷ tt ∷ tt ∷ []) 𝟚
 corollas-swapped =
   merge (append-graph 𝟙 𝟚) (append-graph 𝟙 𝟙) (corolla 𝟙 𝟙) (corolla 𝟚 𝟙)
