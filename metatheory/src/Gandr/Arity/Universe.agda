@@ -125,10 +125,19 @@
 --     recoverable.** Enriching to the richest available interpretation — the
 --     graph's category of elements, vertices and legs and incidence — gives
 --     isomorphism of graphs, and `Shape` stores an ordering that graph
---     isomorphism does not see. The refuters are already in the tree and were
+--     isomorphism does not see. The refuter is already in the tree and was
 --     never read as a statement about this: `Gandr.Shape.Graft.merge-swap-apart`
---     and `corollas-swap-apart` exhibit two pairs of shapes isomorphic as graphs
---     and decidably distinct as terms.
+--     exhibits two shapes isomorphic as graphs and decidably distinct as terms,
+--     and §*Step six* below proves the pair related by one transposition.
+--
+--     THE SECOND REFUTER THIS PARAGRAPH USED TO NAME IS CHALLENGED, NOT
+--     WITHDRAWN. An earlier revision read `corollas-swap-apart` the same way.
+--     The transposition does not reach that pair — merging two corollas in the
+--     other order also moves which input legs reach which vertex — so whether
+--     it is a canonicalization obligation turns on whether the equivalence
+--     `Rigid.canon` sections fixes the interface pointwise. That is an owner
+--     decision, it is filed as one, and nothing downstream is edited on the
+--     challenge's strength. The closed pair carries the paragraph either way.
 --
 -- **So at the circuit rung `Inj` cannot land in `_≡_`, and this is forced by C3
 -- rather than by the choice of ambient.** It must land in the code setoid's
@@ -190,11 +199,19 @@
 -- over witnesses.
 --
 -- ── WHAT IS NOT HERE ────────────────────────────────────────────────────────
--- The circuit instance's three LAWS, and the representation map, which at that
--- rung is `canon-sound`. The former itself is here: `sub` and `pair` are built
--- below, over the two-sided closure. An earlier revision of this paragraph
--- recorded the whole of `Subst` and everything downstream of it as the
--- residual.
+-- The circuit instance's three LAWS, and the canonicalization the
+-- representation map needs. The former itself is here: `sub` and `pair` are
+-- built below, over the two-sided closure. An earlier revision of this
+-- paragraph recorded the whole of `Subst` and everything downstream of it as
+-- the residual, and a later one recorded the representation map whole.
+--
+-- What §*Step six* below now supplies is everything about the representation
+-- map EXCEPT the canonicalization: the code SETOID `Rigid` is taken over, the
+-- transposition that generates its relation, that relation's equivalence laws,
+-- its non-vacuity at both a closed and an open pair, and the theorem that
+-- `canon` with its two laws yields the `Rigid` instance — so `canon-sound` is
+-- derived rather than owed on its own. `Canon`, `CanonRel` and `CanonResp` are
+-- stated and NOT INHABITED.
 --
 -- Everything else of Definition 9's former half is inhabited at the linear kit,
 -- including the splitting half of `⟦Σ̂⟧` (`place-split`) — the published field
@@ -229,6 +246,10 @@ open import Gandr.Setoid
   using (≡ˢ)
   using (bundle)
   using (step-≈·)
+-- the canonicalization record the circuit rung owes an instance of; `Rigid`'s
+-- own fields are reached qualified, so nothing of its public opening lands here
+open import Gandr.Rigid
+  using (Rigid)
 open import Data.Bool
   using (Bool)
   using (true)
@@ -243,14 +264,23 @@ open import Data.Nat
   using (_+_)
 open import Data.Nat.Properties
   using (suc-injective)
+  renaming (_≟_ to _≟ℕ_)
 open import Data.Product
   using (_×_)
   using (_,_)
   using (proj₁)
   using (proj₂)
+open import Data.Product.Properties
+  renaming (≡-dec to ×-dec)
 open import Data.Unit
   using (⊤)
   using (tt)
+open import Relation.Binary.Bundles
+  using (Setoid)
+open import Relation.Binary.Definitions
+  using (DecidableEquality)
+open import Relation.Binary.Structures
+  using (IsEquivalence)
 open import Relation.Binary.PropositionalEquality
   using (_≡_)
   using (refl)
@@ -258,6 +288,8 @@ open import Relation.Binary.PropositionalEquality
   using (trans)
   using (cong)
   using (subst)
+open import Relation.Nullary.Decidable
+  using (Dec)
 
 -- The reasoning vocabulary, on `Gandr.Shape.Graft`'s terms: `bundle (≡ˢ _)` is
 -- the `Set`-level bundle, so a chain here reads as a chain over a hom-setoid.
@@ -1073,10 +1105,17 @@ module Refute where
 -- `Inj` is not in the table because it is not inhabitable here at all: at this
 -- rung it is `Rigid.canon-sound`, which is the tree's open D4. The refutation
 -- above shows the published premise is too weak in general; `merge-swap-apart`
--- and `corollas-swap-apart` show that at THIS rung enriching the premise does
--- not rescue it, because the surplus is the vertex ordering and no
--- interpretation of a graph sees it. That is C3 meeting the interface, and it
--- is the honest price of the route.
+-- shows that at THIS rung enriching the premise does not rescue it, because the
+-- surplus is the vertex ordering and no interpretation of a graph sees it. That
+-- is C3 meeting the interface, and it is the honest price of the route.
+-- (`corollas-swap-apart` was named here as a second such pair; that reading is
+-- challenged and filed — see the header's `Inj` paragraph and §*Step six*.)
+--
+-- WHAT §*STEP SIX* BELOW ADDS TO THAT PROMOTION. The obligation now has its
+-- object: a `Rigid` instance is taken over a SETOID, and `codes` is that
+-- setoid, built from the transposition `_↝_` generates. `circuit-rigid` proves
+-- the residual is exactly one function and two laws, and derives `canon-sound`
+-- and the decision procedure from them.
 ------------------------------------------------------------------------------
 
 module Circuit {ℓ} {Ob : Set ℓ} where
@@ -1086,6 +1125,8 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using ([])
     using (_∷_)
     using (_++_)
+  open import Data.List.Properties
+    using (++-identityʳ)
   open import Gandr.Shape.Graph
     using (Shape)
     using (wires)
@@ -1118,6 +1159,10 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     -- and for the construction: the concatenation graph the published port
     -- blocks are threaded past
     using (append-graph)
+    -- the block swap over a fixed tail, and the decision procedure the `Rigid`
+    -- packaging needs: both for the representation map below
+    using (swap-blocks)
+    using (shape?)
     -- the wiring constructors, renamed: `[]` and `_∷_` are the list
     -- constructors in this module
     renaming ([] to no-wire; _∷_ to _wired∷_)
@@ -1156,6 +1201,8 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     using (insert-view)
     -- and the incidence lemma the pairing is read off
     using (verts-merge)
+    -- the grafting listing lemma, for the transposition below
+    using (verts-graft)
 
   -- THE INTERPRETATION, familially — and DERIVED rather than declared, which is
   -- the answer to whether the vertex family should be re-presented.
@@ -1863,3 +1910,433 @@ module Circuit {ℓ} {Ob : Set ℓ} where
     → (S : Shape Ob Γ Δ)
     → (T : Shape Ob Δ Θ)
     → sub (series Γ Δ Θ , 0) (series-at S T) ≡ (graft S T , 0)
+
+  -- ══════════════════════════════════════════════════════════════════════════
+  -- STEP SIX: THE REPRESENTATION MAP. `Inj` at this rung is `Rigid.canon-sound`
+  -- (see the header), and a `Rigid` instance needs a SETOID before it needs a
+  -- canonicalization: the relation the representation is a section OF has to be
+  -- written down first. That relation is what this section builds; the
+  -- canonicalization over it is stated and NOT INHABITED.
+  --
+  -- ── THE ROUTE, AND WHOSE DECISION IT IS ───────────────────────────────────
+  -- The corpus fixes the recipe: a normal form on the CONSTRUCTION TERM over
+  -- the carrier's own two operations — push permutations to the outermost
+  -- operation, totally order the tree monomials, take the unique minimal one
+  -- [@stoeckl-2024-koszul] — and states the one condition that carries it to
+  -- `Set`, that the defining relations rewrite monomial-to-monomial rather than
+  -- to sums. It is explicitly NOT canonical graph labelling in the nauty sense.
+  -- A second candidate shape — an interface-rooted spanning traversal — is on
+  -- the record as a candidate and is not the route.
+  --
+  -- ── WHERE THE RECIPE'S THREE STEPS LAND HERE ──────────────────────────────
+  -- The first two are discharged by the REPRESENTATION rather than by a
+  -- construction, and that is the finding worth having before the third is
+  -- attempted:
+  --
+  --   * **Permutations are already outermost.** A `Shape` is a chain of `node`s
+  --     over one `Match`, so its construction term is the merger of one corolla
+  --     per vertex, contracted along the wiring. The chain ORDER is the
+  --     permutation and it sits at the top of the term, not distributed into
+  --     the operands. `verts-merge` is the proof that merging concatenates the
+  --     listings first-operand-first, so nothing interleaves.
+  --   * **The tree monomial is what is left when the order is forgotten** — the
+  --     vertex listing as a multiset, together with the wiring. So the residual
+  --     freedom is exactly the vertex order, which is what
+  --     `Gandr.Shape.Graft.merge-swap-apart` and `corollas-swap-apart` exhibit
+  --     as a DECIDABLE difference between terms that denote one graph.
+  --   * **The third step is the whole of the residual**: a total order on
+  --     shapes, and the minimum over the orbit below.
+  --
+  -- ── THE MONOMIAL-TO-MONOMIAL CONDITION, CHECKED ───────────────────────────
+  -- The corpus requires it checked BEFORE anything leans on it, so: it holds
+  -- here, and it holds for an ambient reason rather than by inspection of a
+  -- relation list. `_↝_` below is the defining relation, and its type is
+  -- `Shape Ob Γ Δ → Shape Ob Γ Δ → Set ℓ` — one term on each side of every
+  -- generator. The failure the condition names is a relation whose right-hand
+  -- side is a formal SUM of monomials, which presupposes a free module on the
+  -- terms; gandr's carrier is an inductive family in `Set` and there is no such
+  -- ambient to land in.
+  --
+  -- Its consumable form is the type of `Canon` below, and that is the sharp
+  -- statement: `Rigid.canon` is an ENDOMAP of the carrier. Were a defining
+  -- relation to rewrite to a sum, a canonical form would be an element of the
+  -- free module on the shapes and `Rigid` could not be stated at this rung at
+  -- all, let alone inhabited. The condition is therefore not a lemma this
+  -- module proves but a precondition its signatures record — and it is
+  -- discharged by the ambient, which is the honest strength of the claim.
+  --
+  -- ── WHAT IS PROVED HERE AND WHAT IS NOT ───────────────────────────────────
+  -- Proved: the transposition, the relation it generates, that the relation is
+  -- an equivalence, that it is NOT VACUOUS (both refuter pairs are related, at
+  -- the bottom of this file), and that supplying `canon` with its two laws
+  -- yields the `Rigid` instance — so `canon-sound` really does fall out of the
+  -- four-field record rather than needing its own argument.
+  --
+  -- NOT PROVED, and not claimed anywhere below: that `_≈ˢ_` coincides with
+  -- isomorphism of shapes in `Gandr.Shape.Decidable`'s map layer. It is the
+  -- vertex-permutation congruence, which is what the corpus identifies as the
+  -- whole residual freedom of the ordered representation; the map-layer
+  -- comparison is a separate statement and nothing here rests on it.
+  -- ══════════════════════════════════════════════════════════════════════════
+
+  -- TRANSPOSING TWO ADJACENT VERTICES. Each publishes its port blocks to the
+  -- front of the same interface, so exchanging the two `node`s exchanges
+  -- exactly those two blocks at both interfaces and leaves the rest alone —
+  -- which is `swap-blocks`, the block swap over a fixed tail. The sub-shape is
+  -- re-blocked by grafting a pure wiring onto each side; nothing else moves.
+  --
+  -- The rebuilt witnesses are `append-graph`'s, so `transpose` is not an
+  -- involution on the nose. That is why the equivalence below closes under
+  -- steps in BOTH directions rather than reusing the transposition for its own
+  -- inverse.
+  transpose
+    : ∀ {A₁ B₁ A₂ B₂ Γ Γ′ Γ″ Δ Δ′ Δ″}
+    → (p₁ : Append Ob B₁ Γ Γ′)
+    → (q₁ : Append Ob A₁ Δ Δ′)
+    → (p₂ : Append Ob B₂ Γ′ Γ″)
+    → (q₂ : Append Ob A₂ Δ′ Δ″)
+    → Shape Ob Γ″ Δ″
+    → Shape Ob Γ Δ
+  transpose {A₁} {B₁} {A₂} {B₂} {Γ} {Δ} p₁ q₁ p₂ q₂ S =
+    node A₂ B₂ (append-graph B₂ Γ) (append-graph A₂ Δ)
+      (node A₁ B₁ (append-graph B₁ (B₂ ++ Γ)) (append-graph A₁ (A₂ ++ Δ))
+        (graft (wires src) (graft S (wires snk))))
+    where
+      -- the source interface, re-blocked from `B₂ ++ B₁ ++ Γ` to
+      -- `B₁ ++ B₂ ++ Γ`
+      src : Match Ob (B₁ ++ B₂ ++ Γ) _
+      src = swap-blocks p₁ p₂ (append-graph B₂ Γ) (append-graph B₁ (B₂ ++ Γ))
+      -- and the sink interface, the other way round: the shape's own sinks are
+      -- the source side of this wiring
+      snk : Match Ob _ (A₁ ++ A₂ ++ Δ)
+      snk = swap-blocks (append-graph A₂ Δ) (append-graph A₁ (A₂ ++ Δ)) q₁ q₂
+
+  -- AND WHAT IT DOES TO THE VERTEX LISTING, which is `⟦Σ̂⟧`'s side of the
+  -- transposition: the two head profiles are exchanged and nothing else moves.
+  -- The re-blocking contributes nothing because a wiring has no vertex, so both
+  -- grafts fall away through `verts-graft`.
+  verts-transpose
+    : ∀ {A₁ B₁ A₂ B₂ Γ Γ′ Γ″ Δ Δ′ Δ″}
+    → (p₁ : Append Ob B₁ Γ Γ′)
+    → (q₁ : Append Ob A₁ Δ Δ′)
+    → (p₂ : Append Ob B₂ Γ′ Γ″)
+    → (q₂ : Append Ob A₂ Δ′ Δ″)
+    → (S : Shape Ob Γ″ Δ″)
+    → verts (transpose p₁ q₁ p₂ q₂ S)
+      ≡ prof A₂ B₂ ∷ prof A₁ B₁ ∷ verts S
+  verts-transpose {A₁} {B₁} {A₂} {B₂} {Γ} {Δ} p₁ q₁ p₂ q₂ S =
+    cong (λ l → prof A₂ B₂ ∷ prof A₁ B₁ ∷ l)
+      (trans
+        (verts-graft (wires src) (graft S (wires snk)))
+        (trans
+          (verts-graft S (wires snk))
+          (++-identityʳ (verts S))))
+    where
+      src : Match Ob (B₁ ++ B₂ ++ Γ) _
+      src = swap-blocks p₁ p₂ (append-graph B₂ Γ) (append-graph B₁ (B₂ ++ Γ))
+      snk : Match Ob _ (A₁ ++ A₂ ++ Δ)
+      snk = swap-blocks (append-graph A₂ Δ) (append-graph A₁ (A₂ ++ Δ)) q₁ q₂
+
+  -- ── WHAT THE TRANSPOSITION IS STILL OWED, AND IT IS NOT STATED AS A TYPE ──
+  --
+  -- `verts-transpose` is the listing half. The other half — THE RELATION IS
+  -- SOUND, i.e. `S ↝ T` implies `S` and `T` are isomorphic as interfaced graphs
+  -- — is NOT ATTEMPTED and is not stated here, deliberately: stating it needs
+  -- two maps this module would have to build first, an edge bijection
+  -- `Edg (transpose …) → Edg (node …)` and the vertex relabelling that `Ix`-
+  -- level transposition of the first two positions `verts-transpose` licenses,
+  -- and then the incidence agreeing after both. Writing the type without those
+  -- maps would state something weaker than the obligation while reading like
+  -- it. What IS pinned instead is computational: the edge listings agree at the
+  -- worked open pair below, which is evidence for the shape of the lemma and
+  -- not a proof of it.
+  --
+  -- Until that lemma lands, `_↝_` is a relation whose soundness is designed-in
+  -- rather than proved, and `CanonResp` over it is therefore a statement whose
+  -- STRENGTH is not yet pinned. This is said here because a green gate does not
+  -- show it.
+
+  -- THE DEFINING RELATION. One generator — exchange the two outermost vertices
+  -- — and one congruence, so a transposition is available at every adjacent
+  -- pair in the chain and adjacent transpositions generate every permutation of
+  -- it.
+  --
+  -- BOTH CONSTRUCTORS TAKE ONE TERM TO ONE TERM. That is the monomial-to-
+  -- monomial condition, read at the type rather than asserted about a list of
+  -- relations.
+  infix 4 _↝_
+  data _↝_ : ∀ {Γ Δ} → Shape Ob Γ Δ → Shape Ob Γ Δ → Set ℓ where
+    swap
+      : ∀ {A₁ B₁ A₂ B₂ Γ Γ′ Γ″ Δ Δ′ Δ″}
+      → (p₁ : Append Ob B₁ Γ Γ′)
+      → (q₁ : Append Ob A₁ Δ Δ′)
+      → (p₂ : Append Ob B₂ Γ′ Γ″)
+      → (q₂ : Append Ob A₂ Δ′ Δ″)
+      → (S : Shape Ob Γ″ Δ″)
+      → node A₁ B₁ p₁ q₁ (node A₂ B₂ p₂ q₂ S) ↝ transpose p₁ q₁ p₂ q₂ S
+    under
+      : ∀ {A B Γ Γ′ Δ Δ′}
+      → {p : Append Ob B Γ Γ′}
+      → {q : Append Ob A Δ Δ′}
+      → {S T : Shape Ob Γ′ Δ′}
+      → S ↝ T
+      → node A B p q S ↝ node A B p q T
+
+  -- THE EQUIVALENCE IT GENERATES: zero or more steps, each taken in either
+  -- direction. Presented as one datatype rather than as a symmetric closure of
+  -- a transitive closure, which is what makes transitivity an append and
+  -- symmetry an ordinary induction.
+  infix 4 _≈ˢ_
+  data _≈ˢ_ : ∀ {Γ Δ} → Shape Ob Γ Δ → Shape Ob Γ Δ → Set ℓ where
+    done : ∀ {Γ Δ} {S : Shape Ob Γ Δ} → S ≈ˢ S
+    fwd : ∀ {Γ Δ} {S T U : Shape Ob Γ Δ} → S ↝ T → T ≈ˢ U → S ≈ˢ U
+    bwd : ∀ {Γ Δ} {S T U : Shape Ob Γ Δ} → T ↝ S → T ≈ˢ U → S ≈ˢ U
+
+  ≈ˢ-trans
+    : ∀ {Γ Δ} {S T U : Shape Ob Γ Δ}
+    → S ≈ˢ T
+    → T ≈ˢ U
+    → S ≈ˢ U
+  ≈ˢ-trans done r = r
+  ≈ˢ-trans (fwd s l) r = fwd s (≈ˢ-trans l r)
+  ≈ˢ-trans (bwd s l) r = bwd s (≈ˢ-trans l r)
+
+  ≈ˢ-sym
+    : ∀ {Γ Δ} {S T : Shape Ob Γ Δ}
+    → S ≈ˢ T
+    → T ≈ˢ S
+  ≈ˢ-sym done = done
+  ≈ˢ-sym (fwd s l) = ≈ˢ-trans (≈ˢ-sym l) (bwd s done)
+  ≈ˢ-sym (bwd s l) = ≈ˢ-trans (≈ˢ-sym l) (fwd s done)
+
+  -- one step, as an inhabitant rather than as a constructor application
+  ≈ˢ-step
+    : ∀ {Γ Δ} {S T : Shape Ob Γ Δ}
+    → S ↝ T
+    → S ≈ˢ T
+  ≈ˢ-step s = fwd s done
+
+  -- AND AT THE CODES. A code is a shape with its circle count, and the count is
+  -- a natural number carrying no symmetry, so the code relation is the shape
+  -- relation beside an equation. Stated as a record so it lands in `Set ℓ`
+  -- whatever `ℓ` is, rather than needing the count's `Set₀` lifted.
+  record _≈ᶜ_ {Γ Δ} (X Y : Cod Γ Δ) : Set ℓ where
+    constructor iso
+    field
+      shapes : proj₁ X ≈ˢ proj₁ Y
+      counts : proj₂ X ≡ proj₂ Y
+  open _≈ᶜ_ public
+
+  ≈ᶜ-refl : ∀ {Γ Δ} {X : Cod Γ Δ} → X ≈ᶜ X
+  ≈ᶜ-refl .shapes = done
+  ≈ᶜ-refl .counts = refl
+
+  ≈ᶜ-sym : ∀ {Γ Δ} {X Y : Cod Γ Δ} → X ≈ᶜ Y → Y ≈ᶜ X
+  ≈ᶜ-sym e .shapes = ≈ˢ-sym (e .shapes)
+  ≈ᶜ-sym e .counts = sym (e .counts)
+
+  ≈ᶜ-trans : ∀ {Γ Δ} {X Y Z : Cod Γ Δ} → X ≈ᶜ Y → Y ≈ᶜ Z → X ≈ᶜ Z
+  ≈ᶜ-trans e f .shapes = ≈ˢ-trans (e .shapes) (f .shapes)
+  ≈ᶜ-trans e f .counts = trans (e .counts) (f .counts)
+
+  -- the codes as a setoid — the object `Rigid` is taken over, and the thing
+  -- that had to exist before `canon` could be typed at all
+  codes : (Γ Δ : List Ob) → Setoid ℓ ℓ
+  Setoid.Carrier (codes Γ Δ) = Cod Γ Δ
+  Setoid._≈_ (codes Γ Δ) = _≈ᶜ_
+  IsEquivalence.refl (Setoid.isEquivalence (codes Γ Δ)) = ≈ᶜ-refl
+  IsEquivalence.sym (Setoid.isEquivalence (codes Γ Δ)) = ≈ᶜ-sym
+  IsEquivalence.trans (Setoid.isEquivalence (codes Γ Δ)) = ≈ᶜ-trans
+
+  -- ── WHAT REMAINS OWED, AS TYPES ─────────────────────────────────────────
+  --
+  -- NONE OF THE THREE IS INHABITED IN THIS REVISION. They are written so the
+  -- next pass starts from a signature, on the same terms as `Subst` and the
+  -- three laws above.
+
+  -- THE CANONICALIZATION. An ENDOMAP of the codes — see the condition check in
+  -- the section header, which is exactly what this type records.
+  Canon : Set ℓ
+  Canon = ∀ {Γ Δ} → Cod Γ Δ → Cod Γ Δ
+
+  -- that it is a normalization: the representative is equivalent to what it
+  -- normalizes. `Rigid`'s section law
+  CanonRel : Canon → Set ℓ
+  CanonRel c = ∀ {Γ Δ} (X : Cod Γ Δ) → c X ≈ᶜ X
+
+  -- and that it is COMPLETE for the equivalence: equivalent codes have the same
+  -- representative, on the nose. This is the half that makes the ordering a
+  -- section of the quotient rather than a strengthening of it, and it is where
+  -- the total order and the minimum over the orbit are spent
+  CanonResp : Canon → Set ℓ
+  CanonResp c = ∀ {Γ Δ} {X Y : Cod Γ Δ} → X ≈ᶜ Y → c X ≡ c Y
+
+  -- the field the interface owes, named so the debt and the deliverable are the
+  -- same identifier
+  CanonSound : Canon → Set ℓ
+  CanonSound c = ∀ {Γ Δ} {X Y : Cod Γ Δ} → c X ≡ c Y → X ≈ᶜ Y
+
+  -- ── AND THE PACKAGING, WHICH IS DISCHARGED ──────────────────────────────
+  --
+  -- Decidable equality of codes is landed (`shape?` beside the count's), so
+  -- what a circuit `Rigid` instance is missing is exactly `Canon` with its two
+  -- laws — and `canon-sound`, the field the interface promotes, is then
+  -- DERIVED rather than owed separately. That is worth having as a theorem
+  -- rather than as a remark: it says the residual is one function and two
+  -- laws, and names them.
+  module _ (_≟ᵒ_ : DecidableEquality Ob) where
+
+    -- a code is a shape and a number, and both are decidable
+    _≟ᶜ_ : ∀ {Γ Δ} → DecidableEquality (Cod Γ Δ)
+    _≟ᶜ_ = ×-dec (shape? _≟ᵒ_) _≟ℕ_
+
+    circuit-rigid
+      : (c : Canon)
+      → CanonRel c
+      → CanonResp c
+      → ∀ {Γ Δ} → Rigid (codes Γ Δ)
+    Rigid.canon (circuit-rigid c r p) = c
+    Rigid.canon-≈ (circuit-rigid c r p) = r
+    Rigid.canon-resp (circuit-rigid c r p) = p
+    Rigid._≟_ (circuit-rigid c r p) = _≟ᶜ_
+
+    -- the payoff, and the reason the interface's field is `canon-sound` rather
+    -- than a fifth obligation: it comes out of the four-field record
+    canon-sound-derived
+      : (c : Canon)
+      → CanonRel c
+      → CanonResp c
+      → CanonSound c
+    canon-sound-derived c r p = Rigid.canon-sound (circuit-rigid c r p)
+
+    -- and so does the decision procedure the whole discipline is for
+    decide-derived
+      : (c : Canon)
+      → CanonRel c
+      → CanonResp c
+      → ∀ {Γ Δ} (X Y : Cod Γ Δ) → Dec (X ≈ᶜ Y)
+    decide-derived c r p = Rigid.decide (circuit-rigid c r p)
+
+------------------------------------------------------------------------------
+-- THE EQUIVALENCE IS NOT VACUOUS, AND IT RELATES EXACTLY THE PAIRS IT HAD TO.
+--
+-- A relation nothing inhabits is green and empty, and this one is the object a
+-- `Rigid` instance would be a section of, so the check is not optional
+-- (`docs/workflow/agda.md` §*The done-rule*). The two pairs below are the
+-- tree's own refuters — `Gandr.Shape.Graft.merge-swap-apart` and
+-- `corollas-swap-apart` decide each pair APART as terms — so relating them is
+-- the statement that the difference the decision procedure sees is exactly the
+-- difference canonicalization is owed, rather than a second one beside it.
+--
+-- One pair is CLOSED (no legs, so no interface to root a traversal at) and one
+-- is OPEN at a nontrivial profile, where the transposition's block swap has to
+-- do real work. Both are single steps.
+------------------------------------------------------------------------------
+
+open import Gandr.Shape.Graph
+  using (Shape)
+  using (wires)
+  using (node)
+  using (nil)
+  using (cons)
+  using (head)
+  using (idn)
+  using (verts)
+  using (prof)
+  using (edges)
+  using (point)
+  using (wheel)
+  using (𝟙)
+  using (𝟚)
+  using (_≟ˢ_)
+  -- the wiring constructors; the list constructors of the same names come from
+  -- `Data.List` below and Agda disambiguates the two by type
+  using (_∷_)
+  using ([])
+open import Gandr.Shape.Graft
+  using (merge)
+open import Data.List
+  using (_∷_)
+  using ([])
+open import Relation.Nullary.Decidable
+  using (does)
+
+open Circuit {Ob = ⊤}
+  using (_↝_)
+  using (_≈ˢ_)
+  using (swap)
+  using (transpose)
+  using (≈ˢ-step)
+
+-- THE CLOSED PAIR: two closed components merged in either order. This is the
+-- swap of two whole components, which has no interface leg anywhere near it.
+point-wheel-swap
+  : merge nil nil point wheel ≈ˢ merge nil nil wheel point
+point-wheel-swap =
+  ≈ˢ-step (swap nil nil (cons nil) (cons nil) (wires (head ∷ [])))
+
+-- THE OPEN PAIR, BUILT RATHER THAN BORROWED. Two vertices of DIFFERENT
+-- profiles over one wiring, with the interface held fixed while the two are
+-- exchanged; both publish nonempty port blocks, so the step's re-blocking is
+-- the block swap doing real work rather than the identity.
+--
+-- WHY IT IS BUILT HERE INSTEAD OF TAKEN FROM `corollas-swap-apart`, WHICH IS A
+-- CHALLENGE TO A LANDED CLAIM AND NOT A REFUTATION. This module's own header
+-- and `Gandr.Shape.Graft`'s comment at `corollas-swapped` both read that pair
+-- as two shapes isomorphic as graphs and decidably distinct as terms — the
+-- open-case counterpart of `merge-swap-apart`. The transposition does not reach
+-- it: `swap` out of `corollas-apart` lands on a term the decision procedure
+-- separates from `corollas-swapped`, because merging the two corollas in the
+-- other order also moves WHICH INPUT LEGS reach which vertex (`𝟚 ++ 𝟙` against
+-- `𝟙 ++ 𝟚`, two leg-to-component assignments that `merge-components` keeps
+-- apart), while a vertex transposition holds the legs fixed.
+--
+-- That reading is recorded as CHALLENGED, not as settled, because its load-
+-- bearing premise is a fact about US and not about the machinery: which
+-- equivalence `Rigid.canon` is a section of. If it fixes the interface
+-- pointwise, `corollas-swap-apart` is not a canonicalization obligation and
+-- `_↝_` above is the right generator; if it also quotients by permutations of
+-- the legs, the pair IS one and `_↝_` is short a second generator. That is an
+-- owner decision and it is filed as one; nothing here is edited on its
+-- strength, and `merge-swap-apart` — the CLOSED pair, which has no legs to
+-- disagree about — is unaffected either way and is proved above.
+
+open-pair : Shape ⊤ (tt ∷ tt ∷ tt ∷ []) 𝟚
+open-pair =
+  node 𝟚 𝟙 (cons nil) (cons (cons nil))
+    (node 𝟙 𝟙 (cons nil) (cons nil)
+      (idn (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])))
+
+open-pair-swapped : Shape ⊤ (tt ∷ tt ∷ tt ∷ []) 𝟚
+open-pair-swapped =
+  transpose (cons nil) (cons (cons nil)) (cons nil) (cons nil)
+    (idn (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
+
+-- the listings really are the two orders, read off `verts` rather than assumed
+open-pair-verts : verts open-pair ≡ prof 𝟚 𝟙 ∷ prof 𝟙 𝟙 ∷ []
+open-pair-verts = refl
+
+open-pair-swapped-verts : verts open-pair-swapped ≡ prof 𝟙 𝟙 ∷ prof 𝟚 𝟙 ∷ []
+open-pair-swapped-verts = refl
+
+-- and the two terms are DECIDABLY APART, so the step below identifies a pair
+-- the decision procedure separates — which is the whole content of the
+-- obligation `Rigid` carries at this rung
+open-pair-apart : does (open-pair ≟ˢ open-pair-swapped) ≡ false
+open-pair-apart = refl
+
+open-pair-swap : open-pair ≈ˢ open-pair-swapped
+open-pair-swap =
+  ≈ˢ-step
+    (swap (cons nil) (cons (cons nil)) (cons nil) (cons nil)
+      (idn (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])))
+
+-- THE EVIDENCE FOR THE SOUNDNESS LEMMA THE MODULE DOES NOT PROVE, and it is
+-- evidence rather than proof: the two terms carry the SAME edge listing, so the
+-- transposition moved the vertices and left the wires where they were. The
+-- general statement — an edge bijection under which the incidence agrees up to
+-- the vertex transposition — is NOT ATTEMPTED; this is one computed instance of
+-- what it would specialize to, and it is pinned so a construction that started
+-- permuting wires would fail here rather than in a reader's head.
+open-pair-edges : edges open-pair ≡ edges open-pair-swapped
+open-pair-edges = refl
