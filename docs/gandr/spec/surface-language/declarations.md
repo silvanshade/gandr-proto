@@ -117,6 +117,7 @@ data Empty : Type {}
   None is known.
 * **The unseparated member list** — members are terminated by `;` (the surface's declaration terminator), with the retired `,` separator admissible so a stale declaration parses whole.
   An unseparated list is a clean parse of the WRONG tree: a member ends in a sort hole, the walk's `≐`-relation crosses the hole to whatever may follow, and at the hole's fill position the next member's lead outranks the hole's own content in the molder's local key — `Nil : Vec` would read as a member `Nil` whose signature is missing plus a nullary member `Vec`.
+  The `sign` block's member list joined the terminated discipline under gandr-ng9.14 (owner directive: `;` load-bearing at the sign member level, the retired `,` NOT admissible there — it stays admissible only inside these generator/observation lists), after the graduation rung's `add(x, x)` collapse showed the keyword-led exemption did not hold ([[circuit-cells#The block form, ruled]]).
   The reopening condition for the comma-free, terminator-free spelling is a molder key change: hole-fill must outrank `≐`-continuation.
 
 ## `codata` declarations

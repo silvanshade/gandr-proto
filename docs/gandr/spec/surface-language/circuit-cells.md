@@ -67,8 +67,8 @@ The worked example, in the ruled form — the congruence cell this document's re
 
 ```text
 sign Nat {
-  sort Nat : Type
-  oper add : (Nat, Nat) --> Nat
+  sort Nat : Type;
+  oper add : (Nat, Nat) --> Nat;
 
   rule cong2 : (
     rule p : Nat ==> Nat,
@@ -79,7 +79,7 @@ sign Nat {
     node : p(x) ==> (x′);
     node : q(y) ==> (y′);
     node : add(x′, y′) --> (z);
-  }
+  };
 }
 
 oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
@@ -90,6 +90,10 @@ oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
 
 (The family's constructors no longer stand in the `sign` block: the item-level `data` member is **retired** — a family is declared once, whole, as a nested generator block, per [[declarations#data declarations]] — and the `data x : Nat` entries above are a rule telescope's binders, a different slot that stays.
 The block's members are `sort` / `oper` / `rule`.)
+
+**Every member is terminated by `;`** (owner directive, gandr-ng9.14): the surface's declaration terminator is load-bearing at the `sign` block's member level, not merely admitted — an unseparated member list lets the walk's `≐`-relation cross a member's trailing sort hole, and the next member's lead can collapse the whole member into one repaired region (the graduation rung's `add(x, x)` collapse, which left the linearity refusal unreachable from source).
+After the hole only `;` is admissible, and it never competes with hole content; the retired `,` is NOT admissible at this level — it stays so only inside the nested `data` / `codata` generator lists, a different slot ([[declarations#data declarations]]).
+The reopening condition for a terminator-free spelling is a molder key change: hole-fill must outrank `≐`-continuation.
 
 **Declarations are judgments.** Every member reads `name : signature`, and a block-bodied member reads `name : sphere { filler }` — the signature left of the block is the boundary data, which is the sphere discipline of [[higher-cells#Sphere-typed boundaries]] made syntactic.
 The kind keywords `sort` / `oper` / `rule` (with the retired `data` still admissible for its migration decline) are the description universe's own structure surfaced, and they carry the dimension: `rule` binders may appear in a `rule`'s parameter list (a cell parameterized by rewrites), and a rule between rule-sorted endpoints is a 3-cell with no new syntax.

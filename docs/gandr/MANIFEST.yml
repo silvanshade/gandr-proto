@@ -114,7 +114,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
     role: subdocument
-    b3: c125c8251e45cdf9d797b661effc863489df6751683b264aaad3191598ef2794
+    b3: 44891ca04a131270082a6b578f99f5da17bdcfab0b8ebde9b90d40c82bcd6f9b
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/operators.md
@@ -124,7 +124,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: bd43e3b7fd97a7bbc5cb11e7f51d78b3f00d16e0cf5656bc88d7d4f8f1290cc9
+    b3: f5cf88563f9a3b38518e0b58ee6bb46c6914d05bdb07f4e93c31f31f4d1ea9e0
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
@@ -144,7 +144,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
     role: subdocument
-    b3: 167167ac642d40bbbb8c8131e75437c474960216c153cc61814f2e7bba1f1038
+    b3: b8ddcdd5ae924e42b80e9de4b9f8ecf8eb3fdab5f927af86b632e2d4c7dba900
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
