@@ -90,7 +90,17 @@
 //!    linearization wins; the components are then committed in the order of
 //!    those winning linearizations. The candidate set is the component's own
 //!    membership and the winner is its minimum, so both choices are invariants
-//!    of the diagram rather than of its presentation.
+//!    of the diagram rather than of its presentation. **Both comparisons read
+//!    the whole linearization**, which is not a detail: a seed's first record
+//!    is its own label and arity in canonical numbers and nothing else, so any
+//!    two members sharing those tie on it, and a comparison stopping there
+//!    would fall back on source position — a fact about the presentation.
+//!    **Ties are possible and they are harmless.** Two seeds, or two
+//!    components, tie exactly when they are isomorphic, and the tie is then
+//!    broken by source position, so the *relabelling* is not an invariant of
+//!    the diagram. The *form* still is: committing either of two isomorphic
+//!    components first lays down the same records at the same numbers, because
+//!    the records are what tied.
 //!
 //! **This is not a graph-isomorphism search, and monogamy is why.** The
 //! expensive part of graph canonicalization is the branching: at each step a
@@ -102,8 +112,9 @@
 //!
 //! # What the argument rests on, named because deleting any of it is unsound
 //!
-//! Three [`Wiring::assemble`] refusals are premises of the procedure, not
-//! background hygiene.
+//! **Two** of [`Wiring::assemble`]'s refusal families are premises of the
+//! procedure, not background hygiene; the third is deliberately not one, and
+//! saying which is which is the point of the list.
 //!
 //! - **Monogamy** ([`WiringObstruction::FanIn`], [`WiringObstruction::FanOut`])
 //!   is what makes step 2 choice-free. It is also what makes [`Wiring`] a
@@ -113,15 +124,29 @@
 //!   diagrams that differ. The refusal is what stops that, and it is witnessed
 //!   at `interface::tests::the_wiring_refuses_a_fan_in`, `…_a_fan_out`, and
 //!   `…_a_repeated_port_on_one_generator`.
-//! - **Boundary honesty** ([`WiringObstruction::UndeclaredInput`],
-//!   [`WiringObstruction::UndeclaredOutput`]) is what makes the numbering
-//!   *total*. Every wire is a hyperedge port or an open wire; an open wire that
-//!   the interface did not declare would be reached by no port and seeded by no
-//!   boundary position, so it would never be numbered — and an isolated wire,
-//!   which is a port of nothing at all, is numbered *only* because both legs
-//!   must declare it. Witnessed at
-//!   `interface::tests::the_wiring_refuses_an_undeclared_open_wire` and
-//!   `…_an_undeclared_open_input`.
+//! - **Boundary honesty**, which is [`Wiring::assemble`]'s three-part condition
+//!   and not only its declaration half, and both halves are consumed here.
+//!   - *Every open wire is declared* ([`WiringObstruction::UndeclaredInput`],
+//!     [`WiringObstruction::UndeclaredOutput`]) is what makes the numbering
+//!     *total*. Every wire is a hyperedge port or an open wire; an open wire
+//!     that the interface did not declare would be reached by no port and
+//!     seeded by no boundary position, so it would never be numbered — and an
+//!     isolated wire, which is a port of nothing at all, is numbered *only*
+//!     because both legs must declare it. Witnessed at
+//!     `interface::tests::the_wiring_refuses_an_undeclared_open_wire` and
+//!     `…_an_undeclared_open_input`.
+//!   - *A declared port is open*
+//!     ([`WiringObstruction::BoundaryInputIsProduced`],
+//!     [`WiringObstruction::BoundaryOutputIsConsumed`]) is what makes
+//!     [`Linearization::drain`]'s producer-before-consumer order unobservable:
+//!     the argument there needs a boundary-seeded wire to be missing at least
+//!     one of its two sides, and this is the refusal that supplies it. Without
+//!     it a boundary input could have both a producer and a consumer still
+//!     unvisited when the cursor reached it, and the two visits would compete
+//!     for the next canonical hyperedge number. Named here because that
+//!     argument is stated as a fact and this is the fact it rests on. Witnessed
+//!     at `interface::tests::the_wiring_refuses_a_produced_boundary_input` and
+//!     `…_a_consumed_boundary_output`.
 //! - **Acyclicity** ([`WiringObstruction::DirectedCycle`]) is **not** a
 //!   premise, and the difference from [`crate::matching`] is worth stating: the
 //!   convexity discharge there needs an acyclic target to compose two paths
@@ -219,6 +244,8 @@
 //! [`WiringObstruction::FanOut`]: crate::interface::WiringObstruction::FanOut
 //! [`WiringObstruction::UndeclaredInput`]: crate::interface::WiringObstruction::UndeclaredInput
 //! [`WiringObstruction::UndeclaredOutput`]: crate::interface::WiringObstruction::UndeclaredOutput
+//! [`WiringObstruction::BoundaryInputIsProduced`]: crate::interface::WiringObstruction::BoundaryInputIsProduced
+//! [`WiringObstruction::BoundaryOutputIsConsumed`]: crate::interface::WiringObstruction::BoundaryOutputIsConsumed
 //! [`WiringObstruction::DirectedCycle`]: crate::interface::WiringObstruction::DirectedCycle
 
 use alloc::boxed::Box;
@@ -943,15 +970,21 @@ pub enum DiagramEquality
 ///   and derives the wire map from ports and boundary positions; the L3 residue
 ///   is the ordering promises — boundary before interior, sources before
 ///   targets, producer before consumer, and the least-linearization tie-break —
-///   each separated by a fixture where reversing it changes the form; and the
-///   interning key's own law — equal keys hash alike — is asserted rather than
-///   inherited from the derive.
+///   each separated by a fixture where reversing it changes the form, and the
+///   tie-break additionally separated from every weaker comparison by a
+///   component whose seeds agree on their first record and part later; the one
+///   place presentation does break a choice — two isomorphic anchorless
+///   components — is asserted to leave the form invariant while the witness
+///   varies; and the interning key's own law — equal keys hash alike — is
+///   asserted rather than inherited from the derive.
 /// - witness: `normal_form::tests::canonicalization_is_total_and_its_witness_verifies`
 /// - witness: `normal_form::tests::a_presentation_permutation_has_one_canonical_form`
 /// - witness: `normal_form::tests::canonicalization_is_idempotent`
 /// - witness: `normal_form::tests::the_canon_agrees_with_the_cospan_isomorphism_oracle`
 /// - witness: `normal_form::tests::a_component_with_no_boundary_port_is_seeded_by_minimizing`
 /// - witness: `normal_form::tests::components_with_no_boundary_port_are_committed_in_canonical_order`
+/// - witness: `normal_form::tests::the_least_linearization_is_compared_past_its_first_record`
+/// - witness: `normal_form::tests::two_isomorphic_anchorless_components_still_have_one_form`
 /// - witness: `normal_form::tests::the_boundary_is_numbered_before_the_interior`
 /// - witness: `normal_form::tests::an_anchored_component_is_ordered_by_the_boundary_and_not_by_its_labels`
 /// - witness: `normal_form::tests::a_visited_hyperedge_numbers_its_sources_before_its_targets`
@@ -1285,10 +1318,15 @@ impl Linearization
     /// is not observable.** When the cursor reaches a wire, at most one of its
     /// two sides can still be unvisited, so swapping the two calls is an
     /// equivalent mutant. Either the wire was numbered as a boundary port — and
-    /// then it has no producer, or no consumer, or neither — or it was numbered
-    /// inside [`Linearization::visit`] of a hyperedge naming it, and that
-    /// hyperedge is marked visited before the drain resumes. Recorded here
-    /// rather than left for a mutation campaign to rediscover.
+    /// then it has no producer, or no consumer, or neither, which is
+    /// [`Wiring::assemble`]'s refusal of a produced input and a consumed output
+    /// rather than anything this module establishes — or it was numbered inside
+    /// [`Linearization::visit`] of a hyperedge naming it, and that hyperedge is
+    /// marked visited before the drain resumes. Recorded here rather than left
+    /// for a mutation campaign to rediscover, and the premise is named in the
+    /// module documentation because the equivalence fails without it.
+    ///
+    /// [`Wiring::assemble`]: crate::interface::Wiring::assemble
     fn drain(
         &mut self,
         diagram: &Wiring,
@@ -1605,6 +1643,127 @@ mod tests
         .expect("an anchored component and a closed one side by side")
     }
 
+    /// A closed component whose two interior hyperedges wear **one label at one
+    /// arity**, so two of its seeds produce the *same first record* and part
+    /// only later: `p -> a -> a -> q`.
+    ///
+    /// This is the fixture that separates "least linearization" from "least
+    /// first record". A seed's first record is its own label and arity in
+    /// canonical numbers and nothing else, so any two same-label same-arity
+    /// members tie on it; a minimization reading only that record keeps
+    /// whichever tied member it met first, which is a *position* and therefore
+    /// a fact about the presentation.
+    fn nested_repeated_label() -> Wiring
+    {
+        Wiring::assemble(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value("p"), Vec::new(), [Wire(0)]),
+                Generator::new(value("a"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("a"), [Wire(1)], [Wire(2)]),
+                Generator::new(value("q"), [Wire(2)], Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("a closed four-hyperedge chain is monogamous, boundary-honest and acyclic")
+    }
+
+    /// [`nested_repeated_label`] listed back to front and renumbered — the same
+    /// diagram, and the presentation on which a first-record-only minimization
+    /// picks the other `a`.
+    fn nested_repeated_label_permuted() -> Wiring
+    {
+        Wiring::assemble(
+            WireCount(3),
+            alloc::vec![
+                Generator::new(value("q"), [Wire(0)], Vec::new()),
+                Generator::new(value("a"), [Wire(1)], [Wire(0)]),
+                Generator::new(value("a"), [Wire(2)], [Wire(1)]),
+                Generator::new(value("p"), Vec::new(), [Wire(2)]),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("a renumbering of the closed chain is still the closed chain")
+    }
+
+    /// Two closed components whose winning linearizations **agree on their
+    /// first record** and part at the second: `a -> b` beside `a -> c`.
+    ///
+    /// The residue is ordered by the whole winning linearization, and this is
+    /// the shape that separates that from ordering by the first record alone —
+    /// which would leave the two components to fall back on presentation order.
+    fn twin_headed_pair() -> Wiring
+    {
+        Wiring::assemble(
+            WireCount(2),
+            alloc::vec![
+                Generator::new(value("a"), Vec::new(), [Wire(0)]),
+                Generator::new(value("b"), [Wire(0)], Vec::new()),
+                Generator::new(value("a"), Vec::new(), [Wire(1)]),
+                Generator::new(value("c"), [Wire(1)], Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("two closed components sharing a head label are a legitimate diagram")
+    }
+
+    /// [`twin_headed_pair`] with the `a`–`c` component presented first.
+    fn twin_headed_pair_permuted() -> Wiring
+    {
+        Wiring::assemble(
+            WireCount(2),
+            alloc::vec![
+                Generator::new(value("a"), Vec::new(), [Wire(0)]),
+                Generator::new(value("c"), [Wire(0)], Vec::new()),
+                Generator::new(value("a"), Vec::new(), [Wire(1)]),
+                Generator::new(value("b"), [Wire(1)], Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("the same two components, presented the other way round")
+    }
+
+    /// Two **isomorphic** closed components, so their winning linearizations
+    /// tie outright and the tie falls to source position.
+    ///
+    /// The relabelling is then not an invariant of the diagram — which member
+    /// seeds which component depends on the presentation — but the *form* still
+    /// has to be, because committing either copy first produces the same
+    /// records at the same numbers. That is the one place the procedure's
+    /// choice is broken by presentation, and it is why it is broken there
+    /// harmlessly.
+    fn twin_closed() -> Wiring
+    {
+        Wiring::assemble(
+            WireCount(2),
+            alloc::vec![
+                Generator::new(value("a"), Vec::new(), [Wire(0)]),
+                Generator::new(value("b"), [Wire(0)], Vec::new()),
+                Generator::new(value("a"), Vec::new(), [Wire(1)]),
+                Generator::new(value("b"), [Wire(1)], Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("two copies of one closed component are a legitimate diagram")
+    }
+
+    /// [`twin_closed`] with its two components **interleaved** in the listing,
+    /// so neither component is a contiguous block of hyperedge positions.
+    fn twin_closed_interleaved() -> Wiring
+    {
+        Wiring::assemble(
+            WireCount(2),
+            alloc::vec![
+                Generator::new(value("a"), Vec::new(), [Wire(0)]),
+                Generator::new(value("a"), Vec::new(), [Wire(1)]),
+                Generator::new(value("b"), [Wire(1)], Vec::new()),
+                Generator::new(value("b"), [Wire(0)], Vec::new()),
+            ],
+            Interface::new(Vec::new(), Vec::new()),
+        )
+        .expect("interleaving two components changes the presentation and not the diagram")
+    }
+
     /// `m: (0, 1) -> (2)` with its input leg in declared order.
     fn two_input() -> Wiring
     {
@@ -1683,6 +1842,12 @@ mod tests
             fan_out_pair(),
             fork_then_step(),
             descending_spine(),
+            nested_repeated_label(),
+            nested_repeated_label_permuted(),
+            twin_headed_pair(),
+            twin_headed_pair_permuted(),
+            twin_closed(),
+            twin_closed_interleaved(),
         ]
     }
 
@@ -1900,6 +2065,96 @@ mod tests
             canonical.into_parts().0,
             canonicalize(&two_closed_permuted()).into_parts().0,
             "so listing the `h` component first changes nothing"
+        );
+    }
+
+    #[test]
+    fn the_least_linearization_is_compared_past_its_first_record()
+    {
+        // The anchorless tie-break reads the WHOLE winning linearization, and
+        // nothing weaker will do. A seed's first record is its own label and
+        // arity in canonical numbers, so any two same-label same-arity members
+        // tie on it; a comparison stopping there — on the record, on its label,
+        // or on the record count — falls back on which tied member came first
+        // in the listing, which is a fact about the presentation. The two
+        // fixtures separate the two places the comparison is made: the seed
+        // minimization inside one component, and the order the components are
+        // committed in.
+        let nested = canonicalize(&nested_repeated_label());
+        assert_eq!(
+            &[
+                Generator::new(value("a"), [Wire(0)], [Wire(1)]),
+                Generator::new(value("a"), [Wire(2)], [Wire(0)]),
+                Generator::new(value("q"), [Wire(1)], Vec::new()),
+                Generator::new(value("p"), Vec::new(), [Wire(2)]),
+            ][..],
+            nested.form().generators(),
+            "the seed is the SECOND `a`, whose tail is least; the first `a` ties only at the head"
+        );
+        assert_eq!(
+            nested.into_parts().0,
+            canonicalize(&nested_repeated_label_permuted())
+                .into_parts()
+                .0,
+            "so the reversed presentation reaches the same form"
+        );
+        let twins = canonicalize(&twin_headed_pair());
+        assert_eq!(
+            &[
+                Generator::new(value("a"), Vec::new(), [Wire(0)]),
+                Generator::new(value("b"), [Wire(0)], Vec::new()),
+                Generator::new(value("a"), Vec::new(), [Wire(1)]),
+                Generator::new(value("c"), [Wire(1)], Vec::new()),
+            ][..],
+            twins.form().generators(),
+            "the `a`-`b` component precedes `a`-`c`, which their shared first record cannot decide"
+        );
+        assert_eq!(
+            twins.into_parts().0,
+            canonicalize(&twin_headed_pair_permuted()).into_parts().0,
+            "so listing the `a`-`c` component first changes nothing"
+        );
+    }
+
+    #[test]
+    fn two_isomorphic_anchorless_components_still_have_one_form()
+    {
+        // The one place the procedure's choice IS broken by presentation: two
+        // isomorphic anchorless components tie on their winning linearization
+        // outright, and the tie falls to source position, so which copy seeds
+        // which is not an invariant of the diagram. The FORM still is, because
+        // the two commits produce the same records at the same numbers — and
+        // that is asserted here rather than left to the reader, since the
+        // relabelling being non-canonical is exactly the shape that looks like
+        // it should sink the canon and does not.
+        let listed = canonicalize(&twin_closed());
+        assert_eq!(
+            &[
+                Generator::new(value("a"), Vec::new(), [Wire(0)]),
+                Generator::new(value("b"), [Wire(0)], Vec::new()),
+                Generator::new(value("a"), Vec::new(), [Wire(1)]),
+                Generator::new(value("b"), [Wire(1)], Vec::new()),
+            ][..],
+            listed.form().generators(),
+            "both copies are committed, the second taking the higher wire"
+        );
+        let interleaved = canonicalize(&twin_closed_interleaved());
+        assert_eq!(
+            listed.form(),
+            interleaved.form(),
+            "and interleaving the two components in the listing reaches the same form"
+        );
+        assert_ne!(
+            listed.relabelling(),
+            interleaved.relabelling(),
+            "while the witnesses differ, which is what makes the form's invariance the claim"
+        );
+        assert_eq!(
+            Ok(()),
+            interleaved
+                .relabelling()
+                .verify(&twin_closed_interleaved(), interleaved.form()),
+            "both witnesses are isomorphisms even though neither is canonical"
         );
     }
 
@@ -2278,16 +2533,16 @@ mod tests
             }
         }
         assert_eq!(
-            25,
+            31,
             fixtures.len(),
             "the table is the fixture list, so its size is pinned with the counts below"
         );
         assert_eq!(
-            33, isomorphic,
-            "twenty-five reflexive pairs plus four presentation permutations, both ways round"
+            45, isomorphic,
+            "thirty-one reflexive pairs plus seven presentation permutations, both ways round"
         );
         assert_eq!(
-            592, distinct,
+            916, distinct,
             "and the remaining pairs are separated, so neither verdict is vacuous"
         );
     }

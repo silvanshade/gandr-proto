@@ -1092,15 +1092,20 @@ mod tests
         // them would leave the other able to name a wire the diagram does not
         // declare — and `wire_count` is what the matcher enumerates seed images
         // over, so an undeclared wire is one the search can never reach.
+        //
+        // The BOUNDARY value on both sides, deliberately: the diagram declares
+        // one wire, so `Wire(1)` is the first position outside it. A distant
+        // value such as `Wire(5)` leaves a `>=` weakened to `>` alive, which is
+        // exactly the mutant these assertions exist to kill.
         let bad_source = Wiring::assemble(
             WireCount(1),
-            alloc::vec![Generator::new(value("f"), [Wire(5)], [Wire(0)])],
+            alloc::vec![Generator::new(value("f"), [Wire(1)], [Wire(0)])],
             Interface::new(Vec::new(), Vec::new()),
         )
         .expect_err("a source naming a wire the diagram does not declare is out of range");
         assert_eq!(
             WiringObstruction::UnknownWire {
-                wire: Wire(5),
+                wire: Wire(1),
                 at: Edge(0)
             },
             bad_source,
@@ -1108,13 +1113,13 @@ mod tests
         );
         let bad_target = Wiring::assemble(
             WireCount(1),
-            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(5)])],
+            alloc::vec![Generator::new(value("f"), [Wire(0)], [Wire(1)])],
             Interface::new(Vec::new(), Vec::new()),
         )
         .expect_err("and so is a target naming one");
         assert_eq!(
             WiringObstruction::UnknownWire {
-                wire: Wire(5),
+                wire: Wire(1),
                 at: Edge(0)
             },
             bad_target,
@@ -1125,25 +1130,29 @@ mod tests
     #[test]
     fn the_wiring_refuses_an_out_of_range_boundary_wire()
     {
+        // The boundary value on both legs, for the reason the generator-side
+        // refusal above states: `Wire(1)` is the first position outside a
+        // one-wire diagram, and a distant value leaves `>=` weakened to `>`
+        // alive on whichever leg carries it.
         let bad_input = Wiring::assemble(
             WireCount(1),
             Vec::new(),
-            Interface::new([Wire(3)], [Wire(0)]),
+            Interface::new([Wire(1)], [Wire(0)]),
         )
         .expect_err("an input port outside the wire range is not a port of this diagram");
         assert_eq!(
-            WiringObstruction::UnknownBoundaryWire { wire: Wire(3) },
+            WiringObstruction::UnknownBoundaryWire { wire: Wire(1) },
             bad_input,
             "the refusal names the out-of-range input port"
         );
         let bad_output = Wiring::assemble(
             WireCount(1),
             Vec::new(),
-            Interface::new([Wire(0)], [Wire(3)]),
+            Interface::new([Wire(0)], [Wire(1)]),
         )
         .expect_err("nor is an output port outside it");
         assert_eq!(
-            WiringObstruction::UnknownBoundaryWire { wire: Wire(3) },
+            WiringObstruction::UnknownBoundaryWire { wire: Wire(1) },
             bad_output,
             "and the output leg is checked as well as the input leg"
         );
