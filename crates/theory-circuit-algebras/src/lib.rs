@@ -73,11 +73,16 @@
 //!
 //! The dependency direction minted here is what makes that unviolatable rather
 //! than merely agreed: this crate depends on [`gandr_theory_computads`], so the
-//! downward edge the consequence forbids would close a dependency cycle Cargo
-//! rejects outright. A future consumer that wants completion over embedding
-//! matching therefore has exactly one shape available to it — pass the matcher
-//! in at the instantiation site — and that shape is the one the ruling asked
-//! for.
+//! downward **library** edge the consequence forbids would close a dependency
+//! cycle Cargo rejects outright — verified by construction, not asserted: a
+//! `[dependencies]` entry for this crate in `theory-computads` fails resolution
+//! with `error: cyclic package dependency`. The resolver's reach stops there:
+//! Cargo *does* admit a cycle through `[dev-dependencies]`, so a test-only
+//! downward edge is refused by the ruling rather than by the resolver. Since
+//! completion is library code, the consequence's own case is the enforced one.
+//! A future consumer that wants completion over embedding matching therefore
+//! has exactly one shape available to it — pass the matcher in at the
+//! instantiation site — and that shape is the one the ruling asked for.
 //!
 //! **The seam is not established, and the rung that built the matcher did not
 //! establish it.** `circuit-terms-rung-05` filled [`matching`] and left the

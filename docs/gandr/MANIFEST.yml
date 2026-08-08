@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 11c2c1ad86c7b401868d823fea93cd09f9f95e63cd5323f3202288aba7b91dd2
+    b3: 93a25b1afd1702f47608ef9c152d80fb95d1504dc1edb63395f0cb491eb04201
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -104,7 +104,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: 2eeb2ff01f60f00464e290a6f1541778f24adca56841573df400cb3b08d6bf8b
+    b3: e7a8b6e5c058c8e9a5c385f38ec36d5cc79cb166891e157ad6c33a32cb26687a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
