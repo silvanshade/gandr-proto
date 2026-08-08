@@ -394,8 +394,10 @@ User syntax stops at dimension 3, for reasons of substance rather than budget.
   So [[#Discharge by completion]] below is a dimension-one statement, and no rung above may assume it generalizes.
 * **Computads are not a presheaf category for `n ≥ 3`** [@makkai-zawadowski-2008-computads], which is directly a hazard for "the tower is data".
   The counterexample's mechanism is Eckmann–Hilton, and its hypotheses — strictness, globular shapes, degenerate boundaries — are jointly required and individually unmet by gandr's pattern-to-pattern rules.
-  The applicable escape hatch is **non-unitality** [@henry-2019-nonunital-polygraphs]: a generator's source and target are never identities, which pattern-to-pattern rules satisfy.
-  Confirming the exact non-unitality condition against its source is cheap and still owed ([[../metatheory/roadmap]]).
+  The applicable escape hatch is **source-positivity** [@henry-2019-nonunital-polygraphs]: its Theorem 2.4.8 makes the class of _all_ source-positive polygraphs — those where the **source** of every generator is a non-identity arrow, an arrow being an identity exactly when no generator of its own dimension occurs in it (that source's section 1.2.3) — a good class of polygraphs, one conjunct of which is being an effective presheaf category.
+  The elaborator is what puts gandr in that class: it refuses any rule whose left-hand side is not an operation application, so every generator's source carries its operation symbol.
+  **The stronger _non-unital_ class of that source's Definition 1.3.2, which constrains targets too, is not available**, because a projection-shaped rule's target is a bare metavariable sent to the return continuation — a verdict resting on the reading that such a command is an identity 1-arrow on its sort, which the code does not state, and the one part of this that is not machine-checked.
+  That source/target asymmetry — generator-headed on the left by elaborator enforcement, unconstrained on the right — is a design datum in its own right; the full statement with its locators, and the warning that "non-unital" also names gandr's unrelated circuit-algebra rung, is [[../metatheory#Cellular data — descriptions, cells, and computads|the metatheory track's cellular-data section]].
 
 **One consequence for the surface, recorded because it constrains a neighbouring design.** `cell` is **spent** by this reservation.
 A surface design that wants many-in/many-out cells at dimension 1 — the circuit-algebra direction — cannot claim that keyword and must grow the existing members instead.

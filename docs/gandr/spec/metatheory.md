@@ -218,9 +218,22 @@ The 2-dimensional fragment has a theorem-backed home as a **cartesian double the
 The ∞-graph reading is executed, not speculative: the landed Agda category/functor records _are_ the carrier-general form, and the surface model former is its specialization.
 
 **The computads-as-data hazard, scoped.** The category of $n$-computads is not a presheaf category for $n ≥ 3$ [@makkai-zawadowski-2008-computads]; the counterexample's mechanism is Eckmann–Hilton and its hypotheses — strictness, globular shapes, degenerate boundaries — are jointly required and individually unmet by gandr's pattern-to-pattern rules.
-The applicable escape hatch is **non-unitality** [@henry-2019-nonunital-polygraphs]: source and target of a generator are never identities, which pattern-to-pattern rules satisfy.
-Non-unitality is now a _four-times-independent_ arrival: the computad escape hatch here, the carrier's downward wiring (no cup — see the substrate section), the skew preference on coherence-burden grounds, and the coherence theorem naming units as the obstruction [@demirdilek-reiher-schweigert-2026-linearly-distributive]; polygraphs are moreover a presheaf category _only_ when non-unital.
-Confirming the exact non-unitality condition against its source is cheap and still owed ([[metatheory/roadmap]]).
+The applicable escape hatch is **source-positivity**, which is strictly weaker than non-unitality and is all the theorem that supplies it asks for [@henry-2019-nonunital-polygraphs].
+That source's Definition 1.3.2 names three classes: the _positive_ or **non-unital** polygraphs, where the source _and_ the target of every generator are non-identity arrows; the **source-positive** ones, where only the source is; and the target-positive ones.
+Its Theorem 2.4.8 makes the class of _all_ source-positive polygraphs a good class of polygraphs, and being an effective presheaf category (Definition 2.2.1) is one of the two conjuncts of that notion (Definition 2.2.4); Corollary 2.4.9 reaches the positive and opetopic classes separately, from the target-positive case through Proposition 2.2.6.
+The side condition is decided by a criterion rather than by inspection: an $n$-arrow is an identity $n$-arrow exactly when no generator of dimension $n$ occurs in it (that source's section 1.2.3).
+
+**gandr is source-positive, and the elaborator is what enforces it.** `elaborate_operation_cut` in `crates/theory-computads/src/elaborate.rs` admits a rule only when its left-hand side is an operation application, emitting the cut `⟨head | f(rest…; $ret)⟩` whose consumer half always carries the dimension-1 generator `f`; a variable or constructor left-hand side is refused with `ElaborateError::LhsNotOperation`, and an argumentless one with `ElaborateError::EmptyOperation`.
+So the escape hatch holds through Theorem 2.4.8 directly, not through Corollary 2.4.9.
+
+**The stronger non-unital class is not available, and gandr's own rules are why.** Targets are unconstrained: `elaborate_result` in the same module sends a variable right-hand side to `⟨x | $ret⟩` — a producer metavariable cut against the reserved return continuation, carrying no constructor and no operation symbol — so every projection-shaped rule has a generator-free target, with `rule add(Zero, n) ~> n` the worked instance that module's own `add_zero_elaborates_to_a_cut_against_the_operation_frame` pins.
+**That verdict rests on a reading, recorded here as a reading rather than as a fact**: it takes a bare-metavariable command to be an identity 1-arrow on its sort, which is the standard polygraph correspondence and is why projections are the familiar obstruction to target-positivity, but nothing in the code states it.
+The source-positivity verdict does not depend on that reading; only the unavailability of the non-unital class does.
+
+**The source/target asymmetry is a design datum, not an artifact of this proof.** gandr's rules are generator-headed on the left by elaborator enforcement and unconstrained on the right — a structural fact about the cell grammar, and what makes the weaker theorem the right one to reach for.
+
+Unit-freeness is now a _four-times-independent_ arrival: the computad escape hatch here (at its source-positive half), the carrier's downward wiring (no cup — see the substrate section), the skew preference on coherence-burden grounds, and the coherence theorem naming units as the obstruction [@demirdilek-reiher-schweigert-2026-linearly-distributive].
+**Two unrelated things are called non-unital in this corpus, and only one of them is the first of those four.** Henry's non-unital _polygraphs_ are the presheaf-category condition of this section; the **nonunital (downward) circuit-algebra rung** of the next section — nonunital wheeled props, the monad $T^times$, a nonunital Frobenius supply — is a different notion in a different theory, sharing nothing with the polygraph condition but the word, and reading the two as one property is how the polygraph condition gets over-stated ([[metatheory/citation-hazards]]).
 
 ## The substrate is the full circuit-algebra rung
 
