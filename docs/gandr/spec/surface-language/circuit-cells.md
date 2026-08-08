@@ -68,8 +68,6 @@ The worked example, in the ruled form — the congruence cell this document's re
 ```text
 sign Nat {
   sort Nat : Type
-  data Zero : Nat                      // sugar for: data Zero : () --> (_ : Nat)
-  data Succ : Nat --> Nat              // sugar for: data Succ : (_ : Nat) --> (_ : Nat)
   oper add : (Nat, Nat) --> Nat
 
   rule cong2 : (
@@ -90,8 +88,11 @@ oper accumulate : (stream : Stream(Nat)) --> (out2 : Stream(Nat)) {
 }
 ```
 
+(The family's constructors no longer stand in the `sign` block: the item-level `data` member is **retired** — a family is declared once, whole, as a nested generator block, per [[declarations#data declarations]] — and the `data x : Nat` entries above are a rule telescope's binders, a different slot that stays.
+The block's members are `sort` / `oper` / `rule`.)
+
 **Declarations are judgments.** Every member reads `name : signature`, and a block-bodied member reads `name : sphere { filler }` — the signature left of the block is the boundary data, which is the sphere discipline of [[higher-cells#Sphere-typed boundaries]] made syntactic.
-The kind keywords `sort` / `data` / `oper` / `rule` are the description universe's own structure surfaced, and they carry the dimension: `rule` binders may appear in a `rule`'s parameter list (a cell parameterized by rewrites), and a rule between rule-sorted endpoints is a 3-cell with no new syntax.
+The kind keywords `sort` / `oper` / `rule` (with the retired `data` still admissible for its migration decline) are the description universe's own structure surfaced, and they carry the dimension: `rule` binders may appear in a `rule`'s parameter list (a cell parameterized by rewrites), and a rule between rule-sorted endpoints is a 3-cell with no new syntax.
 
 **The arrow grid: four glyphs, and never more.** The shaft carries the kind-class and the head carries directedness:
 
@@ -116,8 +117,8 @@ The `feed` statement is the obligation-carrying wire binder of [[../implementati
 Each wire name is produced exactly once and consumed exactly once; internal wires are **implicit** — the head declares the interface, and the body names not in it are internal, computed and checked by the name-set fold — so a misspelled wire is a linearity failure, not a silent fresh wire.
 The polarity sigils of the sketch below are superseded: what they carried is carried by position.
 
-**Sugar desugars to one named-port normal form.** `data Zero : Nat` is `() --> (_ : Nat)`; `data Succ : Nat --> Nat` is `(_ : Nat) --> (_ : Nat)`; unnamed tuple inputs mint fresh names in order.
-The named-port normal form is what the elaborator and the fold see.
+**Sugar desugars to one named-port normal form.** A bare-sort side is one unnamed port (`oper add : (Nat, Nat) --> Nat` is `(Nat, Nat) --> (Nat)`); unnamed tuple inputs mint fresh names in order.
+The named-port normal form is what the elaborator and the fold see. (The retired item-level `data` member climbed the same ladder — `data Zero : Nat` was `() --> (_ : Nat)` — and the generator member's side ladder in the nested block is its continuation: no arrow means the side is the result, an arrow makes the side the payload.)
 
 **`~>` retires.** The rewrite face former is `==>` at every position, so the recorded `~>`-versus-`~~>` type-position hazard dissolves rather than being managed: `~~>` (the directed former on types) is unaffected and no longer has a near-neighbour.
 The landed description-rule syntax (`rule add(Zero, n) ~> n`) migrates to `==>`.

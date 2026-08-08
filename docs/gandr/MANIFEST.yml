@@ -124,7 +124,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: c1374f8afe8597fb2700e0a0a903c17b7613fddd86ae1361500b8363e14fa911
+    b3: 529330e9fc971a09248d7448e9e0b1c8dbe966f29aaaa5284f0be6d68867e3b8
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
@@ -139,17 +139,17 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/signatures.md
     role: subdocument
-    b3: 9a195f93c19f098580fd83bf2f9e41fff6798f65fed7cf745c8459565c7e8494
+    b3: 445d843a5c3aedd185afe4f6396b5261035658e81fe1e06e928b1e82e692f3ee
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
     role: subdocument
-    b3: 90dbfc473cb9a5b6355c0043d9c7552a872a8b8b289a86fc4039a6b47d8c07d9
+    b3: 167167ac642d40bbbb8c8131e75437c474960216c153cc61814f2e7bba1f1038
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
     role: subdocument
-    b3: a6bc4c8bb30cc6bd073b851699cf621eb410a0afe13bb1de2c1f8992ad17f0d2
+    b3: 0b026e963cf9276a5e0fdd19ff235ca84e592210c25649a6dc3f0de6215a9f98
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/attributes.md

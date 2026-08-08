@@ -73,7 +73,6 @@ The ruled block form ([[circuit-cells#The block form, ruled]]) already gives eve
 ```text
 sign <Name> {
   sort <S> : Type              -- 0-cell: a declared sort
-  data <C> : sig               -- 1-cell: constructor (value generator)
   oper <f> : sig               -- 1-cell: operation (defined symbol)
   rule <name> : lhs ==> rhs    -- 2-cell: named directed rewrite
   rule <name> : ρ ==> ρ′       -- 3-cell: the same member kind at rule-sorted endpoints
@@ -81,14 +80,17 @@ sign <Name> {
 }
 ```
 
+(The ladder once carried a `data <C> : sig` constructor row at dimension 1.
+The item-level `data` member is **retired** ([[declarations#data declarations]]): a family is declared once, whole, as a nested generator block, and in shape mode there was never a `cons`/`oper` distinction to preserve — a shape's constructors were always `oper`s, so no shape loses anything.)
+
 This section's earlier draft proposed its own five-keyword respell (`cons` for constructors, a fresh `meta` member for 3-cells, a fresh `~>>` arrow); the ruled form **supersedes that draft**, and the deltas are worth recording because each dissolves a problem the draft had to argue around:
 
-* **`data` is the constructor member's keyword, not `cons`.** The draft's motivation — keyword-led members instead of the parser's uppercase-head case trick — is fully served by the ruled judgment style, without minting a new keyword.
-  The internal description table deliberately does **not** follow this spelling (its field stays `ctors`): mirroring `data` inward would reintroduce exactly the block-versus-member ambiguity the surface's context resolves (gandr-ng9.18 ruling 4's one exception).
+* **`data` was the constructor member's keyword, and the member is gone.** The draft's motivation — keyword-led members instead of the parser's uppercase-head case trick — was fully served by the ruled judgment style; the retirement then removed the row entirely, because the separated form's three side conditions (head uniformity, one head per block, family-wide positivity) are properties it must check where the nested form cannot express the violation.
+  The internal description table deliberately does **not** follow the retired spelling (its field stays `ctors`): mirroring `data` inward would reintroduce exactly the block-versus-member ambiguity the surface's context resolves (gandr-ng9.18 ruling 4's one exception).
 * **`oper` replaced `op`** as the 1-cell member — landed, in both the sign block's judgment form and the data-block sugar's applied form, with the retired `op` lead parse-and-declined by respelling hint; `op` is the operator-fixity declaration only, and no shared-keyword caveat is needed anywhere.
 * **`sort` completes dimension 0**, and it behaves differently in the two block positions.
   In **shape position** a block may declare several sorts, including indexed ones — `sort Hom(dom: Ob, cod: Ob)` — because a presentation is generally multi-sorted (as landed, `sort` members are recorded into the declared sort set; indexed sorts remain reserved).
-  In **generative position** — a `data`/`codata` block used as a type — the block's own name remains the unique implicit sort, exactly the degenerate desugaring of [[signatures#The desugarings]].
+  In **generative position** — a `data`/`codata` block used as a type — the block's own name remains the unique implicit sort, exactly the desugaring of [[signatures#The desugarings]] (the nested block plus the polarity token).
 * **There is no `meta` member and no third arrow.** A 3-cell is a `rule` between rule-sorted endpoints, with dimension read off the endpoints rather than off the glyph — see [[#Declared 3-cells are rules one dimension up]] for how this dissolves the draft's arrow question rather than answering it.
 * **`rule` names are mandatory** in the ruled judgment form (`rule <name> : …`), which is the naming rung this lane owes.
 
@@ -233,7 +235,7 @@ Its clauses, by dimension, with `Γ_c` the cell's variable context:
 | member of `S`                                | field of `Model(S)`                                                             |
 | -------------------------------------------- | ------------------------------------------------------------------------------- |
 | `sort X(Δ)`                                  | `type X : Δ → Type` — an abstract type member; indexed sorts need type families |
-| `data C : T̄ --> X` / `oper f : T̄ --> X`      | `val C : U_ω (T̄ → F X)` — an operation of the algebra                           |
+| `oper f : T̄ --> X`                           | `val f : U_ω (T̄ → F X)` — an operation of the algebra                           |
 | `rule r : l ==> t` at sort `X`               | `val r : U_ω (Π Γ_r → F Path(X, ⟦l⟧, ⟦t⟧))`                                     |
 | `rule m : ρ ==> ρ′` at rule-sorted endpoints | `val m : U_ω (Π Γ_m → F Path(Path(X, ⟦l⟧, ⟦t⟧), ⟦ρ⟧, ⟦ρ′⟧))`                    |
 
