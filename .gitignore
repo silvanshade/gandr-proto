@@ -47,6 +47,14 @@ coverage/*
 /mutants.out/
 /mutants.out.old/
 
+# Proptest failure seeds. Proptest's own header recommends checking these in,
+# and here the recommendation inverts: the properties that write them are run
+# against hand-applied mutants during mutation campaigns, so a seed file left
+# behind pins a case that reproduces the MUTANT and no real defect. A genuine
+# counterexample belongs in a named fixture, which is a better artifact than a
+# seed anyway. Never tracked.
+crates/*/proptest-regressions/
+
 # Fuzzing build output + crash artifacts (seed corpora are tracked)
 fuzz/target/
 fuzz/artifacts/
