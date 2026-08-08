@@ -71,6 +71,11 @@
 //!   ([`NormalFormObstruction::ContentAddressCollision`]), and across two
 //!   normal forms the map values carry the [`PrimCert`]s, which [`nf_equal`]
 //!   compares. So a collision costs a refusal, never an unsound identification.
+//!   A [`CellStore`] deduplicating on structural equality makes that refusal
+//!   unreachable over both shipped alphabets — one content, one identifier —
+//!   but it does not make the arm dead: an alphabet with a field the digest
+//!   cannot see gives two identifiers one address without any 128-bit collision
+//!   at all, which is how the arm is witnessed.
 //! - **`equiv_T`, unit elimination.** A step that fires and leaves the term
 //!   unchanged contributes nothing and is dropped. Dropping it cannot move the
 //!   endpoint, because it did not move the term.
@@ -107,6 +112,19 @@
 //! relation licensed a commutation the semantics does not have. Raising it here
 //! rather than only in the test suite is deliberate — the failure mode must be
 //! observable in the engine, not only under a generator.
+//!
+//! Neither refusal is reachable over the alphabets this workspace ships, and
+//! that is a fact about those alphabets rather than evidence that the check is
+//! redundant: both compute `position_order` from the position path and both
+//! splice locally, so their canonical schedules always fire and always land on
+//! the recorded join. Both arms are nonetheless *witnessed*, over adversarial
+//! alphabets built for it in the crate's integration suite — one that reports a
+//! nesting pair as incomparable, and one whose splice disturbs a position it
+//! was not asked about. The second is the one worth remembering: it satisfies
+//! every conjunct of the guard honestly, because the guard reads positions and
+//! cell contents and **locality of the term algebra is neither**. That premise
+//! is [`CellAlphabet::splice_cmd_at`]'s own `- ensures:`, it is taken on trust
+//! here, and this replay is what catches its violation.
 //!
 //! **Observable at [`normalize`], and only there.** The certificate-level
 //! entry point [`tracelets_nf_equal`] collapses *every* obstruction to a
@@ -412,23 +430,32 @@ where
 /// # Adequacy
 /// - hypothesis: L1 evidence — the normal form is a certificate validated
 ///   against the input rather than against a predicted answer (its canonical
-///   path is replayed and must reach its own join). **Three** of the six `-
-///   fails:` modes own a decision surface separated by a fixture that triggers
-///   only it: a fabricated identifier, a step at a position carrying no redex,
-///   and a retargeted join. The other three are **unreached by construction on
-///   today's alphabets**, and are recorded rather than claimed:
+///   path is replayed and must reach its own join). **All six** `- fails:`
+///   modes own a decision surface separated by a fixture that triggers only it.
+///   Three are reached over a shipped alphabet: a fabricated identifier, a step
+///   at a position carrying no redex, and a retargeted join.
+/// - hypothesis: the other three are reached only over an **adversarial
+///   alphabet**, because each fires exactly when an implementor of
+///   [`CellAlphabet`] gives an answer the two shipped alphabets cannot give,
+///   and the fix for that gap is an input rather than an assertion. The two
+///   kill-signal modes fire when the independence relation licenses a
+///   transposition the semantics does not have: an alphabet reporting a nesting
+///   pair as incomparable reaches
+///   [`NormalFormObstruction::ShiftedScheduleDoesNotFire`], and an alphabet
+///   whose splice is non-local — the one defect no conjunct of the guard can
+///   see, since the guard reads positions and cell contents and neither records
+///   locality — reaches
+///   [`NormalFormObstruction::ShiftedScheduleMissesTheJoin`].
 ///   [`NormalFormObstruction::ContentAddressCollision`] needs two occurrences
-///   sharing a 128-bit digest, which a [`CellStore`] deduplicating on
-///   structural equality can only supply through a genuine collision; and the
-///   two kill-signal modes fire only when the independence relation licenses a
-///   transposition the semantics does not have, which is precisely the defect
-///   the guard's own suite says does not exist. A schedule permutation
-///   exercises the *success* path of the canonicalization, never its refusal —
-///   so the canonical-schedule replay is a defensive check with no witness, and
-///   removing it passes the suite. Reaching those three needs an adversarial
-///   [`CellAlphabet`] whose `position_order` reports incomparable positions
-///   that nest; that fixture is owed to the mutation campaign, not present
-///   here.
+///   sharing an address under differing [`PrimCert`]s, which a [`CellStore`]
+///   deduplicating on structural equality withholds *only while every field of
+///   a cell is inside the digest's reach*: an alphabet whose orientation tag
+///   hashes to nothing gives one address to two identifiers, legally, since
+///   [`core::hash::Hash`] never promises injectivity and this function's `-
+///   intension:` says as much. A schedule permutation over a shipped alphabet
+///   exercises the *success* path of the canonicalization and never its
+///   refusal, so none of these three is reachable by adding a fixture over the
+///   sequent or toy alphabet.
 /// - witness: `normal_form::tests::a_recorded_derivation_normalizes_to_a_replay_receipt`
 /// - witness: `normal_form::tests::an_unknown_cell_identifier_is_refused`
 /// - witness: `normal_form::tests::a_step_that_does_not_fire_is_refused`
@@ -437,6 +464,10 @@ where
 /// - witness: `normal_form::tests::the_canonical_path_replays_to_the_recorded_join`
 /// - witness: `normal_form::tests::the_shift_quotient_is_empty_over_the_sequent_alphabet`
 /// - witness: `normal_form::tests::a_derivation_from_a_different_peak_is_nf_distinct`
+/// - witness: `normal_form::tests::an_alphabet_that_calls_nesting_incomparable_trips_the_kill_signal`
+/// - witness: `normal_form::tests::a_non_local_term_algebra_trips_the_kill_signal_at_the_join`
+/// - witness: `normal_form::tests::two_primitives_sharing_a_content_address_are_refused_rather_than_merged`
+/// - witness: `normal_form::tests::a_withheld_convexity_warrant_empties_the_shift_quotient`
 #[inline]
 pub fn normalize<A>(
     store: &CellStore<A>,
@@ -521,9 +552,12 @@ where
 ///   residue is *which* fields carry the decision: the boundary is separated by
 ///   an erasing rule that carries two peaks to one join under one schedule, so
 ///   dropping the peak comparison becomes unsound rather than merely imprecise.
-///   Dropping the join or the factorization instead is **not** separable and is
-///   not claimed to be: against one store the peak and the schedule already
-///   determine both, so those two comparisons are redundant belt-and-braces.
+///   Dropping the join, the factorization, or the convexity warrant instead is
+///   **not** separable and is not claimed to be: against one store the peak and
+///   the schedule already determine the first two, and the third is one value
+///   per store because [`CellAlphabet::convexity_discharge`] is keyed by the
+///   store alone — so all three comparisons are redundant belt-and-braces and
+///   their removal is an equivalent mutation.
 /// - witness: `normal_form::tests::one_derivation_is_nf_equal_to_itself`
 /// - witness: `normal_form::tests::replay_equal_derivations_may_be_nf_distinct`
 /// - witness: `normal_form::tests::a_derivation_from_a_different_peak_is_nf_distinct`
@@ -725,15 +759,18 @@ where
 /// See the `- fails:` clause above.
 ///
 /// # Adequacy
-/// - hypothesis: **none that the suite discharges, and that is the point.**
-///   This function exists to be a tripwire: on an alphabet whose
-///   `position_order` is honest, the canonical schedule always fires, so no
-///   fixture reaches [`NormalFormObstruction::ShiftedScheduleDoesNotFire`] and
-///   the whole call can be deleted without any test noticing. Its adequacy is
-///   owed to the mutation campaign together with the adversarial alphabet that
-///   would reach it — see [`normalize`]'s hypothesis. Do not read the missing
-///   witness as evidence the check is redundant; read it as the reason the
-///   check cannot be removed on the strength of a green suite.
+/// - hypothesis: L3 pointwise, and the decision surface is reachable **only
+///   over an adversarial alphabet**. On an alphabet whose `position_order` is
+///   honest the canonical schedule always fires, so no fixture over a shipped
+///   alphabet reaches [`NormalFormObstruction::ShiftedScheduleDoesNotFire`] and
+///   this whole call could be deleted without any such test noticing. The
+///   witnesses below supply that alphabet, and they assert the exact variant
+///   rather than a refusal: swapping this arm for
+///   [`NormalFormObstruction::StepDoesNotFire`] — degrading the kill signal to
+///   an ordinary bad-certificate refusal, which is the confusion the two
+///   functions are kept apart to prevent — fails them.
+/// - witness: `normal_form::tests::an_alphabet_that_calls_nesting_incomparable_trips_the_kill_signal`
+/// - witness: `normal_form::tests::a_non_local_term_algebra_trips_the_kill_signal_at_the_join`
 #[inline]
 fn run_schedule<A>(
     store: &CellStore<A>,
@@ -785,19 +822,36 @@ where
 ///   schedule that cannot fire. The tie-break arm is separated by a layer with
 ///   two occupants, whose declared ascending address order is observable in
 ///   [`TraceletNf::schedule`].
-/// - hypothesis: **not** separated, and recorded rather than claimed: a
-///   recurrence taking the earlier step's *position index* instead of its depth
-///   is still a valid topological layering, so it survives every fixture whose
-///   dependence order is a single chain. Separating it needs two independent
-///   chains whose steps interleave — `x` depending on `a`, `y` depending on
-///   `b`, with `a`, `b` independent and `x`, `y` independent — where the two
-///   recorded orders of `a` and `b` give the index-based variant two different
-///   schedules. That fixture is owed to the mutation campaign. The deeper
-///   reason it is missing is that [`CausalDepth`] is computed and never
-///   surfaced: the schedule flattens the layering, and two different depth
-///   assignments can flatten to one sequence.
+/// - hypothesis: the recurrence's remaining residue is that a depth taken from
+///   the earlier step's *position index* instead of its depth is still a valid
+///   topological layering — it increases strictly along every dependence edge,
+///   so it fires and reaches the join — and therefore survives every fixture
+///   whose dependence order is a single chain. It is separated not by
+///   inspecting a depth but by **shift-invariance across two recorded orders**:
+///   over two interleaved chains (`x` depending on `a`, `y` on `b`, with `a`,
+///   `b` independent and `x`, `y` independent) the index-based variant gives
+///   the two recorded orders of one trace class two different schedules, while
+///   the depth recurrence gives them one. So the flattened schedule *can* carry
+///   this residue after all, and what stays unobservable is narrower than the
+///   whole class: only a depth assignment that flattens to the same sequence
+///   for **every** recorded order. [`CausalDepth`] is still computed and never
+///   surfaced — the schedule flattens the layering — so a layer-grouped
+///   schedule remains the better projection for a consumer that wants the
+///   parallel batches, but it is not what this residue needed.
+/// - hypothesis: two mutations of the loop are **equivalent (semantic)** and
+///   are excluded here rather than tested. Sorting with
+///   [`slice::sort_unstable_by`] instead of [`slice::sort_by`] changes nothing
+///   observable, because the key is total by the `- ensures:` argument above
+///   and a total key leaves stability nothing to decide. Extending the inner
+///   range to include the step itself also changes nothing: a step is always
+///   dependent on itself (its position order with itself is
+///   [`crate::alphabet::PositionOrder::Same`], never `Incomparable`) and its
+///   own depth is not yet recorded, so the self-comparison contributes exactly
+///   `1` and the recurrence's unique solution shifts from `d` to `d + 1`
+///   uniformly — an order-preserving relabelling of the layers.
 /// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
 /// - witness: `normal_form::tests::a_three_layer_derivation_orders_each_layer_by_content_address`
+/// - witness: `normal_form::tests::two_interleaved_dependence_chains_layer_by_depth_and_not_by_position`
 /// - witness: `normal_form::tests::a_shuffled_independent_schedule_has_one_normal_form`
 #[inline]
 fn layer_causally<A>(
@@ -867,11 +921,27 @@ where
 ///   conjuncts are witnessed at [`check_shift_guard`]'s own suite; what this
 ///   wrapper adds is the direction of the collapse, separated by an overlapping
 ///   pair at incomparable positions whose two orders demonstrably reach one
-///   term and which the quotient still refuses. Symmetry is **not** separated
-///   by any fixture and is not claimed to be: swapping the arguments is an
-///   equivalent mutation, because the guard is symmetric.
+///   term and which the quotient still refuses. The third conjunct's
+///   contribution reaches this wrapper only over an alphabet that withholds the
+///   warrant, which is a missing input rather than a missing assertion: both
+///   shipped alphabets discharge convexity for every store, so nothing else can
+///   tell whether [`normalize`] asks the alphabet, layers under the answer it
+///   got, and records the warrant it used. Symmetry is **not** separated by any
+///   fixture and is not claimed to be: swapping the arguments is an equivalent
+///   mutation, because the guard is symmetric.
+/// - hypothesis: the relation's soundness is conditional on a premise no
+///   conjunct checks and this wrapper cannot see — that the alphabet's term
+///   algebra is **local**, so a rewrite at one position leaves every
+///   incomparable position alone ([`CellAlphabet::splice_cmd_at`]'s own `-
+///   ensures:`). Two applications can satisfy all three conjuncts honestly and
+///   still fail to commute if that clause is broken, and the only thing
+///   standing between such an alphabet and a wrong identification is
+///   [`normalize`]'s replay of its own canonical schedule. That is the sharpest
+///   statement of why the replay is not redundant, and it has a witness.
 /// - witness: `normal_form::tests::an_overlapping_pair_keeps_its_recorded_order`
 /// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
+/// - witness: `normal_form::tests::a_withheld_convexity_warrant_empties_the_shift_quotient`
+/// - witness: `normal_form::tests::a_non_local_term_algebra_trips_the_kill_signal_at_the_join`
 #[inline]
 fn step_independence<A>(
     store: &CellStore<A>,
