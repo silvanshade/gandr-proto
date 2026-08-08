@@ -56,6 +56,14 @@
 //!   (`docs/gandr/spec/implementation/circuit-terms.md`,
 //!   `circuit-terms-spike-07`) and carrying the convexity conjunct's discharge
 //!   as a certificate rather than a recomputed sweep.
+//! - [`normal_form`] — the **tracelet normal form**: a canonical form on
+//!   certificate data (unique primitive factorization by content address,
+//!   integer-graded multiplicities, and a causal canonical schedule) whose
+//!   equality is a decidable **sound under-approximation** of replay-equality.
+//!   NF-equal implies replay-equal; the converse is never claimed, and replay
+//!   ([`tracelet::replay_equivalent`]) remains the semantic oracle. It reuses
+//!   the [`shift`] guard as the crate's single independence relation and
+//!   *checks* its own canonicalization by replaying it.
 //! - [`footprint`] — a **prototype** polarized independence test beside the
 //!   shift guard, consumed by nothing: a transition's match image split into
 //!   rewritten, matched-but-preserved, and framed addresses, with independence
@@ -103,6 +111,7 @@ pub mod compose;
 pub mod elaborate;
 pub mod footprint;
 pub mod linearity;
+pub mod normal_form;
 pub mod overlap;
 pub mod pattern;
 pub mod rewrite;
@@ -116,6 +125,7 @@ pub use crate::alphabet::ConvexityDischarge;
 pub use crate::alphabet::PositionOrder;
 pub use crate::alphabet::SeamRole;
 pub use crate::alphabet::path_order;
+pub use crate::boundary::CausalDepth;
 pub use crate::boundary::CellCount;
 pub use crate::boundary::CellInvertibility;
 pub use crate::boundary::CellLinearity;
@@ -128,12 +138,15 @@ pub use crate::boundary::DeclinedFaceIndex;
 pub use crate::boundary::DeclinedOpIndex;
 pub use crate::boundary::FiringPermission;
 pub use crate::boundary::GroundPatternStatus;
+pub use crate::boundary::NormalFormEquality;
 pub use crate::boundary::NormalizationBudget;
 pub use crate::boundary::OperationInputCount;
 pub use crate::boundary::PatternSize;
 pub use crate::boundary::PositionRootStatus;
 pub use crate::boundary::PositionStep;
+pub use crate::boundary::PrimMultiplicity;
 pub use crate::boundary::ShiftReplay;
+pub use crate::boundary::StepIndependence;
 pub use crate::boundary::SubstitutionBindingCount;
 pub use crate::boundary::SubstitutionDecision;
 pub use crate::boundary::SubstitutionEmptyStatus;
@@ -164,6 +177,17 @@ pub use crate::footprint::match_footprint;
 pub use crate::linearity::NonLinearPattern;
 pub use crate::linearity::admit_linear_cell;
 pub use crate::linearity::copied_hole;
+// NOTE: `normal_form::normalize` is deliberately NOT re-exported here —
+// `rewrite::normalize` (budgeted term normalization) already owns that name at
+// the crate root, and the two are different operations on different objects.
+// The normal form's entry point is spelled `normal_form::normalize`.
+pub use crate::normal_form::NormalFormObstruction;
+pub use crate::normal_form::PrimCert;
+pub use crate::normal_form::PrimId;
+pub use crate::normal_form::TraceletNf;
+pub use crate::normal_form::nf_equal;
+pub use crate::normal_form::prim_address;
+pub use crate::normal_form::tracelets_nf_equal;
 pub use crate::overlap::Overlap;
 pub use crate::overlap::OverlapKind;
 pub use crate::overlap::enumerate_overlaps;

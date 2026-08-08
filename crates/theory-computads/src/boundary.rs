@@ -82,6 +82,11 @@ copy_wrapper!(
     "Whether a polygraph cell store contains no cells."
 );
 copy_wrapper!(
+    CausalDepth,
+    usize,
+    "Layer of a recorded step in the dependence order of a derivation."
+);
+copy_wrapper!(
     CompletionStepBudget,
     usize,
     "Maximum number of completion worklist steps."
@@ -132,9 +137,19 @@ copy_wrapper!(
     "Maximum number of rewrite steps for normalization."
 );
 copy_wrapper!(
+    NormalFormEquality,
+    bool,
+    "Whether two tracelet normal forms are the same normal form."
+);
+copy_wrapper!(
     PatternSize,
     usize,
     "Node count of a command-pattern subtree."
+);
+copy_wrapper!(
+    PrimMultiplicity,
+    u32,
+    "Number of occurrences of one primitive certificate in a normalized derivation."
 );
 copy_wrapper!(
     PositionRootStatus,
@@ -155,6 +170,11 @@ copy_wrapper!(
     ShiftReplay,
     bool,
     "Whether both sequentializations of a shift-equivalence witness replay to its join."
+);
+copy_wrapper!(
+    StepIndependence,
+    bool,
+    "Whether two recorded steps of one derivation are licensed to commute."
 );
 copy_wrapper!(
     SubstitutionEmptyStatus,

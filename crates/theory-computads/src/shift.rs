@@ -313,6 +313,14 @@ where
 /// entry point reads the discharge from the alphabet and never lets a caller
 /// assert one.
 ///
+/// It is crate-visible rather than module-private because the crate has exactly
+/// **one** independence relation and it lives here: the tracelet normal form
+/// ([`crate::normal_form`]) decides which adjacent transpositions its canonical
+/// schedule may perform by asking this same guard, so a second, drifting copy
+/// of the conjuncts cannot come into existence. That consumer reads any refusal
+/// as dependence, which is the conservative direction — refusing to commute is
+/// always sound.
+///
 /// # Contract
 /// - ensures: `Ok(())` exactly when the positions are incomparable, the ordered
 ///   cell pair has no overlap in either order, and `convexity` is
@@ -331,7 +339,7 @@ where
 /// - witness: `shift::tests::a_nested_pair_is_refused_before_the_overlap_conjunct`
 /// - witness: `shift::tests::an_undischarged_convexity_conjunct_refuses_the_pair`
 #[inline]
-fn check_shift_guard<A>(
+pub(crate) fn check_shift_guard<A>(
     store: &CellStore<A>,
     first: &CellApp<A>,
     second: &CellApp<A>,
