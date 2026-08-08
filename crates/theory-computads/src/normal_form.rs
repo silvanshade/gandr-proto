@@ -5,9 +5,13 @@
 //! Decomposition Spaces (Extended Abstract)", EPTCS 372, 323–337, DOI
 //! `10.4204/EPTCS.372.23` — register key `behr-kock-2021-tracelet-hopf` in
 //! `docs/gandr/spec/bibliography.yml`. The shift quotient of the tracelet
-//! algebra is free symmetric monoidal on primitives — the statement this module
-//! reads *semantically*: a derivation factors uniquely into content-addressed
-//! primitives carrying integer multiplicities, scheduled canonically. Nothing
+//! algebra is free symmetric monoidal on primitives — **statement-level locator
+//! pending**: the register key resolves and the work is the right one, but the
+//! numbered statement this sentence paraphrases is not yet cited here, so the
+//! attribution is to the paper and not to a checked lemma. It is in any case
+//! the statement this module reads *semantically*: a derivation factors
+//! uniquely into content-addressed primitives carrying integer multiplicities,
+//! scheduled canonically. Nothing
 //! algebraic ships — no vector space, no formal sum, no antipode, and no
 //! word-problem procedure. The Hopf structure is metatheory and specification
 //! currency; what is built here is the canonical form on certificate data that
@@ -104,6 +108,15 @@
 //! rather than only in the test suite is deliberate — the failure mode must be
 //! observable in the engine, not only under a generator.
 //!
+//! **Observable at [`normalize`], and only there.** The certificate-level
+//! entry point [`tracelets_nf_equal`] collapses *every* obstruction to a
+//! negative answer, kill signals included, because its return type has nowhere
+//! to put one. That is the safe direction for the equality and the wrong
+//! direction for the signal, so a consumer that wants the signal calls
+//! [`normalize`] and reads the [`NormalFormObstruction`] — a fast path built on
+//! [`tracelets_nf_equal`] alone would silently degrade a kill signal into a
+//! cache miss.
+//!
 //! # Cost, and what this rung deliberately does not build
 //!
 //! Building a normal form costs one replay of the recorded path, one replay of
@@ -184,9 +197,17 @@ impl<A: CellAlphabet> PrimCert<A>
 /// The **tracelet normal form** of one recorded derivation — its boundary, its
 /// graded primitive factorization, and its canonical schedule.
 ///
-/// A value of this type is a replay receipt as well as a canonical form: it
-/// exists only because [`normalize`] ran the derivation and confirmed both the
-/// recorded path and the canonical schedule reach the recorded join.
+/// A value **[`normalize`] returns** is a replay receipt as well as a canonical
+/// form: it exists because `normalize` ran the derivation and confirmed both
+/// the recorded path and the canonical schedule reach the recorded join.
+///
+/// That is a property of `normalize`'s outputs, **not an invariant of this
+/// type**: the fields are public and the struct is `Clone`, so a value can be
+/// assembled — or edited after the fact — without any replay having happened.
+/// The receipt property is therefore carried as [`nf_equal`]'s `- requires:`
+/// clause, which a caller must discharge by provenance. Anything that treats a
+/// [`TraceletNf`] it did not obtain from [`normalize`] as evidence is trusting
+/// its own bookkeeping, not this module's.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraceletNf<A: CellAlphabet = SequentAlphabet>
 {
@@ -319,13 +340,22 @@ pub enum NormalFormObstruction<A: CellAlphabet = SequentAlphabet>
 /// - panics: none.
 /// - intension: FNV-1a over 128 bits, domain-separated. Distinct inputs may in
 ///   principle collide; no caller treats an address as proof of identity, and
-///   [`normalize`] refuses a collision outright.
+///   [`normalize`] refuses a collision outright. The digest is stable for **one
+///   build of one target** and no further: [`core::hash::Hasher`]'s integer
+///   writers encode native-endian and `usize` at the target's width, so the
+///   same `(cell content, position)` pair digests differently on targets that
+///   differ in either. Within a process every consumer sees one address per
+///   content, which is all the factorization's ordering and [`nf_equal`] need;
+///   a [`TraceletNf`] is correspondingly a *comparable* value, never a portable
+///   identifier, and nothing may persist or transport one as though it were.
 ///
 /// # Adequacy
 /// - hypothesis: L3 pointwise — the decision surface is "same content, same
 ///   address; different content, different address", separated by a cell pair
 ///   differing only in its right-hand side, a position pair differing only in
-///   one step, and an equal pair rebuilt independently.
+///   one step, and an equal pair rebuilt independently. The intension's choice
+///   of *which* deterministic digest is deliberately unwitnessed: no declared
+///   projection exposes it, so retuning it is a noninterfering change.
 /// - witness: `normal_form::tests::the_content_address_is_taken_over_content`
 #[inline]
 #[must_use]
@@ -382,11 +412,23 @@ where
 /// # Adequacy
 /// - hypothesis: L1 evidence — the normal form is a certificate validated
 ///   against the input rather than against a predicted answer (its canonical
-///   path is replayed and must reach its own join), and each `- fails:` mode
-///   owns a decision surface separated by a fixture that triggers only it: a
-///   fabricated identifier, a step at a position carrying no redex, a
-///   retargeted join, and — over an alphabet with a nonempty shift extension —
-///   a schedule permutation.
+///   path is replayed and must reach its own join). **Three** of the six `-
+///   fails:` modes own a decision surface separated by a fixture that triggers
+///   only it: a fabricated identifier, a step at a position carrying no redex,
+///   and a retargeted join. The other three are **unreached by construction on
+///   today's alphabets**, and are recorded rather than claimed:
+///   [`NormalFormObstruction::ContentAddressCollision`] needs two occurrences
+///   sharing a 128-bit digest, which a [`CellStore`] deduplicating on
+///   structural equality can only supply through a genuine collision; and the
+///   two kill-signal modes fire only when the independence relation licenses a
+///   transposition the semantics does not have, which is precisely the defect
+///   the guard's own suite says does not exist. A schedule permutation
+///   exercises the *success* path of the canonicalization, never its refusal —
+///   so the canonical-schedule replay is a defensive check with no witness, and
+///   removing it passes the suite. Reaching those three needs an adversarial
+///   [`CellAlphabet`] whose `position_order` reports incomparable positions
+///   that nest; that fixture is owed to the mutation campaign, not present
+///   here.
 /// - witness: `normal_form::tests::a_recorded_derivation_normalizes_to_a_replay_receipt`
 /// - witness: `normal_form::tests::an_unknown_cell_identifier_is_refused`
 /// - witness: `normal_form::tests::a_step_that_does_not_fire_is_refused`
@@ -394,6 +436,7 @@ where
 /// - witness: `normal_form::tests::a_unit_step_is_eliminated`
 /// - witness: `normal_form::tests::the_canonical_path_replays_to_the_recorded_join`
 /// - witness: `normal_form::tests::the_shift_quotient_is_empty_over_the_sequent_alphabet`
+/// - witness: `normal_form::tests::a_derivation_from_a_different_peak_is_nf_distinct`
 #[inline]
 pub fn normalize<A>(
     store: &CellStore<A>,
@@ -474,9 +517,16 @@ where
 /// # Adequacy
 /// - hypothesis: L1 evidence — the positive direction is validated against the
 ///   input by replaying both derivations, and the negative direction is pinned
-///   as uninformative by a pair that is replay-equal and NF-distinct.
+///   as uninformative by a pair that is replay-equal and NF-distinct. The
+///   residue is *which* fields carry the decision: the boundary is separated by
+///   an erasing rule that carries two peaks to one join under one schedule, so
+///   dropping the peak comparison becomes unsound rather than merely imprecise.
+///   Dropping the join or the factorization instead is **not** separable and is
+///   not claimed to be: against one store the peak and the schedule already
+///   determine both, so those two comparisons are redundant belt-and-braces.
 /// - witness: `normal_form::tests::one_derivation_is_nf_equal_to_itself`
 /// - witness: `normal_form::tests::replay_equal_derivations_may_be_nf_distinct`
+/// - witness: `normal_form::tests::a_derivation_from_a_different_peak_is_nf_distinct`
 #[inline]
 #[must_use]
 pub fn nf_equal<A>(
@@ -509,15 +559,28 @@ where
 /// - panics: none.
 /// - intension: it normalizes rather than consulting a cache, so it pays two
 ///   replays per path; a consumer that compares repeatedly normalizes once and
-///   keeps the normal forms.
+///   keeps the normal forms. **Every [`NormalFormObstruction`] any of the four
+///   normalizations raises is collapsed to a negative** — the two kill-signal
+///   variants included, because a [`NormalFormEquality`] has nowhere to put
+///   one. Collapsing toward the negative is what keeps the equality safe, and
+///   it is what makes this the wrong entry point for observing the kill signal:
+///   a consumer that must not lose it calls [`normalize`] and reads the
+///   obstruction.
 ///
 /// # Adequacy
 /// - hypothesis: L2 agreement — the oracle is external
 ///   ([`crate::tracelet::replay_equivalent`]) and the differential asserts the
 ///   implication over generated derivation pairs rather than over hand-picked
-///   ones.
+///   ones. The L3 residue is the two negative directions the generator cannot
+///   reach, because it only ever generates certificates that normalize and
+///   agree: the *direction* an obstruction collapses in, separated by a
+///   certificate whose recorded step does not fire, and the conjunction over
+///   both legs, separated by a pair that agrees on `path_a` and not on
+///   `path_b`.
 /// - witness: `normal_form::tests::nf_equal_certificates_are_replay_equivalent`
 /// - witness: `normal_form::tests::every_nf_equal_pair_is_replay_equivalent`
+/// - witness: `normal_form::tests::a_certificate_that_does_not_replay_is_not_certified`
+/// - witness: `normal_form::tests::a_tracelet_pair_agreeing_only_on_its_first_leg_is_not_certified`
 #[inline]
 #[must_use]
 pub fn tracelets_nf_equal<A>(
@@ -599,6 +662,17 @@ struct Occurrence<A: CellAlphabet>
 ///
 /// # Errors
 /// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — the unit test `next == current` is the whole
+///   decision surface, separated by a reflexive cell that fires and moves
+///   nothing beside a cell that moves the term, on both alphabets; the two `-
+///   fails:` modes are separated by a fabricated identifier and a position
+///   carrying no redex.
+/// - witness: `normal_form::tests::a_unit_step_is_eliminated`
+/// - witness: `normal_form::tests::an_unknown_cell_identifier_is_refused`
+/// - witness: `normal_form::tests::a_step_that_does_not_fire_is_refused`
+/// - witness: `normal_form::tests::a_unit_step_is_eliminated_over_the_toy_alphabet`
 #[inline]
 fn run_recording<A>(
     store: &CellStore<A>,
@@ -649,6 +723,17 @@ where
 ///
 /// # Errors
 /// See the `- fails:` clause above.
+///
+/// # Adequacy
+/// - hypothesis: **none that the suite discharges, and that is the point.**
+///   This function exists to be a tripwire: on an alphabet whose
+///   `position_order` is honest, the canonical schedule always fires, so no
+///   fixture reaches [`NormalFormObstruction::ShiftedScheduleDoesNotFire`] and
+///   the whole call can be deleted without any test noticing. Its adequacy is
+///   owed to the mutation campaign together with the adversarial alphabet that
+///   would reach it — see [`normalize`]'s hypothesis. Do not read the missing
+///   witness as evidence the check is redundant; read it as the reason the
+///   check cannot be removed on the strength of a green suite.
 #[inline]
 fn run_schedule<A>(
     store: &CellStore<A>,
@@ -688,6 +773,32 @@ where
 /// - panics: none.
 /// - intension: quadratic in the number of surviving steps, one independence
 ///   question per ordered pair.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise, and it needs **three** layers to bite. The
+///   recurrence has two residues — "maximum over every earlier dependence"
+///   versus the nearest or the first one, and the `1 + ` on the prior depth —
+///   and a two-layer derivation separates neither, because with one dependence
+///   apiece every variant agrees. The separating fixture is a step whose
+///   nearest and first earlier dependences both sit at depth zero while its
+///   deepest sits at depth one, arranged so the collapsed layering emits a
+///   schedule that cannot fire. The tie-break arm is separated by a layer with
+///   two occupants, whose declared ascending address order is observable in
+///   [`TraceletNf::schedule`].
+/// - hypothesis: **not** separated, and recorded rather than claimed: a
+///   recurrence taking the earlier step's *position index* instead of its depth
+///   is still a valid topological layering, so it survives every fixture whose
+///   dependence order is a single chain. Separating it needs two independent
+///   chains whose steps interleave — `x` depending on `a`, `y` depending on
+///   `b`, with `a`, `b` independent and `x`, `y` independent — where the two
+///   recorded orders of `a` and `b` give the index-based variant two different
+///   schedules. That fixture is owed to the mutation campaign. The deeper
+///   reason it is missing is that [`CausalDepth`] is computed and never
+///   surfaced: the schedule flattens the layering, and two different depth
+///   assignments can flatten to one sequence.
+/// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
+/// - witness: `normal_form::tests::a_three_layer_derivation_orders_each_layer_by_content_address`
+/// - witness: `normal_form::tests::a_shuffled_independent_schedule_has_one_normal_form`
 #[inline]
 fn layer_causally<A>(
     store: &CellStore<A>,
@@ -735,11 +846,32 @@ where
 /// conservative one: refusing to commute keeps the recorded order, which is
 /// always a valid derivation.
 ///
+/// The relation is **symmetric**, which the causal layering depends on and
+/// which is a fact about [`check_shift_guard`] rather than an assumption here:
+/// its first conjunct answers [`crate::alphabet::PositionOrder::Incomparable`]
+/// for a pair exactly when it does for the swapped pair, its second asks the
+/// overlap enumerator in *both* ordered directions, and its third does not read
+/// the pair at all. Were it asymmetric, a licensed transposition could change
+/// which pairs count as dependent and the layering's depths would stop being a
+/// property of the derivation.
+///
 /// # Contract
 /// - ensures: a positive answer exactly when the guard's three conjuncts hold
-///   of the pair under `convexity`.
+///   of the pair under `convexity`; the answer does not depend on which of the
+///   two steps is passed as `left`.
 /// - provides: the independence relation the causal layering quotients by.
 /// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: L1 evidence — the relation is not restated here, so its
+///   conjuncts are witnessed at [`check_shift_guard`]'s own suite; what this
+///   wrapper adds is the direction of the collapse, separated by an overlapping
+///   pair at incomparable positions whose two orders demonstrably reach one
+///   term and which the quotient still refuses. Symmetry is **not** separated
+///   by any fixture and is not claimed to be: swapping the arguments is an
+///   equivalent mutation, because the guard is symmetric.
+/// - witness: `normal_form::tests::an_overlapping_pair_keeps_its_recorded_order`
+/// - witness: `normal_form::tests::a_layered_derivation_keeps_its_dependent_step_last`
 #[inline]
 fn step_independence<A>(
     store: &CellStore<A>,
