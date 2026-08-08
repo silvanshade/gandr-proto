@@ -1,0 +1,30 @@
+#!/usr/bin/env gandr
+// Vendor the pinned Agda standard library into the gitignored metatheory tree.
+//
+// This is the project's first production gandr script: `mise run agda:deps`
+// runs it through the script-runner face (`gandr <file>`), so the toolchain
+// provisions its own proof vehicle in the language the toolchain is for.
+//
+// It is ONE flat `sh -c` command because the current shell-block lowerer
+// accepts flat simple commands only -- the honest MVP surface. The command is
+// idempotent in its own text (the `if [ ! -f ... ]` guard), not in hidden tool
+// state, so a warm tree re-runs it for free.
+//
+// The reply is BOUND and its status is propagated with `proc.exit`: a shell
+// block's reply is an ordinary value, so a script that merely returns it
+// reports success even when the command failed. A provisioning step that
+// cannot fail visibly is worse than one that fails loudly.
+//
+// The literate walkthrough of this script is the corpus model example
+// `14-agda-deps-walkthrough`, and the driver's CLI suite fails if the two ever
+// lower to different programs.
+//
+// The `metatheory/libraries` line is written for an ad-hoc `agda` invocation
+// outside the task surface; `mise run agda:check` passes the vendored `src`
+// directory with `-i` and does not read it.
+{
+  run vendored <- #!{
+sh -c 'set -eu; vendor="$PWD/metatheory/vendor"; mkdir -p "$vendor"; stdlib="$vendor/agda-stdlib"; stdlib_lib="$stdlib/standard-library.agda-lib"; if [ ! -f "$stdlib_lib" ]; then printf "cloning agda-stdlib v2.4 ...\n"; git clone --depth 1 --branch v2.4 https://github.com/agda/agda-stdlib.git "$stdlib"; fi; printf "%s\n" "$stdlib_lib" > "$PWD/metatheory/libraries"; printf "agda deps ready: stdlib v2.4\n"';
+};
+  proc.exit(vendored.exit_code)
+}

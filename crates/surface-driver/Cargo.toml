@@ -6,60 +6,47 @@ name = "gandr"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "The gandr toolchain driver: the reedline shell-REPL default face, the script runner, and the tui/lsp/mcp/fmt/build subcommand namespace (ADR-62, ADR-74)"
+description = "The gandr toolchain driver: the script runner, with the REPL and the tui/lsp/mcp/fmt/build subcommand namespace deferred"
 license.workspace = true
 publish.workspace = true
+autotests = false
 
-# Stub: the driver's real faces depend on crates that have not been ported yet
-# (gandr-core, gandr-grammar, gandr-parser, gandr-pipeline, gandr-shell,
-# gandr-syntax, gandr-tui). The manifest below is the intended dependency
-# surface, parked until those crates land; `src/main.rs` is an empty entry
-# point so the workspace compiles in the meantime.
-#
-# [[bin]]
-# name = "gandr"
-# path = "src/bin/gandr.rs"
-#
-# [[test]]
-# name = "cli"
-# path = "tests/cli.rs"
+[[test]]
+name = "cli"
+path = "tests/cli.rs"
 
 [dependencies]
-# TUI-launch error report type for the `gandr tui` face (its own restore hook is
-# installed inside `gandr_tui::run`).
-# color-eyre = { workspace = true }
-# The terminal-restore report and value/type renderer draw on the core syntax.
-# gandr-core = { path = "../gandr-core" }
-# The REPL editor surface (ADR-74): the checked built-in grammar the line
-# highlighter, validator, hinter, and completer mold against.
-# gandr-grammar = { path = "../gandr-grammar" }
-# The push-machine melder (ADR-73): `expected()`/obligation queries drive the
-# reedline validator, hinter, and completer; the shell-interior labeler seeds a
-# REPL line as if inside `#!{ … }`.
-# gandr-parser = { path = "../gandr-parser" }
-# The `Session` engine (definitions persist across REPL lines) and the canonical
-# host `Exec` signature/mode constants (ADR-63 D3 / ADR-74 D4).
-# gandr-pipeline = { path = "../gandr-pipeline" }
-# The host seam that runs shell lines and scripts (`run_source_file` /
-# `run_program`); the `gandr <file>` script-runner face.
-# gandr-shell = { path = "../gandr-shell" }
-# The checked borrowed source slice required by the parser's public label/parse
-# boundary.
-# gandr-syntax = { path = "../gandr-syntax" }
-# The full programming environment behind `gandr tui` (ADR-62 D3, ADR-74).
-# gandr-tui = { path = "../gandr-tui" }
-# reedline expresses its Highlighter/Prompt colors in `nu-ansi-term` types but
-# does not re-export them, so the mold highlighter must name them directly. This
-# is reedline's own color crate, already in the lock at the version reedline
-# resolves (no new lockfile entry, no new version) — the mechanical entailment
-# of using reedline's Highlighter, not an independent dependency.
-# nu-ansi-term = { version = "0.50.3", default-features = false }
-# The line editor for the default REPL face (ADR-74 D6): nushell's reedline,
-# pinned; MIT; pure Rust. `default-features = false` drops the optional SQLite
-# history backend; its `crossterm` is the same 0.29 the TUI already builds, so
-# no second `crossterm` major enters the tree.
-# reedline = { version = "0.49.0", default-features = false }
-# thiserror = { workspace = true }
+# The core outcome vocabulary a run terminates in: `ShellOutcome::Completed`
+# carries an `Eval`, so classifying a run into a process status means naming
+# the checker's terminal, blame, and stuck cases.
+gandr-core-checker.workspace = true
+# The host seam that runs a script: `ShellOutcome` classifies the run the
+# engine's source entry hands back, so the driver reads the outcome the same
+# way every other host consumer does.
+gandr-runtime-host.workspace = true
+# The language-level source entry: `run::run_source_file` composes lowering,
+# linking, and prelude-aware checking with the host seam, so the driver never
+# reimplements the pipeline it fronts.
+gandr-surface-engine.workspace = true
+
+# The faces below are DEFERRED, not parked-and-ready. Each needs a crate this
+# reboot has not landed, and the names are recorded here so the dependency
+# surface reads in current terms rather than in the predecessor's:
+#
+# * the reedline shell-REPL default face needs the line editor plus
+#   `gandr-surface-grammar` (the checked grammar its highlighter molds against),
+#   `gandr-surface-parser` (the melder's obligation queries drive its validator,
+#   hinter, and completer), and `gandr-surface-syntax` (the checked borrowed
+#   source slice the parser's public boundary takes);
+# * `gandr tui` needs the terminal programming environment, which has no reboot
+#   crate at all — it is deferred with the editor faces;
+# * `gandr lsp` / `gandr mcp` / `gandr fmt` / `gandr build` are subcommand slots
+#   with no implementing crate in the tree.
+#
+# Adding a face means adding its real dependency edge in the same change, not
+# uncommenting a line: the predecessor manifest spelled paths (`../gandr-core`)
+# that no longer resolve under the category schema, and every one of those
+# entries has since split or been renamed.
 
 [features]
 default = []
