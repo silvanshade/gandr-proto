@@ -114,12 +114,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
     role: subdocument
-    b3: 44891ca04a131270082a6b578f99f5da17bdcfab0b8ebde9b90d40c82bcd6f9b
+    b3: abd2f53697bca2038583bf5566e8a412cc924f23ad1a82799c40741c5b25f5c9
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/operators.md
     role: subdocument
-    b3: b4b2789538f828be9abc843bf16304648290d282fcc5dacd8be0bd1932a1b3d9
+    b3: 54f143e6875711517b01d36a2756ff718fefcfa3d086137920d159a6273d69f3
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
@@ -144,12 +144,12 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
     role: subdocument
-    b3: b8ddcdd5ae924e42b80e9de4b9f8ecf8eb3fdab5f927af86b632e2d4c7dba900
+    b3: 08c4033c246de3ace64e5993d88fe0ce41b6551933913e39950a3fe207f3993c
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
     role: subdocument
-    b3: 0b026e963cf9276a5e0fdd19ff235ca84e592210c25649a6dc3f0de6215a9f98
+    b3: ac4d381fb74e0e60a4a823eef2e35ccf6f1ba43fa1df89e13ee957fbcd2d52b2
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/attributes.md
@@ -164,7 +164,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: fe6c145b208df441ff4a3adef74dd49b99448e468a8982c6600f2eefd3192cab
+    b3: 21e55c53eedfb86c3492829a45cfed2388f6dc8b8a6620408500a80db734becc
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md
@@ -249,12 +249,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/proof-engineering/roadmap.md
     role: subdocument
-    b3: b20170c6ca72f49571fd29a3e0e4fa13db5ae60b46635ee2dbc1436e45d1a716
+    b3: 6fb1888774c5d062c9a7564e06e6478bcc877165368cd8c24dee5be3ccc4d43b
     edges:
       - { rel: registered-under, to: spec/proof-engineering.md }
   - path: spec/surface-language/value-semantics.md
     role: subdocument
-    b3: ed9247af35fafa47825676f6e45cb66ceaef0db1850b8a1c376fec5f2394739a
+    b3: 27d2ddb8fb0f799f096794a6f3dde167be3b130851c42acaed39acb78595db52
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/modes-and-references.md

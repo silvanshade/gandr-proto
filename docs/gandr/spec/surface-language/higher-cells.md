@@ -223,7 +223,9 @@ Two payoffs and one growth seam:
 
 **The sphere still comes from the declaration, and elaboration compares the computed pair against it.** That direction is what keeps the first payoff above true for derived boundaries: an index read off the filler it indexes cannot disagree with that filler, so a computed pair allowed to fill the sphere would leave a mis-glued boundary typechecking as a cell at the wrong sphere — unfalsifiable exactly where a derived form makes it easiest to get wrong.
 The diagnostic stays the sphere's — it names the member, which of the two boundaries disagrees, the computed term, and the declared one — and a filler that computes no term at all is refused before any comparison is reported.
-As built, the comparison is an endpoint-pair equality at dimension 2 rather than a telescope index, and no surface reaches it: the members it checks are constructed through the declaration table's own API, so the sphere-typed representation and the surface route are both still owed.
+As built, the comparison is an endpoint-pair equality at dimension 2 rather than a telescope index, and of the two pieces once owed here only the representation is: the **surface route arrived on 2026-08-02** — a `sign` block's block-bodied `rule` members lower into `SignDesc::circuits` through `gandr-surface-engine`'s `circuit::desc`, reached from the item dispatch in `desc_elab`, and `check_desc` runs over what it writes.
+What that route cannot yet write is the sphere itself, so the comparison it reaches is a re-derivation agreement rather than a constraint the declaration imposes, and `WfKind::DerivedBoundaryMismatch` stays unreachable from source until the two-sided boundary spelling lands ([[circuit-cells#The derived pair meets the sphere by checking, not by synthesis]]).
+The **sphere-typed representation** is therefore the piece still owed, and it is owed to [[#Sphere-typed boundaries]] below.
 
 ## The `Model(S)` signature-former
 
@@ -424,8 +426,9 @@ Today every peak is derived by overlap enumeration, so **author-asserted boundar
 Boundary checking is replay, never a trusted assertion.
 Directed composition through a 3-cell face inherits the acyclicity gate unchanged, declining with the cycle as the diagnostic.
 
-**A wiring residual becomes load-bearing.** As-built, surface `rule` members are captured into the description table but **never reach the completion engine**: the surface engine does not depend on that crate, and the face-to-cell elaboration is library-complete with no pipeline caller.
-Replay checking _requires_ that wire.
+**A wiring residual becomes load-bearing, and it is narrower than a first reading suggests.** Surface `rule` members do reach the cell layer as built: `gandr-surface-engine` carries a `gandr-theory-computads` dependency, its `desc_cells` module drives `elaborate_data_desc` over every description, and `gandr-surface-corpus`'s `desc` mode is that seam's pipeline caller — the same wire the `surface-engine` ↔ `theory-computads` row of [[#As-built impact]] records, and the wire `gandr-theory-computads`'s own `elaborate` module header names as how description-carried rules reach it today.
+Two narrower absences are what remain, and only the second is this lane's: the **lowering** route (`gandr-surface-engine`'s `lower/codata.rs`) still declines `rule` members, so the description route is the only one that carries them; and the **completion engine** (`gandr-theory-computads`'s `completion` module) has no caller outside that crate and `gandr-theory-virtual-doctrines`' tests, so no surface-declared cell is completed today.
+Replay checking _requires_ that second wire.
 Landing it is this lane's first implementation obligation, and it is independently valuable, because it moves the reserved 2-cell slot toward the semantics its graduation rung already names.
 
 ### Discharge by completion

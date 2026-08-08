@@ -32,4 +32,6 @@ Items here are about how the tree is mechanized and organized; gandr-specific ma
 
 * `--hidden-argument-puns` and the options-policy sweep stay per-file and enforced; any exemption is enumerated with a justification.
 * The `𝔻` layer letter stays reserved for virtual double categories; nothing claims it without a note in the workflow file.
-* Reflection and tactic engines stay out — not "not yet", but under a recorded decision; revisiting is a decision to record, not a call-site judgement.
+* **Reflection-based tactic _macros_** stay out — not "not yet", but under a recorded decision; revisiting is a decision to record, not a call-site judgement.
+  The recorded decision is narrower than a blanket "no reflection", and the narrowing is the load-bearing half: `docs/workflow/agda.md` §"Solvers" declines `Tactic.RingSolver` and `Tactic.MonoidSolver` as too brittle **and names proof-by-reflection solvers built on `Relation.Binary.Reflection` as the intended target**, because those are object-level functions with soundness proofs rather than metaprograms.
+  What the decision actually forbids is quoting or unquoting syntax, which nothing in the tree does — `Gandr.Arena.Offset` reaches `Data.Nat.Solver`'s `+-*-Solver` with hand-quoted goals and keeps the reflection-based `Data.Nat.Tactic.RingSolver` import commented out at the site.
