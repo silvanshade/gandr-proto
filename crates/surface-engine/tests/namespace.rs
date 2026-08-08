@@ -454,6 +454,36 @@ mod tests
     }
 
     #[test]
+    fn except_on_an_absent_subtree_performs_not_found()
+    {
+        let (outcome, events) = permissive(&Modifier::except(path("nta")), arith());
+        assert_eq!(
+            events,
+            Vec::from([NamespaceEvent::NotFound { path: path("nta") }]),
+            "`except p` derives as `in p none`, and `none` checks emptiness before it drops — so \
+             excluding a subtree that is not there is the same typo signal selecting one gives, \
+             at the path the user wrote"
+        );
+        assert_eq!(
+            listing(&outcome),
+            listing(&arith()),
+            "and excluding an empty subtree excludes nothing"
+        );
+    }
+
+    #[test]
+    fn the_identity_checks_nothing_on_an_empty_namespace()
+    {
+        let (outcome, events) = permissive(&Modifier::id(), Trie::empty());
+        assert!(
+            events.is_empty(),
+            "`id` is `seq ()`, which carries no emptiness check — the whole difference from \
+             `all`, and what makes `id` the identity of `seq` rather than a checked no-op"
+        );
+        assert_eq!(listing(&outcome), expected(&[]), "and it changes nothing");
+    }
+
+    #[test]
     fn none_drops_everything_and_flags_an_empty_input()
     {
         let (outcome, events) = permissive(&Modifier::none(), arith());
@@ -670,6 +700,132 @@ mod tests
             listing(scope.export()),
             expected(&[]),
             "and is not a re-export"
+        );
+    }
+
+    #[test]
+    fn an_import_arrives_under_its_prefix()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut handler = PermissiveHandler::<HookLabel>::new();
+        scope
+            .import_subtree(
+                &path("lib"),
+                namespace(&[entry("parse.token", Payload(1))]),
+                &mut handler,
+            )
+            .expect("nothing collides in an empty scope");
+        assert_eq!(
+            listing(scope.visible()),
+            expected(&[entry("lib.parse.token", Payload(1))]),
+            "an import is merged under the prefix it was handed, not at the root — every other \
+             caller of this operation happens to pass the root"
+        );
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[]),
+            "and prefixing it still does not make it a re-export"
+        );
+    }
+
+    #[test]
+    fn a_refused_modifier_leaves_the_visible_namespace_as_it_was()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut permissive_handler = PermissiveHandler::<HookLabel>::new();
+        scope
+            .include_subtree(&NamePath::root(), arith(), &mut permissive_handler)
+            .expect("nothing collides in an empty scope");
+        let mut handler = RejectingHandler;
+        let failure = scope
+            .modify_visible(&Modifier::only(path("nta")), &mut handler)
+            .expect_err("this policy treats a typo as fatal");
+        assert_eq!(
+            failure,
+            ScopeError::Rejected(EventRejection::new(
+                EventKind::NotFound,
+                path("nta"),
+                RejectionReason::from("nothing matched here; check for a typo"),
+            )),
+            "the policy's refusal reaches the caller whole, as the structured scope failure"
+        );
+        assert_eq!(
+            listing(scope.visible()),
+            listing(&arith()),
+            "and the namespace the modifier was rewriting is exactly as it was: the rewrite lands \
+             only once the modifier has succeeded, so a caller can report the rejection and keep \
+             elaborating"
+        );
+        assert_eq!(
+            listing(scope.export()),
+            listing(&arith()),
+            "with the namespace it never touches untouched throughout"
+        );
+    }
+
+    #[test]
+    fn a_refused_modifier_leaves_the_export_namespace_as_it_was()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut permissive_handler = PermissiveHandler::<HookLabel>::new();
+        scope
+            .include_subtree(&NamePath::root(), arith(), &mut permissive_handler)
+            .expect("nothing collides in an empty scope");
+        let mut handler = RejectingHandler;
+        let failure = scope
+            .modify_export(&Modifier::only(path("nta")), &mut handler)
+            .expect_err("this policy treats a typo as fatal");
+        assert_eq!(
+            failure,
+            ScopeError::Rejected(EventRejection::new(
+                EventKind::NotFound,
+                path("nta"),
+                RejectionReason::from("nothing matched here; check for a typo"),
+            )),
+            "the same refusal, on the other namespace"
+        );
+        assert_eq!(
+            listing(scope.export()),
+            listing(&arith()),
+            "and the export namespace is exactly as it was"
+        );
+        assert_eq!(
+            listing(scope.visible()),
+            listing(&arith()),
+            "with the visible namespace untouched throughout"
+        );
+    }
+
+    #[test]
+    fn a_refused_re_export_leaves_the_prior_export_as_it_was()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut permissive_handler = PermissiveHandler::<HookLabel>::new();
+        scope
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[entry("already.exported", Payload(4))]),
+                &mut permissive_handler,
+            )
+            .expect("nothing collides in an empty scope");
+        let mut handler = RejectingHandler;
+        let failure = scope
+            .export_visible(&Modifier::only(path("nta")), &mut handler)
+            .expect_err("this policy treats a typo as fatal");
+        assert_eq!(
+            failure,
+            ScopeError::Rejected(EventRejection::new(
+                EventKind::NotFound,
+                path("nta"),
+                RejectionReason::from("nothing matched here; check for a typo"),
+            )),
+            "the selection is refused before anything is passed on"
+        );
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[entry("already.exported", Payload(4))]),
+            "a refused selection re-exports nothing and takes nothing away: what the unit had \
+             already exported survives"
         );
     }
 
@@ -945,6 +1101,95 @@ mod tests
         );
     }
 
+    #[test]
+    fn closing_a_section_restores_what_the_parent_already_held()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut handler = PermissiveHandler::<HookLabel>::new();
+        scope
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[entry("outer_lemma", Payload(1))]),
+                &mut handler,
+            )
+            .expect("nothing collides in an empty scope");
+        scope.begin_section();
+        scope
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[entry("inner_lemma", Payload(2))]),
+                &mut handler,
+            )
+            .expect("nothing collides inside a fresh section");
+        scope
+            .end_section(&path("group"), &Modifier::id(), &mut handler)
+            .expect("a section is open");
+        assert_eq!(
+            listing(scope.visible()),
+            expected(&[
+                entry("group.inner_lemma", Payload(2)),
+                entry("outer_lemma", Payload(1)),
+            ]),
+            "everything the enclosing scope held before the section is still there afterwards, \
+             beside what the section exported"
+        );
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[
+                entry("group.inner_lemma", Payload(2)),
+                entry("outer_lemma", Payload(1)),
+            ]),
+            "in both namespaces, because closing restores the enclosing scope rather than \
+             replacing it"
+        );
+    }
+
+    #[test]
+    fn nested_sections_close_innermost_first()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut handler = PermissiveHandler::<HookLabel>::new();
+        scope.begin_section();
+        scope
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[entry("outer_lemma", Payload(1))]),
+                &mut handler,
+            )
+            .expect("nothing collides inside a fresh section");
+        scope.begin_section();
+        scope
+            .include_subtree(
+                &NamePath::root(),
+                namespace(&[entry("inner_lemma", Payload(2))]),
+                &mut handler,
+            )
+            .expect("nothing collides inside a fresh section");
+        scope
+            .end_section(&path("inner"), &Modifier::id(), &mut handler)
+            .expect("the inner section is open");
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[
+                entry("inner.inner_lemma", Payload(2)),
+                entry("outer_lemma", Payload(1)),
+            ]),
+            "closing the inner section returns into the *enclosing section*, not into the \
+             outermost scope — the enclosing scopes are a stack"
+        );
+        scope
+            .end_section(&path("outer"), &Modifier::id(), &mut handler)
+            .expect("the outer section is open");
+        assert_eq!(
+            listing(scope.export()),
+            expected(&[
+                entry("outer.inner.inner_lemma", Payload(2)),
+                entry("outer.outer_lemma", Payload(1)),
+            ]),
+            "and closing the outer one prefixes both again, so section prefixes nest"
+        );
+    }
+
     // --- The handler seam ---------------------------------------------------
 
     #[test]
@@ -1037,6 +1282,122 @@ mod tests
             *rejection.path(),
             NamePath::root(),
             "at the prefix the hook ran under"
+        );
+    }
+
+    #[test]
+    fn a_rejection_renders_its_event_kind_path_and_reason()
+    {
+        let mut handler = RejectingHandler;
+        let missing = Modifier::only(path("nta"))
+            .apply(arith(), &mut handler)
+            .expect_err("this policy treats a typo as fatal");
+        assert_eq!(
+            alloc::format!("{missing}"),
+            "the not-found event at `nta` was rejected: nothing matched here; check for a typo",
+            "a rejection is the diagnostic a policy hands back to a consumer with no other \
+             reporting layer, so it renders all three of its parts"
+        );
+        assert_eq!(
+            missing.reason().as_ref(),
+            "nothing matched here; check for a typo",
+            "and the policy's own explanation is readable as text without going through the \
+             rendering"
+        );
+
+        let colliding = Modifier::union(Vec::from([
+            Modifier::id(),
+            Modifier::renaming(path("a"), NamePath::root()),
+        ]))
+        .apply(
+            namespace(&[entry("a.x", Payload(1)), entry("x", Payload(2))]),
+            &mut handler,
+        )
+        .expect_err("this policy forbids shadowing");
+        assert_eq!(
+            alloc::format!("{colliding}"),
+            "the shadow event at `x` was rejected: this policy forbids shadowing",
+            "each of the three events renders under its own name"
+        );
+
+        let hooked = Modifier::hook(HookLabel::KeepEverything)
+            .apply(arith(), &mut handler)
+            .expect_err("this policy recognizes no hooks");
+        assert_eq!(
+            alloc::format!("{hooked}"),
+            "the hook event at `.` was rejected: this policy recognizes no hooks",
+            "and a rejection at the root names the root, as the design record's bare period"
+        );
+    }
+
+    #[test]
+    fn a_scope_failure_renders_its_message_or_its_rejection()
+    {
+        let mut scope: Scope<Payload, ()> = Scope::new();
+        let mut handler = PermissiveHandler::<HookLabel>::new();
+        let structural = scope
+            .end_section(&path("group"), &Modifier::id(), &mut handler)
+            .expect_err("no section was ever opened");
+        assert_eq!(
+            alloc::format!("{structural}"),
+            "no open section to close",
+            "the structural failure carries a message of its own"
+        );
+
+        let mut rejecting = RejectingHandler;
+        let rejected = scope
+            .modify_visible(&Modifier::all(), &mut rejecting)
+            .expect_err("the fresh scope is empty and this policy calls that fatal");
+        assert_eq!(
+            alloc::format!("{rejected}"),
+            "the not-found event at `.` was rejected: nothing matched here; check for a typo",
+            "while a refused event renders transparently as the rejection itself, so wrapping it \
+             adds no layer to what a user reads"
+        );
+    }
+
+    #[test]
+    fn clearing_a_permissive_handler_forgets_what_it_recorded()
+    {
+        let mut handler = PermissiveHandler::<HookLabel>::new();
+        let first = Modifier::<HookLabel>::all()
+            .apply(Trie::<Payload, ()>::empty(), &mut handler)
+            .expect("the permissive policy rejects nothing");
+        assert_eq!(
+            listing(&first),
+            expected(&[]),
+            "the emptiness check transforms nothing"
+        );
+        assert_eq!(
+            handler.events(),
+            Vec::from([NamespaceEvent::NotFound {
+                path: NamePath::root(),
+            }])
+            .as_slice(),
+            "and it was recorded"
+        );
+
+        handler.clear();
+        assert!(
+            handler.events().is_empty(),
+            "clearing forgets every recorded event"
+        );
+
+        let second = Modifier::<HookLabel>::all()
+            .apply(Trie::<Payload, ()>::empty(), &mut handler)
+            .expect("the permissive policy rejects nothing");
+        assert_eq!(
+            listing(&second),
+            expected(&[]),
+            "and the handler is still usable afterwards"
+        );
+        assert_eq!(
+            handler.events(),
+            Vec::from([NamespaceEvent::NotFound {
+                path: NamePath::root(),
+            }])
+            .as_slice(),
+            "recording only what happened after the clear"
         );
     }
 

@@ -43,6 +43,18 @@ use crate::namespace::trie::Binding;
 use crate::namespace::trie::Trie;
 
 /// A structured scope-operation failure.
+///
+/// # Contract
+/// - ensures: a refused event renders *transparently* as the [`EventRejection`]
+///   itself, so wrapping a policy's refusal in a scope failure adds no layer to
+///   what a user reads; a structural failure renders its own message.
+///
+/// # Adequacy
+/// - hypothesis: L3 only — one decision surface (which of the two variants
+///   supplies the rendering), separated by rendering one failure of each
+///   variant, each asserted as an exact string.
+/// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+///   `a_scope_failure_renders_its_message_or_its_rejection`
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum ScopeError
 {
@@ -261,10 +273,16 @@ where
     /// Returns [`ScopeError::Rejected`] when `handler` refuses a collision.
     ///
     /// # Adequacy
-    /// - hypothesis: shares [`Self::include_subtree`]'s hypothesis — the two
-    ///   are separated by the same pair of witnesses.
+    /// - hypothesis: shares [`Self::include_subtree`]'s first decision surface
+    ///   — which namespaces are touched — separated by the same pair of
+    ///   witnesses. Its own surface is the prefixing, which every caller in
+    ///   [`Self::end_section`] reaches only at the root, so it is separated by
+    ///   a direct import under a *non-root* prefix with both namespaces then
+    ///   asserted exactly.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `import_touches_only_the_visible_namespace`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `an_import_arrives_under_its_prefix`
     #[inline]
     pub fn import_subtree<Handler>(
         &mut self,
@@ -297,13 +315,18 @@ where
     /// modifier performed.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 only — one decision surface (which namespace is
-    ///   rewritten), separated from [`Self::modify_export`] by asserting both
-    ///   namespaces exactly after each.
+    /// - hypothesis: L3 only — two decision surfaces (which namespace is
+    ///   rewritten, and that the rewrite is applied only once the modifier has
+    ///   succeeded), the first separated from [`Self::modify_export`] by
+    ///   asserting both namespaces exactly after each, the second by a
+    ///   rejecting handler refusing an event the modifier performs over a
+    ///   non-empty namespace, with both namespaces then asserted exactly.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `modifying_visible_leaves_export_alone`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `modifying_export_leaves_visible_alone`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `a_refused_modifier_leaves_the_visible_namespace_as_it_was`
     #[inline]
     pub fn modify_visible<Handler>(
         &mut self,
@@ -337,6 +360,8 @@ where
     ///   does not have.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `modifying_export_leaves_visible_alone`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `a_refused_modifier_leaves_the_export_namespace_as_it_was`
     #[inline]
     pub fn modify_export<Handler>(
         &mut self,
@@ -360,7 +385,12 @@ where
     ///   held.
     /// - provides: the re-export control the design record's `export_visible`
     ///   names — a unit chooses which of the things it can see it passes on.
-    /// - fails: propagates a handler rejection.
+    /// - fails: propagates a handler rejection. A rejection *from the modifier*
+    ///   leaves both namespaces as they were, so a refused selection re-exports
+    ///   nothing and takes nothing away; a rejection *from the merge* is the
+    ///   carrier's non-atomic merge — see [`Trie::union_resolving`] — under
+    ///   which the export namespace keeps every binding merged before the
+    ///   refused path together with the one it already held there.
     /// - panics: none.
     ///
     /// # Errors
@@ -373,9 +403,14 @@ where
     ///   result merges rather than replaces), separated by a selective modifier
     ///   over a visible namespace holding bindings the export namespace does
     ///   not, run against a non-empty prior export, asserting both namespaces
-    ///   exactly.
+    ///   exactly. A fourth surface — that the export namespace is not disturbed
+    ///   before the modifier has succeeded — is separated by a rejecting
+    ///   handler refusing an event the modifier performs, again against a
+    ///   non-empty prior export.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `export_visible_re_exports_a_selection`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `a_refused_re_export_leaves_the_prior_export_as_it_was`
     #[inline]
     pub fn export_visible<Handler>(
         &mut self,
@@ -402,16 +437,23 @@ where
     ///   the section can see its surroundings; the child's export starts empty.
     /// - ensures: the parent's namespaces are preserved and restored by
     ///   [`Self::end_section`].
+    /// - ensures: the enclosing scopes are a **stack**, so sections nest and
+    ///   [`Self::end_section`] closes the innermost one.
     /// - panics: none.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 only — two decision surfaces (which namespace the child
-    ///   inherits, and that the child's export starts empty rather than
-    ///   inheriting too), separated by opening a section over a scope whose
-    ///   visible **and** export namespaces are both non-empty, then asserting
-    ///   the child's two namespaces exactly.
+    /// - hypothesis: L3 only — three decision surfaces (which namespace the
+    ///   child inherits, that the child's export starts empty rather than
+    ///   inheriting too, and that the enclosing scopes are a stack rather than
+    ///   a queue), the first two separated by opening a section over a scope
+    ///   whose visible **and** export namespaces are both non-empty and then
+    ///   asserting the child's two namespaces exactly, the third by two nested
+    ///   sections whose closes are asserted exactly after each — a boundary
+    ///   only a depth of two reaches.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `a_section_inherits_the_visible_namespace_and_exports_nothing_yet`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `nested_sections_close_innermost_first`
     #[inline]
     pub fn begin_section(&mut self)
     {
@@ -433,6 +475,10 @@ where
     /// - ensures: the child's *visible* namespace is discarded, so bindings the
     ///   section only imported evaporate at close and bindings it never
     ///   exported stay private.
+    /// - ensures: the enclosing scope is restored with everything it held
+    ///   before the section opened, in both namespaces; when that enclosing
+    ///   scope is itself a section, the close returns into it rather than into
+    ///   the outermost scope.
     /// - fails: [`ScopeError::NoOpenSection`] when no section is open; a
     ///   handler rejection from the modifier or the merge. The section is
     ///   popped before the modifier runs, so a rejection from either leaves the
@@ -444,13 +490,17 @@ where
     /// [`ScopeError::Rejected`] when `handler` refuses an event.
     ///
     /// # Adequacy
-    /// - hypothesis: L3 only — four decision surfaces (which namespace of the
-    ///   child survives, the closing modifier, the prefixing, and the
-    ///   missing-section guard), separated by a section that both imports and
-    ///   exports, closed once at a prefix under the identity, once at a prefix
-    ///   under a selective modifier over a two-binding export, and once with no
-    ///   section open, asserting the exact namespaces and the exact error
-    ///   variant.
+    /// - hypothesis: L3 only — five decision surfaces (which namespace of the
+    ///   child survives, the closing modifier, the prefixing, the
+    ///   missing-section guard, and what the restored enclosing scope holds),
+    ///   the first four separated by a section that both imports and exports,
+    ///   closed once at a prefix under the identity, once at a prefix under a
+    ///   selective modifier over a two-binding export, and once with no section
+    ///   open, asserting the exact namespaces and the exact error variant. The
+    ///   fifth needs an enclosing scope that is not empty, which every case
+    ///   above leaves it: it is separated by closing a section over a parent
+    ///   holding its own binding, and again by closing the inner of two nested
+    ///   sections.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `a_section_exports_under_its_prefix`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
@@ -459,6 +509,10 @@ where
     ///   `a_sections_closing_modifier_chooses_what_it_passes_on`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `closing_without_an_open_section_fails`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `closing_a_section_restores_what_the_parent_already_held`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `nested_sections_close_innermost_first`
     #[inline]
     pub fn end_section<Handler>(
         &mut self,

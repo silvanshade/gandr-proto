@@ -317,11 +317,19 @@ impl<Label> Modifier<Label>
     ///   source and target of a relocation, the empty `seq` and empty `union`,
     ///   a `union` whose first branch is not the identity, and a nested `in`
     ///   whose not-found, shadow, and hook paths must each carry the outer
-    ///   prefix.
+    ///   prefix. Two boundary inputs separate a derived builder from the same
+    ///   builder with its emptiness check moved: `except` on an *absent*
+    ///   subtree, which must perform not-found because it derives through
+    ///   `none`, and `id` on the *empty* namespace, which must perform nothing
+    ///   because `seq ()` carries no check at all.
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `only_keeps_the_named_subtree_and_drops_the_rest`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `except_drops_the_named_subtree`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `except_on_an_absent_subtree_performs_not_found`
+    /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+    ///   `the_identity_checks_nothing_on_an_empty_namespace`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —
     ///   `in_runs_the_inner_modifier_on_one_subtree`
     /// - witness: `gandr-surface-engine` `tests/namespace.rs` —

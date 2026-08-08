@@ -232,6 +232,20 @@ impl NamePath
 impl From<DottedName<'_>> for NamePath
 {
     /// Splits a dotted rendering into segments; the empty string is the root.
+    ///
+    /// # Contract
+    /// - ensures: the empty rendering is the root — the zero-segment path — and
+    ///   not a one-segment path whose segment is empty.
+    /// - ensures: any other rendering splits on the separator and on nothing
+    ///   else, preserving order.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — one decision surface (the empty-rendering case),
+    ///   separated by the boundary pair empty / non-empty with the resulting
+    ///   path asserted as an exact value on each.
+    /// - witness: `path::tests::the_empty_dotted_rendering_is_the_root`
+    /// - witness: `path::tests::segments_round_trip_through_the_dotted_boundary`
     #[inline]
     fn from(text: DottedName<'_>) -> Self
     {
@@ -278,6 +292,7 @@ impl core::fmt::Display for NamePath
 mod tests
 {
     use alloc::format;
+    use alloc::string::String;
     use alloc::vec::Vec;
 
     use super::DottedName;
@@ -438,6 +453,47 @@ mod tests
             path("nat.plus").segments(),
             Vec::from([Segment::from("nat"), Segment::from("plus")]).as_slice(),
             "the dotted boundary splits on the separator and nothing else"
+        );
+    }
+
+    #[test]
+    fn the_empty_dotted_rendering_is_the_root()
+    {
+        assert_eq!(
+            path(""),
+            NamePath::root(),
+            "the boundary type spells the root as the empty string, so it must not split into one \
+             segment whose text happens to be empty"
+        );
+        assert_eq!(
+            path("").depth(),
+            SegmentCount(0),
+            "the root carries no segments, which is what makes it prefix every path"
+        );
+    }
+
+    #[test]
+    fn a_segment_renders_as_its_own_text()
+    {
+        assert_eq!(
+            format!("{}", Segment::from("plus")),
+            "plus",
+            "a segment renders as the text it carries and contributes no separator of its own"
+        );
+        assert_eq!(
+            format!("{}", Segment::from(String::from("assoc"))),
+            "assoc",
+            "and it carries that text whether it was built from borrowed or from owned text"
+        );
+    }
+
+    #[test]
+    fn a_segment_list_builds_the_path_in_order()
+    {
+        assert_eq!(
+            NamePath::from(Vec::from([Segment::from("nat"), Segment::from("plus")])),
+            path("nat.plus"),
+            "building from segments preserves their order, so it agrees with the dotted boundary"
         );
     }
 }

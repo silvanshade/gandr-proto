@@ -165,6 +165,21 @@ impl<Data, Tag> Trie<Data, Tag>
     /// This is the resolution primitive: an exact whole-path lookup. Because
     /// namespaces are implicit, a path with bindings *below* it and none *at*
     /// it resolves to nothing.
+    ///
+    /// # Contract
+    /// - ensures: the lookup is on the whole path and exact — a path bound only
+    ///   *below* resolves to nothing, because a namespace is not an object that
+    ///   a path can reach.
+    /// - provides: the resolution the elaboration boundary performs, and the
+    ///   reason `nat` and `nat.plus` are independent bindings.
+    /// - panics: none.
+    ///
+    /// # Adequacy
+    /// - hypothesis: L3 only — one decision surface (whole-path versus prefix
+    ///   matching), separated by the boundary pair bound-at-the-path /
+    ///   bound-only-below-it, each asserted as an exact `Option` value.
+    /// - witness: `trie::tests::a_path_bound_only_below_it_resolves_to_nothing`
+    /// - witness: `trie::tests::a_path_and_its_extension_are_independent_bindings`
     #[inline]
     #[must_use]
     pub fn get(
@@ -488,6 +503,38 @@ mod tests
             subject.get(&path("nat")).map(|binding| binding.data),
             Some(Payload(1)),
             "the shorter path resolves on its own"
+        );
+    }
+
+    #[test]
+    fn a_path_bound_only_below_it_resolves_to_nothing()
+    {
+        let subject = namespace(&[entry("nat.plus", Payload(1))]);
+        assert_eq!(
+            subject.get(&path("nat")),
+            None,
+            "namespaces are implicit: `nat` is not an object, so it reaches a binding only when \
+             something is bound *at* it"
+        );
+        assert_eq!(
+            subject.get(&path("nat.plus")).map(|binding| binding.data),
+            Some(Payload(1)),
+            "while the whole path that is bound resolves exactly"
+        );
+    }
+
+    #[test]
+    fn borrowing_a_namespace_iterates_every_binding_in_order()
+    {
+        let subject = namespace(&[entry("b", Payload(2)), entry("a", Payload(1))]);
+        let mut visited: Vec<(String, Payload)> = Vec::new();
+        for (path, binding) in &subject {
+            visited.push((alloc::format!("{path}"), binding.data));
+        }
+        assert_eq!(
+            visited,
+            expected(&[entry("a", Payload(1)), entry("b", Payload(2))]),
+            "borrowing a namespace iterates it, in the same ascending path order as `iter`"
         );
     }
 

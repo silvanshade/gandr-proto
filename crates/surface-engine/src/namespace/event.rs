@@ -116,6 +116,22 @@ impl core::fmt::Display for RejectionReason
 /// A rejection is how a policy says "no" — the engine has no opinion about
 /// whether a collision or a missing selection is fatal, so it propagates the
 /// refusal unchanged and stops.
+///
+/// # Contract
+/// - ensures: a rejection carries all three parts a diagnostic needs — which
+///   event was refused, the path it was performed at, and the policy's own
+///   explanation — and renders all three, because this rendering is what a
+///   consumer with no other reporting layer shows a user.
+/// - ensures: the root renders as the design record's bare period, so a
+///   rejection at the root names something rather than nothing.
+///
+/// # Adequacy
+/// - hypothesis: L3 only — two decision surfaces (the event vocabulary, and
+///   that the rendering reaches every part), separated by rendering one refused
+///   rejection of each of the three kinds, including one at the root, each
+///   asserted as an exact string.
+/// - witness: `gandr-surface-engine` `tests/namespace.rs` —
+///   `a_rejection_renders_its_event_kind_path_and_reason`
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, thiserror::Error)]
 #[error("the {kind} event at `{path}` was rejected: {reason}")]
 pub struct EventRejection
