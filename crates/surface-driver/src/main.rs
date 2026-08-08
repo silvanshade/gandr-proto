@@ -144,10 +144,10 @@ fn main() -> ExitCode
 /// - hypothesis: L3 only — the four statuses are separated by four inputs: no
 ///   argument, a script returning a value, a script performing `proc.exit`, and
 ///   an absent path.
-/// - witness: `cli::no_argument_prints_usage_and_refuses`
-/// - witness: `cli::a_script_that_returns_a_value_leaves_successfully`
-/// - witness: `cli::a_script_that_exits_leaves_with_its_own_status`
-/// - witness: `cli::an_absent_script_is_refused_by_path`
+/// - witness: `cli::tests::no_argument_prints_usage_and_refuses`
+/// - witness: `cli::tests::a_script_that_returns_a_value_leaves_successfully`
+/// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
+/// - witness: `cli::tests::an_absent_script_is_refused_by_path`
 fn serve<Arguments>(arguments: Arguments) -> ExitStatus
 where
     Arguments: IntoIterator<Item = OsString>,
@@ -188,10 +188,10 @@ where
 /// # Adequacy
 /// - hypothesis: L3 only — the accepted forms and the four refusals are
 ///   separated by the argument lists the CLI suite passes to the real binary.
-/// - witness: `cli::no_argument_prints_usage_and_refuses`
-/// - witness: `cli::a_second_operand_is_refused`
-/// - witness: `cli::an_unknown_flag_is_refused`
-/// - witness: `cli::help_prints_usage_and_leaves_successfully`
+/// - witness: `cli::tests::no_argument_prints_usage_and_refuses`
+/// - witness: `cli::tests::a_second_operand_is_refused`
+/// - witness: `cli::tests::an_unknown_flag_is_refused`
+/// - witness: `cli::tests::help_prints_usage_and_leaves_successfully`
 fn parse_request<Arguments>(arguments: Arguments) -> Option<Request>
 where
     Arguments: IntoIterator<Item = OsString>,
@@ -227,9 +227,9 @@ where
 /// - hypothesis: L3 only — the completed, exited, and failed arms are separated
 ///   by three scripts: one returning a value, one performing `proc.exit`, and
 ///   one blaming on an unhandled `perform`.
-/// - witness: `cli::a_script_that_returns_a_value_leaves_successfully`
-/// - witness: `cli::a_script_that_exits_leaves_with_its_own_status`
-/// - witness: `cli::a_script_that_blames_leaves_with_a_failure_status`
+/// - witness: `cli::tests::a_script_that_returns_a_value_leaves_successfully`
+/// - witness: `cli::tests::a_script_that_exits_leaves_with_its_own_status`
+/// - witness: `cli::tests::a_script_that_blames_leaves_with_a_failure_status`
 fn classify(outcome: &ShellOutcome) -> ExitStatus
 {
     match *outcome {
@@ -261,8 +261,8 @@ fn classify(outcome: &ShellOutcome) -> ExitStatus
 /// # Adequacy
 /// - hypothesis: L3 only — the read arm and the source arm are separated by an
 ///   absent path and a source with no runnable program.
-/// - witness: `cli::an_absent_script_is_refused_by_path`
-/// - witness: `cli::a_script_with_no_program_is_refused`
+/// - witness: `cli::tests::an_absent_script_is_refused_by_path`
+/// - witness: `cli::tests::a_script_with_no_program_is_refused`
 fn refusal(error: &RunFileError) -> String
 {
     format!("gandr: {error}\n")
