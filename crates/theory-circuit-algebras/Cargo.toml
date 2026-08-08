@@ -13,6 +13,13 @@ publish.workspace = true
 [dependencies]
 gandr-theory-computads.workspace = true
 
+# The ruled tier-5 dependency is `theory-computads` alone. `core-sequent` is a
+# TEST-ONLY dependency: the spine reading's fixtures are command patterns, and a
+# cut carries the core IL's polarity, which this crate never names in shipping
+# code and never depends on at run time.
+[dev-dependencies]
+gandr-core-sequent.workspace = true
+
 [features]
 default = []
 full = []

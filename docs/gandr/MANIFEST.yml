@@ -174,7 +174,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: f97bf2e657ec8ea572ba1c82981a09a18dd11bd2c9cf1e4af2f5b49ccf5564ab
+    b3: 15eb67c2276b7e36ab400aa74eeb2a28d56b020622d767192844c8a2e880d397
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md

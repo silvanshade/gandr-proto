@@ -624,6 +624,20 @@ Matching therefore stops being a structural recursion and becomes a **sub-diagra
 Two things are now settled rather than open: the search shape is wire- or vertex-driven propagation with one nondeterministic seed per connected component of the pattern, and the span-level seam data becomes a pair of partial bijections rather than a position — both read off working implementations above.
 What remains open is convexity, which is a **global** condition on the match and therefore the one part of the check that does not decompose along the pattern.
 
+**As built (2026-08-08): the matcher exists, and the convexity conjunct is two _computed_ routes rather than one carried datum.** `gandr-theory-circuit-algebras`'s matching face finds embeddings by wire-driven propagation with one nondeterministic seed per connected component of the pattern, and monogamy is what makes one seed per component sufficient rather than merely convenient: a wire has at most one producer and at most one consumer, so assigning a wire forces the image of the generator on either side of it, and a component has no choices left after its seed.
+An embedding is a monomorphism — injective on generators and on wires, label-, arity-, incidence- and port-order-preserving — and injectivity on wires costs nothing extra, because two pattern wires incident to generators cannot share an image without giving that image wire in-degree or out-degree two, which the target's own monogamy already forbids.
+The span-level datum a match yields is the ruled pair of partial bijections, restricted from the match's wire map, and it stands where a position stood.
+**Convexity is checked once per completed candidate, and a refusal is evidence rather than a filter**: the refused candidate is kept, naming the wire the path escapes on, the generator outside the image it runs through, and the wire it re-enters on.
+Three as-built facts bound the check, and each is a placement decision rather than a detail.
+
+* **The fragment's hypotheses are enforced where a diagram is assembled, never at match time.** Monogamy, mono boundary legs, declared open ports and acyclicity are conditions of the diagram view's own constructor, so every theorem quoted above has its hypothesis as an invariant of the type rather than as a check a caller could route around — and the delay fence of [[#circuit-terms-spike-08|circuit-terms-spike-08]] is realized there as a refusal rather than as a caveat: a re-closed body is refused as cyclic, so no cut-open verdict can travel to it.
+* **The two routes are computed, not accepted.** A strongly connected pattern over an acyclic target takes the discharge; everything else takes a directed sweep from every image output through the **whole complement** of the image.
+  The discharge is not a datum the matcher takes on a caller's word, and its agreement with the sweep where both apply is a differential against the sweep as external oracle rather than a documented claim.
+* **The re-check the guard's third conjunct names is built here.** [[#circuit-terms-spike-07|circuit-terms-spike-07]] recorded it as not built, which is why `theory-computads`'s discharge datum refuses a shift rather than assuming one; the sweep is that re-check, and it arrives without moving the engine's datum and without the downward dependency the boundary forbids.
+
+**The reading a matcher needs forces one owed question, and it is declined rather than taken.** Indexing a command pattern as a diagram must decide whether a name worn at both polarities is one interface node or two — the divergence the block quote at [[#The correspondence at gandr's own rung, at theorem grade]] records between the matcher's keying and the derived metadata's.
+The reading refuses that shape with a diagnostic naming the hole instead of choosing, so the answer stays owed at the circuit rung rather than being settled in passing by an index.
+
 **Normalization.** Two normal-form questions must be kept apart, and conflating them is the hazard.
 
 * _Diagram normal form_ — when do two circuit terms denote the same diagram?
@@ -850,6 +864,12 @@ Consuming `derive_shift_equivalence` there was attempted and is **not sound to w
 
 **Where the witness does become well-posed is the instantiation site**, where `p` and `q` are concrete cells, the boundary is ground, and the pair is exactly the one the guard was built for.
 So the two-redex block stays parsed, checked, and declined with its precise diagnostic, and the horizontal composite is owed to whichever rung makes a circuit rule _applicable_ rather than to the one that made it writable.
+
+**As built (2026-08-08): the third conjunct's re-check is built, and the "not built" half of this spike's accounting is retired.** The convexity sweep now exists in `gandr-theory-circuit-algebras`'s matching face, as a directed reachability walk from every image output through the whole complement of the image, refusing with the offending path rather than with a verdict ([[#Matching, normalization, and the crate boundary]]).
+Two consequences for what this spike recorded.
+The **cost accounting stands as written**: the sweep is the $O(|G|)$ reachability walk the spike priced, and the left-connected discharge is still what makes the dynamic conjunct constant and the static overlap cache complete — with the difference that the discharge is now _computed from the pattern_ rather than read from a store's certificate, and is differentially checked against the sweep it replaces.
+The **engine's datum does not move**: `ConvexityDischarge::ReCheckRequired` still refuses a shift rather than assuming one, because wiring the sweep into `derive_shift_equivalence` would be the downward dependency the crate boundary forbids — a matcher reaches the engine only where the engine is instantiated, and no such instantiation site exists yet.
+The **falsifier is unmeasured and stays open**: the quadratic-question bound over schedules is not tested here, and nothing above claims it.
 
 ### circuit-terms-spike-08
 

@@ -151,6 +151,7 @@ path = "crates/core-checker"
 # - gandr-runtime-host
 # - gandr-surface-corpus
 # - gandr-surface-engine
+# - gandr-theory-circuit-algebras (dev)
 # - gandr-theory-computads
 # - gandr-theory-virtual-doctrines (dev)
 [workspace.dependencies.gandr-core-sequent]

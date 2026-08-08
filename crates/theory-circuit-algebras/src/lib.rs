@@ -80,18 +80,24 @@
 //! for. Establishing the seam itself is not this rung's work; it is owed by the
 //! rung that builds the matcher (`circuit-terms-rung-05`).
 //!
-//! # Status: a boundary, not yet machinery
+//! # Status: two homes filled, one still empty
 //!
-//! This is the mint of `circuit-terms-rung-03`, whose deliverable is the crate
-//! at the ruled boundary with its three module homes — not their contents. No
-//! matching, no normalization, and no interface computation is built here yet,
-//! and none has been moved out of [`gandr_theory_computads`]; the ladder fills
-//! the homes at `circuit-terms-rung-04` (diagram normal form) and
-//! `circuit-terms-rung-05` (embedding-based matching behind the decided guard).
-//! Read each module's own documentation for what it will own and what it must
-//! decline.
+//! `circuit-terms-rung-03` minted the crate at the ruled boundary with its
+//! three module homes. `circuit-terms-rung-05` filled two of them: [`matching`]
+//! holds embedding-based matching with its convexity check, and [`interface`]
+//! holds the interface bookkeeping that matching consumes — the wire and
+//! hyperedge vocabulary, the validated monogamous acyclic diagram view, the
+//! seam datum, and the sequent alphabet's spine reading. [`normal_form`] is
+//! still empty and is `circuit-terms-rung-04`'s.
+//!
+//! No engine code has moved: cells, overlaps, completion, tracelets, and the
+//! rewrite loop are still [`gandr_theory_computads`]'s, and nothing here
+//! rewrites. Read each module's own documentation for what it owns and what it
+//! declines.
 //!
 //! [`CellAlphabet`]: gandr_theory_computads::alphabet::CellAlphabet
+
+extern crate alloc;
 
 pub mod interface;
 pub mod matching;
