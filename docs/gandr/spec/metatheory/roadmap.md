@@ -47,10 +47,28 @@ And _strict Segal morphism_ is **undefined at source**: the phrase occurs exactl
 
 ### meta-spike-05
 
-**Is the operadic partition complex built from the graphical category's slice?** Compute at a corolla and at the diamond.
-**½ day.**
+**Does the arity-approximation machine instantiate at gandr's rung, and at what price?** **2 days.**
 
-If yes, the Morita-restriction failure, the elegance gate, and the coherence-connectivity criterion are three faces of one condition.
+**Three gates, and the spike may not be run before all three are open.**
+[[#meta-spike-04|meta-spike-04]] decides the analyticity question this one inherits, and reaches the same obstruction from the other direction.
+**The presentation of the graphical category** — the standing obligation below — supplies the object every check is run against.
+And **the identification of gandr's substrate with an operad of downward wiring diagrams** must be settled before it is used, because two standing cautions aim at exactly that phrase: the _operad of wiring diagrams_ names a different object under the same word, hierarchically nested boxes with ports rather than a matching datum, with gandr's downward wiring sitting strictly below it ([[../metatheory#The naming hazard, kept where a reader meets it]]); and what is special about the substrate is that the wiring category is **free**, not that it is operadic, since every permutative category has an underlying operad and that construction distinguishes nothing ([[../metatheory#The rung, identified]]).
+Deciding which caution applies to this use is the first part of the re-basing work tracked as `gandr-9ulr`, and until it is settled nothing downstream may be quoted.
+
+**What is established already, which is why this is a price question rather than a yes-or-no.** The entry's earlier form — is the operadic partition complex built from the graphical category's slice — is answered **definitionally yes**: the complex is built from slices by definition, the graphical category's active slice at a corolla is exactly gandr's shape family with that boundary, and gandr's site is literally a slice of the graphical category over the orientation object.
+**The machine nonetheless does not instantiate at the graphical presentation.** It consumes an analytic pattern [@barkan-2022-arity, def 3.1]; iso-Segality forces the arity to be the count of elementary objects, and the source's corollary then reads elementary if and only if arity one, while in the circuit-algebra pattern the elementary objects are the edge and the corollas and a corolla's element category has one object per leg plus one — so every legged corolla is elementary of arity greater than one.
+That negative is high-value and rests on a reading, which is why the programme below opens by implementing rather than by reading: an implemented tracking is what would prove it or catch it wrong.
+
+**The spike opens at the language level, not inside the approximation machinery.**
+
+1. **Implement the operadic-presentation arity tracking first.** Carry **box-arity** — the number of inner boxes of a multi-morphism, how many operations are plugged in at once — as an additional tracked quantity beside the leg count and the coherence-debt arity, rather than swapping the representation for the operadic one.
+2. **State the expected-holds and the expected-fails against that implementation before any literature contact.** The three-quantities caveat supplies the first expected-fail: a truncation at box-arity k bounds nothing about port counts, because box-arity is compositional depth and the many-out content has been pushed into the **colours** — a box with many outputs is one colour — so the filtration is blind to the many-out axis.
+3. **Then map the implemented tracking onto the machinery's hypotheses**, in three checks, in order, each able to stop the spike:
+   + fix the arity functor and expect the elementary-iff-arity-one corollary to fire;
+   + check hereditariness, and if it fails note that the weaker quasi-partition theorem still survives and is still usable — hereditariness is decided nowhere in this corpus and stays an open lead ([[guards#Name collisions — read the definition, not the section title]]);
+   + do **not** reach for the slice description at all [@barkan-2022-arity, thm 5.1], since its unary hypothesis fails: it needs the unary part to be a groupoid [ibid., obs 5.9], and gandr's unary part contains grafted unit-corolla chains.
+
+**Two items leave this entry and outlive whatever it returns.** The corolla and diamond computations are [[#meta-datum-01|meta-datum-01]]; and the claim that the Morita-restriction failure, the elegance gate and the coherence-connectivity criterion are three faces of one condition is retired from this spike and re-filed as a question in its own right, [[#Open questions|meta-question-25]].
 
 ### meta-spike-06
 
@@ -158,6 +176,25 @@ The route choice has since been taken for the **as-built** cell alphabet and re-
 **1 day.**
 
 The first thing to test on the pasting side — everything in the univalence section assumes it; the falsifier is a description needing dependency or indexing the base cannot express.
+
+## Standing data — measurements that outlive the spikes that produced them
+
+A spike can be reposed, retired, or answered negatively and still leave a measurement behind.
+Those measurements live here rather than inside a spike entry, so that citing one does not depend on the entry's fate.
+The numbering is stable in the same way the spikes' is.
+
+### meta-datum-01
+
+**The partition complexes of gandr's own shapes, computed — and the disconnection axis moves the homotopy type without moving the arity bound.** At a corolla the partition category is empty, so the complex is empty and its connectivity is the floor of the scale; the reading is that a generator is indecomposable and arity approximation buys nothing there.
+At the diamond the partition category is a rank-two poset whose order complex is a graph, and the block convention changes what that graph is: **thirteen vertices and eighteen edges, a wedge of six circles, when disconnected blocks are admitted**, which is gandr's rung; **ten vertices and twelve edges, a wedge of three circles, when blocks must induce connected subgraphs**, which is the properadic rung.
+**Both give connectivity zero.** The disconnected-block count reproduces the arity-four value the arity-approximation source works out, which is an independent check on the model [@barkan-2022-arity]; that value is carried without a locator against the held artifact, so the check is at report grade rather than at locator grade.
+
+So **disconnection** — the axis the generality ruling insists on — changes the homotopy type of the complex and leaves the bound the arity-approximation theorem consumes exactly where it was.
+That is what makes the measurement decision-relevant, and it is robust to the block convention the computation could not settle, which is why it is recorded independently of what [[#meta-spike-05|meta-spike-05]] returns.
+
+**Two limits travel with the number, and neither is a footnote.** The model is an ad hoc vertex-partition model rather than a structural computation, so a graph-side description of the partition complex is what would make gandr's connectivity bounds computable rather than conjectural — locating one, or establishing its absence with the search recorded, is tracked as `gandr-8v8b`.
+And **which arity the diamond has is not settled**: gandr's diamond is a closed shape with empty interfaces on both sides — `Gandr.Shape.Graph` declares it `diamond : Shape ⊤ [] []` — so under the underlying-legs candidate functor of [[#meta-spike-04|meta-spike-04]] it has arity zero and this computation would be vacuous.
+Which functor is right is the first of the three checks at [[#meta-spike-05]], and neither entry is corrected before it is fixed.
 
 ## Standing obligations — what must be proved or built
 
@@ -281,6 +318,12 @@ And **the exact-reals / synthetic-topology track** — a lateral, firewalled lin
 23. **meta-question-23** — **The canonical (co)end representation**: does the finite-carrier diagram become the canonical reflected end-object once the description layer can express dipresheaves, or does it remain a property-test vehicle?
 24. **meta-question-24** — **What does an adequacy claim for the certificate layer look like?** The diagrammatic-calculus literature has worked examples of the shape — a calculus, a semantics, and a completeness proof that the rewriting is exactly right for it — and gandr has no fixed semantic target, so the theorems do not transfer but the **argument shape** is the closest available model.
     **Carried**, with the stabilizer and Clifford+T completeness results and the ZW calculus recorded as the worked examples to read when the certificate layer's own adequacy statement is drafted; specific examples are more useful here than stronger general statements.
+25. **meta-question-25** — **Is one condition standing behind the Morita-restriction failure, the coherence complex's simple-connectivity criterion, and the elegance gate?** The only honest shared statement anyone has formulated is that _the category of non-trivial decompositions of an operation is sufficiently connected_, with the three as its homotopical, presentation-level and strict instances; it rests on structural analogy and on no theorem in any held source, which makes it a good conjecture and a bad spike consequence.
+    Three things stand against an affirmative answer.
+    **Two of the three faces are related by a published open conjecture that points the opposite way**: the coherence-complex authors write that their results "seem likely" to be a strict version and special case of the arity-approximation theorem, and that it "would be interesting to see" how the two are related [@curien-laplante-anfossi-2023-topological] [@barkan-2022-arity] — which makes the coherence result a special case of the other rather than a co-face of a shared condition.
+    **The third face has no bridge to either**: the arity-approximation source contains no occurrence of _Reedy_ or _elegant_, and the source the corpus cites for the elegance definition contains none of _partition_, _Morita_ or _connectivity_ ([[../metatheory#Stratified univalence]]).
+    **And the three are not the same kind of condition** — an absolute-pushout condition on the degeneracy subcategory, a high-connectivity condition on slices of the active subcategory, and a simple-connectivity condition on a complex built from a presentation — which is the distinction [[guards#Name collisions — read the definition, not the section title|the guards ledger]] keeps under one phrase, so an affirmative verdict would have to retire that guard.
+    Retired from [[#meta-spike-05]], which claimed it as a consequence; the quoted phrases and the two string searches are recorded without locators against the held artifacts, so they are evidence at report grade.
 
 ## Reading queue, by leverage
 
