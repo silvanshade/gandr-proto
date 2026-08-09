@@ -46,31 +46,51 @@ crate::semantic_copy!(pub struct CanonicalTaskNameFlag(bool));
 struct CommandOutputBytes(Vec<u8>);
 
 /// Merge-tier tasks in their canonical local order.
+///
+/// The merge wall has one source of truth: the `gate:merge` task body in
+/// `.config/mise/tasks/mise-tasks-gates.toml`, which is what the Worktrunk
+/// `pre-merge` hook runs. This list mirrors that body task for task and in the
+/// same order, and the integration witness
+/// `tooling::merge_plan_matches_gate_merge_task` fails when the two diverge.
+/// Change the task body first, then this list.
 const MERGE_TASKS: &[Task] = &[
-    Task::new(NameText("core:check")),
-    Task::new(NameText("grammar:test")),
-    Task::new(NameText("cargo:build")),
-    Task::new(NameText("cargo:clippy")),
-    Task::new(NameText("cargo:dylint")),
-    Task::new(NameText("cargo:nextest")),
-    Task::new(NameText("treefmt:check")),
-    Task::new(NameText("wrkflw")),
-];
-
-/// Push-tier tasks in their canonical local order.
-const PUSH_TASKS: &[Task] = &[
-    Task::new(NameText("core:check")),
-    Task::new(NameText("grammar:test")),
-    Task::new(NameText("cargo:build")),
-    Task::new(NameText("cargo:clippy")),
-    Task::new(NameText("cargo:dylint")),
-    Task::new(NameText("cargo:nextest")),
-    Task::new(NameText("treefmt:check")),
-    Task::new(NameText("wrkflw")),
-    Task::new(NameText("cargo:doc-check")),
+    Task::new(NameText("toolchain:pin-check")),
     Task::new(NameText("docs:conflict-markers")),
     Task::new(NameText("docs:manifest-drift")),
     Task::new(NameText("docs:reference-integrity")),
+    Task::new(NameText("cargo:build")),
+    Task::new(NameText("cargo:clippy")),
+    Task::new(NameText("cargo:dylint:local")),
+    Task::new(NameText("cargo:doc-check")),
+    Task::new(NameText("cargo:nextest")),
+    Task::new(NameText("treefmt:check")),
+];
+
+/// Push-tier tasks in their canonical local order.
+///
+/// The merge plan is this plan's prefix, so a push never runs less than a
+/// merge; the entries after it are the push-only checks. Four of them name
+/// tasks the reboot has not restored — `core:check` (the vendored core),
+/// `grammar:test` (the tree-sitter grammar port), `wrkflw` (the hosted
+/// workflow surface), and `cargo:no-panic` (the release link-time no-panic
+/// smoke) — which is why the push hook itself stays parked. The integration
+/// witness `tooling::workflow_plan_tasks_exist_or_are_parked` holds that
+/// inventory to exactly those four names.
+const PUSH_TASKS: &[Task] = &[
+    Task::new(NameText("toolchain:pin-check")),
+    Task::new(NameText("docs:conflict-markers")),
+    Task::new(NameText("docs:manifest-drift")),
+    Task::new(NameText("docs:reference-integrity")),
+    Task::new(NameText("cargo:build")),
+    Task::new(NameText("cargo:clippy")),
+    Task::new(NameText("cargo:dylint:local")),
+    Task::new(NameText("cargo:doc-check")),
+    Task::new(NameText("cargo:nextest")),
+    Task::new(NameText("treefmt:check")),
+    Task::new(NameText("core:check")),
+    Task::new(NameText("grammar:test")),
+    Task::new(NameText("cargo:dylint")),
+    Task::new(NameText("wrkflw")),
     Task::new(NameText("test:soundness-oracles")),
     Task::new(NameText("test:doc-gates")),
     Task::new(NameText("test:page-balance")),
@@ -1369,20 +1389,25 @@ impl Tier
     /// - provides: a plan with no duplicate task names, no Act task, and no
     ///   fuzzing or mutation campaign task.
     /// - panics: none.
-    /// - intension: the push plan has the merge plan as its prefix, then adds
-    ///   the host-compatible documentation/reference, no-panic, and
-    ///   cargo-careful tasks in the order documented by [`PUSH_TASKS`]
+    /// - intension: the merge plan is the `gate:merge` mise task body task for
+    ///   task, in the wall's own order; the push plan has that merge plan as
+    ///   its prefix, then adds the parked pre-reboot entries, the full upstream
+    ///   Dylint lane, and the host-compatible oracle, documentation, no-panic,
+    ///   and cargo-careful tasks in the order documented by [`PUSH_TASKS`]
     ///   (coverage is temporarily disabled while the failed-refactor
     ///   remediation leaves crates below their recorded floors).
     ///
     /// # Adequacy
-    /// - hypothesis: L3 only — exact-order, duplicate, and forbidden-task
-    ///   mutants are killed by comparing the static task-name projection for
-    ///   both tiers.
+    /// - hypothesis: L3 only — exact-order, duplicate, forbidden-task, and
+    ///   merge-wall-divergence mutants are killed by comparing the static
+    ///   task-name projection for both tiers against the literal orders and
+    ///   against the `gate:merge` task body.
     /// - witness: `workflow::tests::merge_plan_order_is_exact`
     /// - witness: `workflow::tests::push_plan_order_is_exact`
     /// - witness: `workflow::tests::plans_have_no_duplicate_tasks`
     /// - witness: `workflow::tests::plans_exclude_act_fuzz_and_mutation_tasks`
+    /// - witness: `tooling::merge_plan_matches_gate_merge_task`
+    /// - witness: `tooling::workflow_plan_tasks_exist_or_are_parked`
     #[inline]
     #[must_use]
     pub fn plan(self) -> Plan
@@ -1752,14 +1777,16 @@ mod tests
     {
         assert_eq!(
             &[
-                "core:check",
-                "grammar:test",
+                "toolchain:pin-check",
+                "docs:conflict-markers",
+                "docs:manifest-drift",
+                "docs:reference-integrity",
                 "cargo:build",
                 "cargo:clippy",
-                "cargo:dylint",
+                "cargo:dylint:local",
+                "cargo:doc-check",
                 "cargo:nextest",
                 "treefmt:check",
-                "wrkflw",
             ][..],
             task_names(Tier::Merge.plan())
         );
@@ -1771,18 +1798,20 @@ mod tests
     {
         assert_eq!(
             &[
-                "core:check",
-                "grammar:test",
-                "cargo:build",
-                "cargo:clippy",
-                "cargo:dylint",
-                "cargo:nextest",
-                "treefmt:check",
-                "wrkflw",
-                "cargo:doc-check",
+                "toolchain:pin-check",
                 "docs:conflict-markers",
                 "docs:manifest-drift",
                 "docs:reference-integrity",
+                "cargo:build",
+                "cargo:clippy",
+                "cargo:dylint:local",
+                "cargo:doc-check",
+                "cargo:nextest",
+                "treefmt:check",
+                "core:check",
+                "grammar:test",
+                "cargo:dylint",
+                "wrkflw",
                 "test:soundness-oracles",
                 "test:doc-gates",
                 "test:page-balance",
@@ -1853,15 +1882,18 @@ mod tests
             )));
         };
 
-        assert_eq!(&["core:check", "grammar:test"][..], runner.calls());
+        assert_eq!(
+            &["toolchain:pin-check", "docs:conflict-markers"][..],
+            runner.calls()
+        );
         assert!(detail.contains("workflow push failed"));
-        assert!(detail.contains("grammar:test"));
+        assert!(detail.contains("docs:conflict-markers"));
         assert!(detail.contains("Some(17)"));
         assert!(detail.contains("captured out"));
         assert!(detail.contains("stderr was streamed live"));
         insta::assert_snapshot!(
             &detail,
-            @"workflow push failed at mise task `grammar:test` with status Some(17); stdout prefix: captured out; stderr was streamed live"
+            @"workflow push failed at mise task `docs:conflict-markers` with status Some(17); stdout prefix: captured out; stderr was streamed live"
         );
         Ok(())
     }
@@ -1870,32 +1902,11 @@ mod tests
     #[test]
     fn successful_execution_reports_the_completed_count() -> TestResult
     {
-        let runner = ScriptedRunner::new([
-            TaskExit::Success,
-            TaskExit::Success,
-            TaskExit::Success,
-            TaskExit::Success,
-            TaskExit::Success,
-            TaskExit::Success,
-            TaskExit::Success,
-            TaskExit::Success,
-        ]);
+        let runner = ScriptedRunner::new(successes_for(Tier::Merge));
 
         let report = execute_with_runner(Tier::Merge, None, &runner)?;
 
-        assert_eq!(
-            &[
-                "core:check",
-                "grammar:test",
-                "cargo:build",
-                "cargo:clippy",
-                "cargo:dylint",
-                "cargo:nextest",
-                "treefmt:check",
-                "wrkflw",
-            ][..],
-            runner.calls()
-        );
+        assert_eq!(runner.calls(), task_names(Tier::Merge.plan()));
         assert_eq!(Tier::Merge, report.tier());
         assert_eq!(report.completed_tasks().0, Tier::Merge.plan().tasks().len());
         Ok(())

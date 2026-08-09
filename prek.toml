@@ -85,8 +85,8 @@ always_run = true
 pass_filenames = true
 
 # The PUSH tier is parked while the reboot bootstraps: `workflow push` runs
-# mise tasks that are not in place yet (core:check, grammar:test, cargo:dylint,
-# wrkflw). Re-enable once the push-tier task surface exists.
+# mise tasks that are not in place yet (core:check, grammar:test,
+# cargo:no-panic, wrkflw). Re-enable once the push-tier task surface exists.
 # [[repos.hooks]]
 # id = "workflow-push"
 # name = "unified Rust workflow push gate"

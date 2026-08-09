@@ -21,6 +21,7 @@ use std::path::PathBuf;
 use gandr_workflow_gates::GateError;
 use gandr_workflow_gates::mutants;
 use gandr_workflow_gates::semantic_value;
+use gandr_workflow_gates::workflow;
 
 /// Shared integration-test result type.
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -232,6 +233,29 @@ const EXPECTED_UPSTREAM_DYLINT_LIBS: &[&str] = &[
     "supplementary",
     "try_io_result",
     "wrong_serialize_struct_arg",
+];
+
+/// Workflow-plan tasks the reboot has not restored to the mise task surface.
+///
+/// `cargo:no-panic` returns with the release link-time no-panic smoke,
+/// `core:check` with the vendored agentic-dev core, `grammar:test` with the
+/// tree-sitter grammar port, and `wrkflw` with the hosted workflow surface;
+/// the push hook stays parked until all four exist.
+const EXPECTED_PARKED_WORKFLOW_TASKS: &[&str] =
+    &["cargo:no-panic", "core:check", "grammar:test", "wrkflw"];
+
+/// Merge-wall tasks the `gate:merge` task body runs, in order.
+const EXPECTED_MERGE_GATE_TASKS: &[&str] = &[
+    "toolchain:pin-check",
+    "docs:conflict-markers",
+    "docs:manifest-drift",
+    "docs:reference-integrity",
+    "cargo:build",
+    "cargo:clippy",
+    "cargo:dylint:local",
+    "cargo:doc-check",
+    "cargo:nextest",
+    "treefmt:check",
 ];
 
 /// Per-process suffix keeping concurrently-created CLI fixtures disjoint.
@@ -1469,9 +1493,8 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
     Ok(())
 }
 
-/// The merge wall runs the deterministic native gates in their policy order.
-#[test]
-fn merge_gate_task_order_is_locked() -> TestResult
+/// Return the ordered task names the `gate:merge` task body runs.
+fn gate_merge_task_names() -> TestResult<Vec<String>>
 {
     let workspace = workspace_root()?;
     let workspace_mise_tasks = workspace_mise_tasks(&workspace);
@@ -1494,21 +1517,114 @@ fn merge_gate_task_order_is_locked() -> TestResult
         let task_name = toml_table_string(step, "task")?;
         merge_tasks.push(task_name.0.to_owned());
     }
+    Ok(merge_tasks)
+}
+
+/// Return the ordered task names one workflow tier's static plan runs.
+fn workflow_plan_task_names(tier: workflow::Tier) -> Vec<String>
+{
+    let mut names = Vec::new();
+    for task in tier.plan().tasks() {
+        names.push(String::from(task.name().as_ref()));
+    }
+    names
+}
+
+/// Return every task name the workspace mise task surface defines.
+fn defined_mise_task_names() -> TestResult<Vec<String>>
+{
+    let workspace = workspace_root()?;
+    let workspace_mise_tasks = workspace_mise_tasks(&workspace);
+    let mut entries =
+        gandr_workflow_gates::support::HOST_FILESYSTEM.read_dir_paths(&workspace_mise_tasks)?;
+    entries.sort();
+    let mut names = Vec::new();
+    for entry in &entries {
+        if entry
+            .extension()
+            .is_none_or(|extension| extension != "toml")
+        {
+            return Err(Box::new(std::io::Error::other(format!(
+                "mise task entry `{}` is not a TOML task file; the workflow-plan task inventory \
+                 gate cannot see script tasks and needs extending",
+                entry.display()
+            ))));
+        }
+        let document = parse_toml_file(entry)?;
+        let Some(document) = document.as_table()
+        else {
+            return Err(Box::new(std::io::Error::other(format!(
+                "mise task file `{}` is not a table",
+                entry.display()
+            ))));
+        };
+        for (name, definition) in document {
+            if definition.is_table() {
+                names.push(name.clone());
+            }
+        }
+    }
+    Ok(names)
+}
+
+/// The merge wall runs the deterministic native gates in their policy order.
+#[test]
+fn merge_gate_task_order_is_locked() -> TestResult
+{
+    let merge_tasks = gate_merge_task_names()?;
     assert_string_sequence(
         &merge_tasks,
-        [
-            "toolchain:pin-check",
-            "docs:conflict-markers",
-            "docs:manifest-drift",
-            "docs:reference-integrity",
-            "cargo:build",
-            "cargo:clippy",
-            "cargo:dylint:local",
-            "cargo:doc-check",
-            "cargo:nextest",
-            "treefmt:check",
-        ],
+        EXPECTED_MERGE_GATE_TASKS.iter().copied(),
         "gate:merge task order changed",
+    );
+    Ok(())
+}
+
+/// The gates crate's merge plan is the merge wall itself, not a second
+/// definition of it that can drift away unobserved.
+///
+/// `gate:merge` is the single source of truth (`.config/wt.toml` runs it as
+/// the whole `pre-merge` wall); `workflow merge` in this crate replays the
+/// same boundaries with caching, so any divergence means one of the two runs
+/// a wall the project does not have.
+#[test]
+fn merge_plan_matches_gate_merge_task() -> TestResult
+{
+    let merge_tasks = gate_merge_task_names()?;
+    let plan_tasks = workflow_plan_task_names(workflow::Tier::Merge);
+    assert_eq!(
+        plan_tasks, merge_tasks,
+        "the gandr-workflow-gates merge plan diverged from the gate:merge task body",
+    );
+    Ok(())
+}
+
+/// Every task either workflow plan runs is a real mise task, apart from the
+/// explicitly parked entries whose tasks the reboot has not restored.
+#[test]
+fn workflow_plan_tasks_exist_or_are_parked() -> TestResult
+{
+    let defined = defined_mise_task_names()?;
+    let mut parked = Vec::new();
+    for tier in [workflow::Tier::Merge, workflow::Tier::Push] {
+        for name in workflow_plan_task_names(tier) {
+            if defined.iter().any(|defined_name| defined_name == &name) {
+                continue;
+            }
+            assert!(
+                EXPECTED_PARKED_WORKFLOW_TASKS.contains(&name.as_str()),
+                "the {tier:?} workflow plan runs `{name}`, which no mise task defines"
+            );
+            if !parked.iter().any(|recorded| recorded == &name) {
+                parked.push(name);
+            }
+        }
+    }
+    parked.sort();
+    assert_string_sequence(
+        &parked,
+        EXPECTED_PARKED_WORKFLOW_TASKS.iter().copied(),
+        "the parked workflow-task inventory changed",
     );
     Ok(())
 }

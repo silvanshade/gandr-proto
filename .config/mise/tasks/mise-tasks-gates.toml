@@ -2,11 +2,16 @@
 #:schema https://mise.jdx.dev/schema/mise-task.json
 
 # Parked gate entries, restored with the pieces they check: grammar:test
-# returns with the surface-grammar port (see the parked task above).
+# returns with the surface-grammar port, which restores the task itself.
 # Wall order: the cheap drift/docs checks fail fast up front (pin-check first,
 # its fcw.13 position), then the Rust sweep; treefmt stays last as the
 # whole-tree normalization check. The strict project-local Dylint lane gates
 # recursion and primitive-boundary contracts together.
+#
+# This body is the merge wall's single source of truth. gandr-workflow-gates
+# mirrors it so `workflow merge` replays the same boundaries with caching, and
+# its `merge_plan_matches_gate_merge_task` witness fails if the two diverge —
+# so change this list first.
 ["gate:merge"]
 description = "Run the native pre-merge gate"
 run = [

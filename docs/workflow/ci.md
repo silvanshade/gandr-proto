@@ -31,14 +31,16 @@ Run the **narrowest gate that proves your change** before any commit; the merge 
 
 `cargo:clippy` and `cargo:dylint:local` accept trailing package names to scope a run to the crates a change touches (`mise run cargo:clippy gandr-theory-computads`); bare invocations keep the workspace scope the wall composes, so per-module iteration and the composed sweep share one task body ([rust.md](rust.md) §"Iterate lints per touched crate").
 
-The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles`, `test:options-policy`, coverage, no-panic, cargo-careful) exists as tasks but is not on the current merge wall; several return with the subject they check as the reboot ports it.
+The doc-gate battery beyond the table (`test:doc-gates`, `test:soundness-oracles`, `test:options-policy`, coverage, cargo-careful) exists as tasks but is not on the current merge wall; several return with the subject they check as the reboot ports it.
+The release no-panic smoke has no task yet; the parked push plan names `cargo:no-panic` against the day it does.
 
 ## The merge wall: `mise run gate:merge`
 
 `.config/wt.toml` `[pre-merge]` is the merge wall — any non-zero exit aborts `wt merge`:
 
-* **`gate:merge`** — the composed merge check; the `mise.toml` task body is authoritative for the membership and its order, so this file does not restate the list only for the two to drift.
+* **`gate:merge`** — the composed merge check; the `.config/mise/tasks/mise-tasks-gates.toml` task body is authoritative for the membership and its order, so this file does not restate the list only for the two to drift.
   The shape: the cheap drift/docs checks fail fast up front (with `toolchain:pin-check` first), the compile-class static analyzers run before the test sweep, and `treefmt:check` closes.
+  `gandr-workflow-gates` carries the same list so `workflow merge` can replay those boundaries with caching; its `merge_plan_matches_gate_merge_task` witness compares the two definitions, so the crate cannot drift into a second, different merge wall.
   `cargo:dylint:local` loads `gandr-workflow-dylint` over every workspace member at `-D warnings`, with no exclusions; the full upstream Dylint inventory remains on-demand and in the parked push tier.
   `cargo:doc-check` runs `cargo doc --workspace --features=full --no-deps --document-private-items` on the pinned nightly with `RUSTDOCFLAGS="-D warnings"`, so a broken or redundant intra-doc link cannot land silently.
   This is the deterministic set a normal diff can realistically break.
@@ -55,7 +57,7 @@ The old footer-misparse gotcha — a body line beginning `word:` read as a trail
 
 These are **parked** during the reboot and return at go-public; they are recorded here so the shape is not lost, not because they run today.
 
-* **Push tier** — `cargo run -p gandr-workflow-gates -- workflow push` (the fixed push plan in `crates/workflow-gates`) is parked as a `prek` pre-push hook because it invokes tasks not yet in place (`core:check`, `grammar:test`, `cargo:dylint`, `wrkflw`).
+* **Push tier** — `cargo run -p gandr-workflow-gates -- workflow push` (the fixed push plan in `crates/workflow-gates`) is parked as a `prek` pre-push hook because it invokes tasks not yet in place (`core:check`, `grammar:test`, `cargo:no-panic`, `wrkflw`).
   The live pre-push hooks are `commitlint` over the push range (`scripts/commitlint-range.nu`) and the signed-commits check (`scripts/check-signed-commits.nu`).
   A push is deliberately an **arc-boundary event**: push after a full arc of work has merged, never per-commit — but no remote exists yet, so pushes wait on go-public.
 * **Coverage** is judged **per production file**, never by an aggregate crate percentage (the 94%-crate/72%-file incident).

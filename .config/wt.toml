@@ -46,9 +46,11 @@ beads-pull = "bd dolt pull || true"
 # core-pin = "mise run core:check"
 
 # `gate:merge` is the single source of truth for merge checks. It runs the
-# grammar suite, build, lint wall, tests, formatting check, and workflow
-# validation in order. Heavier checks (docs/graph gates, no-panic,
-# cargo-careful, llvm-cov) remain push tier.
+# toolchain pin check, the docs conflict, drift, and reference gates, build,
+# the lint wall, rustdoc, tests, and the formatting check in order; the body in
+# .config/mise/tasks/mise-tasks-gates.toml owns the membership, so this
+# comment names the shape and never the list. Heavier checks (graph gates,
+# the doc-gate battery, no-panic, cargo-careful, llvm-cov) remain push tier.
 [[pre-merge]]
 gate-merge = "mise run gate:merge"
 
