@@ -58,6 +58,8 @@ The test: a reader meeting the corpus as a manual learns the design without lear
 8. **Mandatory two-axis review** ([review.md](review.md) §"Documentation fidelity review"): an independent read-only reviewer, given the changed files and the declared source set (not the author's rationale), stanced adversarially ("prove load-bearing detail was lost"), recording the per-class retained/compressed/dropped inventory.
    Gate: zero dropped load-bearing classes.
    Binding findings are fixed before landing; the artifact goes to the notes `adversary/` register; the commit message cites the review.
+   **Scope (owner ruling, 2026-08-09, `gandr-rhu0-answer-01`): the two-axis review binds on authoring passes — absorption, migration, net-new, re-absorption.** A **claims repair** — correcting a status, symbol, or spelling the tree refutes, with the tree as the declared evidence — instead takes an **independent adversarial verification per item**: after writing, re-derive each corrected claim from the tree as if reviewing a stranger's change, and record what was checked in the landing's report.
+   The stance earned the ruling by catching a live code defect on the first repair it ran against.
 9. **Commit per arc** (`docs(spec): …`), classified publishable (no machine-local paths, no session forensics), with the canonical co-author trailer.
 10. **Tracker and ledger.** Bead notes updated and pushed; the migration log rides the same arc.
 11. **Report.** A per-document completion report carries the deliverables _and_ the process findings — workflow-guidance gaps, tool problems, lessons — so the guidance improves with every document.
