@@ -192,7 +192,7 @@ It fires on:
 
 * **closeout, before handoff** — the consolidated pass over what the session is about to leave behind;
 * **every reversal** of a landed finding, decision, or characterization;
-* **every first-time characterization claim** — "X **is** a Y" — because a name is a claim ([agda-design.md](agda-design.md) §"Terminology follows the ladder"), and a naming claim fails in precisely the way a reversal does.
+* **every first-time characterization claim** — "X **is** a Y" — because a name is a claim (`docs/gandr/spec/proof-engineering.md` §"Terminology follows the ladder, and a name may not assert an unchecked correspondence"), and a naming claim fails in precisely the way a reversal does.
   A reversal-only trigger misses these: one of the two instances above was a naming claim, not a reversal.
 
 **Ask the owner before running one.** The pass costs real budget, and the owner may already know the answer.

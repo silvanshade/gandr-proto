@@ -5781,3 +5781,26 @@ cockx-devriese-2018-proof-relevant-unification:
     not in library.bib; synthesized 2026-08-07 — a dispatch record's DOI candidate
     (10.1145/3209108.3209113) does not resolve; title, venue, volume, and the recorded DOI were
     verified against the dblp record on 2026-08-07, and the work itself is unread here
+
+spivak-2013-operad-wiring-diagrams:
+  type: article
+  title: "The Operad of Wiring Diagrams: Formalizing a Graphical Language for Databases,
+    Recursion, and Plug-and-Play Circuits"
+  author: ["Spivak, David I."]
+  date: 2013
+  serial-number:
+    arxiv: "1305.0297"
+  note: >-
+    title, sole authorship, and arXiv identifier verified against the arXiv abstract record on
+    2026-08-09; cited for the disambiguation of "wiring diagram", not for a result
+
+libkind-myers-2025-double-operadic-systems:
+  type: article
+  title: Towards a Double Operadic Theory of Systems
+  author: ["Libkind, Sophie", "Myers, David Jaz"]
+  date: 2025
+  serial-number:
+    arxiv: "2505.18329"
+  note: >-
+    title, authors, and arXiv identifier verified against the arXiv abstract record on
+    2026-08-09; the section locator cited in the corpus is not itself verified

@@ -21,22 +21,22 @@ Every rule is stated in this repository — a pointer to a tree that is not chec
 
 ## The sub-workflow files
 
-| Read                                                             | When your task involves                                                                                                                   |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [workflow/tracker.md](workflow/tracker.md)                       | creating/closing/triaging beads, dependency edges, tracker audits, the owner-decision queue                                               |
-| [workflow/beads-graph-sweep.xml](workflow/beads-graph-sweep.xml) | graph-wide bead classification, normalization, redundancy, citation sweeps                                                                |
-| [workflow/worktrees.md](workflow/worktrees.md)                   | worktree lifecycle, merging, `wt` hooks, mutating sub-agents, governance docs                                                             |
-| [workflow/ci.md](workflow/ci.md)                                 | choosing gates, the local merge wall, coverage, fuzzing, the parked CI surface                                                            |
-| [workflow/rust.md](workflow/rust.md)                             | writing or reviewing Rust; `# Contract` / `# Adequacy` conventions                                                                        |
-| [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)   | adequacy hypotheses, survivor triage, mutation campaigns                                                                                  |
-| [workflow/soundness.md](workflow/soundness.md)                   | checker/machine/subtype/effect/grade changes, coherence oracles                                                                           |
-| [workflow/corpus.md](workflow/corpus.md)                         | surface-corpus examples, the feature landing rule                                                                                         |
-| [workflow/agda.md](workflow/agda.md)                             | the metatheory lane: layout, flags, gates, dependencies, solvers, the done-rule                                                           |
-| [workflow/agda-design.md](workflow/agda-design.md)               | designing Agda structures: representation, characterization, reasoning style, namespacing                                                 |
-| [workflow/scripting.md](workflow/scripting.md)                   | project scripts (Nushell/TS), reading diagnostics (aifix)                                                                                 |
-| [workflow/review.md](workflow/review.md)                         | adversarial review, interpreting adversary findings, research outlooks — **and, standing for every task, declining or refuting anything** |
-| [workflow/specs.md](workflow/specs.md)                           | authoring/editing the `docs/gandr/spec` corpus, re-absorptions, doc fidelity                                                              |
-| [workflow/docs.md](workflow/docs.md)                             | adding/restructuring docs, formatter posture, math-dense Markdown                                                                         |
+| Read                                                               | When your task involves                                                                                                                   |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| [workflow/tracker.md](workflow/tracker.md)                         | creating/closing/triaging beads, dependency edges, tracker audits, the owner-decision queue                                               |
+| [workflow/beads-graph-sweep.xml](workflow/beads-graph-sweep.xml)   | graph-wide bead classification, normalization, redundancy, citation sweeps                                                                |
+| [workflow/worktrees.md](workflow/worktrees.md)                     | worktree lifecycle, merging, `wt` hooks, mutating sub-agents, governance docs                                                             |
+| [workflow/ci.md](workflow/ci.md)                                   | choosing gates, the local merge wall, coverage, fuzzing, the parked CI surface                                                            |
+| [workflow/rust.md](workflow/rust.md)                               | writing or reviewing Rust; `# Contract` / `# Adequacy` conventions                                                                        |
+| [workflow/mutation-adequacy.md](workflow/mutation-adequacy.md)     | adequacy hypotheses, survivor triage, mutation campaigns                                                                                  |
+| [workflow/soundness.md](workflow/soundness.md)                     | checker/machine/subtype/effect/grade changes, coherence oracles                                                                           |
+| [workflow/corpus.md](workflow/corpus.md)                           | surface-corpus examples, the feature landing rule                                                                                         |
+| [workflow/agda.md](workflow/agda.md)                               | the metatheory lane: layout, flags, gates, dependencies, solvers, the done-rule                                                           |
+| [gandr/spec/proof-engineering.md](gandr/spec/proof-engineering.md) | designing Agda structures: representation, characterization, reasoning style, namespacing — the doctrine, not the workflow                |
+| [workflow/scripting.md](workflow/scripting.md)                     | project scripts (Nushell/TS), reading diagnostics (aifix)                                                                                 |
+| [workflow/review.md](workflow/review.md)                           | adversarial review, interpreting adversary findings, research outlooks — **and, standing for every task, declining or refuting anything** |
+| [workflow/specs.md](workflow/specs.md)                             | authoring/editing the `docs/gandr/spec` corpus, re-absorptions, doc fidelity                                                              |
+| [workflow/docs.md](workflow/docs.md)                               | adding/restructuring docs, formatter posture, math-dense Markdown                                                                         |
 
 ## Quality gates, in one breath
 

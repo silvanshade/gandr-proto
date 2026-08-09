@@ -29,7 +29,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
     role: track
-    b3: a737db7bb1437440b8161fc0e6dd40d87a5116578a66b923920b93697d29148c
+    b3: e928e4259cf124edc06884aee41abf115cd0dcc5b1049d830ca4de33f91f8271
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: fa7ccacecc1d06cc22a16dbfac88d13f6f4e1dfead83343491799050ba46cb56
+    b3: 1f4a730fb0dbc3cab9b5f9e5c0dfb963304ae92e0e4aab42a971129905f65b84
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
