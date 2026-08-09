@@ -1,7 +1,8 @@
 # The interactive and toolchain surface
 
 **Proposed.
-Nothing in this document is built.** The toolchain driver is an empty entry point, and every face it will eventually present — the shell-REPL, the script runner, the programming environment, the language-server adapter, the formatter — lands with crates that do not exist yet.
+One of the faces this document designs is built; the rest are not.** `gandr <file>` runs one source file and reports the run as a process status — that is the script-runner face — while the shell-REPL, the terminal programming environment, the language-server adapter, and the formatter land with crates that do not exist yet.
+The next section separates what is already built underneath all of them from what is not.
 
 This document fixes the surface that makes gandr usable as a shell and as a scripting language: the read-evaluate loop, structured data, command history, completion, highlighting, diagnostics, a language-server adapter, and a formatter.
 
@@ -11,8 +12,9 @@ Its organizing commitment is a single one, and everything else is a consequence:
 
 **Built, and verified against the tree at write time.**
 
-* **The driver is a stub with a documented intent.** `gandr-surface-driver` has a `main` with an empty body.
-  Its manifest carries the intended dependency surface commented out, one entry per face with the reason it is wanted — the line editor for the default loop, the melder for the validator and completer, the session engine for cross-line definitions, the host seam for running lines and scripts.
+* **The driver is a working script runner, and running scripts is its whole contract.** `gandr-surface-driver` (the `gandr` binary) takes `gandr <file>` and hands the path to `gandr-surface-engine`'s `run` module, which lowers, links, prelude-checks, and runs the program under the host-effect handler; the driver owns no pipeline of its own and is the process boundary and nothing else.
+  It turns the run's outcome into a process status — `0` for a value terminal, a `proc.exit` code reduced to a byte the way a shell reduces one, `1` for a blame, a stuck configuration, or a fatal host abort, and `2` for a malformed command line or a source that never reached the machine — and prints nothing of its own on success, so a script's output reaches its consumer unmixed.
+  Its production consumer is `scripts/agda-deps.gandr`, which provisions the Agda proof vehicle in the language the toolchain is for; its test suite drives the real binary, because what is under test is what a calling shell observes.
 * **The renderer firewall exists as a crate.** `gandr-surface-render-remote` holds **wire types only** — plain, serialization-ready data that the pipeline projects and renderers consume.
   It parses, lowers, types, and marks nothing, and it depends on no other workspace crate, so an adapter can link it without pulling in the checker.
   Its two layers are the presentation seam (highlight and mark spans, diagnostic and goal cards, preview and transcript frames, the byte-to-position projection) and the versioned bus frame with its delta schema.
@@ -20,10 +22,10 @@ Its organizing commitment is a single one, and everything else is a consequence:
 * **The report is a versioned envelope carrying diagnostics and goals together.** `gandr-surface-engine`'s `diag` module maps a typing failure to a diagnostic and carries hole goals in the same envelope, shaped as an agent-consumable stream.
 * **The origin map's keys survive the process.** Each entry carries the originating node's per-node merkle hash alongside its identity and byte range, so a provenance key is reproducible across runs rather than valid only inside one.
 
-**Designed, and not built.** Everything else: the loop itself, the codecs, history, completion, the language-server adapter, the formatter, and the host handlers that would let any of them run a command.
+**Designed, and not built.** Everything else: the loop itself, the codecs, history, completion, the language-server adapter, and the formatter.
 
-**One naming caveat that will mislead a reader of the driver's manifest.** Its commented dependency list names crates by their pre-reboot names, and most of those names no longer denote anything in this tree — the core, grammar, parser, pipeline, and syntax crates were renamed, and the shell and terminal-environment crates do not exist under any name.
-The intent the comments record is current; the names are not.
+**One caveat about the driver's manifest, because its deferred-face list reads like a parking lot and is not one.** The list names, per face, the reboot crate that face waits on — the line editor plus the grammar, parser, and syntax crates for the REPL; the terminal programming environment, which has no reboot crate at all, for `tui`; and no implementing crate whatsoever for the `lsp`, `mcp`, `fmt`, and `build` subcommand slots.
+A face therefore arrives with its real dependency edge in the same change, never by uncommenting a line.
 
 ## The one machine state, and the firewall
 
@@ -162,9 +164,10 @@ The design is absorbed from the pre-reboot shell-usage and toolchain design reco
 The record carried a great deal of it — which programme this surface was the governing focus of, which decision superseded that role, which lettered build-track stage each pillar rode, and a bootstrap milestone framed around porting this project's own gate scripts.
 None of that is design, all of it has moved at least once, and the corpus register states what the design _is_.
 What is carried from that material is its technical residue: the capability requirements, their dependency order, and the observation that a mock handler replacing a real one is what proves the handler boundary.
-The one status statement that survives is the one at the top: **nothing here is built**.
+The one status statement that survives is the one at the top: **of the faces designed here, only the script runner is built**.
 
-**The as-built account is high confidence and was read from definitions**: the driver's stub entry point and its parked manifest, the renderer-firewall crate's two layers and its leaf position, the report envelope, and the origin map's cross-process-stable keys.
+**The as-built account is high confidence and was read from definitions**: the driver's argument surface, its outcome-to-status contract, and its deferred-face manifest; the renderer-firewall crate's two layers and its leaf position; the report envelope; and the origin map's cross-process-stable keys.
+The driver's contract was additionally exercised through the built binary rather than read only.
 
 **Two claims are marked rather than resolved.** The value-model ladder's landed rungs are stated from the corpus documents that own them rather than re-verified against the crates here.
 And the layout-engine citation is registered with a resolvable identifier but its content was not checked against this document's use of it, which is the standing residual for this document.
