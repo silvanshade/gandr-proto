@@ -40,7 +40,7 @@ This keeps every operation callable through one binary without concentrating dom
 Prefer the narrow stable task that proves the change:
 
 * `mise run docs:manifest-drift` and `mise run docs:reference-integrity` for corpus documentation;
-* `mise run test:options-policy`, `mise run test:soundness-oracles`, `mise run test:graph-gates`, and `mise run test:dep-graph` for policy surfaces;
+* `mise run test:options-policy`, `mise run test:soundness-oracles`, and `mise run test:graph-gates` for policy surfaces;
 * `mise run coverage:check` and `mise run coverage:ratchet` for per-file coverage policy;
 * the fixed landing tiers — `mise run gate:merge` for the merge wall, and the `cargo run --quiet -p gandr-workflow-gates -- workflow push` plan (parked during the reboot, [ci.md](ci.md)) — plus the `mise run mutants:*` family for mutation modes.
 
