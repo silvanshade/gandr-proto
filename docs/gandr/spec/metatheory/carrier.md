@@ -65,7 +65,7 @@ The two halves of the converse are asymmetric — the second operand's edges are
 Presentation symmetry in the substrate propagates to the _shape of the statable theorem_, not only to proofs.
 
 **The cut's port asymmetry, absorbed three times, never by canonicalization**: at the wiring (`cap-swap` — the same cut written at either port is the same term), at the edge listing (the entry is carried, not computed), at the incidence (`Ends`, the explicit unordered pair).
-`cap-swap` is _not_ free everywhere: its two head clauses are `refl` and its recursion is a congruence, but the cap-meets-cap clause is a reasoning chain ending in the braid (`insert-swap-braid`) — which is exactly the coherence-debt arity law's retrodiction (a cut against an underlying cap threads three positions).
+`cap-swap` is _not_ free everywhere: its two head clauses are `refl` and its `∷` clause is a congruence, but the cap-meets-cap clause is a reasoning chain ending in the braid (`tower-swap-braid`) — which is exactly the coherence-debt arity law's retrodiction (a cut against an underlying cap puts three positions in play).
 The structural asymmetry behind the ladder, kept because it predicts the next rung's cost without building it: a base with one of the two _upper_ positions at the front leaves the other three to be reordered — the braid — while a base with one of the two _lower_ positions at the front leaves both routes computing the same term.
 This is the identification-sorting test holding in practice: presentation symmetry is free at the _statement_ level; automorphism symmetry (the merger swap, false on the nose for the ordered carrier) is canonicalization's.
 
@@ -73,7 +73,9 @@ This is the identification-sorting test holding in practice: presentation symmet
 
 The wiring layer's lookups are **views**, each inverse to a construction, with both round trips proved: removal (looking a source out of a wiring) is isomorphic to a wiring over the shrunk interface, and unhitting (looking a sink out) to a wiring into the shrunk interface.
 The reusable instrument: a lookup is a recursion — opaque to later lemmas, which cannot reach past it — while a rebuild is a construction and computes, so questions about a matching are answered by _rebuilding_ rather than by re-inducting.
-The composition law over this calculus is half-closed: the **cut half is proved** (the four-layer exchange coherence `insert-swap-coh⁴` and the cut composition lemma in all five clauses, no hypothesis, no parameter), and the **wire half is the live ladder** — see [[roadmap]] for its exact steps and the standing no-further-coherence prediction.
+The composition law over this calculus is **closed on both halves**, each with no hypothesis and no parameter: the cut half is `match-comp-cut`, the wire half is `match-comp-plug` and `match-comp-fuse`, and over them `match-comp-assoc` holds unconditionally and fills the wiring category's associator (`Gandr.Shape.Structure.WIRING`'s `mon-α`), which stood as a module parameter while the law was open.
+The four-layer coherence `tower-coh⁴` is spent exactly where four positions meet — `match-cap-insert`'s cut-meets-cut clause, and `unhit-recap-cap` — and the deepest word the route reaches is five layers, at `match-cap-cap` over `tower-cycle-pair`, inside the _wire_ half's fused case, where the apart-lemma for a threaded cut (`match-remove-cut-apart`) rebuilds a lookup's capped branch into a second `match-cap`.
+That five-layer word is the one falsification of the no-further-coherence prediction; see [[roadmap]] for the exact steps and for where the prediction then held.
 
 ## Gate witnesses
 
@@ -94,5 +96,7 @@ The counterexample suite is part of the carrier's content — the predicates nee
 
 ## Remaining carrier work
 
-The **wire half of the composition law** is the queued carrier work (the ladder in [[roadmap]]); the constructor and incidence layers have none.
+The **wire half of the composition law** is discharged, so the listing algebra and the constructor layer carry no queued work.
+The incidence layer carries one, located at its site in `Gandr.Shape.Graph`: the general forest certificate for `Acyclic` — refuting every nontrivial reduced closed walk over a rooted parent structure, by the root-address list rather than by the depth function, which provably does not close — is deferred, and nothing below it depends on it.
+What remains at the shape layer above them is in [[roadmap]]: grafting associativity — reached through the monad law rather than through the accumulator, under the ruling that substitution is primitive — and the `Monoidal` instance with its interchange equation.
 The open _directions_ (deleting the cell record's simple-connectivity demand; the surface-language question; the translation lemma to the graphical-species presentation; canonicalization) are also in [[roadmap]].

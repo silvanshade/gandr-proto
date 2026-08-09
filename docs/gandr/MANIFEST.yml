@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 2da77b9b2f9ffe711f56582489e8af90747734543d046774af4d36ab336609b2
+    b3: 6aa400bbc329581ebbf7d72bd8e289dcbdb4db43bcddeb8005b71b0bcc7d6d64
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -59,7 +59,7 @@ nodes:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/carrier.md
     role: subdocument
-    b3: 211c3e559b5b859565129b6c30f46ce96d9594c99564349257b3187e5f91c6b6
+    b3: ccfd512fbd0b8cd477b92f7cfa19accdfffc53ae2984b9a155d9832b81859a99
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/directed-univalence.md
