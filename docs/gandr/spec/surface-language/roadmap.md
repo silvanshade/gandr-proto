@@ -35,7 +35,7 @@ Read the two statuses as the lowering route's, and read the description route's 
 * **The term-in-type splice** (rung 2 of the type grammar's value-endpoint growth) — decided with the parser owner.
 * **Format specifiers** for string interpolation — deferred.
 * **Mixed-word interpolation** for the shell host escape (`"pre $( E ) post"`) — deferred; the standalone-word cut is what landed.
-* **Environment assignment** `FOO=bar cmd` — currently unmoldable; wanted working for the daily-driver rung.
+* **Environment assignment** `FOO=bar cmd` — parse-and-decline today: the labeler munches `NAME=value` into one `environment_assignment` tile, the grammar molds it as a single shell atom, and the lowerer declines that kind by name; what is pending is the prefix's binding semantics, wanted working for the daily-driver rung.
 * **Typed package imports** — deferred past the module rung; `import` resolution is unwired today.
   The binding constraint carried from the design record is that **resolution stays outside the trusted core** — a resolver supplies source and module data, the elaborator checks the declared signature — and that a hermetic fixture resolver with no network access is the acceptance instrument ([[proposed/modules#module-question-03]]).
   The toolchain half — content-addressed identity, the cache, the lock record, distribution, and the manifest — is [[../implementation/proposed/packages]].

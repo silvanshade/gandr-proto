@@ -134,7 +134,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/shell.md
     role: subdocument
-    b3: 2764254c5a517475b973949e6ef8527229fc2c8f900a88467987eaae7d80b5a7
+    b3: fd3221f5344e168dc2a8dbd2fa032a03c7e92181c1ddee7004f8f3bcdb9e2bc1
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/signatures.md
@@ -164,7 +164,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: 21e55c53eedfb86c3492829a45cfed2388f6dc8b8a6620408500a80db734becc
+    b3: b6c2edf32d5226f581eafaf027457e5d587ee0577dced27332e52c8115654718
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md

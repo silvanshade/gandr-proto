@@ -373,6 +373,7 @@ fn add_lexical_rules(
 /// | Form                     | Surface                          | Realisation                                             |
 /// | ------------------------ | -------------------------------- | ------------------------------------------------------- |
 /// | simple command           | `cmd arg …`                      | `shell_word` atom juxtaposition (one word class)         |
+/// | environment assignment   | `FOO=bar cmd`                    | `environment_assignment` (whole-token `NAME=` munch)     |
 /// | single-quoted string     | `'…'` (verbatim run)             | `single_quoted_string` (opaque `single_quoted_content`)  |
 /// | double-quoted string     | `"…"` (fragments + escapes)      | `double_quoted_string` (W4e proper lexing)               |
 /// | simple parameter         | `$name`                          | `variable_expansion` (`$` branch)                        |
@@ -393,16 +394,41 @@ fn add_lexical_rules(
 /// (`${name:-word}`, `${#name}`, `${name%pat}`, `${name/a/b}`, …); here-docs
 /// (`<<`, `<<-`) and here-strings (`<<<`); globs and brace / tilde expansion
 /// (`*`, `?`, `[…]`-glob, `{a,b}`, `~`); the `case` / `for` / `while` / `if`
-/// shell control words and shell functions; environment-assignment prefixes
-/// (`FOO=bar cmd`); command negation (`! cmd`); process substitution
-/// (`<( … )`); and job control / history. These parse-and-decline or lex as
-/// ordinary words today; each is a later shell-stage widening.
+/// shell control words and shell functions; the environment-assignment prefix
+/// SEMANTICS (`FOO=bar cmd` — the assignment token itself is folded in above);
+/// command negation (`! cmd`); process substitution (`<( … )`); and job
+/// control / history. Each is a later shell-stage widening, and each
+/// parse-and-declines or lexes as an ordinary word today — except
+/// `command_substitution`, whose current failure mode is below.
 ///
 /// The remaining DEAD placeholder rules retained purely for tree-sitter
 /// named-kind coverage — `shell_list`, `and_expression` / `or_expression`
-/// (shell), `negation`, `environment_assignment`, `command_substitution` —
-/// reference tiles the labeler does not emit; they cover their committed kind
-/// by provenance and are exercised only once their construct is folded in.
+/// (shell), `negation` — each require at least one tile the labeler NEVER
+/// emits (`shell_or`, `pipeline_operand`, `shell_and`, `negation`), so none of
+/// them can fire; they cover their committed kind by provenance and are
+/// exercised only once their construct is folded in. Their KINDS still appear,
+/// forced downstream off tiles that do mold: `!` lexes as an ordinary
+/// `shell_word` and `surface-engine` forces the `negation` kind onto that one
+/// token.
+///
+/// `environment_assignment` is NOT one of them: its rule below is LIVE through
+/// molding. The labeler munches `NAME=value` into one `Lexeme::EnvAssign`
+/// token (`surface-parser`'s `scan_shell_word`), the molder offers that token
+/// the single `environment_assignment` candidate label (`surface-parser`'s
+/// `candidate_labels`), and the rule molds it as one Expression atom. Only the
+/// prefix SEMANTICS is deferred, and it is declined by name at lowering
+/// (`surface-engine` raises `LowerError::Unsupported` on the
+/// `environment_assignment` kind) — parse-and-decline, not unmoldable.
+///
+/// `command_substitution` is neither dead nor landed. Its `list_operator` /
+/// `shell_list` tiles are never emitted, but both are OPTIONAL, so `$!{ … }`
+/// molds on the `command_substitution_start` and `}` tiles the labeler does
+/// emit. Nothing then classifies the resulting meld, so it reaches the lowerer
+/// with an EMPTY kind and fails as `MalformedNode` instead of through the
+/// named `COMMAND_SUBSTITUTION` arm written for it — a defect in the
+/// classification seam, not a deferral. Only the fuzz seeds exercise the form,
+/// and they assert absence of panic rather than a named decline.
+///
 /// The former `command` / `command_name` / `argument` / `redirection`
 /// composites are DELETED (the W4e perf reshape): their placeholder tiles
 /// never molded, but their extra fresh-menu molds tied every shell word and

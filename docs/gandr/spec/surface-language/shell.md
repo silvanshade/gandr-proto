@@ -36,7 +36,7 @@ The shell context is an embedded, boundary-resilient sub-grammar with prefix dis
 * **redirections**: `<`, `>`, `>>`, `<&`, `>&`, `<>`, with file-descriptor prefixes — `2> err.log`, `2>&1`;
 * **host escape**: `$( E )`, whose interior is an ordinary gandr expression (below).
 
-The deferred POSIX tail — command environment assignments (`FOO=bar cmd`), command negation (`! cmd`), process substitution (`<( … )`), job control and history — parses-and-declines or lexes as ordinary words today, each a later shell-stage widening; environment assignment in particular is currently unmoldable and wanted working for the daily-driver rung.
+The deferred POSIX tail — command environment assignments (`FOO=bar cmd`), command negation (`! cmd`), process substitution (`<( … )`), job control and history — parses-and-declines or lexes as ordinary words today, each a later shell-stage widening; environment assignment in particular already molds as its own `environment_assignment` atom, so only the prefix's binding semantics is pending, and that is wanted working for the daily-driver rung.
 
 ## The host escape `$( E )`
 
