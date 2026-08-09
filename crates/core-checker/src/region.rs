@@ -1,15 +1,15 @@
 //! The parser-agnostic seam for changed-region detection (A2.3;
-//! `incremental-pipeline.md` §§2-3).
+//! `incremental-pipeline.md` §"Cold reparse" and §"The structural diff").
 //!
 //! # Why a seam
 //!
 //! `incremental-pipeline.md`'s incremental loop begins by re-deriving a
-//! program's top-level items from a source revision (§2, the cold reparse) and
-//! then finding the changed region against the previous revision (§3). This
-//! module names the boundary between *producing* those items — a front end's
-//! job — and *consuming* them: the changed-region detector and the checkpoint
-//! engine ([`crate::checkpoint`]) read only [`Item`] / [`Program`], never a
-//! concrete parser.
+//! program's top-level items from a source revision (§"Cold reparse") and
+//! then finding the changed region against the previous revision (§"The
+//! structural diff"). This module names the boundary between *producing* those
+//! items — a front end's job — and *consuming* them: the changed-region
+//! detector and the checkpoint engine ([`crate::checkpoint`]) read only
+//! [`Item`] / [`Program`], never a concrete parser.
 //!
 //! The front end is deliberately unnamed here. The reboot's tree-sitter
 //! node-address path is retired (`crate::syntax` recognizes unchanged subtrees
@@ -38,10 +38,11 @@ use crate::types::Ty;
 /// aligns, footprints, and types.
 ///
 /// This is the reboot's realization of the incremental pipeline's per-item
-/// granularity (`incremental-pipeline.md` §4): top-level items lower
-/// independently and are typed against an accumulating context threaded item to
-/// item, so an item's identity is its name, its ascription, and its lowered
-/// term — the content key the unchanged-region test compares.
+/// granularity (`incremental-pipeline.md` §"Checkpoints and the reuse rule"):
+/// top-level items lower independently and are typed against an accumulating
+/// context threaded item to item, so an item's identity is its name, its
+/// ascription, and its lowered term — the content key the unchanged-region test
+/// compares.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Item
 {
@@ -128,9 +129,9 @@ impl FromIterator<Item> for Program
 ///
 /// A *total* front end recovers every input-dependent failure into the program
 /// it returns: an out-of-fragment construct or an error region lowers to a hole
-/// rather than aborting (`incremental-pipeline.md` §7). Totality in that sense
-/// is a property of how the front end treats its **input**, and it leaves a
-/// residue that no input recovers from — the front end being unable to run at
+/// rather than aborting (`incremental-pipeline.md` §"Holes"). Totality in that
+/// sense is a property of how the front end treats its **input**, and it leaves
+/// a residue that no input recovers from — the front end being unable to run at
 /// all, because its grammar, table, or parser is unavailable. Those failures do
 /// not name a region, so they cannot become one, and a seam that could not
 /// report them would force every implementor to swallow or panic on them.
@@ -154,7 +155,7 @@ pub trait ItemSource
     /// # Contract
     /// - ensures: returns the revision's items in source order; a total front
     ///   end recovers every input-dependent failure into a hole rather than an
-    ///   error (`incremental-pipeline.md` §7).
+    ///   error (`incremental-pipeline.md` §"Holes").
     /// - fails: only where the front end cannot run at all — see
     ///   [`Self::Error`].
     /// - panics: none required of an implementor.

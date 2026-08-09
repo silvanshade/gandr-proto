@@ -1,5 +1,5 @@
-//! The recursive bidirectional checker (`type-system.md` §3.3;
-//! `typing-machine.md` §2).
+//! The recursive bidirectional checker (`type-system.md` §"Core rules";
+//! `typing-machine.md` §"The recursive checker, before defunctionalization").
 //!
 //! This is the direct-style implementation the typing machine is *derived*
 //! from. Introduction forms check, elimination forms infer their principal
@@ -383,11 +383,11 @@ impl Rec
             // (`u32`/…/`f64`) and check by subsumption, with no widening to a
             // wider numeric atom (ADR-39 D5).
             | Value::Num(literal) => finish_value(literal.value_type(), dir),
-            // Rule Hole⇑/Hole⇓ (A2.2 holes extension, pipeline spec §7): an
-            // axiom — `Γ ⊢ ?hole ⇑ Unknown`, and in checking mode subsumption
-            // (`Unknown` consistent with everything) accepts any expected
-            // type, returning it — the recorded *goal*. The identifier is
-            // ignored by typing.
+            // Rule Hole⇑/Hole⇓ (A2.2 holes extension, pipeline spec §"Holes"):
+            // an axiom — `Γ ⊢ ?hole ⇑ Unknown`, and in checking mode
+            // subsumption (`Unknown` consistent with everything) accepts any
+            // expected type, returning it — the recorded *goal*. The identifier
+            // is ignored by typing.
             | Value::Hole(_) => finish_value(ValueType::Unknown, dir),
             | Value::Pair(fst, snd) => self.rule_pair(fst, snd, dir),
             | Value::Inj(side, payload) => self.rule_inj(side, payload, dir),
@@ -466,7 +466,7 @@ impl Rec
         }
     }
 
-    /// Rule Var: look the hypothesis up; subsumption finishes (§3.3).
+    /// Rule Var: look the hypothesis up; subsumption finishes (§"Core rules").
     fn rule_var(
         &self,
         name: String,
@@ -529,7 +529,7 @@ impl Rec
     /// Rules Inj1⇓/Inj2⇓: injections only check, against a sum — or against
     /// `Unknown`, the matched sum `Unknown ▶+ Unknown + Unknown` (A2.2 holes
     /// extension): the payload checks against `Unknown` and the expectation
-    /// is returned (§3.3).
+    /// is returned (§"Core rules").
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -699,11 +699,11 @@ impl Rec
     }
 
     /// Rules Thunk⇓/Thunk⇑: check the body against the expected `U` payload
-    /// (verifying the grade order), or infer it (§3.3). Checking against
-    /// `Unknown` is the matched thunk (A2.2 holes extension): the body
+    /// (verifying the grade order), or infer it (§"Core rules"). Checking
+    /// against `Unknown` is the matched thunk (A2.2 holes extension): the body
     /// checks against `Unknown` and **no grade constraint is emitted** — the
     /// matched `U`'s grade is unknown and Stage 1 emits no constraints
-    /// (§7's "NO constraints", degenerated honestly).
+    /// (§"Holes": "no constraint emitted", degenerated honestly).
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -744,7 +744,8 @@ impl Rec
         }
     }
 
-    /// Rule Annot: check the value against the ascription, then finish (§3.3).
+    /// Rule Annot: check the value against the ascription, then finish (§"Core
+    /// rules").
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -762,7 +763,8 @@ impl Rec
     }
 
     /// Rules Abs⇓/Abs⇑: unannotated binders check against an arrow; annotated
-    /// binders infer (and reach a checking direction via subsumption) (§3.3).
+    /// binders infer (and reach a checking direction via subsumption) (§"Core
+    /// rules").
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -815,7 +817,7 @@ impl Rec
         }
     }
 
-    /// Rule App⇑: infer the head, then check the argument (§3.3).
+    /// Rule App⇑: infer the head, then check the argument (§"Core rules").
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -837,7 +839,7 @@ impl Rec
             // The matched arrow (A2.2 holes extension): an `Unknown` head
             // applies — the argument checks against `Unknown` and the result
             // is `Unknown` — so a hole in head position localizes instead of
-            // cascading (§7).
+            // cascading (§"Holes").
             | CompType::Unknown => {
                 self.value(unrc(arg), Dir::Check(ValueType::Unknown))?;
                 finish_comp(CompType::Unknown, dir)
@@ -849,7 +851,8 @@ impl Rec
         }
     }
 
-    /// Rules Ret⇑/Ret⇓: type the payload in the direction's image (§3.3).
+    /// Rules Ret⇑/Ret⇓: type the payload in the direction's image (§"Core
+    /// rules").
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -869,9 +872,9 @@ impl Rec
 
     /// Rule Bind⇕: infer the bound computation, type the continuation in the
     /// original direction, union the bound row into the result, then **finish
-    /// against the original direction** (`type-system.md` §3.3; the bottom-up
-    /// row arithmetic of A3.2 `+effects`, `effects-control-shell.md` §1.2 via
-    /// [`combine_bind_row`]).
+    /// against the original direction** (`type-system.md` §"Core rules"; the
+    /// bottom-up row arithmetic of A3.2 `+effects`, `effects-control-shell.md`
+    /// §1.2 via [`combine_bind_row`]).
     ///
     /// The final [`finish_comp`] is load-bearing: the continuation is typed in
     /// `dir`, but unioning the bound row can *grow* the result's row past the
@@ -914,7 +917,8 @@ impl Rec
         finish_comp(combined, dir)
     }
 
-    /// Rule Force⇑: infer the thunk, require `1 ⊑ r`, expose the body (§3.3).
+    /// Rule Force⇑: infer the thunk, require `1 ⊑ r`, expose the body (§"Core
+    /// rules").
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -949,25 +953,26 @@ impl Rec
         }
     }
 
-    /// Rule Dup (`type-system.md` §2): split a thunk's usage budget into a
-    /// pair. **Check-only** — the split grades `r`/`s` are determined solely
+    /// Rule Dup (`type-system.md` §"Grades"): split a thunk's usage budget into
+    /// a pair. **Check-only** — the split grades `r`/`s` are determined solely
     /// by the expectation `F (U_r B × U_s B)`, so `dup` in inference position
     /// (or checked against any other shape) is stuck (annotate / supply the
-    /// expectation), exactly as injections and lazy pairs. The thunk
-    /// `v ⇑ U_g B_v` is inferred and the **conservation** law `r + s ⊑ g` is
-    /// enforced — the additive accounting `+` of §2: the two halves' budgets
+    /// expectation), exactly as injections and lazy pairs. The thunk `v ⇑ U_g
+    /// B_v` is inferred and the **conservation** law `r + s ⊑ g` is enforced —
+    /// the additive accounting `+` of §"Grades": the two halves' budgets
     /// together may not exceed the original. The (reflexive) grade match and
     /// body subsumption are then discharged by the inlined Sub rule
-    /// ([`finish_comp`]) against the expectation. A matched `Unknown`
-    /// scrutinee (`dup ?hole`, A2.2 holes extension) emits no grade
-    /// constraint and splits at `Unknown` bodies.
+    /// ([`finish_comp`]) against the expectation. A matched `Unknown` scrutinee
+    /// (`dup ?hole`, A2.2 holes extension) emits no grade constraint and splits
+    /// at `Unknown` bodies.
     ///
     /// Unlike the other check-only forms (`with`/`case`/`inj`), a bare
     /// `Unknown` *expectation* is deliberately **not** matched: dup needs
     /// concrete split grades, and the grade unification that would let
-    /// `Unknown` supply them is a §7 reserved hook (not built in v0), so
-    /// `dup v ⇐ ?` is stuck rather than degenerating to a matched split. This
-    /// is safe (it only ever *rejects*, and the machine agrees step for step).
+    /// `Unknown` supply them is a reserved hook of §"Holes" (not built in v0),
+    /// so `dup v ⇐ ?` is stuck rather than degenerating to a matched split.
+    /// This is safe (it only ever *rejects*, and the machine agrees step for
+    /// step).
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -1029,7 +1034,7 @@ impl Rec
         finish_comp(natural, dir)
     }
 
-    /// Rule Drop (`type-system.md` §2): discard a thunk's usage budget,
+    /// Rule Drop (`type-system.md` §"Grades"): discard a thunk's usage budget,
     /// returning `F 1`. The side condition `0 ⊑ r` is **vacuous on the
     /// default carrier** `ℕ ∪ {ω}` (`0` is the bottom of `⊑`), so any thunk
     /// grade is accepted; a carrier whose `0` is not the bottom would
@@ -1061,7 +1066,7 @@ impl Rec
     }
 
     /// Rule Case⇓: infer the scrutinee, check both arms at the expected type
-    /// (§3.3; check-only).
+    /// (§"Core rules"; check-only).
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.
@@ -1347,7 +1352,7 @@ impl Rec
         finish_comp(result, dir)
     }
 
-    /// Rule With⇓: check each component against its conjunct (§3.3;
+    /// Rule With⇓: check each component against its conjunct (§"Core rules";
     /// check-only).
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
@@ -1385,7 +1390,8 @@ impl Rec
         }
     }
 
-    /// Rule Prj⇑: infer the target, project the chosen conjunct (§3.3).
+    /// Rule Prj⇑: infer the target, project the chosen conjunct (§"Core
+    /// rules").
     /// # Termination
     /// - reason: mirrors finite typing-rule derivations.
     /// - measure: remaining checked syntax, type, or stack premises.

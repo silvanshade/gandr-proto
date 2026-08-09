@@ -30,7 +30,7 @@
 //! Beyond the worked examples, rule coverage lives in [`positive`] (one per
 //! introduction/elimination rule), failure modes in [`negative`] (one per
 //! [`crate::error::TypeError`] constructor reachable in core CBPV), the
-//! `type-system.md` §10.2 subtyping decomposition rows in [`subtype_rows`]
+//! `type-system.md` §"Subtyping decomposition" rows in [`subtype_rows`]
 //! (one positive and one negative per row), and the A2.2 hole rules in
 //! [`holes`] — the hole axioms, every matched-type elimination/checked
 //! introduction, the consistency rows of `Unknown`, and the recorded
@@ -942,10 +942,10 @@ mod positive
         );
     }
 
-    /// Rule Dup (`type-system.md` §2): `dup (thunk_2 t)` splits the budget `2`
-    /// into `1 + 1`, checking against `F (U_1 B × U_1 B)` since `1 + 1 ⊑ 2`.
-    /// The result echoes the expectation (the inlined Sub rule discharges the
-    /// shared body).
+    /// Rule Dup (`type-system.md` §"Grades"): `dup (thunk_2 t)` splits the
+    /// budget `2` into `1 + 1`, checking against `F (U_1 B × U_1 B)` since `1 +
+    /// 1 ⊑ 2`. The result echoes the expectation (the inlined Sub rule
+    /// discharges the shared body).
     #[test]
     fn dup_conserves_grade()
     {
@@ -967,8 +967,8 @@ mod positive
         );
     }
 
-    /// Rule Drop (`type-system.md` §2): `drop (thunk_2 t)` discards the budget
-    /// and infers `F 1`, independent of the thunk's grade and body.
+    /// Rule Drop (`type-system.md` §"Grades"): `drop (thunk_2 t)` discards the
+    /// budget and infers `F 1`, independent of the thunk's grade and body.
     #[test]
     fn drop_discards_thunk_budget()
     {
@@ -1261,7 +1261,8 @@ mod negative
         );
     }
 
-    /// Injections do not infer (`typing-machine.md` §4: stuck with a hint).
+    /// Injections do not infer (`typing-machine.md` §"The step function": stuck
+    /// with a hint).
     #[test]
     fn injection_does_not_infer()
     {
@@ -1369,8 +1370,9 @@ mod negative
     }
 
     /// Rule Dup conservation fails: `dup (thunk_1 t)` cannot split into
-    /// `U_1 × U_1` because `1 + 1 ⋢ 1` — the additive accounting `+` of §2
-    /// catches the over-draw (`GradeError { lower: 1 + 1, upper: 1 }`).
+    /// `U_1 × U_1` because `1 + 1 ⋢ 1` — the additive accounting `+` of
+    /// §"Grades" catches the over-draw (`GradeError { lower: 1 + 1, upper: 1
+    /// }`).
     #[test]
     fn dup_violates_conservation()
     {
@@ -1514,7 +1516,7 @@ mod negative
 }
 
 /// Directed subtyping tests, one positive and one negative per `type-system.md`
-/// §10.2 decomposition row, driven through the checker/machine pair.
+/// §"Subtyping decomposition" row, driven through the checker/machine pair.
 ///
 /// Every nontrivial value subtyping at Stage 1 flows from the grade order on
 /// thunks (`U_r B <: U_s B` iff `s ⊑ r`); the structural rows lift that witness
@@ -1980,7 +1982,7 @@ mod subtype_rows
 /// produced identically by both implementations (ADR-9 lockstep).
 ///
 /// The bidirectional treatment under test (recorded decision, D5 /
-/// `incremental-pipeline.md` §7):
+/// `incremental-pipeline.md` §"Holes"):
 ///
 /// - `Γ ⊢ ?hole ⇑ Unknown` and `Γ ⊢ ?hole ⇓ A` for every `A` (axioms);
 /// - subsumption uses *consistent subtyping* — `Unknown` relates to every type
@@ -2183,8 +2185,8 @@ mod holes
 
     /// Matched thunk, introduction side: a thunk literal checks against
     /// `Unknown` with **no grade constraint** — even a `0`-graded thunk,
-    /// which could never be forced, checks (no constraint is emitted; §7's
-    /// "NO constraints", degenerated honestly).
+    /// which could never be forced, checks (no constraint is emitted; §"Holes":
+    /// "no constraint emitted", degenerated honestly).
     #[test]
     fn thunk_checks_against_unknown_without_grade_constraint()
     {
@@ -6032,8 +6034,9 @@ proptest! {
         }
     }
 
-    /// (a4) Reflexivity is admissible (never a solver rule, §10.2): every value
-    /// type — `Unknown` included — is its own (consistent) subtype.
+    /// (a4) Reflexivity is admissible (never a solver rule,
+    /// §"Algorithmic subtyping and the worklist solver"): every value type —
+    /// `Unknown` included — is its own (consistent) subtype.
     ///
     /// The supertype is a [`deep_rebuild_value`] of the subtype — structurally
     /// identical but with fresh `Rc`s at every node — so the `core::ptr::eq`
@@ -6087,8 +6090,9 @@ proptest! {
         prop_assert!(bool::from(coherence_comp_subtype(&ty, &deep_rebuild_comp(&ty))));
     }
 
-    /// (a4) Transitivity is admissible (§10.2) **on static types**: `A <: B`
-    /// and `B <: C` imply `A <: C` when no `Unknown` is involved. With
+    /// (a4) Transitivity is admissible
+    /// (§"Algorithmic subtyping and the worklist solver") **on static types**:
+    /// `A <: B` and `B <: C` imply `A <: C` when no `Unknown` is involved. With
     /// `Unknown` the relation is consistent subtyping, which is deliberately
     /// not transitive (`crate::subtype` module doc; the witness is pinned by
     /// [`holes::consistency_is_not_transitive`]).

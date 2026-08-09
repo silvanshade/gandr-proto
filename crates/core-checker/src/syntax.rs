@@ -1,4 +1,4 @@
-//! Terms of core CBPV (`type-system.md` §3.2).
+//! Terms of core CBPV (`type-system.md` §"Terms").
 //!
 //! Values and computations are distinct sorts. Children are reference-counted
 //! so that terms can be cloned cheaply into machine control states, frames,
@@ -746,13 +746,14 @@ pub enum Value
         Rc<ValueType>,
     ),
     /// A typed hole `?u` in value position (A2.2 holes extension;
-    /// `incremental-pipeline.md` §7, `A2-PLAN.md` D5).
+    /// `incremental-pipeline.md` §"Holes", `A2-PLAN.md` D5).
     ///
     /// A hole is an *axiom*, like [`Value::Unit`] and [`Value::Int`]: it
-    /// infers [`ValueType::Unknown`] (the spec's "fresh α; NO constraints",
-    /// degenerated honestly — Stage 1 has no σ, so the fresh variable
-    /// collapses to the unknown type) and checks against **any** expected
-    /// type (the expected type is the *goal* the agent stream serves).
+    /// infers [`ValueType::Unknown`] (the spec's "fresh α; no constraint
+    /// emitted", degenerated honestly — Stage 1 has no σ, so the fresh
+    /// variable collapses to the unknown type) and checks against **any**
+    /// expected type (the expected type is the *goal* the agent stream
+    /// serves).
     Hole(
         /// The hole's identifier (ignored by typing; see [`HoleId`]).
         HoleId,
@@ -1504,15 +1505,15 @@ pub enum Comp
         Rc<Self>,
     ),
     /// The grade structural op `dup v`: split a thunk's usage budget
-    /// (`type-system.md` §2 rule Dup; contract §6.2). Checks against
+    /// (`type-system.md` §"Grades" rule Dup; contract §6.2). Checks against
     /// `F (U_r B × U_s B)`, requiring `r + s ⊑ g` where `v ⇑ U_g B`.
     Dup(
         /// The thunk value whose budget is split (inferred).
         Rc<Value>,
     ),
     /// The grade structural op `drop v`: discard a thunk's usage budget
-    /// (`type-system.md` §2 rule Drop; contract §6.2). Infers `F 1`; the side
-    /// condition `0 ⊑ r` is vacuous on the default carrier `ℕ ∪ {ω}`.
+    /// (`type-system.md` §"Grades" rule Drop; contract §6.2). Infers `F 1`; the
+    /// side condition `0 ⊑ r` is vacuous on the default carrier `ℕ ∪ {ω}`.
     Drop(
         /// The thunk value whose budget is discarded (inferred).
         Rc<Value>,
@@ -1616,7 +1617,7 @@ pub enum Comp
         Rc<Self>,
     ),
     /// A typed hole `?u` in computation position (A2.2 holes extension;
-    /// `incremental-pipeline.md` §7, `A2-PLAN.md` D5).
+    /// `incremental-pipeline.md` §"Holes", `A2-PLAN.md` D5).
     ///
     /// As [`Value::Hole`]: an axiom that infers
     /// [`crate::types::CompType::Unknown`] and checks against any expected
@@ -1931,7 +1932,7 @@ impl Comp
         Self::Prj(Side::Snd, Rc::new(target))
     }
 
-    /// Builds a grade split `dup value` (rule Dup, `type-system.md` §2).
+    /// Builds a grade split `dup value` (rule Dup, `type-system.md` §"Grades").
     #[inline]
     #[must_use]
     pub fn dup(value: Value) -> Self
@@ -1939,7 +1940,8 @@ impl Comp
         Self::Dup(Rc::new(value))
     }
 
-    /// Builds a grade discard `drop value` (rule Drop, `type-system.md` §2).
+    /// Builds a grade discard `drop value` (rule Drop, `type-system.md`
+    /// §"Grades").
     #[inline]
     #[must_use]
     pub fn drop(value: Value) -> Self

@@ -1,10 +1,10 @@
-//! Usage grades for thunks (`type-system.md` §2).
+//! Usage grades for thunks (`type-system.md` §"Grades").
 //!
 //! Grades track how many times a thunk may be forced. They carry the
-//! preordered semiring structure `(R, +, ·, 0, 1, ⊑)` of §2: Stage 1's core
-//! rules (§3.3) use only the order — `thunk_r t ⇓ U_s B` requires `s ⊑ r`,
-//! `force v` requires `1 ⊑ r` — while `Dup`/`Drop` and grade constraints
-//! (Stage 2) additionally use `+` and `·`.
+//! preordered semiring structure `(R, +, ·, 0, 1, ⊑)` of §"Grades": Stage 1's
+//! core rules (§"Core rules") use only the order — `thunk_r t ⇓ U_s B` requires
+//! `s ⊑ r`, `force v` requires `1 ⊑ r` — while `Dup`/`Drop` and grade
+//! constraints (Stage 2) additionally use `+` and `·`.
 //!
 //! Carrier discipline (ADR-28): [`Grade`] is the single concrete carrier
 //! across the whole crate — there is no semiring type parameter — and its
@@ -89,7 +89,7 @@ impl Grade
 
     /// The grade preorder `self ⊑ other`: `r ⊑ s` iff `r ≤ s` or `s = ω`.
     ///
-    /// This is the usage-upper-bound order of `type-system.md` §2.
+    /// This is the usage-upper-bound order of `type-system.md` §"Grades".
     ///
     /// # Contract
     /// - ensures: returns `true` iff `self ⊑ other` — numerically `self ≤
@@ -113,20 +113,20 @@ impl Grade
     }
 
     /// The semiring sum `self + other`: alternative/accumulated demand
-    /// (`type-system.md` §2).
+    /// (`type-system.md` §"Grades").
     ///
     /// On the default carrier this is natural-number addition with `ω`
     /// absorbing. `u64` approximates `ℕ`: a finite sum that overflows is
-    /// conservatively `ω` (the clamp is a semiring homomorphism, so the §2
-    /// laws hold exactly, and an over-clamped *demand* can only reject more
-    /// programs, never accept more).
+    /// conservatively `ω` (the clamp is a semiring homomorphism, so the
+    /// §"Grades" laws hold exactly, and an over-clamped *demand* can only
+    /// reject more programs, never accept more).
     ///
     /// # Contract
     /// - ensures: returns the semiring sum — `ω` absorbs (`ω + r = r + ω = ω`),
     ///   otherwise `u64` addition; commutative and associative with unit `0`. A
     ///   finite sum that would overflow `u64` clamps to `ω` (via
-    ///   `checked_add`); the clamp is a semiring homomorphism, so the §2 laws
-    ///   hold exactly and an over-clamped demand only ever rejects more
+    ///   `checked_add`); the clamp is a semiring homomorphism, so the §"Grades"
+    ///   laws hold exactly and an over-clamped demand only ever rejects more
     ///   programs.
     /// - panics: none; the overflow clamp replaces any wrap.
     #[inline]
@@ -146,7 +146,7 @@ impl Grade
     }
 
     /// The semiring product `self · other`: nested/sequential demand
-    /// (`type-system.md` §2).
+    /// (`type-system.md` §"Grades").
     ///
     /// `0` annihilates (in particular `0 · ω ≡ 0`); otherwise `ω` absorbs.
     /// Finite overflow clamps to `ω` exactly as in [`Self::plus`].
@@ -254,7 +254,7 @@ mod tests
     }
 
     /// `⊑` is reflexive and transitive with top `ω`, and `+`/`·` are
-    /// monotone in both arguments (`type-system.md` §2).
+    /// monotone in both arguments (`type-system.md` §"Grades").
     #[test]
     fn order_is_a_preorder_and_the_operations_are_monotone()
     {

@@ -1,8 +1,8 @@
 //! Core CBPV (call-by-push-value) type checking for the gandr language.
 //!
 //! This crate implements Stage 1 of the gandr roadmap (milestone A1 of the
-//! A-track): the core CBPV bidirectional type system of
-//! the type-system design record §3, realized twice:
+//! A-track): the core CBPV bidirectional type system of the type-system design
+//! record §"The core call-by-push-value calculus", realized twice:
 //!
 //! - [`checker`] — the direct-style *recursive* bidirectional checker;
 //! - [`machine`] — the *defunctionalized typing machine* obtained from the
@@ -36,15 +36,16 @@
 //!
 //! Riding on the checker, this crate also carries the **A2.3 checkpoint base**
 //! ([`checkpoint`], [`footprint`], [`region`]): the item-granular,
-//! dependency-validated incremental typer of `incremental-pipeline.md` §§4-6,
-//! over the order-maintenance substrate (`gandr_theory_orders`). It re-types
-//! only the edited region and adopts the validated remainder, its
+//! dependency-validated incremental typer of `incremental-pipeline.md`
+//! §"Checkpoints and the reuse rule" through §"Derivation merging and identity
+//! stability", over the order-maintenance substrate (`gandr_theory_orders`). It
+//! re-types only the edited region and adopts the validated remainder, its
 //! `resume ≡ from-scratch` gate the standing soundness check. Changed-region
 //! detection sits behind the parser-agnostic [`region::ItemSource`] seam — no
 //! parser is named here; the surface lane supplies the real lowering front end.
 //!
-//! No grade *constraints* beyond the inline `1 ⊑ r` force check of §3.3
-//! (matched-`U` operations emit none), no unions/intersections, no
+//! No grade *constraints* beyond the inline `1 ⊑ r` force check of §"Core
+//! rules" (matched-`U` operations emit none), no unions/intersections, no
 //! polymorphism, sessions, sharing, or worlds. The representations are kept
 //! extensible (non-exhaustive enums) so later stages can add constructors
 //! without breaking downstream matches.

@@ -364,8 +364,10 @@ str_wrapper!(
     "Borrowed string literal or string-processing text."
 );
 
-// A2.3 checkpoint base (`incremental-pipeline.md` §§4-6): the item-granular
-// footprint / validated-resume engine over the order-maintenance substrate.
+// A2.3 checkpoint base (`incremental-pipeline.md` §"Checkpoints and the reuse
+// rule" through §"Derivation merging and identity stability"): the
+// item-granular footprint / validated-resume engine over the order-maintenance
+// substrate.
 str_wrapper!(
     DefinitionName,
     "Borrowed lowered top-level definition name."

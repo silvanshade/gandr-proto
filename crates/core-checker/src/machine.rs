@@ -1,15 +1,15 @@
-//! The defunctionalized typing machine (`typing-machine.md` §§3–4, core
-//! subset).
+//! The defunctionalized typing machine (`typing-machine.md` §"Machine state"
+//! through §"The step function", core subset).
 //!
 //! Derived from [`crate::checker`] by the functional correspondence: CPS
 //! transform the recursive checker, then defunctionalize the continuations.
 //! Each [`Frame`] constructor is the defunctionalized image of one pending
 //! recursive call site; the stack *is* the continuation (frames carry no
 //! continuation pointers), and control is the explicit `Descend`/`Return`
-//! register of `typing-machine.md` §3.1.
+//! register of `typing-machine.md` §"Control".
 //!
-//! Frame naming relative to the spec's inventory (`typing-machine.md` §3.3),
-//! with the `K` prefix dropped for Rust style:
+//! Frame naming relative to the spec's inventory (`typing-machine.md` §"The
+//! frame inventory"), with the `K` prefix dropped for Rust style:
 //!
 //! - `KAbs` → [`Frame::Abs`]; `KAppFn`/`KAppArg` → [`Frame::AppFn`] /
 //!   [`Frame::AppArg`]; `KPairFst`/`KPairSnd`, `KThunk`, `KForce`, `KRet`,
@@ -23,19 +23,19 @@
 //!   "branch-1 type" for case-arm sequencing, and omitted the checked
 //!   injection's payload frame).
 //! - Frames that complete a rule carry the originating [`Dir`], and the
-//!   subsumption check runs at the frame pop (the spec §4 `finish` notation) —
-//!   exactly where the recursive checker's inlined Sub rule runs. Stage 1 has
-//!   no solver, so the constraint is decided rather than emitted there; see
-//!   ADR-27 decision 1 for the Stage 3+ emission semantics.
+//!   subsumption check runs at the frame pop (the spec §"The step function"
+//!   `finish` notation) — exactly where the recursive checker's inlined Sub
+//!   rule runs. Stage 1 has no solver, so the constraint is decided rather than
+//!   emitted there; see ADR-27 decision 1 for the Stage 3+ emission semantics.
 //!
 //! # Error-path `Γ` contract
 //!
 //! `Γ` is **not** restored on error. A failing [`step`] returns
 //! [`Outcome::Error`] carrying a [`FailureState`] whose `Γ` is the context as
-//! it stood at the failure point (`typing-machine.md` §9: "the contexts at
-//! that point"). The recursive [`crate::checker`], by contrast, unwinds `Γ`
-//! along the host call stack as the error propagates — so the two `Γ`s differ
-//! on the error path, which is why the conformance suite compares
+//! it stood at the failure point (`typing-machine.md` §"Error handling": "the
+//! contexts at that point"). The recursive [`crate::checker`], by contrast,
+//! unwinds `Γ` along the host call stack as the error propagates — so the two
+//! `Γ`s differ on the error path, which is why the conformance suite compares
 //! [`crate::error::TypeError`] values, never machine `Γ`.
 //!
 //! # Frame-pop ordering convention
@@ -227,7 +227,7 @@ pub enum Frame
     },
     /// A `dup`'d value is pending; on return the conservation `r + s ⊑ g` is
     /// checked and `F (U_r B × U_s B)` is finished against the expectation
-    /// (rule Dup, `type-system.md` §2).
+    /// (rule Dup, `type-system.md` §"Grades").
     Dup
     {
         /// The first half's grade `r` (read from the expectation).
@@ -239,7 +239,7 @@ pub enum Frame
         dir: Dir<CompType>,
     },
     /// A `drop`'d value is pending; yields `F 1`, discarding the budget (rule
-    /// Drop, `type-system.md` §2).
+    /// Drop, `type-system.md` §"Grades").
     Drop
     {
         /// The direction the `drop` itself was typed in.
@@ -682,15 +682,15 @@ impl State
 
 /// The machine state captured at the point a step failed.
 ///
-/// Per `typing-machine.md` §9, "every error carries the offending expr, the
-/// frame stack at failure (the partial derivation), and the contexts at that
-/// point". This is the failure analogue of [`State`]: it is the state on which
-/// [`step`] failed, so for every *reachable* error it is reproducible —
-/// stepping it again raises the same error. The control register holds the
-/// offending sub-term (`Descend`) or the value propagating into the failing
-/// frame (`Return`); for a `Return` failure the frame under which the failure
-/// occurred is restored to the top of [`Self::stack`], so the stack is the
-/// complete partial derivation with the failing frame at its top.
+/// Per `typing-machine.md` §"Error handling", "every error carries the
+/// offending expr, the frame stack at failure (the partial derivation), and the
+/// contexts at that point". This is the failure analogue of [`State`]: it is
+/// the state on which [`step`] failed, so for every *reachable* error it is
+/// reproducible — stepping it again raises the same error. The control register
+/// holds the offending sub-term (`Descend`) or the value propagating into the
+/// failing frame (`Return`); for a `Return` failure the frame under which the
+/// failure occurred is restored to the top of [`Self::stack`], so the stack is
+/// the complete partial derivation with the failing frame at its top.
 ///
 /// `Γ` error contract (machine module doc): `Γ` is *not* restored on error;
 /// [`Self::ctx`] is `Γ` as it stood at the failure point. Frame-pop rules run
@@ -736,7 +736,7 @@ impl FailureState
     }
 }
 
-/// The result of one machine step (`typing-machine.md` §4).
+/// The result of one machine step (`typing-machine.md` §"The step function").
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Outcome
 {
@@ -751,7 +751,7 @@ pub enum Outcome
         State,
     ),
     /// The derivation failed: the error paired with the state at failure
-    /// (`typing-machine.md` §9).
+    /// (`typing-machine.md` §"Error handling").
     Error
     {
         /// The failure.
@@ -812,8 +812,8 @@ pub fn run_comp(
     run(State::new_comp(ctx, comp, dir))
 }
 
-/// Runs a state to completion (`eager` mode, `typing-machine.md` §8),
-/// collecting every control register passed through.
+/// Runs a state to completion (`eager` mode, `typing-machine.md` §"Execution
+/// modes"), collecting every control register passed through.
 #[inline]
 pub fn run(state: State) -> (Result<Ty, TypeError>, Trace)
 {
@@ -939,9 +939,9 @@ pub fn step(state: State) -> Outcome
     }
 }
 
-/// Transition for `Descend` on a value (the value rules of §3.3). Takes `Γ; Σ`
-/// mutably for the reified-stack walk's bind frames (rule Reify; A3.3
-/// `+control`), which bind the consumed payload while the continuation is
+/// Transition for `Descend` on a value (the value rules of §"Core rules").
+/// Takes `Γ; Σ` mutably for the reified-stack walk's bind frames (rule Reify;
+/// A3.3 `+control`), which bind the consumed payload while the continuation is
 /// typed.
 fn step_value(
     value: Value,
@@ -974,7 +974,7 @@ fn step_value(
         // literal, monomorphic in its `NumLit` atom — no frame is pushed,
         // matching the recursive checker step.
         | Value::Num(literal) => finish_value(literal.value_type(), dir).map(return_value),
-        // Rule Hole⇑/Hole⇓ (A2.2 holes extension, pipeline spec §7): an
+        // Rule Hole⇑/Hole⇓ (A2.2 holes extension, pipeline spec §"Holes"): an
         // axiom, as Unit/Int — infer `Unknown`, check against anything via
         // consistency; no frame is pushed.
         | Value::Hole(_) => finish_value(ValueType::Unknown, dir).map(return_value),
@@ -1229,9 +1229,9 @@ fn step_value(
     }
 }
 
-/// Transition for `Descend` on a computation (the computation rules of §3.3).
-/// Takes the ambient answer register mutably for the delimited-control rules
-/// (`reset` sets it, `shift` reads it; A3.3 `+control`).
+/// Transition for `Descend` on a computation (the computation rules of §"Core
+/// rules"). Takes the ambient answer register mutably for the delimited-control
+/// rules (`reset` sets it, `shift` reads it; A3.3 `+control`).
 fn step_comp(
     comp: Comp,
     dir: Dir<CompType>,
@@ -1485,9 +1485,9 @@ fn step_comp(
                 dir: Dir::Infer,
             })
         },
-        // Rule Dup (`type-system.md` §2): check-only — the split grades `r`/`s`
-        // come only from the expectation `F (U_r B × U_s B)`, so a dup away
-        // from that shape is stuck before the scrutinee is even descended
+        // Rule Dup (`type-system.md` §"Grades"): check-only — the split grades
+        // `r`/`s` come only from the expectation `F (U_r B × U_s B)`, so a dup
+        // away from that shape is stuck before the scrutinee is even descended
         // (matching the recursive checker step for step).
         | Comp::Dup(thunked) => {
             let split = match dir {
@@ -1514,7 +1514,8 @@ fn step_comp(
                 }),
             }
         },
-        // Rule Drop (`type-system.md` §2): infer the thunk, discard the budget.
+        // Rule Drop (`type-system.md` §"Grades"): infer the thunk, discard the
+        // budget.
         | Comp::Drop(thunked) => {
             stack.push(Frame::Drop { dir });
             Ok(Control::DescendValue {
@@ -1734,8 +1735,8 @@ fn diagnostic_abs_term(
 }
 
 /// Transition for `Return` against the popped frame (the frame-pop rules of
-/// `typing-machine.md` §4). Takes the ambient answer register mutably for the
-/// [`Frame::ResetBody`] restore (A3.3 `+control`).
+/// `typing-machine.md` §"The step function"). Takes the ambient answer register
+/// mutably for the [`Frame::ResetBody`] restore (A3.3 `+control`).
 fn step_return(
     frame: Frame,
     ty: Ty,
@@ -1931,7 +1932,8 @@ fn step_return(
         },
         | Frame::Dup { r, s, dir } => match expect_value(ty)? {
             | ValueType::Thunk(grade, body) => {
-                // Conservation `r + s ⊑ g` (the additive accounting `+` of §2).
+                // Conservation `r + s ⊑ g` (the additive accounting `+` of
+                // §"Grades").
                 let total = r.plus(s);
                 if !bool::from(total.leq(grade)) {
                     return Err(TypeError::GradeError {

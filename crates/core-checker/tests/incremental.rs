@@ -1,5 +1,6 @@
 //! The A2.3 differential gate: incremental validated resume ≡ from-scratch
-//! re-typing (`incremental-pipeline.md` §§4-6).
+//! re-typing (`incremental-pipeline.md` §"Checkpoints and the reuse rule"
+//! through §"Derivation merging and identity stability").
 //!
 //! The theorem `gandr_core_checker::checkpoint::resume` must satisfy: for
 //! **every** edit, the incrementally-resumed per-item typing equals the typing
@@ -177,8 +178,9 @@ mod tests
         /// A body edit that keeps the definition's *type* leaves its dependent
         /// adoptable: `target`'s literal changes but its type does not, so the
         /// dependent `d = target` is **adopted**, not re-typed. This is the
-        /// §4/§5 refinement: reuse keyed on whether the binding changed, not on
-        /// whether an upstream item was edited.
+        /// §"Checkpoints and the reuse rule" / §"The edit loop" refinement:
+        /// reuse keyed on whether the binding changed, not on whether an
+        /// upstream item was edited.
         #[test]
         fn body_edit_adopts_the_type_stable_dependent()
         {

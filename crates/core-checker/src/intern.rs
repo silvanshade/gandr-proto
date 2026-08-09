@@ -10,7 +10,8 @@
 //!   short-circuit the *reflexive* leg of the subtype relation: two types that
 //!   intern to the same id are structurally equal, hence (consistent) subtypes,
 //!   with no structural descent. Reflexivity is admissible, never a rule
-//!   (`type-system.md` §10.2), so this is a pure optimization — the structural
+//!   (`type-system.md` §"Algorithmic subtyping and the worklist solver"), so
+//!   this is a pure optimization — the structural
 //!   [`crate::subtype::value_subtype`] / [`crate::subtype::comp_subtype`]
 //!   decides every non-reflexive pair.
 //!
@@ -178,10 +179,11 @@ impl TypeInterner
     ///   of the type at `sup` — same-sort structural subtyping via
     ///   [`crate::subtype::value_subtype`] / [`crate::subtype::comp_subtype`].
     ///   Identical ids return `true` in O(1) (reflexivity, admissible per
-    ///   `type-system.md` §10.2); a value id against a computation id returns
-    ///   `false` (no value type is a subtype of a computation type, and vice
-    ///   versa). The verdict equals the structural relation on the resolved
-    ///   types, so the id short-circuit is a pure optimization.
+    ///   `type-system.md` §"Algorithmic subtyping and the worklist solver"); a
+    ///   value id against a computation id returns `false` (no value type is a
+    ///   subtype of a computation type, and vice versa). The verdict equals the
+    ///   structural relation on the resolved types, so the id short-circuit is
+    ///   a pure optimization.
     /// - panics: none.
     ///
     /// # Adequacy

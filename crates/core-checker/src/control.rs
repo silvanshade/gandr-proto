@@ -1,4 +1,5 @@
-//! Directions and the machine control register (`typing-machine.md` §3.1).
+//! Directions and the machine control register (`typing-machine.md`
+//! §"Control").
 //!
 //! [`Control`] doubles as the *trace event*: the recursive checker logs one
 //! `Descend` event at each call entry and one `Return` event at each call
@@ -18,7 +19,7 @@ use crate::types::ValueType;
 /// expected type.
 ///
 /// Carrying the expected type inside `Check` is what removes the original
-/// design's `KSubtype` pseudo-frames (`typing-machine.md` §3.1).
+/// design's `KSubtype` pseudo-frames (`typing-machine.md` §"Control").
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Dir<T>
 {

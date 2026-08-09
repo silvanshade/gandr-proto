@@ -1,34 +1,36 @@
 //! Dependency-validated checkpoints and the validated-resume incremental typer
-//! (A2.3; `incremental-pipeline.md` §§4-6).
+//! (A2.3; `incremental-pipeline.md` §"Checkpoints and the reuse rule" through
+//! §"Derivation merging and identity stability").
 //!
 //! # The rung this builds
 //!
 //! `incremental-pipeline.md`'s incremental loop is: edit → cold reparse → lower
 //! (obligations become holes) → diff → *resume from the nearest valid
 //! checkpoint*, re-typing only the affected region and **re-validating** —
-//! never blindly reusing — the rest (§5). This module builds that loop at the
-//! granularity the reboot's front end exposes: the **top-level item**
-//! ([`crate::region::Item`]). Items lower independently and are typed against
-//! an accumulating [`Ctx`] this module threads item to item, so the checkpoint
-//! of an item is its typing result plus its [`Footprint`] (the context names it
-//! read, `crate::footprint`), and the §4 validity condition specializes to:
+//! never blindly reusing — the rest (§"The edit loop"). This module builds that
+//! loop at the granularity the reboot's front end exposes: the **top-level
+//! item** ([`crate::region::Item`]). Items lower independently and are typed
+//! against an accumulating [`Ctx`] this module threads item to item, so the
+//! checkpoint of an item is its typing result plus its [`Footprint`] (the
+//! context names it read, `crate::footprint`), and the validity condition of
+//! §"The soundness condition" specializes to:
 //!
 //! > an item's cached typing is valid for reuse iff (1) its lowered term is
 //! > unchanged and (2) no name in its footprint had its binding change since
 //! > the checkpoint.
 //!
-//! Condition (2) is the trail-aware core (§4's "σ is global, so re-typing a
-//! changed subtree can resolve variables downstream cached results mention",
-//! read one stratum up: the shared edit-mutable state threaded across items is
-//! the name → type context). An edit that changes a definition's *body* but not
-//! its *type* leaves its dependents' footprints untouched — they are adopted,
-//! not re-typed — which is exactly the "re-validate, not blindly reuse"
-//! refinement: reuse is keyed on whether the binding actually changed, not on
-//! whether some upstream item was edited.
+//! Condition (2) is the trail-aware core (§"The soundness condition": "σ is
+//! global, so re-typing a changed subtree can resolve variables downstream
+//! cached results mention", read one stratum up: the shared edit-mutable state
+//! threaded across items is the name → type context). An edit that changes a
+//! definition's *body* but not its *type* leaves its dependents' footprints
+//! untouched — they are adopted, not re-typed — which is exactly the
+//! "re-validate, not blindly reuse" refinement: reuse is keyed on whether the
+//! binding actually changed, not on whether some upstream item was edited.
 //!
 //! [`Ctx`]: crate::ctx::Ctx
 //!
-//! # The order structure (§7 Porter disposition)
+//! # The order structure (§"pipeline-decision-02", the Porter disposition)
 //!
 //! [`resume`] maintains the item order on a
 //! [`gandr_theory_orders::OrderMaintenance`]: the base checkpoints seed one
@@ -37,11 +39,12 @@
 //! ones after their predecessor — so a **matched item keeps its original order
 //! element across the edit** even as inserts/deletes shift every index around
 //! it. This is the "keep positions out of the checkpoint key" commitment the
-//! spec draws from rust-analyzer / Pterodactyl (§7): the checkpoint key is the
-//! stable identity, and the item's *position* is recovered from the spliced
-//! order. The ordered pass is then driven in that order (dependencies flow
-//! forward, so one ordered pass propagates every binding change), the
-//! item-granular shadow of Porter's order-maintenance dirty queue.
+//! spec draws from rust-analyzer / Pterodactyl (§"pipeline-decision-07"): the
+//! checkpoint key is the stable identity, and the item's *position* is
+//! recovered from the spliced order. The ordered pass is then driven in that
+//! order (dependencies flow forward, so one ordered pass propagates every
+//! binding change), the item-granular shadow of Porter's order-maintenance
+//! dirty queue.
 //!
 //! # The differential gate
 //!
@@ -145,16 +148,16 @@ pub enum ItemTyping
         error: TypeError,
     },
     /// An item carrying a hole: typing is declined (the parse-completeness
-    /// discipline, `incremental-pipeline.md` §7).
+    /// discipline, `incremental-pipeline.md` §"Holes").
     Holey,
 }
 
 /// One item's checkpoint: its identity (name / ascription / lowered term), its
 /// dependency [`Footprint`], and its cached [`ItemTyping`].
 ///
-/// The term is retained as the content key for §4 condition (1): reuse requires
-/// the lowered term be unchanged, tested by structural equality against the
-/// edited item.
+/// The term is retained as the content key for §"The soundness condition"
+/// condition (1): reuse requires the lowered term be unchanged, tested by
+/// structural equality against the edited item.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ItemCheckpoint
 {
@@ -269,8 +272,8 @@ pub fn checkpoint_with(
 /// # Contract
 /// - ensures: `resume(base, edited).typings` equals the typings of
 ///   `checkpoint_program(edited).items` — the differential gate.
-/// - provides: the §5 validated resume — re-type the dirty frontier, adopt the
-///   validated remainder.
+/// - provides: the §"The edit loop" validated resume — re-type the dirty
+///   frontier, adopt the validated remainder.
 /// - panics: none.
 #[inline]
 #[must_use]
@@ -288,9 +291,10 @@ pub fn resume(
 /// - requires: `base` was produced by [`checkpoint_with`] against the same
 ///   `base_ctx` (its cached typings were computed under it).
 /// - ensures: the result equals `checkpoint_with(edited, base_ctx)`'s typings.
-/// - provides: adoption where the §4 validity condition holds; a re-type
-///   otherwise; and a graceful full-re-type fallback if the order structure
-///   cannot admit the edit (`incremental-pipeline.md` §7 graceful degradation).
+/// - provides: adoption where the validity condition of §"The soundness
+///   condition" holds; a re-type otherwise; and a graceful full-re-type
+///   fallback if the order structure cannot admit the edit
+///   (`incremental-pipeline.md` §"Graceful degradation").
 /// - panics: none.
 ///
 /// # Adequacy
@@ -380,9 +384,9 @@ pub fn resume_with(
 }
 
 /// Whether an edited item may adopt its base checkpoint: it must have a base
-/// match, be structurally identical to it (§4 condition 1), and read no changed
-/// binding (§4 condition 2, via [`Footprint::intersects`], which also blocks an
-/// opaque footprint).
+/// match, be structurally identical to it (§"The soundness condition" condition
+/// 1), and read no changed binding (§"The soundness condition" condition 2, via
+/// [`Footprint::intersects`], which also blocks an opaque footprint).
 fn adoptable(
     item: &Item,
     footprint: &Footprint,

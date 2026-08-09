@@ -1,5 +1,5 @@
 //! Effect signatures and the effect-row carrier (`effects-control-shell.md`
-//! §1; `type-system.md` §3.1; ADR-14, ADR-33).
+//! §1; `type-system.md` §"Types"; ADR-14, ADR-33).
 //!
 //! Effects sit on `F`, the dual of the grade on `U` (`grade.rs`): the returner
 //! `F^ε A` carries an [`EffectRow`] `ε`. A row is a concrete finite set of

@@ -364,9 +364,10 @@ impl SynTree
     /// The committed concrete syntax tree this tree's views borrow from.
     ///
     /// The structural-diff seam ([`gandr_surface_syntax::diff`],
-    /// incremental-pipeline.md §3) consumes two trees' [`Cst`]s directly
-    /// (`stable-origin work`); the merkle hashes it aligns on are the same the
-    /// origin map records ([`crate::origin::OriginEntry::cst_hash`]).
+    /// incremental-pipeline.md §"The structural diff") consumes two trees'
+    /// [`Cst`]s directly (`stable-origin work`); the merkle hashes it aligns on
+    /// are the same the origin map records
+    /// ([`crate::origin::OriginEntry::cst_hash`]).
     #[inline]
     #[must_use]
     pub fn cst(&self) -> &Cst
@@ -374,11 +375,11 @@ impl SynTree
         &self.cst
     }
 
-    /// The structural CST diff against a re-parse (incremental-pipeline.md §3):
-    /// [`gandr_surface_syntax::diff`] over the two committed trees. Merkle-hash
-    /// pruning matches every subtree whose significant content is
-    /// unchanged, so an edit confined to one item leaves every *other*
-    /// item's root in [`gandr_surface_syntax::Diff::matches`]
+    /// The structural CST diff against a re-parse (incremental-pipeline.md
+    /// §"The structural diff"): [`gandr_surface_syntax::diff`] over the two
+    /// committed trees. Merkle-hash pruning matches every subtree whose
+    /// significant content is unchanged, so an edit confined to one item leaves
+    /// every *other* item's root in [`gandr_surface_syntax::Diff::matches`]
     /// (`stable-origin work`).
     ///
     /// # Contract
@@ -388,7 +389,8 @@ impl SynTree
     /// - ensures: returns the deterministic top-down diff; equal-`(kind,
     ///   payload, hash)` subtree roots are matched and pruned, differing
     ///   interiors are aligned by LCS over the same key.
-    /// - provides: the §3 AST-diff seam the incremental pipeline consumes.
+    /// - provides: the §"The structural diff" AST-diff seam the incremental
+    ///   pipeline consumes.
     /// - fails: never; malformed or unreadable nodes surface as unmatched
     ///   roots, not errors.
     /// - panics: none.

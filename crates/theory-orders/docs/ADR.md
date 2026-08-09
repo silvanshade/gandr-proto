@@ -1,7 +1,7 @@
 # Architecture Decisions
 
 Crate-local decisions for `gandr-theory-orders` (the order structure the A2 incremental pipeline is missing).
-These extend, and never override, the design corpus in `docs/gandr/` (notably `spec/incremental-pipeline.md` §7, the Porter order-maintenance disposition) and the global ADR log.
+These extend, and never override, the design corpus in `docs/gandr/` (notably `spec/implementation/incremental-pipeline.md` §"pipeline-decision-02", the Porter order-maintenance disposition) and the global ADR log.
 
 ## current
 

@@ -1,6 +1,6 @@
-//! Edit-action reconstruction: a localized structured diff of the lowered
-//! CBPV core (`A2`; `incremental-pipeline.md` §7; incremental-pipeline design
-//! Porter disposition; `edit-action work`).
+//! Edit-action reconstruction: a localized structured diff of the lowered CBPV
+//! core (`A2`; `incremental-pipeline.md` §"pipeline-decision-02", the Porter
+//! disposition; `edit-action work`).
 //!
 //! # The impedance gate this closes
 //!
@@ -12,14 +12,14 @@
 //! one-hole-context edits (not text diffs), and so always knows *which* child
 //! an edit touched. (The corpus carries the verified harvest of both — Porter's
 //! order-maintenance intervals and binding pointers, Pantograph's typed
-//! error-boundary — in `incremental-pipeline.md` §7 and incremental-pipeline
-//! design; the per-paper claims live there, not duplicated here.) gandr's A2
-//! front end, by contrast, produces a melder CST (the merkle-hashed
-//! `gandr-surface-syntax` arena) and a re-lowered core term. This module is the
-//! **translation layer** between the two: it reconstructs a localized
-//! edit-action script over the lowered core from the before/after lowerings,
-//! plus a byte-range **localizer** that maps a [`SourceEdit`]'s old extent to
-//! the smallest enclosing core term (the *edit locus*).
+//! error-boundary — in `incremental-pipeline.md` §"pipeline-decision-02" and
+//! §"pipeline-decision-04"; the per-paper claims live there, not duplicated
+//! here.) gandr's A2 front end, by contrast, produces a melder CST (the
+//! merkle-hashed `gandr-surface-syntax` arena) and a re-lowered core term. This
+//! module is the **translation layer** between the two: it reconstructs a
+//! localized edit-action script over the lowered core from the before/after
+//! lowerings, plus a byte-range **localizer** that maps a [`SourceEdit`]'s old
+//! extent to the smallest enclosing core term (the *edit locus*).
 //!
 //! # Coverage with fallback (be honest)
 //!

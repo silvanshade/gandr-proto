@@ -1,4 +1,4 @@
-//! Typing errors (`typing-machine.md` §9, core subset).
+//! Typing errors (`typing-machine.md` §"Error handling", core subset).
 //!
 //! One constructor per *user-facing* failure mode of core CBPV. The lone
 //! exception is [`TypeError::ShapeMismatch`], which carries a second, internal
@@ -24,7 +24,8 @@ pub type GandrCoreResult<T> = Result<T, TypeError>;
 /// the typing machine, so that the two implementations produce *equal* errors.
 pub mod text
 {
-    /// Hint for an injection in inference mode (`typing-machine.md` §4).
+    /// Hint for an injection in inference mode (`typing-machine.md` §"The step
+    /// function").
     pub const ANNOTATE_INJECTION: &str = "annotate this injection";
     /// Hint for a list literal in inference mode (rule List⇓ is check-only,
     /// like an injection: the element type comes only from the expectation, and
@@ -147,10 +148,10 @@ pub mod text
 /// A typing failure.
 ///
 /// `ShapeMismatch` is the elimination-form refinement of `TypeMismatch`
-/// adopted as ADR-27 decision 3 (now in the spec's §9 inventory): with no
-/// unification variables yet, an elimination whose principal premise infers
-/// the wrong *constructor* (e.g. applying a non-arrow) has no complete
-/// "expected" type to report, only an expected shape.
+/// adopted as ADR-27 decision 3 (now in the spec's §"Error handling"
+/// inventory): with no unification variables yet, an elimination whose
+/// principal premise infers the wrong *constructor* (e.g. applying a non-arrow)
+/// has no complete "expected" type to report, only an expected shape.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum TypeError
 {

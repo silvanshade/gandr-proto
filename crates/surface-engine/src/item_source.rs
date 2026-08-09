@@ -1,5 +1,6 @@
-//! The surface front end as the checkpoint engine's parser-agnostic item
-//! source (A2.3; `incremental-pipeline.md` §§2-3).
+//! The surface front end as the checkpoint engine's parser-agnostic item source
+//! (A2.3; `incremental-pipeline.md` §"Cold reparse" and §"The structural
+//! diff").
 //!
 //! # What this module is for
 //!
@@ -75,9 +76,9 @@ impl From<&str> for SourceRevision
 ///
 /// Lowering runs in total mode, so every parseable revision yields a program:
 /// an out-of-fragment construct or an error region becomes a hole carrying its
-/// note, never a failure (`incremental-pipeline.md` §7). What survives as an
-/// error is the input-independent residue the seam exists to carry — the parser
-/// being unavailable, or the parse machinery itself failing.
+/// note, never a failure (`incremental-pipeline.md` §"Holes"). What survives as
+/// an error is the input-independent residue the seam exists to carry — the
+/// parser being unavailable, or the parse machinery itself failing.
 ///
 /// This type is a unit: the front end holds no state across revisions, because
 /// the state an incremental session accumulates lives in the checkpoint set,

@@ -9,9 +9,9 @@
 //!   `gandr-core-checker` syntax stays span-free and parser-free).
 //! - **A2.2 — total lowering and goals**: [`lower::lower_source_total`] lowers
 //!   *every* parseable input — syntax errors and out-of-fragment constructs
-//!   become holes carrying [`origin::HoleNote`]s (D5; pipeline spec §7) — and
-//!   [`goals::goals_report`] lists every hole with its span, expected type, and
-//!   local `Γ` (the v0 agent-stream seed).
+//!   become holes carrying [`origin::HoleNote`]s (D5; pipeline spec §"Holes") —
+//!   and [`goals::goals_report`] lists every hole with its span, expected type,
+//!   and local `Γ` (the v0 agent-stream seed).
 //! - **A2.4 — diagnostics and goals surface**: [`diag::report`] maps typing
 //!   failures (`FailureState` + `TypeError` + the [`origin::OriginMap`]) and
 //!   hole goals into one versioned, serde-JSON [`diag::Report`] — the v0 of the
@@ -24,15 +24,16 @@
 //! - **A2.3 — dependency-validated checkpoints** ([`footprint`],
 //!   [`checkpoint`]): [`footprint::footprint_of`] captures the dependency
 //!   footprint of a lowered item — the context names its term read
-//!   (`incremental-pipeline.md` §4 at item granularity) — and [`checkpoint`]
-//!   layers a changed-region → dirty-frontier incremental typer over the
-//!   melder-based lower path: it diffs the edited item list against a base
-//!   [`checkpoint::Checkpoints`], validates each unchanged item's footprint
-//!   against the bindings the edit changed, and *adopts* (reuses) or *re-types*
-//!   accordingly — the §5 validated resume. The gate is the differential
-//!   `resume(base, edited) == checkpoint_source(edited)` (`tests/incremental`).
-//!   Edit-surviving item identity and the frontier order run on
-//!   [`gandr_theory_orders`] (§7 Porter disposition).
+//!   (`incremental-pipeline.md` §"Checkpoints and the reuse rule" at item
+//!   granularity) — and [`checkpoint`] layers a changed-region → dirty-frontier
+//!   incremental typer over the melder-based lower path: it diffs the edited
+//!   item list against a base [`checkpoint::Checkpoints`], validates each
+//!   unchanged item's footprint against the bindings the edit changed, and
+//!   *adopts* (reuses) or *re-types* accordingly — the §"The edit loop"
+//!   validated resume. The gate is the differential `resume(base, edited) ==
+//!   checkpoint_source(edited)` (`tests/incremental`). Edit-surviving item
+//!   identity and the frontier order run on [`gandr_theory_orders`]
+//!   (§"pipeline-decision-02", the Porter disposition).
 //! - **The parser-agnostic item seam** ([`item_source`]): the melder-and-
 //!   lowering front end as an implementation of
 //!   [`gandr_core_checker::region::ItemSource`], so the core crate's
@@ -40,10 +41,10 @@
 //!   depending on this crate or naming a parser.
 //! - **Edit-action reconstruction** ([`edit`]): the localized structured diff
 //!   of two lowerings — the Porter/Pantograph "edit-action" both consume but
-//!   leave out of scope (`incremental-pipeline.md` §7). A
-//!   foundation-independent A2 brick: it needs neither the checkpoint base
-//!   (A2.3) nor the solver, so it lands ahead of them as the seam they will
-//!   consume.
+//!   leave out of scope (`incremental-pipeline.md` §"pipeline-decision-02" and
+//!   §"pipeline-decision-04"). A foundation-independent A2 brick: it needs
+//!   neither the checkpoint base (A2.3) nor the solver, so it lands ahead of
+//!   them as the seam they will consume.
 //!
 //! Later rungs add the streaming driver (A2.5) and the per-term-node,
 //! solver-coupled checkpoint granularity above the item-level A2.3 base here.

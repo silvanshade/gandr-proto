@@ -22,7 +22,8 @@
 //!
 //! The message set is the projection of a binary session — `?Attach . !Hello .
 //! μ X. ( !Frame . X ⊕ !Delta . X & ?Resync . X & ?Detach . end )`. When A4
-//! sessions land (`type-system.md` §7–§8) the bus server becomes a typed
+//! sessions land (`type-system.md` §"Shared sessions: manifest sharing"
+//! through §"Multiparty session types") the bus server becomes a typed
 //! endpoint and today's JSON frames are that protocol's messages, with no
 //! consumer break.
 //!
@@ -664,7 +665,8 @@ pub struct ReportView
 }
 
 /// The reified machine-state projection carried by a [`FrameBody::Frame`]
-/// (proposal §4; `typing-machine.md` §3/§5/§7).
+/// (proposal §4; `typing-machine.md` §"Machine state" / §"The solver as a
+/// separate machine" / §"Derivation tree construction").
 ///
 /// It is the derivation forest, the control register, the frame-stack summary,
 /// and the scalar digest — everything a renderer needs to paint the typing
@@ -674,19 +676,20 @@ pub struct ReportView
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MachineView
 {
-    /// The derivation forest roots (`typing-machine.md` §7), context-deltas not
-    /// snapshots.
+    /// The derivation forest roots (`typing-machine.md` §"Derivation tree
+    /// construction"), context-deltas not snapshots.
     pub derivation: Vec<DerivationNode>,
-    /// The control register (`typing-machine.md` §3.1).
+    /// The control register (`typing-machine.md` §"Control").
     pub control: ControlView,
-    /// The frame stack, top first (`typing-machine.md` §3.3), as a summary.
+    /// The frame stack, top first (`typing-machine.md` §"The frame inventory"),
+    /// as a summary.
     pub frames: Vec<FrameSummary>,
     /// The scalar digest (also the `gandr/machineSummary` payload).
     pub summary: MachineSummary,
 }
 
-/// One derivation-tree node (`typing-machine.md` §7 `derivation_node`),
-/// projected to plain data.
+/// One derivation-tree node (`typing-machine.md` §"Derivation tree
+/// construction" `derivation_node`), projected to plain data.
 ///
 /// Stores context *deltas* (the bindings this node added), not snapshots; a
 /// renderer reconstructs any node's full context by folding deltas along the
@@ -707,7 +710,8 @@ pub struct DerivationNode
     pub direction: DirView,
     /// The CBPV layer (value or computation).
     pub layer: LayerView,
-    /// The world badge, when worlds are active (`typing-machine.md` §3.3).
+    /// The world badge, when worlds are active (`typing-machine.md` §"The frame
+    /// inventory").
     pub world: Option<String>,
     /// The bindings this node added to the context (a delta, not a snapshot).
     pub ctx_delta: Vec<CtxBinding>,
@@ -749,7 +753,8 @@ impl From<NodeStep> for u64
 }
 
 /// A derivation node's id — the machine's monotone `step_id`
-/// (`typing-machine.md` §3.2 / §7). The key a [`NodeDelta`] patches against.
+/// (`typing-machine.md` §"The state record" / §"Derivation tree
+/// construction"). The key a [`NodeDelta`] patches against.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
@@ -804,7 +809,7 @@ impl CtxBinding
     }
 }
 
-/// The direction a node was typed in (`typing-machine.md` §3.1 `dir`).
+/// The direction a node was typed in (`typing-machine.md` §"Control" `dir`).
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "codecs",
@@ -824,7 +829,7 @@ pub enum DirView
     },
 }
 
-/// The CBPV layer of a node (`typing-machine.md` §3.1 `layer`).
+/// The CBPV layer of a node (`typing-machine.md` §"Control" `layer`).
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "codecs", serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -837,7 +842,7 @@ pub enum LayerView
     Computation,
 }
 
-/// The control register (`typing-machine.md` §3.1 `control`), projected.
+/// The control register (`typing-machine.md` §"Control" `control`), projected.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "codecs",
@@ -869,8 +874,9 @@ pub enum ControlView
     Done,
 }
 
-/// One frame-stack entry, summarized (`typing-machine.md` §3.3). Mirrors the
-/// pipeline `ContextFrame` shape the failure chain already uses.
+/// One frame-stack entry, summarized (`typing-machine.md` §"The frame
+/// inventory"). Mirrors the pipeline `ContextFrame` shape the failure chain
+/// already uses.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FrameSummary
@@ -907,8 +913,9 @@ impl FrameSummary
     }
 }
 
-/// A session before/after badge (`typing-machine.md` §7 `protocol`): the
-/// endpoint's session type across a session-frame boundary.
+/// A session before/after badge (`typing-machine.md` §"Derivation tree
+/// construction" `protocol`): the endpoint's session type across a
+/// session-frame boundary.
 #[cfg_attr(feature = "codecs", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ProtocolBadge
@@ -1044,8 +1051,9 @@ impl From<SolverTrailDepth> for u32
     }
 }
 
-/// The scalar machine digest (`typing-machine.md` §3/§5): the
-/// `gandr/machineSummary` payload (proposal §3) and a [`MachineView`] field.
+/// The scalar machine digest (`typing-machine.md` §"Machine state" / §"The
+/// solver as a separate machine"): the `gandr/machineSummary` payload (proposal
+/// §3) and a [`MachineView`] field.
 ///
 /// Cheap enough for a status hover; the full state (frames, derivation) is
 /// bus-only.
@@ -1053,13 +1061,16 @@ impl From<SolverTrailDepth> for u32
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct MachineSummary
 {
-    /// The monotone step counter (`typing-machine.md` §3.2 `steps`).
+    /// The monotone step counter (`typing-machine.md` §"The state record"
+    /// `steps`).
     pub steps: MachineStepCount,
-    /// The frame-stack depth (`typing-machine.md` §3.2 `stack` length).
+    /// The frame-stack depth (`typing-machine.md` §"The state record" `stack`
+    /// length).
     pub frame_depth: FrameStackDepth,
     /// The outstanding-obligation count (the reserved slot; `0` today).
     pub obligations: OutstandingObligationCount,
-    /// The solver trail depth (`typing-machine.md` §5 `trail` length).
+    /// The solver trail depth (`typing-machine.md` §"The solver as a separate
+    /// machine" `trail` length).
     pub trail_depth: SolverTrailDepth,
 }
 

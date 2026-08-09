@@ -1,5 +1,5 @@
 //! The parser-agnostic item seam, exercised against the real front end
-//! (`incremental-pipeline.md` §§2-3).
+//! (`incremental-pipeline.md` §"Cold reparse" and §"The structural diff").
 //!
 //! `gandr_core_checker::region::ItemSource` states the boundary the
 //! changed-region detector reads across, and `crate::item_source` is its first

@@ -1,21 +1,22 @@
-//! Structural subtyping and the subsumption rule (`type-system.md` §3.3 Sub,
-//! §10.2 core decompositions).
+//! Structural subtyping and the subsumption rule (`type-system.md`
+//! §"Notation and judgment forms" rule Sub, §"Subtyping decomposition" core
+//! decompositions).
 //!
 //! Stage 1 has no unification variables, unions, or intersections, so the
-//! §10 worklist solver degenerates to a direct structural decision procedure:
-//! goals are decomposed by the §10.2 rules for the core constructors
-//! (covariant `×`, `+`, `F`; contravariant arrow argument; `s ⊑ r` on `U`),
-//! and reflexivity/transitivity are admissible, never rules. Goals are decided
-//! depth-first from an explicit worklist ([`SubtypeGoal`]), which with no
-//! metavariables in play is observationally the in-order structural recursion
-//! (ADR-27 decision 1 records this timing and its reversal when the solver
-//! lands).
+//! §"Algorithmic subtyping and the worklist solver" degenerates to a direct
+//! structural decision procedure: goals are decomposed by the §"Subtyping
+//! decomposition" rules for the core constructors (covariant `×`, `+`, `F`;
+//! contravariant arrow argument; `s ⊑ r` on `U`), and reflexivity/transitivity
+//! are admissible, never rules. Goals are decided depth-first from an explicit
+//! worklist ([`SubtypeGoal`]), which with no metavariables in play is
+//! observationally the in-order structural recursion (ADR-27 decision 1 records
+//! this timing and its reversal when the solver lands).
 //!
 //! # `Unknown` and consistent subtyping (A2.2 holes extension)
 //!
 //! With the hole type ([`ValueType::Unknown`] / [`CompType::Unknown`], D5 of
-//! `A2-PLAN.md`; `incremental-pipeline.md` §7), the relation decided here is
-//! **consistent subtyping** (Siek–Taha gradual typing): `Unknown` relates to
+//! `A2-PLAN.md`; `incremental-pipeline.md` §"Holes"), the relation decided here
+//! is **consistent subtyping** (Siek–Taha gradual typing): `Unknown` relates to
 //! every type *in both directions*. On `Unknown`-free ("static") types the
 //! relation is exactly the old structural subtyping.
 //!
@@ -24,14 +25,14 @@
 //!
 //! - *Bidirectional wildcard (consistent subtyping)* — **adopted**. D5 says it
 //!   verbatim ("subsumption treats `Unknown` as consistent in both
-//!   directions"), and §7's "a hole checks against any `A` / a hole's type
+//!   directions"), and §"Holes": "a hole checks against any `A` / a hole's type
 //!   flows anywhere without spurious errors" needs flow in both directions: a
 //!   hole-typed head must feed argument positions of known type *and* known
 //!   terms must check against elided (`Unknown`) ascriptions.
 //! - *`Unknown` as top* — rejected: an `Unknown`-typed result could never
 //!   subsume to a concrete expectation, so every use of a hole's output would
-//!   cascade a `TypeMismatch` — exactly the spurious-error cascade §7 exists to
-//!   remove.
+//!   cascade a `TypeMismatch` — exactly the spurious-error cascade §"Holes"
+//!   exists to remove.
 //! - *`Unknown` as bottom* — rejected, symmetric: nothing would check against
 //!   an elided ascription.
 //! - *A separate consistency relation alongside subtyping* — rejected for Stage
@@ -205,10 +206,11 @@ pub fn value_subtype(
 
 /// A pending subtyping obligation: one pair of types to relate (`sub ≲ sup`).
 ///
-/// The goal unit of the degenerate §10 worklist solver (see the module doc):
-/// goals sit in the worklist until popped, decided against the §10.2
-/// decompositions, and replaced by their child goals — with no metavariables
-/// in play a LIFO queue is observationally the in-order structural recursion.
+/// The goal unit of the degenerate §"Algorithmic subtyping and the worklist
+/// solver" (see the module doc): goals sit in the worklist until popped,
+/// decided against the §"Subtyping decomposition" decompositions, and replaced
+/// by their child goals — with no metavariables in play a LIFO queue is
+/// observationally the in-order structural recursion.
 enum SubtypeGoal
 {
     /// Relates two value types (`sub ≲ sup`).
@@ -281,14 +283,15 @@ pub fn comp_subtype(
 }
 
 /// Decides a conjunction of subtyping goals from an explicit worklist — the
-/// degenerate §10 solver of the module doc, made iterative so the decision
-/// procedure carries no input recursion.
+/// degenerate §"Algorithmic subtyping and the worklist solver" of the module
+/// doc, made iterative so the decision procedure carries no input recursion.
 ///
 /// Each pop short-circuits on pointer equality (ADR-50 Decision B) or an
 /// `Unknown` side (the consistent-subtyping wildcard, D5), then decomposes
-/// the pair by the §10.2 rules — covariant `×`, `+`, `List`, record, `F`, and
-/// `With`; contravariant arrow argument, `Stk` answer, and `Thunk` grade;
-/// both directions on `Path` and `Sigma` — and pushes the child goals.
+/// the pair by the §"Subtyping decomposition" rules — covariant `×`, `+`,
+/// `List`, record, `F`, and `With`; contravariant arrow argument, `Stk` answer,
+/// and `Thunk` grade; both directions on `Path` and `Sigma` — and pushes the
+/// child goals.
 ///
 /// # Contract
 /// - ensures: returns `true` iff every goal the initial goals decompose into

@@ -1,4 +1,5 @@
-//! The REPL session engine (proposal §4, `incremental-pipeline.md` §10).
+//! The REPL session engine (proposal §4, `incremental-pipeline.md` §"The
+//! read-evaluate loop").
 //!
 //! The smallest end-to-end interactive slice: [`Session::submit`] takes one
 //! line of source, lowers it totally ([`crate::lower::lower_source_total`]),
@@ -36,12 +37,13 @@
 //! *unrelated* later expression stuck (no poisoning), and an evaluable
 //! definition runs exactly once (REPL memoization).
 //!
-//! This is the interim simplification of `incremental-pipeline.md` §10's
-//! persisted `Γ`/`Θ`; the persistent typed context (with checkpoints) is A2.3.
-//! Only definitions with a **value type** are bindable as variables (CBPV: a
-//! variable is a value); a definition of bare computation type — e.g. an
-//! un-thunked `λ` — is reported with `bound = false` and left out of scope
-//! (thunk it to name it), matching the lowerer's own `let` discipline.
+//! This is the interim simplification of the persisted `Γ`/`Θ` of
+//! `incremental-pipeline.md` §"The read-evaluate loop"; the persistent typed
+//! context (with checkpoints) is A2.3. Only definitions with a **value type**
+//! are bindable as variables (CBPV: a variable is a value); a definition of
+//! bare computation type — e.g. an un-thunked `λ` — is reported with `bound =
+//! false` and left out of scope (thunk it to name it), matching the lowerer's
+//! own `let` discipline.
 //!
 //! # What evaluates in v0
 //!

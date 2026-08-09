@@ -1,14 +1,16 @@
 //! Dependency-footprint capture for the incremental typing pipeline (A2.3;
-//! `incremental-pipeline.md` §4; `incremental-checkpoint work`).
+//! `incremental-pipeline.md` §"Checkpoints and the reuse rule";
+//! `incremental-checkpoint work`).
 //!
 //! # What a footprint is
 //!
-//! `incremental-pipeline.md` §4 tags every checkpoint with a **dependency
-//! footprint** — "the dynamic dependency edges an analysis consulted" (Reps,
-//! Teitelbaum & Demers 1983, the §7 acknowledged ancestor) — and reuses the
-//! checkpoint iff those edges are untouched. The spec states the footprint in
-//! the *solver's* vocabulary (`{tyvars, gradeVars, trailDepth, stepId}`),
-//! because its checkpoints live inside the stepping typing machine.
+//! `incremental-pipeline.md` §"Checkpoints and the reuse rule" tags every
+//! checkpoint with a **dependency footprint** — "the dynamic dependency edges
+//! an analysis consulted" (Reps, Teitelbaum & Demers 1983, the
+//! §"pipeline-decision-08" acknowledged ancestor) — and reuses the checkpoint
+//! iff those edges are untouched. The spec states the footprint in the
+//! *solver's* vocabulary (`{tyvars, gradeVars, trailDepth, stepId}`), because
+//! its checkpoints live inside the stepping typing machine.
 //!
 //! This module captures the footprint the *current* architecture actually
 //! exposes. With the tree-sitter-free melder push machine, the runnable typing
@@ -18,10 +20,10 @@
 //! later items to read. The one piece of shared, edit-mutable state threaded
 //! across items is therefore that name → type context, and an item's footprint
 //! is exactly **the set of context names its lowered term read** (its free
-//! variables). This is the §4 footprint specialized to the item granularity:
-//! condition 2 ("no `tyvars` in the footprint were re-assigned") becomes "no
-//! *name* the item read had its binding change", the same soundness shape one
-//! stratum up.
+//! variables). This is the §"Checkpoints and the reuse rule" footprint
+//! specialized to the item granularity: condition 2 ("no `tyvars` in the
+//! footprint were re-assigned") becomes "no *name* the item read had its
+//! binding change", the same soundness shape one stratum up.
 //!
 //! [`Ctx`]: gandr_core_checker::ctx::Ctx
 //!
@@ -73,7 +75,7 @@ pub struct Footprint
     pub opaque: bool,
     /// Set when the term carries a hole ([`Value::Hole`] / [`Comp::Hole`]): the
     /// item is parse-incomplete, matching the session's "holey items are not
-    /// typed" discipline (`incremental-pipeline.md` §7).
+    /// typed" discipline (`incremental-pipeline.md` §"Holes").
     pub has_hole: bool,
 }
 
@@ -355,7 +357,7 @@ fn as_val(value: &Rc<Value>) -> &Value
 ///   [`Footprint::opaque`] is set iff a non-representable node was met;
 ///   [`Footprint::has_hole`] is set iff a hole was met.
 /// - provides: a sound over-approximation of the item's dependency edges — the
-///   §4 footprint at item granularity.
+///   §"Checkpoints and the reuse rule" footprint at item granularity.
 /// - panics: none — the work-list is heap-allocated, so binder nesting scaled
 ///   to the input does not consume the host call stack.
 ///

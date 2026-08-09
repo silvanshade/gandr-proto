@@ -1,6 +1,6 @@
 //! A self-contained **order-maintenance** structure for the gandr incremental
 //! pipeline (milestone A2; design: the incremental-pipeline design record
-//! §7, the Porter order-maintenance disposition).
+//! §"pipeline-decision-02", the Porter disposition).
 //!
 //! The *order-maintenance problem* is to maintain a collection of elements
 //! under a total order, supporting insertion of a new element immediately
@@ -11,7 +11,7 @@
 //! (arXiv:2504.08946) uses pre/post-order timestamp intervals over exactly such
 //! a structure to test term containment in O(1) and drive the dirty-step
 //! priority queue. The corpus cites the underlying data structure at
-//! `incremental-pipeline.md` §7 reference `[6]` (Bender, Cole, Demaine,
+//! `incremental-pipeline.md` §"pipeline-decision-02" (Bender, Cole, Demaine,
 //! Farach-Colton & Zito, *Two Simplified Algorithms for Maintaining Order in a
 //! List*, 2002), itself a refinement of the list-labeling scheme of Itai,
 //! Konheim & Rodeh (1981) and the order-maintenance problem of Dietz & Sleator

@@ -1,5 +1,5 @@
-//! The two-zone typing context `Γ; Σ` (`type-system.md` §1;
-//! `effects-control-shell.md` §2.4; ADR-33 D5).
+//! The two-zone typing context `Γ; Σ` (`type-system.md` §"Notation and judgment
+//! forms"; `effects-control-shell.md` §2.4; ADR-33 D5).
 //!
 //! The intuitionistic zone `Γ : x ↦ A` is kept as a binding *stack*: binding
 //! pushes, unbinding pops, and lookup scans from the most recent binding, so
@@ -227,7 +227,7 @@ impl Ctx
         &self.entries
     }
 
-    /// Looks up the innermost hypothesis for `name` (rule Var, §3.3).
+    /// Looks up the innermost hypothesis for `name` (rule Var, §"Core rules").
     ///
     /// # Contract
     /// - ensures: returns the innermost (most recently bound, shadowing)

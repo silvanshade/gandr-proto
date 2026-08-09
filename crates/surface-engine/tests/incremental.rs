@@ -1,5 +1,8 @@
 //! The A2.3 differential gate: incremental validated resume ≡ from-scratch
-//! re-typing (`incremental-pipeline.md` §§4–6; `incremental-checkpoint work`).
+//! re-typing (`incremental-pipeline.md` §"Checkpoints and the reuse rule"
+//! through §"Derivation merging and identity stability").
+//!
+//! Landed under `incremental-checkpoint work`.
 //!
 //! The theorem `crate::checkpoint::resume` must satisfy: for **every** edit,
 //! the incrementally-resumed per-item typing equals the typing a full
@@ -99,8 +102,9 @@ mod tests
         /// The model edit (`incremental-base` ⇄ `incremental-edited`): the
         /// literal inside `target` changes, but `target`'s *type* does not — so
         /// the dependent `print(target)` is **adopted**, not re-typed. This is
-        /// the §4/§5 refinement: reuse keyed on whether the binding changed,
-        /// not on whether an upstream item was edited.
+        /// the §"Checkpoints and the reuse rule" / §"The edit loop" refinement:
+        /// reuse keyed on whether the binding changed, not on whether an
+        /// upstream item was edited.
         #[test]
         fn body_edit_adopts_the_type_stable_dependent()
         {

@@ -1,4 +1,4 @@
-//! Value and computation types of core CBPV (`type-system.md` §3.1).
+//! Value and computation types of core CBPV (`type-system.md` §"Types").
 //!
 //! The polarity split is structural: value types (positive) classify values,
 //! computation types (negative) classify computations, and the `U`/`F`
@@ -310,11 +310,11 @@ pub enum ValueType
         snd: Rc<Self>,
     },
     /// The unknown (hole) type `?` of value sort (A2.2 holes extension;
-    /// `incremental-pipeline.md` §7, `A2-PLAN.md` D5 — the Hazelnut hole
+    /// `incremental-pipeline.md` §"Holes", `A2-PLAN.md` D5 — the Hazelnut hole
     /// type).
     ///
-    /// `Unknown` is what a hole *infers* — the spec's "fresh α; NO
-    /// constraints", degenerated honestly: Stage 1 has no σ, so the fresh
+    /// `Unknown` is what a hole *infers* — the spec's "fresh α; no constraint
+    /// emitted", degenerated honestly: Stage 1 has no σ, so the fresh
     /// variable that would carry no constraints collapses to one unknown.
     /// Subsumption treats it as **consistent in both directions** (a
     /// bidirectional wildcard, not a top or bottom type); see
