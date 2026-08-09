@@ -70,7 +70,7 @@ Adding a doc under `docs/gandr/` registers it in `docs/gandr/MANIFEST.yml` with 
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | What is the design?                | `docs/gandr/` (authoritative)                                                                                                                  |
 | Why was it decided?                | `gandr-fcw` wayfinder tracker + `PLAN.html` (reboot; `docs/adr/` deferred)                                                                     |
-| What's next, in what order?        | `docs/gandr/VISION.md` §6                                                                                                                      |
+| What's next, in what order?        | the tracker's programme epic `gandr-e08j` (the buildout wayfinder; see `AGENTS.md` §"Start here")                                              |
 | How are docs kept trustworthy?     | `docs/gandr/MANIFEST.yml` + the docs gates ([workflow/ci.md](workflow/ci.md)) + the fidelity review ([workflow/review.md](workflow/review.md)) |
 | What work is open right now?       | `bv --robot-triage`                                                                                                                            |
 | What can go wrong (failure modes)? | the hazards recorded inline in the workflow file that owns each surface                                                                        |
