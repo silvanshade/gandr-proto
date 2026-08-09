@@ -1097,7 +1097,7 @@ module Refute where
 -- The count sits at the CODE and not in `Match`, and that is a cost decision
 -- rather than a fidelity one — the two are isomorphic, since a shape has one
 -- wiring at the bottom. In `Match` it would ride inside every listing-algebra
--- lemma (`match-insert`, `match-cap`, the braid, `insert-swap-coh⁴`), none of
+-- lemma (`match-insert`, `match-cap`, `cap-swap`, `match-cap-insert`), none of
 -- which can close a circle; at the code, exactly the operations that close one
 -- touch it.
 --
