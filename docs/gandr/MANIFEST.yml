@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: b5115ed8e1088c97653c602857e3183888ca482e022de216dec92c84656ebdbf
+    b3: 9d18d35abc7628cda952a5e3db5e6a7558d961c230e31240a37f374374dcef1d
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -39,12 +39,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: d16443c9a5a27a47e3ce2fcab8988b9af634310a1717c05056eba200ea61feb6
+    b3: fa7ccacecc1d06cc22a16dbfac88d13f6f4e1dfead83343491799050ba46cb56
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 403d262e6666e54b49a4a583568b9c62f118fd3fbae610de05d3cc1a64576931
+    b3: e00589fd79b5b4d56eb61a7ba0e60f95774ca43c9b2c609aecc06266505507fd
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md

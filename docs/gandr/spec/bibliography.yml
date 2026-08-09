@@ -2412,6 +2412,44 @@ obradovic-2017-thesis:
     hal: "tel-01676983"
   url: https://hal.science/tel-01676983v1
 
+# --- the skeletality re-pointing (2026-08-09): the categorified-cyclic-operads
+# --- coherence proof in its standalone joint form — a superset of the thesis's
+# --- categorified chapter, not a reprint of it (the preprint predates the defence,
+# --- it adds the equivariance/unit relaxation and the examples, and it carries no
+# --- appendix, so the skeletal-versus-non-skeletal appendix is thesis-only) — and
+# --- the weak-Cat-operad coherence its third reduction consumes.
+
+curien-obradovic-2019-categorified-cyclic-operads:
+  type: article
+  title: Categorified Cyclic Operads
+  author: ["Curien, Pierre-Louis", "Obradović, Jovana"]
+  date: 2019
+  parent:
+    type: periodical
+    title: Applied Categorical Structures
+    volume: 28
+    page-range: 59-112
+  serial-number:
+    doi: "10.1007/s10485-019-09569-7"
+    arxiv: "1706.06788"
+  url: https://arxiv.org/abs/1706.06788v3
+  note: >-
+    Section and remark locators cited against this key are taken from arXiv v3
+    (2019-11-21), the version read; the journal version of record may number differently.
+
+dosen-petric-2015-weak-cat-operads:
+  type: article
+  title: Weak Cat-Operads
+  author: ["Došen, Kosta", "Petrić, Zoran"]
+  date: 2015
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 11
+    issue: 1
+  serial-number:
+    doi: "10.2168/LMCS-11(1:10)2015"
+
 earnshaw-2025-thesis:
   type: thesis
   title: Languages of String Diagrams
