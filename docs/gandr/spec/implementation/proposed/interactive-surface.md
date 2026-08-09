@@ -1,7 +1,7 @@
 # The interactive and toolchain surface
 
 **Proposed.
-One of the faces this document designs is built; the rest are not.** `gandr <file>` runs one source file and reports the run as a process status — that is the script-runner face — while the shell-REPL, the terminal programming environment, the language-server adapter, and the formatter land with crates that do not exist yet.
+One of the faces this document designs is built; the rest are not.** `gandr <file>` runs one source file and reports the run as a process status — that is the script-runner face — while the read-evaluate loop, the language-server adapter, and the formatter land with crates that do not exist yet.
 The next section separates what is already built underneath all of them from what is not.
 
 This document fixes the surface that makes gandr usable as a shell and as a scripting language: the read-evaluate loop, structured data, command history, completion, highlighting, diagnostics, a language-server adapter, and a formatter.
@@ -12,8 +12,9 @@ Its organizing commitment is a single one, and everything else is a consequence:
 
 **Built, and verified against the tree at write time.**
 
-* **The driver is a working script runner, and running scripts is its whole contract.** `gandr-surface-driver` (the `gandr` binary) takes `gandr <file>` and hands the path to `gandr-surface-engine`'s `run` module, which lowers, links, prelude-checks, and runs the program under the host-effect handler; the driver owns no pipeline of its own and is the process boundary and nothing else.
-  It turns the run's outcome into a process status — `0` for a value terminal, a `proc.exit` code reduced to a byte the way a shell reduces one, `1` for a blame, a stuck configuration, or a fatal host abort, and `2` for a malformed command line or a source that never reached the machine — and prints nothing of its own on success, so a script's output reaches its consumer unmixed.
+* **The driver is a working script runner, and running scripts is its whole contract.** The `gandr` binary — the package the toolchain driver crate builds — takes `gandr <file>` and hands the path to `gandr-surface-engine`'s `run` module, which lowers, links, prelude-checks, and runs the program under the host-effect handler; the driver owns no pipeline of its own and is the process boundary and nothing else.
+  It turns the run's outcome into a process status — `0` for a value terminal, a `proc.exit` code reduced to a byte the way a shell reduces one, `1` for a blame, a stuck configuration, or a fatal host abort, and `2` for a malformed command line or a source that never reached the machine.
+  **A run prints nothing of the driver's own**, so a script's output reaches its consumer unmixed; the usage text is the one thing the driver writes to standard output, and only when it was asked for rather than as a complaint.
   Its production consumer is `scripts/agda-deps.gandr`, which provisions the Agda proof vehicle in the language the toolchain is for; its test suite drives the real binary, because what is under test is what a calling shell observes.
 * **The renderer firewall exists as a crate.** `gandr-surface-render-remote` holds **wire types only** — plain, serialization-ready data that the pipeline projects and renderers consume.
   It parses, lowers, types, and marks nothing, and it depends on no other workspace crate, so an adapter can link it without pulling in the checker.
@@ -24,7 +25,7 @@ Its organizing commitment is a single one, and everything else is a consequence:
 
 **Designed, and not built.** Everything else: the loop itself, the codecs, history, completion, the language-server adapter, and the formatter.
 
-**One caveat about the driver's manifest, because its deferred-face list reads like a parking lot and is not one.** The list names, per face, the reboot crate that face waits on — the line editor plus the grammar, parser, and syntax crates for the REPL; the terminal programming environment, which has no reboot crate at all, for `tui`; and no implementing crate whatsoever for the `lsp`, `mcp`, `fmt`, and `build` subcommand slots.
+**One caveat about the driver's manifest, because its deferred-face list reads like a parking lot and is not one.** The list names what each deferred face waits on, and the three cases differ: the REPL waits on a line editor, its other named dependencies — the checked grammar its highlighter molds against, the parser whose obligation queries drive its validator and completer, and the checked borrowed source slice that parser takes — being workspace crates that already exist; `tui` waits on the terminal programming environment, which has no crate in this tree at all; and `lsp`, `mcp`, `fmt`, and `build` are subcommand slots with no implementing crate.
 A face therefore arrives with its real dependency edge in the same change, never by uncommenting a line.
 
 ## The one machine state, and the firewall
@@ -167,7 +168,7 @@ What is carried from that material is its technical residue: the capability requ
 The one status statement that survives is the one at the top: **of the faces designed here, only the script runner is built**.
 
 **The as-built account is high confidence and was read from definitions**: the driver's argument surface, its outcome-to-status contract, and its deferred-face manifest; the renderer-firewall crate's two layers and its leaf position; the report envelope; and the origin map's cross-process-stable keys.
-The driver's contract was additionally exercised through the built binary rather than read only.
+The driver's outcome-to-status contract was additionally exercised through the built binary, on the value, exit, blame, and refusal paths; its stuck and host-abort arms are read from the classifier and carry no binary witness.
 
 **Two claims are marked rather than resolved.** The value-model ladder's landed rungs are stated from the corpus documents that own them rather than re-verified against the crates here.
 And the layout-engine citation is registered with a resolvable identifier but its content was not checked against this document's use of it, which is the standing residual for this document.

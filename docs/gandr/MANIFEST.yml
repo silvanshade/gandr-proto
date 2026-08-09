@@ -189,12 +189,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/ornaments.md
     role: subdocument
-    b3: 1851d1fc738702d8040078341028f85804e9c850a9eaa63ee991cf5186ac1834
+    b3: aa070c8c391301949884a597f3c8227bf56fbb829617fe68ec7f058ec0d9bdf5
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/interactive-surface.md
     role: subdocument
-    b3: 59592e330cb99356969895c27d487c1f42c467d0db305ea93f7fa486d12873f0
+    b3: a84cfb73a4cbdb1c867a2779338b218ea9984666796c6b6b0f0e14ffda861b22
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/sized-types.md
