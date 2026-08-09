@@ -85,6 +85,13 @@ unparseable = "unparseable"
 # and Modules") and "Higher-Dimensional Algebra via Colored PROPs"; a surname,
 # not a misspelling of "You"/"Yaw".
 Yau = "Yau"
+# Kosta Došen — co-author of "Weak Cat-Operads" and "Intermutation"; the ASCII
+# transliteration of the surname is what bibliography citation keys carry, and
+# typos reads it as a misspelling of "dozen"/"dose"/"doesn". The keys live in
+# the (excluded) bibliography YAML, but the `[@key]` citations live in corpus
+# prose, which typos does read.
+dosen = "dosen"
+Dosen = "Dosen"
 # Rust TUI crate names (gandr-tui): typos rewrites "ratatui" to "ratatouille",
 # which would corrupt prose, Cargo.toml, and use statements. "edtui" (editor
 # widget) is protected pre-emptively for the same reason.
