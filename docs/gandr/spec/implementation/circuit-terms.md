@@ -683,112 +683,235 @@ One consequence is recorded rather than designed here: if completion ever consum
 Each is anchored and cited by link, never by position.
 Every one carries a disposition.
 
-1. **circuit-terms-question-01** — **does the alphabet grow in place, or does a second alphabet stand beside the first?** Growing the pattern type fires the compile-visible tripwire at every match site, which is what the pattern grammar's narrowness was designed for; a second `CellAlphabet` inhabitant leaves the landed one untouched at the price of two to maintain.
-   > **Ruled (owner, 2026-08-02): the alphabet grows in place, and no second inhabitant stands beside it.** The compile-visible tripwire is the reason rather than the cost: growing the pattern type confronts every match site at compile time, which is what the pattern grammar's narrowness was designed to do, while a second inhabitant would hide the migration behind the interface and leave two alphabets to maintain.
-   > The coupling this entry carried is dissolved deliberately rather than followed: the crate of [[#circuit-terms-question-12]] lands as machinery over the `CellAlphabet` seam, so no second-inhabitant answer becomes natural with it.
-   > The route consequence is selected knowingly rather than discovered later: growing in place is what eventually carries multi-output and disconnection into the one store, at which point the left-connectedness discharge stops being free and the strengthened guard of [[#circuit-terms-question-15]] is what carries — exactly the conditionality that entry records.
-2. **circuit-terms-question-02** — **are a cell's ports ordered, named, or both?** Within-cell ordering costs nothing to adopt because no symmetry is present to give up, while ordering the **parallel-component** direction would be a silent catastrophe.
-   **Carried, with ordered-plus-named preferred** — which is what `BridgeArity` already does.
-3. **circuit-terms-question-03** — **what is a destination, operationally?** A store cell written before a single control transfer, or a covariable bound to a consumer the machine enters?
-   The second sequentializes and re-raises interchange; the first is the destination-passing reading the metatheory ratifies.
-   **Carried, and load-bearing** — the machine rung cannot be built without it.
-4. **circuit-terms-question-04** — **the Σ-former at the multi-output face**, the metatheory track's own open question: the Σ-η direction is where fan-out bites, and premise-form statement is what keeps associative–commutative completion out of the rule layer.
-   **Parked on the metatheory track, and a hard gate on the Σ-layer half.** The Π-layer half does not wait for it.
-5. **circuit-terms-question-05** — **is the fan-in obligation carried as a per-type supply?** See the decline section above for what this would narrow rather than overturn.
-   **Closed in the affirmative, with one residual.** The construction exists and is worked in the literature: a per-type supply expressed inside a Frobenius-free theory is a generator pair with the Frobenius equations as rules, terminating at [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 44], carrying no cup as long as the unit and counit are omitted, and representable as a mixed wiring datum (a bijection on non-supplying colours, a function on supplying ones).
-   **The residual is the warrant, not the construction**: the published correspondence quantifies Frobenius over _every_ colour, so the mixed case is unwarranted rather than warranted, and [[#circuit-terms-spike-03|circuit-terms-spike-03]] is re-scoped to it while the dual obligation for fan-out becomes its own question below.
-6. **circuit-terms-question-06** — **does the hypergraph DPO instance become the applicable one at this rung**, retiring the scoping that says graph-shaped double-pushout instances do not apply?
-   **Closed, and the answer is qualified rather than flat.** The scoping is **retired for gandr's first three axes and stands for the fourth.** Convex DPO with interfaces over monogamous acyclic hypergraphs is sound and complete for arbitrary symmetric monoidal theories including coloured ones, and its fragment admits many-out, reconvergence and disconnection while excluding exactly the fan-in and fan-out gandr already declines; the acyclic hypothesis is what gandr's wheel axis will leave, and no published statement covers the traced case.
-   The engineering consequence is stated at [[#The correspondence at gandr's own rung, at theorem grade]] and the residual is [[#circuit-terms-question-19|circuit-terms-question-19]].
-7. **circuit-terms-question-07** — **how does the arity index the description universe?** Generalizing the recursive-occurrence code to a multiset of output sorts is a container, so the term face forces the **indexed** description universe.
-   **Carried**, and shared with the higher-cells lane, which wants sort members for the same reason.
-8. **circuit-terms-question-08** — **what does the enumerator cost once interfaces are circuit-shaped?** Non-linear interfaces fan out families and the measured multi-sum degeneracy ends.
-   **Carried as a scheduled consequence**, to be measured rather than predicted.
-   > **The globularity trigger this entry used to name is superseded, by a ruling recorded further down this same list.** The linearity ruling of [[#circuit-terms-question-17|circuit-terms-question-17]] refuses the non-linear pattern at the admission boundary, so the degeneracy cannot end that way and the old trigger cannot fire; the restated trigger is the per-type comonoid supply of [[#circuit-terms-question-18|circuit-terms-question-18]] ([[../metatheory#The compositional-rewriting axioms, measured]], [[../metatheory/guards#Dissolved forks — do not re-litigate]]).
-   > This question's own premise therefore rides on that supply landing, which is what makes it a scheduled consequence rather than a live measurement.
-9. **circuit-terms-question-09** — **do circuit terms subsume products and sums, and should gandr keep both?** If a family of circuit formers covers tupling and casing, keeping eager products and sums beside them is redundancy the user pays for twice.
-   **Carried, and the largest open design question in the lane.** Four sub-questions travel with it and none is answered here.
-   + _Polarity_ — products and sums are **positive** value formers with a settled call-by-push-value story; a circuit term is an interface with input and output ports, and which side of the value/computation split it lands on is undecided.
-     Ports carry polarity already, in the carrier's own orientation morphism, so the question is whether the two polarities are one notion at two layers or two notions wearing one word.
-   + _Semantics_ — a subsuming family is indexed by its arity, so it is a family of formers rather than a former, and gandr's frozen core has no arity-indexed formers.
-     The justification would have to be a levitated description, not a kernel addition — which is a point in favour, since the description layer is where arities already live.
-   + _Pattern matching_ — case analysis on a sum is an eliminator with one arm per constructor; matching on a circuit term is embedding, and the two do not obviously unify.
-     Whether copatterns are the bridge is the specific version of this to answer first.
-   + _Presentation_ — if both are kept, the distinction has to be legible in syntax and in cost, and "these two things look the same and behave differently" is the failure mode the surface's design stance exists to prevent.
-10. **circuit-terms-question-10** — **do circuit-shaped members exist in `codata` position?** `codata` blocks already parse `rule` members, and the higher-cells lane carries the same question for its respelled ladder.
-    **Carried, inherited**; declining there is a legitimate answer but must be a decision, not an omission.
-11. **circuit-terms-question-11** — **can trace positions be dropped on gandr's cell fragment**, as the reversible-rewriting line drops them on pure-constructor systems?
-    **Carried**, and cheap to settle.
-12. **circuit-terms-question-12** — **does this machinery want its own crate?** The proposal of record is `theory-circuit-algebras`, an inhabitant of the existing `CellAlphabet` interface rather than a fork of the engines.
-    > **Ruled (owner, 2026-08-02): the machinery gets its own crate, `theory-circuit-algebras`, at the narrowed boundary.** It owns interface bookkeeping, embedding-based matching with its convexity check, and diagram normal form; the representation half was already not new work — the monogamous fragment's canonical representation is a port bijection and the Agda carrier already is one — and it stays where it is.
-    > With [[#circuit-terms-question-01]] ruled grow-in-place, the crate is machinery over the `CellAlphabet` seam rather than an inhabitant of it; the boundary, its tier against the crate map, and the matcher-seam consequence are recorded at [[#Matching, normalization, and the crate boundary]].
-13. **circuit-terms-question-13** — **does gandr want checked implicit coercions**, and is the circuit-term boundary one of their first customers?
-    The observation is that a proof assistant's coercion mechanism is normally a bare insertion rule with no evidence attached, whereas gandr already plans a directed transformation family, a certificate layer, and named rewrite cells — so a coercion could be an **inhabitant of an existing evidence type** rather than new machinery, and mediating between primitive terms and circuit terms is the obvious motivating case.
-    **Carried as a future direction, explicitly not scoped**, with its hazards named in the spike below.
-14. **circuit-terms-question-14** — **is gandr's cell layer an effectful category?** Interchange holding only on a declared subclass of morphisms is the defining feature of premonoidal and effectful categories, and gandr's disjoint-positions reversal condition is that shape arrived at independently.
-    **Closed in the affirmative for the single-spine layer, and the runtime object is what the spine becomes.** The identification is a theorem rather than an analogy [@roman-sobocinski-2025-premonoidal-string-diagrams, thm 3.14], the same source names call-by-push-value as the closest programming-language rendering, and there is a positive argument for representing the spine rather than keeping it structural: a structural spine is the side-table alternative the authors reject because it **loses locality of substitution** [ibid., rmk 2.8], which is exactly the property embedding-based matching needs.
-    What does not close with it is the disconnection axis, which is [[#circuit-terms-question-16|circuit-terms-question-16]].
-15. **circuit-terms-question-15** — **is gandr's disjointness test convexity-stable?** Under convex rewriting, two rule applications on **disjoint** sets of hyperedges can block one another, because one can create a directed path that destroys the other's convexity [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, ex 45]. gandr's shift equivalence commutes adjacent applications at disjoint positions with trivial overlap, and that quotient is TCB-adjacent.
-    **Closed, and it was a guard obligation rather than a design preference** — the two available answers were a strengthened disjointness test or a fence to the left-connected fragment, and the answer takes the first and keeps the second inside it.
-    **The route is selected for the as-built alphabet, and it is conditional in two directions.** Every expressible cell left-hand side is **strongly connected**, because a `CmdPat` is one cut whose consumer half is a linear spine with a single terminal — so the **left-connected** route is the one to take, under which matches on an acyclic target are automatically convex, the notion of critical pair is unchanged, and confluence of a terminating system is decidable by the cheap route [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, def 37 and thm 38] [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, def 5.6, thm 5.3, cor 5.1].
-    The forcing argument, the two remaining conjuncts, the two witnesses that break it, and the acyclicity fence are at [[#The correspondence at gandr's own rung, at theorem grade]].
-    **What follows for this question is that the fence is free today and stops being free the moment multi-output or disconnection reaches the rule layer** — so the alphabet decision is a route decision as well, and the choice between the two answers was not settled by pointing at today's inventory.
-    **The decided guard is that two applications commute when their positions are incomparable, their cell pair has trivial overlap, and each match image is still convex in the other's reduct** — with the third condition discharged outright, never run, on a store certified left-connected over an acyclic target.
-    The as-built test the guard extends, the two arguments that no counterexample is expressible today, the cost accounting against the replay decision it accelerates, and the falsifier that would cost it its speed are at [[#circuit-terms-spike-07|circuit-terms-spike-07]].
-16. **circuit-terms-question-16** — **which of gandr's structures is a device, and which is a resource?** One runtime object means one sequentialization and makes every cell depend on every other [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory, prop 34], which is the opposite of what the disconnection axis is for.
-    The closest built structure is effectful categories over **several devices**, where a device is a shared resource whose sharing creates dependence and a resource is a typed thing actions consume and produce, with free effectful categories presented by **resourceful traces** and a **commuting tensor product** combining systems whose actions must commute [@earnshaw-nester-roman-2025-resourceful-traces].
-    > **Ruled (owner, 2026-08-02): the device approach is declined as unfit for this rung, and the mapping closes refuted rather than unanswered.** The four legs were checked against the source at theorem grade.
-    > The spine-as-one-device reading holds only as the source's prose remark; types-as-resources holds as an identification while the constructions stay planar — no symmetry, no copy, no discard.
-    > Disconnection-as-several-devices fails structurally: independence there is declared on the alphabet and never read off connectivity — orthogonality is a relation on generators and no generator is orthogonal to itself, so two occurrences of one effectful cell never interchange however disjoint their positions, which is exactly the commutation gandr's shift equivalence earns per pair.
-    > The stratification-as-commuting-tensor-product leg fails with the difference stated: that tensor partitions the alphabet, gandr's stratification partitions the term; and a rewrite connecting previously disconnected components would fuse devices, for which the framework has no morphism.
-    > Capability-style concerns ride gandr's own type system rather than a device layer, and the axis keeps its wiring-read, per-term independence.
-    > **The replacement direction is the separation-logic line over template games** [@mellies-stefanesco-2020-csl] [@mellies-2021-template-games]: separation as footprint disjointness with a frame rule is per-term independence of exactly the shape the axis needs, and the corpus already meets this line at the interchange-strength decision ([[../metatheory#Interchange, by layer]]), where the Hoare inequality arrives as a derived lax coercion — the earned-not-imposed posture the stratification already has.
-    > **Both sources are read at theorem grade for this use, and what arrives is the apparatus rather than the logic riding on it**: what survives contact with gandr's carrier is the template and cobordism apparatus, while the separation logic arrives later or not at all, and the difference between those two is not cosmetic.
-    > Separated states, the separating conjunction over a permission monoid, permissions themselves, and the Frame rule at the predicate level are **deferred** on the heap and reference machinery gandr is committed to and has not built, and they are carried as a proposal at [[proposed/separation-logic]]; locks and the data-race half of soundness are **cut**, and nothing that machinery becomes brings them back.
-    > The direction is owned in detail by [[template-games]], which carries the tile pairing and the three axioms it gates on, the polarized footprint with its guard fence, the environment-polarity and virtual-cobordism obligations, the constraint that cobordism supports are store-transition systems, the six theorems owed, and what stays out of scope.
-    > An earlier revision of this entry recorded the construction as unbuilt, on the 2023 paper's future-work note; the follow-up was in the library and the claim is corrected rather than carried.
-    > **A later revision declined the whole separation-logic half "at the door"**, which the owner reframe of 2026-08-02 replaced with the deferral above; the reframe's own pass did not reach this entry, and the correction is recorded here rather than left to be inferred from the two documents it did reach.
-17. **circuit-terms-question-17** — **what happens to non-linear patterns?** A repeated hole on a rule's left-hand side is free in a term-shaped store, because substitution copies; at the circuit rung it is a **copy on a wire**, which is a comonoid the type may not have.
-    The leading implementation of gandr's own rung refuses exactly this case by name, raising a not-implemented error labelled "rewriting modulo Frobenius" as soon as a boundary vertex is used more than once [@chyp].
-    > **Ruled (owner, 2026-08-01): cell patterns are linear, and the per-type comonoid is the named later generalization.** A metavariable occurring twice on a left-hand side is refused with a diagnostic naming the copy; a type supplying a cocommutative comonoid may host the copy explicitly, and that is [[#circuit-terms-question-18|circuit-terms-question-18]] rather than an omission.
-    > **The ruling is free today, measured rather than assumed — and the measurement is restated here, because the first count was wrong in both directions.** There are **four** repeated-metavariable cut patterns in `theory-computads` and a **fifth** in `theory-virtual-doctrines`, and only one of the five is a copy the ruling costs anything.
-    > `a_repeated_metavariable_is_nonlinear` exhibits `⟨Pair(x; x) | α⟩` — the one genuine copy, and a metadata fixture rather than a rule anyone depends on.
-    > `a_hole_at_both_polarities_is_a_linear_seam` exhibits `⟨r | seam(; r)⟩`, which is **not a copy at all**: the name is worn once as a producer and once as a consumer, so it is one hole at two polarities — the dinaturality seam the composition gate reads, and a reachable shape rather than a fixture-only curiosity.
-    > The substitution layer's `⟨x | add(Succ(Succ(x)); ⊤)⟩` is a **unification goal**, not a rule left-hand side, so no admission boundary ever sees it.
-    > `fanout_family_is_a_multi_sum_not_a_single_rule` and, in `theory-virtual-doctrines`, `the_seam_family_is_the_overlap_indexed_multi_sum` each build `⟨Pair(y; y) | g(α)⟩` **deliberately**, to witness that composition at a shared seam is a _family_ of overlaps rather than a single fused rule; they are the concurrency contract's own witnesses and must keep witnessing it, which is a second reason the refusal cannot be a construction guard.
-    > **Placement (owner, 2026-08-02): the refusal is an admission boundary, not a construction guard.** It runs where cells enter a store from a description — the elaboration path — and `CellMeta::derive` keeps computing metadata and rejects nothing.
-    > The reason is the inventory above: multi-sum contract witnesses and unification goals are legitimate internal shapes, so what the ruling governs is which cells may be **admitted**, never which patterns may be **constructed**.
-    > **The copy relation is per `(name, category)` pair, not per name (owner, 2026-08-02).** A hole at two polarities is a seam and stays admitted; variance still joins across polarities and still reports it `Mixed`.
-    > Counting bare name occurrences conflated the two questions and reported the seam as non-linear, which would have made the boundary refuse the very shape two-mode certificate composition exists to consume — so the count was corrected in the same change that added the boundary.
-    > **What it costs is idempotence and cancellation** — `and(x, x) ~> x`, `x - x ~> 0` — which stop being writable with a repeated hole.
-    > They are respelled with the copy named rather than lost, exactly as a fan-in cell must name its monoid: the rule matches through the copying cell, and a type whose grade already licenses duplication is where such a rule lives.
-    > The diagnostic says so rather than only reporting a rejection — it names the copied hole and points at the respelling and at the hosting generalization.
-    > Two consequences ride with it: `CellMeta::derive`'s `linear` field is joined by a **check with a diagnostic** at the admission boundary rather than becoming one, and the corpus's globularity-above-the-base trigger must be restated, because it was conditioned on a measurement this ruling now prevents.
-18. **circuit-terms-question-18** — **is the fan-out obligation carried as a per-type supply, and at which layer?** The fan-out/fan-in asymmetry did not survive this pass, so copy owes the same treatment as merge. gandr already prices duplication on the **value** side, with grades and with `dup`/`drop` as ordinary computations; what has no answer is what the obligation means at the **cell** layer, where a repeated hole is the thing that would have to carry it.
-    **Carried as the named generalization of the linearity ruling above**, and it is the row that makes idempotence rules writable again on the types that genuinely support them.
-    The sub-question to answer first is whether the cell-layer comonoid is a **new** supply or is read off the existing grade discipline, since a grade-ω binding already licenses duplication on the value side.
-    > **Ruled (owner, 2026-08-02): read off the grade discipline, not a new former — a plan whose substrate is named rather than assumed.** The copy obligation at the cell layer is declared by the type's grade-side licence, mirroring the delay answer one entry down: a discipline read at its binder rather than a new supply former.
-    > The as-built blocker is recorded rather than waved off: today a grade is a field of a thunk-typed binding, not a function of the type, so it cannot yet determine a per-colour predicate — the executed warrant spike's tracker record (2026-08-02) carries this with two further disanalogies.
-    > Execution therefore rides the value-semantics incorporation ([[../surface-language/value-semantics]]), and the string model's copy-on-write intersection is tracked so neither lane decides copy pricing in passing.
-19. **circuit-terms-question-19** — **does the cell layer take trace or feedback?** Restated 2026-08-01 from "what covers the wheel axis", which conflated three layers.
-    **Ruled: feedback, with the trace declined at this layer only**, on three grounds — position order, the temporal reading of identity, and the delay cut keeping the correspondence applicable to the cut-open form.
-    The account, the three fences and the reversal condition are [[#Wheels, and which structure the cell layer takes]].
-    **The ruling is hardened against both sources in the original**, and the reading moved two things without disturbing the choice: the decline is of **one** axiom, yanking, since full sliding follows from it [@katis-sabadini-walters-2002-feedback, prop 2.7]; and the delay cut is the free feedback category's own normal form rather than an inference about it.
-    **The delay question is answered and needs no former of its own**: the guard is total on types, so what carries "a delay is present" is the feedback **binder's** typing rule, discharged by the guardedness discipline the (co)recursion surface already runs.
-    **The warrant is now discharged too, and it cost a fence rather than a repair.** Cutting at the delays does **not** preserve convexity under re-closure — a two-cell witness exhibits the path, and re-closure is more permissive by construction because it only adds edges — so the **cut-open form is the only legal matching target**, and the condition the engine computes there is the delay's own path extension, which is the known-relation case of the published path-joinability route rather than a gandr side condition.
-    The seam criterion is upheld with its test replaced: whether a left-hand side **factors** through the guard is not evaluable once the guard has become the cut, and the evaluable surrogate is whether the rule **mentions** a delay, decided once at the declaration and stable precisely because yanking is the declined axiom ([[#circuit-terms-spike-08|circuit-terms-spike-08]]).
-20. **circuit-terms-question-20** — **when a type supplies both fan-in and fan-out, which interaction law comes with them?** The two canonical answers over the same generators are **Frobenius**, under which connected diagrams contract to a standard form, and **bialgebra**, under which they expand — the correspondence paper's bialgebra case study needs a five-component lexicographic order to terminate, because one of its rules increases the hyperedge count.
-    They are not variants of one structure, and the choice decides whether a supplied type's fragment shrinks or grows under rewriting.
-    **Carried, and it is a fork the supply table hid** by listing the two directions as independent rows.
-    The coherent both-at-once structure is Hopf-Frobenius [@collins-2024-hopf-frobenius], whose "the conditions are minor" result is a **vector-space** statement resting on integrals, so it does not transfer to a combinatorial carrier and the fork stays a real decision.
-    > **Ruled (owner, 2026-08-02): bialgebra is the interaction law when both directions are supplied.** The two arms are not symmetric in rewriting cost, and the sources say so: the Frobenius interaction system is terminating but **not confluent** — the source's own example exhibits one diagram with two distinct normal forms [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, ex 5.3] — and two of its rules structurally cannot be strongly connected, a strongly connected Frobenius left-hand side being equivalent to a directed cycle the fragment excludes; the bialgebra system is left-connected in the source's own words [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, sec. 5.2], with the non-commutative variant verified left-connected and proved confluent [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, sec. 6.1].
-    > A single-direction supply is left-connected either way: the cheap confluence route is lost only by adding an interaction law, and only by the Frobenius one.
-    > What this re-routes rather than loses: the spider normal form stays true as a theorem and stops being a rewrite-strategy deliverable — its decision procedure arrives through canonicalization at the representation ([[#circuit-terms-question-21]] and the execution ladder's rung-04), never by running the contraction rules.
-    > The reversal condition: a lane that genuinely needs wire-contraction semantics as **equations**, which then pays for path joinability explicitly rather than by default.
-21. **circuit-terms-question-21** — **can the noncommutative, asymmetric spider theorem be consumed at the representation layer rather than refused?** The reason to want it is concrete: `append` on a `Pipe` is the aggregation section's own motivating example and it is **not** commutative, so the standing commutativity requirement may be excluding the case that motivated the feature.
-    The reason to think it possible is that gandr does not run a symmetric representation — the merger **is** a planar tensor, and canonicalization is already the passage that makes the convolution symmetric — so a planar theorem lands where gandr's order already lives, consumed through `canon-sound` rather than adopted into the theory.
-    **Carried**, with three things to establish in order: that the within-component order the spider theorem uses separates from the cross-component symmetry the bracket oracle needs; that the monomial-to-monomial condition holds for the Frobenius relations, which on their face it does since they equate diagrams rather than sums; and what the resulting `canon-sound` instance costs.
-    The failure mode to watch is the one the corpus names for the planar quotient generally: a substitution that "would read as a strengthening while narrowing what `cells_equal` accepts".
+### circuit-terms-question-01
+
+**Does the alphabet grow in place, or does a second alphabet stand beside the first?**
+
+Growing the pattern type fires the compile-visible tripwire at every match site, which is what the pattern grammar's narrowness was designed for; a second `CellAlphabet` inhabitant leaves the landed one untouched at the price of two to maintain.
+
+> **Ruled (owner, 2026-08-02): the alphabet grows in place, and no second inhabitant stands beside it.** The compile-visible tripwire is the reason rather than the cost: growing the pattern type confronts every match site at compile time, which is what the pattern grammar's narrowness was designed to do, while a second inhabitant would hide the migration behind the interface and leave two alphabets to maintain.
+> The coupling this entry carried is dissolved deliberately rather than followed: the crate of [[#circuit-terms-question-12]] lands as machinery over the `CellAlphabet` seam, so no second-inhabitant answer becomes natural with it.
+> The route consequence is selected knowingly rather than discovered later: growing in place is what eventually carries multi-output and disconnection into the one store, at which point the left-connectedness discharge stops being free and the strengthened guard of [[#circuit-terms-question-15]] is what carries — exactly the conditionality that entry records.
+
+### circuit-terms-question-02
+
+**Are a cell's ports ordered, named, or both?**
+
+Within-cell ordering costs nothing to adopt because no symmetry is present to give up, while ordering the **parallel-component** direction would be a silent catastrophe.
+
+**Carried, with ordered-plus-named preferred** — which is what `BridgeArity` already does.
+
+### circuit-terms-question-03
+
+**What is a destination, operationally?**
+
+A store cell written before a single control transfer, or a covariable bound to a consumer the machine enters?
+
+The second sequentializes and re-raises interchange; the first is the destination-passing reading the metatheory ratifies.
+**Carried, and load-bearing** — the machine rung cannot be built without it.
+
+### circuit-terms-question-04
+
+**The Σ-former at the multi-output face**, the metatheory track's own open question: the Σ-η direction is where fan-out bites, and premise-form statement is what keeps associative–commutative completion out of the rule layer.
+
+**Parked on the metatheory track, and a hard gate on the Σ-layer half.** The Π-layer half does not wait for it.
+
+### circuit-terms-question-05
+
+**Is the fan-in obligation carried as a per-type supply?**
+
+See the decline section above for what this would narrow rather than overturn.
+
+**Closed in the affirmative, with one residual.** The construction exists and is worked in the literature: a per-type supply expressed inside a Frobenius-free theory is a generator pair with the Frobenius equations as rules, terminating at [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, thm 44], carrying no cup as long as the unit and counit are omitted, and representable as a mixed wiring datum (a bijection on non-supplying colours, a function on supplying ones).
+**The residual is the warrant, not the construction**: the published correspondence quantifies Frobenius over _every_ colour, so the mixed case is unwarranted rather than warranted, and [[#circuit-terms-spike-03|circuit-terms-spike-03]] is re-scoped to it while the dual obligation for fan-out becomes its own question below.
+
+### circuit-terms-question-06
+
+**Does the hypergraph DPO instance become the applicable one at this rung**, retiring the scoping that says graph-shaped double-pushout instances do not apply?
+
+**Closed, and the answer is qualified rather than flat.** The scoping is **retired for gandr's first three axes and stands for the fourth.** Convex DPO with interfaces over monogamous acyclic hypergraphs is sound and complete for arbitrary symmetric monoidal theories including coloured ones, and its fragment admits many-out, reconvergence and disconnection while excluding exactly the fan-in and fan-out gandr already declines; the acyclic hypothesis is what gandr's wheel axis will leave, and no published statement covers the traced case.
+The engineering consequence is stated at [[#The correspondence at gandr's own rung, at theorem grade]] and the residual is [[#circuit-terms-question-19|circuit-terms-question-19]].
+
+### circuit-terms-question-07
+
+**How does the arity index the description universe?**
+
+Generalizing the recursive-occurrence code to a multiset of output sorts is a container, so the term face forces the **indexed** description universe.
+
+**Carried**, and shared with the higher-cells lane, which wants sort members for the same reason.
+
+### circuit-terms-question-08
+
+**What does the enumerator cost once interfaces are circuit-shaped?**
+
+Non-linear interfaces fan out families and the measured multi-sum degeneracy ends.
+
+**Carried as a scheduled consequence**, to be measured rather than predicted.
+
+> **The globularity trigger this entry used to name is superseded, by a ruling recorded further down this same section.** The linearity ruling of [[#circuit-terms-question-17|circuit-terms-question-17]] refuses the non-linear pattern at the admission boundary, so the degeneracy cannot end that way and the old trigger cannot fire; the restated trigger is the per-type comonoid supply of [[#circuit-terms-question-18|circuit-terms-question-18]] ([[../metatheory#The compositional-rewriting axioms, measured]], [[../metatheory/guards#Dissolved forks — do not re-litigate]]).
+> This question's own premise therefore rides on that supply landing, which is what makes it a scheduled consequence rather than a live measurement.
+
+### circuit-terms-question-09
+
+**Do circuit terms subsume products and sums, and should gandr keep both?**
+
+If a family of circuit formers covers tupling and casing, keeping eager products and sums beside them is redundancy the user pays for twice.
+
+**Carried, and the largest open design question in the lane.** Four sub-questions travel with it and none is answered here.
+
+* _Polarity_ — products and sums are **positive** value formers with a settled call-by-push-value story; a circuit term is an interface with input and output ports, and which side of the value/computation split it lands on is undecided.
+  Ports carry polarity already, in the carrier's own orientation morphism, so the question is whether the two polarities are one notion at two layers or two notions wearing one word.
+* _Semantics_ — a subsuming family is indexed by its arity, so it is a family of formers rather than a former, and gandr's frozen core has no arity-indexed formers.
+  The justification would have to be a levitated description, not a kernel addition — which is a point in favour, since the description layer is where arities already live.
+* _Pattern matching_ — case analysis on a sum is an eliminator with one arm per constructor; matching on a circuit term is embedding, and the two do not obviously unify.
+  Whether copatterns are the bridge is the specific version of this to answer first.
+* _Presentation_ — if both are kept, the distinction has to be legible in syntax and in cost, and "these two things look the same and behave differently" is the failure mode the surface's design stance exists to prevent.
+
+### circuit-terms-question-10
+
+**Do circuit-shaped members exist in `codata` position?**
+
+`codata` blocks already parse `rule` members, and the higher-cells lane carries the same question for its respelled ladder.
+
+**Carried, inherited**; declining there is a legitimate answer but must be a decision, not an omission.
+
+### circuit-terms-question-11
+
+**Can trace positions be dropped on gandr's cell fragment**, as the reversible-rewriting line drops them on pure-constructor systems?
+
+**Carried**, and cheap to settle.
+
+### circuit-terms-question-12
+
+**Does this machinery want its own crate?**
+
+The proposal of record is `theory-circuit-algebras`, an inhabitant of the existing `CellAlphabet` interface rather than a fork of the engines.
+
+> **Ruled (owner, 2026-08-02): the machinery gets its own crate, `theory-circuit-algebras`, at the narrowed boundary.** It owns interface bookkeeping, embedding-based matching with its convexity check, and diagram normal form; the representation half was already not new work — the monogamous fragment's canonical representation is a port bijection and the Agda carrier already is one — and it stays where it is.
+> With [[#circuit-terms-question-01]] ruled grow-in-place, the crate is machinery over the `CellAlphabet` seam rather than an inhabitant of it; the boundary, its tier against the crate map, and the matcher-seam consequence are recorded at [[#Matching, normalization, and the crate boundary]].
+
+### circuit-terms-question-13
+
+**Does gandr want checked implicit coercions**, and is the circuit-term boundary one of their first customers?
+
+The observation is that a proof assistant's coercion mechanism is normally a bare insertion rule with no evidence attached, whereas gandr already plans a directed transformation family, a certificate layer, and named rewrite cells — so a coercion could be an **inhabitant of an existing evidence type** rather than new machinery, and mediating between primitive terms and circuit terms is the obvious motivating case.
+**Carried as a future direction, explicitly not scoped**, with its hazards named in the spike below.
+
+### circuit-terms-question-14
+
+**Is gandr's cell layer an effectful category?**
+
+Interchange holding only on a declared subclass of morphisms is the defining feature of premonoidal and effectful categories, and gandr's disjoint-positions reversal condition is that shape arrived at independently.
+
+**Closed in the affirmative for the single-spine layer, and the runtime object is what the spine becomes.** The identification is a theorem rather than an analogy [@roman-sobocinski-2025-premonoidal-string-diagrams, thm 3.14], the same source names call-by-push-value as the closest programming-language rendering, and there is a positive argument for representing the spine rather than keeping it structural: a structural spine is the side-table alternative the authors reject because it **loses locality of substitution** [ibid., rmk 2.8], which is exactly the property embedding-based matching needs.
+What does not close with it is the disconnection axis, which is [[#circuit-terms-question-16|circuit-terms-question-16]].
+
+### circuit-terms-question-15
+
+**Is gandr's disjointness test convexity-stable?**
+
+Under convex rewriting, two rule applications on **disjoint** sets of hyperedges can block one another, because one can create a directed path that destroys the other's convexity [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, ex 45]. gandr's shift equivalence commutes adjacent applications at disjoint positions with trivial overlap, and that quotient is TCB-adjacent.
+
+**Closed, and it was a guard obligation rather than a design preference** — the two available answers were a strengthened disjointness test or a fence to the left-connected fragment, and the answer takes the first and keeps the second inside it.
+**The route is selected for the as-built alphabet, and it is conditional in two directions.** Every expressible cell left-hand side is **strongly connected**, because a `CmdPat` is one cut whose consumer half is a linear spine with a single terminal — so the **left-connected** route is the one to take, under which matches on an acyclic target are automatically convex, the notion of critical pair is unchanged, and confluence of a terminating system is decidable by the cheap route [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, def 37 and thm 38] [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, def 5.6, thm 5.3, cor 5.1].
+The forcing argument, the two remaining conjuncts, the two witnesses that break it, and the acyclicity fence are at [[#The correspondence at gandr's own rung, at theorem grade]].
+**What follows for this question is that the fence is free today and stops being free the moment multi-output or disconnection reaches the rule layer** — so the alphabet decision is a route decision as well, and the choice between the two answers was not settled by pointing at today's inventory.
+**The decided guard is that two applications commute when their positions are incomparable, their cell pair has trivial overlap, and each match image is still convex in the other's reduct** — with the third condition discharged outright, never run, on a store certified left-connected over an acyclic target.
+The as-built test the guard extends, the two arguments that no counterexample is expressible today, the cost accounting against the replay decision it accelerates, and the falsifier that would cost it its speed are at [[#circuit-terms-spike-07|circuit-terms-spike-07]].
+
+### circuit-terms-question-16
+
+**Which of gandr's structures is a device, and which is a resource?**
+
+One runtime object means one sequentialization and makes every cell depend on every other [@earnshaw-sobocinski-2023-string-diagrammatic-trace-theory, prop 34], which is the opposite of what the disconnection axis is for.
+
+The closest built structure is effectful categories over **several devices**, where a device is a shared resource whose sharing creates dependence and a resource is a typed thing actions consume and produce, with free effectful categories presented by **resourceful traces** and a **commuting tensor product** combining systems whose actions must commute [@earnshaw-nester-roman-2025-resourceful-traces].
+
+> **Ruled (owner, 2026-08-02): the device approach is declined as unfit for this rung, and the mapping closes refuted rather than unanswered.** The four legs were checked against the source at theorem grade.
+> The spine-as-one-device reading holds only as the source's prose remark; types-as-resources holds as an identification while the constructions stay planar — no symmetry, no copy, no discard.
+> Disconnection-as-several-devices fails structurally: independence there is declared on the alphabet and never read off connectivity — orthogonality is a relation on generators and no generator is orthogonal to itself, so two occurrences of one effectful cell never interchange however disjoint their positions, which is exactly the commutation gandr's shift equivalence earns per pair.
+> The stratification-as-commuting-tensor-product leg fails with the difference stated: that tensor partitions the alphabet, gandr's stratification partitions the term; and a rewrite connecting previously disconnected components would fuse devices, for which the framework has no morphism.
+> Capability-style concerns ride gandr's own type system rather than a device layer, and the axis keeps its wiring-read, per-term independence.
+> **The replacement direction is the separation-logic line over template games** [@mellies-stefanesco-2020-csl] [@mellies-2021-template-games]: separation as footprint disjointness with a frame rule is per-term independence of exactly the shape the axis needs, and the corpus already meets this line at the interchange-strength decision ([[../metatheory#Interchange, by layer]]), where the Hoare inequality arrives as a derived lax coercion — the earned-not-imposed posture the stratification already has.
+> **Both sources are read at theorem grade for this use, and what arrives is the apparatus rather than the logic riding on it**: what survives contact with gandr's carrier is the template and cobordism apparatus, while the separation logic arrives later or not at all, and the difference between those two is not cosmetic.
+> Separated states, the separating conjunction over a permission monoid, permissions themselves, and the Frame rule at the predicate level are **deferred** on the heap and reference machinery gandr is committed to and has not built, and they are carried as a proposal at [[proposed/separation-logic]]; locks and the data-race half of soundness are **cut**, and nothing that machinery becomes brings them back.
+> The direction is owned in detail by [[template-games]], which carries the tile pairing and the three axioms it gates on, the polarized footprint with its guard fence, the environment-polarity and virtual-cobordism obligations, the constraint that cobordism supports are store-transition systems, the six theorems owed, and what stays out of scope.
+> An earlier revision of this entry recorded the construction as unbuilt, on the 2023 paper's future-work note; the follow-up was in the library and the claim is corrected rather than carried.
+> **A later revision declined the whole separation-logic half "at the door"**, which the owner reframe of 2026-08-02 replaced with the deferral above; the reframe's own pass did not reach this entry, and the correction is recorded here rather than left to be inferred from the two documents it did reach.
+
+### circuit-terms-question-17
+
+**What happens to non-linear patterns?**
+
+A repeated hole on a rule's left-hand side is free in a term-shaped store, because substitution copies; at the circuit rung it is a **copy on a wire**, which is a comonoid the type may not have.
+
+The leading implementation of gandr's own rung refuses exactly this case by name, raising a not-implemented error labelled "rewriting modulo Frobenius" as soon as a boundary vertex is used more than once [@chyp].
+
+> **Ruled (owner, 2026-08-01): cell patterns are linear, and the per-type comonoid is the named later generalization.** A metavariable occurring twice on a left-hand side is refused with a diagnostic naming the copy; a type supplying a cocommutative comonoid may host the copy explicitly, and that is [[#circuit-terms-question-18|circuit-terms-question-18]] rather than an omission.
+> **The ruling is free today, measured rather than assumed — and the measurement is restated here, because the first count was wrong in both directions.** There are **four** repeated-metavariable cut patterns in `theory-computads` and a **fifth** in `theory-virtual-doctrines`, and only one of the five is a copy the ruling costs anything.
+> `a_repeated_metavariable_is_nonlinear` exhibits `⟨Pair(x; x) | α⟩` — the one genuine copy, and a metadata fixture rather than a rule anyone depends on.
+> `a_hole_at_both_polarities_is_a_linear_seam` exhibits `⟨r | seam(; r)⟩`, which is **not a copy at all**: the name is worn once as a producer and once as a consumer, so it is one hole at two polarities — the dinaturality seam the composition gate reads, and a reachable shape rather than a fixture-only curiosity.
+> The substitution layer's `⟨x | add(Succ(Succ(x)); ⊤)⟩` is a **unification goal**, not a rule left-hand side, so no admission boundary ever sees it.
+> `fanout_family_is_a_multi_sum_not_a_single_rule` and, in `theory-virtual-doctrines`, `the_seam_family_is_the_overlap_indexed_multi_sum` each build `⟨Pair(y; y) | g(α)⟩` **deliberately**, to witness that composition at a shared seam is a _family_ of overlaps rather than a single fused rule; they are the concurrency contract's own witnesses and must keep witnessing it, which is a second reason the refusal cannot be a construction guard.
+> **Placement (owner, 2026-08-02): the refusal is an admission boundary, not a construction guard.** It runs where cells enter a store from a description — the elaboration path — and `CellMeta::derive` keeps computing metadata and rejects nothing.
+> The reason is the inventory above: multi-sum contract witnesses and unification goals are legitimate internal shapes, so what the ruling governs is which cells may be **admitted**, never which patterns may be **constructed**.
+> **The copy relation is per `(name, category)` pair, not per name (owner, 2026-08-02).** A hole at two polarities is a seam and stays admitted; variance still joins across polarities and still reports it `Mixed`.
+> Counting bare name occurrences conflated the two questions and reported the seam as non-linear, which would have made the boundary refuse the very shape two-mode certificate composition exists to consume — so the count was corrected in the same change that added the boundary.
+> **What it costs is idempotence and cancellation** — `and(x, x) ~> x`, `x - x ~> 0` — which stop being writable with a repeated hole.
+> They are respelled with the copy named rather than lost, exactly as a fan-in cell must name its monoid: the rule matches through the copying cell, and a type whose grade already licenses duplication is where such a rule lives.
+> The diagnostic says so rather than only reporting a rejection — it names the copied hole and points at the respelling and at the hosting generalization.
+> Two consequences ride with it: `CellMeta::derive`'s `linear` field is joined by a **check with a diagnostic** at the admission boundary rather than becoming one, and the corpus's globularity-above-the-base trigger must be restated, because it was conditioned on a measurement this ruling now prevents.
+
+### circuit-terms-question-18
+
+**Is the fan-out obligation carried as a per-type supply, and at which layer?**
+
+The fan-out/fan-in asymmetry did not survive this pass, so copy owes the same treatment as merge. gandr already prices duplication on the **value** side, with grades and with `dup`/`drop` as ordinary computations; what has no answer is what the obligation means at the **cell** layer, where a repeated hole is the thing that would have to carry it.
+
+**Carried as the named generalization of the linearity ruling above**, and it is the row that makes idempotence rules writable again on the types that genuinely support them.
+The sub-question to answer first is whether the cell-layer comonoid is a **new** supply or is read off the existing grade discipline, since a grade-ω binding already licenses duplication on the value side.
+
+> **Ruled (owner, 2026-08-02): read off the grade discipline, not a new former — a plan whose substrate is named rather than assumed.** The copy obligation at the cell layer is declared by the type's grade-side licence, mirroring the delay answer one entry down: a discipline read at its binder rather than a new supply former.
+> The as-built blocker is recorded rather than waved off: today a grade is a field of a thunk-typed binding, not a function of the type, so it cannot yet determine a per-colour predicate — the executed warrant spike's tracker record (2026-08-02) carries this with two further disanalogies.
+> Execution therefore rides the value-semantics incorporation ([[../surface-language/value-semantics]]), and the string model's copy-on-write intersection is tracked so neither lane decides copy pricing in passing.
+
+### circuit-terms-question-19
+
+**Does the cell layer take trace or feedback?**
+
+Restated 2026-08-01 from "what covers the wheel axis", which conflated three layers.
+
+**Ruled: feedback, with the trace declined at this layer only**, on three grounds — position order, the temporal reading of identity, and the delay cut keeping the correspondence applicable to the cut-open form.
+The account, the three fences and the reversal condition are [[#Wheels, and which structure the cell layer takes]].
+**The ruling is hardened against both sources in the original**, and the reading moved two things without disturbing the choice: the decline is of **one** axiom, yanking, since full sliding follows from it [@katis-sabadini-walters-2002-feedback, prop 2.7]; and the delay cut is the free feedback category's own normal form rather than an inference about it.
+**The delay question is answered and needs no former of its own**: the guard is total on types, so what carries "a delay is present" is the feedback **binder's** typing rule, discharged by the guardedness discipline the (co)recursion surface already runs.
+**The warrant is now discharged too, and it cost a fence rather than a repair.** Cutting at the delays does **not** preserve convexity under re-closure — a two-cell witness exhibits the path, and re-closure is more permissive by construction because it only adds edges — so the **cut-open form is the only legal matching target**, and the condition the engine computes there is the delay's own path extension, which is the known-relation case of the published path-joinability route rather than a gandr side condition.
+The seam criterion is upheld with its test replaced: whether a left-hand side **factors** through the guard is not evaluable once the guard has become the cut, and the evaluable surrogate is whether the rule **mentions** a delay, decided once at the declaration and stable precisely because yanking is the declined axiom ([[#circuit-terms-spike-08|circuit-terms-spike-08]]).
+
+### circuit-terms-question-20
+
+**When a type supplies both fan-in and fan-out, which interaction law comes with them?**
+
+The two canonical answers over the same generators are **Frobenius**, under which connected diagrams contract to a standard form, and **bialgebra**, under which they expand — the correspondence paper's bialgebra case study needs a five-component lexicographic order to terminate, because one of its rules increases the hyperedge count.
+
+They are not variants of one structure, and the choice decides whether a supplied type's fragment shrinks or grows under rewriting.
+**Carried, and it is a fork the supply table hid** by listing the two directions as independent rows.
+The coherent both-at-once structure is Hopf-Frobenius [@collins-2024-hopf-frobenius], whose "the conditions are minor" result is a **vector-space** statement resting on integrals, so it does not transfer to a combinatorial carrier and the fork stays a real decision.
+
+> **Ruled (owner, 2026-08-02): bialgebra is the interaction law when both directions are supplied.** The two arms are not symmetric in rewriting cost, and the sources say so: the Frobenius interaction system is terminating but **not confluent** — the source's own example exhibits one diagram with two distinct normal forms [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, ex 5.3] — and two of its rules structurally cannot be strongly connected, a strongly connected Frobenius left-hand side being equivalent to a directed cycle the fragment excludes; the bialgebra system is left-connected in the source's own words [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii, sec. 5.2], with the non-commutative variant verified left-connected and proved confluent [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii, sec. 6.1].
+> A single-direction supply is left-connected either way: the cheap confluence route is lost only by adding an interaction law, and only by the Frobenius one.
+> What this re-routes rather than loses: the spider normal form stays true as a theorem and stops being a rewrite-strategy deliverable — its decision procedure arrives through canonicalization at the representation ([[#circuit-terms-question-21]] and the execution ladder's rung-04), never by running the contraction rules.
+> The reversal condition: a lane that genuinely needs wire-contraction semantics as **equations**, which then pays for path joinability explicitly rather than by default.
+
+### circuit-terms-question-21
+
+**Can the noncommutative, asymmetric spider theorem be consumed at the representation layer rather than refused?**
+
+The reason to want it is concrete: `append` on a `Pipe` is the aggregation section's own motivating example and it is **not** commutative, so the standing commutativity requirement may be excluding the case that motivated the feature.
+
+The reason to think it possible is that gandr does not run a symmetric representation — the merger **is** a planar tensor, and canonicalization is already the passage that makes the convolution symmetric — so a planar theorem lands where gandr's order already lives, consumed through `canon-sound` rather than adopted into the theory.
+**Carried**, with three things to establish in order: that the within-component order the spider theorem uses separates from the cross-component symmetry the bracket oracle needs; that the monomial-to-monomial condition holds for the Frobenius relations, which on their face it does since they equate diagrams rather than sums; and what the resulting `canon-sound` instance costs.
+The failure mode to watch is the one the corpus names for the planar quotient generally: a substitution that "would read as a strengthening while narrowing what `cells_equal` accepts".
 
 ## Spikes
 
@@ -961,25 +1084,60 @@ What the spike recorded as the fork's stake is thereby realized rather than moot
 > Each rung names what it needs and what it unblocks; the tracker's beads are filed against these anchors, and execution status lives in the tracker rather than here.
 > The derivation dimension of the wheel axis is deliberately outside this ladder: it is ruled declined at [[#Wheels, and which structure the cell layer takes]] and reopens only by its recorded reversal condition.
 
-1. **circuit-terms-rung-01** — **the cong2 corpus witness**: the reconvergence axis at dimension 2, alphabet-neutral by design, on the term-shaped store.
-   Needs nothing outside its own sub-ladder (grammar, port fold, boundary check, elaboration, graduation, shift witness); unblocks the grammar for rung-02, the rule-member graduation gate, and the shift guard's surface consumer.
-2. **circuit-terms-rung-02** — **the rewrite-face respelling**: the landed description-rule syntax and the corpus retire the old face arrow for the ruled one.
-   Needs rung-01's grammar half; unblocks a uniform face spelling while the corpus is still small.
-3. **circuit-terms-rung-03** — **mint `theory-circuit-algebras`** at the ruled narrowed boundary ([[#Matching, normalization, and the crate boundary]]).
-   Needs the alphabet and crate rulings, both taken; unblocks rungs 04 and 05.
-4. **circuit-terms-rung-04** — **diagram normal form**: the canonical linearization behind the `Rigid` device, what content addressing interns on.
-   Needs rung-03; unblocks content addressing at the circuit rung and the canonicalization consumption route for the spider theorem.
-5. **circuit-terms-rung-05** — **embedding-based matching behind the decided guard** ([[#circuit-terms-question-15]]).
-   Needs rung-03; unblocks rungs 06 through 08 — nothing circuit-shaped matches without it.
-6. **circuit-terms-rung-06** — **the tag-declared IL consumer arity**: the multi-output middle's intermediate-language half, owed independently of this arc.
-   Needs nothing; unblocks rung-07 end to end.
-7. **circuit-terms-rung-07** — **grow the alphabet in place, multi-output first** ([[#circuit-terms-question-01]]): the first axis through the whole language.
-   The left-connectedness discharge stops being free at this rung and the strengthened guard is what carries.
-   Needs rungs 05 and 06.
-8. **circuit-terms-rung-08** — **disconnection**: lands after the declined device mapping's replacement direction reports ([[#circuit-terms-question-16]]), and carries the recorded route cost — a disconnected left-hand side forces path joinability, so the cheap-route claim gets its condition stated at this rung.
-   Needs rung-07 and the disconnection independence story.
-9. **circuit-terms-rung-09** — **wheels in the term dimension**: the delay former's spelling resolution, cut-open matching inside the recorded fences, the delay-path extension, and the delay-set refusal diagnostic ([[#circuit-terms-spike-08]]).
-   Needs the delay placement and delay-set rulings, both taken; unblocks the first stateful corpus witness.
+### circuit-terms-rung-01
+
+**The cong2 corpus witness**: the reconvergence axis at dimension 2, alphabet-neutral by design, on the term-shaped store.
+
+Needs nothing outside its own sub-ladder (grammar, port fold, boundary check, elaboration, graduation, shift witness); unblocks the grammar for rung-02, the rule-member graduation gate, and the shift guard's surface consumer.
+
+### circuit-terms-rung-02
+
+**The rewrite-face respelling**: the landed description-rule syntax and the corpus retire the old face arrow for the ruled one.
+
+Needs rung-01's grammar half; unblocks a uniform face spelling while the corpus is still small.
+
+### circuit-terms-rung-03
+
+**Mint `theory-circuit-algebras`** at the ruled narrowed boundary ([[#Matching, normalization, and the crate boundary]]).
+
+Needs the alphabet and crate rulings, both taken; unblocks rungs 04 and 05.
+
+### circuit-terms-rung-04
+
+**Diagram normal form**: the canonical linearization behind the `Rigid` device, what content addressing interns on.
+
+Needs rung-03; unblocks content addressing at the circuit rung and the canonicalization consumption route for the spider theorem.
+
+### circuit-terms-rung-05
+
+**Embedding-based matching behind the decided guard** ([[#circuit-terms-question-15]]).
+
+Needs rung-03; unblocks rungs 06 through 08 — nothing circuit-shaped matches without it.
+
+### circuit-terms-rung-06
+
+**The tag-declared IL consumer arity**: the multi-output middle's intermediate-language half, owed independently of this arc.
+
+Needs nothing; unblocks rung-07 end to end.
+
+### circuit-terms-rung-07
+
+**Grow the alphabet in place, multi-output first** ([[#circuit-terms-question-01]]): the first axis through the whole language.
+
+The left-connectedness discharge stops being free at this rung and the strengthened guard is what carries.
+Needs rungs 05 and 06.
+
+### circuit-terms-rung-08
+
+**Disconnection**: lands after the declined device mapping's replacement direction reports ([[#circuit-terms-question-16]]), and carries the recorded route cost — a disconnected left-hand side forces path joinability, so the cheap-route claim gets its condition stated at this rung.
+
+Needs rung-07 and the disconnection independence story.
+
+### circuit-terms-rung-09
+
+**Wheels in the term dimension**: the delay former's spelling resolution, cut-open matching inside the recorded fences, the delay-path extension, and the delay-set refusal diagnostic ([[#circuit-terms-spike-08]]).
+
+Needs the delay placement and delay-set rulings, both taken; unblocks the first stateful corpus witness.
 
 ## Findings that route to other tracks
 
