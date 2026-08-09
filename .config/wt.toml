@@ -49,8 +49,10 @@ beads-pull = "bd dolt pull || true"
 # toolchain pin check, the docs conflict, drift, and reference gates, build,
 # the lint wall, rustdoc, tests, and the formatting check in order; the body in
 # .config/mise/tasks/mise-tasks-gates.toml owns the membership, so this
-# comment names the shape and never the list. Heavier checks (graph gates,
-# the doc-gate battery, no-panic, cargo-careful, llvm-cov) remain push tier.
+# comment names the shape and never the list. Heavier checks (the doc, page,
+# graph, and oracle gates, no-panic, cargo-careful, and the upstream Dylint
+# inventory) remain push tier; coverage enforcement is off both tiers while
+# the per-file floors are unseeded.
 [[pre-merge]]
 gate-merge = "mise run gate:merge"
 

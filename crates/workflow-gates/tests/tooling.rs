@@ -244,6 +244,12 @@ const EXPECTED_UPSTREAM_DYLINT_LIBS: &[&str] = &[
 const EXPECTED_PARKED_WORKFLOW_TASKS: &[&str] =
     &["cargo:no-panic", "core:check", "grammar:test", "wrkflw"];
 
+/// Keys the `gate:merge` task body carries; anything else adds unreplayed work.
+const EXPECTED_GATE_MERGE_KEYS: &[&str] = &["description", "run"];
+
+/// Keys one `gate:merge` run step carries; anything else scopes the invocation.
+const EXPECTED_GATE_MERGE_STEP_KEYS: &[&str] = &["task"];
+
 /// Merge-wall tasks the `gate:merge` task body runs, in order.
 const EXPECTED_MERGE_GATE_TASKS: &[&str] = &[
     "toolchain:pin-check",
@@ -1494,12 +1500,23 @@ fn lint_inventory_and_workspace_scopes_are_locked() -> TestResult
 }
 
 /// Return the ordered task names the `gate:merge` task body runs.
+///
+/// The `run` array is not the only way a mise task body can add work: a
+/// `depends` key on the task, or an `args` key on a step, would make the wall
+/// run something the crate's plan cannot replay. Both are rejected here rather
+/// than ignored, so the crate-versus-task-body comparison stays a comparison of
+/// the whole wall and not of its step names alone.
 fn gate_merge_task_names() -> TestResult<Vec<String>>
 {
     let workspace = workspace_root()?;
     let workspace_mise_tasks = workspace_mise_tasks(&workspace);
     let mise_tasks_gates = parse_toml_file(&workspace_mise_tasks.join("mise-tasks-gates.toml"))?;
     let gate_merge = toml_table_at(&mise_tasks_gates, ["gate:merge"])?;
+    assert_table_keys(
+        gate_merge,
+        EXPECTED_GATE_MERGE_KEYS,
+        "gate:merge gained a key the workflow-plan comparison does not replay",
+    );
     let Some(merge_steps) = gate_merge.get("run").and_then(toml::Value::as_array)
     else {
         return Err(Box::new(std::io::Error::other(
@@ -1514,10 +1531,35 @@ fn gate_merge_task_names() -> TestResult<Vec<String>>
                 "gate:merge run step is not an inline table",
             )));
         };
+        assert_table_keys(
+            step,
+            EXPECTED_GATE_MERGE_STEP_KEYS,
+            "a gate:merge step gained a key the workflow-plan comparison does not replay",
+        );
         let task_name = toml_table_string(step, "task")?;
         merge_tasks.push(task_name.0.to_owned());
     }
     Ok(merge_tasks)
+}
+
+/// Assert that a TOML table carries exactly the expected keys, in any order.
+fn assert_table_keys<'semantic, Expected, ExpectedItem, Context>(
+    table: &toml::Table,
+    expected: Expected,
+    context: Context,
+) where
+    Expected: IntoIterator<Item = ExpectedItem>,
+    ExpectedItem: Into<ExpectedText<'semantic>>,
+    Context: Into<ContextText<'semantic>>,
+{
+    let mut keys = table.keys().cloned().collect::<Vec<String>>();
+    keys.sort();
+    let mut expected = expected
+        .into_iter()
+        .map(|item| item.into().0)
+        .collect::<Vec<&str>>();
+    expected.sort_unstable();
+    assert_string_sequence(&keys, expected, context);
 }
 
 /// Return the ordered task names one workflow tier's static plan runs.
