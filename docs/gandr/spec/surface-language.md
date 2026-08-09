@@ -212,10 +212,10 @@ def name = v ;
 def name(x: A, y: B) -> B' { t }
 def rec fact(n: Integer) -> F Integer { … }
 
-data Maybe(a) { None, Some(x: a) }
-data Nat { Zero, Succ(n: Nat), op add(m: Nat, n: Nat) -> Nat, rule add(Zero, n) ==> n }
+data Maybe(a : Type) : Type { None : Maybe(a); Some : (x : a) --> Maybe(a); }
+data Nat : Type { Zero : Nat; Succ : (n : Nat) --> Nat; oper add(m : Nat, n : Nat) -> Nat; rule add(Zero, n) ==> n; }
 
-codata Stream(a) { head: a, tail: Stream(a) }
+codata Stream(a : Type) : Type { head : a; tail : Stream(a); }
 
 extern "c" from "m" { type Db; def cos(x: f64) -> f64; }
 
@@ -311,24 +311,24 @@ The former names are the current ratified spellings (a rename from the earlier `
 
 ## The vocabulary decisions of record
 
-| decision                 | ruling                                                                                                       | where argued                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| the universe keyword     | `Type`, **never** `Set`                                                                                      | the universe design (predicative, reflexive-only) |
-| binder keywords          | `val p = v;` / `run p <- c;` (`let` retired, unassigned)                                                     | [[declarations]]                                  |
-| type operators           | right-associative; `|`/`/\`/`&` pairwise-incomparable                                                        | [[grammar#The precedence bands as built]]         |
-| term operators           | fixed left-associative table; no parser-dependent user fixity, ever                                          | [[declarations#Operator-fixity declarations]]     |
-| application              | mandatory parentheses; n-ary as recorded sugar                                                               | [[recursion#Application syntax, rejected]]        |
-| generics                 | `Name(args)`, never `Name<args>`                                                                             | this document (types)                             |
-| imports                  | `import "URI" as name ;` — plain string, `file` scheme now, others zero-grammar-change later                 | [[declarations]]                                  |
-| the semidecision type    | **Sier** (Sierpiński), never spelled Σ, never encoded as boolean                                             | [[../metatheory/exact-reals]]                     |
-| numerics                 | `Integer` renames to `Int` with `Nat` added when arbitrary precision lands                                   | the implementation roadmap                        |
-| keyword policy           | a small closed set of globally reserved keywords; fixity classes contextual; corpus-swept before reservation | [[grammar]]                                       |
-| braces/else/semicolons   | mandatory                                                                                                    | this document (the design stance)                 |
-| layout                   | never significant; no ASI, no external scanner                                                               | this document (the design stance)                 |
-| `rec` marker             | explicit, never implicit self-reference detection                                                            | [[recursion]]                                     |
-| shell subshell           | `[ … ]`, keeping `( … )` free for the `$( E )` host escape                                                   | [[surface-language/shell]]                        |
-| `${name}` vs `${E}`      | distinct labeler modes: shell parameter expansion is not string interpolation                                | [[surface-language/shell]]                        |
-| `meta` coherence members | **do not exist yet** — named so the absence is visible                                                       | [[declarations#data declarations]]                |
+| decision                | ruling                                                                                                       | where argued                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| the universe keyword    | `Type`, **never** `Set`                                                                                      | the universe design (predicative, reflexive-only) |
+| binder keywords         | `val p = v;` / `run p <- c;` (`let` retired, unassigned)                                                     | [[declarations]]                                  |
+| type operators          | right-associative; `|`/`/\`/`&` pairwise-incomparable                                                        | [[grammar#The precedence bands as built]]         |
+| term operators          | fixed left-associative table; no parser-dependent user fixity, ever                                          | [[declarations#Operator-fixity declarations]]     |
+| application             | mandatory parentheses; n-ary as recorded sugar                                                               | [[recursion#Application syntax, rejected]]        |
+| generics                | `Name(args)`, never `Name<args>`                                                                             | this document (types)                             |
+| imports                 | `import "URI" as name ;` — plain string, `file` scheme now, others zero-grammar-change later                 | [[declarations]]                                  |
+| the semidecision type   | **Sier** (Sierpiński), never spelled Σ, never encoded as boolean                                             | [[../metatheory/exact-reals]]                     |
+| numerics                | `Integer` renames to `Int` with `Nat` added when arbitrary precision lands                                   | the implementation roadmap                        |
+| keyword policy          | a small closed set of globally reserved keywords; fixity classes contextual; corpus-swept before reservation | [[grammar]]                                       |
+| braces/else/semicolons  | mandatory                                                                                                    | this document (the design stance)                 |
+| layout                  | never significant; no ASI, no external scanner                                                               | this document (the design stance)                 |
+| `rec` marker            | explicit, never implicit self-reference detection                                                            | [[recursion]]                                     |
+| shell subshell          | `[ … ]`, keeping `( … )` free for the `$( E )` host escape                                                   | [[surface-language/shell]]                        |
+| `${name}` vs `${E}`     | distinct labeler modes: shell parameter expansion is not string interpolation                                | [[surface-language/shell]]                        |
+| declared 3-cell members | **do not exist yet** — no new member kind or arrow: a 3-cell is a `rule` between rule-sorted endpoints       | [[declarations#data declarations]]                |
 
 ## The manual as a reference
 
