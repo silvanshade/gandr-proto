@@ -19,7 +19,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory.md
     role: track
-    b3: 9d18d35abc7628cda952a5e3db5e6a7558d961c230e31240a37f374374dcef1d
+    b3: 0aceb43dadfeb1d2ef5f540cabb60309087a0752e09d69c6210c33c7908e407d
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
@@ -39,27 +39,27 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 1f4a730fb0dbc3cab9b5f9e5c0dfb963304ae92e0e4aab42a971129905f65b84
+    b3: 2084830177510453d216024ef111d138d37a86c23ded56c619df3a97367c4c20
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: a2332387350ab3067c0ded5c44d47bd6b4fc8606d4e560278bc8cbd83b21621a
+    b3: 7888900323a34d113dfc95e9ee9a54721c4c454f58d25cd5cf71b4a265ab8eb2
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
     role: subdocument
-    b3: 0d218707eeb1cb083dea72fceb6c89c07bec46fd441c13412a6af1b78c2e4195
+    b3: 4106b5a714f867a3f0b4d13ee8acb793574ba8ff580759693ae90f8b5a032e7f
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/citation-hazards.md
     role: subdocument
-    b3: d93a9df13eb884845e4beb41974f834f62f5227845b79ed94704105911a5273b
+    b3: 0f65734090ffc7fd883fa1ebcd9c18c090827a319eed2e9616f07a67f6cb16c3
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/carrier.md
     role: subdocument
-    b3: ccfd512fbd0b8cd477b92f7cfa19accdfffc53ae2984b9a155d9832b81859a99
+    b3: 0805b93d01f645d657ed38a2e5e7c612ae5a895a919c42da5aa28d49a2795d8c
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/directed-univalence.md
@@ -174,7 +174,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: 9b2aabbc3c9566ae89b2b2cec7a5deae11a62c32535aae167c7fc00f2886205a
+    b3: a0898d12a9501fc1da19e49758151fc167f644cdb10fac350311c37e9c4be777
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md

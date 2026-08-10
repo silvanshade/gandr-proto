@@ -285,6 +285,30 @@ No spike is opened by this entry; the route is recorded so that a first pass at 
 **Provenance.** Scheduled by `gandr-hpck-answer-16` on the metatheory decision queue, which ruled that this question be carried as a named obligation rather than as a sentence inside an as-built block.
 The layer split it rests on is that queue's `gandr-hpck-note-03` amending `gandr-hpck-answer-08`, whose construction-term ruling is untouched by this entry.
 
+### meta-obligation-02
+
+**On which gandr diagrams does a wiring factor as an interface permutation followed by a crossing-free core?** The corpus consumes a theorem stated for connected **planar** diagrams [@majid-rietsch-2021-planar-spider, cor 2.4], and the passage that licenses the consumption asserted the factorization as a fact about the representation: the shape being a canonical boundary permutation composed with the standard form, with the permutation canonicalized the way `Rigid`'s recipe already canonicalizes construction terms.
+That assertion is **restated here as an obligation** rather than carried as an inference, because the word "planar" wears two conditions and the assertion silently spends both.
+
+**The statement, so that a discharge has something to hit.** For a shape $S$, the factorization exists exactly when the underlying graph of $S$ admits a crossing-free embedding **after** reordering its interface — and reordering the interface is precisely what an outermost permutation does, so the condition reduces to planarity of the underlying graph itself.
+Boundary reordering absorbs a boundary crossing and touches nothing inside a component; **no reordering repairs a non-planar interior**, which is why the two halves of the condition do not collapse into one.
+
+**Two things are settled already, in opposite directions, and both were measured rather than argued.**
+
+* **Refuted on the carrier.** `Gandr.Shape.Planarity` builds `k33 : Shape ⊤ [] []` — six vertices, nine flow-through wires, connected, and wheel-free by a rank certificate — whose derived incidence realizes the complete bipartite graph on three and three, so its underlying graph is non-planar [@kuratowski-1930-courbes-gauches].
+  The witness is inside the fragment the directed layer admits and is not a pathology quarantined elsewhere, so the factorization does **not** exist for gandr diagrams in general.
+* **Available on cells.** A `Cell` carries `SimplyConn` — connected and acyclic — which is a tree, and trees are planar; the machine-checked half of that here is only the negative, that the K3,3 witness is not a cell.
+  So the failure enters with **grafting**, which is where the carrier already knows it leaves the cell class: `bigon` is two cells grafted into a composite that reconverges.
+
+**What would discharge it.** A characterization of the carrier's crossing-free fragment together with a decision for membership on gandr's own representation — planarity is classically decidable in linear time, so the question is what the decision costs over `Shape` and not whether one exists — plus evidence that the consuming site's diagrams lie inside it.
+A discharge that only names the fragment without deciding membership leaves the consumption unusable, and a discharge that decides membership without the consuming site's diagrams leaves it unspent.
+
+**What this does not license, in either direction.** It does not license refusing the theorem: the base-objects sense of "planar" is had everywhere, and the two senses are distinguished at each of the four sites that consume the inference.
+Nor does it license reading the cell-layer availability as the general case, which is the mistake the entry exists to stop.
+
+**Provenance.** Scheduled by `gandr-hpck-answer-17` on the metatheory decision queue, which pre-authorized this disposition on a non-planar result from the carrier planarity test and ran the test first as the proving spike.
+The reanalysis it rests on identified the candidate factorization as the outermost-permutation normal form already selected for canonicalization, and found it insufficient for the interior — the test is what turned "insufficient as argued" into "refuted as measured".
+
 ## The wager's falsifiers
 
 The coherence-debt arity law (debt arity = threaded positions + the head met; blocks contribute nothing) is the architecture's central bet.

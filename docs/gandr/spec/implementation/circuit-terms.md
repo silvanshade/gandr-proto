@@ -148,9 +148,16 @@ Getting it per type, on the types that genuinely have the structure, is a strict
 > So gandr does not run a symmetric representation.
 > It runs a **planar representation with symmetry recovered at the quotient**, and `canon-sound` is the bridge.
 >
+> **The second reading is too quick as well, and the word is why: "planar" names two conditions, and this passage needs both.** The **base-objects** sense is the merger's — the base is the free monoid on the colours, so interface objects are lists rather than multisets — and it is what the paragraph above establishes.
+> The **crossing-free-embedding** sense is corollary 2.4's own hypothesis: a connected diagram drawn in the plane with no wire crossing another, its bead count being the number of bounded connected components of the **drawing's complement**, which is a condition on the wiring inside a component.
+> Neither implies the other, and **gandr's diagrams fail the second** — measured, not argued: `Gandr.Shape.Planarity` builds a connected, wheel-free `Shape ⊤ [] []` whose derived incidence realizes the complete bipartite graph on three and three, so its underlying graph is non-planar [@kuratowski-1930-courbes-gauches].
+> The failure is at the **diagram** layer and not at the cell layer — a cell is connected and acyclic, hence a tree, hence planar — so it is grafting that leaves the fragment, which is exactly where a normal form for connected diagrams would be spent.
+>
 > **The opposition is therefore not symmetric-versus-planar but _at which layer the order lives_**, which is the corpus's standing pattern rather than a new one: ordering is a section, never a planarization of the theory.
-> A planar theorem is consumable at the representation layer through exactly that section — the shape being a canonical boundary permutation composed with the standard form, with the permutation canonicalized the way `Rigid`'s recipe already canonicalizes construction terms (permutations outermost, ordered monomials, unique minimal representative).
-> What that would cost is one more `canon-sound` instance and the **monomial-to-monomial check**, which the Frobenius relations satisfy on their face — they equate single diagrams, not sums — and which the corpus requires be checked before anything leans on it.
+> **What this passage previously inferred is stated as an obligation instead.** The inference was that a planar theorem is consumable at the representation layer through exactly that section — the shape being a canonical boundary permutation composed with the standard form, with the permutation canonicalized the way `Rigid`'s recipe already canonicalizes construction terms (permutations outermost, ordered monomials, unique minimal representative).
+> That factorization is **not had in general**: the outermost permutation absorbs the **boundary** and does nothing to the **interior**, and the interior is where the measured failure is.
+> It is scheduled as [[../metatheory/roadmap#meta-obligation-02|meta-obligation-02]], which states what the factorization would have to say, what would settle it in each direction, and what is settled already — refuted on the carrier, available on cells.
+> What the consumption would cost **on a fragment where the obligation is discharged** is one more `canon-sound` instance and the **monomial-to-monomial check**, which the Frobenius relations satisfy on their face — they equate single diagrams, not sums — and which the corpus requires be checked before anything leans on it.
 > What it is **not** licensed to do is make the theory planar; the bracket oracle's symmetry is over **disjoint** primitives, and whether that direction separates cleanly from the within-component order the spider theorem uses is unestablished.
 > Recorded as [[#circuit-terms-question-21|circuit-terms-question-21]], because the reason to want it is concrete: `append` on a `Pipe` is the aggregation section's own motivating example and it is **not commutative**.
 
@@ -907,12 +914,15 @@ The coherent both-at-once structure is Hopf-Frobenius [@collins-2024-hopf-froben
 
 ### circuit-terms-question-21
 
-**Can the noncommutative, asymmetric spider theorem be consumed at the representation layer rather than refused?**
+**On which diagrams is the noncommutative, asymmetric spider theorem consumable at the representation layer?**
+
+**Re-headed** by `gandr-hpck-answer-17` from "can it be consumed rather than refused", because the carrier planarity test settled the unrestricted form: it cannot, and what is live is the fragment.
 
 The reason to want it is concrete: `append` on a `Pipe` is the aggregation section's own motivating example and it is **not** commutative, so the standing commutativity requirement may be excluding the case that motivated the feature.
 
-The reason to think it possible is that gandr does not run a symmetric representation — the merger **is** a planar tensor, and canonicalization is already the passage that makes the convolution symmetric — so a planar theorem lands where gandr's order already lives, consumed through `canon-sound` rather than adopted into the theory.
-**Carried**, with three things to establish in order: that the within-component order the spider theorem uses separates from the cross-component symmetry the bracket oracle needs; that the monomial-to-monomial condition holds for the Frobenius relations, which on their face it does since they equate diagrams rather than sums; and what the resulting `canon-sound` instance costs.
+The reason to think a fragment exists is that gandr does not run a symmetric representation — the merger **is** a planar tensor in the base-objects sense, and canonicalization is already the passage that makes the convolution symmetric — so a base-objects-planar theorem lands where gandr's order already lives, consumed through `canon-sound` rather than adopted into the theory.
+**What the test removed is the unrestricted case.** The theorem's own hypothesis is the crossing-free-embedding sense of the word, and the carrier admits a connected, wheel-free diagram whose underlying graph is non-planar (`Gandr.Shape.Planarity`), so no reordering of the boundary makes every gandr diagram meet it — the factorization the blockquote above assumed is [[../metatheory/roadmap#meta-obligation-02|meta-obligation-02]], owed rather than had.
+**Carried**, with four things to establish and the new one leading: which diagrams lie in the crossing-free fragment, and whether membership is decidable on gandr's representation; that the within-component order the spider theorem uses separates from the cross-component symmetry the bracket oracle needs; that the monomial-to-monomial condition holds for the Frobenius relations, which on their face it does since they equate diagrams rather than sums; and what the resulting `canon-sound` instance costs.
 The failure mode to watch is the one the corpus names for the planar quotient generally: a substitution that "would read as a strengthening while narrowing what `cells_equal` accepts".
 
 ## Spikes

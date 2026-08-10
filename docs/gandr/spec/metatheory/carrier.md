@@ -1,6 +1,6 @@
 # The circuit-algebra carrier
 
-The full record of the shape substrate as landed in `metatheory/src/Gandr/Shape/{Graph,Graft,Decidable,Structure}.agda`, under the generality ruling of [[../metatheory#The substrate is the full circuit-algebra rung|the metatheory track]].
+The full record of the shape substrate as landed in `metatheory/src/Gandr/Shape/{Graph,Graft,Decidable,Structure,Planarity}.agda`, under the generality ruling of [[../metatheory#The substrate is the full circuit-algebra rung|the metatheory track]].
 Everything here is machine-checked; the section names the theorem where one exists.
 
 ## The data
@@ -86,6 +86,11 @@ The counterexample suite is part of the carrier's content — the predicates nee
 * `gluing` — two vertices joined by one contracted wire: connected, acyclic, a cell (what the graph says, which the pre-repair edge identity denied);
 * the same self-gluing at two palettes — over one self-dual colour the cut runs nowhere; over the two poles it runs producer-to-consumer, against the listing;
 * two computational pins predicted by hand before the checker saw them (a crossing beside a plain wire; a cut beside a plain wire), because over one colour every wiring at an interface has the same type and typechecking alone would not catch a wrong wiring.
+
+`Gandr.Shape.Planarity` is a witness of the same class asked from outside rather than from the predicate list, and it is a test module carrying no carrier machinery.
+It exhibits `k33 : Shape ⊤ [] []` — six vertices, nine flow-through wires, `Connected`, and `Ranked`/`WheelFree` at the monochrome polarity — whose derived incidence realizes the complete bipartite graph on three and three, so **the constructor admits a diagram whose underlying graph is non-planar** [@kuratowski-1930-courbes-gauches].
+It is not a `Cell`: the module reads out a reduced closed four-walk, so `Acyclic` and with it `SimplyConn` fail, which is the distinction the result turns on — cells are trees and therefore planar, and it is grafting that leaves the fragment.
+The consequence for what the corpus may consume from a crossing-free-embedding theorem is [[roadmap#meta-obligation-02|meta-obligation-02]]; the test was run as the proving spike `gandr-hpck-answer-17` pre-authorized.
 
 ## Engineering lessons priced for the next change of this shape
 

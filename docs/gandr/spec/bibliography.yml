@@ -2595,6 +2595,25 @@ majid-rietsch-2021-planar-spider:
     read 2026-08-01 for cor 2.4 and the standard form; it is a PLANAR theorem, and the corpus's
     standing planar-versus-symmetric ruling applies to it verbatim
 
+kuratowski-1930-courbes-gauches:
+  type: article
+  title: Sur le probleme des courbes gauches en topologie
+  author: ["Kuratowski, Kazimierz"]
+  date: 1930
+  volume: 15
+  page-range: 271-283
+  serial-number:
+    doi: "10.4064/fm-15-1-271-283"
+  parent:
+    type: periodical
+    title: Fundamenta Mathematicae
+  note: >-
+    cited for the planarity obstruction only: a finite graph is planar exactly when it contains
+    no subdivision of K5 or K3,3. Not held; the locator is verified against the Crossref record
+    for the DOI, which prints the author as "Casimir Kuratowski". The corpus spends the theorem
+    at one step, carrying the K3,3 witness of Gandr.Shape.Planarity to non-planarity of the
+    carrier's diagrams
+
 collins-2024-hopf-frobenius:
   type: thesis
   title: Hopf-Frobenius Algebras
