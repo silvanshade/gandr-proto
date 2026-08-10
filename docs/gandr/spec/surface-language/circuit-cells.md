@@ -8,7 +8,7 @@ This document asks whether it should, sketches a syntax that would, and prices e
   The derived-boundary route of [[#The derived pair meets the sphere by checking, not by synthesis]] is the semantics behind it: specified, checked at the declaration table, exercised by crate fixtures, and reached from the surface since 2026-08-02 — writing no sphere, which is the limit that section states.
   What has **not** graduated stays **design sketch** with a parse-only witness at `crates/surface-corpus/examples/surface/circuit-cells.gandr`: the reserved `<->` glyph, the `feed` wheel, the many-out node, an `oper` member's filler, and a `rule` member with no filler.
 * This is the surface half of a standing metatheory obligation: deleting the cell record's simple-connectivity field, or re-carrying it as a consumer-side predicate, "with the surface-language question — whether the _surface_ still hides wheels and disconnection — as its own design pass" ([[../metatheory/roadmap]]).
-* The carrier-side facts it rests on are landed and machine-checked ([[../metatheory/carrier]]); the ruling it must honour is the generality ruling of the [[../metatheory#The substrate is the full circuit-algebra rung|metatheory track]].
+* The carrier-side facts it rests on are landed and machine-checked (the carrier record, migrated — the corpus README's migration banner); the ruling it must honour is the generality ruling of the [[../metatheory#The substrate is the full circuit-algebra rung|metatheory track]].
   **Nothing here proposes a carrier change.**
 * The cell members it extends are [[higher-cells]]; the grammar every form must clear is [[grammar]].
 
@@ -445,7 +445,7 @@ The fact that makes the adoption legible, quoted from that implementation:
 So the two structures are not alternatives to weigh — one is the degeneration of the other, and the choice of feedback over trace is the choice **not** to degenerate.
 That is what makes the guard a structural matter rather than a stylistic one: a cartesian trace **is** a fixpoint [@hasegawa-1997-recursion-cyclic-sharing], the recorded cartesian-trace hazard, so admitting the traced structure at the surface would admit unguarded recursion through the wiring.
 
-**What the corpus actually fences today, stated precisely, because it is not this.** Wheels are fenced by one mechanism only: the `Cell` record's simple-connectivity predicate, from which wheel-freeness is _derived_ ([[../metatheory/carrier]], `simply-conn⇒wheel-free`), under the "static analysis, not structure" ruling.
+**What the corpus actually fences today, stated precisely, because it is not this.** Wheels are fenced by one mechanism only: the `Cell` record's simple-connectivity predicate, from which wheel-freeness is _derived_ (the carrier record's `simply-conn⇒wheel-free`; migrated — the corpus README's migration banner), under the "static analysis, not structure" ruling.
 There is no guarded-form fence in the corpus, and "guardedness" there is exclusively the corecursion productivity discipline ([[recursion]]) — a different obligation about structural descent and copattern observation.
 **The guarded-delay discipline below is this document's proposal**, offered as what should replace the connectivity predicate when it is deleted; it is not a standing decision, and nothing above should be read as reporting one.
 
@@ -636,7 +636,7 @@ A document about "circuit cells" is exactly where the wrong neighbour is importe
 * **This document's status is the load-bearing part of it, and it split on 2026-08-02.** The block form's core spellings are ruled ([[#The block form, ruled]], owner, in design dialogue): those code blocks are spellings.
   The **rule block** has a corpus witness and a surface elaboration as of that same date, named in the status list above; the derived-boundary route is the semantics it carries — specified at [[#The derived pair meets the sphere by checking, not by synthesis]], exercised by crate fixtures, and reached from source.
   Everything the status list names as not graduated — the reserved `<->` glyph, the `feed` wheel, the many-out node, an `oper` member's filler, a `rule` member with no filler — plus holes and aggregation, remains a sketch, and its code blocks remain shapes.
-* The **carrier facts are high confidence**: they are landed, machine-checked, and named in [[../metatheory/carrier]].
+* The **carrier facts are high confidence**: they are landed, machine-checked, and named in the carrier record (migrated — the corpus README's migration banner).
   Nothing here proposes changing them, and the no-cup consequence is quoted rather than inferred.
 * The **rulings it honours** — the generality ruling, the symmetry refusal, the horizontal-composition decline and its reversal condition, the aggregation split — are quoted from the corpus with their reversal conditions intact.
 * The **precedents were read for this pass**, and three claims that an intermediate summary had attributed to them did not survive: the μ-syntax is not a polarity precedent and has no `μ̃`; the opetopic acyclicity condition is not a theorem; and the corpus's own paraphrase of monoidal context theory's main result conflates two statements.

@@ -2,7 +2,7 @@
 
 This track owns the mathematics specific to gandr's semantic model: the Agda development under `metatheory/`, the theory crates it models (`theory-computads`, `theory-graphs`, `theory-levitation`, `theory-virtual-doctrines`, `core-sequent`), and the design record for identity, univalence, certificates, and the doctrine layer.
 How structures are _mechanized_ (the ∞-graph substrate, the familial representation principle, the coherence-cost policy) is the [[proof-engineering]] track; what the Rust engine _does_ is the [[implementation]] track.
-Detailed remaining work is in [[metatheory/roadmap]]; things that must not be re-opened are in [[metatheory/guards]]; known citation traps are in [[metatheory/citation-hazards]]; the full carrier record is in [[metatheory/carrier]].
+Detailed remaining work is in [[metatheory/roadmap]]; things that must not be re-opened are in [[metatheory/guards]]; known citation traps are in [[metatheory/citation-hazards]]; the full carrier record has migrated to the project's research vault (the corpus README's migration banner).
 
 Honesty gate, binding on the whole track: the ∞-end of this development is classical ∞-category theory with no formalization and none claimed; every adoption below is at the 0- or 1-truncated rung.
 Claims are marked **verified** (in code or against a held source), **cited** (a published theorem gandr consumes), **conjecture** (ours), or **owed** (an accepted direction with named obligations).
@@ -307,7 +307,7 @@ data Shape : List Ob → List Ob → Set where
   node  : (A B : List Ob) → Append B Γ Γ′ → Append A Δ Δ′ → Shape Γ′ Δ′ → Shape Γ Δ
 ```
 
-Landed and green on this carrier (the full record, with each theorem named, is [[metatheory/carrier]]):
+Landed and green on this carrier (the full record, with each theorem named, has migrated — the corpus README's migration banner):
 
 * **the cut** (`cap` on `Match`): source-to-source pairing, with the flow-through fragment named by the `CapFree` predicate;
 * **the merger** $⊠$ (`merge`, derived, not a constructor): the parallel composition of shapes, with whiskering falling out as the merger at an identity operand — definitionally, which is the strongest available evidence the operation is right;
@@ -1082,7 +1082,6 @@ The five headline directions, for orientation: extend to the directed case (it i
 ## Sub-documents
 
 * [[metatheory/roadmap]] — everything that remains, with costs and falsifiers.
-* [[metatheory/carrier]] — the circuit-algebra carrier record: constructors, landed theorems, the edge identity, the palette, the incidence theorems.
 * [[metatheory/directed-univalence]] — the directed statement in full: candidate comparison, alphabets, grades, guards, the kernel formers, the equipment inventory.
 * [[metatheory/layout-and-coherence]] — the layout calculus per former, the coherence modules, the arena generalization detail.
 * [[metatheory/ambient-and-primitives]] — the cubical contact in full (the J ledger, the verified evaluator register, the price ledger), the internalization currency table, the technology-cluster survey.

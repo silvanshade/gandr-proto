@@ -14,6 +14,7 @@
 > + `implementation/proposed/ornaments.md` — absorbed by "ornaments over the description universe".
 > + `implementation/proposed/interactive-surface.md` — absorbed by "interactive and toolchain surface".
 > + `surface-language/proposed/theories.md` — absorbed by "theories and extension".
+> + `metatheory/carrier.md` — absorbed by "circuit-algebra carrier".
 
 This directory is the specification corpus for the gandr language: the project entrypoint for any session or contributor that needs to know what gandr _is_, what has been decided, what is built, and what remains.
 
