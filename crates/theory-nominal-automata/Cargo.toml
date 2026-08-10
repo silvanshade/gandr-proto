@@ -6,7 +6,7 @@ name = "gandr-theory-nominal-automata"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Nominal automata with name allocation and deallocation: the ADR-41 sort-tagged Atom/Gensym substrate plus the RNNA/NDA/RNTA model inventory, the decision-procedure catalogue, NDA membership, and the name-dropping modification (design: docs/research/nominal-automata.md)"
+description = "Nominal automata with name allocation and deallocation: the sort-tagged Atom/Gensym substrate plus the RNNA/NDA/RNTA model inventory, the decision-procedure catalogue, NDA membership, and the name-dropping modification (design: docs/research/nominal-automata.md)"
 license.workspace = true
 publish.workspace = true
 

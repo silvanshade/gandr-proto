@@ -1,8 +1,8 @@
 //! **Two-mode certificate composition** and the **acyclicity gate** (ADR-69
 //! D3).
 //!
-//! Spec: `proposal-vdc-reflection.md` §4.1, §4.3; VDC addendum §A. Generic
-//! over the [`CellAlphabet`] (metatheory roadmap spike S1).
+//! Spec: the VDC reflection design's §4.1, §4.3; VDC addendum §A. Generic
+//! over the [`CellAlphabet`] (the executed meta-spike-01).
 //!
 //! Chaining derived transformations (certificates) has two costs, and the
 //! categorical line proves they behave differently:

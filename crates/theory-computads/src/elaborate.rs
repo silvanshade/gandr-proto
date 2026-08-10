@@ -1,5 +1,5 @@
 //! **Elaboration** of surface `rule` 2-cell faces into command cells
-//! (`proposal-sequent-kernel.md` §7.1, "what a `rule` becomes").
+//! (the sequent-machines design's §7.1, "what a `rule` becomes").
 //!
 //! A [`gandr_theory_levitation::RuleFace`] is a rewrite `lhs ~> rhs` over
 //! [`FreeTerm`]s (the reserved `op`/`rule` productions of ADR-54, carried as

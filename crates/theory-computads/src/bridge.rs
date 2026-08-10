@@ -1,6 +1,6 @@
 //! **Reification** of a ground command pattern into the `gandr-core-sequent`
-//! command IL (`proposal-sequent-kernel.md` §2.2; the "over the
-//! gandr-core-sequent command IL" bridge).
+//! command IL (the sequent-machines design's §2.2, the command-IL
+//! bridge).
 //!
 //! A cell's pattern layer is symbolic (datatype-declared
 //! [`crate::pattern::Sym`] symbols), because the

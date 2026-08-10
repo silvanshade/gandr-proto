@@ -1,5 +1,5 @@
 //! The **command-pattern IL** — patterns over the polarized command IL with
-//! pattern metavariables (`proposal-sequent-kernel.md` §7.3, the
+//! pattern metavariables (the sequent-machines design's §7.3, the
 //! `CommandPattern` of the `Cell` sketch).
 //!
 //! A [`Cell`](crate::cell::Cell) rewrites `lhs ~> rhs` where each side is a

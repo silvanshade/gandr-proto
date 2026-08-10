@@ -1,5 +1,5 @@
 //! Multi-out **arities** — the bridge diagram `A ←s— J —π→ I —t→ B`
-//! (proposal-levitation.md §4.2, V4).
+//! (the levitation design's §4.2, V4).
 //!
 //! A multi-output operation `(X_a)_{a∈A} ↦ (Y_b)_{b∈B}` with
 //! `Y_b = Σ_{i∈I_b} Π_{j∈J_i} X_{s(j)}` is presented by four finite sets and

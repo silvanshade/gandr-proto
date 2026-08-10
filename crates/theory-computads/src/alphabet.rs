@@ -15,7 +15,8 @@
 //! tripwire on purpose: the shape layer and the directed rule layers need the
 //! completion machinery (the four-layer exchange identity and the shape-layer
 //! interchange equation are exactly the hand completion work the enumerator
-//! exists to mechanize, per spike S1), and a second copy of the engine per
+//! exists to mechanize, per the executed
+//! meta-spike-01), and a second copy of the engine per
 //! alphabet is not a maintainable answer. The narrowing discipline survives
 //! the lift one level down: each alphabet decides its own fragment, and the
 //! sequent alphabet ([`crate::sequent`]) keeps its total matches verbatim.

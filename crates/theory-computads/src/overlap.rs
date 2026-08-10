@@ -1,6 +1,6 @@
 //! **Overlap enumeration at cut seams** — the multi-sum-shaped enumerator
-//! (`proposal-sequent-kernel.md` §7.3.2; VDC addendum §7.4), generic over the
-//! [`CellAlphabet`] (metatheory roadmap spike S1).
+//! (the sequent-machines design's §7.3.2; VDC addendum §7.4), generic over
+//! the [`CellAlphabet`] (the executed meta-spike-01).
 //!
 //! For each ordered pair of cells the enumerator returns the *complete family*
 //! of unifications at a cut, never a single chosen one (§7.3.2: "enumerate

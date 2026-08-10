@@ -1,24 +1,23 @@
-//! A generic **nominal atom** substrate for gandr's machine-minted names
-//! (milestone M1; decision: ADR-41).
+//! A generic **nominal atom** substrate for gandr's machine-minted names.
 //!
-//! gandr mints machine-internal names in several independent places — the CEK
-//! machine's captured-continuation keys (`%k{id}`), the pipeline lowerer's
-//! hoist binders (`%tmp{n}`) and hole identifiers, and a future solver
-//! type-variable / grade-variable pool. Each was its own counter plus format,
-//! each separately re-establishing the invariant that the names it mints are
-//! distinct. This crate is the one **shared atom fabric** those name-spaces are
-//! consolidated onto: one allocation discipline ([`Gensym`]) producing
-//! sort-tagged [`Atom`]s whose identities are distinct **within a single
-//! allocator**. That per-allocator guarantee is exactly the scope its consumers
-//! need: gandr runs one allocator per sort per pass (one `State.gensym`, one
-//! `Lowerer` hoist/hole allocator), so the names any one pass mints are
-//! mutually distinct — the property the A5.1 collision violated.
+//! gandr mints machine-internal names in several independent places — the
+//! typing machine's captured-continuation keys (`%k{id}`), the pipeline
+//! lowerer's hoist binders (`%tmp{n}`) and hole identifiers, and a future
+//! solver type-variable / grade-variable pool. Each was its own counter plus
+//! format, each separately re-establishing the invariant that the names it
+//! mints are distinct. This crate is the one **shared atom fabric** those
+//! name-spaces are consolidated onto: one allocation discipline ([`Gensym`])
+//! producing sort-tagged [`Atom`]s whose identities are distinct **within a
+//! single allocator**. That per-allocator guarantee is exactly the scope its
+//! consumers need: gandr runs one allocator per sort per pass (one
+//! `State.gensym`, one `Lowerer` hoist/hole allocator), so the names any one
+//! pass mints are mutually distinct.
 //!
-//! The consolidation is the structural form of the **A5.1** fix: keying a
-//! continuation environment by the *source* binder name (dynamic scoping) once
-//! made a well-typed term loop to a stuck step-limit; the fix is to α-rename
-//! each capture to a fresh machine-unique name. Folding the three ad-hoc
-//! counters into one audited primitive replaces three per-site re-provings of
+//! The consolidation is the structural answer to a measured hazard: keying a
+//! continuation environment by the *source* binder name (dynamic scoping)
+//! once made a well-typed term loop to a stuck step-limit; the fix is to
+//! α-rename each capture to a fresh machine-unique name. Folding the ad-hoc
+//! counters into one audited primitive replaces per-site re-provings of
 //! "minted names are distinct" with a single one (the address-distinctness
 //! invariant a cut-based / SAX-style addressing discipline wants).
 //!
@@ -39,15 +38,14 @@
 //! 323, 2004); collapsing them into the atom pool drops into equivariant
 //! unification. `is_unifiable` is gandr's project-side realization of that
 //! boundary — it is *not* anchored to "Pitts, *Nominal Sets*, Remark 3.10"
-//! (a freshness-quantifier proposition, mis-cited in earlier drafts).
+//! (a freshness-quantifier proposition, not this boundary).
 //!
 //! # What this crate is, and is not
 //!
 //! The crate is the atom space, the monotone allocator, and the sort trait
-//! (ADR-41) **plus the first slice of the nominal-automata layer** this
-//! module doc reserved: the explicit-dealloc **automaton** that reclaims
-//! atoms. The adopted design is `docs/research/nominal-automata.md`; the
-//! landed modules map onto it as follows:
+//! **plus the explicit-dealloc automaton layer** that reclaims atoms. The
+//! adopted design is `docs/research/nominal-automata.md`; the landed modules
+//! map onto it as follows:
 //!
 //! - [`handle`] — the finitary orbit-level representation (control points,
 //!   registers, partial injective stores, degree): design doc §6.4.
@@ -78,7 +76,7 @@
 //! - the bounded-alphabet S-restriction and the classical NFA/NFTA back-end
 //!   (steps ② and ③ of the design doc §5 template), the RNTA top-down run,
 //!   determinization (NDA Thm 8.14), and the Kleene expression compiler (NDA
-//!   Thm 7.19/7.20) — recorded residuals of the current slice.
+//!   Thm 7.19/7.20) — recorded residuals of the landed slice.
 //!
 //! The crate is generic over the sort so it carries no gandr vocabulary; gandr
 //! supplies its own `enum GandrSort : Sort`.
@@ -207,7 +205,7 @@ pub trait Sort: Copy + Eq + core::fmt::Debug
     ///
     /// Keeping the two roles in disjoint sorts is what preserves *unitary*
     /// most-general unifiers (Urban–Pitts–Gabbay, *Nominal Unification*, TCS
-    /// 323, 2004); see the module documentation and ADR-41 D3.
+    /// 323, 2004); see the module documentation.
     fn is_unifiable(&self) -> Unifiability;
 }
 
@@ -331,7 +329,7 @@ where
 /// backtrack-safety above is about rewinding one allocator, not duplicating it.
 /// `Copy` is therefore deliberately **not** derived (so a fork is always an
 /// explicit `clone`); `Clone` is kept only because the embedding state needs it
-/// (e.g. the CEK machine's cloneable, resumable `State`), and a clone must not
+/// (e.g. the typing machine's cloneable, resumable state), and a clone must not
 /// mint into the same atom space as its origin.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Gensym<S>
@@ -443,7 +441,7 @@ mod tests
 
     /// Atoms minted by one allocator carry the contiguous identities `0, 1, …`
     /// and the `minted` count tracks them — so the names are pairwise distinct,
-    /// the global invariant the A5.1 source-name keying collision violated.
+    /// the global invariant that source-name keying once violated.
     #[test]
     fn one_allocator_mints_contiguous_distinct_identities()
     {

@@ -288,8 +288,8 @@ pub fn serialize_value(
 /// surface spelling**.
 ///
 /// Every description renders as its `sign` normal form — the canonical block
-/// of the signature unification (gandr-ng9.18 ruling 5, subsuming the
-/// inspection-notation half of gandr-r38) — with the declared sort set spelled
+/// of the signature unification (its ruling subsuming the earlier inspection
+/// notation) — with the declared sort set spelled
 /// first and the arrow grid's `-->` / `==>` at every arrow position (`~>`
 /// never appears). The normal form's members are sorts, operations, and rules
 /// only: the item-level `data` / `codata` member is retired (a family is
@@ -300,7 +300,7 @@ pub fn serialize_value(
 /// The rendering is deterministic and structural — a testing/inspection
 /// notation, not a surface pretty-printer (that surface is owned elsewhere).
 /// Every member is terminated by `;` (the surface's member terminator,
-/// load-bearing at the sign block's member level since gandr-ng9.14), and the
+/// load-bearing at the sign block's member level), and the
 /// whole description stays one line.
 ///
 /// # Contract

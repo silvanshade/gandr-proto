@@ -1,5 +1,5 @@
 //! The **F0 test-side realization** of the virtual double category the rewrite
-//! layer is specified to be (`proposal-vdc-reflection.md` §2; ADR-68 D2).
+//! layer is specified to be (the VDC reflection design's §2).
 //!
 //! # What is real, and what is a stand-in
 //!
@@ -8,14 +8,12 @@
 //! of real [`SignDesc`]s, a tight arrow renames real ctor / op symbols,
 //! restriction recomputes real [`RuleFace`]s through the real
 //! [`derive_cell_var_meta`]. The derivation / cell machinery ([`Cell`],
-//! [`replay`], [`graft`]), by contrast, is a **test-side stand-in**:
-//! `gandr-polygraph` does not exist yet (it is the L2 lane), so the multi-ary
-//! cells the VDC reading calls "certificate-backed derived transformations" are
-//! modelled here as replayable clause programs. The split is deliberate. The
-//! future `gandr-vdc` crate (F2) inherits *this exact shape*: when the
-//! polygraph cell store lands, its `Tracelet` replaces [`CellKind`] and its
-//! replay checker replaces [`replay`], but the object / tight-arrow /
-//! restriction realization carries over unchanged, and the law obligations this
+//! [`replay`], [`graft`]), by contrast, is a **test-side stand-in** beside
+//! the landed `gandr-theory-computads` (the fusion engine) and
+//! `gandr-theory-virtual-doctrines` (the reflection face), which now carry the
+//! real `Tracelet` and replay checker this stand-in models; the object /
+//! tight-arrow / restriction realization here is the stage-0 reading the suite
+//! pins, and the law obligations this
 //! suite locates become the cell store's invariants.
 //!
 //! # Determinism

@@ -1,8 +1,7 @@
 //! **The VDC reflection face** — the rewrite layer reflected as a virtual
-//! double category, with `FVDblTT` as its internal language
-//! (§5–6; decisions **ADR-68**
-//! (formal reading + reflection face) and **ADR-69** (certificate identity and
-//! composition)).
+//! double category, with `FVDblTT` as its internal language (the reflection
+//! decisions: the formal reading and reflection face, and certificate
+//! identity and composition).
 //!
 //! This crate is **strictly additive** and reflects — it does not re-implement
 //! — the engine. It consumes [`gandr_theory_levitation`] (descriptions,
@@ -34,15 +33,15 @@
 //! gandr implements **checkers and property tests**; the **theorem-grade claims
 //! are not made in Rust**. Nasu's syntax–semantics biadjunction (soundness +
 //! completeness — "reflection loses nothing") and the groupoid-fragment
-//! certificate-composition theorem ride the **Agda face** on the internal-
-//! univalence substrate. What this crate carries is engineering evidence:
+//! certificate-composition theorem ride the **Agda face** of the metatheory
+//! tree. What this crate carries is engineering evidence:
 //! per-rule property tests plus replay elaboration (each judgment-layer rule
 //! that claims an engine fact replays the underlying certificate).
 //!
-//! # Draft-ADR candidates (none minted here)
+//! # Open observations (none minted here)
 //!
-//! ADR-68 and ADR-69 cover this lane's decisions; this crate mints **no** ADR.
-//! Two observations are recorded as draft-ADR candidates for the orchestrator:
+//! The reflection decisions cover this lane; this crate mints no decision
+//! record. Two observations are recorded as open:
 //! (1) the loose-arrow **granularity** (a named relation as a *set* of
 //! generating cells, adopted here per §10.1's F0 reading, versus the
 //! single-cell reading); and (2) the reflected-cell **identity model** (a

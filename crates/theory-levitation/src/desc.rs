@@ -1,14 +1,14 @@
-//! The tagged **description table** — `SignDesc` *is* the decl table (ADR-54
-//! §5; proposal-levitation.md §3).
+//! The tagged **description table** — `SignDesc` *is* the decl table (the
+//! sign-block design, §5; the levitation design's §3).
 //!
 //! A [`SignDesc`] bundles the minted [`NominalId`], the declared
 //! [`SortDesc`] sort set (the description universe's index), the
 //! graded/attributed [`ParamDesc`]s and [`CtorDesc`]s (the σ tag over
 //! constructors, each with a first-order [`crate::Code`] and a result sort),
 //! the reserved [`OperDesc`] operations and [`crate::RuleFace`] 2-cells, and
-//! the [`DeclPolarity`] (V6). Every one of ADR-54 §5's five flagged extension
-//! points is a field here, so the anti-retrofit checklist is satisfied by
-//! construction (proposal §3).
+//! the [`DeclPolarity`] (V6). Every one of the decl-table design's five flagged
+//! extension points is a field here, so the anti-retrofit checklist is
+//! satisfied by construction (the levitation design's §3).
 
 use gandr_core_checker::grade::Grade;
 
@@ -22,8 +22,9 @@ use crate::code::Code;
 use crate::code::Name;
 use crate::rule::RuleFace;
 
-/// The minted **0-cell identity** of a datatype (ADR-54 §3.4; ADR-50's "third
-/// identity discipline" keys interning on it).
+/// The minted **0-cell identity** of a datatype (the decl-table design's
+/// identity discipline; the typed-arena "third identity discipline" keys
+/// interning on it).
 ///
 /// Carries a per-elaboration `serial` (assigned in declaration order) plus the
 /// datatype's `name`, so the id is both distinct and self-describing. Decidable
@@ -87,9 +88,9 @@ impl SurfaceSpan
 /// fixpoint the declaration names.
 ///
 /// Two independent statements, deliberately not fused — the mixed
-/// induction-coinduction sweep confirmed the earlier fused clause unsourced
-/// (gandr-ng9.20, mixed-sweep-verdict-02): nothing in the swept literature
-/// licenses deriving either statement from the other.
+/// induction-coinduction sweep confirmed the earlier fused clause unsourced:
+/// nothing in the swept literature licenses deriving either statement from
+/// the other.
 ///
 /// * **Which fixpoint decodes it.** [`DeclPolarity::Data`] is μ-decoded
 ///   (constructors are producers, eliminated by patterns);
@@ -395,7 +396,8 @@ impl OperDesc
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct SignDesc
 {
-    /// The minted 0-cell identity (ADR-54 §3.4).
+    /// The minted 0-cell identity (the decl-table design's identity
+    /// discipline).
     pub id: NominalId,
     /// The declared **sort set** — the description universe's index. The
     /// degenerate `data` / `codata` block declares exactly one sort, named by
@@ -406,7 +408,7 @@ pub struct SignDesc
     pub params: Box<[ParamDesc]>,
     /// The constructors — the σ tag over the code grammar (the 1-cells).
     pub ctors: Box<[CtorDesc]>,
-    /// The reserved operations (ADR-54 §3.1).
+    /// The reserved operations (the decl-table design's operation stock).
     pub opers: Box<[OperDesc]>,
     /// The reserved 2-cell rule faces (V3).
     pub rules: Box<[RuleFace]>,
@@ -422,7 +424,7 @@ pub struct SignDesc
     /// are the ruled-in growth this field generalizes into (the per-sort tags
     /// in `sorts` are the general carrier); internal polarity alternation
     /// within one sort is a separate universe-change decision, deliberately
-    /// not taken (gandr-ng9.20, mixed-sweep-input-02).
+    /// not taken.
     pub polarity: DeclPolarity,
     /// The datatype's own attribute Σ.
     pub attrs: Attrs,

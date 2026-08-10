@@ -1,7 +1,7 @@
 //! # The F0 VDC dictionary suite — verdict
 //!
 //! A property-test suite checking the virtual-double-category laws
-//! (`proposal-vdc-reflection.md` §3; ADR-68 D2) on the **real
+//! (the VDC reflection design's §3) on the **real
 //! stage-0 structures** of `gandr-theory-levitation`, with a per-law verdict
 //! recorded here.
 //!
@@ -16,11 +16,11 @@
 //! by the real [`gandr_theory_levitation::check_desc`]) are built **directly on
 //! the landed crate**. The multi-ary **cell / derivation machinery**
 //! ([`harness::Cell`], [`harness::replay`], [`harness::graft`]) is a deliberate
-//! **test-side stand-in**: `gandr-polygraph` does not exist yet (L2). The
-//! future `gandr-vdc` crate (F2) **inherits this harness split** — its
-//! `Tracelet` replaces [`harness::CellKind`] and its replay checker replaces
-//! [`harness::replay`], while the object / tight-arrow / restriction
-//! realization carries over unchanged.
+//! **test-side stand-in** beside the landed `gandr-theory-computads` (the
+//! fusion engine) and `gandr-theory-virtual-doctrines` (the reflection face),
+//! which now carry the real `Tracelet` and replay checker this stand-in
+//! models; the object / tight-arrow / restriction realization here is the
+//! stage-0 reading the suite pins.
 //!
 //! ## Verdict table
 //!

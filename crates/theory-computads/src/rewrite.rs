@@ -1,8 +1,8 @@
 //! **Direct command-level rewriting** — applying cells to command
 //! configurations and normalizing under a budget, generic over the
-//! [`CellAlphabet`] (metatheory roadmap spike S1).
+//! [`CellAlphabet`] (the executed meta-spike-01).
 //!
-//! Spec: `proposal-sequent-kernel.md` §7.3.4, §4.1 — the "direct command-level
+//! Spec: the sequent-machines design's §7.3.4, §4.1 — the "direct command-level
 //! rewriting" the fused≡two-step differential runs on.
 //!
 //! Because the cell-visible fragment has no nested commands (a cut's children

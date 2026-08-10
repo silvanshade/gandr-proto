@@ -1,6 +1,6 @@
 //! The **cell store** — oriented 2-cells over a [`CellAlphabet`],
 //! content-addressed and carrying derived metadata
-//! (`proposal-sequent-kernel.md` §7.3; VDC addendum §A).
+//! (the sequent-machines design's §7.3; VDC addendum §A).
 //!
 //! A [`Cell`] is an oriented rewrite `lhs ~> rhs` between two command patterns
 //! of the alphabet `A`, with:

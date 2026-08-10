@@ -1,6 +1,5 @@
 //! Levitation **stage 1**: large elimination — the decoder
-//! `decode : Desc → ValueType` (ADR-67 D7 feature 3; ADR-81;
-//! `proposal-levitation.md` §6).
+//! `decode : Desc → ValueType` (the levitation design's stage ladder, §6).
 //!
 //! Stage 0 keeps `decode` host-side as unwritten meta-theory; **stage 1 writes
 //! it**: [`decode`] interprets a first-order [`Code`] into a core
@@ -17,7 +16,7 @@
 //! non-dependent positive core (`1`, `×`, `+`, atoms); `Σ` is the stage-1
 //! capability that becomes `decode`'s target when a genuinely dependent σ
 //! *code* (a payload type depending on a tag value) lands with the
-//! codes-as-gandr-data step (stage 2). See the ADR-81 consequences.
+//! codes-as-gandr-data step (stage 2). See the stage-1 consequences.
 //!
 //! **Decidable equality is preserved** (proposal §3): [`decode`] is a total
 //! *function* over the decidable-`Eq` [`Code`] fragment into the
@@ -94,16 +93,16 @@ pub enum DecodeError
 
 /// Decodes a whole tagged [`SignDesc`] (the μ decoder) into the coproduct over
 /// its constructors — the stage-1 reading of the σ tag as a finite choice
-/// (ADR-81 feature 3; proposal §3, §5).
+/// (proposal §3, §5).
 ///
 /// The `n` constructors decode to the right-nested coproduct
 /// `P₀ + (P₁ + … + Pₙ₋₁)` of their per-constructor payload decodings — the
 /// finite-tag reading of `Σ (t : Fin n). Pₜ`, non-dependent because the current
 /// per-constructor codes are non-dependent (a payload type does not depend on
-/// the tag value). The genuinely dependent `Σ`-over-tag packaging (feature 2's
-/// target) waits on a dependent σ code and the codes-as-gandr-data step (ADR-81
-/// consequences). `self_ty` decodes each constructor's [`Code::Var`]
-/// occurrences (proposal §7's `μ⁺` availability).
+/// the tag value). The genuinely dependent `Σ`-over-tag packaging (the
+/// stage-1 feature-2 target) waits on a dependent σ code and the
+/// codes-as-gandr-data step (the stage-1 consequences). `self_ty` decodes each
+/// constructor's [`Code::Var`] occurrences (proposal §7's `μ⁺` availability).
 ///
 /// # Contract
 /// - requires: `desc` is a [`DeclPolarity::Data`] description with at least one
@@ -155,7 +154,7 @@ pub fn decode_desc(
         .fold(last, |acc, summand| ValueType::sum(summand, acc)))
 }
 /// Decodes a first-order [`Code`] into a core value type — the stage-1 large
-/// elimination (ADR-81 feature 3).
+/// elimination.
 ///
 /// `self_sort` names the decoded description's own sort and `self_ty` is what
 /// a recursive occurrence [`Code::Var`] at that sort decodes to (the carrier

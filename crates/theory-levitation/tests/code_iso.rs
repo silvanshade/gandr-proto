@@ -5,8 +5,8 @@
 //! monomorphic descriptions**, built entirely on the landed
 //! `gandr-theory-levitation` stage-0 structures with **zero new production
 //! machinery** (the U3.0 design note §4.3; the
-//! U-ladder context is `proposal-identity-univalence.md` §5–§6; the
-//! certificate-composition modes are ADR-69).
+//! U-ladder context is the identity-and-univalence design's §5–§6; the
+//! certificate-composition modes are the invertible/directed pair).
 //!
 //! ## Real structure vs the U3.0 stand-in
 //!

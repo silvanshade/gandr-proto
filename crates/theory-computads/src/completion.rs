@@ -1,8 +1,8 @@
 //! **Knuth–Bendix / Squier completion** over the convergent slice, with an
 //! explicit **completion budget**.
 //!
-//! Spec: `proposal-sequent-kernel.md` §7.3.3; ADR-46 Decision B. Generic over
-//! the [`CellAlphabet`] (metatheory roadmap spike S1).
+//! Spec: the sequent-machines design's §7.3.3. Generic over
+//! the [`CellAlphabet`] (the executed meta-spike-01).
 //!
 //! [`complete`] runs confluence completion: it normalizes both reducts of every
 //! [`OverlapKind::Confluence`] critical pair; a joinable pair emits a coherence

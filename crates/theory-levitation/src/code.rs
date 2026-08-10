@@ -1,5 +1,5 @@
 //! The first-order **code universe** `{1, var, ×, σ}` plus the V5 leaf
-//! decorations (proposal-levitation.md §3–§4.3).
+//! decorations (the levitation design's §3–§4.3).
 //!
 //! A [`Code`] describes one constructor's payload. The tag σ over constructors
 //! lives at the [`crate::SignDesc`] level (the tagged description, V2); the

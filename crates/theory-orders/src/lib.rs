@@ -1,5 +1,5 @@
 //! A self-contained **order-maintenance** structure for the gandr incremental
-//! pipeline (milestone A2; design: the incremental-pipeline design record
+//! pipeline (design: the incremental-pipeline design record
 //! §"pipeline-decision-02", the Porter disposition).
 //!
 //! The *order-maintenance problem* is to maintain a collection of elements
@@ -49,9 +49,9 @@
 //! [`OrderError::CapacityExhausted`], never a panic. Construction itself is
 //! fallible: [`OrderMaintenance::new`] returns
 //! [`OrderError::StructureIdExhausted`] instead of wrapping the process-wide
-//! structure-id counter. Insertion is **O(log² n) amortized**; see
-//! `docs/OPTIMIZATION.md` for the two-level O(1)-amortized refinement and the
-//! byte-range resync that are deliberately deferred.
+//! structure-id counter. Insertion is **O(log² n) amortized**; the two-level
+//! O(1)-amortized refinement and the byte-range resync are deliberately
+//! deferred.
 //!
 //! Handles are generation- and structure-checked: removing an element and
 //! reusing its slot bumps a generation counter, and every structure carries a

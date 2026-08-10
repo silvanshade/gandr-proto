@@ -1,5 +1,5 @@
 //! **Host-side well-formedness** — the stage-0 stand-in for stage-1 typing
-//! (proposal-levitation.md §3, §8; VDC addendum §A).
+//! (the levitation design's §3, §8; VDC addendum §A).
 //!
 //! Stage 0 has no typed decoder, so a [`SignDesc`]'s invariants are checked by
 //! this Rust pass, which produces **inspectable diagnostics** (proposal §3).
@@ -443,7 +443,7 @@ fn check_attrs(
                 format!(
                     "{} `{owner}` declares reserved derived metadata `{marker}`: cell \
                      variable variance and linearity are derived from the faces, never declared \
-                     (proposal-levitation-addendum-vdc.md §A)",
+                     (the VDC addendum's §A)",
                     role.as_ref()
                 )
                 .into(),

@@ -1,4 +1,5 @@
-//! Levitation **stage 1**: *typed* 2-cell faces (ADR-81; addendum §A/§4.1).
+//! Levitation **stage 1**: *typed* 2-cell faces (the levitation design's
+//! stage ladder and its VDC addendum, §A/§4.1).
 //!
 //! Stage 0's [`RuleFace`] stores a rewrite `lhs ==> rhs` as an untyped pair of
 //! [`crate::FreeTerm`]s with host-side well-formedness (`crate::check_desc`).

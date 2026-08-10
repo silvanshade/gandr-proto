@@ -1,5 +1,5 @@
 //! 2-cell **faces** — a rewrite `lhs ==> rhs` as a pair of open terms in the
-//! free structure over a signature (proposal-levitation.md §4.1, V3; VDC
+//! free structure over a signature (the levitation design's §4.1, V3; VDC
 //! addendum §A).
 //!
 //! A [`RuleFace`] stores the two [`FreeTerm`]s untyped, with host-side

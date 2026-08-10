@@ -1,6 +1,5 @@
-//! Levitation **stage 0**: datatypes as descriptions, Rust-side (ADR-67;
-//! the levitation proposal, with the VDC deltas of
-//! `proposal-levitation-addendum-vdc.md`).
+//! Levitation **stage 0**: datatypes as descriptions, Rust-side (the
+//! levitation design's stage ladder, with the VDC deltas of its addendum).
 //!
 //! A datatype's *description* is a first-class value, so generic operations
 //! over datatypes are ordinary programs over descriptions — derive-style
@@ -107,9 +106,9 @@
 //!
 //! # Stage 1: the decoder and typed cells (`decode`, `typed_rule`)
 //!
-//! The stage-1 dependent-core bill (ADR-81; proposal §6) moves the first meta
-//! function from Rust-as-unwritten-meta-theory into a written host function and
-//! adds the typed cell face:
+//! The stage-1 dependent-core bill (the levitation design's stage ladder, §6)
+//! moves the first meta function from Rust-as-unwritten-meta-theory into a
+//! written host function and adds the typed cell face:
 //!
 //! * [`decode`](fn@decode) / [`decode_desc`] — **large elimination** (bill
 //!   feature 3): the decoder `Desc → ValueType`, interpreting the decidable

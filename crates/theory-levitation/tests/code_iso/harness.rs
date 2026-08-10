@@ -8,13 +8,14 @@
 //! every round-trip is judged by the landed
 //! [`gandr_theory_levitation::generic_eq`], and every description is
 //! a real [`gandr_theory_levitation::SignDesc`]. There is **no new production
-//! machinery** (design note §4.3 U3.0b: "rendered with zero new machinery"): a
+//! machinery (design note §4.3 U3.0b: "rendered with zero new machinery"): a
 //! [`CodeIso`] is a thin certificate wrapper over the stage-0 generic programs,
 //! exactly as the `vdc_dictionary` suite's `Cell` is a thin wrapper over the
-//! landed cell structures. When F2's judgment layer lands, `ProtypeIso` (Nasu
-//! §3.2.3 — "codes for the proterms mutually inverse to each other"; ADR-68/69)
-//! replaces this type; the monomorphic-code round-trip discipline carries over
-//! unchanged.
+//! landed cell structures. The landed
+//! [`gandr_theory_virtual_doctrines::ProtypeIso`] (Nasu §3.2.3 — "codes for the
+//! proterms mutually inverse to each other") is this shape at the judgment
+//! layer; the monomorphic-code round-trip discipline this harness pins carries
+//! over to it.
 //!
 //! # The evidence discipline (ADR-69 D1)
 //!

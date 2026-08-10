@@ -1,7 +1,6 @@
 //! **Fusion by completion** — phase **L2** of the sequent-machines kernel
-//! (`proposal-sequent-kernel.md` §7 + the VDC
-//! addendum; decision K5; ADRs 65, 68, and 69), lifted over its cell alphabet
-//! (metatheory roadmap spike S1).
+//! (the sequent-kernel design's §7, with the VDC addendum), lifted over its
+//! cell alphabet (the executed metatheory-roadmap meta-spike-01).
 //!
 //! This crate is the third, purely-additive phase of the sequent kernel. It
 //! reifies the fusion engine of §7 over the polarized command IL: an oriented
@@ -17,8 +16,8 @@
 //!
 //! - [`alphabet`] — the [`alphabet::CellAlphabet`] trait: the pattern grammar,
 //!   ordered-map substitution, and seam/overlap vocabulary the engines quantify
-//!   over (spike S1 — the crate was intentionally monomorphic as a review
-//!   tripwire; the lift is a design change, documented there).
+//!   over (the executed meta-spike-01 — the crate was intentionally monomorphic
+//!   as a review tripwire; the lift is a design change, documented there).
 //! - [`sequent`] — the [`sequent::SequentAlphabet`], the first
 //!   [`alphabet::CellAlphabet`] inhabitant: the sequent-kernel command-pattern
 //!   alphabet with its orientation/provenance tags, live variance metadata, and
