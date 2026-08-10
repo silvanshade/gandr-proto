@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: 7da4d0e69a0bb94ba5091e9b8835b7a647c0891f840dc7ae1570a8f01d705d60
+    b3: dd5415a863afaa5faf8af21092a8b3726907dd6282f6917da669733e76c0838f
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 5722966cfccf47b6bffe5044c079279b7ae778f14ca61ff5486a5fe45711c4e6
+    b3: ef3d5f5783d040ddb10f9f5cf7a5d52e0f41ca6ac033b860b0a978736a5fab15
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: b8acb45107e5cff8390b3845c3c6f9692a7f632110c836855f79f6a7e4c91a49
+    b3: 24089b990da0b3e0394897ef56d489f37c164bba01225f0728726418dd3db183
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -139,7 +139,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/signatures.md
     role: subdocument
-    b3: 445d843a5c3aedd185afe4f6396b5261035658e81fe1e06e928b1e82e692f3ee
+    b3: e730b023068a33e1a88f2ce9a227cf6bf35c56c4ca04709d8ac1b2f837eb4f8c
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
@@ -185,11 +185,6 @@ nodes:
   - path: spec/implementation/proposed/separation-logic.md
     role: subdocument
     b3: 16d9cbc820e4c81c9360ea4392763e666bddcf69cc9db0dd73781542002ed612
-    edges:
-      - { rel: registered-under, to: spec/implementation.md }
-  - path: spec/implementation/proposed/ornaments.md
-    role: subdocument
-    b3: 56f317bbdaec6f284b446e2f2ef996dde9d189ad0c18248008c1650c8b69076b
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/interactive-surface.md

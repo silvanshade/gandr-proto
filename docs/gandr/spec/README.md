@@ -11,6 +11,7 @@
 > + `implementation/proposed/fuss-free-universes.md` — absorbed by "fuss-free universes".
 > + `implementation/proposed/pattern-unifier.md` — absorbed by "predictable fragment unifier".
 > + `implementation/proposed/strengthening.md` — absorbed by "strengthening via unification".
+> + `implementation/proposed/ornaments.md` — absorbed by "ornaments over the description universe".
 
 This directory is the specification corpus for the gandr language: the project entrypoint for any session or contributor that needs to know what gandr _is_, what has been decided, what is built, and what remains.
 

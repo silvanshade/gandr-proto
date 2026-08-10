@@ -96,7 +96,7 @@ The translation carrier moves sort renaming and label matching only; the cross-s
 
 * **The rules fork** — rules pushed _up_ into a register level versus _down_ into transition sorts are incompatible designs, both mapped by the signature sweep; this document deliberately takes neither, and the fork is decided when rules-as-signatures earns a customer.
 * **The multi-sorted decoder** — `decode_desc` reads the single-sort fragment; the genuinely indexed decoder is the indexed-universe lane's, alongside the multi-output generalization ([[../metatheory#Cellular data — descriptions, cells, and computads]]).
-* **The ornament gate** — the ornament requirements ledger is design input for the same sort-index gate, paid once; its owed constructions ride the ornaments proposal ([[../implementation/proposed/ornaments]]).
+* **The ornament gate** — the ornament requirements ledger is design input for the same sort-index gate, paid once; its owed constructions ride the ornaments proposal (now in the project's research vault — the corpus README's migration banner).
 
 ## Source and confidence
 
