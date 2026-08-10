@@ -10,9 +10,13 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
   The design material they carried is corrected at its new home rather than copied.
 * The retirement continues: the `kernel-core` and `kernel-strata` sets leave the tree.
 * And the `theory-orders` set — its order-maintenance decisions, deferrals, and coverage record are corrected at their new home.
+* And the `core-checker` set — the workspace's largest record, including its layout audit's reorganization findings, is corrected at its new home.
+* **core-checker**: extracted the A2.3 incremental trio (`checkpoint`, `footprint`, `region`, with the four boundary wrappers only they used and the `theory-orders` dependency) into `gandr-core-incremental` — the engine existed twice in the workspace, and the extraction takes the better-written half of each differing pair into one crate; nothing here consumed the trio, so the move is a re-home.
+  Same landing: `effect::host` now owns the canonical alloc-only `Exec` / `Fs` / `Proc` / `Env` signatures beside the representation-independent host seam, so surface lowering and the native runtime share one authority.
 
 ## 2026-07-21
 
+* **core-checker**: added the elaborator-side kernel bridge — a total, iterative lowering from the checked core CBPV forms into the kernel's closed S1 vocabulary, rejecting every out-of-S1 node structurally with a precise `BridgeRejection`, erasing the operationally-transparent forms, resolving names through a `BridgeContext`, and applying the value-polarity declaration convention (a computation definition enters as a thunk `U C`); the kernel re-derives every obligation.
 * **kernel-core**: retuned the reader budget constants on real corpus telemetry (the export exit gate over the 21 S1-eligible corpus items and 6 kernel-native goldens): `MAX_EXPANDED_TERM_WORK` `1 << 24 → 1 << 20`, `MAX_TABLE_ENTRIES` `1 << 20 → 1 << 18` — the binding floor is the deepest artifact the kernel itself round-trips (~200k entries, ~400k expanded work), and the export boundary goldens now derive from the constants so a future retune needs no hand-editing.
   Same landing: the kernel-native levelled-universe and explicit-lift goldens, and the artifact-total amplification bound `MAX_ARTIFACT_EXPANDED_WORK` with the deterministic `DecodeMetrics` the export exit gate records.
 * **storage-artifact**: landed the outer-layer CAS wiring for kernel v1 export artifacts — the record model over `write_segmented`, declaration-granular chunking into a `BlockStore`-backed prolly tree, the canonical versioned `ArtifactManifest`, and `ArtifactIdentity = BLAKE3(manifest)` as the b3sum-provenance successor, with the two-wall discipline (outer integrity, inner validity) pinned in docs and history-independence pinned by a differential.
@@ -26,6 +30,7 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
 
 ## 2026-07-19
 
+* **core-checker**: ported into the tree — the core CBPV bidirectional checker, the defunctionalized typing machine, the grade semiring carrier, subtyping, the checker ≡ machine conformance suite, and the staged extensions (A2.1 integer literals, A2.2 holes, and later effects, control, identity, pattern matching, and declared data), including the `mark` total semantic marking layer (a third, additive realization of the type system, recovering at each abort site instead of failing fast, oracle-tested against the recursive checker) with its type content hash and hash-consing interner, and `Hash` on the whole type graph enabling them.
 * **kernel-strata**: ported into the tree as the first `gandr-kernel-*` crate (the lineage entries below date from the absorbed implementation).
 
 ## 2026-07-13
