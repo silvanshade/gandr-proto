@@ -1,7 +1,7 @@
 # The three-scheduler elaborator rule
 
 **Proposed.
-No elaborator, no metavariable, and no `cast` form exists in this tree.** What exists is the machinery this rule constrains and the posture it sharpens: the worklist solver as a separate, serializable machine ([[../typing-machine#The solver as a separate machine]]), the fuel-bounded, canonical-per-world instance resolution specified for the module layer ([[../../surface-language/proposed/modules#Implicit resolution]]), the certified level oracle ([[../../implementation#The trusted base]]), and a standing set of no-coercion records ([[../../surface-language#The expression grammar's deliberate exclusions]], [[../circuit-terms]], [[../../surface-language/directed-family#The derived coercion from Path to Flow, when it comes]]).
+No elaborator, no metavariable, and no `cast` form exists in this tree.** What exists is the machinery this rule constrains and the posture it sharpens: the worklist solver as a separate, serializable machine ([[../typing-machine#The solver as a separate machine]]), the fuel-bounded, canonical-per-world instance resolution specified for the module layer ([[../../surface-language/proposed/modules#Implicit resolution]]), the certified level oracle ([[../../implementation#The trusted base]]), and a standing set of no-coercion records ([[../../surface-language#Types: every former|the surface language's deliberate exclusions]], [[../circuit-terms]], [[../../surface-language/directed-family#The derived coercion from Path to Flow, when it comes]]).
 
 This document states one structural invariant every later elaborator design is specified against: **unification, canonical-instance resolution, and cast-sited coercion are three separate schedulers that never call each other implicitly, and every crossing between them is marked at a source site.**
 
@@ -52,7 +52,7 @@ The fragment of record is nested pattern unification — Miller's pattern fragme
 **Instance resolution is canonical per world, and never fires a coercion.** Two candidates is a reported failure naming all of them, never a silent pick — the modular-implicits discipline [@white-bour-yallop-2015-modular-implicits] the module layer already specifies ([[../../surface-language/proposed/modules#Implicit resolution]]).
 Search is fuel-bounded, and exhaustion is a diagnostic carrying the obligation chain.
 Instance search **may** call the unifier — it must, to check candidates — and **may never** call the coercion resolver: a needed coercion at an instance boundary is a `cast` the user writes.
-Implicit arguments stay scoped to type-level indices, never grades, because grade constraints are semiring equations pattern unification cannot express ([[../../metatheory#The kernel]], where this fence is recorded).
+Implicit arguments stay scoped to type-level indices, never grades, because grade constraints are semiring equations pattern unification cannot express ([[../../metatheory#The operational substrate — the polarized sequent kernel]], where this fence is recorded).
 
 ### sched-rule-04
 

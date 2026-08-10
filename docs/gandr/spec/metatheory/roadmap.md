@@ -392,55 +392,140 @@ And **the exact-reals / synthetic-topology track** — a lateral, firewalled lin
 
 ## Open questions
 
-1. **meta-question-01** — Is the free-rig monad cartesian?
-   — the single technical question on which any nerve route for the _layout_ universe turns; no published answer.
-2. **meta-question-02** — Does the description universe fit a graphical species?
-   — gated by its named spike; falsifier: dependency or indexing.
-3. **meta-question-03** — Where does shift equivalence sit in certificate identity — should the _store_ key on the normal form, or only the comparator?
-4. **meta-question-04** — Does the reflection face's cartesian-fibrational target restrict to the double-theory cartesian notions where both apply?
-5. **meta-question-05** — ~~With non-linear patterns admitted, is the overlap family still finite and multi-universal, or does an occurs-check fragment need fencing?~~ — **dissolved by ruling 2026-08-01**, not answered: cell patterns are linear, so the premise no longer holds ([[../implementation/circuit-terms#The design questions|circuit-terms-question-17]]).
-   Two things the dissolution changes rather than removes.
-   The **globularity-above-the-base trigger** was "a non-linear pattern producing a genuine, non-singleton multi-sum family", which the ruling now prevents; it must be restated against the per-type-comonoid generalization, because that is the construction under which a genuine family could reappear.
-   And the question **returns unchanged** if that generalization lands, so it is retired-with-a-reversal-condition rather than tombstoned.
-6. **meta-question-06** — Does gandr _state_ the trek-to-tracelet seam (a publishable convergence of two disconnected literatures) or merely use it?
-7. **meta-question-07** — Which cell classes exercise the residual part of the target-opfibration axiom beyond redex-creating instantiations?
-8. **meta-question-08** — Is there operational content in the correspondence between the determinism axis (Segal → 2-Segal) and the symmetry axis, or is it orientation only?
-9. **meta-question-09** — ~~The directed eliminator and diagonal-intro spellings; whether directed composition shares the groupoid composition name — surface vocabulary, cheapest settled before the identity-layer rules land~~ — **settled 2026-07-31 (owner decision)**: the eliminator is the shared `walk` (under the motive-covariance side condition), the diagonal intro is `diag`, and directed composition shares `then`.
-   Landed at [[../surface-language/directed-family]].
-10. **meta-question-10** — Where do the constant-map and constant-literal witnesses land as permanent negative tests — the first phase carrying a directed certificate stock over codes.
-11. **meta-question-11** — The variance/directedness annotation slot in the export format: reserved early (recommended) or deferred to the certificate phase at the price of a coordinated format bump on the TCB.
-12. **meta-question-12** — The doctrine complex's carrier shape: does it want **two node sorts per dimension** — signatures and relations, with a higher graph per pair of signatures and only the tight cells carrying cross-dimensional meaning — or does the single-sorted telescope suffice?
-    (An open owner question of record, with a runnable sketch; the sketch's source file is in the pending sweep, so it re-lands when that sweep runs.
-    Adjacent to, not settled by, the three-role split.)
-13. **meta-question-13** — A two-point relevant/irrelevant variance record in place of a four-point lattice — co/contravariance presupposes cumulative subtyping, which gandr rejects, so only the irrelevant fragment transfers; and the elaborator will still meet stuck max-plus level equations (the oracle gives entailment and benign loops, not most general unifiers) — an unsolved user-experience surface gandr must own.
-14. **meta-question-14** — **Cauchy completion as the representability axis** — how Cauchyness and Cauchisation sit under both univalence statements, and the equipment-level Rezk completion; state before either statement's representability is claimed.
-15. **meta-question-15** — **The contraction locus** — what adopting the internal-logic equipment costs (no endo-coends), with its honesty gate; state the cost where the equipment is adopted, not after.
-16. **meta-question-16** — **The Σ-former at the multi-output face** — the Σ-η direction is where fan-out actually bites (the dual of the data-η discipline), and premise-form statement is what keeps associative–commutative completion out of the rule layer; design before the term face hardens.
-17. **meta-question-17** — **The Tietze ancestry note** — the edit-polygraph fullness statement ("complete up to a located obstruction") has a classical ancestor in Tietze-transformation completeness, with the simple-homotopy line as the cautionary instance above dimension one; record the lineage when the layout statement is next touched.
-18. **meta-question-18** — ~~Pending targeted reads before import~~ — **resolved by the phase-2 sweep** (each item read at import grade against its primary and folded): the statement-blocker lesson with its blanket-base instance, the frame-bound impossibility, and the observation-grade ledger are carried in [[../proof-engineering#Lessons with no other home|the proof-engineering lessons]], as is the compare-site four-class taxonomy with the shape/witness grading ledger; the per-level cost law of the alphabet discipline (the square-compatibility cylinder one level up is the shape of term the naturality meta-operation generates, and any filler works there) is stated in [[ambient-and-primitives#The technology cluster|the technology cluster]].
-19. **meta-question-19** — **The strictness warrant at the circuit rung.** The old licence — the rectification theorem, which said strict semantics is provably adequate at the dioperad rung and not above it — lapsed with the rung change, and nothing has replaced it: either show the rectification dichotomy has no set-level shadow (gandr's cells are finite ordered data compared by content address, not models of an ∞-object), or re-warrant strictness by a coherence-by-decision-procedure story — the skew-monoidal focusing line, the duploid line, or the Schwarz-paper Koszul machine at gandr's own rung [@kaufmann-ward-2024-schwarz].
-    This was the substrate arc's deepest open question and it is still open; the re-read of the rectification paper against the shadow question is the named next step, and no consumer may silently assume strictness is adequate.
-    **A worked instance of the second route is now on the record** (2026-08-01): a coherence theorem for categorified cyclic operads is proved by **three staged reductions** — get rid of symmetries, get rid of cyclicity, establish skeletality — which is coherence discharged by a decision procedure rather than by a coherence-term generator, at a rung adjacent to gandr's [@obradovic-2017-thesis, sec. 4.1].
-    It is an instance to read for its shape, not a candidate re-warrant: it is one-output and unoriented, and its first reduction is the one whose skeletal failure is recorded against `Rigid.canon-sound` above.
-20. **meta-question-20** — **A derived `Path`→`Flow` coercion**, once `ua-dir` lands — wanted as a derived surface form, and at which stratum?
-    (No kernel coercion: the comparison is the core-coincidence theorem, and a coercion before it would assume the theorem as an axiom.)
-21. **meta-question-21** — **Does the certificate layer's one-directional interchange force laxity into the statement's rule layer?** The directed statement keeps the dimension-2 rules an equivalence at this stratum; if mixed-polarity boundaries eventually force one-directional interchange down into the statement, the η grade needs restating — a new design pass, not an amendment.
-22. **meta-question-22** — **Variance as a shared kind** carried by the reflected universe, decided when directed univalence is scoped on the reflection face.
-23. **meta-question-23** — **The canonical (co)end representation**: does the finite-carrier diagram become the canonical reflected end-object once the description layer can express dipresheaves, or does it remain a property-test vehicle?
-24. **meta-question-24** — **What does an adequacy claim for the certificate layer look like?** The diagrammatic-calculus literature has worked examples of the shape — a calculus, a semantics, and a completeness proof that the rewriting is exactly right for it — and gandr has no fixed semantic target, so the theorems do not transfer but the **argument shape** is the closest available model.
-    **Carried**, with the stabilizer and Clifford+T completeness results and the ZW calculus recorded as the worked examples to read when the certificate layer's own adequacy statement is drafted; specific examples are more useful here than stronger general statements.
-25. **meta-question-25** — **Is one condition standing behind the Morita-restriction failure, the coherence complex's simple-connectivity criterion, and the elegance gate?** The only honest shared statement anyone has formulated is that _the category of non-trivial decompositions of an operation is sufficiently connected_, with the three as its homotopical, presentation-level and strict instances; it rests on structural analogy and on no theorem in any held source, which makes it a good conjecture and a bad spike consequence.
-    Three things stand against an affirmative answer.
-    **Two of the three faces are related by a published open conjecture that points the opposite way**: the coherence-complex authors write that their results "seem likely" to be a strict version and special case of the arity-approximation theorem, and that it "would be interesting to see" how the two are related [@curien-laplante-anfossi-2023-topological] [@barkan-2022-arity] — which makes the coherence result a special case of the other rather than a co-face of a shared condition.
-    **The third face has no bridge to either**: the arity-approximation source contains no occurrence of _Reedy_ or _elegant_, and the source the corpus cites for the elegance definition contains none of _partition_, _Morita_ or _connectivity_ ([[../metatheory#Stratified univalence]]).
-    **And the three are not the same kind of condition** — an absolute-pushout condition on the degeneracy subcategory, a high-connectivity condition on slices of the active subcategory, and a simple-connectivity condition on a complex built from a presentation — which is the distinction [[guards#Name collisions — read the definition, not the section title|the guards ledger]] keeps under one phrase, so an affirmative verdict would have to retire that guard.
-    Retired from [[#meta-spike-05]], which claimed it as a consequence; the quoted phrases and the two string searches are recorded without locators against the held artifacts, so they are evidence at report grade.
-26. **meta-question-26** — **Does the doctrine admit nullary scalar generators, and is the surviving nullary-vertex substitution genuinely non-invertible?** Two halves of one residual, both left open by the direct-site verdict of [[#meta-spike-06|meta-spike-06]], and filed here rather than inside that entry because the first half is a doctrine ruling other documents already reach for.
-    **The doctrine half is a live tension in the carrier, not a hypothetical.** `Gandr.Shape.Graph` builds `point : Shape ⊤ [] []` — one vertex, no ports on either side — and its own comment calls it the arity-zero corolla, a legitimate cell shape that is an isolated vertex at the same time; `Gandr.Shape.Decidable` proves `point-ungrounded`, so `Grounded` excludes exactly it.
-    The surface-language track says the same shape is ordinary, and takes gandr's signatures to be **not** constant-free for precisely that reason ([[../surface-language/circuit-cells]]).
-    What makes the tension load-bearing is that the same hypothesis is what makes $Θ^- = "Iso"$ true: the doctrine admits a generator whose shape the site's degeneracy verdict excludes, so a ruling either narrows the doctrine or scopes the verdict, and neither is free.
-    **The substitution half is cheap and nothing waits on it**: whether the substitution deleting an isolated nullary vertex is genuinely non-invertible decides whether the surviving family is an exception at all, and on grounded shapes the answer changes nothing downstream.
-    Answering the doctrine half is a spec ruling and belongs to the owner; the executable half is carried on `gandr-7sji`.
+### meta-question-01
+
+Is the free-rig monad cartesian?
+— the single technical question on which any nerve route for the _layout_ universe turns; no published answer.
+
+### meta-question-02
+
+Does the description universe fit a graphical species?
+— gated by its named spike; falsifier: dependency or indexing.
+
+### meta-question-03
+
+Where does shift equivalence sit in certificate identity — should the _store_ key on the normal form, or only the comparator?
+
+### meta-question-04
+
+Does the reflection face's cartesian-fibrational target restrict to the double-theory cartesian notions where both apply?
+
+### meta-question-05
+
+~~With non-linear patterns admitted, is the overlap family still finite and multi-universal, or does an occurs-check fragment need fencing?~~ — **dissolved by ruling 2026-08-01**, not answered: cell patterns are linear, so the premise no longer holds ([[../implementation/circuit-terms#The design questions|circuit-terms-question-17]]).
+
+Two things the dissolution changes rather than removes.
+The **globularity-above-the-base trigger** was "a non-linear pattern producing a genuine, non-singleton multi-sum family", which the ruling now prevents; it must be restated against the per-type-comonoid generalization, because that is the construction under which a genuine family could reappear.
+And the question **returns unchanged** if that generalization lands, so it is retired-with-a-reversal-condition rather than tombstoned.
+
+### meta-question-06
+
+Does gandr _state_ the trek-to-tracelet seam (a publishable convergence of two disconnected literatures) or merely use it?
+
+### meta-question-07
+
+Which cell classes exercise the residual part of the target-opfibration axiom beyond redex-creating instantiations?
+
+### meta-question-08
+
+Is there operational content in the correspondence between the determinism axis (Segal → 2-Segal) and the symmetry axis, or is it orientation only?
+
+### meta-question-09
+
+~~The directed eliminator and diagonal-intro spellings; whether directed composition shares the groupoid composition name — surface vocabulary, cheapest settled before the identity-layer rules land~~ — **settled 2026-07-31 (owner decision)**: the eliminator is the shared `walk` (under the motive-covariance side condition), the diagonal intro is `diag`, and directed composition shares `then`.
+
+Landed at [[../surface-language/directed-family]].
+
+### meta-question-10
+
+Where do the constant-map and constant-literal witnesses land as permanent negative tests — the first phase carrying a directed certificate stock over codes.
+
+### meta-question-11
+
+The variance/directedness annotation slot in the export format: reserved early (recommended) or deferred to the certificate phase at the price of a coordinated format bump on the TCB.
+
+### meta-question-12
+
+The doctrine complex's carrier shape: does it want **two node sorts per dimension** — signatures and relations, with a higher graph per pair of signatures and only the tight cells carrying cross-dimensional meaning — or does the single-sorted telescope suffice?
+
+(An open owner question of record, with a runnable sketch; the sketch's source file is in the pending sweep, so it re-lands when that sweep runs.
+Adjacent to, not settled by, the three-role split.)
+
+### meta-question-13
+
+A two-point relevant/irrelevant variance record in place of a four-point lattice — co/contravariance presupposes cumulative subtyping, which gandr rejects, so only the irrelevant fragment transfers; and the elaborator will still meet stuck max-plus level equations (the oracle gives entailment and benign loops, not most general unifiers) — an unsolved user-experience surface gandr must own.
+
+### meta-question-14
+
+**Cauchy completion as the representability axis** — how Cauchyness and Cauchisation sit under both univalence statements, and the equipment-level Rezk completion; state before either statement's representability is claimed.
+
+### meta-question-15
+
+**The contraction locus** — what adopting the internal-logic equipment costs (no endo-coends), with its honesty gate; state the cost where the equipment is adopted, not after.
+
+### meta-question-16
+
+**The Σ-former at the multi-output face** — the Σ-η direction is where fan-out actually bites (the dual of the data-η discipline), and premise-form statement is what keeps associative–commutative completion out of the rule layer; design before the term face hardens.
+
+### meta-question-17
+
+**The Tietze ancestry note** — the edit-polygraph fullness statement ("complete up to a located obstruction") has a classical ancestor in Tietze-transformation completeness, with the simple-homotopy line as the cautionary instance above dimension one; record the lineage when the layout statement is next touched.
+
+### meta-question-18
+
+~~Pending targeted reads before import~~ — **resolved by the phase-2 sweep** (each item read at import grade against its primary and folded): the statement-blocker lesson with its blanket-base instance, the frame-bound impossibility, and the observation-grade ledger are carried in [[../proof-engineering#Lessons with no other home|the proof-engineering lessons]], as is the compare-site four-class taxonomy with the shape/witness grading ledger; the per-level cost law of the alphabet discipline (the square-compatibility cylinder one level up is the shape of term the naturality meta-operation generates, and any filler works there) is stated in [[ambient-and-primitives#The technology cluster|the technology cluster]].
+
+### meta-question-19
+
+**The strictness warrant at the circuit rung.** The old licence — the rectification theorem, which said strict semantics is provably adequate at the dioperad rung and not above it — lapsed with the rung change, and nothing has replaced it: either show the rectification dichotomy has no set-level shadow (gandr's cells are finite ordered data compared by content address, not models of an ∞-object), or re-warrant strictness by a coherence-by-decision-procedure story — the skew-monoidal focusing line, the duploid line, or the Schwarz-paper Koszul machine at gandr's own rung [@kaufmann-ward-2024-schwarz].
+
+This was the substrate arc's deepest open question and it is still open; the re-read of the rectification paper against the shadow question is the named next step, and no consumer may silently assume strictness is adequate.
+**A worked instance of the second route is now on the record** (2026-08-01): a coherence theorem for categorified cyclic operads is proved by **three staged reductions** — get rid of symmetries, get rid of cyclicity, establish skeletality — which is coherence discharged by a decision procedure rather than by a coherence-term generator, at a rung adjacent to gandr's [@obradovic-2017-thesis, sec. 4.1].
+It is an instance to read for its shape, not a candidate re-warrant: it is one-output and unoriented, and its first reduction is the one whose skeletal failure is recorded against `Rigid.canon-sound` above.
+
+### meta-question-20
+
+**A derived `Path`→`Flow` coercion**, once `ua-dir` lands — wanted as a derived surface form, and at which stratum?
+
+(No kernel coercion: the comparison is the core-coincidence theorem, and a coercion before it would assume the theorem as an axiom.)
+
+### meta-question-21
+
+**Does the certificate layer's one-directional interchange force laxity into the statement's rule layer?** The directed statement keeps the dimension-2 rules an equivalence at this stratum; if mixed-polarity boundaries eventually force one-directional interchange down into the statement, the η grade needs restating — a new design pass, not an amendment.
+
+### meta-question-22
+
+**Variance as a shared kind** carried by the reflected universe, decided when directed univalence is scoped on the reflection face.
+
+### meta-question-23
+
+**The canonical (co)end representation**: does the finite-carrier diagram become the canonical reflected end-object once the description layer can express dipresheaves, or does it remain a property-test vehicle?
+
+### meta-question-24
+
+**What does an adequacy claim for the certificate layer look like?** The diagrammatic-calculus literature has worked examples of the shape — a calculus, a semantics, and a completeness proof that the rewriting is exactly right for it — and gandr has no fixed semantic target, so the theorems do not transfer but the **argument shape** is the closest available model.
+
+**Carried**, with the stabilizer and Clifford+T completeness results and the ZW calculus recorded as the worked examples to read when the certificate layer's own adequacy statement is drafted; specific examples are more useful here than stronger general statements.
+
+### meta-question-25
+
+**Is one condition standing behind the Morita-restriction failure, the coherence complex's simple-connectivity criterion, and the elegance gate?** The only honest shared statement anyone has formulated is that _the category of non-trivial decompositions of an operation is sufficiently connected_, with the three as its homotopical, presentation-level and strict instances; it rests on structural analogy and on no theorem in any held source, which makes it a good conjecture and a bad spike consequence.
+
+Three things stand against an affirmative answer.
+**Two of the three faces are related by a published open conjecture that points the opposite way**: the coherence-complex authors write that their results "seem likely" to be a strict version and special case of the arity-approximation theorem, and that it "would be interesting to see" how the two are related [@curien-laplante-anfossi-2023-topological] [@barkan-2022-arity] — which makes the coherence result a special case of the other rather than a co-face of a shared condition.
+**The third face has no bridge to either**: the arity-approximation source contains no occurrence of _Reedy_ or _elegant_, and the source the corpus cites for the elegance definition contains none of _partition_, _Morita_ or _connectivity_ ([[../metatheory#Stratified univalence]]).
+**And the three are not the same kind of condition** — an absolute-pushout condition on the degeneracy subcategory, a high-connectivity condition on slices of the active subcategory, and a simple-connectivity condition on a complex built from a presentation — which is the distinction [[guards#Name collisions — read the definition, not the section title|the guards ledger]] keeps under one phrase, so an affirmative verdict would have to retire that guard.
+Retired from [[#meta-spike-05]], which claimed it as a consequence; the quoted phrases and the two string searches are recorded without locators against the held artifacts, so they are evidence at report grade.
+
+### meta-question-26
+
+**Does the doctrine admit nullary scalar generators, and is the surviving nullary-vertex substitution genuinely non-invertible?** Two halves of one residual, both left open by the direct-site verdict of [[#meta-spike-06|meta-spike-06]], and filed here rather than inside that entry because the first half is a doctrine ruling other documents already reach for.
+
+**The doctrine half is a live tension in the carrier, not a hypothetical.** `Gandr.Shape.Graph` builds `point : Shape ⊤ [] []` — one vertex, no ports on either side — and its own comment calls it the arity-zero corolla, a legitimate cell shape that is an isolated vertex at the same time; `Gandr.Shape.Decidable` proves `point-ungrounded`, so `Grounded` excludes exactly it.
+The surface-language track says the same shape is ordinary, and takes gandr's signatures to be **not** constant-free for precisely that reason ([[../surface-language/circuit-cells]]).
+What makes the tension load-bearing is that the same hypothesis is what makes $Θ^- = "Iso"$ true: the doctrine admits a generator whose shape the site's degeneracy verdict excludes, so a ruling either narrows the doctrine or scopes the verdict, and neither is free.
+**The substitution half is cheap and nothing waits on it**: whether the substitution deleting an isolated nullary vertex is genuinely non-invertible decides whether the surviving family is an exception at all, and on grounded shapes the answer changes nothing downstream.
+Answering the doctrine half is a spec ruling and belongs to the owner; the executable half is carried on `gandr-7sji`.
 
 ## Reading queue, by leverage
 

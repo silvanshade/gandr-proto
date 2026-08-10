@@ -44,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 33585a171344224bd714cfa91d744c639ff58e5fb9f3905b26920434a924380d
+    b3: 6764d05aff889e240ce889eed6d1e4669bda5396cca8a47a770766651817b7c1
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -219,7 +219,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/elaboration-schedulers.md
     role: subdocument
-    b3: 8034f1ff472c4ed14c19a0dfe5b51266ffeb586e92923bcebef0c4173e2cfef8
+    b3: cded1f6cef0197ca0434ea2e98877eb6e86c41037c5f4539981f6d57d847509c
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/display-provenance.md
