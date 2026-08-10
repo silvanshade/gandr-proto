@@ -1,4 +1,4 @@
-//! The per-environment append-only term arena (D1(C), gandr-5t3): the single
+//! The per-environment append-only term arena (D1(C)): the single
 //! owner of every S1 term/type node, addressed by four typed `u32`-backed node
 //! ids ([`ValueId`], [`ComputationId`], [`ValueTypeId`], [`CompTypeId`]).
 //!
@@ -6,8 +6,8 @@
 //!
 //! The predecessor representation was mutually-recursive owned `Box` trees.
 //! Their derived `Drop`/`Clone` recurse on term depth and overflow the stack on
-//! adversarial input (decode can build an arbitrarily deep term from bytes,
-//! gandr-i3i), which forced hand-written iterative `Drop`/`Clone` worklists
+//! adversarial input (decode can build an arbitrarily deep term from bytes),
+//! which forced hand-written iterative `Drop`/`Clone` worklists
 //! into the TCB. The arena **eliminates** that hazard family rather than
 //! managing it: a node's children are `Copy` ids, so the node enums derive a
 //! **shallow** `Clone`/`Drop`/`PartialEq`/`Hash`, and arena teardown is a flat

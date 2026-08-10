@@ -1,5 +1,5 @@
-//! The append-only environment and its single choke point (kernel-boundary.md
-//! §3, K3): [`Environment::add_decl`] is the **only** way a declaration enters
+//! The append-only environment and its single choke point (K3):
+//! [`Environment::add_decl`] is the **only** way a declaration enters
 //! checked, [`Environment::add_decl_unchecked`] is the **one** warned bypass,
 //! and [`Environment::audit`] is the `#print axioms` analogue.
 //!
@@ -9,7 +9,7 @@
 //! trust itself). There is a **single checked/unchecked bit**, never a trust
 //! lattice.
 //!
-//! # The arena and the admission watermark (D1(C), gandr-5t3)
+//! # The arena and the admission watermark (D1(C))
 //!
 //! The environment owns the one [`TermArena`] every declaration's content lives
 //! in. Content is built by a [`DeclarationBuilder`] ([`Environment::stage`])
@@ -110,7 +110,7 @@ impl AdmittedDeclaration
 }
 
 /// The transitive audit of a declaration: the axioms and unchecked admissions
-/// it rests on (kernel-boundary.md §3, the `#print axioms` analogue).
+/// it rests on (the `#print axioms` analogue).
 ///
 /// A declaration whose report is empty on both faces rests on nothing outside
 /// the checked kernel.
@@ -145,7 +145,7 @@ impl AxiomReport
 }
 
 /// The append-only kernel environment: the one term arena and a sequence of
-/// admitted declarations in admission order (kernel-boundary.md §3; the export
+/// admitted declarations in admission order (the export
 /// format's E2 ordering).
 #[derive(Clone, Debug, Default)]
 pub struct Environment
@@ -174,8 +174,8 @@ impl Environment
     ///   `add_decl_unchecked` before any further arena mutation (the content-
     ///   start watermark records the arena length now).
     /// - ensures: a [`DeclarationBuilder`] borrowing the arena.
-    /// - provides: the minimal construction surface tests and the B2.3 bridge
-    ///   use to build arena-resident declarations.
+    /// - provides: the minimal construction surface tests and the
+    ///   checker-to-kernel bridge use to build arena-resident declarations.
     /// - fails: never.
     /// - panics: none.
     #[inline]
@@ -358,8 +358,8 @@ impl Environment
     }
 
     /// The admitted declarations in admission order, each paired with its
-    /// admission mark — the export writer's E2/E6 source (kernel-boundary.md
-    /// §5). The content roots address [`Self::arena`].
+    /// admission mark — the export writer's E2/E6 source.
+    /// The content roots address [`Self::arena`].
     ///
     /// # Contract
     /// - requires: nothing.

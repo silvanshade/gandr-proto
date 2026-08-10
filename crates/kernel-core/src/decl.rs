@@ -1,6 +1,6 @@
 //! The closed declaration vocabulary ([`Declaration`]): `Def` (a typed
 //! definition) and `Axiom` (a tracked typed hole), each carrying its own
-//! prenex [`LevelSignature`] (kernel-boundary.md §3).
+//! prenex [`LevelSignature`].
 //!
 //! Growth is deliberate and closed: at S1 the vocabulary is exactly these two.
 //! Datatype declarations arrive later as levitated description codes (S2),
@@ -14,7 +14,7 @@
 //! (one `add_decl` shape, no polarity-mismatch error) and matches CBPV's
 //! treatment of top-level bindings as thunkable values.
 //!
-//! # Arena content and the builder (D1(C), gandr-5t3)
+//! # Arena content and the builder (D1(C))
 //!
 //! A declaration's term/type content lives in the environment's
 //! [`TermArena`], so [`DeclarationContent`] holds **root ids**
@@ -35,8 +35,8 @@ use crate::arena::ValueTypeId;
 use crate::levels::LevelParamCount;
 
 /// A declaration's prenex level interface: its parameter count and its
-/// declared landmark constraints (ADR-78 — the declaration is generalized over
-/// these and checked against nothing else).
+/// declared landmark constraints (the declaration is generalized over these
+/// and checked against nothing else).
 #[derive(Clone, Debug)]
 pub struct LevelSignature
 {
@@ -193,7 +193,8 @@ impl Declaration
 ///   records the arena length at construction).
 /// - ensures: the finisher yields a [`Declaration`] whose content roots and
 ///   watermark describe a contiguous suffix of the arena.
-/// - provides: the minimal construction surface tests and the B2.3 bridge use.
+/// - provides: the minimal construction surface tests and the checker-to-kernel
+///   bridge use.
 /// - fails: never — minting is total.
 /// - panics: none.
 pub struct DeclarationBuilder<'arena>

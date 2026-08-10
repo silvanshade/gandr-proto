@@ -1,4 +1,4 @@
-//! The zero-inference S1 checker (kernel-boundary.md K2): a bidirectional
+//! The zero-inference S1 checker (K2): a bidirectional
 //! type checker that **re-derives everything** and grants the elaborator no
 //! credence.
 //!
@@ -13,7 +13,7 @@
 //! expected triggers a **conversion** ([`crate::conv`]) at the mode switch.
 //! This needs no metavariables and no inference — exactly K2.
 //!
-//! # Arena-native, ids not owned types (D1(C), gandr-5t3)
+//! # Arena-native, ids not owned types (D1(C))
 //!
 //! Every type the machine touches — the declared type, a context slot, a
 //! synthesized type, an expected type flowing into a check — is a **`Copy`
@@ -44,7 +44,7 @@
 //! (export decode can build an arbitrarily deep term from bytes). This is the
 //! standard adversarial-depth machine [`crate::conv`] and [`crate::export`]
 //! already use; it meets the docs/workflow/rust.md "input recursion: none"
-//! discipline (gandr-98o). A node is read out of the arena by a shallow clone
+//! discipline. A node is read out of the arena by a shallow clone
 //! (its children are `Copy` ids, so the clone is `O(1)`), releasing the arena
 //! borrow before synthesis mints into it. [`type_level`] (value-/computation-
 //! type formation) is its own iterative walk the machine calls directly, as it
@@ -535,8 +535,8 @@ fn resolve_constant(
 ///   [`Produced::Checked`] for a check goal — exactly when the term checks or
 ///   synthesizes under the S1 rules; the walk is iterative over a heap frame
 ///   stack and an explicit context stack, so it is total on any term depth (no
-///   input-scaled recursion; gandr-98o). Synthesized types are minted into
-///   `arena` as intermediates the caller truncates after the verdict.
+///   input-scaled recursion). Synthesized types are minted into `arena` as
+///   intermediates the caller truncates after the verdict.
 /// - provides: the shared engine of every S1 checking and synthesis judgment.
 /// - fails: any [`KernelError`] a rule surfaces (shape mismatch, non-inferable
 ///   form, unbound reference, conversion failure, case-branch divergence, a

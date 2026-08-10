@@ -8,7 +8,7 @@
 //! α-equivalence is syntactic identity and no name capture is representable.
 //! A [`Value::Constant`] references a prior declaration in the append-only
 //! environment by its admission position — the reference form the choke-point
-//! audit walks (kernel-boundary.md §3); it is the one term the coordinator's
+//! audit walks; it is the one term the
 //! terse S1 stock did not name but the environment and its `#print axioms`
 //! analogue structurally require.
 //!
@@ -16,7 +16,7 @@
 //! annotation, no `dup`/`drop`, no effect/handler, no control operator, no
 //! native, no datatype constructor exists to be represented.
 //!
-//! # Arena representation (D1(C), gandr-5t3)
+//! # Arena representation (D1(C))
 //!
 //! A node's children are **typed arena ids** ([`ValueId`], [`ComputationId`]),
 //! not owned `Box`es: the node lives in the environment's [`TermArena`] and
@@ -24,16 +24,16 @@
 //! [`ConstantIndex`], [`Side`]) stay inline. Because children are `Copy` ids,
 //! the derived `Clone`/`Drop`/`PartialEq`/`Eq`/`Hash` are **shallow** — no
 //! recursion on term depth, so the hand-written iterative `Drop`/`Clone`
-//! worklists the owned-tree representation required (gandr-i3i) are retired:
+//! worklists the owned-tree representation required are retired:
 //! arena teardown is a flat `Vec` drop. See [`crate::arena`] for the id
 //! discipline and the totality argument.
 //!
-//! ## The derived-equality caveat (audited, gandr-5t3)
+//! ## The derived-equality caveat (audited)
 //!
 //! Derived `PartialEq`/`Eq`/`Hash` on a node compare its **child ids**, which
 //! is **not** structural equality across arbitrarily-shared arenas: the kernel
 //! *preserves* sharing but never *creates* it, so two structurally-equal
-//! subterms need not share an id. Every use site is audited (STATUS.md): the
+//! subterms need not share an id. Every use site is audited: the
 //! conversion walk ([`crate::conv`]) compares only inline leaf payloads by
 //! derived equality (leaves have no id children); the export writer keys dedup
 //! on explicit content keys, never derived node equality; any deep structural
@@ -134,10 +134,10 @@ pub enum Value
     Injection(Side, ValueId),
     /// A thunk, suspending a computation into the value type `U C`.
     Thunk(ComputationId),
-    /// An explicit universe lift (`no implicit cumulativity`,
-    /// kernel-boundary.md §7): given `body : A` with `A`'s level strictly below
-    /// `target`, this value has type `Lift A target`. The lift is written, not
-    /// inferred — a bare `body : A` never inhabits `Lift A target` on its own.
+    /// An explicit universe lift (`no implicit cumulativity`): given `body : A`
+    /// with `A`'s level strictly below `target`, this value has type `Lift
+    /// A target`. The lift is written, not inferred — a bare `body : A`
+    /// never inhabits `Lift A target` on its own.
     Lift
     {
         /// The target universe level of the lift.

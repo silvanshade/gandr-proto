@@ -1,7 +1,7 @@
 //! The closed kernel error vocabulary ([`KernelError`]) and its evidence
 //! payloads.
 //!
-//! The vocabulary is **honest and closed** (kernel-boundary.md K1): every way
+//! The vocabulary is **honest and closed** (K1): every way
 //! a declaration can fail to check surfaces as exactly one of these variants —
 //! the checker and the choke point are total and never diverge
 //! (docs/workflow/rust.md, "the checker and the machine are total"). Level and
@@ -23,7 +23,7 @@
 //! There is deliberately **no** non-canonical-level variant: an in-memory
 //! `gandr_kernel_strata::Level` is canonical by construction. The
 //! reject-non-canonical-input obligation is discharged by construction here and
-//! re-armed at the decode boundary in the export reader (B2.2).
+//! re-armed at the decode boundary in the export reader.
 
 use alloc::boxed::Box;
 use core::error::Error;

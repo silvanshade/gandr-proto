@@ -368,8 +368,7 @@ impl LandmarkPoset
     ///   countermodel passing [`validate_entailment_countermodel`] otherwise.
     ///   With no declared constraints this agrees with [`Level::leq`] on every
     ///   input (the slice-2 acceptance gate).
-    /// - provides: the kernel's hypothesis-aware level order (design record §4,
-    ///   slice 2).
+    /// - provides: the kernel's hypothesis-aware level order.
     /// - fails: [`PosetError::Overflow`] past the representable range;
     ///   [`PosetError::UnexpectedDivergence`] /
     ///   [`PosetError::EvidenceIncomplete`] only under a defect the theory
@@ -413,7 +412,7 @@ impl LandmarkPoset
     ///   successor is representable, and is total even where it is not (the
     ///   shift happens in the wide encoding); on an admitted poset `left <
     ///   left` is always refuted — admission's consistency certificate is what
-    ///   keeps the universe rule's irreflexivity (ADR-78) under hypotheses.
+    ///   keeps the universe rule's irreflexivity under hypotheses.
     /// - provides: the hypothesis-aware consistency-bearing comparison.
     /// - fails, panics, intension: as [`Self::entails_leq_with_evidence`].
     ///
@@ -803,7 +802,7 @@ mod tests
             !witness.derivation().steps().is_empty(),
             "x ≤ y under the hypothesis needs a genuine derivation step"
         );
-        // Beyond slice 1: the free oracle refutes exactly this query.
+        // Under hypotheses: the free oracle refutes exactly this query.
         assert!(
             !bool::from(var_plus(0, 0).leq(&var_plus(1, 0))),
             "the free fragment cannot see the hypothesis"
@@ -1060,7 +1059,7 @@ mod tests
         let composite = var_plus(0, 2).max(&var_plus(1, 5));
         assert!(
             !bool::from(poset.entails_lt(&composite, &composite).unwrap()),
-            "lt stays irreflexive under admitted hypotheses (ADR-78)"
+            "lt stays irreflexive under admitted hypotheses"
         );
     }
 

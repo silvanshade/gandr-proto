@@ -1,4 +1,4 @@
-//! The K5 re-checkable export (kernel-boundary.md §5, obligations E1–E6).
+//! The K5 re-checkable export (obligations E1–E6).
 //!
 //! The [`write()`] writer serializes an [`Environment`](crate::Environment) to
 //! canonical, self-contained bytes; the [`read()`] validating reader decodes
@@ -16,8 +16,8 @@
 //!   for a bypass mark.
 //! * **E3 — no derived data trusted.** The precomputed transitive audit sets
 //!   (`rested_on`) are **not** in the bytes; the reader recomputes them by
-//!   re-admitting each declaration, so a forged audit cannot ride along (the
-//!   design decision is recorded in the crate STATUS).
+//!   re-admitting each declaration, so a forged audit cannot ride along (no
+//!   derived data is trusted).
 //! * **E4 — canonical bytes, validating reader.** The v1 format is a
 //!   **maximal-sharing subterm table** per declaration segment (massive-term
 //!   design §4). Encoding interns nodes bottom-up with **content-keyed dedup**
@@ -52,10 +52,10 @@
 //! three expanded-work budgets, enforced before replay: [`MAX_TABLE_ENTRIES`]
 //! (as entries accrue), [`MAX_EXPANDED_TERM_WORK`] (per declaration root), and
 //! [`MAX_ARTIFACT_EXPANDED_WORK`] (the artifact-total, closing the many-cheap-
-//! segments-sharing-one-root amplification, gandr-4p3) — the last two off one
+//! segments-sharing-one-root amplification) — the last two off one
 //! forward scan of memoized saturating `expanded_size`. Level reconstruction is
 //! bounded by [`MAX_DECODED_LEVEL_OFFSET`]. The same scan yields the
-//! deterministic [`DecodeMetrics`] the B2.3 exit gate records (D3 telemetry).
+//! deterministic [`DecodeMetrics`] the export exit gate records.
 //!
 //! # The seven ratified reservations (format-plane, zero S1 typing consequence)
 //!
@@ -111,7 +111,8 @@ pub const FORMAT_VERSION_V1: u16 = 1;
 /// declaration whose declared-type or body root exceeds this cap — bounding
 /// checker time without touching the checker.
 ///
-/// **D3-tunable; retuned at B2.3** from `1 << 24` to `1 << 20`. The binding
+/// **Tunable; retuned once real corpus telemetry existed** from `1 << 24` to
+/// `1 << 20`. The binding
 /// floor is **not** the S1 corpus (max per-declaration expanded work `5` over
 /// the 21-eligible + 6-golden exit-gate corpus) but the deepest artifact the
 /// kernel itself round-trips: the `tests/hardening.rs`
@@ -120,15 +121,15 @@ pub const FORMAT_VERSION_V1: u16 = 1;
 /// artifact the kernel legitimately admits and round-trips. `1 << 20`
 /// (1,048,576) clears that ~400k floor with ~2.6× headroom (and is `> 2 ×`
 /// [`MAX_TABLE_ENTRIES`], so a maximal flat table stays under it), yet rejects
-/// an obvious billion-laughs (`2^30` expanded) with a 1,024× margin. See the
-/// crate STATUS "reader budgets" table.
+/// an obvious billion-laughs (`2^30` expanded) with a 1,024× margin.
 pub const MAX_EXPANDED_TERM_WORK: u64 = 1 << 20;
 
 /// The decode-time cap on the number of subterm-table entries in an artifact —
 /// the table-size defence (massive-term design §4.4), enforced as entries
 /// accrue (truncation-cheap).
 ///
-/// **D3-tunable; retuned at B2.3** from `1 << 20` to `1 << 18`. This is the
+/// **Tunable; retuned on the same telemetry** from `1 << 20` to `1 << 18`.
+/// This is the
 /// distinct-DAG-node axis, naturally below [`MAX_EXPANDED_TERM_WORK`] since
 /// sharing makes *expanded* work exceed the *distinct*-entry count, and it is
 /// input-linear (each entry costs ≥ 1 wire byte) so it carries no
@@ -140,7 +141,7 @@ pub const MAX_EXPANDED_TERM_WORK: u64 = 1 << 20;
 pub const MAX_TABLE_ENTRIES: usize = 1 << 18;
 
 /// The decode-time cap on the **artifact-total** expanded (tree) work — the
-/// per-artifact amplification defence (gandr-4p3, massive-term design §4.4).
+/// per-artifact amplification defence (massive-term design §4.4).
 ///
 /// [`MAX_EXPANDED_TERM_WORK`] bounds each declaration root in isolation, but
 /// nothing there bounds the *sum* across declarations: a declaration count is
@@ -154,8 +155,8 @@ pub const MAX_TABLE_ENTRIES: usize = 1 << 18;
 /// (declared-type and, for a `Def`, body) — riding the same one forward scan as
 /// the per-declaration check, a single extra compare — and rejecting any
 /// artifact over this cap **before replay**. Reader acceptance policy only; no
-/// wire-format or E4 consequence. **D3-tunable** like its two siblings, set at
-/// B2.3 to `1 << 24` (16,777,216). It clears both the S1 corpus (max
+/// wire-format or E4 consequence. **Tunable** like its two siblings, set
+/// to `1 << 24` (16,777,216). It clears both the S1 corpus (max
 /// artifact-total expanded work `7`) and a single deepest-round-tripped
 /// declaration (~400k, the `hardening.rs` decode witness) — ~42× over the
 /// latter, admitting tens of such declarations — while, with
@@ -174,7 +175,7 @@ pub const MAX_ARTIFACT_EXPANDED_WORK: u64 = 1 << 24;
 /// work, so an atom offset at or above this cap is rejected at decode — bounded
 /// work on adversarial input, the reader's totality posture. Real universe
 /// levels carry variable offsets of `0` or `1`; a level beyond the cap is a
-/// documented non-round-tripping case (crate STATUS), liftable when strata
+/// documented non-round-tripping case, liftable when strata
 /// exposes an `O(1)` offset constructor.
 pub const MAX_DECODED_LEVEL_OFFSET: u64 = 4096;
 
@@ -284,7 +285,7 @@ pub const NODE_C_FORCE: u8 = 0x15;
 pub const NODE_C_CASE: u8 = 0x16;
 
 /// A declaration's admission mark as it rides in the artifact (E6): a single
-/// checked/unchecked bit, never a trust lattice (kernel-boundary.md §3 K3).
+/// checked/unchecked bit, never a trust lattice (K3).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AdmissionMark
 {
@@ -551,8 +552,8 @@ impl DecodedDeclaration
     }
 }
 
-/// The deterministic decode-budget metrics of an artifact — the D3 telemetry
-/// floors (massive-term design §4.4; the B2.3 exit-gate size/work records).
+/// The deterministic decode-budget metrics of an artifact — the telemetry
+/// floors (massive-term design §4.4; the export exit gate's size/work records).
 ///
 /// Every field is a **function of the canonical bytes alone**, so recording it
 /// per corpus item pins the size/work profile the day it moves: an S2 inflation
@@ -966,7 +967,7 @@ pub enum MalformedSite
     /// The artifact-total expanded (tree) work — the saturating sum over every
     /// declaration root's expanded size — exceeded
     /// [`MAX_ARTIFACT_EXPANDED_WORK`] (the per-artifact amplification
-    /// defence, gandr-4p3 / §4.4).
+    /// defence, §4.4).
     ArtifactExpandedWork,
     /// The bytes decoded but were not the canonical encoding of the recovered
     /// artifact (E4: a non-canonical encoding — a non-maximally-shared,
@@ -1006,8 +1007,8 @@ impl fmt::Display for MalformedSite
 
 /// Why decoding an artifact failed.
 ///
-/// The closed rejection vocabulary of the validating reader (kernel-boundary.md
-/// §5 E4): a decode failure is a **format** failure, held apart from a typing
+/// The closed rejection vocabulary of the validating reader (E4): a decode
+/// failure is a **format** failure, held apart from a typing
 /// failure ([`KernelError`]) so the two never blur.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DecodeError

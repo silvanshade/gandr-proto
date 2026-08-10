@@ -1,9 +1,9 @@
 //! The rigid base-type atoms and the S1 literal stock ([`BaseType`],
 //! [`Literal`], and the normalized literal payloads).
 //!
-//! The base-type atoms are **rigid and closed** (kernel-boundary.md K1): the
+//! The base-type atoms are **rigid and closed** (K1): the
 //! S1 v0 stock is exactly the three the literal forms name — an integer atom,
-//! a string atom, and a numeric atom (coordinator staging call, gandr-wvd.2).
+//! a string atom, and a numeric atom.
 //! Literal payloads are held in a **canonical, structurally comparable** form
 //! (leading/trailing zeros normalized, zero sign pinned) so that syntactic
 //! equality of two literals coincides with their intended value equality. At
@@ -16,7 +16,7 @@
 use alloc::string::String;
 
 /// A rigid base-type atom: one of the S1 v0 stock of primitive value types
-/// (kernel-boundary.md §7 "literals over the base types").
+/// (the S1 surface's "literals over the base types").
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum BaseType
 {
@@ -85,7 +85,7 @@ impl Magnitude
     }
 
     /// The canonical decimal digits, as owned text — the export writer's
-    /// serialization source (kernel-boundary.md §5 E1).
+    /// serialization source (E1).
     #[inline]
     #[must_use]
     pub(crate) fn to_digits(&self) -> String
@@ -134,8 +134,7 @@ impl FractionDigits
     }
 
     /// The canonical fractional digits, as owned text (empty for an integral
-    /// value) — the export writer's serialization source (kernel-boundary.md
-    /// §5 E1).
+    /// value) — the export writer's serialization source (E1).
     #[inline]
     #[must_use]
     pub(crate) fn to_digits(&self) -> String
@@ -219,7 +218,7 @@ impl StringLiteral
     }
 
     /// The string content, as owned text — the export writer's serialization
-    /// source (kernel-boundary.md §5 E1).
+    /// source (E1).
     #[inline]
     #[must_use]
     pub(crate) fn to_content(&self) -> String

@@ -2,14 +2,13 @@
 //! value/computation term and type language, the `Def`/`Axiom` declaration
 //! vocabulary, the append-only environment and its single `add_decl` choke
 //! point, the zero-inference S1 checker, and the C5-quarantined
-//! definitional-equality conversion (decisions: ADR-77 the minimal
-//! certified kernel, ADR-78 universe stratification; design record:
-//! the kernel-boundary design record, slice 3).
+//! definitional-equality conversion (decisions: the minimal certified
+//! kernel, universe stratification).
 //!
-//! This is the second `gandr-kernel-*` subcrate — **trusted by the naming
-//! rule** of the design record §2 — and depends only on
+//! This is the second `gandr-kernel-*` subcrate — **trusted by the
+//! kernel-boundary naming rule** — and depends only on
 //! [`gandr_kernel_strata`] (the level oracle) and `core`/`alloc`: the sharpest
-//! form of the record's TCB dependency wall (no other workspace crate, no
+//! form of the TCB dependency wall (no other workspace crate, no
 //! external runtime dependency).
 //!
 //! # The five boundary disciplines, as this crate holds them
@@ -35,13 +34,13 @@
 //!   discipline is honoured by there being nothing to trust yet.
 //! * **K5 — re-checkable export.** The [`write()`] export writer serializes an
 //!   [`Environment`] to canonical, self-contained bytes and the [`read`]
-//!   validating reader replays them through the choke point (slice B2.2, the
-//!   kernel-boundary.md §5 obligations E1–E6); the [`decode`] structural parser
-//!   rejects a non-canonical artifact over a closed error vocabulary.
+//!   validating reader replays them through the choke point (obligations
+//!   E1–E6); the [`decode`] structural parser rejects a non-canonical artifact
+//!   over a closed error vocabulary.
 //!
 //! # The S1 surface
 //!
-//! The pure polarized core (kernel-boundary.md §7 S1): literals over the rigid
+//! The pure polarized core (S1): literals over the rigid
 //! base atoms ([`BaseType`]), unit, pair, and sum values, thunks, functions,
 //! `let`/`force`/`case` computations, explicit universe lifts, and the universe
 //! rule `U_l : U_m` iff `l < m` over the [`gandr_kernel_strata`] level algebra.
@@ -56,7 +55,7 @@
 //! and coincides with structural equality (canonical levels); the value/
 //! computation conversion is present, quarantined, and unused by checking — the
 //! precise algorithm and the vacuity of the β laws at S1 are the seed of the
-//! B2.4 conversion record.
+//! term-conversion design pass.
 
 #![no_std]
 

@@ -1,4 +1,4 @@
-//! The validating export reader (kernel-boundary.md §5, E1–E6): decode
+//! The validating export reader (E1–E6): decode
 //! canonical v1 bytes back to a declaration sequence and replay it through the
 //! choke point.
 //!
@@ -22,11 +22,10 @@
 //!   any declaration whose declared-type or body root exceeds
 //!   [`MAX_EXPANDED_TERM_WORK`], **or** whose artifact-total (the saturating
 //!   sum over every declaration root) exceeds [`MAX_ARTIFACT_EXPANDED_WORK`]
-//!   (gandr-4p3 — the many-cheap-segments-sharing-one-root amplification), is
-//!   rejected **before replay** — bounding the recursive checker's
-//!   tree-expanded work over the shared DAG without touching the checker. The
-//!   scan also yields the deterministic [`DecodeMetrics`] the B2.3 exit gate
-//!   records.
+//!   (the many-cheap-segments-sharing-one-root amplification), is rejected
+//!   **before replay** — bounding the recursive checker's tree-expanded work
+//!   over the shared DAG without touching the checker. The scan also yields the
+//!   deterministic [`DecodeMetrics`] the export exit gate records.
 //! * **Canonical form (E4, §4.6)**: the whole-artifact **sharing-aware**
 //!   re-encode-compare (the maximal-sharing writer is the re-encoder,
 //!   `O(entries)`) rejects any non-canonical table — a non-maximally-shared
@@ -356,7 +355,7 @@ fn budget_report(
 
 /// Reject an artifact whose expanded work exceeds either the per-declaration
 /// cap [`MAX_EXPANDED_TERM_WORK`] or the artifact-total cap
-/// [`MAX_ARTIFACT_EXPANDED_WORK`] (gandr-4p3) — the amplification defence,
+/// [`MAX_ARTIFACT_EXPANDED_WORK`] — the amplification defence,
 /// before replay (§4.4).
 ///
 /// # Contract
@@ -449,7 +448,7 @@ fn build_declarations(
 
 /// Read a byte artifact into an [`Environment`] by importing each decoded
 /// declaration's content into a fresh environment arena and replaying it
-/// through the choke point (kernel-boundary.md §5 E2/E3/E6).
+/// through the choke point (E2/E3/E6).
 ///
 /// # Contract
 /// - requires: nothing — `bytes` may be arbitrary/adversarial.
@@ -1161,7 +1160,7 @@ fn decode_relation(reader: &mut ByteReader<'_>) -> Result<ConstraintRelation, De
 }
 
 /// Decode a canonical level, rebuilt through the strata smart constructors so a
-/// non-canonical level is unrepresentable (E4; the B2.1 obligation re-armed).
+/// non-canonical level is unrepresentable (E4; the K1 obligation re-armed).
 ///
 /// # Contract
 /// - requires: nothing.

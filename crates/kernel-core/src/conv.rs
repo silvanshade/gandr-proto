@@ -1,5 +1,5 @@
 //! Definitional equality (conversion) for the S1 fragment — the C5-quarantined
-//! conversion record (kernel-boundary.md §6 C5).
+//! conversion record (C5).
 //!
 //! # The S1 conversion algorithm, precisely
 //!
@@ -18,7 +18,7 @@
 //! * with `gandr_kernel_strata::Level` **canonical equality** at
 //!   [`crate::types::ValueType::Universe`] and
 //!   [`crate::types::ValueType::Lift`] (the strata `Level` type's derived
-//!   equality **is** the ADR-78 level-equality oracle);
+//!   equality **is** the level-equality oracle);
 //! * structurally through `Product`, `Sum`, `Thunk`, `Arrow`, and `Returner`,
 //!   resolving each child through the arena's checked `get`.
 //!

@@ -1,10 +1,11 @@
 //! The per-declaration level context ([`LevelContext`]) and the universe
 //! strict comparison the checker decides against it.
 //!
-//! ADR-78 discipline: a declaration is generalized over its **own** prenex
+//! The universe-stratification discipline: a declaration is generalized over
+//! its **own** prenex
 //! level parameters and carries its **own** declared landmark poset; the
-//! kernel checks it against that context and **no global level state**
-//! (kernel-boundary.md §3/§4). The context pins:
+//! kernel checks it against that context and **no global level state**.
+//! The context pins:
 //!
 //! * `params` — the prenex level-parameter count. A `Level` is well-scoped iff
 //!   every variable index is below it ([`LevelContext::check_level_scope`]).
@@ -12,16 +13,16 @@
 //!   loop-checking) is a soundness gate: an inconsistent constraint set would
 //!   re-admit `U_l : U_l` and is rejected at [`LevelContext::admit`].
 //!
-//! The universe rule `U_l : U_m` iff `l < m` (ADR-78) is decided by
+//! The universe rule `U_l : U_m` iff `l < m` is decided by
 //! [`LevelContext::check_universe_below`]. With **no** landmark constraints
 //! declared — the S1 v0 default — this is exactly
-//! `gandr_kernel_strata::Level`'s free-fragment `lt` oracle (the coordinator's
-//! "one call into `Level::lt`"); with constraints declared, it is landmark
-//! entailment under the poset's hypotheses (`entails_lt`), which strata
-//! guarantees agrees with the free oracle on the empty poset. Routing through
-//! entailment when hypotheses exist makes the birth-declared landmark feature
-//! load-bearing without a later boundary change, and degenerates to the free
-//! oracle otherwise.
+//! `gandr_kernel_strata::Level`'s free-fragment `lt` oracle (the
+//! "one call into `Level::lt`" boundary); with constraints declared, it is
+//! landmark entailment under the poset's hypotheses (`entails_lt`), which
+//! strata guarantees agrees with the free oracle on the empty poset. Routing
+//! through entailment when hypotheses exist makes the birth-declared landmark
+//! feature load-bearing without a later boundary change, and degenerates to the
+//! free oracle otherwise.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -83,7 +84,7 @@ impl LevelContext
     /// - ensures: `Ok(context)` carrying an admitted poset when every
     ///   constraint variable is within `params` and the constraint set has a
     ///   model; the poset then decides landmark-aware universe comparisons.
-    /// - provides: the per-declaration level context (ADR-78: no global state).
+    /// - provides: the per-declaration level context (no global state).
     /// - fails: [`KernelError::LevelVariableOutOfScope`] when a constraint
     ///   mentions a variable at or above `params`;
     ///   [`KernelError::InconsistentLevelConstraints`] when the constraints
@@ -177,8 +178,8 @@ impl LevelContext
     ///   landmark constraints are declared, and under landmark entailment
     ///   (`entails_lt`) otherwise, which agrees with the free oracle on the
     ///   empty poset.
-    /// - provides: the ADR-78 universe rule and the strictness check of an
-    ///   explicit lift.
+    /// - provides: the universe rule and the strictness check of an explicit
+    ///   lift.
     /// - fails: [`KernelError::UniverseViolation`] carrying the strata
     ///   refutation when the order does not hold;
     ///   [`KernelError::LevelOracleFault`] on a strata fault the theory

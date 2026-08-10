@@ -1,14 +1,13 @@
-//! The minimal certified kernel's **level oracle**: the ADR-78 universe-level
+//! The minimal certified kernel's **level oracle**: the universe-level
 //! algebra `{0, +1, max}` in always-canonical form, with an evidence-returning
-//! order oracle (decision: ADR-78; design record:
-//! the kernel-boundary design record, slice 1).
+//! order oracle (the universe-stratification decision).
 //!
-//! This crate is the first `gandr-kernel-*` subcrate — trusted by the naming
-//! rule of the kernel-boundary design record §2 — and deliberately holds
+//! This crate is the first `gandr-kernel-*` subcrate — trusted by the
+//! kernel-boundary naming rule — and deliberately holds
 //! **levels only**: no terms, no types, no universe rule (the rule
 //! `U_l : U_m` iff `l < m` is one call into [`Level::lt`], and belongs to the
 //! kernel-core crate). It is `#![no_std]` over `core`/`alloc`, the sharpest
-//! form of the record's TCB dependency wall.
+//! form of the TCB dependency wall.
 //!
 //! # The algebra and its canonical form
 //!
@@ -33,13 +32,13 @@
 //! with its dominating bound, or a [`LeqRefutation`] carrying a concrete
 //! counter-valuation — and [`validate_witness`] / [`validate_refutation`]
 //! check either against the two levels. Trust concentrates in the validators;
-//! the decision procedure is self-incriminating under mutation (the record's
+//! the decision procedure is self-incriminating under mutation (the
 //! certificate posture at the smallest scale).
 //!
-//! # The landmark poset and entailment (slice 2)
+//! # The landmark poset and entailment
 //!
 //! A fixed, declared set of order constraints over level variables — the
-//! **landmark poset** of the design record §4 — is admitted by
+//! **landmark poset** — is admitted by
 //! Bezem–Coquand loop-checking (TCS 913, 2022, Corollary 3.5), which is a
 //! dichotomy with evidence on both sides: [`LandmarkPoset::admit`] returns
 //! either an admitted poset carrying a [`ConsistencyWitness`] (an explicit
@@ -57,9 +56,9 @@
 //! on every input — the slice-2 acceptance gate, pinned by the property
 //! differential.
 //!
-//! What this crate refuses to hold, by design (ADR-78): level inference or
-//! unification, generalization, displacement, constraint hypotheses beyond
-//! the declared landmark poset, `imax`, and cumulativity.
+//! What this crate refuses to hold, by the universe-stratification design:
+//! level inference or unification, generalization, displacement, constraint
+//! hypotheses beyond the declared landmark poset, `imax`, and cumulativity.
 
 #![no_std]
 

@@ -1,4 +1,4 @@
-//! The landmark poset (kernel-boundary design record §4, slice 2): a fixed,
+//! The landmark poset: a fixed,
 //! declared set of order constraints over level variables, admitted into the
 //! kernel by Bezem–Coquand loop-checking (TCS 913, 2022, Corollary 3.5) with
 //! checkable evidence either way — a [`ConsistencyWitness`] (an explicit
@@ -595,8 +595,8 @@ pub enum AdmissionOutcome
 /// An admitted landmark poset.
 ///
 /// It carries the declared constraints, their compiled clause system
-/// (fixed at admission and reused by every query — the design record's
-/// fixed-poset simplification), and the consistency certificate admission
+/// (fixed at admission and reused by every query — the fixed-poset
+/// simplification), and the consistency certificate admission
 /// produced.
 #[derive(Clone, Debug)]
 pub struct LandmarkPoset

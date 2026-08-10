@@ -1,5 +1,4 @@
-//! The deterministic export writer (kernel-boundary.md §5, obligations E1, E2,
-//! E4, E5, E6):
+//! The deterministic export writer (obligations E1, E2, E4, E5, E6):
 //! serialize an [`Environment`] to canonical v1 bytes.
 //!
 //! # v1: the maximal-sharing subterm table (massive-term design §4.2–4.5)
@@ -145,7 +144,7 @@ pub fn write(environment: &Environment) -> EncodedArtifact
 /// of its declaration segments.
 ///
 /// This is the structural companion to [`write()`] the outer content-addressed
-/// layer consumes (massive-term design §6, B2.3).
+/// layer consumes (massive-term design §6).
 ///
 /// # Contract
 /// - requires: nothing.

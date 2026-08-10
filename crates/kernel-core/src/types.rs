@@ -2,7 +2,7 @@
 //! (negative), the closed vocabulary of value and computation types the
 //! polarized CBPV core admits at S1.
 //!
-//! The vocabulary is **closed** (kernel-boundary.md K1): no hole, no
+//! The vocabulary is **closed** (K1): no hole, no
 //! metavariable, no mark, no effect-row constructor exists to be represented.
 //! Every type former embeds only other types and (at [`ValueType::Universe`]
 //! and [`ValueType::Lift`]) a `gandr_kernel_strata::Level` in canonical form —
@@ -11,24 +11,22 @@
 //! term, so the C5 conversion-versus-effects quarantine holds vacuously (there
 //! is nothing to evaluate).
 //!
-//! Excluded at S1, deliberately unrepresentable (coordinator staging call,
-//! gandr-wvd.2; kernel-boundary.md §7): effect rows (`F` is pure — there is no
-//! effect-row constructor), the `Sigma` dependent pair (a value variable
-//! cannot occur in a type at S1, so `Product` is the **non-dependent** product
-//! and its dependent form waits for S2), description codes, `Path`/identity
-//! types, and `List`/`Record`/`With`.
+//! Excluded at S1, deliberately unrepresentable: effect rows (`F` is pure —
+//! there is no effect-row constructor), the `Sigma` dependent pair (a value
+//! variable cannot occur in a type at S1, so `Product` is the **non-dependent**
+//! product and its dependent form waits for S2), description codes,
+//! `Path`/identity types, and `List`/`Record`/`With`.
 //!
-//! # Arena representation (D1(C), gandr-5t3)
+//! # Arena representation (D1(C))
 //!
 //! A type node's children are **typed arena ids** ([`ValueTypeId`],
 //! [`CompTypeId`]) into the owning [`TermArena`], not owned `Box`es; the
 //! embedded `Level` at [`ValueType::Universe`]/[`ValueType::Lift`] stays
 //! inline. Children are `Copy`, so the derived
 //! `Clone`/`Drop`/`PartialEq`/`Eq`/`Hash` are **shallow** and the hand-written
-//! iterative worklists the owned-tree representation required (gandr-i3i) are
+//! iterative worklists the owned-tree representation required are
 //! retired — arena teardown is a flat `Vec` drop. The derived-equality caveat
-//! (child-id, not structural, equality) and its audit are in [`crate::term`]
-//! and STATUS.md.
+//! (child-id, not structural, equality) and its audit are in [`crate::term`].
 //!
 //! [`TermArena`]: crate::TermArena
 
@@ -59,11 +57,11 @@ pub enum ValueType
     /// grades are erased upstream and reserved only in the format plane).
     Thunk(CompTypeId),
     /// The universe former `U_l` at a canonical level `l`. Its own level is
-    /// `l + 1`, so `U_l : U_m` iff `l < m` (the ADR-78 universe rule, decided
+    /// `l + 1`, so `U_l : U_m` iff `l < m` (the universe rule, decided
     /// through `gandr_kernel_strata::Level::lt`).
     Universe(Level),
     /// An explicit lift of a value type into a strictly higher universe
-    /// (`no implicit cumulativity`, kernel-boundary.md §4 / §7): the inner
+    /// (`no implicit cumulativity`): the inner
     /// type, relocated to `target`, valid when the inner type's level is
     /// strictly below `target`.
     Lift
@@ -78,7 +76,7 @@ pub enum ValueType
 /// A computation type: the negative fragment of the S1 type vocabulary.
 ///
 /// The type of a computation. `F` is **pure** — S1 has no effect rows at all
-/// (kernel-boundary.md §7), so the returner carries only its result type.
+/// so the returner carries only its result type.
 ///
 /// Children are arena ids; the derived traits are shallow (the module docs).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

@@ -438,7 +438,7 @@ impl FiringLogStep
 /// `⊥` carries constants across the paper's constant-free algebra (a level
 /// constant `c` becomes the atom `⊥ + c`) and is deliberately
 /// unrepresentable in user levels — it exists only inside compiled systems,
-/// so no user input can collide with it (kernel-boundary.md K1). `⊥` orders
+/// so no user input can collide with it (K1). `⊥` orders
 /// before every variable, which keeps clause and seed enumeration
 /// deterministic.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

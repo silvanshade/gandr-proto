@@ -342,7 +342,7 @@ impl Level
     ///   of the variables, with the witness passing [`validate_witness`];
     ///   `Err(refutation)` otherwise, with a concrete counter-valuation passing
     ///   [`validate_refutation`].
-    /// - provides: the kernel's level-order oracle (ADR-78), free fragment.
+    /// - provides: the kernel's level-order oracle, free fragment.
     /// - fails: never — the refutation branch is a negative answer, not a
     ///   failure.
     /// - panics: none.
@@ -388,7 +388,7 @@ impl Level
     ///   successor is representable, and is total even where it is not (the
     ///   shift happens in wide arithmetic).
     /// - provides: the consistency-bearing comparison of the universe rule
-    ///   (`U_l : U_m` iff `l < m`; irreflexivity is the invariant — ADR-78).
+    ///   (`U_l : U_m` iff `l < m`; irreflexivity is the invariant).
     /// - fails: never — the refutation branch is a negative answer.
     /// - panics: none.
     ///

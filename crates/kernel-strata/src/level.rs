@@ -229,7 +229,7 @@ impl From<LevelIsZero> for bool
 }
 
 /// A level variable: an index into the owning declaration's prenex level
-/// context (kernel-boundary design record §3; slice 2 reuses the same index
+/// context (the landmark-poset encoding reuses the same index
 /// space for declared landmark constants).
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -317,7 +317,7 @@ impl Error for LevelError
 /// `o` under every valuation, so a constant `c ≤ o` never contributes).
 /// Under that invariant, canonical-form identity coincides with semantic
 /// equality at every valuation — which is why `Eq` on this type **is** the
-/// kernel's level-equality oracle (ADR-78: level equality is normal-form
+/// kernel's level-equality oracle (level equality is normal-form
 /// identity).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Level
@@ -372,7 +372,7 @@ impl Level
     ///   construction).
     /// - ensures: the result denotes `self + 1` at every valuation and is
     ///   canonical.
-    /// - provides: the `+1` generator of the ADR-78 algebra.
+    /// - provides: the `+1` generator of the level algebra.
     /// - fails: [`LevelError::Overflow`] when a component would pass the
     ///   representable range, rather than saturating (which would identify
     ///   distinct levels).
@@ -413,7 +413,7 @@ impl Level
     /// - ensures: the result denotes the pointwise maximum of the two levels at
     ///   every valuation and is canonical; the operation is commutative,
     ///   associative, and idempotent with `zero` as unit.
-    /// - provides: the `max` generator of the ADR-78 algebra.
+    /// - provides: the `max` generator of the level algebra.
     /// - fails: never — joins take maxima and cannot overflow.
     /// - panics: none.
     ///
