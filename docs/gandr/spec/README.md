@@ -3,6 +3,10 @@
 > **This corpus is migrating out of this repository.** gandr's specifications are moving to the project's research vault, which is now their primary home for deep structure — design, reasoning, open questions, and specifications while they move.
 > This repository keeps its code, its tests, and its outward-facing (user-level) documentation.
 > **Do not add new specification documents to this corpus, and prefer editing over growing what is here.** New design content is authored in the vault through its own write path; what this repository still needs from a design is a thin decision record stating the outcome and what it binds, not a specification document. (Owner direction, 2026-08-07; the migration is deliberate and in progress.)
+>
+> Removed documents, with the page that absorbed each:
+>
+> + `implementation/proposed/elaboration-schedulers.md` — absorbed by "unification and coercion".
 
 This directory is the specification corpus for the gandr language: the project entrypoint for any session or contributor that needs to know what gandr _is_, what has been decided, what is built, and what remains.
 

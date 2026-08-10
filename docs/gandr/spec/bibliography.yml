@@ -1549,14 +1549,6 @@ cockx-abel-2018-copatterns:
   serial-number:
     doi: "10.1145/3236770"
 
-liesnikov-binder-suberkrub-2025-polarity:
-  type: article
-  title: "Filling the Gaps of Polarity: Implementing Dependent Data and Codata Types with Implicit Arguments"
-  author: ["Liesnikov, Bohdan", "Binder, David", "Süberkrüb, Tim"]
-  date: 2025
-  serial-number:
-    arxiv: "2511.15819"
-
 keizer-basold-perez-2020-session-coalgebras:
   type: article
   title: "Session Coalgebras: A Coalgebraic View on Session Types and Communication Protocols"
@@ -5372,18 +5364,6 @@ petgraph:
 
 # ── Pterodactyl absorption: the elaborator discipline ─────────────────────────
 # Precedents for the three-scheduler rule, the universe layer, and the unifier.
-
-vivien-remy-scherer-2026-modular-explicits:
-  type: misc
-  title: On the Design and Implementation of Modular Explicits
-  author: ["Vivien, Samuel", "Rémy, Didier", "Scherer, Gabriel"]
-  date: 2026
-  url: https://hal.science/hal-05428136
-  serial-number:
-    hal: "hal-05428136"
-  note: >-
-    JFLA 2026 (37es Journées Francophones des Langages Applicatifs, Oberbronn); metadata from
-    library.bib (Vivien-2026-design_implementation_modular_explicits), held PDF
 
 sakaguchi-2023-refinement-extension:
   type: thesis

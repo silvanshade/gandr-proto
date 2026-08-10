@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: 16f1356669f40ea2b5e7a87c2706b3983b97d95d563dc37459b5a1c65620788b
+    b3: e2026ca21d2b1c79610e762c82612caa62723b71eedf87ea369c4967138a8de8
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 1a4365fc01e5c189adecab7c51975d4b2ff26c8fd3007e500f936718d6e41bdf
+    b3: 2bce078e417fab122456b2c5d4c03f7e1707cba3732ed5ba6069e4f985f585c0
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 00f29fe423860c5af448fc4982f0bd624eebb28b1fc8b9b8aac07c2beac751f7
+    b3: 74011f2c4f1f15b3b2e2abffa665d6be93c21ad4c3239da9b1cac7189909776a
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -215,11 +215,6 @@ nodes:
   - path: spec/implementation/proposed/solver-interface.md
     role: subdocument
     b3: d1d5371acf416e562452d23c2c3c6b0d84c47f6e35910e3e0f56b5be11a20762
-    edges:
-      - { rel: registered-under, to: spec/implementation.md }
-  - path: spec/implementation/proposed/elaboration-schedulers.md
-    role: subdocument
-    b3: cded1f6cef0197ca0434ea2e98877eb6e86c41037c5f4539981f6d57d847509c
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/display-provenance.md
