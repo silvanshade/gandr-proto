@@ -31,6 +31,7 @@ Persistence is content-addressed and untrusted; the mechanized metatheory is Agd
 | `treefmt.toml` and the formatter configs | the format wall: rumdl, typos, sizelint, rustfmt, oxfmt, tombi and friends                                       |
 | `prek.toml`, `.config/wt.toml`           | commit-hook and worktree/merge-hook wiring (the local merge wall)                                                |
 | [PLAN.html](PLAN.html)                   | the approved build-out plan                                                                                      |
+| [CHANGELOG.md](CHANGELOG.md)             | the single workspace changelog (the per-crate `docs/` tier is retiring)                                          |
 
 Referenced by guidance but not yet landed: `docs/adr/`, `docs/KNOWLEDGE.md` and `docs/HAZARDS.md` (the corpus-trust and hazard catalogues `AGENTS.md` cites), and hosted CI (parked; the whole gate wall is local — [docs/workflow/ci.md](docs/workflow/ci.md)).
 

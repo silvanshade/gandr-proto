@@ -60,7 +60,7 @@ The asymmetry is the design seam: prefixes resume, suffixes do not.
 The `Environment` (`env.rs:151`) holds the admitted declarations in admission order with their marks, the internal arena, the transitive audit (`env.rs:335`), and the **admission watermark** (`env.rs:12–16`, the D1(C) content-start watermark — the Idris `branchDepth`/`staging` transactional-overlay pattern, `impl-models-deep-read.md:107–109`, §5.6 #4).
 That `Environment` at index `k` is precisely the state a plane-4 checkpoint snapshots, resumable by admitting past the watermark.
 
-The outer layer (`storage-artifact`) is the untrusted CAS wiring: `ArtifactManifest` binds the 85-byte chunker parameter commitment, the record count, the root node hash, and the inner format version; `ArtifactIdentity = BLAKE3(manifest)` is the b3sum-provenance successor, and hashing lives outside the TCB (`storage-artifact/docs/STATUS.md:14–20`).
+* The outer layer (`storage-artifact`) is the untrusted CAS wiring: `ArtifactManifest` binds the 85-byte chunker parameter commitment, the record count, the root node hash, and the inner format version; `ArtifactIdentity = BLAKE3(manifest)` is the b3sum-provenance successor, and hashing lives outside the TCB (the `storage-artifact` crate's module documentation).
 
 ### 2.3 The three reader budgets — and why they are monotone in the prefix
 
