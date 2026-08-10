@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: d2dd2053c355d7b58c0e003d3e1fcd4c56d2e99a1c5276644a07cf7037b7e174
+    b3: 7da4d0e69a0bb94ba5091e9b8835b7a647c0891f840dc7ae1570a8f01d705d60
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: a066023f7afe6c196422ab4fdb0028b9c005842bd0a80422918b3a7ddf6cf2ad
+    b3: 5722966cfccf47b6bffe5044c079279b7ae778f14ca61ff5486a5fe45711c4e6
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 02ac739271b238f061675062f405faa8004893058f0a43048c8754c56156177a
+    b3: b8acb45107e5cff8390b3845c3c6f9692a7f632110c836855f79f6a7e4c91a49
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -215,11 +215,6 @@ nodes:
   - path: spec/implementation/proposed/solver-interface.md
     role: subdocument
     b3: d1d5371acf416e562452d23c2c3c6b0d84c47f6e35910e3e0f56b5be11a20762
-    edges:
-      - { rel: registered-under, to: spec/implementation.md }
-  - path: spec/implementation/proposed/strengthening.md
-    role: subdocument
-    b3: f4aac4753f4197e30e5ccd60b5305250536b5032ede656e75401b4633163beb0
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/durable-computation.md
