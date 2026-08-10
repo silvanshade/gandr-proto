@@ -43,7 +43,7 @@ Counting convention: a member is an active entry in the root `Cargo.toml` `works
 | Domain       | Crates                                                                                                                                                          | Role                                                                                                                                                                               |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `kernel-*`   | kernel-strata, kernel-core                                                                                                                                      | the certified trusted core: universe-level oracle; S1 term/type language and env                                                                                                   |
-| `core-*`     | core-checker, core-sequent, core-incrementality                                                                                                                 | the checked language: CBPV typing machine; System-L IL, focusing, the L machine; item-granular incremental re-typing (seam, footprints, validated resume)                          |
+| `core-*`     | core-checker, core-sequent, core-incremental                                                                                                                    | the checked language: CBPV typing machine; System-L IL, focusing, the L machine; item-granular incremental re-typing (seam, footprints, validated resume)                          |
 | `theory-*`   | theory-nominal-automata, theory-orders, theory-graphs, theory-recursion, theory-levitation, theory-computads, theory-circuit-algebras, theory-virtual-doctrines | semantic machinery: atoms, orders, graphs, recursion; descriptions; completion; circuit-algebra interface bookkeeping, embedding matching, and diagram normal form; VDC reflection |
 | `storage-*`  | storage-chunker, storage-prolly-trees, storage-artifact                                                                                                         | untrusted content-addressed persistence: chunking, Merkle search tree, CAS export                                                                                                  |
 | `runtime-*`  | runtime-host                                                                                                                                                    | headless host-effect runtime (Exec/Fs/Proc/Env) driven by the L machine                                                                                                            |
@@ -64,14 +64,14 @@ tier 1   kernel-core → kernel-strata
 tier 2   core-checker → kernel-core, theory-nominal-automata
          storage-artifact → kernel-core, storage-chunker, storage-prolly-trees
          surface-parser → surface-grammar, surface-syntax
-tier 3   core-incrementality → core-checker, theory-orders
+tier 3   core-incremental → core-checker, theory-orders
          core-sequent → core-checker, kernel-core, kernel-strata, storage-artifact, storage-prolly-trees
          theory-levitation → core-checker
 tier 4   theory-computads → core-sequent, theory-graphs, theory-levitation
          runtime-host → core-checker, core-sequent
 tier 5   theory-circuit-algebras → theory-computads
          theory-virtual-doctrines → core-sequent, theory-computads, theory-levitation
-         surface-engine → core-checker, core-incrementality, core-sequent, runtime-host,
+         surface-engine → core-checker, core-incremental, core-sequent, runtime-host,
          surface-grammar, surface-parser, surface-syntax, theory-levitation,
          theory-nominal-automata, theory-recursion
 tier 6   surface-corpus → core-checker, core-sequent, runtime-host, surface-engine, theory-levitation

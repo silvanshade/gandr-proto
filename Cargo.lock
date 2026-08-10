@@ -601,7 +601,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gandr-core-incrementality"
+name = "gandr-core-incremental"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
@@ -689,7 +689,7 @@ name = "gandr-surface-engine"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
- "gandr-core-incrementality",
+ "gandr-core-incremental",
  "gandr-core-sequent",
  "gandr-runtime-host",
  "gandr-surface-grammar",

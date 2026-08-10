@@ -94,7 +94,7 @@ use gandr_core_checker::syntax::Value;
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
-use gandr_core_incrementality::region::Item;
+use gandr_core_incremental::region::Item;
 
 use crate::attributes;
 use crate::boundary::AttributeName;

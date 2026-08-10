@@ -73,7 +73,7 @@ use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::DataId;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
-use gandr_core_incrementality::region::Item;
+use gandr_core_incremental::region::Item;
 use gandr_core_sequent::machine::run_comp_with_prelude;
 
 use crate::boundary::ConstructorName;

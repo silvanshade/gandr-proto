@@ -45,7 +45,7 @@ mod tests
     use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::Ty;
     use gandr_core_checker::types::ValueType;
-    use gandr_core_incrementality::region::Item;
+    use gandr_core_incremental::region::Item;
     use gandr_surface_engine::boundary::SourceRange;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::host;

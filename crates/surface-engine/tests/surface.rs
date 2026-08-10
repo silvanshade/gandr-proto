@@ -22,7 +22,7 @@ mod tests
     use gandr_core_checker::syntax::Side;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::syntax::Value;
-    use gandr_core_incrementality::region::Item;
+    use gandr_core_incremental::region::Item;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::lower::LowerError;
     use gandr_surface_engine::lower::lower_source;

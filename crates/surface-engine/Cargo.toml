@@ -20,7 +20,7 @@ gandr-core-checker.workspace = true
 # The item-granular incremental typer: this crate's lowerings are its
 # parser-agnostic `region::Item`s, `item_source` implements its seam, and the
 # session-facing gate resumes through its checkpoint engine.
-gandr-core-incrementality.workspace = true
+gandr-core-incremental.workspace = true
 gandr-core-sequent.workspace = true
 gandr-runtime-host.workspace = true
 gandr-surface-grammar.workspace = true

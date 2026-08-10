@@ -45,7 +45,7 @@ mod tests
     use gandr_core_checker::syntax::Side;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::syntax::Value;
-    use gandr_core_incrementality::region::Item;
+    use gandr_core_incremental::region::Item;
     use gandr_surface_engine::edit::Action;
     use gandr_surface_engine::edit::AnnSlot;
     use gandr_surface_engine::edit::BinderSlot;

@@ -3,7 +3,7 @@
 //!
 //! # What this module is for
 //!
-//! [`gandr_core_incrementality::region`] states the boundary between
+//! [`gandr_core_incremental::region`] states the boundary between
 //! *producing* a revision's top-level items and *consuming* them: the
 //! changed-region detector and the checkpoint engine read only [`Item`] /
 //! [`Program`], never a concrete parser. That module names no front end on
@@ -29,14 +29,14 @@
 //! the [`crate::lower::Lowered`] it lowered; a consumer that needs only to know
 //! *what changed* holds the [`Program`].
 //!
-//! [`Item`]: gandr_core_incrementality::region::Item
-//! [`ItemSource`]: gandr_core_incrementality::region::ItemSource
-//! [`Program`]: gandr_core_incrementality::region::Program
+//! [`Item`]: gandr_core_incremental::region::Item
+//! [`ItemSource`]: gandr_core_incremental::region::ItemSource
+//! [`Program`]: gandr_core_incremental::region::Program
 
 use alloc::string::String;
 
-use gandr_core_incrementality::region::ItemSource;
-use gandr_core_incrementality::region::Program;
+use gandr_core_incremental::region::ItemSource;
+use gandr_core_incremental::region::Program;
 
 use crate::boundary::PipelineSource;
 use crate::lower::LowerError;
@@ -121,7 +121,7 @@ impl ItemSource for LoweringItemSource
     /// - witness: `tests::seam::the_seam_carries_names_ascriptions_and_order`
     /// - witness: `tests::seam::the_seam_admits_the_differential_gate`
     ///
-    /// [`Item`]: gandr_core_incrementality::region::Item
+    /// [`Item`]: gandr_core_incremental::region::Item
     #[inline]
     fn items(
         &self,

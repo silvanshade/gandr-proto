@@ -23,10 +23,10 @@
 //!   an item's core-IR term.
 //! - **The parser-agnostic item seam** ([`item_source`]): the melder-and-
 //!   lowering front end as an implementation of
-//!   [`gandr_core_incrementality::region::ItemSource`], so the item-granular
+//!   [`gandr_core_incremental::region::ItemSource`], so the item-granular
 //!   incremental typer can be driven against real surface source without
 //!   depending on this crate or naming a parser. A lowering already carries
-//!   that crate's [`gandr_core_incrementality::region::Item`], so crossing the
+//!   that crate's [`gandr_core_incremental::region::Item`], so crossing the
 //!   seam drops the surface faces (origins, attributes, declaration tables) and
 //!   projects nothing else. `tests/incremental` resumes over real source
 //!   through the seam against the surface prelude, the differential gate's
@@ -39,7 +39,7 @@
 //!   them as the seam they will consume.
 //!
 //! Later rungs add the streaming driver (A2.5) and, in
-//! `gandr-core-incrementality`, the per-term-node solver-coupled checkpoint
+//! `gandr-core-incremental`, the per-term-node solver-coupled checkpoint
 //! granularity above its item-level base.
 //!
 //! Entry points: [`lower::lower_source`] (strict, A2.1) and

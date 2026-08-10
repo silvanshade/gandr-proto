@@ -6,8 +6,8 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
 
 ## current
 
-* The crate is the reboot's complete CST-to-core surface engine: total lowering, origin tracking, structured diagnostics and goals, prelude/host/attribute tables, edit-action reconstruction, the item seam onto `gandr-core-incrementality`, linking, stateful REPL sessions, and the one-shot source-program driver.
-  The item-granular checkpoint engine this crate once carried a second copy of lives in `gandr-core-incrementality`; what stays here is the front end that feeds it.
+* The crate is the reboot's complete CST-to-core surface engine: total lowering, origin tracking, structured diagnostics and goals, prelude/host/attribute tables, edit-action reconstruction, the item seam onto `gandr-core-incremental`, linking, stateful REPL sessions, and the one-shot source-program driver.
+  The item-granular checkpoint engine this crate once carried a second copy of lives in `gandr-core-incremental`; what stays here is the front end that feeds it.
 * Ported at rung F3 of the surface front-end port (`docs/research/front-end-port-staging.md` §9) from the wyrd `gandr-pipeline` crate.
   The recut renames the package to `gandr-surface-engine` while preserving its public module shape and source-facing behavior; required reboot deltas are recorded below.
 * Modules — 27,997 source lines across 25 source files:
@@ -16,7 +16,7 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
   + `origin`, `goals`, `diag`, `attributes`, and `render` project core results back to structured, source-ranged front-end data.
   + `prelude`, `host`, `ffi`, `link`, and `session` connect the lowered core to typed native bindings, host effects, whole-file linking, and evaluation.
   + `run` drives a one-shot source program through lowering, linking, prelude checking, and the host seam.
-  + `edit` reconstructs localized edit actions between two lowerings, and `item_source` crosses a lowering to `gandr-core-incrementality`'s parser-agnostic item seam, which is where dependency-validated incremental re-typing runs.
+  + `edit` reconstructs localized edit actions between two lowerings, and `item_source` crosses a lowering to `gandr-core-incremental`'s parser-agnostic item seam, which is where dependency-validated incremental re-typing runs.
   + `boundary` owns the crate's typed scalar and string boundary wrappers.
   + `cst_read` reads a committed CST as a flat tile run — the `Reader` / `Cursor` and the depth-aware member split that `desc_elab` and `circuit` both walk declarations with.
   + `circuit` is the ruled circuit block form's surface check: it confirms every arrow against the kind of the thing it belongs to (a declaration's from its kind keyword, a body line's from the applied head's) and declines the reserved reversible glyph `<->`.
@@ -28,7 +28,7 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
   + `gandr-surface-engine::host` explicitly re-exports the signature API and adds only source-level metadata, so the signature authority couples neither the engine nor the runtime.
     The host-capability adapter adds `gandr-runtime-host` as the tenth reboot project edge: `run::run_source` composes its seam.
   + Every normal dependency has a direct source-level use, including the `Machine` / `Step` / `run` trio in `lower::recursive`.
-    The `gandr-theory-orders` edge left with the checkpoint engine: this crate now reaches order maintenance only through `gandr-core-incrementality`, which owns it.
+    The `gandr-theory-orders` edge left with the checkpoint engine: this crate now reaches order maintenance only through `gandr-core-incremental`, which owns it.
     The predecessor's dev-only `gandr-grammar-contract-fixtures` edge was dropped: the engine tests discover and exercise every `.gandr` file under `tests/fixtures/current`.
     The helper was data-only at the three engine use sites: two root-path constants and one JSON source-path manifest.
     All thirteen `current/` source files are byte-identical to the predecessor set; the two path reads now target the local copies, and directory discovery replaces the manifest parser.

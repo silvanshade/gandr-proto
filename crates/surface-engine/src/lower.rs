@@ -128,7 +128,7 @@ use gandr_core_checker::syntax::WalkMotive;
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
-use gandr_core_incrementality::region::Item;
+use gandr_core_incremental::region::Item;
 use gandr_surface_parser::Oblig;
 use gandr_surface_parser::ObligationInstance;
 use gandr_surface_syntax::NodeId;

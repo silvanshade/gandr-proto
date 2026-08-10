@@ -2,7 +2,7 @@
 //! re-typing (`incremental-pipeline.md` §"Checkpoints and the reuse rule"
 //! through §"Derivation merging and identity stability").
 //!
-//! The theorem `gandr_core_incrementality::checkpoint::resume` must satisfy:
+//! The theorem `gandr_core_incremental::checkpoint::resume` must satisfy:
 //! for **every** edit, the incrementally-resumed per-item typing equals the
 //! typing a full from-scratch re-type of the edited program produces. Adoption
 //! (reusing a validated checkpoint) skips work; this gate proves the skips
@@ -17,8 +17,8 @@
 //! classes below mirror the incremental loop's cases: adoption, invalidation,
 //! structural edits, and property-generated edits.
 //!
-//! [`ItemSource`]: gandr_core_incrementality::region::ItemSource
-//! [`Item`]: gandr_core_incrementality::region::Item
+//! [`ItemSource`]: gandr_core_incremental::region::ItemSource
+//! [`Item`]: gandr_core_incremental::region::Item
 
 #![cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -29,7 +29,7 @@
     )
 )]
 
-/// The differential gate for `gandr_core_incrementality::checkpoint`.
+/// The differential gate for `gandr_core_incremental::checkpoint`.
 #[cfg(test)]
 mod tests
 {
@@ -38,13 +38,13 @@ mod tests
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::syntax::Value;
     use gandr_core_checker::types::ValueType;
-    use gandr_core_incrementality::checkpoint::ItemTyping;
-    use gandr_core_incrementality::checkpoint::Resume;
-    use gandr_core_incrementality::checkpoint::checkpoint_program;
-    use gandr_core_incrementality::checkpoint::resume;
-    use gandr_core_incrementality::region::Item;
-    use gandr_core_incrementality::region::ItemSource;
-    use gandr_core_incrementality::region::Program;
+    use gandr_core_incremental::checkpoint::ItemTyping;
+    use gandr_core_incremental::checkpoint::Resume;
+    use gandr_core_incremental::checkpoint::checkpoint_program;
+    use gandr_core_incremental::checkpoint::resume;
+    use gandr_core_incremental::region::Item;
+    use gandr_core_incremental::region::ItemSource;
+    use gandr_core_incremental::region::Program;
 
     /// One definition body the toy surface can lower — enough scalar and
     /// reference shapes to drive body edits, type changes, and downstream

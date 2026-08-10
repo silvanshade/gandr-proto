@@ -35,7 +35,7 @@
 //!   editor state.
 //!
 //! Incremental re-typing rides on this crate rather than living in it:
-//! `gandr-core-incrementality` carries the parser-agnostic item seam, the
+//! `gandr-core-incremental` carries the parser-agnostic item seam, the
 //! dependency footprints, and the validated-resume checkpoint engine, and
 //! drives them through [`machine`] over this crate's [`syntax`], [`types`], and
 //! [`ctx`] vocabulary.

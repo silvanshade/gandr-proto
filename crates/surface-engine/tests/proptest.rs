@@ -33,7 +33,7 @@ mod tests
     use gandr_core_checker::strategies::binder_name;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::types::Ty;
-    use gandr_core_incrementality::region::Item;
+    use gandr_core_incremental::region::Item;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;
 

@@ -2,7 +2,7 @@
 //! resume ≡ from-scratch re-typing (`incremental-pipeline.md` §"Checkpoints and
 //! the reuse rule" through §"Derivation merging and identity stability").
 //!
-//! `gandr-core-incrementality` gates its engine against an in-tree item-source
+//! `gandr-core-incremental` gates its engine against an in-tree item-source
 //! double; this is the same theorem driven through *this* crate's front end —
 //! the melder push machine and the CST → core lowering, crossed at
 //! [`LoweringItemSource`] — and against the surface [`prelude_ctx`] rather than
@@ -38,17 +38,17 @@
     )
 )]
 
-/// The differential gate for `gandr_core_incrementality::checkpoint`, driven
+/// The differential gate for `gandr_core_incremental::checkpoint`, driven
 /// through this crate's item seam against the surface prelude.
 #[cfg(test)]
 mod tests
 {
-    use gandr_core_incrementality::checkpoint::ItemTyping;
-    use gandr_core_incrementality::checkpoint::Resume;
-    use gandr_core_incrementality::checkpoint::checkpoint_with;
-    use gandr_core_incrementality::checkpoint::resume_with;
-    use gandr_core_incrementality::region::ItemSource as _;
-    use gandr_core_incrementality::region::Program;
+    use gandr_core_incremental::checkpoint::ItemTyping;
+    use gandr_core_incremental::checkpoint::Resume;
+    use gandr_core_incremental::checkpoint::checkpoint_with;
+    use gandr_core_incremental::checkpoint::resume_with;
+    use gandr_core_incremental::region::ItemSource as _;
+    use gandr_core_incremental::region::Program;
     use gandr_surface_engine::item_source::LoweringItemSource;
     use gandr_surface_engine::item_source::SourceRevision;
     use gandr_surface_engine::prelude_ctx;
@@ -263,8 +263,8 @@ mod tests
     /// The gate over property-generated random edits.
     mod property
     {
-        use gandr_core_incrementality::checkpoint::checkpoint_with;
-        use gandr_core_incrementality::checkpoint::resume_with;
+        use gandr_core_incremental::checkpoint::checkpoint_with;
+        use gandr_core_incremental::checkpoint::resume_with;
         use gandr_surface_engine::prelude_ctx;
 
         use super::seam_program;

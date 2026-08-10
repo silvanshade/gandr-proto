@@ -1,7 +1,7 @@
 //! The parser-agnostic item seam, exercised against the real front end
 //! (`incremental-pipeline.md` §"Cold reparse" and §"The structural diff").
 //!
-//! `gandr_core_incrementality::region::ItemSource` states the boundary the
+//! `gandr_core_incremental::region::ItemSource` states the boundary the
 //! changed-region detector reads across, and `crate::item_source` is the
 //! implementation of it that is not a test double. Two things need proving
 //! about it, and they are different claims.
@@ -36,8 +36,8 @@ mod tests
     use alloc::vec::Vec;
 
     use gandr_core_checker::types::Ty;
-    use gandr_core_incrementality::region::ItemSource as _;
-    use gandr_core_incrementality::region::Program;
+    use gandr_core_incremental::region::ItemSource as _;
+    use gandr_core_incremental::region::Program;
     use gandr_surface_engine::item_source::LoweringItemSource;
     use gandr_surface_engine::item_source::SourceRevision;
     use gandr_surface_engine::lower::Lowered;
@@ -80,9 +80,9 @@ mod tests
     /// prelude the front end elaborates into.
     fn seam_typings(program: &Program) -> Vec<Typing>
     {
-        use gandr_core_incrementality::checkpoint::ItemTyping;
+        use gandr_core_incremental::checkpoint::ItemTyping;
 
-        gandr_core_incrementality::checkpoint::checkpoint_with(program, &prelude_ctx())
+        gandr_core_incremental::checkpoint::checkpoint_with(program, &prelude_ctx())
             .items
             .into_iter()
             .map(|checkpoint| match checkpoint.typing {
@@ -165,11 +165,11 @@ mod tests
         let base = "def target(x: Integer) -> F Integer {\n  ret (x + 1)\n}\nprint(target)\n";
         let edited = "def target(x: Integer) -> F Integer {\n  ret (x + 2)\n}\nprint(target)\n";
 
-        let checkpoints = gandr_core_incrementality::checkpoint::checkpoint_with(
+        let checkpoints = gandr_core_incremental::checkpoint::checkpoint_with(
             &seam_program(base),
             &prelude_ctx(),
         );
-        let resumed = gandr_core_incrementality::checkpoint::resume_with(
+        let resumed = gandr_core_incremental::checkpoint::resume_with(
             &checkpoints,
             &seam_program(edited),
             &prelude_ctx(),
@@ -181,7 +181,7 @@ mod tests
                 .typings
                 .into_iter()
                 .map(|typing| {
-                    use gandr_core_incrementality::checkpoint::ItemTyping;
+                    use gandr_core_incremental::checkpoint::ItemTyping;
 
                     match typing {
                         | ItemTyping::Definition { name, ty, bound } => {

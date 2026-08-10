@@ -590,7 +590,7 @@ mod tests
             use gandr_core_checker::mark::mark_value;
             use gandr_core_checker::syntax::Term;
             use gandr_core_checker::types::Ty;
-            use gandr_core_incrementality::region::Item;
+            use gandr_core_incremental::region::Item;
 
             fn marking_of(
                 item: &Item,
