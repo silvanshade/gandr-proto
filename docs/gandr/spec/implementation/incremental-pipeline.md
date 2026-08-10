@@ -330,7 +330,7 @@ The interactive loop is the same pipeline with a prompt in front of it:
 **The linear zone is what makes the loop's state rule non-obvious.** The ordinary and shared contexts, and module bindings, carry over from one entry to the next.
 The **linear zone does not**: an endpoint left unconsumed when the prompt returns is an error, exactly as it is at the end of any other scope, because the alternative would be a prompt at which linearity quietly means nothing.
 
-[[proposed/interactive-surface]] owns the surface this loop presents and the renderer firewall it sits behind; [[feature-staging#stage-09]] carries the same rule as the stage's fourth component.
+The interactive-surface design (now in the project's research vault — the corpus README's migration banner) owns the surface this loop presents and the renderer firewall it sits behind; [[feature-staging#stage-09]] carries the same rule as the stage's fourth component.
 
 ## The literature this design is answerable to
 

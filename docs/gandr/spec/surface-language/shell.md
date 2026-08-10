@@ -1,7 +1,7 @@
 # The shell fragment
 
 The shell face of the surface: shell blocks and jobs, the embedded shell sub-grammar, the host escape, string interpolation, and the REPL split.
-The interactive-usage surface it serves — the loop, history, completion, the language-server adapter, the formatter — is [[../implementation/proposed/interactive-surface]], and the host-effect seam it runs through is [[../implementation#The runtime host|the implementation track's]].
+The interactive-usage surface it serves — the loop, history, completion, the language-server adapter, the formatter — is the interactive-surface design (now in the project's research vault — the corpus README's migration banner), and the host-effect seam it runs through is [[../implementation#The runtime host|the implementation track's]].
 The deferred semantic shell DSL (job control, byte-stream sessions, worlds) is designed direction; its typed reading is below.
 
 ## Shell blocks and jobs
@@ -108,5 +108,5 @@ What is true **today**, marked as such: the host operation families `Exec`/`Fs`/
 
 The fragment as built is verified against the grammar crate's shell rules and the W4e fold-in record (braced parameter as a distinct mode, double-quoted words as one atom, bracketed subshells, fd redirections, the coverage table of folded versus deferred POSIX forms) — high confidence.
 The REPL split is the driver-split decision of record (bare `gandr` = shell-REPL, `gandr tui` = programming environment), and the host-escape bounds are the landed standalone-word cut.
-The POSIX-to-typed mapping above is designed direction throughout, absorbed here in full; the interactive surface it serves is carried at depth in [[../implementation/proposed/interactive-surface]].
+The POSIX-to-typed mapping above is designed direction throughout, absorbed here in full; the interactive surface it serves is carried at depth in the project's research vault (the corpus README's migration banner).
 The deferred semantic DSL (job control, byte-stream sessions, the `Shell` handler) is designed direction, marked wherever mentioned.

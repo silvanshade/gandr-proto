@@ -2769,18 +2769,6 @@ flatt-2016-binding-sets-of-scopes:
       Languages
     page-range: 705-717
 
-porncharoenwase-pombrio-torlak-2023-pretty-expressive:
-  type: article
-  title: A Pretty Expressive Printer (with Appendices)
-  author: ["Porncharoenwase, Sorawee", "Pombrio, Justin", "Torlak, Emina"]
-  date: 2023-10-02
-  serial-number:
-    arxiv: "2310.01530"
-  note: >-
-    transcribed from the contributor's reference register, which holds the paper; the authorship and
-    title were read from the register entry rather than recalled, correcting a first draft of this
-    citation that named the second author as sole author
-
 ahman-pretnar-2021-asynchronous-effects:
   type: article
   title: Asynchronous Effects

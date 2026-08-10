@@ -4,7 +4,7 @@ The checker's state is reified as data, and the reason for reifying it is that *
 
 This document fixes the protocol that carries that stream, the seam that decides what rides where, and the wire contract a remote renderer is held to.
 
-Its organizing commitment is the one [[proposed/interactive-surface|the interactive surface]] takes, restated in protocol terms: **the editor view, the language-server channel, and the agent stream are projections of one reified checker state**, and no renderer parses, lowers, types, marks, deduplicates, or reconstructs a semantic fact.
+Its organizing commitment is the one the interactive-surface design takes (now in the project's research vault — the corpus README's migration banner), restated in protocol terms: **the editor view, the language-server channel, and the agent stream are projections of one reified checker state**, and no renderer parses, lowers, types, marks, deduplicates, or reconstructs a semantic fact.
 The in-process worker-to-renderer firewall becomes a **wire** boundary: a proof-owning server constructs one checked neutral projection, the leaf protocol mirrors it, and a remote renderer receives a self-contained bounded message and nothing else.
 
 What this document does **not** fix is the editor feature set — hover, completion, and format wiring — the choice of language-server framework, the incremental delta engine, or the agent-facing decode side.
@@ -96,7 +96,7 @@ It drives the editor's status item, and on an editor whose extension API exposes
 It is also the handshake that bootstraps a bus attach: it advertises whether a bus endpoint is available and where.
 
 **`gandr/goalAtCursor`** is a client-to-server **request** that takes a document and a position and returns the goal at that hole — the expected type and the local context beyond the prelude.
-It is projected by splicing a synthetic hole at the cursor and reading its checking-position expected type together with its context, which is the same query [[proposed/interactive-surface|goal-directed completion]] runs.
+It is projected by splicing a synthetic hole at the cursor and reading its checking-position expected type together with its context, which is the same query the interactive-surface design's goal-directed completion runs (migrated — the corpus README's migration banner).
 This is the queryable payoff of the whole reified-state design, surfaced without a panel.
 
 **`gandr/machineSummary`** is a client-to-server **request** returning a _small_ scalar digest — step count, frame-stack depth, outstanding-obligation count, solver-trail depth — cheap enough for a status hover.
@@ -159,7 +159,7 @@ An editor webview, an external terminal renderer, and a streaming agent consume 
 The server may reuse an in-process renderer's projection machinery, but only the server-side adapter can pair that projection with proof-checked diagnostics and with the source, state, and version fences.
 **If a renderer lacks a semantic fact, the fact is added to the pipeline's report and to the neutral projection** — a remote renderer never consults checker internals and never invents a second policy.
 
-That rule is what makes "one protocol, two renderers" a genuine deduplication rather than a slogan, and it is the same firewall rule stated in [[proposed/interactive-surface#The one machine state, and the firewall|the interactive surface's terms]], moved onto the wire.
+That rule is what makes "one protocol, two renderers" a genuine deduplication rather than a slogan, and it is the same firewall rule stated in the interactive-surface design's terms (migrated — the corpus README's migration banner), moved onto the wire.
 
 ### The session-typeable shape
 
