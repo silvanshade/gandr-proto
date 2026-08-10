@@ -1198,6 +1198,15 @@ berger-moerdijk-2011-reedy:
     issue: 3-4
     page-range: 977-1004
 
+campion-2023-cubical-sites:
+  type: article
+  title: Cubical Sites as Eilenberg-Zilber Categories
+  author: ["Campion, Timothy"]
+  date: 2023
+  serial-number:
+    doi: "10.48550/arXiv.2303.06206"
+    arxiv: "2303.06206"
+
 cruttwell-shulman-2009-generalized-multicategories:
   type: article
   title: A Unified Framework for Generalized Multicategories

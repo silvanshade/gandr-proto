@@ -766,7 +766,10 @@ factor : (f : G ⟶ H) → Σ[ K ] (Θ⁻ G K × Θ⁺ K H)     -- unique UP TO 
 ```
 
 > **That structure is consumed here and is not yet warranted at this site.** [@berger-moerdijk-2011-reedy] is the _definition_ of a generalized Reedy category, not a theorem about $Θ_(T^times, "Gr")$; the theorem that a graphical category satisfies it was taken against the **properadic** site and did not cross when the site changed, so a reader checking the attribution finds no proof for this one.
-> It is the same obligation [[#The nerve at the circuit rung|the nerve warrant]] already lists as owed under a different name — the presentation of $Θ_(T^times, "Gr")$ (degree, the two subcategories, factorization, decidable morphism equality) **is** this data — and the bridge to build it from, the two fallbacks if that bridge does not go through, and the Eilenberg–Zilber question behind them are [[metatheory/roadmap#meta-spike-06|meta-spike-06]].
+> It is the same obligation [[#The nerve at the circuit rung|the nerve warrant]] already lists as owed under a different name — the presentation of $Θ_(T^times, "Gr")$ (degree, the two subcategories, factorization, decidable morphism equality) **is** this data.
+> What is owed of it is now scheduled rather than open-ended: the degeneracy half is settled by the executed [[metatheory/roadmap#meta-spike-06|meta-spike-06]], which establishes that the degree-lowering subcategory is exactly the isomorphisms on grounded shapes and thereby dissolves the Eilenberg–Zilber question that stood behind this block, and what remains is a degree function and the degree-raising subcategory's rigidity axiom, scheduled at [[metatheory/roadmap#meta-obligation-04|meta-obligation-04]] and [[metatheory/roadmap#meta-obligation-05|meta-obligation-05]].
+> **Two statements around this block state the structure as it stood before that verdict, and neither is repaired here**: the factorization arrow's up-to-isomorphism content above, and the fuel sentence's decrease along degree-lowering maps below.
+> Both re-base on the degree-raising side — fuel decreases along the restriction maps of degree-raising site morphisms — and restating them, together with the two further sentences elsewhere in this document that the verdict reaches, is owed under `gandr-2dvw`.
 > Read every use of the structure below as conditional on that instantiation.
 
 Stratum $n$ is the shapes of degree at most $n$; the universe at stratum $n$ is the codes whose terms are supported there; **fuel is the degree** — a natural number decreasing along degree-lowering maps, so induction on it terminates structurally.
@@ -1068,7 +1071,7 @@ Two earlier falsifiers are genuinely retired — real cells not simply connected
 
 > **Two more were listed with them and are not retired; the distinction is corrected here rather than left** (`gandr-njmt`, 2026-08-08).
 > **Rectification-admissibility** is moot only because the route that conditioned it lapsed, not because anything discharged it: the strictness warrant it served has no replacement and is open at [[metatheory/roadmap#Open questions|meta-question-19]], its decline recorded at [[metatheory/guards#The rectification question, reopened deliberately]] and no tombstone row written anywhere.
-> **gandr's composition not being the Segal composition** is subsumed by the presentation obligation of the graphical category, and that obligation is **owed and unwritten** — the second scheduled item of [[metatheory/roadmap#meta-spike-06]], restated at [[#The nerve at the circuit rung]].
+> **gandr's composition not being the Segal composition** is subsumed by the presentation obligation of the graphical category, and that obligation is **owed and unwritten** — carried at [[metatheory/roadmap#Standing obligations — what must be proved or built]] and restated at [[#The nerve at the circuit rung]], with its degree and degree-raising-axiom halves scheduled as named obligations there.
 > Subsumed by a live obligation is not dissolved, and neither item is tombstoned; reading either as retired is exactly the absence-that-looks-like-a-decision this corpus is being swept for.
 
 ## Roadmap

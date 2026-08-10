@@ -72,34 +72,51 @@ That negative is high-value and rests on a reading, which is why the programme b
 
 ### meta-spike-06
 
-**Does the site carry the Reedy structure the staging consumes, and is that structure attributed?** **REFRAMED 2026-08-02**, after the earlier form — _is the graphical category elegant?_ — was executed and found **ill-formed**: elegance is a property of a **strict** Reedy category, in which identity maps are the only isomorphisms, and this site's objects carry the symmetric groups among their automorphisms, so the condition is _undefined_ here rather than false.
-The disposition of the reframing is an open owner decision (`gandr-hpck`); the questions below are the ones to run.
+**Does the site carry the Reedy structure the staging consumes, and is that structure attributed?** **EXECUTED 2026-08-07** as `univalence-spike-01` (`gandr-f5mg`), and the two halves of the question come apart.
+The degeneracy half is settled **by dissolution**: on grounded shapes $Θ^- = "Iso"(Θ)$ — gandr's nonunital site has no non-invertible codegeneracies — so $Θ$ is a **direct** generalized Reedy category, and the Eilenberg–Zilber question that stood behind the staging is without content here rather than open.
+The attribution half is **not** settled and is not made worse: the derivation is gandr's own, so no held source establishes a Reedy structure on the object gandr names, and what the structure still owes is scheduled at [[#meta-obligation-03|meta-obligation-03]], [[#meta-obligation-04|meta-obligation-04]] and [[#meta-obligation-05|meta-obligation-05]].
 
-**The mechanism is not missing, and the earlier alarm about it was misplaced.** Generalized Reedy _is_ the technology for categories with nontrivial automorphisms — equivariant latching and matching, with factorization unique only up to isomorphism — and it is already what [[../metatheory#The site, the strata, and the fuel are one object|the staging]] runs on.
-`Rigid.canon` is what turns that up-to-iso factorization into an actual function, which is the third of its four appearances.
-So the residual risk was never _is the site Reedy_ but **does the canonicalization stay computable**, and that failure mode is already carried as a falsifier: the generalized-Reedy factorization not being computable even with canonicalization, at which point strata and fuel decouple ([[../metatheory#What would falsify this]]).
+**Every locator in this entry and in those three obligations is against the held arXiv versions** — Berger–Moerdijk v1, the graphical-maps factorization paper v2, the circuit-algebra nerve preprint v4, the cubical-sites paper v1 — and Berger–Moerdijk's **published** numbering runs one higher than the preprint's for the Eilenberg–Zilber definition, so a locator transcribed from a citing work can be off by one.
 
-**What is genuinely owed is the instantiation, and the warrant for it lapsed rather than never existing.** The nerve route's original warrant was at the **properad** rung — a fully faithful nerve with strict Segal characterization, finite hom-sets from the finite-edge-set determination, and decidable morphism equality — and the generalized-Reedy structure came with it.
+**The derivation, with the one step that is graded rather than verified.** A codegeneracy is substitution of the stick at a bivalent vertex [@hackney-robertson-yau-2018-factorizations, lem 4.1].
+Raynor's admissible graphs have no stick components, and the nonunital monad $T^times$ colimits over the **groupoid** of admissible graphs [@raynor-2026-nerve, def 5.6, eq. 5.9]; vertex deletion — deleting exactly the bivalent and the isolated vertices — is what the **unit** monad contributes and is not present in the nonunital monad [ibid., rem. 4.46, sec. 6.4, lem 6.22].
+The published counterexample codegeneracy is therefore **not a morphism of gandr's site at all** [@hackney-robertson-yau-2018-factorizations, fig. 5].
+**One step is graded rather than verified**: the nonunital hom-set formula, obtained by dropping the vertex-deletion middle factor from the unital factorization, is the mechanical substitution the source itself calls straightforward and declines to write [@raynor-2026-nerve, rem. 5.18, sec. 8.3].
+Every other step is verified at source and re-checked by a second reader.
+
+**Units are not wheels, which is why the published negative is inapplicable here rather than merely untransferred.** The wheel is **made** by contraction, which sits inside $T^times$ and is degree-raising; the map that would **collapse** a wheel is vertex deletion, which is the unit monad's content — so the wheeled Eilenberg–Zilber negative needs the unit, not the contraction.
+The two formalisms even agree on the absorbing vertex-free object, Raynor's stick and the factorization paper's nodeless loop, each recorded with the same remark that nothing maps out of it.
+
+**The exception, and why it costs nothing.** One degeneracy family survives — the substitution deleting an isolated **nullary** vertex — and `Grounded`, gandr's own hypothesis that every vertex is incident to some edge (`Gandr.Shape.Decidable`, with `point-ungrounded` witnessing that the hypothesis is necessary rather than decorative), excludes exactly those shapes.
+`Grounded` is taken for the wholly independent reason that edge-extensionality fails without it, so **two commitments taken for unrelated reasons land on the same restriction** and the exclusion is not a convenience.
+It does make `Grounded` load-bearing for the degeneracy verdict and not only for edge-extensionality, and the residual that follows is [[#Open questions|meta-question-26]].
+
+**Which Eilenberg–Zilber notion is which, because several inequivalent ones are in play and this corpus's own rule is that every such claim names its sense.** In **Campion's** sense — a generalized Reedy category in which every pair of degree-lowering morphisms with a common domain has an absolute pushout — the site is one **vacuously**, because $Θ^-$ is the isomorphisms [@campion-2023-cubical-sites, def 1.1, def 3.1].
+That is also what makes the Eilenberg–Zilber lemma hold, rather than a separate fact about the site: over a generalized Reedy category the lemma holds if and only if that condition does [ibid., prop 3.6].
+In **Berger–Moerdijk's** sense the site is **not** one, and this is a standing negative rather than an open question — theirs is the strictly more restrictive notion, and an Eilenberg–Zilber category is a Berger–Moerdijk one exactly when every degree-raising morphism is a monomorphism [ibid., def 4.1, prop 4.2].
+Outer contracting coface maps are not monomorphisms [@hackney-robertson-yau-2018-factorizations], so the site lands on the one class that paper records as Eilenberg–Zilber but not Berger–Moerdijk: a direct category in which not every morphism is monic, of which it knows no other example [@campion-2023-cubical-sites, ex 4.3].
+The outer-coface fact is verified at source for the **wheeled** graphical category; that gandr's own site inherits it through the same maps is the spike's inference and is not separately checked.
+
+**What the dissolution buys, and what it does not.** Latching objects collapse to a colimit over the empty category, every presheaf cell is nondegenerate, and the Eilenberg–Zilber lemma holds vacuously, so the degeneracy-forking and strong-skeletality machinery the literature offers buys nothing here.
+The condition the corpus should expect to pay is named and small — **monic with trivial isotropy on every element, per object**, one finitely-checkable condition per shape [@berger-moerdijk-2011-reedy, prop 7.2] — but that whole section is stated **for** a Berger–Moerdijk Eilenberg–Zilber category, which this site is not and cannot become, so the condition is a target rather than an available theorem and [[#meta-obligation-03|meta-obligation-03]] is what would reach it.
+And the fuel sentence re-bases in one line: fuel decreases along the **restriction** maps of degree-raising site morphisms — the face relation, $Θ^+$ read contravariantly — never along $Θ^-$.
+
+**The equivariance price is named, and it is measured rather than anticipated.** Symmetric-group automorphisms are demonstrably **not** per se an obstruction to univalence — a univalent model exists over presheaves on the cartesian cube category, which is generalized Reedy with exactly those automorphisms, at the price of an **equivariance condition on fibrations** [@awodey-cavallo-coquand-riehl-sattler-2026-equivariant].
+Here the homotopy content relocates onto the fibration and equivariance side entirely, and the price is the single per-shape condition above.
+
+**The transfer this bears on is the auxiliary route, and what the verdict changes is its target.** Presheaves on a direct site with automorphisms are inverse diagrams with automorphisms, so what the ambient model needs is an **equivariant** extension of the inverse-diagram theorem [@shulman-2015-inverse-diagrams] — a far smaller target than a generalized-Reedy transfer theorem, and one nothing held has written.
+That route makes the ambient diagram model behave; it is **not** the route by which gandr's own code universe is univalent ([[../metatheory#Univalence beyond the code universe — transfer, structures, repair|the third item]]).
+
+**The warrant lapsed rather than never existing, and that finding stands.** The nerve route's original warrant was at the **properad** rung — a fully faithful nerve with strict Segal characterization, finite hom-sets from the finite-edge-set determination, and decidable morphism equality — and the generalized-Reedy structure came with it.
 Those attributions did not survive the move to the circuit-algebra rung, and what stands in their place is a citation of the _definition_ [@berger-moerdijk-2011-reedy], which is why a reader checking the claim finds no proof for this site.
 **This is the second recorded instance of a warrant lapsing silently at a rung change**; the first is [[#Open questions|meta-question-19]], and the pattern — a citation correct at the rung it was taken at, surviving verbatim into a document written at a higher rung — is worth a sweep of its own.
+The rider the finding needs, so that it is not read as stronger than it is: the factorization paper **does** establish a dualizable generalized Reedy structure, with a concrete degree function, on the modified **wheeled** graphical category [@hackney-robertson-yau-2018-factorizations, thm 1.2, def 3.2] — unital and wheeled-properadic, so not gandr's site, but the template the two structural obligations below take.
 
-Three questions, in order:
+**The rigidification branch is dissolved with the rest.** `Rigid`'s skeletality was wanted to buy equivalence to a **strict** Reedy category, and strictness is no longer the fork: this site is direct, not strict, and the crossed-group question that branch opened has no consumer left.
+What the verdict narrows without settling is the falsifier that the generalized-Reedy factorization might not be computable even with canonicalization — a factorization through $Θ^- = "Iso"$ is a factorization through an isomorphism, so its degeneracy half is empty and what could still fail is canonicalization itself.
+Restating that falsifier, and the three adjacent track-document sentences the verdict reaches, is owed under `gandr-2dvw` and is deliberately not done here ([[../metatheory#What would falsify this]]).
 
-1. **Follow the positive result in the factorization paper.** [@hackney-robertson-yau-2018-factorizations, prop 3.7] gives the _wheeled_ graphical category a generalized Reedy structure, factorization unique up to isomorphism, after the modification its own second section introduces — and it is the same paper whose theorem 4.11 supplies the Eilenberg–Zilber _negative_ result, so both faces come from one read.
-   What is owed is a **bridge from that category to the nonunital circuit-algebra site**, not a theory from scratch; that bridge is the presentation obligation below, which now has a target.
-2. **Decide whether the general case is needed.** If the bridge does not go through for this site specifically, the question becomes whether a generalized-Reedy structure can be established for the site directly, or whether the staging should be re-based on a weaker structure that supplies degree, the two subcategories, and equivariant staging without the full package.
-   State which of the three the answer is; do not silently weaken.
-3. **Only then, the Eilenberg–Zilber question**, which is the well-formed replacement for elegance and is what the univalence _transfer_ of [[../metatheory#Univalence beyond the code universe — transfer, structures, repair|the third item]] wanted.
-   Note that the transfer is the **auxiliary** route: it makes the ambient diagram model behave, and is not the route by which gandr's own code universe is univalent.
-
-Two pieces of evidence to carry into all three.
-The published Eilenberg–Zilber negative at the wheeled rung runs through the **nodeless loop**, which neither the circuit-algebra formalism nor gandr's carrier can express, so it does not transfer on the nose; the sharp test is that paper's second, loop-free counterexample class.
-And symmetric-group automorphisms are demonstrably **not** per se an obstruction to univalence — a univalent model exists over presheaves on the cartesian cube category, which is generalized Reedy with exactly those automorphisms, at the price of an **equivariance condition on fibrations** [@awodey-cavallo-coquand-riehl-sattler-2026-equivariant].
-That price is the shape of price to expect here.
-
-**The `Rigid` branch is restated rather than retired.** `Rigid` supplies skeletality; equivalence to a _strict_ Reedy category needs the absence of nontrivial automorphisms, which is the other half.
-The device that supplies the missing half restricts **morphisms**: the total category of a crossed group over a strict base, for which the dendroidal category is a worked published instance, proved by the restriction functor's monadicity creating the absolute pushouts the third axiom needs.
-So the live question is whether this site is such a total category over a strict Eilenberg–Zilber planar base, with the ordered `Shape` carrier as the candidate — and even a yes does not descend the transfer for free, because presheaves on the total category are _equivariant_ presheaves on the base.
+**This spike is the implementation-first posture's own worked instance**, which is why the three obligations it leaves are posed as machinery to build before literature to map: it succeeded by deriving the degeneracy structure from the construction directly, and the apparatus a literature-first frame had been circling turned out vacuous.
 
 ### meta-spike-07
 
@@ -309,6 +326,51 @@ Nor does it license reading the cell-layer availability as the general case, whi
 **Provenance.** Scheduled by `gandr-hpck-answer-17` on the metatheory decision queue, which pre-authorized this disposition on a non-planar result from the carrier planarity test and ran the test first as the proving spike.
 The reanalysis it rests on identified the candidate factorization as the outermost-permutation normal form already selected for canonicalization, and found it insufficient for the interior — the test is what turned "insufficient as argued" into "refuted as measured".
 
+### meta-obligation-03
+
+**Which shapes satisfy the cofibration condition the direct-site verdict leaves, and does the corpus decide it?** With $Θ^- = "Iso"$ the degeneracy bookkeeping is gone and one condition remains — **monic with trivial isotropy on every element, per object** — which is one finitely-checkable condition per shape.
+It is what would license boundary inclusions as generating cofibrations for gandr's site, and it is the whole of the equivariance price the staging pays, so it is the Reedy route's critical path rather than one item on it.
+
+**The obligation is implementation-first, and the order is a ruling rather than a preference.** The condition is implemented as a **per-shape decision procedure over gandr's carrier**, and the expected-holds and expected-fails are stated **before** the run: boundary inclusions are the first expected-hold, since automorphisms have trivial isotropy, and the `Grounded` exclusion together with the surviving nullary-vertex family are the first expected-fails.
+Only then is the measured behavior mapped onto the literature.
+
+**The literature re-derivation is step three, not the entry point.** Berger–Moerdijk's characterization is stated **for** an Eilenberg–Zilber category in their sense, which this site is not and cannot become ([[#meta-spike-06|meta-spike-06]] records why), and its degeneracy half goes vacuous over a direct generalized Reedy category [@berger-moerdijk-2011-reedy, prop 7.2, sec. 7.1] — so what is owed is the re-derivation without that hypothesis, run over measured behavior rather than in advance of it.
+
+**What would discharge it.** The decision procedure over the carrier, plus the re-derived characterization, plus agreement between them on gandr's own shapes.
+A refutation is a disagreeing shape in either direction — one the procedure accepts and the re-derivation rejects, or the converse — and a partial result that supplies the characterization without deciding membership leaves the consumption unusable, exactly as [[#meta-obligation-02|meta-obligation-02]] records for its own case.
+
+**Provenance.** Established as the first open item of `univalence-spike-01` and carried as executable work on `gandr-7sji`; re-filed here as a standing obligation by `gandr-hpck-answer-14`, implementation-first per the same queue's `gandr-hpck-answer-21`.
+
+### meta-obligation-04
+
+**What is the degree function for gandr's site, and what are its exceptional objects?** Degree is what the strata and the fuel are — stratum $n$ is the shapes of degree at most $n$, and fuel is the degree — so nothing that consumes the staging is warranted until this function exists.
+Nothing in the corpus computes it, and the wheeled template's exceptional-case analysis does not transfer: gandr's exceptional objects are the **edge** and the **point** (`Gandr.Shape.Graph`), with the nodeless loop inexpressible, where the template's are the stick, the isolated vertex, and that loop [@hackney-robertson-yau-2018-factorizations, def 3.2].
+
+**Implementation-first shape.** The degree function is implemented over the site's shapes and run against the carrier, with the exceptional cases enumerated from what the carrier admits rather than transcribed from the template, and with the expected-holds and expected-fails stated before the run.
+It carries the one-line re-basing the direct-site verdict forces and [[#meta-spike-06|meta-spike-06]] records: fuel decreases along the **restriction** maps of degree-raising site morphisms, never along $Θ^-$.
+
+**What would discharge it.** A total degree function on the carrier's shapes, its exceptional cases exhibited rather than assumed, the two subcategories it induces identified, and the fuel claim proved against it.
+A refutation is a non-invertible morphism the function grades as degree-lowering — which would contradict the direct-site verdict — or an exceptional object the enumeration misses.
+
+**Provenance.** Established as the third open item of `univalence-spike-01` and carried as executable work on `gandr-7sji`; re-filed here as a standing obligation by `gandr-hpck-answer-14`, implementation-first per the same queue's `gandr-hpck-answer-21`.
+
+### meta-obligation-05
+
+**Does the degree-raising subcategory satisfy the rigidity axiom a generalized Reedy structure asks of it?** The axiom is the one the generalized-Reedy definition labels (iv′): if $f θ = f$ with $f$ in $Θ^+$, then $θ$ is an identity.
+The label is carried because both the definition source and the wheeled template use it; it is read from the spike's record and not re-checked at source here.
+It is what makes the factorization's up-to-isomorphism uniqueness usable rather than merely stated, and it is the last of the three structural items this site owes.
+
+**Implementation-first shape.** The check **runs as a test** over the degree function of [[#meta-obligation-04|meta-obligation-04]] and the carrier's own morphism representation, with the expected-holds and expected-fails stated before the run.
+It is deliberately not posed as a proof obligation discharged ahead of an implementation, because a failing instance is what an implementation surfaces and a proof attempt hides.
+
+**The template's own first step is what gandr owes, and it is the real content.** The wheeled proof runs through an edge-action rigidity lemma — isomorphisms are determined by their action on edges — and gandr's analogue of that lemma has to exist before the axiom can be attempted [@hackney-robertson-yau-2018-factorizations, prop 3.12, lem 3.9, lem 3.11].
+
+**What would discharge it.** That lemma for gandr's shapes, and the axiom proved over it.
+A refutation is a non-identity $θ$ fixing some $f$ in $Θ^+$, which does not sink the staging but does force a choice between establishing the structure for this site by another route and re-basing the staging on a weaker one that supplies degree, the two subcategories, and equivariant staging without the full package.
+Whichever is taken must be stated; weakening silently is the failure this obligation exists to prevent.
+
+**Provenance.** Established as the second open item of `univalence-spike-01` and carried as executable work on `gandr-7sji`; re-filed here as a standing obligation by `gandr-hpck-answer-14`, implementation-first per the same queue's `gandr-hpck-answer-21`.
+
 ## The wager's falsifiers
 
 The coherence-debt arity law (debt arity = threaded positions + the head met; blocks contribute nothing) is the architecture's central bet.
@@ -373,12 +435,19 @@ And **the exact-reals / synthetic-topology track** — a lateral, firewalled lin
     **The third face has no bridge to either**: the arity-approximation source contains no occurrence of _Reedy_ or _elegant_, and the source the corpus cites for the elegance definition contains none of _partition_, _Morita_ or _connectivity_ ([[../metatheory#Stratified univalence]]).
     **And the three are not the same kind of condition** — an absolute-pushout condition on the degeneracy subcategory, a high-connectivity condition on slices of the active subcategory, and a simple-connectivity condition on a complex built from a presentation — which is the distinction [[guards#Name collisions — read the definition, not the section title|the guards ledger]] keeps under one phrase, so an affirmative verdict would have to retire that guard.
     Retired from [[#meta-spike-05]], which claimed it as a consequence; the quoted phrases and the two string searches are recorded without locators against the held artifacts, so they are evidence at report grade.
+26. **meta-question-26** — **Does the doctrine admit nullary scalar generators, and is the surviving nullary-vertex substitution genuinely non-invertible?** Two halves of one residual, both left open by the direct-site verdict of [[#meta-spike-06|meta-spike-06]], and filed here rather than inside that entry because the first half is a doctrine ruling other documents already reach for.
+    **The doctrine half is a live tension in the carrier, not a hypothetical.** `Gandr.Shape.Graph` builds `point : Shape ⊤ [] []` — one vertex, no ports on either side — and its own comment calls it the arity-zero corolla, a legitimate cell shape that is an isolated vertex at the same time; `Gandr.Shape.Decidable` proves `point-ungrounded`, so `Grounded` excludes exactly it.
+    The surface-language track says the same shape is ordinary, and takes gandr's signatures to be **not** constant-free for precisely that reason ([[../surface-language/circuit-cells]]).
+    What makes the tension load-bearing is that the same hypothesis is what makes $Θ^- = "Iso"$ true: the doctrine admits a generator whose shape the site's degeneracy verdict excludes, so a ruling either narrows the doctrine or scopes the verdict, and neither is free.
+    **The substitution half is cheap and nothing waits on it**: whether the substitution deleting an isolated nullary vertex is genuinely non-invertible decides whether the surviving family is an exception at all, and on grounded shapes the answer changes nothing downstream.
+    Answering the doctrine half is a spec ruling and belongs to the owner; the executable half is carried on `gandr-7sji`.
 
 ## Reading queue, by leverage
 
 **Next.** The parametricity-cluster entry point [@vanmuylder-2026-thesis]; the pretype-theory report and slides [@nuyts-2026-natpt]; transpension, sections 1–2 [@nuyts-devriese-2024-transpension]; the discrete-Conduché paper, sections 1–2 (for [[#meta-spike-02|meta-spike-02]]) [@guetta-2020-conduche]; the polygraph shape category, introduction and section 5 [@hadzihasanovic-2020-shape]; the (∞,∞)-thesis ch. 1 part 2 (lax cones, for [[#meta-spike-08|meta-spike-08]]) and ch. 2 (the decomposition-space equivalence) [@mikhail-2025-thesis].
 
-**The univalence-transfer chain.** The Univalence Principle, graphs-and-nets chapter first [@ahrens-north-shulman-tsementzis-2021-univalence-principle]; inverse diagrams, sections 11–12 (for [[#meta-spike-06|meta-spike-06]]) [@shulman-2015-inverse-diagrams]; the synthetic line as vocabulary only [@riehl-shulman-2017-synthetic].
+**The univalence-transfer chain.** The Univalence Principle, graphs-and-nets chapter first [@ahrens-north-shulman-tsementzis-2021-univalence-principle]; inverse diagrams, sections 11–12 [@shulman-2015-inverse-diagrams]; the synthetic line as vocabulary only [@riehl-shulman-2017-synthetic].
+Read the inverse-diagram sections for the target the direct-site verdict of [[#meta-spike-06|meta-spike-06]] sharpens them to — an **equivariant** extension of that theorem — rather than for the theorem as stated.
 
 **The hypergraph-rewriting sweep**, opened by [[#meta-spike-16|meta-spike-16]], **executed 2026-08-01 for the part that decided the spike** and reduced here to what remains.
 Consumed at theorem grade, with what was taken recorded at the spikes above and in [[../implementation/circuit-terms]]: parts III and II of the series [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-iii] [@bonchi-gadducci-kissinger-sobocinski-zanasi-2022-string-diagram-rewriting-ii], and the two implementations read as artifacts, Cartographer and Chyp [@sobocinski-wilson-zanasi-2019-cartographer] [@chyp].
