@@ -13,21 +13,21 @@ So every reuse is a check, and the check is cheap enough that reuse still pays.
 
 The pipeline is the most-built unspecified subsystem in the tree, and the partition is not what a reader would guess from the design alone.
 
-| component                           | status                                                                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| cold reparse                        | **built** — `gandr-surface-parser`; there is no incremental parser and that is a measured decision                  |
-| structural diff                     | **built** — `gandr-surface-syntax`'s `diff` module, over merkle-identified arena nodes                              |
-| changed-region seam                 | **built** — `gandr-core-checker`'s `region` module, deliberately parser-agnostic                                    |
-| dependency footprint                | **built at item granularity** — `footprint` modules in `gandr-core-checker` and `gandr-surface-engine`              |
-| validated checkpoints and resume    | **built at item granularity** — the `checkpoint` modules of the same two crates                                     |
-| the incremental-equals-scratch gate | **built** — `tests/incremental.rs` in both crates, as a differential against a from-scratch re-type                 |
-| order maintenance                   | **built** — `gandr-theory-orders`, and consumed by the engine's resume to keep item identity across an edit         |
-| localized edit actions              | **built** — `gandr-surface-engine`'s `edit` module, twelve actions over the lowered core                            |
-| hole-tolerant lowering and goals    | **built** — the engine's `lower` and `goals` modules, with holes surfaced through the report envelope               |
-| solver-side footprints              | **not built** — no constraint solver exists to have a trail; see [[typing-machine#Serialization and checkpointing]] |
-| the derivation tree and its merger  | **not built** — the wire node exists in `gandr-surface-render-remote`, nothing constructs a tree                    |
-| per-node marks                      | **not built** — marks are carried in the report envelope, not attached to core nodes                                |
-| debouncing, render budget, eviction | **not built** — no editor client exists to debounce for                                                             |
+| component                           | status                                                                                                                                    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| cold reparse                        | **built** — `gandr-surface-parser`; there is no incremental parser and that is a measured decision                                        |
+| structural diff                     | **built** — `gandr-surface-syntax`'s `diff` module, over merkle-identified arena nodes                                                    |
+| changed-region seam                 | **built** — `gandr-core-incrementality`'s `region` module, deliberately parser-agnostic                                                   |
+| dependency footprint                | **built at item granularity** — that crate's `footprint` module                                                                           |
+| validated checkpoints and resume    | **built at item granularity** — that crate's `checkpoint` module                                                                          |
+| the incremental-equals-scratch gate | **built** — `tests/incremental.rs`, a differential against a from-scratch re-type, run both parser-free and through the surface front end |
+| order maintenance                   | **built** — `gandr-theory-orders`, and consumed by the engine's resume to keep item identity across an edit                               |
+| localized edit actions              | **built** — `gandr-surface-engine`'s `edit` module, twelve actions over the lowered core                                                  |
+| hole-tolerant lowering and goals    | **built** — the engine's `lower` and `goals` modules, with holes surfaced through the report envelope                                     |
+| solver-side footprints              | **not built** — no constraint solver exists to have a trail; see [[typing-machine#Serialization and checkpointing]]                       |
+| the derivation tree and its merger  | **not built** — the wire node exists in `gandr-surface-render-remote`, nothing constructs a tree                                          |
+| per-node marks                      | **not built** — marks are carried in the report envelope, not attached to core nodes                                                      |
+| debouncing, render budget, eviction | **not built** — no editor client exists to debounce for                                                                                   |
 
 **The built granularity is the top-level item, and the design's is the syntax node.** That is the single largest divergence in this document and it is stated in full at [[#Granularity: the item and the node]].
 
@@ -185,9 +185,9 @@ The payoff is the same one the design argues for — an edit that changes a defi
 ### The changed-region seam
 
 The detector and the checkpoint engine read **lowered items only** — an optional name, an optional ascription, and a lowered core term — and never a concrete front end.
-`gandr-core-checker`'s `region` module names that boundary, and the consequence is that the unchanged-region test is parser-agnostic by construction: it is structural equality over data that carries no surface syntax, no byte ranges, and no parser identity.
+`gandr-core-incrementality`'s `region` module names that boundary, and the consequence is that the unchanged-region test is parser-agnostic by construction: it is structural equality over data that carries no surface syntax, no byte ranges, and no parser identity.
 
-The engine supplies the real producer; the checker crate ships a test double so the reuse machinery is exercised without one.
+`gandr-surface-engine` supplies the real producer, in its `item_source` module; the incrementality crate ships a test double so the reuse machinery is exercised without one.
 
 ## The edit loop
 
@@ -227,7 +227,7 @@ The pathological case — an edit that re-solves a variable the whole file menti
 Reuse is a claim about equality with a computation that was not performed, so it gets a differential rather than a test suite.
 
 **The theorem is that for every edit, a validated resume yields exactly the per-item typings a from-scratch re-type of the edited program yields.** Adoption skips work; the gate proves the skips never change the answer.
-It is realized in both crates as `tests/incremental.rs`, over four edit classes: adoption (a body-only edit adopting a type-stable dependent, an insertion adopting its untouched neighbours, a no-op adopting everything), invalidation (a type-changing edit re-typing every downstream reader, and a downstream type error surfacing exactly as it does from scratch), structural item-list edits, and property-generated edits.
+It is realized twice as `tests/incremental.rs` — parser-free in `gandr-core-incrementality`, and over real source through the item seam in `gandr-surface-engine` — over four edit classes: adoption (a body-only edit adopting a type-stable dependent, an insertion adopting its untouched neighbours, a no-op adopting everything), invalidation (a type-changing edit re-typing every downstream reader, and a downstream type error surfacing exactly as it does from scratch), structural item-list edits, and property-generated edits.
 
 This is the standing gate the incrementality lane carries ([[roadmap#Phase residuals worth pinning]]) and the second half of the ninth stage's acceptance criterion ([[feature-staging#stage-09]]).
 
@@ -471,7 +471,7 @@ Neither is yet the merger's three-way rule, and the merger is where a mismatch b
 Written against four sources, named because a change with no declared source set cannot be fidelity-reviewed.
 
 1. The **pre-reboot incremental-pipeline design record** in full — its dataflow, the parser integration, the diff, the checkpoint record and its three validity conditions, the strategy, the edit algorithm, the derivation merger, the hole rules with their error and degradation handling, the performance table with its debounce and memory policies, the resumable-state claim, the read-evaluate loop, and every one of its literature dispositions.
-2. **The tree**, for every as-built claim: the `diff` module of `gandr-surface-syntax`; the `checkpoint`, `footprint`, `edit`, `lower`, `goals`, and `boundary` modules of `gandr-surface-engine`; the `checkpoint`, `footprint`, `region`, and `checker` modules of `gandr-core-checker`; `gandr-theory-orders` entire; and the `tests/incremental.rs` differential in both consuming crates.
+2. **The tree**, for every as-built claim: the `diff` module of `gandr-surface-syntax`; the `edit`, `lower`, `goals`, `item_source`, and `boundary` modules of `gandr-surface-engine`; the `checkpoint`, `footprint`, and `region` modules of `gandr-core-incrementality`; the `checker` module of `gandr-core-checker`; `gandr-theory-orders` entire; and the `tests/incremental.rs` differential in both crates that carry one.
 3. **[[typing-machine]]**, of which the checkpoint record and the state this loop resumes are the machine's own; every condition stated in both places is stated once here and linked.
 4. The **corpus documents the coverage sweep credited with this record** — the implementation track's surface-pipeline account and the performance architecture — re-measured against it, with the result that neither carries it and the sections that do are linked from the claims they genuinely carry.
 

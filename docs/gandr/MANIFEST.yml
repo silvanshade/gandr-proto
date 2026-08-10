@@ -99,7 +99,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/incremental-pipeline.md
     role: subdocument
-    b3: 958eb419e8e062681b2643fca6361098bee826becf83f4e9f4c65c70312253ea
+    b3: b3f06c6cffc2e4715fedd700158708372182af0f97b0a7a48d421c73466dd94d
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
@@ -214,7 +214,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/solver-interface.md
     role: subdocument
-    b3: 77ac5d3daaa2bfd32cb2a5dab6d31cfba2bfe7353cd9eb4923c9afd30a923ef0
+    b3: 01f185a1d651008083734eef2a8571301cb0e7b55c5e2be4232e4c9c518225c4
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/elaboration-schedulers.md
@@ -269,7 +269,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/proposed/theories.md
     role: subdocument
-    b3: b653cb9504d8d3657dae9d492bee4c9339c6957b69f21133e5a53c25b18bf1a6
+    b3: 507ac50c4646bef8f6704761b58d362c6fd9a08e5548708398b96cb3426c4ed5
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md

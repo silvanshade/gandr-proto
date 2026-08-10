@@ -2,6 +2,16 @@
 
 The format is hand-maintained and grows only with real changes; it is not auto-generated.
 
+## 2026-08-09 — Hand the checkpoint engine to `gandr-core-incrementality`
+
+* `current`: Removed the `footprint` and `checkpoint` modules.
+  This crate carried a second full copy of the item-granular checkpoint engine, near-identical to `gandr-core-checker`'s by common descent rather than by construction; both copies are now one crate, `gandr-core-incrementality`, which owns the parser-agnostic item seam with them.
+* `current`: Retired `lower::LoweredItem` in favour of `gandr_core_incrementality::region::Item`, which it was field-for-field identical to.
+  `Lowered::items` carries the seam's item type directly, so `item_source` crosses a lowering without projecting anything, and the `gandr-theory-orders` edge left with the engine that used it.
+* `current`: The from-scratch-versus-resume differential stays here in `tests/incremental.rs`, resuming through the seam against `prelude_ctx` — the extracted crate's own gate runs parser-free against a test double, so the two gates cover the engine and the front end separately.
+  The test that compared the two engines against each other retires with the duplication it guarded.
+* `current`: Removed four `boundary` wrappers that named the extracted engine's vocabulary and had no use site: `AdoptedItemCount`, `ItemAdoption`, `SourceOrder`, and `NameOccurrenceCount`.
+
 ## 2026-08-08 — Give the source driver a path-shaped face
 
 * `current`: `run::run_source_file` reads a source file and runs it exactly as `run::run_source` runs source text, reporting the path in `run::RunFileError::Read` so a diagnostic can name the file even though the failure surfaced inside the read.

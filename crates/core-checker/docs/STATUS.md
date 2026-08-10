@@ -22,9 +22,8 @@ Implemented:
   Out-of-S1 nodes are rejected structurally with a precise `BridgeRejection`; `Annot`/`dup`/`drop` are erased (C4); names resolve to de Bruijn indices or cross-declaration `Value::Constant` admission indices; a computation definition enters the single-polarity kernel as a thunk (`U C`, B2.1 decision 3).
   This crate now depends on `gandr-kernel-core` — the permitted direction (the section-2 TCB wall forbids the reverse).
   The kernel re-derives every obligation (K2); the bridge is untrusted.
-* The **A2.3 incremental checkpoint/validated-resume engine** (`checkpoint`) is implemented.
-  `checkpoint_program` records per-item terms, dependency footprints, and typings; `resume` internally aligns edited items, invalidates changed-binding dependents, adopts only structurally identical and footprint-clean checkpoints, and degrades to full re-typing on an order anomaly.
-  `tests/incremental.rs` differentially checks adoption, invalidation, insertion, deletion, rename, and generated edits against from-scratch typing.
+* The **A2.3 incremental checkpoint/validated-resume engine** is built, and it is not built here: it lives in `gandr-core-incrementality`, which depends on this crate and drives `machine` over this crate's `syntax`, `types`, and `ctx` vocabulary.
+  This crate carried it — as `checkpoint`, `footprint`, and `region` — until the extraction of 2026-08-09, which merged it with the near-identical second copy that had grown in `gandr-surface-engine`.
 
 Tests are green (the conformance and marking suites run under `mise run cargo:nextest`).
 
@@ -34,7 +33,8 @@ L1 realization and promotion belong to `gandr-sequent`; they are not missing fro
 
 ## Module hierarchy, audited 2026-08-08
 
-The crate declares twenty-four unconditional public modules at the root, one feature-gated public module (`strategies`), and one test-only private module (`conformance`).
+The crate declares twenty unconditional public modules at the root, one feature-gated public module (`strategies`), and one test-only private module (`conformance`).
+The audit was taken on 2026-08-08, when the count was twenty-four; the three incremental modules of `core-checker-layout-01` have since left the crate.
 Exactly one of them has a child: `effect::host`, moved there on 2026-07-31 because `EXEC` and `FS_READ` carry no meaning without an informative module path.
 
 The audit below is layout only.
@@ -45,17 +45,13 @@ None of the findings below are executed: every one of them changes a path or a n
 
 ### core-checker-layout-01
 
-**The A2.3 incremental trio is flat, and `region`'s item names are the evidence it should not be.**
+**The A2.3 incremental trio is flat, and `region`'s item names are the evidence it should not be.** _Dissolved rather than executed, 2026-08-09._
 
-`checkpoint`, `footprint`, and `region` have **zero consumers outside the crate** and thirteen in-crate path references between them (four, five, and four).
-`lib.rs` already introduces the three as one unit — "the A2.3 checkpoint base" — so the grouping is documented but unbuilt.
+The finding asked whether `checkpoint`, `footprint`, and `region` should sit under a shared parent module, and priced the move on their having zero consumers outside this crate.
+The owner's ruling on the duplicate-engine question took a different cut: the three modules left the crate entirely for `gandr-core-incrementality`, so there is no in-crate move left to make and the crate-root flatness the finding objected to is no longer this crate's to answer for.
+The naming half of the argument travelled with them — `region::Item` and `region::Program` now read against a crate whose name supplies the missing word.
 
-The item names carry the argument.
-`region::Item` and `region::Program` are the crate's least informative public names, and `region` names the module's _purpose_ (changed-region detection) rather than what those two types are; `incremental::region::Item` says what `region::Item` does not.
-Both are entirely in-crate: `Item` has ten dependents across `checkpoint.rs`, `region.rs`, and `tests/incremental.rs`, and `Program` has eleven across the same three files.
-
-Open: whether `intern` and `mark` join the parent.
-Both serve the incremental layer, but `mark` has twelve use sites in two other crates, so it does not move at the same price.
+The residual the finding left open — whether `intern` and `mark` belong with the incremental layer — did not travel, and is now a cross-crate question rather than a module-nesting one: `mark` has twelve use sites in two other crates, so it does not move at the price this finding assumed.
 
 ### core-checker-layout-02
 

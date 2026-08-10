@@ -38,12 +38,12 @@ Referenced by guidance but not yet landed: `docs/adr/`, `docs/KNOWLEDGE.md` and 
 
 Crate names are domain-prefixed; the prefix is the domain.
 Roles are one-line condensations of each crate's `Cargo.toml` description, which stays the per-crate authority.
-Counting convention: a member is an active entry in the root `Cargo.toml` `workspace.members` list — 25 members over 26 `crates/` directories, the 26th being the parked doc-class tool `workflow-docs` (commented out of the workspace), which no domain row or tier counts.
+Counting convention: a member is an active entry in the root `Cargo.toml` `workspace.members` list — 26 members over 27 `crates/` directories, the 27th being the parked doc-class tool `workflow-docs` (commented out of the workspace), which no domain row or tier counts.
 
 | Domain       | Crates                                                                                                                                                          | Role                                                                                                                                                                               |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `kernel-*`   | kernel-strata, kernel-core                                                                                                                                      | the certified trusted core: universe-level oracle; S1 term/type language and env                                                                                                   |
-| `core-*`     | core-checker, core-sequent                                                                                                                                      | the checked language: CBPV typing machine; System-L IL, focusing, the L machine                                                                                                    |
+| `core-*`     | core-checker, core-sequent, core-incrementality                                                                                                                 | the checked language: CBPV typing machine; System-L IL, focusing, the L machine; item-granular incremental re-typing (seam, footprints, validated resume)                          |
 | `theory-*`   | theory-nominal-automata, theory-orders, theory-graphs, theory-recursion, theory-levitation, theory-computads, theory-circuit-algebras, theory-virtual-doctrines | semantic machinery: atoms, orders, graphs, recursion; descriptions; completion; circuit-algebra interface bookkeeping, embedding matching, and diagram normal form; VDC reflection |
 | `storage-*`  | storage-chunker, storage-prolly-trees, storage-artifact                                                                                                         | untrusted content-addressed persistence: chunking, Merkle search tree, CAS export                                                                                                  |
 | `runtime-*`  | runtime-host                                                                                                                                                    | headless host-effect runtime (Exec/Fs/Proc/Env) driven by the L machine                                                                                                            |
@@ -61,18 +61,19 @@ tier 0   kernel-strata · storage-chunker · surface-syntax · surface-render-re
 tier 1   kernel-core → kernel-strata
          storage-prolly-trees → storage-chunker
          surface-grammar → surface-render-remote, surface-syntax, theory-graphs
-tier 2   core-checker → kernel-core, theory-nominal-automata, theory-orders
+tier 2   core-checker → kernel-core, theory-nominal-automata
          storage-artifact → kernel-core, storage-chunker, storage-prolly-trees
          surface-parser → surface-grammar, surface-syntax
-tier 3   core-sequent → core-checker, kernel-core, kernel-strata, storage-artifact, storage-prolly-trees
+tier 3   core-incrementality → core-checker, theory-orders
+         core-sequent → core-checker, kernel-core, kernel-strata, storage-artifact, storage-prolly-trees
          theory-levitation → core-checker
 tier 4   theory-computads → core-sequent, theory-graphs, theory-levitation
          runtime-host → core-checker, core-sequent
 tier 5   theory-circuit-algebras → theory-computads
          theory-virtual-doctrines → core-sequent, theory-computads, theory-levitation
-         surface-engine → core-checker, core-sequent, runtime-host, surface-grammar,
-         surface-parser, surface-syntax, theory-levitation, theory-nominal-automata,
-         theory-orders, theory-recursion
+         surface-engine → core-checker, core-incrementality, core-sequent, runtime-host,
+         surface-grammar, surface-parser, surface-syntax, theory-levitation,
+         theory-nominal-automata, theory-recursion
 tier 6   surface-corpus → core-checker, core-sequent, runtime-host, surface-engine, theory-levitation
 off-tier workflow-gates, workflow-dylint — tooling; depend on no workspace crate
          (the doc-class tool workflow-docs is parked: commented out of the workspace, no tier)

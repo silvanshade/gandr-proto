@@ -4,6 +4,12 @@ The format is hand-maintained and grows only with real changes; it is not auto-g
 
 ## Unreleased
 
+### Removed
+
+* The A2.3 incremental trio — `checkpoint`, `footprint`, and `region` — moved out to `gandr-core-incrementality`, together with the four `boundary` wrappers only they used (`DefinitionName`, `MatchDecision`, `HolePresence`, `AdoptedItemCount`), the `gandr-theory-orders` dependency, and the `tests/incremental.rs` differential gate.
+  The engine existed twice in the workspace, here and in `gandr-surface-engine`; the extraction takes the better-written half of each differing pair into one crate that depends on this one.
+  Nothing in this crate consumed the trio, so the move is a re-home rather than an API change for any consumer of the checker.
+
 ### Added
 
 * `effect::host` now owns the canonical alloc-only `Exec` / `Fs` / `Proc` / `Env` signatures beside the representation-independent `HostOp` / `HostHandler` seam.

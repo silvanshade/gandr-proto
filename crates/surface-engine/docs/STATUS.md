@@ -6,7 +6,8 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
 
 ## current
 
-* The crate is the reboot's complete CST-to-core surface engine: total lowering, origin tracking, structured diagnostics and goals, prelude/host/attribute tables, edit-action reconstruction, incremental checkpoints, linking, stateful REPL sessions, and the one-shot source-program driver.
+* The crate is the reboot's complete CST-to-core surface engine: total lowering, origin tracking, structured diagnostics and goals, prelude/host/attribute tables, edit-action reconstruction, the item seam onto `gandr-core-incrementality`, linking, stateful REPL sessions, and the one-shot source-program driver.
+  The item-granular checkpoint engine this crate once carried a second copy of lives in `gandr-core-incrementality`; what stays here is the front end that feeds it.
 * Ported at rung F3 of the surface front-end port (`docs/research/front-end-port-staging.md` §9) from the wyrd `gandr-pipeline` crate.
   The recut renames the package to `gandr-surface-engine` while preserving its public module shape and source-facing behavior; required reboot deltas are recorded below.
 * Modules — 27,997 source lines across 25 source files:
@@ -15,17 +16,19 @@ Status vocabulary in this file is limited to `current`, `designed direction`, an
   + `origin`, `goals`, `diag`, `attributes`, and `render` project core results back to structured, source-ranged front-end data.
   + `prelude`, `host`, `ffi`, `link`, and `session` connect the lowered core to typed native bindings, host effects, whole-file linking, and evaluation.
   + `run` drives a one-shot source program through lowering, linking, prelude checking, and the host seam.
-  + `edit`, `footprint`, and `checkpoint` provide edit reconstruction and dependency-validated incremental re-typing.
+  + `edit` reconstructs localized edit actions between two lowerings, and `item_source` crosses a lowering to `gandr-core-incrementality`'s parser-agnostic item seam, which is where dependency-validated incremental re-typing runs.
   + `boundary` owns the crate's typed scalar and string boundary wrappers.
   + `cst_read` reads a committed CST as a flat tile run — the `Reader` / `Cursor` and the depth-aware member split that `desc_elab` and `circuit` both walk declarations with.
   + `circuit` is the ruled circuit block form's surface check: it confirms every arrow against the kind of the thing it belongs to (a declaration's from its kind keyword, a body line's from the applied head's) and declines the reserved reversible glyph `<->`.
     It reads arrows and names only; the port/name fold, the back-edge sweep, and lowering are elsewhere or later.
 * Dependency re-point:
-  + Seven predecessor project edges map one-to-one: `gandr-desc` → `gandr-theory-levitation`, `gandr-grammar` → `gandr-surface-grammar`, `gandr-nominal` → `gandr-theory-nominal-automata`, `gandr-order-maintenance` → `gandr-theory-orders`, `gandr-parser` → `gandr-surface-parser`, `gandr-recursion` → `gandr-theory-recursion`, and `gandr-syntax` → `gandr-surface-syntax`.
+  + Seven predecessor project edges mapped one-to-one at the port: `gandr-desc` → `gandr-theory-levitation`, `gandr-grammar` → `gandr-surface-grammar`, `gandr-nominal` → `gandr-theory-nominal-automata`, `gandr-order-maintenance` → `gandr-theory-orders`, `gandr-parser` → `gandr-surface-parser`, `gandr-recursion` → `gandr-theory-recursion`, and `gandr-syntax` → `gandr-surface-syntax`.
+    Six of the seven are still direct edges; the order-maintenance one is not, having left with the checkpoint engine.
   + The predecessor's eighth edge, `gandr-core`, splits by authority: `gandr-core-checker` owns syntax, typing, diagnostics, marks, native primitive definitions, and the canonical host signatures beside the host seam; `gandr-core-sequent` owns L-machine evaluation and consumes the checker-owned `Eval` outcome.
   + `gandr-surface-engine::host` explicitly re-exports the signature API and adds only source-level metadata, so the signature authority couples neither the engine nor the runtime.
     The host-capability adapter adds `gandr-runtime-host` as the tenth reboot project edge: `run::run_source` composes its seam.
-  + Every normal dependency has a direct source-level use, including `OrderMaintenance` / `Pos` in `checkpoint` and the `Machine` / `Step` / `run` trio in `lower::recursive`.
+  + Every normal dependency has a direct source-level use, including the `Machine` / `Step` / `run` trio in `lower::recursive`.
+    The `gandr-theory-orders` edge left with the checkpoint engine: this crate now reaches order maintenance only through `gandr-core-incrementality`, which owns it.
     The predecessor's dev-only `gandr-grammar-contract-fixtures` edge was dropped: the engine tests discover and exercise every `.gandr` file under `tests/fixtures/current`.
     The helper was data-only at the three engine use sites: two root-path constants and one JSON source-path manifest.
     All thirteen `current/` source files are byte-identical to the predecessor set; the two path reads now target the local copies, and directory discovery replaces the manifest parser.
