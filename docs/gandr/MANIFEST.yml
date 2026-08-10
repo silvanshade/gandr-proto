@@ -44,7 +44,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
     role: subdocument
-    b3: 00db8e7009943b5ee3793ffeaf29cdcf0b6aead08dc09c6ca037088dda10cb4d
+    b3: a2332387350ab3067c0ded5c44d47bd6b4fc8606d4e560278bc8cbd83b21621a
     edges:
       - { rel: registered-under, to: spec/metatheory.md }
   - path: spec/metatheory/guards.md
@@ -174,7 +174,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/circuit-terms.md
     role: subdocument
-    b3: db37d6a5a1361336a7028112e39569eff11cbbfd398058b02d1a948b15c02624
+    b3: 9b2aabbc3c9566ae89b2b2cec7a5deae11a62c32535aae167c7fc00f2886205a
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/template-games.md
