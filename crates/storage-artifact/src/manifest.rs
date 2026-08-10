@@ -1,5 +1,5 @@
 //! The artifact manifest and its BLAKE3 identity — the b3sum-provenance
-//! successor at B2.3 (massive-term design §6).
+//! successor (the massive-term design record, §6).
 //!
 //! An artifact's identity is `BLAKE3` of a root **manifest** binding the
 //! chunker parameter commitment (the 85-byte fixed-order commitment), the

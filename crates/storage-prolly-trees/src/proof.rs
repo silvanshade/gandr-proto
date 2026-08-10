@@ -1,22 +1,18 @@
 //! Portable Prolly-Bao proof construction and verification.
 //!
-//! `current`: this module provides a small proof-oriented tree builder and
+//! This module provides a small proof-oriented tree builder and
 //! store-independent membership, non-membership, and range proofs. Verification
 //! recomputes BLAKE3 node identity from carried node bytes and checks root
 //! context before trusting any decoded record.
 //!
-//! `current`: compact node selection is implemented only for the one-level
-//! internal-root tree shape produced by this proof tree: membership material
-//! carries the root node plus selected leaf, non-membership material carries
-//! the root node plus selected leaf and optional required successor leaf, and
-//! range material carries the root node plus contiguous selected leaves.
-//! Witness verification remains fail-closed by checking root binding before
-//! enforcing root-first node order and delegating to the same store-independent
-//! proof verifiers.
-//!
-//! `designed direction`: generalized multi-level compact proof selection is
-//! outside the current contract; later tree/store modules may extend selection
-//! while preserving the verifier contract.
+//! Compact node selection is implemented for the one-level internal-root tree
+//! shape this proof tree produces: membership material carries the root node
+//! plus selected leaf, non-membership material carries the root node plus
+//! selected leaf and optional required successor leaf, and range material
+//! carries the root node plus contiguous selected leaves. Witness verification
+//! is fail-closed: it checks root binding before enforcing root-first node
+//! order and delegating to the same store-independent proof verifiers.
+//! Generalized multi-level compact proof selection is outside this contract.
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -683,7 +679,7 @@ pub enum EncodedNodeKind
 
 /// Borrowed inspection summary for canonical encoded Prolly-Bao node bytes.
 ///
-/// `current`: this reports review-oriented node-layout metadata without
+/// This reports review-oriented node-layout metadata without
 /// changing node bytes or the `BLAKE3(encoded_node_bytes)` identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct EncodedNodeLayout
@@ -784,7 +780,7 @@ impl EncodedNodeLayout
 
 /// Native Prolly-Bao witness transcript kind.
 ///
-/// `current`: these variants describe ordered-record query-response
+/// These variants describe ordered-record query-response
 /// transcripts under an agreed [`TreeRoot`]. They are not Bao byte-stream proof
 /// kinds.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -874,7 +870,7 @@ enum WitnessBody
 
 /// Required terminal summary for a native Prolly-Bao witness transcript.
 ///
-/// `current`: this summary is a deterministic Prolly-Bao-native binding over
+/// This summary is a deterministic Prolly-Bao-native binding over
 /// witness query-response material and proof nodes. The digest fields are not
 /// Bao hashes and do not claim Bao wire-format compatibility.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -1067,7 +1063,7 @@ impl WitnessEndSummary
 
 /// Versioned native Prolly-Bao ordered-record witness transcript.
 ///
-/// `current`: a witness transcript is a deterministic Prolly-Bao-native
+/// A witness transcript is a deterministic Prolly-Bao-native
 /// query-response byte format for membership, non-membership, and range
 /// verification under an agreed [`TreeRoot`] and [`TreeParams`]. It is not a
 /// Bao byte-stream proof and does not claim Bao wire-format compatibility.
@@ -1091,7 +1087,7 @@ pub struct WitnessTranscript
     body: WitnessBody,
     /// Encoded proof nodes carried by this transcript.
     ///
-    /// `current`: one-level internal-root transcripts preserve the proof's
+    /// One-level internal-root transcripts preserve the proof's
     /// compact node material and verifier-required root-first order.
     nodes: Box<[ProofNode]>,
     /// Required terminal summary binding this transcript.
@@ -1106,7 +1102,7 @@ impl WitnessTranscript
 
     /// Creates a native Prolly-Bao witness transcript from a membership proof.
     ///
-    /// `current`: the resulting transcript remains a Prolly-Bao ordered-record
+    /// The resulting transcript remains a Prolly-Bao ordered-record
     /// transcript, not a Bao byte-stream proof.
     ///
     /// # Errors
@@ -1155,7 +1151,7 @@ impl WitnessTranscript
     /// Creates a native Prolly-Bao witness transcript from a non-membership
     /// proof.
     ///
-    /// `current`: the resulting transcript remains a Prolly-Bao ordered-record
+    /// The resulting transcript remains a Prolly-Bao ordered-record
     /// transcript, not a Bao byte-stream proof.
     ///
     /// # Errors
@@ -1206,7 +1202,7 @@ impl WitnessTranscript
 
     /// Creates a native Prolly-Bao witness transcript from a range proof.
     ///
-    /// `current`: the resulting transcript remains a Prolly-Bao ordered-record
+    /// The resulting transcript remains a Prolly-Bao ordered-record
     /// transcript, not a Bao byte-stream proof.
     ///
     /// # Errors
@@ -1257,7 +1253,7 @@ impl WitnessTranscript
 
     /// Decodes native Prolly-Bao witness transcript bytes.
     ///
-    /// `current`: the decoded bytes are interpreted only as a Prolly-Bao
+    /// The decoded bytes are interpreted only as a Prolly-Bao
     /// ordered-record transcript, not as a Bao byte-stream proof.
     ///
     /// # Errors
@@ -1348,7 +1344,7 @@ impl WitnessTranscript
 
     /// Appends deterministic native Prolly-Bao witness bytes to `out`.
     ///
-    /// `current`: the emitted bytes are a Prolly-Bao ordered-record transcript,
+    /// The emitted bytes are a Prolly-Bao ordered-record transcript,
     /// not a Bao byte-stream proof. Existing contents of `out` are preserved
     /// and the transcript is appended.
     ///
@@ -1371,7 +1367,7 @@ impl WitnessTranscript
 
     /// Encodes this transcript into owned deterministic bytes.
     ///
-    /// `current`: the emitted bytes are a Prolly-Bao ordered-record transcript,
+    /// The emitted bytes are a Prolly-Bao ordered-record transcript,
     /// not a Bao byte-stream proof.
     ///
     /// # Errors
@@ -1440,7 +1436,7 @@ impl WitnessTranscript
 
     /// Returns encoded proof nodes carried by this transcript.
     ///
-    /// `current`: one-level internal-root witnesses carry root-first compact
+    /// One-level internal-root witnesses carry root-first compact
     /// material: membership root plus selected leaf, non-membership root plus
     /// selected leaf and optional required successor leaf, and range root plus
     /// contiguous selected leaves.
@@ -1462,7 +1458,7 @@ impl WitnessTranscript
     /// Verifies a membership witness against explicit root, parameter, key, and
     /// value expectations.
     ///
-    /// `current`: verification is native Prolly-Bao ordered-record verification
+    /// Verification is native Prolly-Bao ordered-record verification
     /// and does not require Bao wrapping. It fails closed by checking root
     /// binding before requiring carried node material to be root-first.
     ///
@@ -1514,7 +1510,7 @@ impl WitnessTranscript
     /// Verifies a non-membership witness against explicit root, parameter, and
     /// absent-key expectations.
     ///
-    /// `current`: verification is native Prolly-Bao ordered-record verification
+    /// Verification is native Prolly-Bao ordered-record verification
     /// and does not require Bao wrapping. It fails closed by checking root
     /// binding before requiring carried node material to be root-first.
     ///
@@ -1565,7 +1561,7 @@ impl WitnessTranscript
     /// Verifies a range witness against explicit root, parameter, and range
     /// expectations.
     ///
-    /// `current`: verification is native Prolly-Bao ordered-record verification
+    /// Verification is native Prolly-Bao ordered-record verification
     /// and does not require Bao wrapping. It fails closed by checking root
     /// binding before requiring carried node material to be root-first.
     ///
@@ -1807,7 +1803,7 @@ impl WitnessTranscript
 
 /// Encoded node bytes carried by a portable proof.
 ///
-/// `current`: for the implemented one-level internal-root tree shape, compact
+/// For the implemented one-level internal-root tree shape, compact
 /// proof and witness material carries only query-selected nodes: membership
 /// root plus selected leaf, non-membership root plus selected leaf and optional
 /// required successor leaf, or range root plus contiguous selected leaves.
@@ -2030,7 +2026,7 @@ impl MembershipProof
 
     /// Returns encoded proof nodes.
     ///
-    /// `current`: one-level internal-root membership proofs carry the root node
+    /// One-level internal-root membership proofs carry the root node
     /// followed by the selected leaf node.
     #[inline]
     #[must_use]
@@ -2196,7 +2192,7 @@ impl NonMembershipProof
 
     /// Returns encoded proof nodes.
     ///
-    /// `current`: one-level internal-root non-membership proofs carry the root
+    /// One-level internal-root non-membership proofs carry the root
     /// node followed by the selected leaf node and, only when required, the
     /// adjacent successor leaf node.
     #[inline]
@@ -2315,7 +2311,7 @@ impl RangeProof
 
     /// Returns encoded proof nodes.
     ///
-    /// `current`: one-level internal-root range proofs carry the root node
+    /// One-level internal-root range proofs carry the root node
     /// followed by contiguous selected leaf nodes in root separator order.
     #[inline]
     #[must_use]
@@ -2500,7 +2496,7 @@ impl PortableProofTree
 
     /// Appends canonical Prolly-Bao snapshot bytes to `out`.
     ///
-    /// `current`: these bytes materialize the complete ordered-record snapshot
+    /// These bytes materialize the complete ordered-record snapshot
     /// under this tree's [`TreeRoot`] and [`TreeParams`]. They are
     /// deterministic Prolly-Bao snapshot bytes, not Bao proofs; Bao
     /// verification belongs in a separate test/dev adapter over the emitted
@@ -2540,7 +2536,7 @@ impl PortableProofTree
 
     /// Encodes this tree into owned canonical Prolly-Bao snapshot bytes.
     ///
-    /// `current`: the returned bytes are deterministic snapshot material for
+    /// The returned bytes are deterministic snapshot material for
     /// adapter evidence. They do not turn native Prolly-Bao witnesses into Bao
     /// proofs.
     ///
@@ -2956,7 +2952,7 @@ impl PortableProofTree
 
 /// Verifies canonical Prolly-Bao snapshot bytes against explicit root context.
 ///
-/// `current`: this parser verifies deterministic Prolly-Bao snapshot bytes and
+/// This parser verifies deterministic Prolly-Bao snapshot bytes and
 /// rebuilds the represented ordered-record tree under `expected_params`. It is
 /// not a Bao verifier and does not make native Prolly-Bao witnesses into Bao
 /// proofs; adapters may feed the same canonical bytes to Bao separately as
@@ -3093,7 +3089,7 @@ pub fn hash_encoded_node(bytes: EncodedNode<'_>) -> NodeHash
 
 /// Inspects canonical encoded Prolly-Bao node bytes without changing identity.
 ///
-/// `current`: this parser borrows the input, validates the node framing, and
+/// This parser borrows the input, validates the node framing, and
 /// reports only layout metadata needed for node-layout review. It does not
 /// allocate decoded records and leaves `BLAKE3(encoded_node_bytes)` as the node
 /// identity.
@@ -3452,7 +3448,7 @@ impl<'bytes> Cursor<'bytes>
     }
 }
 
-/// Validates tree parameters currently supported by proof encoding.
+/// Validates the tree parameters proof encoding supports.
 fn ensure_supported_params(params: &TreeParams) -> Result<(), ProllyBaoError>
 {
     if params.kind() != TreeKind::MerkleSearch {

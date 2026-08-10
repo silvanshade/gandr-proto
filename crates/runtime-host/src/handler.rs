@@ -2,8 +2,8 @@
 //! handler claims (`Exec` / `Fs` / `Env` / `Proc`) against real syscalls.
 //!
 //! [`ShellHandler::dispatch`] is the whole surface: it takes an intercepted
-//! [`effect::host::HostOp`] (the host seam's owned view of a `perform`, ADR-35
-//! D4) and returns a [`HostAction`] telling the driver ([`crate::driver`]) to
+//! [`effect::host::HostOp`] (the host seam's owned view of a `perform`)
+//! and returns a [`HostAction`] telling the driver ([`crate::driver`]) to
 //! resume the run with a reply, halt with an exit code, abort with a fatal
 //! error, or decline (leaving the machine to blame an unclaimed `perform`).
 //!
@@ -171,7 +171,7 @@ impl ShellHandler
     }
 
     /// `Exec::exec`: run a program with an argument vector. The spawn mode
-    /// (ADR-74 D4) selects the stdio disposition: [`SpawnMode::Captured`]
+    /// selects the stdio disposition: [`SpawnMode::Captured`]
     /// buffers the child's output into the typed reply; [`SpawnMode::Inherit`]
     /// lets the child inherit the parent's terminal so an interactive program
     /// (`vim`, `less`, `ssh`) behaves. argv is passed element-wise — no shell
@@ -214,7 +214,7 @@ impl ShellHandler
         Ok(codec::encode_exec_result(&stdout, &stderr, exit_code))
     }
 
-    /// The inherit spawn (ADR-74 D4): the child inherits the parent's
+    /// The inherit spawn: the child inherits the parent's
     /// stdin/stdout/stderr, so an interactive program drives the terminal
     /// directly. Nothing is captured, so the reply's `stdout`/`stderr` are
     /// empty and only `exit_code` is meaningful.

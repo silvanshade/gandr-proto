@@ -1,5 +1,5 @@
 //! Outer-layer content-addressed wiring for kernel export artifacts, and their
-//! manifest identity (massive-term design §6; B2.3).
+//! manifest identity (the massive-term design record, §6).
 //!
 //! A v1 export artifact is, by construction, a **sorted unique keyed record
 //! set**: E2 admission ordering keys each declaration by its admission index,

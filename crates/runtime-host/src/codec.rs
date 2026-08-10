@@ -1,5 +1,5 @@
 //! Decoding operation payloads and encoding operation replies over the public
-//! [`Value`] host-seam API (ADR-35 D4).
+//! [`Value`] host-seam API.
 //!
 //! The host sees only [`Value`] through the seam's `as_str` / `as_int` /
 //! `as_list` / `as_record` decoders (never matching on the variants
@@ -24,7 +24,7 @@ use crate::boundary::StandardError;
 use crate::boundary::StandardOutput;
 use crate::error::ShellError;
 
-/// The stdio disposition of an `Exec::exec` spawn (ADR-74 D4).
+/// The stdio disposition of an `Exec::exec` spawn.
 ///
 /// The mode is the consumption context carried in the `Exec` payload: a
 /// consumed result captures, a discarded REPL command line inherits.
@@ -55,7 +55,7 @@ pub struct Command
     pub program: String,
     /// The arguments, passed verbatim as separate argv entries.
     pub args: Vec<String>,
-    /// The stdio disposition (ADR-74 D4): captured (default) or inherit.
+    /// The stdio disposition: captured (default) or inherit.
     pub mode: SpawnMode,
 }
 
@@ -107,7 +107,7 @@ where
 
 /// Decodes an `Exec::exec` command payload `{program, args, mode}`.
 ///
-/// The `mode` field (ADR-74 D4) is optional: a payload with no `mode` decodes
+/// The `mode` field is optional: a payload with no `mode` decodes
 /// as [`SpawnMode::Captured`] (the drift-safe default), so a hand-built
 /// `{program, args}` perform still captures. An unrecognized `mode` string is a
 /// [`ShellError::Payload`] — the mode vocabulary is closed.

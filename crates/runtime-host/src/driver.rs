@@ -1,13 +1,13 @@
-//! The headless run driver (ADR-35 D4, proposal §3).
+//! The headless run driver.
 //!
 //! [`run_program`] drives a lowered [`Comp`] under the shell host to a
 //! [`ShellOutcome`]. The durable driver is the **L machine**: `run_program`
 //! hands the program and a host handler to
 //! [`gandr_core_sequent::machine::run_comp_with_host`] and reads back an
 //! [`Eval`]. That entry offers every host-interceptable `perform` to the
-//! handler over the ADR-35 D4 host-effect seam
-//! ([`gandr_core_checker::effect::host`]) — the same `(signature name,
-//! operation name, payload)` projection the retired CEK oracle presented — and
+//! handler over the host-effect seam
+//! ([`gandr_core_checker::effect::host`]) — the `(signature name,
+//! operation name, payload)` projection the seam presents — and
 //! enforces the same [`gandr_core_checker::outcome::StuckReason::StepLimit`]
 //! guard, so a non-terminating program halts rather than hangs.
 //!
@@ -16,8 +16,8 @@
 //! The seam speaks only `Resume` / `Unhandled` ([`effect::host::HostReply`]).
 //! The shell needs two richer outcomes the seam cannot express: a
 //! run-truncating `Proc::exit` and a fatal syscall abort. The driver-level
-//! entry runs to a terminal with no stepwise loop to early-return through
-//! (unlike the CEK's owned step loop), so [`ShellDriver`] captures those two as
+//! entry runs to a terminal with no stepwise loop to early-return through,
+//! so [`ShellDriver`] captures those two as
 //! an *early outcome*: on `Proc::exit` or a fatal `HostAction::Fail` it records
 //! the outcome and declines ([`effect::host::HostReply::Unhandled`]), which the
 //! machine turns into a terminal `PerformNoHandler` blame, and [`run_program`]
@@ -111,7 +111,7 @@ pub fn run_program_with_prelude(
 ///
 /// The program is focused and driven by
 /// [`gandr_core_sequent::machine::run_comp_with_host`]; each host-interceptable
-/// `perform` is offered to a fresh [`ShellHandler`] over the ADR-35 D4 seam.
+/// `perform` is offered to a fresh [`ShellHandler`] over the host-effect seam.
 /// There is no ambient prelude here — the hand-built [`Comp`] entry runs
 /// exactly the operators and host effects it names.
 /// [`run_program_with_prelude`] installs an ambient value prelude; the surface
@@ -133,9 +133,7 @@ pub fn run_program(comp: &Comp) -> ShellOutcome
 ///
 /// Factoring the seam adaptation here keeps the driver's [`HostAction`] →
 /// [`effect::host::HostReply`] mapping and its `Proc::exit` / fatal-abort
-/// capture in one place. (Through the L1 migration a second `run` closure drove
-/// the retiring CEK host path, so the two were held to the same observable
-/// [`ShellOutcome`]; that differential leg retired with the CEK at B1 stage F.)
+/// capture in one place.
 #[inline]
 fn run_with_driver<R>(run: R) -> ShellOutcome
 where
@@ -244,7 +242,7 @@ mod tests
     /// Sentinel value that must not run after `proc.exit` truncates a program.
     const UNREACHED_AFTER_EXIT_CODE: i64 = 99;
 
-    /// ADR-74 D4 mode selection — the captured contract. An explicit
+    /// Mode selection — the captured contract. An explicit
     /// `mode = "captured"` buffers the child's stdout into the typed reply,
     /// exactly as a bare (mode-less) payload does.
     #[test]
@@ -259,7 +257,7 @@ mod tests
         assert_eq!(Some(ProcessExitCode::from(0)), reply_exit_code(&outcome));
     }
 
-    /// ADR-74 D4 mode selection — the inherit spawn. `mode = "inherit"` lets
+    /// Mode selection — the inherit spawn. `mode = "inherit"` lets
     /// the child drive the terminal directly, so nothing is captured: the
     /// reply's `stdout` is empty while `exit_code` is still meaningful.
     #[test]
@@ -293,7 +291,7 @@ mod tests
     }
 
     /// An unrecognized `mode` string is a host failure — the mode vocabulary is
-    /// closed (ADR-74 D4).
+    /// closed.
     #[test]
     fn exec_unknown_mode_is_a_host_failure()
     {
@@ -940,7 +938,7 @@ mod tests
     }
 
     /// An `Exec::exec` command payload `{program, args}` — no `mode` field, so
-    /// the decoder's captured default (ADR-74 D4) applies.
+    /// the decoder's captured default applies.
     fn command<'program>(
         program: impl Into<CommandProgram<'program>>,
         args: &[CommandArgument<'_>],
@@ -960,7 +958,7 @@ mod tests
     }
 
     /// An `Exec::exec` command payload `{program, args, mode}` with an explicit
-    /// spawn mode (ADR-74 D4).
+    /// spawn mode.
     fn command_mode<'program, 'mode>(
         program: impl Into<CommandProgram<'program>>,
         args: &[CommandArgument<'_>],
@@ -1028,11 +1026,8 @@ mod tests
 /// `run_comp_with_host`) preserves the observable [`ShellOutcome`] of a
 /// resuming host op and of an unhandled decline.
 ///
-/// Through stage E these were an L-vs-CEK **differential** — each case also ran
-/// the retiring CEK host path (`gandr_core_checker::eval::run_with_host`) and
-/// asserted the two agreed, cheap insurance that the retarget from the CEK
-/// binding to the L driver changed no observable outcome. The CEK leg **retired
-/// with the CEK at stage F**; each case keeps its own expected L outcome.
+/// Outcome tests for the L driver under the shell host: each case asserts its
+/// expected L outcome directly.
 #[cfg(test)]
 mod l_host_outcomes
 {

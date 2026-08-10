@@ -1,7 +1,9 @@
-//! The headless host-effect runtime for gandr: the thin v0 host handler of
-//! the effects-control-shell design record §3/§5 — a top-level handler that
-//! intercepts the flat `Exec`/`Fs`/`Proc`/`Env` signature, performs the
-//! syscall, and resumes the delimited continuation with the reply.
+//! The headless host-effect runtime for gandr: the host handler of the
+//! effects and control design record
+//! (`docs/gandr/spec/implementation/effects-and-control.md`) — a top-level
+//! handler that intercepts the flat `Exec`/`Fs`/`Proc`/`Env` signature,
+//! performs the syscall, and resumes the delimited continuation with the
+//! reply.
 //!
 //! This crate is the *host* side of the effect seam: the native interpreter for
 //! the `Exec` / `Fs` / `Env` / `Proc` operations no source-level handler
@@ -13,10 +15,9 @@
 //! [`Eval`](gandr_core_checker::outcome::Eval). The seam it binds is the
 //! representation-independent host-effect boundary in
 //! [`gandr_core_checker::effect::host`] — the `(signature name, operation name,
-//! payload)` projection both the L machine and the retiring CEK oracle present
-//! identically, which is what let this runtime port from the CEK binding to the
-//! L driver without changing observable outcomes (asserted by the driver's
-//! differential tests).
+//! payload)` projection every driver over the seam presents identically, so a
+//! host runtime is interchangeable against the machine without changing
+//! observable outcomes.
 //!
 //! Two runtime faces, both consuming the canonical signature API in
 //! [`gandr_core_checker::effect::host`]:

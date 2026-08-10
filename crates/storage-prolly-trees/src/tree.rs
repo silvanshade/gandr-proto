@@ -1,7 +1,5 @@
 //! Thin tree wrapper over proof-oriented Prolly-Bao nodes.
 //!
-//! ## current
-//!
 //! - [`ProllyTree`] builds through [`PortableProofTree`] and stores every
 //!   carried encoded node through [`BlockStore`].
 //! - Record lookup, range, and proof production delegate to the carried
@@ -9,15 +7,8 @@
 //! - [`OpenedProllyTree`] verifies that a named root node is present and
 //!   hash-valid in a supplied [`BlockStore`].
 //!
-//! ## designed direction
-//!
-//! - Store-backed traversal can reconstruct record-dependent APIs once a public
-//!   traversal helper exists for loading all reachable nodes from a root.
-//!
-//! ## open decision
-//!
-//! - Persistent stores, transport adapters, and full store-backed
-//!   reconstruction remain outside this module.
+//! Store-backed traversal, persistent stores, transport adapters, and full
+//! store-backed reconstruction remain outside this module.
 
 use alloc::boxed::Box;
 

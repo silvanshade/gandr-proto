@@ -266,8 +266,8 @@ impl ArtifactRecordSet
     ///   per admitted declaration, keyed by admission index, in admission
     ///   order.
     /// - provides: the producer-side extraction path (the environment is in
-    ///   hand at B2.3; the deterministic segment partition is the record
-    ///   grain).
+    ///   hand on the producer side; the deterministic segment partition is the
+    ///   record grain).
     /// - fails: never.
     /// - panics: none.
     #[inline]

@@ -2,12 +2,10 @@
 //!
 //! # Provenance
 //!
-//! This crate is a storage-tier skeleton absorbed directly from the owner's
-//! unpublished `mach` `storage-prolly-trees` crate (Apache-2.0, same owner;
-//! source commit `fb78601`). It is a direct source absorption adapted to the
-//! gandr storage tier and lint discipline — not an external dependency, and not
-//! yet wired into any export path. See the ratified vendor plan in
-//! `docs/research/massive-term-design.md` §6.1.
+//! This crate is a direct source absorption of the owner's prior unpublished
+//! implementation (Apache-2.0, same owner), adapted to the gandr storage tier
+//! and lint discipline — not an external dependency. The ratified vendor plan
+//! is `docs/research/massive-term-design.md` §6.1.
 //!
 //! # Crate boundary
 //!
@@ -15,10 +13,36 @@
 //! pins `blake3` and `thiserror` plus the sibling `gandr-storage-chunker`. Node
 //! identity is [`NodeHash`] = `BLAKE3(encoded node bytes)`, a
 //! `#[repr(transparent)]` newtype over `[u8; 32]`. The generic sorted-record
-//! interface carries **no** declaration semantics: a future export layer is a
-//! consumer that supplies the record model. Fail-closed record discipline
-//! ([`ProllyBaoError::UnsortedInput`], [`ProllyBaoError::DuplicateKeys`]) is
-//! preserved.
+//! interface carries **no** declaration semantics: an export layer such as
+//! `gandr-storage-artifact` is a consumer that supplies the record model.
+//! Fail-closed record discipline ([`ProllyBaoError::UnsortedInput`],
+//! [`ProllyBaoError::DuplicateKeys`]) is preserved.
+//!
+//! This crate exposes the public value types for ordered record roots, BLAKE3
+//! node hashes, committed tree parameters, store-facing node bytes, and proof
+//! metadata. Prolly-Bao consumes `storage-chunker` parameter commitments as
+//! consensus material; rolling or Gear boundary metadata is not node identity.
+//! The public hash surface is [`NodeHash`], and this crate does not claim Bao
+//! wire compatibility. Native [`WitnessTranscript`] values are Prolly-Bao
+//! ordered-record query-response transcripts, not Bao byte-stream proofs.
+//! [`verify_snapshot_bytes`] verifies deterministic Prolly-Bao snapshot bytes
+//! against [`TreeRoot`] / [`TreeParams`]; Bao verification of those bytes
+//! remains adapter evidence outside core semantics.
+//!
+//! SQL, `DataFusion`, `Iroh`, `Git`, `Automerge`, `IPLD/CAR`, filesystem
+//! paths, networks, persistent storage backends, transport adapters, version
+//! graph ownership, multi-writer merge semantics, and standalone repository
+//! extraction stay outside this core public API; adapters are separate work
+//! with their own mapping and failure-mode decisions.
+//!
+//! # Limits
+//!
+//! The tree is two-level: multi-level construction and its proofs are unbuilt.
+//! Canonicality is by construction rather than a named theorem. The witness
+//! verifier is full-rebuild — there is no incremental or streaming witness
+//! verification (`bao` provides verified streaming as dev evidence only). No
+//! persistent store backend ships. Anti-boundary-grinding hardening is limited
+//! to hard byte and record caps.
 //!
 //! # Feature flags
 //!
@@ -27,48 +51,6 @@
 //!   tree construction, lookup/range queries, snapshot encode/verify, node
 //!   hashing, and the block stores; the proof machinery is feature-gated, never
 //!   stripped.
-//!
-//! # Inherited-deferred
-//!
-//! Carried honestly from the ratified vendor plan (§6.1), unbuilt here:
-//! multi-level tree construction and its proofs (the scale ceiling; the tree is
-//! two-level); a spec-asserted history-independence differential (canonicality
-//! is by-construction, not a named theorem); incremental/streaming witness
-//! verification (the witness verifier is full-rebuild; `bao` provides verified
-//! streaming as dev evidence only); a persistent store backend; and
-//! anti-boundary-grinding hardening (only hard byte/record caps exist).
-//!
-//! ## current
-//!
-//! - This crate exposes the first public value types for ordered record roots,
-//!   BLAKE3 node hashes, committed tree parameters, store-facing node bytes,
-//!   and proof metadata.
-//! - Prolly-Bao consumes `storage-chunker` parameter commitments as consensus
-//!   material. Rolling or Gear boundary metadata is not node identity.
-//! - The public hash surface is [`NodeHash`]. This crate does not claim Bao
-//!   wire compatibility.
-//! - Native [`WitnessTranscript`] values are `current` Prolly-Bao
-//!   ordered-record query-response transcripts. They are not Bao byte-stream
-//!   proofs.
-//! - [`verify_snapshot_bytes`] verifies deterministic `current` Prolly-Bao
-//!   snapshot bytes against [`TreeRoot`] / [`TreeParams`]. Bao verification of
-//!   those bytes remains adapter evidence outside core semantics.
-//!
-//! ## designed direction
-//!
-//! - Future modules will build deterministic Merkle search trees over sorted
-//!   canonical key-value records.
-//! - Future proof APIs will verify membership, non-membership, and range claims
-//!   against [`TreeRoot`] while checking [`TreeParams`].
-//! - Future adapters may translate records from higher-level systems, but SQL,
-//!   `DataFusion`, `Iroh`, `Git`, `Automerge`, `IPLD/CAR`, filesystem paths,
-//!   networks, and storage engines stay outside this core public API.
-//!
-//! ## open decision
-//!
-//! - Persistent storage, transport adapters, version graph ownership,
-//!   multi-writer merge semantics, and standalone repository extraction remain
-//!   outside this skeleton.
 
 extern crate alloc;
 

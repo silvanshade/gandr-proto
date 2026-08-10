@@ -1,7 +1,5 @@
 //! Deterministic encoded-node storage boundary.
 //!
-//! ## current
-//!
 //! - [`BlockStore`] stores canonical encoded nodes keyed by [`NodeHash`].
 //! - [`InMemoryBlockStore`] uses [`alloc::collections::BTreeMap`] so iteration
 //!   and replacement behavior are deterministic for local callers and tests.
@@ -10,15 +8,9 @@
 //! - Stored bytes are checked with [`verify_stored_node`] before they enter or
 //!   leave the store.
 //!
-//! ## designed direction
-//!
-//! - Persistent stores can implement [`BlockStore`] once backend selection and
-//!   traversal policy are reviewed outside this crate slice.
-//!
-//! ## open decision
-//!
-//! - Persistent backend choice, transport mapping, and traversal profiles
-//!   remain outside this module.
+//! Persistent backend choice, transport mapping, and traversal profiles remain
+//! outside this module; a persistent store implements [`BlockStore`] behind the
+//! same boundary.
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
