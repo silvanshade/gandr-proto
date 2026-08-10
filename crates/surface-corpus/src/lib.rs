@@ -671,7 +671,7 @@ where
     while let Some((is_signature, range)) = iter.next() {
         // A `def name : T;` signature only carries its ascription into the
         // paired `def name(...)` definition when both lower together
-        // (`LoweredItem::ascription`), so keep the pair in one slice.
+        // (the lowered item's `ascription`), so keep the pair in one slice.
         let mut end = range.end;
         if is_signature {
             let paired_end = iter.peek().map(

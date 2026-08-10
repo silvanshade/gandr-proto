@@ -94,6 +94,7 @@ use gandr_core_checker::syntax::Value;
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+use gandr_core_incrementality::region::Item;
 
 use crate::attributes;
 use crate::boundary::AttributeName;
@@ -108,7 +109,6 @@ use crate::goals::goal_item_flags;
 use crate::goals::goals_report_with_contexts;
 use crate::goals::initial_state;
 use crate::lower::Lowered;
-use crate::lower::LoweredItem;
 use crate::origin::TermRef;
 use crate::origin::resolve;
 use crate::render;
@@ -826,7 +826,7 @@ pub fn diagnostics(
 /// error and the captured [`FailureState`], or [`None`] if it types to
 /// `Done`.
 fn first_failure(
-    item: &LoweredItem,
+    item: &Item,
     base: &Ctx,
 ) -> Option<(TypeError, FailureState)>
 {
@@ -839,7 +839,7 @@ fn first_failure(
 /// Drives one item through the machine, returning the typed terminal result
 /// or the first failure.
 fn item_machine_result(
-    item: &LoweredItem,
+    item: &Item,
     base: &Ctx,
 ) -> Result<Ty, Box<(TypeError, FailureState)>>
 {
@@ -1370,7 +1370,7 @@ pub fn marks(
 /// Appends marks for one lowered item, preserving source item identity.
 fn push_marks_for_item(
     item_index: ItemIndex,
-    item: &LoweredItem,
+    item: &Item,
     base: &Ctx,
     lowered: &Lowered,
     out: &mut Vec<MarkReport>,
@@ -1459,7 +1459,7 @@ fn recursive_mark_depth_exceeded(
 /// sorts (its upstream growth point is retired; an added sort is a
 /// compile-visible change here).
 fn mark_item(
-    item: &LoweredItem,
+    item: &Item,
     base: &Ctx,
 ) -> Marking
 {

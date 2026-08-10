@@ -364,30 +364,6 @@ str_wrapper!(
     "Borrowed string literal or string-processing text."
 );
 
-// A2.3 checkpoint base (`incremental-pipeline.md` §"Checkpoints and the reuse
-// rule" through §"Derivation merging and identity stability"): the
-// item-granular footprint / validated-resume engine over the order-maintenance
-// substrate.
-str_wrapper!(
-    DefinitionName,
-    "Borrowed lowered top-level definition name."
-);
-copy_wrapper!(
-    MatchDecision,
-    bool,
-    "Whether two checkpoint structures satisfy a named matching predicate."
-);
-copy_wrapper!(
-    HolePresence,
-    bool,
-    "Whether a lowered item carries an unresolved hole."
-);
-copy_wrapper!(
-    AdoptedItemCount,
-    usize,
-    "Number of item checkpoints adopted by an incremental resume."
-);
-
 /// Borrowed list of integer literals used by combinator tests.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug)]

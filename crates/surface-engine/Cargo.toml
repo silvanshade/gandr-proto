@@ -17,6 +17,10 @@ path = "tests/lib.rs"
 
 [dependencies]
 gandr-core-checker.workspace = true
+# The item-granular incremental typer: this crate's lowerings are its
+# parser-agnostic `region::Item`s, `item_source` implements its seam, and the
+# session-facing gate resumes through its checkpoint engine.
+gandr-core-incrementality.workspace = true
 gandr-core-sequent.workspace = true
 gandr-runtime-host.workspace = true
 gandr-surface-grammar.workspace = true
@@ -25,7 +29,6 @@ gandr-surface-syntax.workspace = true
 gandr-theory-computads.workspace = true
 gandr-theory-levitation.workspace = true
 gandr-theory-nominal-automata.workspace = true
-gandr-theory-orders.workspace = true
 gandr-theory-recursion.workspace = true
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }

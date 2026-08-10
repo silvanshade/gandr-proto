@@ -1,5 +1,5 @@
-//! Dependency-footprint capture for the incremental typing pipeline (A2.3;
-//! `incremental-pipeline.md` §"Checkpoints and the reuse rule").
+//! Dependency-footprint capture for the incremental typing pipeline
+//! (`incremental-pipeline.md` §"Checkpoints and the reuse rule").
 //!
 //! # What a footprint is
 //!
@@ -11,8 +11,8 @@
 //! *solver's* vocabulary (`{tyvars, gradeVars, trailDepth, stepId}`), because
 //! its checkpoints live inside the stepping typing machine.
 //!
-//! This module captures the footprint the reboot's item-granular surface
-//! exposes. Top-level items ([`crate::region::Item`]) lower independently and
+//! This module captures that footprint at the item granularity this crate
+//! works in. Top-level items ([`crate::region::Item`]) lower independently and
 //! are typed against an accumulating context ([`Ctx`]) that
 //! [`crate::checkpoint`] threads item to item — a processed `def name = A`
 //! binds `name : A` for later items to read. The one piece of shared,
@@ -23,7 +23,7 @@
 //! `tyvars` in the footprint were re-assigned") becomes "no *name* the item
 //! read had its binding change", the same soundness shape one stratum up.
 //!
-//! [`Ctx`]: crate::ctx::Ctx
+//! [`Ctx`]: gandr_core_checker::ctx::Ctx
 //!
 //! # Soundness direction
 //!
@@ -42,18 +42,20 @@ use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_core_checker::syntax::Comp;
+use gandr_core_checker::syntax::Term;
+use gandr_core_checker::syntax::Value;
+
 use crate::boundary::DefinitionName;
 use crate::boundary::MatchDecision;
-use crate::syntax::Comp;
-use crate::syntax::Term;
-use crate::syntax::Value;
 
 /// The dependency footprint of one lowered item: the context names its term
 /// read, plus the two conservative flags that force re-typing.
 ///
 /// The [`Self::names`] set is the item's free variables — every name it read
-/// from the ambient context (prior definitions the session threaded in). The
-/// intersection of this set with the names whose binding an edit changed is
+/// from the ambient context (the base context, plus the prior definitions
+/// threaded in ahead of it). The intersection of this set with the names whose
+/// binding an edit changed is
 /// what decides reuse (`crate::checkpoint`): an item whose footprint avoids
 /// every changed binding types identically against the new context, so its
 /// cached result is still valid.
@@ -70,8 +72,8 @@ pub struct Footprint
     /// over-approximation.
     pub opaque: bool,
     /// Set when the term carries a hole ([`Value::Hole`] / [`Comp::Hole`]): the
-    /// item is parse-incomplete, matching the session's "holey items are not
-    /// typed" discipline (`incremental-pipeline.md` §"Holes").
+    /// item is parse-incomplete, so typing is declined rather than attempted
+    /// (`incremental-pipeline.md` §"Holes").
     pub has_hole: bool,
 }
 
@@ -394,11 +396,12 @@ mod tests
 {
     use alloc::rc::Rc;
 
+    use gandr_core_checker::syntax::Comp;
+    use gandr_core_checker::syntax::Term;
+    use gandr_core_checker::syntax::Value;
+
     use super::footprint_of;
     use crate::boundary::DefinitionName;
-    use crate::syntax::Comp;
-    use crate::syntax::Term;
-    use crate::syntax::Value;
 
     /// A binder's occurrence in its own body is *bound*, not a context read, so
     /// it never enters the footprint.

@@ -22,9 +22,9 @@ mod tests
     use gandr_core_checker::syntax::Side;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::syntax::Value;
+    use gandr_core_incrementality::region::Item;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::lower::LowerError;
-    use gandr_surface_engine::lower::LoweredItem;
     use gandr_surface_engine::lower::lower_source;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::lower::node_kinds;
@@ -466,7 +466,7 @@ mod tests
     }
 
     /// The sole item of a strictly-lowered whole program.
-    fn sole_item<'text>(program: impl Into<TestText<'text>>) -> LoweredItem
+    fn sole_item<'text>(program: impl Into<TestText<'text>>) -> Item
     {
         let program = program.into().0;
         let lowered = lower_source(program.into())

@@ -46,7 +46,7 @@
 //!
 //! # What is and is not reconstructed
 //!
-//! [`apply`] operates on the **term forest** ([`LoweredItem`]s — names,
+//! [`apply`] operates on the **term forest** ([`Item`]s — names,
 //! ascriptions, and core terms), *not* on the [`OriginMap`]: byte ranges and
 //! CST identity are a function of lowering, and reconstructing them from an
 //! action script is the order-maintenance-over-CST resync problem
@@ -88,6 +88,7 @@ use gandr_core_checker::syntax::Term;
 use gandr_core_checker::syntax::Value;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+use gandr_core_incrementality::region::Item;
 
 use crate::boundary::AlignmentOffset;
 use crate::boundary::DefinitionName;
@@ -106,7 +107,6 @@ use crate::boundary::SourceOffset;
 #[cfg(test)]
 use crate::boundary::TreeDepth;
 use crate::lower::Lowered;
-use crate::lower::LoweredItem;
 use crate::origin::OriginEntry;
 use crate::origin::OriginMap;
 use crate::origin::OriginPath;
@@ -177,7 +177,7 @@ pub enum Action
         /// The new item's index in the new item list.
         at: usize,
         /// The item to introduce.
-        item: LoweredItem,
+        item: Item,
     },
     /// A top-level item removed, by its **old**-list index.
     DeleteItem
@@ -380,8 +380,8 @@ pub fn diff(
 #[inline]
 #[must_use]
 pub fn diff_items(
-    old: &[LoweredItem],
-    new: &[LoweredItem],
+    old: &[Item],
+    new: &[Item],
 ) -> EditScript
 {
     let old_keys: Vec<OptionalDefinitionName<'_>> =
@@ -2082,14 +2082,14 @@ fn handle_clause_child(index: ItemIndex) -> OriginPathComponent
 #[inline]
 #[must_use]
 pub fn apply(
-    old: &[LoweredItem],
+    old: &[Item],
     script: &EditScript,
-) -> Vec<LoweredItem>
+) -> Vec<Item>
 {
     let mut deleted: BTreeSet<usize> = BTreeSet::new();
     let mut ascription_changes: BTreeMap<usize, Option<Ty>> = BTreeMap::new();
     let mut term_actions: BTreeMap<usize, Vec<&Action>> = BTreeMap::new();
-    let mut inserts: Vec<(usize, &LoweredItem)> = Vec::new();
+    let mut inserts: Vec<(usize, &Item)> = Vec::new();
 
     for action in &script.actions {
         match *action {
@@ -2111,7 +2111,7 @@ pub fn apply(
     }
 
     // Patch the kept items (old order, deleted ones dropped).
-    let mut kept: Vec<LoweredItem> = Vec::new();
+    let mut kept: Vec<Item> = Vec::new();
     for (old_index, item) in old.iter().enumerate() {
         if deleted.contains(&old_index) {
             continue;

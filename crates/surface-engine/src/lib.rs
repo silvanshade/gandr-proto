@@ -21,24 +21,16 @@
 //!   table, projected into [`diag::Report::attributes`]
 //!   (proposal-attributes.md). Hash-neutral — an inert attribute never enters
 //!   an item's core-IR term.
-//! - **A2.3 — dependency-validated checkpoints** ([`footprint`],
-//!   [`checkpoint`]): [`footprint::footprint_of`] captures the dependency
-//!   footprint of a lowered item — the context names its term read
-//!   (`incremental-pipeline.md` §"Checkpoints and the reuse rule" at item
-//!   granularity) — and [`checkpoint`] layers a changed-region → dirty-frontier
-//!   incremental typer over the melder-based lower path: it diffs the edited
-//!   item list against a base [`checkpoint::Checkpoints`], validates each
-//!   unchanged item's footprint against the bindings the edit changed, and
-//!   *adopts* (reuses) or *re-types* accordingly — the §"The edit loop"
-//!   validated resume. The gate is the differential `resume(base, edited) ==
-//!   checkpoint_source(edited)` (`tests/incremental`). Edit-surviving item
-//!   identity and the frontier order run on [`gandr_theory_orders`]
-//!   (§"pipeline-decision-02", the Porter disposition).
 //! - **The parser-agnostic item seam** ([`item_source`]): the melder-and-
 //!   lowering front end as an implementation of
-//!   [`gandr_core_checker::region::ItemSource`], so the core crate's
-//!   changed-region detector can be driven against real surface source without
-//!   depending on this crate or naming a parser.
+//!   [`gandr_core_incrementality::region::ItemSource`], so the item-granular
+//!   incremental typer can be driven against real surface source without
+//!   depending on this crate or naming a parser. A lowering already carries
+//!   that crate's [`gandr_core_incrementality::region::Item`], so crossing the
+//!   seam drops the surface faces (origins, attributes, declaration tables) and
+//!   projects nothing else. `tests/incremental` resumes over real source
+//!   through the seam against the surface prelude, the differential gate's
+//!   front-end half.
 //! - **Edit-action reconstruction** ([`edit`]): the localized structured diff
 //!   of two lowerings — the Porter/Pantograph "edit-action" both consume but
 //!   leave out of scope (`incremental-pipeline.md` §"pipeline-decision-02" and
@@ -46,8 +38,9 @@
 //!   neither the checkpoint base (A2.3) nor the solver, so it lands ahead of
 //!   them as the seam they will consume.
 //!
-//! Later rungs add the streaming driver (A2.5) and the per-term-node,
-//! solver-coupled checkpoint granularity above the item-level A2.3 base here.
+//! Later rungs add the streaming driver (A2.5) and, in
+//! `gandr-core-incrementality`, the per-term-node solver-coupled checkpoint
+//! granularity above its item-level base.
 //!
 //! Entry points: [`lower::lower_source`] (strict, A2.1) and
 //! [`lower::lower_source_total`] (total, A2.2). Lowering is syntax-directed
@@ -75,15 +68,6 @@ extern crate alloc;
 
 pub mod attributes;
 pub mod boundary;
-#[cfg_attr(
-    dylint_lib = "non_topologically_sorted_functions",
-    allow(
-        unknown_lints,
-        non_topologically_sorted_functions,
-        reason = "the worklist modules place their public drivers before the step helpers for readability; the caller-before-callee rule conflicts with that deliberate top-down layout pending a layout redesign"
-    )
-)]
-pub mod checkpoint;
 pub mod circuit;
 pub(crate) mod cst_read;
 pub mod desc_cells;
@@ -107,15 +91,6 @@ pub mod diag;
 )]
 pub mod edit;
 pub mod ffi;
-#[cfg_attr(
-    dylint_lib = "non_topologically_sorted_functions",
-    allow(
-        unknown_lints,
-        non_topologically_sorted_functions,
-        reason = "the worklist modules place their public drivers before the step helpers for readability; the caller-before-callee rule conflicts with that deliberate top-down layout pending a layout redesign"
-    )
-)]
-pub mod footprint;
 #[cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
     allow(

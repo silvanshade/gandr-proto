@@ -1,0 +1,36 @@
+#:schema https://www.schemastore.org/cargo.json
+#:tombi toml-version = "v1.0.0"
+
+[package]
+name = "gandr-core-incrementality"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Item-granular incremental typing for the gandr language: the parser-agnostic item seam, dependency footprints, and the validated-resume checkpoint engine"
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "differential"
+path = "tests/lib.rs"
+
+[dependencies]
+# The core CBPV vocabulary an item carries and the typing machine that types it:
+# `syntax::Term`, `types::Ty`, `ctx::Ctx`, `error::TypeError`, and `machine`.
+gandr-core-checker.workspace = true
+# The order-maintenance substrate (`incremental-pipeline.md`
+# §"pipeline-decision-02", the Porter disposition): the resume splices the item
+# order onto it so a matched item keeps its stable identity across
+# insert/delete edits.
+gandr-theory-orders.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[features]
+default = []
+full = []
+
+[lints]
+workspace = true

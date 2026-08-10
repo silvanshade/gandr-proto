@@ -128,6 +128,7 @@ use gandr_core_checker::syntax::WalkMotive;
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+use gandr_core_incrementality::region::Item;
 use gandr_surface_parser::Oblig;
 use gandr_surface_parser::ObligationInstance;
 use gandr_surface_syntax::NodeId;
@@ -337,7 +338,7 @@ pub enum LowerError
     /// A `def name : T;` signature with no following matching definition.
     /// [SPECULATIVE DECISION] Signatures attach to the nearest *following*
     /// `def` of the same name; unmatched ones are errors rather than
-    /// silently dropped items (a [`LoweredItem`] has no term to carry).
+    /// silently dropped items (a [`Item`] has no term to carry).
     #[error("signature for `{name}` has no matching definition at bytes {byte_range:?}")]
     DanglingSignature
     {
@@ -471,20 +472,6 @@ pub enum Strictness
     Total,
 }
 
-/// One lowered top-level item.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LoweredItem
-{
-    /// The defined name (`def` items); [`None`] for expression items.
-    pub name: Option<String>,
-    /// The recorded ascription: an explicit `def name : T;` signature, or
-    /// the type derived by the `def`-function sugar (the signature wins if
-    /// both exist — it is the user's stated contract).
-    pub ascription: Option<Ty>,
-    /// The lowered term.
-    pub term: Term,
-}
-
 /// One entity attribute lexed off a `def` item's leading `@[…]` block, before
 /// registry resolution and payload typing (proposal-attributes.md §2).
 ///
@@ -535,17 +522,24 @@ pub struct RawPayload
 pub struct Lowered
 {
     /// The lowered items, in source order.
-    pub items: Vec<LoweredItem>,
+    ///
+    /// The item type is the incrementality crate's parser-agnostic
+    /// [`Item`] — a name, an ascription, and a lowered term — so a lowering
+    /// crosses the changed-region seam without a projection. This lowerer fills
+    /// [`Item::ascription`] from an explicit `def name : T;` signature or from
+    /// the type the `def`-function sugar derives; the signature wins when both
+    /// exist, because it is the user's stated contract.
+    pub items: Vec<Item>,
     /// The foreign modules declared by `extern` blocks, in source order
     /// (proposal-ffi.md §2). `extern` blocks are declarations, not runnable
-    /// items, so they contribute no [`LoweredItem`]; a native FFI handler
+    /// items, so they contribute no [`Item`]; a native FFI handler
     /// (`gandr-ffi`) consumes these to resolve C symbols and marshal the
     /// boundary (§5.1).
     pub foreign: Vec<ForeignModule>,
     /// The `codata` blocks declared by *this* source, keyed by codata type name
     /// (the codata-declaration contract). Like [`Self::foreign`], a `codata`
     /// block is a declaration, not a runnable item — it yields no
-    /// [`LoweredItem`]. Read through [`Self::codata`]: a REPL
+    /// [`Item`]. Read through [`Self::codata`]: a REPL
     /// [`crate::session::Session`] merges these into its persistent
     /// registry so a later submission's copattern definition sees the
     /// declaration (the negative-declaration analogue of the `extern`
@@ -554,7 +548,7 @@ pub struct Lowered
     /// The `data` blocks declared by *this* source, keyed by datatype name
     /// (the data-declaration contract). Like [`Self::codata`], a `data` block
     /// is a declaration, not a runnable item — it yields no
-    /// [`LoweredItem`]. Read through [`Self::data`]: a renderer consults
+    /// [`Item`]. Read through [`Self::data`]: a renderer consults
     /// the declaration table's constructor enumeration and minted `DataId`
     /// to print a declared-constructor value as its `tag + name`
     /// (`Some(3)`, `Red`) rather than the structural carrier.
@@ -1193,7 +1187,7 @@ struct Lowerer<'src>
     /// definition `def rec f() -> C { … }` is elaborated and
     /// coverage-checked against `C`'s observation set regardless of source
     /// order. A `codata` block is a declaration, not a runnable item — it
-    /// contributes no [`LoweredItem`].
+    /// contributes no [`Item`].
     codata: BTreeMap<String, codata::CodataDecl>,
     /// The union of every declared observation name (across all `codata`
     /// blocks). A `.π` projection whose field is a declared observation lowers
@@ -4032,7 +4026,7 @@ impl Lowerer<'_>
     ) -> LowerResult<Lowered>
     {
         let mut sigs: Vec<PendingSig> = Vec::new();
-        let mut items: Vec<LoweredItem> = Vec::new();
+        let mut items: Vec<Item> = Vec::new();
         let mut origins: Vec<OriginNode> = Vec::new();
         let mut attributes: Vec<RawAttr> = Vec::new();
         let mut foreign: Vec<ForeignModule> = Vec::new();
@@ -4053,7 +4047,7 @@ impl Lowerer<'_>
                 return Err(error);
             }
             let hole = self.value_hole(root, &error)?;
-            items.push(LoweredItem {
+            items.push(Item {
                 name: None,
                 ascription: None,
                 term: Term::Value({
@@ -4068,7 +4062,7 @@ impl Lowerer<'_>
             // before lowering any item, so a call `m.op(args)` elaborates
             // against its module regardless of source order (proposal-ffi.md
             // §2/§3.1). `extern` blocks are declarations, not runnable items —
-            // they contribute no [`LoweredItem`].
+            // they contribute no [`Item`].
             for child in named_non_extra_children(root) {
                 if child.kind() != node_kinds::EXTERN_BLOCK {
                     continue;
@@ -4090,7 +4084,7 @@ impl Lowerer<'_>
             // definition `def rec f() -> C { … }` is coverage-checked against
             // `C`'s observations regardless of source order. Like `extern`, a
             // `codata` block is a declaration, not a runnable item — it yields
-            // no [`LoweredItem`].
+            // no [`Item`].
             for child in named_non_extra_children(root) {
                 if child.kind() != node_kinds::CODATA_DECLARATION {
                     continue;
@@ -4106,7 +4100,7 @@ impl Lowerer<'_>
             // constructor application `C(v̄)` or `case v { … }` resolves against
             // the datatype regardless of source order. Like `codata`, a `data`
             // block is a declaration, not a runnable item — it yields no
-            // [`LoweredItem`]. The pass reads the stage-0 descriptions (the
+            // [`Item`]. The pass reads the stage-0 descriptions (the
             // `NominalId → DataId` seam), so it is infallible here.
             self.collect_data();
             for child in named_non_extra_children(root) {
@@ -4133,7 +4127,7 @@ impl Lowerer<'_>
                         // A damaged signature item becomes a hole item.
                         | Err(ref error) if bool::from(self.total()) => {
                             let hole = self.value_hole(child, error)?;
-                            items.push(LoweredItem {
+                            items.push(Item {
                                 name: None,
                                 ascription: None,
                                 term: Term::Value({
@@ -4171,7 +4165,7 @@ impl Lowerer<'_>
                             .as_deref()
                             .and_then(|item_name| take_sig(&mut sigs, item_name.into()));
                         let hole = self.value_hole(child, error)?;
-                        items.push(LoweredItem {
+                        items.push(Item {
                             name,
                             ascription,
                             term: Term::Value({
@@ -4200,7 +4194,7 @@ impl Lowerer<'_>
                     byte_range: sig.byte_range.clone(),
                 };
                 let hole_id = self.fresh_hole();
-                items.push(LoweredItem {
+                items.push(Item {
                     name: Some(sig.name),
                     ascription: Some(sig.ty),
                     term: Term::Value(Value::Hole(hole_id.into())),
@@ -4498,7 +4492,7 @@ impl Lowerer<'_>
     fn module_declaration(
         &mut self,
         node: SynNode<'_>,
-    ) -> LowerResult<(LoweredItem, OriginNode)>
+    ) -> LowerResult<(Item, OriginNode)>
     {
         let name_node = required_field(node, node_kinds::FIELD_NAME)?;
         let name = {
@@ -4626,7 +4620,7 @@ impl Lowerer<'_>
         let record_ascription = Self::value_ascription(ascription.as_ref());
         let (term, origin) = Self::module_term(node, bindings, fields, record_ascription)?;
         Ok((
-            LoweredItem {
+            Item {
                 name: Some(name),
                 ascription,
                 term,
@@ -5125,7 +5119,7 @@ impl Lowerer<'_>
     fn item(
         &mut self,
         child: SynNode<'_>,
-    ) -> LowerResult<(LoweredItem, OriginNode)>
+    ) -> LowerResult<(Item, OriginNode)>
     {
         recursion_surface::validate_item(child)?;
         match child.kind() {
@@ -5139,7 +5133,7 @@ impl Lowerer<'_>
                 let value_node = required_field(child, node_kinds::FIELD_VALUE)?;
                 let (term, origin) = self.finalize_term(value_node)?;
                 Ok((
-                    LoweredItem {
+                    Item {
                         name: Some(name),
                         ascription: None,
                         term,
@@ -5162,7 +5156,7 @@ impl Lowerer<'_>
                 let inner = sole_inner_expression(child)?;
                 let (term, origin) = self.finalize_term(inner)?;
                 Ok((
-                    LoweredItem {
+                    Item {
                         name: None,
                         ascription: None,
                         term,
@@ -5176,7 +5170,7 @@ impl Lowerer<'_>
             | _ => {
                 let (term, origin) = self.finalize_term(child)?;
                 Ok((
-                    LoweredItem {
+                    Item {
                         name: None,
                         ascription: None,
                         term,
@@ -5243,7 +5237,7 @@ impl Lowerer<'_>
     fn def_function(
         &mut self,
         node: SynNode<'_>,
-    ) -> LowerResult<(LoweredItem, OriginNode)>
+    ) -> LowerResult<(Item, OriginNode)>
     {
         let name_node = required_field(node, node_kinds::FIELD_NAME)?;
         let name = {
@@ -5299,7 +5293,7 @@ impl Lowerer<'_>
             OriginNode::new(sugar_entry, vec![nested.origin]),
         )?;
         Ok((
-            LoweredItem {
+            Item {
                 name: Some(name),
                 ascription: derived,
                 term: Term::Value({

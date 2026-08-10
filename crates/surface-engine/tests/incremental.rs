@@ -1,14 +1,15 @@
-//! The A2.3 differential gate: incremental validated resume ≡ from-scratch
-//! re-typing (`incremental-pipeline.md` §"Checkpoints and the reuse rule"
-//! through §"Derivation merging and identity stability").
+//! The differential gate over **real surface source**: incremental validated
+//! resume ≡ from-scratch re-typing (`incremental-pipeline.md` §"Checkpoints and
+//! the reuse rule" through §"Derivation merging and identity stability").
 //!
-//! Landed under `incremental-checkpoint work`.
-//!
-//! The theorem `crate::checkpoint::resume` must satisfy: for **every** edit,
-//! the incrementally-resumed per-item typing equals the typing a full
-//! from-scratch re-type of the edited program produces. Adoption (reusing a
-//! validated checkpoint) skips work; this gate proves the skips never change
-//! the answer.
+//! `gandr-core-incrementality` gates its engine against an in-tree item-source
+//! double; this is the same theorem driven through *this* crate's front end —
+//! the melder push machine and the CST → core lowering, crossed at
+//! [`LoweringItemSource`] — and against the surface [`prelude_ctx`] rather than
+//! the engine's empty default base. For **every** edit, the incrementally
+//! resumed per-item typing equals the typing a full from-scratch re-type of the
+//! edited program produces. Adoption (reusing a validated checkpoint) skips
+//! work; this gate proves the skips never change the answer.
 //!
 //! Four classes:
 //!
@@ -22,8 +23,11 @@
 //! 3. [`tests::structure`] — item-list edits (delete, rename) match from
 //!    scratch.
 //! 4. [`tests::property`] — the gate over property-generated random edits
-//!    (replace / insert / delete) on chained-definition programs: `resume`
-//!    equals `checkpoint_source` unconditionally.
+//!    (replace / insert / delete) on chained-definition programs: `resume_with`
+//!    equals `checkpoint_with` unconditionally.
+//!
+//! [`LoweringItemSource`]: gandr_surface_engine::item_source::LoweringItemSource
+//! [`prelude_ctx`]: gandr_surface_engine::prelude_ctx
 
 #![cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -34,16 +38,20 @@
     )
 )]
 
-/// The differential gate for `gandr_surface_engine::checkpoint`.
+/// The differential gate for `gandr_core_incrementality::checkpoint`, driven
+/// through this crate's item seam against the surface prelude.
 #[cfg(test)]
 mod tests
 {
-    use gandr_surface_engine::checkpoint::ItemTyping;
-    use gandr_surface_engine::checkpoint::Resume;
-    use gandr_surface_engine::checkpoint::checkpoint_source;
-    use gandr_surface_engine::checkpoint::resume;
-    use gandr_surface_engine::lower::Lowered;
-    use gandr_surface_engine::lower::lower_source_total;
+    use gandr_core_incrementality::checkpoint::ItemTyping;
+    use gandr_core_incrementality::checkpoint::Resume;
+    use gandr_core_incrementality::checkpoint::checkpoint_with;
+    use gandr_core_incrementality::checkpoint::resume_with;
+    use gandr_core_incrementality::region::ItemSource as _;
+    use gandr_core_incrementality::region::Program;
+    use gandr_surface_engine::item_source::LoweringItemSource;
+    use gandr_surface_engine::item_source::SourceRevision;
+    use gandr_surface_engine::prelude_ctx;
 
     use crate::common::TestText;
 
@@ -58,9 +66,9 @@ mod tests
     {
         let base_source = base_source.into().0;
         let edited_source = edited_source.into().0;
-        let base = checkpoint_source(&lower(base_source));
-        let edited = lower(edited_source);
-        let resumed = resume(&base, &edited);
+        let base = checkpoint_with(&seam_program(base_source), &prelude_ctx());
+        let edited = seam_program(edited_source);
+        let resumed = resume_with(&base, &edited, &prelude_ctx());
         assert_eq!(
             resumed.typings,
             from_scratch(edited_source),
@@ -79,19 +87,21 @@ mod tests
     fn from_scratch<'text>(source: impl Into<TestText<'text>>) -> Vec<ItemTyping>
     {
         let source = source.into().0;
-        checkpoint_source(&lower(source))
+        checkpoint_with(&seam_program(source), &prelude_ctx())
             .items
             .into_iter()
             .map(|checkpoint| checkpoint.typing)
             .collect()
     }
 
-    /// Totally lowers `source` (every input lowers; out-of-fragment regions
-    /// become holes).
-    fn lower<'text>(source: impl Into<TestText<'text>>) -> Lowered
+    /// Crosses `source` through the melder-and-lowering front end at the item
+    /// seam (lowering is total, so out-of-fragment regions become holes).
+    fn seam_program<'text>(source: impl Into<TestText<'text>>) -> Program
     {
         let source = source.into().0;
-        lower_source_total(source.into()).expect("total lowering never fails structurally")
+        LoweringItemSource
+            .items(&SourceRevision::from(source))
+            .expect("total lowering fails only when the parser is unavailable")
     }
 
     /// The reuse the trail-aware footprint buys.
@@ -137,7 +147,11 @@ mod tests
                 vec![true, false, true],
                 "only `b` is fresh"
             );
-            assert_eq!(2, resumed.adopted_count().0, "`a` and `c` reused");
+            assert_eq!(
+                2,
+                usize::from(resumed.adopted_count()),
+                "`a` and `c` reused"
+            );
         }
 
         /// A no-op edit (identical source) adopts every item.
@@ -249,10 +263,11 @@ mod tests
     /// The gate over property-generated random edits.
     mod property
     {
-        use gandr_surface_engine::checkpoint::checkpoint_source;
-        use gandr_surface_engine::checkpoint::resume;
-        use gandr_surface_engine::lower::lower_source_total;
+        use gandr_core_incrementality::checkpoint::checkpoint_with;
+        use gandr_core_incrementality::checkpoint::resume_with;
+        use gandr_surface_engine::prelude_ctx;
 
+        use super::seam_program;
         use crate::common::TestCount;
         use crate::proptest_crate::collection::vec;
         use crate::proptest_crate::prelude::*;
@@ -354,14 +369,11 @@ mod tests
                 let base_source = statements.join("\n");
                 let edited_source = apply_edit(&statements, &concrete).join("\n");
 
-                let base = checkpoint_source(
-                    &lower_source_total((&base_source).into()).expect("base lowers totally"),
-                );
-                let edited =
-                    lower_source_total((&edited_source).into()).expect("edited lowers totally");
-                let resumed = resume(&base, &edited);
+                let base = checkpoint_with(&seam_program(base_source.as_str()), &prelude_ctx());
+                let edited = seam_program(edited_source.as_str());
+                let resumed = resume_with(&base, &edited, &prelude_ctx());
 
-                let expected: Vec<_> = checkpoint_source(&edited)
+                let expected: Vec<_> = checkpoint_with(&edited, &prelude_ctx())
                     .items
                     .into_iter()
                     .map(|checkpoint| checkpoint.typing)

@@ -1,17 +1,16 @@
 //! The surface front end as the checkpoint engine's parser-agnostic item source
-//! (A2.3; `incremental-pipeline.md` §"Cold reparse" and §"The structural
-//! diff").
+//! (`incremental-pipeline.md` §"Cold reparse" and §"The structural diff").
 //!
 //! # What this module is for
 //!
-//! [`gandr_core_checker::region`] states the boundary between *producing* a
-//! revision's top-level items and *consuming* them: the changed-region detector
-//! and the checkpoint engine read only [`Item`] / [`Program`], never a concrete
-//! parser. That module names no front end on purpose, so until something
-//! implements [`ItemSource`] the boundary is a statement of intent that nothing
-//! stands on.
+//! [`gandr_core_incrementality::region`] states the boundary between
+//! *producing* a revision's top-level items and *consuming* them: the
+//! changed-region detector and the checkpoint engine read only [`Item`] /
+//! [`Program`], never a concrete parser. That module names no front end on
+//! purpose, so until something implements [`ItemSource`] the boundary is a
+//! statement of intent that nothing stands on.
 //!
-//! This module is the first implementation of it that is not a test double.
+//! This module is the implementation of it that is not a test double.
 //! [`LoweringItemSource`] lowers a revision of surface source through the
 //! melder push machine (`gandr-surface-parser`) and the CST → core lowering
 //! ([`crate::lower`]), and hands the result across the seam as a [`Program`].
@@ -30,19 +29,17 @@
 //! the [`crate::lower::Lowered`] it lowered; a consumer that needs only to know
 //! *what changed* holds the [`Program`].
 //!
-//! [`Item`]: gandr_core_checker::region::Item
-//! [`ItemSource`]: gandr_core_checker::region::ItemSource
-//! [`Program`]: gandr_core_checker::region::Program
+//! [`Item`]: gandr_core_incrementality::region::Item
+//! [`ItemSource`]: gandr_core_incrementality::region::ItemSource
+//! [`Program`]: gandr_core_incrementality::region::Program
 
 use alloc::string::String;
 
-use gandr_core_checker::region::Item;
-use gandr_core_checker::region::ItemSource;
-use gandr_core_checker::region::Program;
+use gandr_core_incrementality::region::ItemSource;
+use gandr_core_incrementality::region::Program;
 
 use crate::boundary::PipelineSource;
 use crate::lower::LowerError;
-use crate::lower::LoweredItem;
 use crate::lower::lower_source_total;
 
 /// One revision of surface source, as the seam's opaque revision type.
@@ -99,7 +96,7 @@ impl ItemSource for LoweringItemSource
     /// - ensures: the returned [`Program`] holds one [`Item`] per lowered
     ///   top-level item, in source order, carrying only the name, ascription,
     ///   and lowered term — no span, origin, or parser identity.
-    /// - provides: the seam's first non-test-double implementation, so the
+    /// - provides: the seam's non-test-double implementation, so the
     ///   changed-region detector runs against the melder front end without
     ///   naming it.
     /// - fails: [`LowerError::ParserUnavailable`] and
@@ -114,14 +111,17 @@ impl ItemSource for LoweringItemSource
     /// itself fails. No input-dependent lowering failure surfaces here.
     ///
     /// # Adequacy
-    /// - hypothesis: the seam projection is exactly the three-field item
-    ///   identity and nothing else — a mutant that dropped the ascription, the
-    ///   name, or the source order would let the changed-region detector adopt
-    ///   an item it must re-type. `tests::seam` distinguishes these by driving
-    ///   the core-checker engine over seam programs and asserting it agrees
-    ///   item-for-item with this crate's own engine over the same source.
-    /// - witness: `tests::seam::the_seam_engine_agrees_with_the_surface_engine`
+    /// - hypothesis: the seam carries exactly the three-field item identity and
+    ///   the source order, and nothing else — a mutant that dropped the
+    ///   ascription, the name, or the order would let the changed-region
+    ///   detector adopt an item it must re-type while every from-scratch check
+    ///   still passed. `tests::seam` distinguishes these by comparing the
+    ///   crossed program field-for-field against the lowering it came from, and
+    ///   by resuming the engine across an edit made through the seam.
     /// - witness: `tests::seam::the_seam_carries_names_ascriptions_and_order`
+    /// - witness: `tests::seam::the_seam_admits_the_differential_gate`
+    ///
+    /// [`Item`]: gandr_core_incrementality::region::Item
     #[inline]
     fn items(
         &self,
@@ -130,16 +130,6 @@ impl ItemSource for LoweringItemSource
     {
         let source = PipelineSource::from(revision.0.as_str());
         let lowered = lower_source_total(source)?;
-        Ok(lowered.items.into_iter().map(seam_item).collect())
+        Ok(Program::new(lowered.items))
     }
-}
-
-/// Projects one lowered surface item onto the seam's parser-agnostic [`Item`].
-///
-/// The projection is a move of the three fields the unchanged-region test
-/// compares; everything else a lowering knows about an item stays behind in
-/// [`crate::lower::Lowered`].
-fn seam_item(item: LoweredItem) -> Item
-{
-    Item::new(item.name, item.ascription, item.term)
 }

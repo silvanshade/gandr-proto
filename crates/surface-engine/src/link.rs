@@ -16,12 +16,12 @@ use gandr_core_checker::syntax::Value;
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+use gandr_core_incrementality::region::Item;
 
 use crate::boundary::AscriptionPresence;
 use crate::boundary::DefinitionName;
 use crate::boundary::ItemIndex;
 use crate::lower::Lowered;
-use crate::lower::LoweredItem;
 
 /// Result type for linking a lowered source file into one runnable computation.
 pub type LinkResult<T> = Result<T, LinkError>;
@@ -205,7 +205,7 @@ fn validate_name(
 }
 
 /// Converts one lowered item into the computation the outer file bind will run.
-fn item_comp(item: &LoweredItem) -> Comp
+fn item_comp(item: &Item) -> Comp
 {
     term_to_comp(&item.term, item.ascription.as_ref())
 }
@@ -337,13 +337,13 @@ mod tests
     use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::Ty;
     use gandr_core_checker::types::ValueType;
+    use gandr_core_incrementality::region::Item;
     use gandr_core_sequent::machine::run_comp;
 
     use super::ASCRIBED_RESULT_BINDER;
     use super::LinkError;
     use super::link_program;
     use crate::lower::Lowered;
-    use crate::lower::LoweredItem;
     use crate::lower::lower_source;
 
     /// Optional test-item binder.
@@ -386,9 +386,9 @@ mod tests
         name: impl Into<OptionalItemName<'name>>,
         term: Term,
         ascription: Ty,
-    ) -> LoweredItem
+    ) -> Item
     {
-        LoweredItem {
+        Item {
             name: name.into().0.map(str::to_owned),
             ascription: Some(ascription),
             term,
@@ -502,7 +502,7 @@ mod tests
         );
     }
 
-    fn lowered(items: Vec<LoweredItem>) -> Lowered
+    fn lowered(items: Vec<Item>) -> Lowered
     {
         let mut lowered = Lowered::default();
         lowered.items = items;
@@ -622,9 +622,9 @@ mod tests
     fn item<'name>(
         name: impl Into<OptionalItemName<'name>>,
         term: Term,
-    ) -> LoweredItem
+    ) -> Item
     {
-        LoweredItem {
+        Item {
             name: name.into().0.map(str::to_owned),
             ascription: None,
             term,

@@ -5,6 +5,7 @@
 resolver = "3"
 members = [
   "crates/core-checker",
+  "crates/core-incrementality",
   "crates/core-sequent",
   "crates/kernel-core",
   "crates/kernel-strata",
@@ -138,6 +139,7 @@ path = "crates/surface-driver"
 # Core CBPV bidirectional checker and defunctionalized typing machine.
 # consumers:
 # - gandr
+# - gandr-core-incrementality
 # - gandr-core-sequent
 # - gandr-runtime-host
 # - gandr-surface-corpus
@@ -145,6 +147,13 @@ path = "crates/surface-driver"
 # - gandr-theory-levitation
 [workspace.dependencies.gandr-core-checker]
 path = "crates/core-checker"
+
+# Item-granular incremental typing: the parser-agnostic item seam, dependency
+# footprints, and the validated-resume checkpoint engine.
+# consumers:
+# - gandr-surface-engine
+[workspace.dependencies.gandr-core-incrementality]
+path = "crates/core-incrementality"
 
 # The polarized System-L command IL, the static focusing translation, and the L machine.
 # consumers:
@@ -280,8 +289,7 @@ path = "crates/theory-nominal-automata"
 
 # Self-contained order-maintenance structure (O(1) comparison) for incremental pipelines.
 # consumers:
-# - gandr-core-checker
-# - gandr-surface-engine
+# - gandr-core-incrementality
 [workspace.dependencies.gandr-theory-orders]
 path = "crates/theory-orders"
 
@@ -373,6 +381,7 @@ default-features = false
 # consumers:
 # - gandr-core-checker
 # - gandr-core-checker (dev)
+# - gandr-core-incrementality (dev)
 # - gandr-core-sequent (dev)
 # - gandr-kernel-core (dev)
 # - gandr-kernel-strata (dev)

@@ -47,6 +47,7 @@ use gandr_core_checker::syntax::Term;
 use gandr_core_checker::syntax::Value;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+use gandr_core_incrementality::region::Item;
 
 use crate::boundary::ContextLength;
 use crate::boundary::ItemIndex;
@@ -233,7 +234,7 @@ fn finish_goals(goals: GoalMap) -> Vec<Goal>
 /// local `Γ` at every hole `Descend` (see the module doc).
 fn observe_item(
     item_index: ItemIndex,
-    item: &crate::lower::LoweredItem,
+    item: &Item,
     base: &Ctx,
     goals: &mut GoalMap,
 )
@@ -297,7 +298,7 @@ fn observe_item(
 /// identically. The dispatch is total over `Term`'s two sorts (its upstream
 /// growth point is retired; an added sort is a compile-visible change here).
 pub(crate) fn initial_state(
-    item: &crate::lower::LoweredItem,
+    item: &Item,
     base: &Ctx,
 ) -> machine::State
 {

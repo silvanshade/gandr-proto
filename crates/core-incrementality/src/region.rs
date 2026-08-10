@@ -1,5 +1,5 @@
-//! The parser-agnostic seam for changed-region detection (A2.3;
-//! `incremental-pipeline.md` §"Cold reparse" and §"The structural diff").
+//! The parser-agnostic seam for changed-region detection
+//! (`incremental-pipeline.md` §"Cold reparse" and §"The structural diff").
 //!
 //! # Why a seam
 //!
@@ -11,13 +11,13 @@
 //! detector and the checkpoint engine ([`crate::checkpoint`]) read only
 //! [`Item`] / [`Program`], never a concrete parser.
 //!
-//! The front end is deliberately unnamed here. The reboot's tree-sitter
-//! node-address path is retired (`crate::syntax` recognizes unchanged subtrees
-//! by merkle content hash, not parser-carried addresses); should a parser
-//! return, it is external tooling and an ordinary implementor of [`ItemSource`]
-//! — this crate never depends on one. The real implementation is the surface
-//! lane's to supply, because it owns lowering; the in-tree test double in
-//! `tests/incremental.rs` drives the differential gate without one.
+//! The front end is deliberately unnamed here. Unchanged subtrees are
+//! recognized by merkle content hash rather than by parser-carried node
+//! addresses ([`Term`] is span-free and parser-free), so a parser is external
+//! tooling and an ordinary implementor of [`ItemSource`] — this crate names
+//! none and depends on none. `gandr-surface-engine`'s item-source module
+//! supplies the melder-and-lowering front end; the in-tree test double in this
+//! crate's differential gate drives the engine without one.
 //!
 //! # What crosses the seam
 //!
@@ -27,22 +27,23 @@
 //! unchanged-region test is structural equality over exactly this data, so the
 //! detection is parser-agnostic by construction. A [`Program`] is the ordered
 //! item list of one revision.
+//!
+//! [`Term`]: gandr_core_checker::syntax::Term
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::syntax::Term;
-use crate::types::Ty;
+use gandr_core_checker::syntax::Term;
+use gandr_core_checker::types::Ty;
 
 /// One lowered top-level item: the parser-agnostic unit the checkpoint engine
 /// aligns, footprints, and types.
 ///
-/// This is the reboot's realization of the incremental pipeline's per-item
-/// granularity (`incremental-pipeline.md` §"Checkpoints and the reuse rule"):
-/// top-level items lower independently and are typed against an accumulating
-/// context threaded item to item, so an item's identity is its name, its
-/// ascription, and its lowered term — the content key the unchanged-region test
-/// compares.
+/// This is the incremental pipeline's per-item granularity
+/// (`incremental-pipeline.md` §"Checkpoints and the reuse rule"): top-level
+/// items lower independently and are typed against an accumulating context
+/// threaded item to item, so an item's identity is its name, its ascription,
+/// and its lowered term — the content key the unchanged-region test compares.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Item
 {

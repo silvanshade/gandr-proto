@@ -404,10 +404,6 @@ semantic_copy!(
     pub struct ContextLength(usize);
 );
 semantic_copy!(
-    /// Number of adopted checkpoints in an incremental resume.
-    pub struct AdoptedItemCount(usize);
-);
-semantic_copy!(
     /// Length of one source byte range.
     pub struct SourceLength(usize);
 );
@@ -440,10 +436,6 @@ semantic_copy!(
     pub struct FreshHoleId(u32);
 );
 semantic_copy!(
-    /// Occurrence count for one declared name.
-    pub struct NameOccurrenceCount(usize);
-);
-semantic_copy!(
     /// Deterministic preorder ordinal of an origin node.
     pub struct OriginNodeOrdinal(u64);
 );
@@ -470,14 +462,6 @@ semantic_copy!(
 semantic_copy!(
     /// Whether a term already carries a requested type ascription.
     pub struct AscriptionPresence(bool);
-);
-semantic_copy!(
-    /// Whether an item checkpoint was adopted rather than recomputed.
-    pub struct ItemAdoption(bool);
-);
-semantic_copy!(
-    /// Whether a candidate ordering equals source order.
-    pub struct SourceOrder(bool);
 );
 semantic_copy!(
     /// Whether an origin map contains no provenance entries.
@@ -510,8 +494,6 @@ semantic_bool!(
     MatchDecision,
     DataMention,
     RecursiveMarkDepthExceeded,
-    ItemAdoption,
-    SourceOrder,
     OriginMapEmpty,
 );
 

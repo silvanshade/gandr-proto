@@ -594,11 +594,19 @@ version = "0.0.0"
 dependencies = [
  "gandr-kernel-core",
  "gandr-theory-nominal-automata",
- "gandr-theory-orders",
  "no-panic",
  "proptest",
  "regex",
  "thiserror 2.0.19",
+]
+
+[[package]]
+name = "gandr-core-incrementality"
+version = "0.0.0"
+dependencies = [
+ "gandr-core-checker",
+ "gandr-theory-orders",
+ "proptest",
 ]
 
 [[package]]
@@ -681,6 +689,7 @@ name = "gandr-surface-engine"
 version = "0.0.0"
 dependencies = [
  "gandr-core-checker",
+ "gandr-core-incrementality",
  "gandr-core-sequent",
  "gandr-runtime-host",
  "gandr-surface-grammar",
@@ -689,7 +698,6 @@ dependencies = [
  "gandr-theory-computads",
  "gandr-theory-levitation",
  "gandr-theory-nominal-automata",
- "gandr-theory-orders",
  "gandr-theory-recursion",
  "proptest",
  "serde",

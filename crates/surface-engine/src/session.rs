@@ -73,6 +73,7 @@ use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::DataId;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+use gandr_core_incrementality::region::Item;
 use gandr_core_sequent::machine::run_comp_with_prelude;
 
 use crate::boundary::ConstructorName;
@@ -83,7 +84,6 @@ use crate::diag;
 use crate::ffi::ForeignModule;
 use crate::goals::initial_state;
 use crate::lower::LowerError;
-use crate::lower::LoweredItem;
 use crate::lower::lower_source_total_seeded;
 use crate::prelude::Prelude;
 use crate::prelude_ctx;
@@ -323,7 +323,7 @@ impl Session
     /// session when the item is a value-typed definition.
     fn process_item(
         &mut self,
-        item: &LoweredItem,
+        item: &Item,
         holey: impl Into<HolePresence>,
     ) -> ItemOutcome
     {
@@ -354,7 +354,7 @@ impl Session
     fn define<'name>(
         &mut self,
         name: impl Into<DefinitionName<'name>>,
-        item: &LoweredItem,
+        item: &Item,
         ty: Ty,
     ) -> ItemOutcome
     {
@@ -417,7 +417,7 @@ impl Default for Session
 #[inline]
 #[must_use]
 pub fn item_type(
-    item: &LoweredItem,
+    item: &Item,
     base: &Ctx,
 ) -> Option<Result<Ty, TypeError>>
 {

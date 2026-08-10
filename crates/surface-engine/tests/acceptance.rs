@@ -45,12 +45,12 @@ mod tests
     use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::Ty;
     use gandr_core_checker::types::ValueType;
+    use gandr_core_incrementality::region::Item;
     use gandr_surface_engine::boundary::SourceRange;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::host;
     use gandr_surface_engine::lower::LowerError;
     use gandr_surface_engine::lower::Lowered;
-    use gandr_surface_engine::lower::LoweredItem;
     use gandr_surface_engine::lower::lower_source;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::lower::node_kinds;
@@ -1038,7 +1038,7 @@ mod tests
         }
 
         /// The single item of an inline source.
-        fn sole_item<'text>(source: impl Into<TestText<'text>>) -> LoweredItem
+        fn sole_item<'text>(source: impl Into<TestText<'text>>) -> Item
         {
             let source = source.into().0;
             let lowered = lower_ok(source);

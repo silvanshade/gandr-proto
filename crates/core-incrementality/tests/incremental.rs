@@ -1,10 +1,10 @@
-//! The A2.3 differential gate: incremental validated resume ≡ from-scratch
+//! The differential gate: incremental validated resume ≡ from-scratch
 //! re-typing (`incremental-pipeline.md` §"Checkpoints and the reuse rule"
 //! through §"Derivation merging and identity stability").
 //!
-//! The theorem `gandr_core_checker::checkpoint::resume` must satisfy: for
-//! **every** edit, the incrementally-resumed per-item typing equals the typing
-//! a full from-scratch re-type of the edited program produces. Adoption
+//! The theorem `gandr_core_incrementality::checkpoint::resume` must satisfy:
+//! for **every** edit, the incrementally-resumed per-item typing equals the
+//! typing a full from-scratch re-type of the edited program produces. Adoption
 //! (reusing a validated checkpoint) skips work; this gate proves the skips
 //! never change the answer.
 //!
@@ -12,12 +12,13 @@
 //! parser-agnostic [`ItemSource`] seam. It lowers a compact statement model
 //! (integer / string literals, name references, and integer-ascribed
 //! references) to the same core [`Item`]s a real parser would, so the gate
-//! exercises the checkpoint engine without a parser (the surface lane supplies
-//! the real one). The four classes below mirror the incremental loop's cases:
-//! adoption, invalidation, structural edits, and property-generated edits.
+//! exercises the checkpoint engine without a parser (`gandr-surface-engine`
+//! supplies the real front end, and gates it over real source). The four
+//! classes below mirror the incremental loop's cases: adoption, invalidation,
+//! structural edits, and property-generated edits.
 //!
-//! [`ItemSource`]: gandr_core_checker::region::ItemSource
-//! [`Item`]: gandr_core_checker::region::Item
+//! [`ItemSource`]: gandr_core_incrementality::region::ItemSource
+//! [`Item`]: gandr_core_incrementality::region::Item
 
 #![cfg_attr(
     dylint_lib = "non_topologically_sorted_functions",
@@ -28,22 +29,22 @@
     )
 )]
 
-/// The differential gate for `gandr_core_checker::checkpoint`.
+/// The differential gate for `gandr_core_incrementality::checkpoint`.
 #[cfg(test)]
 mod tests
 {
     use alloc::rc::Rc;
 
-    use gandr_core_checker::checkpoint::ItemTyping;
-    use gandr_core_checker::checkpoint::Resume;
-    use gandr_core_checker::checkpoint::checkpoint_program;
-    use gandr_core_checker::checkpoint::resume;
-    use gandr_core_checker::region::Item;
-    use gandr_core_checker::region::ItemSource;
-    use gandr_core_checker::region::Program;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::syntax::Value;
     use gandr_core_checker::types::ValueType;
+    use gandr_core_incrementality::checkpoint::ItemTyping;
+    use gandr_core_incrementality::checkpoint::Resume;
+    use gandr_core_incrementality::checkpoint::checkpoint_program;
+    use gandr_core_incrementality::checkpoint::resume;
+    use gandr_core_incrementality::region::Item;
+    use gandr_core_incrementality::region::ItemSource;
+    use gandr_core_incrementality::region::Program;
 
     /// One definition body the toy surface can lower — enough scalar and
     /// reference shapes to drive body edits, type changes, and downstream

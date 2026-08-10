@@ -590,10 +590,10 @@ mod tests
             use gandr_core_checker::mark::mark_value;
             use gandr_core_checker::syntax::Term;
             use gandr_core_checker::types::Ty;
-            use gandr_surface_engine::lower::LoweredItem;
+            use gandr_core_incrementality::region::Item;
 
             fn marking_of(
-                item: &LoweredItem,
+                item: &Item,
                 base: &Ctx,
             ) -> Marking
             {

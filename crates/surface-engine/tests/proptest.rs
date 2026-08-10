@@ -33,7 +33,7 @@ mod tests
     use gandr_core_checker::strategies::binder_name;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::types::Ty;
-    use gandr_surface_engine::lower::LoweredItem;
+    use gandr_core_incrementality::region::Item;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::prelude_ctx;
 
@@ -65,7 +65,7 @@ mod tests
     /// ascription when the sorts match, in inference mode otherwise — and
     /// asserts they agree. Termination without a panic is the totality
     /// evidence.
-    fn type_item_both(item: &LoweredItem) -> Result<Ty, TypeError>
+    fn type_item_both(item: &Item) -> Result<Ty, TypeError>
     {
         match (&item.term, &item.ascription) {
             | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {

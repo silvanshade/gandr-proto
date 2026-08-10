@@ -1,8 +1,6 @@
 //! Dependency-validated checkpoints and the validated-resume incremental typer
-//! (A2.3; `incremental-pipeline.md` §"Checkpoints and the reuse rule" through
+//! (`incremental-pipeline.md` §"Checkpoints and the reuse rule" through
 //! §"Derivation merging and identity stability").
-//!
-//! Landed under `incremental-checkpoint work`.
 //!
 //! # The rung this builds
 //!
@@ -10,12 +8,12 @@
 //! (obligations become holes) → diff → *resume from the nearest valid
 //! checkpoint*, re-typing only the affected region and **re-validating** —
 //! never blindly reusing — the rest (§"The edit loop"). This module builds that
-//! loop at the granularity the current (melder, tree-sitter-free) architecture
-//! exposes: the **top-level item**. Items lower independently and are typed
-//! against an accumulating [`Ctx`] a [`crate::session::Session`] threads item
-//! to item, so the checkpoint of an item is its typing result plus its
-//! [`Footprint`] (the context names it read, `crate::footprint`), and the
-//! validity condition of §"The soundness condition" specializes to:
+//! loop at the granularity the seam exposes: the **top-level item**
+//! ([`crate::region::Item`]). Items lower independently and are typed
+//! against an accumulating [`Ctx`] this module threads item to item, so the
+//! checkpoint of an item is its typing result plus its [`Footprint`] (the
+//! context names it read, `crate::footprint`), and the validity condition of
+//! §"The soundness condition" specializes to:
 //!
 //! > an item's cached typing is valid for reuse iff (1) its lowered term is
 //! > unchanged and (2) no name in its footprint had its binding change since
@@ -43,8 +41,8 @@
 //! it. This is the "keep positions out of the checkpoint key" commitment the
 //! spec draws from rust-analyzer / Pterodactyl (§"pipeline-decision-07"): the
 //! checkpoint key is the stable identity, and the item's *position* is
-//! recovered from the spliced order. The dirty-frontier pass is then driven in
-//! that order (dependencies flow forward, so one ordered pass propagates every
+//! recovered from the spliced order. The ordered pass is then driven in that
+//! order (dependencies flow forward, so one ordered pass propagates every
 //! binding change), the item-granular shadow of Porter's order-maintenance
 //! dirty queue.
 //!
@@ -52,18 +50,18 @@
 //!
 //! Soundness is the theorem [`resume`] must satisfy and `tests/incremental`
 //! checks: for every edit, `resume(base, edited)` yields **exactly** the
-//! typings [`checkpoint_source`] computes for the edited program from scratch.
+//! typings [`checkpoint_program`] computes for the edited program from scratch.
 //! Adoption skips re-typing; the gate proves the skips never change the answer.
-
-extern crate alloc;
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use gandr_core_checker::control::Dir;
 use gandr_core_checker::ctx::Ctx;
 use gandr_core_checker::error::TypeError;
+use gandr_core_checker::machine;
 use gandr_core_checker::syntax::Term;
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
@@ -71,20 +69,14 @@ use gandr_core_checker::types::ValueType;
 use gandr_theory_orders::OrderMaintenance;
 use gandr_theory_orders::Pos;
 
+use crate::boundary::AdoptedItemCount;
 use crate::boundary::DefinitionName;
 use crate::boundary::HolePresence;
 use crate::boundary::MatchDecision;
 use crate::footprint::Footprint;
 use crate::footprint::footprint_of;
-use crate::lower::Lowered;
-use crate::lower::LoweredItem;
-use crate::prelude_ctx;
-use crate::session::item_type;
-
-/// Number of base checkpoints adopted by an incremental resume.
-#[repr(transparent)]
-#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
-pub struct AdoptedCheckpointCount(pub usize);
+use crate::region::Item;
+use crate::region::Program;
 
 /// Number of source items in the base (adopted) checkpoint set.
 #[repr(transparent)]
@@ -123,11 +115,10 @@ struct ItemMatch
 
 /// The type-level typing outcome of one item — the checkpoint's cached result.
 ///
-/// This is the type-level projection of [`crate::session::ItemOutcome`]:
-/// evaluation (the L-machine run) is the driver's concern, so a checkpoint
-/// records only what re-typing must reproduce. Two typings compare equal iff
-/// they classify the item identically and carry the same type — the equality
-/// the differential gate asserts.
+/// A checkpoint records only what re-typing must reproduce (evaluation is a
+/// later driver's concern). Two typings compare equal iff they classify the
+/// item identically and carry the same type — the equality the differential
+/// gate asserts.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ItemTyping
 {
@@ -138,8 +129,7 @@ pub enum ItemTyping
         name: String,
         /// The reported type — the bound *value* type `Ty::Value(A)` for a
         /// value-typed definition (what `name` is as a variable), or the raw
-        /// (bare-computation) type otherwise, mirroring
-        /// [`crate::session`]'s discipline.
+        /// (bare-computation) type otherwise.
         ty: Ty,
         /// Whether the definition entered scope (a value type binds; a bare
         /// computation type does not — thunk it to name it).
@@ -160,11 +150,6 @@ pub enum ItemTyping
     /// An item carrying a hole: typing is declined (the parse-completeness
     /// discipline, `incremental-pipeline.md` §"Holes").
     Holey,
-    /// An item of unknown sort — the forward-compatible shape for a future
-    /// `Term` sort. Never produced today: the sort dispatch is total over
-    /// `Term`'s two sorts, and an added sort is a compile-visible change at
-    /// every match.
-    Unknown,
 }
 
 /// One item's checkpoint: its identity (name / ascription / lowered term), its
@@ -201,7 +186,7 @@ pub struct Checkpoints
 /// The result of a validated resume.
 ///
 /// Carries the per-item typings (in edited source order, comparable to
-/// [`checkpoint_source`]) and, per item, whether its base checkpoint was
+/// [`checkpoint_program`]) and, per item, whether its base checkpoint was
 /// adopted (reused) rather than re-typed.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Resume
@@ -223,34 +208,40 @@ impl Resume
     /// - panics: none.
     #[inline]
     #[must_use]
-    pub fn adopted_count(&self) -> AdoptedCheckpointCount
+    pub fn adopted_count(&self) -> AdoptedItemCount
     {
-        AdoptedCheckpointCount(self.adopted.iter().filter(|&&adopted| adopted).count())
+        AdoptedItemCount::from(self.adopted.iter().filter(|&&adopted| adopted).count())
     }
 }
 
 /// Types a lowered program from scratch into a [`Checkpoints`] set, against the
-/// prelude context.
+/// **empty** base context.
+///
+/// The empty context is the default this crate ships because it is the only
+/// base a parser-agnostic engine can name: a prelude belongs to a front end,
+/// and the engine names no front end (see [`crate::region`]). A caller with a
+/// base of its own — a surface prelude, a REPL's accumulated context — passes
+/// it to [`checkpoint_with`], which is the same computation with the default
+/// removed.
 ///
 /// This is both the base-checkpoint builder and the differential gate's
-/// reference: [`resume`]'s output must equal `checkpoint_source(edited).items`'
-/// typings for every edit.
+/// reference: [`resume`]'s output must equal
+/// `checkpoint_program(edited).items`' typings for every edit.
 ///
 /// # Contract
 /// - ensures: returns one [`ItemCheckpoint`] per item, each typed against the
-///   context as it stood after the preceding items (the session's cross-item
-///   threading, type-level).
+///   context as it stood after the preceding items (the cross-item threading,
+///   type-level).
 /// - panics: none.
 #[inline]
 #[must_use]
-pub fn checkpoint_source(lowered: &Lowered) -> Checkpoints
+pub fn checkpoint_program(program: &Program) -> Checkpoints
 {
-    checkpoint_with(lowered, &prelude_ctx())
+    checkpoint_with(program, &Ctx::new())
 }
 
-/// Types a lowered program from scratch against an explicit base context (the
-/// generalization of [`checkpoint_source`] a REPL session with a non-prelude
-/// base would use).
+/// Types a lowered program from scratch against an explicit base context — the
+/// form a caller with a non-empty base (a prelude, a REPL context) uses.
 ///
 /// # Contract
 /// - ensures: returns the per-item checkpoints, threading each value-typed
@@ -259,13 +250,13 @@ pub fn checkpoint_source(lowered: &Lowered) -> Checkpoints
 #[inline]
 #[must_use]
 pub fn checkpoint_with(
-    lowered: &Lowered,
+    program: &Program,
     base_ctx: &Ctx,
 ) -> Checkpoints
 {
     let mut ctx = base_ctx.clone();
-    let mut items: Vec<ItemCheckpoint> = Vec::with_capacity(lowered.items.len());
-    for item in &lowered.items {
+    let mut items: Vec<ItemCheckpoint> = Vec::with_capacity(program.items.len());
+    for item in &program.items {
         let footprint = footprint_of(&item.term);
         let typing = type_item(item, &ctx, footprint.has_hole.into());
         thread_binding(&mut ctx, &typing);
@@ -283,11 +274,13 @@ pub fn checkpoint_with(
 /// The validated-resume incremental typer: reproduces the from-scratch typing
 /// of `edited` while adopting every item whose checkpoint stays valid.
 ///
-/// Against the prelude base context; see [`resume_with`] for an explicit base.
+/// Against the **empty** base context, matching [`checkpoint_program`]; see
+/// [`resume_with`] for the explicit-base form a caller with a prelude or a
+/// REPL context uses.
 ///
 /// # Contract
 /// - ensures: `resume(base, edited).typings` equals the typings of
-///   `checkpoint_source(edited).items` — the differential gate.
+///   `checkpoint_program(edited).items` — the differential gate.
 /// - provides: the §"The edit loop" validated resume — re-type the dirty
 ///   frontier, adopt the validated remainder.
 /// - panics: none.
@@ -295,10 +288,10 @@ pub fn checkpoint_with(
 #[must_use]
 pub fn resume(
     base: &Checkpoints,
-    edited: &Lowered,
+    edited: &Program,
 ) -> Resume
 {
-    resume_with(base, edited, &prelude_ctx())
+    resume_with(base, edited, &Ctx::new())
 }
 
 /// [`resume`] against an explicit base context.
@@ -317,17 +310,17 @@ pub fn resume(
 /// - hypothesis: adoption is sound only where structural identity **and**
 ///   footprint-cleanliness both hold; a body-only edit must adopt its
 ///   type-stable dependents, while a type-changing edit must re-type them (and
-///   a downstream error must surface). The `tests::incremental` corpus — body
+///   a downstream error must surface). The `tests/incremental` corpus — body
 ///   edits, type-changing edits, inserts, deletes, error-introducing edits, and
-///   property-generated single-def edits — distinguishes these.
-/// - witness: `tests::incremental` asserts `resume == checkpoint_source` over
+///   property-generated edits — distinguishes these.
+/// - witness: `tests/incremental` asserts `resume == checkpoint_program` over
 ///   that corpus and that reuse actually occurs (the engine is not trivially
 ///   re-typing everything).
 #[inline]
 #[must_use]
 pub fn resume_with(
     base: &Checkpoints,
-    edited: &Lowered,
+    edited: &Program,
     base_ctx: &Ctx,
 ) -> Resume
 {
@@ -369,7 +362,7 @@ pub fn resume_with(
         let base_index = edited_to_base.get(edited_index.0).copied().flatten();
         let base_checkpoint = base_index.and_then(|index| base.items.get(index.0));
         let is_adopted = adoptable(item, footprint, base_checkpoint, &changed);
-        let typing = if let (true, Some(checkpoint)) = (is_adopted.0, base_checkpoint) {
+        let typing = if let (true, Some(checkpoint)) = (bool::from(is_adopted), base_checkpoint) {
             checkpoint.typing.clone()
         }
         else {
@@ -382,13 +375,14 @@ pub fn resume_with(
             *slot = Some(typing);
         }
         if let Some(slot) = adopted.get_mut(edited_index.0) {
-            *slot = is_adopted.0;
+            *slot = bool::from(is_adopted);
         }
     }
 
     // Every edited item is produced exactly once by a well-formed spliced order
-    // (the splice is a permutation); a gap can only arise from an order-structure
-    // anomaly, which degrades to a full re-type rather than a partial answer.
+    // (the splice is a permutation); a gap can only arise from an
+    // order-structure anomaly, which degrades to a full re-type rather than a
+    // partial answer.
     if typings.iter().any(Option::is_none) {
         return resume_all_dirty(edited, &edited_footprints, base_ctx);
     }
@@ -403,15 +397,16 @@ pub fn resume_with(
 /// 1), and read no changed binding (§"The soundness condition" condition 2, via
 /// [`Footprint::intersects`], which also blocks an opaque footprint).
 fn adoptable(
-    item: &LoweredItem,
+    item: &Item,
     footprint: &Footprint,
     base_checkpoint: Option<&ItemCheckpoint>,
     changed: &BTreeSet<String>,
 ) -> MatchDecision
 {
-    MatchDecision(match base_checkpoint {
+    MatchDecision::from(match base_checkpoint {
         | Some(checkpoint) => {
-            checkpoint_matches_item(checkpoint, item).0 && !footprint.intersects(changed).0
+            bool::from(checkpoint_matches_item(checkpoint, item))
+                && !bool::from(footprint.intersects(changed))
         },
         | None => false,
     })
@@ -421,33 +416,31 @@ fn adoptable(
 /// an edited item's — the unchanged-region test.
 fn checkpoint_matches_item(
     checkpoint: &ItemCheckpoint,
-    item: &LoweredItem,
+    item: &Item,
 ) -> MatchDecision
 {
-    MatchDecision(
+    MatchDecision::from(
         checkpoint.name == item.name
             && checkpoint.ascription == item.ascription
             && checkpoint.term == item.term,
     )
 }
 
-/// Types one item (type-level, no evaluation), mirroring the session's
-/// `process_item`/`define` classification: a holey item is declined; otherwise
-/// it types against `ctx` and a value-typed definition reports its bound value
-/// type.
+/// Types one lowered item (type-level, no evaluation): a holey item is
+/// declined; otherwise it types against `ctx` and a value-typed definition
+/// reports its bound value type.
 fn type_item(
-    item: &LoweredItem,
+    item: &Item,
     ctx: &Ctx,
     has_hole: HolePresence,
 ) -> ItemTyping
 {
-    if has_hole.0 {
+    if bool::from(has_hole) {
         return ItemTyping::Holey;
     }
     match item_type(item, ctx) {
-        | None => ItemTyping::Unknown,
-        | Some(Err(error)) => ItemTyping::TypeError { error },
-        | Some(Ok(ty)) => match item.name {
+        | Err(error) => ItemTyping::TypeError { error },
+        | Ok(ty) => match item.name {
             | Some(ref name) => match bound_value_type(&ty) {
                 | Some(value_type) => ItemTyping::Definition {
                     name: name.clone(),
@@ -463,6 +456,40 @@ fn type_item(
             | None => ItemTyping::Expression { ty },
         },
     }
+}
+
+/// Types one lowered item against `base`, returning its result type — the
+/// type-level driver both the from-scratch and resume paths share.
+///
+/// Dispatches on sort and ascription (an item is checked against its recorded
+/// ascription when the sorts match, inferred otherwise), then drives the
+/// heap-stacked typing machine ([`gandr_core_checker::machine`], ADR-47) to
+/// completion.
+///
+/// # Contract
+/// - ensures: returns `Ok(ty)` with the item's value/computation type on
+///   success, and `Err(error)` with the first [`TypeError`] on a typing
+///   failure.
+/// - panics: none; the machine's continuation stack is heap-allocated, so
+///   input-scaled term nesting does not consume the host call stack.
+fn item_type(
+    item: &Item,
+    base: &Ctx,
+) -> Result<Ty, TypeError>
+{
+    let outcome = match (&item.term, &item.ascription) {
+        | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
+            machine::run_value(base.clone(), value.clone(), Dir::Check(expected.clone()))
+        },
+        | (&Term::Value(ref value), _) => {
+            machine::run_value(base.clone(), value.clone(), Dir::Infer)
+        },
+        | (&Term::Comp(ref comp), &Some(Ty::Comp(ref expected))) => {
+            machine::run_comp(base.clone(), comp.clone(), Dir::Check(expected.clone()))
+        },
+        | (&Term::Comp(ref comp), _) => machine::run_comp(base.clone(), comp.clone(), Dir::Infer),
+    };
+    outcome.0
 }
 
 /// Splices the edit onto the base order and returns the processing order (the
@@ -562,22 +589,22 @@ fn splice_order(
 /// test, or their names are unstable), never an unsound reuse.
 fn align_by_name(
     base: &[ItemCheckpoint],
-    edited: &[LoweredItem],
+    edited: &[Item],
 ) -> Vec<ItemMatch>
 {
     let base_keys: Vec<Option<DefinitionName<'_>>> = base
         .iter()
-        .map(|checkpoint| checkpoint.name.as_deref().map(DefinitionName))
+        .map(|checkpoint| checkpoint.name.as_deref().map(DefinitionName::from))
         .collect();
     let edited_keys: Vec<Option<DefinitionName<'_>>> = edited
         .iter()
-        .map(|item| item.name.as_deref().map(DefinitionName))
+        .map(|item| item.name.as_deref().map(DefinitionName::from))
         .collect();
     longest_common_subsequence(&base_keys, &edited_keys)
 }
 
 /// Threads a value-typed definition's binding into `ctx`, so the items after it
-/// type against it (the session's cross-item bridge, type-level).
+/// type against it (the cross-item bridge, type-level).
 fn thread_binding(
     ctx: &mut Ctx,
     typing: &ItemTyping,
@@ -594,8 +621,8 @@ fn thread_binding(
 }
 
 /// The value type a definition of type `ty` binds into scope, or [`None`] for a
-/// bare computation type (which cannot be a variable in CBPV). Mirrors
-/// `crate::session`'s private discipline.
+/// bare computation type (which cannot be a variable in CBPV). A returner `F A`
+/// binds its payload `A`.
 fn bound_value_type(ty: &Ty) -> Option<ValueType>
 {
     match *ty {
@@ -611,7 +638,7 @@ fn bound_value_type(ty: &Ty) -> Option<ValueType>
 /// shadow, handled conservatively — its items never adopt).
 fn seed_changed_bindings(
     base: &Checkpoints,
-    edited: &Lowered,
+    edited: &Program,
     matched_base: &BTreeSet<BaseItemIndex>,
     edited_to_base: &[Option<BaseItemIndex>],
 ) -> BTreeSet<String>
@@ -659,7 +686,7 @@ fn invert_matches(
 /// A full-re-type resume (every item dirty): the graceful-degradation and
 /// oracle path — it recomputes exactly the from-scratch typings.
 fn resume_all_dirty(
-    edited: &Lowered,
+    edited: &Program,
     edited_footprints: &[Footprint],
     base_ctx: &Ctx,
 ) -> Resume
@@ -687,7 +714,7 @@ fn resume_all_dirty(
 /// dependents stay adoptable).
 fn note_binding_change(
     changed: &mut BTreeSet<String>,
-    item: &LoweredItem,
+    item: &Item,
     fresh: &ItemTyping,
     base_checkpoint: Option<&ItemCheckpoint>,
 )
@@ -723,19 +750,19 @@ fn binding_contribution(typing: &ItemTyping) -> Option<(&String, &ValueType)>
 /// redefinition/shadow names reuse must avoid.
 fn unstable_names(
     base: &Checkpoints,
-    edited: &Lowered,
+    edited: &Program,
 ) -> BTreeSet<String>
 {
     let base_counts = name_counts(
         base.items
             .iter()
-            .map(|checkpoint| checkpoint.name.as_deref().map(DefinitionName)),
+            .map(|checkpoint| checkpoint.name.as_deref().map(DefinitionName::from)),
     );
     let edited_counts = name_counts(
         edited
             .items
             .iter()
-            .map(|item| item.name.as_deref().map(DefinitionName)),
+            .map(|item| item.name.as_deref().map(DefinitionName::from)),
     );
     let mut unstable: BTreeSet<String> = BTreeSet::new();
     for (name, base_count) in &base_counts {
@@ -766,17 +793,18 @@ where
 {
     let mut counts: BTreeMap<String, DefinitionMultiplicity> = BTreeMap::new();
     for name in names.into_iter().flatten() {
+        let key: &str = name.into();
         let slot = counts
-            .entry(name.0.to_owned())
+            .entry(key.to_owned())
             .or_insert(DefinitionMultiplicity(0));
         slot.0 = slot.0.saturating_add(1);
     }
     counts
 }
 
-/// The longest-common-subsequence match pairs of two key sequences (the same
-/// dynamic program `crate::edit` uses for item alignment, kept local so this
-/// module stays new-module-shaped).
+/// The longest-common-subsequence match pairs of two key sequences (the item
+/// alignment the resume drives, kept local so this module stays
+/// new-module-shaped).
 fn longest_common_subsequence(
     left: &[Option<DefinitionName<'_>>],
     right: &[Option<DefinitionName<'_>>],

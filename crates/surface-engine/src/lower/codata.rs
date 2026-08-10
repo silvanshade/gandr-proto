@@ -65,12 +65,12 @@ use gandr_core_checker::syntax::Value;
 use gandr_core_checker::types::CompType;
 use gandr_core_checker::types::Ty;
 use gandr_core_checker::types::ValueType;
+use gandr_core_incrementality::region::Item;
 
 use super::COut;
 use super::EOut;
 use super::LowerError;
 use super::LowerResult;
-use super::LoweredItem;
 use super::Lowerer;
 use super::VOut;
 use super::entry;
@@ -182,7 +182,7 @@ impl Lowerer<'_>
     /// Pre-pass: register one `codata C { … }` block into the codata registry
     /// (codata design §2). Mirrors the `extern`-block pre-pass — a `codata`
     /// block is a declaration, not a runnable item, so it contributes no
-    /// [`LoweredItem`]; it records the observation set copattern
+    /// [`Item`]; it records the observation set copattern
     /// definitions are elaborated and coverage-checked against, regardless
     /// of source order.
     ///
@@ -282,7 +282,7 @@ impl Lowerer<'_>
     pub(super) fn lower_copattern_def(
         &mut self,
         node: SynNode<'_>,
-    ) -> LowerResult<(LoweredItem, OriginNode)>
+    ) -> LowerResult<(Item, OriginNode)>
     {
         let name_node = required_field(node, node_kinds::FIELD_NAME)?;
         let name = {
@@ -322,7 +322,7 @@ impl Lowerer<'_>
             // force of `f` itself.
             let ascription = carrier.map(Ty::Value);
             return Ok((
-                LoweredItem {
+                Item {
                     name: Some(name),
                     ascription,
                     term: Term::Value({
@@ -369,7 +369,7 @@ impl Lowerer<'_>
             Self::derived_ascription(&params, Some(CompType::returner(carrier)))
         });
         Ok((
-            LoweredItem {
+            Item {
                 name: Some(name),
                 ascription,
                 term: Term::Value({

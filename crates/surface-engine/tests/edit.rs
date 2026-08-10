@@ -45,6 +45,7 @@ mod tests
     use gandr_core_checker::syntax::Side;
     use gandr_core_checker::syntax::Term;
     use gandr_core_checker::syntax::Value;
+    use gandr_core_incrementality::region::Item;
     use gandr_surface_engine::edit::Action;
     use gandr_surface_engine::edit::AnnSlot;
     use gandr_surface_engine::edit::BinderSlot;
@@ -55,7 +56,6 @@ mod tests
     use gandr_surface_engine::edit::edit_locus;
     use gandr_surface_engine::edit::localize;
     use gandr_surface_engine::lower::Lowered;
-    use gandr_surface_engine::lower::LoweredItem;
     use gandr_surface_engine::lower::lower_source_total;
 
     use crate::common::TestDecision;
@@ -318,8 +318,8 @@ mod tests
     /// Item-list equality up to hole identifiers: names and ascriptions
     /// exactly, terms up to holes.
     fn items_eq_mod_holes(
-        left: &[LoweredItem],
-        right: &[LoweredItem],
+        left: &[Item],
+        right: &[Item],
     ) -> TestDecision
     {
         (left.len() == right.len()

@@ -34,15 +34,11 @@
 //!   unparseable/unsupported regions to holes and the checker accepts every
 //!   editor state.
 //!
-//! Riding on the checker, this crate also carries the **A2.3 checkpoint base**
-//! ([`checkpoint`], [`footprint`], [`region`]): the item-granular,
-//! dependency-validated incremental typer of `incremental-pipeline.md`
-//! §"Checkpoints and the reuse rule" through §"Derivation merging and identity
-//! stability", over the order-maintenance substrate (`gandr_theory_orders`). It
-//! re-types only the edited region and adopts the validated remainder, its
-//! `resume ≡ from-scratch` gate the standing soundness check. Changed-region
-//! detection sits behind the parser-agnostic [`region::ItemSource`] seam — no
-//! parser is named here; the surface lane supplies the real lowering front end.
+//! Incremental re-typing rides on this crate rather than living in it:
+//! `gandr-core-incrementality` carries the parser-agnostic item seam, the
+//! dependency footprints, and the validated-resume checkpoint engine, and
+//! drives them through [`machine`] over this crate's [`syntax`], [`types`], and
+//! [`ctx`] vocabulary.
 //!
 //! No grade *constraints* beyond the inline `1 ⊑ r` force check of §"Core
 //! rules" (matched-`U` operations emit none), no unions/intersections, no
@@ -54,12 +50,10 @@ extern crate alloc;
 
 pub mod boundary;
 pub mod checker;
-pub mod checkpoint;
 pub mod control;
 pub mod ctx;
 pub mod effect;
 pub mod error;
-pub mod footprint;
 pub mod grade;
 pub mod identity;
 pub mod intern;
@@ -69,7 +63,6 @@ pub mod mark;
 pub mod nominal;
 pub mod outcome;
 pub mod prim;
-pub mod region;
 pub mod stack;
 pub mod subst;
 pub mod subtype;

@@ -42,10 +42,10 @@ mod tests
     use gandr_core_checker::types::CompType;
     use gandr_core_checker::types::Ty;
     use gandr_core_checker::types::ValueType;
+    use gandr_core_incrementality::region::Item;
     use gandr_surface_engine::goals::Goal;
     use gandr_surface_engine::goals::goals_report;
     use gandr_surface_engine::lower::Lowered;
-    use gandr_surface_engine::lower::LoweredItem;
     use gandr_surface_engine::lower::lower_source_total;
     use gandr_surface_engine::lower::node_kinds;
     use gandr_surface_engine::origin::HoleNote;
@@ -99,7 +99,7 @@ mod tests
     /// ascription when the sorts match, in inference mode otherwise — and
     /// asserts they agree; returns the shared result. Termination without
     /// panic is the totality evidence.
-    fn type_item_both(item: &LoweredItem) -> Result<Ty, TypeError>
+    fn type_item_both(item: &Item) -> Result<Ty, TypeError>
     {
         match (&item.term, &item.ascription) {
             | (&Term::Value(ref value), &Some(Ty::Value(ref expected))) => {
