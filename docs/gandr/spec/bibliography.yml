@@ -5397,65 +5397,6 @@ sterling-2026-pterodactyl-worklog:
     dated 2025-2026; individual trees are cited inline by their stable forest anchors (e.g. tree
     01JQ), and the trees this corpus cites were read live at registration (2026-08-07)
 
-# ── The display-provenance line (pattern elaboration, dubbing, labelled types) ──
-# Registered for the display-provenance design document. The three Epigram-line works are
-# transcribed from library.bib, which holds each PDF; the worklog entry is synthesized and
-# its locators were fetch-verified at registration.
-
-mcbride-mckinna-2004-view-left:
-  type: article
-  title: The View from the Left
-  author: ["McBride, Conor", "McKinna, James"]
-  date: 2004
-  publisher: Cambridge University Press
-  serial-number:
-    doi: "10.1017/S0956796803004829"
-  parent:
-    type: periodical
-    title: Journal of Functional Programming 14(1)
-    page-range: 69-111
-  note: >-
-    transcribed from library.bib (key Mcbride-2004-view_left), which holds the PDF; title,
-    authorship, venue, volume, issue, pages, and DOI are the register entry's, not re-read
-    from the artifact at this pass
-
-dagand-mcbride-2012-elaborating:
-  type: article
-  title: Elaborating Inductive Definitions
-  author: ["Dagand, Pierre-Évariste", "McBride, Conor"]
-  date: 2012
-  serial-number:
-    arxiv: "1210.6390"
-    doi: "10.48550/arXiv.1210.6390"
-  note: >-
-    transcribed from library.bib (key Dagand-2012-elaborating_inductive_definitions), which
-    holds the PDF; the arXiv identifier and its DOI form are the register entry's, not
-    re-read from the artifact at this pass
-
-mcbride-1999-thesis:
-  type: thesis
-  title: Dependently Typed Functional Programs and Their Proofs
-  author: ["McBride, Conor"]
-  date: 1999
-  organization: University of Edinburgh
-  note: >-
-    transcribed from library.bib (key
-    McBride-1999-dependently_typed_functional_programs_their_proofs), which holds the PDF;
-    year and institution are the register entry's, not re-read from the artifact at this pass
-
-brady-2005-practical-implementation:
-  type: thesis
-  title: Practical Implementation of a Dependently Typed Functional Programming Language
-  author: ["Brady, Edwin"]
-  date: 2005
-  organization: University of Durham
-  url: https://etheses.durham.ac.uk/2800/
-  note: >-
-    the held copy's register entry (library.bib key
-    Brady-year????-practical_implementation_dependently_typed_functional_programming_language)
-    records no year; the year and the Durham E-Theses locator were verified against the
-    repository record on 2026-08-07
-
 # ── The universe-discipline foundation ────────────────────────────────────────
 # The explicit-polymorphism line, the loop-checking decision procedure, the
 # displacement analysis, the decision-procedure lineage for neutral terms, and the

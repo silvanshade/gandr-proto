@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: e2026ca21d2b1c79610e762c82612caa62723b71eedf87ea369c4967138a8de8
+    b3: 7f5c836919bc282c0097907cada9a4ccea3c1ad27f5f9f95fff58ff963249b34
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 2bce078e417fab122456b2c5d4c03f7e1707cba3732ed5ba6069e4f985f585c0
+    b3: d43788d6bf766b3a18561a3ca5ba285c1cfa357f5b571e998a612ac9831b8c96
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: 74011f2c4f1f15b3b2e2abffa665d6be93c21ad4c3239da9b1cac7189909776a
+    b3: ebf75f3be506e47bd883e2a08db08e67bc9236b608f030572e6f084cc2e01fb9
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -124,7 +124,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/declarations.md
     role: subdocument
-    b3: f5cf88563f9a3b38518e0b58ee6bb46c6914d05bdb07f4e93c31f31f4d1ea9e0
+    b3: 74dcea6756471fdb905cf8a2734c78587096fd0d3511f37f2041b519562bd7b6
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/recursion.md
@@ -215,11 +215,6 @@ nodes:
   - path: spec/implementation/proposed/solver-interface.md
     role: subdocument
     b3: d1d5371acf416e562452d23c2c3c6b0d84c47f6e35910e3e0f56b5be11a20762
-    edges:
-      - { rel: registered-under, to: spec/implementation.md }
-  - path: spec/implementation/proposed/display-provenance.md
-    role: subdocument
-    b3: 2a7949a053407d43549bd8da80f1cefad18296f3f3bef19e5c04c269b998af45
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/fuss-free-universes.md
