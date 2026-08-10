@@ -144,7 +144,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/circuit-cells.md
     role: subdocument
-    b3: 08c4033c246de3ace64e5993d88fe0ce41b6551933913e39950a3fe207f3993c
+    b3: 145ad93228e96a24f54df3d56acb320bab13c68984d0e41330c4825a6f4b2cb6
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/higher-cells.md
@@ -189,7 +189,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/ornaments.md
     role: subdocument
-    b3: aa070c8c391301949884a597f3c8227bf56fbb829617fe68ec7f058ec0d9bdf5
+    b3: 56f317bbdaec6f284b446e2f2ef996dde9d189ad0c18248008c1650c8b69076b
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/interactive-surface.md

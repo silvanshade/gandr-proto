@@ -228,7 +228,7 @@ A row's "what breaks" clause is a structural consequence of the cited definition
 Both halves are read from definitions, not inferred from documentation.
 That the machinery nonetheless stays deferred rests on the unpaid rows, not on the index: the sort index was always one half of the gate.
 
-**One recorded corpus claim is contradicted by this document, and it is reported here rather than resolved here.** [[../../surface-language/circuit-cells]] records that a `sign` block lowers "`data` members to constructors"; the surface engine's `circuit` module accumulates no constructors at all and declines the item-level `data` member as retired, with a corpus decline golden behind it.
-The tree is the authority, so that sentence is the stale one — but repairing it belongs to whoever owns that document, not to a requirements ledger.
+**One recorded corpus claim was contradicted by this document, and the repair has since landed at its own document.** [[../../surface-language/circuit-cells]] recorded that a `sign` block lowers "`data` members to constructors"; the surface engine's `circuit` module accumulates no constructors at all and declines the item-level `data` member as retired, with a corpus decline golden behind it.
+The tree is the authority, so that sentence was the stale one, and repairing it belonged to whoever owns that document rather than to a requirements ledger; it was repaired there (`gandr-m46f`), and that document now records the decline.
 
 **No other recorded corpus claim is contradicted.** The container position of [[../../metatheory#Cellular data — descriptions, cells, and computads]] is ratified by the source rather than revised, and the polarity rows record absences in the source, not judgements against gandr's recorded codata stance.
