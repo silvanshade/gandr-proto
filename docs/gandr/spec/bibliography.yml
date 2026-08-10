@@ -1699,28 +1699,28 @@ idris2:
   title: "Idris 2: a dependently typed programming language"
   organization: Idris community
   url: https://github.com/idris-lang/Idris2
-  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit fd405085b (2026-06-22) per [[impl-models-deep-read]]
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit fd405085b (2026-06-22) per `docs/research/impl-models-deep-read.md`
 
 lean4:
   type: software
   title: "Lean 4: theorem prover and programming language"
   organization: Lean FRO
   url: https://github.com/leanprover/lean4
-  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit d1f105109b (2026-07-06) per [[impl-models-deep-read]]
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit d1f105109b (2026-07-06) per `docs/research/impl-models-deep-read.md`
 
 agda:
   type: software
   title: "Agda: a dependently typed programming language and proof assistant"
   organization: Agda developers
   url: https://github.com/agda/agda
-  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit 6e4d6e9543 (2026-07-01) per [[impl-models-deep-read]]
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit 6e4d6e9543 (2026-07-01) per `docs/research/impl-models-deep-read.md`
 
 smalltt:
   type: software
   title: "smalltt: a small elaborator for dependent type theory"
   author: ["Kovács, András"]
   url: https://github.com/AndrasKovacs/smalltt
-  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit ea99b0f (2026-02-02) per [[impl-models-deep-read]]
+  note: not in library.bib; synthesized 2026-07-31 — read at pinned commit ea99b0f (2026-02-02) per `docs/research/impl-models-deep-read.md`
 
 # ── The value-semantics line (update surface, in-place elision, access modes) ─
 

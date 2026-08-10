@@ -1,9 +1,8 @@
 //! Markdown reference-integrity checks for registered documentation nodes.
 //!
-//! This module retains documentation-reference behavior: manifest edge anchors
-//! must resolve, in-body `ADR-N` references must have split ADR record files,
-//! and in-body `§N(.M)` references must name a section number defined by some
-//! registered corpus document.
+//! This module verifies manifest edge anchors, in-body wikilink targets and
+//! fragments, `ADR-N` references against split ADR record files, and `§N(.M)`
+//! references against section numbers defined by registered corpus documents.
 
 extern crate alloc;
 
@@ -11,6 +10,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use std::ffi::OsStr;
+use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -40,19 +40,20 @@ crate::semantic_copy!(pub struct DirectChildFlag(bool));
 crate::semantic_optional_str!(pub struct OptionalHeadingTextText);
 crate::semantic_copy!(pub struct TextFlag(bool));
 
-/// Verify manifest edge anchors and Markdown ADR/section references.
+/// Verify manifest edge anchors and in-body Markdown references.
 ///
 /// # Contract
 /// - requires: `manifest_path` points at the Gandr documentation manifest.
 /// - ensures: returns deterministic dangling-reference findings in manifest
 ///   node order and source line order.
-/// - provides: anchor, ADR, and section-number reference integrity for the
-///   registered documentation corpus.
+/// - provides: wikilink-target, wikilink-anchor, manifest-edge anchor, ADR, and
+///   section-number reference integrity for the registered documentation
+///   corpus.
 /// - fails: returns [`GateError`] for manifest, filesystem, UTF-8, or traversal
 ///   failures that would make the gate vacuous or incomplete.
 /// - panics: none.
-/// - intension: registered files are scanned linearly; section numbers are
-///   first-seen unique values matching the retained gate's traversal order.
+/// - intension: registered files and in-body links are scanned linearly;
+///   section numbers retain first-seen order.
 ///
 /// # Errors
 /// Returns loader errors from [`ManifestContext::load`], I/O errors for present
@@ -60,10 +61,12 @@ crate::semantic_copy!(pub struct TextFlag(bool));
 /// records.
 ///
 /// # Adequacy
-/// - hypothesis: L3 pointwise — edge-anchor, ADR reference, section-reference,
-///   clean-reference, and missing-body branches are separated by exact fixture
-///   manifests and Markdown bodies.
+/// - hypothesis: L3 pointwise — edge-anchor, wikilink-target, wikilink-anchor,
+///   ADR-reference, section-reference, clean-reference, and missing-body
+///   branches are separated by exact fixture manifests and Markdown bodies.
 /// - witness: `references::tests::dangling_edge_adr_and_section_refs_are_reported`
+/// - witness: `references::tests::dangling_wikilink_targets_are_reported`
+/// - witness: `references::tests::dangling_wikilink_anchors_are_reported`
 #[inline]
 pub fn run_reference_integrity(manifest_path: &Path) -> GateResult
 {
@@ -251,7 +254,34 @@ fn collect_body_reference_findings(
                 .checked_add(1_usize)
                 .ok_or_else(|| GateError::operational("documentation line number overflowed"))?;
             let at = format!("{}:{line_number}", document.basename);
-            for adr in adr_references(line) {
+            let parsed = parse_reference_line(line);
+            for wikilink in &parsed.wikilinks {
+                let Some(target) = resolve_wikilink_target(documents, document, wikilink)
+                else {
+                    findings.push(ref_finding(RefFailure {
+                        kind: "wikilink-target",
+                        at: String::from(at.as_str()),
+                        reference: format!("[[{}]]", wikilink.body),
+                        why: String::from("no matching registered document"),
+                    }));
+                    continue;
+                };
+                let Some(fragment) = wikilink.fragment
+                else {
+                    continue;
+                };
+                let slug = heading_text_slug(fragment);
+                if !contains_text(&target.slugs, &slug).into().0 {
+                    findings.push(ref_finding(RefFailure {
+                        kind: "wikilink-anchor",
+                        at: String::from(at.as_str()),
+                        reference: format!("[[{}]]", wikilink.body),
+                        why: format!("no heading in {} with slug `{slug}`", target.rel),
+                    }));
+                }
+            }
+            let legacy_line = parsed.visible_text.as_deref().unwrap_or(line);
+            for adr in adr_references(legacy_line) {
                 if !contains_text(adrs, &adr).into().0 {
                     findings.push(ref_finding(RefFailure {
                         kind: "adr-ref",
@@ -261,7 +291,7 @@ fn collect_body_reference_findings(
                     }));
                 }
             }
-            for section in section_references(line) {
+            for section in section_references(legacy_line) {
                 if !contains_text(sections, &section).into().0 {
                     findings.push(ref_finding(RefFailure {
                         kind: "section-ref",
@@ -274,6 +304,209 @@ fn collect_body_reference_findings(
         }
     }
     Ok(())
+}
+
+/// Parse reference-bearing Markdown syntax in source order.
+///
+/// # Contract
+/// - requires: `line` is one raw Markdown source line.
+/// - ensures: returns one borrowed view per closed non-embed `[[...]]` form, in
+///   source order; legacy reference text excludes link syntax but retains
+///   display aliases.
+/// - provides: target paths separated from optional fragments and aliases, plus
+///   visible prose for the legacy ADR and section scanners.
+/// - panics: none.
+/// - intension: scans each remaining suffix once, borrowing link components and
+///   allocating visible prose only for lines containing a closed form.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — ordinary aliases, escaped aliases, embeds,
+///   absent targets, anchor fragments, and legacy tokens inside targets
+///   distinguish delimiter, alias, path, fragment, and visible-text handling.
+/// - witness: `references::tests::dangling_wikilink_targets_are_reported`
+/// - witness: `references::tests::dangling_wikilink_anchors_are_reported`
+fn parse_reference_line<'semantic, Line>(line: Line) -> ParsedReferenceLine<'semantic>
+where
+    Line: Into<LineText<'semantic>>,
+{
+    let source = line.into().0;
+    let mut remaining = source;
+    let mut wikilinks = Vec::new();
+    let mut visible_text = None::<String>;
+    while let Some((before_open, after_open)) = remaining.split_once("[[") {
+        let Some((body, after_close)) = after_open.split_once("]]")
+        else {
+            break;
+        };
+        let embed_prefix = before_open.strip_suffix('!');
+        let is_embed = embed_prefix.is_some();
+        let visible_before = embed_prefix.unwrap_or(before_open);
+        let (target_and_fragment, alias) = body
+            .split_once('|')
+            .map_or((body, None), |(target, alias)| (target, Some(alias.trim())));
+        let visible = visible_text.get_or_insert_with(|| String::with_capacity(source.len()));
+        visible.push_str(visible_before);
+        if !is_embed && let Some(alias) = alias.filter(|alias| !alias.is_empty()) {
+            visible.push_str(alias);
+        }
+        remaining = after_close;
+        if is_embed {
+            continue;
+        }
+        let target_and_fragment = target_and_fragment
+            .strip_suffix('\\')
+            .map_or(target_and_fragment, |target| target);
+        let (target, fragment) = target_and_fragment
+            .split_once('#')
+            .map_or((target_and_fragment, None), |(target, fragment)| {
+                (target, Some(fragment.trim()))
+            });
+        let target = target.trim();
+        let fragment = fragment.filter(|fragment| !fragment.is_empty());
+        if !body.trim().is_empty() {
+            wikilinks.push(Wikilink {
+                body,
+                target,
+                fragment,
+            });
+        }
+    }
+    if let Some(visible) = visible_text.as_mut() {
+        visible.push_str(remaining);
+    }
+    return ParsedReferenceLine {
+        wikilinks,
+        visible_text,
+    };
+}
+
+/// Resolve a wikilink path to one registered document.
+///
+/// # Contract
+/// - requires: `source` is a member of `documents`.
+/// - ensures: normalized source-relative paths win, followed by one unique
+///   manifest-wide component-suffix match; omitted extensions match any
+///   registered document extension.
+/// - provides: the resolved registered document, or `None` for missing,
+///   ambiguous, absolute, or manifest-escaping targets.
+/// - panics: none.
+/// - intension: scans the manifest-order document slice without an auxiliary
+///   index.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — normalized relative, dotted stem, explicit
+///   registered extension, unique suffix, exact, ambiguous, and absent targets
+///   distinguish the resolution precedence and failure branch.
+/// - witness: `references::tests::dangling_wikilink_targets_are_reported`
+fn resolve_wikilink_target<'documents>(
+    documents: &'documents [DocumentInfo],
+    source: &DocumentInfo,
+    wikilink: &Wikilink<'_>,
+) -> Option<&'documents DocumentInfo>
+{
+    if wikilink.target.is_empty() {
+        return documents.iter().find(|document| document.rel == source.rel);
+    }
+    let target = Path::new(wikilink.target);
+    let source_path = Path::new(&source.rel);
+    let source_dir = source_path.parent()?;
+    let candidate = normalize_relative_path(&source_dir.join(target))?;
+    for matched in [
+        match_documents(documents, |document| Path::new(&document.rel) == candidate),
+        match_documents(documents, |document| {
+            Path::new(&document.rel).with_extension("") == candidate
+        }),
+    ] {
+        match matched {
+            | DocumentMatch::None => {},
+            | DocumentMatch::Unique(document) => return Some(document),
+            | DocumentMatch::Ambiguous => return None,
+        }
+    }
+    let suffix = normalize_relative_path(target)?;
+    if suffix.as_os_str().is_empty() {
+        return None;
+    }
+    for matched in [
+        match_documents(documents, |document| {
+            Path::new(&document.rel).ends_with(&suffix)
+        }),
+        match_documents(documents, |document| {
+            Path::new(&document.rel)
+                .with_extension("")
+                .ends_with(&suffix)
+        }),
+    ] {
+        match matched {
+            | DocumentMatch::None => {},
+            | DocumentMatch::Unique(document) => return Some(document),
+            | DocumentMatch::Ambiguous => return None,
+        }
+    }
+    return None;
+}
+
+/// Classify registered documents matching one resolution key.
+///
+/// # Contract
+/// - requires: `predicate` is deterministic for each registered document.
+/// - ensures: distinguishes no match, one manifest-order match, and ambiguity.
+/// - provides: one allocation-free scan over the registered corpus.
+/// - panics: none.
+/// - intension: stops after the second match because only uniqueness matters.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — zero, one, and two registered matches
+///   distinguish absence, uniqueness, and ambiguity.
+/// - witness: `references::tests::dangling_wikilink_targets_are_reported`
+fn match_documents<Predicate>(
+    documents: &[DocumentInfo],
+    mut predicate: Predicate,
+) -> DocumentMatch<'_>
+where
+    Predicate: FnMut(&DocumentInfo) -> bool,
+{
+    let mut matches = documents.iter().filter(|document| predicate(document));
+    let Some(document) = matches.next()
+    else {
+        return DocumentMatch::None;
+    };
+    if matches.next().is_some() {
+        return DocumentMatch::Ambiguous;
+    }
+    return DocumentMatch::Unique(document);
+}
+
+/// Normalize a manifest-relative path lexically without filesystem access.
+///
+/// # Contract
+/// - requires: `path` is an untrusted wikilink candidate.
+/// - ensures: removes `.` components and collapses `..` against prior normal
+///   components; rejects absolute paths and parent traversal above the root.
+/// - provides: a canonical relative lookup path inside the manifest boundary.
+/// - panics: none.
+/// - intension: scans path components once and reuses one output buffer.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — legal `../` collapse, above-root traversal,
+///   absolute paths, and absent registered targets distinguish every outcome.
+/// - witness: `references::tests::dangling_wikilink_targets_are_reported`
+fn normalize_relative_path(path: &Path) -> Option<PathBuf>
+{
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            | Component::CurDir => {},
+            | Component::Normal(segment) => normalized.push(segment),
+            | Component::ParentDir => {
+                if !normalized.pop() {
+                    return None;
+                }
+            },
+            | Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+    return Some(normalized);
 }
 
 /// Return whether `path` is directly inside `dir`.
@@ -330,6 +563,29 @@ where
 {
     let line = line.into().0;
     let text = heading_text(line, 1_usize, 6_usize).into().0?;
+    return Some(heading_text_slug(text));
+}
+
+/// Normalize Markdown heading text or a wikilink fragment to its heading slug.
+///
+/// # Contract
+/// - requires: `text` is heading display text without Markdown heading markers.
+/// - ensures: lowercases text, discards punctuation, preserves `_` and `-`, and
+///   collapses whitespace runs to one hyphen.
+/// - provides: the same slug representation stored in [`DocumentInfo::slugs`].
+/// - panics: none.
+/// - intension: lowercases once, then scans the lowercase text once.
+///
+/// # Adequacy
+/// - hypothesis: L3 pointwise — punctuation, repeated whitespace, and case
+///   shifts distinguish every normalization branch.
+/// - witness: `references::tests::reference_parsers_cover_boundary_filenames_and_sections`
+/// - witness: `references::tests::dangling_wikilink_anchors_are_reported`
+fn heading_text_slug<'semantic, Text>(text: Text) -> String
+where
+    Text: Into<TextText<'semantic>>,
+{
+    let text = text.into().0;
     let lowercase = text.to_lowercase();
     let mut stripped = String::new();
     for character in lowercase.chars() {
@@ -341,7 +597,7 @@ where
             stripped.push(character);
         }
     }
-    return Some(collapse_slug_whitespace(stripped.trim()));
+    return collapse_slug_whitespace(stripped.trim());
 }
 
 /// Return heading text after `#` markers when marker count is in range.
@@ -541,6 +797,39 @@ struct DocumentInfo
     slugs: Vec<String>,
 }
 
+/// Parsed wikilinks and prose visible to legacy reference scanners.
+struct ParsedReferenceLine<'source>
+{
+    /// Closed non-embed wikilinks in source order.
+    wikilinks: Vec<Wikilink<'source>>,
+    /// Source with closed link syntax removed and display aliases retained.
+    visible_text: Option<String>,
+}
+
+/// Cardinality of registered documents matching one resolution key.
+enum DocumentMatch<'documents>
+{
+    /// No registered document matches.
+    None,
+    /// Exactly one registered document matches.
+    Unique(&'documents DocumentInfo),
+    /// More than one registered document matches.
+    Ambiguous,
+}
+
+/// Borrowed path and fragment portions of one closed in-body wikilink.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Wikilink<'source>
+{
+    /// Link body between the opening and closing delimiters, including its
+    /// alias.
+    body: &'source str,
+    /// Target path before any fragment or display alias.
+    target: &'source str,
+    /// Optional heading fragment after `#`, without a display alias.
+    fragment: Option<&'source str>,
+}
+
 /// Shape of one dangling reference before conversion to [`Finding`].
 struct RefFailure
 {
@@ -642,6 +931,116 @@ mod tests
         Ok(())
     }
 
+    /// In-body wikilinks report only targets absent from the registered corpus.
+    #[test]
+    fn dangling_wikilink_targets_are_reported() -> TestResult
+    {
+        let fixture = fixture("wikilink-target")?;
+        let source = concat!(
+            "# Source\n\n",
+            "[[../target|relative]], [[local|exact precedence]], ",
+            "[[chapter.v1|dotted stem]], [[../bibliography.yml|explicit extension]], ",
+            "[[../bibliography|omitted extension]], [[topic/deep|suffix]], ",
+            "[[../../target|escape]], [[/target|absolute]], ",
+            "[[shared#ADR-999|ambiguous]], and [[../unregistered|outside manifest]].\n",
+        );
+        let source_hash = write_doc(&fixture.corpus, "nested/source.md", source)?;
+        let target_hash = write_doc(&fixture.corpus, "target.md", "# Target\n")?;
+        let local_hash = write_doc(&fixture.corpus, "nested/local.md", "# Local\n")?;
+        let other_local_hash = write_doc(&fixture.corpus, "elsewhere/local.md", "# Other\n")?;
+        let chapter_hash = write_doc(&fixture.corpus, "nested/chapter.v1.md", "# Chapter\n")?;
+        let bibliography_hash =
+            write_doc(&fixture.corpus, "bibliography.yml", "title: Bibliography\n")?;
+        let deep_hash = write_doc(&fixture.corpus, "topic/deep.md", "# Deep\n")?;
+        let first_shared_hash = write_doc(&fixture.corpus, "alpha/shared.md", "# First\n")?;
+        let second_shared_hash = write_doc(&fixture.corpus, "beta/shared.md", "# Second\n")?;
+        write_doc(&fixture.corpus, "unregistered.md", "# Outside manifest\n")?;
+        write_manifest(
+            &fixture.manifest,
+            &format!(
+                concat!(
+                    "  - path: nested/source.md\n    b3: {source_hash}\n    edges: []\n",
+                    "  - path: target.md\n    b3: {target_hash}\n    edges: []\n",
+                    "  - path: nested/local.md\n    b3: {local_hash}\n    edges: []\n",
+                    "  - path: elsewhere/local.md\n    b3: {other_local_hash}\n    edges: []\n",
+                    "  - path: nested/chapter.v1.md\n    b3: {chapter_hash}\n    edges: []\n",
+                    "  - path: bibliography.yml\n    b3: {bibliography_hash}\n    edges: []\n",
+                    "  - path: topic/deep.md\n    b3: {deep_hash}\n    edges: []\n",
+                    "  - path: alpha/shared.md\n    b3: {first_shared_hash}\n    edges: []\n",
+                    "  - path: beta/shared.md\n    b3: {second_shared_hash}\n    edges: []\n",
+                ),
+                source_hash = source_hash,
+                target_hash = target_hash,
+                local_hash = local_hash,
+                other_local_hash = other_local_hash,
+                chapter_hash = chapter_hash,
+                bibliography_hash = bibliography_hash,
+                deep_hash = deep_hash,
+                first_shared_hash = first_shared_hash,
+                second_shared_hash = second_shared_hash,
+            ),
+        )?;
+
+        let findings = run_reference_integrity(&fixture.manifest)?;
+        let projection = findings
+            .iter()
+            .map(|finding| format!("{}:{}", finding.declaration, finding.detail))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            vec![
+                String::from(
+                    "wikilink-target:[[../../target|escape]] — no matching registered document"
+                ),
+                String::from(
+                    "wikilink-target:[[/target|absolute]] — no matching registered document"
+                ),
+                String::from(
+                    "wikilink-target:[[shared#ADR-999|ambiguous]] — no matching registered document"
+                ),
+                String::from(
+                    "wikilink-target:[[../unregistered|outside manifest]] — no matching registered document"
+                ),
+            ],
+            projection
+        );
+        Ok(())
+    }
+
+    /// In-body wikilink fragments must name headings in the resolved document.
+    #[test]
+    fn dangling_wikilink_anchors_are_reported() -> TestResult
+    {
+        let fixture = fixture("wikilink-anchor")?;
+        let source = "# Root\n\n[[#Root|local]], [[target#Existing Heading|valid]], and [[target#§7.2|broken]].\n";
+        let root_hash = write_doc(&fixture.corpus, "root.md", source)?;
+        let target_hash = write_doc(
+            &fixture.corpus,
+            "target.md",
+            "# Target\n\n## Existing Heading\n",
+        )?;
+        write_manifest(
+            &fixture.manifest,
+            &format!(
+                "  - path: root.md\n    b3: {root_hash}\n    edges: []\n  - path: target.md\n    b3: {target_hash}\n    edges: []\n"
+            ),
+        )?;
+
+        let findings = run_reference_integrity(&fixture.manifest)?;
+        let projection = findings
+            .iter()
+            .map(|finding| format!("{}:{}", finding.declaration, finding.detail))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            vec![String::from(
+                "wikilink-anchor:[[target#§7.2|broken]] — no heading in target.md with slug `72`"
+            )],
+            projection
+        );
+        Ok(())
+    }
+
     /// ADR filenames normalize zero padding before reference matching.
     #[test]
     fn adr_filename_numbers_resolve_references() -> TestResult
@@ -690,7 +1089,8 @@ mod tests
         Ok(format!("{}", blake3::hash(text.as_bytes()).to_hex()))
     }
 
-    /// Reference parsers cover ADR, section, slug, and filename boundaries.
+    /// Reference parsers cover wikilink, ADR, section, slug, and filename
+    /// boundaries.
     #[test]
     fn reference_parsers_cover_boundary_filenames_and_sections()
     {
@@ -724,6 +1124,28 @@ mod tests
         assert_eq!(None, adr_number_from_path(Path::new("-missing-prefix.md")));
         assert_eq!(None, adr_number_from_path(Path::new("abc-record.md")));
         assert_eq!(None, adr_number_from_path(Path::new("0007")));
+        let parsed = parse_reference_line(
+            r"![[asset]], [[target#Heading\|label]] and [ordinary](target.md), [[#Local]], and [[unterminated",
+        );
+        assert_eq!(
+            vec![
+                Wikilink {
+                    body: r"target#Heading\|label",
+                    target: "target",
+                    fragment: Some("Heading"),
+                },
+                Wikilink {
+                    body: "#Local",
+                    target: "",
+                    fragment: Some("Local"),
+                },
+            ],
+            parsed.wikilinks
+        );
+        assert_eq!(
+            Some(", label and [ordinary](target.md), , and [[unterminated"),
+            parsed.visible_text.as_deref()
+        );
     }
 
     /// Missing bodies, ADR edge fragments, and nested ADR files are stable.

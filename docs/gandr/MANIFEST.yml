@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 3e86d978954a608c213caffaa58a39b1851f19b154d6fac1a53a37aa8c78b2f0
+    b3: 15f22521a8d9fc34ab8722a71c4296325cd8cf6f7a8ed07391cecd690e56c974
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -34,12 +34,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 6f3173ec57187faa3a5c6fe544b09b65f0cd3751796adc9d02f91924c93db462
+    b3: 0d875ae3d16eb66ed3f7b011f7cad5c60b1558c28cd827e51273451b9a77442e
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: de4d1cc67e376555610877fe07a8a7f82613512e20a1326d098e231c545e1af2
+    b3: a25d1ccb85df339d97e81e9f64db9cd93dbeb6e96f909cf431d0d204fa4d78f5
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -99,12 +99,12 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/roadmap.md
     role: subdocument
-    b3: b89f3db004c505dd68fe66ae516eb9d23f501d1079ef98a569d2c5a9ca37993d
+    b3: 06fa3b21efbb803393cf1328dcf594afbd8c8c14bd82fd03e666f5ac9765009d
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/performance-architecture.md
     role: subdocument
-    b3: 5ad0391d4b0e70adcde2d6a09e6d7e4b518f57038d134e798868509718a5707a
+    b3: ad73fa866d39096ac118dc9ccc1f89899ce52dc3f0cca73163501e5e416db13e
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md

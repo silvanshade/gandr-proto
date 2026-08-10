@@ -319,7 +319,7 @@ The former names are the current ratified spellings (a rename from the earlier `
 | application             | mandatory parentheses; n-ary as recorded sugar                                                               | [[recursion#Application syntax, rejected]]        |
 | generics                | `Name(args)`, never `Name<args>`                                                                             | this document (types)                             |
 | imports                 | `import "URI" as name ;` — plain string, `file` scheme now, others zero-grammar-change later                 | [[declarations]]                                  |
-| the semidecision type   | **Sier** (Sierpiński), never spelled Σ, never encoded as boolean                                             | [[../metatheory/exact-reals]]                     |
+| the semidecision type   | **Sier** (Sierpiński), never spelled Σ, never encoded as boolean                                             | [[metatheory/exact-reals]]                        |
 | numerics                | `Integer` renames to `Int` with `Nat` added when arbitrary precision lands                                   | the implementation roadmap                        |
 | keyword policy          | a small closed set of globally reserved keywords; fixity classes contextual; corpus-swept before reservation | [[grammar]]                                       |
 | braces/else/semicolons  | mandatory                                                                                                    | this document (the design stance)                 |

@@ -1,7 +1,7 @@
 # Performance architecture
 
 The design basis of the performance-architecture phase (the glued-NbE hash-consing normalizer adapted to the L machine, and the evaluator discipline generally): what is adopted, which precedent settles it, and what none of the precedents provides.
-The primary record is [[impl-models-deep-read]] — a source-grounded read of four implementations at pinned checkouts (Idris 2 `fd405085b` [@idris2], Lean 4 `d1f105109b` [@lean4], Agda `6e4d6e9543` [@agda], smalltt `ea99b0f` [@smalltt]), whose `file:line` anchors into those trees it keeps verbatim.
+The primary record is `docs/research/impl-models-deep-read.md` — a source-grounded read of four implementations at pinned checkouts (Idris 2 `fd405085b` [@idris2], Lean 4 `d1f105109b` [@lean4], Agda `6e4d6e9543` [@agda], smalltt `ea99b0f` [@smalltt]), whose `file:line` anchors into those trees it keeps verbatim.
 Everything below is an adopted commitment, a recipe with a named precedent, or a parked item with a reason; the phase is open, so nothing here is as-built yet.
 
 ## The role partition
