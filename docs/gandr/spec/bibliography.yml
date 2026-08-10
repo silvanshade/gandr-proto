@@ -1549,6 +1549,14 @@ cockx-abel-2018-copatterns:
   serial-number:
     doi: "10.1145/3236770"
 
+liesnikov-binder-suberkrub-2025-polarity:
+  type: article
+  title: "Filling the Gaps of Polarity: Implementing Dependent Data and Codata Types with Implicit Arguments"
+  author: ["Liesnikov, Bohdan", "Binder, David", "Süberkrüb, Tim"]
+  date: 2025
+  serial-number:
+    arxiv: "2511.15819"
+
 keizer-basold-perez-2020-session-coalgebras:
   type: article
   title: "Session Coalgebras: A Coalgebraic View on Session Types and Communication Protocols"
@@ -1556,6 +1564,18 @@ keizer-basold-perez-2020-session-coalgebras:
   date: 2020
   serial-number:
     arxiv: "2011.05712"
+
+dagand-2013-cosmology:
+  type: thesis
+  title: "A Cosmology of Datatypes: Reusability and Dependent Types"
+  author: ["Dagand, Pierre-Évariste"]
+  date: 2013
+  organization: University of Strathclyde
+  note: >-
+    title, authorship, year, and institution verified from page 1 of the held PDF (2026-08-02),
+    correcting a synthesized 2026-07-31 entry that recalled the subtitle as "Re-usability and
+    Type Preservation"; EThOS uk.bl.ethos.605921 transcribed from the research register
+    (docs/research/bibliography-v2.md row N-1b)
 
 caccamo-2003-formal-calculus:
   type: thesis
@@ -2769,6 +2789,18 @@ flatt-2016-binding-sets-of-scopes:
       Languages
     page-range: 705-717
 
+porncharoenwase-pombrio-torlak-2023-pretty-expressive:
+  type: article
+  title: A Pretty Expressive Printer (with Appendices)
+  author: ["Porncharoenwase, Sorawee", "Pombrio, Justin", "Torlak, Emina"]
+  date: 2023-10-02
+  serial-number:
+    arxiv: "2310.01530"
+  note: >-
+    transcribed from the contributor's reference register, which holds the paper; the authorship and
+    title were read from the register entry rather than recalled, correcting a first draft of this
+    citation that named the second author as sole author
+
 ahman-pretnar-2021-asynchronous-effects:
   type: article
   title: Asynchronous Effects
@@ -3121,6 +3153,19 @@ bakke-sterling-williams-ye-2026-sierpinski:
     title, authorship, date, and arXiv identifier read from page 1 of the held PDF (v1); no DOI printed
     on the artifact. Title carries a diacritic on the artifact (Sierpinski)
 
+# row 18 — fuss-free cumulative universes
+sterbac-sterling-2026-fuss-free:
+  type: article
+  title: "Fuss-Free Cumulative Universes: Theory and Practice"
+  author: ["Sterbac, Raphaël", "Sterling, Jonathan"]
+  date: 2026
+  serial-number:
+    arxiv: "2607.11329"
+  note: >-
+    title, authorship, and arXiv identifier read from page 1 of the held PDF (arXiv:2607.11329v1,
+    13 July 2026), which is the extended version with supplementary appendices; no DOI or venue is
+    printed on the artifact
+
 # row 19 — bidirectional elaborators à la carte
 slattery-sterling-2026-elaborators:
   type: article
@@ -3338,6 +3383,24 @@ fiore-kammar-moser-staton-2025-mast:
     in this article: they are in the accompanying technical report, arXiv:2511.03946, which the
     article's own Sec. 1 states "is not published as part of this article". Cite Thm 8.3 from the
     article and its proof from the report
+
+atkey-johann-ghani-2012-refining:
+  type: article
+  title: Refining Inductive Types
+  author: ["Atkey, Robert", "Johann, Patricia", "Ghani, Neil"]
+  date: 2012
+  serial-number:
+    doi: "10.2168/LMCS-8(2:9)2012"
+    arxiv: "1205.2492"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 8
+    issue: "2:9"
+    page-range: 1-30
+  note: >-
+    locator transcribed from the cosmology thesis's bibliography and verified against the LMCS
+    and arXiv records at registration time
 
 ahrens-lafont-lamiaux-2025-2functoriality:
   type: article
@@ -5306,6 +5369,442 @@ petgraph:
   note: >-
     not in library.bib; synthesized 2026-08-02 — the workspace pins 0.8 with default features off
     and resolves 0.8.3, and the crate is named in exactly one crate manifest
+
+# ── Pterodactyl absorption: the elaborator discipline ─────────────────────────
+# Precedents for the three-scheduler rule, the universe layer, and the unifier.
+
+vivien-remy-scherer-2026-modular-explicits:
+  type: misc
+  title: On the Design and Implementation of Modular Explicits
+  author: ["Vivien, Samuel", "Rémy, Didier", "Scherer, Gabriel"]
+  date: 2026
+  url: https://hal.science/hal-05428136
+  serial-number:
+    hal: "hal-05428136"
+  note: >-
+    JFLA 2026 (37es Journées Francophones des Langages Applicatifs, Oberbronn); metadata from
+    library.bib (Vivien-2026-design_implementation_modular_explicits), held PDF
+
+sakaguchi-2023-refinement-extension:
+  type: thesis
+  title: >-
+    Refinement and Extension of Mathematical Structures in Proof Assistants Based on Dependent
+    Type Theory
+  author: ["Sakaguchi, Kazuhiko"]
+  date: 2023
+  organization: University of Tsukuba
+  note: metadata from library.bib (Sakaguchi-2023-...); no DOI or arXiv identifier recorded in the register
+
+kovacs-2023-nested-pattern-unification:
+  type: misc
+  title: Nested Pattern Unification
+  author: ["Kovács, András"]
+  date: 2023
+  url: https://andraskovacs.github.io/pdfs/wits23prez.pdf
+  note: >-
+    WITS 2023 presentation (with Rafaël Bocquet); metadata from library.bib
+    (Kovács-2023-nested_pattern_unification-slides-WITS), held PDF
+
+sterling-2026-pterodactyl-worklog:
+  type: misc
+  title: Project Pterodactyl worklog (Forester forest rooted at tree 019E)
+  author: ["Sterling, Jon"]
+  date: 2026
+  url: https://www.jonmsterling.com/019E/
+  note: >-
+    not in library.bib; synthesized 2026-08-07 and fetch-verified the same day — a Forester
+    worklog rooted at tree 019E ("Project Pterodactyl", dated 2025-02-28), with the cited trees
+    dated 2025-2026; individual trees are cited inline by their stable forest anchors (e.g. tree
+    01JQ), and the trees this corpus cites were read live at registration (2026-08-07)
+
+# ── The display-provenance line (pattern elaboration, dubbing, labelled types) ──
+# The three Epigram-line works are transcribed from library.bib, which holds each PDF.
+
+mcbride-mckinna-2004-view-left:
+  type: article
+  title: The View from the Left
+  author: ["McBride, Conor", "McKinna, James"]
+  date: 2004
+  publisher: Cambridge University Press
+  serial-number:
+    doi: "10.1017/S0956796803004829"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming 14(1)
+    page-range: 69-111
+  note: >-
+    transcribed from library.bib (key Mcbride-2004-view_left), which holds the PDF; title,
+    authorship, venue, volume, issue, pages, and DOI are the register entry's, not re-read
+    from the artifact at this pass
+
+dagand-mcbride-2012-elaborating:
+  type: article
+  title: Elaborating Inductive Definitions
+  author: ["Dagand, Pierre-Évariste", "McBride, Conor"]
+  date: 2012
+  serial-number:
+    arxiv: "1210.6390"
+    doi: "10.48550/arXiv.1210.6390"
+  note: >-
+    transcribed from library.bib (key Dagand-2012-elaborating_inductive_definitions), which
+    holds the PDF; the arXiv identifier and its DOI form are the register entry's, not
+    re-read from the artifact at this pass
+
+mcbride-1999-thesis:
+  type: thesis
+  title: Dependently Typed Functional Programs and Their Proofs
+  author: ["McBride, Conor"]
+  date: 1999
+  organization: University of Edinburgh
+  note: >-
+    transcribed from library.bib (key
+    McBride-1999-dependently_typed_functional_programs_their_proofs), which holds the PDF;
+    year and institution are the register entry's, not re-read from the artifact at this pass
+
+brady-2005-practical-implementation:
+  type: thesis
+  title: Practical Implementation of a Dependently Typed Functional Programming Language
+  author: ["Brady, Edwin"]
+  date: 2005
+  organization: University of Durham
+  url: https://etheses.durham.ac.uk/2800/
+  note: >-
+    the held copy's register entry (library.bib key
+    Brady-year????-practical_implementation_dependently_typed_functional_programming_language)
+    records no year; the year and the Durham E-Theses locator were verified against the
+    repository record on 2026-08-07
+
+# ── The universe-discipline foundation ────────────────────────────────────────
+# The explicit-polymorphism line, the loop-checking decision procedure, the
+# displacement analysis, the decision-procedure lineage for neutral terms, and the
+# public worklog the design record digests.
+
+bezem-coquand-dybjer-escardo-2022-explicit-universe-polymorphism:
+  type: article
+  title: Type Theory with Explicit Universe Polymorphism (Revised and Extended Version)
+  author: ["Bezem, Marc", "Coquand, Thierry", "Dybjer, Peter", "Escardó, Martín"]
+  date: 2022
+  serial-number:
+    arxiv: "2212.03284"
+  note: >-
+    metadata copied from the contributor research register, which holds the arXiv record; the
+    artifact was not re-read for this citation
+
+bezem-coquand-2022-loop-checking:
+  type: article
+  title: Loop-Checking and the Uniform Word Problem for Join-Semilattices with an Inflationary Endomorphism
+  author: ["Bezem, Marc", "Coquand, Thierry"]
+  date: 2022-04
+  publisher: Elsevier
+  serial-number:
+    doi: "10.1016/j.tcs.2022.01.017"
+  parent:
+    type: periodical
+    title: Theoretical Computer Science
+    volume: 913
+    page-range: 1-7
+  note: >-
+    metadata copied from the contributor research register; cited as the decision procedure the
+    kernel's landmark-poset admission and entailment implement, per the kernel crates' own
+    documentation — the paper itself was not read for this citation
+
+hou-favonia-angiuli-mullanix-2023-order-theoretic:
+  type: article
+  title: An Order-Theoretic Analysis of Universe Polymorphism
+  author: ["Hou (Favonia), Kuen-Bang", "Angiuli, Carlo", "Mullanix, Reed"]
+  date: 2023-01
+  publisher: Association for Computing Machinery
+  serial-number:
+    doi: "10.1145/3571250"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 7
+    issue: POPL
+    page-range: "57:1659-57:1685"
+  note: >-
+    metadata copied from the contributor research register, which holds the PDF; read at abstract
+    grade only for this citation
+
+allais-boutillier-mcbride-2013-neutral-terms:
+  type: article
+  title: "New Equations for Neutral Terms: A Sound and Complete Decision Procedure, Formalized"
+  author: ["Allais, Guillaume", "Boutillier, Pierre", "McBride, Conor"]
+  date: 2013-06-17
+  url: http://arxiv.org/abs/1304.0809
+  serial-number:
+    doi: "10.48550/arXiv.1304.0809"
+    arxiv: "1304.0809"
+  note: >-
+    metadata from library.bib
+    (Allais-2013-new_equations_neutral_terms_sound_complete_decision_procedure_formalized), held
+    PDF; cited for the decision-procedure lineage for neutral-term equality via the design
+    record — not re-read for this citation
+
+corbyn-kammar-valliappan-yallop-2022-nbe-free-extensions:
+  type: misc
+  title: Normalization by Evaluation with Free Extensions
+  author: ["Corbyn, Nathan", "Kammar, Ohad", "Valliappan, Nachiappan", "Yallop, Jeremy"]
+  date: 2022
+  note: >-
+    held as a PDF in the contributor research register, which records no DOI, arXiv identifier,
+    or venue for it; metadata transcribed from the register entry and not re-checked against the
+    artifact — a claim needing a stable locator should treat this entry as locator-pending
+
+mcbride-2012-crude-stratification:
+  type: misc
+  title: Crude but Effective Stratification
+  author: ["McBride, Conor"]
+  date: 2012
+  url: https://personal.cis.strath.ac.uk/conor.mcbride/Crude.pdf
+  note: >-
+    held as a PDF in the contributor research register (filed there under 2022); the slides print
+    no date, and 2012 is the year the citing design record assigns. The URL was fetch-verified
+    2026-08-07 (HTTP 200, application/pdf)
+    not in library.bib; synthesized 2026-08-07 — public worklog forest, read 2026-08-06; individual
+    trees are cited inline by their stable forest anchors (e.g. tree 01JQ)
+
+# ── The unifier's fragment and its theory backend ────────────────────────────
+
+abel-pientka-2011-dynamic-pattern-unification:
+  type: article
+  title: Higher-Order Dynamic Pattern Unification for Dependent Types and Records
+  author: ["Abel, Andreas", "Pientka, Brigitte"]
+  date: 2011
+  serial-number:
+    isbn: "978-3-642-21690-9"
+  parent:
+    type: proceedings
+    title: Proceedings of the 10th International Conference on Typed Lambda Calculi and Applications (TLCA 2011)
+    publisher: Springer-Verlag
+    page-range: 10-26
+  note: >-
+    metadata from library.bib
+    (Abel-2011-higherorder_dynamic_pattern_unification_dependent_types_records), held PDF
+
+richter-bohler-2026-pattern-matching-unification:
+  type: misc
+  title: "Extended Abstract: From Pattern Unification towards Pattern Matching Unification"
+  author: ["Richter, David", "Böhler, Timon"]
+  date: 2026
+  url: http://arxiv.org/abs/2607.18455
+  serial-number:
+    doi: "10.48550/arXiv.2607.18455"
+    arxiv: "2607.18455"
+  note: >-
+    extended abstract, preprint; metadata from library.bib
+    (Richter-2026-extended_abstract_pattern_unification_pattern_matching_unification), held PDF
+
+behr-krivine-2021-conditions-compositionality:
+  type: article
+  title: Compositionality of Rewriting Rules with Conditions
+  author: ["Behr, Nicolas", "Krivine, Jean"]
+  date: 2021
+  serial-number:
+    doi: "10.32408/compositionality-3-2"
+    arxiv: "1904.09322"
+  parent:
+    type: periodical
+    title: Compositionality
+    volume: 3
+    issue: 2
+  note: metadata from library.bib (Behr-2021-compositionality_rewriting_rules_conditions), held PDF
+
+behr-harmer-krivine-2021-nonlinear-concurrency:
+  type: article
+  title: Concurrency Theorems for Non-linear Rewriting Theories
+  author: ["Behr, Nicolas", "Harmer, Russ", "Krivine, Jean"]
+  date: 2021
+  serial-number:
+    doi: "10.48550/arXiv.2105.02842"
+    arxiv: "2105.02842"
+  note: >-
+    preprint; metadata from library.bib
+    (Behr-2021-concurrency_theorems_nonlinear_rewriting_theories), held PDF
+
+behr-heckel-saadat-2020-graph-overlaps-z3:
+  type: article
+  title: "Efficient Computation of Graph Overlaps for Rule Composition: Theory and Z3 Prototyping"
+  author: ["Behr, Nicolas", "Heckel, Reiko", "Ghaffari Saadat, Maryam"]
+  date: 2020
+  serial-number:
+    doi: "10.4204/EPTCS.330.8"
+    arxiv: "2003.11010"
+  parent:
+    type: periodical
+    title: Electronic Proceedings in Theoretical Computer Science
+    volume: 330
+    page-range: 126-144
+  note: >-
+    metadata from library.bib
+    (Behr-2020-efficient_computation_graph_overlaps_rule_composition_theory_z3_prototyping), held PDF
+
+hewer-2024-types-extra-structure:
+  type: thesis
+  title: "Types with Extra Structure: Predicates, Equations, Composition"
+  author: ["Hewer, Brandon"]
+  date: 2024
+  note: >-
+    metadata from library.bib (Hewer-2024-types_extra_structure_predicates_equations_composition),
+    held PDF; no DOI or arXiv identifier recorded in the register
+
+cockx-tabareau-winterhalter-2021-taming-rew:
+  type: article
+  title: "The Taming of the Rew: A Type Theory with Computational Assumptions"
+  author: ["Cockx, Jesper", "Tabareau, Nicolas", "Winterhalter, Théo"]
+  date: 2021
+  serial-number:
+    doi: "10.1145/3434341"
+    hal: "hal-02901011"
+  parent:
+    type: periodical
+    title: Proceedings of the ACM on Programming Languages
+    volume: 5
+    issue: POPL
+    page-range: "60:1-60:29"
+  note: >-
+    metadata from library.bib (Cockx-2021-taming_rew_type_theory_computational_assumptions), held
+    PDF; HAL identifier per the absorption sweep's verified-locator record
+
+escobar-sasse-meseguer-2012-variant-narrowing:
+  type: article
+  title: Folding Variant Narrowing and Optimal Variant Termination
+  author: ["Escobar, Santiago", "Sasse, Ralf", "Meseguer, José"]
+  date: 2012
+  serial-number:
+    doi: "10.1016/j.jlap.2012.01.002"
+  parent:
+    type: periodical
+    title: Journal of Logic and Algebraic Programming
+    volume: 81
+    issue: 7-8
+  note: >-
+    not in library.bib; synthesized 2026-08-07 — locator from the absorption sweep's
+    verified-metadata record; the work itself is unread here
+
+dowek-hardin-kirchner-2003-theorem-proving-modulo:
+  type: article
+  title: Theorem Proving Modulo
+  author: ["Dowek, Gilles", "Hardin, Thérèse", "Kirchner, Claude"]
+  date: 2003
+  serial-number:
+    doi: "10.1023/A:1027357912519"
+  parent:
+    type: periodical
+    title: Journal of Automated Reasoning
+    volume: 31
+    issue: 1
+    page-range: 33-72
+  note: >-
+    not in library.bib; synthesized 2026-08-07 — locator from the absorption sweep's
+    verified-metadata record; the work itself is unread here
+
+# ── Pterodactyl absorption: the theory layer ──────────────────────────────────
+# The coercion register's precedents and the telescope-as-schema connection.
+
+dreyer-2007-modular-type-classes:
+  type: chapter
+  title: Modular Type Classes
+  author: ["Dreyer, Derek", "Harper, Robert", "Chakravarty, Manuel M. T.", "Keller, Gabriele"]
+  date: 2007
+  page-range: "63-70"
+  serial-number:
+    doi: "10.1145/1190216.1190229"
+    isbn: "978-1-59593-575-5"
+  parent:
+    type: proceedings
+    title: Proceedings of the 34th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '07)
+  note: metadata from library.bib (Dreyer-2007-modular_type_classes), held PDF
+
+kaposi-2020-signatures:
+  type: article
+  title: Signatures and Induction Principles for Higher Inductive-Inductive Types
+  author: ["Kaposi, Ambrus", "Kovács, András"]
+  date: 2020
+  serial-number:
+    doi: "10.23638/LMCS-16(1:10)2020"
+    arxiv: "1902.00297"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 16
+    issue: 1
+  note: metadata from library.bib (Kaposi-2020-signatures_induction_principles_higher_inductiveinductive_types), held PDF
+
+# ── The strengthening line (strengthening as a solver-machine service) ──
+# The McBride chapter, the Giménez thesis, and the Kaposi–Kovács article are transcribed from
+# library.bib, which holds each artifact; the Cockx–Devriese article is not held and is
+# synthesized with a locator verified at registration.
+
+mcbride-2002-elimination-motive:
+  type: chapter
+  title: Elimination with a Motive
+  author: ["McBride, Conor"]
+  date: 2002
+  publisher: Springer
+  serial-number:
+    doi: "10.1007/3-540-45842-5_13"
+    isbn: "978-3-540-45842-5"
+  parent:
+    type: proceedings
+    title: Types for Proofs and Programs
+    page-range: 197-216
+  note: >-
+    transcribed from library.bib (key McBride-2002-elimination_motive), which holds the PDF;
+    title, authorship, venue, pages, publisher, ISBN, and DOI are the register entry's, not
+    re-read from the artifact at this pass
+
+gimenez-1996-thesis:
+  type: thesis
+  title: Un Calcul de Constructions Infinies et Son Application à La Vérification de Systèmes
+    Communicants
+  author: ["Giménez, Eduardo"]
+  date: 1996
+  organization: École normale supérieure de Lyon
+  url: https://theses.fr/1996ENSL0044
+  note: >-
+    transcribed from library.bib (key
+    Giménez-1996-calcul_constructions_infinies_son_application_verification_systemes_communicants),
+    which holds the record; the held record dates the thesis 1996-01-01 (it is elsewhere cited
+    as 1995), and the year, institution, and theses.fr locator are the register entry's, not
+    re-read from the artifact at this pass
+
+kaposi-kovacs-2020-hiit-signatures:
+  type: article
+  title: Signatures and Induction Principles for Higher Inductive-Inductive Types
+  author: ["Kaposi, Ambrus", "Kovács, András"]
+  date: 2020
+  serial-number:
+    doi: "10.23638/LMCS-16(1:10)2020"
+    arxiv: "1902.00297"
+  parent:
+    type: periodical
+    title: Logical Methods in Computer Science
+    volume: 16
+    issue: 1
+  note: >-
+    transcribed from library.bib (key
+    Kaposi-2020-signatures_induction_principles_higher_inductiveinductive_types), which holds
+    the PDF — the LMCS journal version; a dispatch record once paired this work with a DOI
+    (10.1145/3373718.3394767) that resolves to an unrelated LICS 2020 paper, so the locators
+    here are the register entry's own, not re-read from the artifact at this pass
+
+cockx-devriese-2018-proof-relevant-unification:
+  type: article
+  title: "Proof-Relevant Unification: Dependent Pattern Matching with Only the Axioms of Your
+    Type Theory"
+  author: ["Cockx, Jesper", "Devriese, Dominique"]
+  date: 2018
+  serial-number:
+    doi: "10.1017/S095679681800014X"
+  parent:
+    type: periodical
+    title: Journal of Functional Programming
+    volume: 28
+  note: >-
+    not in library.bib; synthesized 2026-08-07 — a dispatch record's DOI candidate
+    (10.1145/3209108.3209113) does not resolve; title, venue, volume, and the recorded DOI were
+    verified against the dblp record on 2026-08-07, and the work itself is unread here
 
 spivak-2013-operad-wiring-diagrams:
   type: article
