@@ -9,6 +9,7 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
 * The per-crate `docs/` tier (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) begins its retirement: the `storage-artifact`, `storage-chunker`, and `storage-prolly-trees` sets leave the tree, and this file becomes the workspace changelog of record.
   The design material they carried is corrected at its new home rather than copied.
 * The retirement continues: the `kernel-core` and `kernel-strata` sets leave the tree.
+* And the `theory-orders` set — its order-maintenance decisions, deferrals, and coverage record are corrected at their new home.
 
 ## 2026-07-21
 
@@ -31,6 +32,10 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
 
 * **kernel-strata**: initial implementation — the free-fragment level oracle: the always-canonical `Level` over the `{0, +1, max}` algebra (derived equality is the level-equality oracle), the domination-based `leq`/`lt` oracle with checkable witness/refutation evidence and validators, and the checked `eval` semantic anchor.
 * **kernel-strata**: landmark posets and entailment — Bezem–Coquand loop-checking (TCS 913, 2022) over declared variable-only constraints, admission as the Corollary 3.5 dichotomy with evidence on both sides (`ConsistencyWitness` homomorphism or replayable `LoopWitness`), Corollary 3.4 entailment with `EntailmentWitness`/`EntailmentCountermodel`, the pinned-bottom constant encoding, and the empty-poset property differential against the free oracle.
+
+## 2026-06-21
+
+* **theory-orders**: initial implementation — the self-contained order-maintenance structure for the incremental pipeline: `OrderMaintenance<T>` (single-level list-labeling, O(1) comparison, O(log² n) amortized insertion with the density-capped relabel keeping the structure total), generation- and structure-checked `Pos` handles, the `Interval` pre/post-order containment query, the reference-oracle property test, and the `order` criterion bench.
 
 ## 2026-06-05
 
