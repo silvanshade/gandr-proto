@@ -3145,19 +3145,6 @@ bakke-sterling-williams-ye-2026-sierpinski:
     title, authorship, date, and arXiv identifier read from page 1 of the held PDF (v1); no DOI printed
     on the artifact. Title carries a diacritic on the artifact (Sierpinski)
 
-# row 18 — fuss-free cumulative universes
-sterbac-sterling-2026-fuss-free:
-  type: article
-  title: "Fuss-Free Cumulative Universes: Theory and Practice"
-  author: ["Sterbac, Raphaël", "Sterling, Jonathan"]
-  date: 2026
-  serial-number:
-    arxiv: "2607.11329"
-  note: >-
-    title, authorship, and arXiv identifier read from page 1 of the held PDF (arXiv:2607.11329v1,
-    13 July 2026), which is the extended version with supplementary appendices; no DOI or venue is
-    printed on the artifact
-
 # row 19 — bidirectional elaborators à la carte
 slattery-sterling-2026-elaborators:
   type: article
@@ -5397,59 +5384,6 @@ sterling-2026-pterodactyl-worklog:
     dated 2025-2026; individual trees are cited inline by their stable forest anchors (e.g. tree
     01JQ), and the trees this corpus cites were read live at registration (2026-08-07)
 
-# ── The universe-discipline foundation ────────────────────────────────────────
-# The explicit-polymorphism line, the loop-checking decision procedure, the
-# displacement analysis, the decision-procedure lineage for neutral terms, and the
-# public worklog the design record digests — cited by
-# spec/implementation/proposed/fuss-free-universes.md.
-
-bezem-coquand-dybjer-escardo-2022-explicit-universe-polymorphism:
-  type: article
-  title: Type Theory with Explicit Universe Polymorphism (Revised and Extended Version)
-  author: ["Bezem, Marc", "Coquand, Thierry", "Dybjer, Peter", "Escardó, Martín"]
-  date: 2022
-  serial-number:
-    arxiv: "2212.03284"
-  note: >-
-    metadata copied from the contributor research register, which holds the arXiv record; the
-    artifact was not re-read for this citation
-
-bezem-coquand-2022-loop-checking:
-  type: article
-  title: Loop-Checking and the Uniform Word Problem for Join-Semilattices with an Inflationary Endomorphism
-  author: ["Bezem, Marc", "Coquand, Thierry"]
-  date: 2022-04
-  publisher: Elsevier
-  serial-number:
-    doi: "10.1016/j.tcs.2022.01.017"
-  parent:
-    type: periodical
-    title: Theoretical Computer Science
-    volume: 913
-    page-range: 1-7
-  note: >-
-    metadata copied from the contributor research register; cited as the decision procedure the
-    kernel's landmark-poset admission and entailment implement, per the kernel crates' own
-    documentation — the paper itself was not read for this citation
-
-hou-favonia-angiuli-mullanix-2023-order-theoretic:
-  type: article
-  title: An Order-Theoretic Analysis of Universe Polymorphism
-  author: ["Hou (Favonia), Kuen-Bang", "Angiuli, Carlo", "Mullanix, Reed"]
-  date: 2023-01
-  publisher: Association for Computing Machinery
-  serial-number:
-    doi: "10.1145/3571250"
-  parent:
-    type: periodical
-    title: Proceedings of the ACM on Programming Languages
-    volume: 7
-    issue: POPL
-    page-range: "57:1659-57:1685"
-  note: >-
-    metadata copied from the contributor research register, which holds the PDF; read at abstract
-    grade only for this citation
-
 allais-boutillier-mcbride-2013-neutral-terms:
   type: article
   title: "New Equations for Neutral Terms: A Sound and Complete Decision Procedure, Formalized"
@@ -5464,29 +5398,6 @@ allais-boutillier-mcbride-2013-neutral-terms:
     (Allais-2013-new_equations_neutral_terms_sound_complete_decision_procedure_formalized), held
     PDF; cited for the decision-procedure lineage for neutral-term equality via the design
     record — not re-read for this citation
-
-corbyn-kammar-valliappan-yallop-2022-nbe-free-extensions:
-  type: misc
-  title: Normalization by Evaluation with Free Extensions
-  author: ["Corbyn, Nathan", "Kammar, Ohad", "Valliappan, Nachiappan", "Yallop, Jeremy"]
-  date: 2022
-  note: >-
-    held as a PDF in the contributor research register, which records no DOI, arXiv identifier,
-    or venue for it; metadata transcribed from the register entry and not re-checked against the
-    artifact — a claim needing a stable locator should treat this entry as locator-pending
-
-mcbride-2012-crude-stratification:
-  type: misc
-  title: Crude but Effective Stratification
-  author: ["McBride, Conor"]
-  date: 2012
-  url: https://personal.cis.strath.ac.uk/conor.mcbride/Crude.pdf
-  note: >-
-    held as a PDF in the contributor research register (filed there under 2022); the slides print
-    no date, and 2012 is the year the citing design record assigns. The URL was fetch-verified
-    2026-08-07 (HTTP 200, application/pdf)
-    not in library.bib; synthesized 2026-08-07 — public worklog forest, read 2026-08-06; individual
-    trees are cited inline by their stable forest anchors (e.g. tree 01JQ)
 
 # ── The unifier's fragment and its theory backend ────────────────────────────
 

@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: 7f5c836919bc282c0097907cada9a4ccea3c1ad27f5f9f95fff58ff963249b34
+    b3: 6e2f29f33e495ebdac32c0c6353148bc24e40d73c78f214ac9f0376559816be2
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: d43788d6bf766b3a18561a3ca5ba285c1cfa357f5b571e998a612ac9831b8c96
+    b3: 4ef46ede7834acc78ec1136d5cbde4a11e3536f8da7fe0e4fd389061936b1a13
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -39,7 +39,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: ebf75f3be506e47bd883e2a08db08e67bc9236b608f030572e6f084cc2e01fb9
+    b3: 9eb24d0718049d379280e00b92b68610b953916a0ff7333d049db7130dc06c39
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -215,11 +215,6 @@ nodes:
   - path: spec/implementation/proposed/solver-interface.md
     role: subdocument
     b3: d1d5371acf416e562452d23c2c3c6b0d84c47f6e35910e3e0f56b5be11a20762
-    edges:
-      - { rel: registered-under, to: spec/implementation.md }
-  - path: spec/implementation/proposed/fuss-free-universes.md
-    role: subdocument
-    b3: 5a57402ef0b131bc8a4eb5e05dc66dc11833329fc243692f947904b0e2de2d36
     edges:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/implementation/proposed/pattern-unifier.md
