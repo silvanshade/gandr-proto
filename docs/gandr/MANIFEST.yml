@@ -24,7 +24,7 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/implementation.md
     role: track
-    b3: 779330b9e3954138cae16b5a62947cee784526a847c9e4b044af63f5f829d503
+    b3: 1a4365fc01e5c189adecab7c51975d4b2ff26c8fd3007e500f936718d6e41bdf
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/proof-engineering.md
@@ -114,7 +114,7 @@ nodes:
       - { rel: registered-under, to: spec/implementation.md }
   - path: spec/surface-language/grammar.md
     role: subdocument
-    b3: e0385055f72bf931acd06d088d31008de062873e0ccedb01a39a9480b1492ff8
+    b3: 8657dbceaf12f4723cc15cb1461f92d90e2fe5911ec11a4a28e4b4ff7e6c9307
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/operators.md
@@ -164,7 +164,7 @@ nodes:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/surface-language/roadmap.md
     role: subdocument
-    b3: b6c2edf32d5226f581eafaf027457e5d587ee0577dced27332e52c8115654718
+    b3: 6a0aa8b5e1d0b1a88f2ec479258738189732885622447cc3bb5f55a3906b6deb
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/capability-model.md

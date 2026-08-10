@@ -1,4 +1,4 @@
-// A declared `op` is what lets a `rule` become a cell.
+// A declared `oper` is what lets a `rule` become a cell.
 //
 // The description layer records an operation's arity as a bridge diagram; the
 // cell layer reads that arity to decide whether it can hold the operation at
