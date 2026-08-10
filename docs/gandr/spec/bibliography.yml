@@ -5716,21 +5716,6 @@ dreyer-2007-modular-type-classes:
     title: Proceedings of the 34th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '07)
   note: metadata from library.bib (Dreyer-2007-modular_type_classes), held PDF
 
-kaposi-2020-signatures:
-  type: article
-  title: Signatures and Induction Principles for Higher Inductive-Inductive Types
-  author: ["Kaposi, Ambrus", "Kovács, András"]
-  date: 2020
-  serial-number:
-    doi: "10.23638/LMCS-16(1:10)2020"
-    arxiv: "1902.00297"
-  parent:
-    type: periodical
-    title: Logical Methods in Computer Science
-    volume: 16
-    issue: 1
-  note: metadata from library.bib (Kaposi-2020-signatures_induction_principles_higher_inductiveinductive_types), held PDF
-
 # ── The strengthening line (strengthening as a solver-machine service) ──
 # The McBride chapter, the Giménez thesis, and the Kaposi–Kovács article are transcribed from
 # library.bib, which holds each artifact; the Cockx–Devriese article is not held and is
@@ -5769,6 +5754,7 @@ gimenez-1996-thesis:
     as 1995), and the year, institution, and theses.fr locator are the register entry's, not
     re-read from the artifact at this pass
 
+# Former key kaposi-2020-signatures: ALREADY REGISTERED as kaposi-kovacs-2020-hiit-signatures.
 kaposi-kovacs-2020-hiit-signatures:
   type: article
   title: Signatures and Induction Principles for Higher Inductive-Inductive Types
