@@ -96,7 +96,7 @@ The rules the graph enforces:
 Each invariant names its enforcement surface; the gates live in [docs/workflow/ci.md](docs/workflow/ci.md).
 
 1. **Kernel minimality.** The kernel environment is append-only behind the single `add_decl` choke point (one warned bypass plus a print-axioms audit), the S1 checker is zero-inference, and definitional-equality conversion is quarantined.
-   Sources: the `kernel-core` manifest and [crates/kernel-core/docs/](crates/kernel-core/docs/).
+   Sources: the `kernel-core` manifest and the crate's rustdoc.
 2. **Content-addressed identity.** Artifact identity is a canonical BLAKE3 manifest hash; prolly-tree nodes carry BLAKE3 identity with membership, non-membership, and range proofs.
    Sources: the `storage-artifact` / `storage-prolly-trees` manifests.
 3. **The Rust lint wall is absolute.** The workspace `[workspace.lints]` table denies clippy all/pedantic/nursery/restriction; partial functions, `unwrap`/`expect` in shipping code, and undocumented nontrivial items do not compile.

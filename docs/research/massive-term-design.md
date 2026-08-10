@@ -32,7 +32,7 @@ The reader's expanded-work budget is the S1-priced defence (§4.4).
 ## 2. Ground truth — the kernel-core surface as built
 
 Every code-anchored claim in the proposal, re-verified against the live worktree.
-Slice 3 of the minimal certified kernel is `crates/kernel-core`, `#![no_std]` over `core`/`alloc`, depending only on `gandr-kernel-strata` (`crates/kernel-core/docs/STATUS.md:78`, verified).
+Slice 3 of the minimal certified kernel is `crates/kernel-core`, `#![no_std]` over `core`/`alloc`, depending only on `gandr-kernel-strata` (the `kernel-core` crate documentation, verified).
 
 ### 2.1 The four term/type enums D1 changes — all `Box`-childed today
 
