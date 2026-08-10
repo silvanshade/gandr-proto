@@ -9,7 +9,7 @@ nodes:
       - { rel: orients, to: . }
   - path: spec/README.md
     role: index
-    b3: 91e789e74ba9e252ab7a524c280adb10f377efe8ddd2b9d1f1a52b7b73a74fa2
+    b3: 6c5b9b44411f74939cd70167e2eb91139452d93649a6f34305eed18c26c6ce90
     edges:
       - { rel: registered-under, to: README.md }
   - path: spec/overview.md
@@ -34,12 +34,12 @@ nodes:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/surface-language.md
     role: track
-    b3: 63fc9f76befedde88a7e3d836e70bd3074fa2eada33a246a705825a0126ebe31
+    b3: 6f3173ec57187faa3a5c6fe544b09b65f0cd3751796adc9d02f91924c93db462
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/bibliography.yml
     role: bibliography
-    b3: ab55eda94fa8a713d5b049d595b30f093d9cd9ab665fa8e7c60df9499b063370
+    b3: c6004732102f702a455179b25a29e366ec48e7dff6286682bf93a3a4f84c1635
     edges:
       - { rel: registered-under, to: spec/README.md }
   - path: spec/metatheory/roadmap.md
@@ -230,11 +230,6 @@ nodes:
   - path: spec/surface-language/proposed/modules.md
     role: subdocument
     b3: 36481afa2b7f086b194bebe9a580a6207a9ed12702d6c7eef42b4b04a2e869c4
-    edges:
-      - { rel: registered-under, to: spec/surface-language.md }
-  - path: spec/surface-language/proposed/theories.md
-    role: subdocument
-    b3: b4a19fe088383c51171817a6ab0308077c54ad300cfed412a19bb6274229c9b2
     edges:
       - { rel: registered-under, to: spec/surface-language.md }
   - path: spec/implementation/foreign-interface.md

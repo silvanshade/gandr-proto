@@ -5307,63 +5307,6 @@ petgraph:
     not in library.bib; synthesized 2026-08-02 — the workspace pins 0.8 with default features off
     and resolves 0.8.3, and the crate is named in exactly one crate manifest
 
-# ── Pterodactyl absorption: the elaborator discipline ─────────────────────────
-# Precedents for the three-scheduler rule, the universe layer, and the unifier.
-
-sakaguchi-2023-refinement-extension:
-  type: thesis
-  title: >-
-    Refinement and Extension of Mathematical Structures in Proof Assistants Based on Dependent
-    Type Theory
-  author: ["Sakaguchi, Kazuhiko"]
-  date: 2023
-  organization: University of Tsukuba
-  note: metadata from library.bib (Sakaguchi-2023-...); no DOI or arXiv identifier recorded in the register
-
-sterling-2026-pterodactyl-worklog:
-  type: misc
-  title: Project Pterodactyl worklog (Forester forest rooted at tree 019E)
-  author: ["Sterling, Jon"]
-  date: 2026
-  url: https://www.jonmsterling.com/019E/
-  note: >-
-    not in library.bib; synthesized 2026-08-07 and fetch-verified the same day — a Forester
-    worklog rooted at tree 019E ("Project Pterodactyl", dated 2025-02-28), with the cited trees
-    dated 2025-2026; individual trees are cited inline by their stable forest anchors (e.g. tree
-    01JQ), and the trees this corpus cites were read live at registration (2026-08-07)
-
-# ── Pterodactyl absorption: the theory layer ──────────────────────────────────
-# The coercion register's precedents and the telescope-as-schema connection.
-
-dreyer-2007-modular-type-classes:
-  type: chapter
-  title: Modular Type Classes
-  author: ["Dreyer, Derek", "Harper, Robert", "Chakravarty, Manuel M. T.", "Keller, Gabriele"]
-  date: 2007
-  page-range: "63-70"
-  serial-number:
-    doi: "10.1145/1190216.1190229"
-    isbn: "978-1-59593-575-5"
-  parent:
-    type: proceedings
-    title: Proceedings of the 34th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (POPL '07)
-  note: metadata from library.bib (Dreyer-2007-modular_type_classes), held PDF
-
-kaposi-2020-signatures:
-  type: article
-  title: Signatures and Induction Principles for Higher Inductive-Inductive Types
-  author: ["Kaposi, Ambrus", "Kovács, András"]
-  date: 2020
-  serial-number:
-    doi: "10.23638/LMCS-16(1:10)2020"
-    arxiv: "1902.00297"
-  parent:
-    type: periodical
-    title: Logical Methods in Computer Science
-    volume: 16
-    issue: 1
-  note: metadata from library.bib (Kaposi-2020-signatures_induction_principles_higher_inductiveinductive_types), held PDF
-
 spivak-2013-operad-wiring-diagrams:
   type: article
   title: "The Operad of Wiring Diagrams: Formalizing a Graphical Language for Databases,
