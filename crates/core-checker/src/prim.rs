@@ -12,7 +12,7 @@
 //! there is no recursion / fixpoint ([`crate::syntax::Comp::ListCase`] is
 //! non-recursive) — so the iteration / table / arithmetic combinators are
 //! realized in Rust. Because [`crate::syntax::Comp`] derives `Clone` / `Debug`
-//! / `Eq` / `PartialEq` *and* is the CEK machine's runtime focus type, a native
+//! / `Eq` / `PartialEq` *and* is the L machine's runtime focus type, a native
 //! node cannot carry a Rust `fn` / closure: a closure is not `Eq`, and a `fn`
 //! pointer's address equality is not stable (the compiler may merge or
 //! duplicate functions), which would corrupt the structural equality the
@@ -40,9 +40,9 @@
 //! (there is no core recursion / fixpoint), so — because the list argument
 //! reaches [`NativePrim::apply`] as a **manifest** [`Value::List`] whose length
 //! is therefore known — they **unroll** over that list into a closed CBPV term
-//! (`force`, `bind`, `case`, application, and `ret`), which the CEK machine
+//! (`force`, `bind`, `case`, application, and `ret`), which the L machine
 //! then runs. New primitives are ADDITIONS at the frozen `native` node's slot
-//! (ADR-42; `core-ir-contract.md` §0), not an IR-shape change.
+//! (ADR-42; the core IR contract's §0), not an IR-shape change.
 
 use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
@@ -154,19 +154,18 @@ pub enum NativePrim
     /// `r` with `v`, returning the extended record.
     Insert,
     /// `recordupdate r o` — the elaboration target of functional record update
-    /// `#{ r | ℓ = v, … }` (value-semantics MVP,
-    /// `proposal-value-semantics-mvp.md` §3.1). Overlays the manifest
-    /// overrides record `o` onto the manifest base record `r`, returning a
-    /// **fresh** record (override labels win, new labels extend) — the
-    /// copy-and-update whole surface, holding the
+    /// `#{ r | ℓ = v, … }` (the value-semantics design's §3.1). Overlays the
+    /// manifest overrides record `o` onto the manifest base record `r`,
+    /// returning a **fresh** record (override labels win, new labels
+    /// extend) — the copy-and-update whole surface, holding the
     /// state-visibility red line (the base binding observes no change). Not a
     /// module builtin: the lowerer emits it directly, so it carries no surface
     /// name.
     RecordUpdate,
     /// `set xs i v` — replace the element at index `i` of a manifest list with
-    /// `v`, returning a **fresh** list (list functional-update;
-    /// `proposal-value-semantics-mvp.md` §3.2). An out-of-bounds index
-    /// degenerates to a gradual hole. No lvalue / in-place assignment.
+    /// `v`, returning a **fresh** list (the value-semantics design's §3.2). An
+    /// out-of-bounds index degenerates to a gradual hole. No lvalue /
+    /// in-place assignment.
     Set,
     /// `update-at xs i f` — apply the pure closure `f : U(A → F A)` to the
     /// element at index `i`, returning a **fresh** list with that element
@@ -201,7 +200,7 @@ pub enum NativePrim
     StringEndsWith,
     /// `eq s t` — string equality. The string counterpart of the
     /// numeric [`Self::Eq`], and the dispatch prim string-literal patterns
-    /// elaborate through (`proposal-data-patterns.md` §17).
+    /// elaborate through (the data-patterns design's §17).
     StringEq,
     /// `split s sep` — split `s` on the literal separator `sep`.
     StringSplit,
@@ -368,7 +367,7 @@ impl NativePrim
             // (ADR-45). The MVP result types gradually as `{}` (the same
             // limitation the sibling `insert` builtin carries); the precise
             // "base type with ℓ retyped / widened" result of
-            // `proposal-value-semantics-mvp.md` §3.1 needs type-directed
+            // the value-semantics design's §3.1 needs type-directed
             // elaboration, deferred as an as-built note there.
             | Self::RecordUpdate => CompType::arrow(
                 empty_record(),
@@ -438,7 +437,7 @@ impl NativePrim
     /// leading arrows peeled.
     ///
     /// A source-level native has `applied = 0`, so this is the declared type;
-    /// the partially-applied forms arise only mid-evaluation (the CEK machine
+    /// the partially-applied forms arise only mid-evaluation (the L machine
     /// accumulates arguments into the node), where peeling yields the residual
     /// function type — this is what keeps subject reduction sound over the
     /// node. An over-application (more arguments than arrows — unreachable
@@ -473,8 +472,8 @@ impl NativePrim
     /// to.
     ///
     /// # Contract
-    /// - requires: `args.len() == self.arity()` (the CEK machine only calls
-    ///   this once the node has accumulated a full argument list).
+    /// - requires: `args.len() == self.arity()` (the L machine only calls this
+    ///   once the node has accumulated a full argument list).
     /// - ensures: returns the result computation the builtin steps to — a `ret
     ///   v` for the scalar prims, and for the source-facing combinators an
     ///   **unrolled** closed CBPV term (`force` / `bind` / `case` / application
@@ -1168,7 +1167,7 @@ fn option_none() -> Value
 // The higher-order list combinators (`each` / `where` / `reduce` / `any` /
 // `all`) reach `apply` at saturation with the list argument already a manifest
 // `Value::List`, so its length is known and they **unroll** it into a closed
-// CBPV term the CEK machine runs. There is deliberately NO core recursion (the
+// CBPV term the L machine runs. There is deliberately NO core recursion (the
 // v0 IR has no fixpoint), which is exactly why these live in Rust. The
 // generated binders carry a `$` sigil the
 // surface identifier grammar (`[a-z_][A-Za-z0-9_]*`) cannot produce, so they
@@ -1751,11 +1750,11 @@ fn native_push(args: &[Rc<Value>]) -> Comp
 // ─── list functional-update builtins ────────────────────────────
 //
 // Each returns a FRESH `Value::List` (no lvalue, no in-place index assignment):
-// the functional-update surface of `proposal-value-semantics-mvp.md` §3.2. The
+// the functional-update surface of the value-semantics design's §3.2. The
 // pure ones (`set` / `insert-at` / `remove-at` / `push`) reduce in one step
 // over the manifest list; the higher-order ones (`update-at` / `update-where`)
 // apply a gandr closure, so — like `each` / `where` — they UNROLL over the
-// manifest list into a closed CBPV term the CEK machine runs (there is no core
+// manifest list into a closed CBPV term the L machine runs (there is no core
 // recursion). An out-of-bounds index or a non-manifest list degenerates to a
 // gradual hole, so `apply` stays total. The generated binders carry a `$` sigil
 // the surface identifier grammar cannot produce, so they never capture a source

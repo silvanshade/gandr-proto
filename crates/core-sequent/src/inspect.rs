@@ -1,4 +1,4 @@
-//! The inspection protocol (`proposal-sequent-kernel.md` §9, §4.1 — commands,
+//! The inspection protocol (the sequent-machines design's §9, §4.1 —
 //! consumers, and the store are IR data addressable by inspection).
 //!
 //! L0 has no store yet (that is L1), so the inspection surface here is the

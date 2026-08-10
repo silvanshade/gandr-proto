@@ -7,10 +7,9 @@
 //! only on ill-typed input) — packaged as [`Eval`]. These types are the
 //! **durable** boundary the operational semantics is expressed over: they
 //! outlive any one machine. The L machine (`gandr-core-sequent`) is the live
-//! driver that produces them; the retired CEK oracle produced the *same*
-//! [`Eval`] so the two were directly comparable during the L1 migration (the
-//! ADR-9 differential). [`STEP_BUDGET`] is the shared step-count net both
-//! machines run under.
+//! driver that produces them; the retired oracle produced the *same* [`Eval`],
+//! so the two were directly comparable (the ADR-9 differential).
+//! [`STEP_BUDGET`] is the shared step-count net both machines run under.
 //!
 //! This module is the outcome vocabulary's durable home for the same reason
 //! [`crate::effect::host`] is the host seam's: the boundary is
@@ -81,10 +80,9 @@ pub enum StuckReason
     /// A former the focusing translation `𝓕` does not yet realize on the L
     /// machine (the sequent kernel's not-yet-built surface): the machine
     /// reports this defined stuck rather than diverging, and the corpus
-    /// differential treats it as a declined item. (Historically also the
-    /// sentinel the CEK's recursive reference evaluator returned on a
-    /// control / effect form, whence the name; the differential never fed
-    /// the reference one.)
+    /// differential treats it as a declined item. (The retired recursive
+    /// reference evaluator also returned it on a control / effect form, whence
+    /// the name; the differential never fed the reference one.)
     UnsupportedByReference,
     /// A closure body id did not resolve in its arena. This indicates a
     /// corrupted transitional closure adapter, not a well-typed source term.
@@ -136,7 +134,6 @@ pub enum Eval
 /// **Single source of truth.** This is the one budget constant the whole
 /// workspace shares: the L machine (`gandr-core-sequent`) and the `gandr-shell`
 /// / `gandr-ffi` drivers all run the same budget so their step-count nets stay
-/// at parity under the shared bound. Keeping one public constant is the L1
-/// de-duplication of the former driver mirrors (`proposal-sequent-kernel.md`
-/// §9, phase L1).
+/// at parity under the shared bound. Keeping one public constant de-duplicates
+/// the driver mirrors (the sequent-machines design's §9).
 pub const STEP_BUDGET: u64 = 1_000_000;

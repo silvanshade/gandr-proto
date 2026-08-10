@@ -1,4 +1,4 @@
-//! Typed-IL well-formedness checks (`proposal-sequent-kernel.md` §2.3).
+//! Typed-IL well-formedness checks (the sequent-machines design's §2.3).
 //!
 //! The IL's own discipline is the two-sided sequent (`Γ ⊢ p : A | Δ`,
 //! `Γ | c : A ⊢ Δ`, `Γ ⊢ s ⊢ Δ`); the user-facing gate stays the frozen-core

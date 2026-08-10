@@ -594,7 +594,8 @@ pub struct State
     /// The two-zone typing context `Γ; Σ`.
     ctx: Ctx,
     /// The ambient answer type the nearest enclosing `reset` establishes
-    /// (`effects-control-shell.md` §2.2; A3.3 `+control`): `None` outside any
+    /// (the effects and control record's answer-typing section; A3.3
+    /// `+control`): `None` outside any
     /// `reset`. The `reset` rule's `step_comp` sets it and its
     /// [`Frame::ResetBody`] pop restores it (dynamic scoping); `shift` reads
     /// it. The mirror of the recursive checker's `answer` register; like

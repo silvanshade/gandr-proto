@@ -1,4 +1,4 @@
-//! The two-region store of the L machine (`proposal-sequent-kernel.md` §4.2).
+//! The two-region store of the L machine (the sequent-machines design's §4.2).
 //!
 //! The store carries two regions in its type: a **heap** region (a nominal cell
 //! arena) and a **frame** stack (equation / control administration only).
@@ -9,18 +9,18 @@
 //! rule (returning through a covalue drops every frame allocated after it) is
 //! trivially sound — [`Store::shrink_frames`] is a plain truncation.
 //!
-//! # Call-by-need cells (carried over from the CEK, EXACTLY)
+//! # Call-by-need cells (carried over from the retired evaluator, exactly)
 //!
 //! The heap holds the [`Cell`]s that back call-by-need thunk forcing. A cell is
-//! the L-machine image of `eval::MemoCell`: an interior-mutable
-//! [`MemoState`] (`Unforced | InProgress | Forced`) with **black-holing**
-//! across the force probe and the CEK's **pure-spine-only write-back** — a body
-//! that is not purely reducible clears the black hole and re-runs inline on
-//! every force (see `machine::LMachine::force`). Cell identity is **nominal**:
-//! a cell is never deduplicated or merged (content-addressing
-//! will cover the immutable value graph only), so two thunks are the same cell
-//! exactly when they were allocated as one and copied (the shared [`Cell`]
-//! handle).
+//! the L-machine image of the retired evaluator's memo cell: an
+//! interior-mutable [`MemoState`] (`Unforced | InProgress | Forced`) with
+//! **black-holing** across the force probe and the CEK's **pure-spine-only
+//! write-back** — a body that is not purely reducible clears the black hole and
+//! re-runs inline on every force (see `machine::LMachine::force`). Cell
+//! identity is **nominal**: a cell is never deduplicated or merged
+//! (content-addressing will cover the immutable value graph only), so two
+//! thunks are the same cell exactly when they were allocated as one and copied
+//! (the shared [`Cell`] handle).
 //!
 //! The memo policy is **uniform across grades** — no grade-sensitive caching —
 //! so the L machine's step count stays parity with the CEK under the shared
@@ -107,8 +107,9 @@ impl From<CellId> for usize
     }
 }
 
-/// The state of a call-by-need [`Cell`] — the L-machine image of
-/// `eval::ThunkMemo` (`proposal-sequent-kernel.md` §4.2; ADR-50 call-by-need).
+/// The state of a call-by-need [`Cell`] — the L-machine image of the
+/// retired evaluator's thunk memo (the sequent-machines design's §4.2; ADR-50
+/// call-by-need).
 #[derive(Clone, Debug)]
 pub enum MemoState
 {
@@ -125,7 +126,8 @@ pub enum MemoState
     Forced(Rc<LValue>),
 }
 
-/// A call-by-need memoization cell — the L-machine image of `eval::MemoCell`.
+/// A call-by-need memoization cell — the L-machine image of the retired
+/// evaluator's memo cell.
 ///
 /// Interior-mutable (an `Rc<RefCell<…>>`), so a force through any shared copy
 /// of a thunk value caches for all copies, exactly as the CEK's `Rc<RefCell>`
@@ -183,7 +185,7 @@ impl PartialEq for Cell
 {
     /// A cell carries no semantic content, so all cells compare equal — keeping
     /// [`LValue`]'s equality a structural one that ignores force state (mirrors
-    /// `eval::MemoCell`).
+    /// the retired evaluator's memo cell).
     #[inline]
     fn eq(
         &self,

@@ -1,4 +1,4 @@
-//! The un-focusing readback `𝓕⁻¹` (`proposal-sequent-kernel.md` §7a) — the
+//! The un-focusing readback `𝓕⁻¹` (the sequent-machines design's §7a) — the
 //! inverse of the static focusing translation [`crate::focus`].
 //!
 //! `𝓕` erases the direct-style source syntax into the polarized command IL; a

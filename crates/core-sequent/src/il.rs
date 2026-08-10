@@ -1,5 +1,5 @@
 //! The command IL node families and their arena store
-//! (`proposal-sequent-kernel.md` §2).
+//! (the sequent-machines design's §2).
 //!
 //! Three syntactic categories — [`ProducerNode`], [`ConsumerNode`], and
 //! [`CommandNode`] — realize the polarized System-L / λμμ̃ command IL. Every

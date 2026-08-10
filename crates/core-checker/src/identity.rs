@@ -2,7 +2,7 @@
 //!
 //! Structural value equality and the value-into-type substitution that
 //! instantiates the [`Comp::Walk`](crate::syntax::Comp::Walk) motive (ADR-76;
-//! `proposal-identity-univalence.md` §4).
+//! the identity and univalence design's §4).
 //!
 //! `Path A x y` is gandr's first dependent former — terms occur inside a type —
 //! so two pieces of machinery the non-dependent core never needed arrive here:
@@ -15,7 +15,8 @@
 //!   ([`crate::checker`] / [`crate::machine`]) drives to form the base's
 //!   expected type `C[x/y][here(x)/q]` and the result type `C[a/x][b/y][p/q]`.
 //!
-//! At rung 1 (`proposal-identity-univalence.md` §4.3) there is **no reduction
+//! At rung 1 (the identity and univalence design's §4.3) there is **no
+//! reduction
 //! inside a type**: `value_eq` is α-respecting structural equality with a
 //! pointer-equality fast path and hole/annotation consistency, nothing more;
 //! the NbE-era definitional equality that adds Walk-β,

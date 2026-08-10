@@ -5,7 +5,7 @@
 )]
 
 //! Conformance suite: the recursive checker and the typing machine must agree
-//! *step for step* (ADR-9; roadmap §6, Stage 1).
+//! *step for step* (ADR-9; the roadmap's Stage 1).
 //!
 //! Two kinds of evidence:
 //!
@@ -312,8 +312,8 @@ fn value_supertype(ty: &ValueType) -> BoxedStrategy<ValueType>
 /// forms are exercised by the checker ≡ typing machine differential (via
 /// [`agree_value`] / [`agree_comp`]), so the new forms stay lock-step exactly
 /// as the sum family they sit beside. Their β-reduction outcomes are pinned on
-/// the L machine in `gandr_core_sequent::conformance_soundness` (the CEK
-/// evaluator that once cross-checked them retired at B1 stage F).
+/// the L machine in `gandr_core_sequent::conformance_soundness` (the retired
+/// reference evaluator's frozen outcome snapshots).
 mod declared_data
 {
     use super::*;
@@ -395,11 +395,11 @@ mod declared_data
     }
 
     // The declared-data β-rule and its non-`Ctor` stuck are pinned on the L
-    // machine in `gandr_core_sequent::conformance_soundness` (the CEK evaluator
-    // that once cross-checked them here retired at B1 stage F).
+    // machine in `gandr_core_sequent::conformance_soundness` (the retired
+    // reference evaluator's frozen outcome snapshots).
 }
 
-/// Levitation stage-1 conformance (ADR-81; `proposal-levitation.md` §6): the
+/// Levitation stage-1 conformance (ADR-81; the levitation design's §6): the
 /// frozen-core dependent pair `Σ` (feature 2) and the code universe `Universe`
 /// (feature 1). The `Σ` intro (a pair checked against a `Σ`) and elimination (a
 /// `split` over a `Σ`-typed scrutinee) forms are exercised by the checker ≡
@@ -6362,8 +6362,8 @@ proptest! {
 ///
 /// The native node's **evaluation** — the argument-accumulating reduction,
 /// currying, and the prelude free-name resolution — is machine-only and pinned
-/// on the L machine in `gandr_core_sequent::conformance_soundness` (the CEK
-/// evaluator that once ran these directed cases retired at B1 stage F).
+/// on the L machine in `gandr_core_sequent::conformance_soundness` (the
+/// retired reference evaluator's frozen outcome snapshots).
 mod native
 {
     use super::*;
@@ -6454,8 +6454,8 @@ mod native
 /// term, the string / path / regex builtins, and the assert + deep-handler
 /// test runner dogfooding A3 (`perform` / `handle` / `resume`) — is
 /// machine-only and pinned on the L machine in
-/// `gandr_core_sequent::conformance_soundness` (the CEK evaluator that once ran
-/// these directed cases retired at B1 stage F).
+/// `gandr_core_sequent::conformance_soundness` (the retired reference
+/// evaluator's frozen outcome snapshots).
 mod combinators
 {
     use super::*;

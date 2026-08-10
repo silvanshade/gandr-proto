@@ -46,7 +46,7 @@
 //! only in grade, or returners that differ only in row, therefore intern to
 //! *distinct* ids.
 //!
-//! # ADR-49 doors (`proposal-term-face.md`, binding on this interim)
+//! # The term-face design's ADR-49 doors (binding on this interim)
 //!
 //! The key is the type's own canonical form, so per-node-kind **canonical child
 //! ordering** is already admitted and exploited (records are a name-ordered

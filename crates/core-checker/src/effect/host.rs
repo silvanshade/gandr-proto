@@ -6,12 +6,10 @@
 //! This is a **preserved boundary**: it is expressed over the public
 //! [`Value`] / [`EffectSig`] surface and the operation *name* only — never a
 //! machine continuation frame — so it stays representation-independent across
-//! the evaluator that realizes it. That representation-independence is what let
-//! the seam survive the port from the CEK oracle to its successor: the two
-//! machines presented the *identical* seam to the host, and the L machine
-//! realization in `gandr_core_sequent` (`machine::run_comp_with_host`) is the
-//! durable driver the runtime-host binds against — the CEK drivers retired with
-//! the CEK at B1 stage F.
+//! the evaluator that realizes it. That representation-independence is what
+//! makes the seam machine-independent: the L machine realization in
+//! `gandr_core_sequent` (`machine::run_comp_with_host`) is the durable driver
+//! the runtime-host binds against.
 //!
 //! The three types here are the seam's whole public vocabulary: a [`HostOp`]
 //! the machine hands out, a [`HostReply`] the host hands back, and the
@@ -143,7 +141,7 @@ impl HostOp
     /// the L machine realization in `gandr_core_sequent` — builds the offer it
     /// hands to a [`HostHandler`]. This is what keeps the seam a single shared
     /// boundary across machines rather than two parallel vocabularies (the
-    /// retired CEK oracle packaged the same triple).
+    /// same triple every driver over the seam presents).
     ///
     /// # Contract
     /// - ensures: a [`HostOp`] carrying `sig`, the owned operation name of

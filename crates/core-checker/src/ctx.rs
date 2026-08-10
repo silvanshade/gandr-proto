@@ -1,5 +1,6 @@
 //! The two-zone typing context `Γ; Σ` (`type-system.md` §"Notation and judgment
-//! forms"; `effects-control-shell.md` §2.4; ADR-33 D5).
+//! forms"; the effects and control record's one-shot-linearity
+//! section; ADR-33 D5).
 //!
 //! The intuitionistic zone `Γ : x ↦ A` is kept as a binding *stack*: binding
 //! pushes, unbinding pops, and lookup scans from the most recent binding, so
@@ -31,7 +32,8 @@ use crate::boundary::ContextLength;
 use crate::boundary::NameRef;
 use crate::types::ValueType;
 
-/// The linear context zone `Σ` (`effects-control-shell.md` §2.4; ADR-33 D5):
+/// The linear context zone `Σ` (the effects and control record's one-shot
+/// linearity section; ADR-33 D5):
 /// the one-shot/linear obligations a captured stack owns.
 ///
 /// `Σ` is **structurally distinct** from the intuitionistic `Γ`: its hypotheses
@@ -141,7 +143,7 @@ pub struct Ctx
 {
     /// The intuitionistic binding stack `Γ`; the innermost binding is last.
     entries: Vec<(String, ValueType)>,
-    /// The linear zone `Σ` (vacuous in v0; ADR-33 D5).
+    /// The linear zone `Σ` (vacuous in v0).
     sigma: Sigma,
 }
 
@@ -256,7 +258,7 @@ impl Ctx
             })
     }
 
-    /// The linear zone `Σ` (ADR-33 D5).
+    /// The linear zone `Σ`.
     ///
     /// Read-only inspection: vacuous in v0 (no typing rule populates it), so a
     /// conformance meta-invariant asserts it stays empty across every run.
@@ -268,7 +270,7 @@ impl Ctx
     }
 }
 
-/// Linear-discipline tests for the `Σ` zone (ADR-33 D5): the §2.4 one-shot /
+/// Linear-discipline tests for the `Σ` zone: the one-shot /
 /// linear laws, exercised directly over [`Sigma`] so the discipline is pinned
 /// *now*, not merely vacuously satisfied because no v0 rule populates `Σ`.
 #[cfg(test)]

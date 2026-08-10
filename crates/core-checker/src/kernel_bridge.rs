@@ -1,4 +1,4 @@
-//! The elaborator-side **kernel bridge** (B2.3).
+//! The elaborator-side **kernel bridge**.
 //!
 //! A total lowering from the checked core CBPV forms ([`crate::syntax`],
 //! [`crate::types`]) into the minimal certified kernel's closed **S1
@@ -27,16 +27,16 @@
 //!   [`Value::Annot`] is peeled (it only guides checking); the grade operations
 //!   [`Comp::Dup`]/[`Comp::Drop`] lower to their ungraded operational skeletons
 //!   (`dup v ⤳ return (v, v)`, `drop v ⤳ return ()`), the S1 image of grade
-//!   erasure (S1 thunks are ungraded, kernel-boundary.md §7).
+//!   erasure (S1 thunks are ungraded).
 //! * **Resolves names to de Bruijn indices and cross-declaration constants.** A
 //!   [`Value::Var`] bound by an enclosing binder becomes a
 //!   [`gandr_kernel_core::DeBruijnIndex`]; one naming a prior admitted
 //!   declaration (through the [`BridgeContext`] constant map) becomes a
 //!   [`Value::Constant`](gandr_kernel_core) admission index; a genuinely free
 //!   name is rejected [`BridgeRejection::UnboundName`].
-//! * **Applies the value-polarity declaration convention (B2.1 decision 3).** A
-//!   computation definition enters as a **thunk**: declared type `U C`, body
-//!   `thunk (…)`, used through `force` — [`lower_computation_definition`].
+//! * **Applies the value-polarity declaration convention.** A computation
+//!   definition enters as a **thunk**: declared type `U C`, body `thunk (…)`,
+//!   used through `force` — [`lower_computation_definition`].
 //!
 //! # Iterative traversal (no input recursion)
 //!
@@ -51,7 +51,7 @@
 //!
 //! Core CBPV carries **no universe levels** (its `Universe` is the un-levelled
 //! ADR-81 code universe, rejected here — the kernel's levelled universe and
-//! explicit lifts are authored kernel-native, gandr-wvd.2 call C5). A bridged
+//! explicit lifts are authored kernel-native). A bridged
 //! declaration is therefore level-**monomorphic**
 //! ([`gandr_kernel_core::LevelSignature::monomorphic`]); the level machinery is
 //! exercised only by the kernel-native goldens.
@@ -88,7 +88,7 @@ use crate::types::ValueType;
 /// constructor for it, so the bridge rejects at construction rather than
 /// panicking). [`Self::exclusion_class`] groups the variants into the coarse
 /// classes the corpus partition tags. S1's standing-subset growth
-/// (kernel-boundary.md §7) will retire rejections as formers are admitted;
+/// will retire rejections as formers are admitted;
 /// matches are total by policy, so a retired variant is a compile-visible
 /// change at every match site.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
@@ -298,8 +298,7 @@ struct BridgeInteger(i64);
 /// every free name is [`BridgeRejection::UnboundName`]; a multi-declaration
 /// elaboration populates it so a later declaration references an earlier one
 /// through a [`Value::Constant`](gandr_kernel_core) admission index (the
-/// append-only environment's cross-declaration reference form,
-/// kernel-boundary.md §3).
+/// append-only environment's cross-declaration reference form).
 #[repr(transparent)]
 #[derive(Clone, Debug, Default)]
 pub struct BridgeContext
@@ -1119,7 +1118,7 @@ fn integer_literal(integer: BridgeInteger) -> Literal
     Literal::Integer(IntegerLiteral::new(sign, magnitude))
 }
 
-// ----- Value-polarity declaration lowering (B2.1 decision 3) -----
+// ----- Value-polarity declaration lowering (the declaration convention) -----
 
 /// Lower a core **value** definition (declared type + value body) into the S1
 /// declared-type and body roots of a `Def`.
@@ -1156,7 +1155,7 @@ pub fn lower_value_definition(
 }
 
 /// Lower a core **computation** definition into the S1 `Def` of a **thunk**
-/// (the value-polarity declaration convention, B2.1 decision 3).
+/// (the value-polarity declaration convention).
 ///
 /// A computation definition `f : C` enters the single-polarity kernel as the
 /// value declaration `f : U C` with body `thunk (…)`, used through `force`.

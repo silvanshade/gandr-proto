@@ -13,8 +13,8 @@
 //! - **L1** runs the focused IL: the iterative [`machine::LMachine`] (§4, §6)
 //!   over the two-region [`store::Store`] (call-by-need cells + a frame
 //!   region), executing the full effect / control surface — `perform` /
-//!   `handle` / `resume` / `reset` / `shift` — gated against the CEK oracle by
-//!   the `L-run ∘ 𝓕 ≡ run` [`differential`] (§9).
+//!   `handle` / `resume` / `reset` / `shift` — anchored by the frozen outcome
+//!   snapshots through the `L-run ∘ 𝓕 ≡ run` [`differential`] (§9).
 //!
 //! What remains is the phase-**L2** fusion engine (2-cells on command seams)
 //! and the listed L1 readback residuals (the un-focusing `𝓕⁻¹`, §7a).

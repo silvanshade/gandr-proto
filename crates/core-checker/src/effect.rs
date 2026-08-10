@@ -1,5 +1,5 @@
-//! Effect signatures and the effect-row carrier (`effects-control-shell.md`
-//! §1; `type-system.md` §"Types"; ADR-14, ADR-33).
+//! Effect signatures and the effect-row carrier (the effects and control
+//! record's effect calculus; `type-system.md` §"Types"; ADR-14, ADR-33).
 //!
 //! Effects sit on `F`, the dual of the grade on `U` (`grade.rs`): the returner
 //! `F^ε A` carries an [`EffectRow`] `ε`. A row is a concrete finite set of
@@ -47,8 +47,10 @@ use crate::types::CompType;
 use crate::types::Ty;
 use crate::types::ValueType;
 
-/// A single effect operation `op : A ↠ B` (`effects-control-shell.md` §1.1):
-/// the operation `name`, the `payload` it is performed with (`A`), and the
+/// A single effect operation `op : A ↠ B` (the effects and control record's
+/// operation and handle rules).
+///
+/// The operation `name`, the `payload` it is performed with (`A`), and the
 /// `reply` it resumes with (`B`).
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct EffectOp
@@ -105,8 +107,9 @@ impl EffectOp
     }
 }
 
-/// An effect signature `E = { opᵢ : Aᵢ ↠ Bᵢ }` (`effects-control-shell.md`
-/// §1.1): a named interface grouping the operations a single effect provides.
+/// An effect signature `E = { opᵢ : Aᵢ ↠ Bᵢ }` (the effects and control
+/// record's operation and handle rules): a named interface grouping the
+/// operations a single effect provides.
 ///
 /// The signature is the unit a row carries and a handler discharges. It is
 /// identified by its [`Self::name`]; the operation list is kept in a stable
@@ -338,9 +341,10 @@ impl EffectRow
     }
 }
 
-/// The bottom-up row union at a `bind` (`effects-control-shell.md` §1.2; A3.2
-/// `+effects`): `t >>= x. u` accumulates the demand of both sides, so the bound
-/// computation's effect row `bound_row` folds into the continuation's result.
+/// The bottom-up row union at a `bind` (the effect calculus's bind row
+/// arithmetic; A3.2 `+effects`): `t >>= x. u` accumulates the demand of both
+/// sides, so the bound computation's effect row `bound_row` folds into the
+/// continuation's result.
 ///
 /// The continuation type `cont_ty` is the bind's result type:
 ///
@@ -392,7 +396,7 @@ pub(crate) fn combine_bind_row(
 }
 
 /// The resumption (continuation) type `k : Stk(F^ε B_op, F^ε C)` a handler
-/// clause binds (`effects-control-shell.md` §1.1 rule Handle; A3.2 `+effects`).
+/// clause binds (the handle rule; A3.2 `+effects`).
 ///
 /// `answer` is the handler's answer computation type `F^ε C` (or `Unknown` for
 /// the matched-hole answer); `reply` is the handled operation's reply type
@@ -416,8 +420,8 @@ pub(crate) fn resume_stack_type(
     ValueType::stk(CompType::returner_eff(reply, cont_row), answer.clone())
 }
 
-/// The handler's **natural type** before subsumption
-/// (`effects-control-shell.md` §1.1 rule Handle; A3.2 `+effects`): the answer
+/// The handler's **natural type** before subsumption (the handle rule;
+/// A3.2 `+effects`): the answer
 /// payload `C` carried at the residual row `ε_t ∖ E` the handled computation
 /// may leak.
 ///
@@ -439,9 +443,8 @@ pub(crate) fn handle_natural_type(
     }
 }
 
-/// Resolves a deep handler's operation clauses against its signature
-/// (`effects-control-shell.md` §1.1 rule Handle: a clause for *each* `opᵢ ∈ E`;
-/// ADR-33 D4; A3.2 `+effects`).
+/// Resolves a deep handler's operation clauses against its signature (the
+/// handle rule's clause-per-operation; ADR-33 D4; A3.2 `+effects`).
 ///
 /// Returns the clauses paired with their resolved [`EffectOp`]s **in the
 /// signature's canonical operation order**, so the recursive checker and the

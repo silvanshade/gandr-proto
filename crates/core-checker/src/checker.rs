@@ -295,7 +295,8 @@ struct Rec
     /// The trace of `Descend`/`Return` events logged so far.
     trace: Trace,
     /// The **ambient answer type** the nearest enclosing `reset` establishes
-    /// (`effects-control-shell.md` §2.2; A3.3 `+control`): `None` outside any
+    /// (the effects and control record's answer-typing section; A3.3
+    /// `+control`): `None` outside any
     /// `reset`, `Some(C)` inside one whose answer is `C`. [`Self::rule_reset`]
     /// saves, sets, and restores it (dynamic scoping); [`Self::rule_shift`]
     /// reads it (a `shift` with `answer = None` has no delimiter and is stuck).

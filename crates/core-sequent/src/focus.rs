@@ -1,4 +1,4 @@
-//! The static focusing translation `𝓕` (`proposal-sequent-kernel.md` §3).
+//! The static focusing translation `𝓕` (the sequent-machines design's §3).
 //!
 //! `𝓕` takes a checked-core CBPV computation (or value) to a **focused**
 //! command of the [`crate::il`] IL, Curien–Herbelin style and in the
@@ -133,7 +133,7 @@ impl core::error::Error for FocusError
 
 /// The source construct a translated command came from — the `ElabKind`
 /// provenance (§3) that lets diagnostics un-sugar through the IL
-/// (`proposal-sequent-kernel.md` §9 inspection surface).
+/// (the sequent-machines design's §9 inspection surface).
 ///
 /// Recorded only for the commands `𝓕` *creates* (cuts and prim invocations);
 /// the consumer-extending rules (`App` / `Bind` / `Prj` / `Reset` / `Handle`)
@@ -1837,10 +1837,10 @@ fn value_mentions_unsupported_former(value: &Value) -> UnsupportedFormerStatus
 /// A computation containing a known-but-not-yet-realized former focuses as one
 /// whole-program [`FocusOrigin::Unsupported`] decline — the cross-lane rule
 /// preferring a whole-program decline over a partial per-node fallback (a hole
-/// producer) that would silently disagree with the CEK oracle on realized
+/// producer) that would silently disagree with the oracle on realized
 /// items. The ADR-76 identity formers and ADR-80 declared data that once
-/// declined here are now realized, so currently no former triggers the decline
-/// — the scan is the forward-compat guard for a future former.
+/// declined here are now realized, so no former triggers the decline —
+/// the scan is the forward-compat guard for a future former.
 ///
 /// # Contract
 /// - ensures: on success, `focused.root()` is a well-formed focused command

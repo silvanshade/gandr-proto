@@ -1,5 +1,5 @@
-//! The stack-typing judgment for reified stacks (`effects-control-shell.md`
-//! §2.1; contract §6.3; ADR-33 D6/D7; A3.3 `+control`).
+//! The stack-typing judgment for reified stacks (the effects and control
+//! record's stack judgment section; ADR-33 D6/D7; A3.3 `+control`).
 //!
 //! Levy's CBPV has a third syntactic sort beside values and computations:
 //! **stacks** (evaluation contexts), typed `K : B ⇒ C` ("`K` consumes a

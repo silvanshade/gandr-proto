@@ -1,4 +1,4 @@
-//! The command-IL pretty-printer (`proposal-sequent-kernel.md` §9 inspection
+//! The command-IL pretty-printer (the sequent-machines design's §9 inspection
 //! surface).
 //!
 //! Renders a command, producer, or consumer in the §2.1 concrete notation

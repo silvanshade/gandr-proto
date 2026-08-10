@@ -1,13 +1,13 @@
 //! The L machine — the iterative, arena-native operational dynamics of the
-//! polarized command IL (`proposal-sequent-kernel.md` §4; decision K3; phase
+//! polarized command IL (the sequent-machines design's §4, decision K3, phase
 //! **L1**).
 //!
-//! The machine is the sequent-shaped **re-presentation** of the CEK machine
-//! that was gandr's operational oracle through the L1 migration: it was
-//! differentially anchored to the CEK — `L-run ∘ 𝓕 ≡ run` — until the CEK
-//! retired at B1 stage F, and is now the live driver, anchored by the frozen
-//! outcome snapshots (the [`crate::differential`] canonicalization drives both
-//! the corpus and the hand-built regression sweeps).
+//! The machine is the sequent-shaped **re-presentation** of the machine that
+//! was gandr's operational oracle through the L1 migration: differentially
+//! anchored to it — `L-run ∘ 𝓕 ≡ run` — until it retired, and now the live
+//! driver, anchored by the frozen outcome snapshots (the
+//! [`crate::differential`] canonicalization drives both the corpus and the
+//! hand-built regression sweeps).
 //! It is a flat loop over commands (ADR-47 — no recursion in the step),
 //! environment-extension only (never textual substitution), and every
 //! transition is one budgeted step against the single shared
@@ -148,8 +148,8 @@ use crate::store::Store;
 pub type Continuation = Rc<[LFrame]>;
 
 /// A machine value `𝕍` — the result of evaluating a substitutable producer
-/// `𝔭` (`proposal-sequent-kernel.md` §4.1), the L-machine image of
-/// `eval::RtValue`.
+/// `𝔭` (the sequent-machines design's §4.1), the L-machine image of the
+/// retired evaluator's runtime value.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LValue
 {
@@ -227,8 +227,9 @@ impl LValue
     }
 }
 
-/// A reified continuation frame `LFrame` — the L-machine image of `eval::Cont`,
-/// drawn from a consumer IL node (`proposal-sequent-kernel.md` §4.1).
+/// A reified continuation frame `LFrame` — the L-machine image of the
+/// retired evaluator's continuation stack, drawn from a consumer IL node (the
+/// sequent-machines design's §4.1).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LFrame
 {
@@ -282,8 +283,9 @@ pub enum LFrame
     },
 }
 
-/// A value environment `x ↦ 𝕍` (`proposal-sequent-kernel.md` §4.1) — a
-/// persistent, innermost-first association, the L-machine image of `eval::Env`.
+/// A value environment `x ↦ 𝕍` (the sequent-machines design's §4.1) — a
+/// persistent, innermost-first association, the L-machine image of the retired
+/// evaluator's environment.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct LEnv(Option<Rc<EnvNode>>);
@@ -377,9 +379,11 @@ impl Default for LEnv
     }
 }
 
-/// A covalue environment `α ↦ 𝕊` (`proposal-sequent-kernel.md` §4.1) — a
+/// A covalue environment `α ↦ 𝕊` (the sequent-machines design's §4.1) — a
 /// persistent, innermost-first association of covariables to captured
-/// [`Continuation`]s, the L-machine image of `eval::ContEnv`.
+/// [`Continuation`]s.
+///
+/// The L-machine image of the retired evaluator's continuation environment.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct LContEnv(Option<Rc<CoEnvNode>>);

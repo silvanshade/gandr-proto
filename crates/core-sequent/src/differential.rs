@@ -1,17 +1,17 @@
-//! The `𝓕`-outcome canonicalization (`proposal-sequent-kernel.md` §9, phase
+//! The `𝓕`-outcome canonicalization (the sequent-machines design's §9, the
 //! **L1** gate).
 //!
-//! Through the L1 migration the CEK machine was the **external oracle** (ADR-71
-//! adequacy discipline): a distinct, independently-maintained implementation of
-//! the same operational semantics, so agreement between it and the L machine
-//! was evidence for the L machine's correctness (the two shared no step code —
-//! the CEK drove `Comp`, the L machine drives the focused command IL). The
-//! **adequacy hypothesis** the differential rested on: for a checked core
-//! computation `t`, `run(t)` and `L-run(𝓕(t))` denote the same observable
-//! outcome. The CEK retired at B1 stage F; this module's [`canonical`] /
-//! [`agree`] now compare the L machine's outcome against the frozen outcome
-//! snapshots (`tests/differential.rs`, `tests/corpus_differential.rs`) that
-//! captured the final oracle-agreeing run — the same canonicalization, its
+//! The differential's **external oracle** was a distinct,
+//! independently-maintained implementation of the same operational semantics
+//! (the ADR-71 adequacy discipline): agreement between it and the L machine was
+//! evidence for the L machine's correctness, the two sharing no step code —
+//! the oracle drove `Comp`, the L machine drives the focused command IL. The
+//! **adequacy hypothesis**: for a checked core computation `t`, the two denote
+//! the same observable outcome. The oracle has retired; this module's
+//! [`canonical`] / [`agree`] now compare the L machine's outcome against the
+//! frozen outcome snapshots (`tests/differential.rs`,
+//! `tests/corpus_differential.rs`) that captured the final oracle-agreeing run
+//! — the same canonicalization, its
 //! reference now a fixture rather than a live second machine.
 //!
 //! # What is compared
@@ -128,8 +128,8 @@ pub enum CanonValue
 }
 
 /// Whether two evaluation outcomes agree (they canonicalize equally) — the L
-/// machine's outcome against a recorded snapshot, or, through the L1 migration,
-/// against the retired CEK oracle.
+/// machine's outcome against a recorded snapshot, or against the retired
+/// oracle.
 ///
 /// # Contract
 /// - ensures: `true` iff `canonical(oracle) == canonical(machine)`.
