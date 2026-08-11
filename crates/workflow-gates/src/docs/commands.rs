@@ -196,15 +196,15 @@ impl RumdlMode
 /// Exact external command used by the guarded rumdl wrapper.
 ///
 /// # Contract
-/// - ensures: `rumdl_args` begins with the mode followed by every caller path
-///   in encounter order after conflict-marker validation has succeeded.
+/// - ensures: `rumdl_args` begins with the mode, adds `--no-cache` for `check`,
+///   then preserves every caller path in encounter order after validation.
 /// - provides: a testable command vector model before the rumdl process is
 ///   spawned.
 /// - panics: none.
 ///
 /// # Adequacy
-/// - hypothesis: L3 pointwise — mode, marker rejection, path ordering, and
-///   empty-path-list cases are killed by exact vector and error assertions.
+/// - hypothesis: L3 pointwise — mode, cache policy, marker rejection, path
+///   ordering, and empty-path-list cases are killed by exact assertions.
 /// - witness: `commands::tests::conflict_markers_block_rumdl_planning`
 /// - witness: `commands::tests::clean_markdown_files_preserve_argument_order`
 #[derive(Clone, Eq, PartialEq)]
@@ -363,8 +363,8 @@ fn run_guarded_rumdl_program(
 /// - requires: `paths` contains the Markdown files supplied by the caller, and
 ///   relative paths are resolved against `cwd` for validation only.
 /// - ensures: rejects the first unresolved conflict-marker line in encounter
-///   order before returning a command plan, and preserves `paths` encounter
-///   order in the returned rumdl arguments.
+///   order, disables rumdl's unsound file-only cache for `check`, and preserves
+///   `paths` encounter order in the returned rumdl arguments.
 /// - provides: a planning seam for the marker-before-rumdl decision.
 /// - fails: returns [`GateError`] for unreadable Markdown paths or unresolved
 ///   marker lines.
@@ -375,8 +375,8 @@ fn run_guarded_rumdl_program(
 /// errors for unresolved marker lines.
 ///
 /// # Adequacy
-/// - hypothesis: L3 pointwise — clean files, first marker line, relative `cwd`,
-///   and multi-path order fixtures distinguish every planning branch.
+/// - hypothesis: L3 pointwise — clean files, no-cache check mode, first marker
+///   line, relative `cwd`, and multi-path order distinguish every branch.
 /// - witness: `commands::tests::conflict_markers_block_rumdl_planning`
 /// - witness: `commands::tests::clean_markdown_files_preserve_argument_order`
 #[inline]
@@ -390,6 +390,9 @@ pub fn rumdl_command_plan(
 
     let mut rumdl_args = Vec::new();
     rumdl_args.push(OsString::from(mode.as_str().into().0));
+    if mode == RumdlMode::Check {
+        rumdl_args.push(OsString::from("--no-cache"));
+    }
     append_path_args(&mut rumdl_args, paths);
 
     Ok(RumdlCommandPlan {
@@ -756,7 +759,8 @@ mod tests
         Ok(())
     }
 
-    /// Clean Markdown paths keep caller ordering in the rumdl argv.
+    /// Check mode disables rumdl's stale-prone cache and keeps caller path
+    /// ordering.
     #[test]
     fn clean_markdown_files_preserve_argument_order() -> TestResult
     {
@@ -774,6 +778,7 @@ mod tests
         assert_eq!(
             vec![
                 OsString::from("check"),
+                OsString::from("--no-cache"),
                 first.as_os_str().to_os_string(),
                 second.as_os_str().to_os_string(),
             ],
