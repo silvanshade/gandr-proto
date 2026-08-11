@@ -4,6 +4,12 @@ Notable changes to the gandr workspace, newest first.
 This is the single workspace changelog; the per-crate `docs/` directories it replaces are leaving the tree, and their salvageable history is preserved here.
 Entries dated before 2026-07-21 record the relevant tier's lineage before its absorption into this tree.
 
+## 2026-08-11
+
+- The retirement continues: the `surface-syntax`, `surface-parser`, `surface-grammar`, and `surface-render-remote` sets leave the tree.
+  `surface-corpus` shipped no docs directory, so nothing relocates for it.
+  The design material the four sets carried is corrected at its new home rather than copied — including the grammar STATUS's stale grammar fingerprint and declared mold count (two updates behind the tree's pinned values) and the parser STATUS's stale test count, line count, and corpus-gate narrative.
+
 ## 2026-08-10
 
 - The per-crate `docs/` tier (STATUS, ADR, CHANGELOG, METRICS, OPTIMIZATION) begins its retirement: the `storage-artifact`, `storage-chunker`, and `storage-prolly-trees` sets leave the tree, and this file becomes the workspace changelog of record.
@@ -14,6 +20,20 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
 - **core-checker**: extracted the A2.3 incremental trio (`checkpoint`, `footprint`, `region`, with the four boundary wrappers only they used and the `theory-orders` dependency) into `gandr-core-incremental` — the engine existed twice in the workspace, and the extraction takes the better-written half of each differing pair into one crate; nothing here consumed the trio, so the move is a re-home.
   Same landing: `effect::host` now owns the canonical alloc-only `Exec` / `Fs` / `Proc` / `Env` signatures beside the representation-independent host seam, so surface lowering and the native runtime share one authority.
 
+## 2026-08-07
+
+- **surface-grammar**: the nested generator block becomes the one `data` form — the declaration head binds the family's parameters once as typed binders and carries the index arity as the head annotation, every generator member is a judgment with its telescope kept local, and the retired Haskell-style shapes (the bare-parameter head, the field-tuple member, the comma member separator) stay admissible so the stage-0 elaborator declines them with the respelling; `codata` takes the same head discipline.
+  Same landing: every `sign` member is terminated by `;` and the terminator is load-bearing — an unterminated member list was a clean parse of the wrong tree — dissolving the `sort` collision recorded when the block form landed, and a `sign` block may be named with a primitive-type spelling (the uppercase reservation is a preference with a generic-label fallback, not a ban).
+  The declared mold count reaches 1783, pinned in the walk contracts.
+
+## 2026-08-02
+
+- **surface-grammar**: landed the ruled circuit block form in the checked surface — the `sign` block with `sort` / `data` / `oper` / `rule` judgment members, the four-glyph arrow grid (`-->` / `<->` circuit 1-cell formers, `==>` / `<=>` rewrite faces), arrow-separated two-sided port lists, and the top-level `oper` / `rule` declaration with its `node` / `feed` body statements.
+  The grammar admits any grid glyph at every arrow position by design — arrow-kind confirmation is an environment fact the checker owns — and a top-level circuit declaration takes parenthesized sides so no Item form ends in a sort hole.
+  Same landing: the `data` / `codata` `rule` member's face arrow migrates from `~>` to `==>`, with the retired `~>` kept admissible in the arrow slot so the decline names the respelling.
+- **surface-parser**: lexed the ruled circuit arrow grid and the primed word — the four grid glyphs sit ahead of the shorter tiles each strictly extends in the longest-first table, a word may carry trailing primes (`′`, U+2032) while ASCII `'` stays the shell single-quote opener, and the molder reserves the item-position circuit leads `sign` and `oper` while `sort` / `node` / `feed` stay contextual.
+  Same landing: the retired `~>` stays in the multi-punctuation table so a stale face munches as one tile and the migration decline can name it.
+
 ## 2026-07-21
 
 - **core-checker**: added the elaborator-side kernel bridge — a total, iterative lowering from the checked core CBPV forms into the kernel's closed S1 vocabulary, rejecting every out-of-S1 node structurally with a precise `BridgeRejection`, erasing the operationally-transparent forms, resolving names through a `BridgeContext`, and applying the value-polarity declaration convention (a computation definition enters as a thunk `U C`); the kernel re-derives every obligation.
@@ -21,6 +41,9 @@ Entries dated before 2026-07-21 record the relevant tier's lineage before its ab
   Same landing: the kernel-native levelled-universe and explicit-lift goldens, and the artifact-total amplification bound `MAX_ARTIFACT_EXPANDED_WORK` with the deterministic `DecodeMetrics` the export exit gate records.
 - **storage-artifact**: landed the outer-layer CAS wiring for kernel v1 export artifacts — the record model over `write_segmented`, declaration-granular chunking into a `BlockStore`-backed prolly tree, the canonical versioned `ArtifactManifest`, and `ArtifactIdentity = BLAKE3(manifest)` as the b3sum-provenance successor, with the two-wall discipline (outer integrity, inner validity) pinned in docs and history-independence pinned by a differential.
 - **storage-chunker**: reconciled the absorbed documentation — removed benchmark claims that have no executable source in this tree; the crate ships no benchmark target and an empty dev-dependency table.
+- **surface-syntax / surface-render-remote**: ported into the tree at front-end rung F0 — the flat-arena CST leaf (the `Cst` arena, the checked `CstBuilder`, the framed FNV-1a structural-identity hash, the whitespace-insensitive structural diff) and the leaf wire-protocol types of the typing-machine inspection render bus (the `present` seam and the versioned `wire` frame + delta schema), verbatim ports of the wyrd `gandr-syntax` and `gandr-render-proto` crates with retired-tracker provenance dropped.
+- **surface-grammar**: ported at rung F1 — the checked precedence-bounded grammar core plus the mold-driven highlighter, re-pointing the three workspace dependencies to their reboot homes and omitting the `parity` feature entirely (tree-sitter returns at rung F6, so the default dependency graph is tree-sitter-free by construction); the parser-coupled contracts suite was parked to F2.
+- **surface-parser**: ported at rung F2 — the resumable push-machine melder plus the obligation taxonomy, dropping the vestigial direct graph edge (the grammar's re-exports carry every precedence type the parser uses) and restoring the grammar's six parser-coupled contracts tests through the deliberate dev-only cycle-break edge.
 
 ## 2026-07-20
 
